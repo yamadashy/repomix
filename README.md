@@ -7,15 +7,15 @@
 [![node](https://img.shields.io/node/v/repopack.svg?maxAge=1000)](https://www.npmjs.com/package/repopack)
 
 Repopack is a powerful tool that packs your entire repository into a single, AI-friendly file.  
-It is perfect for when you need to feed your codebase to Large Language Models (LLMs) or other AI tools like Claude, ChatGPT, and Gemini.
+It is Ideal when you need to provide your codebase to Large Language Models (LLMs) or other AI tools like Claude, ChatGPT, and Gemini.
 
 
 
 ## 🌟 Features
 
-- **AI-Optimized**: Formats your codebase in a way that's easy for AI to understand and process.
+- **AI-optimized**: Formats your codebase in a way that's easy for AI to understand and process.
 - **Token Counting**: Provides token counts for each file and the entire repository, useful for LLM context limits.
-- **Simple to Use**: You need just one command to pack your entire repository.
+- **Simple to Use**: You only need one command to pack your entire repository.
 - **Customizable**: Easily configure what to include or exclude.
 - **Git-Aware**: Automatically respects your .gitignore files.
 - **Security-Focused**: Incorporates [Secretlint](https://github.com/secretlint/secretlint) for robust security checks to detect and prevent inclusion of sensitive information.
@@ -64,7 +64,7 @@ To pack a specific directory:
 repopack path/to/directory
 ```
 
-To pack specific files or directories using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax):
+For packing specific files or directories using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax):
 
 ```bash
 repopack --include "src/**/*.ts,**/*.md"
@@ -127,7 +127,7 @@ Review the codebase for adherence to coding best practices and industry standard
 Get a high-level understanding of the library
 
 ```
-This file contains the entire codebase of library. Please provide a comprehensive overview of the library, including its main purpose, key features, and overall architecture.
+This file contains the entire codebase of the library. Please provide a comprehensive overview of the library, including its main purpose, key features, and overall architecture.
 ```
 
 Feel free to modify these prompts based on your specific needs and the capabilities of the AI tool you're using.
@@ -313,7 +313,7 @@ To process a remote repository, use the `--remote` option followed by the reposi
 repopack --remote https://github.com/user/repo.git
 ```
 
-You can also use GitHub's shorthand format:
+You can also use GitHub shorthand format:
 
 ```bash
 repopack --remote user/repo
@@ -491,7 +491,7 @@ By default, Repopack's security check feature is enabled. You can disable it by 
 
 ## 🤝 Contribution
 
-We welcome contributions from the community! To get started, please refer to our [Contributing Guide](CONTRIBUTING.md). 
+We welcome contributions from the community! To get started, please refer to our [Contribution Guide](CONTRIBUTING.md). 
 
 ### Contributors
 
