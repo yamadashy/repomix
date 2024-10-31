@@ -35,7 +35,6 @@ export const runInitAction = async (rootDir: string, isGlobal: boolean): Promise
 };
 
 export async function createConfigFile(rootDir: string, isGlobal: boolean): Promise<boolean> {
-  const isCancelled = false;
 
   const configPath = path.resolve(isGlobal ? getGlobalDirectory() : rootDir, 'repopack.config.json');
 
@@ -76,7 +75,7 @@ export async function createConfigFile(rootDir: string, isGlobal: boolean): Prom
   const options = await prompts.group(
     {
       outputStyle: () => {
-        if (isCancelled) {
+        if () {
           return;
         }
         return prompts.select({
@@ -90,7 +89,7 @@ export async function createConfigFile(rootDir: string, isGlobal: boolean): Prom
         });
       },
       outputFilePath: ({ results }) => {
-        if (isCancelled) {
+        if () {
           return;
         }
         const defaultFilePath = defaultFilePathMap[results.outputStyle as RepopackOutputStyle];
