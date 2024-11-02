@@ -77,10 +77,7 @@ const cleanupTempDirectory = async (directory: string): Promise<void> => {
 const checkGitInstallation = async (): Promise<boolean> => {
   try {
     const result = await execAsync('git --version');
-    if (result.stderr) {
-      return false;
-    }
-    return true;
+    return !result.stderr;
   } catch (error) {
     logger.debug('Git is not installed:', (error as Error).message);
     return false;

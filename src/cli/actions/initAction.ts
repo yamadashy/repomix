@@ -35,11 +35,9 @@ export const runInitAction = async (rootDir: string, isGlobal: boolean): Promise
 };
 
 export async function createConfigFile(rootDir: string, isGlobal: boolean): Promise<boolean> {
-  const isCancelled = false;
 
-  const configPath = isGlobal
-    ? path.resolve(getGlobalDirectory(), 'repopack.config.json')
-    : path.resolve(rootDir, 'repopack.config.json');
+const isCancelled = false
+  const configPath = path.resolve(isGlobal ? getGlobalDirectory() : rootDir, 'repopack.config.json');
 
   const isCreateConfig = await prompts.confirm({
     message: `Do you want to create a ${isGlobal ? 'global ' : ''}${pc.green('repopack.config.json')} file?`,
