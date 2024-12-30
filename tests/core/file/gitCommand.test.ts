@@ -40,7 +40,7 @@ describe('gitCommand', () => {
   });
 
   describe('execGitShallowClone', () => {
-    test('should execute git clone with correct parameters', async () => {
+    test('should execute git clone with correct parameters for branch', async () => {
       const mockExecAsync = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
       const url = 'https://github.com/user/repo.git';
       const directory = '/tmp/repo';
@@ -48,7 +48,31 @@ describe('gitCommand', () => {
 
       await execGitShallowClone(url, directory, branch, { execAsync: mockExecAsync });
 
-      expect(mockExecAsync).toHaveBeenCalledWith(`git clone --depth 1 -b ${branch} ${url} ${directory}`);
+      expect(mockExecAsync).toHaveBeenCalledWith(`git clone --depth 1 ${url} ${directory}`);
+      expect(mockExecAsync).toHaveBeenCalledWith(`git -C ${directory} checkout ${branch}`);
+    });
+
+    test('should execute git clone and checkout with correct parameters for commit hash', async () => {
+      const mockExecAsync = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
+      const url = 'https://github.com/user/repo.git';
+      const directory = '/tmp/repo';
+      const commitHash = 'abc123def456';
+
+      await execGitShallowClone(url, directory, commitHash, { execAsync: mockExecAsync });
+
+      expect(mockExecAsync).toHaveBeenCalledWith(`git clone --depth 1 ${url} ${directory}`);
+      expect(mockExecAsync).toHaveBeenCalledWith(`git -C ${directory} checkout ${commitHash}`);
+    });
+
+    test('should execute without branchOrCommit option if not specified by user', async () => {
+      const mockExecAsync = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
+      const url = 'https://github.com/user/repo.git';
+      const directory = '/tmp/repo';
+      const branchOrCommit = undefined;
+
+      await execGitShallowClone(url, directory, branchOrCommit, { execAsync: mockExecAsync });
+
+      expect(mockExecAsync).toHaveBeenCalledWith(`git clone --depth 1 ${url} ${directory}`);
     });
 
     test('should throw error when git clone fails', async () => {
@@ -61,18 +85,27 @@ describe('gitCommand', () => {
         'Authentication failed',
       );
 
-      expect(mockExecAsync).toHaveBeenCalledWith(`git clone --depth 1 -b ${branch} ${url} ${directory}`);
+      expect(mockExecAsync).toHaveBeenCalledWith(`git clone --depth 1 ${url} ${directory}`);
     });
 
-    test('should execute without branch option if not specified by user', async () => {
-      const mockExecAsync = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
+    test('should throw error when checkout fails for commit hash', async () => {
+      const mockExecAsync = vi
+        .fn()
+        .mockImplementation((cmd) =>
+          cmd.includes('checkout')
+            ? Promise.reject(new Error('Checkout failed'))
+            : Promise.resolve({ stdout: '', stderr: '' }),
+        );
       const url = 'https://github.com/user/repo.git';
       const directory = '/tmp/repo';
-      const branch = undefined;
+      const commitHash = 'abc123def456';
 
-      await execGitShallowClone(url, directory, branch, { execAsync: mockExecAsync });
+      await expect(execGitShallowClone(url, directory, commitHash, { execAsync: mockExecAsync })).rejects.toThrow(
+        'Checkout failed',
+      );
 
       expect(mockExecAsync).toHaveBeenCalledWith(`git clone --depth 1 ${url} ${directory}`);
+      expect(mockExecAsync).toHaveBeenCalledWith(`git -C ${directory} checkout ${commitHash}`);
     });
   });
 });
