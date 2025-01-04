@@ -1,0 +1,77 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build'
+    args:
+      - 'build'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/repomix/server:$BUILD_ID'
+      - '--cache-from'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/repomix/server:latest'
+      - '--build-arg'
+      - 'NODE_ENV=production'
+      - '.'
+
+  # Push the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push'
+    args:
+      - 'push'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/repomix/server:$BUILD_ID'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '$_SERVICE_NAME'
+      - '--image'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/repomix/server:$BUILD_ID'
+      - '--region'
+      - '$_REGION'
+      - '--platform'
+      - 'managed'
+      - '--port'
+      - '8080'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--ingress'
+      - 'all'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
+
+  # Tag the image as latest
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'tag-latest'
+    args:
+      - 'tag'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/repomix/server:$BUILD_ID'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/repomix/server:latest'
+
+  # Push the latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-latest'
+    args:
+      - 'push'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/repomix/server:latest'
+
+substitutions:
+  _REGION: asia-northeast1
+  _SERVICE_NAME: repomix-server
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  dynamic_substitutions: true
+
+images:
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/repomix/server:$BUILD_ID'
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/repomix/server:latest'

@@ -1,4 +1,5 @@
 {
+  "private": true,
   "scripts": {
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
@@ -6,5 +7,9 @@
   },
   "devDependencies": {
     "vitepress": "^1.5.0"
+  },
+  "dependencies": {
+    "@types/gtag.js": "^0.0.20",
+    "lucide-vue-next": "^0.469.0"
   }
 }

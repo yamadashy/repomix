@@ -5,6 +5,9 @@
       "./bin/**",
       "./src/**",
       "./tests/**",
+      "./website/**",
+      "./.devcontainer/**",
+      "./.github/**",
       "package.json",
       "biome.json",
       ".secretlintrc.json",
@@ -12,6 +15,12 @@
       "tsconfig.build.json",
       "vite.config.ts",
       "repomix.config.json"
+    ],
+    "ignore": [
+      "website/client/.vitepress/.temp",
+      "website/client/.vitepress/dist",
+      "website/client/.vitepress/cache",
+      "website/server/dist"
     ]
   },
   "organizeImports": {

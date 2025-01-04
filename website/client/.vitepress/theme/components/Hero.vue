@@ -1,8 +1,7 @@
-<!-- website/client/.vitepress/theme/components/Hero.vue -->
 <script setup>
-import { useData } from 'vitepress'
+import { useData } from 'vitepress';
 
-const { site } = useData()
+const { site } = useData();
 </script>
 
 <template>
@@ -29,7 +28,7 @@ const { site } = useData()
   font-weight: 700;
   line-height: 1.2;
   margin-bottom: 24px;
-  background: -webkit-linear-gradient(315deg, #f97316 25%, #fb923c);
+  background: -webkit-linear-gradient(0deg, #f97316 30%, #ffb25c);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
