@@ -109,4 +109,7 @@ export default defineConfig({
       gtag('config', '${googleAnalyticsTag}');`,
     ],
   ],
+  sitemap: {
+    hostname: 'https://repomix.com'
+  }
 });
