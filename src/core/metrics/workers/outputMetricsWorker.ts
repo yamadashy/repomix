@@ -1,5 +1,3 @@
-// src/core/metrics/workers/tokenCountWorker.ts
-
 import type { TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../../shared/logger.js';
 import { TokenCounter } from '../../tokenCount/tokenCount.js';
