@@ -1,6 +1,6 @@
 import { lintSource } from '@secretlint/core';
 import { creator } from '@secretlint/secretlint-rule-preset-recommend';
-import type { SecretLintCoreConfig, SecretLintCoreResult } from '@secretlint/types';
+import type { SecretLintCoreConfig } from '@secretlint/types';
 import { logger } from '../../../shared/logger.js';
 
 export interface SecurityCheckTask {

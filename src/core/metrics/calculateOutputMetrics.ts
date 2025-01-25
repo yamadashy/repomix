@@ -1,19 +1,10 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { Piscina } from 'piscina';
 import type { TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
+import { initPiscina } from '../../shared/processConcurrency.js';
 import type { OutputMetricsTask } from './workers/outputMetricsWorker.js';
 
 const initTaskRunner = () => {
-  const pool = new Piscina({
-    filename: new URL('./workers/outputMetricsWorker.js', import.meta.url).href,
-    // Set minThreads and maxThreads to 1
-    minThreads: 1,
-    maxThreads: 1,
-    idleTimeout: 5000,
-  });
-
+  const pool = initPiscina(1, new URL('./workers/outputMetricsWorker.js', import.meta.url).href);
   return (task: OutputMetricsTask) => pool.run(task);
 };
 

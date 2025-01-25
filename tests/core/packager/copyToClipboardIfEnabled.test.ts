@@ -1,5 +1,4 @@
 import clipboard from 'clipboardy';
-import { logger } from 'handlebars';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import { copyToClipboardIfEnabled } from '../../../src/core/packager/copyToClipboardIfEnabled.js';

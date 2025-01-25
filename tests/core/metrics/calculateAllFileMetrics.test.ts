@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { calculateAllFileMetrics } from '../../../src/core/metrics/calculateAllFileMetrics.js';
-import {
-  type FileMetricsTask,
-  calculateIndividualFileMetrics,
-} from '../../../src/core/metrics/workers/fileMetricsWorker.js';
+import type { FileMetricsTask } from '../../../src/core/metrics/workers/fileMetricsWorker.js';
+import fileMetricsWorker from '../../../src/core/metrics/workers/fileMetricsWorker.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 
 vi.mock('../../shared/processConcurrency', () => ({
@@ -13,7 +11,7 @@ vi.mock('../../shared/processConcurrency', () => ({
 
 const mockInitTaskRunner = (numOfTasks: number) => {
   return async (task: FileMetricsTask) => {
-    return await calculateIndividualFileMetrics(task.file, task.encoding);
+    return await fileMetricsWorker(task);
   };
 };
 

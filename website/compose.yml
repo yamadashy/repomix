@@ -1,5 +1,5 @@
 # Run website in development mode
-# $ docker-compose -f website/compose.yml up --build
+# $ docker compose -f website/compose.yml up --build
 
 services:
   client:

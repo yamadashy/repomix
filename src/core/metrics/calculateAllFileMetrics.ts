@@ -1,24 +1,14 @@
 import pc from 'picocolors';
-import { Piscina } from 'piscina';
 import type { TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
-import { getWorkerThreadCount } from '../../shared/processConcurrency.js';
+import { initPiscina } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { FileMetricsTask } from './workers/fileMetricsWorker.js';
 import type { FileMetrics } from './workers/types.js';
 
 const initTaskRunner = (numOfTasks: number) => {
-  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
-  logger.trace(`Initializing worker pool with min=${minThreads}, max=${maxThreads} threads`);
-
-  const pool = new Piscina({
-    filename: new URL('./workers/fileMetricsWorker.js', import.meta.url).href,
-    minThreads,
-    maxThreads,
-    idleTimeout: 5000,
-  });
-
+  const pool = initPiscina(numOfTasks, new URL('./workers/fileMetricsWorker.js', import.meta.url).href);
   return (task: FileMetricsTask) => pool.run(task);
 };
 

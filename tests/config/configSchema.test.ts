@@ -1,6 +1,5 @@
-import { outro } from '@clack/prompts';
 import { describe, expect, it } from 'vitest';
-import { custom, z } from 'zod';
+import { z } from 'zod';
 import {
   repomixConfigBaseSchema,
   repomixConfigCliSchema,

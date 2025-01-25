@@ -1,5 +1,5 @@
 import pako from 'pako';
-import type { PackOptions, PackResult } from '../types.js';
+import type { PackOptions } from '../types.js';
 
 interface CacheEntry<T> {
   value: Uint8Array; // Compressed data

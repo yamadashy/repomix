@@ -8,7 +8,6 @@ import {
   isValidRemoteValue,
   runRemoteAction,
 } from '../../../src/cli/actions/remoteAction.js';
-import type { SuspiciousFileResult } from '../../../src/core/security/securityCheck.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {

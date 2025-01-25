@@ -1,9 +1,6 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import pc from 'picocolors';
-import { Piscina } from 'piscina';
 import { logger } from '../../shared/logger.js';
-import { getWorkerThreadCount } from '../../shared/processConcurrency.js';
+import { initPiscina } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { SecurityCheckTask } from './workers/securityCheckWorker.js';
@@ -14,16 +11,7 @@ export interface SuspiciousFileResult {
 }
 
 const initTaskRunner = (numOfTasks: number) => {
-  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
-  logger.trace(`Initializing worker pool with min=${minThreads}, max=${maxThreads} threads`);
-
-  const pool = new Piscina({
-    filename: new URL('./workers/securityCheckWorker.js', import.meta.url).href,
-    minThreads,
-    maxThreads,
-    idleTimeout: 5000,
-  });
-
+  const pool = initPiscina(numOfTasks, new URL('./workers/securityCheckWorker.js', import.meta.url).href);
   return (task: SecurityCheckTask) => pool.run(task);
 };
 

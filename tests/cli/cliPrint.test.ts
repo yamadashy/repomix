@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { printCompletion, printSecurityCheck, printSummary, printTopFiles } from '../../src/cli/cliPrint.js';
 import type { SuspiciousFileResult } from '../../src/core/security/securityCheck.js';
 import { logger } from '../../src/shared/logger.js';
-import { createMockConfig, isWindows } from '../testing/testUtils.js';
+import { createMockConfig } from '../testing/testUtils.js';
 
 vi.mock('../../src/shared/logger');
 vi.mock('picocolors', () => ({
