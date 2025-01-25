@@ -10,9 +10,9 @@ export interface SecurityCheckTask {
 
 export default async ({ filePath, content }: SecurityCheckTask) => {
   const config = createSecretLintConfig();
-  const processStartAt = process.hrtime.bigint();
 
   try {
+    const processStartAt = process.hrtime.bigint();
     const secretLintResult = await runSecretLint(filePath, content, config);
     const processEndAt = process.hrtime.bigint();
 
@@ -20,25 +20,14 @@ export default async ({ filePath, content }: SecurityCheckTask) => {
       `Checked security on ${filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
     );
 
-    if (secretLintResult.messages.length > 0) {
-      return {
-        filePath,
-        messages: secretLintResult.messages.map((message) => message.message),
-      };
-    }
-
-    return null;
+    return secretLintResult;
   } catch (error) {
     logger.error(`Error checking security on ${filePath}:`, error);
     throw error;
   }
 };
 
-export const runSecretLint = async (
-  filePath: string,
-  content: string,
-  config: SecretLintCoreConfig,
-): Promise<SecretLintCoreResult> => {
+export const runSecretLint = async (filePath: string, content: string, config: SecretLintCoreConfig) => {
   const result = await lintSource({
     source: {
       filePath: filePath,
@@ -54,9 +43,14 @@ export const runSecretLint = async (
   if (result.messages.length > 0) {
     logger.trace(`Found ${result.messages.length} issues in ${filePath}`);
     logger.trace(result.messages.map((message) => `  - ${message.message}`).join('\n'));
+
+    return {
+      filePath,
+      messages: result.messages.map((message) => message.message),
+    };
   }
 
-  return result;
+  return null;
 };
 
 export const createSecretLintConfig = (): SecretLintCoreConfig => ({

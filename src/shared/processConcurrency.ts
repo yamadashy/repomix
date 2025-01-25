@@ -10,13 +10,7 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
   const minThreads = 1;
 
   // Limit max threads based on number of tasks
-  const maxThreads = Math.max(
-    minThreads,
-    Math.min(
-      processConcurrency,
-      Math.ceil(numOfTasks / 100)
-    )
-  );
+  const maxThreads = Math.max(minThreads, Math.min(processConcurrency, Math.ceil(numOfTasks / 100)));
 
   return {
     minThreads,
