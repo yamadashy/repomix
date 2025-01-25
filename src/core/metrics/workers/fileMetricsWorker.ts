@@ -23,13 +23,13 @@ const getTokenCounter = (encoding: TiktokenEncoding): TokenCounter => {
 
 export default async ({ file, encoding }: FileMetricsTask): Promise<FileMetrics> => {
   const processStartAt = process.hrtime.bigint();
-
+  const metrics = await calculateIndividualFileMetrics(file, encoding);
   const processEndAt = process.hrtime.bigint();
   logger.trace(
     `Calculated metrics for ${file.path}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
   );
 
-  return calculateIndividualFileMetrics(file, encoding);
+  return metrics;
 };
 
 export const calculateIndividualFileMetrics = async (
