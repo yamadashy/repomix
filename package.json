@@ -91,7 +91,7 @@
     "rimraf": "^6.0.1",
     "secretlint": "^9.0.0",
     "typescript": "^5.7.3",
-    "vite": "^5.4.14",
+    "vite": "^6.0.11",
     "vitest": "^3.0.5"
   },
   "engines": {
