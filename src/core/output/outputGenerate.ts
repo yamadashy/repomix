@@ -7,6 +7,7 @@ import { RepomixError } from '../../shared/errorHandle.js';
 import { searchFiles } from '../file/fileSearch.js';
 import { generateTreeString } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
+import type { GitMetricsResult } from '../file/gitMetrics.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
 import {
   generateHeader,
@@ -15,10 +16,9 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
-import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { getXmlTemplate } from './outputStyles/xmlStyle.js';
-
+import { getGitMetricsMarkdownTemplate, getMarkdownTemplate } from './outputStyles/markdownStyle.js';
+import { getGitMetricsPlainTemplate, getPlainTemplate } from './outputStyles/plainStyle.js';
+import { getGitMetricsXmlTemplate, getXmlTemplate } from './outputStyles/xmlStyle.js';
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
   const maxBackticks = files
     .flatMap((file) => file.content.match(/`+/g) ?? [])
@@ -28,7 +28,7 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
 
 const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
   return {
-    generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate), // configを追加
+    generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(),
     summaryFileFormat: generateSummaryFileFormat(),
     summaryUsageGuidelines: generateSummaryUsageGuidelines(
@@ -44,6 +44,13 @@ const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): Re
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
     markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    gitMetrics:
+      outputGeneratorContext.gitMetrics && !outputGeneratorContext.gitMetrics.error
+        ? {
+            totalCommits: outputGeneratorContext.gitMetrics.totalCommits,
+            mostChangedFiles: outputGeneratorContext.gitMetrics.mostChangedFiles,
+          }
+        : undefined,
   };
 };
 
@@ -75,9 +82,22 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
           '@_path': file.path,
         })),
       },
+      git_metrics: renderContext.gitMetrics
+        ? {
+            summary: {
+              '#text': `Total Commits Analyzed: ${renderContext.gitMetrics.totalCommits}`,
+            },
+            content: {
+              '#text': renderContext.gitMetrics.mostChangedFiles
+                .map((file, index) => `${index + 1}. ${file.path} (${file.changes} changes)`)
+                .join('\n'),
+            },
+          }
+        : undefined,
       instruction: renderContext.instruction ? renderContext.instruction : undefined,
     },
   };
+
   try {
     return xmlBuilder.build(xmlDocument);
   } catch (error) {
@@ -88,23 +108,34 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
 };
 
 const generateHandlebarOutput = async (config: RepomixConfigMerged, renderContext: RenderContext): Promise<string> => {
+  // Add helper for incrementing index
+  Handlebars.registerHelper('addOne', (value) => Number.parseInt(value) + 1);
+
   let template: string;
+  let gitMetricsTemplate = '';
+
   switch (config.output.style) {
     case 'xml':
       template = getXmlTemplate();
+      gitMetricsTemplate = getGitMetricsXmlTemplate();
       break;
     case 'markdown':
       template = getMarkdownTemplate();
+      gitMetricsTemplate = getGitMetricsMarkdownTemplate();
       break;
     case 'plain':
       template = getPlainTemplate();
+      gitMetricsTemplate = getGitMetricsPlainTemplate();
       break;
     default:
       throw new RepomixError(`Unknown output style: ${config.output.style}`);
   }
 
+  // Combine templates
+  const combinedTemplate = `${template}\n${gitMetricsTemplate}`;
+
   try {
-    const compiledTemplate = Handlebars.compile(template);
+    const compiledTemplate = Handlebars.compile(combinedTemplate);
     return `${compiledTemplate(renderContext).trim()}\n`;
   } catch (error) {
     throw new RepomixError(`Failed to compile template: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -116,8 +147,15 @@ export const generateOutput = async (
   config: RepomixConfigMerged,
   processedFiles: ProcessedFile[],
   allFilePaths: string[],
+  gitMetrics?: GitMetricsResult,
 ): Promise<string> => {
-  const outputGeneratorContext = await buildOutputGeneratorContext(rootDir, config, allFilePaths, processedFiles);
+  const outputGeneratorContext = await buildOutputGeneratorContext(
+    rootDir,
+    config,
+    allFilePaths,
+    processedFiles,
+    gitMetrics,
+  );
   const renderContext = createRenderContext(outputGeneratorContext);
 
   if (!config.output.parsableStyle) return generateHandlebarOutput(config, renderContext);
@@ -136,6 +174,7 @@ export const buildOutputGeneratorContext = async (
   config: RepomixConfigMerged,
   allFilePaths: string[],
   processedFiles: ProcessedFile[],
+  gitMetrics?: GitMetricsResult,
 ): Promise<OutputGeneratorContext> => {
   let repositoryInstruction = '';
 
@@ -166,5 +205,6 @@ export const buildOutputGeneratorContext = async (
     processedFiles,
     config,
     instruction: repositoryInstruction,
+    gitMetrics,
   };
 };

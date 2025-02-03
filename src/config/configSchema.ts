@@ -12,6 +12,11 @@ export const defaultFilePathMap: Record<RepomixOutputStyle, string> = {
   xml: 'repomix-output.xml',
 } as const;
 
+export const repomixGitMetricsSchema = z.object({
+  enabled: z.boolean().default(false),
+  maxCommits: z.number().int().min(1).default(100),
+});
+
 // Base config schema
 export const repomixConfigBaseSchema = z.object({
   output: z
@@ -29,6 +34,7 @@ export const repomixConfigBaseSchema = z.object({
       showLineNumbers: z.boolean().optional(),
       copyToClipboard: z.boolean().optional(),
       includeEmptyDirectories: z.boolean().optional(),
+      gitMetrics: repomixGitMetricsSchema.optional(),
     })
     .optional(),
   include: z.array(z.string()).optional(),
@@ -68,6 +74,10 @@ export const repomixConfigDefaultSchema = z.object({
       showLineNumbers: z.boolean().default(false),
       copyToClipboard: z.boolean().default(false),
       includeEmptyDirectories: z.boolean().optional(),
+      gitMetrics: repomixGitMetricsSchema.default({
+        enabled: false,
+        maxCommits: 100,
+      }),
     })
     .default({}),
   include: z.array(z.string()).default([]),

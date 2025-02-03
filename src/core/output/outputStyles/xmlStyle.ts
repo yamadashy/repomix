@@ -61,3 +61,18 @@ This section contains the contents of the repository's files.
 {{/if}}
 `;
 };
+
+export const getGitMetricsXmlTemplate = () => {
+  return /* xml */ `{{#if gitMetrics}}
+<git_metrics>
+  <summary>
+    Total Commits Analyzed: {{gitMetrics.totalCommits}}
+  </summary>
+  <content>
+    {{#each gitMetrics.mostChangedFiles}}
+    {{addOne @index}}. {{this.path}} ({{this.changes}} changes)
+    {{/each}}
+  </content>
+</git_metrics>
+{{/if}}`;
+};

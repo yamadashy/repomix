@@ -10,7 +10,11 @@
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
-    "includeEmptyDirectories": true
+    "includeEmptyDirectories": true,
+    "gitMetrics": {
+      "enable": true,
+      "maxCommits": 100
+    }
   },
   "include": [],
   "ignore": {
