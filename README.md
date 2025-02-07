@@ -123,6 +123,8 @@ If you're using Python, you might want to check out `Gitingest`, which is better
 science workflows:
 https://github.com/cyclotruc/gitingest
 
+The [f2c](https://github.com/LeanerCloud/f2c) tool is a more lightweight alternative written in Go that only supports the clipboard, without generating files. For Go projects it supports recursively looking into the current Go package using the Go AST to copy only a function's dependencies to the clipboard.
+
 ## 📊 Usage
 
 To pack your entire repository:
