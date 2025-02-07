@@ -1,8 +1,10 @@
 import type { RepomixConfigMerged } from '../config/configSchema.js';
+import { logger } from '../shared/logger.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles } from './file/fileCollect.js';
 import { processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
+import { calculateGitMetrics } from './file/gitMetrics.js';
 import { calculateMetrics } from './metrics/calculateMetrics.js';
 import { generateOutput } from './output/outputGenerate.js';
 import { copyToClipboardIfEnabled } from './packager/copyToClipboardIfEnabled.js';
@@ -17,6 +19,13 @@ export interface PackResult {
   fileCharCounts: Record<string, number>;
   fileTokenCounts: Record<string, number>;
   suspiciousFilesResults: SuspiciousFileResult[];
+  gitMetrics?: {
+    totalCommits: number;
+    mostChangedFiles: Array<{
+      path: string;
+      changes: number;
+    }>;
+  };
 }
 
 export const pack = async (
@@ -32,6 +41,7 @@ export const pack = async (
     writeOutputToDisk,
     copyToClipboardIfEnabled,
     calculateMetrics,
+    calculateGitMetrics,
   },
 ): Promise<PackResult> => {
   progressCallback('Searching for files...');
@@ -51,7 +61,17 @@ export const pack = async (
   const processedFiles = await deps.processFiles(safeRawFiles, config, progressCallback);
 
   progressCallback('Generating output...');
-  const output = await deps.generateOutput(rootDir, config, processedFiles, safeFilePaths);
+  let gitMetrics;
+  if (config.output.gitMetrics?.enabled) {
+    progressCallback('Calculating git metrics...');
+    gitMetrics = await deps.calculateGitMetrics(rootDir, config.output.gitMetrics.maxCommits);
+    if (gitMetrics.error) {
+      logger.warn(`Git metrics calculation skipped: ${gitMetrics.error}`);
+      gitMetrics = undefined;
+    }
+  }
+
+  const output = await deps.generateOutput(rootDir, config, processedFiles, safeFilePaths, gitMetrics);
 
   progressCallback('Writing output file...');
   await deps.writeOutputToDisk(output, config);
@@ -63,5 +83,12 @@ export const pack = async (
   return {
     ...metrics,
     suspiciousFilesResults,
+    gitMetrics:
+      gitMetrics && !gitMetrics.error
+        ? {
+            totalCommits: gitMetrics.totalCommits,
+            mostChangedFiles: gitMetrics.mostChangedFiles,
+          }
+        : undefined,
   };
 };

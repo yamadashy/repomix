@@ -158,3 +158,17 @@ Handlebars.registerHelper('getFileExtension', (filePath) => {
       return '';
   }
 });
+
+export const getGitMetricsMarkdownTemplate = () => {
+  return /* md */ `{{#if gitMetrics}}
+# Git Metrics
+
+## Summary
+Total Commits Analyzed: {{gitMetrics.totalCommits}}
+
+## Most Changed Files
+{{#each gitMetrics.mostChangedFiles}}
+{{addOne @index}}. {{this.path}} ({{this.changes}} changes)
+{{/each}}
+{{/if}}`;
+};

@@ -72,3 +72,21 @@ End of Codebase
 ${PLAIN_LONG_SEPARATOR}
 `;
 };
+
+export const getGitMetricsPlainTemplate = () => {
+  return `{{#if gitMetrics}}
+================
+Git Metrics
+================
+
+Summary:
+--------
+Total Commits Analyzed: {{gitMetrics.totalCommits}}
+
+Most Changed Files:
+------------------
+{{#each gitMetrics.mostChangedFiles}}
+{{addOne @index}}. {{this.path}} ({{this.changes}} changes)
+{{/each}}
+{{/if}}`;
+};
