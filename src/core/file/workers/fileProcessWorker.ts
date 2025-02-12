@@ -2,6 +2,7 @@ import type { RepomixConfigMerged } from '../../../config/configSchema.js';
 import { logger } from '../../../shared/logger.js';
 import { getFileManipulator } from '../fileManipulate.js';
 import type { ProcessedFile, RawFile } from '../fileTypes.js';
+import { getFn_parseFile } from '../../tree-sitter/parseFile.js';
 
 export interface FileProcessTask {
   rawFile: RawFile;
@@ -33,7 +34,10 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
 
   processedContent = processedContent.trim();
 
-  if (config.output.showLineNumbers) {
+  if (config.output.compress) {
+    const parseFile = await getFn_parseFile();
+    processedContent = (await parseFile(processedContent, rawFile.path, config)) ?? processedContent;
+  } else if (config.output.showLineNumbers) {
     const lines = processedContent.split('\n');
     const padding = lines.length.toString().length;
     const numberedLines = lines.map((line, i) => `${(i + 1).toString().padStart(padding)}: ${line}`);

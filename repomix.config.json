@@ -8,6 +8,7 @@
     "directoryStructure": true,
     "removeComments": false,
     "removeEmptyLines": false,
+    "compress": true,
     "topFilesLength": 5,
     "showLineNumbers": false,
     "includeEmptyDirectories": true

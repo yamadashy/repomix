@@ -32,6 +32,7 @@ export const run = async () => {
       .option('--no-directory-structure', 'disable directory structure section output')
       .option('--remove-comments', 'remove comments')
       .option('--remove-empty-lines', 'remove empty lines')
+      .option('--compress', 'perform code compression to reduce token count')
       .addOption(new Option('--verbose', 'enable verbose logging for detailed output').conflicts('quiet'))
       .addOption(new Option('--quiet', 'disable all output to stdout').conflicts('verbose'))
       .option('--init', 'initialize a new repomix.config.json file')

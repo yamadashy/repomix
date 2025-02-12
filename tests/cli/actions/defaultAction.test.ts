@@ -28,6 +28,7 @@ describe('defaultAction', () => {
         showLineNumbers: false,
         removeComments: false,
         removeEmptyLines: false,
+        compress: false,
         copyToClipboard: false,
       },
       ignore: {
