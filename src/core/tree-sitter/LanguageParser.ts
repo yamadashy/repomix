@@ -2,7 +2,7 @@ import * as path from 'node:path';
 import Parser from 'web-tree-sitter';
 
 import { ext2lang } from './ext2lang.js';
-import { lang2Query, SupportedLang } from './lang2Query.js';
+import { type SupportedLang, lang2Query } from './lang2query.js';
 import { loadLanguage } from './loadLanguage.js';
 
 export class LanguageParser {

@@ -1,9 +1,6 @@
-/*
-- method definitions (including singleton methods and aliases, with associated comments)
-- class definitions (including singleton classes, with associated comments)
-- module definitions
-*/
 export default `
+; Method definitions
+
 (
   (comment)* @doc
   .
@@ -19,6 +16,11 @@ export default `
 
 (alias
   name: (_) @name.definition.method) @definition.method
+
+(setter
+  (identifier) @ignore)
+
+; Class definitions
 
 (
   (comment)* @doc
@@ -41,6 +43,8 @@ export default `
   (#select-adjacent! @doc @definition.class)
 )
 
+; Module definitions
+
 (
   (module
     name: [
@@ -48,5 +52,15 @@ export default `
       (scope_resolution
         name: (_) @name.definition.module)
     ]) @definition.module
+)
+
+; Calls
+
+(call method: (identifier) @name.reference.call) @reference.call
+
+(
+  [(identifier) (constant)] @name.reference.call @reference.call
+  (#is-not? local)
+  (#not-match? @name.reference.call "^(lambda|load|require|require_relative|__FILE__|__LINE__)$")
 )
 `;

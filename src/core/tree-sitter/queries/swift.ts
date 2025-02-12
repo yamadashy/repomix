@@ -1,9 +1,3 @@
-/*
-- class declarations
-- method declarations (including initializers and deinitializers)
-- property declarations
-- function declarations
-*/
 export default `
 (class_declaration
   name: (type_identifier) @name) @definition.class

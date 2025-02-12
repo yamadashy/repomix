@@ -1,10 +1,3 @@
-/*
-- function signatures and declarations
-- method signatures and definitions
-- abstract method signatures
-- class declarations (including abstract classes)
-- module declarations
-*/
 export default `
 (function_signature
   name: (identifier) @name.definition.function) @definition.function
@@ -21,17 +14,29 @@ export default `
 (module
   name: (identifier) @name.definition.module) @definition.module
 
+(interface_declaration
+  name: (type_identifier) @name.definition.interface) @definition.interface
+
+(type_annotation
+  (type_identifier) @name.reference.type) @reference.type
+
+(new_expression
+  constructor: (identifier) @name.reference.class) @reference.class
+
 (function_declaration
   name: (identifier) @name.definition.function) @definition.function
-  
+
 (method_definition
   name: (property_identifier) @name.definition.method) @definition.method
 
 (class_declaration
   name: (type_identifier) @name.definition.class) @definition.class
 
-(variable_declaration
-  (variable_declarator
-    name: (identifier) @name
-    value: [(arrow_function) (function_expression)]) @definition.function)
-`;
+(interface_declaration
+  name: (type_identifier) @name.definition.class) @definition.class
+
+(type_alias_declaration
+  name: (type_identifier) @name.definition.type) @definition.type
+
+(enum_declaration
+  name: (identifier) @name.definition.enum) @definition.enum`;

@@ -1,16 +1,10 @@
-/*
-- class definitions
-- method definitions
-- named function declarations
-- arrow functions and function expressions assigned to variables
-*/
 export default `
 (
   (comment)* @doc
   .
   (method_definition
-    name: (property_identifier) @name) @definition.method
-  (#not-eq? @name "constructor")
+    name: (property_identifier) @name.definition.method) @definition.method
+  (#not-eq? @name.definition.method "constructor")
   (#strip! @doc "^[\\s\\*/]+|^[\\s\\*/]$")
   (#select-adjacent! @doc @definition.method)
 )
@@ -20,9 +14,9 @@ export default `
   .
   [
     (class
-      name: (_) @name)
+      name: (_) @name.definition.class)
     (class_declaration
-      name: (_) @name)
+      name: (_) @name.definition.class)
   ] @definition.class
   (#strip! @doc "^[\\s\\*/]+|^[\\s\\*/]$")
   (#select-adjacent! @doc @definition.class)
@@ -33,9 +27,11 @@ export default `
   .
   [
     (function_declaration
-      name: (identifier) @name)
+      name: (identifier) @name.definition.function)
+    (generator_function
+      name: (identifier) @name.definition.function)
     (generator_function_declaration
-      name: (identifier) @name)
+      name: (identifier) @name.definition.function)
   ] @definition.function
   (#strip! @doc "^[\\s\\*/]+|^[\\s\\*/]$")
   (#select-adjacent! @doc @definition.function)
@@ -46,8 +42,8 @@ export default `
   .
   (lexical_declaration
     (variable_declarator
-      name: (identifier) @name
-      value: [(arrow_function) (function_expression)]) @definition.function)
+      name: (identifier) @name.definition.function
+      value: [(arrow_function) (function_declaration)]) @definition.function)
   (#strip! @doc "^[\\s\\*/]+|^[\\s\\*/]$")
   (#select-adjacent! @doc @definition.function)
 )
@@ -57,9 +53,36 @@ export default `
   .
   (variable_declaration
     (variable_declarator
-      name: (identifier) @name
-      value: [(arrow_function) (function_expression)]) @definition.function)
+      name: (identifier) @name.definition.function
+      value: [(arrow_function) (function_declaration)]) @definition.function)
   (#strip! @doc "^[\\s\\*/]+|^[\\s\\*/]$")
   (#select-adjacent! @doc @definition.function)
 )
+
+(assignment_expression
+  left: [
+    (identifier) @name.definition.function
+    (member_expression
+      property: (property_identifier) @name.definition.function)
+  ]
+  right: [(arrow_function) (function_declaration)]
+) @definition.function
+
+(pair
+  key: (property_identifier) @name.definition.function
+  value: [(arrow_function) (function_declaration)]) @definition.function
+
+(
+  (call_expression
+    function: (identifier) @name.reference.call) @reference.call
+  (#not-match? @name.reference.call "^(require)$")
+)
+
+(call_expression
+  function: (member_expression
+    property: (property_identifier) @name.reference.call)
+  arguments: (_) @reference.call)
+
+(new_expression
+  constructor: (_) @name.reference.class) @reference.class
 `;
