@@ -87,8 +87,7 @@ export const copyOutputToCurrentDirectory = async (
 
     // Ensure target directory exists
     await fs.mkdir(targetDir, { recursive: true });
-
-    console.trace(`Copying output file from: ${sourcePath} to: ${targetPath}`);
+    
     await fs.copyFile(sourcePath, targetPath);
   } catch (error) {
     throw new AppError(
