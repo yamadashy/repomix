@@ -5,12 +5,12 @@ import { compress } from 'hono/compress';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { timeout } from 'hono/timeout';
+import { FILE_SIZE_LIMITS } from './constants.js';
+import { processZipFile } from './processZipFile.js';
 import { processRemoteRepo } from './remoteRepo.js';
-import type { ErrorResponse } from './types.js';
+import type { ErrorResponse, PackResult } from './types.js';
 import { handlePackError } from './utils/errorHandler.js';
 import { getProcessConcurrency } from './utils/processConcurrency.js';
-import { processZipFile } from './processZipFile.js';
-import { FILE_SIZE_LIMITS } from './constants.js';
 
 // Log metrics
 console.log('Server Process concurrency:', getProcessConcurrency());
@@ -53,11 +53,11 @@ app.post(
   async (c) => {
     try {
       const formData = await c.req.formData();
-      
+
       // Get format and options from formData
       const format = formData.get('format') as 'xml' | 'markdown' | 'plain';
       const options = JSON.parse(formData.get('options') as string);
-      
+
       // Check if we have a file or URL
       const file = formData.get('file') as File | null;
       const url = formData.get('url') as string | null;
@@ -74,14 +74,17 @@ app.post(
       const clientIp =
         c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || c.req.header('cf-connecting-ip') || '0.0.0.0';
 
-        let result;
-        if (file) {
-          result = await processZipFile(file, format, options, clientIp);
-        } else {
-          result = await processRemoteRepo(url!, format, options, clientIp);
+      let result: PackResult;
+      if (file) {
+        result = await processZipFile(file, format, options, clientIp);
+      } else {
+        if (!url) {
+          return c.json({ error: 'Repository URL is required' } as ErrorResponse, 400);
         }
-  
-        return c.json(result);
+        result = await processRemoteRepo(url, format, options, clientIp);
+      }
+
+      return c.json(result);
     } catch (error) {
       console.error('Error processing request:', error);
       const appError = handlePackError(error);
