@@ -14,6 +14,7 @@ export interface PackRequest {
   format: 'xml' | 'markdown' | 'plain';
   options: PackOptions;
   signal?: AbortSignal;
+  file?: File;
 }
 
 export interface PackResult {
@@ -48,12 +49,19 @@ export class ApiError extends Error {
 const API_BASE_URL = import.meta.env.PROD ? 'https://api.repomix.com' : 'http://localhost:8080';
 
 export async function packRepository(request: PackRequest): Promise<PackResult> {
+  const formData = new FormData();
+  
+  if (request.file) {
+    formData.append('file', request.file);
+  } else {
+    formData.append('url', request.url);
+  }
+  formData.append('format', request.format);
+  formData.append('options', JSON.stringify(request.options));
+
   const response = await fetch(`${API_BASE_URL}/api/pack`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(request),
+    body: formData,
     signal: request.signal,
   });
 

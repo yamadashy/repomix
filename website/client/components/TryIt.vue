@@ -5,6 +5,7 @@ import TryItResultViewer from './TryItResultViewer.vue';
 import TryItUrlInput from './TryItUrlInput.vue';
 import type { PackResult } from './api/client';
 import { handlePackRequest } from './utils/requestHandlers';
+import TryItFileUpload from './TryItFileUpload.vue';
 
 // Form input states
 const url = ref('');
@@ -23,12 +24,16 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const result = ref<PackResult | null>(null);
 const hasExecuted = ref(false);
+const mode = ref<'url' | 'file'>('url');
+const uploadedFile = ref<File | null>(null);
 
 const TIMEOUT_MS = 30_000;
 let requestController: AbortController | null = null;
 
 async function handleSubmit() {
-  if (!url.value) return;
+  if (mode.value === 'url' && !url.value) return;
+
+  if (mode.value === 'file' && !uploadedFile.value) return;
 
   // Cancel any pending request
   if (requestController) {
@@ -69,6 +74,7 @@ async function handleSubmit() {
         error.value = errorMessage;
       },
       signal: requestController.signal,
+      file: uploadedFile.value || undefined,
     },
   );
 
@@ -83,16 +89,36 @@ function handleKeydown(event: KeyboardEvent) {
     handleSubmit();
   }
 }
+
+function handleFileUpload(file: File) {
+  uploadedFile.value = file;
+  mode.value = 'file'; 
+}
+
 </script>
 
 <template>
   <div class="container">
     <form class="try-it-container" @submit.prevent="handleSubmit">
-      <TryItUrlInput
-        v-model:url="url"
-        :loading="loading"
-        @keydown="handleKeydown"
-      />
+      <div class="input-mode-selector">
+        <button 
+          type="button" 
+          :class="{ active: mode === 'url' }"
+          @click="mode = 'url'"
+        >
+          URL Input
+        </button>
+        <button 
+          type="button" 
+          :class="{ active: mode === 'file' }"
+          @click="mode = 'file'"
+        >
+          File Upload
+        </button>
+      </div>
+
+      <TryItFileUpload v-if="mode === 'file'" @upload="handleFileUpload" :loading="loading" />
+      <TryItUrlInput v-else v-model:url="url" :loading="loading" @keydown="handleKeydown" />
 
       <TryItPackOptions
         v-model:format="format"
@@ -130,4 +156,26 @@ function handleKeydown(event: KeyboardEvent) {
   border-radius: 12px;
   padding: 24px;
 }
+
+.input-mode-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  justify-content: center;
+}
+
+.input-mode-selector button {
+  padding: 8px 16px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 6px;
+  background: var(--vp-c-bg);
+  cursor: pointer;
+}
+
+.input-mode-selector button.active {
+  background: var(--vp-c-brand);
+  color: white;
+  border-color: var(--vp-c-brand);
+}
+
 </style>

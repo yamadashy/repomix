@@ -1,23 +1,23 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
-import { type CliOptions, runRemoteAction } from 'repomix';
+import { extractZip, createTempDirectory, cleanupTempDirectory, copyOutputToCurrentDirectory } from './utils/fileUtils.js';
+import { type CliOptions, runDefaultAction } from 'repomix';
 import { packRequestSchema } from './schemas/request.js';
 import type { PackOptions, PackResult } from './types.js';
 import { generateCacheKey } from './utils/cache.js';
 import { AppError } from './utils/errorHandler.js';
 import { sanitizePattern, validateRequest } from './utils/validation.js';
-import {rateLimiter, cache} from './utils/sharedInstance.js';
+import { rateLimiter, cache } from './utils/sharedInstance.js';
 
-
-export async function processRemoteRepo(
-  repoUrl: string,
+export async function processZipFile(
+  file: File,
   format: string,
   options: PackOptions,
   clientIp: string,
 ): Promise<PackResult> {
-  // Validate the request
+  // Validate the request (excluding URL validation)
   const validatedData = validateRequest(packRequestSchema, {
-    url: repoUrl,
+    file,
     format,
     options,
   });
@@ -27,13 +27,17 @@ export async function processRemoteRepo(
     const remainingTime = Math.ceil(rateLimiter.getRemainingTime(clientIp) / 1000);
     throw new AppError(`Rate limit exceeded. Please try again in ${remainingTime} seconds.`, 429);
   }
-  
-  if (!validatedData.url) {
-    throw new AppError('Repository URL is required for remote processing', 400);
-  }
 
-  // Generate cache key
-  const cacheKey = generateCacheKey(validatedData.url, validatedData.format, validatedData.options, 'url');
+  if (!file) {
+    throw new AppError('File is required for file processing', 400);
+  }
+  
+  const cacheKey = generateCacheKey(
+    `${file.name}-${file.size}-${file.lastModified}`,
+    validatedData.format,
+    validatedData.options,
+    'file'
+  );
 
   // Check if the result is already cached
   const cachedResult = cache.get(cacheKey);
@@ -41,13 +45,13 @@ export async function processRemoteRepo(
     return cachedResult;
   }
 
-  // Sanitize ignore patterns
+  // Sanitize patterns
   const sanitizedIncludePatterns = sanitizePattern(validatedData.options.includePatterns);
   const sanitizedIgnorePatterns = sanitizePattern(validatedData.options.ignorePatterns);
 
   const outputFilePath = `repomix-output-${randomUUID()}.txt`;
 
-  // Create CLI options with correct mapping
+  // Create CLI options
   const cliOptions = {
     output: outputFilePath,
     style: validatedData.format,
@@ -63,9 +67,16 @@ export async function processRemoteRepo(
     ignore: sanitizedIgnorePatterns,
   } as CliOptions;
 
+  const tempDirPath = await createTempDirectory();
+
   try {
-    // Execute remote action
-    const result = await runRemoteAction(repoUrl, cliOptions);
+
+    // Extract the ZIP file to the temporary directory
+    await extractZip(file, tempDirPath);
+
+    // Execute default action on the extracted directory
+    const result = await runDefaultAction([tempDirPath], tempDirPath, cliOptions);
+    await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
     const { packResult } = result;
 
     // Read the generated file
@@ -76,7 +87,7 @@ export async function processRemoteRepo(
       content,
       format,
       metadata: {
-        repository: repoUrl,
+        repository: file.name,
         timestamp: new Date().toISOString(),
         summary: {
           totalFiles: packResult.totalFiles,
@@ -99,12 +110,13 @@ export async function processRemoteRepo(
 
     return packResultData;
   } catch (error) {
-    console.error('Error in remote action:', error);
+    console.error('Error processing uploaded file:', error);
     if (error instanceof Error) {
-      throw new AppError(`Remote action failed: ${error.message}`, 500);
+      throw new AppError(`File processing failed: ${error.message}`, 500);
     }
-    throw new AppError('Remote action failed with unknown error', 500);
+    throw new AppError('File processing failed with unknown error', 500);
   } finally {
+    cleanupTempDirectory(tempDirPath);
     // Clean up the output file
     try {
       await fs.unlink(outputFilePath);
