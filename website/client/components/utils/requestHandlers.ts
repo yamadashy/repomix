@@ -18,7 +18,6 @@ export async function handlePackRequest(
   options: PackOptions,
   handlerOptions: RequestHandlerOptions = {},
 ): Promise<void> {
-    
   const { onSuccess, onError, signal, file } = handlerOptions;
   const processedUrl = url.trim();
 

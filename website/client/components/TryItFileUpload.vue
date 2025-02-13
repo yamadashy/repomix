@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue';
 import PackButton from './PackButton.vue';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-const emit = defineEmits<{
-  (e: 'upload', file: File): void;
-}>();
+const emit = defineEmits<(e: 'upload', file: File) => void>();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const dragActive = ref(false);
@@ -43,7 +41,6 @@ function handleFileSelect(files: FileList | null) {
     selectedFile.value = null;
   }
 }
-
 </script>
 
 <template>

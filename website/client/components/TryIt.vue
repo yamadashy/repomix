@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import TryItFileUpload from './TryItFileUpload.vue';
 import TryItPackOptions from './TryItPackOptions.vue';
 import TryItResultViewer from './TryItResultViewer.vue';
 import TryItUrlInput from './TryItUrlInput.vue';
 import type { PackResult } from './api/client';
 import { handlePackRequest } from './utils/requestHandlers';
-import TryItFileUpload from './TryItFileUpload.vue';
 
 // Form input states
 const url = ref('');
@@ -92,9 +92,8 @@ function handleKeydown(event: KeyboardEvent) {
 
 function handleFileUpload(file: File) {
   uploadedFile.value = file;
-  mode.value = 'file'; 
+  mode.value = 'file';
 }
-
 </script>
 
 <template>

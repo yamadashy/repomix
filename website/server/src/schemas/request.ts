@@ -31,16 +31,18 @@ const isValidZipFile = (file: File) => {
   return file.type === 'application/zip' || file.name.endsWith('.zip');
 };
 
-const fileSchema = z.custom<File>()
+const fileSchema = z
+  .custom<File>()
   .refine((file) => file instanceof File, {
     message: 'Invalid file format',
   })
   .refine((file) => isValidZipFile(file), {
     message: 'Only ZIP files are allowed',
   })
-  .refine((file) => file.size <= 10 * 1024 * 1024, {  // 10MB limit
+  .refine((file) => file.size <= 10 * 1024 * 1024, {
+    // 10MB limit
     message: 'File size must be less than 10MB',
-});
+  });
 
 export const packRequestSchema = z
   .object({

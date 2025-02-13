@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
-import os from 'node:os';
-import { AppError } from './errorHandler.js';
 import { FILE_SIZE_LIMITS, formatFileSize } from '../constants.js';
+import { AppError } from './errorHandler.js';
 
 export async function extractZip(file: File, destPath: string): Promise<void> {
   try {
@@ -21,13 +21,17 @@ export async function extractZip(file: File, destPath: string): Promise<void> {
 
     // Validate number of files
     if (entries.length > FILE_SIZE_LIMITS.MAX_FILES) {
-      throw new AppError(`ZIP contains too many files (${entries.length}). Maximum allowed: ${FILE_SIZE_LIMITS.MAX_FILES}`);
+      throw new AppError(
+        `ZIP contains too many files (${entries.length}). Maximum allowed: ${FILE_SIZE_LIMITS.MAX_FILES}`,
+      );
     }
 
     // Validate total uncompressed size
     const totalUncompressedSize = entries.reduce((sum, entry) => sum + entry.header.size, 0);
     if (totalUncompressedSize > FILE_SIZE_LIMITS.MAX_UNCOMPRESSED_SIZE) {
-      throw new AppError(`Uncompressed size exceeds maximum limit of ${formatFileSize(FILE_SIZE_LIMITS.MAX_UNCOMPRESSED_SIZE)}`);
+      throw new AppError(
+        `Uncompressed size exceeds maximum limit of ${formatFileSize(FILE_SIZE_LIMITS.MAX_UNCOMPRESSED_SIZE)}`,
+      );
     }
 
     // Check for unsafe paths (directory traversal prevention)
@@ -87,11 +91,11 @@ export const copyOutputToCurrentDirectory = async (
 
     // Ensure target directory exists
     await fs.mkdir(targetDir, { recursive: true });
-    
+
     await fs.copyFile(sourcePath, targetPath);
   } catch (error) {
     throw new AppError(
-      `Failed to copy output file: ${(error as Error).message}. Source: ${sourcePath}, Target: ${targetPath}`
+      `Failed to copy output file: ${(error as Error).message}. Source: ${sourcePath}, Target: ${targetPath}`,
     );
   }
 };

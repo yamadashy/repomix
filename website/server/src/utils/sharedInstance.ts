@@ -1,6 +1,6 @@
+import type { PackResult } from '../types.js';
 import { RequestCache } from './cache.js';
 import { RateLimiter } from './rateLimit.js';
-import type { PackResult } from '../types.js';
 
 // Create shared instances
 export const cache = new RequestCache<PackResult>(180); // 3 minutes cache

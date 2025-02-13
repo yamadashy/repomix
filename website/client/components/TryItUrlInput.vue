@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { AlertTriangle } from 'lucide-vue-next';
 import { computed } from 'vue';
-import { isValidRemoteValue } from './utils/validation.js';
 import PackButton from './PackButton.vue';
+import { isValidRemoteValue } from './utils/validation.js';
 
 const props = defineProps<{
   url: string;

@@ -67,7 +67,12 @@ export class RequestCache<T> {
 }
 
 // Cache key generation utility
-export function generateCacheKey(identifier: string, format: string, options: PackOptions, type: 'url' | 'file'): string {
+export function generateCacheKey(
+  identifier: string,
+  format: string,
+  options: PackOptions,
+  type: 'url' | 'file',
+): string {
   return JSON.stringify({
     identifier,
     format,

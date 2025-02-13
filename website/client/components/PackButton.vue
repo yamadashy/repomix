@@ -26,8 +26,8 @@
 export default {
   props: {
     loading: Boolean,
-    isValid: Boolean
-  }
+    isValid: Boolean,
+  },
 };
 </script>
 

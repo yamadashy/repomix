@@ -50,7 +50,7 @@ const API_BASE_URL = import.meta.env.PROD ? 'https://api.repomix.com' : 'http://
 
 export async function packRepository(request: PackRequest): Promise<PackResult> {
   const formData = new FormData();
-  
+
   if (request.file) {
     formData.append('file', request.file);
   } else {

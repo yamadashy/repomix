@@ -1,13 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
-import { extractZip, createTempDirectory, cleanupTempDirectory, copyOutputToCurrentDirectory } from './utils/fileUtils.js';
 import { type CliOptions, runDefaultAction } from 'repomix';
 import { packRequestSchema } from './schemas/request.js';
 import type { PackOptions, PackResult } from './types.js';
 import { generateCacheKey } from './utils/cache.js';
 import { AppError } from './utils/errorHandler.js';
+import {
+  cleanupTempDirectory,
+  copyOutputToCurrentDirectory,
+  createTempDirectory,
+  extractZip,
+} from './utils/fileUtils.js';
+import { cache, rateLimiter } from './utils/sharedInstance.js';
 import { sanitizePattern, validateRequest } from './utils/validation.js';
-import { rateLimiter, cache } from './utils/sharedInstance.js';
 
 export async function processZipFile(
   file: File,
@@ -31,12 +36,12 @@ export async function processZipFile(
   if (!file) {
     throw new AppError('File is required for file processing', 400);
   }
-  
+
   const cacheKey = generateCacheKey(
     `${file.name}-${file.size}-${file.lastModified}`,
     validatedData.format,
     validatedData.options,
-    'file'
+    'file',
   );
 
   // Check if the result is already cached
@@ -70,7 +75,6 @@ export async function processZipFile(
   const tempDirPath = await createTempDirectory();
 
   try {
-
     // Extract the ZIP file to the temporary directory
     await extractZip(file, tempDirPath);
 
