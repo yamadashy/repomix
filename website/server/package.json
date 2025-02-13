@@ -10,12 +10,14 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
+    "adm-zip": "^0.5.16",
     "hono": "^4.6.20",
     "pako": "^2.1.0",
-    "repomix": "^0.2.25",
+    "repomix": "^0.2.26",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "@types/node": "^22.13.0",
     "@types/pako": "^2.0.3",
     "rimraf": "^6.0.1",

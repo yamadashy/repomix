@@ -27,6 +27,23 @@ export const packOptionsSchema = z
   })
   .strict();
 
+const isValidZipFile = (file: File) => {
+  return file.type === 'application/zip' || file.name.endsWith('.zip');
+};
+
+const fileSchema = z
+  .custom<File>()
+  .refine((file) => file instanceof File, {
+    message: 'Invalid file format',
+  })
+  .refine((file) => isValidZipFile(file), {
+    message: 'Only ZIP files are allowed',
+  })
+  .refine((file) => file.size <= 10 * 1024 * 1024, {
+    // 10MB limit
+    message: 'File size must be less than 10MB',
+  });
+
 export const packRequestSchema = z
   .object({
     url: z
@@ -34,10 +51,18 @@ export const packRequestSchema = z
       .min(1, 'Repository URL is required')
       .max(200, 'Repository URL is too long')
       .transform((val) => val.trim())
-      .refine((val) => isValidRemoteValue(val), { message: 'Invalid repository URL' }),
+      .refine((val) => isValidRemoteValue(val), { message: 'Invalid repository URL' })
+      .optional(),
+    file: fileSchema.optional(),
     format: z.enum(['xml', 'markdown', 'plain']),
     options: packOptionsSchema,
   })
-  .strict();
+  .strict()
+  .refine((data) => data.url || data.file, {
+    message: 'Either URL or file must be provided',
+  })
+  .refine((data) => !(data.url && data.file), {
+    message: 'Cannot provide both URL and file',
+  });
 
 export type PackRequest = z.infer<typeof packRequestSchema>;
