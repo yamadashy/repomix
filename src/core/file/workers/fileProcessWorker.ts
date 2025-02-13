@@ -1,8 +1,8 @@
 import type { RepomixConfigMerged } from '../../../config/configSchema.js';
 import { logger } from '../../../shared/logger.js';
+import { getFn_parseFile } from '../../tree-sitter/parseFile.js';
 import { getFileManipulator } from '../fileManipulate.js';
 import type { ProcessedFile, RawFile } from '../fileTypes.js';
-import { getFn_parseFile } from '../../tree-sitter/parseFile.js';
 
 export interface FileProcessTask {
   rawFile: RawFile;
