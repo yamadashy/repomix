@@ -36,7 +36,17 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
 
   if (config.output.compress) {
     const parseFile = await getFn_parseFile();
-    processedContent = (await parseFile(processedContent, rawFile.path, config)) ?? processedContent;
+    try {
+      const parsedContent = await parseFile(processedContent, rawFile.path, config);
+      if (parsedContent === undefined) {
+        logger.trace(`Failed to parse ${rawFile.path} in compressed mode. Using original content.`);
+      }
+      processedContent = parsedContent ?? processedContent;
+    } catch (error: any) {
+      logger.error(`Error parsing ${rawFile.path} in compressed mode: ${error.message}`);
+      //re-throw error
+      throw error;
+    }
   } else if (config.output.showLineNumbers) {
     const lines = processedContent.split('\n');
     const padding = lines.length.toString().length;
