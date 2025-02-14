@@ -1,4 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
+import { logger } from '../../shared/logger.js';
 import { LanguageParser } from './LanguageParser.js';
 
 export const getFn_parseFile = async () => {
@@ -49,8 +50,8 @@ export const getFn_parseFile = async () => {
         const chunk = selectedLines.join('\n');
         chunks.push(chunk);
       }
-    } catch (error) {
-      console.log(`Error parsing file: ${error}\n`);
+    } catch (error: unknown) {
+      logger.log(`Error parsing file: ${error}\n`);
     }
     return chunks.join('\n');
   };

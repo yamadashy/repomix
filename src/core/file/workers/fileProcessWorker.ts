@@ -42,8 +42,9 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
         logger.trace(`Failed to parse ${rawFile.path} in compressed mode. Using original content.`);
       }
       processedContent = parsedContent ?? processedContent;
-    } catch (error: any) {
-      logger.error(`Error parsing ${rawFile.path} in compressed mode: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error(`Error parsing ${rawFile.path} in compressed mode: ${message}`);
       //re-throw error
       throw error;
     }

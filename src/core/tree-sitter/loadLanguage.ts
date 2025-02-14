@@ -13,8 +13,9 @@ export async function loadLanguage(langName: string): Promise<Parser.Language> {
   try {
     const wasmPath = await getWasmPath(langName);
     return await Parser.Language.load(wasmPath);
-  } catch (error: any) {
-    throw new Error(`Failed to load language ${langName}: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to load language ${langName}: ${message}`);
   }
 }
 

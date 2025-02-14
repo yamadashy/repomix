@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import Parser from 'web-tree-sitter';
 
+import { RepomixError } from '../../shared/errorHandle.js';
 import { ext2lang } from './ext2lang.js';
 import { type SupportedLang, lang2Query } from './lang2query.js';
 import { loadLanguage } from './loadLanguage.js';
@@ -19,11 +20,16 @@ export class LanguageParser {
   }
 
   private async prepareLang(name: SupportedLang) {
-    const lang = await loadLanguage(name);
-    const parser = new Parser();
-    parser.setLanguage(lang);
-    this.loadedParsers[name] = parser;
-    this.loadedQueries[name] = lang.query(lang2Query[name]);
+    try {
+      const lang = await loadLanguage(name);
+      const parser = new Parser();
+      parser.setLanguage(lang);
+      this.loadedParsers[name] = parser;
+      this.loadedQueries[name] = lang.query(lang2Query[name]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new RepomixError(`Failed to prepare language ${name}: ${message}`);
+    }
   }
   // 'name' is name of the language
   public async getParserForLang(name: SupportedLang) {
