@@ -4,21 +4,26 @@ import path from 'node:path';
 import GitUrlParse, { type GitUrl } from 'git-url-parse';
 import pc from 'picocolors';
 import { execGitShallowClone, isGitInstalled } from '../../core/file/gitCommand.js';
+import { downloadGitHubZip, isGitHubUrlOrShorthand, validShorthandRegex } from '../../core/file/githubZipDownload.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import Spinner from '../cliSpinner.js';
 import type { CliOptions } from '../types.js';
 import { type DefaultActionRunnerResult, runDefaultAction } from './defaultAction.js';
+
 interface IGitUrl extends GitUrl {
   commit: string | undefined;
 }
+
 export const runRemoteAction = async (
   repoUrl: string,
   cliOptions: CliOptions,
   deps = {
     isGitInstalled,
     execGitShallowClone,
+    downloadGitHubZip,
     runDefaultAction,
+    isGitHubUrlOrShorthand,
   },
 ): Promise<DefaultActionRunnerResult> => {
   if (!(await deps.isGitInstalled())) {
@@ -33,19 +38,39 @@ export const runRemoteAction = async (
   try {
     spinner.start();
 
-    // Clone the repository
-    await cloneRepository(parsedFields.repoUrl, tempDirPath, cliOptions.remoteBranch || parsedFields.remoteBranch, {
-      execGitShallowClone: deps.execGitShallowClone,
-    });
+    // Try GitHub zip download first for GitHub URLs or shorthand format
+    if (deps.isGitHubUrlOrShorthand(repoUrl)) {
+      try {
+        spinner.update('Downloading repository zip...');
+        await deps.downloadGitHubZip(
+          repoUrl, // Pass original URL/shorthand - parseGitHubUrl will handle both formats
+          tempDirPath,
+          cliOptions.remoteBranch || parsedFields.remoteBranch,
+        );
+        spinner.succeed('Repository downloaded successfully!');
+      } catch (error) {
+        logger.debug(`GitHub zip download failed, falling back to git clone: ${error}`);
+        spinner.update('Falling back to git clone...');
+        await cloneRepository(parsedFields.repoUrl, tempDirPath, cliOptions.remoteBranch || parsedFields.remoteBranch, {
+          execGitShallowClone: deps.execGitShallowClone,
+        });
+        spinner.succeed('Repository cloned successfully!');
+      }
+    } else {
+      // Use git clone for non-GitHub URLs
+      await cloneRepository(parsedFields.repoUrl, tempDirPath, cliOptions.remoteBranch || parsedFields.remoteBranch, {
+        execGitShallowClone: deps.execGitShallowClone,
+      });
+      spinner.succeed('Repository cloned successfully!');
+    }
 
-    spinner.succeed('Repository cloned successfully!');
     logger.log('');
 
-    // Run the default action on the cloned repository
+    // Run the default action on the downloaded repository
     result = await deps.runDefaultAction([tempDirPath], tempDirPath, cliOptions);
     await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
   } catch (error) {
-    spinner.fail('Error during repository cloning. cleanup...');
+    spinner.fail('Error during repository download/clone. cleanup...');
     throw error;
   } finally {
     // Cleanup the temporary directory
@@ -56,8 +81,6 @@ export const runRemoteAction = async (
 };
 
 // Check the short form of the GitHub URL. e.g. yamadashy/repomix
-const VALID_NAME_PATTERN = '[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?';
-const validShorthandRegex = new RegExp(`^${VALID_NAME_PATTERN}/${VALID_NAME_PATTERN}$`);
 export const isValidShorthand = (remoteValue: string): boolean => {
   return validShorthandRegex.test(remoteValue);
 };
