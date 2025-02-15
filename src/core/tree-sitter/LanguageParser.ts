@@ -57,6 +57,11 @@ export class LanguageParser {
   }
 
   public async init() {
-    await Parser.init();
+    try {
+      await Parser.init();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to initialize parser: ${message}`);
+    }
   }
 }
