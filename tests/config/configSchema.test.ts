@@ -68,6 +68,7 @@ describe('configSchema', () => {
           directoryStructure: true,
           removeComments: false,
           removeEmptyLines: false,
+          compress: false,
           topFilesLength: 5,
           showLineNumbers: false,
           copyToClipboard: true,
@@ -152,6 +153,7 @@ describe('configSchema', () => {
           directoryStructure: true,
           removeComments: true,
           removeEmptyLines: false,
+          compress: false,
           topFilesLength: 10,
           showLineNumbers: true,
           copyToClipboard: false,
@@ -190,6 +192,7 @@ describe('configSchema', () => {
           style: 'plain',
           removeComments: 'not-a-boolean', // Should be boolean
           removeEmptyLines: false,
+          compress: false,
           topFilesLength: '5', // Should be number
           showLineNumbers: false,
         },
