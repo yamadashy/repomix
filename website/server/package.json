@@ -10,13 +10,13 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
-    "hono": "^4.6.20",
+    "hono": "^4.7.1",
     "pako": "^2.1.0",
-    "repomix": "^0.2.25",
-    "zod": "^3.24.1"
+    "repomix": "^0.2.28",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/node": "^22.13.0",
+    "@types/node": "^22.13.4",
     "@types/pako": "^2.0.3",
     "rimraf": "^6.0.1",
     "tsx": "^4.19.2",
