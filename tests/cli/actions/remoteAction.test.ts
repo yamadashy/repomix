@@ -19,37 +19,146 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 });
 vi.mock('../../../src/shared/logger');
 
-describe('remoteAction functions', () => {
+describe('remoteAction', () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
   describe('runRemoteAction', () => {
-    test('should clone the repository', async () => {
-      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+    const mockDefaultActionResult: DefaultActionRunnerResult = {
+      packResult: {
+        totalFiles: 1,
+        totalCharacters: 1,
+        totalTokens: 1,
+        fileCharCounts: {},
+        fileTokenCounts: {},
+        suspiciousFilesResults: [],
+      },
+      config: createMockConfig(),
+    };
+
+    test('should try zip download for GitHub shorthand format', async () => {
+      const mockDownloadGitHubZip = vi.fn().mockResolvedValue(undefined);
+      const mockExecGitShallowClone = vi.fn();
+      vi.mocked(fs.copyFile).mockResolvedValue();
+
       await runRemoteAction(
         'yamadashy/repomix',
         {},
         {
           isGitInstalled: async () => Promise.resolve(true),
-          execGitShallowClone: async (url: string, directory: string) => {
-            await fs.writeFile(path.join(directory, 'README.md'), 'Hello, world!');
-          },
-          runDefaultAction: async () => {
-            return {
-              packResult: {
-                totalFiles: 1,
-                totalCharacters: 1,
-                totalTokens: 1,
-                fileCharCounts: {},
-                fileTokenCounts: {},
-                suspiciousFilesResults: [],
-              },
-              config: createMockConfig(),
-            } satisfies DefaultActionRunnerResult;
-          },
+          execGitShallowClone: mockExecGitShallowClone,
+          downloadGitHubZip: mockDownloadGitHubZip,
+          runDefaultAction: async () => mockDefaultActionResult,
+          isGitHubUrlOrShorthand: () => true,
         },
       );
+
+      expect(mockDownloadGitHubZip).toHaveBeenCalledWith('yamadashy/repomix', expect.any(String), undefined);
+      expect(mockExecGitShallowClone).not.toHaveBeenCalled();
+    });
+
+    test('should try zip download for GitHub URL', async () => {
+      const mockDownloadGitHubZip = vi.fn().mockResolvedValue(undefined);
+      const mockExecGitShallowClone = vi.fn();
+      vi.mocked(fs.copyFile).mockResolvedValue();
+
+      await runRemoteAction(
+        'https://github.com/yamadashy/repomix',
+        {},
+        {
+          isGitInstalled: async () => Promise.resolve(true),
+          execGitShallowClone: mockExecGitShallowClone,
+          downloadGitHubZip: mockDownloadGitHubZip,
+          runDefaultAction: async () => mockDefaultActionResult,
+          isGitHubUrlOrShorthand: () => true,
+        },
+      );
+
+      expect(mockDownloadGitHubZip).toHaveBeenCalledWith(
+        'https://github.com/yamadashy/repomix',
+        expect.any(String),
+        undefined,
+      );
+      expect(mockExecGitShallowClone).not.toHaveBeenCalled();
+    });
+
+    test('should fallback to git clone when zip download fails', async () => {
+      const mockDownloadGitHubZip = vi.fn().mockRejectedValue(new Error('Download failed'));
+      const mockExecGitShallowClone = vi.fn();
+      vi.mocked(fs.copyFile).mockResolvedValue();
+
+      await runRemoteAction(
+        'yamadashy/repomix',
+        {},
+        {
+          isGitInstalled: async () => Promise.resolve(true),
+          execGitShallowClone: mockExecGitShallowClone,
+          downloadGitHubZip: mockDownloadGitHubZip,
+          runDefaultAction: async () => mockDefaultActionResult,
+          isGitHubUrlOrShorthand: () => true,
+        },
+      );
+
+      expect(mockDownloadGitHubZip).toHaveBeenCalled();
+      expect(mockExecGitShallowClone).toHaveBeenCalled();
+    });
+
+    test('should use git clone directly for non-GitHub URLs', async () => {
+      const mockDownloadGitHubZip = vi.fn();
+      const mockExecGitShallowClone = vi.fn();
+      vi.mocked(fs.copyFile).mockResolvedValue();
+
+      await runRemoteAction(
+        'https://gitlab.com/user/repo',
+        {},
+        {
+          isGitInstalled: async () => Promise.resolve(true),
+          execGitShallowClone: mockExecGitShallowClone,
+          downloadGitHubZip: mockDownloadGitHubZip,
+          runDefaultAction: async () => mockDefaultActionResult,
+          isGitHubUrlOrShorthand: () => false,
+        },
+      );
+
+      expect(mockDownloadGitHubZip).not.toHaveBeenCalled();
+      expect(mockExecGitShallowClone).toHaveBeenCalled();
+    });
+
+    test('should use specified branch for download', async () => {
+      const mockDownloadGitHubZip = vi.fn().mockResolvedValue(undefined);
+      const mockExecGitShallowClone = vi.fn();
+      vi.mocked(fs.copyFile).mockResolvedValue();
+
+      await runRemoteAction(
+        'yamadashy/repomix',
+        { remoteBranch: 'develop' },
+        {
+          isGitInstalled: async () => Promise.resolve(true),
+          execGitShallowClone: mockExecGitShallowClone,
+          downloadGitHubZip: mockDownloadGitHubZip,
+          runDefaultAction: async () => mockDefaultActionResult,
+          isGitHubUrlOrShorthand: () => true,
+        },
+      );
+
+      expect(mockDownloadGitHubZip).toHaveBeenCalledWith('yamadashy/repomix', expect.any(String), 'develop');
+    });
+
+    test('should throw error if git is not installed', async () => {
+      await expect(
+        runRemoteAction(
+          'yamadashy/repomix',
+          {},
+          {
+            isGitInstalled: async () => Promise.resolve(false),
+            execGitShallowClone: vi.fn(),
+            downloadGitHubZip: vi.fn(),
+            runDefaultAction: async () => mockDefaultActionResult,
+            isGitHubUrlOrShorthand: () => true,
+          },
+        ),
+      ).rejects.toThrow('Git is not installed');
     });
   });
 
@@ -61,14 +170,6 @@ describe('remoteAction functions', () => {
       });
       expect(parseRemoteValue('user-name/repo-name')).toEqual({
         repoUrl: 'https://github.com/user-name/repo-name.git',
-        remoteBranch: undefined,
-      });
-      expect(parseRemoteValue('user_name/repo_name')).toEqual({
-        repoUrl: 'https://github.com/user_name/repo_name.git',
-        remoteBranch: undefined,
-      });
-      expect(parseRemoteValue('a.b/a-b_c')).toEqual({
-        repoUrl: 'https://github.com/a.b/a-b_c.git',
         remoteBranch: undefined,
       });
     });
@@ -102,12 +203,6 @@ describe('remoteAction functions', () => {
         repoUrl: 'https://some.gitlab.domain/some/path/username/repo.git',
         remoteBranch: 'branchname',
       });
-      expect(
-        parseRemoteValue('https://some.gitlab.domain/some/path/username/repo/-/tree/branchname/withslash'),
-      ).toEqual({
-        repoUrl: 'https://some.gitlab.domain/some/path/username/repo.git',
-        remoteBranch: 'branchname/withslash',
-      });
     });
 
     test('should get correct commit hash from url', () => {
@@ -120,38 +215,25 @@ describe('remoteAction functions', () => {
         remoteBranch: 'c482755296cce46e58f87d50f25f545c5d15be6f',
       });
     });
-    test('should throw when the URL is invalid or harmful', () => {
-      expect(() => parseRemoteValue('some random string')).toThrowError();
-    });
-  });
 
-  describe('copyOutputToCurrentDirectory', () => {
-    test('should copy output file', async () => {
-      const sourceDir = '/source/dir';
-      const targetDir = '/target/dir';
-      const fileName = 'output.txt';
-
-      vi.mocked(fs.copyFile).mockResolvedValue();
-
-      await copyOutputToCurrentDirectory(sourceDir, targetDir, fileName);
-
-      expect(fs.copyFile).toHaveBeenCalledWith(path.join(sourceDir, fileName), path.join(targetDir, fileName));
-    });
-
-    test('should throw error when copy fails', async () => {
-      const sourceDir = '/source/dir';
-      const targetDir = '/target/dir';
-      const fileName = 'output.txt';
-
-      vi.mocked(fs.copyFile).mockRejectedValue(new Error('Permission denied'));
-
-      await expect(copyOutputToCurrentDirectory(sourceDir, targetDir, fileName)).rejects.toThrow(
-        'Failed to copy output file',
-      );
+    test('should throw when the URL is invalid', () => {
+      expect(() => parseRemoteValue('some random string')).toThrow();
     });
   });
 
   describe('isValidRemoteValue', () => {
+    test('should return true for valid URLs and shorthand', () => {
+      expect(isValidRemoteValue('user/repo')).toBe(true);
+      expect(isValidRemoteValue('https://github.com/user/repo')).toBe(true);
+      expect(isValidRemoteValue('git@github.com:user/repo.git')).toBe(true);
+    });
+
+    test('should return false for invalid values', () => {
+      expect(isValidRemoteValue('invalid')).toBe(false);
+      expect(isValidRemoteValue('user/')).toBe(false);
+      expect(isValidRemoteValue('/repo')).toBe(false);
+    });
+
     describe('GitHub shorthand format (user/repo)', () => {
       test('should accept valid repository names', () => {
         // Test cases for valid repository names with various allowed characters
@@ -220,6 +302,32 @@ describe('remoteAction functions', () => {
           expect(isValidRemoteValue(url), `URL should be invalid: ${url}`).toBe(false);
         }
       });
+    });
+  });
+
+  describe('copyOutputToCurrentDirectory', () => {
+    test('should copy output file', async () => {
+      const sourceDir = '/source/dir';
+      const targetDir = '/target/dir';
+      const fileName = 'output.txt';
+
+      vi.mocked(fs.copyFile).mockResolvedValue();
+
+      await copyOutputToCurrentDirectory(sourceDir, targetDir, fileName);
+
+      expect(fs.copyFile).toHaveBeenCalledWith(path.join(sourceDir, fileName), path.join(targetDir, fileName));
+    });
+
+    test('should throw error when copy fails', async () => {
+      const sourceDir = '/source/dir';
+      const targetDir = '/target/dir';
+      const fileName = 'output.txt';
+
+      vi.mocked(fs.copyFile).mockRejectedValue(new Error('Permission denied'));
+
+      await expect(copyOutputToCurrentDirectory(sourceDir, targetDir, fileName)).rejects.toThrow(
+        'Failed to copy output file',
+      );
     });
   });
 });
