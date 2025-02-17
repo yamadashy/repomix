@@ -5,8 +5,10 @@ import { compress } from 'hono/compress';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { timeout } from 'hono/timeout';
+import { FILE_SIZE_LIMITS } from './constants.js';
+import { processZipFile } from './processZipFile.js';
 import { processRemoteRepo } from './remoteRepo.js';
-import type { ErrorResponse } from './types.js';
+import type { ErrorResponse, PackResult } from './types.js';
 import { handlePackError } from './utils/errorHandler.js';
 import { getProcessConcurrency } from './utils/processConcurrency.js';
 
@@ -43,18 +45,25 @@ app.get('/health', (c) => c.text('OK'));
 app.post(
   '/api/pack',
   bodyLimit({
-    maxSize: 50 * 1024, // 50kb
+    maxSize: FILE_SIZE_LIMITS.MAX_REQUEST_SIZE,
     onError: (c) => {
-      return c.text('overflow :(', 413);
+      return c.text('File size too large :(', 413);
     },
   }),
   async (c) => {
     try {
-      const body = await c.req.json();
-      const { url, format, options } = body;
+      const formData = await c.req.formData();
 
-      if (!url) {
-        return c.json({ error: 'Repository URL is required' } as ErrorResponse, 400);
+      // Get format and options from formData
+      const format = formData.get('format') as 'xml' | 'markdown' | 'plain';
+      const options = JSON.parse(formData.get('options') as string);
+
+      // Check if we have a file or URL
+      const file = formData.get('file') as File | null;
+      const url = formData.get('url') as string | null;
+
+      if (!file && !url) {
+        return c.json({ error: 'Either repository URL or file is required' } as ErrorResponse, 400);
       }
 
       if (!['xml', 'markdown', 'plain'].includes(format)) {
@@ -65,7 +74,16 @@ app.post(
       const clientIp =
         c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || c.req.header('cf-connecting-ip') || '0.0.0.0';
 
-      const result = await processRemoteRepo(url, format, options, clientIp);
+      let result: PackResult;
+      if (file) {
+        result = await processZipFile(file, format, options, clientIp);
+      } else {
+        if (!url) {
+          return c.json({ error: 'Repository URL is required' } as ErrorResponse, 400);
+        }
+        result = await processRemoteRepo(url, format, options, clientIp);
+      }
+
       return c.json(result);
     } catch (error) {
       console.error('Error processing request:', error);
