@@ -60,6 +60,7 @@ export async function processRemoteRepo(
     topFilesLen: 10,
     include: sanitizedIncludePatterns,
     ignore: sanitizedIgnorePatterns,
+    quiet: true, // Enable quiet mode to suppress output
   } as CliOptions;
 
   try {
