@@ -3,14 +3,10 @@ import fs from 'node:fs/promises';
 import { type CliOptions, runRemoteAction } from 'repomix';
 import { packRequestSchema } from './schemas/request.js';
 import type { PackOptions, PackResult } from './types.js';
-import { RequestCache, generateCacheKey } from './utils/cache.js';
+import { generateCacheKey } from './utils/cache.js';
 import { AppError } from './utils/errorHandler.js';
-import { RateLimiter } from './utils/rateLimit.js';
+import { cache, rateLimiter } from './utils/sharedInstance.js';
 import { sanitizePattern, validateRequest } from './utils/validation.js';
-
-// Create instances of cache and rate limiter
-const cache = new RequestCache<PackResult>(180); // 3 minutes cache
-const rateLimiter = new RateLimiter(60_000, 3); // 3 requests per minute
 
 export async function processRemoteRepo(
   repoUrl: string,
@@ -31,8 +27,12 @@ export async function processRemoteRepo(
     throw new AppError(`Rate limit exceeded. Please try again in ${remainingTime} seconds.`, 429);
   }
 
+  if (!validatedData.url) {
+    throw new AppError('Repository URL is required for remote processing', 400);
+  }
+
   // Generate cache key
-  const cacheKey = generateCacheKey(validatedData.url, validatedData.format, validatedData.options);
+  const cacheKey = generateCacheKey(validatedData.url, validatedData.format, validatedData.options, 'url');
 
   // Check if the result is already cached
   const cachedResult = cache.get(cacheKey);
