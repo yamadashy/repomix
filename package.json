@@ -76,6 +76,7 @@
     "iconv-lite": "^0.6.3",
     "istextorbinary": "^9.5.0",
     "jschardet": "^3.1.4",
+    "jszip": "^3.10.1",
     "log-update": "^6.1.0",
     "minimatch": "^10.0.1",
     "picocolors": "^1.1.1",
