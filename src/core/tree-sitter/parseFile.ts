@@ -17,7 +17,7 @@ function normalizeChunk(chunk: string): string {
   return chunk.trim();
 }
 
-// TODO: Do something with config: RepomixConfigMerged, it is not used (yet)
+// Config is used to apply output formatting options
 export const parseFile = async (fileContent: string, filePath: string, config: RepomixConfigMerged) => {
   const languageParser = await getLanguageParserSingleton();
 
@@ -81,7 +81,39 @@ export const parseFile = async (fileContent: string, filePath: string, config: R
 
       if (!processedChunks.has(normalizedChunk)) {
         processedChunks.add(normalizedChunk);
-        chunks.push(chunk);
+        
+        // Apply filtering based on configuration
+        let processedChunk = chunk;
+        
+        if (shouldRemoveComments) {
+          // Filter out comment lines based on language-specific comment syntax
+          const commentPrefixes = {
+            javascript: '//',
+            typescript: '//',
+            python: '#',
+            java: '//',
+            cpp: '//',
+            go: '//',
+            rust: '//',
+          };
+          const prefix = commentPrefixes[lang as keyof typeof commentPrefixes];
+          if (prefix) {
+            processedChunk = processedChunk
+              .split('\n')
+              .filter(line => !line.trim().startsWith(prefix))
+              .join('\n');
+          }
+        }
+        
+        if (shouldRemoveEmptyLines) {
+          // Split by newlines, filter out empty lines, and rejoin
+          processedChunk = processedChunk
+            .split('\n')
+            .filter(line => line.trim() !== '')
+            .join('\n');
+        }
+        
+        chunks.push(processedChunk);
       }
     }
   } catch (error: unknown) {
