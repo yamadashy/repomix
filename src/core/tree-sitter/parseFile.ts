@@ -42,6 +42,16 @@ export const parseFile = async (fileContent: string, filePath: string, config: R
     // Parse the file content into an Abstract Syntax Tree (AST), a tree-like representation of the code
     const tree = parser.parse(fileContent);
 
+    // Apply configuration options for parsing
+    const shouldRemoveComments = config.output?.removeComments ?? false;
+    const shouldRemoveEmptyLines = config.output?.removeEmptyLines ?? false;
+
+    // Log the parsing configuration
+    logger.debug('Parsing configuration:', {
+      removeComments: shouldRemoveComments,
+      removeEmptyLines: shouldRemoveEmptyLines
+    });
+
     // Apply the query to the AST and get the captures
     // Captures are specific parts of the AST that match our query patterns, each capture represents a node in the AST that we're interested in.
     const captures = query.captures(tree.rootNode);
