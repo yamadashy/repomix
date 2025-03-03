@@ -7,7 +7,7 @@
     "docs:preview": "vitepress preview"
   },
   "dependencies": {
-    "lucide-vue-next": "^0.474.0",
+    "lucide-vue-next": "^0.477.0",
     "vite-plugin-pwa": "^0.21.1",
     "vue3-ace-editor": "^2.2.4"
   },
