@@ -2,8 +2,8 @@ import { isValidRemoteValue } from 'repomix';
 import { z } from 'zod';
 
 // Regular expression to validate ignore patterns
-// Allowed characters: alphanumeric, *, ?, /, -, _, ., space, comma
-const ignorePatternRegex = /^[a-zA-Z0-9*?\/\-_., ]*$/;
+// Allowed characters: alphanumeric, *, ?, /, -, _, ., !, (, ), space, comma
+const ignorePatternRegex = /^[a-zA-Z0-9*?\/\-_.,!()\s]*$/;
 
 export const packOptionsSchema = z
   .object({
