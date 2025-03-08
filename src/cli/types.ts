@@ -29,4 +29,5 @@ export interface CliOptions extends OptionValues {
   tokenCountEncoding?: string;
   instructionFilePath?: string;
   includeEmptyDirectories?: boolean;
+  mcp?: boolean;
 }

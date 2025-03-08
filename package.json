@@ -64,6 +64,7 @@
   "type": "module",
   "dependencies": {
     "@clack/prompts": "^0.9.1",
+    "@modelcontextprotocol/sdk": "^1.6.1",
     "@secretlint/core": "^9.0.0",
     "@secretlint/secretlint-rule-preset-recommend": "^9.0.0",
     "cli-spinners": "^2.9.2",

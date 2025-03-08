@@ -9,6 +9,7 @@ import { runInitAction } from './actions/initAction.js';
 import { runRemoteAction } from './actions/remoteAction.js';
 import { runVersionAction } from './actions/versionAction.js';
 import type { CliOptions } from './types.js';
+import {runMcpAction} from "./actions/mcpAction.js";
 
 export const run = async () => {
   try {
@@ -46,6 +47,7 @@ export const run = async () => {
       .option('--no-security-check', 'disable security check')
       .option('--instruction-file-path <path>', 'path to a file containing detailed custom instructions')
       .option('--include-empty-directories', 'include empty directories in the output')
+      .option('--mcp', 'enable Model Context Protocol (MCP) server mode')
       .action(commanderActionEndpoint);
 
     await program.parseAsync(process.argv);
@@ -71,6 +73,10 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   logger.trace('directories:', directories);
   logger.trace('cwd:', cwd);
   logger.trace('options:', options);
+
+  if (options.mcp) {
+    return await runMcpAction();
+  }
 
   if (options.version) {
     await runVersionAction();
