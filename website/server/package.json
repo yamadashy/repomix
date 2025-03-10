@@ -12,18 +12,18 @@
     "@google-cloud/logging-winston": "^6.0.0",
     "@hono/node-server": "^1.13.8",
     "adm-zip": "^0.5.16",
-    "hono": "^4.6.20",
+    "hono": "^4.7.4",
     "pako": "^2.1.0",
-    "repomix": "^0.2.29",
+    "repomix": "^0.2.36",
     "winston": "^3.17.0",
-    "zod": "^3.24.1"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
-    "@types/node": "^22.13.0",
+    "@types/node": "^22.13.10",
     "@types/pako": "^2.0.3",
     "rimraf": "^6.0.1",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
   }
 }

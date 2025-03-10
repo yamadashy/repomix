@@ -86,7 +86,7 @@
     "strip-json-comments": "^5.0.1",
     "tiktoken": "^1.0.20",
     "tree-sitter-wasms": "^0.1.12",
-    "web-tree-sitter": "^0.24.7",
+    "web-tree-sitter": "^0.25.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
