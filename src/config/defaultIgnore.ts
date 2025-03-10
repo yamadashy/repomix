@@ -125,6 +125,7 @@ export const defaultIgnoreList = [
   '**/yarn.lock',
   '**/pnpm-lock.yaml',
   '**/bun.lockb',
+  '**/bun.lock',
 
   // Essential Python-related entries
   '**/__pycache__/**',
