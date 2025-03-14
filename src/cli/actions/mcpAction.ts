@@ -1,4 +1,4 @@
-import { runMcpServer } from '../../core/mcp/mcpServer.js';
+import { runMcpServer } from '../../mcp/mcpServer.js';
 import { logger } from '../../shared/logger.js';
 
 export const runMcpAction = async (): Promise<void> => {

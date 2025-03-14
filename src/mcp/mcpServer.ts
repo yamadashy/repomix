@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { logger } from '../../shared/logger.js';
-import { getVersion } from '../file/packageJsonParse.js';
+import { logger } from '../shared/logger.js';
+import { getVersion } from '../core/file/packageJsonParse.js';
 import { registerPackCodebaseTool } from './tools/packCodebaseTool.js';
 import { registerPackRemoteRepositoryTool } from './tools/packRemoteRepositoryTool.js';
 import { registerReadRepomixOutputTool } from './tools/readRepomixOutputTool.js';

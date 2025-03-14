@@ -2,8 +2,8 @@ import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import { runCli } from '../../../cli/cliRun.js';
-import type { CliOptions } from '../../../cli/types.js';
+import { runCli } from '../../cli/cliRun.js';
+import type { CliOptions } from '../../cli/types.js';
 import { createToolWorkspace, formatToolError, formatToolResponse } from './mcpToolRuntime.js';
 
 export const registerPackCodebaseTool = (mcpServer: McpServer) => {

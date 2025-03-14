@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { logger } from '../../../shared/logger.js';
+import { logger } from '../../shared/logger.js';
 
 // Map to store generated output files
 const outputFileRegistry = new Map<string, string>();
