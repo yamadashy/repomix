@@ -72,6 +72,10 @@ describe('configSchema', () => {
           topFilesLength: 5,
           showLineNumbers: false,
           copyToClipboard: true,
+          git: {
+            sortByChanges: true,
+            sortByChangesMaxCommits: 100,
+          },
         },
         include: [],
         ignore: {
@@ -157,6 +161,10 @@ describe('configSchema', () => {
           topFilesLength: 10,
           showLineNumbers: true,
           copyToClipboard: false,
+          git: {
+            sortByChanges: true,
+            sortByChangesMaxCommits: 100,
+          },
         },
         include: ['**/*.js', '**/*.ts'],
         ignore: {

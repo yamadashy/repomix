@@ -1,6 +1,7 @@
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles } from './file/fileCollect.js';
+import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
 import { FileSearchResult, searchFiles } from './file/fileSearch.js';
 import type { RawFile } from './file/fileTypes.js';
@@ -33,6 +34,7 @@ export const pack = async (
     writeOutputToDisk,
     copyToClipboardIfEnabled,
     calculateMetrics,
+    sortPaths,
   },
 ): Promise<PackResult> => {
   progressCallback('Searching for files...');
@@ -43,10 +45,23 @@ export const pack = async (
     })),
   );
 
+  // Sort file paths
+  progressCallback('Sorting files...');
+  const allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
+  const sortedFilePaths = await deps.sortPaths(allFilePaths);
+
+  // Regroup sorted file paths by rootDir
+  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+    rootDir,
+    filePaths: sortedFilePaths.filter((filePath) =>
+      filePathsByDir.find((item) => item.rootDir === rootDir)?.filePaths.includes(filePath),
+    ),
+  }));
+
   progressCallback('Collecting files...');
   const rawFiles = (
     await Promise.all(
-      filePathsByDir.map(({ rootDir, filePaths }) => deps.collectFiles(filePaths, rootDir, progressCallback)),
+      sortedFilePathsByDir.map(({ rootDir, filePaths }) => deps.collectFiles(filePaths, rootDir, progressCallback)),
     )
   ).reduce((acc: RawFile[], curr: RawFile[]) => acc.concat(...curr), []);
 
@@ -55,7 +70,6 @@ export const pack = async (
     progressCallback,
     config,
   );
-
   // Process files (remove comments, etc.)
   progressCallback('Processing files...');
   const processedFiles = await deps.processFiles(safeRawFiles, config, progressCallback);

@@ -18,6 +18,10 @@ export const createMockConfig = (config: DeepPartial<RepomixConfigMerged> = {}):
     output: {
       ...defaultConfig.output,
       ...config.output,
+      git: {
+        ...defaultConfig.output.git,
+        ...config.output?.git,
+      },
     },
     ignore: {
       ...defaultConfig.ignore,

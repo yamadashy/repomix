@@ -30,6 +30,12 @@ export const repomixConfigBaseSchema = z.object({
       showLineNumbers: z.boolean().optional(),
       copyToClipboard: z.boolean().optional(),
       includeEmptyDirectories: z.boolean().optional(),
+      git: z
+        .object({
+          sortByChanges: z.boolean().optional(),
+          sortByChangesMaxCommits: z.number().optional(),
+        })
+        .optional(),
     })
     .optional(),
   include: z.array(z.string()).optional(),
@@ -70,6 +76,12 @@ export const repomixConfigDefaultSchema = z.object({
       showLineNumbers: z.boolean().default(false),
       copyToClipboard: z.boolean().default(false),
       includeEmptyDirectories: z.boolean().optional(),
+      git: z
+        .object({
+          sortByChanges: z.boolean().default(true),
+          sortByChangesMaxCommits: z.number().int().min(1).default(100),
+        })
+        .default({}),
     })
     .default({}),
   include: z.array(z.string()).default([]),

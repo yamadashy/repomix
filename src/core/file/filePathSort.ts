@@ -1,7 +1,8 @@
 import path from 'node:path';
 
-export const sortPaths = (filePaths: string[]): string[] =>
-  filePaths.sort((a, b) => {
+// Sort paths for general use (not affected by git change count)
+export const sortPaths = (filePaths: string[]): string[] => {
+  return filePaths.sort((a, b) => {
     const partsA = a.split(path.sep);
     const partsB = b.split(path.sep);
 
@@ -17,6 +18,7 @@ export const sortPaths = (filePaths: string[]): string[] =>
       }
     }
 
-    // Sort by length if all parts are equal
+    // Sort by path length when all parts are equal
     return partsA.length - partsB.length;
   });
+};

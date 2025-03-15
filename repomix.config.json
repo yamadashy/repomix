@@ -11,7 +11,11 @@
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
-    "includeEmptyDirectories": true
+    "includeEmptyDirectories": true,
+    "git": {
+      "sortByChanges": true,
+      "sortByChangesMaxCommits": 100
+    }
   },
   "include": [],
   "ignore": {

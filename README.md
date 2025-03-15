@@ -434,6 +434,7 @@ This format provides a clean, readable structure that is both human-friendly and
 - `--header-text <text>`: Custom text to include in the file header
 - `--instruction-file-path <path>`: Path to a file containing detailed custom instructions
 - `--include-empty-directories`: Include empty directories in the output
+- `--no-git-sort-by-changes`: Disable sorting files by git change count (enabled by default)
 
 #### Filter Options
 - `--include <patterns>`: List of include patterns (comma-separated)
@@ -663,6 +664,8 @@ Here's an explanation of the configuration options:
 | `output.copyToClipboard`         | Whether to copy the output to system clipboard in addition to saving the file                                                | `false`                |
 | `output.topFilesLength`          | Number of top files to display in the summary. If set to 0, no summary will be displayed                                     | `5`                    |
 | `output.includeEmptyDirectories` | Whether to include empty directories in the repository structure                                                             | `false`                |
+| `output.git.sortByChanges`       | Whether to sort files by git change count (files with more changes appear at the bottom)                                     | `true`                 |
+| `output.git.sortByChangesMaxCommits` | Maximum number of commits to analyze for git changes                                                                     | `100`                  |
 | `include`                        | Patterns of files to include (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax))  | `[]`                   |
 | `ignore.useGitignore`            | Whether to use patterns from the project's `.gitignore` file                                                                 | `true`                 |
 | `ignore.useDefaultPatterns`      | Whether to use default ignore patterns                                                                                       | `true`                 |

@@ -1,11 +1,51 @@
 import process from 'node:process';
 import { XMLParser } from 'fast-xml-parser';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { generateOutput } from '../../../src/core/output/outputGenerate.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 describe('outputGenerate', () => {
+  const mockDeps = {
+    buildOutputGeneratorContext: vi.fn(),
+    generateHandlebarOutput: vi.fn(),
+    generateParsableXmlOutput: vi.fn(),
+    sortOutputFiles: vi.fn(),
+  };
+  test('generateOutput should use sortOutputFiles before generating content', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        git: { sortByChanges: true },
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [
+      { path: 'file1.txt', content: 'content1' },
+      { path: 'file2.txt', content: 'content2' },
+    ];
+    const sortedFiles = [
+      { path: 'file2.txt', content: 'content2' },
+      { path: 'file1.txt', content: 'content1' },
+    ];
+
+    mockDeps.sortOutputFiles.mockResolvedValue(sortedFiles);
+    mockDeps.buildOutputGeneratorContext.mockResolvedValue({
+      processedFiles: sortedFiles,
+      config: mockConfig,
+      treeString: '',
+      generationDate: new Date().toISOString(),
+      instruction: '',
+    });
+    mockDeps.generateHandlebarOutput.mockResolvedValue('mock output');
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, [], mockDeps);
+
+    expect(mockDeps.sortOutputFiles).toHaveBeenCalledWith(mockProcessedFiles, mockConfig);
+    expect(mockDeps.buildOutputGeneratorContext).toHaveBeenCalledWith([process.cwd()], mockConfig, [], sortedFiles);
+    expect(output).toBe('mock output');
+  });
+
   test('generateOutput should write correct content to file (plain style)', async () => {
     const mockConfig = createMockConfig({
       output: {

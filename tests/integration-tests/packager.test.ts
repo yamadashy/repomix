@@ -70,12 +70,14 @@ describe.runIf(!isWindows)('packager integration', () => {
         output: {
           filePath: actualOutputPath,
           style: (config.output?.style || 'plain') as RepomixOutputStyle,
+          git: { sortByChanges: false },
         },
       });
 
       // Run the pack function
       await pack([inputDir], mergedConfig, () => {}, {
         searchFiles,
+        sortPaths: (filePaths) => filePaths,
         collectFiles: (filePaths, rootDir, progressCallback) => {
           return collectFiles(filePaths, rootDir, progressCallback, {
             initTaskRunner: mockCollectFileInitTaskRunner,

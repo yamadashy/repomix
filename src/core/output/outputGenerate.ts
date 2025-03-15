@@ -8,6 +8,7 @@ import { type FileSearchResult, searchFiles } from '../file/fileSearch.js';
 import { generateTreeString } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
+import { sortOutputFiles } from './outputSort.js';
 import {
   generateHeader,
   generateSummaryFileFormat,
@@ -116,18 +117,32 @@ export const generateOutput = async (
   config: RepomixConfigMerged,
   processedFiles: ProcessedFile[],
   allFilePaths: string[],
+  deps = {
+    buildOutputGeneratorContext,
+    generateHandlebarOutput,
+    generateParsableXmlOutput,
+    sortOutputFiles,
+  },
 ): Promise<string> => {
-  const outputGeneratorContext = await buildOutputGeneratorContext(rootDirs, config, allFilePaths, processedFiles);
+  // Sort processed files by git change count if enabled
+  const sortedProcessedFiles = await deps.sortOutputFiles(processedFiles, config);
+
+  const outputGeneratorContext = await deps.buildOutputGeneratorContext(
+    rootDirs,
+    config,
+    allFilePaths,
+    sortedProcessedFiles,
+  );
   const renderContext = createRenderContext(outputGeneratorContext);
 
-  if (!config.output.parsableStyle) return generateHandlebarOutput(config, renderContext);
+  if (!config.output.parsableStyle) return deps.generateHandlebarOutput(config, renderContext);
   switch (config.output.style) {
     case 'xml':
-      return generateParsableXmlOutput(renderContext);
+      return deps.generateParsableXmlOutput(renderContext);
     case 'markdown':
-      return generateHandlebarOutput(config, renderContext);
+      return deps.generateHandlebarOutput(config, renderContext);
     default:
-      return generateHandlebarOutput(config, renderContext);
+      return deps.generateHandlebarOutput(config, renderContext);
   }
 };
 

@@ -69,6 +69,10 @@ describe('cliRun', () => {
           removeEmptyLines: false,
           compress: false,
           copyToClipboard: false,
+          git: {
+            sortByChanges: true,
+            sortByChangesMaxCommits: 100,
+          },
         },
         include: [],
         ignore: {
@@ -108,6 +112,10 @@ describe('cliRun', () => {
           removeEmptyLines: false,
           compress: false,
           copyToClipboard: false,
+          git: {
+            sortByChanges: true,
+            sortByChangesMaxCommits: 100,
+          },
         },
         include: [],
         ignore: {

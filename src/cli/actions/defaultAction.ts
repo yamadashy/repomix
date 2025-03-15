@@ -201,6 +201,17 @@ const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     };
   }
 
+  // Only apply gitSortByChanges setting if explicitly set to false
+  if (options.gitSortByChanges === false) {
+    cliConfig.output = {
+      ...cliConfig.output,
+      git: {
+        ...cliConfig.output?.git,
+        sortByChanges: false,
+      },
+    };
+  }
+
   try {
     return repomixConfigCliSchema.parse(cliConfig);
   } catch (error) {

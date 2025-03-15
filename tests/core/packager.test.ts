@@ -40,6 +40,7 @@ describe('packager', () => {
         filePaths: mockFilePaths,
         emptyDirPaths: [],
       }),
+      sortPaths: vi.fn().mockImplementation((paths) => Promise.resolve(paths)),
       collectFiles: vi.fn().mockResolvedValue(mockRawFiles),
       processFiles: vi.fn().mockReturnValue(mockProcessedFiles),
       validateFileSafety: vi.fn().mockResolvedValue({

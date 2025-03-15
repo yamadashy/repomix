@@ -16,6 +16,9 @@ interface ContentInfo {
     parsableStyle: boolean;
     compressed: boolean;
   };
+  sorting: {
+    gitChanges: boolean;
+  };
 }
 
 export const analyzeContent = (config: RepomixConfigMerged): ContentInfo => {
@@ -34,6 +37,9 @@ export const analyzeContent = (config: RepomixConfigMerged): ContentInfo => {
       showLineNumbers: config.output.showLineNumbers,
       parsableStyle: config.output.parsableStyle,
       compressed: config.output.compress,
+    },
+    sorting: {
+      gitChanges: config.output.git?.sortByChanges ?? false,
     },
   };
 };
@@ -152,6 +158,11 @@ export const generateSummaryNotes = (config: RepomixConfigMerged): string => {
   }
   if (!info.processing.securityCheckEnabled) {
     notes.push('- Security check has been disabled - content may contain sensitive information');
+  }
+
+  // Sorting notes
+  if (info.sorting.gitChanges) {
+    notes.push('- Files are sorted by Git change count (files with more changes are at the bottom)');
   }
 
   return notes.join('\n');

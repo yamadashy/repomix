@@ -30,6 +30,10 @@ describe('defaultAction', () => {
         removeEmptyLines: false,
         compress: false,
         copyToClipboard: false,
+        git: {
+          sortByChanges: true,
+          sortByChangesMaxCommits: 100,
+        },
       },
       ignore: {
         useGitignore: true,
