@@ -8,6 +8,11 @@ export interface SecurityCheckTask {
   content: string;
 }
 
+export interface SuspiciousFileResult {
+  filePath: string;
+  messages: string[];
+}
+
 export default async ({ filePath, content }: SecurityCheckTask) => {
   const config = createSecretLintConfig();
 
@@ -27,7 +32,11 @@ export default async ({ filePath, content }: SecurityCheckTask) => {
   }
 };
 
-export const runSecretLint = async (filePath: string, content: string, config: SecretLintCoreConfig) => {
+export const runSecretLint = async (
+  filePath: string,
+  content: string,
+  config: SecretLintCoreConfig,
+): Promise<SuspiciousFileResult | null> => {
   const result = await lintSource({
     source: {
       filePath: filePath,

@@ -3,6 +3,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { getVersion } from '../core/file/packageJsonParse.js';
 import { logger } from '../shared/logger.js';
 import { registerPackRemoteRepositoryPrompt } from './prompts/packRemoteRepositoryPrompts.js';
+import { registerFileSystemReadDirectoryTool } from './tools/fileSystemReadDirectoryTool.js';
+import { registerFileSystemReadFileTool } from './tools/fileSystemReadFileTool.js';
 import { registerPackCodebaseTool } from './tools/packCodebaseTool.js';
 import { registerPackRemoteRepositoryTool } from './tools/packRemoteRepositoryTool.js';
 import { registerReadRepomixOutputTool } from './tools/readRepomixOutputTool.js';
@@ -20,6 +22,8 @@ export const createMcpServer = async () => {
   registerPackCodebaseTool(mcpServer);
   registerPackRemoteRepositoryTool(mcpServer);
   registerReadRepomixOutputTool(mcpServer);
+  registerFileSystemReadFileTool(mcpServer);
+  registerFileSystemReadDirectoryTool(mcpServer);
 
   return mcpServer;
 };
