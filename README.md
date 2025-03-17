@@ -76,7 +76,7 @@ brew install repomix
 repomix
 ```
 
-That's it! Repomix will generate a `repomix-output.xml` file in your current directory, containing your entire
+That's it! Repomix will generate a `repomix-output.txt` file in your current directory, containing your entire
 repository in an AI-friendly format.
 
 You can then send this file to an AI assistant with a prompt like:
@@ -105,7 +105,7 @@ name, fill in any optional details, and click the **Pack** button to see your ge
 
 The website offers several convenient features:
 
-- Customizable output format (XML, Markdown, or Plain Text)
+- Customizable output format (Plain Text, XML, or Markdown)
 - Instant token count estimation
 - Much more!
 
@@ -278,7 +278,57 @@ Repomix generates a single file with clear separators between different parts of
 To enhance AI comprehension, the output file begins with an AI-oriented explanation, making it easier for AI models to
 understand the context and structure of the packed repository.
 
-#### XML Format (default)
+#### Plain Text Format (default)
+
+```text
+This file is a merged representation of the entire codebase, combining all repository files into a single document.
+
+================================================================
+File Summary
+================================================================
+(Metadata and usage AI instructions)
+
+================================================================
+Directory Structure
+================================================================
+src/
+  cli/
+    cliOutput.ts
+    index.ts
+  config/
+    configLoader.ts
+
+(...remaining directories)
+
+================================================================
+Files
+================================================================
+
+================
+File: src/index.js
+================
+// File contents here
+
+================
+File: src/utils.js
+================
+// File contents here
+
+(...remaining files)
+
+================================================================
+Instruction
+================================================================
+(Custom instructions from `output.instructionFilePath`)
+```
+
+#### XML Format
+
+To generate output in XML format, use the `--style xml` option:
+
+```bash
+repomix --style xml
+```
 
 The XML format structures the content in a hierarchical manner:
 
@@ -365,56 +415,6 @@ src/
 
 This format provides a clean, readable structure that is both human-friendly and easily parseable by AI systems.
 
-#### Plain Text Format
-
-To generate output in plain text format, use the `--style plain` option:
-
-```bash
-repomix --style plain
-```
-
-```text
-This file is a merged representation of the entire codebase, combining all repository files into a single document.
-
-================================================================
-File Summary
-================================================================
-(Metadata and usage AI instructions)
-
-================================================================
-Directory Structure
-================================================================
-src/
-  cli/
-    cliOutput.ts
-    index.ts
-  config/
-    configLoader.ts
-
-(...remaining directories)
-
-================================================================
-Files
-================================================================
-
-================
-File: src/index.js
-================
-// File contents here
-
-================
-File: src/utils.js
-================
-// File contents here
-
-(...remaining files)
-
-================================================================
-Instruction
-================================================================
-(Custom instructions from `output.instructionFilePath`)
-```
-
 ### Command Line Options
 
 #### Basic Options
@@ -422,7 +422,7 @@ Instruction
 
 #### Output Options
 - `-o, --output <file>`: Specify the output file name
-- `--style <style>`: Specify the output style (`xml`, `markdown`, `plain`)
+- `--style <style>`: Specify the output style (`plain`, `xml`, `markdown`)
 - `--parsable-style`: Enable parsable output based on the chosen style schema. Note that this can increase token count.
 - `--compress`: Perform intelligent code extraction, focusing on essential function and class signatures to reduce token count
 - `--output-show-line-numbers`: Show line numbers in the output
@@ -610,22 +610,6 @@ When running as an MCP server, Repomix provides the following tools:
     - `includePatterns`: (Optional) Comma-separated list of include patterns
     - `ignorePatterns`: (Optional) Comma-separated list of ignore patterns
 
-3. **file_system_read_file**: Read a file using an absolute path with security validation
-  - Parameters:
-    - `path`: Absolute path to the file to read
-  - Security features:
-    - Implements security validation using [Secretlint](https://github.com/secretlint/secretlint)
-    - Prevents access to files containing sensitive information
-    - Validates absolute paths to prevent directory traversal attacks
-
-4. **file_system_read_directory**: List contents of a directory using an absolute path
-  - Parameters:
-    - `path`: Absolute path to the directory to list
-  - Features:
-    - Shows files and directories with clear indicators (`[FILE]` or `[DIR]`)
-    - Provides safe directory traversal with proper error handling
-    - Validates paths and ensures they are absolute
-
 #### Configuring MCP Servers
 
 To use Repomix as an MCP server with AI assistants like Claude, you need to configure the MCP settings:
@@ -666,8 +650,8 @@ Here's an explanation of the configuration options:
 
 | Option                           | Description                                                                                                                  | Default                |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
-| `output.filePath`                | The name of the output file                                                                                                  | `"repomix-output.xml"` |
-| `output.style`                   | The style of the output (`xml`, `markdown`, `plain`)                                                                         | `"xml"`                |
+| `output.filePath`                | The name of the output file                                                                                                  | `"repomix-output.txt"` |
+| `output.style`                   | The style of the output (`plain`, `xml`, `markdown`)                                                                         | `"plain"`              |
 | `output.parsableStyle`           | Whether to escape the output based on the chosen style schema. Note that this can increase token count.                      | `false`                |
 | `output.compress`                | Whether to perform intelligent code extraction to reduce token count                                                         | `false`                |
 | `output.headerText`              | Custom text to include in the file header                                                                                    | `null`                 |
@@ -713,10 +697,6 @@ Example configuration:
     "copyToClipboard": true,
     "topFilesLength": 5,
     "includeEmptyDirectories": false,
-    "git": {
-      "sortByChanges": true,
-      "sortByChangesMaxCommits": 100
-    }
   },
   "include": [
     "**/*"

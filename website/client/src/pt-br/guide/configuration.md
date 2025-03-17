@@ -26,11 +26,7 @@ repomix --init
     "topFilesLength": 5,
     "showLineNumbers": false,
     "copyToClipboard": false,
-    "includeEmptyDirectories": false,
-    "git": {
-      "sortByChanges": true,
-      "sortByChangesMaxCommits": 100
-    }
+    "includeEmptyDirectories": false
   },
   "include": ["**/*"],
   "ignore": {
@@ -93,31 +89,32 @@ Lista completa: [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/mai
 
 ### Compressão de Código
 
-Quando `output.compress` está configurado como `true`, o Repomix extrairá as estruturas essenciais do código enquanto remove os detalhes de implementação. Isso reduz a contagem de tokens enquanto mantém informações estruturais importantes.
+Quando `output.compress` está configurado como `true`, o Repomix extrairá de forma inteligente as estruturas essenciais do código enquanto remove os detalhes de implementação. Isso é particularmente útil para reduzir a contagem de tokens enquanto mantém informações estruturais importantes.
 
-Para mais detalhes e exemplos, consulte o [Guia de Compressão de Código](code-compress).
+Por exemplo, este código:
 
-### Integração com Git
-
-A configuração `output.git` permite controlar como os arquivos são ordenados com base no histórico do Git:
-
-- `sortByChanges`: Quando configurado como `true`, os arquivos são ordenados pelo número de alterações no Git (commits que modificaram o arquivo). Arquivos com mais alterações aparecem no final da saída. Isso ajuda a priorizar arquivos mais ativamente desenvolvidos. Padrão: `true`
-- `sortByChangesMaxCommits`: O número máximo de commits a analisar ao contar as alterações de arquivos. Padrão: `100`
-
-Exemplo de configuração:
-```json
-{
-  "output": {
-    "git": {
-      "sortByChanges": true,
-      "sortByChangesMaxCommits": 100
-    }
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+  let total = 0;
+  for (const item of items) {
+    total += item.price * item.quantity;
   }
+  return total;
 }
+interface Item {
+  name: string;
+  price: number;
+  quantity: number;
+}
+```
+
+Será comprimido para:
+
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+interface Item {
 ```
 
 ### Remoção de Comentários
 
-Quando `output.removeComments` está configurado como `true`, os comentários são removidos dos tipos de arquivo suportados para reduzir o tamanho da saída e focar no conteúdo essencial do código.
-
-Para linguagens suportadas e exemplos detalhados, consulte o [Guia de Remoção de Comentários](comment-removal).
+Quando `output.removeComments` está configurado como `true`, todos os comentários do código serão removidos. Isso é útil quando você deseja focar na implementação do código ou reduzir ainda mais a contagem de tokens.

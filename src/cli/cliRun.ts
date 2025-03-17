@@ -20,7 +20,7 @@ export const run = async () => {
       .option('-v, --version', 'show version information')
       // Output Options
       .option('-o, --output <file>', 'specify the output file name')
-      .option('--style <type>', 'specify the output style (xml, markdown, plain)')
+      .option('--style <type>', 'specify the output style (plain, xml, markdown)')
       .option('--parsable-style', 'by escaping and formatting, ensure the output is parsable as a document of its type')
       .option('--compress', 'perform code compression to reduce token count')
       .option('--output-show-line-numbers', 'add line numbers to each line in the output')

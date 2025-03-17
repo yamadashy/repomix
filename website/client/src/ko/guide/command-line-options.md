@@ -7,7 +7,7 @@
 - `-o, --output <file>`: 출력 파일 이름 (기본값: `repomix-output.txt`)
 - `--style <type>`: 출력 스타일 (`plain`, `xml`, `markdown`) (기본값: `plain`)
 - `--parsable-style`: 선택한 스타일 스키마에 기반한 파싱 가능한 출력 활성화 (기본값: `false`)
-- `--compress`: 함수와 클래스 시그니처에 중점을 두고 구현 세부 사항을 제거하는 지능형 코드 추출을 수행합니다. 자세한 내용과 예제는 [코드 압축 가이드](code-compress)를 참조하세요.
+- `--compress`: 구현 세부 사항을 제거하면서 필수적인 함수와 클래스 시그니처에 초점을 맞춰 지능적인 코드 추출 수행
 - `--output-show-line-numbers`: 줄 번호 추가 (기본값: `false`)
 - `--copy`: 클립보드에 복사 (기본값: `false`)
 - `--no-file-summary`: 파일 요약 비활성화 (기본값: `true`)
@@ -68,3 +68,29 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # 단축형을 사용한 원격 저장소
 repomix --remote user/repo
 ```
+
+예를 들어, `--compress` 옵션을 사용하면 다음 코드가:
+
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+  let total = 0;
+  for (const item of items) {
+    total += item.price * item.quantity;
+  }
+  return total;
+}
+interface Item {
+  name: string;
+  price: number;
+  quantity: number;
+}
+```
+
+다음과 같이 압축됩니다:
+
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+interface Item {
+```
+
+이 압축은 코드의 중요한 구조적 정보를 유지하면서 토큰 수를 줄이는 데 도움이 됩니다.

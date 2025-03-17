@@ -76,6 +76,7 @@ export const configShard = defineConfig({
       { icon: 'x', link: 'https://x.com/repomix_ai' },
       { icon: 'discord', link: 'https://discord.gg/wNYzTwZFku' },
       { icon: 'github', link: 'https://github.com/yamadashy/repomix' },
+      { icon: 'kofi', link: 'https://ko-fi.com/yamadashy' },
     ],
     footer: {
       message: 'Released under the MIT License.',

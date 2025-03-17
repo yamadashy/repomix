@@ -125,7 +125,7 @@ describe('fileSearch', () => {
 
       const patterns = await getIgnorePatterns(process.cwd(), mockConfig);
 
-      expect(patterns).toEqual(['repomix-output.xml', '*.custom', 'temp/']);
+      expect(patterns).toEqual(['repomix-output.txt', '*.custom', 'temp/']);
     });
 
     test('should combine default and custom patterns', async () => {

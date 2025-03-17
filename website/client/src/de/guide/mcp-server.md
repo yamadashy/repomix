@@ -2,9 +2,6 @@
 
 Repomix unterstützt das [Model Context Protocol (MCP)](https://modelcontextprotocol.io), das es KI-Assistenten ermöglicht, direkt mit Ihrer Codebasis zu interagieren. Wenn Repomix als MCP-Server ausgeführt wird, stellt es Tools bereit, die es KI-Assistenten ermöglichen, lokale oder entfernte Repositories ohne manuelle Dateivorbereitung für die Analyse zu verpacken.
 
-> [!NOTE]  
-> Dies ist eine experimentelle Funktion, die wir basierend auf Benutzerfeedback und praktischer Nutzung aktiv verbessern werden
-
 ## Repomix als MCP-Server ausführen
 
 Um Repomix als MCP-Server auszuführen, verwenden Sie die `--mcp`-Flag:
@@ -58,47 +55,6 @@ Dieses Tool holt, klont und verpackt ein GitHub-Repository in eine konsolidierte
   "ignorePatterns": "**/*.log,tmp/"
 }
 ```
-
-### file_system_read_file und file_system_read_directory
-
-Der Repomix MCP-Server bietet zwei Dateisystemwerkzeuge, die es KI-Assistenten ermöglichen, sicher mit dem lokalen Dateisystem zu interagieren:
-
-1. `file_system_read_file`
-   - Liest Dateiinhalte unter Verwendung absoluter Pfade
-   - Implementiert Sicherheitsvalidierung mit [Secretlint](https://github.com/secretlint/secretlint)
-   - Verhindert den Zugriff auf Dateien mit sensiblen Informationen
-   - Liefert klare Fehlermeldungen für ungültige Pfade und Sicherheitsprobleme
-
-2. `file_system_read_directory`
-   - Listet Verzeichnisinhalte unter Verwendung absoluter Pfade
-   - Zeigt Dateien und Verzeichnisse mit klaren Indikatoren (`[FILE]` oder `[DIR]`)
-   - Bietet sichere Verzeichnisnavigation mit angemessener Fehlerbehandlung
-   - Validiert Pfade und stellt sicher, dass sie absolut sind
-
-Beide Werkzeuge beinhalten robuste Sicherheitsmaßnahmen:
-- Validierung absoluter Pfade zur Verhinderung von Directory Traversal-Angriffen
-- Berechtigungsprüfungen zur Gewährleistung angemessener Zugriffsrechte
-- Integration mit Secretlint zur Erkennung sensibler Informationen
-- Klare Fehlermeldungen für Debugging und Sicherheitsbewusstsein
-
-**Beispiel:**
-```typescript
-// Datei lesen
-const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
-});
-
-// Verzeichnisinhalt auflisten
-const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
-});
-```
-
-Diese Werkzeuge sind besonders nützlich, wenn KI-Assistenten:
-- Bestimmte Dateien im Codebase analysieren müssen
-- Verzeichnisstrukturen navigieren müssen
-- Existenz und Zugänglichkeit von Dateien überprüfen müssen
-- Sichere Dateisystemoperationen gewährleisten müssen
 
 ## MCP-Server konfigurieren
 

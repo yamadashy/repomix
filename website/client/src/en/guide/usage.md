@@ -50,7 +50,12 @@ repomix --remote yamaadshy/repomix --compress
 
 ## Output Formats
 
-### XML (Default)
+### Plain Text (Default)
+```bash
+repomix --style plain
+```
+
+### XML
 ```bash
 repomix --style xml
 ```
@@ -58,11 +63,6 @@ repomix --style xml
 ### Markdown
 ```bash
 repomix --style markdown
-```
-
-### Plain Text
-```bash
-repomix --style plain
 ```
 
 ## Additional Options

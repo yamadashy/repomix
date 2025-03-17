@@ -91,44 +91,6 @@ This tool fetches, clones, and packages a GitHub repository into a consolidated 
 }
 ```
 
-### 3. file_system_read_file
-
-This tool reads a file using an absolute path with security validation.
-
-**Parameters:**
-- `path`: (Required) Absolute path to the file to read
-
-**Security features:**
-- Implements security validation using [Secretlint](https://github.com/secretlint/secretlint)
-- Prevents access to files containing sensitive information
-- Validates absolute paths to prevent directory traversal attacks
-
-**Example:**
-```json
-{
-  "path": "/absolute/path/to/file.txt"
-}
-```
-
-### 4. file_system_read_directory
-
-This tool lists contents of a directory using an absolute path.
-
-**Parameters:**
-- `path`: (Required) Absolute path to the directory to list
-
-**Features:**
-- Shows files and directories with clear indicators (`[FILE]` or `[DIR]`)
-- Provides safe directory traversal with proper error handling
-- Validates paths and ensures they are absolute
-
-**Example:**
-```json
-{
-  "path": "/absolute/path/to/directory"
-}
-```
-
 ## Verify Installation
 
 To verify the installation is working:

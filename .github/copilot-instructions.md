@@ -6,7 +6,7 @@ Please refer to `README.md` for a complete and up-to-date project overview, and 
 
 ## Project Overview
 
-Repomix is a tool that packs the contents of a software repository into a single file, making it easier for AI systems to analyze and process the codebase. It supports various output formats (XML, Markdown, or plain text), ignores files based on configurable patterns, and performs security checks to exclude potentially sensitive information.
+Repomix is a tool that packs the contents of a software repository into a single file, making it easier for AI systems to analyze and process the codebase. It supports various output formats (plain text, XML, Markdown), ignores files based on configurable patterns, and performs security checks to exclude potentially sensitive information.
 
 ## Directory Structure
 

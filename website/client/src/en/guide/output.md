@@ -1,9 +1,42 @@
 # Output Formats
 
 Repomix supports three output formats:
-- XML (default)
+- Plain Text (default)
+- XML
 - Markdown
-- Plain Text 
+
+## Plain Text Format
+
+```bash
+repomix --style plain
+```
+
+Output structure:
+```text
+This file is a merged representation of the entire codebase...
+
+================
+File Summary
+================
+(Metadata and AI instructions)
+
+================
+Directory Structure
+================
+src/
+  index.ts
+  utils/
+    helper.ts
+
+================
+Files
+================
+
+================
+File: src/index.ts
+================
+// File contents here
+```
 
 ## XML Format
 
@@ -85,37 +118,4 @@ Set default format in `repomix.config.json`:
     "filePath": "output.xml"
   }
 }
-```
-
-## Plain Text Format
-
-```bash
-repomix --style plain
-```
-
-Output structure:
-```text
-This file is a merged representation of the entire codebase...
-
-================
-File Summary
-================
-(Metadata and AI instructions)
-
-================
-Directory Structure
-================
-src/
-  index.ts
-  utils/
-    helper.ts
-
-================
-Files
-================
-
-================
-File: src/index.ts
-================
-// File contents here
 ```

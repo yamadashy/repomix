@@ -2,7 +2,7 @@
 import ace, { type Ace } from 'ace-builds';
 import themeTomorrowUrl from 'ace-builds/src-noconflict/theme-tomorrow?url';
 import themeTomorrowNightUrl from 'ace-builds/src-noconflict/theme-tomorrow_night?url';
-import { BarChart2, Copy, Download, GitFork, HeartHandshake, PackageSearch } from 'lucide-vue-next';
+import { BarChart2, Coffee, Copy, Download, GitFork, PackageSearch } from 'lucide-vue-next';
 import { useData } from 'vitepress';
 import { computed, ref, watch } from 'vue';
 import { VAceEditor } from 'vue3-ace-editor';
@@ -132,8 +132,8 @@ const handleEditorMount = (editor: Ace.Editor) => {
     </div>
     <div class="support-notice">
       <div class="support-message">
-        <a href="https://github.com/sponsors/yamadashy" target="_blank" rel="noopener noreferrer" class="support-link">
-          <HeartHandshake :size="14" class="support-icon" />
+        <a href="https://ko-fi.com/yamadashy" target="_blank" rel="noopener noreferrer" class="support-link">
+          <Coffee :size="14" class="support-icon" />
           This tool is independently developed. Your support helps maintain and improve it. Thank you!
         </a>
       </div>

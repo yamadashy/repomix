@@ -2,9 +2,6 @@
 
 Repomix es compatible con el [Model Context Protocol (MCP)](https://modelcontextprotocol.io), lo que permite a los asistentes de IA interactuar directamente con tu código. Cuando se ejecuta como servidor MCP, Repomix proporciona herramientas que permiten a los asistentes de IA empaquetar repositorios locales o remotos para su análisis sin necesidad de preparación manual de archivos.
 
-> [!NOTE]  
-> Esta es una función experimental que mejoraremos activamente según los comentarios de los usuarios y el uso en el mundo real
-
 ## Ejecutar Repomix como servidor MCP
 
 Para ejecutar Repomix como servidor MCP, utiliza la opción `--mcp`:
@@ -58,47 +55,6 @@ Esta herramienta obtiene, clona y empaqueta un repositorio de GitHub en un archi
   "ignorePatterns": "**/*.log,tmp/"
 }
 ```
-
-### file_system_read_file y file_system_read_directory
-
-El servidor MCP de Repomix proporciona dos herramientas de sistema de archivos que permiten a los asistentes de IA interactuar de manera segura con el sistema de archivos local:
-
-1. `file_system_read_file`
-   - Lee contenido de archivos usando rutas absolutas
-   - Implementa validación de seguridad usando [Secretlint](https://github.com/secretlint/secretlint)
-   - Previene el acceso a archivos que contienen información sensible
-   - Devuelve mensajes de error claros para rutas inválidas y problemas de seguridad
-
-2. `file_system_read_directory`
-   - Lista contenidos de directorios usando rutas absolutas
-   - Muestra archivos y directorios con indicadores claros (`[FILE]` o `[DIR]`)
-   - Proporciona navegación segura de directorios con manejo apropiado de errores
-   - Valida rutas y asegura que sean absolutas
-
-Ambas herramientas incorporan medidas de seguridad robustas:
-- Validación de rutas absolutas para prevenir ataques de traversal de directorios
-- Verificaciones de permisos para asegurar derechos de acceso apropiados
-- Integración con Secretlint para detección de información sensible
-- Mensajes de error claros para depuración y conciencia de seguridad
-
-**Ejemplo:**
-```typescript
-// Leer un archivo
-const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
-});
-
-// Listar contenidos de directorio
-const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
-});
-```
-
-Estas herramientas son particularmente útiles cuando los asistentes de IA necesitan:
-- Analizar archivos específicos en el código base
-- Navegar estructuras de directorios
-- Verificar existencia y accesibilidad de archivos
-- Asegurar operaciones seguras del sistema de archivos
 
 ## Configuración de servidores MCP
 

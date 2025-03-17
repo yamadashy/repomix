@@ -26,11 +26,7 @@ repomix --init
     "topFilesLength": 5,
     "showLineNumbers": false,
     "copyToClipboard": false,
-    "includeEmptyDirectories": false,
-    "git": {
-      "sortByChanges": true,
-      "sortByChangesMaxCommits": 100
-    }
+    "includeEmptyDirectories": false
   },
   "include": ["**/*"],
   "ignore": {
@@ -93,31 +89,32 @@ dist/**
 
 ### 代码压缩
 
-当 `output.compress` 设置为 `true` 时，Repomix 将提取基本代码结构，同时移除实现细节。这可以在保持重要的结构信息的同时减少令牌数量。
+当 `output.compress` 设置为 `true` 时，Repomix 将智能提取基本代码结构，同时移除实现细节。这在需要减少令牌数量的同时保持重要的结构信息时特别有用。
 
-更多详细信息和示例，请参阅[代码压缩指南](code-compress)。
+例如，这段代码：
 
-### Git 集成
-
-`output.git` 配置允许您控制如何基于 Git 历史记录对文件进行排序：
-
-- `sortByChanges`：当设置为 `true` 时，文件将按 Git 更改次数（修改该文件的提交数）进行排序。更改次数较多的文件将出现在输出的底部。这有助于优先处理更活跃开发的文件。默认值：`true`
-- `sortByChangesMaxCommits`：计算文件更改次数时要分析的最大提交数。默认值：`100`
-
-配置示例：
-```json
-{
-  "output": {
-    "git": {
-      "sortByChanges": true,
-      "sortByChangesMaxCommits": 100
-    }
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+  let total = 0;
+  for (const item of items) {
+    total += item.price * item.quantity;
   }
+  return total;
 }
+interface Item {
+  name: string;
+  price: number;
+  quantity: number;
+}
+```
+
+将被压缩为：
+
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+interface Item {
 ```
 
 ### 注释移除
 
-当 `output.removeComments` 设置为 `true` 时，将从支持的文件类型中移除注释，以减少输出大小并专注于核心代码内容。
-
-有关支持的语言和详细示例，请参阅[注释移除指南](comment-removal)。
+当 `output.removeComments` 设置为 `true` 时，所有代码注释将被移除。这在需要专注于代码实现或进一步减少令牌数量时很有用。

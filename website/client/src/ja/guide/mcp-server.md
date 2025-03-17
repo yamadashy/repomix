@@ -2,9 +2,6 @@
 
 Repomixは[Model Context Protocol (MCP)](https://modelcontextprotocol.io)をサポートしており、AIアシスタントがコードベースと直接対話できるようになります。MCPサーバーとして実行すると、Repomixはローカルまたはリモートリポジトリを手動でファイル準備することなく、AI分析用にパッケージ化するツールを提供します。
 
-> [!NOTE]  
-> これは実験的な機能であり、ユーザーのフィードバックと実際の使用状況に基づいて積極的に改善を進めていきます
-
 ## RepomixをMCPサーバーとして実行する
 
 RepomixをMCPサーバーとして実行するには、`--mcp`フラグを使用します：
@@ -58,47 +55,6 @@ MCPサーバーとして実行すると、Repomixは以下のツールを提供�
   "ignorePatterns": "**/*.log,tmp/"
 }
 ```
-
-### file_system_read_file と file_system_read_directory
-
-RepomixのMCPサーバーは、AIアシスタントがローカルファイルシステムと安全にやり取りするための2つのファイルシステムツールを提供しています：
-
-1. `file_system_read_file`
-   - 絶対パスを使用してファイルの内容を読み取り
-   - [Secretlint](https://github.com/secretlint/secretlint)を使用したセキュリティ検証を実装
-   - 機密情報を含むファイルへのアクセスを防止
-   - 無効なパスやセキュリティの問題に対する明確なエラーメッセージを返す
-
-2. `file_system_read_directory`
-   - 絶対パスを使用してディレクトリの内容を一覧表示
-   - ファイルとディレクトリを明確な指標（`[FILE]`または`[DIR]`）で表示
-   - 適切なエラー処理による安全なディレクトリ走査を提供
-   - パスの検証と絶対パスの確認を実施
-
-両ツールは堅牢なセキュリティ対策を組み込んでいます：
-- ディレクトリトラバーサル攻撃を防ぐための絶対パス検証
-- 適切なアクセス権を確保するための権限チェック
-- 機密情報検出のためのSecretlintとの統合
-- デバッグとセキュリティ認識のための明確なエラーメッセージ
-
-**例：**
-```typescript
-// ファイルの読み取り
-const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
-});
-
-// ディレクトリの内容一覧
-const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
-});
-```
-
-これらのツールは、AIアシスタントが以下のような操作を必要とする場合に特に有用です：
-- コードベース内の特定のファイルを分析
-- ディレクトリ構造をナビゲート
-- ファイルの存在とアクセス可能性を確認
-- 安全なファイルシステム操作を確保
 
 ## MCPサーバーの設定
 

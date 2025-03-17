@@ -7,7 +7,7 @@
 - `-o, --output <file>`: Nombre del archivo de salida (predeterminado: `repomix-output.txt`)
 - `--style <type>`: Estilo de salida (`plain`, `xml`, `markdown`) (predeterminado: `plain`)
 - `--parsable-style`: Habilita la salida analizable basada en el esquema del estilo elegido (predeterminado: `false`)
-- `--compress`: Realiza una extracción inteligente de código, centrándose en las firmas de funciones y clases mientras elimina los detalles de implementación. Para más detalles y ejemplos, consulte la [Guía de Compresión de Código](code-compress)
+- `--compress`: Realiza una extracción inteligente del código, enfocándose en las firmas esenciales de funciones y clases mientras elimina detalles de implementación
 - `--output-show-line-numbers`: Agrega números de línea (predeterminado: `false`)
 - `--copy`: Copiar al portapapeles (predeterminado: `false`)
 - `--no-file-summary`: Deshabilita el resumen de archivos (predeterminado: `true`)
@@ -68,3 +68,29 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Repositorio remoto con formato abreviado
 repomix --remote user/repo
 ```
+
+Por ejemplo, al usar la opción `--compress`, este código:
+
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+  let total = 0;
+  for (const item of items) {
+    total += item.price * item.quantity;
+  }
+  return total;
+}
+interface Item {
+  name: string;
+  price: number;
+  quantity: number;
+}
+```
+
+Se comprimirá a:
+
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+interface Item {
+```
+
+Esta compresión ayuda a reducir el conteo de tokens mientras mantiene información estructural importante sobre el código.

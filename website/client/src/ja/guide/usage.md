@@ -48,7 +48,12 @@ repomix --remote user/repo --compress
 
 ## 出力形式
 
-### XML（デフォルト）
+### プレーンテキスト（デフォルト）
+```bash
+repomix --style plain
+```
+
+### XML
 ```bash
 repomix --style xml
 ```
@@ -56,11 +61,6 @@ repomix --style xml
 ### Markdown
 ```bash
 repomix --style markdown
-```
-
-### プレーンテキスト
-```bash
-repomix --style plain
 ```
 
 ## その他のオプション

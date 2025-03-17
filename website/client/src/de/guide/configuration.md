@@ -26,11 +26,7 @@ repomix --init
     "topFilesLength": 5,
     "showLineNumbers": false,
     "copyToClipboard": false,
-    "includeEmptyDirectories": false,
-    "git": {
-      "sortByChanges": true,
-      "sortByChangesMaxCommits": 100
-    }
+    "includeEmptyDirectories": false
   },
   "include": ["**/*"],
   "ignore": {
@@ -93,31 +89,32 @@ Vollständige Liste: [defaultIgnore.ts](https://github.com/yamadashy/repomix/blo
 
 ### Code-Komprimierung
 
-Wenn `output.compress` auf `true` gesetzt ist, extrahiert Repomix wesentliche Code-Strukturen und entfernt dabei Implementierungsdetails. Dies reduziert die Token-Anzahl und behält gleichzeitig wichtige strukturelle Informationen bei.
+Wenn `output.compress` auf `true` gesetzt ist, extrahiert Repomix intelligenterweise wesentliche Code-Strukturen und entfernt dabei Implementierungsdetails. Dies ist besonders nützlich, um die Token-Anzahl zu reduzieren und gleichzeitig wichtige strukturelle Informationen beizubehalten.
 
-Weitere Details und Beispiele finden Sie im [Code-Komprimierungs-Leitfaden](code-compress).
+Zum Beispiel wird dieser Code:
 
-### Git-Integration
-
-Die `output.git`-Konfiguration ermöglicht es Ihnen, die Sortierung von Dateien basierend auf der Git-Historie zu steuern:
-
-- `sortByChanges`: Wenn auf `true` gesetzt, werden Dateien nach der Anzahl der Git-Änderungen (Commits, die die Datei geändert haben) sortiert. Dateien mit mehr Änderungen erscheinen am Ende der Ausgabe. Dies hilft dabei, aktiver entwickelte Dateien zu priorisieren. Standard: `true`
-- `sortByChangesMaxCommits`: Die maximale Anzahl von Commits, die bei der Zählung der Dateiänderungen analysiert werden. Standard: `100`
-
-Beispielkonfiguration:
-```json
-{
-  "output": {
-    "git": {
-      "sortByChanges": true,
-      "sortByChangesMaxCommits": 100
-    }
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+  let total = 0;
+  for (const item of items) {
+    total += item.price * item.quantity;
   }
+  return total;
 }
+interface Item {
+  name: string;
+  price: number;
+  quantity: number;
+}
+```
+
+komprimiert zu:
+
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+interface Item {
 ```
 
 ### Kommentarentfernung
 
-Wenn `output.removeComments` auf `true` gesetzt ist, werden Kommentare aus unterstützten Dateitypen entfernt, um die Ausgabegröße zu reduzieren und sich auf den wesentlichen Code-Inhalt zu konzentrieren.
-
-Unterstützte Sprachen und detaillierte Beispiele finden Sie im [Kommentarentfernungs-Leitfaden](comment-removal).
+Wenn `output.removeComments` auf `true` gesetzt ist, werden alle Code-Kommentare entfernt. Dies ist nützlich, wenn Sie sich auf die Code-Implementierung konzentrieren möchten oder die Token-Anzahl weiter reduzieren möchten.

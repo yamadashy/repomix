@@ -40,7 +40,12 @@ repomix --remote user/repo --remote-branch 935b695
 
 ## 输出格式
 
-### XML（默认）
+### 纯文本（默认）
+```bash
+repomix --style plain
+```
+
+### XML
 ```bash
 repomix --style xml
 ```
@@ -48,11 +53,6 @@ repomix --style xml
 ### Markdown
 ```bash
 repomix --style markdown
-```
-
-### 纯文本
-```bash
-repomix --style plain
 ```
 
 ## 其他选项

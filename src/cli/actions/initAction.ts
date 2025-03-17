@@ -81,9 +81,9 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
         return prompts.select({
           message: 'Output style:',
           options: [
+            { value: 'plain', label: 'Plain', hint: 'Simple text format' },
             { value: 'xml', label: 'XML', hint: 'Structured XML format' },
             { value: 'markdown', label: 'Markdown', hint: 'Markdown format' },
-            { value: 'plain', label: 'Plain', hint: 'Simple text format' },
           ],
           initialValue: defaultConfig.output.style,
         });

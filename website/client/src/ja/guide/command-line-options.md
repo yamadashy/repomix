@@ -7,7 +7,7 @@
 - `-o, --output <file>`: 出力ファイル名（デフォルト: `repomix-output.txt`）
 - `--style <type>`: 出力形式（`plain`、`xml`、`markdown`）（デフォルト: `plain`）
 - `--parsable-style`: 選択した形式のスキーマに基づいて解析可能な出力を有効化（デフォルト: `false`）
-- `--compress`: 関数やクラスのシグネチャなどの重要な構造を保持しながら、実装の詳細を削除するインテリジェントなコード抽出を実行します。詳細と例については、[コード圧縮ガイド](code-compress)を参照してください。
+- `--compress`: インテリジェントなコード抽出を実行し、実装の詳細を省きながら関数やクラスのシグネチャに焦点を当てます
 - `--output-show-line-numbers`: 行番号を追加（デフォルト: `false`）
 - `--copy`: クリップボードにコピー（デフォルト: `false`）
 - `--no-file-summary`: ファイルサマリーを無効化（デフォルト: `true`）
@@ -68,3 +68,29 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # ショートハンドを使用したリモートリポジトリ
 repomix --remote user/repo
 ```
+
+例えば、`--compress`オプションを使用すると、次のコード：
+
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+  let total = 0;
+  for (const item of items) {
+    total += item.price * item.quantity;
+  }
+  return total;
+}
+interface Item {
+  name: string;
+  price: number;
+  quantity: number;
+}
+```
+
+は以下のように圧縮されます：
+
+```typescript
+const calculateTotal = (items: ShoppingItem[]) => {
+interface Item {
+```
+
+この圧縮は、コードの重要な構造情報を維持しながらトークン数を削減するのに役立ちます。

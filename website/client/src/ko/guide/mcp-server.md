@@ -1,9 +1,6 @@
 # MCP 서버
 
-Repomix는 [Model Context Protocol (MCP)](https://modelcontextprotocol.io)를 지원하며, AI 어시스턴트가 코드베이스와 직접 상호작용할 수 있게 해줍니다. MCP 서버로 실행하면 Repomix는 AI 어시스턴트가 수동 파일 준비 없이 로컬 또는 원격 저장소를 분석용으로 패키징할 수 있는 도구를 제공합니다.
-
-> [!NOTE]  
-> 이것은 실험적인 기능으로, 사용자 피드백과 실제 사용 사례를 바탕으로 지속적으로 개선해 나갈 예정입니다
+Repomix는 AI 어시스턴트가 코드베이스와 직접 상호작용할 수 있게 해주는 [Model Context Protocol (MCP)](https://modelcontextprotocol.io)를 지원합니다. MCP 서버로 실행하면 Repomix는 AI 어시스턴트가 수동 파일 준비 없이 로컬 또는 원격 저장소를 분석용으로 패키징할 수 있는 도구를 제공합니다.
 
 ## Repomix를 MCP 서버로 실행하기
 
@@ -58,47 +55,6 @@ MCP 서버로 실행할 때 Repomix는 다음 도구를 제공합니다:
   "ignorePatterns": "**/*.log,tmp/"
 }
 ```
-
-### file_system_read_file 및 file_system_read_directory
-
-Repomix의 MCP 서버는 AI 어시스턴트가 로컬 파일 시스템과 안전하게 상호 작용할 수 있는 두 가지 파일 시스템 도구를 제공합니다:
-
-1. `file_system_read_file`
-   - 절대 경로를 사용하여 파일 내용 읽기
-   - [Secretlint](https://github.com/secretlint/secretlint)를 사용한 보안 검증 구현
-   - 민감한 정보가 포함된 파일에 대한 접근 방지
-   - 잘못된 경로나 보안 문제에 대한 명확한 오류 메시지 반환
-
-2. `file_system_read_directory`
-   - 절대 경로를 사용하여 디렉토리 내용 나열
-   - 파일과 디렉토리를 명확한 지표(`[FILE]` 또는 `[DIR]`)로 표시
-   - 안전한 디렉토리 탐색과 적절한 오류 처리 제공
-   - 경로 검증 및 절대 경로 확인
-
-두 도구 모두 강력한 보안 조치를 포함하고 있습니다:
-- 디렉토리 순회 공격을 방지하기 위한 절대 경로 검증
-- 적절한 접근 권한을 보장하기 위한 권한 검사
-- 민감한 정보 감지를 위한 Secretlint 통합
-- 디버깅과 보안 인식을 위한 명확한 오류 메시지
-
-**예시:**
-```typescript
-// 파일 읽기
-const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
-});
-
-// 디렉토리 내용 나열
-const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
-});
-```
-
-이러한 도구는 AI 어시스턴트가 다음과 같은 작업을 수행해야 할 때 특히 유용합니다:
-- 코드베이스의 특정 파일 분석
-- 디렉토리 구조 탐색
-- 파일 존재 여부 및 접근 가능성 확인
-- 안전한 파일 시스템 작업 보장
 
 ## MCP 서버 구성하기
 
