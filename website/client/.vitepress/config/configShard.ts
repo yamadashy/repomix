@@ -155,7 +155,9 @@ export const configShard = defineConfig({
       },
     },
     plugins: [
-      llmstxt(),
+      llmstxt({
+        excludeIndexPage: true,
+      }),
       VitePWA({
         registerType: 'autoUpdate',
         manifest,
