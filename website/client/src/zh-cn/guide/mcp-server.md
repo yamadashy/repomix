@@ -123,6 +123,26 @@ const dirContent = await tools.file_system_read_directory({
 
 要将 Repomix 作为 MCP 服务器与 Claude 等 AI 助手一起使用，您需要配置 MCP 设置：
 
+### 对于 VS Code
+
+您可以使用以下方法之一在 VS Code 中安装 Repomix MCP 服务器：
+
+1. **使用安装徽章：**
+
+   [![Install in VS Code](https://img.shields.io/badge/VS_Code-VS_Code?style=flat-square&label=Install%20Server&color=0098FF)](vscode:mcp/install?%7B%22name%22%3A%22repomix%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22repomix%22%2C%22--mcp%22%5D%7D)<br>
+   [![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-VS_Code_Insiders?style=flat-square&label=Install%20Server&color=24bfa5)](vscode-insiders:mcp/install?%7B%22name%22%3A%22repomix%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22repomix%22%2C%22--mcp%22%5D%7D)
+
+2. **使用命令行：**
+
+   ```bash
+   code --add-mcp '{"name":"repomix","command":"npx","args":["-y","repomix","--mcp"]}'
+   ```
+
+   对于 VS Code Insiders：
+   ```bash
+   code-insiders --add-mcp '{"name":"repomix","command":"npx","args":["-y","repomix","--mcp"]}'
+   ```
+
 ### 对于 Cline（VS Code 扩展）
 
 编辑 `cline_mcp_settings.json` 文件：
