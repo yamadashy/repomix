@@ -119,6 +119,14 @@ export async function processRemoteRepo(
       console.warn('Failed to cleanup output file:', err);
     }
 
+    // List contents of /tmp directory
+    try {
+      const tmpFiles = await fs.readdir('/tmp');
+      logInfo('Contents of /tmp directory:', { files: tmpFiles });
+    } catch (err) {
+      console.warn('Failed to list /tmp directory:', err);
+    }
+
     if (global.gc) {
       logMemoryUsage('Before GC');
       global.gc();
@@ -140,4 +148,3 @@ const logMemoryUsage = (label: string) => {
     }
   });
 };
-
