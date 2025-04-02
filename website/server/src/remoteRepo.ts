@@ -7,6 +7,7 @@ import { generateCacheKey } from './utils/cache.js';
 import { AppError } from './utils/errorHandler.js';
 import { cache, rateLimiter } from './utils/sharedInstance.js';
 import { sanitizePattern, validateRequest } from './utils/validation.js';
+import {logInfo, logWarning} from "./utils/logger.js";
 
 export async function processRemoteRepo(
   repoUrl: string,
@@ -117,5 +118,26 @@ export async function processRemoteRepo(
       // Ignore file deletion errors
       console.warn('Failed to cleanup output file:', err);
     }
+
+    if (global.gc) {
+      logMemoryUsage('Before GC');
+      global.gc();
+      logMemoryUsage('After GC');
+    } else {
+      console.warn('GC is not exposed. Run Node.js with --expose-gc flag.');
+    }
   }
 }
+
+const logMemoryUsage = (label: string) => {
+  const memUsage = process.memoryUsage();
+  logInfo(`Memory usage [${label}]`, {
+    metrics: {
+      rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+      heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+      heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+      external: `${Math.round(memUsage.external / 1024 / 1024)}MB`,
+    }
+  });
+};
+
