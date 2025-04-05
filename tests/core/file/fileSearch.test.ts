@@ -9,6 +9,7 @@ import {
   escapeGlobPattern,
   getIgnoreFilePatterns,
   getIgnorePatterns,
+  normalizeGlobPattern,
   parseIgnoreContent,
   searchFiles,
 } from '../../../src/core/file/fileSearch.js';
@@ -419,5 +420,47 @@ node_modules
   test('should handle patterns with mixed backslashes and special characters', () => {
     const pattern = 'src\\temp\\[id]\\{slug}';
     expect(escapeGlobPattern(pattern)).toBe('src\\\\temp\\\\\\[id\\]\\\\\\{slug\\}');
+  });
+
+  describe('normalizeGlobPattern', () => {
+    test('should remove trailing slash from simple directory pattern', () => {
+      expect(normalizeGlobPattern('bin/')).toBe('bin');
+    });
+
+    test('should remove trailing slash from nested directory pattern', () => {
+      expect(normalizeGlobPattern('src/components/')).toBe('src/components');
+    });
+
+    test('should preserve patterns without trailing slash', () => {
+      expect(normalizeGlobPattern('bin')).toBe('bin');
+    });
+
+    test('should preserve patterns ending with **/', () => {
+      expect(normalizeGlobPattern('src/**/')).toBe('src/**/');
+    });
+
+    test('should preserve patterns with file extensions', () => {
+      expect(normalizeGlobPattern('*.ts')).toBe('*.ts');
+    });
+
+    test('should handle patterns with special characters', () => {
+      expect(normalizeGlobPattern('src/(components)/')).toBe('src/(components)');
+    });
+
+    test('should convert **/folder pattern to **/folder/** for consistency', () => {
+      expect(normalizeGlobPattern('**/bin')).toBe('**/bin/**');
+    });
+
+    test('should convert **/nested/folder pattern to **/nested/folder/**', () => {
+      expect(normalizeGlobPattern('**/nested/folder')).toBe('**/nested/folder/**');
+    });
+
+    test('should not convert patterns that already have /**', () => {
+      expect(normalizeGlobPattern('**/folder/**')).toBe('**/folder/**');
+    });
+
+    test('should not convert patterns that already have /**/*', () => {
+      expect(normalizeGlobPattern('**/folder/**/*')).toBe('**/folder/**/*');
+    });
   });
 });
