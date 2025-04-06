@@ -69,6 +69,27 @@ export const escapeGlobPattern = (pattern: string): string => {
   return escapedBackslashes.replace(/[()[\]{}]/g, '\\$&');
 };
 
+/**
+ * Normalizes glob patterns by removing trailing slashes and ensuring consistent directory pattern handling.
+ * Makes "**\/folder", "**\/folder/", and "**\/folder/**\/*" behave identically.
+ *
+ * @param pattern The glob pattern to normalize
+ * @returns The normalized pattern
+ */
+export const normalizeGlobPattern = (pattern: string): string => {
+  // Remove trailing slash but preserve patterns that end with "**/"
+  if (pattern.endsWith('/') && !pattern.endsWith('**/')) {
+    return pattern.slice(0, -1);
+  }
+
+  // Convert **/folder to **/folder/** for consistent ignore pattern behavior
+  if (pattern.startsWith('**/') && !pattern.includes('/**')) {
+    return `${pattern}/**`;
+  }
+
+  return pattern;
+};
+
 // Get all file paths considering the config
 export const searchFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<FileSearchResult> => {
   // First check directory permissions
@@ -92,8 +113,11 @@ export const searchFiles = async (rootDir: string, config: RepomixConfigMerged):
       getIgnoreFilePatterns(config),
     ]);
 
+    // Normalize ignore patterns to handle trailing slashes consistently
+    const normalizedIgnorePatterns = ignorePatterns.map(normalizeGlobPattern);
+
     logger.trace('Include patterns:', includePatterns);
-    logger.trace('Ignore patterns:', ignorePatterns);
+    logger.trace('Ignore patterns:', normalizedIgnorePatterns);
     logger.trace('Ignore file patterns:', ignoreFilePatterns);
 
     // Check if .git is a worktree reference
@@ -101,7 +125,7 @@ export const searchFiles = async (rootDir: string, config: RepomixConfigMerged):
     const isWorktree = await isGitWorktreeRef(gitPath);
 
     // Modify ignore patterns for git worktree
-    const adjustedIgnorePatterns = [...ignorePatterns];
+    const adjustedIgnorePatterns = [...normalizedIgnorePatterns];
     if (isWorktree) {
       // Remove '.git/**' pattern and add '.git' to ignore the reference file
       const gitIndex = adjustedIgnorePatterns.indexOf('.git/**');
