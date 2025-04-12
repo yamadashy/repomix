@@ -42,6 +42,7 @@ describe('defaultAction', () => {
         customPatterns: [],
       },
       include: [],
+      forceInclude: [],
       security: {
         enableSecurityCheck: true,
       },
