@@ -119,6 +119,7 @@ export const searchFiles = async (rootDir: string, config: RepomixConfigMerged):
     logger.trace('Include patterns:', includePatterns);
     logger.trace('Ignore patterns:', normalizedIgnorePatterns);
     logger.trace('Ignore file patterns:', ignoreFilePatterns);
+    logger.trace('Force include patterns:', config.forceInclude);
 
     // Check if .git is a worktree reference
     const gitPath = path.join(rootDir, '.git');
@@ -135,7 +136,8 @@ export const searchFiles = async (rootDir: string, config: RepomixConfigMerged):
       }
     }
 
-    const filePaths = await globby(includePatterns, {
+    // Step 1: Get initial files with normal include/ignore patterns
+    const initialFilePaths = await globby(includePatterns, {
       cwd: rootDir,
       ignore: [...adjustedIgnorePatterns],
       ignoreFiles: [...ignoreFilePatterns],
@@ -154,6 +156,28 @@ export const searchFiles = async (rootDir: string, config: RepomixConfigMerged):
       throw error;
     });
 
+    // Step 2: If forceInclude is specified, get additional files without applying ignore patterns
+    let forcedFilePaths: string[] = [];
+    if (config.forceInclude.length > 0) {
+      const forceIncludePatterns = config.forceInclude.map((pattern) => escapeGlobPattern(pattern));
+
+      logger.trace('Getting forced include files with patterns:', forceIncludePatterns);
+
+      forcedFilePaths = await globby(forceIncludePatterns, {
+        cwd: rootDir,
+        onlyFiles: true,
+        absolute: false,
+        dot: true,
+        followSymbolicLinks: false,
+        // No ignore or ignoreFiles specified to override ignore settings
+      });
+
+      logger.trace('Found forced include files:', forcedFilePaths);
+    }
+
+    // Step 3: Combine initialFilePaths and forcedFilePaths, removing duplicates
+    const combinedFilePaths = Array.from(new Set([...initialFilePaths, ...forcedFilePaths]));
+
     let emptyDirPaths: string[] = [];
     if (config.output.includeEmptyDirectories) {
       const directories = await globby(includePatterns, {
@@ -169,10 +193,12 @@ export const searchFiles = async (rootDir: string, config: RepomixConfigMerged):
       emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
     }
 
-    logger.trace(`Filtered ${filePaths.length} files`);
+    logger.trace(
+      `Filtered ${combinedFilePaths.length} files (including ${forcedFilePaths.length} forced include files)`,
+    );
 
     return {
-      filePaths: sortPaths(filePaths),
+      filePaths: sortPaths(combinedFilePaths),
       emptyDirPaths: sortPaths(emptyDirPaths),
     };
   } catch (error: unknown) {
