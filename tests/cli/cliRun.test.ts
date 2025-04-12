@@ -73,6 +73,7 @@ describe('cliRun', () => {
           },
         },
         include: [],
+        forceInclude: [],
         ignore: {
           useGitignore: true,
           useDefaultPatterns: true,
@@ -126,6 +127,7 @@ describe('cliRun', () => {
           },
         },
         include: [],
+        forceInclude: [],
         ignore: {
           useGitignore: true,
           useDefaultPatterns: true,

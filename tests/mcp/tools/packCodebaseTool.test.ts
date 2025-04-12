@@ -92,6 +92,7 @@ describe('PackCodebaseTool', () => {
         },
         cwd,
         include: Array.isArray(opts.include) ? opts.include : opts.include ? [opts.include] : [],
+        forceInclude: [],
         ignore: {
           useGitignore: true,
           useDefaultPatterns: true,
