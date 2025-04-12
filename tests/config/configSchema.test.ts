@@ -78,6 +78,7 @@ describe('configSchema', () => {
           },
         },
         include: [],
+        forceInclude: [],
         ignore: {
           customPatterns: [],
           useGitignore: true,
@@ -167,6 +168,7 @@ describe('configSchema', () => {
           },
         },
         include: ['**/*.js', '**/*.ts'],
+        forceInclude: ['**/*.js', '**/*.ts', '*.log'],
         ignore: {
           useGitignore: true,
           useDefaultPatterns: true,
