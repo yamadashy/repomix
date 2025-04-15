@@ -1,8 +1,8 @@
-import type { TiktokenEncoding } from 'tiktoken';
-import { logger } from '../../../shared/logger.js';
-import type { ProcessedFile } from '../../file/fileTypes.js';
-import { TokenCounter } from '../../tokenCount/tokenCount.js';
-import type { FileMetrics } from './types.js';
+import type { TiktokenEncoding } from "tiktoken";
+import { logger } from "../../../shared/logger.js";
+import type { ProcessedFile } from "../../file/fileTypes.js";
+import { TokenCounter } from "../../tokenCount/tokenCount.js";
+import type { FileMetrics } from "./types.js";
 
 export interface FileMetricsTask {
   file: ProcessedFile;
@@ -21,12 +21,17 @@ const getTokenCounter = (encoding: TiktokenEncoding): TokenCounter => {
   return tokenCounter;
 };
 
-export default async ({ file, encoding }: FileMetricsTask): Promise<FileMetrics> => {
+export default async ({
+  file,
+  encoding,
+}: FileMetricsTask): Promise<FileMetrics> => {
   const processStartAt = process.hrtime.bigint();
   const metrics = await calculateIndividualFileMetrics(file, encoding);
   const processEndAt = process.hrtime.bigint();
   logger.trace(
-    `Calculated metrics for ${file.path}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
+    `Calculated metrics for ${file.path}. Took: ${(
+      Number(processEndAt - processStartAt) / 1e6
+    ).toFixed(2)}ms`
   );
 
   return metrics;
@@ -34,17 +39,18 @@ export default async ({ file, encoding }: FileMetricsTask): Promise<FileMetrics>
 
 export const calculateIndividualFileMetrics = async (
   file: ProcessedFile,
-  encoding: TiktokenEncoding,
+  encoding: TiktokenEncoding
 ): Promise<FileMetrics> => {
   const charCount = file.content.length;
   const tokenCounter = getTokenCounter(encoding);
   const tokenCount = tokenCounter.countTokens(file.content, file.path);
+  const lineCount = file.content === "" ? 0 : file.content.split("\n").length;
 
-  return { path: file.path, charCount, tokenCount };
+  return { path: file.path, charCount, tokenCount, lineCount };
 };
 
 // Cleanup when worker is terminated
-process.on('exit', () => {
+process.on("exit", () => {
   if (tokenCounter) {
     tokenCounter.free();
     tokenCounter = null;

@@ -1,91 +1,105 @@
-import path from 'node:path';
-import pc from 'picocolors';
-import type { RepomixConfigMerged } from '../config/configSchema.js';
-import type { SuspiciousFileResult } from '../core/security/securityCheck.js';
-import { logger } from '../shared/logger.js';
+import path from "node:path";
+import pc from "picocolors";
+import type { RepomixConfigMerged } from "../config/configSchema.js";
+import type { SuspiciousFileResult } from "../core/security/securityCheck.js";
+import { logger } from "../shared/logger.js";
 
 export const printSummary = (
   totalFiles: number,
-  totalCharacters: number,
   totalTokens: number,
+  totalLines: number,
   outputPath: string,
   suspiciousFilesResults: SuspiciousFileResult[],
-  config: RepomixConfigMerged,
+  config: RepomixConfigMerged
 ) => {
-  let securityCheckMessage = '';
+  let securityCheckMessage = "";
   if (config.security.enableSecurityCheck) {
     if (suspiciousFilesResults.length > 0) {
       securityCheckMessage = pc.yellow(
-        `${suspiciousFilesResults.length.toLocaleString()} suspicious file(s) detected and excluded`,
+        `${suspiciousFilesResults.length.toLocaleString()} suspicious file(s) detected and excluded`
       );
     } else {
-      securityCheckMessage = pc.white('✔ No suspicious files detected');
     }
   } else {
-    securityCheckMessage = pc.dim('Security check disabled');
+    securityCheckMessage = pc.dim("security check disabled");
   }
 
-  logger.log(pc.white('📊 Pack Summary:'));
-  logger.log(pc.dim('────────────────'));
-  logger.log(`${pc.white('  Total Files:')} ${pc.white(totalFiles.toLocaleString())} files`);
-  logger.log(`${pc.white('  Total Chars:')} ${pc.white(totalCharacters.toLocaleString())} chars`);
-  logger.log(`${pc.white(' Total Tokens:')} ${pc.white(totalTokens.toLocaleString())} tokens`);
-  logger.log(`${pc.white('       Output:')} ${pc.white(outputPath)}`);
-  logger.log(`${pc.white('     Security:')} ${pc.white(securityCheckMessage)}`);
+  logger.log(`${pc.white("files")} ${pc.white(totalFiles.toLocaleString())}`);
+  logger.log(`${pc.white("lines:")} ${pc.white(totalLines.toLocaleString())}`);
+  logger.log(
+    `${pc.white("tokens:")} ${pc.white(totalTokens.toLocaleString())}`
+  );
+  logger.log("");
+  logger.log(`${pc.white("output:")} ${pc.white(outputPath)}`);
+  if (securityCheckMessage)
+    logger.log(`${pc.white("security:")} ${pc.white(securityCheckMessage)}`);
 };
 
 export const printSecurityCheck = (
   rootDir: string,
   suspiciousFilesResults: SuspiciousFileResult[],
-  config: RepomixConfigMerged,
+  config: RepomixConfigMerged
 ) => {
   if (!config.security.enableSecurityCheck) {
     return;
   }
 
-  logger.log(pc.white('🔎 Security Check:'));
-  logger.log(pc.dim('──────────────────'));
-
   if (suspiciousFilesResults.length === 0) {
-    logger.log(`${pc.green('✔')} ${pc.white('No suspicious files detected.')}`);
   } else {
-    logger.log(pc.yellow(`${suspiciousFilesResults.length} suspicious file(s) detected and excluded from the output:`));
+    logger.log(
+      pc.yellow(
+        `${suspiciousFilesResults.length} suspicious file(s) detected and excluded from the output:`
+      )
+    );
     suspiciousFilesResults.forEach((suspiciousFilesResult, index) => {
-      const relativeFilePath = path.relative(rootDir, suspiciousFilesResult.filePath);
+      const relativeFilePath = path.relative(
+        rootDir,
+        suspiciousFilesResult.filePath
+      );
       logger.log(`${pc.white(`${index + 1}.`)} ${pc.white(relativeFilePath)}`);
-      logger.log(pc.dim(`   - ${suspiciousFilesResult.messages.join('\n   - ')}`));
+      logger.log(
+        pc.dim(`   - ${suspiciousFilesResult.messages.join("\n   - ")}`)
+      );
     });
-    logger.log(pc.yellow('\nThese files have been excluded from the output for security reasons.'));
-    logger.log(pc.yellow('Please review these files for potential sensitive information.'));
+    logger.log(
+      pc.yellow(
+        "\nThese files have been excluded from the output for security reasons."
+      )
+    );
+    logger.log(
+      pc.yellow(
+        "Please review these files for potential sensitive information."
+      )
+    );
   }
 };
 
 export const printTopFiles = (
-  fileCharCounts: Record<string, number>,
+  fileLineCounts: Record<string, number>,
   fileTokenCounts: Record<string, number>,
-  topFilesLength: number,
+  topFilesLength: number
 ) => {
   const topFilesLengthStrLen = topFilesLength.toString().length;
-  logger.log(pc.white(`📈 Top ${topFilesLength} Files by Character Count and Token Count:`));
-  logger.log(pc.dim(`─────────────────────────────────────────────────${'─'.repeat(topFilesLengthStrLen)}`));
+  logger.log(pc.white(`top ${topFilesLength} files`));
+  logger.log(
+    pc.dim(
+      `─────────────────────────────────────────────────${"─".repeat(
+        topFilesLengthStrLen
+      )}`
+    )
+  );
 
-  const topFiles = Object.entries(fileCharCounts)
+  const topFiles = Object.entries(fileLineCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, topFilesLength);
 
-  topFiles.forEach(([filePath, charCount], index) => {
+  topFiles.forEach(([filePath, lineCount], index) => {
     const tokenCount = fileTokenCounts[filePath];
-    const indexString = `${index + 1}.`.padEnd(3, ' ');
+    const indexString = `${index + 1}.`.padEnd(3, " ");
     logger.log(
-      `${pc.white(`${indexString}`)} ${pc.white(filePath)} ${pc.dim(`(${charCount.toLocaleString()} chars, ${tokenCount.toLocaleString()} tokens)`)}`,
+      `${pc.white(`${indexString}`)} ${pc.white(filePath)} ${pc.dim(
+        `(${lineCount.toLocaleString()} lines, ${tokenCount.toLocaleString()} tokens)`
+      )}`
     );
   });
-};
-
-export const printCompletion = () => {
-  logger.log(pc.green('🎉 All Done!'));
-  logger.log(pc.white('Your repository has been successfully packed.'));
-
-  logger.log('');
-  logger.log(`💡 Repomix is now available in your browser! Try it at ${pc.underline('https://repomix.com')}`);
 };
