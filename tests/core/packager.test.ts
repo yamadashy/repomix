@@ -7,15 +7,11 @@ import { createMockConfig } from '../testing/testUtils.js';
 vi.mock('node:fs/promises');
 vi.mock('fs/promises');
 vi.mock('../../src/core/tokenCount/tokenCount');
-vi.mock('clipboardy', () => ({
-  default: {
-    write: vi.fn(),
-  },
-}));
 
 describe('packager', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(TokenCounter.prototype.countTokens).mockReturnValue(10);
   });
 
   test('pack should orchestrate packing files and generating output', async () => {
@@ -46,7 +42,7 @@ describe('packager', () => {
       validateFileSafety: vi.fn().mockResolvedValue({
         safeFilePaths: mockFilePaths,
         safeRawFiles: mockSafeRawFiles,
-        suspiciousFileResults: [],
+        suspiciousFilesResults: [],
       }),
       generateOutput: vi.fn().mockResolvedValue(mockOutput),
       writeOutputToDisk: vi.fn().mockResolvedValue(undefined),
@@ -66,14 +62,12 @@ describe('packager', () => {
       }),
     };
 
-    vi.mocked(TokenCounter.prototype.countTokens).mockReturnValue(10);
-
     const mockConfig = createMockConfig();
     const progressCallback = vi.fn();
     const result = await pack(['root'], mockConfig, progressCallback, mockDeps);
 
     expect(mockDeps.searchFiles).toHaveBeenCalledWith('root', mockConfig);
-    expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', progressCallback);
+    expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback);
     expect(mockDeps.validateFileSafety).toHaveBeenCalled();
     expect(mockDeps.processFiles).toHaveBeenCalled();
     expect(mockDeps.writeOutputToDisk).toHaveBeenCalled();

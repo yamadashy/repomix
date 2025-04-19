@@ -61,7 +61,9 @@ export const pack = async (
   progressCallback('Collecting files...');
   const rawFiles = (
     await Promise.all(
-      sortedFilePathsByDir.map(({ rootDir, filePaths }) => deps.collectFiles(filePaths, rootDir, progressCallback)),
+      sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
+        deps.collectFiles(filePaths, rootDir, config, progressCallback)
+      ),
     )
   ).reduce((acc: RawFile[], curr: RawFile[]) => acc.concat(...curr), []);
 

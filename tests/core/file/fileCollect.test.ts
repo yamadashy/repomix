@@ -11,6 +11,7 @@ import type { FileCollectTask } from '../../../src/core/file/workers/fileCollect
 import { MAX_FILE_SIZE } from '../../../src/core/file/workers/fileCollectWorker.js';
 import fileCollectWorker from '../../../src/core/file/workers/fileCollectWorker.js';
 import { logger } from '../../../src/shared/logger.js';
+import { createMockConfig } from '../../testing/testUtils.js';
 
 vi.mock('node:fs/promises');
 vi.mock('istextorbinary');
@@ -42,13 +43,14 @@ describe('fileCollect', () => {
   it('should collect non-binary files', async () => {
     const mockFilePaths = ['file1.txt', 'file2.txt'];
     const mockRootDir = '/root';
+    const mockConfig = createMockConfig();
 
     vi.mocked(isBinary).mockReturnValue(false);
     vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('file content'));
     vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
     vi.mocked(iconv.decode).mockReturnValue('decoded content');
 
-    const result = await collectFiles(mockFilePaths, mockRootDir, () => {}, {
+    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       initTaskRunner: mockInitTaskRunner,
     });
 
@@ -61,6 +63,7 @@ describe('fileCollect', () => {
   it('should skip binary files', async () => {
     const mockFilePaths = ['binary.bin', 'text.txt'];
     const mockRootDir = '/root';
+    const mockConfig = createMockConfig();
 
     vi.mocked(isBinary)
       .mockReturnValueOnce(true) // for binary.bin
@@ -69,7 +72,7 @@ describe('fileCollect', () => {
     vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
     vi.mocked(iconv.decode).mockReturnValue('decoded content');
 
-    const result = await collectFiles(mockFilePaths, mockRootDir, () => {}, {
+    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       initTaskRunner: mockInitTaskRunner,
     });
 
@@ -77,9 +80,10 @@ describe('fileCollect', () => {
     expect(logger.debug).toHaveBeenCalledWith(`Skipping binary file: ${path.resolve('/root/binary.bin')}`);
   });
 
-  it('should skip large files', async () => {
+  it('should skip large files based on default maxFileSize', async () => {
     const mockFilePaths = ['large.txt', 'normal.txt'];
     const mockRootDir = '/root';
+    const mockConfig = createMockConfig();
     const largePath = path.resolve('/root/large.txt');
 
     vi.mocked(fs.stat)
@@ -98,7 +102,7 @@ describe('fileCollect', () => {
     vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
     vi.mocked(iconv.decode).mockReturnValue('decoded content');
 
-    const result = await collectFiles(mockFilePaths, mockRootDir, () => {}, {
+    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       initTaskRunner: mockInitTaskRunner,
     });
 
@@ -116,14 +120,56 @@ describe('fileCollect', () => {
     expect(fs.readFile).toHaveBeenCalledTimes(1);
   });
 
+  it('should respect custom maxFileSize setting', async () => {
+    const mockFilePaths = ['medium.txt', 'small.txt'];
+    const mockRootDir = '/root';
+    const customMaxFileSize = 5 * 1024 * 1024; // 5MB
+    const mockConfig = createMockConfig({
+      input: {
+        maxFileSize: customMaxFileSize,
+      },
+    });
+    const mediumPath = path.resolve('/root/medium.txt');
+
+    vi.mocked(fs.stat)
+      .mockResolvedValueOnce({
+        // for medium.txt
+        size: 10 * 1024 * 1024, // 10MB (exceeds custom 5MB limit)
+        isFile: () => true,
+      } as Stats)
+      .mockResolvedValueOnce({
+        // for small.txt
+        size: 1024, // 1KB (within limit)
+        isFile: () => true,
+      } as Stats);
+    vi.mocked(isBinary).mockReturnValue(false);
+    vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('file content'));
+    vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
+    vi.mocked(iconv.decode).mockReturnValue('decoded content');
+
+    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
+      initTaskRunner: mockInitTaskRunner,
+    });
+
+    expect(result).toEqual([{ path: 'small.txt', content: 'decoded content' }]);
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('File exceeds size limit:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('10.0MB > 5.0MB'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining(mediumPath));
+
+    // Verify fs.readFile is not called for the medium file
+    expect(fs.readFile).not.toHaveBeenCalledWith(mediumPath);
+    expect(fs.readFile).toHaveBeenCalledTimes(1);
+  });
+
   it('should handle file read errors', async () => {
     const mockFilePaths = ['error.txt'];
     const mockRootDir = '/root';
+    const mockConfig = createMockConfig();
 
     vi.mocked(isBinary).mockReturnValue(false);
     vi.mocked(fs.readFile).mockRejectedValue(new Error('Read error'));
 
-    const result = await collectFiles(mockFilePaths, mockRootDir, () => {}, {
+    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       initTaskRunner: mockInitTaskRunner,
     });
 

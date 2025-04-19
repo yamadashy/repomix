@@ -14,6 +14,11 @@ export const defaultFilePathMap: Record<RepomixOutputStyle, string> = {
 
 // Base config schema
 export const repomixConfigBaseSchema = z.object({
+  input: z
+    .object({
+      maxFileSize: z.number().optional(),
+    })
+    .optional(),
   output: z
     .object({
       filePath: z.string().optional(),
@@ -61,6 +66,11 @@ export const repomixConfigBaseSchema = z.object({
 
 // Default config schema with default values
 export const repomixConfigDefaultSchema = z.object({
+  input: z
+    .object({
+      maxFileSize: z.number().int().min(1).default(50 * 1024 * 1024), // Default: 50MB
+    })
+    .default({}),
   output: z
     .object({
       filePath: z.string().default(defaultFilePathMap.xml),

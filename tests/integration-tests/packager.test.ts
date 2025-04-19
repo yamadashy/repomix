@@ -78,8 +78,8 @@ describe.runIf(!isWindows)('packager integration', () => {
       await pack([inputDir], mergedConfig, () => {}, {
         searchFiles,
         sortPaths: (filePaths) => filePaths,
-        collectFiles: (filePaths, rootDir, progressCallback) => {
-          return collectFiles(filePaths, rootDir, progressCallback, {
+        collectFiles: (filePaths, rootDir, config, progressCallback) => {
+          return collectFiles(filePaths, rootDir, config, progressCallback, {
             initTaskRunner: mockCollectFileInitTaskRunner,
           });
         },
