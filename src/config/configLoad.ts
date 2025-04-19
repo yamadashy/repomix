@@ -103,6 +103,11 @@ export const mergeConfigs = (
 
   const mergedConfig = {
     cwd,
+    input: {
+      ...baseConfig.input,
+      ...fileConfig.input,
+      ...cliConfig.input,
+    },
     output: {
       ...baseConfig.output,
       ...fileConfig.output,

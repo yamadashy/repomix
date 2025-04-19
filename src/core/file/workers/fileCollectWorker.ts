@@ -33,12 +33,7 @@ const readRawFile = async (filePath: string, maxFileSize: number): Promise<strin
     if (stats.size > maxFileSize) {
       const sizeKB = (stats.size / 1024).toFixed(1);
       const maxSizeKB = (maxFileSize / 1024).toFixed(1);
-      logger.log('');
-      logger.log('⚠️ Large File Warning:');
-      logger.log('──────────────────────');
-      logger.log(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
-      logger.log(pc.dim('Add this file to .repomixignore if you want to exclude it permanently'));
-      logger.log('');
+      logger.trace(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
       return null;
     }
 

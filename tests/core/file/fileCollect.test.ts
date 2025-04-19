@@ -109,13 +109,8 @@ describe('fileCollect', () => {
     });
 
     expect(result).toEqual([{ path: 'normal.txt', content: 'decoded content' }]);
-    expect(logger.log).toHaveBeenCalledWith('⚠️ Large File Warning:');
-    expect(logger.log).toHaveBeenCalledWith('──────────────────────');
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('File exceeds size limit:'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining(largePath));
-    expect(logger.log).toHaveBeenCalledWith(
-      pc.dim('Add this file to .repomixignore if you want to exclude it permanently'),
-    );
+    expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining('File exceeds size limit:'));
+    expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining(largePath));
 
     // Verify fs.readFile is not called for the large file
     expect(fs.readFile).not.toHaveBeenCalledWith(largePath);
@@ -154,9 +149,9 @@ describe('fileCollect', () => {
     });
 
     expect(result).toEqual([{ path: 'small.txt', content: 'decoded content' }]);
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('File exceeds size limit:'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('10240.0KB > 5120.0KB'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining(mediumPath));
+    expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining('File exceeds size limit:'));
+    expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining('10240.0KB > 5120.0KB'));
+    expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining(mediumPath));
 
     // Verify fs.readFile is not called for the medium file
     expect(fs.readFile).not.toHaveBeenCalledWith(mediumPath);

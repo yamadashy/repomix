@@ -1,4 +1,7 @@
 {
+  "input": {
+    "maxFileSize": 50000000
+  },
   "output": {
     "filePath": "repomix-output.xml",
     "style": "xml",
