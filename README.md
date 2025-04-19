@@ -194,6 +194,12 @@ To exclude specific files or directories:
 repomix --ignore "**/*.log,tmp/"
 ```
 
+To force include files (overriding ignore patterns):
+
+```bash
+repomix --force-include "coverage/summary.json,test-results/junit.xml"
+```
+
 To pack a remote repository:
 
 ```bash

@@ -99,6 +99,7 @@ repomix --init --global
     }
   },
   "include": ["**/*"],
+  "forceInclude": ["coverage/summary.json", "test-results/junit.xml"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,
@@ -131,10 +132,11 @@ Repomixは以下の順序で設定ファイルを探します：
 
 Repomixは複数の方法でファイルの除外を指定できます。パターンは以下の優先順位で処理されます：
 
-1. CLIオプション（`--ignore`）
-2. プロジェクトディレクトリの`.repomixignore`ファイル
-3. `.gitignore`および`.git/info/exclude`（`ignore.useGitignore`がtrueの場合）
-4. デフォルトパターン（`ignore.useDefaultPatterns`がtrueの場合）
+1. 強制的に含めるパターン（`--force-include`）
+2. CLIオプション（`--ignore`）
+3. プロジェクトディレクトリの`.repomixignore`ファイル
+4. `.gitignore`および`.git/info/exclude`（`ignore.useGitignore`がtrueの場合）
+5. デフォルトパターン（`ignore.useDefaultPatterns`がtrueの場合）
 
 `.repomixignore`の例：
 ```text

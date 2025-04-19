@@ -24,6 +24,7 @@
 
 ## Filter Options
 - `--include <patterns>`: Include patterns (comma-separated)
+- `--force-include <patterns>`: Force include patterns that override ignore rules (comma-separated)
 - `-i, --ignore <patterns>`: Ignore patterns (comma-separated)
 - `--no-gitignore`: Disable .gitignore file usage
 - `--no-default-patterns`: Disable default patterns
@@ -68,6 +69,9 @@ repomix --compress
 
 # Process specific files
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# Force include specific files even if they're ignored
+repomix --force-include "coverage/summary.json,test-results/junit.xml"
 
 # Remote repository with branch
 repomix --remote https://github.com/user/repo/tree/main
