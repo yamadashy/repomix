@@ -33,6 +33,7 @@ repomix --init
     }
   },
   "include": ["**/*"],
+  "forceInclude": ["coverage/summary.json", "test-results/junit.xml"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,
@@ -58,10 +59,11 @@ Location:
 ## Ignore Patterns
 
 Priority:
-1. CLI options (`--ignore`)
-2. `.repomixignore`
-3. `.gitignore` and `.git/info/exclude`
-4. Default patterns
+1. Force include patterns (`--force-include`)
+2. CLI options (`--ignore`)
+3. `.repomixignore`
+4. `.gitignore` and `.git/info/exclude`
+5. Default patterns
 
 `.repomixignore` example:
 ```text
