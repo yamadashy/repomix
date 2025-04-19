@@ -155,7 +155,7 @@ describe('fileCollect', () => {
 
     expect(result).toEqual([{ path: 'small.txt', content: 'decoded content' }]);
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('File exceeds size limit:'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('10.0MB > 5.0MB'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('10240.0KB > 5120.0KB'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining(mediumPath));
 
     // Verify fs.readFile is not called for the medium file
