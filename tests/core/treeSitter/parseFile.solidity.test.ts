@@ -7,6 +7,9 @@ describe('Solidity File Parsing', () => {
   let parser: LanguageParser;
   const defaultConfig: RepomixConfigMerged = {
     cwd: process.cwd(),
+    input: {
+      maxFileSize: 50 * 1024 * 1024,
+    },
     output: {
       filePath: 'output.txt',
       style: 'xml',

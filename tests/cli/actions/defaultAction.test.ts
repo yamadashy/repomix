@@ -19,6 +19,9 @@ describe('defaultAction', () => {
     vi.mocked(configLoader.loadFileConfig).mockResolvedValue({});
     vi.mocked(configLoader.mergeConfigs).mockReturnValue({
       cwd: process.cwd(),
+      input: {
+        maxFileSize: 50 * 1024 * 1024,
+      },
       output: {
         filePath: 'output.txt',
         style: 'plain',

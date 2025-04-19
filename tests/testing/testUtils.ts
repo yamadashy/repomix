@@ -15,6 +15,10 @@ type DeepPartial<T> = {
 export const createMockConfig = (config: DeepPartial<RepomixConfigMerged> = {}): RepomixConfigMerged => {
   return {
     cwd: process.cwd(),
+    input: {
+      ...defaultConfig.input,
+      ...config.input,
+    },
     output: {
       ...defaultConfig.output,
       ...config.output,

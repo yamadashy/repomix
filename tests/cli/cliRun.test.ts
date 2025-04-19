@@ -57,6 +57,9 @@ describe('cliRun', () => {
     vi.mocked(defaultAction.runDefaultAction).mockResolvedValue({
       config: {
         cwd: process.cwd(),
+        input: {
+          maxFileSize: 50 * 1024 * 1024,
+        },
         output: {
           filePath: 'repomix-output.txt',
           style: 'plain',
@@ -101,6 +104,9 @@ describe('cliRun', () => {
     vi.mocked(remoteAction.runRemoteAction).mockResolvedValue({
       config: {
         cwd: process.cwd(),
+        input: {
+          maxFileSize: 50 * 1024 * 1024,
+        },
         output: {
           filePath: 'repomix-output.txt',
           style: 'plain',

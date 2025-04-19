@@ -1,4 +1,5 @@
 import pc from 'picocolors';
+import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import { initPiscina } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
@@ -13,6 +14,7 @@ const initTaskRunner = (numOfTasks: number) => {
 export const collectFiles = async (
   filePaths: string[],
   rootDir: string,
+  config: RepomixConfigMerged,
   progressCallback: RepomixProgressCallback = () => {},
   deps = {
     initTaskRunner,
@@ -24,6 +26,7 @@ export const collectFiles = async (
       ({
         filePath,
         rootDir,
+        maxFileSize: config.input.maxFileSize,
       }) satisfies FileCollectTask,
   );
 
