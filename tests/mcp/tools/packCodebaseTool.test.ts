@@ -54,6 +54,9 @@ describe('PackCodebaseTool', () => {
     vi.mocked(runCli).mockImplementation(async (directories, cwd, opts = {}) => ({
       packResult: defaultPackResult,
       config: {
+        input: {
+          maxFileSize: 50 * 1024 * 1024,
+        },
         output: {
           filePath: opts.output ?? '/temp/dir/repomix-output.xml',
           style: opts.style ?? 'xml',

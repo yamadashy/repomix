@@ -68,7 +68,11 @@ export const repomixConfigBaseSchema = z.object({
 export const repomixConfigDefaultSchema = z.object({
   input: z
     .object({
-      maxFileSize: z.number().int().min(1).default(50 * 1024 * 1024), // Default: 50MB
+      maxFileSize: z
+        .number()
+        .int()
+        .min(1)
+        .default(50 * 1024 * 1024), // Default: 50MB
     })
     .default({}),
   output: z

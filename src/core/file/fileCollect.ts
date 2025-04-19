@@ -1,8 +1,8 @@
 import pc from 'picocolors';
+import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import { initPiscina } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
-import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import type { RawFile } from './fileTypes.js';
 import type { FileCollectTask } from './workers/fileCollectWorker.js';
 

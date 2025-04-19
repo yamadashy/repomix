@@ -8,10 +8,12 @@ import pc from 'picocolors';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { collectFiles } from '../../../src/core/file/fileCollect.js';
 import type { FileCollectTask } from '../../../src/core/file/workers/fileCollectWorker.js';
-import { MAX_FILE_SIZE } from '../../../src/core/file/workers/fileCollectWorker.js';
 import fileCollectWorker from '../../../src/core/file/workers/fileCollectWorker.js';
 import { logger } from '../../../src/shared/logger.js';
 import { createMockConfig } from '../../testing/testUtils.js';
+
+// Define the max file size constant for tests
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 vi.mock('node:fs/promises');
 vi.mock('istextorbinary');
