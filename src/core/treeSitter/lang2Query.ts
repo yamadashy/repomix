@@ -13,6 +13,7 @@ import { querySolidity } from './queries/querySolidity.js';
 import { querySwift } from './queries/querySwift.js';
 import { queryTypescript } from './queries/queryTypescript.js';
 import { queryVue } from './queries/queryVue.js';
+import { queryXml } from './queries/queryXml.js';
 
 export const lang2Query = {
   javascript: queryJavascript,
@@ -30,6 +31,7 @@ export const lang2Query = {
   solidity: querySolidity,
   css: queryCss,
   vue: queryVue,
+  xml: queryXml,
 };
 
 export type SupportedLang = keyof typeof lang2Query;
