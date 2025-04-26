@@ -213,6 +213,69 @@ Process a remote repository and output to a `output` directory:
 docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix --remote https://github.com/yamadashy/repomix
 ```
 
+### GitHub Action Usage 🤖
+
+You can also use Repomix in your GitHub Actions workflows. This is useful for automating the process of packing your codebase for AI analysis.
+
+Basic usage:
+
+```yaml
+- name: Pack repository with Repomix
+  uses: yamadashy/repomix/.github/actions/repomix@main
+  with:
+    directories: src
+    include: "**/*.ts"
+    output: repomix-output.txt
+```
+
+Pack specific directories with compression:
+
+```yaml
+- name: Pack repository with Repomix
+  uses: yamadashy/repomix/.github/actions/repomix@main
+  with:
+    directories: src tests
+    include: "**/*.ts,**/*.md"
+    ignore: "**/*.test.ts"
+    output: repomix-output.txt
+    compress: true
+```
+
+Upload the output file as an artifact:
+
+```yaml
+- name: Pack repository with Repomix
+  uses: yamadashy/repomix/.github/actions/repomix@main
+  with:
+    directories: src
+    output: repomix-output.txt
+    compress: true
+
+- name: Upload Repomix output
+  uses: actions/upload-artifact@v4
+  with:
+    name: repomix-output
+    path: repomix-output.txt
+```
+
+#### Action Inputs
+
+| Name | Description | Default |
+|------|-------------|---------|
+| `directories` | Space-separated list of directories to process | `.` |
+| `include` | Comma-separated glob patterns to include | `""` |
+| `ignore` | Comma-separated glob patterns to ignore | `""` |
+| `output` | Relative path for the packed file | `repomix.txt` |
+| `compress` | Enable smart compression | `true` |
+| `additional-args` | Extra raw arguments for the repomix CLI | `""` |
+| `repomix-version` | Version of the npm package to install | `latest` |
+
+#### Action Outputs
+
+| Name | Description |
+|------|-------------|
+| `output-file` | Path to the generated output file |
+
 ### Prompt Examples
 
 Once you have generated the packed file with Repomix, you can use it with AI tools like ChatGPT, DeepSeek, Perplexity, Gemini, Gemma, Llama, Grok, and more.

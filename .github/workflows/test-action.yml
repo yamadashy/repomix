@@ -1,0 +1,27 @@
+name: Test Repomix Action
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/actions/repomix/**'
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Repomix Action
+        uses: ./.github/actions/repomix
+        with:
+          directories: "src"
+          include: "**/*.ts"
+          output: "repomix-test-output.txt"
+          compress: "true"
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: repomix-output
+          path: repomix-test-output.txt
