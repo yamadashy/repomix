@@ -81,7 +81,7 @@
     "log-update": "^6.1.0",
     "minimatch": "^10.0.1",
     "picocolors": "^1.1.1",
-    "piscina": "^4.9.2",
+    "piscina": "^5.0.0",
     "strip-comments": "^2.0.1",
     "strip-json-comments": "^5.0.1",
     "tiktoken": "^1.0.20",
