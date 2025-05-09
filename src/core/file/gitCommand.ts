@@ -127,7 +127,13 @@ export const execGitShallowClone = async (
   deps = {
     execFileAsync,
   },
-) => {
+): Promise<{
+  repoUrl: string;
+  remoteBranch: string | undefined;
+  filePath: string | undefined;
+  repoOwner: string;
+  repoName: string;
+}> => {
   // Check if the URL is valid
   try {
     new URL(url);
@@ -135,41 +141,94 @@ export const execGitShallowClone = async (
     throw new RepomixError(`Invalid repository URL. Please provide a valid URL. url: ${url}`);
   }
 
+  await deps.execFileAsync('git', ['clone', '--depth', '1', url, directory]);
+
+  const urlObj = new URL(url);
+  const pathParts = urlObj.pathname.split('/').filter((part) => part.trim());
+  const repoOwner = pathParts[0] || '';
+  const repoName = (pathParts[1] || '').replace(/\.git$/, '');
+
+  let finalRemoteBranch: string | undefined = undefined;
+  let filePath: string | undefined = undefined;
+
   if (remoteBranch) {
-    await deps.execFileAsync('git', ['-C', directory, 'init']);
-    await deps.execFileAsync('git', ['-C', directory, 'remote', 'add', 'origin', url]);
-    try {
-      await deps.execFileAsync('git', ['-C', directory, 'fetch', '--depth', '1', 'origin', remoteBranch]);
-      await deps.execFileAsync('git', ['-C', directory, 'checkout', 'FETCH_HEAD']);
-    } catch (err: unknown) {
-      // git fetch --depth 1 origin <short SHA> always throws "couldn't find remote ref" error
-      const isRefNotfoundError =
-        err instanceof Error && err.message.includes(`couldn't find remote ref ${remoteBranch}`);
+    const { stdout } = await deps.execFileAsync('git', ['-C', directory, 'ls-remote', '--heads', 'origin']);
 
-      if (!isRefNotfoundError) {
-        // Rethrow error as nothing else we can do
-        throw err;
+    const availableBranches = stdout
+      .split('\n')
+      .filter((line) => line.trim())
+      .map((line) => {
+        const parts = line.split('refs/heads/');
+        return parts.length > 1 ? parts[1] : null;
+      })
+      .filter((branch): branch is string => branch !== null);
+
+    logger.trace(`Available branches: ${availableBranches.join(', ')}`);
+
+    if (remoteBranch.includes('/')) {
+      const pathParts = remoteBranch.split('/');
+      const possibleBranches: string[] = [];
+
+      for (let i = pathParts.length; i > 0; i--) {
+        const potentialBranch = pathParts.slice(0, i).join('/');
+        possibleBranches.push(potentialBranch);
       }
 
-      // Short SHA detection - matches a hexadecimal string of 4 to 39 characters
-      // If the string matches this regex, it MIGHT be a short SHA
-      // If the string doesn't match, it is DEFINITELY NOT a short SHA
-      const isNotShortSHA = !remoteBranch.match(/^[0-9a-f]{4,39}$/i);
+      const matchedBranch = possibleBranches.find((branch) => availableBranches.includes(branch));
 
-      if (isNotShortSHA) {
-        // Rethrow error as nothing else we can do
-        throw err;
+      if (matchedBranch) {
+        finalRemoteBranch = matchedBranch;
+
+        // If the matched branch is shorter than the full path, the rest is the file path
+        if (matchedBranch.length < remoteBranch.length) {
+          filePath = remoteBranch.substring(matchedBranch.length + 1); // +1 for the slash
+        }
+      } else {
+        const isCommitHash = remoteBranch.match(/^[0-9a-f]{4,40}$/i);
+        if (isCommitHash) {
+          finalRemoteBranch = remoteBranch;
+        } else {
+          throw new RepomixError(`Could not find branch: ${remoteBranch}`);
+        }
       }
-
-      // Maybe the error is due to a short SHA, let's try again
-      // Can't use --depth 1 here as we need to fetch the specific commit
-      await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin']);
-      await deps.execFileAsync('git', ['-C', directory, 'checkout', remoteBranch]);
+    } else {
+      if (availableBranches.includes(remoteBranch)) {
+        finalRemoteBranch = remoteBranch;
+      } else {
+        // Check if it's a commit hash
+        const isCommitHash = remoteBranch.match(/^[0-9a-f]{4,40}$/i);
+        if (isCommitHash) {
+          finalRemoteBranch = remoteBranch;
+        } else {
+          throw new RepomixError(`Could not find branch: ${remoteBranch}`);
+        }
+      }
     }
-  } else {
-    await deps.execFileAsync('git', ['clone', '--depth', '1', url, directory]);
+
+    try {
+      if (finalRemoteBranch) {
+        await deps.execFileAsync('git', ['-C', directory, 'reset', '--hard']);
+
+        try {
+          await deps.execFileAsync('git', ['-C', directory, 'checkout', finalRemoteBranch]);
+        } catch (err) {
+          await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin']);
+          await deps.execFileAsync('git', ['-C', directory, 'checkout', finalRemoteBranch]);
+        }
+      }
+    } catch (err) {
+      throw new RepomixError(`Failed to checkout branch or commit: ${finalRemoteBranch}`);
+    }
   }
 
   // Clean up .git directory
   await fs.rm(path.join(directory, '.git'), { recursive: true, force: true });
+
+  return {
+    repoUrl: url,
+    remoteBranch: finalRemoteBranch,
+    filePath,
+    repoOwner,
+    repoName,
+  };
 };

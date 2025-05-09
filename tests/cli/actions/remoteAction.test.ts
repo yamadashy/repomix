@@ -10,12 +10,13 @@ import {
 } from '../../../src/cli/actions/remoteAction.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
-vi.mock('node:fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:fs/promises')>();
+vi.mock('node:fs/promises', async () => {
   return {
-    ...actual,
-    copyFile: vi.fn(),
-    mkdir: vi.fn(),
+    copyFile: vi.fn().mockResolvedValue(undefined),
+    mkdir: vi.fn().mockResolvedValue(undefined),
+    writeFile: vi.fn().mockResolvedValue(undefined),
+    rm: vi.fn().mockResolvedValue(undefined),
+    mkdtemp: vi.fn().mockResolvedValue('/tmp/repomix-test'),
   };
 });
 vi.mock('../../../src/shared/logger');
@@ -28,32 +29,49 @@ describe('remoteAction functions', () => {
 
   describe('runRemoteAction', () => {
     test('should clone the repository', async () => {
+      const mockTempDir = '/tmp/repomix-test';
+      vi.mocked(fs.mkdtemp).mockResolvedValue(mockTempDir);
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-      await runRemoteAction(
-        'yamadashy/repomix',
-        {},
-        {
-          isGitInstalled: async () => Promise.resolve(true),
-          execGitShallowClone: async (url: string, directory: string) => {
-            await fs.writeFile(path.join(directory, 'README.md'), 'Hello, world!');
+      vi.mocked(fs.rm).mockResolvedValue(undefined);
+
+      const mockConfig = createMockConfig();
+      mockConfig.output.filePath = 'output.md';
+
+      const mockDeps = {
+        isGitInstalled: vi.fn().mockResolvedValue(true),
+        execGitShallowClone: vi.fn().mockImplementation(async (url, dir) => {
+          await fs.writeFile(path.join(dir, 'README.md'), 'Test content');
+          return {
+            repoUrl: url,
+            remoteBranch: undefined,
+            filePath: undefined,
+            repoOwner: 'yamadashy',
+            repoName: 'repomix',
+          };
+        }),
+        runDefaultAction: vi.fn().mockResolvedValue({
+          packResult: {
+            totalFiles: 1,
+            totalCharacters: 1,
+            totalTokens: 1,
+            fileCharCounts: {},
+            fileTokenCounts: {},
+            suspiciousFilesResults: [],
+          suspiciousGitDiffResults: [],
+          gitDiffTokenCount: 0,
           },
-          runDefaultAction: async () => {
-            return {
-              packResult: {
-                totalFiles: 1,
-                totalCharacters: 1,
-                totalTokens: 1,
-                fileCharCounts: {},
-                fileTokenCounts: {},
-                suspiciousFilesResults: [],
-                suspiciousGitDiffResults: [],
-                gitDiffTokenCount: 0,
-              },
-              config: createMockConfig(),
-            } satisfies DefaultActionRunnerResult;
-          },
-        },
-      );
+          config: mockConfig,
+        }),
+      };
+
+      await runRemoteAction('yamadashy/repomix', {}, mockDeps);
+
+      expect(mockDeps.isGitInstalled).toHaveBeenCalled();
+      expect(mockDeps.execGitShallowClone).toHaveBeenCalled();
+
+      expect(mockDeps.runDefaultAction).toHaveBeenCalled();
+      expect(fs.copyFile).toHaveBeenCalled();
+      expect(fs.rm).toHaveBeenCalledWith(mockTempDir, expect.any(Object));
     });
   });
 
