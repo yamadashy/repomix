@@ -33,16 +33,23 @@ export const runRemoteAction = async (
   try {
     spinner.start();
 
-    // Clone the repository
-    await cloneRepository(parsedFields.repoUrl, tempDirPath, cliOptions.remoteBranch || parsedFields.remoteBranch, {
-      execGitShallowClone: deps.execGitShallowClone,
-    });
+    // Clone the repository with enhanced branch and file path detection
+    const cloneResult = await cloneRepository(
+      parsedFields.repoUrl,
+      tempDirPath,
+      cliOptions.remoteBranch || parsedFields.remoteBranch,
+      {
+        execGitShallowClone: deps.execGitShallowClone,
+      },
+    );
 
     spinner.succeed('Repository cloned successfully!');
     logger.log('');
 
+    const rootDirs = [tempDirPath];
+
     // Run the default action on the cloned repository
-    result = await deps.runDefaultAction([tempDirPath], tempDirPath, cliOptions);
+    result = await deps.runDefaultAction(rootDirs, tempDirPath, cliOptions);
     await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
   } catch (error) {
     spinner.fail('Error during repository cloning. cleanup...');
@@ -131,18 +138,38 @@ export const cloneRepository = async (
   deps = {
     execGitShallowClone,
   },
-): Promise<void> => {
+): Promise<{
+  repoUrl: string;
+  remoteBranch: string | undefined;
+  filePath: string | undefined;
+  repoOwner: string;
+  repoName: string;
+}> => {
   logger.log(`Clone repository: ${url} to temporary directory. ${pc.dim(`path: ${directory}`)}`);
   logger.log('');
 
   try {
-    await deps.execGitShallowClone(url, directory, remoteBranch);
+    const result = await deps.execGitShallowClone(url, directory, remoteBranch);
+
+    if (result.filePath) {
+      logger.log(`Detected file path: ${pc.green(result.filePath)}`);
+    }
+
+    if (result.remoteBranch !== remoteBranch) {
+      logger.log(`Using branch: ${pc.green(result.remoteBranch || 'default')}`);
+    }
+
+    return result;
   } catch (error) {
     throw new RepomixError(`Failed to clone repository: ${(error as Error).message}`);
   }
 };
 
-export const cleanupTempDirectory = async (directory: string): Promise<void> => {
+export const cleanupTempDirectory = async (directory?: string): Promise<void> => {
+  if (!directory) {
+    logger.trace('No directory to clean up');
+    return;
+  }
   logger.trace(`Cleaning up temporary directory: ${directory}`);
   await fs.rm(directory, { recursive: true, force: true });
 };
