@@ -33,6 +33,7 @@ repomix --init
     }
   },
   "include": ["**/*"],
+  "forceInclude": ["coverage/summary.json", "test-results/junit.xml"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,
@@ -58,10 +59,11 @@ repomix --init --global
 ## 除外パターン
 
 優先順位：
-1. CLIオプション（`--ignore`）
-2. `.repomixignore`
-3. `.gitignore` および `.git/info/exclude`
-4. デフォルトパターン
+1. 強制的に含めるパターン（`--force-include`）
+2. CLIオプション（`--ignore`）
+3. `.repomixignore`
+4. `.gitignore` および `.git/info/exclude`
+5. デフォルトパターン
 
 `.repomixignore` の例：
 ```text
