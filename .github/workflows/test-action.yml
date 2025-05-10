@@ -12,13 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        node-version: [20, 22, 23]
         include:
-          - node-version: 18
-            test-case: "minimal"
           - node-version: 20
-            test-case: "basic"
+            test-case: "minimal"
           - node-version: 22
+            test-case: "basic"
+          - node-version: 23
             test-case: "full"
     steps:
       - uses: actions/checkout@v4

@@ -68,7 +68,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node-version: [18.0.0, 18.x, 19.x, 20.x, 21.x, 22.x, 23.x, 24.x]
+        node-version: [20.0.0, 20.x, 21.x, 22.x, 23.x, 24.x]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
@@ -110,13 +110,13 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+<<<<<<< HEAD
         node-version: [18.0.0, 18.x, 19.x, 20.x, 21.x, 22.x, 23.x, 24.x]
-    runs-on: ${{ matrix.os }}
-    steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
+||||||| parent of 6749f01 (chore(deps): Remove Node.js 18 support (EOL April 30, 2025))
+        node-version: [18.0.0, 18.x, 19.x, 20.x, 21.x, 22.x, 23.x]
+=======
+        node-version: [20.0.0, 20.x, 21.x, 22.x, 23.x]
+        node-version: [20.0.0, 20.x, 21.x, 22.x, 23.x, 24.x]
         node-version: ${{ matrix.node-version }}
     - run: npm ci
     - run: npm run build
