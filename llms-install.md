@@ -10,7 +10,7 @@ Repomix MCP server is a powerful tool that packages local or remote codebases in
 
 Before installation, you need:
 
-1. Node.js 18.0.0 or higher
+1. Node.js 20.0.0 or higher
 2. npm (Node Package Manager)
 
 ## Installation and Configuration
