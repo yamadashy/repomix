@@ -36,14 +36,14 @@ vi.mock('../../src/shared/logger', () => ({
   setLogLevelByEnv: vi.fn(),
 }));
 
-vi.mock('commander', () => ({
-  program: {
-    description: vi.fn().mockReturnThis(),
-    arguments: vi.fn().mockReturnThis(),
-    option: vi.fn().mockReturnThis(),
-    action: vi.fn().mockReturnThis(),
-    parseAsync: vi.fn().mockResolvedValue(undefined),
-  },
+vi.mock('cleye', () => ({
+  cli: vi.fn().mockImplementation((options) => {
+    return {
+      _: ['.'],
+      flags: {},
+    };
+  }),
+  command: vi.fn(),
 }));
 
 vi.mock('../../src/cli/actions/defaultAction');

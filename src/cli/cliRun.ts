@@ -1,5 +1,5 @@
 import process from 'node:process';
-import { Command, Option, program } from 'commander';
+import { cli, command } from 'cleye';
 import pc from 'picocolors';
 import { getVersion } from '../core/file/packageJsonParse.js';
 import { handleError } from '../shared/errorHandle.js';
@@ -46,96 +46,189 @@ const semanticSuggestionMap: Record<string, string[]> = {
 
 export const run = async () => {
   try {
-    program
-      .description('Repomix - Pack your repository into a single AI-friendly file')
-      .argument('[directories...]', 'list of directories to process', ['.'])
-      // Basic Options
-      .option('-v, --version', 'show version information')
-      // Output Options
-      .option('-o, --output <file>', 'specify the output file name')
-      .addOption(new Option('--stdout', 'output to stdout instead of writing to a file').conflicts('output'))
-      .option('--style <type>', 'specify the output style (xml, markdown, plain)')
-      .option('--parsable-style', 'by escaping and formatting, ensure the output is parsable as a document of its type')
-      .option('--compress', 'perform code compression to reduce token count')
-      .option('--output-show-line-numbers', 'add line numbers to each line in the output')
-      .option('--copy', 'copy generated output to system clipboard')
-      .option('--no-file-summary', 'disable file summary section output')
-      .option('--no-directory-structure', 'disable directory structure section output')
-      .option('--no-files', 'disable files content output (metadata-only mode)')
-      .option('--remove-comments', 'remove comments')
-      .option('--remove-empty-lines', 'remove empty lines')
-      .option('--header-text <text>', 'specify the header text')
-      .option('--instruction-file-path <path>', 'path to a file containing detailed custom instructions')
-      .option('--include-empty-directories', 'include empty directories in the output')
-      .option('--no-git-sort-by-changes', 'disable sorting files by git change count')
-      .option(
-        '--include-diffs',
-        'include git diffs in the output (includes both work tree and staged changes separately)',
-      )
-      // Filter Options
-      .option('--include <patterns>', 'list of include patterns (comma-separated)')
-      .option('-i, --ignore <patterns>', 'additional ignore patterns (comma-separated)')
-      .option('--no-gitignore', 'disable .gitignore file usage')
-      .option('--no-default-patterns', 'disable default patterns')
-      // Remote Repository Options
-      .option('--remote <url>', 'process a remote Git repository')
-      .option(
-        '--remote-branch <name>',
-        'specify the remote branch name, tag, or commit hash (defaults to repository default branch)',
-      )
-      // Configuration Options
-      .option('-c, --config <path>', 'path to a custom config file')
-      .option('--init', 'initialize a new repomix.config.json file')
-      .option('--global', 'use global configuration (only applicable with --init)')
-      // Security Options
-      .option('--no-security-check', 'disable security check')
-      // Token Count Options
-      .option('--token-count-encoding <encoding>', 'specify token count encoding (e.g., o200k_base, cl100k_base)')
-      // MCP
-      .option('--mcp', 'run as a MCP server')
-      // Other Options
-      .option('--top-files-len <number>', 'specify the number of top files to display', Number.parseInt)
-      .addOption(new Option('--verbose', 'enable verbose logging for detailed output').conflicts('quiet'))
-      .addOption(new Option('--quiet', 'disable all output to stdout').conflicts('verbose'))
-      .action(commanderActionEndpoint);
+    const argv = cli({
+      name: 'repomix',
+      version: await getVersion(),
+      parameters: ['[directories...]'],
+      // Handle unknown options and provide semantic suggestions
+      onUnknownOption: (option: string) => {
+        const cleanOption = option.replace(/^-+/, '');
+        const semanticMatches = semanticSuggestionMap[cleanOption];
 
-    // Custom error handling function
-    const configOutput = program.configureOutput();
-    const originalOutputError = configOutput.outputError || ((str, write) => write(str));
-
-    program.configureOutput({
-      outputError: (str, write) => {
-        // Check if this is an unknown option error
-        if (str.includes('unknown option')) {
-          const match = str.match(/unknown option '?(-{1,2}[^ ']+)'?/i);
-          if (match?.[1]) {
-            const unknownOption = match[1];
-            const cleanOption = unknownOption.replace(/^-+/, '');
-
-            // Check if the option has a semantic match
-            const semanticMatches = semanticSuggestionMap[cleanOption];
-            if (semanticMatches) {
-              // We have a direct semantic match
-              logger.error(`✖ Unknown option: ${unknownOption}`);
-              logger.info(`Did you mean: ${semanticMatches.join(' or ')}?`);
-              return;
-            }
-          }
+        if (semanticMatches) {
+          logger.error(`✖ Unknown option: ${option}`);
+          logger.info(`Did you mean: ${semanticMatches.join(' or ')}?`);
+          return;
         }
 
-        // Fall back to the original Commander error handler
-        originalOutputError(str, write);
+        logger.error(`✖ Unknown option: ${option}`);
+      },
+      flags: {
+        // Basic Options
+        version: {
+          type: Boolean,
+          alias: 'v',
+          description: 'show version information',
+        },
+        // Output Options
+        output: {
+          type: String,
+          alias: 'o',
+          description: 'specify the output file name',
+        },
+        stdout: {
+          type: Boolean,
+          description: 'output to stdout instead of writing to a file',
+        },
+        style: {
+          type: String,
+          description: 'specify the output style (xml, markdown, plain)',
+        },
+        parsableStyle: {
+          type: Boolean,
+          description: 'by escaping and formatting, ensure the output is parsable as a document of its type',
+        },
+        compress: {
+          type: Boolean,
+          description: 'perform code compression to reduce token count',
+        },
+        outputShowLineNumbers: {
+          type: Boolean,
+          description: 'add line numbers to each line in the output',
+        },
+        copy: {
+          type: Boolean,
+          description: 'copy generated output to system clipboard',
+        },
+        fileSummary: {
+          type: Boolean,
+          default: true,
+          description: 'enable file summary section output',
+        },
+        directoryStructure: {
+          type: Boolean,
+          default: true,
+          description: 'enable directory structure section output',
+        },
+        files: {
+          type: Boolean,
+          default: true,
+          description: 'enable files content output',
+        },
+        removeComments: {
+          type: Boolean,
+          description: 'remove comments',
+        },
+        removeEmptyLines: {
+          type: Boolean,
+          description: 'remove empty lines',
+        },
+        headerText: {
+          type: String,
+          description: 'specify the header text',
+        },
+        instructionFilePath: {
+          type: String,
+          description: 'path to a file containing detailed custom instructions',
+        },
+        includeEmptyDirectories: {
+          type: Boolean,
+          description: 'include empty directories in the output',
+        },
+        gitSortByChanges: {
+          type: Boolean,
+          default: true,
+          description: 'enable sorting files by git change count',
+        },
+        includeDiffs: {
+          type: Boolean,
+          description: 'include git diffs in the output (includes both work tree and staged changes separately)',
+        },
+        // Filter Options
+        include: {
+          type: String,
+          description: 'list of include patterns (comma-separated)',
+        },
+        ignore: {
+          type: String,
+          alias: 'i',
+          description: 'additional ignore patterns (comma-separated)',
+        },
+        gitignore: {
+          type: Boolean,
+          default: true,
+          description: 'enable .gitignore file usage',
+        },
+        defaultPatterns: {
+          type: Boolean,
+          default: true,
+          description: 'enable default patterns',
+        },
+        // Remote Repository Options
+        remote: {
+          type: String,
+          description: 'process a remote Git repository',
+        },
+        remoteBranch: {
+          type: String,
+          description: 'specify the remote branch name, tag, or commit hash (defaults to repository default branch)',
+        },
+        // Configuration Options
+        config: {
+          type: String,
+          alias: 'c',
+          description: 'path to a custom config file',
+        },
+        init: {
+          type: Boolean,
+          description: 'initialize a new repomix.config.json file',
+        },
+        global: {
+          type: Boolean,
+          description: 'use global configuration (only applicable with --init)',
+        },
+        // Security Options
+        securityCheck: {
+          type: Boolean,
+          default: true,
+          description: 'enable security check',
+        },
+        // Token Count Options
+        tokenCountEncoding: {
+          type: String,
+          description: 'specify token count encoding (e.g., o200k_base, cl100k_base)',
+        },
+        // MCP
+        mcp: {
+          type: Boolean,
+          description: 'run as a MCP server',
+        },
+        // Other Options
+        topFilesLen: {
+          type: Number,
+          description: 'specify the number of top files to display',
+        },
+        verbose: {
+          type: Boolean,
+          description: 'enable verbose logging for detailed output',
+        },
+        quiet: {
+          type: Boolean,
+          description: 'disable all output to stdout',
+        },
+      },
+      help: {
+        description: 'Repomix - Pack your repository into a single AI-friendly file',
       },
     });
 
-    await program.parseAsync(process.argv);
+    const directories = argv._.length > 0 ? argv._ : ['.'];
+    const options: CliOptions = argv.flags as unknown as CliOptions;
+
+    await runCli(directories, process.cwd(), options);
   } catch (error) {
     handleError(error);
   }
-};
-
-const commanderActionEndpoint = async (directories: string[], options: CliOptions = {}) => {
-  await runCli(directories, process.cwd(), options);
 };
 
 export const runCli = async (directories: string[], cwd: string, options: CliOptions) => {

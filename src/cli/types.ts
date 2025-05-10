@@ -1,7 +1,6 @@
-import type { OptionValues } from 'commander';
 import type { RepomixOutputStyle } from '../config/configSchema.js';
 
-export interface CliOptions extends OptionValues {
+export interface CliOptions {
   // Basic Options
   version?: boolean;
 
