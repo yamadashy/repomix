@@ -6,10 +6,10 @@ import { handleOptionChange } from '../utils/requestHandlers';
 const props = defineProps<{
   format: 'xml' | 'markdown' | 'plain';
   includePatterns: string;
-  includeFiles: string;
   ignorePatterns: string;
   fileSummary: boolean;
   directoryStructure: boolean;
+  files: boolean;
   removeComments: boolean;
   removeEmptyLines: boolean;
   showLineNumbers: boolean;
@@ -20,10 +20,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:format': [value: 'xml' | 'markdown' | 'plain'];
   'update:includePatterns': [value: string];
-  'update:includeFiles': [value: string];
   'update:ignorePatterns': [value: string];
   'update:fileSummary': [value: boolean];
   'update:directoryStructure': [value: boolean];
+  'update:files': [value: boolean];
   'update:removeComments': [value: boolean];
   'update:removeEmptyLines': [value: boolean];
   'update:showLineNumbers': [value: boolean];
@@ -41,9 +41,9 @@ function handleIncludePatternsUpdate(patterns: string) {
   handleOptionChange(patterns, AnalyticsAction.UPDATE_INCLUDE_PATTERNS);
 }
 
-function handleIncludeFilesUpdate(files: string) {
-  emit('update:includeFiles', files);
-  handleOptionChange(files, AnalyticsAction.UPDATE_INCLUDE_FILES);
+function handleFilesToggle(enabled: boolean) {
+  emit('update:files', enabled);
+  handleOptionChange(enabled, AnalyticsAction.TOGGLE_FILES);
 }
 
 function handleIgnorePatternsUpdate(patterns: string) {
@@ -134,19 +134,7 @@ function handleCompressToggle(enabled: boolean) {
         </div>
       </div>
 
-      <div class="option-section">
-        <p class="option-label">Include Files</p>
-        <div class="input-group">
-          <input
-            :value="includeFiles"
-            @input="event => handleIncludeFilesUpdate((event.target as HTMLInputElement).value)"
-            type="text"
-            class="pattern-input"
-            placeholder="Comma-separated file paths to include. e.g., src/index.ts,README.md"
-            aria-label="Include files"
-          />
-        </div>
-      </div>
+
 
       <div class="option-section">
         <p class="option-label">Ignore Patterns</p>
@@ -185,6 +173,15 @@ function handleCompressToggle(enabled: boolean) {
               class="checkbox-input"
             />
             <span>Include Directory Structure</span>
+          </label>
+          <label class="checkbox-label">
+            <input
+              :checked="files"
+              @change="event => handleFilesToggle((event.target as HTMLInputElement).checked)"
+              type="checkbox"
+              class="checkbox-input"
+            />
+            <span>Include Files</span>
           </label>
           <label class="checkbox-label">
             <input

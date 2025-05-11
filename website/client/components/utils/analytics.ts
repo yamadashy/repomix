@@ -24,10 +24,10 @@ export const AnalyticsAction = {
   TOGGLE_LINE_NUMBERS: 'toggle_line_numbers',
   TOGGLE_FILE_SUMMARY: 'toggle_file_summary',
   TOGGLE_DIRECTORY_STRUCTURE: 'toggle_directory_structure',
+  TOGGLE_FILES: 'toggle_files',
   TOGGLE_OUTPUT_PARSABLE: 'toggle_output_parsable',
   TOGGLE_COMPRESS: 'toggle_compress',
   UPDATE_INCLUDE_PATTERNS: 'update_include_patterns',
-  UPDATE_INCLUDE_FILES: 'update_include_files',
   UPDATE_IGNORE_PATTERNS: 'update_ignore_patterns',
 
   // Output events

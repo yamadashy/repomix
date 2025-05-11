@@ -5,7 +5,7 @@ export interface PackOptions {
   fileSummary?: boolean;
   directoryStructure?: boolean;
   includePatterns?: string;
-  includeFiles?: string;
+  files?: boolean;
   ignorePatterns?: string;
   outputParsable?: boolean;
   compress?: boolean;
