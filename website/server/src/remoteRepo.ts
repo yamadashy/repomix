@@ -40,8 +40,9 @@ export async function processRemoteRepo(
     return cachedResult;
   }
 
-  // Sanitize ignore patterns
+  // Sanitize patterns
   const sanitizedIncludePatterns = sanitizePattern(validatedData.options.includePatterns);
+  const sanitizedIncludeFiles = sanitizePattern(validatedData.options.includeFiles);
   const sanitizedIgnorePatterns = sanitizePattern(validatedData.options.ignorePatterns);
 
   const outputFilePath = `repomix-output-${randomUUID()}.txt`;
@@ -61,6 +62,7 @@ export async function processRemoteRepo(
     securityCheck: false,
     topFilesLen: 10,
     include: sanitizedIncludePatterns,
+    includeFiles: sanitizedIncludeFiles,
     ignore: sanitizedIgnorePatterns,
     quiet: true, // Enable quiet mode to suppress output
   } as CliOptions;
