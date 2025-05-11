@@ -283,13 +283,13 @@ function handleCompressToggle(enabled: boolean) {
 }
 
 .right-column {
-  gap: 18px;
+  gap: 10px;
 }
 
 .option-section {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .option-label {
@@ -297,7 +297,7 @@ function handleCompressToggle(enabled: boolean) {
   font-weight: 500;
   margin: 0;
   color: var(--vp-c-text-2);
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 
 .option-label a {
@@ -345,7 +345,7 @@ function handleCompressToggle(enabled: boolean) {
 .checkbox-group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0px;
 }
 
 .checkbox-label {
@@ -437,7 +437,7 @@ function handleCompressToggle(enabled: boolean) {
 
 .pattern-input {
   width: 100%;
-  padding: 8px 12px;
+  padding: 9px 12px;
   font-size: 16px;
   border: 1px solid var(--vp-c-border);
   border-radius: 6px;
