@@ -27,6 +27,7 @@ export const AnalyticsAction = {
   TOGGLE_OUTPUT_PARSABLE: 'toggle_output_parsable',
   TOGGLE_COMPRESS: 'toggle_compress',
   UPDATE_INCLUDE_PATTERNS: 'update_include_patterns',
+  UPDATE_INCLUDE_FILES: 'update_include_files',
   UPDATE_IGNORE_PATTERNS: 'update_ignore_patterns',
 
   // Output events

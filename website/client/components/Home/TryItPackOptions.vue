@@ -6,6 +6,7 @@ import { handleOptionChange } from '../utils/requestHandlers';
 const props = defineProps<{
   format: 'xml' | 'markdown' | 'plain';
   includePatterns: string;
+  includeFiles: string;
   ignorePatterns: string;
   fileSummary: boolean;
   directoryStructure: boolean;
@@ -19,6 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:format': [value: 'xml' | 'markdown' | 'plain'];
   'update:includePatterns': [value: string];
+  'update:includeFiles': [value: string];
   'update:ignorePatterns': [value: string];
   'update:fileSummary': [value: boolean];
   'update:directoryStructure': [value: boolean];
@@ -37,6 +39,11 @@ function handleFormatChange(newFormat: 'xml' | 'markdown' | 'plain') {
 function handleIncludePatternsUpdate(patterns: string) {
   emit('update:includePatterns', patterns);
   handleOptionChange(patterns, AnalyticsAction.UPDATE_INCLUDE_PATTERNS);
+}
+
+function handleIncludeFilesUpdate(files: string) {
+  emit('update:includeFiles', files);
+  handleOptionChange(files, AnalyticsAction.UPDATE_INCLUDE_FILES);
 }
 
 function handleIgnorePatternsUpdate(patterns: string) {
@@ -123,6 +130,20 @@ function handleCompressToggle(enabled: boolean) {
             class="pattern-input"
             placeholder="Comma-separated patterns to include. e.g., src/**/*.ts"
             aria-label="Include patterns"
+          />
+        </div>
+      </div>
+
+      <div class="option-section">
+        <p class="option-label">Include Files</p>
+        <div class="input-group">
+          <input
+            :value="includeFiles"
+            @input="event => handleIncludeFilesUpdate((event.target as HTMLInputElement).value)"
+            type="text"
+            class="pattern-input"
+            placeholder="Comma-separated file paths to include. e.g., src/index.ts,README.md"
+            aria-label="Include files"
           />
         </div>
       </div>
