@@ -52,8 +52,19 @@ export const runRemoteAction = async (
       } catch (error) {
         logger.log(`Zip download failed: ${(error as Error).message}`);
         logger.log('Falling back to git clone...');
-
-        // Clone the repository
+        
+        try {
+          const files = await fs.readdir(tempDirPath);
+          for (const file of files) {
+            const filePath = path.join(tempDirPath, file);
+            await fs.rm(filePath, { recursive: true, force: true });
+          }
+          logger.trace(`Cleaned directory contents: ${tempDirPath}`);
+        } catch (cleanupError) {
+          logger.trace(`Error cleaning directory: ${(cleanupError as Error).message}`);
+        }
+        
+        // Clone the repository into the cleaned directory
         await cloneRepository(parsedFields.repoUrl, tempDirPath, cliOptions.remoteBranch || parsedFields.remoteBranch, {
           execGitShallowClone: deps.execGitShallowClone,
         });
