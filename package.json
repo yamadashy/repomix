@@ -68,6 +68,8 @@
     "@modelcontextprotocol/sdk": "^1.11.0",
     "@secretlint/core": "^9.3.1",
     "@secretlint/secretlint-rule-preset-recommend": "^9.3.1",
+    "@types/adm-zip": "^0.5.7",
+    "adm-zip": "^0.5.16",
     "cli-spinners": "^2.9.2",
     "clipboardy": "^4.0.0",
     "commander": "^13.1.0",

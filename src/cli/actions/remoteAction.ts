@@ -4,6 +4,7 @@ import path from 'node:path';
 import GitUrlParse, { type GitUrl } from 'git-url-parse';
 import pc from 'picocolors';
 import { execGitShallowClone, isGitInstalled } from '../../core/file/gitCommand.js';
+import { downloadGithubRepoAsZip, isGithubRepoUrl, parseGithubRepoUrl } from '../../core/file/githubZipDownload.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
@@ -19,6 +20,7 @@ export const runRemoteAction = async (
     isGitInstalled,
     execGitShallowClone,
     runDefaultAction,
+    downloadGithubRepoAsZip,
   },
 ): Promise<DefaultActionRunnerResult> => {
   if (!(await deps.isGitInstalled())) {
@@ -26,26 +28,53 @@ export const runRemoteAction = async (
   }
 
   const parsedFields = parseRemoteValue(repoUrl);
-  const spinner = new Spinner('Cloning repository...', cliOptions);
+  const spinner = new Spinner('Processing repository...', cliOptions);
   const tempDirPath = await createTempDirectory();
   let result: DefaultActionRunnerResult;
 
   try {
     spinner.start();
 
-    // Clone the repository
-    await cloneRepository(parsedFields.repoUrl, tempDirPath, cliOptions.remoteBranch || parsedFields.remoteBranch, {
-      execGitShallowClone: deps.execGitShallowClone,
-    });
+    // Check if the URL is a GitHub repository
+    const isGithubRepo = isGithubRepoUrl(parsedFields.repoUrl);
 
-    spinner.succeed('Repository cloned successfully!');
+    if (isGithubRepo) {
+      try {
+        const { owner, repo, branch } = parseGithubRepoUrl(parsedFields.repoUrl);
+        const remoteBranch = cliOptions.remoteBranch || parsedFields.remoteBranch || branch;
+
+        logger.log(
+          `Downloading GitHub repository: ${owner}/${repo}${remoteBranch ? ` (${remoteBranch})` : ''} as zip...`,
+        );
+        await deps.downloadGithubRepoAsZip(owner, repo, tempDirPath, remoteBranch);
+
+        spinner.succeed('Repository downloaded and extracted successfully!');
+      } catch (error) {
+        logger.log(`Zip download failed: ${(error as Error).message}`);
+        logger.log('Falling back to git clone...');
+
+        // Clone the repository
+        await cloneRepository(parsedFields.repoUrl, tempDirPath, cliOptions.remoteBranch || parsedFields.remoteBranch, {
+          execGitShallowClone: deps.execGitShallowClone,
+        });
+
+        spinner.succeed('Repository cloned successfully!');
+      }
+    } else {
+      await cloneRepository(parsedFields.repoUrl, tempDirPath, cliOptions.remoteBranch || parsedFields.remoteBranch, {
+        execGitShallowClone: deps.execGitShallowClone,
+      });
+
+      spinner.succeed('Repository cloned successfully!');
+    }
+
     logger.log('');
 
     // Run the default action on the cloned repository
     result = await deps.runDefaultAction([tempDirPath], tempDirPath, cliOptions);
     await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
   } catch (error) {
-    spinner.fail('Error during repository cloning. cleanup...');
+    spinner.fail('Error during repository processing. cleanup...');
     throw error;
   } finally {
     // Cleanup the temporary directory

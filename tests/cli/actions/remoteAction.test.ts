@@ -8,12 +8,12 @@ import {
   parseRemoteValue,
   runRemoteAction,
 } from '../../../src/cli/actions/remoteAction.js';
+import { isGithubRepoUrl, parseGithubRepoUrl } from '../../../src/core/file/githubZipDownload.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
-vi.mock('node:fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:fs/promises')>();
+vi.mock('node:fs/promises', () => {
   return {
-    ...actual,
+    ...vi.importActual('node:fs/promises'),
     copyFile: vi.fn(),
     mkdir: vi.fn(),
   };
@@ -52,8 +52,79 @@ describe('remoteAction functions', () => {
               config: createMockConfig(),
             } satisfies DefaultActionRunnerResult;
           },
+          downloadGithubRepoAsZip: async () => {},
         },
       );
+    });
+
+    test('should use zip download for GitHub URLs', async () => {
+      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+
+      const mockDownloadGithubRepoAsZip = vi.fn().mockResolvedValue(undefined);
+      const mockExecGitShallowClone = vi.fn().mockResolvedValue(undefined);
+
+      await runRemoteAction(
+        'https://github.com/yamadashy/repomix',
+        {},
+        {
+          isGitInstalled: async () => Promise.resolve(true),
+          execGitShallowClone: mockExecGitShallowClone,
+          runDefaultAction: async () => {
+            return {
+              packResult: {
+                totalFiles: 1,
+                totalCharacters: 1,
+                totalTokens: 1,
+                fileCharCounts: {},
+                fileTokenCounts: {},
+                suspiciousFilesResults: [],
+                suspiciousGitDiffResults: [],
+                gitDiffTokenCount: 0,
+              },
+              config: createMockConfig(),
+            } satisfies DefaultActionRunnerResult;
+          },
+          downloadGithubRepoAsZip: mockDownloadGithubRepoAsZip,
+        },
+      );
+
+      expect(mockDownloadGithubRepoAsZip).toHaveBeenCalled();
+      expect(mockExecGitShallowClone).not.toHaveBeenCalled();
+    });
+
+    test('should fall back to git clone if zip download fails', async () => {
+      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+
+      const mockDownloadGithubRepoAsZip = vi.fn().mockRejectedValue(new Error('Download failed'));
+      const mockExecGitShallowClone = vi.fn().mockResolvedValue(undefined);
+
+      await runRemoteAction(
+        'https://github.com/yamadashy/repomix',
+        {},
+        {
+          isGitInstalled: async () => Promise.resolve(true),
+          execGitShallowClone: mockExecGitShallowClone,
+          runDefaultAction: async () => {
+            return {
+              packResult: {
+                totalFiles: 1,
+                totalCharacters: 1,
+                totalTokens: 1,
+                fileCharCounts: {},
+                fileTokenCounts: {},
+                suspiciousFilesResults: [],
+                suspiciousGitDiffResults: [],
+                gitDiffTokenCount: 0,
+              },
+              config: createMockConfig(),
+            } satisfies DefaultActionRunnerResult;
+          },
+          downloadGithubRepoAsZip: mockDownloadGithubRepoAsZip,
+        },
+      );
+
+      expect(mockDownloadGithubRepoAsZip).toHaveBeenCalled();
+      expect(mockExecGitShallowClone).toHaveBeenCalled();
     });
   });
 
@@ -152,6 +223,55 @@ describe('remoteAction functions', () => {
       await expect(copyOutputToCurrentDirectory(sourceDir, targetDir, fileName)).rejects.toThrow(
         'Failed to copy output file',
       );
+    });
+  });
+
+  describe('isGithubRepoUrl', () => {
+    test('should return true for GitHub URLs', () => {
+      expect(isGithubRepoUrl('https://github.com/user/repo')).toBe(true);
+      expect(isGithubRepoUrl('https://github.com/user/repo.git')).toBe(true);
+      expect(isGithubRepoUrl('https://github.com/user/repo/tree/main')).toBe(true);
+    });
+
+    test('should return false for non-GitHub URLs', () => {
+      expect(isGithubRepoUrl('https://gitlab.com/user/repo')).toBe(false);
+      expect(isGithubRepoUrl('https://bitbucket.org/user/repo')).toBe(false);
+      expect(isGithubRepoUrl('not-a-url')).toBe(false);
+    });
+  });
+
+  describe('parseGithubRepoUrl', () => {
+    test('should parse GitHub repository URLs correctly', () => {
+      expect(parseGithubRepoUrl('https://github.com/user/repo')).toEqual({
+        owner: 'user',
+        repo: 'repo',
+      });
+
+      expect(parseGithubRepoUrl('https://github.com/user/repo.git')).toEqual({
+        owner: 'user',
+        repo: 'repo.git',
+      });
+
+      expect(parseGithubRepoUrl('https://github.com/user/repo/tree/main')).toEqual({
+        owner: 'user',
+        repo: 'repo',
+        branch: 'main',
+      });
+
+      expect(parseGithubRepoUrl('https://github.com/user/repo/tree/feature-branch')).toEqual({
+        owner: 'user',
+        repo: 'repo',
+        branch: 'feature-branch',
+      });
+    });
+
+    test('should throw an error for non-GitHub URLs', () => {
+      expect(() => parseGithubRepoUrl('https://gitlab.com/user/repo')).toThrow('Not a GitHub repository URL');
+    });
+
+    test('should throw an error for invalid GitHub URLs', () => {
+      expect(() => parseGithubRepoUrl('https://github.com/')).toThrow('Invalid GitHub repository URL');
+      expect(() => parseGithubRepoUrl('https://github.com/user')).toThrow('Invalid GitHub repository URL');
     });
   });
 
