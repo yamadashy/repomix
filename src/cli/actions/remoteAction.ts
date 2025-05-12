@@ -72,7 +72,10 @@ export const runRemoteAction = async (
 
     // Run the default action on the cloned repository
     result = await deps.runDefaultAction([tempDirPath], tempDirPath, cliOptions);
-    await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
+    
+    if (result.config.output.filePath) {
+      await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
+    }
   } catch (error) {
     spinner.fail('Error during repository processing. cleanup...');
     throw error;
@@ -179,8 +182,13 @@ export const cleanupTempDirectory = async (directory: string): Promise<void> => 
 export const copyOutputToCurrentDirectory = async (
   sourceDir: string,
   targetDir: string,
-  outputFileName: string,
+  outputFileName?: string,
 ): Promise<void> => {
+  if (!outputFileName) {
+    logger.trace('No output file name provided, skipping copy operation');
+    return;
+  }
+
   const sourcePath = path.resolve(sourceDir, outputFileName);
   const targetPath = path.resolve(targetDir, outputFileName);
 

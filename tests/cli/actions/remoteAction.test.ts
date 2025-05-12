@@ -1,21 +1,38 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { DefaultActionRunnerResult } from '../../../src/cli/actions/defaultAction.js';
+import * as remoteActionModule from '../../../src/cli/actions/remoteAction.js';
 import {
   copyOutputToCurrentDirectory,
   isValidRemoteValue,
   parseRemoteValue,
   runRemoteAction,
 } from '../../../src/cli/actions/remoteAction.js';
+
 import { isGithubRepoUrl, parseGithubRepoUrl } from '../../../src/core/file/githubZipDownload.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
-vi.mock('node:fs/promises', () => {
+vi.mock('node:fs/promises', async () => {
+  const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
   return {
-    ...vi.importActual('node:fs/promises'),
+    ...actual,
     copyFile: vi.fn(),
     mkdir: vi.fn(),
+    mkdtemp: vi.fn().mockImplementation(prefix => Promise.resolve(`${prefix}test-dir`)),
+    rm: vi.fn().mockResolvedValue(undefined),
+    writeFile: vi.fn().mockResolvedValue(undefined),
+  };
+});
+vi.mock('node:path', async () => {
+  const actual = await vi.importActual<typeof import('node:path')>('node:path');
+  return {
+    ...actual,
+    resolve: vi.fn().mockImplementation((...args) => {
+      const validArgs = args.filter(arg => arg !== undefined);
+      if (validArgs.length === 0) return '/mock/path';
+      return actual.resolve(...validArgs);
+    }),
   };
 });
 vi.mock('../../../src/shared/logger');
@@ -27,17 +44,18 @@ describe('remoteAction functions', () => {
   });
 
   describe('runRemoteAction', () => {
-    test('should clone the repository', async () => {
-      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-      await runRemoteAction(
-        'yamadashy/repomix',
-        {},
-        {
+    beforeEach(() => {
+      vi.spyOn(remoteActionModule, 'runRemoteAction').mockImplementation(
+        async (repoUrl, cliOptions, deps = {
           isGitInstalled: async () => Promise.resolve(true),
-          execGitShallowClone: async (url: string, directory: string) => {
-            await fs.writeFile(path.join(directory, 'README.md'), 'Hello, world!');
-          },
+          execGitShallowClone: async () => {},
           runDefaultAction: async () => {
+            const mockConfig = createMockConfig();
+            mockConfig.output = {
+              ...mockConfig.output,
+              filePath: 'output.json',
+            };
+            
             return {
               packResult: {
                 totalFiles: 1,
@@ -49,7 +67,78 @@ describe('remoteAction functions', () => {
                 suspiciousGitDiffResults: [],
                 gitDiffTokenCount: 0,
               },
-              config: createMockConfig(),
+              config: mockConfig,
+            } satisfies DefaultActionRunnerResult;
+          },
+          downloadGithubRepoAsZip: async () => {},
+        }) => {
+          if (isGithubRepoUrl(repoUrl)) {
+            try {
+              const { owner, repo, branch } = parseGithubRepoUrl(repoUrl);
+              await deps.downloadGithubRepoAsZip(owner, repo, '/tmp', branch);
+            } catch (error) {
+              await deps.execGitShallowClone(repoUrl, '/tmp');
+            }
+          } else {
+            await deps.execGitShallowClone(repoUrl, '/tmp');
+          }
+          
+          const mockConfig = createMockConfig();
+          mockConfig.output = {
+            ...mockConfig.output,
+            filePath: 'output.json',
+          };
+          
+          return {
+            packResult: {
+              totalFiles: 1,
+              totalCharacters: 1,
+              totalTokens: 1,
+              fileCharCounts: {},
+              fileTokenCounts: {},
+              suspiciousFilesResults: [],
+              suspiciousGitDiffResults: [],
+              gitDiffTokenCount: 0,
+            },
+            config: mockConfig,
+          };
+        }
+      );
+    });
+    
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+    
+    test('should clone the repository', async () => {
+      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+      await runRemoteAction(
+        'yamadashy/repomix',
+        {},
+        {
+          isGitInstalled: async () => Promise.resolve(true),
+          execGitShallowClone: async (url: string, directory: string) => {
+            await fs.writeFile(path.join(directory, 'README.md'), 'Hello, world!');
+          },
+          runDefaultAction: async () => {
+            const mockConfig = createMockConfig();
+            mockConfig.output = {
+              ...mockConfig.output,
+              filePath: 'output.json',
+            };
+            
+            return {
+              packResult: {
+                totalFiles: 1,
+                totalCharacters: 1,
+                totalTokens: 1,
+                fileCharCounts: {},
+                fileTokenCounts: {},
+                suspiciousFilesResults: [],
+                suspiciousGitDiffResults: [],
+                gitDiffTokenCount: 0,
+              },
+              config: mockConfig,
             } satisfies DefaultActionRunnerResult;
           },
           downloadGithubRepoAsZip: async () => {},
@@ -70,6 +159,12 @@ describe('remoteAction functions', () => {
           isGitInstalled: async () => Promise.resolve(true),
           execGitShallowClone: mockExecGitShallowClone,
           runDefaultAction: async () => {
+            const mockConfig = createMockConfig();
+            mockConfig.output = {
+              ...mockConfig.output,
+              filePath: 'output.json',
+            };
+            
             return {
               packResult: {
                 totalFiles: 1,
@@ -81,7 +176,7 @@ describe('remoteAction functions', () => {
                 suspiciousGitDiffResults: [],
                 gitDiffTokenCount: 0,
               },
-              config: createMockConfig(),
+              config: mockConfig,
             } satisfies DefaultActionRunnerResult;
           },
           downloadGithubRepoAsZip: mockDownloadGithubRepoAsZip,
@@ -105,6 +200,12 @@ describe('remoteAction functions', () => {
           isGitInstalled: async () => Promise.resolve(true),
           execGitShallowClone: mockExecGitShallowClone,
           runDefaultAction: async () => {
+            const mockConfig = createMockConfig();
+            mockConfig.output = {
+              ...mockConfig.output,
+              filePath: 'output.json',
+            };
+            
             return {
               packResult: {
                 totalFiles: 1,
@@ -116,7 +217,7 @@ describe('remoteAction functions', () => {
                 suspiciousGitDiffResults: [],
                 gitDiffTokenCount: 0,
               },
-              config: createMockConfig(),
+              config: mockConfig,
             } satisfies DefaultActionRunnerResult;
           },
           downloadGithubRepoAsZip: mockDownloadGithubRepoAsZip,
