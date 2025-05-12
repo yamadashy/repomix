@@ -19,7 +19,7 @@ vi.mock('node:fs/promises', async () => {
     ...actual,
     copyFile: vi.fn(),
     mkdir: vi.fn(),
-    mkdtemp: vi.fn().mockImplementation(prefix => Promise.resolve(`${prefix}test-dir`)),
+    mkdtemp: vi.fn().mockImplementation((prefix) => Promise.resolve(`${prefix}test-dir`)),
     rm: vi.fn().mockResolvedValue(undefined),
     writeFile: vi.fn().mockResolvedValue(undefined),
   };
@@ -29,7 +29,7 @@ vi.mock('node:path', async () => {
   return {
     ...actual,
     resolve: vi.fn().mockImplementation((...args) => {
-      const validArgs = args.filter(arg => arg !== undefined);
+      const validArgs = args.filter((arg) => arg !== undefined);
       if (validArgs.length === 0) return '/mock/path';
       return actual.resolve(...validArgs);
     }),
@@ -46,32 +46,36 @@ describe('remoteAction functions', () => {
   describe('runRemoteAction', () => {
     beforeEach(() => {
       vi.spyOn(remoteActionModule, 'runRemoteAction').mockImplementation(
-        async (repoUrl, cliOptions, deps = {
-          isGitInstalled: async () => Promise.resolve(true),
-          execGitShallowClone: async () => {},
-          runDefaultAction: async () => {
-            const mockConfig = createMockConfig();
-            mockConfig.output = {
-              ...mockConfig.output,
-              filePath: 'output.json',
-            };
-            
-            return {
-              packResult: {
-                totalFiles: 1,
-                totalCharacters: 1,
-                totalTokens: 1,
-                fileCharCounts: {},
-                fileTokenCounts: {},
-                suspiciousFilesResults: [],
-                suspiciousGitDiffResults: [],
-                gitDiffTokenCount: 0,
-              },
-              config: mockConfig,
-            } satisfies DefaultActionRunnerResult;
+        async (
+          repoUrl,
+          cliOptions,
+          deps = {
+            isGitInstalled: async () => Promise.resolve(true),
+            execGitShallowClone: async () => {},
+            runDefaultAction: async () => {
+              const mockConfig = createMockConfig();
+              mockConfig.output = {
+                ...mockConfig.output,
+                filePath: 'output.json',
+              };
+
+              return {
+                packResult: {
+                  totalFiles: 1,
+                  totalCharacters: 1,
+                  totalTokens: 1,
+                  fileCharCounts: {},
+                  fileTokenCounts: {},
+                  suspiciousFilesResults: [],
+                  suspiciousGitDiffResults: [],
+                  gitDiffTokenCount: 0,
+                },
+                config: mockConfig,
+              } satisfies DefaultActionRunnerResult;
+            },
+            downloadGithubRepoAsZip: async () => {},
           },
-          downloadGithubRepoAsZip: async () => {},
-        }) => {
+        ) => {
           if (isGithubRepoUrl(repoUrl)) {
             try {
               const { owner, repo, branch } = parseGithubRepoUrl(repoUrl);
@@ -82,13 +86,13 @@ describe('remoteAction functions', () => {
           } else {
             await deps.execGitShallowClone(repoUrl, '/tmp');
           }
-          
+
           const mockConfig = createMockConfig();
           mockConfig.output = {
             ...mockConfig.output,
             filePath: 'output.json',
           };
-          
+
           return {
             packResult: {
               totalFiles: 1,
@@ -102,14 +106,14 @@ describe('remoteAction functions', () => {
             },
             config: mockConfig,
           };
-        }
+        },
       );
     });
-    
+
     afterEach(() => {
       vi.restoreAllMocks();
     });
-    
+
     test('should clone the repository', async () => {
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
       await runRemoteAction(
@@ -126,7 +130,7 @@ describe('remoteAction functions', () => {
               ...mockConfig.output,
               filePath: 'output.json',
             };
-            
+
             return {
               packResult: {
                 totalFiles: 1,
@@ -164,7 +168,7 @@ describe('remoteAction functions', () => {
               ...mockConfig.output,
               filePath: 'output.json',
             };
-            
+
             return {
               packResult: {
                 totalFiles: 1,
@@ -205,7 +209,7 @@ describe('remoteAction functions', () => {
               ...mockConfig.output,
               filePath: 'output.json',
             };
-            
+
             return {
               packResult: {
                 totalFiles: 1,

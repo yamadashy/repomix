@@ -72,7 +72,7 @@ export const runRemoteAction = async (
 
     // Run the default action on the cloned repository
     result = await deps.runDefaultAction([tempDirPath], tempDirPath, cliOptions);
-    
+
     if (result.config.output.filePath) {
       await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
     }
