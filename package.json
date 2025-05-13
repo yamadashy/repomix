@@ -27,6 +27,8 @@
     "lint-secretlint": "secretlint \"**/*\" --secretlintignore .gitignore",
     "test": "vitest",
     "test-coverage": "vitest run --coverage",
+    "type-coverage": "type-coverage",
+    "type-coverage-detail": "type-coverage --detail",
     "repomix": "npm run build && node --trace-warnings bin/repomix.cjs",
     "repomix-src": "npm run repomix -- --include 'src,tests'",
     "repomix-website": "npm run repomix -- --include 'website'",
@@ -97,6 +99,7 @@
     "@vitest/coverage-v8": "^3.1.1",
     "rimraf": "^6.0.1",
     "secretlint": "^9.3.1",
+    "type-coverage": "^2.29.7",
     "typescript": "^5.8.3",
     "vite": "^5.4.18",
     "vitest": "^3.1.1"
