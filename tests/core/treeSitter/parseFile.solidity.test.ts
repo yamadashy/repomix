@@ -31,6 +31,7 @@ describe('Solidity File Parsing', () => {
       },
     },
     include: [],
+    forceInclude: [],
     ignore: {
       useGitignore: true,
       useDefaultPatterns: true,
