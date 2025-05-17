@@ -28,7 +28,7 @@ export const runRemoteAction = async (
   }
 
   const parsedFields = parseRemoteValue(repoUrl);
-  const spinner = new Spinner('Processing repository...', cliOptions);
+  const spinner = new Spinner('Cloning repository...', cliOptions);
   const tempDirPath = await createTempDirectory();
   let result: DefaultActionRunnerResult;
 
@@ -43,15 +43,15 @@ export const runRemoteAction = async (
         const { owner, repo, branch } = parseGithubRepoUrl(parsedFields.repoUrl);
         const remoteBranch = cliOptions.remoteBranch || parsedFields.remoteBranch || branch;
 
-        logger.log(
+        logger.debug(
           `Downloading GitHub repository: ${owner}/${repo}${remoteBranch ? ` (${remoteBranch})` : ''} as zip...`,
         );
         await deps.downloadGithubRepoAsZip(owner, repo, tempDirPath, remoteBranch);
 
-        spinner.succeed('Repository downloaded and extracted successfully!');
+        spinner.succeed('Repository cloned successfully!');
       } catch (error) {
-        logger.log(`Zip download failed: ${(error as Error).message}`);
-        logger.log('Falling back to git clone...');
+        logger.debug(`Zip download failed: ${(error as Error).message}`);
+        logger.debug('Falling back to git clone...');
 
         try {
           const files = await fs.readdir(tempDirPath);
