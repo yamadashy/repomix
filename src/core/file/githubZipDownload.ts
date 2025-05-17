@@ -24,7 +24,11 @@ export const downloadGithubRepoAsZip = async (
 
     await extractZip(zipFilePath, destPath);
 
-    await fs.unlink(zipFilePath);
+    try {
+      await fs.unlink(zipFilePath);
+    } catch (unlinkError) {
+      logger.trace(`Non-critical error removing zip file: ${(unlinkError as Error).message}`);
+    }
 
     const extractedDirName = `${repo}-${branch}`;
     const extractedDirPath = path.join(destPath, extractedDirName);
@@ -38,7 +42,7 @@ export const downloadGithubRepoAsZip = async (
       try {
         await fs.access(mainBranchDirPath);
         await moveDirectoryContents(mainBranchDirPath, destPath);
-        await fs.rm(mainBranchDirPath, { recursive: true });
+        await safeRemoveDirectory(mainBranchDirPath);
         return;
       } catch (innerError) {
         const files = await fs.readdir(destPath);
@@ -49,7 +53,7 @@ export const downloadGithubRepoAsZip = async (
         if (repoDir) {
           const repoDirPath = path.join(destPath, repoDir);
           await moveDirectoryContents(repoDirPath, destPath);
-          await fs.rm(repoDirPath, { recursive: true });
+          await safeRemoveDirectory(repoDirPath);
           return;
         }
 
@@ -58,8 +62,7 @@ export const downloadGithubRepoAsZip = async (
     }
 
     await moveDirectoryContents(extractedDirPath, destPath);
-
-    await fs.rm(extractedDirPath, { recursive: true });
+    await safeRemoveDirectory(extractedDirPath);
   } catch (error) {
     if (error instanceof RepomixError) {
       throw error;
@@ -156,23 +159,28 @@ const downloadFile = (url: string, destPath: string, redirectCount = 0): Promise
 
 /**
  * Extract a zip file to a directory with path validation to prevent zip-slip attacks
+ * Uses a more memory-efficient approach by not loading the entire zip into memory
  */
 const extractZip = async (zipFilePath: string, destPath: string): Promise<void> => {
   try {
     logger.trace(`Extracting zip file ${zipFilePath} to ${destPath}`);
 
-    const zipBuffer = await fs.readFile(zipFilePath);
-    const zip = new AdmZip(zipBuffer);
-
+    const zip = new AdmZip(zipFilePath);
+    
     // First validate all paths to prevent zip-slip attacks
-    for (const entry of zip.getEntries()) {
+    const entries = zip.getEntries();
+    const resolvedDestPath = path.resolve(destPath);
+    
+    for (const entry of entries) {
       const entryPath = path.resolve(destPath, entry.entryName);
-      if (!entryPath.startsWith(path.resolve(destPath))) {
+      if (!entryPath.startsWith(resolvedDestPath)) {
         throw new RepomixError(`Zip entry path traversal detected: ${entry.entryName}`);
       }
     }
-
+    
     zip.extractAllTo(destPath, true);
+    
+    entries.length = 0;
   } catch (error) {
     throw new RepomixError(`Failed to extract zip file: ${(error as Error).message}`);
   }
@@ -180,18 +188,43 @@ const extractZip = async (zipFilePath: string, destPath: string): Promise<void> 
 
 /**
  * Move all contents from one directory to another
+ * Uses a more efficient approach with parallel operations and fallback for cross-device moves
  */
 const moveDirectoryContents = async (sourcePath: string, destPath: string): Promise<void> => {
   try {
     logger.trace(`Moving contents from ${sourcePath} to ${destPath}`);
 
     const files = await fs.readdir(sourcePath);
-
-    for (const file of files) {
-      const sourceFilePath = path.join(sourcePath, file);
-      const destFilePath = path.join(destPath, file);
-
-      await fs.rename(sourceFilePath, destFilePath);
+    
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      const batch = files.slice(i, i + BATCH_SIZE);
+      
+      await Promise.all(
+        batch.map(async (file) => {
+          const sourceFilePath = path.join(sourcePath, file);
+          const destFilePath = path.join(destPath, file);
+          
+          try {
+            await fs.rename(sourceFilePath, destFilePath);
+          } catch (error) {
+            if (error instanceof Error && (error.message.includes('cross-device') || error.message.includes('EXDEV'))) {
+              const stat = await fs.stat(sourceFilePath);
+              
+              if (stat.isDirectory()) {
+                await fs.mkdir(destFilePath, { recursive: true });
+                await moveDirectoryContents(sourceFilePath, destFilePath);
+                await fs.rm(sourceFilePath, { recursive: true, force: true, maxRetries: 3 });
+              } else {
+                await fs.copyFile(sourceFilePath, destFilePath);
+                await fs.unlink(sourceFilePath);
+              }
+            } else {
+              throw error;
+            }
+          }
+        })
+      );
     }
   } catch (error) {
     throw new RepomixError(`Failed to move directory contents: ${(error as Error).message}`);
@@ -207,6 +240,21 @@ export const isGithubRepoUrl = (url: string): boolean => {
     return parsedUrl.hostname === 'github.com';
   } catch (error) {
     return false;
+  }
+};
+
+/**
+ * Parse a GitHub repository URL to extract owner, repo, and branch
+ */
+/**
+ * Safe directory removal with improved performance and error handling
+ */
+const safeRemoveDirectory = async (dirPath: string): Promise<void> => {
+  try {
+    logger.trace(`Safely removing directory: ${dirPath}`);
+    await fs.rm(dirPath, { recursive: true, force: true, maxRetries: 3 });
+  } catch (error) {
+    logger.trace(`Non-critical error during directory removal: ${(error as Error).message}`);
   }
 };
 
@@ -229,7 +277,7 @@ export const parseGithubRepoUrl = (url: string): { owner: string; repo: string; 
 
     const owner = pathParts[0];
     let repo = pathParts[1];
-
+    
     if (repo.endsWith('.git')) {
       repo = repo.slice(0, -4);
     }
