@@ -190,7 +190,11 @@ export const parseGithubRepoUrl = (url: string): { owner: string; repo: string; 
     }
 
     const owner = pathParts[0];
-    const repo = pathParts[1];
+    let repo = pathParts[1];
+    
+    if (repo.endsWith('.git')) {
+      repo = repo.slice(0, -4);
+    }
 
     let branch: string | undefined;
 

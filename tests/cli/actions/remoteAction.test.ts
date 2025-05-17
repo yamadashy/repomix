@@ -354,7 +354,7 @@ describe('remoteAction functions', () => {
 
       expect(parseGithubRepoUrl('https://github.com/user/repo.git')).toEqual({
         owner: 'user',
-        repo: 'repo.git',
+        repo: 'repo',
       });
 
       expect(parseGithubRepoUrl('https://github.com/user/repo/tree/main')).toEqual({
