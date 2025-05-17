@@ -9,6 +9,7 @@ const props = defineProps<{
   ignorePatterns: string;
   fileSummary: boolean;
   directoryStructure: boolean;
+  files: boolean;
   removeComments: boolean;
   removeEmptyLines: boolean;
   showLineNumbers: boolean;
@@ -22,6 +23,7 @@ const emit = defineEmits<{
   'update:ignorePatterns': [value: string];
   'update:fileSummary': [value: boolean];
   'update:directoryStructure': [value: boolean];
+  'update:files': [value: boolean];
   'update:removeComments': [value: boolean];
   'update:removeEmptyLines': [value: boolean];
   'update:showLineNumbers': [value: boolean];
@@ -37,6 +39,11 @@ function handleFormatChange(newFormat: 'xml' | 'markdown' | 'plain') {
 function handleIncludePatternsUpdate(patterns: string) {
   emit('update:includePatterns', patterns);
   handleOptionChange(patterns, AnalyticsAction.UPDATE_INCLUDE_PATTERNS);
+}
+
+function handleFilesToggle(enabled: boolean) {
+  emit('update:files', enabled);
+  handleOptionChange(enabled, AnalyticsAction.TOGGLE_FILES);
 }
 
 function handleIgnorePatternsUpdate(patterns: string) {
@@ -127,6 +134,8 @@ function handleCompressToggle(enabled: boolean) {
         </div>
       </div>
 
+
+
       <div class="option-section">
         <p class="option-label">Ignore Patterns</p>
         <div class="input-group">
@@ -164,6 +173,15 @@ function handleCompressToggle(enabled: boolean) {
               class="checkbox-input"
             />
             <span>Include Directory Structure</span>
+          </label>
+          <label class="checkbox-label">
+            <input
+              :checked="files"
+              @change="event => handleFilesToggle((event.target as HTMLInputElement).checked)"
+              type="checkbox"
+              class="checkbox-input"
+            />
+            <span>Include Files</span>
           </label>
           <label class="checkbox-label">
             <input
@@ -265,13 +283,13 @@ function handleCompressToggle(enabled: boolean) {
 }
 
 .right-column {
-  gap: 18px;
+  gap: 10px;
 }
 
 .option-section {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .option-label {
@@ -279,7 +297,7 @@ function handleCompressToggle(enabled: boolean) {
   font-weight: 500;
   margin: 0;
   color: var(--vp-c-text-2);
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 
 .option-label a {
@@ -327,7 +345,7 @@ function handleCompressToggle(enabled: boolean) {
 .checkbox-group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0px;
 }
 
 .checkbox-label {
@@ -419,7 +437,7 @@ function handleCompressToggle(enabled: boolean) {
 
 .pattern-input {
   width: 100%;
-  padding: 8px 12px;
+  padding: 9px 12px;
   font-size: 16px;
   border: 1px solid var(--vp-c-border);
   border-radius: 6px;

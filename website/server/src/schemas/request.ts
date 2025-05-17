@@ -17,6 +17,7 @@ export const packOptionsSchema = z
       .max(1000, 'Include patterns too long')
       .optional()
       .transform((val) => val?.trim()),
+    files: z.boolean().optional(),
     ignorePatterns: z
       .string()
       .regex(ignorePatternRegex, 'Invalid characters in ignore patterns')

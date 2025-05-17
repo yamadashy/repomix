@@ -63,6 +63,7 @@
         v-model:ignore-patterns="inputIgnorePatterns"
         v-model:file-summary="inputFileSummary"
         v-model:directory-structure="inputDirectoryStructure"
+        v-model:files="inputFiles"
         v-model:remove-comments="inputRemoveComments"
         v-model:remove-empty-lines="inputRemoveEmptyLines"
         v-model:show-line-numbers="inputShowLineNumbers"
@@ -104,6 +105,7 @@ const inputShowLineNumbers = ref(false);
 const inputFileSummary = ref(true);
 const inputDirectoryStructure = ref(true);
 const inputIncludePatterns = ref('');
+const inputFiles = ref(true);
 const inputIgnorePatterns = ref('');
 const inputOutputParsable = ref(false);
 const inputRepositoryUrl = ref('');
@@ -171,6 +173,7 @@ async function handleSubmit() {
       fileSummary: inputFileSummary.value,
       directoryStructure: inputDirectoryStructure.value,
       includePatterns: inputIncludePatterns.value ? inputIncludePatterns.value.trim() : undefined,
+      files: inputFiles.value,
       ignorePatterns: inputIgnorePatterns.value ? inputIgnorePatterns.value.trim() : undefined,
       outputParsable: inputOutputParsable.value,
       compress: inputCompress.value,

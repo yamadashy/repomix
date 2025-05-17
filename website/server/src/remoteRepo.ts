@@ -40,7 +40,7 @@ export async function processRemoteRepo(
     return cachedResult;
   }
 
-  // Sanitize ignore patterns
+  // Sanitize patterns
   const sanitizedIncludePatterns = sanitizePattern(validatedData.options.includePatterns);
   const sanitizedIgnorePatterns = sanitizePattern(validatedData.options.ignorePatterns);
 
@@ -61,6 +61,7 @@ export async function processRemoteRepo(
     securityCheck: false,
     topFilesLen: 10,
     include: sanitizedIncludePatterns,
+    files: validatedData.options.files,
     ignore: sanitizedIgnorePatterns,
     quiet: true, // Enable quiet mode to suppress output
   } as CliOptions;
