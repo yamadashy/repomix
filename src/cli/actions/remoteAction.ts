@@ -187,7 +187,7 @@ export const cloneRepository = async (
 
 export const cleanupTempDirectory = async (directory: string): Promise<void> => {
   logger.trace(`Cleaning up temporary directory: ${directory}`);
-  
+
   try {
     await fs.rm(directory, { recursive: true, force: true, maxRetries: 3 });
   } catch (error) {
