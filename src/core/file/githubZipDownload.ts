@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
+import http from 'node:http';
 import https from 'node:https';
 import path from 'node:path';
+import url from 'node:url';
 import AdmZip from 'adm-zip';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
@@ -76,16 +78,43 @@ export const downloadGithubRepoAsZip = async (
 };
 
 /**
- * Download a file from a URL to a local path
+ * Download a file from a URL to a local path, following redirects
  */
-const downloadFile = (url: string, destPath: string): Promise<void> => {
+const downloadFile = (url: string, destPath: string, redirectCount = 0): Promise<void> => {
   return new Promise((resolve, reject) => {
+    const MAX_REDIRECTS = 5;
+
+    if (redirectCount > MAX_REDIRECTS) {
+      reject(new Error('Too many redirects'));
+      return;
+    }
+
     logger.trace(`Downloading file from ${url} to ${destPath}`);
 
-    const file = fs.open(destPath, 'w').then((fileHandle) => fileHandle.createWriteStream());
+    const parsedUrl = new URL(url);
+    const protocol = parsedUrl.protocol === 'https:' ? https : http;
 
-    https
+    protocol
       .get(url, (response) => {
+        if (response.statusCode && [301, 302, 303, 307, 308].includes(response.statusCode)) {
+          const location = response.headers.location;
+
+          if (!location) {
+            reject(new Error(`Redirect (${response.statusCode}) without Location header`));
+            return;
+          }
+
+          logger.trace(`Following redirect (${response.statusCode}) to: ${location}`);
+
+          const redirectUrl = new URL(location, url).toString();
+
+          downloadFile(redirectUrl, destPath, redirectCount + 1)
+            .then(resolve)
+            .catch(reject);
+
+          return;
+        }
+
         if (response.statusCode === 401) {
           reject(new Error('401 Unauthorized: Authentication required'));
           return;
@@ -101,7 +130,8 @@ const downloadFile = (url: string, destPath: string): Promise<void> => {
           return;
         }
 
-        file
+        fs.open(destPath, 'w')
+          .then((fileHandle) => fileHandle.createWriteStream())
           .then((stream) => {
             response.pipe(stream);
 
@@ -133,7 +163,7 @@ const extractZip = async (zipFilePath: string, destPath: string): Promise<void> 
 
     const zipBuffer = await fs.readFile(zipFilePath);
     const zip = new AdmZip(zipBuffer);
-    
+
     // First validate all paths to prevent zip-slip attacks
     for (const entry of zip.getEntries()) {
       const entryPath = path.resolve(destPath, entry.entryName);
@@ -141,7 +171,7 @@ const extractZip = async (zipFilePath: string, destPath: string): Promise<void> 
         throw new RepomixError(`Zip entry path traversal detected: ${entry.entryName}`);
       }
     }
-    
+
     zip.extractAllTo(destPath, true);
   } catch (error) {
     throw new RepomixError(`Failed to extract zip file: ${(error as Error).message}`);
@@ -199,7 +229,7 @@ export const parseGithubRepoUrl = (url: string): { owner: string; repo: string; 
 
     const owner = pathParts[0];
     let repo = pathParts[1];
-    
+
     if (repo.endsWith('.git')) {
       repo = repo.slice(0, -4);
     }
