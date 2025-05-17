@@ -175,8 +175,8 @@ export const cloneRepository = async (
     execGitShallowClone,
   },
 ): Promise<void> => {
-  logger.log(`Clone repository: ${url} to temporary directory. ${pc.dim(`path: ${directory}`)}`);
-  logger.log('');
+  logger.debug(`Clone repository: ${url} to temporary directory. ${pc.dim(`path: ${directory}`)}`);
+  logger.debug('');
 
   try {
     await deps.execGitShallowClone(url, directory, remoteBranch);
