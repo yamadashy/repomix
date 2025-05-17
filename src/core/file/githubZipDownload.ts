@@ -166,20 +166,20 @@ const extractZip = async (zipFilePath: string, destPath: string): Promise<void> 
     logger.trace(`Extracting zip file ${zipFilePath} to ${destPath}`);
 
     const zip = new AdmZip(zipFilePath);
-    
+
     // First validate all paths to prevent zip-slip attacks
     const entries = zip.getEntries();
     const resolvedDestPath = path.resolve(destPath);
-    
+
     for (const entry of entries) {
       const entryPath = path.resolve(destPath, entry.entryName);
       if (!entryPath.startsWith(resolvedDestPath)) {
         throw new RepomixError(`Zip entry path traversal detected: ${entry.entryName}`);
       }
     }
-    
+
     zip.extractAllTo(destPath, true);
-    
+
     entries.length = 0;
   } catch (error) {
     throw new RepomixError(`Failed to extract zip file: ${(error as Error).message}`);
@@ -195,22 +195,22 @@ const moveDirectoryContents = async (sourcePath: string, destPath: string): Prom
     logger.trace(`Moving contents from ${sourcePath} to ${destPath}`);
 
     const files = await fs.readdir(sourcePath);
-    
+
     const BATCH_SIZE = 10;
     for (let i = 0; i < files.length; i += BATCH_SIZE) {
       const batch = files.slice(i, i + BATCH_SIZE);
-      
+
       await Promise.all(
         batch.map(async (file) => {
           const sourceFilePath = path.join(sourcePath, file);
           const destFilePath = path.join(destPath, file);
-          
+
           try {
             await fs.rename(sourceFilePath, destFilePath);
           } catch (error) {
             if (error instanceof Error && (error.message.includes('cross-device') || error.message.includes('EXDEV'))) {
               const stat = await fs.stat(sourceFilePath);
-              
+
               if (stat.isDirectory()) {
                 await fs.mkdir(destFilePath, { recursive: true });
                 await moveDirectoryContents(sourceFilePath, destFilePath);
@@ -223,7 +223,7 @@ const moveDirectoryContents = async (sourcePath: string, destPath: string): Prom
               throw error;
             }
           }
-        })
+        }),
       );
     }
   } catch (error) {
@@ -277,7 +277,7 @@ export const parseGithubRepoUrl = (url: string): { owner: string; repo: string; 
 
     const owner = pathParts[0];
     let repo = pathParts[1];
-    
+
     if (repo.endsWith('.git')) {
       repo = repo.slice(0, -4);
     }
