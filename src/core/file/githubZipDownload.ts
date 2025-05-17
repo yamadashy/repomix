@@ -125,7 +125,7 @@ const downloadFile = (url: string, destPath: string): Promise<void> => {
 };
 
 /**
- * Extract a zip file to a directory
+ * Extract a zip file to a directory with path validation to prevent zip-slip attacks
  */
 const extractZip = async (zipFilePath: string, destPath: string): Promise<void> => {
   try {
@@ -133,7 +133,15 @@ const extractZip = async (zipFilePath: string, destPath: string): Promise<void> 
 
     const zipBuffer = await fs.readFile(zipFilePath);
     const zip = new AdmZip(zipBuffer);
-
+    
+    // First validate all paths to prevent zip-slip attacks
+    for (const entry of zip.getEntries()) {
+      const entryPath = path.resolve(destPath, entry.entryName);
+      if (!entryPath.startsWith(path.resolve(destPath))) {
+        throw new RepomixError(`Zip entry path traversal detected: ${entry.entryName}`);
+      }
+    }
+    
     zip.extractAllTo(destPath, true);
   } catch (error) {
     throw new RepomixError(`Failed to extract zip file: ${(error as Error).message}`);
