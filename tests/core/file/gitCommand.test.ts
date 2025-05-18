@@ -424,6 +424,7 @@ file2.ts
     test('should throw error for invalid branch name type', async () => {
       const url = 'https://github.com/user/repo.git';
       const directory = '/tmp/repo';
+      // @ts-expect-error Testing invalid type intentionally
       const invalidBranch = 123;
 
       await expect(
