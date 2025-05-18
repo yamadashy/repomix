@@ -72,9 +72,6 @@ repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
 # ブランチを指定したリモートリポジトリ
 repomix --remote https://github.com/user/repo/tree/main
 
-# コミットを指定したリモートリポジトリ
-repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb28655d85712680f1
-
 # ショートハンドを使用したリモートリポジトリ
 repomix --remote user/repo
 ```
