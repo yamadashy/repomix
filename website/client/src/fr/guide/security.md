@@ -1,25 +1,25 @@
-# Security
+# Sécurité
 
-## Security Check Feature
+## Fonctionnalité de Vérification de Sécurité
 
-Repomix uses [Secretlint](https://github.com/secretlint/secretlint) to detect sensitive information in your files, including:
-- API keys and access tokens
-- Authentication credentials
-- Private keys and certificates
-- Database connection strings
-- Environment variables containing secrets
-- Personal or sensitive data
+Repomix utilise [Secretlint](https://github.com/secretlint/secretlint) pour détecter les informations sensibles dans vos fichiers, notamment:
+- Clés API et jetons d'accès
+- Identifiants d'authentification
+- Clés privées et certificats
+- Chaînes de connexion aux bases de données
+- Variables d'environnement contenant des secrets
+- Données personnelles ou sensibles
 
 ## Configuration
 
-Security checks are enabled by default.
+Les vérifications de sécurité sont activées par défaut.
 
-Disable via CLI:
+Désactiver via CLI:
 ```bash
 repomix --no-security-check
 ```
 
-Or in `repomix.config.json`:
+Ou dans `repomix.config.json`:
 ```json
 {
   "security": {
@@ -28,40 +28,40 @@ Or in `repomix.config.json`:
 }
 ```
 
-## Security Measures
+## Mesures de Sécurité
 
-1. **Binary File Exclusion**: Binary files are not included in output to reduce file size and prevent sensitive data leakage
-2. **Git-Aware**: Respects `.gitignore` patterns to avoid including sensitive files already marked for exclusion
-3. **Automated Detection**: Scans for common security issues:
-  - AWS credentials and access keys
-  - Database connection strings and passwords
-  - Authentication tokens and OAuth credentials
-  - Private keys and certificates
-  - Environment variables containing sensitive information
+1. **Exclusion des Fichiers Binaires**: Les fichiers binaires ne sont pas inclus dans la sortie pour réduire la taille des fichiers et empêcher la fuite de données sensibles
+2. **Compatible avec Git**: Respecte les modèles `.gitignore` pour éviter d'inclure des fichiers sensibles déjà marqués pour exclusion
+3. **Détection Automatisée**: Analyse les problèmes de sécurité courants:
+  - Identifiants AWS et clés d'accès
+  - Chaînes de connexion aux bases de données et mots de passe
+  - Jetons d'authentification et identifiants OAuth
+  - Clés privées et certificats
+  - Variables d'environnement contenant des informations sensibles
 
-## When Security Check Finds Issues
+## Lorsque la Vérification de Sécurité Trouve des Problèmes
 
-Example output:
+Exemple de sortie:
 ```bash
-🔍 Security Check:
+🔍 Vérification de Sécurité:
 ──────────────────
-2 suspicious file(s) detected and excluded:
+2 fichier(s) suspect(s) détecté(s) et exclu(s):
 1. config/credentials.json
-  - Found AWS access key
+  - Clé d'accès AWS trouvée
 2. .env.local
-  - Found database password
+  - Mot de passe de base de données trouvé
 ```
 
-## Best Practices
+## Bonnes Pratiques
 
-1. Always review output before sharing with AI services
-2. Use `.repomixignore` for additional sensitive paths
-3. Keep security checks enabled unless absolutely necessary to disable
-4. Remove sensitive files from repository or add to ignore patterns
+1. Toujours examiner la sortie avant de la partager avec des services d'IA
+2. Utiliser `.repomixignore` pour les chemins sensibles supplémentaires
+3. Garder les vérifications de sécurité activées sauf si absolument nécessaire de les désactiver
+4. Supprimer les fichiers sensibles du dépôt ou les ajouter aux modèles d'ignorance
 
-## Reporting Security Issues
+## Signaler des Problèmes de Sécurité
 
-Found a security vulnerability? Please:
-1. Do not open a public issue
+Vous avez trouvé une vulnérabilité de sécurité? Veuillez:
+1. Ne pas ouvrir un problème public
 2. Email: koukun0120@gmail.com
-3. Or use [GitHub Security Advisories](https://github.com/yamadashy/repomix/security/advisories/new)
+3. Ou utiliser [GitHub Security Advisories](https://github.com/yamadashy/repomix/security/advisories/new)
