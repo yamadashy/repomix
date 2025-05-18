@@ -134,6 +134,10 @@ export const execGitShallowClone = async (
   repoOwner: string;
   repoName: string;
 }> => {
+  if (url.includes('--upload-pack') || url.includes('--config') || url.includes('--exec')) {
+    throw new RepomixError('URL contains potentially unsafe parameters');
+  }
+
   let urlObj: URL;
   try {
     urlObj = new URL(url);
@@ -149,8 +153,20 @@ export const execGitShallowClone = async (
     throw new RepomixError('Invalid directory path');
   }
 
-  if (remoteBranch !== undefined && typeof remoteBranch !== 'string') {
-    throw new RepomixError('Invalid branch name');
+  if (directory.includes(';') || directory.includes('&') || directory.includes('|') || 
+      directory.includes('>') || directory.includes('<') || directory.includes('`')) {
+    throw new RepomixError('Directory path contains invalid characters');
+  }
+
+  if (remoteBranch !== undefined) {
+    if (typeof remoteBranch !== 'string') {
+      throw new RepomixError('Invalid branch name');
+    }
+    
+    if (remoteBranch.includes(';') || remoteBranch.includes('&') || remoteBranch.includes('|') || 
+        remoteBranch.includes('>') || remoteBranch.includes('<') || remoteBranch.includes('`')) {
+      throw new RepomixError('Branch name contains invalid characters');
+    }
   }
 
   const cloneArgs = ['clone', '--depth', '1'];
@@ -251,7 +267,7 @@ export const execGitShallowClone = async (
       } catch (cleanupErr) {
         logger.trace('Failed to clean up .git directory:', (cleanupErr as Error).message);
       }
-      
+
       throw new RepomixError(`Failed to checkout branch or commit: ${finalRemoteBranch}`);
     }
   }
