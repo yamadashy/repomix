@@ -1,23 +1,23 @@
-# Output Formats
+# Formats de Sortie
 
-Repomix supports three output formats:
-- XML (default): Most structured format, ideal for AI tools like Claude that parse XML efficiently
-- Markdown: Balances readability with structure, great for GitHub and document-oriented workflows
-- Plain Text: Simplest format with universal compatibility across all tools and platforms
+Repomix prend en charge trois formats de sortie:
+- XML (par défaut): Format le plus structuré, idéal pour les outils d'IA comme Claude qui analysent efficacement le XML
+- Markdown: Équilibre entre lisibilité et structure, parfait pour GitHub et les flux de travail orientés documents
+- Texte brut: Format le plus simple avec une compatibilité universelle sur tous les outils et plateformes
 
-## XML Format
+## Format XML
 
 ```bash
 repomix --style xml
 ```
 
-XML format is optimized for AI processing with clearly defined sections and structure:
+Le format XML est optimisé pour le traitement par l'IA avec des sections et une structure clairement définies:
 
 ```xml
-This file is a merged representation of the entire codebase...
+Ce fichier est une représentation fusionnée de l'ensemble du code source...
 
 <file_summary>
-(Metadata and AI instructions)
+(Métadonnées et instructions pour l'IA)
 </file_summary>
 
 <directory_structure>
@@ -29,30 +29,30 @@ src/
 
 <files>
 <file path="src/index.ts">
-// File contents here
+// Contenu du fichier ici
 </file>
 </files>
 ```
 
-::: tip Why XML?
-XML tags help AI models like Claude parse content more accurately. Claude's documentation [recommends using XML tags](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags) for structured prompts, making it easier for the model to understand different sections of your codebase.
+::: tip Pourquoi XML?
+Les balises XML aident les modèles d'IA comme Claude à analyser le contenu avec plus de précision. La documentation de Claude [recommande l'utilisation de balises XML](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags) pour les prompts structurés, facilitant la compréhension des différentes sections de votre code par le modèle.
 :::
 
-## Markdown Format
+## Format Markdown
 
 ```bash
 repomix --style markdown
 ```
 
-Markdown provides readable formatting:
+Le Markdown offre un formatage lisible:
 
 ```markdown
-This file is a merged representation of the entire codebase...
+Ce fichier est une représentation fusionnée de l'ensemble du code source...
 
-# File Summary
-(Metadata and AI instructions)
+# Résumé du Fichier
+(Métadonnées et instructions pour l'IA)
 
-# Directory Structure
+# Structure des Répertoires
 ```
 src/
 index.ts
@@ -60,24 +60,24 @@ utils/
 helper.ts
 ```
 
-# Files
+# Fichiers
 
-## File: src/index.ts
+## Fichier: src/index.ts
 ```typescript
-// File contents here
+// Contenu du fichier ici
 ```
 ```
 
-## Usage with AI Models
+## Utilisation avec les Modèles d'IA
 
-Each format works well with AI models, but consider:
-- Use XML for Claude and other AI models that prefer structured input with clear section delineation
-- Use Markdown for general readability and when sharing with humans alongside AI analysis
-- Use Plain Text for simplicity, universal compatibility, and when working with tools that don't parse markup
+Chaque format fonctionne bien avec les modèles d'IA, mais considérez:
+- Utilisez XML pour Claude et autres modèles d'IA qui préfèrent les entrées structurées avec une délimitation claire des sections
+- Utilisez Markdown pour une lisibilité générale et lors du partage avec des humains parallèlement à l'analyse par l'IA
+- Utilisez le Texte brut pour la simplicité, la compatibilité universelle et lorsque vous travaillez avec des outils qui n'analysent pas le balisage
 
-## Customization
+## Personnalisation
 
-Set default format in `repomix.config.json`:
+Définissez le format par défaut dans `repomix.config.json`:
 ```json
 {
   "output": {
@@ -87,23 +87,23 @@ Set default format in `repomix.config.json`:
 }
 ```
 
-## Plain Text Format
+## Format Texte Brut
 
 ```bash
 repomix --style plain
 ```
 
-Output structure:
+Structure de sortie:
 ```text
-This file is a merged representation of the entire codebase...
+Ce fichier est une représentation fusionnée de l'ensemble du code source...
 
 ================
-File Summary
+Résumé du Fichier
 ================
-(Metadata and AI instructions)
+(Métadonnées et instructions pour l'IA)
 
 ================
-Directory Structure
+Structure des Répertoires
 ================
 src/
   index.ts
@@ -111,11 +111,11 @@ src/
     helper.ts
 
 ================
-Files
+Fichiers
 ================
 
 ================
-File: src/index.ts
+Fichier: src/index.ts
 ================
-// File contents here
+// Contenu du fichier ici
 ```
