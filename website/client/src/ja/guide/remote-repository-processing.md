@@ -1,5 +1,7 @@
 # リモートリポジトリの処理
 
+Repomixは手動でクローンする必要なく、リモートGitリポジトリを処理することをサポートしています。この機能により、単一のコマンドで任意のパブリックGitリポジトリを迅速に分析でき、コード分析のワークフローを効率化します。
+
 ## 基本的な使用方法
 
 パブリックリポジトリを処理
@@ -13,14 +15,19 @@ repomix --remote user/repo
 
 ## ブランチとコミットの選択
 
+ブランチ名、タグ、またはコミットハッシュを指定できます：
+
 ```bash
-# 特定のブランチ
+# --remote-branchオプションを使用して特定のブランチを指定
 repomix --remote user/repo --remote-branch main
+
+# ブランチのURLを直接使用
+repomix --remote https://github.com/user/repo/tree/main
 
 # タグ
 repomix --remote user/repo --remote-branch v1.0.0
 
-# コミットハッシュ
+# --remote-branchオプションを使用して特定のコミットハッシュを指定
 repomix --remote user/repo --remote-branch 935b695
 ```
 
