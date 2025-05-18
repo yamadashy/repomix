@@ -120,6 +120,38 @@ export const isGitInstalled = async (
   }
 };
 
+export const getRemoteRefs = async (
+  url: string,
+  deps = {
+    execFileAsync,
+  },
+): Promise<string[]> => {
+  try {
+    const result = await deps.execFileAsync('git', ['ls-remote', '--heads', '--tags', url]);
+
+    // Extract ref names from the output
+    // Format is: hash\tref_name
+    const refs = result.stdout
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => {
+        // Skip the hash part and extract only the ref name
+        const parts = line.split('\t');
+        if (parts.length < 2) return '';
+
+        // Remove 'refs/heads/' or 'refs/tags/' prefix
+        return parts[1].replace(/^refs\/(heads|tags)\//, '');
+      })
+      .filter(Boolean);
+
+    logger.trace(`Found ${refs.length} refs in repository: ${url}`);
+    return refs;
+  } catch (error) {
+    logger.trace('Failed to get remote refs:', (error as Error).message);
+    return [];
+  }
+};
+
 export const execGitShallowClone = async (
   url: string,
   directory: string,

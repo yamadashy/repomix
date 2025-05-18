@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import pc from 'picocolors';
-import { execGitShallowClone, isGitInstalled } from '../../core/git/gitCommand.js';
+import { execGitShallowClone, getRemoteRefs, isGitInstalled } from '../../core/git/gitCommand.js';
 import { parseRemoteValue } from '../../core/git/gitRemoteParse.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
@@ -16,6 +16,7 @@ export const runRemoteAction = async (
   deps = {
     isGitInstalled,
     execGitShallowClone,
+    getRemoteRefs,
     runDefaultAction,
   },
 ): Promise<DefaultActionRunnerResult> => {
@@ -23,7 +24,18 @@ export const runRemoteAction = async (
     throw new RepomixError('Git is not installed or not in the system PATH.');
   }
 
-  const parsedFields = parseRemoteValue(repoUrl);
+  // Get remote refs
+  let refs: string[] = [];
+  try {
+    refs = await deps.getRemoteRefs(parseRemoteValue(repoUrl).repoUrl);
+    logger.trace(`Retrieved ${refs.length} refs from remote repository`);
+  } catch (error) {
+    logger.trace('Failed to get remote refs, proceeding without them:', (error as Error).message);
+  }
+
+  // Parse the remote URL with the refs information
+  const parsedFields = parseRemoteValue(repoUrl, refs);
+
   const spinner = new Spinner('Cloning repository...', cliOptions);
   const tempDirPath = await createTempDirectory();
   let result: DefaultActionRunnerResult;
