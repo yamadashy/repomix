@@ -9,6 +9,9 @@ import {
 import { logger } from '../../../src/shared/logger.js';
 
 vi.mock('../../../src/shared/logger');
+vi.mock('node:fs/promises', () => ({
+  rm: vi.fn().mockResolvedValue(undefined),
+}));
 
 describe('gitCommand', () => {
   beforeEach(() => {
@@ -433,9 +436,6 @@ file2.ts
       const directory = '/tmp/repo';
       const branch = 'feature/branch';
 
-      const originalRm = fs.rm;
-      fs.rm = vi.fn().mockRejectedValue(new Error('Cleanup failed'));
-
       const mockFileExecAsync = vi
         .fn()
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // clone
@@ -446,13 +446,9 @@ file2.ts
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // reset
         .mockRejectedValueOnce(new Error('Checkout failed')); // checkout fails
 
-      try {
-        await expect(
-          execGitShallowClone(url, directory, branch, { execFileAsync: mockFileExecAsync }),
-        ).rejects.toThrow('Failed to checkout branch or commit');
-      } finally {
-        fs.rm = originalRm;
-      }
+      await expect(
+        execGitShallowClone(url, directory, branch, { execFileAsync: mockFileExecAsync }),
+      ).rejects.toThrow('Failed to checkout branch or commit');
     });
 
     test('should extract owner and repo name correctly from URL', async () => {
