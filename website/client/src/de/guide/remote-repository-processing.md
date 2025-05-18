@@ -1,75 +1,75 @@
-# Remote Repository Processing
+# Verarbeitung von Remote-Repositories
 
-Repomix supports processing remote Git repositories without the need for manual cloning. This feature allows you to quickly analyze any public Git repository with a single command, streamlining the workflow for code analysis.
+Repomix unterstützt die Verarbeitung von entfernten Git-Repositories ohne die Notwendigkeit eines manuellen Klonens. Diese Funktion ermöglicht es Ihnen, jedes öffentliche Git-Repository mit einem einzigen Befehl schnell zu analysieren und optimiert so den Arbeitsablauf für die Codeanalyse.
 
-## Basic Usage
+## Grundlegende Verwendung
 
-Process public repositories:
+Verarbeiten Sie öffentliche Repositories:
 ```bash
-# Using full URL
+# Mit vollständiger URL
 repomix --remote https://github.com/user/repo
 
-# Using GitHub shorthand
+# Mit GitHub-Kurzform
 repomix --remote user/repo
 ```
 
-## Branch and Commit Selection
+## Branch- und Commit-Auswahl
 
-You can specify the branch name, tag, or commit hash:
+Sie können den Branch-Namen, Tag oder Commit-Hash angeben:
 
 ```bash
-# Specific branch using --remote-branch option
+# Spezifischer Branch mit der Option --remote-branch
 repomix --remote user/repo --remote-branch main
 
-# Using branch's URL directly
+# Direkte Verwendung der Branch-URL
 repomix --remote https://github.com/user/repo/tree/main
 
 # Tag
 repomix --remote user/repo --remote-branch v1.0.0
 
-# Specific commit hash using --remote-branch option
+# Spezifischer Commit-Hash mit der Option --remote-branch
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-## Requirements
+## Anforderungen
 
-- Git must be installed
-- Internet connection
-- Read access to repository
+- Git muss installiert sein
+- Internetverbindung
+- Lesezugriff auf das Repository
 
-## Output Control
+## Ausgabesteuerung
 
 ```bash
-# Custom output location
+# Benutzerdefinierter Ausgabeort
 repomix --remote user/repo -o custom-output.xml
 
-# With XML format
+# Mit XML-Format
 repomix --remote user/repo --style xml
 
-# Remove comments
+# Kommentare entfernen
 repomix --remote user/repo --remove-comments
 ```
 
-## Docker Usage
+## Docker-Verwendung
 
 ```bash
-# Process and output to current directory
+# Verarbeiten und Ausgabe in das aktuelle Verzeichnis
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 
-# Output to specific directory
+# Ausgabe in ein bestimmtes Verzeichnis
 docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
-## Common Issues
+## Häufige Probleme
 
-### Access Issues
-- Ensure repository is public
-- Check Git installation
-- Verify internet connection
+### Zugriffsprobleme
+- Stellen Sie sicher, dass das Repository öffentlich ist
+- Überprüfen Sie die Git-Installation
+- Überprüfen Sie die Internetverbindung
 
-### Large Repositories
-- Use `--include` to select specific paths
-- Enable `--remove-comments`
-- Process branches separately
+### Große Repositories
+- Verwenden Sie `--include`, um bestimmte Pfade auszuwählen
+- Aktivieren Sie `--remove-comments`
+- Verarbeiten Sie Branches separat
