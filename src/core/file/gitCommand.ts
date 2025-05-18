@@ -231,22 +231,37 @@ export const execGitShallowClone = async (
 
           await deps.execFileAsync('git', ['-C', directory, 'checkout', finalRemoteBranch]);
         } catch (err) {
-          await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin']);
+          try {
+            await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin']);
 
-          if (!finalRemoteBranch.match(/^[0-9a-zA-Z\/_.-]+$/)) {
-            throw new RepomixError(`Invalid branch or commit name: ${finalRemoteBranch}`);
+            if (!finalRemoteBranch.match(/^[0-9a-zA-Z\/_.-]+$/)) {
+              throw new RepomixError(`Invalid branch or commit name: ${finalRemoteBranch}`);
+            }
+
+            await deps.execFileAsync('git', ['-C', directory, 'checkout', finalRemoteBranch]);
+          } catch (fetchErr) {
+            throw new RepomixError(`Failed to checkout branch or commit: ${finalRemoteBranch}`);
           }
-
-          await deps.execFileAsync('git', ['-C', directory, 'checkout', finalRemoteBranch]);
         }
       }
     } catch (err) {
+      // Clean up .git directory even if checkout fails
+      try {
+        await fs.rm(path.join(directory, '.git'), { recursive: true, force: true });
+      } catch (cleanupErr) {
+        logger.trace('Failed to clean up .git directory:', (cleanupErr as Error).message);
+      }
+      
       throw new RepomixError(`Failed to checkout branch or commit: ${finalRemoteBranch}`);
     }
   }
 
-  // Clean up .git directory
-  await fs.rm(path.join(directory, '.git'), { recursive: true, force: true });
+  try {
+    // Clean up .git directory
+    await fs.rm(path.join(directory, '.git'), { recursive: true, force: true });
+  } catch (cleanupErr) {
+    logger.trace('Failed to clean up .git directory:', (cleanupErr as Error).message);
+  }
 
   return {
     repoUrl: url,
