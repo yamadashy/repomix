@@ -424,14 +424,13 @@ file2.ts
     test('should throw error for invalid branch name type', async () => {
       const url = 'https://github.com/user/repo.git';
       const directory = '/tmp/repo';
-      // @ts-expect-error Testing invalid type intentionally
-      const invalidBranch = 123;
+      const invalidBranch = 123 as unknown as string;
 
       await expect(execGitShallowClone(url, directory, invalidBranch, { execFileAsync: vi.fn() })).rejects.toThrow(
         'Invalid branch name',
       );
     });
-    
+
     test('should throw error for branch name with unsafe characters', async () => {
       const url = 'https://github.com/user/repo.git';
       const directory = '/tmp/repo';
@@ -441,7 +440,7 @@ file2.ts
         'Branch name contains invalid characters',
       );
     });
-    
+
     test('should throw error for directory with unsafe characters', async () => {
       const url = 'https://github.com/user/repo.git';
       const unsafeDirectory = '/tmp/repo; rm -rf /';
@@ -450,7 +449,7 @@ file2.ts
         'Directory path contains invalid characters',
       );
     });
-    
+
     test('should throw error for URL with unsafe parameters', async () => {
       const unsafeUrl = 'https://github.com/user/repo.git --upload-pack=evil';
       const directory = '/tmp/repo';
@@ -468,14 +467,17 @@ file2.ts
       const mockFileExecAsync = vi.fn().mockImplementation((cmd, args) => {
         if (args.includes('clone')) {
           return Promise.resolve({ stdout: '', stderr: '' });
-        } else if (args.includes('ls-remote')) {
+        }
+        if (args.includes('ls-remote')) {
           return Promise.resolve({
             stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/feature/branch',
             stderr: '',
           });
-        } else if (args.includes('reset')) {
+        }
+        if (args.includes('reset')) {
           return Promise.resolve({ stdout: '', stderr: '' });
-        } else if (args.includes('checkout')) {
+        }
+        if (args.includes('checkout')) {
           return Promise.reject(new Error('Checkout failed'));
         }
         return Promise.resolve({ stdout: '', stderr: '' });

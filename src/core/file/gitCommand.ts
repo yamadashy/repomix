@@ -128,6 +128,34 @@ export const isGitInstalled = async (
   }
 };
 
+/**
+ * Performs a shallow clone of a Git repository with enhanced URL parsing.
+ *
+ * Supports the following GitHub URL patterns:
+ * 1. Standard URLs: https://github.com/user/repo.git
+ * 2. GitHub shorthand: user/repo
+ * 3. SSH URLs: git@github.com:user/repo.git
+ * 4. Branch URLs: https://github.com/user/repo/tree/branch
+ * 5. Slashed branch names: feat/git-metrics
+ * 6. Commit hashes (full or short SHA)
+ *
+ * The two-stage parsing approach:
+ * - First parses the URL to extract basic repository information
+ * - Then clones the repository to access actual branch information
+ * - Accurately determines branch names and file paths using repository data
+ * - Handles slashed branch names through pattern matching with actual branches
+ *
+ * Security features:
+ * - Validates URLs to prevent command injection
+ * - Checks for unsafe parameters in URLs
+ * - Validates directory paths and branch names for shell metacharacters
+ *
+ * @param url - Repository URL or GitHub shorthand
+ * @param directory - Local directory to clone into
+ * @param remoteBranch - Optional branch name, tag, or commit hash
+ * @param deps - Dependencies for testing
+ * @returns GitCloneResult with repository details
+ */
 export const execGitShallowClone = async (
   url: string,
   directory: string,
@@ -155,8 +183,14 @@ export const execGitShallowClone = async (
     throw new RepomixError('Invalid directory path');
   }
 
-  if (directory.includes(';') || directory.includes('&') || directory.includes('|') || 
-      directory.includes('>') || directory.includes('<') || directory.includes('`')) {
+  if (
+    directory.includes(';') ||
+    directory.includes('&') ||
+    directory.includes('|') ||
+    directory.includes('>') ||
+    directory.includes('<') ||
+    directory.includes('`')
+  ) {
     throw new RepomixError('Directory path contains invalid characters');
   }
 
@@ -164,9 +198,15 @@ export const execGitShallowClone = async (
     if (typeof remoteBranch !== 'string') {
       throw new RepomixError('Invalid branch name');
     }
-    
-    if (remoteBranch.includes(';') || remoteBranch.includes('&') || remoteBranch.includes('|') || 
-        remoteBranch.includes('>') || remoteBranch.includes('<') || remoteBranch.includes('`')) {
+
+    if (
+      remoteBranch.includes(';') ||
+      remoteBranch.includes('&') ||
+      remoteBranch.includes('|') ||
+      remoteBranch.includes('>') ||
+      remoteBranch.includes('<') ||
+      remoteBranch.includes('`')
+    ) {
       throw new RepomixError('Branch name contains invalid characters');
     }
   }

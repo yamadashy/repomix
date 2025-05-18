@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import GitUrlParse, { type GitUrl } from 'git-url-parse';
 import pc from 'picocolors';
-import { execGitShallowClone, isGitInstalled, GitCloneResult } from '../../core/file/gitCommand.js';
+import { type GitCloneResult, execGitShallowClone, isGitInstalled } from '../../core/file/gitCommand.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
