@@ -72,9 +72,6 @@ repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
 # 带分支的远程仓库
 repomix --remote https://github.com/user/repo/tree/main
 
-# 带提交的远程仓库
-repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb28655d85712680f1
-
 # 使用简写的远程仓库
 repomix --remote user/repo
 ```
