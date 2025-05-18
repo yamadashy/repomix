@@ -1,23 +1,23 @@
-# Output Formats
+# 輸出格式
 
-Repomix supports three output formats:
-- XML (default): Most structured format, ideal for AI tools like Claude that parse XML efficiently
-- Markdown: Balances readability with structure, great for GitHub and document-oriented workflows
-- Plain Text: Simplest format with universal compatibility across all tools and platforms
+Repomix 支援三種輸出格式：
+- XML（預設）：最結構化的格式，非常適合像 Claude 這樣能高效解析 XML 的 AI 工具
+- Markdown：平衡可讀性和結構，適合 GitHub 和文檔導向的工作流程
+- 純文字：最簡單的格式，與所有工具和平台具有通用兼容性
 
-## XML Format
+## XML 格式
 
 ```bash
 repomix --style xml
 ```
 
-XML format is optimized for AI processing with clearly defined sections and structure:
+XML 格式針對 AI 處理進行了優化，具有明確定義的部分和結構：
 
 ```xml
-This file is a merged representation of the entire codebase...
+此檔案是整個程式碼庫的合併表示...
 
 <file_summary>
-(Metadata and AI instructions)
+（元數據和 AI 指令）
 </file_summary>
 
 <directory_structure>
@@ -29,30 +29,30 @@ src/
 
 <files>
 <file path="src/index.ts">
-// File contents here
+// 檔案內容在此
 </file>
 </files>
 ```
 
-::: tip Why XML?
-XML tags help AI models like Claude parse content more accurately. Claude's documentation [recommends using XML tags](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags) for structured prompts, making it easier for the model to understand different sections of your codebase.
+::: tip 為什麼選擇 XML？
+XML 標籤幫助像 Claude 這樣的 AI 模型更準確地解析內容。Claude 的文檔[建議使用 XML 標籤](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags)來構建結構化提示，使模型更容易理解程式碼庫的不同部分。
 :::
 
-## Markdown Format
+## Markdown 格式
 
 ```bash
 repomix --style markdown
 ```
 
-Markdown provides readable formatting:
+Markdown 提供可讀性良好的格式：
 
 ```markdown
-This file is a merged representation of the entire codebase...
+此檔案是整個程式碼庫的合併表示...
 
-# File Summary
-(Metadata and AI instructions)
+# 檔案摘要
+（元數據和 AI 指令）
 
-# Directory Structure
+# 目錄結構
 ```
 src/
 index.ts
@@ -60,24 +60,24 @@ utils/
 helper.ts
 ```
 
-# Files
+# 檔案
 
-## File: src/index.ts
+## 檔案：src/index.ts
 ```typescript
-// File contents here
+// 檔案內容在此
 ```
 ```
 
-## Usage with AI Models
+## 與 AI 模型一起使用
 
-Each format works well with AI models, but consider:
-- Use XML for Claude and other AI models that prefer structured input with clear section delineation
-- Use Markdown for general readability and when sharing with humans alongside AI analysis
-- Use Plain Text for simplicity, universal compatibility, and when working with tools that don't parse markup
+每種格式都能與 AI 模型良好配合，但請考慮：
+- 對於 Claude 和其他偏好結構化輸入且具有明確部分劃分的 AI 模型，使用 XML
+- 當需要一般可讀性以及與人類一起分享 AI 分析時，使用 Markdown
+- 對於簡單性、通用兼容性以及使用不解析標記的工具時，使用純文字
 
-## Customization
+## 自定義
 
-Set default format in `repomix.config.json`:
+在 `repomix.config.json` 中設置默認格式：
 ```json
 {
   "output": {
@@ -87,23 +87,23 @@ Set default format in `repomix.config.json`:
 }
 ```
 
-## Plain Text Format
+## 純文字格式
 
 ```bash
 repomix --style plain
 ```
 
-Output structure:
+輸出結構：
 ```text
-This file is a merged representation of the entire codebase...
+此檔案是整個程式碼庫的合併表示...
 
 ================
-File Summary
+檔案摘要
 ================
-(Metadata and AI instructions)
+（元數據和 AI 指令）
 
 ================
-Directory Structure
+目錄結構
 ================
 src/
   index.ts
@@ -111,11 +111,11 @@ src/
     helper.ts
 
 ================
-Files
+檔案
 ================
 
 ================
-File: src/index.ts
+檔案：src/index.ts
 ================
-// File contents here
+// 檔案內容在此
 ```

@@ -1,61 +1,61 @@
-# Getting Started with Repomix
+# Repomix 入門指南
 
-Repomix is a tool that packs your entire repository into a single, AI-friendly file. It's designed to help you feed your codebase to Large Language Models (LLMs) like ChatGPT, DeepSeek, Perplexity, Gemini, Gemma, Llama, Grok, and more.
+Repomix 是一個將整個儲存庫打包成單一 AI 友好檔案的工具。它旨在幫助您將程式碼庫提供給大型語言模型 (LLM)，如 ChatGPT、DeepSeek、Perplexity、Gemini、Gemma、Llama、Grok 等。
 
-## Quick Start
+## 快速開始
 
-Run this command in your project directory:
+在您的專案目錄中運行此命令：
 
 ```bash
 npx repomix
 ```
 
-That's it! You'll find a `repomix-output.xml` file containing your entire repository in an AI-friendly format.
+就是這樣！您將找到一個 `repomix-output.xml` 檔案，其中包含您整個儲存庫的 AI 友好格式。
 
-You can then send this file to an AI assistant with a prompt like:
+然後，您可以將此檔案發送給 AI 助手，並附上如下提示：
 
 ```
-This file contains all the files in the repository combined into one.
-I want to refactor the code, so please review it first.
+此檔案包含儲存庫中所有檔案的合併版本。
+我想重構程式碼，請先進行審查。
 ```
 
-The AI will analyze your entire codebase and provide comprehensive insights:
+AI 將分析您的整個程式碼庫並提供全面的見解：
 
-![Repomix File Usage 1](/images/docs/repomix-file-usage-1.png)
+![Repomix 檔案使用 1](/images/docs/repomix-file-usage-1.png)
 
-When discussing specific changes, the AI can help generate code. With features like Claude's Artifacts, you can even receive multiple interdependent files:
+在討論特定更改時，AI 可以幫助生成程式碼。使用像 Claude 的 Artifacts 等功能，您甚至可以接收多個相互依賴的檔案：
 
-![Repomix File Usage 2](/images/docs/repomix-file-usage-2.png)
+![Repomix 檔案使用 2](/images/docs/repomix-file-usage-2.png)
 
-Happy coding! 🚀
+祝您編程愉快！🚀
 
-## Core Features
+## 核心功能
 
-- **AI-Optimized Output**: Formats your codebase for easy AI processing with structured sections and clear organization
-- **Token Counting**: Tracks token usage for LLM context limits using configurable tokenizers like OpenAI's tiktoken
-- **Git-Aware**: Respects your `.gitignore` and `.git/info/exclude` files to prevent including unwanted files
-- **Security-Focused**: Detects sensitive information using Secretlint to prevent accidental exposure
-- **Multiple Output Formats**: Choose between XML (best for AI), Markdown (balance of readability and structure), or plain text
-- **Code Compression**: Intelligently extracts essential code structures while removing implementation details to reduce token count
+- **AI 優化輸出**：以結構化部分和清晰組織格式化您的程式碼庫，便於 AI 處理
+- **令牌計數**：使用可配置的分詞器（如 OpenAI 的 tiktoken）追蹤 LLM 上下文限制的令牌使用情況
+- **Git 感知**：尊重您的 `.gitignore` 和 `.git/info/exclude` 檔案，防止包含不需要的檔案
+- **安全性專注**：使用 Secretlint 檢測敏感資訊，防止意外洩露
+- **多種輸出格式**：選擇 XML（最適合 AI）、Markdown（可讀性和結構的平衡）或純文字
+- **程式碼壓縮**：智能提取關鍵程式碼結構，同時移除實現細節，減少令牌數量
 
-## What's Next?
+## 下一步是什麼？
 
-- [Installation Guide](installation.md): Different ways to install Repomix
-- [Usage Guide](usage.md): Learn about basic and advanced features
-- [Configuration](configuration.md): Customize Repomix for your needs
-- [Security Features](security.md): Learn about security checks
+- [安裝指南](installation.md)：安裝 Repomix 的不同方式
+- [使用指南](usage.md)：了解基本和進階功能
+- [設定](configuration.md)：根據您的需求自定義 Repomix
+- [安全功能](security.md)：了解安全檢查
 
-## Community
+## 社群
 
-Join our [Discord community](https://discord.gg/wNYzTwZFku) for:
-- Getting help with Repomix
-- Sharing your experiences
-- Suggesting new features
-- Connecting with other users
+加入我們的 [Discord 社群](https://discord.gg/wNYzTwZFku)，用於：
+- 獲取 Repomix 的幫助
+- 分享您的經驗
+- 建議新功能
+- 與其他用戶連接
 
-## Support
+## 支援
 
-Found a bug or need help?
-- [Open an issue on GitHub](https://github.com/yamadashy/repomix/issues)
-- Join our Discord server
-- Check the [documentation](https://repomix.com)
+發現錯誤或需要幫助？
+- [在 GitHub 上開啟問題](https://github.com/yamadashy/repomix/issues)
+- 加入我們的 Discord 伺服器
+- 查看[文檔](https://repomix.com)

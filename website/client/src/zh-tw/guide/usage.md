@@ -1,60 +1,60 @@
-# Basic Usage
+# 基本使用方法
 
-## Quick Start
+## 快速開始
 
-Pack your entire repository:
+打包整個儲存庫：
 ```bash
 repomix
 ```
 
-## Common Use Cases
+## 常見使用案例
 
-### Pack Specific Directories
-Process only specific directories or files to focus on relevant code and reduce token count:
+### 打包特定目錄
+處理特定目錄或檔案以專注於相關程式碼並減少令牌數量：
 ```bash
 repomix path/to/directory
 ```
 
-### Include Specific Files
-Use [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) to precisely control which files are included:
+### 包含特定檔案
+使用 [glob 模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) 精確控制包含哪些檔案：
 ```bash
 repomix --include "src/**/*.ts,**/*.md"
 ```
 
-### Exclude Files
-Skip certain files or directories using glob patterns to avoid including unnecessary or sensitive content:
+### 排除檔案
+使用 glob 模式跳過某些檔案或目錄，避免包含不必要或敏感內容：
 ```bash
 repomix --ignore "**/*.log,tmp/"
 ```
 
-### Remote Repositories
+### 遠端儲存庫
 ```bash
-# Using GitHub URL
+# 使用 GitHub URL
 repomix --remote https://github.com/user/repo
 
-# Using shorthand
+# 使用簡寫
 repomix --remote user/repo
 
-# Specific branch/tag/commit
+# 特定分支/標籤/提交
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695
 ```
 
 
-### Code Compression
+### 程式碼壓縮
 
-Use Tree-sitter to intelligently extract essential code structures while removing implementation details, significantly reducing token count while preserving architecture:
+使用 Tree-sitter 智能提取關鍵程式碼結構，同時移除實現細節，在保留架構的同時顯著減少令牌數量：
 
 ```bash
 repomix --compress
 
-# You can also use it with remote repositories:
+# 也可以與遠端儲存庫一起使用：
 repomix --remote yamadashy/repomix --compress
 ```
 
-## Output Formats
+## 輸出格式
 
-### XML (Default)
+### XML（預設）
 ```bash
 repomix --style xml
 ```
@@ -64,38 +64,38 @@ repomix --style xml
 repomix --style markdown
 ```
 
-### Plain Text
+### 純文字
 ```bash
 repomix --style plain
 ```
 
-## Additional Options
+## 其他選項
 
-### Remove Comments
+### 移除註解
 ```bash
 repomix --remove-comments
 ```
 
-### Show Line Numbers
+### 顯示行號
 ```bash
 repomix --output-show-line-numbers
 ```
 
-### Copy to Clipboard
+### 複製到剪貼簿
 ```bash
 repomix --copy
 ```
 
-### Disable Security Check
+### 停用安全檢查
 ```bash
 repomix --no-security-check
 ```
 
-## Configuration
+## 設定
 
-Initialize configuration file:
+初始化設定檔：
 ```bash
 repomix --init
 ```
 
-See [Configuration Guide](/guide/configuration) for detailed options.
+詳細選項請參閱[設定指南](/zh-tw/guide/configuration)。

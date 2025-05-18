@@ -1,101 +1,113 @@
-# Basic Usage
+# Utilisation de base
 
-## Quick Start
+## Démarrage rapide
 
-Pack your entire repository:
+Empaquetez tout votre dépôt:
+
 ```bash
 repomix
 ```
 
-## Common Use Cases
+## Cas d'utilisation courants
 
-### Pack Specific Directories
-Process only specific directories or files to focus on relevant code and reduce token count:
+### Empaqueter des répertoires spécifiques
+
+Traitez uniquement des répertoires ou fichiers spécifiques pour vous concentrer sur le code pertinent et réduire le nombre de jetons:
+
 ```bash
 repomix path/to/directory
 ```
 
-### Include Specific Files
-Use [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) to precisely control which files are included:
+### Inclure des fichiers spécifiques
+
+Utilisez des [motifs glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) pour contrôler précisément quels fichiers sont inclus:
+
 ```bash
 repomix --include "src/**/*.ts,**/*.md"
 ```
 
-### Exclude Files
-Skip certain files or directories using glob patterns to avoid including unnecessary or sensitive content:
+### Exclure des fichiers
+
+Ignorez certains fichiers ou répertoires en utilisant des motifs glob pour éviter d'inclure du contenu inutile ou sensible:
+
 ```bash
 repomix --ignore "**/*.log,tmp/"
 ```
 
-### Remote Repositories
+### Dépôts distants
+
 ```bash
-# Using GitHub URL
+# En utilisant l'URL GitHub
 repomix --remote https://github.com/user/repo
-
-# Using shorthand
+# En utilisant le format abrégé
 repomix --remote user/repo
-
-# Specific branch/tag/commit
+# Branche/tag/commit spécifique
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695
 ```
 
+### Compression de code
 
-### Code Compression
-
-Use Tree-sitter to intelligently extract essential code structures while removing implementation details, significantly reducing token count while preserving architecture:
+Utilisez Tree-sitter pour extraire intelligemment les structures de code essentielles tout en supprimant les détails d'implémentation, réduisant significativement le nombre de jetons tout en préservant l'architecture:
 
 ```bash
 repomix --compress
-
-# You can also use it with remote repositories:
+# Vous pouvez également l'utiliser avec des dépôts distants:
 repomix --remote yamadashy/repomix --compress
 ```
 
-## Output Formats
+## Formats de sortie
 
-### XML (Default)
+### XML (Par défaut)
+
 ```bash
 repomix --style xml
 ```
 
 ### Markdown
+
 ```bash
 repomix --style markdown
 ```
 
-### Plain Text
+### Texte brut
+
 ```bash
 repomix --style plain
 ```
 
-## Additional Options
+## Options supplémentaires
 
-### Remove Comments
+### Supprimer les commentaires
+
 ```bash
 repomix --remove-comments
 ```
 
-### Show Line Numbers
+### Afficher les numéros de ligne
+
 ```bash
 repomix --output-show-line-numbers
 ```
 
-### Copy to Clipboard
+### Copier dans le presse-papiers
+
 ```bash
 repomix --copy
 ```
 
-### Disable Security Check
+### Désactiver la vérification de sécurité
+
 ```bash
 repomix --no-security-check
 ```
 
 ## Configuration
 
-Initialize configuration file:
+Initialiser le fichier de configuration:
+
 ```bash
 repomix --init
 ```
 
-See [Configuration Guide](/guide/configuration) for detailed options.
+Consultez le [Guide de configuration](/fr/guide/configuration) pour les options détaillées.

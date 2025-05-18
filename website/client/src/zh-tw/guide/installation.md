@@ -1,12 +1,12 @@
-# Installation
+# 安裝
 
-## Using npx (No Installation Required)
+## 使用 npx（無需安裝）
 
 ```bash
 npx repomix
 ```
 
-## Global Installation
+## 全局安裝
 
 ### npm
 ```bash
@@ -23,48 +23,48 @@ yarn global add repomix
 brew install repomix
 ```
 
-## Docker Installation
+## Docker 安裝
 
-Pull and run the Docker image for containerized execution, ensuring consistent environments across systems:
+拉取並運行 Docker 映像以進行容器化執行，確保跨系統的一致環境：
 
 ```bash
-# Current directory - mounts the current directory to /app in the container
+# 當前目錄 - 將當前目錄掛載到容器中的 /app
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix
 
-# Specific directory - specify a path to process only that directory
+# 特定目錄 - 指定路徑僅處理該目錄
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix path/to/directory
 
-# Custom output file - specify an output file name and location
+# 自定義輸出檔案 - 指定輸出檔案名稱和位置
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix -o custom-output.xml
 
-# Remote repository - store output in ./output directory
+# 遠端儲存庫 - 將輸出存儲在 ./output 目錄中
 docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix --remote yamadashy/repomix
 ```
 
-The Docker image includes all dependencies required to run Repomix.
+Docker 映像包含運行 Repomix 所需的所有依賴項。
 
-## VSCode Extension
+## VSCode 擴展
 
-Run Repomix directly in VSCode with the community-maintained [Repomix Runner](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner) extension (created by [massdo](https://github.com/massdo)).
+使用社區維護的 [Repomix Runner](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner) 擴展（由 [massdo](https://github.com/massdo) 創建）直接在 VSCode 中運行 Repomix。
 
-Features:
-- Pack any folder with just a few clicks
-- Control output format (XML, Markdown, Plain Text)
-- Choose between file or content mode for copying
-- Automatic cleanup of output files
-- Works seamlessly with your existing repomix.config.json
-- Manage outputs through VSCode's intuitive interface
+功能：
+- 只需點擊幾下即可打包任何文件夾
+- 控制輸出格式（XML、Markdown、純文字）
+- 選擇文件或內容模式進行複製
+- 自動清理輸出文件
+- 與您現有的 repomix.config.json 無縫協作
+- 通過 VSCode 的直觀界面管理輸出
 
-Install it from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner) or view the [source code on GitHub](https://github.com/massdo/repomix-runner).
+從 [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner) 安裝，或在 [GitHub 上查看源代碼](https://github.com/massdo/repomix-runner)。
 
-## System Requirements
+## 系統要求
 
 - Node.js: ≥ 18.0.0
-- Git: Required for remote repository processing
+- Git: 遠端儲存庫處理所需
 
-## Verification
+## 驗證
 
-After installation, verify that Repomix is working:
+安裝後，驗證 Repomix 是否正常工作：
 
 ```bash
 repomix --version

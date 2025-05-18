@@ -1,75 +1,75 @@
-# Remote Repository Processing
+# 遠端儲存庫處理
 
-Repomix supports processing remote Git repositories without the need for manual cloning. This feature allows you to quickly analyze any public Git repository with a single command, streamlining the workflow for code analysis.
+Repomix 支援處理遠端 Git 儲存庫，無需手動克隆。此功能允許您使用單一命令快速分析任何公共 Git 儲存庫，簡化程式碼分析的工作流程。
 
-## Basic Usage
+## 基本使用
 
-Process public repositories:
+處理公共儲存庫：
 ```bash
-# Using full URL
+# 使用完整 URL
 repomix --remote https://github.com/user/repo
 
-# Using GitHub shorthand
+# 使用 GitHub 簡寫
 repomix --remote user/repo
 ```
 
-## Branch and Commit Selection
+## 分支和提交選擇
 
-You can specify the branch name, tag, or commit hash:
+您可以指定分支名稱、標籤或提交哈希：
 
 ```bash
-# Specific branch using --remote-branch option
+# 使用 --remote-branch 選項指定特定分支
 repomix --remote user/repo --remote-branch main
 
-# Using branch's URL directly
+# 直接使用分支的 URL
 repomix --remote https://github.com/user/repo/tree/main
 
-# Tag
+# 標籤
 repomix --remote user/repo --remote-branch v1.0.0
 
-# Specific commit hash using --remote-branch option
+# 使用 --remote-branch 選項指定特定提交哈希
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-## Requirements
+## 要求
 
-- Git must be installed
-- Internet connection
-- Read access to repository
+- 必須安裝 Git
+- 網路連接
+- 對儲存庫的讀取權限
 
-## Output Control
+## 輸出控制
 
 ```bash
-# Custom output location
+# 自定義輸出位置
 repomix --remote user/repo -o custom-output.xml
 
-# With XML format
+# 使用 XML 格式
 repomix --remote user/repo --style xml
 
-# Remove comments
+# 移除註解
 repomix --remote user/repo --remove-comments
 ```
 
-## Docker Usage
+## Docker 使用
 
 ```bash
-# Process and output to current directory
+# 處理並輸出到當前目錄
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 
-# Output to specific directory
+# 輸出到特定目錄
 docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
-## Common Issues
+## 常見問題
 
-### Access Issues
-- Ensure repository is public
-- Check Git installation
-- Verify internet connection
+### 訪問問題
+- 確保儲存庫是公開的
+- 檢查 Git 安裝
+- 驗證網路連接
 
-### Large Repositories
-- Use `--include` to select specific paths
-- Enable `--remove-comments`
-- Process branches separately
+### 大型儲存庫
+- 使用 `--include` 選擇特定路徑
+- 啟用 `--remove-comments`
+- 分別處理分支

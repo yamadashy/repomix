@@ -1,43 +1,43 @@
-# Code Compression
+# 程式碼壓縮
 
-Code compression is a powerful feature that intelligently extracts essential code structures while removing implementation details. This feature utilizes [Tree-sitter](https://github.com/tree-sitter/tree-sitter) to perform intelligent code extraction, focusing on function and class signatures while preserving important structural information. This is particularly useful for reducing token count while maintaining the architectural understanding of your codebase.
+程式碼壓縮是一項強大的功能，可以智能提取關鍵程式碼結構，同時移除實現細節。此功能利用 [Tree-sitter](https://github.com/tree-sitter/tree-sitter) 執行智能程式碼提取，專注於函數和類別簽名，同時保留重要的結構資訊。這對於減少令牌數量同時保持對程式碼庫架構理解特別有用。
 
 > [!NOTE]  
-> This is an experimental feature that we'll be actively improving based on user feedback and real-world usage
+> 這是一項實驗性功能，我們將根據用戶反饋和實際使用情況積極改進
 
-## Basic Usage
+## 基本使用
 
-Enable code compression using the `--compress` flag:
+使用 `--compress` 標誌啟用程式碼壓縮：
 
 ```bash
 repomix --compress
 ```
 
-You can also use it with remote repositories:
+您也可以將其用於遠端儲存庫：
 
 ```bash
 repomix --remote user/repo --compress
 ```
 
-## How It Works
+## 工作原理
 
-The compression algorithm processes code using tree-sitter parsing to extract and preserve essential structural elements while removing implementation details.
+壓縮演算法使用 tree-sitter 解析處理程式碼，提取並保留基本結構元素，同時移除實現細節。
 
-The compression preserves:
-- Function and method signatures (parameters and return types)
-- Interface and type definitions (property types and structure)
-- Class structures and properties (inheritance relationships)
-- Important structural elements (imports, exports, module structure)
+壓縮會保留：
+- 函數和方法簽名（參數和返回類型）
+- 介面和類型定義（屬性類型和結構）
+- 類別結構和屬性（繼承關係）
+- 重要的結構元素（導入、導出、模組結構）
 
-While removing:
-- Function and method implementations
-- Loop and conditional logic details
-- Internal variable declarations
-- Implementation-specific code
+同時移除：
+- 函數和方法實現
+- 迴圈和條件邏輯細節
+- 內部變數聲明
+- 特定實現的程式碼
 
-### Example
+### 範例
 
-Original TypeScript code:
+原始 TypeScript 程式碼：
 
 ```typescript
 import { ShoppingItem } from './shopping-item';
@@ -63,7 +63,7 @@ interface Item {
 }
 ```
 
-After compression:
+壓縮後：
 
 ```typescript
 import { ShoppingItem } from './shopping-item';
@@ -83,9 +83,9 @@ interface Item {
 }
 ```
 
-## Configuration
+## 設定
 
-You can enable compression in your configuration file:
+您可以在設定檔中啟用壓縮：
 
 ```json
 {
@@ -95,18 +95,18 @@ You can enable compression in your configuration file:
 }
 ```
 
-## Use Cases
+## 使用場景
 
-Code compression is particularly useful when:
-- Analyzing code structure and architecture
-- Reducing token count for LLM processing
-- Creating high-level documentation
-- Understanding code patterns and signatures
-- Sharing API and interface designs
+程式碼壓縮在以下情況特別有用：
+- 分析程式碼結構和架構
+- 減少 LLM 處理的令牌數量
+- 創建高級文檔
+- 理解程式碼模式和簽名
+- 分享 API 和介面設計
 
-## Related Options
+## 相關選項
 
-You can combine compression with other options:
-- `--remove-comments`: Remove code comments
-- `--remove-empty-lines`: Remove empty lines
-- `--output-show-line-numbers`: Add line numbers to output
+您可以將壓縮與其他選項結合使用：
+- `--remove-comments`：移除程式碼註解
+- `--remove-empty-lines`：移除空行
+- `--output-show-line-numbers`：在輸出中添加行號
