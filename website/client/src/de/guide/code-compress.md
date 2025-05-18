@@ -1,43 +1,43 @@
-# Code Compression
+# Code-Komprimierung
 
-Code compression is a powerful feature that intelligently extracts essential code structures while removing implementation details. This feature utilizes [Tree-sitter](https://github.com/tree-sitter/tree-sitter) to perform intelligent code extraction, focusing on function and class signatures while preserving important structural information. This is particularly useful for reducing token count while maintaining the architectural understanding of your codebase.
+Die Code-Komprimierung ist eine leistungsstarke Funktion, die intelligent wesentliche Code-Strukturen extrahiert und gleichzeitig Implementierungsdetails entfernt. Diese Funktion nutzt [Tree-sitter](https://github.com/tree-sitter/tree-sitter), um eine intelligente Code-Extraktion durchzuführen, wobei der Fokus auf Funktions- und Klassensignaturen liegt und wichtige strukturelle Informationen erhalten bleiben. Dies ist besonders nützlich, um die Token-Anzahl zu reduzieren und gleichzeitig das architektonische Verständnis Ihres Codes zu bewahren.
 
 > [!NOTE]  
-> This is an experimental feature that we'll be actively improving based on user feedback and real-world usage
+> Dies ist eine experimentelle Funktion, die wir basierend auf Benutzerfeedback und realer Nutzung aktiv verbessern werden
 
-## Basic Usage
+## Grundlegende Verwendung
 
-Enable code compression using the `--compress` flag:
+Aktivieren Sie die Code-Komprimierung mit dem Flag `--compress`:
 
 ```bash
 repomix --compress
 ```
 
-You can also use it with remote repositories:
+Sie können sie auch mit Remote-Repositories verwenden:
 
 ```bash
 repomix --remote user/repo --compress
 ```
 
-## How It Works
+## Funktionsweise
 
-The compression algorithm processes code using tree-sitter parsing to extract and preserve essential structural elements while removing implementation details.
+Der Komprimierungsalgorithmus verarbeitet Code mithilfe von Tree-sitter-Parsing, um wesentliche strukturelle Elemente zu extrahieren und zu erhalten, während Implementierungsdetails entfernt werden.
 
-The compression preserves:
-- Function and method signatures (parameters and return types)
-- Interface and type definitions (property types and structure)
-- Class structures and properties (inheritance relationships)
-- Important structural elements (imports, exports, module structure)
+Die Komprimierung bewahrt:
+- Funktions- und Methodensignaturen (Parameter und Rückgabetypen)
+- Schnittstellen- und Typdefinitionen (Eigenschaftstypen und Struktur)
+- Klassenstrukturen und -eigenschaften (Vererbungsbeziehungen)
+- Wichtige strukturelle Elemente (Importe, Exporte, Modulstruktur)
 
-While removing:
-- Function and method implementations
-- Loop and conditional logic details
-- Internal variable declarations
-- Implementation-specific code
+Während entfernt werden:
+- Funktions- und Methodenimplementierungen
+- Details zu Schleifen- und Bedingungslogik
+- Interne Variablendeklarationen
+- Implementierungsspezifischer Code
 
-### Example
+### Beispiel
 
-Original TypeScript code:
+Ursprünglicher TypeScript-Code:
 
 ```typescript
 import { ShoppingItem } from './shopping-item';
@@ -63,7 +63,7 @@ interface Item {
 }
 ```
 
-After compression:
+Nach der Komprimierung:
 
 ```typescript
 import { ShoppingItem } from './shopping-item';
@@ -83,9 +83,9 @@ interface Item {
 }
 ```
 
-## Configuration
+## Konfiguration
 
-You can enable compression in your configuration file:
+Sie können die Komprimierung in Ihrer Konfigurationsdatei aktivieren:
 
 ```json
 {
@@ -95,18 +95,18 @@ You can enable compression in your configuration file:
 }
 ```
 
-## Use Cases
+## Anwendungsfälle
 
-Code compression is particularly useful when:
-- Analyzing code structure and architecture
-- Reducing token count for LLM processing
-- Creating high-level documentation
-- Understanding code patterns and signatures
-- Sharing API and interface designs
+Die Code-Komprimierung ist besonders nützlich für:
+- Analyse von Codestruktur und -architektur
+- Reduzierung der Token-Anzahl für LLM-Verarbeitung
+- Erstellung von High-Level-Dokumentation
+- Verständnis von Code-Mustern und -Signaturen
+- Teilen von API- und Schnittstellendesigns
 
-## Related Options
+## Verwandte Optionen
 
-You can combine compression with other options:
-- `--remove-comments`: Remove code comments
-- `--remove-empty-lines`: Remove empty lines
-- `--output-show-line-numbers`: Add line numbers to output
+Sie können die Komprimierung mit anderen Optionen kombinieren:
+- `--remove-comments`: Entfernt Code-Kommentare
+- `--remove-empty-lines`: Entfernt Leerzeilen
+- `--output-show-line-numbers`: Fügt Zeilennummern zur Ausgabe hinzu
