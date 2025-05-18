@@ -1,5 +1,7 @@
 # Remote Repository Processing
 
+Repomix supports processing remote Git repositories without the need for manual cloning. This feature allows you to quickly analyze any public Git repository with a single command, streamlining the workflow for code analysis.
+
 ## Basic Usage
 
 Process public repositories:
@@ -13,15 +15,20 @@ repomix --remote user/repo
 
 ## Branch and Commit Selection
 
+You can specify the branch name, tag, or commit hash:
+
 ```bash
-# Specific branch
+# Specific branch using --remote-branch option
 repomix --remote user/repo --remote-branch main
 
-# Tag
-repomix --remote user/repo --remote-branch v1.0.0
+# Using branch's URL directly
+repomix --remote https://github.com/user/repo/tree/main
 
-# Commit hash
+# Specific commit hash using --remote-branch option
 repomix --remote user/repo --remote-branch 935b695
+
+# Using commit's URL directly
+repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb28655d85712680f1
 ```
 
 ## Requirements

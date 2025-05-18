@@ -2,12 +2,13 @@
 
 ## Security Check Feature
 
-Repomix uses [Secretlint](https://github.com/secretlint/secretlint) to detect sensitive information in your files:
-- API keys
-- Access tokens
-- Credentials
-- Private keys
-- Environment variables
+Repomix uses [Secretlint](https://github.com/secretlint/secretlint) to detect sensitive information in your files, including:
+- API keys and access tokens
+- Authentication credentials
+- Private keys and certificates
+- Database connection strings
+- Environment variables containing secrets
+- Personal or sensitive data
 
 ## Configuration
 
@@ -29,13 +30,14 @@ Or in `repomix.config.json`:
 
 ## Security Measures
 
-1. **Binary File Exclusion**: Binary files are not included in output
-2. **Git-Aware**: Respects `.gitignore` patterns
+1. **Binary File Exclusion**: Binary files are not included in output to reduce file size and prevent sensitive data leakage
+2. **Git-Aware**: Respects `.gitignore` patterns to avoid including sensitive files already marked for exclusion
 3. **Automated Detection**: Scans for common security issues:
-  - AWS credentials
-  - Database connection strings
-  - Authentication tokens
-  - Private keys
+  - AWS credentials and access keys
+  - Database connection strings and passwords
+  - Authentication tokens and OAuth credentials
+  - Private keys and certificates
+  - Environment variables containing sensitive information
 
 ## When Security Check Finds Issues
 
@@ -52,10 +54,10 @@ Example output:
 
 ## Best Practices
 
-1. Always review output before sharing
-2. Use `.repomixignore` for sensitive paths
-3. Keep security checks enabled
-4. Remove sensitive files from repository
+1. Always review output before sharing with AI services
+2. Use `.repomixignore` for additional sensitive paths
+3. Keep security checks enabled unless absolutely necessary to disable
+4. Remove sensitive files from repository or add to ignore patterns
 
 ## Reporting Security Issues
 

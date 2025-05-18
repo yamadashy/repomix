@@ -1,9 +1,9 @@
 # Output Formats
 
 Repomix supports three output formats:
-- XML (default)
-- Markdown
-- Plain Text 
+- XML (default): Most structured format, ideal for AI tools like Claude that parse XML efficiently
+- Markdown: Balances readability with structure, great for GitHub and document-oriented workflows
+- Plain Text: Simplest format with universal compatibility across all tools and platforms
 
 ## XML Format
 
@@ -11,7 +11,7 @@ Repomix supports three output formats:
 repomix --style xml
 ```
 
-XML format is optimized for AI processing:
+XML format is optimized for AI processing with clearly defined sections and structure:
 
 ```xml
 This file is a merged representation of the entire codebase...
@@ -35,7 +35,7 @@ src/
 ```
 
 ::: tip Why XML?
-XML tags help AI models like Claude parse content more accurately. [Claude Documentation](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags) recommends using XML tags for structured prompts.
+XML tags help AI models like Claude parse content more accurately. Claude's documentation [recommends using XML tags](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags) for structured prompts, making it easier for the model to understand different sections of your codebase.
 :::
 
 ## Markdown Format
@@ -71,9 +71,9 @@ helper.ts
 ## Usage with AI Models
 
 Each format works well with AI models, but consider:
-- Use XML for Claude (best parsing accuracy)
-- Use Markdown for general readability
-- Use Plain Text for simplicity and universal compatibility
+- Use XML for Claude and other AI models that prefer structured input with clear section delineation
+- Use Markdown for general readability and when sharing with humans alongside AI analysis
+- Use Plain Text for simplicity, universal compatibility, and when working with tools that don't parse markup
 
 ## Customization
 

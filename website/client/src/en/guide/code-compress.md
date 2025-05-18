@@ -1,6 +1,6 @@
 # Code Compression
 
-Code compression is a powerful feature that intelligently extracts essential code structures while removing implementation details. This is particularly useful for reducing token count while maintaining important structural information about your codebase.
+Code compression is a powerful feature that intelligently extracts essential code structures while removing implementation details. This feature utilizes [Tree-sitter](https://github.com/tree-sitter/tree-sitter) to perform intelligent code extraction, focusing on function and class signatures while preserving important structural information. This is particularly useful for reducing token count while maintaining the architectural understanding of your codebase.
 
 > [!NOTE]  
 > This is an experimental feature that we'll be actively improving based on user feedback and real-world usage
@@ -24,10 +24,10 @@ repomix --remote user/repo --compress
 The compression algorithm processes code using tree-sitter parsing to extract and preserve essential structural elements while removing implementation details.
 
 The compression preserves:
-- Function and method signatures
-- Interface and type definitions
-- Class structures and properties
-- Important structural elements
+- Function and method signatures (parameters and return types)
+- Interface and type definitions (property types and structure)
+- Class structures and properties (inheritance relationships)
+- Important structural elements (imports, exports, module structure)
 
 While removing:
 - Function and method implementations

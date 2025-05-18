@@ -1,6 +1,6 @@
 # MCP Server
 
-Repomix supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), allowing AI assistants to directly interact with your codebase. When run as an MCP server, Repomix provides tools that enable AI assistants to package local or remote repositories for analysis without requiring manual file preparation.
+Repomix supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), allowing AI assistants to directly interact with your codebase. When run as an MCP server, Repomix provides tools that enable AI assistants to package local or remote repositories for analysis without requiring manual file preparation. This integration streamlines the process of code analysis by eliminating the need to manually generate and upload files.
 
 > [!NOTE]  
 > This is an experimental feature that we'll be actively improving based on user feedback and real-world usage
@@ -171,6 +171,7 @@ Both tools incorporate robust security measures:
 - Permission checks to ensure proper access rights
 - Integration with Secretlint for sensitive information detection
 - Clear error messaging for better debugging and security awareness
+- Validation of file types to prevent access to binary or executable files
 
 **Example:**
 ```typescript
@@ -199,5 +200,6 @@ Using Repomix as an MCP server offers several advantages:
 2. **Efficient Workflow**: Streamlines the process of code analysis by eliminating the need to manually generate and upload files.
 3. **Consistent Output**: Ensures that the AI assistant receives the codebase in a consistent, optimized format.
 4. **Advanced Features**: Leverages all of Repomix's features like code compression, token counting, and security checks.
+5. **Security Controls**: Provides secure access to your codebase with built-in security validation.
 
 Once configured, your AI assistant can directly use Repomix's capabilities to analyze codebases, making code analysis workflows more efficient.

@@ -31,11 +31,12 @@ Happy coding! 🚀
 
 ## Core Features
 
-- **AI-Optimized Output**: Formats your codebase for easy AI processing
-- **Token Counting**: Tracks token usage for LLM context limits
-- **Git-Aware**: Respects your `.gitignore` and `.git/info/exclude` files
-- **Security-Focused**: Detects sensitive information
-- **Multiple Output Formats**: Choose between plain text, XML, or Markdown
+- **AI-Optimized Output**: Formats your codebase for easy AI processing with structured sections and clear organization
+- **Token Counting**: Tracks token usage for LLM context limits using configurable tokenizers like OpenAI's tiktoken
+- **Git-Aware**: Respects your `.gitignore` and `.git/info/exclude` files to prevent including unwanted files
+- **Security-Focused**: Detects sensitive information using Secretlint to prevent accidental exposure
+- **Multiple Output Formats**: Choose between XML (best for AI), Markdown (balance of readability and structure), or plain text
+- **Code Compression**: Intelligently extracts essential code structures while removing implementation details to reduce token count
 
 ## What's Next?
 
