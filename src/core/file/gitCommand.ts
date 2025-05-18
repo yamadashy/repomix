@@ -7,6 +7,14 @@ import { logger } from '../../shared/logger.js';
 
 const execFileAsync = promisify(execFile);
 
+export interface GitCloneResult {
+  repoUrl: string;
+  remoteBranch: string | undefined;
+  filePath: string | undefined;
+  repoOwner: string;
+  repoName: string;
+}
+
 export const getFileChangeCount = async (
   directory: string,
   maxCommits = 100,
@@ -127,13 +135,7 @@ export const execGitShallowClone = async (
   deps = {
     execFileAsync,
   },
-): Promise<{
-  repoUrl: string;
-  remoteBranch: string | undefined;
-  filePath: string | undefined;
-  repoOwner: string;
-  repoName: string;
-}> => {
+): Promise<GitCloneResult> => {
   if (url.includes('--upload-pack') || url.includes('--config') || url.includes('--exec')) {
     throw new RepomixError('URL contains potentially unsafe parameters');
   }

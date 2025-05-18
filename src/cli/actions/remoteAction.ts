@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import GitUrlParse, { type GitUrl } from 'git-url-parse';
 import pc from 'picocolors';
-import { execGitShallowClone, isGitInstalled } from '../../core/file/gitCommand.js';
+import { execGitShallowClone, isGitInstalled, GitCloneResult } from '../../core/file/gitCommand.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
@@ -138,13 +138,7 @@ export const cloneRepository = async (
   deps = {
     execGitShallowClone,
   },
-): Promise<{
-  repoUrl: string;
-  remoteBranch: string | undefined;
-  filePath: string | undefined;
-  repoOwner: string;
-  repoName: string;
-}> => {
+): Promise<GitCloneResult> => {
   logger.log(`Clone repository: ${url} to temporary directory. ${pc.dim(`path: ${directory}`)}`);
   logger.log('');
 
