@@ -438,13 +438,21 @@ file2.ts
 
       const mockFileExecAsync = vi
         .fn()
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // clone
-        .mockResolvedValueOnce({
-          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/feature/branch',
-          stderr: '',
-        }) // ls-remote
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // reset
-        .mockRejectedValueOnce(new Error('Checkout failed')); // checkout fails
+        .mockImplementation((cmd, args) => {
+          if (args.includes('clone')) {
+            return Promise.resolve({ stdout: '', stderr: '' });
+          } else if (args.includes('ls-remote')) {
+            return Promise.resolve({
+              stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/feature/branch',
+              stderr: '',
+            });
+          } else if (args.includes('reset')) {
+            return Promise.resolve({ stdout: '', stderr: '' });
+          } else if (args.includes('checkout')) {
+            return Promise.reject(new Error('Checkout failed'));
+          }
+          return Promise.resolve({ stdout: '', stderr: '' });
+        });
 
       await expect(
         execGitShallowClone(url, directory, branch, { execFileAsync: mockFileExecAsync }),
