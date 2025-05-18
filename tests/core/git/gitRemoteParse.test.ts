@@ -59,7 +59,9 @@ describe('remoteAction functions', () => {
         remoteBranch: 'branchname',
       });
       expect(
-        parseRemoteValue('https://some.gitlab.domain/some/path/username/repo/-/tree/branchname/withslash'),
+        parseRemoteValue('https://some.gitlab.domain/some/path/username/repo/-/tree/branchname/withslash', [
+          'branchname/withslash',
+        ]),
       ).toEqual({
         repoUrl: 'https://some.gitlab.domain/some/path/username/repo.git',
         remoteBranch: 'branchname/withslash',

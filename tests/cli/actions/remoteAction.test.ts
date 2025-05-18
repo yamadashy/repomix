@@ -32,6 +32,7 @@ describe('remoteAction functions', () => {
           execGitShallowClone: async (url: string, directory: string) => {
             await fs.writeFile(path.join(directory, 'README.md'), 'Hello, world!');
           },
+          getRemoteRefs: async () => Promise.resolve(['main']),
           runDefaultAction: async () => {
             return {
               packResult: {

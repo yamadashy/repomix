@@ -13,7 +13,10 @@ export const isValidShorthand = (remoteValue: string): boolean => {
   return validShorthandRegex.test(remoteValue);
 };
 
-export const parseRemoteValue = (remoteValue: string, refs: string[] = []): { repoUrl: string; remoteBranch: string | undefined } => {
+export const parseRemoteValue = (
+  remoteValue: string,
+  refs: string[] = [],
+): { repoUrl: string; remoteBranch: string | undefined } => {
   if (isValidShorthand(remoteValue)) {
     logger.trace(`Formatting GitHub shorthand: ${remoteValue}`);
     return {
