@@ -113,3 +113,165 @@ jobs:
 ```
 
 See the [complete workflow example](https://github.com/yamadashy/repomix/blob/main/.github/workflows/pack-repository.yml).
+
+## Advanced Use Cases
+
+### Generating Documentation on PR
+
+This workflow automatically generates a code overview when a PR is opened or updated:
+
+```yaml
+name: Generate Code Documentation
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [ main, develop ]
+
+jobs:
+  document-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pack PR changes
+        uses: yamadashy/repomix/.github/actions/repomix@main
+        with:
+          output: pr-overview.md
+          style: markdown
+          compress: true
+          additional-args: "--include 'src/**/*.ts,src/**/*.js'"
+
+      - name: Add PR comment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const content = fs.readFileSync('pr-overview.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "## Code Overview\n\nA compressed overview of the code changes has been generated. You can [download the full report](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).\n\n<details><summary>Preview (Click to expand)</summary>\n\n```md\n" + content.substring(0, 5000) + (content.length > 5000 ? "\n...(truncated)" : "") + "\n```\n\n</details>"
+            });
+```
+
+### Scheduled Code Analysis
+
+Run regular code analyses on scheduled intervals:
+
+```yaml
+name: Weekly Code Analysis
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Run at midnight every Sunday
+
+jobs:
+  analyze-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate full codebase report
+        uses: yamadashy/repomix/.github/actions/repomix@main
+        with:
+          output: codebase-analysis.xml
+          compress: true
+          
+      - name: Generate source-only report
+        uses: yamadashy/repomix/.github/actions/repomix@main
+        with:
+          directories: src
+          output: source-analysis.xml
+          compress: true
+          
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-analysis-reports
+          path: |
+            codebase-analysis.xml
+            source-analysis.xml
+          retention-days: 14
+```
+
+### Multi-Repository Analysis
+
+Compare multiple repositories in a single workflow:
+
+```yaml
+name: Multi-Repository Analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      repos:
+        description: 'Comma-separated list of repositories (org/repo format)'
+        required: true
+        default: 'org/repo1,org/repo2'
+
+jobs:
+  analyze-repos:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo: ${{ fromJson('[' + join(split(github.event.inputs.repos, ','), '","') + '"]') }}
+    steps:
+      - name: Package repository
+        uses: yamadashy/repomix/.github/actions/repomix@main
+        with:
+          remote: ${{ matrix.repo }}
+          output: ${{ matrix.repo }}.xml
+          compress: true
+          
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.repo }}-analysis
+          path: ${{ matrix.repo }}.xml
+          retention-days: 7
+```
+
+### Integration with AI Services
+
+Use Repomix output with AI services for automated code review:
+
+```yaml
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - 'src/**'
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Generate diff package
+        uses: yamadashy/repomix/.github/actions/repomix@main
+        with:
+          output: pr-changes.xml
+          compress: true
+          additional-args: "--output-git-include-diffs"
+          
+      # Example integration with a hypothetical AI service
+      - name: Send to AI service
+        run: |
+          curl -X POST https://ai-code-review-service.example/analyze \
+            -H "Authorization: Bearer ${{ secrets.AI_SERVICE_TOKEN }}" \
+            -F "repo=${{ github.repository }}" \
+            -F "pr=${{ github.event.pull_request.number }}" \
+            -F "code=@pr-changes.xml"
+```

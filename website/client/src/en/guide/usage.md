@@ -87,6 +87,49 @@ repomix --copy
 repomix --no-security-check
 ```
 
+## Advanced Usage Scenarios
+
+### Working with Large Repositories
+
+When working with large repositories, consider the following strategies to optimize output:
+
+```bash
+# Selectively include specific directories and file types
+repomix --include "src/**/*.ts,src/**/*.js,docs/**/*.md" --ignore "**/*.test.ts"
+
+# Reduce token count by removing comments and empty lines
+repomix --remove-comments --remove-empty-lines
+
+# Use compression to further reduce token count while preserving structure
+repomix --compress --include "src/**" --ignore "**/*.test.ts,**/__tests__/**"
+```
+
+### Integrating with CI/CD Pipelines
+
+Repomix can be integrated into continuous integration workflows:
+
+```bash
+# Generate output in a specific format during CI runs
+repomix --style markdown --output ci-output.md --compress
+
+# Combine with other tools in a pipeline
+repomix --output repo-analysis.xml | some-other-tool
+```
+
+### Cross-Repository Analysis
+
+Compare multiple repositories by processing them separately:
+
+```bash
+# Process multiple repositories with consistent settings
+repomix --remote org/repo1 --output repo1.xml --compress
+repomix --remote org/repo2 --output repo2.xml --compress
+
+# Use similar settings for local and remote repositories
+repomix ./local-repo --output local.xml --compress
+repomix --remote org/remote-repo --output remote.xml --compress
+```
+
 ## Configuration
 
 Initialize configuration file:

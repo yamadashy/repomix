@@ -201,3 +201,66 @@ Using Repomix as an MCP server offers several advantages:
 4. **Advanced Features**: Leverages all of Repomix's features like code compression, token counting, and security checks.
 
 Once configured, your AI assistant can directly use Repomix's capabilities to analyze codebases, making code analysis workflows more efficient.
+
+## Advanced MCP Server Configuration
+
+### Custom Port Configuration
+
+By default, the MCP server runs on port 9080. You can specify a different port:
+
+```bash
+repomix --mcp --mcp-port 8080
+```
+
+### Environment Variables
+
+The MCP server respects the following environment variables:
+
+- `REPOMIX_MCP_PORT`: Sets the server port
+- `REPOMIX_MCP_HOST`: Sets the server host
+- `REPOMIX_SECURITY_DISABLED`: Disables security checks when set to `true`
+
+### Multiple Tool Instances
+
+You can run multiple MCP server instances with different configurations:
+
+1. Configure different port numbers for each instance
+2. Register each instance separately in your AI tool configuration
+
+## Troubleshooting MCP Server Issues
+
+### Connection Refused
+
+If you see "Connection refused" errors:
+
+1. Verify the server is running: `ps aux | grep repomix`
+2. Check if the port is already in use: `lsof -i :9080`
+3. Try running on a different port: `repomix --mcp --mcp-port 8081`
+
+### Authentication Issues
+
+If the AI assistant cannot authenticate with the MCP server:
+
+1. Check your MCP server configuration
+2. Verify that your AI tool supports the MCP protocol version used by Repomix
+3. Check for any required authentication tokens or API keys
+
+### Performance Optimization
+
+If the MCP server is slow when processing large repositories:
+
+1. Limit the scope with include/ignore patterns
+2. Enable compression to reduce processing time
+3. Consider running the server on a machine with more resources
+
+### Debugging MCP Requests
+
+To diagnose issues with MCP requests:
+
+```bash
+# Enable verbose logging
+repomix --mcp --verbose
+
+# Save logs to a file
+repomix --mcp --verbose > mcp-server.log 2>&1
+```

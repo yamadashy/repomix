@@ -28,6 +28,7 @@ export const configEnUs = defineConfig({
             { text: 'Security', link: '/guide/security' },
             { text: 'MCP Server', link: '/guide/mcp-server' },
             { text: 'GitHub Actions', link: '/guide/github-actions' },
+            { text: 'Troubleshooting', link: '/guide/troubleshooting' },
             {
               text: 'Tips & Tricks',
               items: [{ text: 'Best Practices', link: '/guide/tips/best-practices' }],
