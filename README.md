@@ -793,6 +793,7 @@ Example configuration:
 
 ```json5
 {
+  "$schema": "https://repomix.com/schemas/0.3.5/schema.json",
   "input": {
     "maxFileSize": 50000000
   },
