@@ -433,6 +433,9 @@ file2.ts
       const directory = '/tmp/repo';
       const branch = 'feature/branch';
 
+      const originalRm = fs.rm;
+      fs.rm = vi.fn().mockRejectedValue(new Error('Cleanup failed'));
+
       const mockFileExecAsync = vi
         .fn()
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // clone
@@ -441,12 +444,15 @@ file2.ts
           stderr: '',
         }) // ls-remote
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // reset
-        .mockRejectedValueOnce(new Error('Checkout failed')) // checkout fails
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // fs.rm (cleanup)
+        .mockRejectedValueOnce(new Error('Checkout failed')); // checkout fails
 
-      await expect(
-        execGitShallowClone(url, directory, branch, { execFileAsync: mockFileExecAsync }),
-      ).rejects.toThrow('Failed to checkout branch or commit');
+      try {
+        await expect(
+          execGitShallowClone(url, directory, branch, { execFileAsync: mockFileExecAsync }),
+        ).rejects.toThrow('Failed to checkout branch or commit');
+      } finally {
+        fs.rm = originalRm;
+      }
     });
 
     test('should extract owner and repo name correctly from URL', async () => {
