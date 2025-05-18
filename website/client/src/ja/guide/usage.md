@@ -10,17 +10,19 @@ repomix
 ## 一般的な使用例
 
 ### 特定のディレクトリをパッケージ化
+関連するコードに焦点を当て、トークン数を削減するために特定のディレクトリやファイルのみを処理します：
 ```bash
 repomix path/to/directory
 ```
 
 ### 特定のファイルを含める
-[glob パターン](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)を使用：
+[glob パターン](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)を使用して、どのファイルを含めるかを正確に制御します：
 ```bash
 repomix --include "src/**/*.ts,**/*.md"
 ```
 
 ### ファイルを除外
+不要または機密性の高いコンテンツを含めないようにするために、glob パターンを使用して特定のファイルやディレクトリをスキップします：
 ```bash
 repomix --ignore "**/*.log,tmp/"
 ```
@@ -39,6 +41,9 @@ repomix --remote user/repo --remote-branch 935b695
 ```
 
 ### コード圧縮
+
+Tree-sitterを使用して実装の詳細を削除しながら本質的なコード構造を抽出し、アーキテクチャを保持しながらトークン数を大幅に削減します：
+
 ```bash
 repomix --compress
 
