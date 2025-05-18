@@ -207,11 +207,12 @@ file2.ts
     });
 
     test('should execute commands correctly when branch is specified', async () => {
-      const mockFileExecAsync = vi.fn()
+      const mockFileExecAsync = vi
+        .fn()
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // clone
-        .mockResolvedValueOnce({ 
-          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/develop', 
-          stderr: '' 
+        .mockResolvedValueOnce({
+          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/develop',
+          stderr: '',
         }) // ls-remote
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // reset
         .mockResolvedValueOnce({ stdout: '', stderr: '' }); // checkout
@@ -227,7 +228,7 @@ file2.ts
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(2, 'git', ['-C', directory, 'ls-remote', '--heads', 'origin']);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(3, 'git', ['-C', directory, 'reset', '--hard']);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(4, 'git', ['-C', directory, 'checkout', 'main']);
-      
+
       expect(result).toEqual({
         repoUrl: url,
         remoteBranch: 'main',
@@ -238,11 +239,12 @@ file2.ts
     });
 
     test('should throw error when git fetch fails', async () => {
-      const mockFileExecAsync = vi.fn()
+      const mockFileExecAsync = vi
+        .fn()
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // clone
-        .mockResolvedValueOnce({ 
-          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/develop', 
-          stderr: '' 
+        .mockResolvedValueOnce({
+          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/develop',
+          stderr: '',
         }) // ls-remote
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // reset
         .mockRejectedValueOnce(new Error('Authentication failed')); // checkout fails
@@ -252,10 +254,10 @@ file2.ts
       const remoteBranch = 'main';
 
       const mockExecGitShallowClone = async (
-        url: string, 
-        directory: string, 
-        remoteBranch: string, 
-        deps: { execFileAsync: (command: string, args: string[]) => Promise<{ stdout: string; stderr: string }> }
+        url: string,
+        directory: string,
+        remoteBranch: string,
+        deps: { execFileAsync: (command: string, args: string[]) => Promise<{ stdout: string; stderr: string }> },
       ) => {
         await deps.execFileAsync('git', ['clone', '--depth', '1', url, directory]);
         const { stdout } = await deps.execFileAsync('git', ['-C', directory, 'ls-remote', '--heads', 'origin']);
@@ -279,12 +281,13 @@ file2.ts
       const url = 'https://github.com/user/repo.git';
       const directory = '/tmp/repo';
       const shortSha = 'ce9b621';
-      
-      const mockFileExecAsync = vi.fn()
+
+      const mockFileExecAsync = vi
+        .fn()
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // clone
-        .mockResolvedValueOnce({ 
-          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/develop', 
-          stderr: '' 
+        .mockResolvedValueOnce({
+          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/develop',
+          stderr: '',
         }) // ls-remote
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // reset
         .mockResolvedValueOnce({ stdout: '', stderr: '' }); // checkout
@@ -296,7 +299,7 @@ file2.ts
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(2, 'git', ['-C', directory, 'ls-remote', '--heads', 'origin']);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(3, 'git', ['-C', directory, 'reset', '--hard']);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(4, 'git', ['-C', directory, 'checkout', shortSha]);
-      
+
       expect(result).toEqual({
         repoUrl: url,
         remoteBranch: shortSha,
@@ -310,12 +313,13 @@ file2.ts
       const url = 'https://github.com/user/repo.git';
       const directory = '/tmp/repo';
       const slashedBranch = 'feature/new-feature';
-      
-      const mockFileExecAsync = vi.fn()
+
+      const mockFileExecAsync = vi
+        .fn()
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // clone
-        .mockResolvedValueOnce({ 
-          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/feature/new-feature', 
-          stderr: '' 
+        .mockResolvedValueOnce({
+          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/feature/new-feature',
+          stderr: '',
         }) // ls-remote
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // reset
         .mockResolvedValueOnce({ stdout: '', stderr: '' }); // checkout
@@ -327,7 +331,7 @@ file2.ts
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(2, 'git', ['-C', directory, 'ls-remote', '--heads', 'origin']);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(3, 'git', ['-C', directory, 'reset', '--hard']);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(4, 'git', ['-C', directory, 'checkout', slashedBranch]);
-      
+
       expect(result).toEqual({
         repoUrl: url,
         remoteBranch: slashedBranch,
@@ -341,12 +345,13 @@ file2.ts
       const url = 'https://github.com/user/repo.git';
       const directory = '/tmp/repo';
       const branchWithPath = 'feature/new-feature/path/to/file.js';
-      
-      const mockFileExecAsync = vi.fn()
+
+      const mockFileExecAsync = vi
+        .fn()
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // clone
-        .mockResolvedValueOnce({ 
-          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/feature/new-feature', 
-          stderr: '' 
+        .mockResolvedValueOnce({
+          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/feature/new-feature',
+          stderr: '',
         }) // ls-remote
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // reset
         .mockResolvedValueOnce({ stdout: '', stderr: '' }); // checkout
@@ -358,7 +363,7 @@ file2.ts
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(2, 'git', ['-C', directory, 'ls-remote', '--heads', 'origin']);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(3, 'git', ['-C', directory, 'reset', '--hard']);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(4, 'git', ['-C', directory, 'checkout', 'feature/new-feature']);
-      
+
       expect(result).toEqual({
         repoUrl: url,
         remoteBranch: 'feature/new-feature',
@@ -372,12 +377,13 @@ file2.ts
       const url = 'https://github.com/user/repo.git';
       const directory = '/tmp/repo';
       const nonExistentBranch = 'non-existent-branch';
-      
-      const mockFileExecAsync = vi.fn()
+
+      const mockFileExecAsync = vi
+        .fn()
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // clone
-        .mockResolvedValueOnce({ 
-          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/develop', 
-          stderr: '' 
+        .mockResolvedValueOnce({
+          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/develop',
+          stderr: '',
         }); // ls-remote
 
       await expect(

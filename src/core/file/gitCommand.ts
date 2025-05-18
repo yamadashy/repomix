@@ -137,7 +137,7 @@ export const execGitShallowClone = async (
   let urlObj: URL;
   try {
     urlObj = new URL(url);
-    
+
     if (!['http:', 'https:', 'git:'].includes(urlObj.protocol)) {
       throw new Error('Invalid URL protocol');
     }
@@ -154,10 +154,10 @@ export const execGitShallowClone = async (
   }
 
   const cloneArgs = ['clone', '--depth', '1'];
-  
+
   cloneArgs.push(url);
   cloneArgs.push(directory);
-  
+
   await deps.execFileAsync('git', cloneArgs);
 
   const pathParts = urlObj.pathname.split('/').filter((part) => part.trim());
@@ -228,15 +228,15 @@ export const execGitShallowClone = async (
           if (!finalRemoteBranch.match(/^[0-9a-zA-Z\/_.-]+$/)) {
             throw new RepomixError(`Invalid branch or commit name: ${finalRemoteBranch}`);
           }
-          
+
           await deps.execFileAsync('git', ['-C', directory, 'checkout', finalRemoteBranch]);
         } catch (err) {
           await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin']);
-          
+
           if (!finalRemoteBranch.match(/^[0-9a-zA-Z\/_.-]+$/)) {
             throw new RepomixError(`Invalid branch or commit name: ${finalRemoteBranch}`);
           }
-          
+
           await deps.execFileAsync('git', ['-C', directory, 'checkout', finalRemoteBranch]);
         }
       }
