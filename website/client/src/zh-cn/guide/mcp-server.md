@@ -1,6 +1,6 @@
 # MCP服务器
 
-Repomix 支持 [Model Context Protocol (MCP)](https://modelcontextprotocol.io)，允许 AI 助手直接与您的代码库交互。当作为 MCP 服务器运行时，Repomix 提供了工具，使 AI 助手能够在无需手动准备文件的情况下打包本地或远程仓库进行分析。
+Repomix 支持 [Model Context Protocol (MCP)](https://modelcontextprotocol.io)，允许 AI 助手直接与您的代码库交互。当作为 MCP 服务器运行时，Repomix 提供了工具，使 AI 助手能够在无需手动准备文件的情况下打包本地或远程仓库进行分析。这种集成消除了手动生成和上传文件的需求，从而简化了代码分析过程。
 
 > [!NOTE]  
 > 这是一个实验性功能，我们将根据用户反馈和实际使用情况积极改进
@@ -66,9 +66,9 @@ repomix --mcp
 
 使用与 Cline 类似的配置编辑 `claude_desktop_config.json` 文件。
 
-### 使用 Docker 代替 npx
+### 使用 Docker 代替 npx 运行
 
-您可以使用 Docker 代替 npx 来运行 Repomix 作为 MCP 服务器：
+您可以使用 Docker 代替 npx 来运行 Repomix 作为 MCP 服务器，这提供了一个容器化的执行环境：
 
 ```json
 {
@@ -171,6 +171,7 @@ Repomix的MCP服务器提供了两个文件系统工具，允许AI助手安全�
 - 权限检查以确保适当的访问权限
 - 与Secretlint集成以检测敏感信息
 - 清晰的错误消息以便于调试和安全意识
+- 文件类型验证以防止访问二进制文件和可执行文件
 
 **示例：**
 ```typescript
@@ -199,5 +200,6 @@ const dirContent = await tools.file_system_read_directory({
 2. **高效工作流**：通过消除手动生成和上传文件的需求，简化了代码分析过程。
 3. **一致输出**：确保 AI 助手以一致、优化的格式接收代码库。
 4. **高级功能**：利用 Repomix 的所有功能，如代码压缩、令牌计数和安全检查。
+5. **安全控制**：通过内置的安全验证功能，提供对代码库的安全访问。
 
 配置完成后，您的 AI 助手可以直接使用 Repomix 的功能来分析代码库，使代码分析工作流更加高效。
