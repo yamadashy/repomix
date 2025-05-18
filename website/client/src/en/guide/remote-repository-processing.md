@@ -24,6 +24,9 @@ repomix --remote user/repo --remote-branch main
 # Using branch's URL directly
 repomix --remote https://github.com/user/repo/tree/main
 
+# Tag
+repomix --remote user/repo --remote-branch v1.0.0
+
 # Specific commit hash using --remote-branch option
 repomix --remote user/repo --remote-branch 935b695
 ```
