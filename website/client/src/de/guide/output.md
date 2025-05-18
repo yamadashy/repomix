@@ -1,23 +1,23 @@
-# Output Formats
+# Ausgabeformate
 
-Repomix supports three output formats:
-- XML (default): Most structured format, ideal for AI tools like Claude that parse XML efficiently
-- Markdown: Balances readability with structure, great for GitHub and document-oriented workflows
-- Plain Text: Simplest format with universal compatibility across all tools and platforms
+Repomix unterstützt drei Ausgabeformate:
+- XML (Standard): Das am stärksten strukturierte Format, ideal für KI-Tools wie Claude, die XML effizient analysieren
+- Markdown: Ausgewogenes Verhältnis zwischen Lesbarkeit und Struktur, hervorragend für GitHub und dokumentenorientierte Arbeitsabläufe
+- Klartext: Das einfachste Format mit universeller Kompatibilität für alle Tools und Plattformen
 
-## XML Format
+## XML-Format
 
 ```bash
 repomix --style xml
 ```
 
-XML format is optimized for AI processing with clearly defined sections and structure:
+Das XML-Format ist für die KI-Verarbeitung mit klar definierten Abschnitten und Strukturen optimiert:
 
 ```xml
-This file is a merged representation of the entire codebase...
+Diese Datei ist eine zusammengeführte Darstellung des gesamten Quellcodes...
 
 <file_summary>
-(Metadata and AI instructions)
+(Metadaten und KI-Anweisungen)
 </file_summary>
 
 <directory_structure>
@@ -29,30 +29,30 @@ src/
 
 <files>
 <file path="src/index.ts">
-// File contents here
+// Dateiinhalt hier
 </file>
 </files>
 ```
 
-::: tip Why XML?
-XML tags help AI models like Claude parse content more accurately. Claude's documentation [recommends using XML tags](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags) for structured prompts, making it easier for the model to understand different sections of your codebase.
+::: tip Warum XML?
+XML-Tags helfen KI-Modellen wie Claude, Inhalte genauer zu analysieren. Die Dokumentation von Claude [empfiehlt die Verwendung von XML-Tags](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags) für strukturierte Prompts, wodurch es für das Modell einfacher wird, verschiedene Abschnitte Ihres Quellcodes zu verstehen.
 :::
 
-## Markdown Format
+## Markdown-Format
 
 ```bash
 repomix --style markdown
 ```
 
-Markdown provides readable formatting:
+Markdown bietet eine lesbare Formatierung:
 
 ```markdown
-This file is a merged representation of the entire codebase...
+Diese Datei ist eine zusammengeführte Darstellung des gesamten Quellcodes...
 
-# File Summary
-(Metadata and AI instructions)
+# Dateizusammenfassung
+(Metadaten und KI-Anweisungen)
 
-# Directory Structure
+# Verzeichnisstruktur
 ```
 src/
 index.ts
@@ -60,24 +60,24 @@ utils/
 helper.ts
 ```
 
-# Files
+# Dateien
 
-## File: src/index.ts
+## Datei: src/index.ts
 ```typescript
-// File contents here
+// Dateiinhalt hier
 ```
 ```
 
-## Usage with AI Models
+## Verwendung mit KI-Modellen
 
-Each format works well with AI models, but consider:
-- Use XML for Claude and other AI models that prefer structured input with clear section delineation
-- Use Markdown for general readability and when sharing with humans alongside AI analysis
-- Use Plain Text for simplicity, universal compatibility, and when working with tools that don't parse markup
+Jedes Format funktioniert gut mit KI-Modellen, aber beachten Sie:
+- Verwenden Sie XML für Claude und andere KI-Modelle, die strukturierte Eingaben mit klarer Abschnittsabgrenzung bevorzugen
+- Verwenden Sie Markdown für allgemeine Lesbarkeit und wenn Sie es mit Menschen zusammen mit KI-Analyse teilen
+- Verwenden Sie Klartext für Einfachheit, universelle Kompatibilität und wenn Sie mit Tools arbeiten, die keine Auszeichnungssprache analysieren
 
-## Customization
+## Anpassung
 
-Set default format in `repomix.config.json`:
+Legen Sie das Standardformat in `repomix.config.json` fest:
 ```json
 {
   "output": {
@@ -87,23 +87,23 @@ Set default format in `repomix.config.json`:
 }
 ```
 
-## Plain Text Format
+## Klartext-Format
 
 ```bash
 repomix --style plain
 ```
 
-Output structure:
+Ausgabestruktur:
 ```text
-This file is a merged representation of the entire codebase...
+Diese Datei ist eine zusammengeführte Darstellung des gesamten Quellcodes...
 
 ================
-File Summary
+Dateizusammenfassung
 ================
-(Metadata and AI instructions)
+(Metadaten und KI-Anweisungen)
 
 ================
-Directory Structure
+Verzeichnisstruktur
 ================
 src/
   index.ts
@@ -111,11 +111,11 @@ src/
     helper.ts
 
 ================
-Files
+Dateien
 ================
 
 ================
-File: src/index.ts
+Datei: src/index.ts
 ================
-// File contents here
+// Dateiinhalt hier
 ```
