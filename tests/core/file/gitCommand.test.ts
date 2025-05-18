@@ -441,7 +441,8 @@ file2.ts
           stderr: '',
         }) // ls-remote
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // reset
-        .mockRejectedValueOnce(new Error('Checkout failed')); // checkout fails
+        .mockRejectedValueOnce(new Error('Checkout failed')) // checkout fails
+        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // fs.rm (cleanup)
 
       await expect(
         execGitShallowClone(url, directory, branch, { execFileAsync: mockFileExecAsync }),
