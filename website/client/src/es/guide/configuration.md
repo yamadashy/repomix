@@ -1,69 +1,69 @@
-# Configuración
+# Configuration
 
-Repomix puede configurarse mediante un archivo de configuración (`repomix.config.json`) o opciones de línea de comandos. El archivo de configuración le permite personalizar varios aspectos de cómo se procesa y genera la salida de su base de código.
+Repomix can be configured using a configuration file (`repomix.config.json`) or command-line options. The configuration file allows you to customize various aspects of how Repomix processes and outputs your codebase.
 
-## Inicio rápido
+## Quick Start
 
-Cree un archivo de configuración en el directorio de su proyecto:
+Create a configuration file in your project directory:
 ```bash
 repomix --init
 ```
 
-Esto creará un archivo `repomix.config.json` con la configuración predeterminada. También puede crear un archivo de configuración global que se utilizará como respaldo cuando no se encuentre una configuración local:
+This will create a `repomix.config.json` file with default settings. You can also create a global configuration file that will be used as a fallback when no local configuration is found:
 
 ```bash
 repomix --init --global
 ```
 
-## Ubicaciones de los archivos de configuración
+## Configuration File Locations
 
-Repomix busca los archivos de configuración en el siguiente orden:
-1. Archivo de configuración local (`repomix.config.json`) en el directorio actual
-2. Archivo de configuración global:
+Repomix looks for configuration files in the following order:
+1. Local configuration file (`repomix.config.json`) in the current directory
+2. Global configuration file:
    - Windows: `%LOCALAPPDATA%\Repomix\repomix.config.json`
    - macOS/Linux: `~/.config/repomix/repomix.config.json`
 
-Las opciones de línea de comandos tienen prioridad sobre la configuración del archivo.
+Command-line options take precedence over configuration file settings.
 
-## Opciones de configuración
+## Configuration Options
 
-| Opción                           | Descripción                                                                                                                  | Predeterminado        |
+| Option                           | Description                                                                                                                  | Default                |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
-| `input.maxFileSize`              | Tamaño máximo de archivo en bytes para procesar. Los archivos más grandes serán ignorados. Útil para excluir archivos binarios grandes o archivos de datos | `50000000`            |
-| `output.filePath`                | Nombre del archivo de salida. Admite formatos XML, Markdown y texto plano                                                    | `"repomix-output.xml"` |
-| `output.style`                   | Estilo de salida (`xml`, `markdown`, `plain`). Cada formato tiene sus propias ventajas para diferentes herramientas de IA    | `"xml"`                |
-| `output.parsableStyle`           | Indica si se debe escapar la salida según el esquema de estilo elegido. Permite un mejor análisis pero puede aumentar el recuento de tokens | `false`                |
-| `output.compress`                | Indica si se debe realizar una extracción inteligente de código usando Tree-sitter para reducir el recuento de tokens mientras se preserva la estructura | `false`                |
-| `output.headerText`              | Texto personalizado para incluir en el encabezado del archivo. Útil para proporcionar contexto o instrucciones a las herramientas de IA | `null`                 |
-| `output.instructionFilePath`     | Ruta a un archivo que contiene instrucciones personalizadas detalladas para el procesamiento de IA                          | `null`                 |
-| `output.fileSummary`             | Indica si se debe incluir una sección de resumen al principio mostrando recuentos de archivos, tamaños y otras métricas    | `true`                 |
-| `output.directoryStructure`      | Indica si se debe incluir la estructura de directorios en la salida. Ayuda a la IA a entender la organización del proyecto | `true`                 |
-| `output.files`                   | Indica si se debe incluir el contenido de los archivos en la salida. Establecer en false para incluir solo estructura y metadatos | `true`                 |
-| `output.removeComments`          | Indica si se deben eliminar los comentarios de los tipos de archivos soportados. Puede reducir el ruido y el recuento de tokens | `false`                |
-| `output.removeEmptyLines`        | Indica si se deben eliminar las líneas vacías de la salida para reducir el recuento de tokens                              | `false`                |
-| `output.showLineNumbers`         | Indica si se deben agregar números de línea a cada línea. Útil para referenciar partes específicas del código              | `false`                |
-| `output.copyToClipboard`         | Indica si se debe copiar la salida al portapapeles del sistema además de guardar el archivo                                | `false`                |
-| `output.topFilesLength`          | Número de archivos principales para mostrar en el resumen. Si se establece en 0, no se mostrará ningún resumen             | `5`                    |
-| `output.includeEmptyDirectories` | Indica si se deben incluir directorios vacíos en la estructura del repositorio                                             | `false`                |
-| `output.git.sortByChanges`       | Indica si se deben ordenar los archivos por número de cambios git. Los archivos con más cambios aparecen al final         | `true`                 |
-| `output.git.sortByChangesMaxCommits` | Número máximo de commits para analizar al contar cambios git. Limita la profundidad del historial por rendimiento      | `100`                  |
-| `output.git.includeDiffs`        | Indica si se deben incluir las diferencias git en la salida. Muestra por separado los cambios del árbol de trabajo y los cambios preparados | `false`                |
-| `include`                        | Patrones de archivos a incluir usando [patrones glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
-| `ignore.useGitignore`            | Indica si se deben usar los patrones del archivo `.gitignore` del proyecto                                                  | `true`                 |
-| `ignore.useDefaultPatterns`      | Indica si se deben usar los patrones de ignorar predeterminados (node_modules, .git, etc.)                                | `true`                 |
-| `ignore.customPatterns`          | Patrones adicionales para ignorar usando [patrones glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
-| `security.enableSecurityCheck`   | Indica si se deben realizar comprobaciones de seguridad usando Secretlint para detectar información sensible               | `true`                 |
-| `tokenCount.encoding`            | Codificación de recuento de tokens utilizada por el tokenizador [tiktoken](https://github.com/openai/tiktoken) de OpenAI. Use `o200k_base` para GPT-4o, `cl100k_base` para GPT-4/3.5. Ver [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) para más detalles. | `"o200k_base"`         |
+| `input.maxFileSize`              | Maximum file size in bytes to process. Files larger than this will be skipped. Useful for excluding large binary files or data files | `50000000`            |
+| `output.filePath`                | The name of the output file. Supports XML, Markdown, and plain text formats                                                   | `"repomix-output.xml"` |
+| `output.style`                   | The style of the output (`xml`, `markdown`, `plain`). Each format has its own advantages for different AI tools              | `"xml"`                |
+| `output.parsableStyle`           | Whether to escape the output based on the chosen style schema. Enables better parsing but may increase token count           | `false`                |
+| `output.compress`                | Whether to perform intelligent code extraction using Tree-sitter to reduce token count while preserving structure             | `false`                |
+| `output.headerText`              | Custom text to include in the file header. Useful for providing context or instructions for AI tools                         | `null`                 |
+| `output.instructionFilePath`     | Path to a file containing detailed custom instructions for AI processing                                                     | `null`                 |
+| `output.fileSummary`             | Whether to include a summary section at the beginning showing file counts, sizes, and other metrics                          | `true`                 |
+| `output.directoryStructure`      | Whether to include the directory structure in the output. Helps AI understand the project organization                       | `true`                 |
+| `output.files`                   | Whether to include file contents in the output. Set to false to only include structure and metadata                          | `true`                 |
+| `output.removeComments`          | Whether to remove comments from supported file types. Can reduce noise and token count                                       | `false`                |
+| `output.removeEmptyLines`        | Whether to remove empty lines from the output to reduce token count                                                          | `false`                |
+| `output.showLineNumbers`         | Whether to add line numbers to each line. Helpful for referencing specific parts of code                                     | `false`                |
+| `output.copyToClipboard`         | Whether to copy the output to system clipboard in addition to saving the file                                                | `false`                |
+| `output.topFilesLength`          | Number of top files to display in the summary. If set to 0, no summary will be displayed                                     | `5`                    |
+| `output.includeEmptyDirectories` | Whether to include empty directories in the repository structure                                                             | `false`                |
+| `output.git.sortByChanges`       | Whether to sort files by git change count. Files with more changes appear at the bottom                                      | `true`                 |
+| `output.git.sortByChangesMaxCommits` | Maximum number of commits to analyze for git changes. Limits the history depth for performance                           | `100`                  |
+| `output.git.includeDiffs`        | Whether to include git diffs in the output. Shows both work tree and staged changes separately                               | `false`                |
+| `include`                        | Patterns of files to include using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)    | `[]`                   |
+| `ignore.useGitignore`            | Whether to use patterns from the project's `.gitignore` file                                                                 | `true`                 |
+| `ignore.useDefaultPatterns`      | Whether to use default ignore patterns (node_modules, .git, etc.)                                                           | `true`                 |
+| `ignore.customPatterns`          | Additional patterns to ignore using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)   | `[]`                   |
+| `security.enableSecurityCheck`   | Whether to perform security checks using Secretlint to detect sensitive information                                          | `true`                 |
+| `tokenCount.encoding`            | Token count encoding used by OpenAI's [tiktoken](https://github.com/openai/tiktoken) tokenizer. Use `o200k_base` for GPT-4o, `cl100k_base` for GPT-4/3.5. See [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) for details. | `"o200k_base"`         |
 
-El archivo de configuración admite la sintaxis [JSON5](https://json5.org/), que permite:
-- Comentarios (tanto de una línea como multilínea)
-- Comas finales en objetos y arrays
-- Nombres de propiedades sin comillas
-- Sintaxis de cadena más flexible
+The configuration file supports [JSON5](https://json5.org/) syntax, which allows:
+- Comments (both single-line and multi-line)
+- Trailing commas in objects and arrays
+- Unquoted property names
+- More relaxed string syntax
 
-## Ejemplo de archivo de configuración
+## Example Configuration File
 
-Aquí hay un ejemplo de un archivo de configuración completo (`repomix.config.json`):
+Here's an example of a complete configuration file (`repomix.config.json`):
 
 ```json
 {
@@ -75,7 +75,7 @@ Aquí hay un ejemplo de un archivo de configuración completo (`repomix.config.j
     "style": "xml",
     "parsableStyle": false,
     "compress": false,
-    "headerText": "Información de encabezado personalizada para el archivo empaquetado.",
+    "headerText": "Custom header information for the packed file.",
     "fileSummary": true,
     "directoryStructure": true,
     "files": true,
@@ -95,7 +95,7 @@ Aquí hay un ejemplo de un archivo de configuración completo (`repomix.config.j
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,
-    // Los patrones también se pueden especificar en .repomixignore
+    // Patterns can also be specified in .repomixignore
     "customPatterns": [
       "additional-folder",
       "**/*.log"
@@ -110,32 +110,32 @@ Aquí hay un ejemplo de un archivo de configuración completo (`repomix.config.j
 }
 ```
 
-## Patrones de ignorar
+## Ignore Patterns
 
-Repomix proporciona múltiples formas de especificar qué archivos deben ignorarse. Los patrones se procesan en el siguiente orden de prioridad:
+Repomix provides multiple ways to specify which files should be ignored. The patterns are processed in the following priority order:
 
-1. Opciones de CLI (`--ignore`)
-2. Archivo `.repomixignore` en el directorio del proyecto
-3. `.gitignore` y `.git/info/exclude` (si `ignore.useGitignore` es verdadero)
-4. Patrones predeterminados (si `ignore.useDefaultPatterns` es verdadero)
+1. CLI options (`--ignore`)
+2. `.repomixignore` file in the project directory
+3. `.gitignore` and `.git/info/exclude` (if `ignore.useGitignore` is true)
+4. Default patterns (if `ignore.useDefaultPatterns` is true)
 
-Ejemplo de `.repomixignore`:
+Example of `.repomixignore`:
 ```text
-# Directorios de caché
+# Cache directories
 .cache/
 tmp/
 
-# Salidas de compilación
+# Build outputs
 dist/
 build/
 
-# Registros
+# Logs
 *.log
 ```
 
-## Patrones de ignorar predeterminados
+## Default Ignore Patterns
 
-Cuando `ignore.useDefaultPatterns` es verdadero, Repomix ignora automáticamente patrones comunes:
+When `ignore.useDefaultPatterns` is true, Repomix automatically ignores common patterns:
 ```text
 node_modules/**
 .git/**
@@ -143,32 +143,32 @@ coverage/**
 dist/**
 ```
 
-Para la lista completa, vea [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts)
+For the complete list, see [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts)
 
-## Características avanzadas
+## Advanced Features
 
-### Compresión de código
+### Code Compression
 
-La función de compresión de código, habilitada con `output.compress: true`, utiliza [Tree-sitter](https://github.com/tree-sitter/tree-sitter) para extraer inteligentemente estructuras de código esenciales mientras elimina detalles de implementación. Esto ayuda a reducir el recuento de tokens mientras mantiene información estructural importante.
+The code compression feature, enabled with `output.compress: true`, uses [Tree-sitter](https://github.com/tree-sitter/tree-sitter) to intelligently extract essential code structures while removing implementation details. This helps reduce token count while maintaining important structural information.
 
-Beneficios principales:
-- Reduce significativamente el recuento de tokens
-- Preserva las firmas de clases y funciones
-- Mantiene importaciones y exportaciones
-- Conserva definiciones de tipos e interfaces
-- Elimina cuerpos de funciones y detalles de implementación
+Key benefits:
+- Reduces token count significantly
+- Preserves class and function signatures
+- Maintains imports and exports
+- Keeps type definitions and interfaces
+- Removes function bodies and implementation details
 
-Para más detalles y ejemplos, consulte la [Guía de compresión de código](code-compress).
+For more details and examples, see the [Code Compression Guide](code-compress).
 
-### Integración con Git
+### Git Integration
 
-La configuración `output.git` proporciona potentes características relacionadas con Git:
+The `output.git` configuration provides powerful Git-aware features:
 
-- `sortByChanges`: Cuando es verdadero, los archivos se ordenan por número de cambios Git (commits que modificaron el archivo). Los archivos con más cambios aparecen al final de la salida. Esto ayuda a priorizar los archivos más activamente desarrollados. Predeterminado: `true`
-- `sortByChangesMaxCommits`: El número máximo de commits para analizar al contar cambios de archivos. Predeterminado: `100`
-- `includeDiffs`: Cuando es verdadero, incluye las diferencias Git en la salida (incluye por separado los cambios del árbol de trabajo y los cambios preparados). Esto permite al lector ver los cambios pendientes en el repositorio. Predeterminado: `false`
+- `sortByChanges`: When true, files are sorted by the number of Git changes (commits that modified the file). Files with more changes appear at the bottom of the output. This helps prioritize more actively developed files. Default: `true`
+- `sortByChangesMaxCommits`: The maximum number of commits to analyze when counting file changes. Default: `100`
+- `includeDiffs`: When true, includes Git differences in the output (includes both work tree and staged changes separately). This allows the reader to see pending changes in the repository. Default: `false`
 
-Ejemplo de configuración:
+Example configuration:
 ```json
 {
   "output": {
@@ -181,22 +181,22 @@ Ejemplo de configuración:
 }
 ```
 
-### Comprobaciones de seguridad
+### Security Checks
 
-Cuando `security.enableSecurityCheck` está habilitado, Repomix utiliza [Secretlint](https://github.com/secretlint/secretlint) para detectar información sensible en su base de código antes de incluirla en la salida. Esto ayuda a prevenir la exposición accidental de:
+When `security.enableSecurityCheck` is enabled, Repomix uses [Secretlint](https://github.com/secretlint/secretlint) to detect sensitive information in your codebase before including it in the output. This helps prevent accidental exposure of:
 
-- Claves de API
-- Tokens de acceso
-- Claves privadas
-- Contraseñas
-- Otras credenciales sensibles
+- API keys
+- Access tokens
+- Private keys
+- Passwords
+- Other sensitive credentials
 
-### Eliminación de comentarios
+### Comment Removal
 
-Cuando `output.removeComments` se establece en `true`, los comentarios se eliminan de los tipos de archivos soportados para reducir el tamaño de salida y enfocarse en el contenido esencial del código. Esto puede ser particularmente útil cuando:
+When `output.removeComments` is set to `true`, comments are removed from supported file types to reduce output size and focus on essential code content. This can be particularly useful when:
 
-- Está trabajando con código muy documentado
-- Está tratando de reducir el recuento de tokens
-- Se está enfocando en la estructura y lógica del código
+- Working with heavily documented code
+- Trying to reduce token count
+- Focusing on code structure and logic
 
-Para los lenguajes soportados y ejemplos detallados, consulte la [Guía de eliminación de comentarios](comment-removal).
+For supported languages and detailed examples, see the [Comment Removal Guide](comment-removal).

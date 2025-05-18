@@ -1,10 +1,10 @@
-# 사용자 정의 지시사항
+# Custom Instructions
 
-Repomix는 출력 파일에 포함될 사용자 정의 지시사항을 제공할 수 있게 해줍니다. 이는 AI 시스템이 프로젝트의 특정 맥락이나 요구 사항을 이해하는 데 도움이 됩니다.
+Repomix allows you to provide custom instructions that will be included in the output file. This can be useful for adding context or specific guidelines for AI systems processing the repository.
 
-## 사용법
+## Usage
 
-사용자 정의 지시사항을 포함하려면 저장소의 루트에 마크다운 파일(예: `repomix-instruction.md`)을 생성하고, `repomix.config.json`에서 해당 파일의 경로를 지정하세요:
+To include a custom instruction, create a markdown file (e.g., `repomix-instruction.md`) in the root of your repository. Then, specify the path to this file in your `repomix.config.json`:
 
 ```json
 {
@@ -14,53 +14,31 @@ Repomix는 출력 파일에 포함될 사용자 정의 지시사항을 제공할
 }
 ```
 
-이 파일의 내용은 출력의 "Instruction" 섹션에 포함됩니다.
+The content of this file will be included in the output under the "Instruction" section.
 
-## 사용 예시
+## Example
 
 ```markdown
-# 코딩 지침
+# Repository Instructions
 
-- Airbnb JavaScript 스타일 가이드를 따르세요.
-- 필요한 경우 파일을 더 작은 단위로 분할하세요.
-- 불분명한 로직에는 주석을 추가하세요. 모든 텍스트는 영어로 작성하세요.
-- 모든 새로운 기능에 대해 해당 단위 테스트를 작성하세요.
+This repository contains the source code for the Repomix tool. Please follow these guidelines when analyzing the code:
 
-## 생성된 콘텐츠에 대하여
-
-- 특별한 지정이 없는 한, 모든 콘텐츠를 생략 없이 포함하세요.
-- 대규모 코드베이스를 처리할 때도 출력 품질을 유지하세요.
+1. Focus on the core functionality in the `src/core` directory.
+2. Pay special attention to the security checks in `src/core/security`.
+3. Ignore any files in the `tests` directory.
 ```
 
-이는 출력 파일에서 다음과 같이 표시됩니다:
+This will result in the following section in the output:
 
 ```xml
 <instruction>
-# 코딩 가이드라인
+# Repository Instructions
 
-- Airbnb JavaScript 스타일 가이드를 따릅니다
-- 필요한 경우 파일을 작은 단위로 분할합니다
-- 명확하지 않은 로직에는 주석을 추가합니다. 모든 텍스트는 영어로 작성합니다
-- 모든 새로운 기능에는 해당하는 단위 테스트를 작성합니다
+This repository contains the source code for the Repomix tool. Please follow these guidelines when analyzing the code:
 
-## 생성 내용에 대해
-
-- 특별한 지정이 없는 한, 모든 내용은 축약하지 않고 포함합니다
-- 대규모 코드베이스를 처리하면서도 출력의 품질을 유지합니다
+1. Focus on the core functionality in the `src/core` directory.
+2. Pay special attention to the security checks in `src/core/security`.
+3. Ignore any files in the `tests` directory.
 </instruction>
 ```
 
-## 모범 사례
-
-1. **간결하고 명확하게**: 지시사항은 간결하되, 필요한 세부 사항은 모두 포함해야 합니다.
-2. **구체적인 예시 제공**: 적절한 경우 코드 예시를 사용하여 설명을 보완합니다.
-3. **우선순위 설정**: 가장 중요한 지시사항을 문서 앞부분에 배치하여 강조합니다.
-4. **맥락 포함**: 프로젝트의 배경과 중요한 고려사항을 제공하여 AI가 작업을 더 잘 이해하도록 돕습니다.
-5. **구조화된 콘텐츠**: 제목과 목록을 사용하여 지시사항을 체계적으로 구성하고 가독성을 높입니다.
-
-## 주의 사항
-
-- 지시사항에 민감한 정보를 포함하지 마세요
-- 프로젝트의 변화를 반영하여 정기적으로 지시사항을 업데이트하세요
-- 지시사항이 프로젝트의 다른 문서와 일관성을 유지하도록 하세요
-- 명확한 계층 구조를 사용하여 콘텐츠를 구성하세요

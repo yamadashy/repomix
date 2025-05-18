@@ -1,24 +1,25 @@
-# 보안
+# Security
 
-## 보안 검사 기능
+## Security Check Feature
 
-Repomix는 [Secretlint](https://github.com/secretlint/secretlint)를 사용하여 파일 내의 민감한 정보를 감지합니다:
-- API 키
-- 액세스 토큰
-- 인증 정보
-- 개인 키
-- 환경 변수
+Repomix uses [Secretlint](https://github.com/secretlint/secretlint) to detect sensitive information in your files, including:
+- API keys and access tokens
+- Authentication credentials
+- Private keys and certificates
+- Database connection strings
+- Environment variables containing secrets
+- Personal or sensitive data
 
-## 설정
+## Configuration
 
-보안 검사는 기본적으로 활성화되어 있습니다.
+Security checks are enabled by default.
 
-명령행에서 비활성화:
+Disable via CLI:
 ```bash
 repomix --no-security-check
 ```
 
-또는 `repomix.config.json`에서 설정:
+Or in `repomix.config.json`:
 ```json
 {
   "security": {
@@ -27,19 +28,20 @@ repomix --no-security-check
 }
 ```
 
-## 보안 조치
+## Security Measures
 
-1. **바이너리 파일 제외**: 출력에 바이너리 파일이 포함되지 않음
-2. **Git 인식**: `.gitignore` 패턴을 준수
-3. **자동 감지**: 다음과 같은 일반적인 보안 문제를 스캔:
-    - AWS 자격 증명
-    - 데이터베이스 연결 문자열
-    - 인증 토큰
-    - 개인 키
+1. **Binary File Exclusion**: Binary files are not included in output to reduce file size and prevent sensitive data leakage
+2. **Git-Aware**: Respects `.gitignore` patterns to avoid including sensitive files already marked for exclusion
+3. **Automated Detection**: Scans for common security issues:
+  - AWS credentials and access keys
+  - Database connection strings and passwords
+  - Authentication tokens and OAuth credentials
+  - Private keys and certificates
+  - Environment variables containing sensitive information
 
-## 보안 검사에서 문제가 발견된 경우
+## When Security Check Finds Issues
 
-출력 예시:
+Example output:
 ```bash
 🔍 Security Check:
 ──────────────────
@@ -50,16 +52,16 @@ repomix --no-security-check
   - Found database password
 ```
 
-## 모범 사례
+## Best Practices
 
-1. 공유하기 전에 반드시 출력 내용 검토
-2. `.repomixignore`를 사용하여 민감한 경로 제외
-3. 보안 검사 기능 활성화 유지
-4. 저장소에서 민감한 파일 제거
+1. Always review output before sharing with AI services
+2. Use `.repomixignore` for additional sensitive paths
+3. Keep security checks enabled unless absolutely necessary to disable
+4. Remove sensitive files from repository or add to ignore patterns
 
-## 보안 문제 보고
+## Reporting Security Issues
 
-보안 취약점을 발견하셨다면:
-1. 공개 이슈를 생성하지 마세요
-2. 이메일: koukun0120@gmail.com
-3. 또는 [GitHub 보안 권고](https://github.com/yamadashy/repomix/security/advisories/new) 사용
+Found a security vulnerability? Please:
+1. Do not open a public issue
+2. Email: koukun0120@gmail.com
+3. Or use [GitHub Security Advisories](https://github.com/yamadashy/repomix/security/advisories/new)

@@ -1,80 +1,77 @@
-# 명령줄 옵션
+# Command Line Options
 
-## 기본 옵션
-- `-v, --version`: 버전 표시
+## Basic Options
+- `-v, --version`: Show tool version
 
-## 출력 옵션
-- `-o, --output <file>`: 출력 파일 이름 (기본값: `repomix-output.txt`)
-- `--stdout`: 파일에 쓰는 대신 표준 출력으로 출력 (`--output` 옵션과 함께 사용 불가)
-- `--style <type>`: 출력 스타일 (`plain`, `xml`, `markdown`) (기본값: `xml`)
-- `--parsable-style`: 선택한 스타일 스키마에 기반한 파싱 가능한 출력 활성화 (기본값: `false`)
-- `--compress`: 함수와 클래스 시그니처에 중점을 두고 구현 세부 사항을 제거하는 지능형 코드 추출을 수행합니다. 자세한 내용과 예제는 [코드 압축 가이드](code-compress)를 참조하세요.
-- `--output-show-line-numbers`: 줄 번호 추가 (기본값: `false`)
-- `--copy`: 클립보드에 복사 (기본값: `false`)
-- `--no-file-summary`: 파일 요약 비활성화 (기본값: `true`)
-- `--no-directory-structure`: 디렉토리 구조 비활성화 (기본값: `true`)
-- `--no-files`: 파일 내용 출력 비활성화 (메타데이터 전용 모드) (기본값: `true`)
-- `--remove-comments`: 주석 제거 (기본값: `false`)
-- `--remove-empty-lines`: 빈 줄 제거 (기본값: `false`)
-- `--header-text <text>`: 파일 헤더에 포함할 사용자 정의 텍스트
-- `--instruction-file-path <path>`: 상세한 사용자 정의 지침이 포함된 파일 경로
-- `--include-empty-directories`: 출력에 빈 디렉토리 포함 (기본값: `false`)
-- `--include-diffs`: git 차이점을 출력에 포함 (작업 트리 및 스테이지된 변경 사항이 별도로 포함됨) (기본값: `false`)
-- `--no-git-sort-by-changes`: git 변경 횟수로 파일 정렬 비활성화 (기본값: `true`)
+## Output Options
+- `-o, --output <file>`: Output file name (default: `repomix-output.txt`)
+- `--stdout`: Output to stdout instead of writing to a file (cannot be used with `--output` option)
+- `--style <type>`: Output style (`plain`, `xml`, `markdown`) (default: `xml`)
+- `--parsable-style`: Enable parsable output based on the chosen style schema (default: `false`)
+- `--compress`: Perform intelligent code extraction, focusing on essential function and class signatures while removing implementation details. For more details and examples, see [Code Compression Guide](code-compress).
+- `--output-show-line-numbers`: Add line numbers (default: `false`)
+- `--copy`: Copy to clipboard (default: `false`)
+- `--no-file-summary`: Disable file summary (default: `true`)
+- `--no-directory-structure`: Disable directory structure (default: `true`)
+- `--no-files`: Disable files content output (metadata-only mode) (default: `true`)
+- `--remove-comments`: Remove comments (default: `false`)
+- `--remove-empty-lines`: Remove empty lines (default: `false`)
+- `--header-text <text>`: Custom text to include in the file header
+- `--instruction-file-path <path>`: Path to a file containing detailed custom instructions
+- `--include-empty-directories`: Include empty directories in the output (default: `false`)
+- `--include-diffs`: Include git diffs in the output (includes both work tree and staged changes separately) (default: `false`)
+- `--no-git-sort-by-changes`: Disable sorting files by git change count (default: `true`)
 
-## 필터 옵션
-- `--include <patterns>`: 포함할 패턴 (쉼표로 구분)
-- `-i, --ignore <patterns>`: 무시할 패턴 (쉼표로 구분)
-- `--no-gitignore`: .gitignore 파일 사용 비활성화
-- `--no-default-patterns`: 기본 패턴 비활성화
+## Filter Options
+- `--include <patterns>`: Include patterns (comma-separated)
+- `-i, --ignore <patterns>`: Ignore patterns (comma-separated)
+- `--no-gitignore`: Disable .gitignore file usage
+- `--no-default-patterns`: Disable default patterns
 
-## 원격 저장소 옵션
-- `--remote <url>`: 원격 저장소 처리
-- `--remote-branch <name>`: 원격 브랜치 이름, 태그 또는 커밋 해시 지정 (기본값은 저장소의 기본 브랜치)
+## Remote Repository Options
+- `--remote <url>`: Process remote repository
+- `--remote-branch <name>`: Specify the remote branch name, tag, or commit hash (defaults to repository default branch)
 
-## 설정 옵션
-- `-c, --config <path>`: 사용자 정의 설정 파일 경로
-- `--init`: 설정 파일 생성
-- `--global`: 전역 설정 사용
+## Configuration Options
+- `-c, --config <path>`: Custom config file path
+- `--init`: Create config file
+- `--global`: Use global config
 
-## 보안 옵션
-- `--no-security-check`: 보안 검사 비활성화 (기본값: `true`)
+## Security Options
+- `--no-security-check`: Disable security check (default: `true`)
 
-## 토큰 카운트 옵션
-- `--token-count-encoding <encoding>`: 토큰 카운트 인코딩 지정 (예: `o200k_base`, `cl100k_base`) (기본값: `o200k_base`)
+## Token Count Options
+- `--token-count-encoding <encoding>`: Specify token count encoding (e.g., `o200k_base`, `cl100k_base`) (default: `o200k_base`)
 
-## 기타 옵션
-- `--top-files-len <number>`: 표시할 상위 파일 수 (기본값: `5`)
-- `--verbose`: 상세 로깅 활성화
-- `--quiet`: 표준 출력에 대한 모든 출력 비활성화
+## Other Options
+- `--top-files-len <number>`: Number of top files to show (default: `5`)
+- `--verbose`: Enable verbose logging
+- `--quiet`: Disable all output to stdout
 
-## 예제
+## Examples
 
 ```bash
-# 기본 사용법
+# Basic usage
 repomix
 
-# 사용자 정의 출력
+# Custom output
 repomix -o output.xml --style xml
 
-# 표준 출력으로 출력
+# Output to stdout
 repomix --stdout > custom-output.txt
 
-# 표준 출력으로 출력 후 다른 명령으로 파이프 (예: simonw/llm)
-repomix --stdout | llm "이 코드가 무엇을 하는지 설명해주세요"
+# Send output to stdout, then pipe into another command (for example, simonw/llm)
+repomix --stdout | llm "Please explain what this code does."
 
-# 압축을 사용한 사용자 정의 출력
+# Custom output with compression
 repomix --compress
 
-# 특정 파일 처리
+# Process specific files
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
 
-# 브랜치를 지정한 원격 저장소
+# Remote repository with branch
 repomix --remote https://github.com/user/repo/tree/main
 
-# 커밋을 지정한 원격 저장소
-repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb28655d85712680f1
-
-# 단축형을 사용한 원격 저장소
+# Remote repository with shorthand
 repomix --remote user/repo
 ```

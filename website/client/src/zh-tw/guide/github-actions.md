@@ -1,10 +1,10 @@
-# 在 GitHub Actions 中使用 Repomix
+# Using Repomix with GitHub Actions
 
-通過將 Repomix 集成到 GitHub Actions 工作流中，可以自動打包程式碼庫以供 AI 分析。這對於持續集成（CI）、程式碼審查或為 LLM 工具做準備非常有用。
+You can automate the process of packing your codebase for AI analysis by integrating Repomix into your GitHub Actions workflows. This is useful for continuous integration (CI), code review, or preparing your repository for LLM-based tools.
 
-## 基本用法
+## Basic Usage
 
-在工作流 YAML 文件中添加以下步驟以打包您的倉庫：
+Add the following step to your workflow YAML to pack your repository:
 
 ```yaml
 - name: Pack repository with Repomix
@@ -13,9 +13,9 @@
     output: repomix-output.xml
 ```
 
-## 使用不同的輸出格式
+## Using Different Output Formats
 
-可以使用 `style` 參數指定不同的輸出格式（默認為 `xml`）：
+You can specify different output formats using the `style` parameter (the default is `xml`):
 
 ```yaml
 - name: Pack repository with Repomix
@@ -25,9 +25,9 @@
     style: markdown
 ```
 
-## 多目錄與壓縮選項
+## Packing Multiple Directories with Compression
 
-可以指定多個目錄、包含/排除模式，並啟用智能壓縮：
+You can specify multiple directories, include/exclude patterns, and enable smart compression:
 
 ```yaml
 - name: Pack repository with Repomix
@@ -36,13 +36,13 @@
     directories: src tests
     include: "**/*.ts,**/*.md"
     ignore: "**/*.test.ts"
-    output: repomix-output.txt
+    output: repomix-output.xml
     compress: true
 ```
 
-## 上傳輸出文件為 Artifact
+## Uploading the Output as an Artifact
 
-將生成的文件作為 artifact 上傳，以便後續步驟或下載：
+To make the packed file available for later workflow steps or for download, upload it as an artifact:
 
 ```yaml
 - name: Pack repository with Repomix
@@ -59,28 +59,28 @@
     path: repomix-output.xml
 ```
 
-## Action 輸入參數
+## Action Inputs
 
-| 名稱                | 說明                                   | 預設值           |
-|---------------------|----------------------------------------|------------------|
-| `directories`       | 要打包的目錄（空格分隔）               | `.`              |
-| `include`           | 包含的 glob 模式（逗號分隔）           | `""`           |
-| `ignore`            | 排除的 glob 模式（逗號分隔）           | `""`           |
-| `output`            | 輸出文件路徑                            | `repomix-output.xml`    |
-| `style`             | 輸出樣式（xml、markdown、plain）        | `xml`            |
-| `compress`          | 啟用智能壓縮                            | `true`           |
-| `additional-args`   | 傳遞給 repomix CLI 的額外參數           | `""`           |
-| `repomix-version`   | 要安裝的 npm 包版本                     | `latest`         |
+| Name              | Description                                 | Default           |
+|-------------------|---------------------------------------------|-------------------|
+| `directories`     | Space-separated list of directories to pack | `.`               |
+| `include`         | Comma-separated glob patterns to include    | `""`             |
+| `ignore`          | Comma-separated glob patterns to ignore     | `""`             |
+| `output`          | Output file path                            | `repomix-output.xml`     |
+| `compress`        | Enable smart compression                    | `true`            |
+| `style`           | Output style (xml, markdown, plain)         | `xml`             |
+| `additional-args` | Extra CLI arguments for repomix             | `""`             |
+| `repomix-version` | Version of the npm package to install       | `latest`          |
 
-## Action 輸出
+## Action Outputs
 
-| 名稱           | 說明                   |
-|----------------|------------------------|
-| `output_file`  | 生成的輸出文件路徑      |
+| Name          | Description                        |
+|---------------|------------------------------------|
+| `output_file` | Path to the generated output file   |
 
-## 完整工作流示例
+## Example: Full Workflow
 
-以下是使用 Repomix 的 GitHub Actions 工作流完整示例：
+Here is a complete example of a GitHub Actions workflow using Repomix:
 
 ```yaml
 name: Pack repository with Repomix
@@ -112,4 +112,4 @@ jobs:
           retention-days: 30
 ```
 
-查看[完整工作流示例](https://github.com/yamadashy/repomix/blob/main/.github/workflows/pack-repository.yml)。
+See the [complete workflow example](https://github.com/yamadashy/repomix/blob/main/.github/workflows/pack-repository.yml).

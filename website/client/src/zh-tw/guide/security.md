@@ -1,24 +1,25 @@
-# 安全性
+# Security
 
-## 安全檢查功能
+## Security Check Feature
 
-Repomix 使用 [Secretlint](https://github.com/secretlint/secretlint) 檢測文件中的敏感信息：
-- API 密鑰
-- 訪問令牌
-- 認證憑證
-- 私鑰
-- 環境變量
+Repomix uses [Secretlint](https://github.com/secretlint/secretlint) to detect sensitive information in your files, including:
+- API keys and access tokens
+- Authentication credentials
+- Private keys and certificates
+- Database connection strings
+- Environment variables containing secrets
+- Personal or sensitive data
 
-## 配置
+## Configuration
 
-安全檢查預設啟用。
+Security checks are enabled by default.
 
-通過命令行禁用：
+Disable via CLI:
 ```bash
 repomix --no-security-check
 ```
 
-或在 `repomix.config.json` 中配置：
+Or in `repomix.config.json`:
 ```json
 {
   "security": {
@@ -27,19 +28,20 @@ repomix --no-security-check
 }
 ```
 
-## 安全措施
+## Security Measures
 
-1. **二進制文件排除**：輸出中不包含二進制文件
-2. **Git 感知**：遵循 `.gitignore` 模式
-3. **自動檢測**：掃描常見安全問題：
-    - AWS 憑證
-    - 數據庫連接字符串
-    - 認證令牌
-    - 私鑰
+1. **Binary File Exclusion**: Binary files are not included in output to reduce file size and prevent sensitive data leakage
+2. **Git-Aware**: Respects `.gitignore` patterns to avoid including sensitive files already marked for exclusion
+3. **Automated Detection**: Scans for common security issues:
+  - AWS credentials and access keys
+  - Database connection strings and passwords
+  - Authentication tokens and OAuth credentials
+  - Private keys and certificates
+  - Environment variables containing sensitive information
 
-## 安全檢查發現問題時
+## When Security Check Finds Issues
 
-輸出示例：
+Example output:
 ```bash
 🔍 Security Check:
 ──────────────────
@@ -50,16 +52,16 @@ repomix --no-security-check
   - Found database password
 ```
 
-## 最佳實踐
+## Best Practices
 
-1. 分享前務必檢查輸出內容
-2. 使用 `.repomixignore` 排除敏感路徑
-3. 保持安全檢查功能啟用
-4. 從倉庫中移除敏感文件
+1. Always review output before sharing with AI services
+2. Use `.repomixignore` for additional sensitive paths
+3. Keep security checks enabled unless absolutely necessary to disable
+4. Remove sensitive files from repository or add to ignore patterns
 
-## 報告安全問題
+## Reporting Security Issues
 
-如果發現安全漏洞，請：
-1. 不要創建公開的 Issue
-2. 發送郵件至：koukun0120@gmail.com
-3. 或使用 [GitHub 安全公告](https://github.com/yamadashy/repomix/security/advisories/new)
+Found a security vulnerability? Please:
+1. Do not open a public issue
+2. Email: koukun0120@gmail.com
+3. Or use [GitHub Security Advisories](https://github.com/yamadashy/repomix/security/advisories/new)

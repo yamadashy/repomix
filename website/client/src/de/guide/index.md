@@ -1,60 +1,61 @@
-# Erste Schritte mit Repomix
+# Getting Started with Repomix
 
-Repomix ist ein Tool, das Ihr gesamtes Repository in eine einzige, KI-freundliche Datei verpackt. Es wurde entwickelt, um Ihren Codebase an große Sprachmodelle (LLMs) wie ChatGPT, DeepSeek, Perplexity, Gemini, Gemma, Llama, Grok und mehr zu übergeben.
+Repomix is a tool that packs your entire repository into a single, AI-friendly file. It's designed to help you feed your codebase to Large Language Models (LLMs) like ChatGPT, DeepSeek, Perplexity, Gemini, Gemma, Llama, Grok, and more.
 
-## Schnellstart
+## Quick Start
 
-Führen Sie diesen Befehl in Ihrem Projektverzeichnis aus:
+Run this command in your project directory:
 
 ```bash
 npx repomix
 ```
 
-Das war's! Sie finden eine `repomix-output.xml` Datei, die Ihr gesamtes Repository in einem KI-freundlichen Format enthält.
+That's it! You'll find a `repomix-output.xml` file containing your entire repository in an AI-friendly format.
 
-Sie können diese Datei dann mit einem Prompt wie diesem an einen KI-Assistenten senden:
+You can then send this file to an AI assistant with a prompt like:
 
 ```
-Diese Datei enthält alle Dateien im Repository in einer Datei zusammengefasst.
-Ich möchte den Code refaktorieren, bitte überprüfen Sie ihn zuerst.
+This file contains all the files in the repository combined into one.
+I want to refactor the code, so please review it first.
 ```
 
-Die KI wird Ihren gesamten Codebase analysieren und umfassende Einblicke geben:
+The AI will analyze your entire codebase and provide comprehensive insights:
 
 ![Repomix File Usage 1](/images/docs/repomix-file-usage-1.png)
 
-Bei der Diskussion spezifischer Änderungen kann die KI bei der Code-Generierung helfen. Mit Funktionen wie Claudes Artifacts können Sie sogar mehrere voneinander abhängige Dateien erhalten:
+When discussing specific changes, the AI can help generate code. With features like Claude's Artifacts, you can even receive multiple interdependent files:
 
 ![Repomix File Usage 2](/images/docs/repomix-file-usage-2.png)
 
-Viel Spaß beim Programmieren! 🚀
+Happy coding! 🚀
 
-## Kernfunktionen
+## Core Features
 
-- **KI-optimierte Ausgabe**: Formatiert Ihren Codebase für einfache KI-Verarbeitung
-- **Token-Zählung**: Verfolgt Token-Nutzung für LLM-Kontextgrenzen
-- **Git-bewusst**: Berücksichtigt Ihre `.gitignore`-Dateien und `.git/info/exclude`-Dateien
-- **Sicherheitsorientiert**: Erkennt sensible Informationen
-- **Mehrere Ausgabeformate**: Wählen Sie zwischen Klartext, XML oder Markdown
+- **AI-Optimized Output**: Formats your codebase for easy AI processing with structured sections and clear organization
+- **Token Counting**: Tracks token usage for LLM context limits using configurable tokenizers like OpenAI's tiktoken
+- **Git-Aware**: Respects your `.gitignore` and `.git/info/exclude` files to prevent including unwanted files
+- **Security-Focused**: Detects sensitive information using Secretlint to prevent accidental exposure
+- **Multiple Output Formats**: Choose between XML (best for AI), Markdown (balance of readability and structure), or plain text
+- **Code Compression**: Intelligently extracts essential code structures while removing implementation details to reduce token count
 
-## Was kommt als Nächstes?
+## What's Next?
 
-- [Installationsanleitung](installation.md): Verschiedene Möglichkeiten, Repomix zu installieren
-- [Verwendungsleitfaden](usage.md): Lernen Sie grundlegende und erweiterte Funktionen kennen
-- [Konfiguration](configuration.md): Passen Sie Repomix an Ihre Bedürfnisse an
-- [Sicherheitsfunktionen](security.md): Erfahren Sie mehr über Sicherheitsprüfungen
+- [Installation Guide](installation.md): Different ways to install Repomix
+- [Usage Guide](usage.md): Learn about basic and advanced features
+- [Configuration](configuration.md): Customize Repomix for your needs
+- [Security Features](security.md): Learn about security checks
 
 ## Community
 
-Treten Sie unserer [Discord-Community](https://discord.gg/wNYzTwZFku) bei für:
-- Hilfe mit Repomix
-- Teilen Sie Ihre Erfahrungen
-- Vorschlagen neuer Funktionen
-- Verbindung mit anderen Benutzern
+Join our [Discord community](https://discord.gg/wNYzTwZFku) for:
+- Getting help with Repomix
+- Sharing your experiences
+- Suggesting new features
+- Connecting with other users
 
-## Unterstützung
+## Support
 
-Haben Sie einen Fehler gefunden oder brauchen Sie Hilfe?
-- [Öffnen Sie ein Issue auf GitHub](https://github.com/yamadashy/repomix/issues)
-- Treten Sie unserem Discord-Server bei
-- Lesen Sie die [Dokumentation](https://repomix.com)
+Found a bug or need help?
+- [Open an issue on GitHub](https://github.com/yamadashy/repomix/issues)
+- Join our Discord server
+- Check the [documentation](https://repomix.com)

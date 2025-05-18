@@ -1,46 +1,60 @@
-# Uso Básico
+# Basic Usage
 
-## Início Rápido
+## Quick Start
 
-Compacte todo o seu repositório:
+Pack your entire repository:
 ```bash
 repomix
 ```
 
-## Casos de Uso Comuns
+## Common Use Cases
 
-### Compactar Diretórios Específicos
+### Pack Specific Directories
+Process only specific directories or files to focus on relevant code and reduce token count:
 ```bash
 repomix path/to/directory
 ```
 
-### Incluir Arquivos Específicos
-Use [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax):
+### Include Specific Files
+Use [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) to precisely control which files are included:
 ```bash
 repomix --include "src/**/*.ts,**/*.md"
 ```
 
-### Excluir Arquivos
+### Exclude Files
+Skip certain files or directories using glob patterns to avoid including unnecessary or sensitive content:
 ```bash
 repomix --ignore "**/*.log,tmp/"
 ```
 
-### Repositórios Remotos
+### Remote Repositories
 ```bash
-# Usando URL do GitHub
+# Using GitHub URL
 repomix --remote https://github.com/user/repo
 
-# Usando abreviação
+# Using shorthand
 repomix --remote user/repo
 
-# Branch/tag/commit específico
+# Specific branch/tag/commit
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-## Formatos de Saída
 
-### XML (Padrão)
+### Code Compression
+
+Use Tree-sitter to intelligently extract essential code structures while removing implementation details, significantly reducing token count while preserving architecture:
+
+```bash
+repomix --compress
+
+# You can also use it with remote repositories:
+repomix --remote yamadashy/repomix --compress
+```
+
+## Output Formats
+
+### XML (Default)
 ```bash
 repomix --style xml
 ```
@@ -50,38 +64,38 @@ repomix --style xml
 repomix --style markdown
 ```
 
-### Texto Simples
+### Plain Text
 ```bash
 repomix --style plain
 ```
 
-## Opções Adicionais
+## Additional Options
 
-### Remover Comentários
+### Remove Comments
 ```bash
 repomix --remove-comments
 ```
 
-### Mostrar Números de Linha
+### Show Line Numbers
 ```bash
 repomix --output-show-line-numbers
 ```
 
-### Copiar para a Área de Transferência
+### Copy to Clipboard
 ```bash
 repomix --copy
 ```
 
-### Desativar Verificação de Segurança
+### Disable Security Check
 ```bash
 repomix --no-security-check
 ```
 
-## Configuração
+## Configuration
 
-Inicializar arquivo de configuração:
+Initialize configuration file:
 ```bash
 repomix --init
 ```
 
-Veja o [Guia de Configuração](/pt-br/guide/configuration) para opções detalhadas.
+See [Configuration Guide](/guide/configuration) for detailed options.

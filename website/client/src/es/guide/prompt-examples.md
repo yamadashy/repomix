@@ -1,124 +1,124 @@
-# Ejemplos de prompts
+# Prompt Examples
 
-## Revisión de código
+## Code Review
 
-### Revisión de arquitectura
+### Architecture Review
 ```
-Analiza la arquitectura de esta base de código:
-1. Evalúa la estructura general y los patrones
-2. Identifica posibles problemas de arquitectura
-3. Sugiere mejoras para la escalabilidad
-4. Señala las áreas que siguen las mejores prácticas
+Analyze this codebase's architecture:
+1. Evaluate the overall structure and patterns
+2. Identify potential architectural issues
+3. Suggest improvements for scalability
+4. Note areas that follow best practices
 
-Concéntrate en la mantenibilidad y la modularidad.
-```
-
-### Revisión de seguridad
-```
-Realiza una revisión de seguridad de esta base de código:
-1. Identifica posibles vulnerabilidades de seguridad
-2. Busca antipatrones de seguridad comunes
-3. Revisa el manejo de errores y la validación de entradas
-4. Evalúa la seguridad de las dependencias
-
-Proporciona ejemplos específicos y pasos de remediación.
+Focus on maintainability and modularity.
 ```
 
-### Revisión de rendimiento
+### Security Review
 ```
-Revisa el rendimiento de la base de código:
-1. Identifica cuellos de botella de rendimiento
-2. Comprueba la utilización de recursos
-3. Revisa la eficiencia algorítmica
-4. Evalúa las estrategias de almacenamiento en caché
+Perform a security review of this codebase:
+1. Identify potential security vulnerabilities
+2. Check for common security anti-patterns
+3. Review error handling and input validation
+4. Assess dependency security
 
-Incluye recomendaciones de optimización específicas.
-```
-
-## Generación de documentación
-
-### Documentación de API
-```
-Genera documentación de API completa:
-1. Enumera y describe todos los endpoints públicos
-2. Documenta los formatos de solicitud/respuesta
-3. Incluye ejemplos de uso
-4. Señala cualquier limitación o restricción
+Provide specific examples and remediation steps.
 ```
 
-### Guía para desarrolladores
+### Performance Review
 ```
-Crea una guía para desarrolladores que cubra:
-1. Instrucciones de configuración
-2. Descripción general de la estructura del proyecto
-3. Flujo de trabajo de desarrollo
-4. Enfoque de pruebas
-5. Pasos comunes para la solución de problemas
-```
+Review the codebase for performance:
+1. Identify performance bottlenecks
+2. Check resource utilization
+3. Review algorithmic efficiency
+4. Assess caching strategies
 
-### Documentación de arquitectura
-```
-Documenta la arquitectura del sistema:
-1. Descripción general de alto nivel
-2. Interacciones entre componentes
-3. Diagramas de flujo de datos
-4. Decisiones de diseño y justificación
-5. Restricciones y limitaciones del sistema
+Include specific optimization recommendations.
 ```
 
-## Análisis y mejora
+## Documentation Generation
 
-### Análisis de dependencias
+### API Documentation
 ```
-Analiza las dependencias del proyecto:
-1. Identifica paquetes obsoletos
-2. Busca vulnerabilidades de seguridad
-3. Sugiere paquetes alternativos
-4. Revisa los patrones de uso de dependencias
-
-Incluye recomendaciones de actualización específicas.
+Generate comprehensive API documentation:
+1. List and describe all public endpoints
+2. Document request/response formats
+3. Include usage examples
+4. Note any limitations or constraints
 ```
 
-### Cobertura de pruebas
+### Developer Guide
 ```
-Revisa la cobertura de pruebas:
-1. Identifica componentes no probados
-2. Sugiere casos de prueba adicionales
-3. Revisa la calidad de las pruebas
-4. Recomienda estrategias de prueba
-```
-
-### Calidad del código
-```
-Evalúa la calidad del código y sugiere mejoras:
-1. Revisa las convenciones de nomenclatura
-2. Comprueba la organización del código
-3. Evalúa el manejo de errores
-4. Revisa las prácticas de comentarios
-
-Proporciona ejemplos específicos de patrones buenos y problemáticos.
+Create a developer guide covering:
+1. Setup instructions
+2. Project structure overview
+3. Development workflow
+4. Testing approach
+5. Common troubleshooting steps
 ```
 
-## Consejos para obtener mejores resultados
+### Architecture Documentation
+```
+Document the system architecture:
+1. High-level overview
+2. Component interactions
+3. Data flow diagrams
+4. Design decisions and rationale
+5. System constraints and limitations
+```
 
-1. **Sé específico**: Incluye objetivos claros y criterios de evaluación
-2. **Establece el contexto**: Especifica tu rol y el nivel de experiencia necesario
-3. **Solicita un formato**: Define cómo quieres que se estructure la respuesta
-4. **Prioriza**: Indica qué aspectos son más importantes
+## Analysis and Improvement
 
-## Notas específicas del modelo
+### Dependency Analysis
+```
+Analyze the project dependencies:
+1. Identify outdated packages
+2. Check for security vulnerabilities
+3. Suggest alternative packages
+4. Review dependency usage patterns
+
+Include specific upgrade recommendations.
+```
+
+### Test Coverage
+```
+Review the test coverage:
+1. Identify untested components
+2. Suggest additional test cases
+3. Review test quality
+4. Recommend testing strategies
+```
+
+### Code Quality
+```
+Assess code quality and suggest improvements:
+1. Review naming conventions
+2. Check code organization
+3. Evaluate error handling
+4. Review commenting practices
+
+Provide specific examples of good and problematic patterns.
+```
+
+## Tips for Better Results
+
+1. **Be Specific**: Include clear objectives and evaluation criteria
+2. **Set Context**: Specify your role and expertise level needed
+3. **Request Format**: Define how you want the response structured
+4. **Prioritize**: Indicate which aspects are most important
+
+## Model-Specific Notes
 
 ### Claude
-- Usa el formato de salida XML
-- Coloca las instrucciones importantes al final
-- Especifica la estructura de la respuesta
+- Use XML output format
+- Place important instructions at the end
+- Specify response structure
 
 ### ChatGPT
-- Usa el formato Markdown
-- Divide las bases de código grandes en secciones
-- Incluye prompts de rol del sistema
+- Use Markdown format
+- Break large codebases into sections
+- Include system role prompts
 
 ### Gemini
-- Funciona con todos los formatos
-- Concéntrate en áreas específicas por solicitud
-- Usa un análisis paso a paso
+- Works with all formats
+- Focus on specific areas per request
+- Use step-by-step analysis

@@ -1,68 +1,75 @@
-# 원격 저장소 처리
+# Remote Repository Processing
 
-## 기본 사용법
+Repomix supports processing remote Git repositories without the need for manual cloning. This feature allows you to quickly analyze any public Git repository with a single command, streamlining the workflow for code analysis.
 
-공개 저장소 처리:
+## Basic Usage
+
+Process public repositories:
 ```bash
-# 전체 URL 사용
+# Using full URL
 repomix --remote https://github.com/user/repo
 
-# GitHub 단축형 사용
+# Using GitHub shorthand
 repomix --remote user/repo
 ```
 
-## 브랜치 및 커밋 선택
+## Branch and Commit Selection
+
+You can specify the branch name, tag, or commit hash:
 
 ```bash
-# 특정 브랜치
+# Specific branch using --remote-branch option
 repomix --remote user/repo --remote-branch main
 
-# 태그
+# Using branch's URL directly
+repomix --remote https://github.com/user/repo/tree/main
+
+# Tag
 repomix --remote user/repo --remote-branch v1.0.0
 
-# 커밋 해시
+# Specific commit hash using --remote-branch option
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-## 요구 사항
+## Requirements
 
-- Git이 설치되어 있어야 함
-- 인터넷 연결
-- 저장소에 대한 읽기 권한
+- Git must be installed
+- Internet connection
+- Read access to repository
 
-## 출력 제어
+## Output Control
 
 ```bash
-# 사용자 지정 출력 위치
+# Custom output location
 repomix --remote user/repo -o custom-output.xml
 
-# XML 형식 사용
+# With XML format
 repomix --remote user/repo --style xml
 
-# 주석 제거
+# Remove comments
 repomix --remote user/repo --remove-comments
 ```
 
-## Docker 사용
+## Docker Usage
 
 ```bash
-# 현재 디렉토리에서 처리 및 출력
+# Process and output to current directory
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 
-# 특정 디렉토리에 출력
+# Output to specific directory
 docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
-## 일반적인 문제
+## Common Issues
 
-### 접근 문제
-- 저장소가 공개되어 있는지 확인
-- Git 설치 확인
-- 인터넷 연결 확인
+### Access Issues
+- Ensure repository is public
+- Check Git installation
+- Verify internet connection
 
-### 대용량 저장소
-- `--include`를 사용하여 특정 경로 선택
-- `--remove-comments` 활성화
-- 브랜치별로 개별 처리
+### Large Repositories
+- Use `--include` to select specific paths
+- Enable `--remove-comments`
+- Process branches separately

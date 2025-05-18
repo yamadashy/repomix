@@ -1,47 +1,47 @@
-# MCP伺服器
+# MCP Server
 
-Repomix 支援 [Model Context Protocol (MCP)](https://modelcontextprotocol.io)，允許 AI 助手直接與您的程式碼庫交互。當作為 MCP 伺服器運行時，Repomix 提供了工具，使 AI 助手能夠在無需手動準備文件的情況下打包本地或遠端倉庫進行分析。
+Repomix supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), allowing AI assistants to directly interact with your codebase. When run as an MCP server, Repomix provides tools that enable AI assistants to package local or remote repositories for analysis without requiring manual file preparation. This integration streamlines the process of code analysis by eliminating the need to manually generate and upload files.
 
 > [!NOTE]  
-> 這是一個實驗性功能，我們將根據用戶反饋和實際使用情況積極改進
+> This is an experimental feature that we'll be actively improving based on user feedback and real-world usage
 
-## 將 Repomix 作為 MCP 伺服器運行
+## Running Repomix as an MCP Server
 
-要將 Repomix 作為 MCP 伺服器運行，請使用 `--mcp` 標誌：
+To run Repomix as an MCP server, use the `--mcp` flag:
 
 ```bash
 repomix --mcp
 ```
 
-這會以 MCP 伺服器模式啟動 Repomix，使其可供支援 Model Context Protocol 的 AI 助手使用。
+This starts Repomix in MCP server mode, making it available for AI assistants that support the Model Context Protocol.
 
-## 配置 MCP 伺服器
+## Configuring MCP Servers
 
-要將 Repomix 作為 MCP 伺服器與 Claude 等 AI 助手一起使用，您需要配置 MCP 設置：
+To use Repomix as an MCP server with AI assistants like Claude, you need to configure the MCP settings:
 
-### 對於 VS Code
+### For VS Code
 
-您可以使用以下方法之一在 VS Code 中安裝 Repomix MCP 伺服器：
+You can install the Repomix MCP server in VS Code using one of these methods:
 
-1. **使用安裝徽章：**
+1. **Using the Install Badge:**
 
   [![Install in VS Code](https://img.shields.io/badge/VS_Code-VS_Code?style=flat-square&label=Install%20Server&color=0098FF)](vscode:mcp/install?%7B%22name%22%3A%22repomix%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22repomix%22%2C%22--mcp%22%5D%7D)<br>
   [![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-VS_Code_Insiders?style=flat-square&label=Install%20Server&color=24bfa5)](vscode-insiders:mcp/install?%7B%22name%22%3A%22repomix%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22repomix%22%2C%22--mcp%22%5D%7D)
 
-2. **使用命令行：**
+2. **Using the Command Line:**
 
   ```bash
   code --add-mcp '{"name":"repomix","command":"npx","args":["-y","repomix","--mcp"]}'
   ```
 
-  對於 VS Code Insiders：
+  For VS Code Insiders:
   ```bash
   code-insiders --add-mcp '{"name":"repomix","command":"npx","args":["-y","repomix","--mcp"]}'
   ```
 
-### 對於 Cline（VS Code 擴展）
+### For Cline (VS Code extension)
 
-編輯 `cline_mcp_settings.json` 文件：
+Edit the `cline_mcp_settings.json` file:
 
 ```json
 {
@@ -58,17 +58,17 @@ repomix --mcp
 }
 ```
 
-### 對於 Cursor
+### For Cursor
 
-在 Cursor 中，從 `Cursor Settings` > `MCP` > `+ Add new global MCP server` 添加一個新的 MCP 伺服器，配置與 Cline 類似。
+In Cursor, add a new MCP server from `Cursor Settings` > `MCP` > `+ Add new global MCP server` with a configuration similar to Cline.
 
-### 對於 Claude Desktop
+### For Claude Desktop
 
-使用與 Cline 類似的配置編輯 `claude_desktop_config.json` 文件。
+Edit the `claude_desktop_config.json` file with similar configuration to Cline's config.
 
-### 使用 Docker 代替 npx
+### Using Docker instead of npx
 
-您可以使用 Docker 代替 npx 來運行 Repomix 作為 MCP 伺服器：
+Instead of using npx, you can also use Docker to run Repomix as an MCP server:
 
 ```json
 {
@@ -87,21 +87,21 @@ repomix --mcp
 }
 ```
 
-## 可用的 MCP 工具
+## Available MCP Tools
 
-當作為 MCP 伺服器運行時，Repomix 提供以下工具：
+When running as an MCP server, Repomix provides the following tools:
 
 ### pack_codebase
 
-此工具將本地程式碼目錄打包成一個用於 AI 分析的整合文件。
+This tool packages a local code directory into a consolidated file for AI analysis.
 
-**參數：**
-- `directory`：（必需）要打包的目錄的絕對路徑
-- `compress`：（可選，預設值：true）是否執行智能程式碼提取以減少令牌計數
-- `includePatterns`：（可選）以逗號分隔的包含模式列表
-- `ignorePatterns`：（可選）以逗號分隔的忽略模式列表
+**Parameters:**
+- `directory`: (Required) Absolute path to the directory to pack
+- `compress`: (Optional, default: true) Whether to perform intelligent code extraction to reduce token count
+- `includePatterns`: (Optional) Comma-separated list of include patterns
+- `ignorePatterns`: (Optional) Comma-separated list of ignore patterns
 
-**示例：**
+**Example:**
 ```json
 {
   "directory": "/path/to/your/project",
@@ -113,10 +113,93 @@ repomix --mcp
 
 ### pack_remote_repository
 
-此工具獲取、克隆並將 GitHub 倉庫打包成一個用於 AI 分析的整合文件。
+This tool fetches, clones, and packages a GitHub repository into a consolidated file for AI analysis.
 
-**參數：**
-- `remote`：（必需）GitHub 倉庫 URL 或用戶/倉庫格式（例如，yamadashy/repomix）
-- `compress`：（可選，預設值：true）是否執行智能程式碼提取以減少令牌計數
-- `includePatterns`：（可選）以逗號分隔的包含模式列表
-- `ignorePatterns`：（可選）以逗號分隔的忽略模式列表
+**Parameters:**
+- `remote`: (Required) GitHub repository URL or user/repo format (e.g., yamadashy/repomix)
+- `compress`: (Optional, default: true) Whether to perform intelligent code extraction to reduce token count
+- `includePatterns`: (Optional) Comma-separated list of include patterns
+- `ignorePatterns`: (Optional) Comma-separated list of ignore patterns
+
+**Example:**
+```json
+{
+  "remote": "yamadashy/repomix",
+  "compress": true,
+  "includePatterns": "src/**/*.ts,**/*.md",
+  "ignorePatterns": "**/*.log,tmp/"
+}
+```
+
+### read_repomix_output
+
+This tool reads the contents of a Repomix output file in environments where direct file access is not possible.
+
+**Parameters:**
+- `outputId`: (Required) ID of the Repomix output file to read
+
+**Features:**
+- Specifically designed for web-based environments or sandboxed applications
+- Retrieves the content of previously generated outputs using their ID
+- Provides secure access to packed codebase without requiring file system access
+
+**Example:**
+```json
+{
+  "outputId": "8f7d3b1e2a9c6054"
+}
+```
+
+### file_system_read_file and file_system_read_directory
+
+Repomix's MCP server provides two file system tools that allow AI assistants to safely interact with the local file system:
+
+1. `file_system_read_file`
+  - Reads file contents using absolute paths
+  - Implements security validation using [Secretlint](https://github.com/secretlint/secretlint)
+  - Prevents access to files containing sensitive information
+  - Returns formatted content with clear error messages for invalid paths or security issues
+
+2. `file_system_read_directory`
+  - Lists directory contents using absolute paths
+  - Shows both files and directories with clear indicators (`[FILE]` or `[DIR]`)
+  - Provides safe directory traversal with proper error handling
+  - Validates paths and ensures they are absolute
+
+Both tools incorporate robust security measures:
+- Absolute path validation to prevent directory traversal attacks
+- Permission checks to ensure proper access rights
+- Integration with Secretlint for sensitive information detection
+- Clear error messaging for better debugging and security awareness
+- Validation of file types to prevent access to binary or executable files
+
+**Example:**
+```typescript
+// Reading a file
+const fileContent = await tools.file_system_read_file({
+  path: '/absolute/path/to/file.txt'
+});
+
+// Listing directory contents
+const dirContent = await tools.file_system_read_directory({
+  path: '/absolute/path/to/directory'
+});
+```
+
+These tools are particularly useful when AI assistants need to:
+- Analyze specific files in the codebase
+- Navigate directory structures
+- Verify file existence and accessibility
+- Ensure secure file system operations
+
+## Benefits of Using Repomix as an MCP Server
+
+Using Repomix as an MCP server offers several advantages:
+
+1. **Direct Integration**: AI assistants can directly analyze your codebase without manual file preparation.
+2. **Efficient Workflow**: Streamlines the process of code analysis by eliminating the need to manually generate and upload files.
+3. **Consistent Output**: Ensures that the AI assistant receives the codebase in a consistent, optimized format.
+4. **Advanced Features**: Leverages all of Repomix's features like code compression, token counting, and security checks.
+5. **Security Controls**: Provides secure access to your codebase with built-in security validation.
+
+Once configured, your AI assistant can directly use Repomix's capabilities to analyze codebases, making code analysis workflows more efficient.

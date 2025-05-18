@@ -1,60 +1,61 @@
-# Introdução ao Repomix
+# Getting Started with Repomix
 
-O Repomix é uma ferramenta que compacta todo o seu repositório em um único arquivo amigável para IA. Ele foi projetado para ajudá-lo a alimentar seu código-fonte para Modelos de Linguagem Grandes (LLMs) como ChatGPT, DeepSeek, Perplexity, Gemini, Gemma, Llama, Grok e mais.
+Repomix is a tool that packs your entire repository into a single, AI-friendly file. It's designed to help you feed your codebase to Large Language Models (LLMs) like ChatGPT, DeepSeek, Perplexity, Gemini, Gemma, Llama, Grok, and more.
 
-## Início Rápido
+## Quick Start
 
-Execute este comando no diretório do seu projeto:
+Run this command in your project directory:
 
 ```bash
 npx repomix
 ```
 
-É isso! Você encontrará um arquivo `repomix-output.xml` contendo todo o seu repositório em um formato amigável para IA.
+That's it! You'll find a `repomix-output.xml` file containing your entire repository in an AI-friendly format.
 
-Você pode então enviar este arquivo para um assistente de IA com um prompt como:
+You can then send this file to an AI assistant with a prompt like:
 
 ```
-Este arquivo contém todos os arquivos do repositório combinados em um só.
-Eu quero refatorar o código, então, por favor, revise-o primeiro.
+This file contains all the files in the repository combined into one.
+I want to refactor the code, so please review it first.
 ```
 
-A IA analisará todo o seu código-fonte e fornecerá insights abrangentes:
+The AI will analyze your entire codebase and provide comprehensive insights:
 
-![Uso do Arquivo Repomix 1](/images/docs/repomix-file-usage-1.png)
+![Repomix File Usage 1](/images/docs/repomix-file-usage-1.png)
 
-Ao discutir mudanças específicas, a IA pode ajudar a gerar código. Com recursos como o Artifacts do Claude, você pode até receber vários arquivos interdependentes:
+When discussing specific changes, the AI can help generate code. With features like Claude's Artifacts, you can even receive multiple interdependent files:
 
-![Uso do Arquivo Repomix 2](/images/docs/repomix-file-usage-2.png)
+![Repomix File Usage 2](/images/docs/repomix-file-usage-2.png)
 
-Feliz codificação! 🚀
+Happy coding! 🚀
 
-## Principais Recursos
+## Core Features
 
-- **Saída Otimizada para IA**: Formata seu código-fonte para fácil processamento por IA
-- **Contagem de Tokens**: Rastreia o uso de tokens para limites de contexto de LLM
-- **Consciente do Git**: Respeita seus arquivos `.gitignore` e `.git/info/exclude`
-- **Focado em Segurança**: Detecta informações sensíveis
-- **Múltiplos Formatos de Saída**: Escolha entre texto simples, XML ou Markdown
+- **AI-Optimized Output**: Formats your codebase for easy AI processing with structured sections and clear organization
+- **Token Counting**: Tracks token usage for LLM context limits using configurable tokenizers like OpenAI's tiktoken
+- **Git-Aware**: Respects your `.gitignore` and `.git/info/exclude` files to prevent including unwanted files
+- **Security-Focused**: Detects sensitive information using Secretlint to prevent accidental exposure
+- **Multiple Output Formats**: Choose between XML (best for AI), Markdown (balance of readability and structure), or plain text
+- **Code Compression**: Intelligently extracts essential code structures while removing implementation details to reduce token count
 
-## O que vem a seguir?
+## What's Next?
 
-- [Guia de Instalação](installation.md): Diferentes maneiras de instalar o Repomix
-- [Guia de Uso](usage.md): Aprenda sobre recursos básicos e avançados
-- [Configuração](configuration.md): Personalize o Repomix para suas necessidades
-- [Recursos de Segurança](security.md): Aprenda sobre verificações de segurança
+- [Installation Guide](installation.md): Different ways to install Repomix
+- [Usage Guide](usage.md): Learn about basic and advanced features
+- [Configuration](configuration.md): Customize Repomix for your needs
+- [Security Features](security.md): Learn about security checks
 
-## Comunidade
+## Community
 
-Junte-se à nossa [comunidade Discord](https://discord.gg/wNYzTwZFku) para:
-- Obter ajuda com o Repomix
-- Compartilhar suas experiências
-- Sugerir novos recursos
-- Conectar-se com outros usuários
+Join our [Discord community](https://discord.gg/wNYzTwZFku) for:
+- Getting help with Repomix
+- Sharing your experiences
+- Suggesting new features
+- Connecting with other users
 
-## Suporte
+## Support
 
-Encontrou um bug ou precisa de ajuda?
-- [Abra um problema no GitHub](https://github.com/yamadashy/repomix/issues)
-- Junte-se ao nosso servidor Discord
-- Verifique a [documentação](https://repomix.com)
+Found a bug or need help?
+- [Open an issue on GitHub](https://github.com/yamadashy/repomix/issues)
+- Join our Discord server
+- Check the [documentation](https://repomix.com)

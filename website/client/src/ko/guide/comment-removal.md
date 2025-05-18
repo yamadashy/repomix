@@ -1,10 +1,11 @@
-# 주석 제거
 
-Repomix는 출력 파일을 생성할 때 코드베이스에서 주석을 자동으로 제거할 수 있습니다. 이를 통해 노이즈를 줄이고 실제 코드에 집중할 수 있습니다.
+# Comment Removal
 
-## 사용법
+Repomix can automatically remove comments from your codebase when generating the output file. This can help reduce noise and focus on the actual code.
 
-주석 제거를 활성화하려면 `repomix.config.json`에서 `removeComments` 옵션을 `true`로 설정합니다.
+## Usage
+
+To enable comment removal, set the `removeComments` option to `true` in your `repomix.config.json`:
 
 ```json
 {
@@ -14,9 +15,9 @@ Repomix는 출력 파일을 생성할 때 코드베이스에서 주석을 자동
 }
 ```
 
-## 지원되는 언어
+## Supported Languages
 
-Repomix는 다음을 포함한 광범위한 프로그래밍 언어에 대한 주석 제거를 지원합니다.
+Repomix supports comment removal for a wide range of programming languages, including:
 
 - JavaScript/TypeScript (`//`, `/* */`)
 - Python (`#`, `"""`, `'''`)
@@ -24,22 +25,22 @@ Repomix는 다음을 포함한 광범위한 프로그래밍 언어에 대한 주
 - C/C++ (`//`, `/* */`)
 - HTML (`<!-- -->`)
 - CSS (`/* */`)
-- 그리고 더 많은 언어들...
+- And many more...
 
-## 예시
+## Example
 
-다음 JavaScript 코드가 주어졌을 때:
+Given the following JavaScript code:
 
 ```javascript
-// 이것은 한 줄 주석입니다
+// This is a single-line comment
 function test() {
-  /* 이것은
-     여러 줄 주석입니다 */
+  /* This is a
+     multi-line comment */
   return true;
 }
 ```
 
-주석 제거를 활성화하면 출력은 다음과 같습니다.
+With comment removal enabled, the output will be:
 
 ```javascript
 function test() {
@@ -47,7 +48,7 @@ function test() {
 }
 ```
 
-## 참고
+## Notes
 
-- 주석 제거는 행 번호 추가와 같은 다른 처리 단계 전에 수행됩니다.
-- JSDoc 주석과 같은 일부 주석은 언어 및 컨텍스트에 따라 보존될 수 있습니다.
+- Comment removal is performed before other processing steps, such as line number addition.
+- Some comments, such as JSDoc comments, may be preserved depending on the language and context.

@@ -1,46 +1,60 @@
-# 기본 사용법
+# Basic Usage
 
-## 빠른 시작
+## Quick Start
 
-저장소 전체를 패키징:
+Pack your entire repository:
 ```bash
 repomix
 ```
 
-## 일반적인 사용 사례
+## Common Use Cases
 
-### 특정 디렉토리 패키징
+### Pack Specific Directories
+Process only specific directories or files to focus on relevant code and reduce token count:
 ```bash
 repomix path/to/directory
 ```
 
-### 특정 파일 포함
-[glob 패턴](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) 사용:
+### Include Specific Files
+Use [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) to precisely control which files are included:
 ```bash
 repomix --include "src/**/*.ts,**/*.md"
 ```
 
-### 파일 제외
+### Exclude Files
+Skip certain files or directories using glob patterns to avoid including unnecessary or sensitive content:
 ```bash
 repomix --ignore "**/*.log,tmp/"
 ```
 
-### 원격 저장소 처리
+### Remote Repositories
 ```bash
-# GitHub URL 사용
+# Using GitHub URL
 repomix --remote https://github.com/user/repo
 
-# 단축형 사용
+# Using shorthand
 repomix --remote user/repo
 
-# 특정 브랜치/태그/커밋
+# Specific branch/tag/commit
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-## 출력 형식
 
-### XML (기본값)
+### Code Compression
+
+Use Tree-sitter to intelligently extract essential code structures while removing implementation details, significantly reducing token count while preserving architecture:
+
+```bash
+repomix --compress
+
+# You can also use it with remote repositories:
+repomix --remote yamadashy/repomix --compress
+```
+
+## Output Formats
+
+### XML (Default)
 ```bash
 repomix --style xml
 ```
@@ -50,38 +64,38 @@ repomix --style xml
 repomix --style markdown
 ```
 
-### 일반 텍스트
+### Plain Text
 ```bash
 repomix --style plain
 ```
 
-## 추가 옵션
+## Additional Options
 
-### 주석 제거
+### Remove Comments
 ```bash
 repomix --remove-comments
 ```
 
-### 행 번호 표시
+### Show Line Numbers
 ```bash
 repomix --output-show-line-numbers
 ```
 
-### 클립보드에 복사
+### Copy to Clipboard
 ```bash
 repomix --copy
 ```
 
-### 보안 검사 비활성화
+### Disable Security Check
 ```bash
 repomix --no-security-check
 ```
 
-## 설정
+## Configuration
 
-설정 파일 초기화:
+Initialize configuration file:
 ```bash
 repomix --init
 ```
 
-더 자세한 설정 옵션은 [설정 가이드](/ko/guide/configuration)를 참조하세요.
+See [Configuration Guide](/guide/configuration) for detailed options.

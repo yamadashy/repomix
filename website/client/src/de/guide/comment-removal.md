@@ -1,10 +1,11 @@
-# Kommentarentfernung
 
-Repomix kann beim Generieren der Ausgabedatei automatisch Kommentare aus Ihrer Codebasis entfernen. Dies kann helfen, Störungen zu reduzieren und sich auf den eigentlichen Code zu konzentrieren.
+# Comment Removal
 
-## Verwendung
+Repomix can automatically remove comments from your codebase when generating the output file. This can help reduce noise and focus on the actual code.
 
-Um die Kommentarentfernung zu aktivieren, setzen Sie die Option `removeComments` in Ihrer `repomix.config.json` auf `true`:
+## Usage
+
+To enable comment removal, set the `removeComments` option to `true` in your `repomix.config.json`:
 
 ```json
 {
@@ -14,9 +15,9 @@ Um die Kommentarentfernung zu aktivieren, setzen Sie die Option `removeComments`
 }
 ```
 
-## Unterstützte Sprachen
+## Supported Languages
 
-Repomix unterstützt die Kommentarentfernung für eine Vielzahl von Programmiersprachen, einschließlich:
+Repomix supports comment removal for a wide range of programming languages, including:
 
 - JavaScript/TypeScript (`//`, `/* */`)
 - Python (`#`, `"""`, `'''`)
@@ -24,22 +25,22 @@ Repomix unterstützt die Kommentarentfernung für eine Vielzahl von Programmiers
 - C/C++ (`//`, `/* */`)
 - HTML (`<!-- -->`)
 - CSS (`/* */`)
-- Und viele mehr...
+- And many more...
 
-## Beispiel
+## Example
 
-Gegeben sei der folgende JavaScript-Code:
+Given the following JavaScript code:
 
 ```javascript
-// Dies ist ein einzeiliger Kommentar
+// This is a single-line comment
 function test() {
-  /* Dies ist ein
-     mehrzeiliger Kommentar */
+  /* This is a
+     multi-line comment */
   return true;
 }
 ```
 
-Mit aktivierter Kommentarentfernung wird die Ausgabe wie folgt aussehen:
+With comment removal enabled, the output will be:
 
 ```javascript
 function test() {
@@ -47,7 +48,7 @@ function test() {
 }
 ```
 
-## Hinweise
+## Notes
 
-- Die Kommentarentfernung wird vor anderen Verarbeitungsschritten durchgeführt, wie z.B. der Zeilennummerierung.
-- Einige Kommentare, wie JSDoc-Kommentare, können je nach Sprache und Kontext erhalten bleiben. 
+- Comment removal is performed before other processing steps, such as line number addition.
+- Some comments, such as JSDoc comments, may be preserved depending on the language and context.

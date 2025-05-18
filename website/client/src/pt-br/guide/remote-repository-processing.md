@@ -1,68 +1,75 @@
-# Processamento de Repositório Remoto
+# Remote Repository Processing
 
-## Uso Básico
+Repomix supports processing remote Git repositories without the need for manual cloning. This feature allows you to quickly analyze any public Git repository with a single command, streamlining the workflow for code analysis.
 
-Processar repositórios públicos:
+## Basic Usage
+
+Process public repositories:
 ```bash
-# Usando URL completo
+# Using full URL
 repomix --remote https://github.com/user/repo
 
-# Usando atalho do GitHub
+# Using GitHub shorthand
 repomix --remote user/repo
 ```
 
-## Seleção de Branch e Commit
+## Branch and Commit Selection
+
+You can specify the branch name, tag, or commit hash:
 
 ```bash
-# Branch específico
+# Specific branch using --remote-branch option
 repomix --remote user/repo --remote-branch main
+
+# Using branch's URL directly
+repomix --remote https://github.com/user/repo/tree/main
 
 # Tag
 repomix --remote user/repo --remote-branch v1.0.0
 
-# Hash do commit
+# Specific commit hash using --remote-branch option
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-## Requisitos
+## Requirements
 
-- Git deve estar instalado
-- Conexão com a internet
-- Acesso de leitura ao repositório
+- Git must be installed
+- Internet connection
+- Read access to repository
 
-## Controle de Saída
+## Output Control
 
 ```bash
-# Local de saída personalizado
+# Custom output location
 repomix --remote user/repo -o custom-output.xml
 
-# Com formato XML
+# With XML format
 repomix --remote user/repo --style xml
 
-# Remover comentários
+# Remove comments
 repomix --remote user/repo --remove-comments
 ```
 
-## Uso com Docker
+## Docker Usage
 
 ```bash
-# Processar e enviar para o diretório atual
+# Process and output to current directory
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 
-# Enviar para um diretório específico
+# Output to specific directory
 docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
-## Problemas Comuns
+## Common Issues
 
-### Problemas de Acesso
-- Certifique-se de que o repositório é público
-- Verifique a instalação do Git
-- Verifique a conexão com a internet
+### Access Issues
+- Ensure repository is public
+- Check Git installation
+- Verify internet connection
 
-### Repositórios Grandes
-- Use `--include` para selecionar caminhos específicos
-- Habilite `--remove-comments`
-- Processe branches separadamente
+### Large Repositories
+- Use `--include` to select specific paths
+- Enable `--remove-comments`
+- Process branches separately

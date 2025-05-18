@@ -1,10 +1,10 @@
-# GitHub Actions에서 Repomix 사용하기
+# Using Repomix with GitHub Actions
 
-GitHub Actions 워크플로우에 Repomix를 통합하면 AI 분석을 위한 코드베이스 패킹을 자동화할 수 있습니다. 이는 CI, 코드 리뷰, LLM 도구 준비 등에 유용합니다.
+You can automate the process of packing your codebase for AI analysis by integrating Repomix into your GitHub Actions workflows. This is useful for continuous integration (CI), code review, or preparing your repository for LLM-based tools.
 
-## 기본 사용법
+## Basic Usage
 
-다음 스텝을 워크플로우 YAML에 추가하여 저장소를 패킹할 수 있습니다.
+Add the following step to your workflow YAML to pack your repository:
 
 ```yaml
 - name: Pack repository with Repomix
@@ -13,9 +13,9 @@ GitHub Actions 워크플로우에 Repomix를 통합하면 AI 분석을 위한 �
     output: repomix-output.xml
 ```
 
-## 다양한 출력 형식 사용하기
+## Using Different Output Formats
 
-`style` 매개변수를 사용하여 다양한 출력 형식을 지정할 수 있습니다(기본값은 `xml`):
+You can specify different output formats using the `style` parameter (the default is `xml`):
 
 ```yaml
 - name: Pack repository with Repomix
@@ -25,9 +25,9 @@ GitHub Actions 워크플로우에 Repomix를 통합하면 AI 분석을 위한 �
     style: markdown
 ```
 
-## 여러 디렉터리 및 압축 옵션
+## Packing Multiple Directories with Compression
 
-여러 디렉터리, include/exclude 패턴, 스마트 압축도 지정할 수 있습니다.
+You can specify multiple directories, include/exclude patterns, and enable smart compression:
 
 ```yaml
 - name: Pack repository with Repomix
@@ -36,13 +36,13 @@ GitHub Actions 워크플로우에 Repomix를 통합하면 AI 분석을 위한 �
     directories: src tests
     include: "**/*.ts,**/*.md"
     ignore: "**/*.test.ts"
-    output: repomix-output.txt
+    output: repomix-output.xml
     compress: true
 ```
 
-## 출력 파일을 아티팩트로 업로드
+## Uploading the Output as an Artifact
 
-생성된 파일을 후속 스텝이나 다운로드용으로 업로드하는 예시입니다.
+To make the packed file available for later workflow steps or for download, upload it as an artifact:
 
 ```yaml
 - name: Pack repository with Repomix
@@ -59,28 +59,28 @@ GitHub Actions 워크플로우에 Repomix를 통합하면 AI 분석을 위한 �
     path: repomix-output.xml
 ```
 
-## Action 입력 파라미터
+## Action Inputs
 
-| 이름                | 설명                                   | 기본값           |
-|---------------------|----------------------------------------|------------------|
-| `directories`       | 패킹할 디렉터리(공백 구분)             | `.`              |
-| `include`           | 포함할 glob 패턴(쉼표 구분)            | `""`           |
-| `ignore`            | 제외할 glob 패턴(쉼표 구분)            | `""`           |
-| `output`            | 출력 파일 경로                          | `repomix-output.xml`    |
-| `style`             | 출력 스타일 (xml, markdown, plain)      | `xml`            |
-| `compress`          | 스마트 압축 활성화                      | `true`           |
-| `additional-args`   | repomix CLI에 전달할 추가 인자          | `""`           |
-| `repomix-version`   | 설치할 npm 패키지 버전                  | `latest`         |
+| Name              | Description                                 | Default           |
+|-------------------|---------------------------------------------|-------------------|
+| `directories`     | Space-separated list of directories to pack | `.`               |
+| `include`         | Comma-separated glob patterns to include    | `""`             |
+| `ignore`          | Comma-separated glob patterns to ignore     | `""`             |
+| `output`          | Output file path                            | `repomix-output.xml`     |
+| `compress`        | Enable smart compression                    | `true`            |
+| `style`           | Output style (xml, markdown, plain)         | `xml`             |
+| `additional-args` | Extra CLI arguments for repomix             | `""`             |
+| `repomix-version` | Version of the npm package to install       | `latest`          |
 
-## Action 출력
+## Action Outputs
 
-| 이름           | 설명                   |
-|----------------|------------------------|
-| `output_file`  | 생성된 출력 파일 경로   |
+| Name          | Description                        |
+|---------------|------------------------------------|
+| `output_file` | Path to the generated output file   |
 
-## 전체 워크플로우 예시
+## Example: Full Workflow
 
-Repomix를 사용하는 GitHub Actions 워크플로우 전체 예시입니다.
+Here is a complete example of a GitHub Actions workflow using Repomix:
 
 ```yaml
 name: Pack repository with Repomix
@@ -112,4 +112,4 @@ jobs:
           retention-days: 30
 ```
 
-[전체 워크플로우 예시](https://github.com/yamadashy/repomix/blob/main/.github/workflows/pack-repository.yml)를 확인할 수 있습니다.
+See the [complete workflow example](https://github.com/yamadashy/repomix/blob/main/.github/workflows/pack-repository.yml).

@@ -1,69 +1,69 @@
-# 設定
+# Configuration
 
-Repomix可以透過設定檔（`repomix.config.json`）或命令列選項進行設定。設定檔允許您自訂程式碼庫的處理和輸出方式。
+Repomix can be configured using a configuration file (`repomix.config.json`) or command-line options. The configuration file allows you to customize various aspects of how Repomix processes and outputs your codebase.
 
-## 快速開始
+## Quick Start
 
-在專案目錄中建立設定檔：
+Create a configuration file in your project directory:
 ```bash
 repomix --init
 ```
 
-這將建立一個帶有預設設定的`repomix.config.json`檔案。您還可以建立一個全域設定檔，在找不到本地設定時將使用它作為後備：
+This will create a `repomix.config.json` file with default settings. You can also create a global configuration file that will be used as a fallback when no local configuration is found:
 
 ```bash
 repomix --init --global
 ```
 
-## 設定檔位置
+## Configuration File Locations
 
-Repomix按以下順序尋找設定檔：
-1. 當前目錄中的本地設定檔（`repomix.config.json`）
-2. 全域設定檔：
-   - Windows：`%LOCALAPPDATA%\Repomix\repomix.config.json`
-   - macOS/Linux：`~/.config/repomix/repomix.config.json`
+Repomix looks for configuration files in the following order:
+1. Local configuration file (`repomix.config.json`) in the current directory
+2. Global configuration file:
+   - Windows: `%LOCALAPPDATA%\Repomix\repomix.config.json`
+   - macOS/Linux: `~/.config/repomix/repomix.config.json`
 
-命令列選項優先於設定檔設定。
+Command-line options take precedence over configuration file settings.
 
-## 設定選項
+## Configuration Options
 
-| 選項                             | 說明                                                                                                                         | 預設值                 |
+| Option                           | Description                                                                                                                  | Default                |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
-| `input.maxFileSize`              | 要處理的最大檔案大小（位元組）。超過此大小的檔案將被跳過。用於排除大型二進位檔案或資料檔案                                | `50000000`            |
-| `output.filePath`                | 輸出檔案名。支援XML、Markdown和純文字格式                                                                                   | `"repomix-output.xml"` |
-| `output.style`                   | 輸出樣式（`xml`、`markdown`、`plain`）。每種格式對不同的AI工具都有其優勢                                                   | `"xml"`                |
-| `output.parsableStyle`           | 是否根據所選樣式模式轉義輸出。可以提供更好的解析，但可能會增加令牌數量                                                    | `false`                |
-| `output.compress`                | 是否使用Tree-sitter執行智慧程式碼提取，在保持結構的同時減少令牌數量                                                       | `false`                |
-| `output.headerText`              | 要包含在檔案頭部的自訂文字。對於為AI工具提供上下文或指令很有用                                                            | `null`                 |
-| `output.instructionFilePath`     | 包含用於AI處理的詳細自訂指令的檔案路徑                                                                                     | `null`                 |
-| `output.fileSummary`             | 是否在輸出開頭包含顯示檔案計數、大小和其他指標的摘要部分                                                                   | `true`                 |
-| `output.directoryStructure`      | 是否在輸出中包含目錄結構。幫助AI理解專案組織                                                                               | `true`                 |
-| `output.files`                   | 是否在輸出中包含檔案內容。設定為false時只包含結構和元資料                                                                  | `true`                 |
-| `output.removeComments`          | 是否從支援的檔案類型中刪除註解。可以減少雜訊和令牌數量                                                                    | `false`                |
-| `output.removeEmptyLines`        | 是否從輸出中刪除空行以減少令牌數量                                                                                         | `false`                |
-| `output.showLineNumbers`         | 是否為每行添加行號。有助於引用程式碼的特定部分                                                                             | `false`                |
-| `output.copyToClipboard`         | 是否除了儲存檔案外還將輸出複製到系統剪貼簿                                                                                 | `false`                |
-| `output.topFilesLength`          | 在摘要中顯示的頂部檔案數量。如果設定為0，則不顯示摘要                                                                      | `5`                    |
-| `output.includeEmptyDirectories` | 是否在儲存庫結構中包含空目錄                                                                                               | `false`                |
-| `output.git.sortByChanges`       | 是否按Git更改次數對檔案進行排序。更改較多的檔案顯示在底部                                                                 | `true`                 |
-| `output.git.sortByChangesMaxCommits` | 分析Git更改時要分析的最大提交數。限制歷史深度以提高效能                                                               | `100`                  |
-| `output.git.includeDiffs`        | 是否在輸出中包含Git差異。分別顯示工作樹和暫存區的更改                                                                     | `false`                |
-| `include`                        | 要包含的檔案模式（使用[glob模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)）                 | `[]`                   |
-| `ignore.useGitignore`            | 是否使用專案的`.gitignore`檔案中的模式                                                                                     | `true`                 |
-| `ignore.useDefaultPatterns`      | 是否使用預設忽略模式（node_modules、.git等）                                                                              | `true`                 |
-| `ignore.customPatterns`          | 額外的忽略模式（使用[glob模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)）                   | `[]`                   |
-| `security.enableSecurityCheck`   | 是否使用Secretlint執行安全檢查以檢測敏感資訊                                                                              | `true`                 |
-| `tokenCount.encoding`            | OpenAI的[tiktoken](https://github.com/openai/tiktoken)分詞器使用的令牌計數編碼。GPT-4o使用`o200k_base`，GPT-4/3.5使用`cl100k_base`。詳見[tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) | `"o200k_base"`         |
+| `input.maxFileSize`              | Maximum file size in bytes to process. Files larger than this will be skipped. Useful for excluding large binary files or data files | `50000000`            |
+| `output.filePath`                | The name of the output file. Supports XML, Markdown, and plain text formats                                                   | `"repomix-output.xml"` |
+| `output.style`                   | The style of the output (`xml`, `markdown`, `plain`). Each format has its own advantages for different AI tools              | `"xml"`                |
+| `output.parsableStyle`           | Whether to escape the output based on the chosen style schema. Enables better parsing but may increase token count           | `false`                |
+| `output.compress`                | Whether to perform intelligent code extraction using Tree-sitter to reduce token count while preserving structure             | `false`                |
+| `output.headerText`              | Custom text to include in the file header. Useful for providing context or instructions for AI tools                         | `null`                 |
+| `output.instructionFilePath`     | Path to a file containing detailed custom instructions for AI processing                                                     | `null`                 |
+| `output.fileSummary`             | Whether to include a summary section at the beginning showing file counts, sizes, and other metrics                          | `true`                 |
+| `output.directoryStructure`      | Whether to include the directory structure in the output. Helps AI understand the project organization                       | `true`                 |
+| `output.files`                   | Whether to include file contents in the output. Set to false to only include structure and metadata                          | `true`                 |
+| `output.removeComments`          | Whether to remove comments from supported file types. Can reduce noise and token count                                       | `false`                |
+| `output.removeEmptyLines`        | Whether to remove empty lines from the output to reduce token count                                                          | `false`                |
+| `output.showLineNumbers`         | Whether to add line numbers to each line. Helpful for referencing specific parts of code                                     | `false`                |
+| `output.copyToClipboard`         | Whether to copy the output to system clipboard in addition to saving the file                                                | `false`                |
+| `output.topFilesLength`          | Number of top files to display in the summary. If set to 0, no summary will be displayed                                     | `5`                    |
+| `output.includeEmptyDirectories` | Whether to include empty directories in the repository structure                                                             | `false`                |
+| `output.git.sortByChanges`       | Whether to sort files by git change count. Files with more changes appear at the bottom                                      | `true`                 |
+| `output.git.sortByChangesMaxCommits` | Maximum number of commits to analyze for git changes. Limits the history depth for performance                           | `100`                  |
+| `output.git.includeDiffs`        | Whether to include git diffs in the output. Shows both work tree and staged changes separately                               | `false`                |
+| `include`                        | Patterns of files to include using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)    | `[]`                   |
+| `ignore.useGitignore`            | Whether to use patterns from the project's `.gitignore` file                                                                 | `true`                 |
+| `ignore.useDefaultPatterns`      | Whether to use default ignore patterns (node_modules, .git, etc.)                                                           | `true`                 |
+| `ignore.customPatterns`          | Additional patterns to ignore using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)   | `[]`                   |
+| `security.enableSecurityCheck`   | Whether to perform security checks using Secretlint to detect sensitive information                                          | `true`                 |
+| `tokenCount.encoding`            | Token count encoding used by OpenAI's [tiktoken](https://github.com/openai/tiktoken) tokenizer. Use `o200k_base` for GPT-4o, `cl100k_base` for GPT-4/3.5. See [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) for details. | `"o200k_base"`         |
 
-設定檔支援[JSON5](https://json5.org/)語法，允許：
-- 註解（單行和多行）
-- 物件和陣列中的尾隨逗號
-- 無引號屬性名
-- 更靈活的字串語法
+The configuration file supports [JSON5](https://json5.org/) syntax, which allows:
+- Comments (both single-line and multi-line)
+- Trailing commas in objects and arrays
+- Unquoted property names
+- More relaxed string syntax
 
-## 設定檔範例
+## Example Configuration File
 
-以下是完整設定檔（`repomix.config.json`）的範例：
+Here's an example of a complete configuration file (`repomix.config.json`):
 
 ```json
 {
@@ -75,7 +75,7 @@ Repomix按以下順序尋找設定檔：
     "style": "xml",
     "parsableStyle": false,
     "compress": false,
-    "headerText": "打包檔案的自訂頭部資訊",
+    "headerText": "Custom header information for the packed file.",
     "fileSummary": true,
     "directoryStructure": true,
     "files": true,
@@ -95,7 +95,7 @@ Repomix按以下順序尋找設定檔：
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,
-    // 模式也可以在 .repomixignore 中指定
+    // Patterns can also be specified in .repomixignore
     "customPatterns": [
       "additional-folder",
       "**/*.log"
@@ -110,32 +110,32 @@ Repomix按以下順序尋找設定檔：
 }
 ```
 
-## 忽略模式
+## Ignore Patterns
 
-Repomix提供多種方式來指定要忽略的檔案。模式按以下優先順序處理：
+Repomix provides multiple ways to specify which files should be ignored. The patterns are processed in the following priority order:
 
-1. CLI選項（`--ignore`）
-2. 專案目錄中的`.repomixignore`檔案
-3. `.gitignore`和`.git/info/exclude`（如果`ignore.useGitignore`為true）
-4. 預設模式（如果`ignore.useDefaultPatterns`為true）
+1. CLI options (`--ignore`)
+2. `.repomixignore` file in the project directory
+3. `.gitignore` and `.git/info/exclude` (if `ignore.useGitignore` is true)
+4. Default patterns (if `ignore.useDefaultPatterns` is true)
 
-`.repomixignore`範例：
+Example of `.repomixignore`:
 ```text
-# 快取目錄
+# Cache directories
 .cache/
 tmp/
 
-# 建置輸出
+# Build outputs
 dist/
 build/
 
-# 日誌
+# Logs
 *.log
 ```
 
-## 預設忽略模式
+## Default Ignore Patterns
 
-當`ignore.useDefaultPatterns`為true時，Repomix自動忽略以下常見模式：
+When `ignore.useDefaultPatterns` is true, Repomix automatically ignores common patterns:
 ```text
 node_modules/**
 .git/**
@@ -143,32 +143,32 @@ coverage/**
 dist/**
 ```
 
-完整列表請參見[defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts)
+For the complete list, see [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts)
 
-## 進階功能
+## Advanced Features
 
-### 程式碼壓縮
+### Code Compression
 
-程式碼壓縮功能（透過`output.compress: true`啟用）使用[Tree-sitter](https://github.com/tree-sitter/tree-sitter)智慧提取基本程式碼結構，同時移除實作細節。這有助於在保持重要的結構資訊的同時減少令牌數量。
+The code compression feature, enabled with `output.compress: true`, uses [Tree-sitter](https://github.com/tree-sitter/tree-sitter) to intelligently extract essential code structures while removing implementation details. This helps reduce token count while maintaining important structural information.
 
-主要優點：
-- 顯著減少令牌數量
-- 保留類別和函式簽名
-- 保持匯入和匯出
-- 保留型別定義和介面
-- 移除函式本體和實作細節
+Key benefits:
+- Reduces token count significantly
+- Preserves class and function signatures
+- Maintains imports and exports
+- Keeps type definitions and interfaces
+- Removes function bodies and implementation details
 
-更多詳細資訊和範例，請參閱[程式碼壓縮指南](code-compress)。
+For more details and examples, see the [Code Compression Guide](code-compress).
 
-### Git整合
+### Git Integration
 
-`output.git`設定提供強大的Git感知功能：
+The `output.git` configuration provides powerful Git-aware features:
 
-- `sortByChanges`：當設定為true時，檔案按Git更改次數（修改該檔案的提交數）排序。更改次數較多的檔案出現在輸出的底部。這有助於優先處理更活躍開發的檔案。預設值：`true`
-- `sortByChangesMaxCommits`：計算檔案更改次數時要分析的最大提交數。預設值：`100`
-- `includeDiffs`：當設定為true時，在輸出中包含Git差異（同時分別包含工作樹和暫存區的更改）。這允許讀者查看儲存庫中的待處理更改。預設值：`false`
+- `sortByChanges`: When true, files are sorted by the number of Git changes (commits that modified the file). Files with more changes appear at the bottom of the output. This helps prioritize more actively developed files. Default: `true`
+- `sortByChangesMaxCommits`: The maximum number of commits to analyze when counting file changes. Default: `100`
+- `includeDiffs`: When true, includes Git differences in the output (includes both work tree and staged changes separately). This allows the reader to see pending changes in the repository. Default: `false`
 
-設定範例：
+Example configuration:
 ```json
 {
   "output": {
@@ -181,22 +181,22 @@ dist/**
 }
 ```
 
-### 安全檢查
+### Security Checks
 
-當`security.enableSecurityCheck`啟用時，Repomix使用[Secretlint](https://github.com/secretlint/secretlint)在將程式碼庫包含在輸出中之前檢測敏感資訊。這有助於防止意外暴露：
+When `security.enableSecurityCheck` is enabled, Repomix uses [Secretlint](https://github.com/secretlint/secretlint) to detect sensitive information in your codebase before including it in the output. This helps prevent accidental exposure of:
 
-- API金鑰
-- 存取令牌
-- 私密金鑰
-- 密碼
-- 其他敏感憑證
+- API keys
+- Access tokens
+- Private keys
+- Passwords
+- Other sensitive credentials
 
-### 註解移除
+### Comment Removal
 
-當`output.removeComments`設定為`true`時，將從支援的檔案類型中移除註解，以減少輸出大小並專注於核心程式碼內容。這在以下情況特別有用：
+When `output.removeComments` is set to `true`, comments are removed from supported file types to reduce output size and focus on essential code content. This can be particularly useful when:
 
-- 處理大量文件化的程式碼
-- 嘗試減少令牌數量
-- 專注於程式碼結構和邏輯
+- Working with heavily documented code
+- Trying to reduce token count
+- Focusing on code structure and logic
 
-有關支援的語言和詳細範例，請參閱[註解移除指南](comment-removal)。
+For supported languages and detailed examples, see the [Comment Removal Guide](comment-removal).

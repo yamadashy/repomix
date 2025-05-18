@@ -1,68 +1,75 @@
-# Remote-Repository-Verarbeitung
+# Remote Repository Processing
 
-## Grundlegende Verwendung
+Repomix supports processing remote Git repositories without the need for manual cloning. This feature allows you to quickly analyze any public Git repository with a single command, streamlining the workflow for code analysis.
 
-Öffentliche Repositories verarbeiten:
+## Basic Usage
+
+Process public repositories:
 ```bash
-# Mit vollständiger URL
+# Using full URL
 repomix --remote https://github.com/user/repo
 
-# Mit GitHub-Kurzform
+# Using GitHub shorthand
 repomix --remote user/repo
 ```
 
-## Branch- und Commit-Auswahl
+## Branch and Commit Selection
+
+You can specify the branch name, tag, or commit hash:
 
 ```bash
-# Bestimmter Branch
+# Specific branch using --remote-branch option
 repomix --remote user/repo --remote-branch main
+
+# Using branch's URL directly
+repomix --remote https://github.com/user/repo/tree/main
 
 # Tag
 repomix --remote user/repo --remote-branch v1.0.0
 
-# Commit-Hash
+# Specific commit hash using --remote-branch option
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-## Voraussetzungen
+## Requirements
 
-- Git muss installiert sein
-- Internetverbindung
-- Lesezugriff auf das Repository
+- Git must be installed
+- Internet connection
+- Read access to repository
 
-## Ausgabekontrolle
+## Output Control
 
 ```bash
-# Benutzerdefinierter Ausgabeort
+# Custom output location
 repomix --remote user/repo -o custom-output.xml
 
-# Mit XML-Format
+# With XML format
 repomix --remote user/repo --style xml
 
-# Kommentare entfernen
+# Remove comments
 repomix --remote user/repo --remove-comments
 ```
 
-## Docker-Verwendung
+## Docker Usage
 
 ```bash
-# Verarbeitung und Ausgabe in das aktuelle Verzeichnis
+# Process and output to current directory
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 
-# Ausgabe in bestimmtes Verzeichnis
+# Output to specific directory
 docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
-## Häufige Probleme
+## Common Issues
 
-### Zugriffsprobleme
-- Stellen Sie sicher, dass das Repository öffentlich ist
-- Überprüfen Sie die Git-Installation
-- Überprüfen Sie die Internetverbindung
+### Access Issues
+- Ensure repository is public
+- Check Git installation
+- Verify internet connection
 
-### Große Repositories
-- Verwenden Sie `--include`, um bestimmte Pfade auszuwählen
-- Aktivieren Sie `--remove-comments`
-- Verarbeiten Sie Branches separat 
+### Large Repositories
+- Use `--include` to select specific paths
+- Enable `--remove-comments`
+- Process branches separately

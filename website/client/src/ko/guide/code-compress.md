@@ -1,43 +1,43 @@
-# 코드 압축
+# Code Compression
 
-코드 압축은 구현 세부 사항을 제거하면서 필수적인 코드 구조를 지능적으로 추출하는 강력한 기능입니다. 이는 코드베이스의 중요한 구조적 정보를 유지하면서 토큰 수를 줄일 때 특히 유용합니다.
+Code compression is a powerful feature that intelligently extracts essential code structures while removing implementation details. This feature utilizes [Tree-sitter](https://github.com/tree-sitter/tree-sitter) to perform intelligent code extraction, focusing on function and class signatures while preserving important structural information. This is particularly useful for reducing token count while maintaining the architectural understanding of your codebase.
 
-> [!NOTE]
-> 이것은 실험적인 기능으로, 사용자 피드백과 실제 사용 사례를 바탕으로 지속적으로 개선될 예정입니다.
+> [!NOTE]  
+> This is an experimental feature that we'll be actively improving based on user feedback and real-world usage
 
-## 기본 사용법
+## Basic Usage
 
-`--compress` 플래그를 사용하여 코드 압축을 활성화합니다:
+Enable code compression using the `--compress` flag:
 
 ```bash
 repomix --compress
 ```
 
-원격 저장소에서도 사용할 수 있습니다:
+You can also use it with remote repositories:
 
 ```bash
 repomix --remote user/repo --compress
 ```
 
-## 작동 방식
+## How It Works
 
-압축 알고리즘은 Tree-sitter 파싱을 사용하여 코드를 처리하고, 구현 세부 사항을 제거하면서 필수적인 구조적 요소를 추출하고 보존합니다.
+The compression algorithm processes code using tree-sitter parsing to extract and preserve essential structural elements while removing implementation details.
 
-압축 시 유지되는 요소:
-- 함수와 메서드 시그니처
-- 인터페이스와 타입 정의
-- 클래스 구조와 속성
-- 중요한 구조적 요소
+The compression preserves:
+- Function and method signatures (parameters and return types)
+- Interface and type definitions (property types and structure)
+- Class structures and properties (inheritance relationships)
+- Important structural elements (imports, exports, module structure)
 
-제거되는 요소:
-- 함수와 메서드 구현
-- 반복문과 조건문 로직 세부 사항
-- 내부 변수 선언
-- 구현 관련 코드
+While removing:
+- Function and method implementations
+- Loop and conditional logic details
+- Internal variable declarations
+- Implementation-specific code
 
-### 예시
+### Example
 
-원본 TypeScript 코드:
+Original TypeScript code:
 
 ```typescript
 import { ShoppingItem } from './shopping-item';
@@ -63,7 +63,7 @@ interface Item {
 }
 ```
 
-압축 후:
+After compression:
 
 ```typescript
 import { ShoppingItem } from './shopping-item';
@@ -83,9 +83,9 @@ interface Item {
 }
 ```
 
-## 설정
+## Configuration
 
-설정 파일에서 압축을 활성화할 수 있습니다:
+You can enable compression in your configuration file:
 
 ```json
 {
@@ -95,18 +95,18 @@ interface Item {
 }
 ```
 
-## 사용 사례
+## Use Cases
 
-코드 압축은 다음과 같은 경우에 특히 유용합니다:
-- 코드 구조와 아키텍처 분석
-- LLM 처리를 위한 토큰 수 감소
-- 고수준 문서 작성
-- 코드 패턴과 시그니처 이해
-- API와 인터페이스 설계 공유
+Code compression is particularly useful when:
+- Analyzing code structure and architecture
+- Reducing token count for LLM processing
+- Creating high-level documentation
+- Understanding code patterns and signatures
+- Sharing API and interface designs
 
-## 관련 옵션
+## Related Options
 
-압축은 다음 옵션들과 함께 사용할 수 있습니다:
-- `--remove-comments`: 코드 주석 제거
-- `--remove-empty-lines`: 빈 줄 제거
-- `--output-show-line-numbers`: 출력에 줄 번호 추가
+You can combine compression with other options:
+- `--remove-comments`: Remove code comments
+- `--remove-empty-lines`: Remove empty lines
+- `--output-show-line-numbers`: Add line numbers to output

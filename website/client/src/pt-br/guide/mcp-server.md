@@ -1,47 +1,47 @@
-# Servidor MCP
+# MCP Server
 
-O Repomix suporta o [Model Context Protocol (MCP)](https://modelcontextprotocol.io), permitindo que assistentes de IA interajam diretamente com sua base de código. Quando executado como um servidor MCP, o Repomix fornece ferramentas que permitem aos assistentes de IA empacotar repositórios locais ou remotos para análise sem necessidade de preparação manual de arquivos.
+Repomix supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), allowing AI assistants to directly interact with your codebase. When run as an MCP server, Repomix provides tools that enable AI assistants to package local or remote repositories for analysis without requiring manual file preparation. This integration streamlines the process of code analysis by eliminating the need to manually generate and upload files.
 
 > [!NOTE]  
-> Este é um recurso experimental que estaremos melhorando ativamente com base no feedback dos usuários e no uso no mundo real
+> This is an experimental feature that we'll be actively improving based on user feedback and real-world usage
 
-## Executando o Repomix como um Servidor MCP
+## Running Repomix as an MCP Server
 
-Para executar o Repomix como um servidor MCP, use a flag `--mcp`:
+To run Repomix as an MCP server, use the `--mcp` flag:
 
 ```bash
 repomix --mcp
 ```
 
-Isso inicia o Repomix no modo servidor MCP, tornando-o disponível para assistentes de IA que suportam o Model Context Protocol.
+This starts Repomix in MCP server mode, making it available for AI assistants that support the Model Context Protocol.
 
-## Configurando Servidores MCP
+## Configuring MCP Servers
 
-Para usar o Repomix como um servidor MCP com assistentes de IA como o Claude, você precisa configurar as definições do MCP:
+To use Repomix as an MCP server with AI assistants like Claude, you need to configure the MCP settings:
 
-### Para VS Code
+### For VS Code
 
-Você pode instalar o servidor MCP do Repomix no VS Code usando um destes métodos:
+You can install the Repomix MCP server in VS Code using one of these methods:
 
-1. **Usando o distintivo de instalação:**
+1. **Using the Install Badge:**
 
   [![Install in VS Code](https://img.shields.io/badge/VS_Code-VS_Code?style=flat-square&label=Install%20Server&color=0098FF)](vscode:mcp/install?%7B%22name%22%3A%22repomix%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22repomix%22%2C%22--mcp%22%5D%7D)<br>
   [![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-VS_Code_Insiders?style=flat-square&label=Install%20Server&color=24bfa5)](vscode-insiders:mcp/install?%7B%22name%22%3A%22repomix%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22repomix%22%2C%22--mcp%22%5D%7D)
 
-2. **Usando a linha de comando:**
+2. **Using the Command Line:**
 
   ```bash
   code --add-mcp '{"name":"repomix","command":"npx","args":["-y","repomix","--mcp"]}'
   ```
 
-  Para VS Code Insiders:
+  For VS Code Insiders:
   ```bash
   code-insiders --add-mcp '{"name":"repomix","command":"npx","args":["-y","repomix","--mcp"]}'
   ```
 
-### Para o Cline (extensão do VS Code)
+### For Cline (VS Code extension)
 
-Edite o arquivo `cline_mcp_settings.json`:
+Edit the `cline_mcp_settings.json` file:
 
 ```json
 {
@@ -58,17 +58,17 @@ Edite o arquivo `cline_mcp_settings.json`:
 }
 ```
 
-### Para o Cursor
+### For Cursor
 
-No Cursor, adicione um novo servidor MCP a partir de `Cursor Settings` > `MCP` > `+ Add new global MCP server` com uma configuração similar à do Cline.
+In Cursor, add a new MCP server from `Cursor Settings` > `MCP` > `+ Add new global MCP server` with a configuration similar to Cline.
 
-### Para o Claude Desktop
+### For Claude Desktop
 
-Edite o arquivo `claude_desktop_config.json` com uma configuração similar à do Cline.
+Edit the `claude_desktop_config.json` file with similar configuration to Cline's config.
 
-### Usando Docker em vez de npx
+### Using Docker instead of npx
 
-Em vez de usar npx, você pode usar o Docker para executar o Repomix como um servidor MCP:
+Instead of using npx, you can also use Docker to run Repomix as an MCP server:
 
 ```json
 {
@@ -87,21 +87,21 @@ Em vez de usar npx, você pode usar o Docker para executar o Repomix como um ser
 }
 ```
 
-## Ferramentas MCP Disponíveis
+## Available MCP Tools
 
-Quando executado como um servidor MCP, o Repomix fornece as seguintes ferramentas:
+When running as an MCP server, Repomix provides the following tools:
 
 ### pack_codebase
 
-Esta ferramenta empacota um diretório de código local em um arquivo consolidado para análise de IA.
+This tool packages a local code directory into a consolidated file for AI analysis.
 
-**Parâmetros:**
-- `directory`: (Obrigatório) Caminho absoluto para o diretório a ser empacotado
-- `compress`: (Opcional, padrão: true) Se deve realizar extração inteligente de código para reduzir a contagem de tokens
-- `includePatterns`: (Opcional) Lista separada por vírgulas de padrões de inclusão
-- `ignorePatterns`: (Opcional) Lista separada por vírgulas de padrões de exclusão
+**Parameters:**
+- `directory`: (Required) Absolute path to the directory to pack
+- `compress`: (Optional, default: true) Whether to perform intelligent code extraction to reduce token count
+- `includePatterns`: (Optional) Comma-separated list of include patterns
+- `ignorePatterns`: (Optional) Comma-separated list of ignore patterns
 
-**Exemplo:**
+**Example:**
 ```json
 {
   "directory": "/path/to/your/project",
@@ -113,15 +113,15 @@ Esta ferramenta empacota um diretório de código local em um arquivo consolidad
 
 ### pack_remote_repository
 
-Esta ferramenta busca, clona e empacota um repositório GitHub em um arquivo consolidado para análise de IA.
+This tool fetches, clones, and packages a GitHub repository into a consolidated file for AI analysis.
 
-**Parâmetros:**
-- `remote`: (Obrigatório) URL do repositório GitHub ou formato usuário/repo (ex: yamadashy/repomix)
-- `compress`: (Opcional, padrão: true) Se deve realizar extração inteligente de código para reduzir a contagem de tokens
-- `includePatterns`: (Opcional) Lista separada por vírgulas de padrões de inclusão
-- `ignorePatterns`: (Opcional) Lista separada por vírgulas de padrões de exclusão
+**Parameters:**
+- `remote`: (Required) GitHub repository URL or user/repo format (e.g., yamadashy/repomix)
+- `compress`: (Optional, default: true) Whether to perform intelligent code extraction to reduce token count
+- `includePatterns`: (Optional) Comma-separated list of include patterns
+- `ignorePatterns`: (Optional) Comma-separated list of ignore patterns
 
-**Exemplo:**
+**Example:**
 ```json
 {
   "remote": "yamadashy/repomix",
@@ -133,71 +133,73 @@ Esta ferramenta busca, clona e empacota um repositório GitHub em um arquivo con
 
 ### read_repomix_output
 
-Esta ferramenta lê o conteúdo de um arquivo de saída do Repomix em ambientes onde o acesso direto a arquivos não é possível.
+This tool reads the contents of a Repomix output file in environments where direct file access is not possible.
 
-**Parâmetros:**
-- `outputId`: (Obrigatório) ID do arquivo de saída do Repomix a ser lido
+**Parameters:**
+- `outputId`: (Required) ID of the Repomix output file to read
 
-**Funcionalidades:**
-- Projetado especificamente para ambientes baseados na web ou aplicações em sandbox
-- Recupera o conteúdo de saídas geradas anteriormente usando seu ID
-- Fornece acesso seguro à base de código empacotada sem requerer acesso ao sistema de arquivos
+**Features:**
+- Specifically designed for web-based environments or sandboxed applications
+- Retrieves the content of previously generated outputs using their ID
+- Provides secure access to packed codebase without requiring file system access
 
-**Exemplo:**
+**Example:**
 ```json
 {
   "outputId": "8f7d3b1e2a9c6054"
 }
 ```
 
-### file_system_read_file e file_system_read_directory
+### file_system_read_file and file_system_read_directory
 
-O servidor MCP do Repomix fornece duas ferramentas de sistema de arquivos que permitem que os assistentes de IA interajam com segurança com o sistema de arquivos local:
+Repomix's MCP server provides two file system tools that allow AI assistants to safely interact with the local file system:
 
 1. `file_system_read_file`
-  - Lê conteúdo de arquivos usando caminhos absolutos
-  - Implementa validação de segurança usando [Secretlint](https://github.com/secretlint/secretlint)
-  - Previne acesso a arquivos contendo informações sensíveis
-  - Retorna mensagens de erro claras para caminhos inválidos e problemas de segurança
+  - Reads file contents using absolute paths
+  - Implements security validation using [Secretlint](https://github.com/secretlint/secretlint)
+  - Prevents access to files containing sensitive information
+  - Returns formatted content with clear error messages for invalid paths or security issues
 
 2. `file_system_read_directory`
-  - Lista conteúdos de diretórios usando caminhos absolutos
-  - Mostra arquivos e diretórios com indicadores claros (`[FILE]` ou `[DIR]`)
-  - Fornece navegação segura de diretórios com tratamento apropriado de erros
-  - Valida caminhos e garante que sejam absolutos
+  - Lists directory contents using absolute paths
+  - Shows both files and directories with clear indicators (`[FILE]` or `[DIR]`)
+  - Provides safe directory traversal with proper error handling
+  - Validates paths and ensures they are absolute
 
-Ambas as ferramentas incorporam medidas de segurança robustas:
-- Validação de caminhos absolutos para prevenir ataques de travessia de diretórios
-- Verificações de permissões para garantir direitos de acesso apropriados
-- Integração com Secretlint para detecção de informações sensíveis
-- Mensagens de erro claras para depuração e consciência de segurança
+Both tools incorporate robust security measures:
+- Absolute path validation to prevent directory traversal attacks
+- Permission checks to ensure proper access rights
+- Integration with Secretlint for sensitive information detection
+- Clear error messaging for better debugging and security awareness
+- Validation of file types to prevent access to binary or executable files
 
-**Exemplo:**
+**Example:**
 ```typescript
-// Ler um arquivo
+// Reading a file
 const fileContent = await tools.file_system_read_file({
   path: '/absolute/path/to/file.txt'
 });
 
-// Listar conteúdo do diretório
+// Listing directory contents
 const dirContent = await tools.file_system_read_directory({
   path: '/absolute/path/to/directory'
 });
 ```
 
-Essas ferramentas são particularmente úteis quando os assistentes de IA precisam:
-- Analisar arquivos específicos no código-base
-- Navegar estruturas de diretórios
-- Verificar existência e acessibilidade de arquivos
-- Garantir operações seguras do sistema de arquivos
+These tools are particularly useful when AI assistants need to:
+- Analyze specific files in the codebase
+- Navigate directory structures
+- Verify file existence and accessibility
+- Ensure secure file system operations
 
-## Benefícios de Usar o Repomix como um Servidor MCP
+## Benefits of Using Repomix as an MCP Server
 
-Usar o Repomix como um servidor MCP oferece várias vantagens:
+Using Repomix as an MCP server offers several advantages:
 
-1. **Integração Direta**: Assistentes de IA podem analisar sua base de código diretamente sem preparação manual de arquivos.
-2. **Fluxo de Trabalho Eficiente**: Otimiza o processo de análise de código eliminando a necessidade de gerar e carregar arquivos manualmente.
-3. **Saída Consistente**: Garante que o assistente de IA receba a base de código em um formato consistente e otimizado.
-4. **Recursos Avançados**: Aproveita todos os recursos do Repomix como compressão de código, contagem de tokens e verificações de segurança.
+1. **Direct Integration**: AI assistants can directly analyze your codebase without manual file preparation.
+2. **Efficient Workflow**: Streamlines the process of code analysis by eliminating the need to manually generate and upload files.
+3. **Consistent Output**: Ensures that the AI assistant receives the codebase in a consistent, optimized format.
+4. **Advanced Features**: Leverages all of Repomix's features like code compression, token counting, and security checks.
+5. **Security Controls**: Provides secure access to your codebase with built-in security validation.
 
-Uma vez configurado, seu assistente de IA pode usar diretamente as capacidades do Repomix para analisar bases de código, tornando os fluxos de trabalho de análise de código mais eficientes.
+Once configured, your AI assistant can directly use Repomix's capabilities to analyze codebases, making code analysis workflows more efficient.

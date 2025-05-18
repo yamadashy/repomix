@@ -1,100 +1,124 @@
-# 提示範例
+# Prompt Examples
 
-## 程式碼審查
+## Code Review
 
-### 架構審查
+### Architecture Review
 ```
-分析此程式碼庫的架構：
-1. 評估整體結構和模式
-2. 識別潛在的架構問題
-3. 提出改進可擴展性的建議
-4. 標註遵循最佳實踐的部分
+Analyze this codebase's architecture:
+1. Evaluate the overall structure and patterns
+2. Identify potential architectural issues
+3. Suggest improvements for scalability
+4. Note areas that follow best practices
 
-重點關注可維護性和模組化。
-```
-
-### 安全性審查
-```
-對此程式碼庫進行安全性審查：
-1. 識別潛在的安全漏洞
-2. 檢查常見的安全反模式
-3. 審查錯誤處理和輸入驗證
-4. 評估依賴項的安全性
-
-請提供具體示例和修復步驟。
+Focus on maintainability and modularity.
 ```
 
-### 效能審查
+### Security Review
 ```
-從效能角度審查程式碼庫：
-1. 識別效能瓶頸
-2. 檢查資源使用情況
-3. 審查算法效率
-4. 評估快取策略
+Perform a security review of this codebase:
+1. Identify potential security vulnerabilities
+2. Check for common security anti-patterns
+3. Review error handling and input validation
+4. Assess dependency security
 
-包含具體的優化建議。
-```
-
-## 文檔生成
-
-### API 文檔
-```
-生成全面的 API 文檔：
-1. 列出並描述所有公共端點
-2. 記錄請求/響應格式
-3. 包含使用示例
-4. 說明限制和約束
+Provide specific examples and remediation steps.
 ```
 
-### 開發者指南
+### Performance Review
 ```
-創建包含以下內容的開發者指南：
-1. 環境搭建說明
-2. 專案結構概覽
-3. 開發工作流程
-4. 測試方法
-5. 常見問題排查步驟
+Review the codebase for performance:
+1. Identify performance bottlenecks
+2. Check resource utilization
+3. Review algorithmic efficiency
+4. Assess caching strategies
+
+Include specific optimization recommendations.
 ```
 
-### 架構文檔
+## Documentation Generation
+
+### API Documentation
 ```
-記錄系統架構：
-1. 高層概述
-2. 組件交互
-3. 資料流程圖
-4. 設計決策及理由
-5. 系統限制和約束
+Generate comprehensive API documentation:
+1. List and describe all public endpoints
+2. Document request/response formats
+3. Include usage examples
+4. Note any limitations or constraints
 ```
 
-## 分析與改進
-
-### 依賴項分析
+### Developer Guide
 ```
-分析專案依賴：
-1. 識別過時的包
-2. 檢查安全漏洞
-3. 建議替代包
-4. 審查依賴使用模式
-
-包含具體的升級建議。
+Create a developer guide covering:
+1. Setup instructions
+2. Project structure overview
+3. Development workflow
+4. Testing approach
+5. Common troubleshooting steps
 ```
 
-### 測試覆蓋率
+### Architecture Documentation
 ```
-審查測試覆蓋率：
-1. 識別未測試的組件
-2. 建議額外的測試用例
-3. 審查測試質量
-4. 推薦測試策略
+Document the system architecture:
+1. High-level overview
+2. Component interactions
+3. Data flow diagrams
+4. Design decisions and rationale
+5. System constraints and limitations
 ```
 
-### 程式碼質量
-```
-評估程式碼質量並提出改進建議：
-1. 審查命名規範
-2. 檢查程式碼組織
-3. 評估錯誤處理
-4. 審查註釋實踐
+## Analysis and Improvement
 
-提供具體的良好和問題模式示例。
+### Dependency Analysis
 ```
+Analyze the project dependencies:
+1. Identify outdated packages
+2. Check for security vulnerabilities
+3. Suggest alternative packages
+4. Review dependency usage patterns
+
+Include specific upgrade recommendations.
+```
+
+### Test Coverage
+```
+Review the test coverage:
+1. Identify untested components
+2. Suggest additional test cases
+3. Review test quality
+4. Recommend testing strategies
+```
+
+### Code Quality
+```
+Assess code quality and suggest improvements:
+1. Review naming conventions
+2. Check code organization
+3. Evaluate error handling
+4. Review commenting practices
+
+Provide specific examples of good and problematic patterns.
+```
+
+## Tips for Better Results
+
+1. **Be Specific**: Include clear objectives and evaluation criteria
+2. **Set Context**: Specify your role and expertise level needed
+3. **Request Format**: Define how you want the response structured
+4. **Prioritize**: Indicate which aspects are most important
+
+## Model-Specific Notes
+
+### Claude
+- Use XML output format
+- Place important instructions at the end
+- Specify response structure
+
+### ChatGPT
+- Use Markdown format
+- Break large codebases into sections
+- Include system role prompts
+
+### Gemini
+- Works with all formats
+- Focus on specific areas per request
+- Use step-by-step analysis

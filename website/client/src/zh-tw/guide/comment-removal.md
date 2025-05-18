@@ -1,10 +1,11 @@
-# 註釋移除
 
-Repomix 可以在生成輸出文件時自動移除程式碼中的註釋。這有助於減少干擾，讓程式碼更加簡潔。
+# Comment Removal
 
-## 使用方法
+Repomix can automatically remove comments from your codebase when generating the output file. This can help reduce noise and focus on the actual code.
 
-要啟用註釋移除，在 `repomix.config.json` 中將 `removeComments` 選項設置為 `true`：
+## Usage
+
+To enable comment removal, set the `removeComments` option to `true` in your `repomix.config.json`:
 
 ```json
 {
@@ -14,9 +15,9 @@ Repomix 可以在生成輸出文件時自動移除程式碼中的註釋。這有
 }
 ```
 
-## 支援的語言
+## Supported Languages
 
-Repomix 支援移除多種程式設計語言的註釋，包括：
+Repomix supports comment removal for a wide range of programming languages, including:
 
 - JavaScript/TypeScript (`//`, `/* */`)
 - Python (`#`, `"""`, `'''`)
@@ -24,22 +25,22 @@ Repomix 支援移除多種程式設計語言的註釋，包括：
 - C/C++ (`//`, `/* */`)
 - HTML (`<!-- -->`)
 - CSS (`/* */`)
-- 以及更多語言...
+- And many more...
 
-## 示例
+## Example
 
-以下是 JavaScript 程式碼示例：
+Given the following JavaScript code:
 
 ```javascript
-// 這是單行註釋
+// This is a single-line comment
 function test() {
-  /* 這是
-     多行註釋 */
+  /* This is a
+     multi-line comment */
   return true;
 }
 ```
 
-啟用註釋移除後，輸出將變為：
+With comment removal enabled, the output will be:
 
 ```javascript
 function test() {
@@ -47,22 +48,7 @@ function test() {
 }
 ```
 
-## 注意事項
+## Notes
 
-- 註釋移除在其他處理步驟（如行號添加）之前執行
-- 某些註釋，例如 JSDoc 註釋，可能會根據語言和上下文保留
-- 如果你需要保留某些重要註釋，請考慮使用其他方式記錄這些信息，例如使用自定義指令
-
-## 建議用法
-
-1. **選擇性使用**：
-  - 對於需要向 AI 展示實現細節的程式碼，保留註釋
-  - 對於主要關注程式碼結構的分析，移除註釋
-
-2. **配合其他功能**：
-  - 與 `--remove-empty-lines` 選項組合使用，獲得更簡潔的輸出
-  - 使用自定義指令提供額外的上下文信息
-
-3. **效能考慮**：
-  - 移除註釋可以減少輸出文件大小
-  - 對於大型程式碼庫特別有用
+- Comment removal is performed before other processing steps, such as line number addition.
+- Some comments, such as JSDoc comments, may be preserved depending on the language and context.

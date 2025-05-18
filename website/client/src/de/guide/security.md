@@ -1,24 +1,25 @@
-# Sicherheit
+# Security
 
-## Sicherheitsprüfungsfunktion
+## Security Check Feature
 
-Repomix verwendet [Secretlint](https://github.com/secretlint/secretlint) zur Erkennung sensibler Informationen in Ihren Dateien:
-- API-Schlüssel
-- Zugangstoken
-- Anmeldedaten
-- Private Schlüssel
-- Umgebungsvariablen
+Repomix uses [Secretlint](https://github.com/secretlint/secretlint) to detect sensitive information in your files, including:
+- API keys and access tokens
+- Authentication credentials
+- Private keys and certificates
+- Database connection strings
+- Environment variables containing secrets
+- Personal or sensitive data
 
-## Konfiguration
+## Configuration
 
-Sicherheitsprüfungen sind standardmäßig aktiviert.
+Security checks are enabled by default.
 
-Deaktivierung über CLI:
+Disable via CLI:
 ```bash
 repomix --no-security-check
 ```
 
-Oder in `repomix.config.json`:
+Or in `repomix.config.json`:
 ```json
 {
   "security": {
@@ -27,39 +28,40 @@ Oder in `repomix.config.json`:
 }
 ```
 
-## Sicherheitsmaßnahmen
+## Security Measures
 
-1. **Ausschluss von Binärdateien**: Binärdateien werden nicht in die Ausgabe aufgenommen
-2. **Git-bewusst**: Berücksichtigt `.gitignore`-Muster
-3. **Automatische Erkennung**: Sucht nach häufigen Sicherheitsproblemen:
-  - AWS-Anmeldedaten
-  - Datenbankverbindungszeichenfolgen
-  - Authentifizierungstoken
-  - Private Schlüssel
+1. **Binary File Exclusion**: Binary files are not included in output to reduce file size and prevent sensitive data leakage
+2. **Git-Aware**: Respects `.gitignore` patterns to avoid including sensitive files already marked for exclusion
+3. **Automated Detection**: Scans for common security issues:
+  - AWS credentials and access keys
+  - Database connection strings and passwords
+  - Authentication tokens and OAuth credentials
+  - Private keys and certificates
+  - Environment variables containing sensitive information
 
-## Wenn die Sicherheitsprüfung Probleme findet
+## When Security Check Finds Issues
 
-Beispielausgabe:
+Example output:
 ```bash
-🔍 Sicherheitsprüfung:
+🔍 Security Check:
 ──────────────────
-2 verdächtige Datei(en) erkannt und ausgeschlossen:
+2 suspicious file(s) detected and excluded:
 1. config/credentials.json
-  - AWS-Zugriffsschlüssel gefunden
+  - Found AWS access key
 2. .env.local
-  - Datenbank-Passwort gefunden
+  - Found database password
 ```
 
 ## Best Practices
 
-1. Überprüfen Sie die Ausgabe immer vor dem Teilen
-2. Verwenden Sie `.repomixignore` für sensible Pfade
-3. Lassen Sie Sicherheitsprüfungen aktiviert
-4. Entfernen Sie sensible Dateien aus dem Repository
+1. Always review output before sharing with AI services
+2. Use `.repomixignore` for additional sensitive paths
+3. Keep security checks enabled unless absolutely necessary to disable
+4. Remove sensitive files from repository or add to ignore patterns
 
-## Melden von Sicherheitsproblemen
+## Reporting Security Issues
 
-Haben Sie eine Sicherheitslücke gefunden? Bitte:
-1. Öffnen Sie kein öffentliches Issue
-2. E-Mail: koukun0120@gmail.com
-3. Oder nutzen Sie [GitHub Security Advisories](https://github.com/yamadashy/repomix/security/advisories/new) 
+Found a security vulnerability? Please:
+1. Do not open a public issue
+2. Email: koukun0120@gmail.com
+3. Or use [GitHub Security Advisories](https://github.com/yamadashy/repomix/security/advisories/new)

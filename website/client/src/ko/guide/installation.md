@@ -1,12 +1,12 @@
-# 설치
+# Installation
 
-## npx 사용 (설치 불필요)
+## Using npx (No Installation Required)
 
 ```bash
 npx repomix
 ```
 
-## 전역 설치
+## Global Installation
 
 ### npm
 ```bash
@@ -23,41 +23,48 @@ yarn global add repomix
 brew install repomix
 ```
 
-## Docker 설치
+## Docker Installation
 
-Docker를 사용하면 환경 설정 문제를 피할 수 있어 가장 편리한 방법 중 하나입니다. 아래와 같이 실행하세요:
+Pull and run the Docker image for containerized execution, ensuring consistent environments across systems:
 
 ```bash
-# 현재 디렉토리 처리
+# Current directory - mounts the current directory to /app in the container
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix
 
-# 특정 디렉토리 처리
+# Specific directory - specify a path to process only that directory
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix path/to/directory
 
-# 원격 저장소 처리
+# Custom output file - specify an output file name and location
+docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix -o custom-output.xml
+
+# Remote repository - store output in ./output directory
 docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix --remote yamadashy/repomix
 ```
 
-## VSCode 확장 프로그램
+The Docker image includes all dependencies required to run Repomix.
 
-커뮤니티에서 관리하는 [Repomix Runner](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner) 확장 프로그램을 통해 VSCode에서 직접 Repomix를 실행할 수 있습니다.
+## VSCode Extension
 
-기능:
-- 몇 번의 클릭으로 폴더 패키징
-- 파일 또는 콘텐츠 모드로 복사
-- 출력 파일 자동 정리
-- repomix.config.json 지원
+Run Repomix directly in VSCode with the community-maintained [Repomix Runner](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner) extension (created by [massdo](https://github.com/massdo)).
 
-[VSCode 마켓플레이스](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)에서 설치하세요.
+Features:
+- Pack any folder with just a few clicks
+- Control output format (XML, Markdown, Plain Text)
+- Choose between file or content mode for copying
+- Automatic cleanup of output files
+- Works seamlessly with your existing repomix.config.json
+- Manage outputs through VSCode's intuitive interface
 
-## 시스템 요구 사항
+Install it from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner) or view the [source code on GitHub](https://github.com/massdo/repomix-runner).
 
-- Node.js: 18.0.0 이상
-- Git: 원격 저장소 처리 시 필요
+## System Requirements
 
-## 설치 확인
+- Node.js: ≥ 18.0.0
+- Git: Required for remote repository processing
 
-설치가 완료된 후, 다음 명령어로 Repomix가 정상적으로 작동하는지 확인하세요:
+## Verification
+
+After installation, verify that Repomix is working:
 
 ```bash
 repomix --version

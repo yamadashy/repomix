@@ -1,79 +1,77 @@
-# Kommandozeilenoptionen
+# Command Line Options
 
-## Grundlegende Optionen
-- `-v, --version`: Zeigt die Version an
+## Basic Options
+- `-v, --version`: Show tool version
 
-## Ausgabeoptionen
-- `-o, --output <file>`: Ausgabedateiname (Standard: `repomix-output.txt`)
-- `--stdout`: Ausgabe an die Standardausgabe anstatt in eine Datei (kann nicht mit der Option `--output` verwendet werden)
-- `--style <type>`: Ausgabeformat (`plain`, `xml`, `markdown`) (Standard: `xml`)
-- `--parsable-style`: Aktiviert parsbare Ausgabe basierend auf dem gewählten Formatschema (Standard: `false`)
-- `--compress`: Führt eine intelligente Code-Extraktion durch, die sich auf Funktions- und Klassensignaturen konzentriert und Implementierungsdetails entfernt. Weitere Details und Beispiele finden Sie im [Code-Komprimierungsleitfaden](code-compress)
-- `--output-show-line-numbers`: Fügt Zeilennummern hinzu (Standard: `false`)
-- `--copy`: In die Zwischenablage kopieren (Standard: `false`)
-- `--no-file-summary`: Deaktiviert die Dateizusammenfassung (Standard: `true`)
-- `--no-directory-structure`: Deaktiviert die Verzeichnisstruktur (Standard: `true`)
-- `--no-files`: Deaktiviert die Ausgabe des Dateiinhalts (Nur-Metadaten-Modus) (Standard: `true`)
-- `--remove-comments`: Entfernt Kommentare (Standard: `false`)
-- `--remove-empty-lines`: Entfernt leere Zeilen (Standard: `false`)
-- `--header-text <text>`: Benutzerdefinierter Text für den Dateikopf
-- `--instruction-file-path <path>`: Pfad zu einer Datei mit detaillierten benutzerdefinierten Anweisungen
-- `--include-empty-directories`: Leere Verzeichnisse in die Ausgabe einbeziehen (Standard: `false`)
-- `--include-diffs`: Git-Unterschiede in die Ausgabe einbeziehen (enthält sowohl Arbeitsbaum- als auch gestaged Änderungen separat) (Standard: `false`)
+## Output Options
+- `-o, --output <file>`: Output file name (default: `repomix-output.txt`)
+- `--stdout`: Output to stdout instead of writing to a file (cannot be used with `--output` option)
+- `--style <type>`: Output style (`plain`, `xml`, `markdown`) (default: `xml`)
+- `--parsable-style`: Enable parsable output based on the chosen style schema (default: `false`)
+- `--compress`: Perform intelligent code extraction, focusing on essential function and class signatures while removing implementation details. For more details and examples, see [Code Compression Guide](code-compress).
+- `--output-show-line-numbers`: Add line numbers (default: `false`)
+- `--copy`: Copy to clipboard (default: `false`)
+- `--no-file-summary`: Disable file summary (default: `true`)
+- `--no-directory-structure`: Disable directory structure (default: `true`)
+- `--no-files`: Disable files content output (metadata-only mode) (default: `true`)
+- `--remove-comments`: Remove comments (default: `false`)
+- `--remove-empty-lines`: Remove empty lines (default: `false`)
+- `--header-text <text>`: Custom text to include in the file header
+- `--instruction-file-path <path>`: Path to a file containing detailed custom instructions
+- `--include-empty-directories`: Include empty directories in the output (default: `false`)
+- `--include-diffs`: Include git diffs in the output (includes both work tree and staged changes separately) (default: `false`)
+- `--no-git-sort-by-changes`: Disable sorting files by git change count (default: `true`)
 
-## Filteroptionen
-- `--include <patterns>`: Einzuschließende Muster (durch Komma getrennt)
-- `-i, --ignore <patterns>`: Zu ignorierende Muster (durch Komma getrennt)
-- `--no-gitignore`: Deaktiviert die Verwendung der .gitignore-Datei
-- `--no-default-patterns`: Deaktiviert Standardmuster
+## Filter Options
+- `--include <patterns>`: Include patterns (comma-separated)
+- `-i, --ignore <patterns>`: Ignore patterns (comma-separated)
+- `--no-gitignore`: Disable .gitignore file usage
+- `--no-default-patterns`: Disable default patterns
 
-## Remote-Repository-Optionen
-- `--remote <url>`: Remote-Repository verarbeiten
-- `--remote-branch <name>`: Remote-Branch-Name, Tag oder Commit-Hash angeben (Standard ist der Standard-Branch des Repositories)
+## Remote Repository Options
+- `--remote <url>`: Process remote repository
+- `--remote-branch <name>`: Specify the remote branch name, tag, or commit hash (defaults to repository default branch)
 
-## Konfigurationsoptionen
-- `-c, --config <path>`: Pfad zur benutzerdefinierten Konfigurationsdatei
-- `--init`: Konfigurationsdatei erstellen
-- `--global`: Globale Konfiguration verwenden
+## Configuration Options
+- `-c, --config <path>`: Custom config file path
+- `--init`: Create config file
+- `--global`: Use global config
 
-## Sicherheitsoptionen
-- `--no-security-check`: Deaktiviert die Sicherheitsprüfung (Standard: `true`)
+## Security Options
+- `--no-security-check`: Disable security check (default: `true`)
 
-## Token-Zähloptionen
-- `--token-count-encoding <encoding>`: Token-Zählkodierung festlegen (z.B. `o200k_base`, `cl100k_base`) (Standard: `o200k_base`)
+## Token Count Options
+- `--token-count-encoding <encoding>`: Specify token count encoding (e.g., `o200k_base`, `cl100k_base`) (default: `o200k_base`)
 
-## Weitere Optionen
-- `--top-files-len <number>`: Anzahl der anzuzeigenden Top-Dateien (Standard: `5`)
-- `--verbose`: Ausführliche Protokollierung aktivieren
-- `--quiet`: Deaktiviert alle Ausgaben an stdout
+## Other Options
+- `--top-files-len <number>`: Number of top files to show (default: `5`)
+- `--verbose`: Enable verbose logging
+- `--quiet`: Disable all output to stdout
 
-## Beispiele
+## Examples
 
 ```bash
-# Grundlegende Verwendung
+# Basic usage
 repomix
 
-# Benutzerdefinierte Ausgabe
+# Custom output
 repomix -o output.xml --style xml
 
-# Ausgabe an die Standardausgabe
+# Output to stdout
 repomix --stdout > custom-output.txt
 
-# Ausgabe an die Standardausgabe senden, dann in einen anderen Befehl weiterleiten (zum Beispiel: simonw/llm)
-repomix --stdout | llm "Bitte erkläre, was dieser Code macht"
+# Send output to stdout, then pipe into another command (for example, simonw/llm)
+repomix --stdout | llm "Please explain what this code does."
 
-# Benutzerdefinierte Ausgabe mit Komprimierung
+# Custom output with compression
 repomix --compress
 
-# Bestimmte Dateien verarbeiten
+# Process specific files
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
 
-# Remote-Repository mit Branch
+# Remote repository with branch
 repomix --remote https://github.com/user/repo/tree/main
 
-# Remote-Repository mit Commit
-repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb28655d85712680f1
-
-# Remote-Repository mit Kurzform
+# Remote repository with shorthand
 repomix --remote user/repo
 ```

@@ -1,77 +1,83 @@
-# Formats de sortie
+# Output Formats
 
-Repomix prend en charge trois formats de sortie:
-- XML (par défaut)
-- Markdown
-- Texte brut
+Repomix supports three output formats:
+- XML (default): Most structured format, ideal for AI tools like Claude that parse XML efficiently
+- Markdown: Balances readability with structure, great for GitHub and document-oriented workflows
+- Plain Text: Simplest format with universal compatibility across all tools and platforms
 
-## Format XML
+## XML Format
 
 ```bash
 repomix --style xml
 ```
 
-Le format XML est optimisé pour le traitement par l'IA:
+XML format is optimized for AI processing with clearly defined sections and structure:
 
 ```xml
-Ce fichier est une représentation fusionnée de toute la base de code...
+This file is a merged representation of the entire codebase...
+
 <file_summary>
-(Métadonnées et instructions pour l'IA)
+(Metadata and AI instructions)
 </file_summary>
+
 <directory_structure>
 src/
   index.ts
   utils/
     helper.ts
 </directory_structure>
+
 <files>
 <file path="src/index.ts">
-// Contenu du fichier ici
+// File contents here
 </file>
 </files>
 ```
 
-::: tip Pourquoi XML?
-Les balises XML aident les modèles d'IA comme Claude à analyser le contenu plus précisément. La [Documentation de Claude](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags) recommande d'utiliser des balises XML pour les prompts structurés.
+::: tip Why XML?
+XML tags help AI models like Claude parse content more accurately. Claude's documentation [recommends using XML tags](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags) for structured prompts, making it easier for the model to understand different sections of your codebase.
 :::
 
-## Format Markdown
+## Markdown Format
 
 ```bash
 repomix --style markdown
 ```
 
-Le Markdown offre un formatage lisible:
+Markdown provides readable formatting:
 
 ```markdown
-Ce fichier est une représentation fusionnée de toute la base de code...
-# Résumé du fichier
-(Métadonnées et instructions pour l'IA)
-# Structure des répertoires
+This file is a merged representation of the entire codebase...
+
+# File Summary
+(Metadata and AI instructions)
+
+# Directory Structure
 ```
 src/
 index.ts
 utils/
 helper.ts
 ```
-# Fichiers
-## Fichier: src/index.ts
+
+# Files
+
+## File: src/index.ts
 ```typescript
-// Contenu du fichier ici
+// File contents here
 ```
 ```
 
-## Utilisation avec les modèles d'IA
+## Usage with AI Models
 
-Chaque format fonctionne bien avec les modèles d'IA, mais considérez:
-- Utilisez XML pour Claude (meilleure précision d'analyse)
-- Utilisez Markdown pour une meilleure lisibilité générale
-- Utilisez le texte brut pour la simplicité et une compatibilité universelle
+Each format works well with AI models, but consider:
+- Use XML for Claude and other AI models that prefer structured input with clear section delineation
+- Use Markdown for general readability and when sharing with humans alongside AI analysis
+- Use Plain Text for simplicity, universal compatibility, and when working with tools that don't parse markup
 
-## Personnalisation
+## Customization
 
-Définissez le format par défaut dans `repomix.config.json`:
-
+Set default format in `repomix.config.json`:
 ```json
 {
   "output": {
@@ -81,32 +87,35 @@ Définissez le format par défaut dans `repomix.config.json`:
 }
 ```
 
-## Format texte brut
+## Plain Text Format
 
 ```bash
 repomix --style plain
 ```
 
-Structure de sortie:
-
+Output structure:
 ```text
-Ce fichier est une représentation fusionnée de toute la base de code...
+This file is a merged representation of the entire codebase...
+
 ================
-Résumé du fichier
+File Summary
 ================
-(Métadonnées et instructions pour l'IA)
+(Metadata and AI instructions)
+
 ================
-Structure des répertoires
+Directory Structure
 ================
 src/
   index.ts
   utils/
     helper.ts
+
 ================
-Fichiers
+Files
 ================
+
 ================
-Fichier: src/index.ts
+File: src/index.ts
 ================
-// Contenu du fichier ici
+// File contents here
 ```

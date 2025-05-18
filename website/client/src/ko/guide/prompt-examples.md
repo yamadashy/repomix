@@ -1,124 +1,124 @@
-# 프롬프트 예시
+# Prompt Examples
 
-## 코드 리뷰
+## Code Review
 
-### 아키텍처 리뷰
+### Architecture Review
 ```
-이 코드베이스의 아키텍처를 분석하세요:
-1. 전체 구조와 패턴을 평가
-2. 잠재적인 아키텍처 문제 식별
-3. 확장성을 위한 개선 사항 제안
-4. 모범 사례를 따르는 영역 기록
+Analyze this codebase's architecture:
+1. Evaluate the overall structure and patterns
+2. Identify potential architectural issues
+3. Suggest improvements for scalability
+4. Note areas that follow best practices
 
-유지보수성과 모듈성에 중점을 두세요.
-```
-
-### 보안 리뷰
-```
-이 코드베이스의 보안 검토를 수행하세요:
-1. 잠재적인 보안 취약점 식별
-2. 일반적인 보안 안티패턴 확인
-3. 오류 처리 및 입력 유효성 검사 검토
-4. 의존성 보안 평가
-
-구체적인 예시와 해결 단계를 제공하세요.
+Focus on maintainability and modularity.
 ```
 
-### 성능 리뷰
+### Security Review
 ```
-코드베이스의 성능을 검토하세요:
-1. 성능 병목 현상 식별
-2. 리소스 사용량 확인
-3. 알고리즘 효율성 검토
-4. 캐싱 전략 평가
+Perform a security review of this codebase:
+1. Identify potential security vulnerabilities
+2. Check for common security anti-patterns
+3. Review error handling and input validation
+4. Assess dependency security
 
-구체적인 최적화 권장 사항을 포함하세요.
-```
-
-## 문서 생성
-
-### API 문서
-```
-포괄적인 API 문서를 생성하세요:
-1. 모든 공개 엔드포인트 나열 및 설명
-2. 요청/응답 형식 문서화
-3. 사용 예시 포함
-4. 제한 사항 기록
+Provide specific examples and remediation steps.
 ```
 
-### 개발자 가이드
+### Performance Review
 ```
-다음 내용을 포함하는 개발자 가이드를 작성하세요:
-1. 설정 지침
-2. 프로젝트 구조 개요
-3. 개발 워크플로우
-4. 테스트 접근 방식
-5. 일반적인 문제 해결 단계
-```
+Review the codebase for performance:
+1. Identify performance bottlenecks
+2. Check resource utilization
+3. Review algorithmic efficiency
+4. Assess caching strategies
 
-### 아키텍처 문서
-```
-시스템 아키텍처를 문서화하세요:
-1. 상위 수준 개요
-2. 컴포넌트 상호 작용
-3. 데이터 흐름 다이어그램
-4. 설계 결정 및 근거
-5. 시스템 제약 사항 및 한계
+Include specific optimization recommendations.
 ```
 
-## 분석 및 개선
+## Documentation Generation
 
-### 의존성 분석
+### API Documentation
 ```
-프로젝트 의존성을 분석하세요:
-1. 오래된 패키지 식별
-2. 보안 취약점 확인
-3. 대체 패키지 제안
-4. 의존성 사용 패턴 검토
-
-구체적인 업그레이드 권장 사항을 포함하세요.
+Generate comprehensive API documentation:
+1. List and describe all public endpoints
+2. Document request/response formats
+3. Include usage examples
+4. Note any limitations or constraints
 ```
 
-### 테스트 커버리지
+### Developer Guide
 ```
-테스트 커버리지를 검토하세요:
-1. 테스트되지 않은 컴포넌트 식별
-2. 추가 테스트 케이스 제안
-3. 테스트 품질 검토
-4. 테스트 전략 권장
-```
-
-### 코드 품질
-```
-코드 품질을 평가하고 개선 사항을 제안하세요:
-1. 명명 규칙 검토
-2. 코드 구성 확인
-3. 오류 처리 평가
-4. 주석 작성 관행 검토
-
-좋은 패턴과 문제가 있는 패턴의 구체적인 예시를 제공하세요.
+Create a developer guide covering:
+1. Setup instructions
+2. Project structure overview
+3. Development workflow
+4. Testing approach
+5. Common troubleshooting steps
 ```
 
-## 더 나은 결과를 위한 팁
+### Architecture Documentation
+```
+Document the system architecture:
+1. High-level overview
+2. Component interactions
+3. Data flow diagrams
+4. Design decisions and rationale
+5. System constraints and limitations
+```
 
-1. **구체적으로 작성**: 명확한 목표와 평가 기준을 포함하세요
-2. **컨텍스트 설정**: 귀하의 역할과 필요한 전문성 수준을 지정하세요
-3. **응답 형식**: 원하는 응답 구조를 정의하세요
-4. **우선순위 지정**: 가장 중요한 측면을 표시하세요
+## Analysis and Improvement
 
-## 모델별 참고 사항
+### Dependency Analysis
+```
+Analyze the project dependencies:
+1. Identify outdated packages
+2. Check for security vulnerabilities
+3. Suggest alternative packages
+4. Review dependency usage patterns
+
+Include specific upgrade recommendations.
+```
+
+### Test Coverage
+```
+Review the test coverage:
+1. Identify untested components
+2. Suggest additional test cases
+3. Review test quality
+4. Recommend testing strategies
+```
+
+### Code Quality
+```
+Assess code quality and suggest improvements:
+1. Review naming conventions
+2. Check code organization
+3. Evaluate error handling
+4. Review commenting practices
+
+Provide specific examples of good and problematic patterns.
+```
+
+## Tips for Better Results
+
+1. **Be Specific**: Include clear objectives and evaluation criteria
+2. **Set Context**: Specify your role and expertise level needed
+3. **Request Format**: Define how you want the response structured
+4. **Prioritize**: Indicate which aspects are most important
+
+## Model-Specific Notes
 
 ### Claude
-- XML 출력 형식 사용
-- 중요한 지시사항을 마지막에 배치
-- 응답 구조 지정
+- Use XML output format
+- Place important instructions at the end
+- Specify response structure
 
 ### ChatGPT
-- 마크다운 형식 사용
-- 큰 코드베이스를 섹션으로 분할
-- 시스템 역할 프롬프트 사용
+- Use Markdown format
+- Break large codebases into sections
+- Include system role prompts
 
 ### Gemini
-- 모든 형식과 호환
-- 요청당 특정 영역에 집중
-- 단계별 분석 사용
+- Works with all formats
+- Focus on specific areas per request
+- Use step-by-step analysis

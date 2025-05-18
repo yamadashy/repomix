@@ -1,10 +1,10 @@
-# Usando o Repomix com GitHub Actions
+# Using Repomix with GitHub Actions
 
-Você pode automatizar o empacotamento do seu código para análise por IA integrando o Repomix aos seus workflows do GitHub Actions. Isso é útil para integração contínua (CI), revisão de código ou preparação para ferramentas LLM.
+You can automate the process of packing your codebase for AI analysis by integrating Repomix into your GitHub Actions workflows. This is useful for continuous integration (CI), code review, or preparing your repository for LLM-based tools.
 
-## Uso básico
+## Basic Usage
 
-Adicione o seguinte passo ao seu arquivo YAML de workflow para empacotar seu repositório:
+Add the following step to your workflow YAML to pack your repository:
 
 ```yaml
 - name: Pack repository with Repomix
@@ -13,9 +13,9 @@ Adicione o seguinte passo ao seu arquivo YAML de workflow para empacotar seu rep
     output: repomix-output.xml
 ```
 
-## Usando diferentes formatos de saída
+## Using Different Output Formats
 
-Você pode especificar diferentes formatos de saída usando o parâmetro `style` (o padrão é `xml`):
+You can specify different output formats using the `style` parameter (the default is `xml`):
 
 ```yaml
 - name: Pack repository with Repomix
@@ -25,9 +25,9 @@ Você pode especificar diferentes formatos de saída usando o parâmetro `style`
     style: markdown
 ```
 
-## Empacotando múltiplos diretórios com compressão
+## Packing Multiple Directories with Compression
 
-Você pode especificar múltiplos diretórios, padrões de inclusão/exclusão e ativar a compressão inteligente:
+You can specify multiple directories, include/exclude patterns, and enable smart compression:
 
 ```yaml
 - name: Pack repository with Repomix
@@ -36,13 +36,13 @@ Você pode especificar múltiplos diretórios, padrões de inclusão/exclusão e
     directories: src tests
     include: "**/*.ts,**/*.md"
     ignore: "**/*.test.ts"
-    output: repomix-output.txt
+    output: repomix-output.xml
     compress: true
 ```
 
-## Enviando o arquivo de saída como artefato
+## Uploading the Output as an Artifact
 
-Para disponibilizar o arquivo empacotado para etapas posteriores ou para download, envie-o como artefato:
+To make the packed file available for later workflow steps or for download, upload it as an artifact:
 
 ```yaml
 - name: Pack repository with Repomix
@@ -59,28 +59,28 @@ Para disponibilizar o arquivo empacotado para etapas posteriores ou para downloa
     path: repomix-output.xml
 ```
 
-## Parâmetros de entrada da Action
+## Action Inputs
 
-| Nome               | Descrição                                   | Padrão            |
-|--------------------|---------------------------------------------|-------------------|
-| `directories`      | Lista de diretórios a empacotar (separados por espaço) | `.`         |
-| `include`          | Padrões glob a incluir (separados por vírgula) | `""`         |
-| `ignore`           | Padrões glob a ignorar (separados por vírgula) | `""`         |
-| `output`           | Caminho do arquivo de saída                  | `repomix-output.xml`     |
-| `style`            | Estilo de saída (xml, markdown, plain)       | `xml`             |
-| `compress`         | Ativar compressão inteligente                | `true`            |
-| `additional-args`  | Argumentos extras para o repomix CLI         | `""`         |
-| `repomix-version`  | Versão do pacote npm a instalar              | `latest`          |
+| Name              | Description                                 | Default           |
+|-------------------|---------------------------------------------|-------------------|
+| `directories`     | Space-separated list of directories to pack | `.`               |
+| `include`         | Comma-separated glob patterns to include    | `""`             |
+| `ignore`          | Comma-separated glob patterns to ignore     | `""`             |
+| `output`          | Output file path                            | `repomix-output.xml`     |
+| `compress`        | Enable smart compression                    | `true`            |
+| `style`           | Output style (xml, markdown, plain)         | `xml`             |
+| `additional-args` | Extra CLI arguments for repomix             | `""`             |
+| `repomix-version` | Version of the npm package to install       | `latest`          |
 
-## Saídas da Action
+## Action Outputs
 
-| Nome          | Descrição                        |
-|---------------|----------------------------------|
-| `output_file` | Caminho do arquivo gerado         |
+| Name          | Description                        |
+|---------------|------------------------------------|
+| `output_file` | Path to the generated output file   |
 
-## Exemplo de workflow completo
+## Example: Full Workflow
 
-Aqui está um exemplo completo de workflow do GitHub Actions usando o Repomix:
+Here is a complete example of a GitHub Actions workflow using Repomix:
 
 ```yaml
 name: Pack repository with Repomix
@@ -112,4 +112,4 @@ jobs:
           retention-days: 30
 ```
 
-Veja o [exemplo completo do workflow](https://github.com/yamadashy/repomix/blob/main/.github/workflows/pack-repository.yml).
+See the [complete workflow example](https://github.com/yamadashy/repomix/blob/main/.github/workflows/pack-repository.yml).

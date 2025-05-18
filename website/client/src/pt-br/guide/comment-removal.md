@@ -1,10 +1,11 @@
-# Remoção de Comentários
 
-O Repomix pode remover automaticamente os comentários do seu código ao gerar o arquivo de saída. Isso pode ajudar a reduzir o ruído e focar no código real.
+# Comment Removal
 
-## Uso
+Repomix can automatically remove comments from your codebase when generating the output file. This can help reduce noise and focus on the actual code.
 
-Para habilitar a remoção de comentários, defina a opção `removeComments` como `true` no seu `repomix.config.json`:
+## Usage
+
+To enable comment removal, set the `removeComments` option to `true` in your `repomix.config.json`:
 
 ```json
 {
@@ -14,9 +15,9 @@ Para habilitar a remoção de comentários, defina a opção `removeComments` co
 }
 ```
 
-## Linguagens Suportadas
+## Supported Languages
 
-O Repomix suporta a remoção de comentários para uma ampla gama de linguagens de programação, incluindo:
+Repomix supports comment removal for a wide range of programming languages, including:
 
 - JavaScript/TypeScript (`//`, `/* */`)
 - Python (`#`, `"""`, `'''`)
@@ -24,22 +25,22 @@ O Repomix suporta a remoção de comentários para uma ampla gama de linguagens 
 - C/C++ (`//`, `/* */`)
 - HTML (`<!-- -->`)
 - CSS (`/* */`)
-- E muitas outras...
+- And many more...
 
-## Exemplo
+## Example
 
-Dado o seguinte código JavaScript:
+Given the following JavaScript code:
 
 ```javascript
-// Este é um comentário de linha única
+// This is a single-line comment
 function test() {
-  /* Este é um
-     comentário de várias linhas */
+  /* This is a
+     multi-line comment */
   return true;
 }
 ```
 
-Com a remoção de comentários habilitada, a saída será:
+With comment removal enabled, the output will be:
 
 ```javascript
 function test() {
@@ -47,7 +48,7 @@ function test() {
 }
 ```
 
-## Notas
+## Notes
 
-- A remoção de comentários é realizada antes de outras etapas de processamento, como a adição de números de linha.
-- Alguns comentários, como os comentários JSDoc, podem ser preservados dependendo da linguagem e do contexto.
+- Comment removal is performed before other processing steps, such as line number addition.
+- Some comments, such as JSDoc comments, may be preserved depending on the language and context.

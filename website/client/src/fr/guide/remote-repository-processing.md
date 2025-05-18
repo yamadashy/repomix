@@ -1,62 +1,75 @@
-# Traitement des dépôts distants
+# Remote Repository Processing
 
-## Utilisation de base
+Repomix supports processing remote Git repositories without the need for manual cloning. This feature allows you to quickly analyze any public Git repository with a single command, streamlining the workflow for code analysis.
 
-Traiter des dépôts publics:
+## Basic Usage
+
+Process public repositories:
 ```bash
-# En utilisant l'URL complète
+# Using full URL
 repomix --remote https://github.com/user/repo
-# En utilisant le format abrégé GitHub
+
+# Using GitHub shorthand
 repomix --remote user/repo
 ```
 
-## Sélection de branche et de commit
+## Branch and Commit Selection
+
+You can specify the branch name, tag, or commit hash:
 
 ```bash
-# Branche spécifique
+# Specific branch using --remote-branch option
 repomix --remote user/repo --remote-branch main
+
+# Using branch's URL directly
+repomix --remote https://github.com/user/repo/tree/main
+
 # Tag
 repomix --remote user/repo --remote-branch v1.0.0
-# Hash de commit
+
+# Specific commit hash using --remote-branch option
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-## Prérequis
+## Requirements
 
-- Git doit être installé
-- Connexion Internet
-- Accès en lecture au dépôt
+- Git must be installed
+- Internet connection
+- Read access to repository
 
-## Contrôle de la sortie
+## Output Control
 
 ```bash
-# Emplacement de sortie personnalisé
+# Custom output location
 repomix --remote user/repo -o custom-output.xml
-# Avec format XML
+
+# With XML format
 repomix --remote user/repo --style xml
-# Supprimer les commentaires
+
+# Remove comments
 repomix --remote user/repo --remove-comments
 ```
 
-## Utilisation avec Docker
+## Docker Usage
 
 ```bash
-# Traiter et sortir dans le répertoire courant
+# Process and output to current directory
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
-# Sortie vers un répertoire spécifique
+
+# Output to specific directory
 docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
-## Problèmes courants
+## Common Issues
 
-### Problèmes d'accès
-- Assurez-vous que le dépôt est public
-- Vérifiez l'installation de Git
-- Vérifiez la connexion Internet
+### Access Issues
+- Ensure repository is public
+- Check Git installation
+- Verify internet connection
 
-### Dépôts volumineux
-- Utilisez `--include` pour sélectionner des chemins spécifiques
-- Activez `--remove-comments`
-- Traitez les branches séparément
+### Large Repositories
+- Use `--include` to select specific paths
+- Enable `--remove-comments`
+- Process branches separately

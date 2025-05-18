@@ -1,46 +1,60 @@
-# 基本用法
+# Basic Usage
 
-## 快速開始
+## Quick Start
 
-打包整個倉庫：
+Pack your entire repository:
 ```bash
 repomix
 ```
 
-## 常見使用場景
+## Common Use Cases
 
-### 打包指定目錄
+### Pack Specific Directories
+Process only specific directories or files to focus on relevant code and reduce token count:
 ```bash
 repomix path/to/directory
 ```
 
-### 包含特定文件
-使用 [glob 模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)：
+### Include Specific Files
+Use [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) to precisely control which files are included:
 ```bash
 repomix --include "src/**/*.ts,**/*.md"
 ```
 
-### 排除文件
+### Exclude Files
+Skip certain files or directories using glob patterns to avoid including unnecessary or sensitive content:
 ```bash
 repomix --ignore "**/*.log,tmp/"
 ```
 
-### 處理遠端倉庫
+### Remote Repositories
 ```bash
-# 使用 GitHub URL
+# Using GitHub URL
 repomix --remote https://github.com/user/repo
 
-# 使用簡寫形式
+# Using shorthand
 repomix --remote user/repo
 
-# 指定分支/標籤/提交
+# Specific branch/tag/commit
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-## 輸出格式
 
-### XML（預設）
+### Code Compression
+
+Use Tree-sitter to intelligently extract essential code structures while removing implementation details, significantly reducing token count while preserving architecture:
+
+```bash
+repomix --compress
+
+# You can also use it with remote repositories:
+repomix --remote yamadashy/repomix --compress
+```
+
+## Output Formats
+
+### XML (Default)
 ```bash
 repomix --style xml
 ```
@@ -50,38 +64,38 @@ repomix --style xml
 repomix --style markdown
 ```
 
-### 純文字
+### Plain Text
 ```bash
 repomix --style plain
 ```
 
-## 其他選項
+## Additional Options
 
-### 移除註釋
+### Remove Comments
 ```bash
 repomix --remove-comments
 ```
 
-### 顯示行號
+### Show Line Numbers
 ```bash
 repomix --output-show-line-numbers
 ```
 
-### 複製到剪貼簿
+### Copy to Clipboard
 ```bash
 repomix --copy
 ```
 
-### 禁用安全檢查
+### Disable Security Check
 ```bash
 repomix --no-security-check
 ```
 
-## 配置
+## Configuration
 
-初始化配置文件：
+Initialize configuration file:
 ```bash
 repomix --init
 ```
 
-更多詳細配置選項請參閱[配置指南](/zh-tw/guide/configuration)。
+See [Configuration Guide](/guide/configuration) for detailed options.

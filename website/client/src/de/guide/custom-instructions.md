@@ -1,10 +1,10 @@
-# Benutzerdefinierte Anweisungen
+# Custom Instructions
 
-Repomix ermöglicht es Ihnen, benutzerdefinierte Anweisungen bereitzustellen, die in die Ausgabedatei aufgenommen werden. Dies kann nützlich sein, um Kontext oder spezifische Richtlinien für KI-Systeme hinzuzufügen, die das Repository verarbeiten.
+Repomix allows you to provide custom instructions that will be included in the output file. This can be useful for adding context or specific guidelines for AI systems processing the repository.
 
-## Verwendung
+## Usage
 
-Um eine benutzerdefinierte Anweisung einzufügen, erstellen Sie eine Markdown-Datei (z.B. `repomix-instruction.md`) im Stammverzeichnis Ihres Repositories. Geben Sie dann den Pfad zu dieser Datei in Ihrer `repomix.config.json` an:
+To include a custom instruction, create a markdown file (e.g., `repomix-instruction.md`) in the root of your repository. Then, specify the path to this file in your `repomix.config.json`:
 
 ```json
 {
@@ -14,30 +14,31 @@ Um eine benutzerdefinierte Anweisung einzufügen, erstellen Sie eine Markdown-Da
 }
 ```
 
-Der Inhalt dieser Datei wird in der Ausgabe unter dem Abschnitt "Instruction" aufgenommen.
+The content of this file will be included in the output under the "Instruction" section.
 
-## Beispiel
+## Example
 
 ```markdown
-# Repository-Anweisungen
+# Repository Instructions
 
-Dieses Repository enthält den Quellcode für das Repomix-Tool. Bitte beachten Sie diese Richtlinien bei der Analyse des Codes:
+This repository contains the source code for the Repomix tool. Please follow these guidelines when analyzing the code:
 
-1. Konzentrieren Sie sich auf die Kernfunktionalität im Verzeichnis `src/core`.
-2. Achten Sie besonders auf die Sicherheitsprüfungen in `src/core/security`.
-3. Ignorieren Sie alle Dateien im Verzeichnis `tests`.
+1. Focus on the core functionality in the `src/core` directory.
+2. Pay special attention to the security checks in `src/core/security`.
+3. Ignore any files in the `tests` directory.
 ```
 
-Dies führt zu folgendem Abschnitt in der Ausgabe:
+This will result in the following section in the output:
 
 ```xml
 <instruction>
-# Repository-Anweisungen
+# Repository Instructions
 
-Dieses Repository enthält den Quellcode für das Repomix-Tool. Bitte beachten Sie diese Richtlinien bei der Analyse des Codes:
+This repository contains the source code for the Repomix tool. Please follow these guidelines when analyzing the code:
 
-1. Konzentrieren Sie sich auf die Kernfunktionalität im Verzeichnis `src/core`.
-2. Achten Sie besonders auf die Sicherheitsprüfungen in `src/core/security`.
-3. Ignorieren Sie alle Dateien im Verzeichnis `tests`.
+1. Focus on the core functionality in the `src/core` directory.
+2. Pay special attention to the security checks in `src/core/security`.
+3. Ignore any files in the `tests` directory.
 </instruction>
-``` 
+```
+

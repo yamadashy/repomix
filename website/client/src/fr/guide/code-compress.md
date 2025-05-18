@@ -1,46 +1,47 @@
-# Compression de code
+# Code Compression
 
-La compression de code est une fonctionnalité puissante qui extrait intelligemment les structures de code essentielles tout en supprimant les détails d'implémentation. C'est particulièrement utile pour réduire le nombre de tokens tout en conservant les informations structurelles importantes de votre base de code.
+Code compression is a powerful feature that intelligently extracts essential code structures while removing implementation details. This feature utilizes [Tree-sitter](https://github.com/tree-sitter/tree-sitter) to perform intelligent code extraction, focusing on function and class signatures while preserving important structural information. This is particularly useful for reducing token count while maintaining the architectural understanding of your codebase.
 
 > [!NOTE]  
-> Il s'agit d'une fonctionnalité expérimentale que nous améliorerons activement en fonction des retours utilisateurs et de l'usage réel
+> This is an experimental feature that we'll be actively improving based on user feedback and real-world usage
 
-## Utilisation de base
+## Basic Usage
 
-Activez la compression de code en utilisant l'option `--compress`:
+Enable code compression using the `--compress` flag:
 
 ```bash
 repomix --compress
 ```
 
-Vous pouvez également l'utiliser avec des dépôts distants:
+You can also use it with remote repositories:
 
 ```bash
 repomix --remote user/repo --compress
 ```
 
-## Fonctionnement
+## How It Works
 
-L'algorithme de compression traite le code en utilisant l'analyse tree-sitter pour extraire et préserver les éléments structurels essentiels tout en supprimant les détails d'implémentation.
+The compression algorithm processes code using tree-sitter parsing to extract and preserve essential structural elements while removing implementation details.
 
-La compression préserve:
-- Les signatures de fonctions et de méthodes
-- Les définitions d'interfaces et de types
-- Les structures de classes et leurs propriétés
-- Les éléments structurels importants
+The compression preserves:
+- Function and method signatures (parameters and return types)
+- Interface and type definitions (property types and structure)
+- Class structures and properties (inheritance relationships)
+- Important structural elements (imports, exports, module structure)
 
-Tout en supprimant:
-- Les implémentations de fonctions et de méthodes
-- Les détails de logique des boucles et conditions
-- Les déclarations de variables internes
-- Le code spécifique à l'implémentation
+While removing:
+- Function and method implementations
+- Loop and conditional logic details
+- Internal variable declarations
+- Implementation-specific code
 
-### Exemple
+### Example
 
-Code TypeScript original:
+Original TypeScript code:
 
 ```typescript
 import { ShoppingItem } from './shopping-item';
+
 /**
  * Calculate the total price of shopping items
  */
@@ -53,6 +54,7 @@ const calculateTotal = (
   }
   return total;
 }
+
 // Shopping item interface
 interface Item {
   name: string;
@@ -61,7 +63,7 @@ interface Item {
 }
 ```
 
-Après compression:
+After compression:
 
 ```typescript
 import { ShoppingItem } from './shopping-item';
@@ -83,7 +85,7 @@ interface Item {
 
 ## Configuration
 
-Vous pouvez activer la compression dans votre fichier de configuration:
+You can enable compression in your configuration file:
 
 ```json
 {
@@ -93,18 +95,18 @@ Vous pouvez activer la compression dans votre fichier de configuration:
 }
 ```
 
-## Cas d'utilisation
+## Use Cases
 
-La compression de code est particulièrement utile pour:
-- Analyser la structure et l'architecture du code
-- Réduire le nombre de tokens pour le traitement par les LLM
-- Créer une documentation de haut niveau
-- Comprendre les motifs de code et les signatures
-- Partager les conceptions d'API et d'interfaces
+Code compression is particularly useful when:
+- Analyzing code structure and architecture
+- Reducing token count for LLM processing
+- Creating high-level documentation
+- Understanding code patterns and signatures
+- Sharing API and interface designs
 
-## Options associées
+## Related Options
 
-Vous pouvez combiner la compression avec d'autres options:
-- `--remove-comments`: Supprimer les commentaires du code
-- `--remove-empty-lines`: Supprimer les lignes vides
-- `--output-show-line-numbers`: Ajouter les numéros de ligne à la sortie
+You can combine compression with other options:
+- `--remove-comments`: Remove code comments
+- `--remove-empty-lines`: Remove empty lines
+- `--output-show-line-numbers`: Add line numbers to output

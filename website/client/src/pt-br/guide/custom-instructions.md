@@ -1,10 +1,10 @@
-# Instruções Personalizadas
+# Custom Instructions
 
-O Repomix permite que você forneça instruções personalizadas que serão incluídas no arquivo de saída. Isso pode ser útil para adicionar contexto ou diretrizes específicas para sistemas de IA que processam o repositório.
+Repomix allows you to provide custom instructions that will be included in the output file. This can be useful for adding context or specific guidelines for AI systems processing the repository.
 
-## Uso
+## Usage
 
-Para incluir uma instrução personalizada, crie um arquivo markdown (por exemplo, `repomix-instruction.md`) na raiz do seu repositório. Em seguida, especifique o caminho para este arquivo no seu `repomix.config.json`:
+To include a custom instruction, create a markdown file (e.g., `repomix-instruction.md`) in the root of your repository. Then, specify the path to this file in your `repomix.config.json`:
 
 ```json
 {
@@ -14,29 +14,31 @@ Para incluir uma instrução personalizada, crie um arquivo markdown (por exempl
 }
 ```
 
-O conteúdo deste arquivo será incluído na saída sob a seção "Instruction".
+The content of this file will be included in the output under the "Instruction" section.
 
-## Exemplo
+## Example
 
 ```markdown
-# Instruções do Repositório
+# Repository Instructions
 
-Este repositório contém o código-fonte da ferramenta Repomix. Por favor, siga estas diretrizes ao analisar o código:
+This repository contains the source code for the Repomix tool. Please follow these guidelines when analyzing the code:
 
-1. Concentre-se na funcionalidade principal no diretório `src/core`.
-2. Preste atenção especial às verificações de segurança em `src/core/security`.
-3. Ignore quaisquer arquivos no diretório `tests`.
+1. Focus on the core functionality in the `src/core` directory.
+2. Pay special attention to the security checks in `src/core/security`.
+3. Ignore any files in the `tests` directory.
 ```
 
-Isso resultará na seguinte seção na saída:
+This will result in the following section in the output:
 
 ```xml
 <instruction>
-# Instruções do Repositório
+# Repository Instructions
 
-Este repositório contém o código-fonte da ferramenta Repomix. Por favor, siga estas diretrizes ao analisar o código:
+This repository contains the source code for the Repomix tool. Please follow these guidelines when analyzing the code:
 
-1. Concentre-se na funcionalidade principal no diretório `src/core`.
-2. Preste atenção especial às verificações de segurança em `src/core/security`.
-3. Ignore quaisquer arquivos no diretório `tests`.
+1. Focus on the core functionality in the `src/core` directory.
+2. Pay special attention to the security checks in `src/core/security`.
+3. Ignore any files in the `tests` directory.
 </instruction>
+```
+

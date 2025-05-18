@@ -1,68 +1,75 @@
-# 遠端倉庫處理
+# Remote Repository Processing
 
-## 基本用法
+Repomix supports processing remote Git repositories without the need for manual cloning. This feature allows you to quickly analyze any public Git repository with a single command, streamlining the workflow for code analysis.
 
-處理公共倉庫：
+## Basic Usage
+
+Process public repositories:
 ```bash
-# 使用完整 URL
+# Using full URL
 repomix --remote https://github.com/user/repo
 
-# 使用 GitHub 簡寫
+# Using GitHub shorthand
 repomix --remote user/repo
 ```
 
-## 分支和提交選擇
+## Branch and Commit Selection
+
+You can specify the branch name, tag, or commit hash:
 
 ```bash
-# 指定分支
+# Specific branch using --remote-branch option
 repomix --remote user/repo --remote-branch main
 
-# 指定標籤
+# Using branch's URL directly
+repomix --remote https://github.com/user/repo/tree/main
+
+# Tag
 repomix --remote user/repo --remote-branch v1.0.0
 
-# 指定提交哈希
+# Specific commit hash using --remote-branch option
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-## 系統要求
+## Requirements
 
-- 必須安裝 Git
-- 需要網絡連接
-- 需要倉庫的讀取權限
+- Git must be installed
+- Internet connection
+- Read access to repository
 
-## 輸出控制
+## Output Control
 
 ```bash
-# 自定義輸出位置
+# Custom output location
 repomix --remote user/repo -o custom-output.xml
 
-# 使用 XML 格式
+# With XML format
 repomix --remote user/repo --style xml
 
-# 移除註釋
+# Remove comments
 repomix --remote user/repo --remove-comments
 ```
 
-## Docker 使用方法
+## Docker Usage
 
 ```bash
-# 在當前目錄處理並輸出
+# Process and output to current directory
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 
-# 輸出到指定目錄
+# Output to specific directory
 docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
-## 常見問題
+## Common Issues
 
-### 訪問問題
-- 確保倉庫是公開的
-- 檢查 Git 是否已安裝
-- 驗證網絡連接
+### Access Issues
+- Ensure repository is public
+- Check Git installation
+- Verify internet connection
 
-### 大型倉庫處理
-- 使用 `--include` 選擇特定路徑
-- 啟用 `--remove-comments`
-- 分開處理不同分支
+### Large Repositories
+- Use `--include` to select specific paths
+- Enable `--remove-comments`
+- Process branches separately
