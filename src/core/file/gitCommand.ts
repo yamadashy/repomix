@@ -134,16 +134,32 @@ export const execGitShallowClone = async (
   repoOwner: string;
   repoName: string;
 }> => {
-  // Check if the URL is valid
+  let urlObj: URL;
   try {
-    new URL(url);
+    urlObj = new URL(url);
+    
+    if (!['http:', 'https:', 'git:'].includes(urlObj.protocol)) {
+      throw new Error('Invalid URL protocol');
+    }
   } catch (error) {
     throw new RepomixError(`Invalid repository URL. Please provide a valid URL. url: ${url}`);
   }
 
-  await deps.execFileAsync('git', ['clone', '--depth', '1', url, directory]);
+  if (typeof directory !== 'string' || !directory.trim()) {
+    throw new RepomixError('Invalid directory path');
+  }
 
-  const urlObj = new URL(url);
+  if (remoteBranch !== undefined && typeof remoteBranch !== 'string') {
+    throw new RepomixError('Invalid branch name');
+  }
+
+  const cloneArgs = ['clone', '--depth', '1'];
+  
+  cloneArgs.push(url);
+  cloneArgs.push(directory);
+  
+  await deps.execFileAsync('git', cloneArgs);
+
   const pathParts = urlObj.pathname.split('/').filter((part) => part.trim());
   const repoOwner = pathParts[0] || '';
   const repoName = (pathParts[1] || '').replace(/\.git$/, '');
@@ -195,7 +211,6 @@ export const execGitShallowClone = async (
       if (availableBranches.includes(remoteBranch)) {
         finalRemoteBranch = remoteBranch;
       } else {
-        // Check if it's a commit hash
         const isCommitHash = remoteBranch.match(/^[0-9a-f]{4,40}$/i);
         if (isCommitHash) {
           finalRemoteBranch = remoteBranch;
@@ -210,9 +225,18 @@ export const execGitShallowClone = async (
         await deps.execFileAsync('git', ['-C', directory, 'reset', '--hard']);
 
         try {
+          if (!finalRemoteBranch.match(/^[0-9a-zA-Z\/_.-]+$/)) {
+            throw new RepomixError(`Invalid branch or commit name: ${finalRemoteBranch}`);
+          }
+          
           await deps.execFileAsync('git', ['-C', directory, 'checkout', finalRemoteBranch]);
         } catch (err) {
           await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin']);
+          
+          if (!finalRemoteBranch.match(/^[0-9a-zA-Z\/_.-]+$/)) {
+            throw new RepomixError(`Invalid branch or commit name: ${finalRemoteBranch}`);
+          }
+          
           await deps.execFileAsync('git', ['-C', directory, 'checkout', finalRemoteBranch]);
         }
       }
