@@ -390,5 +390,81 @@ file2.ts
         execGitShallowClone(url, directory, nonExistentBranch, { execFileAsync: mockFileExecAsync }),
       ).rejects.toThrow(`Could not find branch: ${nonExistentBranch}`);
     });
+
+    test('should throw error for invalid URL', async () => {
+      const url = 'invalid-url';
+      const directory = '/tmp/repo';
+
+      await expect(
+        execGitShallowClone(url, directory, undefined, { execFileAsync: vi.fn() }),
+      ).rejects.toThrow('Invalid repository URL');
+    });
+
+    test('should throw error for invalid protocol', async () => {
+      const url = 'ftp://github.com/user/repo.git';
+      const directory = '/tmp/repo';
+
+      await expect(
+        execGitShallowClone(url, directory, undefined, { execFileAsync: vi.fn() }),
+      ).rejects.toThrow('Invalid repository URL');
+    });
+
+    test('should throw error for invalid directory path', async () => {
+      const url = 'https://github.com/user/repo.git';
+      const directory = '';
+
+      await expect(
+        execGitShallowClone(url, directory, undefined, { execFileAsync: vi.fn() }),
+      ).rejects.toThrow('Invalid directory path');
+    });
+
+    test('should throw error for invalid branch name type', async () => {
+      const url = 'https://github.com/user/repo.git';
+      const directory = '/tmp/repo';
+      const invalidBranch = 123;
+
+      await expect(
+        execGitShallowClone(url, directory, invalidBranch, { execFileAsync: vi.fn() }),
+      ).rejects.toThrow('Invalid branch name');
+    });
+
+    test('should throw error when checkout fails', async () => {
+      const url = 'https://github.com/user/repo.git';
+      const directory = '/tmp/repo';
+      const branch = 'feature/branch';
+
+      const mockFileExecAsync = vi
+        .fn()
+        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // clone
+        .mockResolvedValueOnce({
+          stdout: 'abcdef1234 refs/heads/main\nabcdef5678 refs/heads/feature/branch',
+          stderr: '',
+        }) // ls-remote
+        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // reset
+        .mockRejectedValueOnce(new Error('Checkout failed')); // checkout fails
+
+      await expect(
+        execGitShallowClone(url, directory, branch, { execFileAsync: mockFileExecAsync }),
+      ).rejects.toThrow('Failed to checkout branch or commit');
+    });
+
+    test('should extract owner and repo name correctly from URL', async () => {
+      const url = 'https://github.com/organization/repository-name.git';
+      const directory = '/tmp/repo';
+
+      const mockFileExecAsync = vi
+        .fn()
+        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // clone
+
+      const result = await execGitShallowClone(url, directory, undefined, { execFileAsync: mockFileExecAsync });
+
+      expect(result).toEqual({
+        repoUrl: url,
+        remoteBranch: undefined,
+        filePath: undefined,
+        repoOwner: 'organization',
+        repoName: 'repository-name',
+      });
+    });
   });
 });
