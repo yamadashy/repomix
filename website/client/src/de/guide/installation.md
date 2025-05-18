@@ -1,12 +1,12 @@
 # Installation
 
-## Using npx (No Installation Required)
+## Verwendung von npx (Keine Installation erforderlich)
 
 ```bash
 npx repomix
 ```
 
-## Global Installation
+## Globale Installation
 
 ### npm
 ```bash
@@ -23,48 +23,48 @@ yarn global add repomix
 brew install repomix
 ```
 
-## Docker Installation
+## Docker-Installation
 
-Pull and run the Docker image for containerized execution, ensuring consistent environments across systems:
+Laden und führen Sie das Docker-Image für eine containerisierte Ausführung aus, um konsistente Umgebungen über verschiedene Systeme hinweg zu gewährleisten:
 
 ```bash
-# Current directory - mounts the current directory to /app in the container
+# Aktuelles Verzeichnis - mountet das aktuelle Verzeichnis auf /app im Container
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix
 
-# Specific directory - specify a path to process only that directory
+# Spezifisches Verzeichnis - geben Sie einen Pfad an, um nur dieses Verzeichnis zu verarbeiten
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix path/to/directory
 
-# Custom output file - specify an output file name and location
+# Benutzerdefinierte Ausgabedatei - geben Sie einen Ausgabedateinamen und -ort an
 docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix -o custom-output.xml
 
-# Remote repository - store output in ./output directory
+# Remote-Repository - speichern Sie die Ausgabe im ./output-Verzeichnis
 docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix --remote yamadashy/repomix
 ```
 
-The Docker image includes all dependencies required to run Repomix.
+Das Docker-Image enthält alle Abhängigkeiten, die für die Ausführung von Repomix erforderlich sind.
 
-## VSCode Extension
+## VSCode-Erweiterung
 
-Run Repomix directly in VSCode with the community-maintained [Repomix Runner](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner) extension (created by [massdo](https://github.com/massdo)).
+Führen Sie Repomix direkt in VSCode mit der von der Community gepflegten [Repomix Runner](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)-Erweiterung aus (erstellt von [massdo](https://github.com/massdo)).
 
-Features:
-- Pack any folder with just a few clicks
-- Control output format (XML, Markdown, Plain Text)
-- Choose between file or content mode for copying
-- Automatic cleanup of output files
-- Works seamlessly with your existing repomix.config.json
-- Manage outputs through VSCode's intuitive interface
+Funktionen:
+- Packen Sie jeden Ordner mit nur wenigen Klicks
+- Steuern Sie das Ausgabeformat (XML, Markdown, Klartext)
+- Wählen Sie zwischen Datei- oder Inhaltsmodus zum Kopieren
+- Automatische Bereinigung von Ausgabedateien
+- Arbeitet nahtlos mit Ihrer bestehenden repomix.config.json
+- Verwalten Sie Ausgaben über die intuitive Benutzeroberfläche von VSCode
 
-Install it from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner) or view the [source code on GitHub](https://github.com/massdo/repomix-runner).
+Installieren Sie sie vom [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner) oder sehen Sie sich den [Quellcode auf GitHub](https://github.com/massdo/repomix-runner) an.
 
-## System Requirements
+## Systemanforderungen
 
 - Node.js: ≥ 18.0.0
-- Git: Required for remote repository processing
+- Git: Erforderlich für die Verarbeitung von Remote-Repositories
 
-## Verification
+## Überprüfung
 
-After installation, verify that Repomix is working:
+Nach der Installation überprüfen Sie, ob Repomix funktioniert:
 
 ```bash
 repomix --version
