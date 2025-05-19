@@ -188,8 +188,13 @@ file2.ts
       const directory = '/tmp/repo';
       const remoteBranch = undefined;
 
-      await execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync });
+      const mockDownloadGitHubRepoAsZip = vi.fn().mockResolvedValue(false);
+      await execGitShallowClone(url, directory, remoteBranch, {
+        execFileAsync: mockFileExecAsync,
+        downloadGitHubRepoAsZip: mockDownloadGitHubRepoAsZip,
+      });
 
+      expect(mockDownloadGitHubRepoAsZip).toHaveBeenCalledWith(url, directory, 'main');
       expect(mockFileExecAsync).toHaveBeenCalledWith('git', ['clone', '--depth', '1', url, directory]);
     });
 
@@ -199,10 +204,15 @@ file2.ts
       const directory = '/tmp/repo';
       const remoteBranch = undefined;
 
+      const mockDownloadGitHubRepoAsZip = vi.fn().mockResolvedValue(false);
       await expect(
-        execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
+        execGitShallowClone(url, directory, remoteBranch, {
+          execFileAsync: mockFileExecAsync,
+          downloadGitHubRepoAsZip: mockDownloadGitHubRepoAsZip,
+        }),
       ).rejects.toThrow('Authentication failed');
 
+      expect(mockDownloadGitHubRepoAsZip).toHaveBeenCalledWith(url, directory, 'main');
       expect(mockFileExecAsync).toHaveBeenCalledWith('git', ['clone', '--depth', '1', url, directory]);
     });
 
@@ -213,7 +223,11 @@ file2.ts
       const directory = '/tmp/repo';
       const remoteBranch = 'main';
 
-      await execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync });
+      const mockDownloadGitHubRepoAsZip = vi.fn().mockResolvedValue(false);
+      await execGitShallowClone(url, directory, remoteBranch, {
+        execFileAsync: mockFileExecAsync,
+        downloadGitHubRepoAsZip: mockDownloadGitHubRepoAsZip,
+      });
 
       expect(mockFileExecAsync).toHaveBeenCalledTimes(4);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(1, 'git', ['-C', directory, 'init']);
@@ -241,8 +255,12 @@ file2.ts
       const directory = '/tmp/repo';
       const remoteBranch = 'b188a6cb39b512a9c6da7235b880af42c78ccd0d';
 
+      const mockDownloadGitHubRepoAsZip = vi.fn().mockResolvedValue(false);
       await expect(
-        execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
+        execGitShallowClone(url, directory, remoteBranch, {
+          execFileAsync: mockFileExecAsync,
+          downloadGitHubRepoAsZip: mockDownloadGitHubRepoAsZip,
+        }),
       ).rejects.toThrow('Authentication failed');
       expect(mockFileExecAsync).toHaveBeenCalledTimes(3);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(1, 'git', ['-C', directory, 'init']);
@@ -272,7 +290,11 @@ file2.ts
           ),
         );
 
-      await execGitShallowClone(url, directory, shortSha, { execFileAsync: mockFileExecAsync });
+      const mockDownloadGitHubRepoAsZip = vi.fn().mockResolvedValue(false);
+      await execGitShallowClone(url, directory, shortSha, {
+        execFileAsync: mockFileExecAsync,
+        downloadGitHubRepoAsZip: mockDownloadGitHubRepoAsZip,
+      });
 
       expect(mockFileExecAsync).toHaveBeenCalledTimes(5);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(1, 'git', ['-C', directory, 'init']);
@@ -302,8 +324,12 @@ file2.ts
         .mockResolvedValueOnce('Success on second call')
         .mockRejectedValueOnce(new Error(errMessage));
 
+      const mockDownloadGitHubRepoAsZip = vi.fn().mockResolvedValue(false);
       await expect(
-        execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
+        execGitShallowClone(url, directory, remoteBranch, {
+          execFileAsync: mockFileExecAsync,
+          downloadGitHubRepoAsZip: mockDownloadGitHubRepoAsZip,
+        }),
       ).rejects.toThrow(errMessage);
       expect(mockFileExecAsync).toHaveBeenCalledTimes(3);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(1, 'git', ['-C', directory, 'init']);
@@ -317,6 +343,58 @@ file2.ts
         'origin',
         remoteBranch,
       ]);
+    });
+
+    test('should reject URLs with dangerous parameters', async () => {
+      const mockFileExecAsync = vi.fn();
+      const mockDownloadGitHubRepoAsZip = vi.fn().mockResolvedValue(false);
+
+      const url = 'https://github.com/user/repo.git --upload-pack=evil-command';
+      const directory = '/tmp/repo';
+      const remoteBranch = undefined;
+
+      await expect(
+        execGitShallowClone(url, directory, remoteBranch, {
+          execFileAsync: mockFileExecAsync,
+          downloadGitHubRepoAsZip: mockDownloadGitHubRepoAsZip,
+        }),
+      ).rejects.toThrow('Invalid repository URL. URL contains potentially dangerous parameters');
+
+      expect(mockFileExecAsync).not.toHaveBeenCalled();
+    });
+
+    test('should try ZIP download first for GitHub repos', async () => {
+      const mockFileExecAsync = vi.fn();
+      const mockDownloadGitHubRepoAsZip = vi.fn().mockResolvedValue(true);
+
+      const url = 'https://github.com/user/repo.git';
+      const directory = '/tmp/repo';
+      const remoteBranch = undefined;
+
+      await execGitShallowClone(url, directory, remoteBranch, {
+        execFileAsync: mockFileExecAsync,
+        downloadGitHubRepoAsZip: mockDownloadGitHubRepoAsZip,
+      });
+
+      expect(mockDownloadGitHubRepoAsZip).toHaveBeenCalledWith(url, directory, 'main');
+      expect(mockFileExecAsync).not.toHaveBeenCalled();
+    });
+
+    test('should fall back to git clone if ZIP download fails', async () => {
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
+      const mockDownloadGitHubRepoAsZip = vi.fn().mockResolvedValue(false);
+
+      const url = 'https://github.com/user/repo.git';
+      const directory = '/tmp/repo';
+      const remoteBranch = undefined;
+
+      await execGitShallowClone(url, directory, remoteBranch, {
+        execFileAsync: mockFileExecAsync,
+        downloadGitHubRepoAsZip: mockDownloadGitHubRepoAsZip,
+      });
+
+      expect(mockDownloadGitHubRepoAsZip).toHaveBeenCalledWith(url, directory, 'main');
+      expect(mockFileExecAsync).toHaveBeenCalledWith('git', ['clone', '--depth', '1', url, directory]);
     });
   });
 });

@@ -1,5 +1,7 @@
 import { execFile } from 'node:child_process';
+import { createWriteStream } from 'node:fs';
 import fs from 'node:fs/promises';
+import https from 'node:https';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -120,19 +122,127 @@ export const isGitInstalled = async (
   }
 };
 
+/**
+ * Download a GitHub repository as a zip file and extract it
+ * This is a more secure alternative to git clone
+ */
+export const downloadGitHubRepoAsZip = async (url: string, directory: string, branch = 'main'): Promise<boolean> => {
+  try {
+    const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+)(?:\.git)?/);
+    if (!match) {
+      logger.trace(`Not a GitHub repository URL: ${url}`);
+      return false;
+    }
+
+    const [, owner, repo] = match;
+    const zipUrl = `https://github.com/${owner}/${repo}/archive/${branch}.zip`;
+
+    logger.trace(`Downloading GitHub repository as ZIP: ${zipUrl}`);
+
+    // Create the directory
+    await fs.mkdir(directory, { recursive: true });
+
+    return new Promise((resolve) => {
+      const zipFilePath = path.join(directory, 'repo.zip');
+      const file = createWriteStream(zipFilePath);
+
+      const request = https
+        .get(zipUrl, (response) => {
+          if (response.statusCode === 302 && response.headers.location) {
+            logger.trace(`Following redirect to: ${response.headers.location}`);
+            https
+              .get(response.headers.location, (redirectResponse) => {
+                if (redirectResponse.statusCode !== 200) {
+                  logger.trace(`Failed to download GitHub archive: ${redirectResponse.statusCode}`);
+                  fs.unlink(zipFilePath).catch((err) => logger.trace(`Error removing file: ${err.message}`));
+                  resolve(false);
+                  return;
+                }
+
+                redirectResponse.pipe(file);
+
+                file.on('finish', () => {
+                  file.close();
+                  logger.trace(`ZIP file downloaded to: ${zipFilePath}`);
+
+                  resolve(true);
+                });
+              })
+              .on('error', (err) => {
+                fs.unlink(zipFilePath).catch((err) => logger.trace(`Error removing file: ${err.message}`));
+                logger.trace(`Error downloading GitHub archive (redirect): ${err.message}`);
+                resolve(false);
+              });
+            return;
+          }
+
+          if (response.statusCode === 404) {
+            logger.trace(`GitHub archive not found: ${zipUrl}`);
+            resolve(false);
+            return;
+          }
+
+          if (response.statusCode !== 200) {
+            logger.trace(`Failed to download GitHub archive: ${response.statusCode}`);
+            resolve(false);
+            return;
+          }
+
+          response.pipe(file);
+
+          file.on('finish', () => {
+            file.close();
+            logger.trace(`ZIP file downloaded to: ${zipFilePath}`);
+
+            resolve(true);
+          });
+        })
+        .on('error', (err) => {
+          fs.unlink(zipFilePath).catch((err) => logger.trace(`Error removing file: ${err.message}`));
+          logger.trace(`Error downloading GitHub archive: ${err.message}`);
+          resolve(false);
+        });
+
+      request.end();
+    });
+  } catch (error) {
+    logger.trace(`Error in downloadGitHubRepoAsZip: ${(error as Error).message}`);
+    return false;
+  }
+};
+
 export const execGitShallowClone = async (
   url: string,
   directory: string,
   remoteBranch?: string,
   deps = {
     execFileAsync,
+    downloadGitHubRepoAsZip,
   },
 ) => {
-  // Check if the URL is valid
+  if (url.includes('--upload-pack') || url.includes('--config') || url.includes('--exec')) {
+    throw new RepomixError(`Invalid repository URL. URL contains potentially dangerous parameters: ${url}`);
+  }
+
+  // Then check if the URL is valid
   try {
-    new URL(url);
+    const parsedUrl = new URL(url);
   } catch (error) {
     throw new RepomixError(`Invalid repository URL. Please provide a valid URL. url: ${url}`);
+  }
+
+  if (url.includes('github.com') && !remoteBranch) {
+    try {
+      const branch = remoteBranch || 'main';
+      const success = await deps.downloadGitHubRepoAsZip(url, directory, branch);
+      if (success) {
+        logger.trace(`Successfully downloaded repository as ZIP: ${url}`);
+        return;
+      }
+      logger.trace(`ZIP download failed, falling back to git clone: ${url}`);
+    } catch (error) {
+      logger.trace(`Error downloading repository as ZIP, falling back to git clone: ${(error as Error).message}`);
+    }
   }
 
   if (remoteBranch) {
