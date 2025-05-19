@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "jszip": "^3.10.1",
-    "lucide-vue-next": "^0.474.0",
+    "lucide-vue-next": "^0.511.0",
     "vite-plugin-pwa": "^1.0.0",
     "vue3-ace-editor": "^2.2.4"
   },
