@@ -123,18 +123,27 @@ export const isGitInstalled = async (
 };
 
 /**
+ * Validates if a URL is a GitHub repository URL with proper structure
+ * More secure than just checking if URL includes 'github.com'
+ */
+export const isGitHubRepoUrl = (url: string): boolean => {
+  const githubUrlRegex = /^https?:\/\/(?:www\.)?github\.com\/([^\/]+)\/([^\/\.]+)(?:\.git)?(?:\/?)?$/;
+  return githubUrlRegex.test(url);
+};
+
+/**
  * Download a GitHub repository as a zip file and extract it
  * This is a more secure alternative to git clone
  */
 export const downloadGitHubRepoAsZip = async (url: string, directory: string, branch = 'main'): Promise<boolean> => {
   try {
-    const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+)(?:\.git)?/);
-    if (!match) {
-      logger.trace(`Not a GitHub repository URL: ${url}`);
+    if (!isGitHubRepoUrl(url)) {
+      logger.trace(`Not a valid GitHub repository URL: ${url}`);
       return false;
     }
 
-    const [, owner, repo] = match;
+    const match = url.match(/^https?:\/\/(?:www\.)?github\.com\/([^\/]+)\/([^\/\.]+)(?:\.git)?(?:\/?)?$/);
+    const [, owner, repo] = match || [];
     const zipUrl = `https://github.com/${owner}/${repo}/archive/${branch}.zip`;
 
     logger.trace(`Downloading GitHub repository as ZIP: ${zipUrl}`);
@@ -231,7 +240,7 @@ export const execGitShallowClone = async (
     throw new RepomixError(`Invalid repository URL. Please provide a valid URL. url: ${url}`);
   }
 
-  if (url.includes('github.com') && !remoteBranch) {
+  if (isGitHubRepoUrl(url) && !remoteBranch) {
     try {
       const branch = remoteBranch || 'main';
       const success = await deps.downloadGitHubRepoAsZip(url, directory, branch);

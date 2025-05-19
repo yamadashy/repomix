@@ -3,6 +3,7 @@ import {
   execGitShallowClone,
   getFileChangeCount,
   getWorkTreeDiff,
+  isGitHubRepoUrl,
   isGitInstalled,
   isGitRepository,
 } from '../../../src/core/git/gitCommand.js';
@@ -125,6 +126,25 @@ file2.ts
 
       expect(result).toBe(false);
       expect(mockFileExecAsync).toHaveBeenCalledWith('git', ['-C', directory, 'rev-parse', '--is-inside-work-tree']);
+    });
+  });
+
+  describe('isGitHubRepoUrl', () => {
+    test('should validate legitimate GitHub URLs', () => {
+      expect(isGitHubRepoUrl('https://github.com/user/repo')).toBe(true);
+      expect(isGitHubRepoUrl('https://github.com/user/repo.git')).toBe(true);
+      expect(isGitHubRepoUrl('http://github.com/user/repo')).toBe(true);
+      expect(isGitHubRepoUrl('https://www.github.com/user/repo')).toBe(true);
+      expect(isGitHubRepoUrl('https://github.com/user/repo/')).toBe(true);
+    });
+
+    test('should reject malicious or invalid GitHub URLs', () => {
+      expect(isGitHubRepoUrl('https://evil.com/github.com/user/repo')).toBe(false);
+      expect(isGitHubRepoUrl('https://github.com.evil.com/user/repo')).toBe(false);
+      expect(isGitHubRepoUrl('https://github.com/user/repo/extra-path')).toBe(false);
+      expect(isGitHubRepoUrl('https://github.com/user')).toBe(false);
+      expect(isGitHubRepoUrl('https://github.com')).toBe(false);
+      expect(isGitHubRepoUrl('not-a-url')).toBe(false);
     });
   });
 
@@ -394,6 +414,40 @@ file2.ts
       });
 
       expect(mockDownloadGitHubRepoAsZip).toHaveBeenCalledWith(url, directory, 'main');
+      expect(mockFileExecAsync).toHaveBeenCalledWith('git', ['clone', '--depth', '1', url, directory]);
+    });
+
+    test('should not attempt ZIP download for malicious GitHub-like URLs', async () => {
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
+      const mockDownloadGitHubRepoAsZip = vi.fn().mockResolvedValue(false);
+
+      const url = 'https://evil.com/github.com/user/repo.git';
+      const directory = '/tmp/repo';
+      const remoteBranch = undefined;
+
+      await execGitShallowClone(url, directory, remoteBranch, {
+        execFileAsync: mockFileExecAsync,
+        downloadGitHubRepoAsZip: mockDownloadGitHubRepoAsZip,
+      });
+
+      expect(mockDownloadGitHubRepoAsZip).not.toHaveBeenCalled();
+      expect(mockFileExecAsync).toHaveBeenCalledWith('git', ['clone', '--depth', '1', url, directory]);
+    });
+
+    test('should not attempt ZIP download for URLs with github.com as subdomain', async () => {
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
+      const mockDownloadGitHubRepoAsZip = vi.fn().mockResolvedValue(false);
+
+      const url = 'https://github.com.evil.com/user/repo.git';
+      const directory = '/tmp/repo';
+      const remoteBranch = undefined;
+
+      await execGitShallowClone(url, directory, remoteBranch, {
+        execFileAsync: mockFileExecAsync,
+        downloadGitHubRepoAsZip: mockDownloadGitHubRepoAsZip,
+      });
+
+      expect(mockDownloadGitHubRepoAsZip).not.toHaveBeenCalled();
       expect(mockFileExecAsync).toHaveBeenCalledWith('git', ['clone', '--depth', '1', url, directory]);
     });
   });
