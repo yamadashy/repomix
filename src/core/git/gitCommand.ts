@@ -126,6 +126,19 @@ export const getRemoteRefs = async (
     execFileAsync,
   },
 ): Promise<string[]> => {
+  if (url.includes('--upload-pack') || url.includes('--config') || url.includes('--exec')) {
+    logger.trace(`Invalid repository URL. URL contains potentially dangerous parameters: ${url}`);
+    return [];
+  }
+
+  // Check if the URL is valid
+  try {
+    new URL(url);
+  } catch (error) {
+    logger.trace(`Invalid repository URL. Please provide a valid URL. url: ${url}`);
+    return [];
+  }
+
   try {
     const result = await deps.execFileAsync('git', ['ls-remote', '--heads', '--tags', url]);
 
