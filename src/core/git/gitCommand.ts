@@ -135,6 +135,14 @@ export const getRemoteRefs = async (
     throw new RepomixError(`Invalid repository URL. URL contains potentially dangerous parameters: ${url}`);
   }
 
+  if (url.startsWith('https://')) {
+    try {
+      new URL(url);
+    } catch (error) {
+      throw new RepomixError(`Invalid repository URL. Please provide a valid URL: ${url}`);
+    }
+  }
+
   try {
     const result = await deps.execFileAsync('git', ['ls-remote', '--heads', '--tags', url]);
 
