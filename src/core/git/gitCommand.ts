@@ -128,13 +128,11 @@ export const getRemoteRefs = async (
 ): Promise<string[]> => {
   // Check if the URL starts with git@ or https://
   if (!(url.startsWith('git@') || url.startsWith('https://'))) {
-    logger.trace(`Invalid remote: ${url}`);
-    return [];
+    throw new RepomixError(`Invalid remote: ${url}`);
   }
 
   if (url.includes('--upload-pack') || url.includes('--config') || url.includes('--exec')) {
-    logger.trace(`Invalid repository URL. URL contains potentially dangerous parameters: ${url}`);
-    return [];
+    throw new RepomixError(`Invalid repository URL. URL contains potentially dangerous parameters: ${url}`);
   }
 
   try {
@@ -159,7 +157,7 @@ export const getRemoteRefs = async (
     return refs;
   } catch (error) {
     logger.trace('Failed to get remote refs:', (error as Error).message);
-    return [];
+    throw new RepomixError(`Failed to get remote refs: ${(error as Error).message}`);
   }
 };
 
