@@ -369,7 +369,9 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
       const mockFileExecAsync = vi.fn();
 
       await expect(
-        getRemoteRefs('https://github.com/user/repo.git --upload-pack=evil-command', { execFileAsync: mockFileExecAsync }),
+        getRemoteRefs('https://github.com/user/repo.git --upload-pack=evil-command', {
+          execFileAsync: mockFileExecAsync,
+        }),
       ).rejects.toThrow('Invalid repository URL. URL contains potentially dangerous parameters');
 
       expect(mockFileExecAsync).not.toHaveBeenCalled();
@@ -378,9 +380,9 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
     test('should throw error when git command fails', async () => {
       const mockFileExecAsync = vi.fn().mockRejectedValue(new Error('git command failed'));
 
-      await expect(getRemoteRefs('https://github.com/user/repo.git', { execFileAsync: mockFileExecAsync })).rejects.toThrow(
-        'Failed to get remote refs: git command failed',
-      );
+      await expect(
+        getRemoteRefs('https://github.com/user/repo.git', { execFileAsync: mockFileExecAsync }),
+      ).rejects.toThrow('Failed to get remote refs: git command failed');
 
       expect(mockFileExecAsync).toHaveBeenCalledWith('git', [
         'ls-remote',
