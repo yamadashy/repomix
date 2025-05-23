@@ -4,6 +4,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { parseRemoteValue } from './gitRemoteParse.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -135,12 +136,10 @@ export const getRemoteRefs = async (
     throw new RepomixError(`Invalid repository URL. URL contains potentially dangerous parameters: ${url}`);
   }
 
-  if (url.startsWith('https://')) {
-    try {
-      new URL(url);
-    } catch (error) {
-      throw new RepomixError(`Invalid repository URL. Please provide a valid URL: ${url}`);
-    }
+  try {
+    parseRemoteValue(url);
+  } catch (error) {
+    throw new RepomixError(`Invalid repository URL. Please provide a valid URL: ${url}`);
   }
 
   try {
