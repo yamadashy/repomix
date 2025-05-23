@@ -1,10 +1,13 @@
 import sys
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPalette, QColor, QFont
+from PySide6.QtGui import QPalette, QColor, QFont, QClipboard
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
+    QFileDialog,
+    QMessageBox,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
     QHBoxLayout,
@@ -40,14 +43,17 @@ class MainWindow(QMainWindow):
         self.github_button = QPushButton("GitHub")
         self.github_button.setFixedWidth(80)
         top_section_layout.addWidget(self.github_button)
+        self.github_button.clicked.connect(self.on_github_button_clicked)
 
         self.folder_button = QPushButton("Folder")
         self.folder_button.setFixedWidth(80)
         top_section_layout.addWidget(self.folder_button)
+        self.folder_button.clicked.connect(self.on_folder_button_clicked)
 
         self.copy_button = QPushButton("Copy")
         self.copy_button.setFixedWidth(80)
         top_section_layout.addWidget(self.copy_button)
+        self.copy_button.clicked.connect(self.on_copy_input_path_button_clicked)
 
         self.path_input_field = QLineEdit()
         self.path_input_field.setPlaceholderText("Enter GitHub URL or local path")
@@ -152,13 +158,125 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(center_horizontal_layout)
         # main_layout.addStretch(1) # Removed stretch, rely on panel sizing
+        main_layout.addLayout(center_horizontal_layout)
+
+        # Feedback Area
+        self.feedback_area = QTextEdit()
+        self.feedback_area.setReadOnly(True)
+        self.feedback_area.setPlaceholderText("Packer output and messages will appear here...")
+        self.feedback_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        main_layout.addWidget(self.feedback_area)
+
 
         self.apply_stylesheet() # Apply custom stylesheet
 
+    def on_github_button_clicked(self):
+        self.path_input_field.setText("https://github.com/Juqika/repomix-app.git")
+
+    def on_folder_button_clicked(self):
+        directory = QFileDialog.getExistingDirectory(self, "Select Folder")
+        if directory:
+            self.path_input_field.setText(directory)
+
+    def on_copy_input_path_button_clicked(self):
+        clipboard = QApplication.clipboard()
+        if clipboard is not None:
+            clipboard.setText(self.path_input_field.text())
+            QMessageBox.information(self, "Copied", "Input path copied to clipboard.")
+        else:
+            QMessageBox.warning(self, "Error", "Could not access clipboard.")
+
+
     def on_pack_button_clicked(self):
-        print("Pack button clicked! (Placeholder)")
-        # Future logic will gather all selected options and input path
-        # and then trigger the core packing logic.
+        self.feedback_area.clear()
+        self.feedback_area.append("Starting Repomix process...")
+
+        input_path = self.path_input_field.text().strip()
+
+        if not input_path:
+            QMessageBox.warning(self, "Input Missing", "Please provide an input path or URL.")
+            self.feedback_area.append("Error: Input path or URL is missing.")
+            return
+        
+        self.feedback_area.append(f"Input: {input_path}")
+
+        if self.xml_radio_button.isChecked():
+            output_style = "xml"
+        elif self.markdown_radio_button.isChecked():
+            output_style = "markdown"
+        else:
+            output_style = "plain"
+        self.feedback_area.append(f"Output Style: {output_style}")
+        
+        output_file_name = f"repomix_gui_output.{output_style}"
+
+        include_patterns = self.include_patterns_input.text().strip() or None
+        ignore_patterns = self.ignore_patterns_input.text().strip() or None
+        if include_patterns: self.feedback_area.append(f"Include Patterns: {include_patterns}")
+        if ignore_patterns: self.feedback_area.append(f"Ignore Patterns: {ignore_patterns}")
+        
+        no_file_summary = not self.file_summary_checkbox.isChecked()
+        no_directory_structure = not self.dir_structure_checkbox.isChecked()
+        show_line_numbers = self.line_numbers_checkbox.isChecked()
+        parsable_style = self.parsable_format_checkbox.isChecked()
+        compress_code = self.compress_code_checkbox.isChecked()
+        remove_comments = self.remove_comments_checkbox.isChecked()
+        remove_empty_lines = self.remove_empty_lines_checkbox.isChecked()
+        
+        # Log selected options
+        self.feedback_area.append("Options:")
+        self.feedback_area.append(f"  File Summary: {self.file_summary_checkbox.isChecked()}")
+        self.feedback_area.append(f"  Directory Structure: {self.dir_structure_checkbox.isChecked()}")
+        self.feedback_area.append(f"  Line Numbers: {show_line_numbers}")
+        self.feedback_area.append(f"  Parsable Format: {parsable_style}")
+        self.feedback_area.append(f"  Compress Code: {compress_code}")
+        self.feedback_area.append(f"  Remove Comments: {remove_comments}")
+        self.feedback_area.append(f"  Remove Empty Lines: {remove_empty_lines}")
+        self.feedback_area.append("-" * 30) # Separator
+
+
+        # Disable button to prevent multiple clicks
+        self.pack_button.setEnabled(False)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
+        success, stdout, stderr, output_file_path = run_repomix_command(
+            input_path=input_path,
+            output_style=output_style,
+            output_file_name=output_file_name,
+            include_patterns=include_patterns,
+            ignore_patterns=ignore_patterns,
+            no_file_summary=no_file_summary,
+            no_directory_structure=no_directory_structure,
+            show_line_numbers=show_line_numbers,
+            parsable_style=parsable_style,
+            compress_code=compress_code,
+            remove_comments=remove_comments,
+            remove_empty_lines=remove_empty_lines,
+        )
+        
+        QApplication.restoreOverrideCursor()
+        self.pack_button.setEnabled(True)
+
+        if success:
+            self.feedback_area.append("\nRepomix process completed successfully.")
+            self.feedback_area.append(f"Output file: {output_file_path}")
+            if stdout:
+                self.feedback_area.append("\nSTDOUT:")
+                self.feedback_area.append(stdout)
+            if stderr: # Even on success, repomix might output warnings to stderr
+                self.feedback_area.append("\nSTDERR (non-fatal warnings):")
+                self.feedback_area.append(stderr)
+            QMessageBox.information(self, "Success", f"Repomix processed successfully!\nOutput file: {output_file_path}")
+        else:
+            self.feedback_area.append("\nRepomix process failed.")
+            if stderr:
+                self.feedback_area.append(f"\nError (STDERR):\n{stderr}")
+            else:
+                self.feedback_area.append("No detailed error message from STDERR.")
+            if stdout: # stdout might contain useful info even on failure
+                self.feedback_area.append("\nSTDOUT:")
+                self.feedback_area.append(stdout)
+            QMessageBox.critical(self, "Error", "Repomix processing failed. Check feedback area for details.")
 
     def apply_stylesheet(self):
         stylesheet = """
@@ -216,6 +334,13 @@ class MainWindow(QMainWindow):
             }
             QLabel {
                 padding-top: 4px; /* Align labels better with input fields */
+            }
+            QTextEdit {
+                background-color: #2D2D2D;
+                color: #CCCCCC;
+                border: 1px solid #555;
+                border-radius: 5px;
+                font-family: Consolas, Courier New, monospace;
             }
         """
         self.setStyleSheet(stylesheet)
