@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
         self.github_button = QPushButton("GitHub")
         self.github_button.setFixedWidth(80)
         top_section_layout.addWidget(self.github_button)
-        self.github_button.clicked.connect(self.on_github_button_clicked)
+        # self.github_button.clicked.connect(self.on_github_button_clicked) # Connection removed
 
         self.folder_button = QPushButton("Folder")
         self.folder_button.setFixedWidth(80)
@@ -170,8 +170,8 @@ class MainWindow(QMainWindow):
 
         self.apply_stylesheet() # Apply custom stylesheet
 
-    def on_github_button_clicked(self):
-        self.path_input_field.setText("https://github.com/Juqika/repomix-app.git")
+    # def on_github_button_clicked(self): # Method removed
+    #     self.path_input_field.setText("https://github.com/Juqika/repomix-app.git")
 
     def on_folder_button_clicked(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Folder")
