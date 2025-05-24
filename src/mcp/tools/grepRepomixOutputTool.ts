@@ -6,15 +6,41 @@ import { logger } from '../../shared/logger.js';
 import { getOutputFilePath } from './mcpToolRuntime.js';
 
 /**
+ * Search options for grep functionality
+ */
+interface SearchOptions {
+  pattern: string;
+  contextLines: number;
+  ignoreCase: boolean;
+}
+
+/**
+ * Search match result
+ */
+interface SearchMatch {
+  lineNumber: number;
+  line: string;
+  matchedText: string;
+}
+
+/**
+ * Search result containing matches and formatted output
+ */
+interface SearchResult {
+  matches: SearchMatch[];
+  formattedOutput: string[];
+}
+
+/**
  * Register the tool to search Repomix output files with grep-like functionality
  */
 export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
   mcpServer.tool(
     'grep_repomix_output',
-    'Search for patterns in a Repomix output file using grep-like functionality. Returns matching lines with optional context lines around matches.',
+    'Search for patterns in a Repomix output file using grep-like functionality with JavaScript RegExp syntax. Returns matching lines with optional context lines around matches.',
     {
       outputId: z.string().describe('ID of the Repomix output file to search'),
-      pattern: z.string().describe('Search pattern (regular expression)'),
+      pattern: z.string().describe('Search pattern (JavaScript RegExp regular expression syntax)'),
       contextLines: z
         .number()
         .default(0)
@@ -60,38 +86,28 @@ export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
         }
 
         const content = await fs.readFile(filePath, 'utf8');
-        const lines = content.split('\n');
 
-        const regexFlags = ignoreCase ? 'gi' : 'g';
-        let regex: RegExp;
+        // Perform grep search using separated functions
+        let searchResult: SearchResult;
         try {
-          regex = new RegExp(pattern, regexFlags);
+          searchResult = performGrepSearch(content, {
+            pattern,
+            contextLines,
+            ignoreCase,
+          });
         } catch (error) {
           return {
             isError: true,
             content: [
               {
                 type: 'text',
-                text: `Error: Invalid regular expression pattern: ${pattern}. ${error instanceof Error ? error.message : String(error)}`,
+                text: `Error: ${error instanceof Error ? error.message : String(error)}`,
               },
             ],
           };
         }
 
-        const matches: Array<{ lineNumber: number; line: string; matchedText: string }> = [];
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          const match = line.match(regex);
-          if (match) {
-            matches.push({
-              lineNumber: i + 1,
-              line,
-              matchedText: match[0],
-            });
-          }
-        }
-
-        if (matches.length === 0) {
+        if (searchResult.matches.length === 0) {
           return {
             content: [
               {
@@ -102,36 +118,15 @@ export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
           };
         }
 
-        const resultLines: string[] = [];
-        const addedLines = new Set<number>();
-
-        for (const match of matches) {
-          const start = Math.max(0, match.lineNumber - 1 - contextLines);
-          const end = Math.min(lines.length - 1, match.lineNumber - 1 + contextLines);
-
-          if (resultLines.length > 0 && start > Math.min(...addedLines) + 1) {
-            resultLines.push('--');
-          }
-
-          for (let i = start; i <= end; i++) {
-            if (!addedLines.has(i)) {
-              const lineNum = i + 1;
-              const prefix = i === match.lineNumber - 1 ? `${lineNum}:` : `${lineNum}-`;
-              resultLines.push(`${prefix}${lines[i]}`);
-              addedLines.add(i);
-            }
-          }
-        }
-
         return {
           content: [
             {
               type: 'text',
-              text: `Found ${matches.length} match(es) for pattern "${pattern}" in Repomix output file (ID: ${outputId}):`,
+              text: `Found ${searchResult.matches.length} match(es) for pattern "${pattern}" in Repomix output file (ID: ${outputId}):`,
             },
             {
               type: 'text',
-              text: resultLines.join('\n'),
+              text: searchResult.formattedOutput.join('\n'),
             },
           ],
         };
@@ -149,4 +144,107 @@ export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
       }
     },
   );
+};
+
+/**
+ * Create and validate a regular expression pattern
+ */
+export const createRegexPattern = (
+  pattern: string,
+  ignoreCase: boolean,
+  deps = {
+    RegExp,
+  },
+): RegExp => {
+  const regexFlags = ignoreCase ? 'gi' : 'g';
+  try {
+    return new deps.RegExp(pattern, regexFlags);
+  } catch (error) {
+    throw new Error(
+      `Invalid regular expression pattern: ${pattern}. ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+};
+
+/**
+ * Search for pattern matches in file content
+ */
+export const searchInContent = (
+  content: string,
+  options: SearchOptions,
+  deps = {
+    createRegexPattern,
+  },
+): SearchMatch[] => {
+  const lines = content.split('\n');
+  const regex = deps.createRegexPattern(options.pattern, options.ignoreCase);
+
+  const matches: SearchMatch[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(regex);
+    if (match) {
+      matches.push({
+        lineNumber: i + 1,
+        line,
+        matchedText: match[0],
+      });
+    }
+  }
+
+  return matches;
+};
+
+/**
+ * Format search results with context lines
+ */
+export const formatSearchResults = (lines: string[], matches: SearchMatch[], contextLines: number): string[] => {
+  if (matches.length === 0) {
+    return [];
+  }
+
+  const resultLines: string[] = [];
+  const addedLines = new Set<number>();
+
+  for (const match of matches) {
+    const start = Math.max(0, match.lineNumber - 1 - contextLines);
+    const end = Math.min(lines.length - 1, match.lineNumber - 1 + contextLines);
+
+    // Add separator if there's a gap between previous and current context
+    if (resultLines.length > 0 && start > Math.min(...addedLines) + 1) {
+      resultLines.push('--');
+    }
+
+    for (let i = start; i <= end; i++) {
+      if (!addedLines.has(i)) {
+        const lineNum = i + 1;
+        const prefix = i === match.lineNumber - 1 ? `${lineNum}:` : `${lineNum}-`;
+        resultLines.push(`${prefix}${lines[i]}`);
+        addedLines.add(i);
+      }
+    }
+  }
+
+  return resultLines;
+};
+
+/**
+ * Perform grep-like search on content
+ */
+export const performGrepSearch = (
+  content: string,
+  options: SearchOptions,
+  deps = {
+    searchInContent,
+    formatSearchResults,
+  },
+): SearchResult => {
+  const matches = deps.searchInContent(content, options);
+  const lines = content.split('\n');
+  const formattedOutput = deps.formatSearchResults(lines, matches, options.contextLines);
+
+  return {
+    matches,
+    formattedOutput,
+  };
 };
