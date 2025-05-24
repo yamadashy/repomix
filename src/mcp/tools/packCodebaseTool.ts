@@ -14,9 +14,9 @@ export const registerPackCodebaseTool = (mcpServer: McpServer) => {
       directory: z.string().describe('Directory to pack (Absolute path)'),
       compress: z
         .boolean()
-        .default(true)
+        .default(false)
         .describe(
-          'Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Significantly reduces token usage by ~70% while preserving semantic meaning. Recommended for large codebases (default: true).',
+          'Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Significantly reduces token usage by ~70% while preserving semantic meaning. For large codebases, it is recommended to either enable this option or use grep_repomix_output to retrieve content incrementally (default: false).',
         ),
       includePatterns: z
         .string()
