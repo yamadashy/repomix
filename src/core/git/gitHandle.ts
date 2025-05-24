@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { parseRemoteValue } from './gitRemoteParse.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -68,9 +69,7 @@ export const validateGitUrl = (url: string): void => {
   }
 
   try {
-    if (url.startsWith('https://')) {
-      new URL(url);
-    }
+    parseRemoteValue(url);
   } catch (error) {
     throw new RepomixError(`Invalid repository URL. Please provide a valid URL: ${url}`);
   }
