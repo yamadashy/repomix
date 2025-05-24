@@ -11,7 +11,7 @@ import { getOutputFilePath } from './mcpToolRuntime.js';
 export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
   mcpServer.tool(
     'read_repomix_output',
-    'Read the contents of a Repomix output file in environments where direct file access is not possible. This tool is specifically intended for cases where the client cannot access the file system directly, such as in web-based environments or sandboxed applications. For systems with direct file access, use standard file operations instead.',
+    'Read the contents of a Repomix-generated output file. Supports partial reading with line range specification for large files. This tool is designed for environments where direct file system access is limited (e.g., web-based environments, sandboxed applications). For direct file system access, use standard file operations.',
     {
       outputId: z.string().describe('ID of the Repomix output file to read'),
       startLine: z

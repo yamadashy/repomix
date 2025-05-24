@@ -30,7 +30,7 @@ describe('FileSystemReadDirectoryTool', () => {
   test('should register tool with correct parameters', () => {
     expect(mockServer.tool).toHaveBeenCalledWith(
       'file_system_read_directory',
-      'List contents of a directory using an absolute path.',
+      'List the contents of a directory using an absolute path. Returns a formatted list showing files and subdirectories with clear [FILE]/[DIR] indicators. Useful for exploring project structure and understanding codebase organization.',
       expect.any(Object),
       expect.any(Object), // annotations
       expect.any(Function),

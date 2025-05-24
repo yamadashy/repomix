@@ -9,32 +9,34 @@ import { createToolWorkspace, formatToolError, formatToolResponse } from './mcpT
 export const registerPackCodebaseTool = (mcpServer: McpServer) => {
   mcpServer.tool(
     'pack_codebase',
-    'Package local code directory into a consolidated file for AI analysis',
+    'Package a local code directory into a consolidated XML file for AI analysis. This tool analyzes the codebase structure, extracts relevant code content, and generates a comprehensive report including metrics, file tree, and formatted code content. Supports Tree-sitter compression for efficient token usage.',
     {
       directory: z.string().describe('Directory to pack (Absolute path)'),
       compress: z
         .boolean()
         .default(true)
         .describe(
-          'Utilize Tree-sitter to intelligently extract essential code signatures and structure while removing implementation details, significantly reducing token usage (default: true)',
+          'Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Significantly reduces token usage by ~70% while preserving semantic meaning. Recommended for large codebases (default: true).',
         ),
       includePatterns: z
         .string()
         .optional()
         .describe(
-          'Specify which files to include using fast-glob compatible patterns (e.g., "**/*.js,src/**"). Only files matching these patterns will be processed. It is recommended to pack only necessary files.',
+          'Specify files to include using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "**/*.{js,ts}", "src/**,docs/**"). Only matching files will be processed. Useful for focusing on specific parts of the codebase.',
         ),
       ignorePatterns: z
         .string()
         .optional()
         .describe(
-          'Specify additional files to exclude using fast-glob compatible patterns (e.g., "test/**,*.spec.js"). These patterns complement .gitignore and default ignores. It is recommended to pack only necessary files.',
+          'Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.',
         ),
       topFilesLength: z
         .number()
         .optional()
         .default(10)
-        .describe('Number of top files to display in the metrics (default: 10)'),
+        .describe(
+          'Number of largest files by size to display in the metrics summary for codebase analysis (default: 10)',
+        ),
     },
     {
       title: 'Pack Local Codebase',

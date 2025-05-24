@@ -13,7 +13,7 @@ import { logger } from '../../shared/logger.js';
 export const registerFileSystemReadFileTool = (mcpServer: McpServer) => {
   mcpServer.tool(
     'file_system_read_file',
-    'Read a file using an absolute path with security validation.',
+    'Read a file from the local file system using an absolute path. Includes built-in security validation to detect and prevent access to files containing sensitive information (API keys, passwords, secrets).',
     {
       path: z.string().describe('Absolute path to the file to read'),
     },
