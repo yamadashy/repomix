@@ -96,6 +96,176 @@ describe('grepRepomixOutputTool', () => {
 
       expect(mockCreateRegexPattern).toHaveBeenCalledWith('test', false);
     });
+
+    it('should handle Japanese text search', () => {
+      const content = '最初の行\n日本語のパターン検索\n3行目\n別の日本語パターン\n最後の行';
+      const options = { pattern: '日本語', contextLines: 0, ignoreCase: false };
+
+      const matches = searchInContent(content, options);
+
+      expect(matches).toHaveLength(2);
+      expect(matches[0]).toEqual({
+        lineNumber: 2,
+        line: '日本語のパターン検索',
+        matchedText: '日本語',
+      });
+      expect(matches[1]).toEqual({
+        lineNumber: 4,
+        line: '別の日本語パターン',
+        matchedText: '日本語',
+      });
+    });
+
+    it('should handle Chinese text search', () => {
+      const content = '第一行\n中文搜索模式\n第三行\n另一个中文模式\n最后一行';
+      const options = { pattern: '中文', contextLines: 0, ignoreCase: false };
+
+      const matches = searchInContent(content, options);
+
+      expect(matches).toHaveLength(2);
+      expect(matches[0]).toEqual({
+        lineNumber: 2,
+        line: '中文搜索模式',
+        matchedText: '中文',
+      });
+      expect(matches[1]).toEqual({
+        lineNumber: 4,
+        line: '另一个中文模式',
+        matchedText: '中文',
+      });
+    });
+
+    it('should handle Korean text search', () => {
+      const content = '첫 번째 줄\n한국어 패턴 검색\n세 번째 줄\n다른 한국어 패턴\n마지막 줄';
+      const options = { pattern: '한국어', contextLines: 0, ignoreCase: false };
+
+      const matches = searchInContent(content, options);
+
+      expect(matches).toHaveLength(2);
+      expect(matches[0]).toEqual({
+        lineNumber: 2,
+        line: '한국어 패턴 검색',
+        matchedText: '한국어',
+      });
+      expect(matches[1]).toEqual({
+        lineNumber: 4,
+        line: '다른 한국어 패턴',
+        matchedText: '한국어',
+      });
+    });
+
+    it('should handle emoji search', () => {
+      const content = 'line 1\n🎉 celebration emoji\nline 3\nanother 🎉 here\nline 5';
+      const options = { pattern: '🎉', contextLines: 0, ignoreCase: false };
+
+      const matches = searchInContent(content, options);
+
+      expect(matches).toHaveLength(2);
+      expect(matches[0]).toEqual({
+        lineNumber: 2,
+        line: '🎉 celebration emoji',
+        matchedText: '🎉',
+      });
+      expect(matches[1]).toEqual({
+        lineNumber: 4,
+        line: 'another 🎉 here',
+        matchedText: '🎉',
+      });
+    });
+
+    it('should handle mixed multilingual content', () => {
+      const content = 'English line\n日本語とEnglishの混在\n中文和English混合\n🚀 emoji with text\nNormal line';
+      const options = { pattern: 'English', contextLines: 0, ignoreCase: false };
+
+      const matches = searchInContent(content, options);
+
+      expect(matches).toHaveLength(3);
+      expect(matches[0]).toEqual({
+        lineNumber: 1,
+        line: 'English line',
+        matchedText: 'English',
+      });
+      expect(matches[1]).toEqual({
+        lineNumber: 2,
+        line: '日本語とEnglishの混在',
+        matchedText: 'English',
+      });
+      expect(matches[2]).toEqual({
+        lineNumber: 3,
+        line: '中文和English混合',
+        matchedText: 'English',
+      });
+    });
+
+    it('should handle special characters and symbols', () => {
+      const content = 'line 1\n$special #symbols @test\nline 3\n&more $special chars\nline 5';
+      const options = { pattern: '\\$special', contextLines: 0, ignoreCase: false };
+
+      const matches = searchInContent(content, options);
+
+      expect(matches).toHaveLength(2);
+      expect(matches[0]).toEqual({
+        lineNumber: 2,
+        line: '$special #symbols @test',
+        matchedText: '$special',
+      });
+      expect(matches[1]).toEqual({
+        lineNumber: 4,
+        line: '&more $special chars',
+        matchedText: '$special',
+      });
+    });
+
+    it('should handle regex patterns with Unicode', () => {
+      const content = 'file1.js\nファイル1.ts\nfile2.py\nファイル2.jsx\ntest.md';
+      const options = { pattern: 'ファイル\\d+\\.(ts|jsx)', contextLines: 0, ignoreCase: false };
+
+      const matches = searchInContent(content, options);
+
+      expect(matches).toHaveLength(2);
+      expect(matches[0]).toEqual({
+        lineNumber: 2,
+        line: 'ファイル1.ts',
+        matchedText: 'ファイル1.ts',
+      });
+      expect(matches[1]).toEqual({
+        lineNumber: 4,
+        line: 'ファイル2.jsx',
+        matchedText: 'ファイル2.jsx',
+      });
+    });
+
+    it('should handle case-insensitive search with multibyte characters', () => {
+      const content = '日本語テスト\nNIPPON語test\n中文测试\nTEST中文';
+      const options = { pattern: 'test', contextLines: 0, ignoreCase: true };
+
+      const matches = searchInContent(content, options);
+
+      expect(matches).toHaveLength(2);
+      expect(matches[0]).toEqual({
+        lineNumber: 2,
+        line: 'NIPPON語test',
+        matchedText: 'test',
+      });
+      expect(matches[1]).toEqual({
+        lineNumber: 4,
+        line: 'TEST中文',
+        matchedText: 'TEST',
+      });
+    });
+
+    it('should handle complex Unicode regex patterns', () => {
+      const content = 'user@example.com\nユーザー@例.jp\ntest@テスト.org\n管理者@サンプル.co.jp\nnormal text';
+      const options = { pattern: '.+@.+\\.(com|jp|org)', contextLines: 0, ignoreCase: false };
+
+      const matches = searchInContent(content, options);
+
+      expect(matches).toHaveLength(4);
+      expect(matches[0].line).toBe('user@example.com');
+      expect(matches[1].line).toBe('ユーザー@例.jp');
+      expect(matches[2].line).toBe('test@テスト.org');
+      expect(matches[3].line).toBe('管理者@サンプル.co.jp');
+    });
   });
 
   describe('formatSearchResults', () => {
@@ -288,6 +458,137 @@ describe('grepRepomixOutputTool', () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Output file does not exist');
+    });
+
+    // Multilingual and Unicode content integration tests
+    it('should handle Japanese text in file content', async () => {
+      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '最初の行\n日本語のパターン\n3行目\n別の日本語\n最後の行' as unknown as Buffer,
+      );
+
+      const result = await toolHandler({ outputId: 'test-id', pattern: '日本語' });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(2);
+      expect(result.content[0].text).toContain('Found 2 match(es)');
+      expect(result.content[1].text).toContain('2:日本語のパターン');
+      expect(result.content[1].text).toContain('4:別の日本語');
+    });
+
+    it('should handle Chinese text in file content', async () => {
+      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockResolvedValue('第一行\n中文搜索\n第三行\n更多中文\n最后一行' as unknown as Buffer);
+
+      const result = await toolHandler({ outputId: 'test-id', pattern: '中文' });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(2);
+      expect(result.content[0].text).toContain('Found 2 match(es)');
+      expect(result.content[1].text).toContain('2:中文搜索');
+      expect(result.content[1].text).toContain('4:更多中文');
+    });
+
+    it('should handle Korean text in file content', async () => {
+      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '첫 번째 줄\n한국어 검색\n세 번째 줄\n다른 한국어\n마지막 줄' as unknown as Buffer,
+      );
+
+      const result = await toolHandler({ outputId: 'test-id', pattern: '한국어' });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(2);
+      expect(result.content[0].text).toContain('Found 2 match(es)');
+      expect(result.content[1].text).toContain('2:한국어 검색');
+      expect(result.content[1].text).toContain('4:다른 한국어');
+    });
+
+    it('should handle emoji content in file', async () => {
+      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        'line 1\n🎉 celebration\nline 3\n🚀 rocket emoji\nline 5' as unknown as Buffer,
+      );
+
+      const result = await toolHandler({ outputId: 'test-id', pattern: '🎉|🚀' });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(2);
+      expect(result.content[0].text).toContain('Found 2 match(es)');
+      expect(result.content[1].text).toContain('2:🎉 celebration');
+      expect(result.content[1].text).toContain('4:🚀 rocket emoji');
+    });
+
+    it('should handle mixed multilingual content in file', async () => {
+      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        'English line\n日本語とEnglish混在\n中文和English混合\n🌟 mixed content\nनमस्ते English' as unknown as Buffer,
+      );
+
+      const result = await toolHandler({ outputId: 'test-id', pattern: 'English', contextLines: 1 });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(2);
+      expect(result.content[0].text).toContain('Found 4 match(es)');
+      expect(result.content[1].text).toContain('1:English line');
+      expect(result.content[1].text).toContain('2-日本語とEnglish混在');
+      expect(result.content[1].text).toContain('3-中文和English混合');
+      expect(result.content[1].text).toContain('5:नमस्ते English');
+    });
+
+    it('should handle complex Unicode regex patterns in file content', async () => {
+      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        'user@example.com\nユーザー@例.jp\ntest@テスト.org\n管理者@サンプル.co.jp\nnormal text' as unknown as Buffer,
+      );
+
+      const result = await toolHandler({ outputId: 'test-id', pattern: '.+@.+\\.(com|jp|org)' });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(2);
+      expect(result.content[0].text).toContain('Found 4 match(es)');
+      expect(result.content[1].text).toContain('1:user@example.com');
+      expect(result.content[1].text).toContain('2:ユーザー@例.jp');
+      expect(result.content[1].text).toContain('3:test@テスト.org');
+      expect(result.content[1].text).toContain('4:管理者@サンプル.co.jp');
+    });
+
+    it('should handle special characters with escaping in file content', async () => {
+      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        'normal line\n$special chars #symbols\nline 3\n&more $special items\nend line' as unknown as Buffer,
+      );
+
+      const result = await toolHandler({ outputId: 'test-id', pattern: '\\$special', contextLines: 1 });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(2);
+      expect(result.content[0].text).toContain('Found 2 match(es)');
+      expect(result.content[1].text).toContain('2:$special chars #symbols');
+      expect(result.content[1].text).toContain('4:&more $special items');
+    });
+
+    it('should handle case-insensitive search with multibyte characters in file', async () => {
+      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        '日本語テスト\nNIPPON語test\n中文测试\nTEST中文\nnormal' as unknown as Buffer,
+      );
+
+      const result = await toolHandler({ outputId: 'test-id', pattern: 'test', ignoreCase: true });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content).toHaveLength(2);
+      expect(result.content[0].text).toContain('Found 2 match(es)');
+      expect(result.content[1].text).toContain('2:NIPPON語test');
+      expect(result.content[1].text).toContain('4:TEST中文');
     });
   });
 });
