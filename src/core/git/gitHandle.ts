@@ -64,6 +64,10 @@ export const validateGitUrl = (url: string): void => {
     throw new RepomixError(`Invalid repository URL. URL contains potentially dangerous parameters: ${url}`);
   }
 
+  if (/[;&|`$(){}[\]<>]/.test(url)) {
+    throw new RepomixError(`Invalid repository URL. URL contains shell metacharacters: ${url}`);
+  }
+
   if (!(url.startsWith('git@') || url.startsWith('https://'))) {
     throw new RepomixError(`Invalid URL protocol for '${url}'. URL must start with 'git@' or 'https://'`);
   }
