@@ -85,14 +85,16 @@ describe('mcpToolRuntime', () => {
       vi.mocked(crypto.randomBytes).mockImplementation(() => ({
         toString: () => 'abcdef1234567890',
       }));
+      vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5' as unknown as Buffer);
     });
 
-    it('should format a tool response with directory context', () => {
+    it('should format a tool response with directory context', async () => {
       const context = { directory: '/path/to/dir' };
       const metrics = {
         totalFiles: 10,
         totalCharacters: 1000,
         totalTokens: 200,
+        totalLines: 0, // Will be calculated in formatToolResponse
         fileCharCounts: {
           'file1.js': 500,
           'file2.js': 300,
@@ -106,7 +108,7 @@ describe('mcpToolRuntime', () => {
       };
       const outputFilePath = '/path/to/output.xml';
 
-      const response = formatToolResponse(context, metrics, outputFilePath);
+      const response = await formatToolResponse(context, metrics, outputFilePath);
 
       expect(response).toHaveProperty('content');
       expect(response.content).toHaveLength(4);
@@ -115,14 +117,16 @@ describe('mcpToolRuntime', () => {
       expect(response.content[1].text).toContain('"directory": "/path/to/dir"');
       expect(response.content[1].text).toContain('"outputId": "abcdef1234567890"');
       expect(response.content[1].text).toContain('"totalFiles": 10');
+      expect(response.content[1].text).toContain('"totalLines": 5');
     });
 
-    it('should format a tool response with repository context', () => {
+    it('should format a tool response with repository context', async () => {
       const context = { repository: 'user/repo' };
       const metrics = {
         totalFiles: 5,
         totalCharacters: 500,
         totalTokens: 100,
+        totalLines: 0, // Will be calculated in formatToolResponse
         fileCharCounts: {
           'file1.js': 300,
           'file2.js': 200,
@@ -134,18 +138,20 @@ describe('mcpToolRuntime', () => {
       };
       const outputFilePath = '/path/to/output.xml';
 
-      const response = formatToolResponse(context, metrics, outputFilePath);
+      const response = await formatToolResponse(context, metrics, outputFilePath);
 
       expect(response.content[1].text).toContain('"repository": "user/repo"');
       expect(response.content[1].text).not.toContain('"directory":');
+      expect(response.content[1].text).toContain('"totalLines": 5');
     });
 
-    it('should limit the number of top files based on the parameter', () => {
+    it('should limit the number of top files based on the parameter', async () => {
       const context = {};
       const metrics = {
         totalFiles: 10,
         totalCharacters: 1000,
         totalTokens: 200,
+        totalLines: 0, // Will be calculated in formatToolResponse
         fileCharCounts: {
           'file1.js': 500,
           'file2.js': 300,
@@ -166,13 +172,14 @@ describe('mcpToolRuntime', () => {
       const outputFilePath = '/path/to/output.xml';
       const topFilesLen = 3;
 
-      const response = formatToolResponse(context, metrics, outputFilePath, topFilesLen);
+      const response = await formatToolResponse(context, metrics, outputFilePath, topFilesLen);
 
       const jsonContent = JSON.parse(response.content[1].text as string);
       expect(jsonContent.metrics.topFiles).toHaveLength(3);
       expect(jsonContent.metrics.topFiles[0].path).toBe('file1.js');
       expect(jsonContent.metrics.topFiles[1].path).toBe('file2.js');
       expect(jsonContent.metrics.topFiles[2].path).toBe('file3.js');
+      expect(jsonContent.metrics.totalLines).toBe(5);
     });
   });
 

@@ -78,7 +78,9 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
         // Extract metrics information from the pack result
         const { packResult } = result;
 
-        return formatToolResponse({ repository: remote }, packResult, outputFilePath, topFilesLength);
+        const metricsWithLines = { ...packResult, totalLines: 0 };
+
+        return await formatToolResponse({ repository: remote }, metricsWithLines, outputFilePath, topFilesLength);
       } catch (error) {
         return formatToolError(error);
       }

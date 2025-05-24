@@ -44,9 +44,9 @@ describe('PackCodebaseTool', () => {
 
     // mcpToolRuntimeのデフォルトの動作をモック
     vi.mocked(createToolWorkspace).mockResolvedValue('/temp/dir');
-    vi.mocked(formatToolResponse).mockReturnValue({
+    vi.mocked(formatToolResponse).mockImplementation(async () => ({
       content: [{ type: 'text', text: 'Success response' }],
-    });
+    }));
     vi.mocked(formatToolError).mockReturnValue({
       isError: true,
       content: [{ type: 'text', text: 'Error response' }],

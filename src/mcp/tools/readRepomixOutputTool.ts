@@ -14,6 +14,14 @@ export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
     'Read the contents of a Repomix output file in environments where direct file access is not possible. This tool is specifically intended for cases where the client cannot access the file system directly, such as in web-based environments or sandboxed applications. For systems with direct file access, use standard file operations instead.',
     {
       outputId: z.string().describe('ID of the Repomix output file to read'),
+      startLine: z
+        .number()
+        .optional()
+        .describe('Starting line number (1-based, inclusive). If not specified, reads from beginning.'),
+      endLine: z
+        .number()
+        .optional()
+        .describe('Ending line number (1-based, inclusive). If not specified, reads to end.'),
     },
     {
       title: 'Read Repomix Output',
@@ -22,7 +30,7 @@ export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
       idempotentHint: true,
       openWorldHint: false,
     },
-    async ({ outputId }): Promise<CallToolResult> => {
+    async ({ outputId, startLine, endLine }): Promise<CallToolResult> => {
       try {
         logger.trace(`Reading Repomix output with ID: ${outputId}`);
 
@@ -58,15 +66,36 @@ export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
         // Read the file content
         const content = await fs.readFile(filePath, 'utf8');
 
+        let processedContent = content;
+        if (startLine !== undefined || endLine !== undefined) {
+          const lines = content.split('\n');
+          const start = Math.max(0, (startLine || 1) - 1);
+          const end = endLine ? Math.min(lines.length, endLine) : lines.length;
+
+          if (start >= lines.length) {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: 'text',
+                  text: `Error: Start line ${startLine} exceeds total lines (${lines.length}) in the file.`,
+                },
+              ],
+            };
+          }
+
+          processedContent = lines.slice(start, end).join('\n');
+        }
+
         return {
           content: [
             {
               type: 'text',
-              text: `Content of Repomix output file (ID: ${outputId}):`,
+              text: `Content of Repomix output file (ID: ${outputId})${startLine || endLine ? ` (lines ${startLine || 1}-${endLine || 'end'})` : ''}:`,
             },
             {
               type: 'text',
-              text: content,
+              text: processedContent,
             },
           ],
         };
