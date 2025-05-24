@@ -26,7 +26,6 @@ export const parseRemoteValue = (
   }
 
   try {
-    // @ts-ignore - The type definition is incorrect, gitUrlParse does accept a second 'refs' parameter
     const parsedFields = gitUrlParse(remoteValue, refs) as IGitUrl;
 
     // This will make parsedFields.toString() automatically append '.git' to the returned url
