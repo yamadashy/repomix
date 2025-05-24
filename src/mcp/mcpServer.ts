@@ -5,6 +5,7 @@ import { logger } from '../shared/logger.js';
 import { registerPackRemoteRepositoryPrompt } from './prompts/packRemoteRepositoryPrompts.js';
 import { registerFileSystemReadDirectoryTool } from './tools/fileSystemReadDirectoryTool.js';
 import { registerFileSystemReadFileTool } from './tools/fileSystemReadFileTool.js';
+import { registerGrepRepomixOutputTool } from './tools/grepRepomixOutputTool.js';
 import { registerPackCodebaseTool } from './tools/packCodebaseTool.js';
 import { registerPackRemoteRepositoryTool } from './tools/packRemoteRepositoryTool.js';
 import { registerReadRepomixOutputTool } from './tools/readRepomixOutputTool.js';
@@ -22,6 +23,7 @@ export const createMcpServer = async () => {
   registerPackCodebaseTool(mcpServer);
   registerPackRemoteRepositoryTool(mcpServer);
   registerReadRepomixOutputTool(mcpServer);
+  registerGrepRepomixOutputTool(mcpServer);
   registerFileSystemReadFileTool(mcpServer);
   registerFileSystemReadDirectoryTool(mcpServer);
 

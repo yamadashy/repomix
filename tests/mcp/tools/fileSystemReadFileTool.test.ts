@@ -32,7 +32,7 @@ describe('FileSystemReadFileTool', () => {
   test('should register tool with correct parameters', () => {
     expect(mockServer.tool).toHaveBeenCalledWith(
       'file_system_read_file',
-      'Read a file using an absolute path with security validation.',
+      'Read a file from the local file system using an absolute path. Includes built-in security validation to detect and prevent access to files containing sensitive information (API keys, passwords, secrets).',
       expect.any(Object),
       expect.any(Object), // annotations
       expect.any(Function),

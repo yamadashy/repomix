@@ -22,6 +22,7 @@ export interface McpToolMetrics {
   totalFiles: number;
   totalCharacters: number;
   totalTokens: number;
+  totalLines: number;
   fileCharCounts: Record<string, number>;
   fileTokenCounts: Record<string, number>;
 }
@@ -56,15 +57,19 @@ export const generateOutputId = (): string => {
 /**
  * Creates a result object with metrics information for MCP tools
  */
-export const formatToolResponse = (
+export const formatToolResponse = async (
   context: McpToolContext,
   metrics: McpToolMetrics,
   outputFilePath: string,
   topFilesLen = 5,
-): CallToolResult => {
+): Promise<CallToolResult> => {
   // Generate output ID and register the file
   const outputId = generateOutputId();
   registerOutputFile(outputId, outputFilePath);
+
+  // Calculate total lines from the output file
+  const outputContent = await fs.readFile(outputFilePath, 'utf8');
+  const totalLines = outputContent.split('\n').length;
 
   // Get top files by character count
   const topFiles = Object.entries(metrics.fileCharCounts)
@@ -87,6 +92,7 @@ export const formatToolResponse = (
         totalFiles: metrics.totalFiles,
         totalCharacters: metrics.totalCharacters,
         totalTokens: metrics.totalTokens,
+        totalLines,
         topFiles,
       },
     },

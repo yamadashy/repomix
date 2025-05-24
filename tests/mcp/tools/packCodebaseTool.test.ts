@@ -44,9 +44,9 @@ describe('PackCodebaseTool', () => {
 
     // mcpToolRuntimeのデフォルトの動作をモック
     vi.mocked(createToolWorkspace).mockResolvedValue('/temp/dir');
-    vi.mocked(formatToolResponse).mockReturnValue({
+    vi.mocked(formatToolResponse).mockImplementation(async () => ({
       content: [{ type: 'text', text: 'Success response' }],
-    });
+    }));
     vi.mocked(formatToolError).mockReturnValue({
       isError: true,
       content: [{ type: 'text', text: 'Error response' }],
@@ -100,7 +100,7 @@ describe('PackCodebaseTool', () => {
   test('should register tool with correct parameters', () => {
     expect(mockServer.tool).toHaveBeenCalledWith(
       'pack_codebase',
-      'Package local code directory into a consolidated file for AI analysis',
+      'Package a local code directory into a consolidated XML file for AI analysis. This tool analyzes the codebase structure, extracts relevant code content, and generates a comprehensive report including metrics, file tree, and formatted code content. Supports Tree-sitter compression for efficient token usage.',
       expect.any(Object),
       expect.any(Object), // annotations
       expect.any(Function),
