@@ -1,17 +1,17 @@
 /**
  * Service for generating output in different formats
  */
-import { RepositoryEntity } from '../repository/RepositoryEntity.js';
-import { OutputOptions } from './OutputOptions.js';
-import { OutputResult } from './OutputResult.js';
+import type { RepositoryEntity } from '../repository/RepositoryEntity.js';
+import type { OutputOptions } from './OutputOptions.js';
+import type { OutputResult } from './OutputResult.js';
 
 export interface OutputService {
   /**
    * Generate output for a repository
    */
   generateOutput(
-    repository: RepositoryEntity, 
+    repository: RepositoryEntity,
     processedFiles: Array<{ path: string; content: string }>,
-    options: OutputOptions
+    options: OutputOptions,
   ): Promise<OutputResult>;
 }

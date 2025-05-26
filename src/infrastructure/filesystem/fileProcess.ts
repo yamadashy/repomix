@@ -6,7 +6,7 @@ import path from 'node:path';
 import strip from 'strip-comments';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
-import { ProcessedFile, RawFile } from './fileTypes.js';
+import type { ProcessedFile, RawFile } from './fileTypes.js';
 
 /**
  * Options for processing files
@@ -16,7 +16,7 @@ export interface FileProcessOptions {
    * Whether to remove comments
    */
   removeComments: boolean;
-  
+
   /**
    * Whether to remove empty lines
    */
@@ -26,10 +26,7 @@ export interface FileProcessOptions {
 /**
  * Process files according to options
  */
-export const processFiles = async (
-  filePaths: string[],
-  options: FileProcessOptions,
-): Promise<ProcessedFile[]> => {
+export const processFiles = async (filePaths: string[], options: FileProcessOptions): Promise<ProcessedFile[]> => {
   try {
     const rawFiles = await Promise.all(
       filePaths.map(async (filePath) => {
@@ -61,7 +58,9 @@ export const processFile = (rawFile: RawFile, options: FileProcessOptions): Proc
     try {
       content = strip(content);
     } catch (error) {
-      logger.warn(`Failed to strip comments from ${rawFile.path}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      logger.warn(
+        `Failed to strip comments from ${rawFile.path}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 

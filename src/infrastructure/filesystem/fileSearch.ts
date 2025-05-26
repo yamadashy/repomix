@@ -17,7 +17,7 @@ export interface FileSearchResult {
    * List of file paths
    */
   filePaths: string[];
-  
+
   /**
    * List of empty directory paths
    */
@@ -27,9 +27,11 @@ export interface FileSearchResult {
 /**
  * Search for files in a directory
  */
-export const searchFiles = async (rootDir: string, config: any): Promise<FileSearchResult> => {
+import { FileSearchConfig } from '../../shared/config/ConfigTypes.js';
+
+export const searchFiles = async (rootDir: string, config: FileSearchConfig): Promise<FileSearchResult> => {
   return {
     filePaths: [],
     emptyDirPaths: [],
   };
-}
+};

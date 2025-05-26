@@ -1,9 +1,9 @@
 /**
  * Service for analyzing repository content
  */
-import { RepositoryEntity } from '../repository/RepositoryEntity.js';
-import { AnalysisResult } from './AnalysisResult.js';
-import { AnalysisOptions } from './AnalysisOptions.js';
+import type { RepositoryEntity } from '../repository/RepositoryEntity.js';
+import type { AnalysisOptions } from './AnalysisOptions.js';
+import type { AnalysisResult } from './AnalysisResult.js';
 
 export interface AnalysisService {
   /**

@@ -1,20 +1,17 @@
+import type { RepositoryEntity } from '../../domain/repository/RepositoryEntity.js';
+import type { SecurityScanOptions } from '../../domain/security/SecurityScanOptions.js';
+import type { SecurityScanResult } from '../../domain/security/SecurityScanResult.js';
 /**
  * Implementation of the security service
  */
-import { SecurityService } from '../../domain/security/SecurityService.js';
-import { SecurityScanOptions } from '../../domain/security/SecurityScanOptions.js';
-import { SecurityScanResult } from '../../domain/security/SecurityScanResult.js';
-import { RepositoryEntity } from '../../domain/repository/RepositoryEntity.js';
+import type { SecurityService } from '../../domain/security/SecurityService.js';
 import { logger } from '../../shared/logger.js';
 
 export class SecurityServiceImpl implements SecurityService {
   /**
    * Scan a repository for security issues
    */
-  async scanRepository(
-    repository: RepositoryEntity,
-    options: SecurityScanOptions
-  ): Promise<SecurityScanResult> {
+  async scanRepository(repository: RepositoryEntity, options: SecurityScanOptions): Promise<SecurityScanResult> {
     try {
       if (!options.enableSecurityCheck) {
         return {
@@ -23,7 +20,6 @@ export class SecurityServiceImpl implements SecurityService {
         };
       }
 
-      
       return {
         suspiciousFiles: [],
         suspiciousGitDiffs: [],

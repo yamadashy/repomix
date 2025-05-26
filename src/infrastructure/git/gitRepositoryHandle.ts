@@ -16,4 +16,4 @@ export const isGitRepository = async (rootDir: string): Promise<boolean> => {
   } catch (error) {
     return false;
   }
-}
+};

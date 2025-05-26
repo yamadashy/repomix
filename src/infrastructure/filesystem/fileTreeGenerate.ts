@@ -46,9 +46,9 @@ const addPathToTree = (root: TreeNode, filePath: string, isDirectory: boolean): 
     const part = parts[i];
     const isLastPart = i === parts.length - 1;
     const currentPath = parts.slice(0, i + 1).join('/');
-    
+
     let child = current.children.find((c) => c.name === part);
-    
+
     if (!child) {
       child = {
         name: part,
@@ -58,7 +58,7 @@ const addPathToTree = (root: TreeNode, filePath: string, isDirectory: boolean): 
       };
       current.children.push(child);
     }
-    
+
     current = child;
   }
 };
@@ -76,9 +76,7 @@ export const generateTreeString = (filePaths: string[], emptyDirPaths: string[] 
  */
 export const treeToString = (node: TreeNode, prefix = '', isLast = true): string => {
   if (node.name === '') {
-    return node.children
-      .map((child, index) => treeToString(child, '', index === node.children.length - 1))
-      .join('');
+    return node.children.map((child, index) => treeToString(child, '', index === node.children.length - 1)).join('');
   }
 
   let result = prefix;
@@ -87,7 +85,7 @@ export const treeToString = (node: TreeNode, prefix = '', isLast = true): string
   result += '\n';
 
   const childPrefix = prefix + (isLast ? '    ' : '│   ');
-  
+
   for (let i = 0; i < node.children.length; i++) {
     const child = node.children[i];
     const isChildLast = i === node.children.length - 1;

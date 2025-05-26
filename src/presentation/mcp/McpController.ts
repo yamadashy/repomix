@@ -4,9 +4,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { PackRepositoryUseCase } from '../../application/usecases/PackRepositoryUseCase.js';
-import { PackRemoteRepositoryUseCase } from '../../application/usecases/PackRemoteRepositoryUseCase.js';
-import { RepomixConfigMerged } from '../../shared/config/configSchema.js';
+import type { PackRemoteRepositoryUseCase } from '../../application/usecases/PackRemoteRepositoryUseCase.js';
+import type { PackRepositoryUseCase } from '../../application/usecases/PackRepositoryUseCase.js';
+import type { RepomixConfigMerged } from '../../shared/config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 
 export class McpController {
@@ -102,10 +102,8 @@ export class McpController {
             includeGitDiffs: args.includeGitDiffs || false,
           };
 
-          const result = await this.packRepositoryUseCase.execute(
-            args.rootDirs,
-            packageOptions,
-            (message) => logger.info(message),
+          const result = await this.packRepositoryUseCase.execute(args.rootDirs, packageOptions, (message) =>
+            logger.info(message),
           );
 
           return {

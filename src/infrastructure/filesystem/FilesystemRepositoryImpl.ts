@@ -1,11 +1,11 @@
 /**
  * Implementation of repository repository using filesystem
  */
-import { RepositoryEntity } from '../../domain/repository/RepositoryEntity.js';
-import { RepositoryRepository } from '../../domain/repository/RepositoryRepository.js';
+import type { RepositoryEntity } from '../../domain/repository/RepositoryEntity.js';
+import type { RepositoryRepository } from '../../domain/repository/RepositoryRepository.js';
 import type { RepomixConfigMerged } from '../../shared/config/configSchema.js';
-import { searchFiles } from './fileSearch.js';
 import { sortPaths } from './filePathSort.js';
+import { searchFiles } from './fileSearch.js';
 
 export class FilesystemRepositoryImpl implements RepositoryRepository {
   constructor(private readonly config: RepomixConfigMerged) {}
@@ -22,9 +22,9 @@ export class FilesystemRepositoryImpl implements RepositoryRepository {
     );
 
     const allFilePaths = filePathsByDir.flatMap(({ searchResult }) => searchResult.filePaths);
-    
+
     const sortedFilePaths = await sortPaths(allFilePaths);
-    
+
     const allEmptyDirPaths = filePathsByDir.flatMap(({ searchResult }) => searchResult.emptyDirPaths);
 
     return {

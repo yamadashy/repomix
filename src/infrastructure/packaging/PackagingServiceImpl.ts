@@ -1,16 +1,16 @@
+import type { PackageOptions } from '../../domain/packaging/PackageOptions.js';
+import type { PackageResult } from '../../domain/packaging/PackageResult.js';
+import type { PackagingService } from '../../domain/packaging/PackagingService.js';
 /**
  * Implementation of packaging service
  */
-import { RepositoryEntity } from '../../domain/repository/RepositoryEntity.js';
-import { PackageOptions } from '../../domain/packaging/PackageOptions.js';
-import { PackageResult } from '../../domain/packaging/PackageResult.js';
-import { PackagingService } from '../../domain/packaging/PackagingService.js';
-import { OutputService } from '../output/OutputService.js';
-import { processFiles } from '../filesystem/fileProcess.js';
-import { TokenCounter } from '../metrics/TokenCounter.js';
-import { RepomixConfigMerged } from '../../shared/config/configSchema.js';
+import type { RepositoryEntity } from '../../domain/repository/RepositoryEntity.js';
+import type { RepomixConfigMerged } from '../../shared/config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { processFiles } from '../filesystem/fileProcess.js';
+import type { TokenCounter } from '../metrics/TokenCounter.js';
+import type { OutputService } from '../output/OutputService.js';
 
 export class PackagingServiceImpl implements PackagingService {
   constructor(
@@ -41,17 +41,17 @@ export class PackagingServiceImpl implements PackagingService {
       logger.debug('Calculating metrics...');
       const fileCharCounts: Record<string, number> = {};
       const fileTokenCounts: Record<string, number> = {};
-      
+
       let totalCharacters = 0;
       let totalTokens = 0;
-      
+
       for (const file of processedFiles) {
         const charCount = file.content.length;
         const tokenCount = await this.tokenCounter.countTokens(file.content);
-        
+
         fileCharCounts[file.path] = charCount;
         fileTokenCounts[file.path] = tokenCount;
-        
+
         totalCharacters += charCount;
         totalTokens += tokenCount;
       }

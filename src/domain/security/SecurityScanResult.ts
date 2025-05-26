@@ -6,7 +6,7 @@ export interface SecurityScanResult {
    * List of suspicious files with security issues
    */
   suspiciousFiles: SuspiciousFile[];
-  
+
   /**
    * List of suspicious git diffs with security issues
    */
@@ -21,12 +21,12 @@ export interface SuspiciousFile {
    * Path to the suspicious file
    */
   filePath: string;
-  
+
   /**
    * Security issue messages
    */
   messages: string[];
-  
+
   /**
    * Type of security check that found the issue
    */

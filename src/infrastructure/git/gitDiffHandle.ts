@@ -12,7 +12,7 @@ export interface GitDiffResult {
    * Content of working tree diff
    */
   workTreeDiffContent: string;
-  
+
   /**
    * Content of staged diff
    */
@@ -22,12 +22,11 @@ export interface GitDiffResult {
 /**
  * Get git diffs for a repository
  */
-export const getGitDiffs = async (
-  rootDirs: string[],
-  config: any,
-): Promise<GitDiffResult | undefined> => {
+import { GitDiffConfig } from '../../shared/config/ConfigTypes.js';
+
+export const getGitDiffs = async (rootDirs: string[], config: GitDiffConfig): Promise<GitDiffResult | undefined> => {
   return {
     workTreeDiffContent: '',
     stagedDiffContent: '',
   };
-}
+};

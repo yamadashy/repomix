@@ -10,10 +10,7 @@ const execPromise = promisify(exec);
 /**
  * Execute git diff command
  */
-export const execGitDiff = async (
-  rootDir: string,
-  staged: boolean = false,
-): Promise<string> => {
+export const execGitDiff = async (rootDir: string, staged = false): Promise<string> => {
   try {
     const command = staged ? 'git diff --staged' : 'git diff';
     const { stdout } = await execPromise(command, { cwd: rootDir });
@@ -21,4 +18,4 @@ export const execGitDiff = async (
   } catch (error) {
     throw new RepomixError(`Failed to execute git diff: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-}
+};

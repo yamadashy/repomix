@@ -22,7 +22,10 @@ export interface PermissionCheckResult {
  * Error thrown when permission is denied
  */
 export class PermissionError extends Error {
-  constructor(message: string, public readonly path: string) {
+  constructor(
+    message: string,
+    public readonly path: string,
+  ) {
     super(message);
     this.name = 'PermissionError';
   }
@@ -54,4 +57,4 @@ export const checkDirectoryPermissions = async (dirPath: string): Promise<Permis
       },
     };
   }
-}
+};

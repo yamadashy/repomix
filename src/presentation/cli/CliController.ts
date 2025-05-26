@@ -1,10 +1,10 @@
+import type { PackRemoteRepositoryUseCase } from '../../application/usecases/PackRemoteRepositoryUseCase.js';
 /**
  * CLI controller for handling command line interface
  */
-import { PackRepositoryUseCase } from '../../application/usecases/PackRepositoryUseCase.js';
-import { PackRemoteRepositoryUseCase } from '../../application/usecases/PackRemoteRepositoryUseCase.js';
-import { PackageOptions } from '../../domain/packaging/PackageOptions.js';
-import { RepomixConfigMerged } from '../../shared/config/configSchema.js';
+import type { PackRepositoryUseCase } from '../../application/usecases/PackRepositoryUseCase.js';
+import type { PackageOptions } from '../../domain/packaging/PackageOptions.js';
+import type { RepomixConfigMerged } from '../../shared/config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 
@@ -31,13 +31,13 @@ export class CliController {
         includeGitDiffs: this.config.output.git.includeDiffs,
       };
 
-      const result = await this.packRepositoryUseCase.execute(
-        rootDirs,
-        packageOptions,
-        (message) => logger.info(message),
+      const result = await this.packRepositoryUseCase.execute(rootDirs, packageOptions, (message) =>
+        logger.info(message),
       );
 
-      logger.success(`✓ Successfully packaged ${result.totalFiles} files (${result.totalCharacters} characters, ${result.totalTokens} tokens)`);
+      logger.success(
+        `✓ Successfully packaged ${result.totalFiles} files (${result.totalCharacters} characters, ${result.totalTokens} tokens)`,
+      );
     } catch (error) {
       if (error instanceof RepomixError) {
         logger.error(`Error: ${error.message}`);
@@ -63,14 +63,13 @@ export class CliController {
         includeGitDiffs: this.config.output.git.includeDiffs,
       };
 
-      const result = await this.packRemoteRepositoryUseCase.execute(
-        remoteUrl,
-        branch,
-        packageOptions,
-        (message) => logger.info(message),
+      const result = await this.packRemoteRepositoryUseCase.execute(remoteUrl, branch, packageOptions, (message) =>
+        logger.info(message),
       );
 
-      logger.success(`✓ Successfully packaged remote repository (${result.totalCharacters} characters, ${result.totalTokens} tokens)`);
+      logger.success(
+        `✓ Successfully packaged remote repository (${result.totalCharacters} characters, ${result.totalTokens} tokens)`,
+      );
     } catch (error) {
       if (error instanceof RepomixError) {
         logger.error(`Error: ${error.message}`);

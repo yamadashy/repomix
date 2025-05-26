@@ -1,8 +1,8 @@
 /**
  * Interface for output generation service
  */
-import { ProcessedFile } from '../filesystem/fileTypes.js';
-import { GitDiffResult } from '../git/gitDiffHandle.js';
+import type { ProcessedFile } from '../filesystem/fileTypes.js';
+import type { GitDiffResult } from '../git/gitDiffHandle.js';
 
 export interface OutputService {
   /**

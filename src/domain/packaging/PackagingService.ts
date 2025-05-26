@@ -1,9 +1,9 @@
 /**
  * Service for packaging repository content
  */
-import { RepositoryEntity } from '../repository/RepositoryEntity.js';
-import { PackageOptions } from './PackageOptions.js';
-import { PackageResult } from './PackageResult.js';
+import type { RepositoryEntity } from '../repository/RepositoryEntity.js';
+import type { PackageOptions } from './PackageOptions.js';
+import type { PackageResult } from './PackageResult.js';
 
 export interface PackagingService {
   /**

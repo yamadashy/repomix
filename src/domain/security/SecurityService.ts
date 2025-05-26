@@ -1,9 +1,9 @@
 /**
  * Service for security scanning of repository content
  */
-import { RepositoryEntity } from '../repository/RepositoryEntity.js';
-import { SecurityScanResult } from './SecurityScanResult.js';
-import { SecurityScanOptions } from './SecurityScanOptions.js';
+import type { RepositoryEntity } from '../repository/RepositoryEntity.js';
+import type { SecurityScanOptions } from './SecurityScanOptions.js';
+import type { SecurityScanResult } from './SecurityScanResult.js';
 
 export interface SecurityService {
   /**

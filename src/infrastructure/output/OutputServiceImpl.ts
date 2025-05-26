@@ -6,11 +6,12 @@ import path from 'node:path';
 import { XMLBuilder } from 'fast-xml-parser';
 import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../shared/config/configSchema.js';
+import { OutputGeneratorContext } from '../../shared/config/ConfigTypes.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { generateTreeString } from '../filesystem/fileTreeGenerate.js';
-import { ProcessedFile } from '../filesystem/fileTypes.js';
-import { GitDiffResult } from '../git/gitDiffHandle.js';
-import { OutputService } from './OutputService.js';
+import type { ProcessedFile } from '../filesystem/fileTypes.js';
+import type { GitDiffResult } from '../git/gitDiffHandle.js';
+import type { OutputService } from './OutputService.js';
 
 export class OutputServiceImpl implements OutputService {
   constructor(private readonly config: RepomixConfigMerged) {}
@@ -32,13 +33,13 @@ export class OutputServiceImpl implements OutputService {
       processedFiles,
       gitDiffResult,
     );
-    
+
     const renderContext = this.createRenderContext(outputGeneratorContext);
 
     if (!this.config.output.parsableStyle) {
       return this.generateHandlebarOutput(renderContext);
     }
-    
+
     switch (this.config.output.style) {
       case 'xml':
         return this.generateParsableXmlOutput(renderContext);
@@ -57,11 +58,13 @@ export class OutputServiceImpl implements OutputService {
     }
 
     const outputPath = path.resolve(this.config.cwd, this.config.output.filePath);
-    
+
     try {
       await fs.writeFile(outputPath, output, 'utf-8');
     } catch (error) {
-      throw new RepomixError(`Failed to write output to ${outputPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new RepomixError(
+        `Failed to write output to ${outputPath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -82,15 +85,15 @@ export class OutputServiceImpl implements OutputService {
     };
   }
 
-  private createRenderContext(outputGeneratorContext: any) {
+  private createRenderContext(outputGeneratorContext: OutputGeneratorContext) {
     return {};
   }
 
-  private generateHandlebarOutput(renderContext: any): string {
+  private generateHandlebarOutput(renderContext: Record<string, unknown>): string {
     return '';
   }
 
-  private generateParsableXmlOutput(renderContext: any): string {
+  private generateParsableXmlOutput(renderContext: Record<string, unknown>): string {
     return '';
   }
 }
