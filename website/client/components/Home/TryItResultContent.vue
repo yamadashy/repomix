@@ -2,12 +2,19 @@
 import ace, { type Ace } from 'ace-builds';
 import themeTomorrowUrl from 'ace-builds/src-noconflict/theme-tomorrow?url';
 import themeTomorrowNightUrl from 'ace-builds/src-noconflict/theme-tomorrow_night?url';
-import { BarChart2, Copy, Download, GitFork, HeartHandshake, PackageSearch, Star } from 'lucide-vue-next';
+import { BarChart2, Copy, Download, GitFork, HeartHandshake, PackageSearch, Share, Star } from 'lucide-vue-next';
 import { useData } from 'vitepress';
 import { computed, onMounted, ref, watch } from 'vue';
 import { VAceEditor } from 'vue3-ace-editor';
 import type { PackResult } from '../api/client';
-import { copyToClipboard, downloadResult, formatTimestamp, getEditorOptions } from '../utils/resultViewer';
+import {
+  canShareFiles,
+  copyToClipboard,
+  downloadResult,
+  formatTimestamp,
+  getEditorOptions,
+  shareResult,
+} from '../utils/resultViewer';
 
 ace.config.setModuleUrl('ace/theme/tomorrow', themeTomorrowUrl);
 ace.config.setModuleUrl('ace/theme/tomorrow_night', themeTomorrowNightUrl);
@@ -20,6 +27,8 @@ const props = defineProps<{
 }>();
 
 const copied = ref(false);
+const shared = ref(false);
+const canShare = ref(canShareFiles());
 const { isDark } = useData();
 const editorInstance = ref<Ace.Editor | null>(null);
 
@@ -59,6 +68,19 @@ const handleDownload = (event: Event) => {
 
 const handleEditorMount = (editor: Ace.Editor) => {
   editorInstance.value = editor;
+};
+
+const handleShare = async (event: Event) => {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const success = await shareResult(props.result.content, props.result.format, props.result);
+  if (success) {
+    shared.value = true;
+    setTimeout(() => {
+      shared.value = false;
+    }, 2000);
+  }
 };
 
 const messages = [
@@ -144,6 +166,15 @@ const supportMessage = computed(() => ({
         >
           <Download :size="16" />
           Download
+        </button>
+        <button
+          v-if="canShare"
+          class="action-button"
+          @click="handleShare"
+          :class="{ shared }"
+        >
+          <Share :size="16" />
+          {{ shared ? 'Shared!' : 'Open with your app' }}
         </button>
       </div>
       <div class="editor-container">
@@ -293,6 +324,12 @@ dd {
 }
 
 .action-button.copied {
+  background: var(--vp-c-brand-1);
+  color: white;
+  border-color: var(--vp-c-brand-1);
+}
+
+.action-button.shared {
   background: var(--vp-c-brand-1);
   color: white;
   border-color: var(--vp-c-brand-1);

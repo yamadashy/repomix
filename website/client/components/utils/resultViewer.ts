@@ -70,3 +70,40 @@ export function getEditorOptions(): Partial<Ace.EditorOptions> {
     highlightActiveLine: false,
   };
 }
+
+/**
+ * Handle sharing with Web Share API
+ */
+export async function shareResult(content: string, format: string, result: PackResult): Promise<boolean> {
+  try {
+    const extension = format === 'markdown' ? 'md' : format === 'xml' ? 'xml' : 'txt';
+    const repoName = formatRepositoryName(result.metadata.repository);
+    const fileName = `repomix-output-${repoName}.${extension}`;
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const file = new File([blob], fileName, { type: 'text/plain' });
+
+    const shareData = {
+      title: `Repomix Output - ${repoName}`,
+      text: `Generated repomix output for ${result.metadata.repository}`,
+      files: [file],
+    };
+
+    if (navigator.canShare?.(shareData)) {
+      await navigator.share(shareData);
+      analyticsUtils.trackShareOutput(format);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error('Failed to share:', err);
+    return false;
+  }
+}
+
+/**
+ * Check if Web Share API is supported and can share files
+ */
+export function canShareFiles(): boolean {
+  return navigator.canShare && typeof navigator.canShare === 'function';
+}

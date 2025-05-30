@@ -32,6 +32,7 @@ export const AnalyticsAction = {
   // Output events
   COPY_OUTPUT: 'copy_output',
   DOWNLOAD_OUTPUT: 'download_output',
+  SHARE_OUTPUT: 'share_output',
 } as const;
 
 export type AnalyticsCategoryType = (typeof AnalyticsCategory)[keyof typeof AnalyticsCategory];
@@ -114,6 +115,14 @@ export const analyticsUtils = {
     trackEvent({
       category: AnalyticsCategory.OUTPUT,
       action: AnalyticsAction.DOWNLOAD_OUTPUT,
+      label: format,
+    });
+  },
+
+  trackShareOutput(format: string): void {
+    trackEvent({
+      category: AnalyticsCategory.OUTPUT,
+      action: AnalyticsAction.SHARE_OUTPUT,
       label: format,
     });
   },
