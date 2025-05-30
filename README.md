@@ -90,17 +90,38 @@ npx repomix
 
 Or install globally for repeated use:
 
+#### Install using npm
 ```bash
-# Install using npm
 npm install -g repomix
+```
 
-# Alternatively using yarn
+#### Alternatively using yarn
+```bash
 yarn global add repomix
+```
 
-# Alternatively using Homebrew (macOS/Linux)
+#### Alternatively using Homebrew (macOS/Linux)
+```bash
 brew install repomix
+```
 
-# Then run in any project directory
+#### Alternatively using `shell.nix` (NixOS)
+```bash
+{ pkgs ? import <nixpkgs> { } }:
+
+pkgs.mkShell {
+  buildInputs = [
+  ];
+ 
+  shellHook =
+    ''
+      npx repomix
+    '';
+}
+```
+
+#### Then run in any project directory
+```bash
 repomix
 ```
 
