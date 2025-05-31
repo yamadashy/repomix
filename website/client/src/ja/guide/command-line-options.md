@@ -24,6 +24,7 @@
 
 ## フィルターオプション
 - `--include <patterns>`: 含めるパターン（カンマ区切り）
+- `--force-include <patterns>`: 除外ルールを上書きして強制的に含めるパターン（カンマ区切り）
 - `-i, --ignore <patterns>`: 除外パターン（カンマ区切り）
 - `--no-gitignore`: .gitignoreファイルの使用を無効化
 - `--no-default-patterns`: デフォルトパターンを無効化
@@ -68,6 +69,9 @@ repomix --compress
 
 # 特定のファイルを処理
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# 除外ルールを無視して特定のファイルを強制的に含める
+repomix --force-include "coverage/summary.json,test-results/junit.xml"
 
 # ブランチを指定したリモートリポジトリ
 repomix --remote https://github.com/user/repo/tree/main
