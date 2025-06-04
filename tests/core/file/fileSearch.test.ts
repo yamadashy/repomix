@@ -343,6 +343,84 @@ node_modules
       expect(result.emptyDirPaths).toEqual([]);
     });
 
+    test('should exclude .gitignore files but still apply their patterns when --ignore "**/.gitignore" is used', async () => {
+      const mockConfig = createMockConfig({
+        include: ['**/*'],
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: false,
+          customPatterns: ['**/.gitignore'], // This simulates --ignore "**/.gitignore"
+        },
+      });
+
+      // Mock the .gitignore content
+      const gitignoreContent = `
+# Test gitignore
+*.log
+temp/
+node_modules/
+`;
+
+      // Set up globby mock to simulate the conflict resolution
+      let globbyCallCount = 0;
+      vi.mocked(globby).mockImplementation(async (patterns, options) => {
+        globbyCallCount++;
+        
+        // First call is to find .gitignore files for pre-reading
+        if (globbyCallCount === 1 && patterns.includes('**/.gitignore')) {
+          return ['.gitignore', 'subdir/.gitignore'];
+        }
+        
+        // Second call is the main file search
+        if (globbyCallCount === 2) {
+          // Simulate that .gitignore files are excluded but their patterns are applied
+          const allFiles = [
+            'file1.js',
+            'file2.ts',
+            'temp/ignored.js', // Should be ignored by .gitignore pattern
+            'app.log', // Should be ignored by .gitignore pattern
+            'subdir/code.js',
+            'subdir/temp.log', // Should be ignored by .gitignore pattern
+            'node_modules/package.json', // Should be ignored by .gitignore pattern
+          ];
+          
+          // Filter out files that would be ignored by .gitignore patterns
+          return allFiles.filter(file => {
+            return !file.endsWith('.log') && 
+                   !file.startsWith('temp/') && 
+                   !file.startsWith('node_modules/');
+          });
+        }
+        
+        return [];
+      });
+
+      // Mock fs.readFile to return .gitignore content
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        if (filePath.toString().endsWith('.gitignore')) {
+          return gitignoreContent;
+        }
+        return '';
+      });
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      // Verify .gitignore files are not in the results
+      expect(result.filePaths).not.toContain('.gitignore');
+      expect(result.filePaths).not.toContain('subdir/.gitignore');
+      
+      // Verify .gitignore patterns are still applied (files with .log extension are excluded)
+      expect(result.filePaths).not.toContain('app.log');
+      expect(result.filePaths).not.toContain('subdir/temp.log');
+      expect(result.filePaths).not.toContain('temp/ignored.js');
+      expect(result.filePaths).not.toContain('node_modules/package.json');
+      
+      // Verify non-ignored files are included
+      expect(result.filePaths).toContain('file1.js');
+      expect(result.filePaths).toContain('file2.ts');
+      expect(result.filePaths).toContain('subdir/code.js');
+    });
+
     test('should handle git worktree correctly', async () => {
       // Mock .git file content for worktree
       const gitWorktreeContent = 'gitdir: /path/to/main/repo/.git/worktrees/feature-branch';
