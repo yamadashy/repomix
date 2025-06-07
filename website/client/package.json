@@ -17,6 +17,7 @@
   "devDependencies": {
     "@types/gtag.js": "^0.0.20",
     "rollup-plugin-visualizer": "^6.0.1",
-    "vitepress": "^1.6.3"
+    "vitepress": "^1.6.3",
+    "vitepress-plugin-llms": "https://pkg.pr.new/vitepress-plugin-llms@d35010c"
   }
 }
