@@ -73,6 +73,7 @@ index 123..456 100644
         },
       },
       include: [],
+      forceInclude: [],
       ignore: {
         useGitignore: true,
         useDefaultPatterns: true,
@@ -158,6 +159,7 @@ index 123..456 100644
         },
       },
       include: [],
+      forceInclude: [],
       ignore: {
         useGitignore: true,
         useDefaultPatterns: true,
@@ -235,6 +237,7 @@ index 123..456 100644
         },
       },
       include: [],
+      forceInclude: [],
       ignore: {
         useGitignore: true,
         useDefaultPatterns: true,
