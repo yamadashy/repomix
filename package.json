@@ -75,12 +75,10 @@
     "@modelcontextprotocol/sdk": "^1.11.0",
     "@secretlint/core": "^9.3.1",
     "@secretlint/secretlint-rule-preset-recommend": "^9.3.1",
-    "@secretlint/types": "^9.3.4",
     "cli-spinners": "^2.9.2",
     "clipboardy": "^4.0.0",
     "commander": "^14.0.0",
     "fast-xml-parser": "^5.2.0",
-    "git-up": "^8.1.1",
     "git-url-parse": "^16.1.0",
     "globby": "^14.1.0",
     "handlebars": "^4.7.8",
@@ -100,6 +98,8 @@
     "zod": "^3.24.3"
   },
   "devDependencies": {
+    "git-up": "^8.1.1",
+    "@secretlint/types": "^9.3.4",
     "@biomejs/biome": "^1.9.4",
     "@types/node": "^22.14.1",
     "@types/strip-comments": "^2.0.4",
