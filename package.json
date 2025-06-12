@@ -98,6 +98,8 @@
     "zod": "^3.24.3"
   },
   "devDependencies": {
+    "git-up": "^8.1.1",
+    "@secretlint/types": "^9.3.4",
     "@biomejs/biome": "^1.9.4",
     "@types/node": "^22.14.1",
     "@types/strip-comments": "^2.0.4",
