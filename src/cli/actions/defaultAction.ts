@@ -8,6 +8,8 @@ import {
   repomixConfigCliSchema,
 } from '../../config/configSchema.js';
 import { type PackResult, pack } from '../../core/packager.js';
+import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
+import { RepomixError } from '../../shared/errorHandle.js';
 import { rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
@@ -44,6 +46,64 @@ export const runDefaultAction = async (
 
   logger.trace('Merged config:', config);
 
+  // Handle stdin input
+  if (cliOptions.stdin) {
+    if (directories.length > 1 || directories[0] !== '.') {
+      throw new RepomixError('When using --stdin, do not specify directory arguments. File paths will be read from stdin.');
+    }
+
+    const spinner = new Spinner('Reading file paths from stdin...', cliOptions);
+    spinner.start();
+
+    let packResult: PackResult;
+
+    try {
+      const stdinResult = await readFilePathsFromStdin(cwd);
+      
+      spinner.update('Packing files...');
+      
+      // Create a custom pack variant that uses the stdin file paths directly
+      packResult = await pack([cwd], config, (message) => {
+        spinner.update(message);
+      }, {
+        searchFiles: async () => ({
+          filePaths: stdinResult.filePaths.map(filePath => path.relative(cwd, filePath)),
+          emptyDirPaths: stdinResult.emptyDirPaths,
+        }),
+      });
+    } catch (error) {
+      spinner.fail('Error during packing');
+      throw error;
+    }
+
+    spinner.succeed('Packing completed successfully!');
+    logger.log('');
+
+    if (config.output.topFilesLength > 0) {
+      printTopFiles(
+        packResult.fileCharCounts,
+        packResult.fileTokenCounts,
+        config.output.topFilesLength,
+        packResult.totalTokens,
+      );
+      logger.log('');
+    }
+
+    printSecurityCheck(cwd, packResult.suspiciousFilesResults, packResult.suspiciousGitDiffResults, config);
+    logger.log('');
+
+    printSummary(packResult, config);
+    logger.log('');
+
+    printCompletion();
+
+    return {
+      packResult,
+      config,
+    };
+  }
+
+  // Handle normal directory processing
   const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
 
   const spinner = new Spinner('Packing files...', cliOptions);

@@ -42,6 +42,8 @@ const semanticSuggestionMap: Record<string, string[]> = {
   print: ['--stdout'],
   console: ['--stdout'],
   terminal: ['--stdout'],
+  input: ['--stdin'],
+  pipe: ['--stdin'],
 };
 
 export const run = async () => {
@@ -80,6 +82,7 @@ export const run = async () => {
       .option('-i, --ignore <patterns>', 'additional ignore patterns (comma-separated)')
       .option('--no-gitignore', 'disable .gitignore file usage')
       .option('--no-default-patterns', 'disable default patterns')
+      .option('--stdin', 'read file list from stdin')
       // Remote Repository Options
       .optionsGroup('Remote Repository Options')
       .option('--remote <url>', 'process a remote Git repository')
