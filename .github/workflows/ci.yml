@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -13,103 +13,103 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version-file: .tool-versions
-        cache: npm
-    - run: npm ci
-    - run: npm run lint-biome && git diff --exit-code
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+      - run: npm ci
+      - run: npm run lint-biome && git diff --exit-code
 
   lint-ts:
     name: Lint TypeScript
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version-file: .tool-versions
-        cache: npm
-    - run: npm ci
-    - run: npm run lint-ts
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+      - run: npm ci
+      - run: npm run lint-ts
 
   lint-secretlint:
     name: Lint Secretlint
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version-file: .tool-versions
-        cache: npm
-    - run: npm ci
-    - run: npm run lint-secretlint
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+      - run: npm ci
+      - run: npm run lint-secretlint
 
   lint-website-client:
     name: Lint Website Client
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version-file: .tool-versions
-        cache: npm
-    - name: Install website client dependencies
-      run: |
-        cd website/client
-        npm ci
-    - name: Lint website client
-      run: |
-        cd website/client
-        npm run lint
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+      - name: Install website client dependencies
+        run: |
+          cd website/client
+          npm ci
+      - name: Lint website client
+        run: |
+          cd website/client
+          npm run lint
 
   lint-website-server:
     name: Lint Website Server
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version-file: .tool-versions
-        cache: npm
-    - name: Install website server dependencies
-      run: |
-        cd website/server
-        npm ci
-    - name: Lint website server
-      run: |
-        cd website/server
-        npm run lint
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+      - name: Install website server dependencies
+        run: |
+          cd website/server
+          npm ci
+      - name: Lint website server
+        run: |
+          cd website/server
+          npm run lint
 
   lint-browser:
     name: Lint Browser Extension
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version-file: .tool-versions
-        cache: npm
-    - name: Install browser extension dependencies
-      run: |
-        cd browser
-        npm ci
-    - name: Lint browser extension
-      run: |
-        cd browser
-        npm run lint
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+      - name: Install browser extension dependencies
+        run: |
+          cd browser
+          npm ci
+      - name: Lint browser extension
+        run: |
+          cd browser
+          npm run lint
 
   lint-action:
     name: Lint GitHub Actions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker://rhysd/actionlint:latest
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: rhysd/actionlint@4e683ab8014a63fafa117492a0c6053758e6d593 # ratchet:rhysd/actionlint@v1.7.3
         with:
           args: "-color"
 
@@ -117,8 +117,8 @@ jobs:
     name: Check typos
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: crate-ci/typos@master
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: crate-ci/typos@022bdbe8ce21237ca3a95659bd6b8aef48389b9f # ratchet:crate-ci/typos@master
 
   test:
     name: Test
@@ -128,58 +128,58 @@ jobs:
         node-version: [18.0.0, 18.x, 19.x, 20.x, 21.x, 22.x, 23.x, 24.x]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-    - run: npm ci
-    - run: npm run test --reporter=verbose
-      env:
-        CI_OS: ${{ runner.os }}
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - run: npm run test --reporter=verbose
+        env:
+          CI_OS: ${{ runner.os }}
 
   test-coverage:
     name: Test coverage
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version-file: .tool-versions
-        cache: npm
-    - run: npm ci
-    - run: npm run test-coverage -- --reporter=verbose
-      env:
-        CI_OS: ${{ runner.os }}
-    - uses: actions/upload-artifact@v4
-      with:
-        name: test-coverage
-        path: coverage/
-    - uses: codecov/codecov-action@v5
-      with:
-        fail_ci_if_error: true
-        directory: ./coverage
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+      - run: npm ci
+      - run: npm run test-coverage -- --reporter=verbose
+        env:
+          CI_OS: ${{ runner.os }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # ratchet:actions/upload-artifact@v4
+        with:
+          name: test-coverage
+          path: coverage/
+      - uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # ratchet:codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          directory: ./coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   test-browser:
     name: Test Browser Extension
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version-file: .tool-versions
-        cache: npm
-    - name: Install browser extension dependencies
-      run: |
-        cd browser
-        npm ci
-    - name: Test browser extension
-      run: |
-        cd browser
-        npm run test
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+      - name: Install browser extension dependencies
+        run: |
+          cd browser
+          npm ci
+      - name: Test browser extension
+        run: |
+          cd browser
+          npm run test
 
   build-and-run:
     name: Build and run
@@ -189,20 +189,20 @@ jobs:
         node-version: [18.0.0, 18.x, 19.x, 20.x, 21.x, 22.x, 23.x, 24.x]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-    - run: npm ci
-    - run: npm run build
-    - name: Install only production dependencies
-      run: npm ci --omit=dev
-    - run: node bin/repomix.cjs
-    - run: node bin/repomix.cjs --version
-    - run: node bin/repomix.cjs --help
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: repomix-output-${{ matrix.os }}-${{ matrix.node-version }}.txt
-        path: repomix-output.txt
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - run: npm run build
+      - name: Install only production dependencies
+        run: npm ci --omit=dev
+      - run: node bin/repomix.cjs
+      - run: node bin/repomix.cjs --version
+      - run: node bin/repomix.cjs --help
+      - name: Upload build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # ratchet:actions/upload-artifact@v4
+        with:
+          name: repomix-output-${{ matrix.os }}-${{ matrix.node-version }}.txt
+          path: repomix-output.txt

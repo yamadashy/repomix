@@ -21,7 +21,7 @@ jobs:
           - node-version: 22
             test-case: "full"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
 
       - name: Run Repomix Action (Minimal)
         if: matrix['test-case'] == 'minimal'
@@ -50,7 +50,7 @@ jobs:
           additional-args: "--no-file-summary"
 
       - name: Upload result
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # ratchet:actions/upload-artifact@v4
         with:
           name: repomix-output-node${{ matrix.node-version }}
           path: repomix-*-output.txt
