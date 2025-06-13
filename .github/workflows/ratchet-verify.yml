@@ -1,0 +1,16 @@
+name: Ratchet verify
+on:
+  pull_request:
+    paths: ['.github/workflows/**']
+jobs:
+  ratchet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - name: Install ratchet
+        run: |
+          curl -sSL "https://github.com/sethvargo/ratchet/releases/latest/download/ratchet_Linux_x86_64.tar.gz" | tar -xz
+          sudo mv ratchet /usr/local/bin/
+          ratchet --version
+      - name: Verify pinned SHAs
+        run: ratchet lint .github/workflows
