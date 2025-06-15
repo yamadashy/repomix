@@ -7,10 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # ratchet:actions/setup-go@v5
+        with:
+          go-version: stable
       - name: Install ratchet
         run: |
-          curl -sSL "https://github.com/sethvargo/ratchet/releases/latest/download/ratchet_Linux_x86_64.tar.gz" | tar -xz
-          sudo mv ratchet /usr/local/bin/
+          go install github.com/sethvargo/ratchet@v0.11.3
           ratchet --version
       - name: Verify pinned SHAs
-        run: ratchet lint .github/workflows
+        run: ratchet lint .github/workflows/*.yml
