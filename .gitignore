@@ -39,6 +39,9 @@ repomix-output.md
 # aider
 .aider*
 
+# repomix runner
+.repomix/
+
 # private files
 .cursor/rules/
 .github/todo.md

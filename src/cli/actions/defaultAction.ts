@@ -7,6 +7,7 @@ import {
   type RepomixOutputStyle,
   repomixConfigCliSchema,
 } from '../../config/configSchema.js';
+import { filterFileList } from '../../core/file/fileSearch.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -79,9 +80,14 @@ export const handleStdinProcessing = async (
   try {
     const stdinResult = await readFilePathsFromStdin(cwd);
 
+    spinner.update('Filtering files...');
+
+    // Apply include and ignore patterns to the stdin file list
+    const filteredResult = await filterFileList(stdinResult.filePaths, cwd, config);
+
     spinner.update('Packing files...');
 
-    // Create a custom pack variant that uses the stdin file paths directly
+    // Create a custom pack variant that uses the filtered file paths
     packResult = await pack(
       [cwd],
       config,
@@ -90,7 +96,7 @@ export const handleStdinProcessing = async (
       },
       {
         searchFiles: async () => ({
-          filePaths: stdinResult.filePaths.map((filePath) => path.relative(cwd, filePath)),
+          filePaths: filteredResult.filePaths,
           emptyDirPaths: stdinResult.emptyDirPaths,
         }),
       },

@@ -251,6 +251,72 @@ export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promis
   return ignoreFilePatterns;
 };
 
+/**
+ * Filters a list of file paths using include and ignore patterns.
+ * This function applies the same filtering logic used by searchFiles but to a predefined list of files.
+ */
+export const filterFileList = async (
+  filePaths: string[],
+  rootDir: string,
+  config: RepomixConfigMerged,
+): Promise<FileSearchResult> => {
+  const includePatterns =
+    config.include.length > 0 ? config.include.map((pattern) => escapeGlobPattern(pattern)) : ['**/*'];
+
+  const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
+    getIgnorePatterns(rootDir, config),
+    getIgnoreFilePatterns(config),
+  ]);
+
+  // Normalize ignore patterns to handle trailing slashes consistently
+  const normalizedIgnorePatterns = ignorePatterns.map(normalizeGlobPattern);
+
+  logger.trace('Include patterns:', includePatterns);
+  logger.trace('Ignore patterns:', normalizedIgnorePatterns);
+  logger.trace('Ignore file patterns:', ignoreFilePatterns);
+
+  // Check if .git is a worktree reference
+  const gitPath = path.join(rootDir, '.git');
+  const isWorktree = await isGitWorktreeRef(gitPath);
+
+  // Modify ignore patterns for git worktree
+  const adjustedIgnorePatterns = [...normalizedIgnorePatterns];
+  if (isWorktree) {
+    // Remove '.git/**' pattern and add '.git' to ignore the reference file
+    const gitIndex = adjustedIgnorePatterns.indexOf('.git/**');
+    if (gitIndex !== -1) {
+      adjustedIgnorePatterns.splice(gitIndex, 1);
+      adjustedIgnorePatterns.push('.git');
+    }
+  }
+
+  // Convert absolute paths to relative paths for pattern matching
+  const relativeFilePaths = filePaths.map((filePath) => path.relative(rootDir, filePath));
+
+  // Apply include patterns first
+  const includeFilteredPaths = relativeFilePaths.filter((filePath) =>
+    includePatterns.some((pattern) => minimatch(filePath, pattern)),
+  );
+
+  // Apply ignore patterns to the include-filtered paths
+  const filteredFilePaths = includeFilteredPaths.filter((filePath) => {
+    // Check if file matches any ignore pattern
+    const isIgnored = adjustedIgnorePatterns.some((pattern) => minimatch(filePath, pattern));
+    return !isIgnored;
+  });
+
+  // TODO: Handle ignoreFiles patterns (.gitignore, .repomixignore)
+  // For now, we skip ignoreFiles processing as it requires reading those files
+  // and applying their patterns, which is complex for stdin file filtering
+
+  logger.trace(`Filtered ${filteredFilePaths.length} files from ${filePaths.length} input files`);
+
+  return {
+    filePaths: sortPaths(filteredFilePaths),
+    emptyDirPaths: [], // Empty directories are not applicable for stdin file lists
+  };
+};
+
 export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const ignorePatterns = new Set<string>();
 
