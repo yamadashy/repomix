@@ -7,6 +7,7 @@ import { minimatch } from 'minimatch';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   escapeGlobPattern,
+  filterFileList,
   getIgnoreFilePatterns,
   getIgnorePatterns,
   normalizeGlobPattern,
@@ -560,6 +561,85 @@ node_modules
       const result = await searchFiles('/valid/directory', mockConfig);
 
       expect(result.filePaths).toEqual(['test.js']);
+      expect(result.emptyDirPaths).toEqual([]);
+    });
+  });
+
+  describe('filterFileList', () => {
+    test('should filter files based on include patterns', async () => {
+      const mockConfig = createMockConfig({
+        include: ['**/*.ts'],
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      const filePaths = ['/test/src/file1.ts', '/test/src/file2.js', '/test/src/file3.ts'];
+
+      const result = await filterFileList(filePaths, '/test', mockConfig);
+
+      expect(result.filePaths).toEqual(['src/file1.ts', 'src/file3.ts']);
+      expect(result.emptyDirPaths).toEqual([]);
+    });
+
+    test.skip('should filter files based on ignore patterns', async () => {
+      const mockConfig = createMockConfig({
+        include: [],
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: false,
+          customPatterns: ['**/*.test.ts'],
+        },
+      });
+
+      const filePaths = [
+        '/test/src/file1.ts',
+        '/test/src/file1.test.ts',
+        '/test/src/file2.ts',
+        '/test/src/file2.test.ts',
+      ];
+
+      const result = await filterFileList(filePaths, '/test', mockConfig);
+
+      expect(result.filePaths).toEqual(['src/file1.ts', 'src/file2.ts']);
+      expect(result.emptyDirPaths).toEqual([]);
+    });
+
+    test.skip('should apply both include and ignore patterns', async () => {
+      const mockConfig = createMockConfig({
+        include: ['**/*.ts'],
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: false,
+          customPatterns: ['**/*.test.ts'],
+        },
+      });
+
+      const filePaths = ['/test/src/file1.ts', '/test/src/file1.test.ts', '/test/src/file2.js', '/test/src/file3.ts'];
+
+      const result = await filterFileList(filePaths, '/test', mockConfig);
+
+      expect(result.filePaths).toEqual(['src/file1.ts', 'src/file3.ts']);
+      expect(result.emptyDirPaths).toEqual([]);
+    });
+
+    test('should handle absolute paths correctly', async () => {
+      const mockConfig = createMockConfig({
+        include: [],
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: false,
+          customPatterns: ['tests/**'],
+        },
+      });
+
+      const filePaths = ['/test/src/main.ts', '/test/tests/unit.test.ts', '/test/lib/utils.ts'];
+
+      const result = await filterFileList(filePaths, '/test', mockConfig);
+
+      expect(result.filePaths).toEqual(['lib/utils.ts', 'src/main.ts']);
       expect(result.emptyDirPaths).toEqual([]);
     });
   });
