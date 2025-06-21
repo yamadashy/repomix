@@ -188,6 +188,9 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   if (options.include) {
     cliConfig.include = splitPatterns(options.include);
   }
+  if (options.forceInclude) {
+    cliConfig.forceInclude = options.forceInclude.split(',').map((pattern) => pattern.trim());
+  }
   if (options.ignore) {
     cliConfig.ignore = { customPatterns: splitPatterns(options.ignore) };
   }
