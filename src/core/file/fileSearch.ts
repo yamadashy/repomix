@@ -171,10 +171,49 @@ export const searchFiles = async (rootDir: string, config: RepomixConfigMerged):
       }
     }
 
+    // Detect conflicts between ignore patterns and ignoreFiles patterns
+    // This happens when .gitignore files are in both ignore (exclude from results) 
+    // AND ignoreFiles (read for patterns), causing globby to not be able to read them
+    const conflictingIgnoreFiles = ignoreFilePatterns.filter(pattern =>
+      adjustedIgnorePatterns.some(ignorePattern => minimatch(pattern, ignorePattern))
+    );
+
+    const safeIgnoreFiles = ignoreFilePatterns.filter(pattern =>
+      !adjustedIgnorePatterns.some(ignorePattern => minimatch(pattern, ignorePattern))
+    );
+
+    // Pre-read conflicting ignore files and add their patterns to ignore list
+    const extraIgnorePatterns: string[] = [];
+    for (const pattern of conflictingIgnoreFiles) {
+      try {
+        const matchingFiles = await globby(pattern, { 
+          cwd: rootDir, 
+          onlyFiles: true,
+          absolute: false,
+          dot: true,
+          followSymbolicLinks: false,
+        });
+        
+        for (const file of matchingFiles) {
+          try {
+            const content = await fs.readFile(path.join(rootDir, file), 'utf8');
+            const filePatterns = parseIgnoreContent(content);
+            extraIgnorePatterns.push(...filePatterns);
+          } catch (error) {
+            // File might not be accessible, continue
+            logger.trace(`Could not read ignore file ${file}:`, error instanceof Error ? error.message : String(error));
+          }
+        }
+      } catch (error) {
+        // Pattern might not match any files, continue
+        logger.trace(`Could not find files matching pattern ${pattern}:`, error instanceof Error ? error.message : String(error));
+      }
+    }
+
     const filePaths = await globby(includePatterns, {
       cwd: rootDir,
-      ignore: [...adjustedIgnorePatterns],
-      ignoreFiles: [...ignoreFilePatterns],
+      ignore: [...adjustedIgnorePatterns, ...extraIgnorePatterns],
+      ignoreFiles: [...safeIgnoreFiles],
       onlyFiles: true,
       absolute: false,
       dot: true,
@@ -194,15 +233,15 @@ export const searchFiles = async (rootDir: string, config: RepomixConfigMerged):
     if (config.output.includeEmptyDirectories) {
       const directories = await globby(includePatterns, {
         cwd: rootDir,
-        ignore: [...adjustedIgnorePatterns],
-        ignoreFiles: [...ignoreFilePatterns],
+        ignore: [...adjustedIgnorePatterns, ...extraIgnorePatterns],
+        ignoreFiles: [...safeIgnoreFiles],
         onlyDirectories: true,
         absolute: false,
         dot: true,
         followSymbolicLinks: false,
       });
 
-      emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+      emptyDirPaths = await findEmptyDirectories(rootDir, directories, [...adjustedIgnorePatterns, ...extraIgnorePatterns]);
     }
 
     logger.trace(`Filtered ${filePaths.length} files`);
