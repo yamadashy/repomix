@@ -99,6 +99,7 @@ Here's an example of a complete configuration file (`repomix.config.json`):
     }
   },
   "include": ["**/*"],
+  "forceInclude": ["coverage/summary.json", "test-results/junit.xml"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,
@@ -131,10 +132,11 @@ Command-line options take precedence over configuration file settings.
 
 Repomix provides multiple ways to specify which files should be ignored. The patterns are processed in the following priority order:
 
-1. CLI options (`--ignore`)
-2. `.repomixignore` file in the project directory
-3. `.gitignore` and `.git/info/exclude` (if `ignore.useGitignore` is true)
-4. Default patterns (if `ignore.useDefaultPatterns` is true)
+1. Force include patterns (`--force-include`)
+2. CLI options (`--ignore`)
+3. `.repomixignore` file in the project directory
+4. `.gitignore` and `.git/info/exclude` (if `ignore.useGitignore` is true)
+5. Default patterns (if `ignore.useDefaultPatterns` is true)
 
 Example of `.repomixignore`:
 ```text

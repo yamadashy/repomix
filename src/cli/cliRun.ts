@@ -78,6 +78,7 @@ export const run = async () => {
       // Filter Options
       .optionsGroup('Filter Options')
       .option('--include <patterns>', 'list of include patterns (comma-separated)')
+      .option('--force-include <patterns>', 'list of patterns to include, overriding ignores (comma-separated)')
       .option('-i, --ignore <patterns>', 'additional ignore patterns (comma-separated)')
       .option('--no-gitignore', 'disable .gitignore file usage')
       .option('--no-default-patterns', 'disable default patterns')

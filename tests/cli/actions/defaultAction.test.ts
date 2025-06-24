@@ -58,6 +58,7 @@ describe('defaultAction', () => {
         customPatterns: [],
       },
       include: [],
+      forceInclude: [],
       security: {
         enableSecurityCheck: true,
       },
@@ -540,15 +541,33 @@ describe('defaultAction', () => {
     });
   });
 
+  it('should handle custom force include patterns', async () => {
+    const options: CliOptions = {
+      forceInclude: 'coverage/*.json,test-results/*.xml',
+    };
+
+    await runDefaultAction(['.'], process.cwd(), options);
+
+    expect(configLoader.mergeConfigs).toHaveBeenCalledWith(
+      process.cwd(),
+      expect.anything(),
+      expect.objectContaining({
+        forceInclude: ['coverage/*.json', 'test-results/*.xml'],
+      }),
+    );
+  });
+
   it('should properly trim whitespace from comma-separated patterns', () => {
     const options = {
       include: 'src/**/*,  tests/**/*,   examples/**/*',
       ignore: 'node_modules/**,  dist/**,  coverage/**',
+      forceInclude: 'coverage/*.json,  test-results/*.xml',
     };
     const config = buildCliConfig(options);
 
     expect(config.include).toEqual(['src/**/*', 'tests/**/*', 'examples/**/*']);
     expect(config.ignore?.customPatterns).toEqual(['node_modules/**', 'dist/**', 'coverage/**']);
+    expect(config.forceInclude).toEqual(['coverage/*.json', 'test-results/*.xml']);
   });
 
   describe('files flag', () => {
