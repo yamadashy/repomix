@@ -29,7 +29,6 @@ export interface CliOptions extends OptionValues {
   ignore?: string;
   gitignore?: boolean;
   defaultPatterns?: boolean;
-  stdin?: boolean;
 
   // Remote Repository Options
   remote?: string;

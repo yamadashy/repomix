@@ -31,6 +31,11 @@ describe('defaultAction', () => {
     vi.mocked(configLoader.loadFileConfig).mockResolvedValue({});
     // Default globby mock
     vi.mocked(globby).mockResolvedValue([]);
+    // Mock stdin as TTY to prevent auto-detection in tests
+    Object.defineProperty(process.stdin, 'isTTY', {
+      value: true,
+      configurable: true,
+    });
     vi.mocked(configLoader.mergeConfigs).mockReturnValue({
       cwd: process.cwd(),
       input: {
@@ -619,7 +624,6 @@ describe('defaultAction', () => {
     const mockCliOptions: CliOptions = {
       verbose: false,
       progress: true,
-      stdin: true,
     };
 
     beforeEach(() => {
@@ -641,14 +645,29 @@ describe('defaultAction', () => {
 
     it('should validate directory arguments and throw error for multiple directories', async () => {
       await expect(handleStdinProcessing(['dir1', 'dir2'], testCwd, mockConfig, mockCliOptions)).rejects.toThrow(
-        'When using --stdin, do not specify directory arguments',
+        'When using stdin input, do not specify directory arguments',
       );
     });
 
     it('should validate directory arguments and throw error for non-default directory', async () => {
       await expect(handleStdinProcessing(['src'], testCwd, mockConfig, mockCliOptions)).rejects.toThrow(
-        'When using --stdin, do not specify directory arguments',
+        'When using stdin input, do not specify directory arguments',
       );
+    });
+
+    it('should accept dash argument', async () => {
+      vi.mocked(fileStdin.readFilePathsFromStdin).mockResolvedValue({
+        filePaths: [path.resolve(testCwd, 'file1.txt')],
+        emptyDirPaths: [],
+      });
+
+      const result = await handleStdinProcessing(['-'], testCwd, mockConfig, mockCliOptions);
+
+      expect(result).toEqual({
+        packResult: expect.any(Object),
+        config: mockConfig,
+      });
+      expect(fileStdin.readFilePathsFromStdin).toHaveBeenCalledWith(testCwd);
     });
 
     it('should accept default directory argument', async () => {

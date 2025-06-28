@@ -166,7 +166,7 @@ describe('fileStdin', () => {
 
       await expect(readFilePathsFromStdin(cwd, deps)).rejects.toThrow(RepomixError);
       await expect(readFilePathsFromStdin(cwd, deps)).rejects.toThrow(
-        'No data provided via stdin. Please pipe file paths to repomix when using --stdin flag.',
+        'No data provided via stdin. Please pipe file paths to repomix or specify a directory argument.',
       );
     });
 
@@ -282,7 +282,7 @@ describe('fileStdin', () => {
       const error = await readFilePathsFromStdin(cwd, deps).catch((e) => e);
       expect(error).toBeInstanceOf(RepomixError);
       expect(error.message).toBe(
-        'No data provided via stdin. Please pipe file paths to repomix when using --stdin flag.',
+        'No data provided via stdin. Please pipe file paths to repomix or specify a directory argument.',
       );
     });
 

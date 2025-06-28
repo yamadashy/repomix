@@ -71,7 +71,9 @@ export const readFilePathsFromStdin = async (
 
     // Check if stdin is a TTY (interactive mode)
     if (stdin.isTTY) {
-      throw new RepomixError('No data provided via stdin. Please pipe file paths to repomix when using --stdin flag.');
+      throw new RepomixError(
+        'No data provided via stdin. Please pipe file paths to repomix or specify a directory argument.',
+      );
     }
 
     // Read all lines from stdin

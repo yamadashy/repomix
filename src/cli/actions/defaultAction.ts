@@ -18,6 +18,22 @@ import { Spinner } from '../cliSpinner.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
 
+/**
+ * Determines if stdin should be auto-detected based on the arguments.
+ */
+const shouldAutoDetectStdin = (directories: string[]): boolean => {
+  // Check if '-' is explicitly used (Unix convention)
+  if (directories.length === 1 && directories[0] === '-') {
+    return true;
+  }
+
+  // Check if default directory is used and stdin has piped data
+  const isDefaultDirectory = directories.length === 1 && directories[0] === '.';
+  const hasStdinInput = !process.stdin.isTTY;
+
+  return isDefaultDirectory && hasStdinInput;
+};
+
 export interface DefaultActionRunnerResult {
   packResult: PackResult;
   config: RepomixConfigMerged;
@@ -47,7 +63,7 @@ export const runDefaultAction = async (
   logger.trace('Merged config:', config);
 
   // Route to appropriate processing workflow
-  if (cliOptions.stdin) {
+  if (shouldAutoDetectStdin(directories)) {
     return handleStdinProcessing(directories, cwd, config, cliOptions);
   }
 
@@ -65,9 +81,11 @@ export const handleStdinProcessing = async (
 ): Promise<DefaultActionRunnerResult> => {
   // Validate directory arguments for stdin mode
   const firstDir = directories[0] ?? '.';
-  if (directories.length > 1 || firstDir !== '.') {
+  const isDashArg = firstDir === '-';
+  // Allow '-' argument or default '.' for auto-detection, but not multiple directories
+  if (directories.length > 1 || (!isDashArg && firstDir !== '.')) {
     throw new RepomixError(
-      'When using --stdin, do not specify directory arguments. File paths will be read from stdin.',
+      'When using stdin input, do not specify directory arguments. File paths will be read from stdin.',
     );
   }
 

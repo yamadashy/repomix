@@ -42,14 +42,13 @@ const semanticSuggestionMap: Record<string, string[]> = {
   print: ['--stdout'],
   console: ['--stdout'],
   terminal: ['--stdout'],
-  pipe: ['--stdin'],
 };
 
 export const run = async () => {
   try {
     program
       .description('Repomix - Pack your repository into a single AI-friendly file')
-      .argument('[directories...]', 'list of directories to process', ['.'])
+      .argument('[directories...]', 'list of directories to process (use "-" for stdin)', ['.'])
       // Basic Options
       .optionsGroup('Basic Options')
       .option('-v, --version', 'show version information')
@@ -81,7 +80,6 @@ export const run = async () => {
       .option('-i, --ignore <patterns>', 'additional ignore patterns (comma-separated)')
       .option('--no-gitignore', 'disable .gitignore file usage')
       .option('--no-default-patterns', 'disable default patterns')
-      .option('--stdin', 'read file list from stdin')
       // Remote Repository Options
       .optionsGroup('Remote Repository Options')
       .option('--remote <url>', 'process a remote Git repository')
