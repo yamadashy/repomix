@@ -74,13 +74,15 @@ repomix --ignore <patterns>
 repomix --ignore "**/*.log,tmp/"
 ```
 
-### Stdin से फ़ाइल पथ
+### Stdin से फ़ाइल पथ (पाइप के माध्यम से)
+
+Repomix अब स्वचालित रूप से stdin से फ़ाइल पथ का पता लगाता है:
 
 ```bash
-repomix --stdin
+find src -name "*.ts" -type f | repomix
+git ls-files "*.js" | repomix
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```
-
-फ़ाइलों को स्वचालित रूप से खोजने के बजाय stdin से फ़ाइल पथ पढ़ता है।
 
 ## रिमोट रिपॉजिटरी प्रोसेसिंग
 
@@ -209,12 +211,12 @@ repomix --remove-comments --compress
 
 टिप्पणियां हटाकर और कोड को संक्षिप्त करके टोकन उपयोग को कम करता है।
 
-### Stdin का उपयोग करके फ़ाइल सूची
+### Stdin का उपयोग करके फ़ाइल सूची (स्वचालित पहचान)
 
 ```bash
-find src -name "*.ts" -type f | repomix --stdin
-git ls-files "*.js" | repomix --stdin
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+find src -name "*.ts" -type f | repomix
+git ls-files "*.js" | repomix
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```
 
 ## अगला क्या है?

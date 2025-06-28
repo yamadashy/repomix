@@ -24,7 +24,6 @@
 ## Options de filtrage
 - `--include <motifs>`: Motifs d'inclusion (séparés par des virgules)
 - `-i, --ignore <motifs>`: Motifs d'exclusion (séparés par des virgules)
-- `--stdin`: Lire les chemins de fichiers depuis stdin au lieu de découvrir automatiquement les fichiers
 - `--no-gitignore`: Désactiver l'utilisation du fichier .gitignore
 - `--no-default-patterns`: Désactiver les motifs par défaut
 
@@ -78,8 +77,8 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Dépôt distant avec format abrégé
 repomix --remote user/repo
 
-# Liste de fichiers utilisant stdin
-find src -name "*.ts" -type f | repomix --stdin
-git ls-files "*.js" | repomix --stdin
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+# Liste de fichiers depuis stdin (détection automatique)
+find src -name "*.ts" -type f | repomix
+git ls-files "*.js" | repomix
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```

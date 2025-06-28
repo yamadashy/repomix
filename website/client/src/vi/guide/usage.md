@@ -50,31 +50,31 @@ repomix --remote https://github.com/yamadashy/repomix/tree/main
 repomix --remote https://github.com/yamadashy/repomix/commit/836abcd7335137228ad77feb28655d85712680f1
 ```
 
-## Nhập danh sách tệp (stdin)
+## Nhập danh sách tệp (pipe via stdin)
 
 Truyền đường dẫn tệp qua stdin để có tính linh hoạt tối đa:
 
 ```bash
 # Sử dụng lệnh find
-find src -name "*.ts" -type f | repomix --stdin
+find src -name "*.ts" -type f | repomix
 
 # Sử dụng git để lấy các tệp được theo dõi
-git ls-files "*.ts" | repomix --stdin
+git ls-files "*.ts" | repomix
 
 # Sử dụng ls với các mẫu glob
-ls src/**/*.ts | repomix --stdin
+ls src/**/*.ts | repomix
 
 # Từ một tệp chứa đường dẫn tệp
-cat file-list.txt | repomix --stdin
+cat file-list.txt | repomix
 
 # Nhập trực tiếp với echo
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```
 
-Tùy chọn `--stdin` cho phép bạn truyền danh sách đường dẫn tệp tới Repomix, mang lại tính linh hoạt tối đa trong việc chọn tệp nào để đóng gói.
+Repomix tự động phát hiện khi đường dẫn tệp được truyền qua stdin, mang lại tính linh hoạt tối đa trong việc chọn tệp nào để đóng gói.
 
 > [!NOTE]
-> Khi sử dụng `--stdin`, đường dẫn tệp có thể là tương đối hoặc tuyệt đối, và Repomix sẽ tự động xử lý việc phân giải đường dẫn và loại bỏ trùng lặp.
+> Khi sử dụng stdin input, đường dẫn tệp có thể là tương đối hoặc tuyệt đối, và Repomix sẽ tự động xử lý việc phân giải đường dẫn và loại bỏ trùng lặp.
 
 ## Tùy chọn đầu ra
 

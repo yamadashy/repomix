@@ -25,7 +25,6 @@
 ## Filter Options
 - `--include <patterns>`: Include patterns (comma-separated)
 - `-i, --ignore <patterns>`: Ignore patterns (comma-separated)
-- `--stdin`: Read file paths from stdin instead of discovering files automatically
 - `--no-gitignore`: Disable .gitignore file usage
 - `--no-default-patterns`: Disable default patterns
 
@@ -79,8 +78,8 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Remote repository with shorthand
 repomix --remote user/repo
 
-# Using stdin for file list
-find src -name "*.ts" -type f | repomix --stdin
-git ls-files "*.js" | repomix --stdin
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+# Using file list via stdin (auto-detected)
+find src -name "*.ts" -type f | repomix
+git ls-files "*.js" | repomix
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```

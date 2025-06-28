@@ -38,57 +38,32 @@ repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-### Entrada de Lista de Arquivos (stdin)
+### Entrada de Lista de Arquivos (pipe via stdin)
 
 Passe caminhos de arquivos via stdin para máxima flexibilidade:
 
 ```bash
 # Usando comando find
-find src -name "*.ts" -type f | repomix --stdin
+find src -name "*.ts" -type f | repomix
 
 # Usando git para obter arquivos rastreados
-git ls-files "*.ts" | repomix --stdin
+git ls-files "*.ts" | repomix
 
 # Usando ls com padrões glob
-ls src/**/*.ts | repomix --stdin
+ls src/**/*.ts | repomix
 
 # De um arquivo contendo caminhos de arquivos
-cat file-list.txt | repomix --stdin
+cat file-list.txt | repomix
 
 # Entrada direta com echo
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```
 
-A opção `--stdin` permite que você canalize uma lista de caminhos de arquivos para o Repomix, oferecendo máxima flexibilidade na seleção de quais arquivos compactar.
+
+Repomix detecta automaticamente quando caminhos de arquivos são canalizados via stdin, oferecendo máxima flexibilidade na seleção de quais arquivos compactar.
 
 > [!NOTE]
-> Ao usar `--stdin`, os caminhos de arquivos podem ser relativos ou absolutos, e o Repomix tratará automaticamente da resolução de caminhos e deduplicação.
-
-### Entrada de Lista de Arquivos (stdin)
-
-Passe caminhos de arquivos via stdin para máxima flexibilidade:
-
-```bash
-# Usando o comando find
-find src -name "*.ts" -type f | repomix --stdin
-
-# Usando git para obter arquivos rastreados
-git ls-files "*.ts" | repomix --stdin
-
-# Usando ls com padrões glob
-ls src/**/*.ts | repomix --stdin
-
-# De um arquivo contendo caminhos de arquivos
-cat file-list.txt | repomix --stdin
-
-# Entrada direta com echo
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
-```
-
-A opção `--stdin` permite canalizar uma lista de caminhos de arquivos para o Repomix, oferecendo máxima flexibilidade na seleção de quais arquivos compactar.
-
-> [!NOTE]
-> Ao usar `--stdin`, os caminhos de arquivos podem ser relativos ou absolutos, e o Repomix irá automaticamente lidar com a resolução de caminhos e desduplicação.
+> Ao usar entrada stdin, os caminhos de arquivos podem ser relativos ou absolutos, e o Repomix irá automaticamente lidar com a resolução de caminhos e desduplicação.
 
 ## Formatos de Saída
 

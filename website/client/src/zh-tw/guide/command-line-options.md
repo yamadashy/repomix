@@ -25,7 +25,6 @@
 ## 過濾選項
 - `--include <patterns>`: 包含模式（逗號分隔）
 - `-i, --ignore <patterns>`: 忽略模式（逗號分隔）
-- `--stdin`: 從 stdin 讀取文件路徑而不是自動發現文件
 - `--no-gitignore`: 禁用 .gitignore 文件
 - `--no-default-patterns`: 禁用預設模式
 
@@ -79,8 +78,8 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # 使用簡寫的遠端倉庫
 repomix --remote user/repo
 
-# 使用 stdin 的文件列表
-find src -name "*.ts" -type f | repomix --stdin
-git ls-files "*.js" | repomix --stdin
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+# 從 stdin 獲取文件列表（自動檢測）
+find src -name "*.ts" -type f | repomix
+git ls-files "*.js" | repomix
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```

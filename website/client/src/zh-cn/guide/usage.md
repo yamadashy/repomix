@@ -38,31 +38,31 @@ repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-### 文件列表输入（stdin）
+### 文件列表输入（pipe via stdin）
 
 通过 stdin 传递文件路径以获得终极灵活性：
 
 ```bash
 # 使用 find 命令
-find src -name "*.ts" -type f | repomix --stdin
+find src -name "*.ts" -type f | repomix
 
 # 使用 git 获取跟踪的文件
-git ls-files "*.ts" | repomix --stdin
+git ls-files "*.ts" | repomix
 
 # 使用 ls 和 glob 模式
-ls src/**/*.ts | repomix --stdin
+ls src/**/*.ts | repomix
 
 # 从包含文件路径的文件中读取
-cat file-list.txt | repomix --stdin
+cat file-list.txt | repomix
 
 # 使用 echo 直接输入
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```
 
-`--stdin` 选项允许您向 Repomix 传递文件路径列表，在选择要打包的文件时提供终极灵活性。
+Repomix 自动检测通过 stdin 传递的文件路径，在选择要打包的文件时提供终极灵活性。
 
 > [!NOTE]
-> 使用 `--stdin` 时，文件路径可以是相对路径或绝对路径，Repomix 会自动处理路径解析和去重。
+> 使用 stdin 输入时，文件路径可以是相对路径或绝对路径，Repomix 会自动处理路径解析和去重。
 
 ## 输出格式
 

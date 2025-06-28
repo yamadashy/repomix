@@ -25,7 +25,6 @@
 ## フィルターオプション
 - `--include <patterns>`: 含めるパターン（カンマ区切り）
 - `-i, --ignore <patterns>`: 除外パターン（カンマ区切り）
-- `--stdin`: ファイルを自動的に検出する代わりに、stdinからファイルパスを読み取る
 - `--no-gitignore`: .gitignoreファイルの使用を無効化
 - `--no-default-patterns`: デフォルトパターンを無効化
 
@@ -79,8 +78,8 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # ショートハンドを使用したリモートリポジトリ
 repomix --remote user/repo
 
-# stdinを使用したファイルリスト
-find src -name "*.ts" -type f | repomix --stdin
-git ls-files "*.js" | repomix --stdin
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+# stdinからのファイルリスト（自動検出）
+find src -name "*.ts" -type f | repomix
+git ls-files "*.js" | repomix
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```

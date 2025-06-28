@@ -38,31 +38,34 @@ repomix --remote usuario/repositorio --remote-branch main
 repomix --remote usuario/repositorio --remote-branch 935b695
 ```
 
-### Entrada de lista de archivos (stdin)
+### Entrada de lista de archivos (pipe via stdin)
 
 Pasa rutas de archivos a través de stdin para máxima flexibilidad:
 
 ```bash
 # Usando el comando find
-find src -name "*.ts" -type f | repomix --stdin
+find src -name "*.ts" -type f | repomix
 
 # Usando git para obtener archivos rastreados
-git ls-files "*.ts" | repomix --stdin
+git ls-files "*.ts" | repomix
 
 # Usando ls con patrones glob
-ls src/**/*.ts | repomix --stdin
+ls src/**/*.ts | repomix
 
 # Desde un archivo que contiene rutas de archivos
-cat file-list.txt | repomix --stdin
+cat file-list.txt | repomix
 
 # Entrada directa con echo
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
+
+# Usando el comando find con guión (indicador explícito de stdin)
+find src -name "*.ts" | repomix -
 ```
 
-La opción `--stdin` te permite canalizar una lista de rutas de archivos a Repomix, brindando máxima flexibilidad en la selección de qué archivos empaquetar.
+Repomix detecta automáticamente cuando se canalizan rutas de archivos a través de stdin, brindando máxima flexibilidad en la selección de qué archivos empaquetar.
 
 > [!NOTE]
-> Cuando uses `--stdin`, las rutas de archivos pueden ser relativas o absolutas, y Repomix manejará automáticamente la resolución de rutas y la eliminación de duplicados.
+> Cuando uses entrada de stdin, las rutas de archivos pueden ser relativas o absolutas, y Repomix manejará automáticamente la resolución de rutas y la eliminación de duplicados.
 
 ## Formatos de salida
 

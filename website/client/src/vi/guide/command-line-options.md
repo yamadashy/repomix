@@ -17,7 +17,6 @@ Repomix cung cấp nhiều tùy chọn dòng lệnh để tùy chỉnh hành vi 
 | `--remote <url>` | Xử lý kho lưu trữ từ xa thay vì kho lưu trữ cục bộ |
 | `--include <patterns>` | Chỉ bao gồm các tệp khớp với các mẫu được cung cấp (phân tách bằng dấu phẩy) |
 | `--ignore <patterns>` | Bỏ qua các tệp khớp với các mẫu được cung cấp (phân tách bằng dấu phẩy) |
-| `--stdin` | Đọc đường dẫn tệp từ stdin thay vì tự động khám phá tệp |
 | `--no-respect-gitignore` | Không tôn trọng các tệp .gitignore |
 | `--config <path>` | Chỉ định đường dẫn đến tệp cấu hình |
 

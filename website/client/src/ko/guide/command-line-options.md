@@ -25,7 +25,6 @@
 ## 필터 옵션
 - `--include <patterns>`: 포함할 패턴 (쉼표로 구분)
 - `-i, --ignore <patterns>`: 무시할 패턴 (쉼표로 구분)
-- `--stdin`: 파일을 자동으로 검색하는 대신 stdin에서 파일 경로 읽기
 - `--no-gitignore`: .gitignore 파일 사용 비활성화
 - `--no-default-patterns`: 기본 패턴 비활성화
 
@@ -79,8 +78,8 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # 단축형을 사용한 원격 저장소
 repomix --remote user/repo
 
-# stdin을 사용한 파일 목록
-find src -name "*.ts" -type f | repomix --stdin
-git ls-files "*.js" | repomix --stdin
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+# stdin에서 파일 목록 (자동 감지)
+find src -name "*.ts" -type f | repomix
+git ls-files "*.js" | repomix
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```

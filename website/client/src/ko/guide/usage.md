@@ -38,57 +38,60 @@ repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-### 파일 목록 입력 (stdin)
+### 파일 목록 입력 (pipe via stdin)
 
 최고의 유연성을 위해 stdin을 통해 파일 경로를 전달하세요:
 
 ```bash
 # find 명령 사용
-find src -name "*.ts" -type f | repomix --stdin
+find src -name "*.ts" -type f | repomix
 
 # git을 사용하여 추적된 파일 가져오기
-git ls-files "*.ts" | repomix --stdin
+git ls-files "*.ts" | repomix
 
 # glob 패턴과 함께 ls 사용
-ls src/**/*.ts | repomix --stdin
+ls src/**/*.ts | repomix
 
 # 파일 경로가 포함된 파일에서
-cat file-list.txt | repomix --stdin
+cat file-list.txt | repomix
 
 # echo로 직접 입력
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
+
+# 대시를 사용한 find 명령 (명시적 stdin 지시자)
+find src -name "*.ts" | repomix -
 ```
 
-`--stdin` 옵션을 사용하면 파일 경로 목록을 Repomix로 파이프할 수 있어 패킹할 파일 선택에 최고의 유연성을 제공합니다.
+Repomix는 파일 경로가 stdin을 통해 파이프될 때 자동으로 감지하여 패킹할 파일 선택에 최고의 유연성을 제공합니다.
 
 > [!NOTE]
-> `--stdin`을 사용할 때 파일 경로는 상대 경로 또는 절대 경로가 될 수 있으며, Repomix가 자동으로 경로 해석과 중복 제거를 처리합니다.
+> stdin 입력을 사용할 때 파일 경로는 상대 경로 또는 절대 경로가 될 수 있으며, Repomix가 자동으로 경로 해석과 중복 제거를 처리합니다.
 
-### 파일 목록 입력 (stdin)
+### 파일 목록 입력 (pipe via stdin)
 
 최대한의 유연성을 위해 stdin을 통해 파일 경로를 전달하세요:
 
 ```bash
 # find 명령어 사용
-find src -name "*.ts" -type f | repomix --stdin
+find src -name "*.ts" -type f | repomix
 
 # git을 사용하여 추적된 파일 가져오기
-git ls-files "*.ts" | repomix --stdin
+git ls-files "*.ts" | repomix
 
 # glob 패턴과 함께 ls 사용
-ls src/**/*.ts | repomix --stdin
+ls src/**/*.ts | repomix
 
 # 파일 경로가 포함된 파일에서
-cat file-list.txt | repomix --stdin
+cat file-list.txt | repomix
 
 # echo를 사용한 직접 입력
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```
 
-`--stdin` 옵션을 사용하면 파일 경로 목록을 Repomix에 파이프할 수 있어 패킹할 파일을 선택하는 데 최대한의 유연성을 제공합니다.
+Repomix는 stdin을 통해 파이프된 파일 경로를 자동으로 감지하여 패킹할 파일을 선택하는 데 최대한의 유연성을 제공합니다.
 
 > [!NOTE]
-> `--stdin` 사용 시 파일 경로는 상대 경로 또는 절대 경로일 수 있으며, Repomix가 자동으로 경로 해석과 중복 제거를 처리합니다.
+> stdin 입력 사용 시 파일 경로는 상대 경로 또는 절대 경로일 수 있으며, Repomix가 자동으로 경로 해석과 중복 제거를 처리합니다.
 
 ## 출력 형식
 

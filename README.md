@@ -216,29 +216,32 @@ repomix --remote https://github.com/yamadashy/repomix/commit/836abcd7335137228ad
 
 ```
 
-To pack files from a file list (via stdin):
+To pack files from a file list (pipe via stdin):
 
 ```bash
 # Using find command
-find src -name "*.ts" -type f | repomix --stdin
+find src -name "*.ts" -type f | repomix
 
 # Using git to get tracked files
-git ls-files "*.ts" | repomix --stdin
+git ls-files "*.ts" | repomix
 
 # Using ls with glob patterns
-ls src/**/*.ts | repomix --stdin
+ls src/**/*.ts | repomix
 
 # From a file containing file paths
-cat file-list.txt | repomix --stdin
+cat file-list.txt | repomix
 
 # Direct input with echo
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
+
+# Using find command with a dash (explicit stdin indicator)
+find src -name "*.ts" | repomix -
 ```
 
-The `--stdin` option allows you to pipe a list of file paths to Repomix, giving you ultimate flexibility in selecting which files to pack.
+Repomix automatically detects when file paths are piped via stdin, giving you ultimate flexibility in selecting which files to pack.
 
 > [!NOTE]
-> When using `--stdin`, file paths can be relative or absolute, and Repomix will automatically handle path resolution and deduplication.
+> When using stdin input, file paths can be relative or absolute, and Repomix will automatically handle path resolution and deduplication.
 
 To compress the output:
 
@@ -508,7 +511,6 @@ Instruction
 #### Filter Options
 - `--include <patterns>`: List of include patterns (comma-separated)
 - `-i, --ignore <patterns>`: Additional ignore patterns (comma-separated)
-- `--stdin`: Read file paths from stdin instead of discovering files automatically
 - `--no-gitignore`: Disable .gitignore file usage
 - `--no-default-patterns`: Disable default patterns
 

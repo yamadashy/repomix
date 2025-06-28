@@ -42,31 +42,34 @@ repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695
 ```
 
-### Entrée de liste de fichiers (stdin)
+### Entrée de liste de fichiers (pipe via stdin)
 
 Passez les chemins de fichiers via stdin pour une flexibilité ultime:
 
 ```bash
 # En utilisant la commande find
-find src -name "*.ts" -type f | repomix --stdin
+find src -name "*.ts" -type f | repomix
 
 # En utilisant git pour obtenir les fichiers suivis
-git ls-files "*.ts" | repomix --stdin
+git ls-files "*.ts" | repomix
 
 # En utilisant ls avec des motifs glob
-ls src/**/*.ts | repomix --stdin
+ls src/**/*.ts | repomix
 
 # À partir d'un fichier contenant des chemins de fichiers
-cat file-list.txt | repomix --stdin
+cat file-list.txt | repomix
 
 # Entrée directe avec echo
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
+
+# En utilisant la commande find avec tiret (indicateur stdin explicite)
+find src -name "*.ts" | repomix -
 ```
 
-L'option `--stdin` vous permet de transmettre une liste de chemins de fichiers à Repomix, offrant une flexibilité ultime dans la sélection des fichiers à empaqueter.
+Repomix détecte automatiquement lorsque les chemins de fichiers sont transmis via stdin, offrant une flexibilité ultime dans la sélection des fichiers à empaqueter.
 
 > [!NOTE]
-> Lors de l'utilisation de `--stdin`, les chemins de fichiers peuvent être relatifs ou absolus, et Repomix gèrera automatiquement la résolution des chemins et la déduplication.
+> Lors de l'utilisation d'entrée stdin, les chemins de fichiers peuvent être relatifs ou absolus, et Repomix gèrera automatiquement la résolution des chemins et la déduplication.
 
 ### Compression de code
 

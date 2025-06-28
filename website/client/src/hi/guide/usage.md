@@ -81,31 +81,31 @@ npx repomix --remote yamadashy/repomix
 npx repomix --remote https://github.com/yamadashy/repomix
 ```
 
-## फ़ाइल सूची इनपुट (stdin)
+## फ़ाइल सूची इनपुट (pipe via stdin)
 
 अधिकतम लचीलेपन के लिए stdin के माध्यम से फ़ाइल पथ पास करें:
 
 ```bash
 # find कमांड का उपयोग करके
-find src -name "*.ts" -type f | repomix --stdin
+find src -name "*.ts" -type f | repomix
 
 # git का उपयोग करके ट्रैक्ड फ़ाइलें प्राप्त करने के लिए
-git ls-files "*.ts" | repomix --stdin
+git ls-files "*.ts" | repomix
 
 # glob पैटर्न के साथ ls का उपयोग करके
-ls src/**/*.ts | repomix --stdin
+ls src/**/*.ts | repomix
 
 # फ़ाइल पथ वाली फ़ाइल से
-cat file-list.txt | repomix --stdin
+cat file-list.txt | repomix
 
 # echo के साथ प्रत्यक्ष इनपुट
-echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+echo -e "src/index.ts\nsrc/utils.ts" | repomix
 ```
 
-`--stdin` विकल्प आपको फ़ाइल पथों की सूची को Repomix में पाइप करने की अनुमति देता है, जो आपको पैक करने के लिए फ़ाइलों का चयन करने में अधिकतम लचीलापन प्रदान करता है।
+Repomix स्वचालित रूप से stdin के माध्यम से पाइप की गई फ़ाइल पथों का पता लगाता है, जो आपको पैक करने के लिए फ़ाइलों का चयन करने में अधिकतम लचीलापन प्रदान करता है।
 
 > [!NOTE]
-> `--stdin` का उपयोग करते समय, फ़ाइल पथ सापेक्ष या पूर्ण हो सकते हैं, और Repomix स्वचालित रूप से पथ रिज़ॉल्यूशन और डुप्लिकेशन हैंडलिंग करेगा।
+> stdin input का उपयोग करते समय, फ़ाइल पथ सापेक्ष या पूर्ण हो सकते हैं, और Repomix स्वचालित रूप से पथ रिज़ॉल्यूशन और डुप्लिकेशन हैंडलिंग करेगा।
 
 ## AI के साथ आउटपुट का उपयोग
 
