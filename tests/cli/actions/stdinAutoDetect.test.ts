@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
 import type { CliOptions } from '../../../src/cli/types.js';
@@ -6,6 +7,7 @@ import * as fileStdin from '../../../src/core/file/fileStdin.js';
 import * as packager from '../../../src/core/packager.js';
 import type { PackResult } from '../../../src/core/packager.js';
 
+vi.mock('node:fs');
 vi.mock('../../../src/core/packager');
 vi.mock('../../../src/config/configLoad');
 vi.mock('../../../src/core/file/fileStdin');
@@ -31,6 +33,13 @@ describe('stdin auto-detection', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(configLoader.loadFileConfig).mockResolvedValue({});
+    
+    // Default mock: fs.fstatSync returns character device (TTY) - no stdin auto-detection
+    vi.mocked(fs.fstatSync).mockReturnValue({
+      isFIFO: () => false,
+      isFile: () => false,
+      isCharacterDevice: () => true,
+    } as any);
     vi.mocked(configLoader.mergeConfigs).mockReturnValue({
       cwd: process.cwd(),
       input: { maxFileSize: 50 * 1024 * 1024 },
@@ -71,11 +80,12 @@ describe('stdin auto-detection', () => {
 
   describe('when stdin is piped and default directory is used', () => {
     beforeEach(() => {
-      // Mock stdin as not TTY (piped input)
-      Object.defineProperty(process.stdin, 'isTTY', {
-        value: undefined,
-        configurable: true,
-      });
+      // Mock fs.fstatSync to return a FIFO (pipe) for stdin
+      vi.mocked(fs.fstatSync).mockReturnValue({
+        isFIFO: () => true,
+        isFile: () => false,
+        isCharacterDevice: () => false,
+      } as any);
     });
 
     it('should auto-detect stdin input', async () => {
@@ -150,11 +160,12 @@ describe('stdin auto-detection', () => {
 
   describe('when stdin is TTY (interactive terminal)', () => {
     beforeEach(() => {
-      // Mock stdin as TTY (interactive terminal)
-      Object.defineProperty(process.stdin, 'isTTY', {
-        value: true,
-        configurable: true,
-      });
+      // Mock fs.fstatSync to return a character device (TTY) for stdin
+      vi.mocked(fs.fstatSync).mockReturnValue({
+        isFIFO: () => false,
+        isFile: () => false,
+        isCharacterDevice: () => true,
+      } as any);
     });
 
     it('should not auto-detect stdin input', async () => {
@@ -184,11 +195,12 @@ describe('stdin auto-detection', () => {
     });
 
     it('should reject explicit directory with piped input', async () => {
-      // Mock stdin as not TTY (piped input)
-      Object.defineProperty(process.stdin, 'isTTY', {
-        value: undefined,
-        configurable: true,
-      });
+      // Mock fs.fstatSync to return a FIFO (pipe) for stdin
+      vi.mocked(fs.fstatSync).mockReturnValue({
+        isFIFO: () => true,
+        isFile: () => false,
+        isCharacterDevice: () => false,
+      } as any);
 
       const cliOptions: CliOptions = {};
       const directories = ['src']; // Explicit directory should work normally (no stdin auto-detection)
