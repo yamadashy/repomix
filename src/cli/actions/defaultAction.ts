@@ -30,7 +30,7 @@ const shouldAutoDetectStdin = (directories: string[]): boolean => {
 
   // Check if default directory is used and stdin has piped data
   const isDefaultDirectory = directories.length === 1 && directories[0] === '.';
-  
+
   // Use file descriptor check as a more reliable method than process.stdin.isTTY
   // which can be undefined in some environments (like CI/CD or certain shells)
   let hasStdinInput = false;
@@ -43,7 +43,7 @@ const shouldAutoDetectStdin = (directories: string[]): boolean => {
   }
 
   // Only auto-detect stdin if we have both conditions:
-  // 1. Using the default directory  
+  // 1. Using the default directory
   // 2. Actually receiving piped input
   return isDefaultDirectory && hasStdinInput;
 };

@@ -33,13 +33,13 @@ describe('stdin auto-detection', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(configLoader.loadFileConfig).mockResolvedValue({});
-    
+
     // Default mock: fs.fstatSync returns character device (TTY) - no stdin auto-detection
     vi.mocked(fs.fstatSync).mockReturnValue({
       isFIFO: () => false,
       isFile: () => false,
       isCharacterDevice: () => true,
-    } as any);
+    } as fs.Stats);
     vi.mocked(configLoader.mergeConfigs).mockReturnValue({
       cwd: process.cwd(),
       input: { maxFileSize: 50 * 1024 * 1024 },
@@ -85,7 +85,7 @@ describe('stdin auto-detection', () => {
         isFIFO: () => true,
         isFile: () => false,
         isCharacterDevice: () => false,
-      } as any);
+      } as fs.Stats);
     });
 
     it('should auto-detect stdin input', async () => {
@@ -165,7 +165,7 @@ describe('stdin auto-detection', () => {
         isFIFO: () => false,
         isFile: () => false,
         isCharacterDevice: () => true,
-      } as any);
+      } as fs.Stats);
     });
 
     it('should not auto-detect stdin input', async () => {
@@ -200,7 +200,7 @@ describe('stdin auto-detection', () => {
         isFIFO: () => true,
         isFile: () => false,
         isCharacterDevice: () => false,
-      } as any);
+      } as fs.Stats);
 
       const cliOptions: CliOptions = {};
       const directories = ['src']; // Explicit directory should work normally (no stdin auto-detection)
