@@ -83,8 +83,8 @@ class PythonManipulator extends BaseManipulator {
       const line = lines[i] + (i !== sz - 1 ? '\n' : '');
       buffer += line;
       if (quoteType === '') {
-        const indexSingle = line.search(/(?<![\"])(?<!\\)'''(?![\"])/g);
-        const indexDouble = line.search(/(?<![\'])(?<!\\)"""(?![\'])/g);
+        const indexSingle = line.search(/(?<!["])(?<!\\)'''(?!["])/g);
+        const indexDouble = line.search(/(?<!['])(?<!\\)"""(?!['])/g);
         if (indexSingle !== -1 && (indexDouble === -1 || indexSingle < indexDouble)) {
           quoteType = "'";
         } else if (indexDouble !== -1 && (indexSingle === -1 || indexDouble < indexSingle)) {
@@ -92,10 +92,10 @@ class PythonManipulator extends BaseManipulator {
         }
       }
       if (quoteType === "'") {
-        tripleQuotes += (line.match(/(?<![\"])(?<!\\)'''(?!["])/g) || []).length;
+        tripleQuotes += (line.match(/(?<!["])(?<!\\)'''(?!["])/g) || []).length;
       }
       if (quoteType === '"') {
-        tripleQuotes += (line.match(/(?<![\'])(?<!\\)"""(?![\'])/g) || []).length;
+        tripleQuotes += (line.match(/(?<!['])(?<!\\)"""(?!['])/g) || []).length;
       }
 
       if (tripleQuotes % 2 === 0) {

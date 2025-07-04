@@ -13,11 +13,9 @@ import {
   parseIgnoreContent,
   searchFiles,
 } from '../../../src/core/file/fileSearch.js';
-import { PermissionError } from '../../../src/core/file/permissionCheck.js';
+import { checkDirectoryPermissions, PermissionError } from '../../../src/core/file/permissionCheck.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
 import { createMockConfig, isWindows } from '../../testing/testUtils.js';
-
-import { checkDirectoryPermissions } from '../../../src/core/file/permissionCheck.js';
 
 vi.mock('fs/promises');
 vi.mock('globby');

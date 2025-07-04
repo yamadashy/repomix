@@ -8,7 +8,7 @@ import { run, runCli } from '../../src/cli/cliRun.js';
 import type { CliOptions } from '../../src/cli/types.js';
 import type { RepomixConfigMerged } from '../../src/config/configSchema.js';
 import type { PackResult } from '../../src/core/packager.js';
-import { type RepomixLogLevel, logger, repomixLogLevels } from '../../src/shared/logger.js';
+import { logger, type RepomixLogLevel, repomixLogLevels } from '../../src/shared/logger.js';
 
 let logLevel: RepomixLogLevel;
 

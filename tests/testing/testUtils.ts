@@ -1,6 +1,6 @@
 import os from 'node:os';
 import process from 'node:process';
-import { type RepomixConfigMerged, defaultConfig } from '../../src/config/configSchema.js';
+import { defaultConfig, type RepomixConfigMerged } from '../../src/config/configSchema.js';
 
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends (infer U)[]

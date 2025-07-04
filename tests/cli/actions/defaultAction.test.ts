@@ -12,8 +12,8 @@ import type { CliOptions } from '../../../src/cli/types.js';
 import * as configLoader from '../../../src/config/configLoad.js';
 import * as fileStdin from '../../../src/core/file/fileStdin.js';
 import * as packageJsonParser from '../../../src/core/file/packageJsonParse.js';
-import * as packager from '../../../src/core/packager.js';
 import type { PackResult } from '../../../src/core/packager.js';
+import * as packager from '../../../src/core/packager.js';
 
 vi.mock('globby');
 vi.mock('../../../src/core/packager');

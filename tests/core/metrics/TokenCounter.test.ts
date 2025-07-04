@@ -1,5 +1,5 @@
-import { type Tiktoken, get_encoding } from 'tiktoken';
-import { type Mock, afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { get_encoding, type Tiktoken } from 'tiktoken';
+import { afterEach, beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
 import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 import { logger } from '../../../src/shared/logger.js';
 

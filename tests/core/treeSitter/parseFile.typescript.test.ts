@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import type { Language, Point, Query, SyntaxNode, Tree, TreeCursor } from 'web-tree-sitter';
-import type { Edit, Range } from 'web-tree-sitter';
+import type { Edit, Language, Point, Query, Range, SyntaxNode, Tree, TreeCursor } from 'web-tree-sitter';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import { parseFile } from '../../../src/core/treeSitter/parseFile.js';
 import { TypeScriptParseStrategy } from '../../../src/core/treeSitter/parseStrategies/TypeScriptParseStrategy.js';

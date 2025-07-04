@@ -3,7 +3,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { SupportedLang } from './lang2Query.js';
 import { LanguageParser } from './languageParser.js';
-import { type ParseContext, createParseStrategy } from './parseStrategies/ParseStrategy.js';
+import { createParseStrategy, type ParseContext } from './parseStrategies/ParseStrategy.js';
 
 interface CapturedChunk {
   content: string;

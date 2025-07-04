@@ -24,11 +24,7 @@ describe('readRepomixOutputTool', () => {
     tool: vi.fn(),
   } as const;
 
-  type ToolHandlerType = (args: {
-    outputId: string;
-    startLine?: number;
-    endLine?: number;
-  }) => Promise<{
+  type ToolHandlerType = (args: { outputId: string; startLine?: number; endLine?: number }) => Promise<{
     isError?: boolean;
     content: Array<{ type: string; text: string }>;
   }>;

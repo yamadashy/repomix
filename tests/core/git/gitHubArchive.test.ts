@@ -3,9 +3,9 @@ import { Transform } from 'node:stream';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   type ArchiveDownloadOptions,
-  type ProgressCallback,
   downloadGitHubArchive,
   isArchiveDownloadSupported,
+  type ProgressCallback,
 } from '../../../src/core/git/gitHubArchive.js';
 import type { GitHubRepoInfo } from '../../../src/core/git/gitRemoteParse.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';

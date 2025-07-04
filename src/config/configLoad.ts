@@ -5,11 +5,11 @@ import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
 import {
+  defaultConfig,
+  defaultFilePathMap,
   type RepomixConfigCli,
   type RepomixConfigFile,
   type RepomixConfigMerged,
-  defaultConfig,
-  defaultFilePathMap,
   repomixConfigFileSchema,
   repomixConfigMergedSchema,
 } from './configSchema.js';

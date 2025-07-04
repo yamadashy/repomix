@@ -3,9 +3,9 @@ import Parser from 'web-tree-sitter';
 
 import { RepomixError } from '../../shared/errorHandle.js';
 import { ext2Lang } from './ext2Lang.js';
-import { type SupportedLang, lang2Query } from './lang2Query.js';
+import { lang2Query, type SupportedLang } from './lang2Query.js';
 import { loadLanguage } from './loadLanguage.js';
-import { type ParseStrategy, createParseStrategy } from './parseStrategies/ParseStrategy.js';
+import { createParseStrategy, type ParseStrategy } from './parseStrategies/ParseStrategy.js';
 
 interface LanguageResources {
   parser: Parser;

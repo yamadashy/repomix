@@ -1,6 +1,6 @@
 import { queryC } from './queries/queryC.js';
-import { queryCSharp } from './queries/queryCSharp.js';
 import { queryCpp } from './queries/queryCpp.js';
+import { queryCSharp } from './queries/queryCSharp.js';
 import { queryCss } from './queries/queryCss.js';
 import { queryGo } from './queries/queryGo.js';
 import { queryJava } from './queries/queryJava.js';

@@ -16,6 +16,7 @@
       "**/tsconfig.build.json",
       "**/vite.config.ts",
       "**/repomix.config.json",
+      "!src/index.ts",
       "!**/website/client/.vitepress/.temp",
       "!**/website/client/.vitepress/dist",
       "!**/website/client/.vitepress/cache",

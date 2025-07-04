@@ -1,4 +1,4 @@
-import { type Tiktoken, type TiktokenEncoding, get_encoding } from 'tiktoken';
+import { get_encoding, type Tiktoken, type TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
 
 export class TokenCounter {

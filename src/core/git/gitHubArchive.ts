@@ -288,7 +288,7 @@ const processExtractedFiles = async (
     }
 
     // Sanitize relativePath to prevent path traversal attacks
-    const sanitized = path.normalize(relativePath).replace(/^(\.\.([\/\\]|$))+/, '');
+    const sanitized = path.normalize(relativePath).replace(/^(\.\.([/\\]|$))+/, '');
 
     // Reject absolute paths outright
     if (path.isAbsolute(sanitized)) {

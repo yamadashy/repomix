@@ -3,10 +3,10 @@ import path from 'node:path';
 import * as prompts from '@clack/prompts';
 import pc from 'picocolors';
 import {
-  type RepomixConfigFile,
-  type RepomixOutputStyle,
   defaultConfig,
   defaultFilePathMap,
+  type RepomixConfigFile,
+  type RepomixOutputStyle,
 } from '../../config/configSchema.js';
 import { getGlobalDirectory } from '../../config/globalDirectory.js';
 import { getVersion } from '../../core/file/packageJsonParse.js';

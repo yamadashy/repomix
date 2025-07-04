@@ -34,7 +34,7 @@ function formatRepositoryName(repository: string): string {
     return `${owner}-${repo}`;
   }
   // For non-GitHub repositories or local files, clean up the name
-  return repository.replace(/[\/\\]/g, '-').replace(/\.git$/, '');
+  return repository.replace(/[/\\]/g, '-').replace(/\.git$/, '');
 }
 
 /**

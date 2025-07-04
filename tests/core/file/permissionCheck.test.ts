@@ -2,7 +2,7 @@ import { constants } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { platform } from 'node:os';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { PermissionError, checkDirectoryPermissions } from '../../../src/core/file/permissionCheck.js';
+import { checkDirectoryPermissions, PermissionError } from '../../../src/core/file/permissionCheck.js';
 
 vi.mock('node:fs/promises');
 vi.mock('node:os');

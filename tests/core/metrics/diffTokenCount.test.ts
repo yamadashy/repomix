@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
-import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 import { calculateMetrics } from '../../../src/core/metrics/calculateMetrics.js';
+import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 
 // Mock the TokenCounter
 vi.mock('../../../src/core/metrics/TokenCounter.js', () => ({

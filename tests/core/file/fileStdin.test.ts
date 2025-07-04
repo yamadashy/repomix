@@ -2,11 +2,11 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  type StdinDependencies,
   filterValidLines,
   readFilePathsFromStdin,
   readLinesFromStream,
   resolveAndDeduplicatePaths,
+  type StdinDependencies,
 } from '../../../src/core/file/fileStdin.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
 
