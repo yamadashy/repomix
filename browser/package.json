@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "webextension-toolbox dev",
     "build": "webextension-toolbox build",
-    "build-all": "npm run build chrome && npm run build firefox && npm run build edge",
+    "build-all": "bun run build chrome && bun run build firefox && bun run build edge",
     "generate-icons": "tsx scripts/generate-icons.ts",
-    "lint": "npm run lint-tsc",
+    "lint": "bun run lint-tsc",
     "lint-tsc": "tsc --noEmit",
     "test": "vitest",
     "archive": "git archive HEAD -o storage/source.zip"

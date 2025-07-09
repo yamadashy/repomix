@@ -26,7 +26,7 @@
     "lint-secretlint": "secretlint \"**/*\" --secretlintignore .gitignore",
     "test": "vitest",
     "test-coverage": "vitest run --coverage",
-    "repomix": "bun run build && node --trace-warnings bin/repomix.cjs",
+    "repomix": "bun run build && bun bin/repomix.cjs",
     "repomix-src": "bun run repomix -- --include 'src,tests'",
     "repomix-website": "bun run repomix -- --include 'website'",
     "website": "docker compose -f website/compose.yml up --build",

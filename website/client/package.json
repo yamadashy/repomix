@@ -6,7 +6,7 @@
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
     "docs:preview": "vitepress preview",
-    "lint": "npm run lint-tsc",
+    "lint": "bun run lint-tsc",
     "lint-tsc": "tsc --noEmit"
   },
   "dependencies": {
