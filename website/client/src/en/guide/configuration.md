@@ -32,6 +32,7 @@ repomix --init --global
 | `output.removeComments`          | Whether to remove comments from supported file types. Can reduce noise and token count                                       | `false`                |
 | `output.removeEmptyLines`        | Whether to remove empty lines from the output to reduce token count                                                          | `false`                |
 | `output.showLineNumbers`         | Whether to add line numbers to each line. Helpful for referencing specific parts of code                                     | `false`                |
+| `output.originalLineNumbers`     | Whether to add line numbers to original content before processing. When true, line numbers are added before any transformations | `false`                |
 | `output.copyToClipboard`         | Whether to copy the output to system clipboard in addition to saving the file                                                | `false`                |
 | `output.topFilesLength`          | Number of top files to display in the summary. If set to 0, no summary will be displayed                                     | `5`                    |
 | `output.includeEmptyDirectories` | Whether to include empty directories in the repository structure                                                             | `false`                |
@@ -90,6 +91,7 @@ Here's an example of a complete configuration file (`repomix.config.json`):
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
+    "originalLineNumbers": false,
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
     "git": {

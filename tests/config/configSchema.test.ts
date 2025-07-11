@@ -75,6 +75,7 @@ describe('configSchema', () => {
           compress: false,
           topFilesLength: 5,
           showLineNumbers: false,
+          originalLineNumbers: false,
           copyToClipboard: true,
           git: {
             sortByChanges: true,
@@ -169,6 +170,7 @@ describe('configSchema', () => {
           compress: false,
           topFilesLength: 10,
           showLineNumbers: true,
+          originalLineNumbers: false,
           copyToClipboard: false,
           git: {
             sortByChanges: true,

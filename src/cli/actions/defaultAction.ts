@@ -210,6 +210,12 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
       showLineNumbers: options.outputShowLineNumbers,
     };
   }
+  if (options.outputOriginalLineNumbers !== undefined) {
+    cliConfig.output = {
+      ...cliConfig.output,
+      originalLineNumbers: options.outputOriginalLineNumbers,
+    };
+  }
   if (options.copy) {
     cliConfig.output = { ...cliConfig.output, copyToClipboard: options.copy };
   }
