@@ -514,6 +514,7 @@ Instruction
 - `--parsable-style`: Enable parsable output based on the chosen style schema. Note that this can increase token count.
 - `--compress`: Perform intelligent code extraction, focusing on essential function and class signatures to reduce token count
 - `--output-show-line-numbers`: Show line numbers in the output
+- `--output-original-line-numbers`: Add line numbers to original content before processing
 - `--copy`: Additionally copy generated output to system clipboard
 - `--no-file-summary`: Disable file summary section output
 - `--no-directory-structure`: Disable directory structure section output

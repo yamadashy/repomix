@@ -589,6 +589,66 @@ describe('defaultAction', () => {
     });
   });
 
+  describe('showLineNumbers flag', () => {
+    it('should handle --output-show-line-numbers flag', async () => {
+      const options: CliOptions = {
+        outputShowLineNumbers: true,
+      };
+
+      await runDefaultAction(['.'], process.cwd(), options);
+
+      expect(configLoader.mergeConfigs).toHaveBeenCalledWith(
+        process.cwd(),
+        expect.anything(),
+        expect.objectContaining({
+          output: {
+            showLineNumbers: true,
+          },
+        }),
+      );
+    });
+  });
+
+  describe('originalLineNumbers flag', () => {
+    it('should handle --output-original-line-numbers flag', async () => {
+      const options: CliOptions = {
+        outputOriginalLineNumbers: true,
+      };
+
+      await runDefaultAction(['.'], process.cwd(), options);
+
+      expect(configLoader.mergeConfigs).toHaveBeenCalledWith(
+        process.cwd(),
+        expect.anything(),
+        expect.objectContaining({
+          output: {
+            originalLineNumbers: true,
+          },
+        }),
+      );
+    });
+
+    it('should handle both --output-show-line-numbers and --output-original-line-numbers flags', async () => {
+      const options: CliOptions = {
+        outputShowLineNumbers: true,
+        outputOriginalLineNumbers: true,
+      };
+
+      await runDefaultAction(['.'], process.cwd(), options);
+
+      expect(configLoader.mergeConfigs).toHaveBeenCalledWith(
+        process.cwd(),
+        expect.anything(),
+        expect.objectContaining({
+          output: expect.objectContaining({
+            showLineNumbers: true,
+            originalLineNumbers: true,
+          }),
+        }),
+      );
+    });
+  });
+
   describe('handleStdinProcessing', () => {
     const testCwd = path.resolve('/test/cwd');
     const mockConfig = {

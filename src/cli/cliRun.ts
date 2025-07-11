@@ -61,6 +61,7 @@ export const run = async () => {
       .option('--parsable-style', 'by escaping and formatting, ensure the output is parsable as a document of its type')
       .option('--compress', 'perform code compression to reduce token count')
       .option('--output-show-line-numbers', 'add line numbers to each line in the output')
+      .option('--output-original-line-numbers', 'add line numbers to original content before processing')
       .option('--copy', 'copy generated output to system clipboard')
       .option('--no-file-summary', 'disable file summary section output')
       .option('--no-directory-structure', 'disable directory structure section output')
