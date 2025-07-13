@@ -39,7 +39,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = await processFiles(mockRawFiles, config, () => { }, {
+      const result = await processFiles(mockRawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });

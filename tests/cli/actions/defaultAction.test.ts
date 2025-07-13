@@ -47,6 +47,7 @@ describe('defaultAction', () => {
         removeComments: false,
         removeEmptyLines: false,
         compress: false,
+        originalLineNumbers: false,
         copyToClipboard: false,
         stdout: false,
         git: {
@@ -665,6 +666,7 @@ describe('defaultAction', () => {
         removeComments: false,
         removeEmptyLines: false,
         compress: false,
+        originalLineNumbers: false,
         copyToClipboard: false,
         stdout: false,
         git: { sortByChanges: true, sortByChangesMaxCommits: 100, includeDiffs: false },
@@ -797,6 +799,7 @@ describe('defaultAction', () => {
         removeComments: false,
         removeEmptyLines: false,
         compress: false,
+        originalLineNumbers: false,
         copyToClipboard: false,
         stdout: false,
         git: { sortByChanges: true, sortByChangesMaxCommits: 100, includeDiffs: false },

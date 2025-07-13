@@ -76,6 +76,7 @@ describe('PackCodebaseTool', () => {
           compress: opts.compress ?? true,
           topFilesLength: opts.topFilesLen ?? 5,
           showLineNumbers: false,
+          originalLineNumbers: false,
           copyToClipboard: false,
           files: true,
           git: {

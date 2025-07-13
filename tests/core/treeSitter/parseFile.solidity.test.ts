@@ -22,6 +22,7 @@ describe('Solidity File Parsing', () => {
       compress: false,
       topFilesLength: 5,
       showLineNumbers: false,
+      originalLineNumbers: false,
       copyToClipboard: false,
       files: true,
       git: {

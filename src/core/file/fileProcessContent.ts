@@ -28,9 +28,7 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
   const addLineNumbers = (content: string): string => {
     const lines = content.split('\n');
     const padding = Math.max(1, lines.length.toString().length);
-    return lines
-      .map((line, i) => `${(i + 1).toString().padStart(padding)}: ${line}`)
-      .join('\n');
+    return lines.map((line, i) => `${(i + 1).toString().padStart(padding)}: ${line}`).join('\n');
   };
 
   if (config.output.showLineNumbers && originalLineNumbers) {
