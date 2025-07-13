@@ -23,9 +23,7 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
 
   logger.trace(`Processing file: ${rawFile.path}`);
 
-  const originalLineNumbers = config.output.originalLineNumbers ?? false;
-
-  if (config.output.showLineNumbers && originalLineNumbers) {
+  if (config.output.showLineNumbers && config.output.originalLineNumbers) {
     processedContent = addLineNumbers(processedContent);
   }
 
@@ -53,7 +51,7 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
     }
   }
 
-  if (config.output.showLineNumbers && !originalLineNumbers) {
+  if (config.output.showLineNumbers && !config.output.originalLineNumbers) {
     processedContent = addLineNumbers(processedContent);
   }
 
