@@ -10,6 +10,7 @@
 - `--parsable-style`: Enable parsable output based on the chosen style schema (default: `false`)
 - `--compress`: Perform intelligent code extraction, focusing on essential function and class signatures while removing implementation details. For more details and examples, see [Code Compression Guide](code-compress).
 - `--output-show-line-numbers`: Add line numbers (default: `false`)
+- `--output-original-line-numbers`: Add line numbers to original content before processing (default: `false`)
 - `--copy`: Copy to clipboard (default: `false`)
 - `--no-file-summary`: Disable file summary (default: `true`)
 - `--no-directory-structure`: Disable directory structure (default: `true`)

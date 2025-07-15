@@ -10,7 +10,7 @@ import type { RawFile } from './fileTypes.js';
  * - Remove comments
  * - Remove empty lines
  * - Compress content using Tree-sitter
- * - Add line numbers
+ * - Add line numbers (either to original content or processed content)
  *
  * @param rawFile Raw file data containing path and content
  * @param config Repomix configuration
@@ -23,15 +23,9 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
 
   logger.trace(`Processing file: ${rawFile.path}`);
 
-  if (manipulator && config.output.removeComments) {
-    processedContent = manipulator.removeComments(processedContent);
+  if (config.output.showLineNumbers && config.output.originalLineNumbers) {
+    processedContent = addLineNumbers(processedContent);
   }
-
-  if (config.output.removeEmptyLines && manipulator) {
-    processedContent = manipulator.removeEmptyLines(processedContent);
-  }
-
-  processedContent = processedContent.trim();
 
   if (config.output.compress) {
     try {
@@ -43,18 +37,39 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       logger.error(`Error parsing ${rawFile.path} in compressed mode: ${message}`);
-      //re-throw error
       throw error;
     }
-  } else if (config.output.showLineNumbers) {
-    const lines = processedContent.split('\n');
-    const padding = lines.length.toString().length;
-    const numberedLines = lines.map((line, i) => `${(i + 1).toString().padStart(padding)}: ${line}`);
-    processedContent = numberedLines.join('\n');
   }
+
+  if (manipulator) {
+    if (config.output.removeComments && typeof manipulator.removeComments === 'function') {
+      processedContent = manipulator.removeComments(processedContent);
+    }
+
+    if (config.output.removeEmptyLines && typeof manipulator.removeEmptyLines === 'function') {
+      processedContent = manipulator.removeEmptyLines(processedContent);
+    }
+  }
+
+  if (config.output.showLineNumbers && !config.output.originalLineNumbers) {
+    processedContent = addLineNumbers(processedContent);
+  }
+
+  processedContent = processedContent.trim();
 
   const processEndAt = process.hrtime.bigint();
   logger.trace(`Processed file: ${rawFile.path}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`);
 
   return processedContent;
+};
+
+/**
+ * Add line numbers to content with proper padding
+ * @param content Content to add line numbers to
+ * @returns Content with line numbers added
+ */
+export const addLineNumbers = (content: string): string => {
+  const lines = content.split('\n');
+  const padding = Math.max(1, lines.length.toString().length);
+  return lines.map((line, i) => `${(i + 1).toString().padStart(padding)}: ${line}`).join('\n');
 };
