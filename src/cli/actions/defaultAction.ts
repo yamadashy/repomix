@@ -1,4 +1,5 @@
 import path from 'node:path';
+import type { TiktokenEncoding } from 'tiktoken';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import {
   type RepomixConfigCli,
@@ -9,6 +10,7 @@ import {
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
+import { summarizeTokenCounts } from '../../core/tokenCount/saveTokenCounts.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
@@ -98,6 +100,20 @@ export const handleStdinProcessing = async (
 
   spinner.succeed('Packing completed successfully!');
 
+  // Display token count summary if requested
+  if (cliOptions.summarizeTokenCounts) {
+    const threshold =
+      typeof cliOptions.summarizeTokenCounts === 'string' ? Number.parseInt(cliOptions.summarizeTokenCounts, 10) : 0;
+    await summarizeTokenCounts(
+      packResult.processedFiles,
+      config.tokenCount.encoding as TiktokenEncoding,
+      (message) => {
+        spinner.update(message);
+      },
+      threshold,
+    );
+  }
+
   printResults(cwd, packResult, config);
 
   return {
@@ -132,6 +148,20 @@ export const handleDirectoryProcessing = async (
   }
 
   spinner.succeed('Packing completed successfully!');
+
+  // Display token count summary if requested
+  if (cliOptions.summarizeTokenCounts) {
+    const threshold =
+      typeof cliOptions.summarizeTokenCounts === 'string' ? Number.parseInt(cliOptions.summarizeTokenCounts, 10) : 0;
+    await summarizeTokenCounts(
+      packResult.processedFiles,
+      config.tokenCount.encoding as TiktokenEncoding,
+      (message) => {
+        spinner.update(message);
+      },
+      threshold,
+    );
+  }
 
   printResults(cwd, packResult, config);
 
