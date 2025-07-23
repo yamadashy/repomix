@@ -21,7 +21,10 @@ function createLogger() {
 
   // Add Cloud Logging transport only in production
   if (process.env.NODE_ENV === 'production') {
-    const loggingWinston = new LoggingWinston();
+    const loggingWinston = new LoggingWinston({
+      redirectToStdout: true,
+      useMessageField: false,
+    });
     transports.push(loggingWinston);
   }
 
@@ -75,11 +78,12 @@ export function cloudLogger() {
     logger.info({
       message: `${method} ${url.pathname} started`,
       requestId,
+      timestamp: new Date(),
       httpRequest: {
         requestMethod: method,
         requestUrl: url.toString(),
-        userAgent,
-        referer,
+        userAgent: userAgent || undefined,
+        referer: referer || undefined,
         remoteIp,
       },
     });
@@ -97,14 +101,15 @@ export function cloudLogger() {
       logger.info({
         message: `${method} ${url.pathname} completed in ${formatLatencyForDisplay(startTime)}`,
         requestId,
+        timestamp: new Date(),
         httpRequest: {
           requestMethod: method,
           requestUrl: url.toString(),
           status,
           latency, // Now uses the correct format { seconds: number, nanos: number }
           responseSize: contentLength,
-          userAgent,
-          referer,
+          userAgent: userAgent || undefined,
+          referer: referer || undefined,
           remoteIp,
         },
       });
@@ -114,6 +119,7 @@ export function cloudLogger() {
       logger.error({
         message: `${method} ${url.pathname} failed: ${errorMessage} (${formatLatencyForDisplay(startTime)})`,
         requestId,
+        timestamp: new Date(),
         error: {
           message: errorMessage,
           stack: error instanceof Error ? error.stack : undefined,
@@ -123,8 +129,8 @@ export function cloudLogger() {
           requestUrl: url.toString(),
           status: 500,
           latency: calculateLatency(startTime), // Now uses the correct format
-          userAgent,
-          referer,
+          userAgent: userAgent || undefined,
+          referer: referer || undefined,
           remoteIp,
         },
       });
@@ -137,6 +143,7 @@ export function cloudLogger() {
 export function logDebug(message: string, context?: Record<string, unknown>): void {
   logger.debug({
     message,
+    timestamp: new Date(),
     ...context,
   });
 }
@@ -144,6 +151,7 @@ export function logDebug(message: string, context?: Record<string, unknown>): vo
 export function logInfo(message: string, context?: Record<string, unknown>): void {
   logger.info({
     message,
+    timestamp: new Date(),
     ...context,
   });
 }
@@ -151,6 +159,7 @@ export function logInfo(message: string, context?: Record<string, unknown>): voi
 export function logWarning(message: string, context?: Record<string, unknown>): void {
   logger.warn({
     message,
+    timestamp: new Date(),
     ...context,
   });
 }
@@ -158,6 +167,7 @@ export function logWarning(message: string, context?: Record<string, unknown>): 
 export function logError(message: string, error?: Error, context?: Record<string, unknown>): void {
   logger.error({
     message,
+    timestamp: new Date(),
     error: error
       ? {
           message: error.message,
