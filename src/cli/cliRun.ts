@@ -101,6 +101,10 @@ export const run = async () => {
       // Token Count Options
       .optionsGroup('Token Count Options')
       .option('--token-count-encoding <encoding>', 'specify token count encoding (e.g., o200k_base, cl100k_base)')
+      .option(
+        '--summarize-token-counts [threshold]',
+        'display file tree with token count summaries (optional: minimum token count threshold)',
+      )
       // MCP
       .optionsGroup('MCP')
       .option('--mcp', 'run as a MCP server')
