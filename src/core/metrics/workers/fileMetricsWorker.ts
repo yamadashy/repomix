@@ -1,7 +1,7 @@
 import type { TiktokenEncoding } from 'tiktoken';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
 import type { ProcessedFile } from '../../file/fileTypes.js';
-import { freeTokenCounter, getTokenCounter } from '../tokenCounterFactory.js';
+import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 import type { FileMetrics } from './types.js';
 
 // Initialize logger configuration from workerData at module load time
@@ -39,5 +39,5 @@ export const calculateIndividualFileMetrics = async (
 
 // Cleanup when worker is terminated
 process.on('exit', () => {
-  freeTokenCounter();
+  freeTokenCounters();
 });

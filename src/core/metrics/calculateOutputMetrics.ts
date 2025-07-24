@@ -1,15 +1,10 @@
 import type { TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
-import { initWorker } from '../../shared/processConcurrency.js';
+import { initTaskRunner } from '../../shared/processConcurrency.js';
 import type { OutputMetricsTask } from './workers/outputMetricsWorker.js';
 
 const CHUNK_SIZE = 1000;
 const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1000KB
-
-const initTaskRunner = (numOfTasks: number) => {
-  const pool = initWorker(numOfTasks, new URL('./workers/outputMetricsWorker.js', import.meta.url).href);
-  return (task: OutputMetricsTask) => pool.run(task);
-};
 
 export const calculateOutputMetrics = async (
   content: string,
@@ -21,7 +16,10 @@ export const calculateOutputMetrics = async (
 ): Promise<number> => {
   const shouldRunInParallel = content.length > MIN_CONTENT_LENGTH_FOR_PARALLEL;
   const numOfTasks = shouldRunInParallel ? CHUNK_SIZE : 1;
-  const runTask = deps.initTaskRunner(numOfTasks);
+  const taskRunner = deps.initTaskRunner<OutputMetricsTask, number>(
+    numOfTasks,
+    new URL('./workers/outputMetricsWorker.js', import.meta.url).href,
+  );
 
   try {
     logger.trace(`Starting output token count for ${path || 'output'}`);
@@ -41,7 +39,7 @@ export const calculateOutputMetrics = async (
       // Process chunks in parallel
       const chunkResults = await Promise.all(
         chunks.map((chunk, index) =>
-          runTask({
+          taskRunner.run({
             content: chunk,
             encoding,
             path: path ? `${path}-chunk-${index}` : undefined,
@@ -53,7 +51,7 @@ export const calculateOutputMetrics = async (
       result = chunkResults.reduce((sum, count) => sum + count, 0);
     } else {
       // Process small content directly
-      result = await runTask({ content, encoding, path });
+      result = await taskRunner.run({ content, encoding, path });
     }
 
     const endTime = process.hrtime.bigint();
@@ -64,5 +62,8 @@ export const calculateOutputMetrics = async (
   } catch (error) {
     logger.error('Error during token count:', error);
     throw error;
+  } finally {
+    // Always cleanup worker pool
+    await taskRunner.cleanup();
   }
 };

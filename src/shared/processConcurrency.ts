@@ -23,7 +23,7 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
   };
 };
 
-export const initWorker = (numOfTasks: number, workerPath: string): Tinypool => {
+export const createWorkerPool = (numOfTasks: number, workerPath: string): Tinypool => {
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
 
   logger.trace(
@@ -48,4 +48,38 @@ export const initWorker = (numOfTasks: number, workerPath: string): Tinypool => 
   logger.debug(`Tinypool initialization took ${initTime.toFixed(2)}ms`);
 
   return pool;
+};
+
+export const cleanupWorkerPool = async (pool: Tinypool): Promise<void> => {
+  try {
+    logger.debug('Cleaning up worker pool...');
+
+    // Check if running in Bun runtime
+    const isBun = typeof process !== 'undefined' && process.versions?.bun;
+
+    if (isBun) {
+      // If running in Bun, we cannot use Tinypool's destroy method
+      logger.debug('Running in Bun environment, skipping Tinypool destroy method');
+    } else {
+      // Standard Node.js cleanup
+      await pool.destroy();
+    }
+
+    logger.debug('Worker pool cleaned up successfully');
+  } catch (error) {
+    logger.debug('Error during worker pool cleanup:', error);
+  }
+};
+
+export interface TaskRunner<T, R> {
+  run: (task: T) => Promise<R>;
+  cleanup: () => Promise<void>;
+}
+
+export const initTaskRunner = <T, R>(numOfTasks: number, workerPath: string): TaskRunner<T, R> => {
+  const pool = createWorkerPool(numOfTasks, workerPath);
+  return {
+    run: (task: T) => pool.run(task),
+    cleanup: () => cleanupWorkerPool(pool),
+  };
 };

@@ -21,9 +21,14 @@ vi.mock('jschardet');
 vi.mock('iconv-lite');
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = () => {
-  return async (task: FileCollectTask) => {
-    return await fileCollectWorker(task);
+const mockInitTaskRunner = <T, R>(numOfTasks: number, workerPath: string) => {
+  return {
+    run: async (task: T) => {
+      return (await fileCollectWorker(task as FileCollectTask)) as R;
+    },
+    cleanup: async () => {
+      // Mock cleanup - no-op for tests
+    },
   };
 };
 

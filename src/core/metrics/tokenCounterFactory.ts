@@ -1,4 +1,5 @@
 import type { TiktokenEncoding } from 'tiktoken';
+import { logger } from '../../shared/logger.js';
 import { TokenCounter } from './TokenCounter.js';
 
 // Worker-level cache for TokenCounter instances by encoding
@@ -21,9 +22,10 @@ export const getTokenCounter = (encoding: TiktokenEncoding): TokenCounter => {
  * Free all TokenCounter resources and clear the cache.
  * This should be called when the worker is terminating.
  */
-export const freeTokenCounter = (): void => {
-  for (const tokenCounter of tokenCounters.values()) {
+export const freeTokenCounters = (): void => {
+  for (const [encoding, tokenCounter] of tokenCounters.entries()) {
     tokenCounter.free();
+    logger.debug(`Freed TokenCounter resources for encoding: ${encoding}`);
   }
   tokenCounters.clear();
 };

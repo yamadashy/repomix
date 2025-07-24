@@ -6,9 +6,14 @@ import { logger } from '../../../src/shared/logger.js';
 
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = () => {
-  return async (task: OutputMetricsTask) => {
-    return await outputMetricsWorker(task);
+const mockInitTaskRunner = <T, R>(numOfTasks: number, workerPath: string) => {
+  return {
+    run: async (task: T) => {
+      return (await outputMetricsWorker(task as OutputMetricsTask)) as R;
+    },
+    cleanup: async () => {
+      // Mock cleanup - no-op for tests
+    },
   };
 };
 
@@ -41,9 +46,14 @@ describe('calculateOutputMetrics', () => {
     const encoding = 'o200k_base';
     const mockError = new Error('Worker error');
 
-    const mockErrorTaskRunner = () => {
-      return async () => {
-        throw mockError;
+    const mockErrorTaskRunner = <T, R>(numOfTasks: number, workerPath: string) => {
+      return {
+        run: async (task: T) => {
+          throw mockError;
+        },
+        cleanup: async () => {
+          // Mock cleanup - no-op for tests
+        },
       };
     };
 
@@ -86,11 +96,16 @@ describe('calculateOutputMetrics', () => {
     const path = 'large-file.txt';
 
     let chunksProcessed = 0;
-    const mockParallelTaskRunner = () => {
-      return async (task: OutputMetricsTask) => {
-        chunksProcessed++;
-        // Return a fixed token count for each chunk
-        return 100;
+    const mockParallelTaskRunner = <T, R>(numOfTasks: number, workerPath: string) => {
+      return {
+        run: async (task: T) => {
+          chunksProcessed++;
+          // Return a fixed token count for each chunk
+          return 100 as R;
+        },
+        cleanup: async () => {
+          // Mock cleanup - no-op for tests
+        },
       };
     };
 
@@ -107,9 +122,14 @@ describe('calculateOutputMetrics', () => {
     const encoding = 'o200k_base';
     const mockError = new Error('Parallel processing error');
 
-    const mockErrorTaskRunner = () => {
-      return async () => {
-        throw mockError;
+    const mockErrorTaskRunner = <T, R>(numOfTasks: number, workerPath: string) => {
+      return {
+        run: async (task: T) => {
+          throw mockError;
+        },
+        cleanup: async () => {
+          // Mock cleanup - no-op for tests
+        },
       };
     };
 
@@ -127,10 +147,16 @@ describe('calculateOutputMetrics', () => {
     const encoding = 'o200k_base';
     const processedChunks: string[] = [];
 
-    const mockChunkTrackingTaskRunner = () => {
-      return async (task: OutputMetricsTask) => {
-        processedChunks.push(task.content);
-        return task.content.length;
+    const mockChunkTrackingTaskRunner = <T, R>(numOfTasks: number, workerPath: string) => {
+      return {
+        run: async (task: T) => {
+          const outputTask = task as OutputMetricsTask;
+          processedChunks.push(outputTask.content);
+          return outputTask.content.length as R;
+        },
+        cleanup: async () => {
+          // Mock cleanup - no-op for tests
+        },
       };
     };
 
