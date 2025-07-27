@@ -16,7 +16,7 @@
     "@hono/node-server": "^1.16.0",
     "fflate": "^0.8.2",
     "hono": "^4.8.5",
-    "repomix": "^1.2.0",
+    "repomix": "^1.2.1",
     "winston": "^3.17.0",
     "zod": "^3.24.1"
   },
