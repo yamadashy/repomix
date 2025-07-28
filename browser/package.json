@@ -25,7 +25,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/chrome": "^0.1.1",
-    "@types/node": "^24.0.14",
+    "@types/node": "^24.1.0",
     "@types/webextension-polyfill": "^0.12.3",
     "@webextension-toolbox/webextension-toolbox": "^7.1.1",
     "jsdom": "^26.1.0",
