@@ -120,8 +120,10 @@ export const registerAttachPackedOutputTool = (mcpServer: McpServer) => {
     'attach_packed_output',
     {
       title: 'Attach Packed Output',
-      description:
-        'Attach an existing Repomix packed output file for AI analysis. This tool accepts either a directory containing a repomix-output.xml file or a direct path to an XML file. It registers the file with the MCP server and returns the same structure as the pack_codebase tool.',
+      description: `Attach an existing Repomix packed output file for AI analysis.
+This tool accepts either a directory containing a repomix-output.xml file or a direct path to an XML file.
+Calling the tool again with the same file path will refresh the content if the file has been updated.
+It will return in that case a new output ID and the updated content.`,
       inputSchema: attachPackedOutputInputSchema.shape,
       outputSchema: attachPackedOutputOutputSchema.shape,
       annotations: {
