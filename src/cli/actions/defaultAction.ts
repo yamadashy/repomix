@@ -45,15 +45,28 @@ export const runDefaultAction = async (
 
   // Merge default, file, and CLI configs
   const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
-
   logger.trace('Merged config:', config);
 
-  // Route to appropriate processing workflow
-  if (cliOptions.stdin) {
-    return handleStdinProcessing(directories, cwd, config, cliOptions);
-  }
+  // Initialize spinner that can be shared across operations
+  const spinner = new Spinner('Initializing...', cliOptions);
+  spinner.start();
 
-  return handleDirectoryProcessing(directories, cwd, config, cliOptions);
+  const result = cliOptions.stdin
+    ? await handleStdinProcessing(directories, cwd, config, spinner)
+    : await handleDirectoryProcessing(directories, cwd, config, spinner);
+
+  spinner.succeed('Packing completed successfully!');
+
+  const packResult = result.packResult;
+
+  await handleTokenCountSummary(packResult, config, cliOptions, spinner);
+
+  printResults(cwd, packResult, config);
+
+  return {
+    packResult,
+    config,
+  };
 };
 
 /**
@@ -63,7 +76,7 @@ export const handleStdinProcessing = async (
   directories: string[],
   cwd: string,
   config: RepomixConfigMerged,
-  cliOptions: CliOptions,
+  spinner: Spinner,
 ): Promise<DefaultActionRunnerResult> => {
   // Validate directory arguments for stdin mode
   const firstDir = directories[0] ?? '.';
@@ -73,15 +86,10 @@ export const handleStdinProcessing = async (
     );
   }
 
-  const spinner = new Spinner('Reading file paths from stdin...', cliOptions);
-
   let packResult: PackResult;
 
   try {
     const stdinResult = await readFilePathsFromStdin(cwd);
-
-    spinner.start();
-    spinner.update('Packing files...');
 
     // Use pack with predefined files from stdin
     packResult = await pack(
@@ -98,24 +106,6 @@ export const handleStdinProcessing = async (
     throw error;
   }
 
-  spinner.succeed('Packing completed successfully!');
-
-  // Display token count summary if requested
-  if (cliOptions.summarizeTokenCounts) {
-    const threshold =
-      typeof cliOptions.summarizeTokenCounts === 'string' ? Number.parseInt(cliOptions.summarizeTokenCounts, 10) : 0;
-    await summarizeTokenCounts(
-      packResult.processedFiles,
-      config.tokenCount.encoding as TiktokenEncoding,
-      (message) => {
-        spinner.update(message);
-      },
-      threshold,
-    );
-  }
-
-  printResults(cwd, packResult, config);
-
   return {
     packResult,
     config,
@@ -129,12 +119,9 @@ export const handleDirectoryProcessing = async (
   directories: string[],
   cwd: string,
   config: RepomixConfigMerged,
-  cliOptions: CliOptions,
+  spinner: Spinner,
 ): Promise<DefaultActionRunnerResult> => {
   const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
-
-  const spinner = new Spinner('Packing files...', cliOptions);
-  spinner.start();
 
   let packResult: PackResult;
 
@@ -147,9 +134,21 @@ export const handleDirectoryProcessing = async (
     throw error;
   }
 
-  spinner.succeed('Packing completed successfully!');
+  return {
+    packResult,
+    config,
+  };
+};
 
-  // Display token count summary if requested
+/**
+ * Handles token count summary processing if requested by CLI options.
+ */
+const handleTokenCountSummary = async (
+  packResult: PackResult,
+  config: RepomixConfigMerged,
+  cliOptions: CliOptions,
+  spinner: Spinner,
+): Promise<void> => {
   if (cliOptions.summarizeTokenCounts) {
     const threshold =
       typeof cliOptions.summarizeTokenCounts === 'string' ? Number.parseInt(cliOptions.summarizeTokenCounts, 10) : 0;
@@ -162,13 +161,6 @@ export const handleDirectoryProcessing = async (
       threshold,
     );
   }
-
-  printResults(cwd, packResult, config);
-
-  return {
-    packResult,
-    config,
-  };
 };
 
 /**
