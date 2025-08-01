@@ -835,7 +835,17 @@ When running as an MCP server, Repomix provides the following tools:
     - `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.
     - `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary for codebase analysis.
 
-2. **pack_remote_repository**: Fetch, clone, and package a GitHub repository into a consolidated XML file for AI analysis
+2. **attach_packed_output**: Attach an existing Repomix packed output file for AI analysis
+  - Parameters:
+    - `path`: Path to a directory containing repomix-output.xml or direct path to a packed repository XML file
+    - `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary
+  - Features:
+    - Accepts either a directory containing a repomix-output.xml file or a direct path to an XML file
+    - Registers the file with the MCP server and returns the same structure as the pack_codebase tool
+    - Provides secure access to existing packed outputs without requiring re-processing
+    - Useful for working with previously generated packed repositories
+
+3. **pack_remote_repository**: Fetch, clone, and package a GitHub repository into a consolidated XML file for AI analysis
   - Parameters:
     - `remote`: GitHub repository URL or user/repo format (e.g., "yamadashy/repomix", "https://github.com/user/repo", or "https://github.com/user/repo/tree/branch")
     - `compress`: (Optional, default: false) Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Reduces token usage by ~70% while preserving semantic meaning. Generally not needed since grep_repomix_output allows incremental content retrieval. Use only when you specifically need the entire codebase content for large repositories.
@@ -843,7 +853,7 @@ When running as an MCP server, Repomix provides the following tools:
     - `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.
     - `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary for codebase analysis.
 
-3. **read_repomix_output**: Read the contents of a Repomix-generated output file. Supports partial reading with line range specification for large files.
+4. **read_repomix_output**: Read the contents of a Repomix-generated output file. Supports partial reading with line range specification for large files.
   - Parameters:
     - `outputId`: ID of the Repomix output file to read
     - `startLine`: (Optional) Starting line number (1-based, inclusive). If not specified, reads from beginning.
@@ -854,7 +864,7 @@ When running as an MCP server, Repomix provides the following tools:
     - Provides secure access to packed codebase without requiring file system access
     - Supports partial reading for large files
 
-4. **grep_repomix_output**: Search for patterns in a Repomix output file using grep-like functionality with JavaScript RegExp syntax
+5. **grep_repomix_output**: Search for patterns in a Repomix output file using grep-like functionality with JavaScript RegExp syntax
   - Parameters:
     - `outputId`: ID of the Repomix output file to search
     - `pattern`: Search pattern (JavaScript RegExp regular expression syntax)
@@ -868,7 +878,7 @@ When running as an MCP server, Repomix provides the following tools:
     - Allows separate control of before/after context lines
     - Case-sensitive and case-insensitive search options
 
-5. **file_system_read_file**: Read a file from the local file system using an absolute path. Includes built-in security validation to detect and prevent access to files containing sensitive information.
+6. **file_system_read_file**: Read a file from the local file system using an absolute path. Includes built-in security validation to detect and prevent access to files containing sensitive information.
   - Parameters:
     - `path`: Absolute path to the file to read
   - Security features:
@@ -876,7 +886,7 @@ When running as an MCP server, Repomix provides the following tools:
     - Prevents access to files containing sensitive information (API keys, passwords, secrets)
     - Validates absolute paths to prevent directory traversal attacks
 
-6. **file_system_read_directory**: List the contents of a directory using an absolute path. Returns a formatted list showing files and subdirectories with clear indicators.
+7. **file_system_read_directory**: List the contents of a directory using an absolute path. Returns a formatted list showing files and subdirectories with clear indicators.
   - Parameters:
     - `path`: Absolute path to the directory to list
   - Features:
