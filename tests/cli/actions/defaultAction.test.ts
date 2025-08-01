@@ -1,13 +1,14 @@
 import path from 'node:path';
 import process from 'node:process';
 import { globby } from 'globby';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type MockedFunction, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildCliConfig,
   handleDirectoryProcessing,
   handleStdinProcessing,
   runDefaultAction,
 } from '../../../src/cli/actions/defaultAction.js';
+import { Spinner } from '../../../src/cli/cliSpinner.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import * as configLoader from '../../../src/config/configLoad.js';
 import * as fileStdin from '../../../src/core/file/fileStdin.js';
@@ -22,12 +23,33 @@ vi.mock('../../../src/config/configLoad');
 vi.mock('../../../src/core/file/packageJsonParse');
 vi.mock('../../../src/core/file/fileStdin');
 vi.mock('../../../src/shared/logger');
-vi.mock('../../../src/cli/cliSpinner');
+const mockSpinner = {
+  start: vi.fn() as MockedFunction<() => void>,
+  update: vi.fn() as MockedFunction<(message: string) => void>,
+  succeed: vi.fn() as MockedFunction<(message: string) => void>,
+  fail: vi.fn() as MockedFunction<(message: string) => void>,
+  stop: vi.fn() as MockedFunction<() => void>,
+  message: 'test',
+  currentFrame: 0,
+  interval: null,
+  isQuiet: false,
+} as unknown as Spinner;
+
+vi.mock('../../../src/cli/cliSpinner', () => ({
+  Spinner: vi.fn().mockImplementation(() => mockSpinner),
+}));
 vi.mock('../../../src/cli/cliPrint');
 
 describe('defaultAction', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+
+    // Reset mockSpinner functions
+    vi.clearAllMocks();
+
+    // Ensure Spinner constructor returns mockSpinner
+    vi.mocked(Spinner).mockImplementation(() => mockSpinner);
+
     vi.mocked(packageJsonParser.getVersion).mockResolvedValue('1.0.0');
     vi.mocked(configLoader.loadFileConfig).mockResolvedValue({});
     // Default globby mock
@@ -643,13 +665,13 @@ describe('defaultAction', () => {
     });
 
     it('should validate directory arguments and throw error for multiple directories', async () => {
-      await expect(handleStdinProcessing(['dir1', 'dir2'], testCwd, mockConfig, mockCliOptions)).rejects.toThrow(
+      await expect(handleStdinProcessing(['dir1', 'dir2'], testCwd, mockConfig, mockSpinner)).rejects.toThrow(
         'When using --stdin, do not specify directory arguments',
       );
     });
 
     it('should validate directory arguments and throw error for non-default directory', async () => {
-      await expect(handleStdinProcessing(['src'], testCwd, mockConfig, mockCliOptions)).rejects.toThrow(
+      await expect(handleStdinProcessing(['src'], testCwd, mockConfig, mockSpinner)).rejects.toThrow(
         'When using --stdin, do not specify directory arguments',
       );
     });
@@ -660,7 +682,7 @@ describe('defaultAction', () => {
         emptyDirPaths: [],
       });
 
-      const result = await handleStdinProcessing(['.'], testCwd, mockConfig, mockCliOptions);
+      const result = await handleStdinProcessing(['.'], testCwd, mockConfig, mockSpinner);
 
       expect(result).toEqual({
         packResult: expect.any(Object),
@@ -675,7 +697,7 @@ describe('defaultAction', () => {
         emptyDirPaths: [],
       });
 
-      const result = await handleStdinProcessing([], testCwd, mockConfig, mockCliOptions);
+      const result = await handleStdinProcessing([], testCwd, mockConfig, mockSpinner);
 
       expect(result).toEqual({
         packResult: expect.any(Object),
@@ -694,7 +716,7 @@ describe('defaultAction', () => {
       // Mock globby to return the expected filtered files (sorted by sortPaths)
       vi.mocked(globby).mockResolvedValue([path.join('subdir', 'file2.txt'), 'file1.txt']);
 
-      await handleStdinProcessing(['.'], testCwd, mockConfig, mockCliOptions);
+      await handleStdinProcessing(['.'], testCwd, mockConfig, mockSpinner);
 
       expect(packager.pack).toHaveBeenCalledWith([testCwd], mockConfig, expect.any(Function), {}, [
         path.join(testCwd, 'file1.txt'),
@@ -706,9 +728,7 @@ describe('defaultAction', () => {
       const error = new Error('stdin read error');
       vi.mocked(fileStdin.readFilePathsFromStdin).mockRejectedValue(error);
 
-      await expect(handleStdinProcessing(['.'], testCwd, mockConfig, mockCliOptions)).rejects.toThrow(
-        'stdin read error',
-      );
+      await expect(handleStdinProcessing(['.'], testCwd, mockConfig, mockSpinner)).rejects.toThrow('stdin read error');
     });
 
     it('should propagate errors from pack operation', async () => {
@@ -720,7 +740,7 @@ describe('defaultAction', () => {
       const error = new Error('pack error');
       vi.mocked(packager.pack).mockRejectedValue(error);
 
-      await expect(handleStdinProcessing(['.'], testCwd, mockConfig, mockCliOptions)).rejects.toThrow('pack error');
+      await expect(handleStdinProcessing(['.'], testCwd, mockConfig, mockSpinner)).rejects.toThrow('pack error');
     });
   });
 
@@ -776,7 +796,7 @@ describe('defaultAction', () => {
     it('should resolve directory paths and call pack with absolute paths', async () => {
       const directories = ['src', 'lib', './docs'];
 
-      const result = await handleDirectoryProcessing(directories, testCwd, mockConfig, mockCliOptions);
+      const result = await handleDirectoryProcessing(directories, testCwd, mockConfig, mockSpinner);
 
       expect(packager.pack).toHaveBeenCalledWith(
         [path.resolve(testCwd, 'src'), path.resolve(testCwd, 'lib'), path.resolve(testCwd, 'docs')],
@@ -793,7 +813,7 @@ describe('defaultAction', () => {
     it('should handle single directory', async () => {
       const directories = ['.'];
 
-      await handleDirectoryProcessing(directories, testCwd, mockConfig, mockCliOptions);
+      await handleDirectoryProcessing(directories, testCwd, mockConfig, mockSpinner);
 
       expect(packager.pack).toHaveBeenCalledWith([testCwd], mockConfig, expect.any(Function));
     });
@@ -803,7 +823,7 @@ describe('defaultAction', () => {
       const absolutePath2 = path.resolve('/another/absolute');
       const directories = [absolutePath1, absolutePath2];
 
-      await handleDirectoryProcessing(directories, testCwd, mockConfig, mockCliOptions);
+      await handleDirectoryProcessing(directories, testCwd, mockConfig, mockSpinner);
 
       expect(packager.pack).toHaveBeenCalledWith([absolutePath1, absolutePath2], mockConfig, expect.any(Function));
     });
@@ -812,7 +832,7 @@ describe('defaultAction', () => {
       const error = new Error('pack error');
       vi.mocked(packager.pack).mockRejectedValue(error);
 
-      await expect(handleDirectoryProcessing(['.'], testCwd, mockConfig, mockCliOptions)).rejects.toThrow('pack error');
+      await expect(handleDirectoryProcessing(['.'], testCwd, mockConfig, mockSpinner)).rejects.toThrow('pack error');
     });
 
     it('should call progress callback during packing', async () => {
@@ -840,7 +860,7 @@ describe('defaultAction', () => {
         } as PackResult;
       });
 
-      await handleDirectoryProcessing(['.'], testCwd, mockConfig, mockCliOptions);
+      await handleDirectoryProcessing(['.'], testCwd, mockConfig, mockSpinner);
 
       expect(progressCallback).toBeDefined();
       expect(packager.pack).toHaveBeenCalledWith(expect.any(Array), expect.any(Object), expect.any(Function));
