@@ -63,7 +63,7 @@ async function resolveOutputFilePath(inputPath: string): Promise<string> {
     return inputPath;
   } catch (error) {
     if (error instanceof Error && error.message.includes('ENOENT')) {
-      throw new Error(`File or directory not found: ${inputPath}`);
+      throw new Error(`File or directory not found for path: ${inputPath}`, { cause: error });
     }
     throw error;
   }
@@ -74,36 +74,29 @@ async function resolveOutputFilePath(inputPath: string): Promise<string> {
  * @param content The content of the repomix output XML file
  * @returns Array of file paths extracted from the XML
  */
-function extractFilePaths(content: string): string[] {
+/**
+ * Extract file paths and character counts from a repomix output XML file
+ * @param content The content of the repomix output XML file
+ * @returns An object containing an array of file paths and a record of file paths to character counts
+ */
+function extractFileMetrics(content: string): { filePaths: string[]; fileCharCounts: Record<string, number> } {
   const filePaths: string[] = [];
-  const filePathRegex = /<file path="([^"]+)">/g;
-  let match: RegExpExecArray | null = filePathRegex.exec(content);
+  const fileCharCounts: Record<string, number> = {};
+  const fileRegex = /<file path="([^"]+)">([\s\S]*?)<\/file>/g;
+  let match: RegExpExecArray | null;
 
-  while (match !== null) {
-    filePaths.push(match[1]);
-    match = filePathRegex.exec(content);
+  while (true) {
+    match = fileRegex.exec(content);
+    if (!match) {
+      break;
+    }
+    const filePath = match[1];
+    const fileContent = match[2];
+    filePaths.push(filePath);
+    fileCharCounts[filePath] = fileContent.length;
   }
 
-  return filePaths;
-}
-
-/**
- * Calculate approximate file size in characters
- * @param content The content of the file
- * @param filePaths Array of file paths
- * @returns Record of file paths to character counts
- */
-function calculateApproximateCharCounts(content: string, filePaths: string[]): Record<string, number> {
-  // Simple approximation: distribute character count evenly among files
-  const avgChars = Math.floor(content.length / filePaths.length);
-
-  return filePaths.reduce(
-    (acc, filePath) => {
-      acc[filePath] = avgChars;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+  return { filePaths, fileCharCounts };
 }
 
 /**
@@ -146,16 +139,12 @@ export const registerAttachPackedOutputTool = (mcpServer: McpServer) => {
         // Read the file content
         const content = await fs.readFile(outputFilePath, 'utf8');
 
-        // Extract file paths from the XML content
-        const filePaths = extractFilePaths(content);
+        // Extract file paths and character counts from the XML content
+        const { filePaths, fileCharCounts } = extractFileMetrics(content);
 
         // Calculate metrics
-        const totalLines = content.split('\n').length;
-        const totalCharacters = content.length;
+        const totalCharacters = Object.values(fileCharCounts).reduce((sum, count) => sum + count, 0);
         const totalTokens = Math.floor(totalCharacters / 4); // Rough estimate of tokens
-
-        // Extract file paths and calculate approximate character counts
-        const fileCharCounts = calculateApproximateCharCounts(content, filePaths);
 
         // Create approximate token counts (roughly 4 chars per token)
         const fileTokenCounts: Record<string, number> = {};
