@@ -70,11 +70,6 @@ async function resolveOutputFilePath(inputPath: string): Promise<string> {
 }
 
 /**
- * Extract file paths from a repomix output XML file
- * @param content The content of the repomix output XML file
- * @returns Array of file paths extracted from the XML
- */
-/**
  * Extract file paths and character counts from a repomix output XML file
  * @param content The content of the repomix output XML file
  * @returns An object containing an array of file paths and a record of file paths to character counts
