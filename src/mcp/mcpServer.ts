@@ -3,6 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { getVersion } from '../core/file/packageJsonParse.js';
 import { logger } from '../shared/logger.js';
 import { registerPackRemoteRepositoryPrompt } from './prompts/packRemoteRepositoryPrompts.js';
+import { registerAttachPackedOutputTool } from './tools/attachPackedOutputTool.js';
 import { registerFileSystemReadDirectoryTool } from './tools/fileSystemReadDirectoryTool.js';
 import { registerFileSystemReadFileTool } from './tools/fileSystemReadFileTool.js';
 import { registerGrepRepomixOutputTool } from './tools/grepRepomixOutputTool.js';
@@ -16,6 +17,7 @@ import { registerReadRepomixOutputTool } from './tools/readRepomixOutputTool.js'
 const MCP_SERVER_INSTRUCTIONS =
   'Repomix MCP Server provides AI-optimized codebase analysis tools. ' +
   'Use pack_codebase or pack_remote_repository to consolidate code into a single XML file, ' +
+  'use attach_packed_output to work with existing packed outputs, ' +
   'then read_repomix_output and grep_repomix_output to analyze it. ' +
   'Perfect for code reviews, documentation generation, bug investigation, GitHub repository analysis, and understanding large codebases. ' +
   'Includes security scanning and supports compression for token efficiency.';
@@ -37,6 +39,7 @@ export const createMcpServer = async () => {
   // Register the tools
   registerPackCodebaseTool(mcpServer);
   registerPackRemoteRepositoryTool(mcpServer);
+  registerAttachPackedOutputTool(mcpServer);
   registerReadRepomixOutputTool(mcpServer);
   registerGrepRepomixOutputTool(mcpServer);
   registerFileSystemReadFileTool(mcpServer);

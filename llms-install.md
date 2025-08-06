@@ -73,7 +73,29 @@ This tool packages a local code directory into a consolidated XML file for AI an
 }
 ```
 
-### 2. pack_remote_repository
+### 2. attach_packed_output
+
+This tool attaches an existing Repomix packed output file for AI analysis. It allows you to work with previously generated packed repositories without requiring re-processing.
+
+**Parameters:**
+- `path`: (Required) Path to a directory containing repomix-output.xml or direct path to a packed repository XML file
+- `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary
+
+**Features:**
+- Accepts either a directory containing a repomix-output.xml file or a direct path to an XML file
+- Registers the file with the MCP server and returns the same structure as the pack_codebase tool
+- Provides secure access to existing packed outputs without requiring re-processing
+- Useful for working with previously generated packed repositories
+
+**Example:**
+```json
+{
+  "path": "/path/to/directory/with/repomix-output.xml",
+  "topFilesLength": 10
+}
+```
+
+### 3. pack_remote_repository
 
 This tool fetches, clones, and packages a GitHub repository into a consolidated XML file for AI analysis. It automatically clones the remote repository, analyzes its structure, and generates a comprehensive report.
 
@@ -95,7 +117,7 @@ This tool fetches, clones, and packages a GitHub repository into a consolidated 
 }
 ```
 
-### 3. read_repomix_output
+### 4. read_repomix_output
 
 This tool reads the contents of a Repomix-generated output file. Supports partial reading with line range specification for large files. This tool is designed for environments where direct file system access is limited.
 
@@ -119,7 +141,7 @@ This tool reads the contents of a Repomix-generated output file. Supports partia
 }
 ```
 
-### 4. grep_repomix_output
+### 5. grep_repomix_output
 
 This tool searches for patterns in a Repomix output file using grep-like functionality with JavaScript RegExp syntax. Returns matching lines with optional context lines around matches.
 
@@ -147,7 +169,7 @@ This tool searches for patterns in a Repomix output file using grep-like functio
 }
 ```
 
-### 5. file_system_read_file
+### 6. file_system_read_file
 
 This tool reads a file from the local file system using an absolute path. Includes built-in security validation to detect and prevent access to files containing sensitive information.
 
@@ -166,7 +188,7 @@ This tool reads a file from the local file system using an absolute path. Includ
 }
 ```
 
-### 6. file_system_read_directory
+### 7. file_system_read_directory
 
 This tool lists the contents of a directory using an absolute path. Returns a formatted list showing files and subdirectories with clear indicators.
 
