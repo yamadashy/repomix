@@ -1,5 +1,5 @@
 import os from 'node:os';
-import { Tinypool } from 'tinypool';
+import { Tinypool, type Options as TinypoolOptions } from 'tinypool';
 import { logger } from './logger.js';
 
 // Worker initialization is expensive, so we prefer fewer threads unless there are many files
@@ -23,19 +23,24 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
   };
 };
 
-export const createWorkerPool = (numOfTasks: number, workerPath: string): Tinypool => {
+export type WorkerRuntime = NonNullable<TinypoolOptions['runtime']>;
+
+export const createWorkerPool = (
+  numOfTasks: number,
+  workerPath: string,
+  runtime: WorkerRuntime = 'child_process',
+): Tinypool => {
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
 
   logger.trace(
-    `Initializing worker pool with min=${minThreads}, max=${maxThreads} threads. Worker path: ${workerPath}`,
+    `Initializing worker pool with min=${minThreads}, max=${maxThreads} threads, runtime=${runtime}. Worker path: ${workerPath}`,
   );
 
   const startTime = process.hrtime.bigint();
 
   const pool = new Tinypool({
     filename: workerPath,
-    // Use child_process for better memory management
-    runtime: 'child_process',
+    runtime,
     minThreads,
     maxThreads,
     idleTimeout: 5000,
@@ -47,7 +52,7 @@ export const createWorkerPool = (numOfTasks: number, workerPath: string): Tinypo
   const endTime = process.hrtime.bigint();
   const initTime = Number(endTime - startTime) / 1e6; // Convert to milliseconds
 
-  logger.debug(`Tinypool initialization took ${initTime.toFixed(2)}ms`);
+  logger.debug(`Tinypool initialization (${runtime}) took ${initTime.toFixed(2)}ms`);
 
   return pool;
 };
@@ -78,8 +83,12 @@ export interface TaskRunner<T, R> {
   cleanup: () => Promise<void>;
 }
 
-export const initTaskRunner = <T, R>(numOfTasks: number, workerPath: string): TaskRunner<T, R> => {
-  const pool = createWorkerPool(numOfTasks, workerPath);
+export const initTaskRunner = <T, R>(
+  numOfTasks: number,
+  workerPath: string,
+  runtime: WorkerRuntime = 'child_process',
+): TaskRunner<T, R> => {
+  const pool = createWorkerPool(numOfTasks, workerPath, runtime);
   return {
     run: (task: T) => pool.run(task),
     cleanup: () => cleanupWorkerPool(pool),

@@ -44,6 +44,7 @@ export const runSecurityCheck = async (
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>(
     rawFiles.length + gitDiffTasks.length,
     new URL('./workers/securityCheckWorker.js', import.meta.url).href,
+    'worker_threads',
   );
   const fileTasks = rawFiles.map(
     (file) =>

@@ -65,19 +65,36 @@ describe('processConcurrency', () => {
     });
   });
 
-  describe('initWorker', () => {
+  describe('createWorkerPool', () => {
     beforeEach(() => {
       vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
       vi.mocked(Tinypool).mockImplementation(() => ({}) as Tinypool);
     });
 
-    it('should initialize Tinypool with correct configuration', () => {
+    it('should initialize Tinypool with default child_process runtime', () => {
       const workerPath = '/path/to/worker.js';
       const tinypool = createWorkerPool(500, workerPath);
 
       expect(Tinypool).toHaveBeenCalledWith({
         filename: workerPath,
         runtime: 'child_process',
+        minThreads: 1,
+        maxThreads: 4, // Math.min(4, 500/100) = 4
+        idleTimeout: 5000,
+        workerData: {
+          logLevel: 2,
+        },
+      });
+      expect(tinypool).toBeDefined();
+    });
+
+    it('should initialize Tinypool with worker_threads runtime when specified', () => {
+      const workerPath = '/path/to/worker.js';
+      const tinypool = createWorkerPool(500, workerPath, 'worker_threads');
+
+      expect(Tinypool).toHaveBeenCalledWith({
+        filename: workerPath,
+        runtime: 'worker_threads',
         minThreads: 1,
         maxThreads: 4, // Math.min(4, 500/100) = 4
         idleTimeout: 5000,
@@ -109,6 +126,19 @@ describe('processConcurrency', () => {
       expect(taskRunner).toHaveProperty('cleanup');
       expect(typeof taskRunner.run).toBe('function');
       expect(typeof taskRunner.cleanup).toBe('function');
+    });
+
+    it('should use specified runtime when provided', () => {
+      const workerPath = '/path/to/worker.js';
+      const taskRunner = initTaskRunner(100, workerPath, 'worker_threads');
+
+      expect(Tinypool).toHaveBeenCalledWith(
+        expect.objectContaining({
+          runtime: 'worker_threads',
+        }),
+      );
+      expect(taskRunner).toHaveProperty('run');
+      expect(taskRunner).toHaveProperty('cleanup');
     });
   });
 });

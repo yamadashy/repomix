@@ -16,6 +16,7 @@ export const executeGlobbyInWorker = async (
   const taskRunner = deps.initTaskRunner<GlobbyTask, string[]>(
     1,
     new URL('./workers/globbyWorker.js', import.meta.url).href,
+    'worker_threads',
   );
 
   try {

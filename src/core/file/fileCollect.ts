@@ -18,6 +18,7 @@ export const collectFiles = async (
   const taskRunner = deps.initTaskRunner<FileCollectTask, RawFile | null>(
     filePaths.length,
     new URL('./workers/fileCollectWorker.js', import.meta.url).href,
+    'worker_threads',
   );
   const tasks = filePaths.map(
     (filePath) =>
