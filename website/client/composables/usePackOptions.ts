@@ -1,4 +1,5 @@
 import { computed, reactive } from 'vue';
+import { parseUrlParameters } from '../utils/urlParams';
 
 export interface PackOptions {
   format: 'xml' | 'markdown' | 'plain';
@@ -27,7 +28,18 @@ const DEFAULT_PACK_OPTIONS: PackOptions = {
 };
 
 export function usePackOptions() {
-  const packOptions = reactive<PackOptions>({ ...DEFAULT_PACK_OPTIONS });
+  // Initialize with URL parameters if available
+  const urlParams = parseUrlParameters();
+  const initialOptions = { ...DEFAULT_PACK_OPTIONS };
+
+  // Apply URL parameters to initial options
+  for (const key of Object.keys(initialOptions)) {
+    if (key in urlParams && urlParams[key as keyof PackOptions] !== undefined) {
+      (initialOptions as Record<string, unknown>)[key] = urlParams[key as keyof PackOptions];
+    }
+  }
+
+  const packOptions = reactive<PackOptions>(initialOptions);
 
   const getPackRequestOptions = computed(() => ({
     removeComments: packOptions.removeComments,
@@ -54,5 +66,6 @@ export function usePackOptions() {
     getPackRequestOptions,
     updateOption,
     resetOptions,
+    DEFAULT_PACK_OPTIONS,
   };
 }

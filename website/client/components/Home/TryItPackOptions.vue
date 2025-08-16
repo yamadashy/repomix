@@ -144,6 +144,7 @@ function handleCompressToggle(enabled: boolean) {
 
     <div class="right-column">
 
+
       <div class="option-section">
         <p class="option-label">Output Format Options</p>
         <div class="checkbox-group">
@@ -436,4 +437,5 @@ function handleCompressToggle(enabled: boolean) {
   outline: none;
   border-color: var(--vp-c-brand-1);
 }
+
 </style>

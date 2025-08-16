@@ -54,6 +54,22 @@
             :loading="loading"
             :isValid="isSubmitValid"
           />
+          <div
+            v-if="shouldShowReset"
+            class="tooltip-container"
+          >
+            <button
+              class="reset-button"
+              @click="handleReset"
+              type="button"
+            >
+              <RotateCcw :size="20" />
+            </button>
+            <div class="tooltip-content">
+              Reset all options to default values
+              <div class="tooltip-arrow"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -68,6 +84,7 @@
         v-model:show-line-numbers="packOptions.showLineNumbers"
         v-model:output-parsable="packOptions.outputParsable"
         v-model:compress="packOptions.compress"
+
       />
 
       <div v-if="hasExecuted">
@@ -83,9 +100,10 @@
 </template>
 
 <script setup lang="ts">
-import { FolderArchive, FolderOpen, Link2 } from 'lucide-vue-next';
-import { nextTick, onMounted } from 'vue';
+import { FolderArchive, FolderOpen, Link2, RotateCcw } from 'lucide-vue-next';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { usePackRequest } from '../../composables/usePackRequest';
+import { parseUrlParameters, updateUrlParameters } from '../../utils/urlParams';
 import { isValidRemoteValue } from '../utils/validation';
 import PackButton from './PackButton.vue';
 import TryItFileUpload from './TryItFileUpload.vue';
@@ -98,6 +116,7 @@ import TryItUrlInput from './TryItUrlInput.vue';
 const {
   // Pack options
   packOptions,
+  DEFAULT_PACK_OPTIONS,
 
   // Input states
   inputUrl,
@@ -118,9 +137,73 @@ const {
   setMode,
   handleFileUpload,
   submitRequest,
+  resetOptions,
 } = usePackRequest();
 
+// Check if reset button should be shown
+const shouldShowReset = computed(() => {
+  // Don't show if pack hasn't been executed yet
+  if (!hasExecuted.value) {
+    return false;
+  }
+
+
+  // Show if there's input URL
+  if (inputUrl.value && inputUrl.value.trim() !== '') {
+    return true;
+  }
+
+  // Show if any pack option differs from default
+  for (const [key, value] of Object.entries(packOptions)) {
+    const defaultValue = DEFAULT_PACK_OPTIONS[key as keyof typeof DEFAULT_PACK_OPTIONS];
+    if (value !== defaultValue) {
+      // For string values, also check if they're not empty
+      if (typeof value === 'string' && typeof defaultValue === 'string') {
+        if (value.trim() !== defaultValue.trim()) {
+          return true;
+        }
+      } else if (value !== defaultValue) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+});
+
+
 async function handleSubmit() {
+  // Update URL parameters before submitting
+  const urlParamsToUpdate: Record<string, unknown> = {};
+
+  // Add repository URL if it exists and is valid
+  if (inputUrl.value && isValidRemoteValue(inputUrl.value.trim())) {
+    urlParamsToUpdate.repo = inputUrl.value.trim();
+  }
+
+  // Only add pack options that differ from defaults
+  for (const [key, value] of Object.entries(packOptions)) {
+    const defaultValue = DEFAULT_PACK_OPTIONS[key as keyof typeof DEFAULT_PACK_OPTIONS];
+    if (value !== defaultValue) {
+      // For string values, also check if they're not empty
+      if (typeof value === 'string' && value.trim() === '' && defaultValue === '') {
+        continue; // Skip empty strings that match default empty strings
+      }
+      
+      // Map internal option names to URL parameter names
+      let urlParamKey = key;
+      if (key === 'includePatterns') {
+        urlParamKey = 'include';
+      } else if (key === 'ignorePatterns') {
+        urlParamKey = 'ignore';
+      }
+      
+      urlParamsToUpdate[urlParamKey] = value;
+    }
+  }
+
+  updateUrlParameters(urlParamsToUpdate);
+
   await submitRequest();
 }
 
@@ -130,23 +213,24 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
-// Add repository parameter handling when component mounts
+function handleReset() {
+  resetOptions();
+  inputUrl.value = '';
+
+  // Clear URL parameters
+  updateUrlParameters({});
+}
+
+// Handle URL parameters when component mounts
 onMounted(() => {
-  // Get URL parameters from window location
-  const urlParams = new URLSearchParams(window.location.search);
-  const repoParam = urlParams.get('repo');
+  const urlParams = parseUrlParameters();
 
-  // If repository parameter exists and is valid, set it and trigger packing
-  if (repoParam) {
-    inputUrl.value = repoParam.trim();
-
-    // If the URL is valid, trigger the pack process
-    if (isValidRemoteValue(repoParam.trim())) {
-      // Use nextTick to ensure the URL is set before submission
-      nextTick(() => {
-        handleSubmit();
-      });
-    }
+  // If repository parameter exists and is valid, trigger packing automatically
+  if (urlParams.repo && isValidRemoteValue(urlParams.repo.trim())) {
+    // Use nextTick to ensure all reactive values are properly initialized
+    nextTick(() => {
+      handleSubmit();
+    });
   }
 });
 </script>
@@ -248,6 +332,29 @@ onMounted(() => {
   align-items: stretch;
   align-self: start;
   flex-shrink: 0;
+  gap: 8px;
+}
+
+.reset-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  background: white;
+  color: var(--vp-c-text-2);
+  border: 1px solid var(--vp-c-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.reset-button:hover {
+  color: var(--vp-c-brand-1);
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-bg-soft);
+
 }
 
 /* Responsive adjustments */
@@ -263,6 +370,45 @@ onMounted(() => {
 
   .pack-button-wrapper {
     width: 100%;
+    gap: 8px;
   }
 }
+.tooltip-container {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-content {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: #333;
+  color: white;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  border-radius: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  z-index: 10;
+}
+
+.tooltip-container:hover .tooltip-content {
+  opacity: 1;
+  visibility: visible;
+}
+
+.tooltip-arrow {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 8px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent;
+}
+
 </style>

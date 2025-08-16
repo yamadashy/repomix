@@ -2,16 +2,20 @@ import { computed, ref } from 'vue';
 import type { PackResult } from '../components/api/client';
 import { handlePackRequest } from '../components/utils/requestHandlers';
 import { isValidRemoteValue } from '../components/utils/validation';
+import { parseUrlParameters } from '../utils/urlParams';
 import { usePackOptions } from './usePackOptions';
 
 export type InputMode = 'url' | 'file' | 'folder';
 
 export function usePackRequest() {
   const packOptionsComposable = usePackOptions();
-  const { packOptions, getPackRequestOptions } = packOptionsComposable;
+  const { packOptions, getPackRequestOptions, resetOptions, DEFAULT_PACK_OPTIONS } = packOptionsComposable;
+
+  // Initialize with URL parameters if available
+  const urlParams = parseUrlParameters();
 
   // Input states
-  const inputUrl = ref('');
+  const inputUrl = ref(urlParams.repo || '');
   const inputRepositoryUrl = ref('');
   const mode = ref<InputMode>('url');
   const uploadedFile = ref<File | null>(null);
@@ -130,5 +134,9 @@ export function usePackRequest() {
     resetRequest,
     submitRequest,
     cancelRequest,
+
+    // Pack option actions
+    resetOptions,
+    DEFAULT_PACK_OPTIONS,
   };
 }
