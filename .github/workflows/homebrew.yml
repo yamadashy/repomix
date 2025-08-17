@@ -10,15 +10,15 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Set up Homebrew
-        uses: Homebrew/actions/setup-homebrew@b3fb6f7cb1475434d4285b90020c2aa51f1e0b12 # ratchet:Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@87d3af7a72e5ede081b6dafce1798551a74fb366 # ratchet:Homebrew/actions/setup-homebrew@master
         with:
           test-bot: false
 
       - name: Configure Git user
-        uses: Homebrew/actions/git-user-config@b3fb6f7cb1475434d4285b90020c2aa51f1e0b12 # ratchet:Homebrew/actions/git-user-config@master
+        uses: Homebrew/actions/git-user-config@87d3af7a72e5ede081b6dafce1798551a74fb366 # ratchet:Homebrew/actions/git-user-config@master
 
       - name: Bump packages
-        uses: Homebrew/actions/bump-packages@b3fb6f7cb1475434d4285b90020c2aa51f1e0b12 # ratchet:Homebrew/actions/bump-packages@master
+        uses: Homebrew/actions/bump-packages@87d3af7a72e5ede081b6dafce1798551a74fb366 # ratchet:Homebrew/actions/bump-packages@master
         with:
           token: ${{ secrets.COMMITTER_TOKEN }}
           formulae: repomix

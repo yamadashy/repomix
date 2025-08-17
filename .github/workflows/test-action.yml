@@ -21,7 +21,7 @@ jobs:
           - node-version: 22
             test-case: "full"
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # ratchet:actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # ratchet:actions/checkout@v4
 
       - name: Run Repomix Action (Minimal)
         if: matrix['test-case'] == 'minimal'
