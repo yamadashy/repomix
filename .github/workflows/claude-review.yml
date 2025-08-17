@@ -2,31 +2,44 @@ name: Claude Auto review PRs
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
 
 jobs:
-  auto-review:
+  code-review:
+    # Run on PR events, or when someone comments "@claude review" on a PR
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@claude review'))
+    runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: write
+      issues: write
       id-token: write
-    runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # ratchet:actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # ratchet:actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0 # Full history for better diff analysis
 
-      - name: Auto review PR
-        uses: anthropics/claude-code-action@4f4f43f0444d2d14cf449afc644f13facd71ebc4 # ratchet:anthropics/claude-code-action@main
+      - name: Code Review with Claude
+        uses: anthropics/claude-code-action@78b07473f50218c6494719ef164ed1ebd31da25c # ratchet:anthropics/claude-code-action@main
         with:
-          direct_prompt: |
-            Please review this PR. Look at the changes and provide thoughtful feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Suggestions for improvements
-            - Overall architecture and design decisions
-
-            Be constructive and specific in your feedback. Give inline comments where applicable.
+          mode: experimental-review
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_tools: "mcp__github__create_pending_pull_request_review,mcp__github__add_pull_request_review_comment_to_pending_review,mcp__github__submit_pending_pull_request_review,mcp__github__get_pull_request_diff"
+          # github_token not needed - uses default GITHUB_TOKEN for GitHub operations
+          timeout_minutes: "30"
+          custom_instructions: |
+            Focus on:
+            - Code quality and maintainability
+            - Security vulnerabilities
+            - Performance issues
+            - Best practices and design patterns
+            - Test coverage gaps
+
+            Be constructive and provide specific suggestions for improvements.
+            Use GitHub's suggestion format when proposing code changes.
