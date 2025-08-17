@@ -35,6 +35,8 @@ export function usePackOptions() {
   // Apply URL parameters to initial options
   for (const key of Object.keys(initialOptions) as Array<keyof PackOptions>) {
     if (key in urlParams && urlParams[key] !== undefined) {
+      // Debug: Log URL parameter application
+      console.debug(`[URL Params] Setting ${key}:`, urlParams[key], '(was:', initialOptions[key], ')');
       // Type-safe assignment: only assign if the key is a valid PackOptions key
       initialOptions[key] = urlParams[key] as PackOptions[typeof key];
     }

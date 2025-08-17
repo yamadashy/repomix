@@ -95,6 +95,10 @@ export function parseUrlParameters(): Partial<PackOptions & { repo?: string }> {
 
   const urlParams = new URLSearchParams(window.location.search);
   const params: Partial<PackOptions & { repo?: string }> = {};
+  
+  // Debug: Log current URL parameters
+  console.debug('[URL Params] Current URL search:', window.location.search);
+  console.debug('[URL Params] Parsed params:', Array.from(urlParams.entries()));
 
   // Repository URL parameter
   const repo = urlParams.get('repo');
