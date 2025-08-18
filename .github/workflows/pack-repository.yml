@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
       - name: Pack repository with Repomix
-        uses: yamadashy/repomix/.github/actions/repomix@f5104d18a613daff38ffc2b7d0cf416252d77000 # ratchet:yamadashy/repomix/.github/actions/repomix@main
+        uses: yamadashy/repomix/.github/actions/repomix@34f9b734cefbc3389ffdfc6609d7216f85a0c596 # ratchet:yamadashy/repomix/.github/actions/repomix@main
         with:
           output: repomix-output.xml
 
