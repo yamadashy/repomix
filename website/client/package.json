@@ -11,15 +11,15 @@
   },
   "dependencies": {
     "fflate": "^0.8.2",
-    "lucide-vue-next": "^0.525.0",
+    "lucide-vue-next": "^0.541.0",
     "vue3-ace-editor": "^2.2.4"
   },
   "devDependencies": {
     "@types/gtag.js": "^0.0.20",
-    "@types/node": "^24.0.14",
-    "@typescript/native-preview": "^7.0.0-dev.20250824.1",
+    "@types/node": "^24.3.0",
+    "@typescript/native-preview": "^7.0.0-dev.20250825.1",
     "rollup-plugin-visualizer": "^6.0.3",
-    "vite-plugin-pwa": "^1.0.1",
-    "vitepress": "^1.6.3"
+    "vite-plugin-pwa": "^1.0.3",
+    "vitepress": "^1.6.4"
   }
 }
