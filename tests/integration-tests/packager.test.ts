@@ -24,13 +24,14 @@ import { copyToClipboardIfEnabled } from '../../src/core/packager/copyToClipboar
 import { writeOutputToDisk } from '../../src/core/packager/writeOutputToDisk.js';
 import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
 import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
+import type { WorkerRuntime } from '../../src/shared/processConcurrency.js';
 import { isWindows } from '../testing/testUtils.js';
 
 const fixturesDir = path.join(__dirname, 'fixtures', 'packager');
 const inputsDir = path.join(fixturesDir, 'inputs');
 const outputsDir = path.join(fixturesDir, 'outputs');
 
-const mockCollectFileInitTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string) => {
+const mockCollectFileInitTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string, _runtime?: WorkerRuntime) => {
   return {
     run: async (task: T) => {
       return (await fileCollectWorker(task as FileCollectTask)) as R;

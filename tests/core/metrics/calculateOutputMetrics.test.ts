@@ -3,10 +3,11 @@ import { calculateOutputMetrics } from '../../../src/core/metrics/calculateOutpu
 import type { OutputMetricsTask } from '../../../src/core/metrics/workers/outputMetricsWorker.js';
 import outputMetricsWorker from '../../../src/core/metrics/workers/outputMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
+import type { WorkerRuntime } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string) => {
+const mockInitTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string, _runtime?: WorkerRuntime) => {
   return {
     run: async (task: T) => {
       return (await outputMetricsWorker(task as OutputMetricsTask)) as R;
@@ -46,7 +47,7 @@ describe('calculateOutputMetrics', () => {
     const encoding = 'o200k_base';
     const mockError = new Error('Worker error');
 
-    const mockErrorTaskRunner = <T, _R>(_numOfTasks: number, _workerPath: string) => {
+    const mockErrorTaskRunner = <T, _R>(_numOfTasks: number, _workerPath: string, _runtime?: WorkerRuntime) => {
       return {
         run: async (_task: T) => {
           throw mockError;
@@ -96,7 +97,7 @@ describe('calculateOutputMetrics', () => {
     const path = 'large-file.txt';
 
     let chunksProcessed = 0;
-    const mockParallelTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string) => {
+    const mockParallelTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string, _runtime?: WorkerRuntime) => {
       return {
         run: async (_task: T) => {
           chunksProcessed++;
@@ -122,7 +123,7 @@ describe('calculateOutputMetrics', () => {
     const encoding = 'o200k_base';
     const mockError = new Error('Parallel processing error');
 
-    const mockErrorTaskRunner = <T, _R>(_numOfTasks: number, _workerPath: string) => {
+    const mockErrorTaskRunner = <T, _R>(_numOfTasks: number, _workerPath: string, _runtime?: WorkerRuntime) => {
       return {
         run: async (_task: T) => {
           throw mockError;
@@ -147,7 +148,7 @@ describe('calculateOutputMetrics', () => {
     const encoding = 'o200k_base';
     const processedChunks: string[] = [];
 
-    const mockChunkTrackingTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string) => {
+    const mockChunkTrackingTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string, _runtime?: WorkerRuntime) => {
       return {
         run: async (task: T) => {
           const outputTask = task as OutputMetricsTask;

@@ -9,6 +9,7 @@ import { collectFiles } from '../../../src/core/file/fileCollect.js';
 import type { FileCollectTask } from '../../../src/core/file/workers/fileCollectWorker.js';
 import fileCollectWorker from '../../../src/core/file/workers/fileCollectWorker.js';
 import { logger } from '../../../src/shared/logger.js';
+import type { WorkerRuntime } from '../../../src/shared/processConcurrency.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 // Define the max file size constant for tests
@@ -20,7 +21,21 @@ vi.mock('jschardet');
 vi.mock('iconv-lite');
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string) => {
+interface MockInitTaskRunner {
+  <T, R>(
+    numOfTasks: number,
+    workerPath: string,
+    runtime?: WorkerRuntime,
+  ): {
+    run: (task: T) => Promise<R>;
+    cleanup: () => Promise<void>;
+  };
+  lastRuntime?: WorkerRuntime;
+}
+
+const mockInitTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string, runtime?: WorkerRuntime) => {
+  // Store runtime for verification in tests
+  (mockInitTaskRunner as MockInitTaskRunner).lastRuntime = runtime;
   return {
     run: async (task: T) => {
       return (await fileCollectWorker(task as FileCollectTask)) as R;
@@ -194,5 +209,22 @@ describe('fileCollect', () => {
       `Failed to read file: ${path.resolve('/root/error.txt')}`,
       expect.any(Error),
     );
+  });
+
+  it('should use worker_threads runtime when calling initTaskRunner', async () => {
+    const mockFilePaths = ['test.txt'];
+    const mockRootDir = '/root';
+    const mockConfig = createMockConfig();
+
+    vi.mocked(isBinary).mockReturnValue(false);
+    vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('file content'));
+    vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
+    vi.mocked(iconv.decode).mockReturnValue('decoded content');
+
+    await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
+      initTaskRunner: mockInitTaskRunner,
+    });
+
+    expect((mockInitTaskRunner as MockInitTaskRunner).lastRuntime).toBe('worker_threads');
   });
 });

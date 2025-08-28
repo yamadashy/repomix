@@ -5,6 +5,7 @@ import { processContent } from '../../../src/core/file/fileProcessContent.js';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { FileProcessTask } from '../../../src/core/file/workers/fileProcessWorker.js';
 import fileProcessWorker from '../../../src/core/file/workers/fileProcessWorker.js';
+import type { WorkerRuntime } from '../../../src/shared/processConcurrency.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 const createMockFileManipulator = (): FileManipulator => ({
@@ -19,7 +20,7 @@ const mockGetFileManipulator = (filePath: string): FileManipulator | null => {
   return null;
 };
 
-const mockInitTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string) => {
+const mockInitTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string, _runtime?: WorkerRuntime) => {
   return {
     run: async (task: T) => {
       return (await fileProcessWorker(task as FileProcessTask)) as R;

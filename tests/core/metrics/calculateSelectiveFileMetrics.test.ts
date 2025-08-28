@@ -3,13 +3,14 @@ import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { calculateSelectiveFileMetrics } from '../../../src/core/metrics/calculateSelectiveFileMetrics.js';
 import type { FileMetricsTask } from '../../../src/core/metrics/workers/fileMetricsWorker.js';
 import fileMetricsWorker from '../../../src/core/metrics/workers/fileMetricsWorker.js';
+import type { WorkerRuntime } from '../../../src/shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 
 vi.mock('../../shared/processConcurrency', () => ({
   getProcessConcurrency: () => 1,
 }));
 
-const mockInitTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string) => {
+const mockInitTaskRunner = <T, R>(_numOfTasks: number, _workerPath: string, _runtime?: WorkerRuntime) => {
   return {
     run: async (task: T) => {
       return (await fileMetricsWorker(task as FileMetricsTask)) as R;
