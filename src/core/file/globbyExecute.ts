@@ -1,4 +1,5 @@
 import type { Options } from 'globby';
+import type { WorkerConfig } from '../../shared/processConcurrency.js';
 import { logger } from '../../shared/logger.js';
 import { initTaskRunner } from '../../shared/processConcurrency.js';
 import type { GlobbyTask } from './workers/globbyWorker.js';
@@ -9,6 +10,7 @@ import type { GlobbyTask } from './workers/globbyWorker.js';
 export const executeGlobbyInWorker = async (
   patterns: string[],
   options: Options,
+  workerConfig?: WorkerConfig,
   deps = {
     initTaskRunner,
   },
@@ -16,6 +18,7 @@ export const executeGlobbyInWorker = async (
   const taskRunner = deps.initTaskRunner<GlobbyTask, string[]>(
     1,
     new URL('./workers/globbyWorker.js', import.meta.url).href,
+    workerConfig,
   );
 
   try {

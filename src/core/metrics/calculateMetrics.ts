@@ -55,8 +55,9 @@ export const calculateMetrics = async (
       metricsTargetPaths,
       config.tokenCount.encoding,
       progressCallback,
+      config.worker,
     ),
-    deps.calculateOutputMetrics(output, config.tokenCount.encoding, config.output.filePath),
+    deps.calculateOutputMetrics(output, config.tokenCount.encoding, config.output.filePath, config.worker),
     deps.calculateGitDiffMetrics(config, gitDiffResult),
     deps.calculateGitLogMetrics(config, gitLogResult),
   ]);

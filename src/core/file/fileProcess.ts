@@ -24,6 +24,7 @@ export const processFiles = async (
   const taskRunner = deps.initTaskRunner<FileProcessTask, ProcessedFile>(
     rawFiles.length,
     new URL('./workers/fileProcessWorker.js', import.meta.url).href,
+    config.worker,
   );
   const tasks = rawFiles.map(
     (rawFile, _index) =>

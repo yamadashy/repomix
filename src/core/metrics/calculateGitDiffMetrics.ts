@@ -26,6 +26,7 @@ export const calculateGitDiffMetrics = async (
   const taskRunner = deps.initTaskRunner<GitDiffMetricsTask, number>(
     1, // Single task for git diff calculation
     new URL('./workers/gitDiffMetricsWorker.js', import.meta.url).href,
+    config.worker,
   );
 
   try {

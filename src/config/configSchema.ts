@@ -68,6 +68,12 @@ export const repomixConfigBaseSchema = z.object({
       encoding: z.string().optional(),
     })
     .optional(),
+  worker: z
+    .object({
+      minThreads: z.number().int().min(1).optional(),
+      maxThreads: z.number().int().min(1).optional(),
+    })
+    .optional(),
 });
 
 // Default config schema with default values
@@ -130,6 +136,12 @@ export const repomixConfigDefaultSchema = z.object({
         .string()
         .default('o200k_base')
         .transform((val) => val as TiktokenEncoding),
+    })
+    .default({}),
+  worker: z
+    .object({
+      minThreads: z.number().int().min(1).optional(),
+      maxThreads: z.number().int().min(1).optional(),
     })
     .default({}),
 });

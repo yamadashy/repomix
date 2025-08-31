@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import { initTaskRunner, type WorkerConfig } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -18,6 +18,7 @@ export const runSecurityCheck = async (
   progressCallback: RepomixProgressCallback = () => {},
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
+  workerConfig?: WorkerConfig,
   deps = {
     initTaskRunner,
   },
@@ -58,6 +59,7 @@ export const runSecurityCheck = async (
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>(
     rawFiles.length + gitDiffTasks.length + gitLogTasks.length,
     new URL('./workers/securityCheckWorker.js', import.meta.url).href,
+    workerConfig,
   );
   const fileTasks = rawFiles.map(
     (file) =>

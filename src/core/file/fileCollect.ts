@@ -26,6 +26,7 @@ export const collectFiles = async (
   const taskRunner = deps.initTaskRunner<FileCollectTask, FileCollectResult>(
     filePaths.length,
     new URL('./workers/fileCollectWorker.js', import.meta.url).href,
+    config.worker,
   );
   const tasks = filePaths.map(
     (filePath) =>

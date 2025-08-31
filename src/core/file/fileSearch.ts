@@ -199,7 +199,7 @@ export const searchFiles = async (
       absolute: false,
       dot: true,
       followSymbolicLinks: false,
-    }).catch((error) => {
+    }, config.worker).catch((error) => {
       // Handle EPERM errors specifically
       if (error.code === 'EPERM' || error.code === 'EACCES') {
         throw new PermissionError(
@@ -220,7 +220,7 @@ export const searchFiles = async (
         absolute: false,
         dot: true,
         followSymbolicLinks: false,
-      });
+      }, config.worker);
 
       emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
     }

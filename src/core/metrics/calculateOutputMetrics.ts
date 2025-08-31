@@ -1,6 +1,6 @@
 import type { TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import { initTaskRunner, type WorkerConfig } from '../../shared/processConcurrency.js';
 import type { OutputMetricsTask } from './workers/outputMetricsWorker.js';
 
 const CHUNK_SIZE = 1000;
@@ -10,6 +10,7 @@ export const calculateOutputMetrics = async (
   content: string,
   encoding: TiktokenEncoding,
   path?: string,
+  workerConfig?: WorkerConfig,
   deps = {
     initTaskRunner,
   },
@@ -19,6 +20,7 @@ export const calculateOutputMetrics = async (
   const taskRunner = deps.initTaskRunner<OutputMetricsTask, number>(
     numOfTasks,
     new URL('./workers/outputMetricsWorker.js', import.meta.url).href,
+    workerConfig,
   );
 
   try {

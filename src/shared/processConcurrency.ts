@@ -9,22 +9,31 @@ export const getProcessConcurrency = (): number => {
   return typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length;
 };
 
-export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; maxThreads: number } => {
+export interface WorkerConfig {
+  minThreads?: number;
+  maxThreads?: number;
+}
+
+export const getWorkerThreadCount = (
+  numOfTasks: number,
+  workerConfig: WorkerConfig = {}
+): { minThreads: number; maxThreads: number } => {
   const processConcurrency = getProcessConcurrency();
 
-  const minThreads = 1;
+  const minThreads = workerConfig.minThreads ?? 1;
 
   // Limit max threads based on number of tasks
-  const maxThreads = Math.max(minThreads, Math.min(processConcurrency, Math.ceil(numOfTasks / TASKS_PER_THREAD)));
+  const maxThreadsFromTasks = Math.max(minThreads, Math.min(processConcurrency, Math.ceil(numOfTasks / TASKS_PER_THREAD)));
+  const maxThreads = workerConfig.maxThreads ?? maxThreadsFromTasks;
 
   return {
     minThreads,
-    maxThreads,
+    maxThreads: Math.max(minThreads, maxThreads), // Ensure maxThreads >= minThreads
   };
 };
 
-export const createWorkerPool = (numOfTasks: number, workerPath: string): Tinypool => {
-  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
+export const createWorkerPool = (numOfTasks: number, workerPath: string, workerConfig: WorkerConfig = {}): Tinypool => {
+  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, workerConfig);
 
   logger.trace(
     `Initializing worker pool with min=${minThreads}, max=${maxThreads} threads. Worker path: ${workerPath}`,
@@ -78,8 +87,8 @@ export interface TaskRunner<T, R> {
   cleanup: () => Promise<void>;
 }
 
-export const initTaskRunner = <T, R>(numOfTasks: number, workerPath: string): TaskRunner<T, R> => {
-  const pool = createWorkerPool(numOfTasks, workerPath);
+export const initTaskRunner = <T, R>(numOfTasks: number, workerPath: string, workerConfig?: WorkerConfig): TaskRunner<T, R> => {
+  const pool = createWorkerPool(numOfTasks, workerPath, workerConfig);
   return {
     run: (task: T) => pool.run(task),
     cleanup: () => cleanupWorkerPool(pool),
