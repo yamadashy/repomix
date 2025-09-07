@@ -124,6 +124,27 @@ describe('fileCollect', () => {
     expect(fs.readFile).toHaveBeenCalledTimes(1);
   });
 
+  it('should match dotfiles when using ignoreContent patterns', async () => {
+    const mockFilePaths = ['docs/.env', 'docs/readme.md'];
+    const mockRootDir = '/root';
+    const mockConfig = createMockConfig({ ignoreContent: ['docs/**'] });
+
+    vi.mocked(isBinary).mockReturnValue(false);
+    vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('file content'));
+    vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
+    vi.mocked(iconv.decode).mockReturnValue('decoded content');
+
+    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
+      initTaskRunner: mockInitTaskRunner,
+    });
+
+    expect(result).toEqual({
+      rawFiles: [{ path: 'docs/.env' }, { path: 'docs/readme.md' }],
+      skippedFiles: [],
+    });
+    expect(fs.readFile).not.toHaveBeenCalled();
+  });
+
   it('should skip binary files', async () => {
     const mockFilePaths = ['binary.bin', 'text.txt'];
     const mockRootDir = '/root';

@@ -4,6 +4,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import { initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
+import { normalizeGlobPattern } from './fileSearch.js';
 import type { RawFile } from './fileTypes.js';
 import type { FileCollectResult, FileCollectTask, SkippedFileInfo } from './workers/fileCollectWorker.js';
 
@@ -33,11 +34,12 @@ export const collectFiles = async (
   const shouldSkipContent = (filePath: string, patterns: string[]): boolean => {
     let skip = false;
     for (const pattern of patterns) {
+      const normalizedPattern = normalizeGlobPattern(pattern.startsWith('!') ? pattern.slice(1) : pattern);
       if (pattern.startsWith('!')) {
-        if (minimatch(filePath, pattern.slice(1))) {
+        if (minimatch(filePath, normalizedPattern, { dot: true })) {
           skip = false;
         }
-      } else if (minimatch(filePath, pattern)) {
+      } else if (minimatch(filePath, normalizedPattern, { dot: true })) {
         skip = true;
       }
     }
