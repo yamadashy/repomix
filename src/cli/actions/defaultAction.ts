@@ -157,6 +157,9 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   if (options.ignore) {
     cliConfig.ignore = { customPatterns: splitPatterns(options.ignore) };
   }
+  if (options.ignoreContent) {
+    cliConfig.ignoreContent = splitPatterns(options.ignoreContent);
+  }
   // Only apply gitignore setting if explicitly set to false
   if (options.gitignore === false) {
     cliConfig.ignore = { ...cliConfig.ignore, useGitignore: options.gitignore };

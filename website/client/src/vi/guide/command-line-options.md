@@ -35,6 +35,7 @@
 ## Tùy chọn Lựa chọn Tệp
 - `--include <patterns>`: Danh sách các mẫu bao gồm (phân tách bằng dấu phẩy)
 - `-i, --ignore <patterns>`: Các mẫu bỏ qua bổ sung (phân tách bằng dấu phẩy)
+- `--ignore-content <patterns>`: Skip file content for matched patterns (comma-separated; prefix with `!` to keep specific paths)
 - `--no-gitignore`: Tắt việc sử dụng tệp .gitignore
 - `--no-default-patterns`: Tắt các mẫu mặc định
 
@@ -74,6 +75,9 @@ repomix --compress
 
 # Xử lý tệp cụ thể
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# Ignore file contents for matching patterns
+repomix --ignore-content "components/**,!components/slider/**"
 
 # Kho lưu trữ từ xa với nhánh
 repomix --remote https://github.com/user/repo/tree/main

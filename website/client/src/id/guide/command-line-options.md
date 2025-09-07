@@ -35,6 +35,7 @@
 ## Opsi Seleksi File
 - `--include <patterns>`: Daftar pola penyertaan (dipisahkan koma)
 - `-i, --ignore <patterns>`: Pola pengabaian tambahan (dipisahkan koma)
+- `--ignore-content <patterns>`: Skip file content for matched patterns (comma-separated; prefix with `!` to keep specific paths)
 - `--no-gitignore`: Menonaktifkan penggunaan file .gitignore
 - `--no-default-patterns`: Menonaktifkan pola default
 
@@ -74,6 +75,9 @@ repomix --compress
 
 # Memproses file tertentu
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# Ignore file contents for matching patterns
+repomix --ignore-content "components/**,!components/slider/**"
 
 # Repositori remote dengan branch
 repomix --remote https://github.com/user/repo/tree/main

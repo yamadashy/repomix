@@ -42,6 +42,7 @@ repomix --init --global
 | `output.git.includeLogs`         | Có nên bao gồm nhật ký git trong đầu ra hay không. Hiển thị lịch sử commit với ngày tháng, thông điệp và đường dẫn tệp    | `false`                |
 | `output.git.includeLogsCount`    | Số lượng commit git logs để bao gồm trong đầu ra                                                                          | `50`                   |
 | `include`                        | Các mẫu file để bao gồm sử dụng [mẫu glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)         | `[]`                   |
+| `ignoreContent`                  | Patterns of files whose content should be ignored (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)); prefix with `!` to keep specific paths | `[]`                   |
 | `ignore.useGitignore`            | Có nên sử dụng các mẫu từ file `.gitignore` của dự án hay không                                                            | `true`                 |
 | `ignore.useDefaultPatterns`      | Có nên sử dụng các mẫu ignore mặc định (node_modules, .git, v.v.) hay không                                               | `true`                 |
 | `ignore.customPatterns`          | Các mẫu bổ sung để ignore sử dụng [mẫu glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)       | `[]`                   |
@@ -105,6 +106,7 @@ Bạn có thể bật xác thực schema cho file cấu hình của mình bằng
     }
   },
   "include": ["**/*"],
+  "ignoreContent": ["components/**", "!components/slider/**"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,

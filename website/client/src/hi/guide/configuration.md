@@ -42,6 +42,7 @@ repomix --init --global
 | `output.git.includeLogs`         | आउटपुट में Git logs शामिल करना है या नहीं। कमिट तारीखों, संदेशों और फ़ाइल पथों को दिखाता है                               | `false`                |
 | `output.git.includeLogsCount`    | आउटपुट में शामिल करने के लिए git log कमिट की संख्या                                                                     | `50`                   |
 | `include`                        | शामिल करने के लिए फ़ाइल पैटर्न [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) का उपयोग करके | `[]`                   |
+| `ignoreContent`                  | Patterns of files whose content should be ignored (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)); prefix with `!` to keep specific paths | `[]`                   |
 | `ignore.useGitignore`            | प्रोजेक्ट की `.gitignore` फ़ाइल के पैटर्न का उपयोग करना है या नहीं                                                         | `true`                 |
 | `ignore.useDefaultPatterns`      | डिफ़ॉल्ट ignore पैटर्न (node_modules, .git, आदि) का उपयोग करना है या नहीं                                               | `true`                 |
 | `ignore.customPatterns`          | अतिरिक्त ignore पैटर्न [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) का उपयोग करके | `[]`                   |
@@ -105,6 +106,7 @@ repomix --init --global
     }
   },
   "include": ["**/*"],
+  "ignoreContent": ["components/**", "!components/slider/**"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,

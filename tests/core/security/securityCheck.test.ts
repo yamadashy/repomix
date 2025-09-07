@@ -27,7 +27,7 @@ vi.mock('../../../src/shared/processConcurrency', () => ({
   })),
 }));
 
-const mockFiles: RawFile[] = [
+const mockFiles: Array<RawFile & { content: string }> = [
   {
     path: 'test1.js',
     // secretlint-disable

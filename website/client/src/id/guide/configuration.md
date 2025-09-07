@@ -42,6 +42,7 @@ repomix --init --global
 | `output.git.includeLogs`         | Apakah akan menyertakan log git dalam output. Menampilkan riwayat commit dengan tanggal, pesan, dan jalur file            | `false`                |
 | `output.git.includeLogsCount`    | Jumlah commit log git yang akan disertakan dalam output                                                                    | `50`                   |
 | `include`                        | Pola file untuk disertakan menggunakan [pola glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)  | `[]`                   |
+| `ignoreContent`                  | Patterns of files whose content should be ignored (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)); prefix with `!` to keep specific paths | `[]`                   |
 | `ignore.useGitignore`            | Apakah akan menggunakan pola dari file `.gitignore` proyek                                                                  | `true`                 |
 | `ignore.useDefaultPatterns`      | Apakah akan menggunakan pola ignore default (node_modules, .git, dll.)                                                     | `true`                 |
 | `ignore.customPatterns`          | Pola tambahan untuk diabaikan menggunakan [pola glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
@@ -105,6 +106,7 @@ Berikut adalah contoh file konfigurasi lengkap (`repomix.config.json`):
     }
   },
   "include": ["**/*"],
+  "ignoreContent": ["components/**", "!components/slider/**"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,

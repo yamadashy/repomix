@@ -30,6 +30,7 @@ export interface CliOptions extends OptionValues {
   // Filter Options
   include?: string;
   ignore?: string;
+  ignoreContent?: string;
   gitignore?: boolean;
   defaultPatterns?: boolean;
   stdin?: boolean;

@@ -111,9 +111,10 @@ export const pack = async (
     );
 
   // Process files (remove comments, etc.)
+  const rawFilesForProcessing = safeRawFiles.filter((file) => file.content !== undefined);
   progressCallback('Processing files...');
   const processedFiles = await withMemoryLogging('Process Files', () =>
-    deps.processFiles(safeRawFiles, config, progressCallback),
+    deps.processFiles(rawFilesForProcessing, config, progressCallback),
   );
 
   progressCallback('Generating output...');

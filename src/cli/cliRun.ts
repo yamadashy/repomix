@@ -105,6 +105,10 @@ export const run = async () => {
       .optionsGroup('File Selection Options')
       .option('--include <patterns>', 'list of include patterns (comma-separated)')
       .option('-i, --ignore <patterns>', 'additional ignore patterns (comma-separated)')
+      .option(
+        '--ignore-content <patterns>',
+        'patterns to skip file content (comma-separated; prefix with ! to keep paths)',
+      )
       .option('--no-gitignore', 'disable .gitignore file usage')
       .option('--no-default-patterns', 'disable default patterns')
       // Remote Repository Options

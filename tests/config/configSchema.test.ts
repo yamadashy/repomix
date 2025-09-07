@@ -128,6 +128,7 @@ describe('configSchema', () => {
           useDefaultPatterns: true,
           customPatterns: [],
         },
+        ignoreContent: [],
         security: {
           enableSecurityCheck: true,
         },
@@ -226,6 +227,7 @@ describe('configSchema', () => {
           useDefaultPatterns: true,
           customPatterns: ['*.log'],
         },
+        ignoreContent: [],
         security: {
           enableSecurityCheck: true,
         },

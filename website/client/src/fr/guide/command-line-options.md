@@ -35,6 +35,7 @@
 ## Options de sélection de fichiers
 - `--include <patterns>`: Liste des motifs d'inclusion (séparés par des virgules)
 - `-i, --ignore <patterns>`: Motifs d'ignorance supplémentaires (séparés par des virgules)
+- `--ignore-content <patterns>`: Skip file content for matched patterns (comma-separated; prefix with `!` to keep specific paths)
 - `--no-gitignore`: Désactiver l'utilisation du fichier .gitignore
 - `--no-default-patterns`: Désactiver les motifs par défaut
 
@@ -74,6 +75,9 @@ repomix --compress
 
 # Traiter des fichiers spécifiques
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# Ignore file contents for matching patterns
+repomix --ignore-content "components/**,!components/slider/**"
 
 # Dépôt distant avec branche
 repomix --remote https://github.com/user/repo/tree/main

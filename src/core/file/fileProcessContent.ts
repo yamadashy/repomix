@@ -20,6 +20,9 @@ import { truncateBase64Content } from './truncateBase64.js';
  */
 export const processContent = async (rawFile: RawFile, config: RepomixConfigMerged): Promise<string> => {
   const processStartAt = process.hrtime.bigint();
+  if (rawFile.content === undefined) {
+    throw new Error(`No content to process for ${rawFile.path}`);
+  }
   let processedContent = rawFile.content;
   const manipulator = getFileManipulator(rawFile.path);
 

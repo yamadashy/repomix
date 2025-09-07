@@ -1,3 +1,4 @@
+import { minimatch } from 'minimatch';
 import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
@@ -28,12 +29,28 @@ export const collectFiles = async (
     workerPath: new URL('./workers/fileCollectWorker.js', import.meta.url).href,
     runtime: 'worker_threads',
   });
+
+  const shouldSkipContent = (filePath: string, patterns: string[]): boolean => {
+    let skip = false;
+    for (const pattern of patterns) {
+      if (pattern.startsWith('!')) {
+        if (minimatch(filePath, pattern.slice(1))) {
+          skip = false;
+        }
+      } else if (minimatch(filePath, pattern)) {
+        skip = true;
+      }
+    }
+    return skip;
+  };
+
   const tasks = filePaths.map(
     (filePath) =>
       ({
         filePath,
         rootDir,
         maxFileSize: config.input.maxFileSize,
+        skipContent: shouldSkipContent(filePath, config.ignoreContent),
       }) satisfies FileCollectTask,
   );
 

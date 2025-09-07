@@ -35,6 +35,7 @@
 ## 文件选择选项
 - `--include <patterns>`: 包含模式列表（逗号分隔）
 - `-i, --ignore <patterns>`: 附加忽略模式（逗号分隔）
+- `--ignore-content <patterns>`: Skip file content for matched patterns (comma-separated; prefix with `!` to keep specific paths)
 - `--no-gitignore`: 禁用.gitignore文件使用
 - `--no-default-patterns`: 禁用默认模式
 
@@ -79,6 +80,9 @@ repomix --include-diffs --include-logs  # 同时包含差异和日志
 
 # 处理特定文件
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# Ignore file contents for matching patterns
+repomix --ignore-content "components/**,!components/slider/**"
 
 # 带分支的远程仓库
 repomix --remote https://github.com/user/repo/tree/main

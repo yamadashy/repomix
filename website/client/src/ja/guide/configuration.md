@@ -42,6 +42,7 @@ repomix --init --global
 | `output.git.includeLogs`         | 出力にGitログを含めるかどうか。コミット履歴の日時、メッセージ、ファイルパスを表示します                                   | `false`                |
 | `output.git.includeLogsCount`    | 含めるGitログのコミット数。開発パターンを理解するための履歴の深さを制限します                                           | `50`                   |
 | `include`                        | 含めるファイルのパターン（[globパターン](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)を使用）    | `[]`                   |
+| `ignoreContent`                  | Patterns of files whose content should be ignored (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)); prefix with `!` to keep specific paths | `[]`                   |
 | `ignore.useGitignore`            | プロジェクトの`.gitignore`ファイルのパターンを使用するかどうか                                                             | `true`                 |
 | `ignore.useDefaultPatterns`      | デフォルトの除外パターン（node_modules、.gitなど）を使用するかどうか                                                       | `true`                 |
 | `ignore.customPatterns`          | 追加の除外パターン（[globパターン](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)を使用）          | `[]`                   |
@@ -105,6 +106,7 @@ repomix --init --global
     }
   },
   "include": ["**/*"],
+  "ignoreContent": ["components/**", "!components/slider/**"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,

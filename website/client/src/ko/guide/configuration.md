@@ -42,6 +42,7 @@ repomix --init --global
 | `output.git.includeLogs`         | 출력에 Git 로그를 포함할지 여부. 커밋 히스토리의 날짜, 메시지, 파일 경로를 표시합니다                                   | `false`                |
 | `output.git.includeLogsCount`    | 포함할 Git 로그 커밋 수. 개발 패턴을 이해하기 위한 히스토리 깊이를 제한합니다                                          | `50`                   |
 | `include`                        | 포함할 파일 패턴([glob 패턴](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) 사용)                 | `[]`                   |
+| `ignoreContent`                  | Patterns of files whose content should be ignored (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)); prefix with `!` to keep specific paths | `[]`                   |
 | `ignore.useGitignore`            | 프로젝트의 `.gitignore` 파일의 패턴을 사용할지 여부                                                                        | `true`                 |
 | `ignore.useDefaultPatterns`      | 기본 무시 패턴(node_modules, .git 등)을 사용할지 여부                                                                     | `true`                 |
 | `ignore.customPatterns`          | 추가 무시 패턴([glob 패턴](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) 사용)                   | `[]`                   |
@@ -105,6 +106,7 @@ repomix --init --global
     }
   },
   "include": ["**/*"],
+  "ignoreContent": ["components/**", "!components/slider/**"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,

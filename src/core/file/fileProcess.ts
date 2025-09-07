@@ -21,13 +21,14 @@ export const processFiles = async (
     getFileManipulator,
   },
 ): Promise<ProcessedFile[]> => {
+  const filesToProcess = rawFiles.filter((file) => file.content !== undefined);
   const taskRunner = deps.initTaskRunner<FileProcessTask, ProcessedFile>({
-    numOfTasks: rawFiles.length,
+    numOfTasks: filesToProcess.length,
     workerPath: new URL('./workers/fileProcessWorker.js', import.meta.url).href,
     // High memory usage and leak risk
     runtime: 'child_process',
   });
-  const tasks = rawFiles.map(
+  const tasks = filesToProcess.map(
     (rawFile, _index) =>
       ({
         rawFile,
@@ -37,7 +38,7 @@ export const processFiles = async (
 
   try {
     const startTime = process.hrtime.bigint();
-    logger.trace(`Starting file processing for ${rawFiles.length} files using worker pool`);
+    logger.trace(`Starting file processing for ${filesToProcess.length} files using worker pool`);
 
     let completedTasks = 0;
     const totalTasks = tasks.length;

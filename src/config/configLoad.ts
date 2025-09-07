@@ -130,6 +130,11 @@ export const mergeConfigs = (
       ...cliConfig.output,
     },
     include: [...(baseConfig.include || []), ...(fileConfig.include || []), ...(cliConfig.include || [])],
+    ignoreContent: [
+      ...(baseConfig.ignoreContent || []),
+      ...(fileConfig.ignoreContent || []),
+      ...(cliConfig.ignoreContent || []),
+    ],
     ignore: {
       ...baseConfig.ignore,
       ...fileConfig.ignore,

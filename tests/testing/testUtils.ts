@@ -32,6 +32,7 @@ export const createMockConfig = (config: DeepPartial<RepomixConfigMerged> = {}):
       ...config.ignore,
       customPatterns: [...(defaultConfig.ignore.customPatterns || []), ...(config.ignore?.customPatterns || [])],
     },
+    ignoreContent: [...(defaultConfig.ignoreContent || []), ...(config.ignoreContent || [])],
     include: [...(defaultConfig.include || []), ...(config.include || [])],
     security: {
       ...defaultConfig.security,

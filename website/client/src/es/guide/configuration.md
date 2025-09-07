@@ -42,6 +42,7 @@ repomix --init --global
 | `output.git.includeLogs`         | Indica si se deben incluir los logs de git en la salida. Muestra el historial de commits con fechas, mensajes y rutas de archivos | `false`                |
 | `output.git.includeLogsCount`    | Número de commits de log de git a incluir en la salida                                                                          | `50`                   |
 | `include`                        | Patrones de archivos a incluir usando [patrones glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
+| `ignoreContent`                  | Patterns of files whose content should be ignored (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)); prefix with `!` to keep specific paths | `[]`                   |
 | `ignore.useGitignore`            | Indica si se deben usar los patrones del archivo `.gitignore` del proyecto                                                  | `true`                 |
 | `ignore.useDefaultPatterns`      | Indica si se deben usar los patrones de ignorar predeterminados (node_modules, .git, etc.)                                | `true`                 |
 | `ignore.customPatterns`          | Patrones adicionales para ignorar usando [patrones glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
@@ -105,6 +106,7 @@ Aquí hay un ejemplo de un archivo de configuración completo (`repomix.config.j
     }
   },
   "include": ["**/*"],
+  "ignoreContent": ["components/**", "!components/slider/**"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,

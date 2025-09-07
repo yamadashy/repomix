@@ -35,6 +35,7 @@
 ## फ़ाइल चयन विकल्प
 - `--include <patterns>`: शामिल पैटर्न की सूची (कॉमा-अलग)
 - `-i, --ignore <patterns>`: अतिरिक्त अनदेखा पैटर्न (कॉमा-अलग)
+- `--ignore-content <patterns>`: Skip file content for matched patterns (comma-separated; prefix with `!` to keep specific paths)
 - `--no-gitignore`: .gitignore फ़ाइल उपयोग अक्षम करें
 - `--no-default-patterns`: डिफ़ॉल्ट पैटर्न अक्षम करें
 
@@ -74,6 +75,9 @@ repomix --compress
 
 # विशिष्ट फ़ाइलों को प्रोसेस करना
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# Ignore file contents for matching patterns
+repomix --ignore-content "components/**,!components/slider/**"
 
 # ब्रांच के साथ रिमोट रिपॉजिटरी
 repomix --remote https://github.com/user/repo/tree/main

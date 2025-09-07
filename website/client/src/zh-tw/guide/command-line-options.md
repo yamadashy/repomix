@@ -35,6 +35,7 @@
 ## 檔案選擇選項
 - `--include <patterns>`: 包含模式清單（逗號分隔）
 - `-i, --ignore <patterns>`: 附加忽略模式（逗號分隔）
+- `--ignore-content <patterns>`: Skip file content for matched patterns (comma-separated; prefix with `!` to keep specific paths)
 - `--no-gitignore`: 停用.gitignore檔案使用
 - `--no-default-patterns`: 停用預設模式
 
@@ -74,6 +75,9 @@ repomix --compress
 
 # 處理特定檔案
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# Ignore file contents for matching patterns
+repomix --ignore-content "components/**,!components/slider/**"
 
 # 帶分支的遠端儲存庫
 repomix --remote https://github.com/user/repo/tree/main

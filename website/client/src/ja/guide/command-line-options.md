@@ -35,6 +35,7 @@
 ## ファイル選択オプション
 - `--include <patterns>`: 含めるパターンのリスト（カンマ区切り）
 - `-i, --ignore <patterns>`: 追加の除外パターン（カンマ区切り）
+- `--ignore-content <patterns>`: Skip file content for matched patterns (comma-separated; prefix with `!` to keep specific paths)
 - `--no-gitignore`: .gitignoreファイルの使用を無効化
 - `--no-default-patterns`: デフォルトパターンを無効化
 
@@ -79,6 +80,9 @@ repomix --include-diffs --include-logs  # 差分とログの両方を含める
 
 # 特定のファイルを処理
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# Ignore file contents for matching patterns
+repomix --ignore-content "components/**,!components/slider/**"
 
 # ブランチを指定したリモートリポジトリ
 repomix --remote https://github.com/user/repo/tree/main

@@ -42,6 +42,7 @@ repomix --init --global
 | `output.git.includeLogs`         | 是否在輸出中包含Git記錄。顯示提交歷史包括日期、訊息和檔案路徑                                                            | `false`                |
 | `output.git.includeLogsCount`    | 在輸出中包含的git記錄提交數量                                                                                        | `50`                   |
 | `include`                        | 要包含的檔案模式（使用[glob模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)）                 | `[]`                   |
+| `ignoreContent`                  | Patterns of files whose content should be ignored (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)); prefix with `!` to keep specific paths | `[]`                   |
 | `ignore.useGitignore`            | 是否使用專案的`.gitignore`檔案中的模式                                                                                     | `true`                 |
 | `ignore.useDefaultPatterns`      | 是否使用預設忽略模式（node_modules、.git等）                                                                              | `true`                 |
 | `ignore.customPatterns`          | 額外的忽略模式（使用[glob模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)）                   | `[]`                   |
@@ -105,6 +106,7 @@ repomix --init --global
     }
   },
   "include": ["**/*"],
+  "ignoreContent": ["components/**", "!components/slider/**"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,

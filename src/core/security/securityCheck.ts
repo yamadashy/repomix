@@ -14,7 +14,7 @@ export interface SuspiciousFileResult {
 }
 
 export const runSecurityCheck = async (
-  rawFiles: RawFile[],
+  rawFiles: Array<RawFile & { content: string }>,
   progressCallback: RepomixProgressCallback = () => {},
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,

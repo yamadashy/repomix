@@ -27,7 +27,10 @@ export const validateFileSafety = async (
 
   if (config.security.enableSecurityCheck) {
     progressCallback('Running security check...');
-    const allResults = await deps.runSecurityCheck(rawFiles, progressCallback, gitDiffResult, gitLogResult);
+    const filesWithContent = rawFiles.filter(
+      (file): file is RawFile & { content: string } => file.content !== undefined,
+    );
+    const allResults = await deps.runSecurityCheck(filesWithContent, progressCallback, gitDiffResult, gitLogResult);
 
     // Separate Git diff and Git log results from regular file results
     suspiciousFilesResults = allResults.filter((result) => result.type === 'file');

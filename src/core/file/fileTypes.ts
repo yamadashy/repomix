@@ -1,6 +1,6 @@
 export interface RawFile {
   path: string;
-  content: string;
+  content?: string;
 }
 
 export interface ProcessedFile {

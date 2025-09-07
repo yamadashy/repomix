@@ -82,6 +82,48 @@ describe('fileCollect', () => {
     });
   });
 
+  it('should skip file content when matching ignoreContent patterns', async () => {
+    const mockFilePaths = ['docs/readme.md', 'src/index.ts'];
+    const mockRootDir = '/root';
+    const mockConfig = createMockConfig({ ignoreContent: ['docs/**'] });
+
+    vi.mocked(isBinary).mockReturnValue(false);
+    vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('file content'));
+    vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
+    vi.mocked(iconv.decode).mockReturnValue('decoded content');
+
+    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
+      initTaskRunner: mockInitTaskRunner,
+    });
+
+    expect(result).toEqual({
+      rawFiles: [{ path: 'docs/readme.md' }, { path: 'src/index.ts', content: 'decoded content' }],
+      skippedFiles: [],
+    });
+    expect(fs.readFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('should allow negated patterns to override ignoreContent', async () => {
+    const mockFilePaths = ['components/button.ts', 'components/slider/index.ts'];
+    const mockRootDir = '/root';
+    const mockConfig = createMockConfig({ ignoreContent: ['components/**', '!components/slider/**'] });
+
+    vi.mocked(isBinary).mockReturnValue(false);
+    vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('file content'));
+    vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
+    vi.mocked(iconv.decode).mockReturnValue('decoded content');
+
+    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
+      initTaskRunner: mockInitTaskRunner,
+    });
+
+    expect(result).toEqual({
+      rawFiles: [{ path: 'components/button.ts' }, { path: 'components/slider/index.ts', content: 'decoded content' }],
+      skippedFiles: [],
+    });
+    expect(fs.readFile).toHaveBeenCalledTimes(1);
+  });
+
   it('should skip binary files', async () => {
     const mockFilePaths = ['binary.bin', 'text.txt'];
     const mockRootDir = '/root';

@@ -11,6 +11,7 @@ export interface FileCollectTask {
   filePath: string;
   rootDir: string;
   maxFileSize: number;
+  skipContent?: boolean;
 }
 
 export interface SkippedFileInfo {
@@ -23,8 +24,21 @@ export interface FileCollectResult {
   skippedFile?: SkippedFileInfo;
 }
 
-export default async ({ filePath, rootDir, maxFileSize }: FileCollectTask): Promise<FileCollectResult> => {
+export default async ({
+  filePath,
+  rootDir,
+  maxFileSize,
+  skipContent = false,
+}: FileCollectTask): Promise<FileCollectResult> => {
   const fullPath = path.resolve(rootDir, filePath);
+  if (skipContent) {
+    return {
+      rawFile: {
+        path: filePath,
+      },
+    };
+  }
+
   const result = await readRawFile(fullPath, maxFileSize);
 
   if (result.content !== null) {

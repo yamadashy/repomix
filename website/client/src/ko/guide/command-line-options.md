@@ -35,6 +35,7 @@
 ## 파일 선택 옵션
 - `--include <patterns>`: 포함 패턴 목록 (쉼표로 구분)
 - `-i, --ignore <patterns>`: 추가 무시 패턴 (쉼표로 구분)
+- `--ignore-content <patterns>`: Skip file content for matched patterns (comma-separated; prefix with `!` to keep specific paths)
 - `--no-gitignore`: .gitignore 파일 사용 비활성화
 - `--no-default-patterns`: 기본 패턴 비활성화
 
@@ -79,6 +80,9 @@ repomix --include-diffs --include-logs  # 차이점과 로그 모두 포함
 
 # 특정 파일 처리
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# Ignore file contents for matching patterns
+repomix --ignore-content "components/**,!components/slider/**"
 
 # 브랜치가 있는 원격 저장소
 repomix --remote https://github.com/user/repo/tree/main

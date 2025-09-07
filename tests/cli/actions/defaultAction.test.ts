@@ -162,6 +162,22 @@ describe('defaultAction', () => {
     );
   });
 
+  it('should handle ignore-content patterns', async () => {
+    const options: CliOptions = {
+      ignoreContent: 'components/**,!components/slider/**',
+    };
+
+    await runDefaultAction(['.'], process.cwd(), options);
+
+    expect(configLoader.mergeConfigs).toHaveBeenCalledWith(
+      process.cwd(),
+      expect.anything(),
+      expect.objectContaining({
+        ignoreContent: ['components/**', '!components/slider/**'],
+      }),
+    );
+  });
+
   it('should handle custom output style', async () => {
     const options: CliOptions = {
       style: 'xml',

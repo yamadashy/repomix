@@ -42,6 +42,7 @@ repomix --init --global
 | `output.git.includeLogs`         | Ob Git-Logs in der Ausgabe enthalten sein sollen. Zeigt Commit-Historie mit Daten, Nachrichten und Dateipfaden an       | `false`                |
 | `output.git.includeLogsCount`    | Anzahl der Git-Log-Commits, die in die Ausgabe einbezogen werden sollen                                                   | `50`                   |
 | `include`                        | Zu einschließende Dateimuster (verwendet [glob-Muster](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)) | `[]`                   |
+| `ignoreContent`                  | Patterns of files whose content should be ignored (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)); prefix with `!` to keep specific paths | `[]`                   |
 | `ignore.useGitignore`            | Ob Muster aus der `.gitignore`-Datei des Projekts verwendet werden sollen                                                 | `true`                 |
 | `ignore.useDefaultPatterns`      | Ob Standard-Ignorier-Muster (node_modules, .git etc.) verwendet werden sollen                                             | `true`                 |
 | `ignore.customPatterns`          | Zusätzliche Ignorier-Muster (verwendet [glob-Muster](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)) | `[]`                   |
@@ -105,6 +106,7 @@ Hier ist ein Beispiel einer vollständigen Konfigurationsdatei (`repomix.config.
     }
   },
   "include": ["**/*"],
+  "ignoreContent": ["components/**", "!components/slider/**"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,
