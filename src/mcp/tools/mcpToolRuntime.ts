@@ -242,6 +242,5 @@ export const buildMcpToolErrorResponse = (structuredContent: McpToolStructuredCo
         text: textContent,
       },
     ],
-    structuredContent: structuredContent,
   };
 };
