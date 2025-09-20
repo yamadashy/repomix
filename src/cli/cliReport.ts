@@ -174,23 +174,26 @@ export const reportTopFiles = (
 };
 
 export const reportSkippedFiles = (rootDir: string, skippedFiles: SkippedFileInfo[]) => {
-  const binaryContentFiles = skippedFiles.filter((file) => file.reason === 'binary-content');
+  const binaryAndEncodingErrorFiles = skippedFiles.filter(
+    (file) => file.reason === 'binary-content' || file.reason === 'encoding-error',
+  );
 
-  if (binaryContentFiles.length === 0) {
+  if (binaryAndEncodingErrorFiles.length === 0) {
     return;
   }
 
   logger.log(pc.white('📄 Binary Files Detected:'));
   logger.log(pc.dim('─────────────────────────'));
 
-  if (binaryContentFiles.length === 1) {
+  if (binaryAndEncodingErrorFiles.length === 1) {
     logger.log(pc.yellow('1 file detected as binary by content inspection:'));
   } else {
-    logger.log(pc.yellow(`${binaryContentFiles.length} files detected as binary by content inspection:`));
+    logger.log(pc.yellow(`${binaryAndEncodingErrorFiles.length} files detected as binary by content inspection:`));
   }
 
-  binaryContentFiles.forEach((file, index) => {
-    logger.log(`${pc.white(`${index + 1}.`)} ${pc.white(file.path)}`);
+  binaryAndEncodingErrorFiles.forEach((file, index) => {
+    const reasonSuffix = file.reason === 'encoding-error' ? ' (encoding failed)' : '';
+    logger.log(`${pc.white(`${index + 1}.`)} ${pc.white(file.path)}${pc.dim(reasonSuffix)}`);
   });
 
   logger.log(pc.yellow('\nThese files have been excluded from the output.'));
