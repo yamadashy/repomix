@@ -10,11 +10,10 @@ describe('reportSkippedFiles', () => {
     vi.resetAllMocks();
   });
 
-  test('should not report anything when there are no binary-content files', () => {
+  test('should not report anything when there are no binary-content or encoding-error files', () => {
     const skippedFiles: SkippedFileInfo[] = [
       { path: 'large.txt', reason: 'size-limit' },
       { path: 'binary.bin', reason: 'binary-extension' },
-      { path: 'error.txt', reason: 'encoding-error' },
     ];
 
     reportSkippedFiles('/root', skippedFiles);
@@ -62,5 +61,45 @@ describe('reportSkippedFiles', () => {
 
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('These files have been excluded'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Please review these files if you expected'));
+  });
+
+  test('should report single encoding-error file with suffix', () => {
+    const skippedFiles: SkippedFileInfo[] = [{ path: '/root/bad-encoding.txt', reason: 'encoding-error' }];
+
+    reportSkippedFiles('/root', skippedFiles);
+
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📄 Binary Files Detected:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('1 file detected as binary'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/bad-encoding.txt'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('(encoding failed)'));
+  });
+
+  test('should report mixed binary-content and encoding-error files', () => {
+    const skippedFiles: SkippedFileInfo[] = [
+      { path: '/root/binary.txt', reason: 'binary-content' },
+      { path: '/root/bad-encoding.html', reason: 'encoding-error' },
+      { path: '/root/large.txt', reason: 'size-limit' }, // Should be ignored
+    ];
+
+    reportSkippedFiles('/root', skippedFiles);
+
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📄 Binary Files Detected:'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2 files detected as binary'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/binary.txt'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/bad-encoding.html'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('(encoding failed)'));
+  });
+
+  test('should report only encoding-error files without suffix for binary-content', () => {
+    const skippedFiles: SkippedFileInfo[] = [
+      { path: '/root/binary1.txt', reason: 'binary-content' },
+      { path: '/root/binary2.txt', reason: 'binary-content' },
+    ];
+
+    reportSkippedFiles('/root', skippedFiles);
+
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/binary1.txt'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/binary2.txt'));
+    expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('(encoding failed)'));
   });
 });
