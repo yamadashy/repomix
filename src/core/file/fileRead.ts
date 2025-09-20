@@ -43,12 +43,19 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     }
 
     const { encoding: detectedEncoding, confidence } = jschardet.detect(buffer) ?? {};
-    const encoding = detectedEncoding && iconv.encodingExists(detectedEncoding) ? detectedEncoding : 'utf-8';
+
+    // If jschardet fails to detect encoding but the file passed binary checks,
+    // try UTF-8 as a fallback for files like HTML with special syntax (e.g., Thymeleaf ~{})
+    let encoding = 'utf-8';
+    if (detectedEncoding && iconv.encodingExists(detectedEncoding)) {
+      encoding = detectedEncoding;
+    }
 
     const content = iconv.decode(buffer, encoding, { stripBOM: true });
 
-    // Heuristics: U+FFFD indicates decode errors; very low confidence implies unreliable guess.
-    if (content.includes('\uFFFD') || (typeof confidence === 'number' && confidence < 0.2)) {
+    // Only skip if there are actual decode errors (U+FFFD characters)
+    // Don't rely solely on jschardet confidence for files that passed binary detection
+    if (content.includes('\uFFFD')) {
       logger.debug(
         `Skipping file due to encoding errors (${encoding}, confidence=${(confidence ?? 0).toFixed(2)}): ${filePath}`,
       );
