@@ -3,9 +3,15 @@
   "name": "repomix",
   "description": "A browser extension that adds a Repomix button to GitHub repositories",
   "scripts": {
-    "dev": "webextension-toolbox dev",
-    "build": "webextension-toolbox build",
-    "build-all": "npm run build chrome && npm run build firefox && npm run build edge",
+    "dev": "plasmo dev",
+    "dev:chrome": "plasmo dev --target=chrome-mv3",
+    "dev:firefox": "plasmo dev --target=firefox-mv3",
+    "build": "plasmo build",
+    "build:chrome": "plasmo build --target=chrome-mv3",
+    "build:firefox": "plasmo build --target=firefox-mv3",
+    "build:edge": "plasmo build --target=edge-mv3",
+    "build-all": "npm run build:chrome && npm run build:firefox && npm run build:edge",
+    "package": "plasmo package",
     "generate-icons": "tsx scripts/generate-icons.ts",
     "lint": "npm run lint-tsc",
     "lint-tsc": "tsgo --noEmit",
@@ -26,9 +32,7 @@
   "devDependencies": {
     "@types/chrome": "^0.1.1",
     "@types/node": "^24.5.2",
-    "@types/webextension-polyfill": "^0.12.3",
     "@typescript/native-preview": "^7.0.0-dev.20250824.1",
-    "@webextension-toolbox/webextension-toolbox": "^7.1.1",
     "jsdom": "^27.0.0",
     "sharp": "^0.34.3",
     "tsx": "^4.20.5",
@@ -40,5 +44,39 @@
   ],
   "engines": {
     "node": ">=24.0.1"
+  },
+  "dependencies": {
+    "plasmo": "^0.90.5",
+    "tslib": "^2.8.1"
+  },
+  "manifest": {
+    "name": "Repomix",
+    "short_name": "repomix",
+    "version": "1.0.1",
+    "description": "__MSG_appDescription__",
+    "default_locale": "en",
+    "minimum_chrome_version": "88.0",
+    "permissions": [
+      "scripting"
+    ],
+    "host_permissions": [
+      "https://github.com/*"
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": [
+          "assets/images/*.png"
+        ],
+        "matches": [
+          "https://github.com/*"
+        ]
+      }
+    ],
+    "browser_specific_settings": {
+      "gecko": {
+        "id": "{3AB97897-F299-4DBC-8084-A92813FE2685}",
+        "strict_min_version": "102.0"
+      }
+    }
   }
 }

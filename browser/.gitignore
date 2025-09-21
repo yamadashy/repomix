@@ -4,9 +4,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Build output
+# Build output (webextension-toolbox legacy)
 dist/
 packages/
+
+# Plasmo build output
+build/
+.plasmo/
+
+# Include source files
+!src/
+
+# Legacy backup files
+*.backup
 
 # Environment variables
 .env

@@ -1,3 +1,11 @@
+import type { PlasmoCSConfig } from "plasmo"
+
+export const config: PlasmoCSConfig = {
+  matches: ["https://github.com/*"],
+  run_at: "document_start",
+  all_frames: true
+}
+
 interface RepositoryInfo {
   owner: string;
   repo: string;

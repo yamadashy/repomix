@@ -14,5 +14,8 @@
     "removeComments": true,
     "skipLibCheck": true,
     "sourceMap": true
-  }
+  },
+  "include": [
+    ".plasmo/index.d.ts"
+  ]
 }
