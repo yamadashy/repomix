@@ -192,8 +192,9 @@ export const reportSkippedFiles = (rootDir: string, skippedFiles: SkippedFileInf
   }
 
   binaryAndEncodingErrorFiles.forEach((file, index) => {
+    const relativeFilePath = path.relative(rootDir, file.path);
     const reasonSuffix = file.reason === 'encoding-error' ? ' (encoding failed)' : '';
-    logger.log(`${pc.white(`${index + 1}.`)} ${pc.white(file.path)}${pc.dim(reasonSuffix)}`);
+    logger.log(`${pc.white(`${index + 1}.`)} ${pc.white(relativeFilePath)}${pc.dim(reasonSuffix)}`);
   });
 
   logger.log(pc.yellow('\nThese files have been excluded from the output.'));

@@ -28,7 +28,7 @@ describe('reportSkippedFiles', () => {
 
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📄 Binary Files Detected:'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('1 file detected as binary'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/dir/malformed.txt'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('dir/malformed.txt'));
   });
 
   test('should report multiple binary-content files', () => {
@@ -42,8 +42,8 @@ describe('reportSkippedFiles', () => {
 
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📄 Binary Files Detected:'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2 files detected as binary'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/file1.txt'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/dir/file2.md'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('file1.txt'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('dir/file2.md'));
   });
 
   test('should show full paths correctly', () => {
@@ -51,7 +51,7 @@ describe('reportSkippedFiles', () => {
 
     reportSkippedFiles('/root', skippedFiles);
 
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/src/components/app.tsx'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('src/components/app.tsx'));
   });
 
   test('should show warning messages about excluded files', () => {
@@ -70,7 +70,7 @@ describe('reportSkippedFiles', () => {
 
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📄 Binary Files Detected:'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('1 file detected as binary'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/bad-encoding.txt'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('bad-encoding.txt'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('(encoding failed)'));
   });
 
@@ -85,8 +85,8 @@ describe('reportSkippedFiles', () => {
 
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('📄 Binary Files Detected:'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2 files detected as binary'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/binary.txt'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/bad-encoding.html'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('binary.txt'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('bad-encoding.html'));
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('(encoding failed)'));
   });
 
@@ -98,8 +98,8 @@ describe('reportSkippedFiles', () => {
 
     reportSkippedFiles('/root', skippedFiles);
 
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/binary1.txt'));
-    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('/root/binary2.txt'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('binary1.txt'));
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('binary2.txt'));
     expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('(encoding failed)'));
   });
 });
