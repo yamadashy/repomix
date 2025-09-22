@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # ratchet:actions/checkout@v4
-      - uses: rhysd/actionlint@4e683ab8014a63fafa117492a0c6053758e6d593 # ratchet:rhysd/actionlint@v1.7.3
+      - uses: rhysd/actionlint@03d0035246f3e81f36aed592ffb4bebf33a03106 # v1.7.7
         with:
           args: "-color"
 
