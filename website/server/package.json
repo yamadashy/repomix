@@ -13,16 +13,16 @@
   },
   "dependencies": {
     "@google-cloud/logging-winston": "^6.0.1",
-    "@hono/node-server": "^1.19.3",
+    "@hono/node-server": "^1.19.4",
     "fflate": "^0.8.2",
     "hono": "^4.9.8",
-    "repomix": "^1.4.1",
+    "repomix": "^1.6.0",
     "winston": "^3.17.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
-    "@typescript/native-preview": "^7.0.0-dev.20250824.1",
+    "@typescript/native-preview": "^7.0.0-dev.20250923.1",
     "rimraf": "^6.0.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
