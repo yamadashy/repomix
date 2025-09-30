@@ -1,3 +1,4 @@
+# Based on: https://github.com/anthropics/claude-code/blob/main/.github/workflows/claude-issue-triage.yml
 name: Claude Issue Triage
 description: Automatically triage GitHub issues using Claude Code
 on:
