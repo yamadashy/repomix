@@ -1,19 +1,83 @@
 # Configuration
 
-Repomix can be configured using a configuration file (`repomix.config.json`) or command-line options. The configuration file allows you to customize various aspects of how Repomix processes and outputs your codebase.
+Repomix can be configured using a configuration file or command-line options. The configuration file allows you to customize various aspects of how Repomix processes and outputs your codebase.
 
-## Quick Start
+## Configuration File Formats
 
-Create a configuration file in your project directory:
+Repomix supports multiple configuration file formats. When searching for a configuration file, Repomix will check in the following priority order:
+
+1. **JavaScript/ES Module** (`repomix.config.js`, `repomix.config.mjs`, `repomix.config.cjs`)
+2. **JSON5** (`repomix.config.json5`)
+3. **JSONC** (`repomix.config.jsonc`)
+4. **JSON** (`repomix.config.json`)
+
+### JavaScript Configuration (Recommended)
+
+JavaScript configuration files provide the most flexibility, allowing you to use dynamic values, environment variables, and TypeScript type definitions for better IDE support.
+
+**ES Module Example:**
+
+```javascript
+import { defineConfig } from 'repomix';
+
+export default defineConfig({
+  output: {
+    // Use dynamic values like timestamps
+    filePath: `output-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')}.xml`,
+    style: 'xml',
+    removeComments: true,
+  },
+  ignore: {
+    customPatterns: ['**/node_modules/**', '**/dist/**'],
+  },
+});
+```
+
+**CommonJS Example:**
+
+```javascript
+// repomix.config.cjs
+module.exports = {
+  output: {
+    // Use environment variables
+    filePath: process.env.CI ? 'ci-output.xml' : 'local-output.xml',
+    style: 'xml',
+  },
+  ignore: {
+    customPatterns: ['**/build/**'],
+  },
+};
+```
+
+**Benefits of JavaScript Configuration:**
+- Use dynamic values (timestamps, environment variables, etc.)
+- Full TypeScript type support with `defineConfig`
+- Conditional configuration based on environment
+- More flexible and powerful than static JSON
+
+### JSON Configuration
+
+You can also use JSON-based configuration files. Create a `repomix.config.json` file in your project directory:
+
 ```bash
 repomix --init
 ```
 
-This will create a `repomix.config.json` file with default settings. You can also create a global configuration file that will be used as a fallback when no local configuration is found:
+This will create a `repomix.config.json` file with default settings.
+
+### Global Configuration
+
+You can create a global configuration file that will be used as a fallback when no local configuration is found:
 
 ```bash
 repomix --init --global
 ```
+
+The global configuration file will be created in:
+- Windows: `%LOCALAPPDATA%\Repomix\repomix.config.json`
+- macOS/Linux: `$XDG_CONFIG_HOME/repomix/repomix.config.json` or `~/.config/repomix/repomix.config.json`
+
+Note: Local configuration (if present) takes precedence over global configuration.
 
 ## Configuration Options
 

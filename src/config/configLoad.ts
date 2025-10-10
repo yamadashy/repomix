@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import JSON5 from 'json5';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
@@ -15,7 +16,14 @@ import {
 } from './configSchema.js';
 import { getGlobalDirectory } from './globalDirectory.js';
 
-const defaultConfigPaths = ['repomix.config.json5', 'repomix.config.jsonc', 'repomix.config.json'];
+const defaultConfigPaths = [
+  'repomix.config.js',
+  'repomix.config.mjs',
+  'repomix.config.cjs',
+  'repomix.config.json5',
+  'repomix.config.jsonc',
+  'repomix.config.json',
+];
 
 const getGlobalConfigPaths = () => {
   const globalDir = getGlobalDirectory();
@@ -85,13 +93,28 @@ export const loadFileConfig = async (rootDir: string, argConfigPath: string | nu
 
 const loadAndValidateConfig = async (filePath: string): Promise<RepomixConfigFile> => {
   try {
-    const fileContent = await fs.readFile(filePath, 'utf-8');
-    const config = JSON5.parse(fileContent);
+    let config: unknown;
+
+    // Check if the file is a JavaScript file
+    const isJsFile = filePath.endsWith('.js') || filePath.endsWith('.mjs') || filePath.endsWith('.cjs');
+
+    if (isJsFile) {
+      // Use dynamic import for JavaScript files
+      // Convert absolute path to file:// URL for Windows compatibility
+      const fileUrl = pathToFileURL(filePath).href;
+      const module = await import(fileUrl);
+      config = module.default || module;
+    } else {
+      // Use JSON5 for JSON/JSON5/JSONC files
+      const fileContent = await fs.readFile(filePath, 'utf-8');
+      config = JSON5.parse(fileContent);
+    }
+
     return repomixConfigFileSchema.parse(config);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');
     if (error instanceof SyntaxError) {
-      throw new RepomixError(`Invalid JSON5 in config file ${filePath}: ${error.message}`);
+      throw new RepomixError(`Invalid syntax in config file ${filePath}: ${error.message}`);
     }
     if (error instanceof Error) {
       throw new RepomixError(`Error loading config from ${filePath}: ${error.message}`);

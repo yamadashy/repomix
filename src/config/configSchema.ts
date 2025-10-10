@@ -165,3 +165,6 @@ export type RepomixConfigCli = z.infer<typeof repomixConfigCliSchema>;
 export type RepomixConfigMerged = z.infer<typeof repomixConfigMergedSchema>;
 
 export const defaultConfig = repomixConfigDefaultSchema.parse({});
+
+// Helper function for type-safe config definition
+export const defineConfig = (config: RepomixConfigFile): RepomixConfigFile => config;
