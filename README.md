@@ -995,11 +995,59 @@ When running as an MCP server, Repomix provides the following tools:
 
 ## ⚙️ Configuration
 
-Create a `repomix.config.json` file in your project root for custom configurations.
+Repomix supports multiple configuration file formats for flexibility and ease of use.
+
+### Configuration File Formats
+
+Repomix will automatically search for configuration files in the following priority order:
+
+1. **JavaScript/ES Module** (`repomix.config.js`, `repomix.config.mjs`, `repomix.config.cjs`)
+2. **JSON5** (`repomix.config.json5`)
+3. **JSONC** (`repomix.config.jsonc`)
+4. **JSON** (`repomix.config.json`)
+
+#### JavaScript Configuration (Recommended)
+
+JavaScript configuration files allow you to use dynamic values and leverage TypeScript type definitions for better IDE support:
+
+```javascript
+import { defineConfig } from 'repomix';
+
+export default defineConfig({
+  output: {
+    // Use dynamic values like timestamps
+    filePath: `output-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')}.xml`,
+    style: 'xml',
+    removeComments: true,
+  },
+  ignore: {
+    customPatterns: ['**/node_modules/**', '**/dist/**'],
+  },
+});
+```
+
+**CommonJS Example:**
+
+```javascript
+// repomix.config.cjs
+module.exports = {
+  output: {
+    // Use environment variables
+    filePath: process.env.CI ? 'ci-output.xml' : 'local-output.xml',
+    style: 'xml',
+  },
+};
+```
+
+#### JSON Configuration
+
+Create a `repomix.config.json` file in your project root:
 
 ```bash
 repomix --init
 ```
+
+### Configuration Options
 
 Here's an explanation of the configuration options:
 

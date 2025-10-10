@@ -30,6 +30,7 @@ export { parseFile } from './core/treeSitter/parseFile.js';
 // ---------------------------------------------------------------------------------------------------------------------
 export { loadFileConfig, mergeConfigs } from './config/configLoad.js';
 export type { RepomixConfigFile as RepomixConfig } from './config/configSchema.js';
+export { defineConfig } from './config/configSchema.js';
 export { defaultIgnoreList } from './config/defaultIgnore.js';
 
 // ---------------------------------------------------------------------------------------------------------------------
