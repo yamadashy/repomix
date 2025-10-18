@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "input": {
+      "type": "object",
+      "properties": {
+        "maxFileSize": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "filePath": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string",
+          "enum": [
+            "xml",
+            "markdown",
+            "json",
+            "plain"
+          ]
+        },
+        "parsableStyle": {
+          "type": "boolean"
+        },
+        "headerText": {
+          "type": "string"
+        },
+        "instructionFilePath": {
+          "type": "string"
+        },
+        "fileSummary": {
+          "type": "boolean"
+        },
+        "directoryStructure": {
+          "type": "boolean"
+        },
+        "files": {
+          "type": "boolean"
+        },
+        "removeComments": {
+          "type": "boolean"
+        },
+        "removeEmptyLines": {
+          "type": "boolean"
+        },
+        "compress": {
+          "type": "boolean"
+        },
+        "topFilesLength": {
+          "type": "number"
+        },
+        "showLineNumbers": {
+          "type": "boolean"
+        },
+        "truncateBase64": {
+          "type": "boolean"
+        },
+        "copyToClipboard": {
+          "type": "boolean"
+        },
+        "includeEmptyDirectories": {
+          "type": "boolean"
+        },
+        "includeFullDirectoryStructure": {
+          "type": "boolean"
+        },
+        "tokenCountTree": {
+          "type": [
+            "boolean",
+            "number",
+            "string"
+          ]
+        },
+        "git": {
+          "type": "object",
+          "properties": {
+            "sortByChanges": {
+              "type": "boolean"
+            },
+            "sortByChangesMaxCommits": {
+              "type": "number"
+            },
+            "includeDiffs": {
+              "type": "boolean"
+            },
+            "includeLogs": {
+              "type": "boolean"
+            },
+            "includeLogsCount": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "include": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ignore": {
+      "type": "object",
+      "properties": {
+        "useGitignore": {
+          "type": "boolean"
+        },
+        "useDefaultPatterns": {
+          "type": "boolean"
+        },
+        "customPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "enableSecurityCheck": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tokenCount": {
+      "type": "object",
+      "properties": {
+        "encoding": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "title": "Repomix Configuration",
+  "description": "Schema for repomix.config.json configuration file"
+}
