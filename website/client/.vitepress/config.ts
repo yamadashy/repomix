@@ -18,7 +18,7 @@ export default defineConfig({
   locales: {
     root: { label: 'English (United States)', ...configEnUs },
     'zh-cn': { label: '简体中文 (中国)', ...configZhCn },
-    'zh-tw': { label: '繁體中文 (台灣)', ...configZhTw },
+    'zh-tw': { label: '繁體中文 (中國台灣)', ...configZhTw },
     ja: { label: '日本語 (日本)', ...configJa },
     es: { label: 'Español (España)', ...configEs },
     'pt-br': { label: 'Português (Brasil)', ...configPtBr },
