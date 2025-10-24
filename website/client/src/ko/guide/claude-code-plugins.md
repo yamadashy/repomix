@@ -22,7 +22,7 @@ MCP 서버 통합을 통해 AI 기반 코드베이스 분석을 제공하는 기
 - `/repomix-commands:pack-local` - 다양한 옵션으로 로컬 코드베이스 패키징
 - `/repomix-commands:pack-remote` - 원격 GitHub 저장소 패키징 및 분석
 
-### 3. repository-explorer (AI 분석 에이전트 플러그인)
+### 3. repository-explorer:repository-explorer (AI 분석 에이전트 플러그인)
 
 Repomix CLI를 사용하여 코드베이스를 지능적으로 탐색하는 AI 기반 저장소 분석 에이전트입니다.
 

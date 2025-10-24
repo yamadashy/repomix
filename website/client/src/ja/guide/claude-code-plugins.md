@@ -22,7 +22,7 @@ MCP サーバー統合によるAI駆動のコードベース分析を提供す�
 - `/repomix-commands:pack-local` - 様々なオプションでローカルコードベースをパッキング
 - `/repomix-commands:pack-remote` - リモートGitHubリポジトリをパッキング・分析
 
-### 3. repository-explorer（AI分析エージェントプラグイン）
+### 3. repository-explorer:repository-explorer（AI分析エージェントプラグイン）
 
 Repomix CLIを使用してコードベースをインテリジェントに探索するAI駆動のリポジトリ分析エージェントです。
 
