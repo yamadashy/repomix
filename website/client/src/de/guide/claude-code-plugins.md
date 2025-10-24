@@ -22,7 +22,7 @@ Bietet praktische Slash-Befehle mit Unterstützung für natürliche Sprache.
 - `/repomix-commands:pack-local` - Lokale Codebase mit verschiedenen Optionen verpacken
 - `/repomix-commands:pack-remote` - Entfernte GitHub-Repositories verpacken und analysieren
 
-### 3. repository-explorer (KI-Analyse-Agent-Plugin)
+### 3. repository-explorer:repository-explorer (KI-Analyse-Agent-Plugin)
 
 KI-gesteuerter Repository-Analyse-Agent, der Codebases intelligent mit Repomix CLI erkundet.
 

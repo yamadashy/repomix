@@ -22,7 +22,7 @@ Fornece comandos slash convenientes com suporte a linguagem natural.
 - `/repomix-commands:pack-local` - Empacotar base de código local com várias opções
 - `/repomix-commands:pack-remote` - Empacotar e analisar repositórios remotos do GitHub
 
-### 3. repository-explorer (Plugin de Agente de Análise de IA)
+### 3. repository-explorer:repository-explorer (Plugin de Agente de Análise de IA)
 
 Agente de análise de repositório alimentado por IA que explora bases de código de forma inteligente usando Repomix CLI.
 

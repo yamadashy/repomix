@@ -1029,7 +1029,7 @@ Pack this project as markdown with compression
 Pack only TypeScript files from the yamadashy/repomix repository
 ```
 
-**3. repository-explorer** (AI Analysis Agent Plugin)
+**3. repository-explorer:repository-explorer** (AI Analysis Agent Plugin)
 
 AI-powered repository analysis agent that intelligently explores codebases using Repomix CLI.
 

@@ -22,7 +22,7 @@ Menyediakan perintah slash yang praktis dengan dukungan bahasa alami.
 - `/repomix-commands:pack-local` - Mengemas codebase lokal dengan berbagai opsi
 - `/repomix-commands:pack-remote` - Mengemas dan menganalisis repositori GitHub remote
 
-### 3. repository-explorer (Plugin Agen Analisis AI)
+### 3. repository-explorer:repository-explorer (Plugin Agen Analisis AI)
 
 Agen analisis repositori berbasis AI yang mengeksplorasi codebase secara cerdas menggunakan Repomix CLI.
 

@@ -72,7 +72,7 @@ If the user wants to analyze or explore the generated output:
 - The sub-agent will efficiently search and read specific sections using grep and incremental reading
 
 **Agent Selection Strategy**:
-1. If `repository-explorer` agent is available, use it (optimized for repomix output analysis)
+1. If `repository-explorer:repository-explorer` agent is available, use it (optimized for repomix output analysis)
 2. Otherwise, use the `general-purpose` agent or another suitable sub-agent
 3. The sub-agent should use Grep and Read tools to analyze incrementally
 

@@ -22,7 +22,7 @@ Cung cấp các lệnh slash tiện lợi với hỗ trợ ngôn ngữ tự nhi�
 - `/repomix-commands:pack-local` - Đóng gói codebase cục bộ với nhiều tùy chọn
 - `/repomix-commands:pack-remote` - Đóng gói và phân tích repository GitHub từ xa
 
-### 3. repository-explorer (Plugin Agent Phân Tích AI)
+### 3. repository-explorer:repository-explorer (Plugin Agent Phân Tích AI)
 
 Agent phân tích repository được hỗ trợ bởi AI khám phá codebase một cách thông minh sử dụng Repomix CLI.
 

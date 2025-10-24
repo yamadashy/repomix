@@ -22,7 +22,7 @@ Repomix 为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overvie
 - `/repomix-commands:pack-local` - 使用各种选项打包本地代码库
 - `/repomix-commands:pack-remote` - 打包和分析远程 GitHub 仓库
 
-### 3. repository-explorer（AI 分析代理插件）
+### 3. repository-explorer:repository-explorer（AI 分析代理插件）
 
 AI 驱动的仓库分析代理，使用 Repomix CLI 智能探索代码库。
 

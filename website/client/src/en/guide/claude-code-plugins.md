@@ -22,7 +22,7 @@ Provides convenient slash commands for quick operations with natural language su
 - `/repomix-commands:pack-local` - Pack local codebase with various options
 - `/repomix-commands:pack-remote` - Pack and analyze remote GitHub repositories
 
-### 3. repository-explorer (AI Analysis Agent Plugin)
+### 3. repository-explorer:repository-explorer (AI Analysis Agent Plugin)
 
 AI-powered repository analysis agent that intelligently explores codebases using Repomix CLI.
 
