@@ -11,41 +11,17 @@
     {
       "name": "repomix-mcp",
       "source": "./.claude/plugins/repomix-mcp",
-      "description": "Repomix MCP server for AI-powered codebase analysis. Pack local/remote repositories, search outputs, and read files with built-in security scanning. Foundation plugin that enables all Repomix features in Claude Code.",
-      "version": "1.0.1",
-      "author": {
-        "name": "yamadashy"
-      },
-      "keywords": ["repomix", "mcp", "codebase-analysis", "ai", "github"],
-      "category": "integration",
-      "license": "MIT",
-      "strict": false
+      "category": "integration"
     },
     {
       "name": "repomix-commands",
       "source": "./.claude/plugins/repomix-commands",
-      "description": "Slash commands for quick Repomix operations. Pack local and remote repositories with simple commands like /pack-local and /pack-remote.",
-      "version": "1.0.2",
-      "author": {
-        "name": "yamadashy"
-      },
-      "keywords": ["repomix", "commands", "pack", "productivity"],
-      "category": "productivity",
-      "license": "MIT",
-      "strict": false
+      "category": "productivity"
     },
     {
       "name": "repomix-explorer",
       "source": "./.claude/plugins/repomix-explorer",
-      "description": "AI-powered repository analysis agent using Repomix CLI. Analyzes local and remote repositories intelligently by running repomix commands, then reading and searching the generated output files to answer questions about code structure, patterns, and content.",
-      "version": "1.1.0",
-      "author": {
-        "name": "yamadashy"
-      },
-      "keywords": ["repomix", "agent", "repository-analysis", "code-exploration", "ai"],
-      "category": "productivity",
-      "license": "MIT",
-      "strict": false
+      "category": "productivity"
     }
   ]
 }
