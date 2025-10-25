@@ -5,6 +5,8 @@
   "author": {
     "name": "yamadashy"
   },
+  "homepage": "https://repomix.com/docs/guide/claude-code-plugins",
+  "repository": "https://github.com/yamadashy/repomix",
   "keywords": ["repomix", "commands", "pack", "productivity"],
   "license": "MIT"
 }
