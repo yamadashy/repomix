@@ -155,7 +155,7 @@ export const mergeConfigs = (
 ): RepomixConfigMerged => {
   logger.trace('Default config:', defaultConfig);
 
-  const baseConfig = structuredClone(defaultConfig);
+  const baseConfig = defaultConfig;
 
   const mergedConfig = {
     cwd,
@@ -164,25 +164,26 @@ export const mergeConfigs = (
       ...fileConfig.input,
       ...cliConfig.input,
     },
-    output: {
-      ...baseConfig.output,
-      ...fileConfig.output,
-      ...cliConfig.output,
-      filePath:
-        cliConfig.output?.filePath ??
-        fileConfig.output?.filePath ??
-        (() => {
-          const style = cliConfig.output?.style ?? fileConfig.output?.style ?? baseConfig.output.style;
-          const defaultPath = defaultFilePathMap[style];
-          logger.trace('Default output file path is set to:', defaultPath);
-          return defaultPath;
-        })(),
-      git: {
-        ...baseConfig.output.git,
-        ...fileConfig.output?.git,
-        ...cliConfig.output?.git,
-      },
-    },
+    output: (() => {
+      const mergedOutput = {
+        ...baseConfig.output,
+        ...fileConfig.output,
+        ...cliConfig.output,
+        git: {
+          ...baseConfig.output.git,
+          ...fileConfig.output?.git,
+          ...cliConfig.output?.git,
+        },
+      };
+
+      if (mergedOutput.filePath == null) {
+        const style = mergedOutput.style ?? baseConfig.output.style;
+        mergedOutput.filePath = defaultFilePathMap[style];
+        logger.trace('Default output file path is set to:', mergedOutput.filePath);
+      }
+
+      return mergedOutput;
+    })(),
     include: [...(baseConfig.include || []), ...(fileConfig.include || []), ...(cliConfig.include || [])],
     ignore: {
       ...baseConfig.ignore,
