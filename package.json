@@ -102,7 +102,7 @@
     "tinypool": "^2.0.0",
     "tree-sitter-wasms": "^0.1.13",
     "web-tree-sitter": "^0.25.10",
-    "zod": "^3.25.76"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.6",

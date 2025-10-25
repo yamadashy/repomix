@@ -1,8 +1,9 @@
+// @ts-nocheck - Zod v3 compatibility for MCP SDK (imported by mcpAction.ts)
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { createSecretLintConfig, runSecretLint } from '../../core/security/workers/securityCheckWorker.js';
 import { logger } from '../../shared/logger.js';
 import { buildMcpToolErrorResponse, buildMcpToolSuccessResponse } from './mcpToolRuntime.js';
@@ -29,8 +30,10 @@ export const registerFileSystemReadFileTool = (mcpServer: McpServer) => {
       title: 'Read File',
       description:
         'Read a file from the local file system using an absolute path. Includes built-in security validation to detect and prevent access to files containing sensitive information (API keys, passwords, secrets).',
-      inputSchema: fileSystemReadFileInputSchema.shape,
-      outputSchema: fileSystemReadFileOutputSchema.shape,
+      // biome-ignore lint/suspicious/noExplicitAny: Zod v3 compatibility for MCP SDK
+      inputSchema: fileSystemReadFileInputSchema.shape as any,
+      // biome-ignore lint/suspicious/noExplicitAny: Zod v3 compatibility for MCP SDK
+      outputSchema: fileSystemReadFileOutputSchema.shape as any,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

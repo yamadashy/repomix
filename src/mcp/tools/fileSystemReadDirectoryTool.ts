@@ -1,8 +1,9 @@
+// @ts-nocheck - Zod v3 compatibility for MCP SDK (imported by mcpAction.ts)
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { logger } from '../../shared/logger.js';
 import { buildMcpToolErrorResponse, buildMcpToolSuccessResponse } from './mcpToolRuntime.js';
 
@@ -28,8 +29,10 @@ export const registerFileSystemReadDirectoryTool = (mcpServer: McpServer) => {
       title: 'Read Directory',
       description:
         'List the contents of a directory using an absolute path. Returns a formatted list showing files and subdirectories with clear [FILE]/[DIR] indicators. Useful for exploring project structure and understanding codebase organization.',
-      inputSchema: fileSystemReadDirectoryInputSchema.shape,
-      outputSchema: fileSystemReadDirectoryOutputSchema.shape,
+      // biome-ignore lint/suspicious/noExplicitAny: Zod v3 compatibility for MCP SDK
+      inputSchema: fileSystemReadDirectoryInputSchema.shape as any,
+      // biome-ignore lint/suspicious/noExplicitAny: Zod v3 compatibility for MCP SDK
+      outputSchema: fileSystemReadDirectoryOutputSchema.shape as any,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

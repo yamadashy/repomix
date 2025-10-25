@@ -74,67 +74,55 @@ export const repomixConfigBaseSchema = z.object({
 
 // Default config schema with default values
 export const repomixConfigDefaultSchema = z.object({
-  input: z
-    .object({
-      maxFileSize: z
-        .number()
-        .int()
-        .min(1)
-        .default(50 * 1024 * 1024), // Default: 50MB
-    })
-    .default({}),
-  output: z
-    .object({
-      filePath: z.string().default(defaultFilePathMap.xml),
-      style: repomixOutputStyleSchema.default('xml'),
-      parsableStyle: z.boolean().default(false),
-      headerText: z.string().optional(),
-      instructionFilePath: z.string().optional(),
-      fileSummary: z.boolean().default(true),
-      directoryStructure: z.boolean().default(true),
-      files: z.boolean().default(true),
-      removeComments: z.boolean().default(false),
-      removeEmptyLines: z.boolean().default(false),
-      compress: z.boolean().default(false),
-      topFilesLength: z.number().int().min(0).default(5),
-      showLineNumbers: z.boolean().default(false),
-      truncateBase64: z.boolean().default(false),
-      copyToClipboard: z.boolean().default(false),
-      includeEmptyDirectories: z.boolean().optional(),
-      includeFullDirectoryStructure: z.boolean().default(false),
-      tokenCountTree: z.union([z.boolean(), z.number(), z.string()]).default(false),
-      git: z
-        .object({
-          sortByChanges: z.boolean().default(true),
-          sortByChangesMaxCommits: z.number().int().min(1).default(100),
-          includeDiffs: z.boolean().default(false),
-          includeLogs: z.boolean().default(false),
-          includeLogsCount: z.number().int().min(1).default(50),
-        })
-        .default({}),
-    })
-    .default({}),
+  input: z.object({
+    maxFileSize: z
+      .number()
+      .int()
+      .min(1)
+      .default(50 * 1024 * 1024), // Default: 50MB
+  }),
+  output: z.object({
+    filePath: z.string().default(defaultFilePathMap.xml),
+    style: repomixOutputStyleSchema.default('xml'),
+    parsableStyle: z.boolean().default(false),
+    headerText: z.string().optional(),
+    instructionFilePath: z.string().optional(),
+    fileSummary: z.boolean().default(true),
+    directoryStructure: z.boolean().default(true),
+    files: z.boolean().default(true),
+    removeComments: z.boolean().default(false),
+    removeEmptyLines: z.boolean().default(false),
+    compress: z.boolean().default(false),
+    topFilesLength: z.number().int().min(0).default(5),
+    showLineNumbers: z.boolean().default(false),
+    truncateBase64: z.boolean().default(false),
+    copyToClipboard: z.boolean().default(false),
+    includeEmptyDirectories: z.boolean().optional(),
+    includeFullDirectoryStructure: z.boolean().default(false),
+    tokenCountTree: z.union([z.boolean(), z.number(), z.string()]).default(false),
+    git: z.object({
+      sortByChanges: z.boolean().default(true),
+      sortByChangesMaxCommits: z.number().int().min(1).default(100),
+      includeDiffs: z.boolean().default(false),
+      includeLogs: z.boolean().default(false),
+      includeLogsCount: z.number().int().min(1).default(50),
+    }),
+  }),
   include: z.array(z.string()).default([]),
-  ignore: z
-    .object({
-      useGitignore: z.boolean().default(true),
-      useDefaultPatterns: z.boolean().default(true),
-      customPatterns: z.array(z.string()).default([]),
-    })
-    .default({}),
-  security: z
-    .object({
-      enableSecurityCheck: z.boolean().default(true),
-    })
-    .default({}),
-  tokenCount: z
-    .object({
-      encoding: z
-        .string()
-        .default('o200k_base')
-        .transform((val) => val as TiktokenEncoding),
-    })
-    .default({}),
+  ignore: z.object({
+    useGitignore: z.boolean().default(true),
+    useDefaultPatterns: z.boolean().default(true),
+    customPatterns: z.array(z.string()).default([]),
+  }),
+  security: z.object({
+    enableSecurityCheck: z.boolean().default(true),
+  }),
+  tokenCount: z.object({
+    encoding: z
+      .string()
+      .default('o200k_base')
+      .transform((val) => val as TiktokenEncoding),
+  }),
 });
 
 // File-specific schema. Add options for file path and style
@@ -166,7 +154,15 @@ export type RepomixConfigFile = z.infer<typeof repomixConfigFileSchema>;
 export type RepomixConfigCli = z.infer<typeof repomixConfigCliSchema>;
 export type RepomixConfigMerged = z.infer<typeof repomixConfigMergedSchema>;
 
-export const defaultConfig = repomixConfigDefaultSchema.parse({});
+export const defaultConfig = repomixConfigDefaultSchema.parse({
+  input: {},
+  output: {
+    git: {},
+  },
+  ignore: {},
+  security: {},
+  tokenCount: {},
+});
 
 // Helper function for type-safe config definition
 export const defineConfig = (config: RepomixConfigFile): RepomixConfigFile => config;

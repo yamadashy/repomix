@@ -176,6 +176,11 @@ export const mergeConfigs = (
       ...baseConfig.output,
       ...fileConfig.output,
       ...cliConfig.output,
+      git: {
+        ...baseConfig.output.git,
+        ...fileConfig.output?.git,
+        ...cliConfig.output?.git,
+      },
     },
     include: [...(baseConfig.include || []), ...(fileConfig.include || []), ...(cliConfig.include || [])],
     ignore: {
@@ -192,6 +197,11 @@ export const mergeConfigs = (
       ...baseConfig.security,
       ...fileConfig.security,
       ...cliConfig.security,
+    },
+    tokenCount: {
+      ...baseConfig.tokenCount,
+      ...fileConfig.tokenCount,
+      ...cliConfig.tokenCount,
     },
   };
 

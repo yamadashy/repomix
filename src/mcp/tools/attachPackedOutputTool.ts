@@ -1,8 +1,9 @@
+// @ts-nocheck - Zod v3 compatibility for MCP SDK (imported by mcpAction.ts)
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { defaultFilePathMap } from '../../config/configSchema.js';
 import type { ProcessedFile } from '../../core/file/fileTypes.js';
 import {
@@ -255,8 +256,10 @@ This tool accepts either a directory containing a repomix output file or a direc
 Supports multiple formats: XML (structured with <file> tags), Markdown (human-readable with ## headers and code blocks), JSON (machine-readable with files as key-value pairs), and Plain text (simple format with separators).
 Calling the tool again with the same file path will refresh the content if the file has been updated.
 It will return in that case a new output ID and the updated content.`,
-      inputSchema: attachPackedOutputInputSchema.shape,
-      outputSchema: attachPackedOutputOutputSchema.shape,
+      // biome-ignore lint/suspicious/noExplicitAny: Zod v3 compatibility for MCP SDK
+      inputSchema: attachPackedOutputInputSchema.shape as any,
+      // biome-ignore lint/suspicious/noExplicitAny: Zod v3 compatibility for MCP SDK
+      outputSchema: attachPackedOutputOutputSchema.shape as any,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

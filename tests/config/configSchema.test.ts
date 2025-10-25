@@ -140,8 +140,8 @@ describe('configSchema', () => {
     });
 
     it('should reject incomplete config', () => {
-      const validConfig = {};
-      expect(() => repomixConfigDefaultSchema.parse(validConfig)).not.toThrow();
+      const invalidConfig = {};
+      expect(() => repomixConfigDefaultSchema.parse(invalidConfig)).toThrow();
     });
   });
 

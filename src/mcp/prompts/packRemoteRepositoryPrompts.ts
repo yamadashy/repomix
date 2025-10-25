@@ -1,5 +1,6 @@
+// @ts-nocheck - Zod v3 compatibility for MCP SDK (imported by mcpAction.ts)
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 /**
  * Register Repomix-related prompts to the MCP server
