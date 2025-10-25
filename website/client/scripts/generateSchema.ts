@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { z } from 'zod';
 import { repomixConfigFileSchema } from '../../../src/config/configSchema.js';
 
 const getPackageVersion = async (): Promise<string> => {
@@ -15,10 +15,9 @@ const generateSchema = async () => {
   const versionParts = version.split('.');
   const majorMinorVersion = `${versionParts[0]}.${versionParts[1]}.${versionParts[2]}`;
 
-  const jsonSchema = zodToJsonSchema(repomixConfigFileSchema, {
-    $refStrategy: 'none',
-    definitionPath: 'definitions',
-    markdownDescription: true,
+  // Use Zod v4's built-in JSON Schema generation
+  const jsonSchema = z.toJSONSchema(repomixConfigFileSchema, {
+    target: 'draft-7',
   });
 
   const schemaWithMeta = {

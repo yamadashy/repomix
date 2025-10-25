@@ -75,10 +75,16 @@
           "type": "boolean"
         },
         "tokenCountTree": {
-          "type": [
-            "boolean",
-            "number",
-            "string"
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
           ]
         },
         "git": {
