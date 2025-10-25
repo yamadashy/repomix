@@ -155,15 +155,7 @@ export const mergeConfigs = (
 ): RepomixConfigMerged => {
   logger.trace('Default config:', defaultConfig);
 
-  const baseConfig = defaultConfig;
-
-  // If the output file path is not provided in the config file or CLI, use the default file path for the style
-  if (cliConfig.output?.filePath == null && fileConfig.output?.filePath == null) {
-    const style = cliConfig.output?.style || fileConfig.output?.style || baseConfig.output.style;
-    baseConfig.output.filePath = defaultFilePathMap[style];
-
-    logger.trace('Default output file path is set to:', baseConfig.output.filePath);
-  }
+  const baseConfig = structuredClone(defaultConfig);
 
   const mergedConfig = {
     cwd,
@@ -176,6 +168,15 @@ export const mergeConfigs = (
       ...baseConfig.output,
       ...fileConfig.output,
       ...cliConfig.output,
+      filePath:
+        cliConfig.output?.filePath ??
+        fileConfig.output?.filePath ??
+        (() => {
+          const style = cliConfig.output?.style ?? fileConfig.output?.style ?? baseConfig.output.style;
+          const defaultPath = defaultFilePathMap[style];
+          logger.trace('Default output file path is set to:', defaultPath);
+          return defaultPath;
+        })(),
       git: {
         ...baseConfig.output.git,
         ...fileConfig.output?.git,

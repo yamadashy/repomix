@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
-import type { RepomixConfigCli, RepomixConfigFile } from '../../src/config/configSchema.js';
+import { defaultConfig, type RepomixConfigCli, type RepomixConfigFile } from '../../src/config/configSchema.js';
 import { getGlobalDirectory } from '../../src/config/globalDirectory.js';
 import { RepomixConfigValidationError } from '../../src/shared/errorHandle.js';
 import { logger } from '../../src/shared/logger.js';
@@ -237,6 +237,43 @@ describe('configLoad', () => {
       };
 
       expect(() => mergeConfigs(process.cwd(), fileConfig, cliConfig)).toThrow(RepomixConfigValidationError);
+    });
+
+    test('should merge nested git config correctly', () => {
+      const fileConfig: RepomixConfigFile = {
+        output: { git: { sortByChanges: false } },
+      };
+      const cliConfig: RepomixConfigCli = {
+        output: { git: { includeDiffs: true } },
+      };
+      const merged = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+
+      // Both configs should be applied
+      expect(merged.output.git.sortByChanges).toBe(false);
+      expect(merged.output.git.includeDiffs).toBe(true);
+      // Defaults should still be present
+      expect(merged.output.git.sortByChangesMaxCommits).toBe(100);
+    });
+
+    test('should not mutate defaultConfig', () => {
+      const originalFilePath = defaultConfig.output.filePath;
+      const fileConfig: RepomixConfigFile = {
+        output: { style: 'markdown' },
+      };
+
+      mergeConfigs(process.cwd(), fileConfig, {});
+
+      // defaultConfig should remain unchanged
+      expect(defaultConfig.output.filePath).toBe(originalFilePath);
+    });
+
+    test('should merge tokenCount config correctly', () => {
+      const fileConfig: RepomixConfigFile = {
+        tokenCount: { encoding: 'cl100k_base' },
+      };
+      const merged = mergeConfigs(process.cwd(), fileConfig, {});
+
+      expect(merged.tokenCount.encoding).toBe('cl100k_base');
     });
   });
 });

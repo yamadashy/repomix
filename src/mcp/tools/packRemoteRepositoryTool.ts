@@ -1,4 +1,7 @@
 // @ts-nocheck - Zod v3 compatibility for MCP SDK (imported by mcpAction.ts)
+// Note: @ts-expect-error would be preferable, but the type incompatibility extends
+// beyond .shape to the entire handler function signature, causing 9+ type errors per file.
+// This will be resolved when MCP SDK supports Zod v4.
 import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';

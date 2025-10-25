@@ -154,6 +154,8 @@ export type RepomixConfigFile = z.infer<typeof repomixConfigFileSchema>;
 export type RepomixConfigCli = z.infer<typeof repomixConfigCliSchema>;
 export type RepomixConfigMerged = z.infer<typeof repomixConfigMergedSchema>;
 
+// Pass empty objects to let Zod apply all default values
+// Zod v4 requires explicit nested objects since we removed outer .default({})
 export const defaultConfig = repomixConfigDefaultSchema.parse({
   input: {},
   output: {
