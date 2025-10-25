@@ -88,6 +88,61 @@ describe('initAction', () => {
 
       expect(fs.writeFile).not.toHaveBeenCalled();
     });
+
+    it('should return false when user cancels initial confirmation', async () => {
+      vi.mocked(prompts.confirm).mockResolvedValue(false);
+
+      const result = await createConfigFile('/test/dir', false);
+
+      expect(result).toBe(false);
+      expect(fs.writeFile).not.toHaveBeenCalled();
+    });
+
+    it('should return false when user cancels via isCancel on initial confirmation', async () => {
+      const mockCancelSymbol = Symbol('cancel');
+      vi.mocked(prompts.confirm).mockResolvedValue(mockCancelSymbol as symbol);
+      vi.mocked(prompts.isCancel).mockReturnValue(true);
+
+      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+      await createConfigFile('/test/dir', false);
+
+      expect(mockExit).toHaveBeenCalledWith(0);
+      expect(fs.writeFile).not.toHaveBeenCalled();
+
+      mockExit.mockRestore();
+    });
+
+    it('should return false when user cancels via isCancel on overwrite confirmation', async () => {
+      vi.mocked(fs.access).mockResolvedValue(undefined); // File exists
+      vi.mocked(prompts.confirm).mockResolvedValueOnce(true); // Initial confirmation
+      const mockCancelSymbol = Symbol('cancel');
+      vi.mocked(prompts.confirm).mockResolvedValueOnce(mockCancelSymbol as symbol); // Overwrite cancel
+      vi.mocked(prompts.isCancel).mockReturnValue(true);
+
+      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+      await createConfigFile('/test/dir', false);
+
+      expect(mockExit).toHaveBeenCalledWith(0);
+      expect(fs.writeFile).not.toHaveBeenCalled();
+
+      mockExit.mockRestore();
+    });
+
+    it('should return true when config file is successfully created', async () => {
+      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.group).mockResolvedValue({
+        outputFilePath: 'output.txt',
+        outputStyle: 'xml',
+      });
+
+      const result = await createConfigFile('/test/dir', false);
+
+      expect(result).toBe(true);
+      expect(fs.writeFile).toHaveBeenCalled();
+    });
   });
 
   describe('createIgnoreFile', () => {
@@ -151,6 +206,31 @@ describe('initAction', () => {
       await createIgnoreFile('/test/dir', false);
 
       expect(fs.writeFile).not.toHaveBeenCalled();
+    });
+
+    it('should return false when user cancels via isCancel on initial confirmation', async () => {
+      const mockCancelSymbol = Symbol('cancel');
+      vi.mocked(prompts.confirm).mockResolvedValue(mockCancelSymbol as symbol);
+      vi.mocked(prompts.isCancel).mockReturnValue(true);
+
+      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+      await createIgnoreFile('/test/dir', false);
+
+      expect(mockExit).toHaveBeenCalledWith(0);
+      expect(fs.writeFile).not.toHaveBeenCalled();
+
+      mockExit.mockRestore();
+    });
+
+    it('should return true when ignore file is successfully created', async () => {
+      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+
+      const result = await createIgnoreFile('/test/dir', false);
+
+      expect(result).toBe(true);
+      expect(fs.writeFile).toHaveBeenCalled();
     });
   });
 });

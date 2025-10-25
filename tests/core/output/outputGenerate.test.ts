@@ -197,4 +197,112 @@ describe('outputGenerate', () => {
     expect(output).not.toContain('This file is a merged representation');
     expect(output).toContain('MARKDOWN HEADER');
   });
+
+  test('generateOutput should include git diffs when enabled', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        git: { includeDiffs: true },
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
+    const mockGitDiffResult = {
+      workTreeDiffContent: 'diff --git a/file.txt',
+      stagedDiffContent: 'diff --git b/staged.txt',
+    };
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, [], mockGitDiffResult);
+
+    expect(output).toContain('Git Diffs');
+    expect(output).toContain('diff --git a/file.txt');
+    expect(output).toContain('diff --git b/staged.txt');
+  });
+
+  test('generateOutput should include git logs when enabled', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        git: { includeLogs: true },
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
+    const mockGitLogResult = {
+      logContent: 'commit abc123\nAuthor: test',
+      commits: [
+        {
+          date: '2024-01-01',
+          message: 'Initial commit',
+          files: ['file1.txt'],
+        },
+      ],
+    };
+
+    const output = await generateOutput(
+      [process.cwd()],
+      mockConfig,
+      mockProcessedFiles,
+      [],
+      undefined,
+      mockGitLogResult,
+    );
+
+    expect(output).toContain('Git Logs');
+    expect(output).toContain('Initial commit');
+    expect(output).toContain('2024-01-01');
+  });
+
+  test('generateOutput should write correct content to file (json style)', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.json',
+        style: 'json',
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [
+      { path: 'file1.txt', content: 'content1' },
+      { path: 'file2.txt', content: 'content2' },
+    ];
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+
+    const parsed = JSON.parse(output);
+    expect(parsed).toHaveProperty('files');
+    expect(parsed.files).toHaveProperty('file1.txt');
+    expect(parsed.files).toHaveProperty('file2.txt');
+    expect(parsed.files['file1.txt']).toBe('content1');
+    expect(parsed.files['file2.txt']).toBe('content2');
+  });
+
+  test('generateOutput should exclude files section when files output is disabled', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        files: false,
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+
+    expect(output).not.toContain('File: file1.txt');
+    expect(output).not.toContain('content1');
+  });
+
+  test('generateOutput should exclude directory structure when disabled', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        directoryStructure: false,
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, ['file1.txt']);
+
+    expect(output).not.toContain('Directory Structure');
+  });
 });
