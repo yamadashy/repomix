@@ -67,7 +67,7 @@ Installez les plugins en utilisant les commandes suivantes :
 ```
 
 ::: tip Relations entre Plugins
-Le plugin `repomix-mcp` est recommandé comme base. Le plugin `repomix-commands` fournit des commandes slash pratiques, tandis que `repomix-explorer` ajoute des capacités d'analyse alimentées par l'IA. Bien que vous puissiez les installer indépendamment, utiliser les trois offre l'expérience la plus complète.
+Le plugin `repomix-mcp` est recommandé comme base. Le plugin `repomix-commands` fournit des commandes slash pratiques, tandis que `repomix-explorer` ajoute des capacités d'analyse alimentées par l'IA. Bien que vous puissiez indépendamment les installer, utiliser les trois offre l'expérience la plus complète.
 :::
 
 ### Alternative : Installation Interactive
