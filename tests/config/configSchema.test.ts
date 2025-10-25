@@ -143,6 +143,11 @@ describe('configSchema', () => {
       const invalidConfig = {};
       expect(() => repomixConfigDefaultSchema.parse(invalidConfig)).toThrow();
     });
+
+    it('should provide helpful error for missing required fields', () => {
+      const invalidConfig = {};
+      expect(() => repomixConfigDefaultSchema.parse(invalidConfig)).toThrow(/expected object/i);
+    });
   });
 
   describe('repomixConfigFileSchema', () => {
