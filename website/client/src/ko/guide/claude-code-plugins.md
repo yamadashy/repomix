@@ -22,7 +22,7 @@ MCP 서버 통합을 통해 AI 기반 코드베이스 분석을 제공하는 기
 - `/repomix-commands:pack-local` - 다양한 옵션으로 로컬 코드베이스 패키징
 - `/repomix-commands:pack-remote` - 원격 GitHub 저장소 패키징 및 분석
 
-### 3. repository-explorer:repository-explorer (AI 분석 에이전트 플러그인)
+### 3. repomix-explorer:explorer (AI 분석 에이전트 플러그인)
 
 Repomix CLI를 사용하여 코드베이스를 지능적으로 탐색하는 AI 기반 저장소 분석 에이전트입니다.
 
@@ -33,8 +33,8 @@ Repomix CLI를 사용하여 코드베이스를 지능적으로 탐색하는 AI �
 - 대형 저장소를 위한 자동 컨텍스트 관리
 
 **사용 가능한 명령:**
-- `/repository-explorer:explore-local` - AI 지원으로 로컬 코드베이스 분석
-- `/repository-explorer:explore-remote` - AI 지원으로 원격 GitHub 저장소 분석
+- `/repomix-explorer:explore-local` - AI 지원으로 로컬 코드베이스 분석
+- `/repomix-explorer:explore-remote` - AI 지원으로 원격 GitHub 저장소 분석
 
 **작동 방식:**
 1. `npx repomix@latest`를 실행하여 저장소 패키징
@@ -63,11 +63,11 @@ Repomix CLI를 사용하여 코드베이스를 지능적으로 탐색하는 AI �
 /plugin install repomix-commands@repomix
 
 # 저장소 탐색기 플러그인 설치 (AI 기반 분석)
-/plugin install repository-explorer@repomix
+/plugin install repomix-explorer@repomix
 ```
 
 ::: tip 플러그인 관계
-`repomix-mcp` 플러그인을 기반으로 권장합니다. `repomix-commands` 플러그인은 편리한 슬래시 명령을 제공하고, `repository-explorer`는 AI 기반 분석 기능을 추가합니다. 독립적으로 설치할 수 있지만, 세 가지 모두 사용하면 가장 포괄적인 경험을 제공합니다.
+`repomix-mcp` 플러그인을 기반으로 권장합니다. `repomix-commands` 플러그인은 편리한 슬래시 명령을 제공하고, `repomix-explorer`는 AI 기반 분석 기능을 추가합니다. 독립적으로 설치할 수 있지만, 세 가지 모두 사용하면 가장 포괄적인 경험을 제공합니다.
 :::
 
 ### 대안: 대화형 설치
@@ -112,10 +112,10 @@ yamadashy/repomix 저장소에서 TypeScript 파일만 패키징
 
 ### AI로 로컬 코드베이스 탐색
 
-AI 기반 분석을 위해 `/repository-explorer:explore-local` 명령을 사용합니다:
+AI 기반 분석을 위해 `/repomix-explorer:explore-local` 명령을 사용합니다:
 
 ```text
-/repository-explorer:explore-local ./src
+/repomix-explorer:explore-local ./src
 인증 관련 코드를 모두 찾아줘
 ```
 
@@ -126,10 +126,10 @@ AI 기반 분석을 위해 `/repository-explorer:explore-local` 명령을 사용
 
 ### AI로 원격 저장소 탐색
 
-GitHub 저장소를 분석하려면 `/repository-explorer:explore-remote` 명령을 사용합니다:
+GitHub 저장소를 분석하려면 `/repomix-explorer:explore-remote` 명령을 사용합니다:
 
 ```text
-/repository-explorer:explore-remote facebook/react
+/repomix-explorer:explore-remote facebook/react
 주요 컴포넌트 아키텍처를 보여줘
 ```
 
@@ -152,7 +152,7 @@ GitHub 저장소를 분석하려면 `/repository-explorer:explore-remote` 명령
 - [플러그인 마켓플레이스](https://github.com/yamadashy/repomix/tree/main/.claude-plugin)
 - [MCP 플러그인](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-mcp)
 - [명령 플러그인](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-commands)
-- [저장소 탐색기 플러그인](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repository-explorer)
+- [저장소 탐색기 플러그인](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-explorer)
 
 ## 피드백 및 지원
 

@@ -2,11 +2,11 @@
 description: Explore and analyze a remote GitHub repository
 ---
 
-Analyze a remote GitHub repository using the repository-explorer:repository-explorer agent.
+Analyze a remote GitHub repository using the repomix-explorer:explorer agent.
 
 When the user runs this command, they want to explore and understand a remote repository's code structure, patterns, and content.
 
-**Note**: This command is part of the repository-explorer plugin, so the repository-explorer:repository-explorer agent is guaranteed to be available.
+**Note**: This command is part of the repomix-explorer plugin, so the repomix-explorer:explorer agent is guaranteed to be available.
 
 ## Usage
 
@@ -18,7 +18,7 @@ The user should provide a GitHub repository in one of these formats:
 ## Your Responsibilities
 
 1. **Extract repository information** from the user's input
-2. **Launch the repository-explorer:repository-explorer agent** to analyze the repository
+2. **Launch the repomix-explorer:explorer agent** to analyze the repository
 3. **Provide the agent with clear instructions** about what to analyze
 
 ## Example Usage
@@ -31,7 +31,7 @@ The user should provide a GitHub repository in one of these formats:
 
 ## What to Tell the Agent
 
-Provide the repository-explorer:repository-explorer agent with a task that includes:
+Provide the repomix-explorer:explorer agent with a task that includes:
 - The repository to analyze (URL or owner/repo format)
 - Any specific focus areas mentioned by the user
 - Clear instructions about what analysis is needed
@@ -56,7 +56,7 @@ Steps:
 
 1. Parse the repository information from user input (owner/repo or full URL)
 2. Identify any specific questions or focus areas from the user's request
-3. Launch the repository-explorer:repository-explorer agent with:
+3. Launch the repomix-explorer:explorer agent with:
    - The Task tool
    - A clear task description following the template above
    - Any specific analysis requirements
@@ -66,4 +66,4 @@ The agent will:
 - Analyze the generated output file efficiently using Grep and Read tools
 - Provide comprehensive findings based on the analysis
 
-Remember: The repository-explorer:repository-explorer agent is optimized for this workflow. It will handle all the details of running repomix CLI, searching with grep, and reading specific sections. Your job is to launch it with clear context about which repository to analyze and what specific insights are needed.
+Remember: The repomix-explorer:explorer agent is optimized for this workflow. It will handle all the details of running repomix CLI, searching with grep, and reading specific sections. Your job is to launch it with clear context about which repository to analyze and what specific insights are needed.

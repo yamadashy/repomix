@@ -22,7 +22,7 @@ MCP サーバー統合によるAI駆動のコードベース分析を提供す�
 - `/repomix-commands:pack-local` - 様々なオプションでローカルコードベースをパッキング
 - `/repomix-commands:pack-remote` - リモートGitHubリポジトリをパッキング・分析
 
-### 3. repository-explorer:repository-explorer（AI分析エージェントプラグイン）
+### 3. repomix-explorer:explorer（AI分析エージェントプラグイン）
 
 Repomix CLIを使用してコードベースをインテリジェントに探索するAI駆動のリポジトリ分析エージェントです。
 
@@ -33,8 +33,8 @@ Repomix CLIを使用してコードベースをインテリジェントに探索
 - 大規模リポジトリの自動コンテキスト管理
 
 **利用可能なコマンド:**
-- `/repository-explorer:explore-local` - AIアシスタントによるローカルコードベースの分析
-- `/repository-explorer:explore-remote` - AIアシスタントによるリモートGitHubリポジトリの分析
+- `/repomix-explorer:explore-local` - AIアシスタントによるローカルコードベースの分析
+- `/repomix-explorer:explore-remote` - AIアシスタントによるリモートGitHubリポジトリの分析
 
 **動作方法:**
 1. `npx repomix@latest`を実行してリポジトリをパッキング
@@ -63,11 +63,11 @@ Repomix CLIを使用してコードベースをインテリジェントに探索
 /plugin install repomix-commands@repomix
 
 # リポジトリエクスプローラープラグインをインストール（AI駆動分析）
-/plugin install repository-explorer@repomix
+/plugin install repomix-explorer@repomix
 ```
 
 ::: tip プラグインの関係
-`repomix-mcp`プラグインは基盤として推奨されます。`repomix-commands`プラグインは便利なスラッシュコマンドを提供し、`repository-explorer`はAI駆動の分析機能を追加します。独立してインストールすることもできますが、3つすべてを使用することで最も包括的な体験が得られます。
+`repomix-mcp`プラグインは基盤として推奨されます。`repomix-commands`プラグインは便利なスラッシュコマンドを提供し、`repomix-explorer`はAI駆動の分析機能を追加します。独立してインストールすることもできますが、3つすべてを使用することで最も包括的な体験が得られます。
 :::
 
 ### 代替: インタラクティブインストール
@@ -112,10 +112,10 @@ yamadashy/repomixリポジトリからTypeScriptファイルのみをパッキ�
 
 ### AIによるローカルコードベースの探索
 
-`/repository-explorer:explore-local`コマンドを使用してAI駆動の分析を実行します：
+`/repomix-explorer:explore-local`コマンドを使用してAI駆動の分析を実行します：
 
 ```text
-/repository-explorer:explore-local ./src
+/repomix-explorer:explore-local ./src
 認証関連のコードをすべて見つけて
 ```
 
@@ -126,10 +126,10 @@ yamadashy/repomixリポジトリからTypeScriptファイルのみをパッキ�
 
 ### AIによるリモートリポジトリの探索
 
-`/repository-explorer:explore-remote`コマンドを使用してGitHubリポジトリを分析します：
+`/repomix-explorer:explore-remote`コマンドを使用してGitHubリポジトリを分析します：
 
 ```text
-/repository-explorer:explore-remote facebook/react
+/repomix-explorer:explore-remote facebook/react
 主要なコンポーネントアーキテクチャを見せて
 ```
 
@@ -152,7 +152,7 @@ yamadashy/repomixリポジトリからTypeScriptファイルのみをパッキ�
 - [プラグインマーケットプレース](https://github.com/yamadashy/repomix/tree/main/.claude-plugin)
 - [MCPプラグイン](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-mcp)
 - [コマンドプラグイン](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-commands)
-- [リポジトリエクスプローラープラグイン](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repository-explorer)
+- [リポジトリエクスプローラープラグイン](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-explorer)
 
 ## フィードバックとサポート
 

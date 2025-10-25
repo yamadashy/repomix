@@ -22,7 +22,7 @@ Menyediakan perintah slash yang praktis dengan dukungan bahasa alami.
 - `/repomix-commands:pack-local` - Mengemas codebase lokal dengan berbagai opsi
 - `/repomix-commands:pack-remote` - Mengemas dan menganalisis repositori GitHub remote
 
-### 3. repository-explorer:repository-explorer (Plugin Agen Analisis AI)
+### 3. repomix-explorer:explorer (Plugin Agen Analisis AI)
 
 Agen analisis repositori berbasis AI yang mengeksplorasi codebase secara cerdas menggunakan Repomix CLI.
 
@@ -33,8 +33,8 @@ Agen analisis repositori berbasis AI yang mengeksplorasi codebase secara cerdas 
 - Manajemen konteks otomatis untuk repositori besar
 
 **Perintah yang Tersedia:**
-- `/repository-explorer:explore-local` - Menganalisis codebase lokal dengan bantuan AI
-- `/repository-explorer:explore-remote` - Menganalisis repositori GitHub remote dengan bantuan AI
+- `/repomix-explorer:explore-local` - Menganalisis codebase lokal dengan bantuan AI
+- `/repomix-explorer:explore-remote` - Menganalisis repositori GitHub remote dengan bantuan AI
 
 **Cara kerjanya:**
 1. Menjalankan `npx repomix@latest` untuk mengemas repositori
@@ -63,11 +63,11 @@ Instal plugin menggunakan perintah berikut:
 /plugin install repomix-commands@repomix
 
 # Instal plugin penjelajah repositori (analisis berbasis AI)
-/plugin install repository-explorer@repomix
+/plugin install repomix-explorer@repomix
 ```
 
 ::: tip Hubungan Plugin
-Plugin `repomix-mcp` direkomendasikan sebagai dasar. Plugin `repomix-commands` menyediakan perintah slash yang praktis, sementara `repository-explorer` menambahkan kemampuan analisis berbasis AI. Meskipun Anda dapat menginstalnya secara independen, menggunakan ketiganya memberikan pengalaman yang paling komprehensif.
+Plugin `repomix-mcp` direkomendasikan sebagai dasar. Plugin `repomix-commands` menyediakan perintah slash yang praktis, sementara `repomix-explorer` menambahkan kemampuan analisis berbasis AI. Meskipun Anda dapat menginstalnya secara independen, menggunakan ketiganya memberikan pengalaman yang paling komprehensif.
 :::
 
 ### Alternatif: Instalasi Interaktif
@@ -112,10 +112,10 @@ Contoh lainnya:
 
 ### Menjelajahi Codebase Lokal dengan AI
 
-Gunakan perintah `/repository-explorer:explore-local` untuk analisis berbasis AI:
+Gunakan perintah `/repomix-explorer:explore-local` untuk analisis berbasis AI:
 
 ```text
-/repository-explorer:explore-local ./src
+/repomix-explorer:explore-local ./src
 Temukan semua kode terkait autentikasi
 ```
 
@@ -126,10 +126,10 @@ Contoh lainnya:
 
 ### Menjelajahi Repositori Remote dengan AI
 
-Gunakan perintah `/repository-explorer:explore-remote` untuk menganalisis repositori GitHub:
+Gunakan perintah `/repomix-explorer:explore-remote` untuk menganalisis repositori GitHub:
 
 ```text
-/repository-explorer:explore-remote facebook/react
+/repomix-explorer:explore-remote facebook/react
 Tunjukkan arsitektur komponen utama
 ```
 
@@ -152,7 +152,7 @@ Kode sumber plugin tersedia di repositori Repomix:
 - [Marketplace Plugin](https://github.com/yamadashy/repomix/tree/main/.claude-plugin)
 - [Plugin MCP](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-mcp)
 - [Plugin Perintah](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-commands)
-- [Plugin Penjelajah Repositori](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repository-explorer)
+- [Plugin Penjelajah Repositori](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-explorer)
 
 ## Umpan Balik dan Dukungan
 

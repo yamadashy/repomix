@@ -22,7 +22,7 @@ Repomix 為 [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overvie
 - `/repomix-commands:pack-local` - 使用各種選項打包本地程式碼庫
 - `/repomix-commands:pack-remote` - 打包和分析遠端 GitHub 儲存庫
 
-### 3. repository-explorer:repository-explorer（AI 分析代理外掛）
+### 3. repomix-explorer:explorer（AI 分析代理外掛）
 
 AI 驅動的儲存庫分析代理，使用 Repomix CLI 智慧探索程式碼庫。
 
@@ -33,8 +33,8 @@ AI 驅動的儲存庫分析代理，使用 Repomix CLI 智慧探索程式碼庫�
 - 大型儲存庫的自動上下文管理
 
 **可用指令：**
-- `/repository-explorer:explore-local` - 使用 AI 輔助分析本地程式碼庫
-- `/repository-explorer:explore-remote` - 使用 AI 輔助分析遠端 GitHub 儲存庫
+- `/repomix-explorer:explore-local` - 使用 AI 輔助分析本地程式碼庫
+- `/repomix-explorer:explore-remote` - 使用 AI 輔助分析遠端 GitHub 儲存庫
 
 **運作方式：**
 1. 執行 `npx repomix@latest` 打包儲存庫
@@ -63,11 +63,11 @@ AI 驅動的儲存庫分析代理，使用 Repomix CLI 智慧探索程式碼庫�
 /plugin install repomix-commands@repomix
 
 # 安裝儲存庫探索器外掛（AI 驅動分析）
-/plugin install repository-explorer@repomix
+/plugin install repomix-explorer@repomix
 ```
 
 ::: tip 外掛關係
-建議將 `repomix-mcp` 外掛作為基礎。`repomix-commands` 外掛提供便利的斜線指令，而 `repository-explorer` 新增 AI 驅動的分析功能。雖然可以獨立安裝，但同時使用三者可獲得最全面的體驗。
+建議將 `repomix-mcp` 外掛作為基礎。`repomix-commands` 外掛提供便利的斜線指令，而 `repomix-explorer` 新增 AI 驅動的分析功能。雖然可以獨立安裝，但同時使用三者可獲得最全面的體驗。
 :::
 
 ### 替代方案：互動式安裝
@@ -112,10 +112,10 @@ AI 驅動的儲存庫分析代理，使用 Repomix CLI 智慧探索程式碼庫�
 
 ### 使用 AI 探索本地程式碼庫
 
-使用 `/repository-explorer:explore-local` 指令進行 AI 驅動的分析：
+使用 `/repomix-explorer:explore-local` 指令進行 AI 驅動的分析：
 
 ```text
-/repository-explorer:explore-local ./src
+/repomix-explorer:explore-local ./src
 尋找所有與認證相關的程式碼
 ```
 
@@ -126,10 +126,10 @@ AI 驅動的儲存庫分析代理，使用 Repomix CLI 智慧探索程式碼庫�
 
 ### 使用 AI 探索遠端儲存庫
 
-使用 `/repository-explorer:explore-remote` 指令分析 GitHub 儲存庫：
+使用 `/repomix-explorer:explore-remote` 指令分析 GitHub 儲存庫：
 
 ```text
-/repository-explorer:explore-remote facebook/react
+/repomix-explorer:explore-remote facebook/react
 顯示主要元件架構
 ```
 
@@ -152,7 +152,7 @@ AI 驅動的儲存庫分析代理，使用 Repomix CLI 智慧探索程式碼庫�
 - [外掛市集](https://github.com/yamadashy/repomix/tree/main/.claude-plugin)
 - [MCP 外掛](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-mcp)
 - [指令外掛](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-commands)
-- [儲存庫探索器外掛](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repository-explorer)
+- [儲存庫探索器外掛](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-explorer)
 
 ## 意見回饋和支援
 
