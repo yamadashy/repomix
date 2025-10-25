@@ -1029,7 +1029,7 @@ Pack this project as markdown with compression
 Pack only TypeScript files from the yamadashy/repomix repository
 ```
 
-**3. repository-explorer:repository-explorer** (AI Analysis Agent Plugin)
+**3. repomix-explorer:explorer** (AI Analysis Agent Plugin)
 
 AI-powered repository analysis agent that intelligently explores codebases using Repomix CLI.
 
@@ -1040,15 +1040,15 @@ AI-powered repository analysis agent that intelligently explores codebases using
 - Automatic context management for large repositories
 
 **Available Commands:**
-- `/repository-explorer:explore-local` - Analyze local codebase with AI assistance
-- `/repository-explorer:explore-remote` - Analyze remote GitHub repositories with AI assistance
+- `/repomix-explorer:explore-local` - Analyze local codebase with AI assistance
+- `/repomix-explorer:explore-remote` - Analyze remote GitHub repositories with AI assistance
 
 **Example usage:**
 ```text
-/repository-explorer:explore-local ./src
+/repomix-explorer:explore-local ./src
 Find all authentication-related code
 
-/repository-explorer:explore-remote facebook/react
+/repomix-explorer:explore-remote facebook/react
 Show me the main component architecture
 ```
 
@@ -1075,10 +1075,10 @@ The agent automatically:
 /plugin install repomix-commands@repomix
 
 # Install repository explorer plugin (AI-powered analysis)
-/plugin install repository-explorer@repomix
+/plugin install repomix-explorer@repomix
 ```
 
-**Note**: The `repomix-mcp` plugin is recommended as a foundation. The `repomix-commands` plugin provides convenient slash commands, while `repository-explorer` adds AI-powered analysis capabilities. While you can install them independently, using all three provides the most comprehensive experience.
+**Note**: The `repomix-mcp` plugin is recommended as a foundation. The `repomix-commands` plugin provides convenient slash commands, while `repomix-explorer` adds AI-powered analysis capabilities. While you can install them independently, using all three provides the most comprehensive experience.
 
 **Alternatively, use the interactive plugin installer:**
 

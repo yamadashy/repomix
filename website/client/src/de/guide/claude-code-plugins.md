@@ -22,7 +22,7 @@ Bietet praktische Slash-Befehle mit Unterstützung für natürliche Sprache.
 - `/repomix-commands:pack-local` - Lokale Codebase mit verschiedenen Optionen verpacken
 - `/repomix-commands:pack-remote` - Entfernte GitHub-Repositories verpacken und analysieren
 
-### 3. repository-explorer:repository-explorer (KI-Analyse-Agent-Plugin)
+### 3. repomix-explorer:explorer (KI-Analyse-Agent-Plugin)
 
 KI-gesteuerter Repository-Analyse-Agent, der Codebases intelligent mit Repomix CLI erkundet.
 
@@ -33,8 +33,8 @@ KI-gesteuerter Repository-Analyse-Agent, der Codebases intelligent mit Repomix C
 - Automatische Kontextverwaltung für große Repositories
 
 **Verfügbare Befehle:**
-- `/repository-explorer:explore-local` - Lokale Codebase mit KI-Unterstützung analysieren
-- `/repository-explorer:explore-remote` - Entfernte GitHub-Repositories mit KI-Unterstützung analysieren
+- `/repomix-explorer:explore-local` - Lokale Codebase mit KI-Unterstützung analysieren
+- `/repomix-explorer:explore-remote` - Entfernte GitHub-Repositories mit KI-Unterstützung analysieren
 
 **Funktionsweise:**
 1. Führt `npx repomix@latest` aus, um das Repository zu verpacken
@@ -63,11 +63,11 @@ Installieren Sie die Plugins mit den folgenden Befehlen:
 /plugin install repomix-commands@repomix
 
 # Repository-Explorer-Plugin installieren (KI-gestützte Analyse)
-/plugin install repository-explorer@repomix
+/plugin install repomix-explorer@repomix
 ```
 
 ::: tip Plugin-Beziehung
-Das `repomix-mcp`-Plugin wird als Basis empfohlen. Das `repomix-commands`-Plugin bietet praktische Slash-Befehle, während `repository-explorer` KI-gestützte Analysefunktionen hinzufügt. Obwohl Sie sie unabhängig installieren können, bietet die Verwendung aller drei die umfassendste Erfahrung.
+Das `repomix-mcp`-Plugin wird als Basis empfohlen. Das `repomix-commands`-Plugin bietet praktische Slash-Befehle, während `repomix-explorer` KI-gestützte Analysefunktionen hinzufügt. Obwohl Sie sie unabhängig installieren können, bietet die Verwendung aller drei die umfassendste Erfahrung.
 :::
 
 ### Alternative: Interaktive Installation
@@ -112,10 +112,10 @@ Weitere Beispiele:
 
 ### Lokale Codebase mit KI erkunden
 
-Verwenden Sie den Befehl `/repository-explorer:explore-local` für KI-gestützte Analyse:
+Verwenden Sie den Befehl `/repomix-explorer:explore-local` für KI-gestützte Analyse:
 
 ```text
-/repository-explorer:explore-local ./src
+/repomix-explorer:explore-local ./src
 Alle authentifizierungsbezogenen Codes finden
 ```
 
@@ -126,10 +126,10 @@ Weitere Beispiele:
 
 ### Entferntes Repository mit KI erkunden
 
-Verwenden Sie den Befehl `/repository-explorer:explore-remote`, um GitHub-Repositories zu analysieren:
+Verwenden Sie den Befehl `/repomix-explorer:explore-remote`, um GitHub-Repositories zu analysieren:
 
 ```text
-/repository-explorer:explore-remote facebook/react
+/repomix-explorer:explore-remote facebook/react
 Die Hauptkomponentenarchitektur anzeigen
 ```
 
@@ -152,7 +152,7 @@ Der Plugin-Quellcode ist im Repomix-Repository verfügbar:
 - [Plugin-Marktplatz](https://github.com/yamadashy/repomix/tree/main/.claude-plugin)
 - [MCP-Plugin](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-mcp)
 - [Befehls-Plugin](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-commands)
-- [Repository-Explorer-Plugin](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repository-explorer)
+- [Repository-Explorer-Plugin](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-explorer)
 
 ## Feedback und Support
 

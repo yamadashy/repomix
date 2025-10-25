@@ -22,7 +22,7 @@ Fornece comandos slash convenientes com suporte a linguagem natural.
 - `/repomix-commands:pack-local` - Empacotar base de código local com várias opções
 - `/repomix-commands:pack-remote` - Empacotar e analisar repositórios remotos do GitHub
 
-### 3. repository-explorer:repository-explorer (Plugin de Agente de Análise de IA)
+### 3. repomix-explorer:explorer (Plugin de Agente de Análise de IA)
 
 Agente de análise de repositório alimentado por IA que explora bases de código de forma inteligente usando Repomix CLI.
 
@@ -33,8 +33,8 @@ Agente de análise de repositório alimentado por IA que explora bases de códig
 - Gerenciamento automático de contexto para repositórios grandes
 
 **Comandos Disponíveis:**
-- `/repository-explorer:explore-local` - Analisar base de código local com assistência de IA
-- `/repository-explorer:explore-remote` - Analisar repositórios remotos do GitHub com assistência de IA
+- `/repomix-explorer:explore-local` - Analisar base de código local com assistência de IA
+- `/repomix-explorer:explore-remote` - Analisar repositórios remotos do GitHub com assistência de IA
 
 **Como funciona:**
 1. Executa `npx repomix@latest` para empacotar o repositório
@@ -63,11 +63,11 @@ Instale os plugins usando os seguintes comandos:
 /plugin install repomix-commands@repomix
 
 # Instalar plugin explorador de repositório (análise alimentada por IA)
-/plugin install repository-explorer@repomix
+/plugin install repomix-explorer@repomix
 ```
 
 ::: tip Relação entre Plugins
-O plugin `repomix-mcp` é recomendado como base. O plugin `repomix-commands` fornece comandos slash convenientes, enquanto o `repository-explorer` adiciona capacidades de análise alimentadas por IA. Embora você possa instalá-los independentemente, usar os três proporciona a experiência mais abrangente.
+O plugin `repomix-mcp` é recomendado como base. O plugin `repomix-commands` fornece comandos slash convenientes, enquanto o `repomix-explorer` adiciona capacidades de análise alimentadas por IA. Embora você possa instalá-los independentemente, usar os três proporciona a experiência mais abrangente.
 :::
 
 ### Alternativa: Instalação Interativa
@@ -112,10 +112,10 @@ Outros exemplos:
 
 ### Explorando Base de Código Local com IA
 
-Use o comando `/repository-explorer:explore-local` para análise alimentada por IA:
+Use o comando `/repomix-explorer:explore-local` para análise alimentada por IA:
 
 ```text
-/repository-explorer:explore-local ./src
+/repomix-explorer:explore-local ./src
 Encontrar todo o código relacionado à autenticação
 ```
 
@@ -126,10 +126,10 @@ Outros exemplos:
 
 ### Explorando Repositório Remoto com IA
 
-Use o comando `/repository-explorer:explore-remote` para analisar repositórios do GitHub:
+Use o comando `/repomix-explorer:explore-remote` para analisar repositórios do GitHub:
 
 ```text
-/repository-explorer:explore-remote facebook/react
+/repomix-explorer:explore-remote facebook/react
 Mostrar a arquitetura dos componentes principais
 ```
 
@@ -152,7 +152,7 @@ O código-fonte dos plugins está disponível no repositório do Repomix:
 - [Marketplace de Plugins](https://github.com/yamadashy/repomix/tree/main/.claude-plugin)
 - [Plugin MCP](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-mcp)
 - [Plugin de Comandos](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-commands)
-- [Plugin Explorador de Repositório](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repository-explorer)
+- [Plugin Explorador de Repositório](https://github.com/yamadashy/repomix/tree/main/.claude/plugins/repomix-explorer)
 
 ## Feedback e Suporte
 
