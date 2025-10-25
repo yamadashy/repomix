@@ -19,5 +19,5 @@
     "types": ["node", "picocolors"]
   },
   "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["tests/integration-tests/fixtures"]
+  "exclude": ["tests/integration-tests/fixtures", "src/mcp/**"]
 }

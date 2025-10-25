@@ -1,5 +1,9 @@
+// @ts-nocheck - Zod v3 compatibility for MCP SDK (imported by mcpAction.ts)
+// Note: @ts-expect-error would be preferable, but the type incompatibility extends
+// beyond .shape to the entire handler function signature, causing 9+ type errors per file.
+// This will be resolved when MCP SDK supports Zod v4.
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 /**
  * Register Repomix-related prompts to the MCP server

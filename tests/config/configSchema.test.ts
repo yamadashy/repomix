@@ -140,8 +140,13 @@ describe('configSchema', () => {
     });
 
     it('should reject incomplete config', () => {
-      const validConfig = {};
-      expect(() => repomixConfigDefaultSchema.parse(validConfig)).not.toThrow();
+      const invalidConfig = {};
+      expect(() => repomixConfigDefaultSchema.parse(invalidConfig)).toThrow();
+    });
+
+    it('should provide helpful error for missing required fields', () => {
+      const invalidConfig = {};
+      expect(() => repomixConfigDefaultSchema.parse(invalidConfig)).toThrow(/expected object/i);
     });
   });
 

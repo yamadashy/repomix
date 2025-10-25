@@ -157,14 +157,6 @@ export const mergeConfigs = (
 
   const baseConfig = defaultConfig;
 
-  // If the output file path is not provided in the config file or CLI, use the default file path for the style
-  if (cliConfig.output?.filePath == null && fileConfig.output?.filePath == null) {
-    const style = cliConfig.output?.style || fileConfig.output?.style || baseConfig.output.style;
-    baseConfig.output.filePath = defaultFilePathMap[style];
-
-    logger.trace('Default output file path is set to:', baseConfig.output.filePath);
-  }
-
   const mergedConfig = {
     cwd,
     input: {
@@ -172,11 +164,26 @@ export const mergeConfigs = (
       ...fileConfig.input,
       ...cliConfig.input,
     },
-    output: {
-      ...baseConfig.output,
-      ...fileConfig.output,
-      ...cliConfig.output,
-    },
+    output: (() => {
+      const mergedOutput = {
+        ...baseConfig.output,
+        ...fileConfig.output,
+        ...cliConfig.output,
+        git: {
+          ...baseConfig.output.git,
+          ...fileConfig.output?.git,
+          ...cliConfig.output?.git,
+        },
+      };
+
+      if (mergedOutput.filePath == null) {
+        const style = mergedOutput.style ?? baseConfig.output.style;
+        mergedOutput.filePath = defaultFilePathMap[style];
+        logger.trace('Default output file path is set to:', mergedOutput.filePath);
+      }
+
+      return mergedOutput;
+    })(),
     include: [...(baseConfig.include || []), ...(fileConfig.include || []), ...(cliConfig.include || [])],
     ignore: {
       ...baseConfig.ignore,
@@ -192,6 +199,11 @@ export const mergeConfigs = (
       ...baseConfig.security,
       ...fileConfig.security,
       ...cliConfig.security,
+    },
+    tokenCount: {
+      ...baseConfig.tokenCount,
+      ...fileConfig.tokenCount,
+      ...cliConfig.tokenCount,
     },
   };
 
