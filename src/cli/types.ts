@@ -41,6 +41,7 @@ export interface CliOptions extends OptionValues {
 
   // Configuration Options
   config?: string;
+  project?: string;
   init?: boolean;
   global?: boolean;
 

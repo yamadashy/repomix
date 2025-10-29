@@ -1289,6 +1289,108 @@ Example configuration:
 }
 ```
 
+### Multiple Project Configurations
+
+Repomix supports defining multiple project configurations within a single config file using the **`projects`** field. This is useful when working on large projects with multiple subdirectories, allowing you to pack different parts of your codebase with different settings.
+
+#### Using Projects Format
+
+When using the `projects` format, you define named configurations that can be selected using the `--project` (or `-p`) option:
+
+```json5
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "projects": {
+    "default": {
+      "output": {
+        "filePath": "repomix-output.xml",
+        "style": "xml"
+      },
+      "ignore": {
+        "customPatterns": []
+      }
+    },
+    "ui": {
+      "output": {
+        "filePath": "ui-output.xml"
+      },
+      "ignore": {
+        "customPatterns": ["api/**", "backend/**"]
+      }
+    },
+    "api": {
+      "output": {
+        "filePath": "api-output.xml"
+      },
+      "ignore": {
+        "customPatterns": ["ui/**", "frontend/**"]
+      }
+    }
+  }
+}
+```
+
+**Usage:**
+
+```bash
+# Uses the "default" project configuration
+npx repomix
+
+# Uses the "ui" project configuration
+npx repomix --project ui
+# or
+npx repomix -p ui
+
+# Uses the "api" project configuration
+npx repomix -p api
+```
+
+**Important Notes:**
+
+- When using the `projects` format, you **cannot** mix it with traditional top-level configuration fields (like `output`, `ignore`, etc.). You must use either the traditional format or the `projects` format, but not both.
+- If no `--project` option is specified, Repomix will use the `"default"` project if it exists.
+- If no `"default"` project exists and no `--project` option is specified, Repomix will show an error listing available projects.
+- The `$schema` field can still be used at the top level for schema validation.
+
+#### TypeScript Projects Configuration
+
+You can also use TypeScript for projects configuration:
+
+```typescript
+// repomix.config.ts
+import { defineConfig } from 'repomix';
+
+export default defineConfig({
+  projects: {
+    default: {
+      output: {
+        filePath: 'repomix-output.xml',
+        style: 'xml',
+      },
+      ignore: {
+        customPatterns: [],
+      },
+    },
+    ui: {
+      output: {
+        filePath: 'ui-output.xml',
+      },
+      ignore: {
+        customPatterns: ['api/**', 'backend/**'],
+      },
+    },
+    api: {
+      output: {
+        filePath: 'api-output.xml',
+      },
+      ignore: {
+        customPatterns: ['ui/**', 'frontend/**'],
+      },
+    },
+  },
+});
+```
+
 ### Global Configuration
 
 To create a global configuration file:

@@ -172,6 +172,92 @@ describe('configSchema', () => {
       };
       expect(repomixConfigFileSchema.parse(partialConfig)).toEqual(partialConfig);
     });
+
+    it('should accept config with projects field', () => {
+      const configWithProjects = {
+        projects: {
+          default: {
+            output: {
+              filePath: 'default-output.xml',
+              style: 'xml',
+            },
+            ignore: {
+              customPatterns: [],
+            },
+          },
+          ui: {
+            output: {
+              filePath: 'ui-output.xml',
+            },
+            ignore: {
+              customPatterns: ['api/**'],
+            },
+          },
+          api: {
+            output: {
+              filePath: 'api-output.xml',
+            },
+            ignore: {
+              customPatterns: ['ui/**'],
+            },
+          },
+        },
+      };
+      expect(repomixConfigFileSchema.parse(configWithProjects)).toEqual(configWithProjects);
+    });
+
+    it('should reject config with both traditional format and projects field', () => {
+      const invalidConfig = {
+        output: {
+          filePath: 'output.xml',
+        },
+        projects: {
+          default: {
+            output: {
+              filePath: 'default-output.xml',
+            },
+          },
+        },
+      };
+      expect(() => repomixConfigFileSchema.parse(invalidConfig)).toThrow(z.ZodError);
+      try {
+        repomixConfigFileSchema.parse(invalidConfig);
+      } catch (error) {
+        expect((error as z.ZodError).issues[0].message).toContain(
+          'Cannot use both traditional config format and "projects" field',
+        );
+      }
+    });
+
+    it('should reject config with traditional format fields and projects', () => {
+      const invalidConfig = {
+        ignore: {
+          customPatterns: ['*.log'],
+        },
+        projects: {
+          default: {
+            output: {
+              filePath: 'default-output.xml',
+            },
+          },
+        },
+      };
+      expect(() => repomixConfigFileSchema.parse(invalidConfig)).toThrow(z.ZodError);
+    });
+
+    it('should accept config with only $schema and projects', () => {
+      const validConfig = {
+        $schema: 'https://repomix.com/schemas/latest/schema.json',
+        projects: {
+          default: {
+            output: {
+              filePath: 'default-output.xml',
+            },
+          },
+        },
+      };
+      expect(repomixConfigFileSchema.parse(validConfig)).toEqual(validConfig);
+    });
   });
 
   describe('repomixConfigCliSchema', () => {
