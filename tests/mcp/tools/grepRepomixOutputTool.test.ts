@@ -621,7 +621,9 @@ describe('grepRepomixOutputTool', () => {
     it('should handle mixed multilingual content in file', async () => {
       vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
       vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('English line\n日本語とEnglish混在\n中文和English混合\n🌟 mixed content\nनमस्ते English');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        'English line\n日本語とEnglish混在\n中文和English混合\n🌟 mixed content\nनमस्ते English',
+      );
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'English', contextLines: 1 });
 
@@ -639,7 +641,9 @@ describe('grepRepomixOutputTool', () => {
     it('should handle complex Unicode regex patterns in file content', async () => {
       vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
       vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('user@example.com\nユーザー@例.jp\ntest@テスト.org\n管理者@サンプル.co.jp\nnormal text');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        'user@example.com\nユーザー@例.jp\ntest@テスト.org\n管理者@サンプル.co.jp\nnormal text',
+      );
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '.+@.+\\.(com|jp|org)' });
 
@@ -657,7 +661,9 @@ describe('grepRepomixOutputTool', () => {
     it('should handle special characters with escaping in file content', async () => {
       vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
       vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('normal line\n$special chars #symbols\nline 3\n&more $special items\nend line');
+      vi.mocked(fs.readFile).mockResolvedValue(
+        'normal line\n$special chars #symbols\nline 3\n&more $special items\nend line',
+      );
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '\\$special', contextLines: 1 });
 
