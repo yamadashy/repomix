@@ -115,6 +115,9 @@ const getFileExtension = (filePath: string): string => {
   return match ? match[1] : '';
 };
 
+// Dependency injection allows mocking jiti in tests to prevent double instrumentation.
+// Without this, jiti transforms src/ files that are already instrumented by Vitest,
+// causing coverage instability (results varied by ~2% on each test run).
 const loadAndValidateConfig = async (
   filePath: string,
   deps = {

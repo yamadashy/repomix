@@ -101,7 +101,7 @@ describe('initAction', () => {
     it('should return false when user cancels via isCancel on initial confirmation', async () => {
       const mockCancelSymbol = Symbol('cancel');
       vi.mocked(prompts.confirm).mockResolvedValue(mockCancelSymbol as symbol);
-      vi.mocked(prompts.isCancel).mockReturnValue(true);
+      vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
 
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
@@ -118,7 +118,7 @@ describe('initAction', () => {
       vi.mocked(prompts.confirm).mockResolvedValueOnce(true); // Initial confirmation
       const mockCancelSymbol = Symbol('cancel');
       vi.mocked(prompts.confirm).mockResolvedValueOnce(mockCancelSymbol as symbol); // Overwrite cancel
-      vi.mocked(prompts.isCancel).mockReturnValue(true);
+      vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
 
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
@@ -211,7 +211,7 @@ describe('initAction', () => {
     it('should return false when user cancels via isCancel on initial confirmation', async () => {
       const mockCancelSymbol = Symbol('cancel');
       vi.mocked(prompts.confirm).mockResolvedValue(mockCancelSymbol as symbol);
-      vi.mocked(prompts.isCancel).mockReturnValue(true);
+      vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
 
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 

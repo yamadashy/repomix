@@ -34,6 +34,7 @@ describe('cliSpinner', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   describe('Spinner', () => {
