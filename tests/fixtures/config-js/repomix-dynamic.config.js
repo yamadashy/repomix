@@ -1,8 +1,10 @@
-import { defineConfig } from '../../../src/index.js';
+// Don't import defineConfig to avoid jiti transforming src/ files during tests
+// This ensures stable coverage by preventing double instrumentation
 
-const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+// Use fixed timestamp to ensure deterministic test coverage
+const timestamp = '2024-01-01T00-00-00';
 
-export default defineConfig({
+export default {
   output: {
     filePath: `output-${timestamp}.xml`,
     style: 'xml',
@@ -10,4 +12,4 @@ export default defineConfig({
   ignore: {
     customPatterns: ['**/node_modules/**'],
   },
-});
+};

@@ -210,17 +210,13 @@ describe('configLoad', () => {
     test('should throw RepomixError for unsupported config file format', async () => {
       vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as Stats);
 
-      await expect(loadFileConfig(process.cwd(), 'test-config.yaml')).rejects.toThrow(
-        'Unsupported config file format',
-      );
+      await expect(loadFileConfig(process.cwd(), 'test-config.yaml')).rejects.toThrow('Unsupported config file format');
     });
 
     test('should throw RepomixError for config file with unsupported extension', async () => {
       vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as Stats);
 
-      await expect(loadFileConfig(process.cwd(), 'test-config.toml')).rejects.toThrow(
-        'Unsupported config file format',
-      );
+      await expect(loadFileConfig(process.cwd(), 'test-config.toml')).rejects.toThrow('Unsupported config file format');
     });
 
     test('should handle general errors when loading config', async () => {

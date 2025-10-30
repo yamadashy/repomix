@@ -57,7 +57,22 @@ const findConfigFile = async (configPaths: string[], logPrefix: string): Promise
   return null;
 };
 
-export const loadFileConfig = async (rootDir: string, argConfigPath: string | null): Promise<RepomixConfigFile> => {
+// Default jiti import implementation for loading JS/TS config files
+const defaultJitiImport = async (fileUrl: string): Promise<unknown> => {
+  const jiti = createJiti(import.meta.url, {
+    moduleCache: false, // Disable cache to ensure fresh config loads
+    interopDefault: true, // Automatically use default export
+  });
+  return await jiti.import(fileUrl);
+};
+
+export const loadFileConfig = async (
+  rootDir: string,
+  argConfigPath: string | null,
+  deps = {
+    jitiImport: defaultJitiImport,
+  },
+): Promise<RepomixConfigFile> => {
   if (argConfigPath) {
     // If a specific config path is provided, use it directly
     const fullPath = path.resolve(rootDir, argConfigPath);
@@ -66,7 +81,7 @@ export const loadFileConfig = async (rootDir: string, argConfigPath: string | nu
     const isLocalFileExists = await checkFileExists(fullPath);
 
     if (isLocalFileExists) {
-      return await loadAndValidateConfig(fullPath);
+      return await loadAndValidateConfig(fullPath, deps);
     }
     throw new RepomixError(`Config file not found at ${argConfigPath}`);
   }
@@ -76,7 +91,7 @@ export const loadFileConfig = async (rootDir: string, argConfigPath: string | nu
   const localConfigPath = await findConfigFile(localConfigPaths, 'local');
 
   if (localConfigPath) {
-    return await loadAndValidateConfig(localConfigPath);
+    return await loadAndValidateConfig(localConfigPath, deps);
   }
 
   // Try to find a global config file using the priority order
@@ -84,7 +99,7 @@ export const loadFileConfig = async (rootDir: string, argConfigPath: string | nu
   const globalConfigPath = await findConfigFile(globalConfigPaths, 'global');
 
   if (globalConfigPath) {
-    return await loadAndValidateConfig(globalConfigPath);
+    return await loadAndValidateConfig(globalConfigPath, deps);
   }
 
   logger.log(
@@ -100,7 +115,12 @@ const getFileExtension = (filePath: string): string => {
   return match ? match[1] : '';
 };
 
-const loadAndValidateConfig = async (filePath: string): Promise<RepomixConfigFile> => {
+const loadAndValidateConfig = async (
+  filePath: string,
+  deps = {
+    jitiImport: defaultJitiImport,
+  },
+): Promise<RepomixConfigFile> => {
   try {
     let config: unknown;
     const ext = getFileExtension(filePath);
@@ -114,11 +134,7 @@ const loadAndValidateConfig = async (filePath: string): Promise<RepomixConfigFil
       case 'cjs': {
         // Use jiti for TypeScript and JavaScript files
         // This provides consistent behavior and avoids Node.js module cache issues
-        const jiti = createJiti(import.meta.url, {
-          moduleCache: false, // Disable cache to ensure fresh config loads
-          interopDefault: true, // Automatically use default export
-        });
-        config = await jiti.import(pathToFileURL(filePath).href);
+        config = await deps.jitiImport(pathToFileURL(filePath).href);
         break;
       }
 

@@ -1,6 +1,6 @@
-import { defineConfig } from '../../../src/index.js';
-
-export default defineConfig({
+// Don't import defineConfig to avoid jiti transforming src/ files during tests
+// This ensures stable coverage by preventing double instrumentation
+export default {
   output: {
     filePath: 'ts-output.xml',
     style: 'xml',
@@ -9,4 +9,4 @@ export default defineConfig({
   ignore: {
     customPatterns: ['**/node_modules/**', '**/dist/**'],
   },
-});
+};
