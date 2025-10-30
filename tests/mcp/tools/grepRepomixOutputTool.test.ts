@@ -606,9 +606,7 @@ describe('grepRepomixOutputTool', () => {
     it('should handle emoji content in file', async () => {
       vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
       vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue(
-        'line 1\n🎉 celebration\nline 3\n🚀 rocket emoji\nline 5' as unknown as Buffer,
-      );
+      vi.mocked(fs.readFile).mockResolvedValue('line 1\n🎉 celebration\nline 3\n🚀 rocket emoji\nline 5');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '🎉|🚀' });
 
@@ -623,9 +621,7 @@ describe('grepRepomixOutputTool', () => {
     it('should handle mixed multilingual content in file', async () => {
       vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
       vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue(
-        'English line\n日本語とEnglish混在\n中文和English混合\n🌟 mixed content\nनमस्ते English' as unknown as Buffer,
-      );
+      vi.mocked(fs.readFile).mockResolvedValue('English line\n日本語とEnglish混在\n中文和English混合\n🌟 mixed content\nनमस्ते English');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'English', contextLines: 1 });
 
@@ -643,9 +639,7 @@ describe('grepRepomixOutputTool', () => {
     it('should handle complex Unicode regex patterns in file content', async () => {
       vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
       vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue(
-        'user@example.com\nユーザー@例.jp\ntest@テスト.org\n管理者@サンプル.co.jp\nnormal text' as unknown as Buffer,
-      );
+      vi.mocked(fs.readFile).mockResolvedValue('user@example.com\nユーザー@例.jp\ntest@テスト.org\n管理者@サンプル.co.jp\nnormal text');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '.+@.+\\.(com|jp|org)' });
 
@@ -663,9 +657,7 @@ describe('grepRepomixOutputTool', () => {
     it('should handle special characters with escaping in file content', async () => {
       vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
       vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue(
-        'normal line\n$special chars #symbols\nline 3\n&more $special items\nend line' as unknown as Buffer,
-      );
+      vi.mocked(fs.readFile).mockResolvedValue('normal line\n$special chars #symbols\nline 3\n&more $special items\nend line');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '\\$special', contextLines: 1 });
 
@@ -681,9 +673,7 @@ describe('grepRepomixOutputTool', () => {
     it('should handle case-insensitive search with multibyte characters in file', async () => {
       vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
       vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue(
-        '日本語テスト\nNIPPON語test\n中文测试\nTEST中文\nnormal' as unknown as Buffer,
-      );
+      vi.mocked(fs.readFile).mockResolvedValue('日本語テスト\nNIPPON語test\n中文测试\nTEST中文\nnormal');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'test', ignoreCase: true });
 
@@ -699,9 +689,7 @@ describe('grepRepomixOutputTool', () => {
     it('should handle string parameters by coercing them to numbers', async () => {
       vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
       vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue(
-        'line 1\npattern match\nline 3\nanother pattern\nline 5' as unknown as Buffer,
-      );
+      vi.mocked(fs.readFile).mockResolvedValue('line 1\npattern match\nline 3\nanother pattern\nline 5');
 
       // Simulate Cursor AI sending strings instead of numbers
       const result = await toolHandler({
@@ -722,9 +710,7 @@ describe('grepRepomixOutputTool', () => {
     it('should handle mixed string and number parameters', async () => {
       vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
       vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue(
-        'line 1\npattern match\nline 3\nanother pattern\nline 5' as unknown as Buffer,
-      );
+      vi.mocked(fs.readFile).mockResolvedValue('line 1\npattern match\nline 3\nanother pattern\nline 5');
 
       // Test with some parameters as strings and others as numbers
       const result = await toolHandler({
