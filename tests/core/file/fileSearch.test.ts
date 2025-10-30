@@ -611,5 +611,29 @@ node_modules
       expect(result.filePaths).toEqual(['lib/utils.ts', 'src/main.ts']);
       expect(result.emptyDirPaths).toEqual([]);
     });
+
+    test('should not use ignoreFiles when explicit files are provided (stdin mode)', async () => {
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: true,
+          customPatterns: [],
+        },
+      });
+
+      const explicitFiles = ['/test/.gitignore', '/test/src/file1.ts', '/test/src/file2.ts'];
+
+      vi.mocked(globby).mockResolvedValue(['.gitignore', 'src/file1.ts', 'src/file2.ts']);
+
+      await searchFiles('/test', mockConfig, explicitFiles);
+
+      // Verify that globby was called with ignoreFiles: [] when explicit files are provided
+      expect(globby).toHaveBeenCalledWith(
+        expect.arrayContaining(['.gitignore', 'src/file1.ts', 'src/file2.ts']),
+        expect.objectContaining({
+          ignoreFiles: [],
+        }),
+      );
+    });
   });
 });

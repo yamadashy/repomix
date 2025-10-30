@@ -192,15 +192,19 @@ export const searchFiles = async (
 
     logger.trace('Include patterns with explicit files:', includePatterns);
 
-    const filePaths = await globby(includePatterns, {
+    const globbyOptions = {
       cwd: rootDir,
       ignore: [...adjustedIgnorePatterns],
-      ignoreFiles: [...ignoreFilePatterns],
+      ignoreFiles: explicitFiles ? [] : [...ignoreFilePatterns],
       onlyFiles: true,
       absolute: false,
       dot: true,
       followSymbolicLinks: false,
-    }).catch((error: unknown) => {
+    };
+
+    logger.debug('Globby options:', { ...globbyOptions, explicitFilesProvided: !!explicitFiles });
+
+    const filePaths = await globby(includePatterns, globbyOptions).catch((error: unknown) => {
       // Handle EPERM errors specifically
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
       if (code === 'EPERM' || code === 'EACCES') {
