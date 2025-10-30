@@ -97,7 +97,7 @@ describe('mcpToolRuntime', () => {
       vi.mocked(crypto.randomBytes).mockImplementation(() => ({
         toString: () => 'abcdef1234567890',
       }));
-      vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5' as unknown as Buffer);
+      vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
     });
 
     it('should format a tool response with directory context', async () => {

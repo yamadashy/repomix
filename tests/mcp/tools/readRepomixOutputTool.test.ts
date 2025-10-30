@@ -76,7 +76,7 @@ describe('readRepomixOutputTool', () => {
   it('should successfully read the file content', async () => {
     vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue('File content here' as unknown as Buffer);
+    vi.mocked(fs.readFile).mockResolvedValue('File content here');
 
     const result = await toolHandler({ outputId: 'test-id' });
 
@@ -104,7 +104,7 @@ describe('readRepomixOutputTool', () => {
   it('should read specific line range when startLine and endLine are provided', async () => {
     vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5' as unknown as Buffer);
+    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     const result = await toolHandler({ outputId: 'test-id', startLine: 2, endLine: 4 });
 
@@ -117,7 +117,7 @@ describe('readRepomixOutputTool', () => {
   it('should read from startLine to end when only startLine is provided', async () => {
     vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5' as unknown as Buffer);
+    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     const result = await toolHandler({ outputId: 'test-id', startLine: 3 });
 
@@ -128,7 +128,7 @@ describe('readRepomixOutputTool', () => {
   it('should read from beginning to endLine when only endLine is provided', async () => {
     vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5' as unknown as Buffer);
+    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     const result = await toolHandler({ outputId: 'test-id', endLine: 2 });
 
@@ -139,7 +139,7 @@ describe('readRepomixOutputTool', () => {
   it('should return an error if startLine exceeds total lines', async () => {
     vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3' as unknown as Buffer);
+    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3');
 
     const result = await toolHandler({ outputId: 'test-id', startLine: 10 });
 
@@ -152,7 +152,7 @@ describe('readRepomixOutputTool', () => {
   it('should return an error if startLine is greater than endLine', async () => {
     vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5' as unknown as Buffer);
+    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     const result = await toolHandler({ outputId: 'test-id', startLine: 4, endLine: 2 });
 
@@ -165,7 +165,7 @@ describe('readRepomixOutputTool', () => {
   it('should handle string parameters by coercing them to numbers', async () => {
     vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5' as unknown as Buffer);
+    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     // Simulate Cursor AI sending strings instead of numbers
     const result = await toolHandler({
@@ -183,7 +183,7 @@ describe('readRepomixOutputTool', () => {
   it('should handle mixed string and number parameters', async () => {
     vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
     vi.mocked(fs.access).mockResolvedValue(undefined);
-    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5' as unknown as Buffer);
+    vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     // Test with startLine as string and endLine as number
     const result = await toolHandler({
