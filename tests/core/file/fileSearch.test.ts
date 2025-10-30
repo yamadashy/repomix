@@ -632,7 +632,7 @@ node_modules
       const includePatterns = globbyCall[0] as string[];
       const options = globbyCall[1];
 
-      const normalizedPatterns = includePatterns.map((p) => p.replace(/\\/g, '/'));
+      const normalizedPatterns = includePatterns.map((p) => p.replace(/\\/g, '/').replace(/\/+/g, '/'));
 
       expect(normalizedPatterns).toEqual(expect.arrayContaining(['.gitignore', 'src/file1.ts', 'src/file2.ts']));
       expect(options).toMatchObject({
