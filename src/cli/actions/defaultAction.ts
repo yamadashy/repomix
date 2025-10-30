@@ -38,7 +38,7 @@ export const runDefaultAction = async (
   await runMigrationAction(cwd);
 
   // Load the config file in main process
-  const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null);
+  const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, cliOptions.project);
   logger.trace('Loaded file config:', fileConfig);
 
   // Parse the CLI options into a config

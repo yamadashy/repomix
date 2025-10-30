@@ -57,7 +57,11 @@ const findConfigFile = async (configPaths: string[], logPrefix: string): Promise
   return null;
 };
 
-export const loadFileConfig = async (rootDir: string, argConfigPath: string | null): Promise<RepomixConfigFile> => {
+export const loadFileConfig = async (
+  rootDir: string,
+  argConfigPath: string | null,
+  projectName?: string,
+): Promise<RepomixConfigFile> => {
   if (argConfigPath) {
     // If a specific config path is provided, use it directly
     const fullPath = path.resolve(rootDir, argConfigPath);
@@ -66,7 +70,7 @@ export const loadFileConfig = async (rootDir: string, argConfigPath: string | nu
     const isLocalFileExists = await checkFileExists(fullPath);
 
     if (isLocalFileExists) {
-      return await loadAndValidateConfig(fullPath);
+      return await loadAndValidateConfig(fullPath, projectName);
     }
     throw new RepomixError(`Config file not found at ${argConfigPath}`);
   }
@@ -76,7 +80,7 @@ export const loadFileConfig = async (rootDir: string, argConfigPath: string | nu
   const localConfigPath = await findConfigFile(localConfigPaths, 'local');
 
   if (localConfigPath) {
-    return await loadAndValidateConfig(localConfigPath);
+    return await loadAndValidateConfig(localConfigPath, projectName);
   }
 
   // Try to find a global config file using the priority order
@@ -84,7 +88,13 @@ export const loadFileConfig = async (rootDir: string, argConfigPath: string | nu
   const globalConfigPath = await findConfigFile(globalConfigPaths, 'global');
 
   if (globalConfigPath) {
-    return await loadAndValidateConfig(globalConfigPath);
+    return await loadAndValidateConfig(globalConfigPath, projectName);
+  }
+
+  if (projectName) {
+    throw new RepomixError(
+      `Cannot use --project option: No config file found. Please create a config file with a "projects" field.`,
+    );
   }
 
   logger.log(
@@ -100,7 +110,7 @@ const getFileExtension = (filePath: string): string => {
   return match ? match[1] : '';
 };
 
-const loadAndValidateConfig = async (filePath: string): Promise<RepomixConfigFile> => {
+const loadAndValidateConfig = async (filePath: string, projectName?: string): Promise<RepomixConfigFile> => {
   try {
     let config: unknown;
     const ext = getFileExtension(filePath);
@@ -135,7 +145,39 @@ const loadAndValidateConfig = async (filePath: string): Promise<RepomixConfigFil
         throw new RepomixError(`Unsupported config file format: ${filePath}`);
     }
 
-    return repomixConfigFileSchema.parse(config);
+    const validatedConfig = repomixConfigFileSchema.parse(config);
+
+    if (projectName) {
+      if (!validatedConfig.projects) {
+        throw new RepomixError(`Project "${projectName}" not found: Config file does not contain a "projects" field.`);
+      }
+
+      const projectConfig = validatedConfig.projects[projectName];
+      if (!projectConfig) {
+        const availableProjects = Object.keys(validatedConfig.projects).join(', ');
+        throw new RepomixError(
+          `Project "${projectName}" not found in config file. Available projects: ${availableProjects}`,
+        );
+      }
+
+      logger.trace(`Using project config: ${projectName}`);
+      return projectConfig;
+    }
+
+    if (validatedConfig.projects) {
+      const defaultProject = validatedConfig.projects.default;
+      if (defaultProject) {
+        logger.trace('Using default project config');
+        return defaultProject;
+      }
+
+      const projectNames = Object.keys(validatedConfig.projects);
+      throw new RepomixError(
+        `Config file uses "projects" format but no project was specified and no "default" project exists. Available projects: ${projectNames.join(', ')}. Use --project <name> to specify a project.`,
+      );
+    }
+
+    return validatedConfig;
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');
     if (error instanceof SyntaxError) {

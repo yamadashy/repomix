@@ -206,6 +206,113 @@ describe('configLoad', () => {
         `Config file not found at ${nonExistentConfigPath}`,
       );
     });
+
+    test('should load specific project config when project name is provided', async () => {
+      const mockConfig = {
+        projects: {
+          default: {
+            output: { filePath: 'default-output.xml' },
+          },
+          ui: {
+            output: { filePath: 'ui-output.xml' },
+            ignore: { customPatterns: ['api/**'] },
+          },
+          api: {
+            output: { filePath: 'api-output.xml' },
+            ignore: { customPatterns: ['ui/**'] },
+          },
+        },
+      };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockConfig));
+      vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as Stats);
+
+      const result = await loadFileConfig(process.cwd(), 'test-config.json', 'ui');
+      expect(result).toEqual({
+        output: { filePath: 'ui-output.xml' },
+        ignore: { customPatterns: ['api/**'] },
+      });
+    });
+
+    test('should load default project when no project name is provided and default exists', async () => {
+      const mockConfig = {
+        projects: {
+          default: {
+            output: { filePath: 'default-output.xml' },
+            ignore: { customPatterns: [] },
+          },
+          ui: {
+            output: { filePath: 'ui-output.xml' },
+          },
+        },
+      };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockConfig));
+      vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as Stats);
+
+      const result = await loadFileConfig(process.cwd(), 'test-config.json');
+      expect(result).toEqual({
+        output: { filePath: 'default-output.xml' },
+        ignore: { customPatterns: [] },
+      });
+    });
+
+    test('should throw error when project name is provided but projects field does not exist', async () => {
+      const mockConfig = {
+        output: { filePath: 'output.xml' },
+      };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockConfig));
+      vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as Stats);
+
+      await expect(loadFileConfig(process.cwd(), 'test-config.json', 'ui')).rejects.toThrow(
+        'Project "ui" not found: Config file does not contain a "projects" field.',
+      );
+    });
+
+    test('should throw error when specified project does not exist', async () => {
+      const mockConfig = {
+        projects: {
+          default: {
+            output: { filePath: 'default-output.xml' },
+          },
+          ui: {
+            output: { filePath: 'ui-output.xml' },
+          },
+        },
+      };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockConfig));
+      vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as Stats);
+
+      await expect(loadFileConfig(process.cwd(), 'test-config.json', 'api')).rejects.toThrow(
+        'Project "api" not found in config file. Available projects: default, ui',
+      );
+    });
+
+    test('should throw error when projects format is used but no default project and no project specified', async () => {
+      const mockConfig = {
+        projects: {
+          ui: {
+            output: { filePath: 'ui-output.xml' },
+          },
+          api: {
+            output: { filePath: 'api-output.xml' },
+          },
+        },
+      };
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockConfig));
+      vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as Stats);
+
+      await expect(loadFileConfig(process.cwd(), 'test-config.json')).rejects.toThrow(
+        'Config file uses "projects" format but no project was specified and no "default" project exists. Available projects: ui, api. Use --project <name> to specify a project.',
+      );
+    });
+
+    test('should throw error when project name is provided but no config file exists', async () => {
+      vi.mocked(getGlobalDirectory).mockReturnValue('/global/repomix');
+      vi.mocked(fs.stat).mockRejectedValue(new Error('File not found'));
+
+      await expect(loadFileConfig(process.cwd(), null, 'ui')).rejects.toThrow(
+        'Cannot use --project option: No config file found. Please create a config file with a "projects" field.',
+      );
+    });
   });
 
   describe('mergeConfigs', () => {

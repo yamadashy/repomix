@@ -13,7 +13,7 @@ export const defaultFilePathMap: Record<RepomixOutputStyle, string> = {
   json: 'repomix-output.json',
 } as const;
 
-// Base config schema
+// Base config schema (used for both top-level config and individual project configs)
 export const repomixConfigBaseSchema = z.object({
   $schema: z.string().optional(),
   input: z
@@ -125,8 +125,32 @@ export const repomixConfigDefaultSchema = z.object({
   }),
 });
 
-// File-specific schema. Add options for file path and style
-export const repomixConfigFileSchema = repomixConfigBaseSchema;
+// File-specific schema with projects support
+export const repomixConfigFileSchema = repomixConfigBaseSchema
+  .and(
+    z.object({
+      projects: z.record(z.string(), repomixConfigBaseSchema).optional(),
+    }),
+  )
+  .superRefine((data, ctx) => {
+    const hasTraditionalConfig =
+      data.input !== undefined ||
+      data.output !== undefined ||
+      data.include !== undefined ||
+      data.ignore !== undefined ||
+      data.security !== undefined ||
+      data.tokenCount !== undefined;
+
+    const hasProjects = data.projects !== undefined && Object.keys(data.projects).length > 0;
+
+    if (hasTraditionalConfig && hasProjects) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Cannot use both traditional config format and "projects" field in the same config file. Please use either the traditional format or the "projects" format, but not both.',
+      });
+    }
+  });
 
 // CLI-specific schema. Add options for standard output mode
 export const repomixConfigCliSchema = repomixConfigBaseSchema.and(
