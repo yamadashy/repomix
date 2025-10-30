@@ -192,6 +192,10 @@ export const searchFiles = async (
 
     logger.trace('Include patterns with explicit files:', includePatterns);
 
+    // When explicit files are provided (stdin mode), skip ignoreFiles to avoid
+    // pathological state where globby tries to use .gitignore as both ignore
+    // rules source and match target. Since we have an exact file list, we don't
+    // need globby to recursively scan and read ignore files anyway.
     const globbyOptions = {
       cwd: rootDir,
       ignore: [...adjustedIgnorePatterns],
@@ -221,7 +225,7 @@ export const searchFiles = async (
       const directories = await globby(includePatterns, {
         cwd: rootDir,
         ignore: [...adjustedIgnorePatterns],
-        ignoreFiles: [...ignoreFilePatterns],
+        ignoreFiles: explicitFiles ? [] : [...ignoreFilePatterns],
         onlyDirectories: true,
         absolute: false,
         dot: true,
