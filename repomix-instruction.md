@@ -14,6 +14,23 @@ The project is organized into the following directories:
 
 ```
 repomix/
+├── PRDs/ # Product Requirements Documents for new features
+│   └── 01-Line-Limit-Feature/ # Example PRD for the line limit feature
+│       ├── PRD.md # Main product requirements document
+│       ├── README.md # PRD overview and navigation
+│       ├── dependencies.md # Technical dependencies and requirements
+│       ├── testing-strategy.md # Testing approach and requirements
+│       ├── rollback-plan.md # Rollback procedures for issues
+│       ├── CHANGELOG.md # PRD version history
+│       ├── sub-sprints/ # Sprint breakdowns
+│       │   ├── 01-research-and-design.md
+│       │   ├── 02-core-implementation.md
+│       │   └── 03-testing-and-refinement.md
+│       └── tasklists/ # Detailed task lists for each sprint
+│           ├── README.md
+│           ├── 01-research-and-design.md
+│           ├── 02-core-implementation.md
+│           └── 03-testing-and-refinement.md
 ├── src/ # Main source code
 │   ├── cli/ # Command-line interface logic (argument parsing, command handling, output)
 │   ├── config/ # Configuration loading, schema, and defaults
@@ -43,6 +60,21 @@ repomix/
     └── server/      # Server-side API (for remote repository processing)
         └── src/       # Server source code (API endpoints, request handling)
 ```
+
+## PRDs Directory
+
+The `PRDs/` directory contains Product Requirements Documents (PRDs) for new features and major enhancements to Repomix. Each PRD follows a standardized structure:
+
+- **PRD.md**: Main product requirements document with feature specifications
+- **README.md**: Overview and navigation for the PRD
+- **dependencies.md**: Technical dependencies and requirements
+- **testing-strategy.md**: Testing approach and requirements
+- **rollback-plan.md**: Rollback procedures for issues
+- **CHANGELOG.md**: PRD version history
+- **sub-sprints/**: Sprint breakdowns for implementation phases
+- **tasklists/**: Detailed task lists for each sprint
+
+The `01-Line-Limit-Feature/` directory serves as an example PRD structure for implementing a line limit feature, demonstrating the expected format and organization for future PRDs.
 
 ----------------------------------------------------------------
 

@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "ast-grep": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "c:\\dev\\ast-grep-mcp",
+        "run",
+        "main.py"
+      ],
+      "env": {},
+      "alwaysAllow": [
+        "find_code"
+      ]
+    },
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "alwaysAllow": [
+        "create_entities",
+        "open_nodes",
+        "search_nodes",
+        "read_graph",
+        "add_observations",
+        "create_relations",
+        "delete_entities",
+        "delete_observations",
+        "delete_relations"
+      ],
+      "disabled": false
+    }
+  }
+}

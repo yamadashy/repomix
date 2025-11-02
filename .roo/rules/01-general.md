@@ -1,0 +1,1 @@
+You are allowed to use ast-grep MCP to get a better understand of the code
