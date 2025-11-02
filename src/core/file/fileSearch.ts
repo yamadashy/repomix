@@ -175,6 +175,9 @@ export const searchFiles = async (
     // Start with configured include patterns
     let includePatterns = config.include.map((pattern) => escapeGlobPattern(pattern));
 
+    // pathological state where globby tries to use them as both ignore rules source
+    let ignoreControlFiles: string[] = [];
+
     // If explicit files are provided, add them to include patterns
     if (explicitFiles) {
       const relativePaths = explicitFiles.map((filePath) => {
@@ -182,24 +185,44 @@ export const searchFiles = async (
         // Escape the path to handle special characters
         return escapeGlobPattern(relativePath);
       });
-      includePatterns = [...includePatterns, ...relativePaths];
+
+      const { ignoreFiles: separatedIgnoreFiles, otherFiles } = relativePaths.reduce(
+        (acc, filePath) => {
+          const basename = path.basename(filePath);
+          if (basename === '.gitignore' || basename === '.repomixignore') {
+            acc.ignoreFiles.push(filePath);
+          } else {
+            acc.otherFiles.push(filePath);
+          }
+          return acc;
+        },
+        { ignoreFiles: [] as string[], otherFiles: [] as string[] },
+      );
+
+      ignoreControlFiles = separatedIgnoreFiles;
+      includePatterns = [...includePatterns, ...otherFiles];
     }
 
-    // If no include patterns at all, default to all files
+    // If no include patterns at all, check if we only have ignore-control files
     if (includePatterns.length === 0) {
+      if (ignoreControlFiles.length > 0) {
+        logger.trace('Only ignore-control files provided, skipping globby scan');
+        return {
+          filePaths: sortPaths(ignoreControlFiles),
+          emptyDirPaths: [],
+        };
+      }
+      // No patterns at all, default to all files
       includePatterns = ['**/*'];
     }
 
-    logger.trace('Include patterns with explicit files:', includePatterns);
+    logger.trace('Include patterns (excluding ignore-control files):', includePatterns);
+    logger.trace('Ignore-control files to add back:', ignoreControlFiles);
 
-    // When explicit files are provided (stdin mode), skip ignoreFiles to avoid
-    // pathological state where globby tries to use .gitignore as both ignore
-    // rules source and match target. Since we have an exact file list, we don't
-    // need globby to recursively scan and read ignore files anyway.
     const globbyOptions = {
       cwd: rootDir,
       ignore: [...adjustedIgnorePatterns],
-      ignoreFiles: explicitFiles ? [] : [...ignoreFilePatterns],
+      ignoreFiles: [...ignoreFilePatterns],
       onlyFiles: true,
       absolute: false,
       dot: true,
@@ -208,7 +231,7 @@ export const searchFiles = async (
 
     logger.debug('Globby options:', { ...globbyOptions, explicitFilesProvided: !!explicitFiles });
 
-    const filePaths = await globby(includePatterns, globbyOptions).catch((error: unknown) => {
+    let filePaths = await globby(includePatterns, globbyOptions).catch((error: unknown) => {
       // Handle EPERM errors specifically
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
       if (code === 'EPERM' || code === 'EACCES') {
@@ -220,12 +243,18 @@ export const searchFiles = async (
       throw error;
     });
 
+    if (ignoreControlFiles.length > 0) {
+      filePaths = [...filePaths, ...ignoreControlFiles];
+      // Remove duplicates in case globby already included them
+      filePaths = Array.from(new Set(filePaths));
+    }
+
     let emptyDirPaths: string[] = [];
     if (config.output.includeEmptyDirectories) {
       const directories = await globby(includePatterns, {
         cwd: rootDir,
         ignore: [...adjustedIgnorePatterns],
-        ignoreFiles: explicitFiles ? [] : [...ignoreFilePatterns],
+        ignoreFiles: [...ignoreFilePatterns],
         onlyDirectories: true,
         absolute: false,
         dot: true,

@@ -612,7 +612,7 @@ node_modules
       expect(result.emptyDirPaths).toEqual([]);
     });
 
-    test('should not use ignoreFiles when explicit files are provided (stdin mode)', async () => {
+    test('should separate .gitignore from other files in stdin mode and still use ignoreFiles', async () => {
       const mockConfig = createMockConfig({
         ignore: {
           useGitignore: true,
@@ -623,21 +623,59 @@ node_modules
 
       const explicitFiles = ['/test/.gitignore', '/test/src/file1.ts', '/test/src/file2.ts'];
 
-      vi.mocked(globby).mockResolvedValue(['.gitignore', 'src/file1.ts', 'src/file2.ts']);
+      vi.mocked(globby).mockResolvedValue(['src/file1.ts', 'src/file2.ts']);
 
-      await searchFiles('/test', mockConfig, explicitFiles);
+      const result = await searchFiles('/test', mockConfig, explicitFiles);
 
-      // Verify that globby was called with ignoreFiles: [] when explicit files are provided
       const globbyCall = vi.mocked(globby).mock.calls[0];
       const includePatterns = globbyCall[0] as string[];
       const options = globbyCall[1];
 
       const normalizedPatterns = includePatterns.map((p) => p.replace(/\\/g, '/').replace(/\/+/g, '/'));
 
-      expect(normalizedPatterns).toEqual(expect.arrayContaining(['.gitignore', 'src/file1.ts', 'src/file2.ts']));
+      expect(normalizedPatterns).toEqual(expect.arrayContaining(['src/file1.ts', 'src/file2.ts']));
+      expect(normalizedPatterns).not.toContain('.gitignore');
       expect(options).toMatchObject({
-        ignoreFiles: [],
+        ignoreFiles: expect.arrayContaining(['**/.gitignore', '**/.repomixignore']),
       });
+      expect(result.filePaths).toEqual(expect.arrayContaining(['.gitignore', 'src/file1.ts', 'src/file2.ts']));
+    });
+
+    test('should apply .gitignore rules to filter files in stdin mode', async () => {
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: true,
+          customPatterns: [],
+        },
+      });
+
+      const explicitFiles = ['/test/src/file1.ts', '/test/src/ignored.ts', '/test/src/file2.ts'];
+
+      vi.mocked(globby).mockResolvedValue(['src/file1.ts', 'src/file2.ts']);
+
+      const result = await searchFiles('/test', mockConfig, explicitFiles);
+
+      expect(result.filePaths).toEqual(expect.arrayContaining(['src/file1.ts', 'src/file2.ts']));
+      expect(result.filePaths).not.toContain('src/ignored.ts');
+    });
+
+    test('should handle only .gitignore file in stdin mode without scanning entire repo', async () => {
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: true,
+          customPatterns: [],
+        },
+      });
+
+      const explicitFiles = ['/test/.gitignore'];
+
+      const result = await searchFiles('/test', mockConfig, explicitFiles);
+
+      expect(vi.mocked(globby)).not.toHaveBeenCalled();
+      expect(result.filePaths).toEqual(['.gitignore']);
+      expect(result.emptyDirPaths).toEqual([]);
     });
   });
 });
