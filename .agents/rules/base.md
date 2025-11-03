@@ -20,8 +20,6 @@ The project is organized into the following directories:
 
 ```
 repomix/
-├── PRDs/ # Product Requirements Documents for new features
-│   └── 01-Line-Limit-Feature/ # Example PRD for line limit feature
 ├── browser/ # Browser extension source code.
 ├── src/ # Main source code
 │   ├── cli/ # Command-line interface logic (argument parsing, command handling, output)
