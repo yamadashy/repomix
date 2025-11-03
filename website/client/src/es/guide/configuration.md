@@ -99,6 +99,7 @@ Los archivos de configuración JavaScript funcionan igual que TypeScript, admiti
 | `output.removeEmptyLines`        | Indica si se deben eliminar las líneas vacías de la salida para reducir el recuento de tokens                              | `false`                |
 | `output.showLineNumbers`         | Indica si se deben agregar números de línea a cada línea. Útil para referenciar partes específicas del código              | `false`                |
 | `output.truncateBase64`          | Indica si se deben truncar las cadenas de datos base64 largas (por ejemplo, imágenes) para reducir el recuento de tokens  | `false`                |
+| `output.lineLimit`               | Número máximo de líneas a incluir por archivo. Utiliza selección inteligente para preservar la estructura del código (30% encabezado, 60% lógica principal, 10% pie de página). Debe ser un entero positivo. | `null`                 |
 | `output.copyToClipboard`         | Indica si se debe copiar la salida al portapapeles del sistema además de guardar el archivo                                | `false`                |
 | `output.topFilesLength`          | Número de archivos principales para mostrar en el resumen. Si se establece en 0, no se mostrará ningún resumen             | `5`                    |
 | `output.includeEmptyDirectories` | Indica si se deben incluir directorios vacíos en la estructura del repositorio                                             | `false`                |

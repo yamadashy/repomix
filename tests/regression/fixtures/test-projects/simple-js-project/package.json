@@ -1,0 +1,16 @@
+{
+  "name": "simple-js-project",
+  "version": "1.0.0",
+  "description": "A simple JavaScript project for regression testing",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  }
+}

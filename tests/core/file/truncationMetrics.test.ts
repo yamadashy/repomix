@@ -213,9 +213,7 @@ describe('TruncationMetrics', () => {
     });
 
     test('should handle zero token reduction percentage', () => {
-      const processedFiles = [
-        createMockProcessedFile('file1.js', 'line1\nline2\nline3'),
-      ];
+      const processedFiles = [createMockProcessedFile('file1.js', 'line1\nline2\nline3')];
       const config = createMockConfig(50);
       const fileTokenCounts = { 'file1.js': 15 };
       const fileOriginalTokenCounts = { 'file1.js': 15 };
@@ -248,9 +246,7 @@ describe('TruncationMetrics', () => {
     });
 
     test('should handle config without line limit', () => {
-      const processedFiles = [
-        createMockProcessedFile('file1.js', 'line1\nline2\nline3'),
-      ];
+      const processedFiles = [createMockProcessedFile('file1.js', 'line1\nline2\nline3')];
       const config = createMockConfig(0); // No line limit
 
       const metrics = calculateTruncationMetrics(processedFiles, config, false);
@@ -534,9 +530,7 @@ describe('TruncationMetrics', () => {
 
     test('should handle very large line counts', () => {
       const largeContent = 'line\n'.repeat(1000000); // 1M lines
-      const processedFiles = [
-        createMockProcessedFile('large.js', largeContent, true, 1000),
-      ];
+      const processedFiles = [createMockProcessedFile('large.js', largeContent, true, 1000)];
       const config = createMockConfig(1000);
 
       const metrics = calculateTruncationMetrics(processedFiles, config, false);

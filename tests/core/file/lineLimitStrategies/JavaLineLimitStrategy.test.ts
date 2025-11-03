@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { Parser } from 'web-tree-sitter';
 import { JavaLineLimitStrategy } from '../../../../src/core/file/lineLimitStrategies/JavaLineLimitStrategy.js';
 import { loadLanguage } from '../../../../src/core/treeSitter/loadLanguage.js';
@@ -207,7 +207,7 @@ describe('JavaLineLimitStrategy', () => {
       // Since FunctionAnalysis doesn't have parameters property, we'll test by line count
       const constructors = functions.filter((f) => f.name === 'User');
       expect(constructors).toHaveLength(3);
-      
+
       const defaultConstructor = constructors.find((f) => f.lineCount <= 4);
       expect(defaultConstructor).toBeDefined();
 

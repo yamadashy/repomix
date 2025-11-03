@@ -114,12 +114,26 @@ export const run = async () => {
       .option('--remove-comments', 'Strip all code comments before packing')
       .option('--remove-empty-lines', 'Remove blank lines from all files')
       .option('--truncate-base64', 'Truncate long base64 data strings to reduce output size')
-      .option('--line <number>', 'Maximum number of lines to include per file', (v: string) => {
-        if (!/^\d+$/.test(v)) {
-          throw new RepomixError(`Invalid line limit: '${v}'. Must be a positive integer.`);
-        }
-        return Number(v);
-      })
+      .option(
+        '-l, --line <number>',
+        'Maximum number of lines per file. Limits each file to specified number of lines using intelligent selection. Alias: --line-limit',
+        (v: string) => {
+          if (!/^\d+$/.test(v)) {
+            throw new RepomixError(`Invalid line limit: '${v}'. Must be a positive integer.`);
+          }
+          return Number(v);
+        },
+      )
+      .option(
+        '--line-limit <number>',
+        'Alias for --line option. Maximum number of lines per file using intelligent selection',
+        (v: string) => {
+          if (!/^\d+$/.test(v)) {
+            throw new RepomixError(`Invalid line limit: '${v}'. Must be a positive integer.`);
+          }
+          return Number(v);
+        },
+      )
       .option('--header-text <text>', 'Custom text to include at the beginning of the output')
       .option('--instruction-file-path <path>', 'Path to file containing custom instructions to include in output')
       .option('--include-empty-directories', 'Include folders with no files in directory structure')

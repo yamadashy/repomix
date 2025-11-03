@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { LineLimitProcessor, applyLineLimit } from '../../../src/core/file/lineLimitProcessor.js';
-import { LineLimitError, LineLimitParseError, LineSection } from '../../../src/core/file/lineLimitTypes.js';
+import { applyLineLimit, LineLimitProcessor } from '../../../src/core/file/lineLimitProcessor.js';
 import type { LineLimitConfig } from '../../../src/core/file/lineLimitTypes.js';
+import { LineLimitError, LineLimitParseError, LineSection } from '../../../src/core/file/lineLimitTypes.js';
 
 // Mock the language loading and strategy registry
 vi.mock('../../../src/core/treeSitter/loadLanguage.js', () => ({
@@ -568,7 +568,9 @@ class UserService {
 
     test('should handle strategy errors gracefully', async () => {
       // Mock strategy to throw an error
-      const { LineLimitStrategyRegistry } = await import('../../../src/core/file/lineLimitStrategies/LineLimitStrategyRegistry.js');
+      const { LineLimitStrategyRegistry } = await import(
+        '../../../src/core/file/lineLimitStrategies/LineLimitStrategyRegistry.js'
+      );
       vi.mocked(LineLimitStrategyRegistry.getStrategy).mockReturnValueOnce({
         identifyHeaderLines: vi.fn(() => {
           throw new Error('Strategy error');
@@ -850,13 +852,13 @@ class UserService {
   describe('Resource Management', () => {
     test('should dispose resources correctly', () => {
       const processor = new LineLimitProcessor();
-      
+
       expect(() => processor.dispose()).not.toThrow();
     });
 
     test('should handle multiple disposals', () => {
       const processor = new LineLimitProcessor();
-      
+
       processor.dispose();
       expect(() => processor.dispose()).not.toThrow();
     });

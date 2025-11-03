@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import {
   LineLimitError,
-  LineLimitTooSmallError,
   LineLimitParseError,
+  LineLimitTooSmallError,
   LineSection,
 } from '../../../src/core/file/lineLimitTypes.js';
 

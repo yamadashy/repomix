@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { Parser } from 'web-tree-sitter';
 import { RubyLineLimitStrategy } from '../../../../src/core/file/lineLimitStrategies/RubyLineLimitStrategy.js';
 import { loadLanguage } from '../../../../src/core/treeSitter/loadLanguage.js';
@@ -464,13 +464,7 @@ describe('RubyLineLimitStrategy', () => {
 
   describe('calculateComplexity', () => {
     test('should calculate base complexity', () => {
-      const lines = [
-        'class SimpleClass',
-        '  def simple_method',
-        '    "simple result"',
-        '  end',
-        'end',
-      ];
+      const lines = ['class SimpleClass', '  def simple_method', '    "simple result"', '  end', 'end'];
 
       const tree = parser.parse(lines.join('\n'));
       if (!tree) throw new Error('Failed to parse code');
@@ -576,7 +570,7 @@ describe('RubyLineLimitStrategy', () => {
         '  ',
         '  def process_with_enum',
         '    data.each_with_object({}) do |item, index|',
-        "      puts \"Processing #{index}: #{item}\"",
+        '      puts "Processing #{index}: #{item}"',
         '    end',
         '  end',
         'end',

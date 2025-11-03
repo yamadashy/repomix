@@ -1,0 +1,15 @@
+{
+  "output": {
+    "filePath": "repomix-output.txt",
+    "headerText": "Legacy configuration without lineLimit",
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "topFilesLength": 5,
+    "showLineNumbers": false
+  },
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": ["*.log", "*.tmp"]
+  }
+}

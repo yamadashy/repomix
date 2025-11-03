@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { Parser } from 'web-tree-sitter';
 import { PhpLineLimitStrategy } from '../../../../src/core/file/lineLimitStrategies/PhpLineLimitStrategy.js';
 import { loadLanguage } from '../../../../src/core/treeSitter/loadLanguage.js';
@@ -440,13 +440,7 @@ describe('PhpLineLimitStrategy', () => {
 
   describe('calculateComplexity', () => {
     test('should calculate base complexity', () => {
-      const lines = [
-        '<?php',
-        '',
-        'function simple_function() {',
-        '    return "simple";',
-        '}',
-      ];
+      const lines = ['<?php', '', 'function simple_function() {', '    return "simple";', '}'];
 
       const tree = parser.parse(lines.join('\n'));
       if (!tree) throw new Error('Failed to parse code');

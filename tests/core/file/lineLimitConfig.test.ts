@@ -1,6 +1,6 @@
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { LineLimitProcessor } from '../../../src/core/file/lineLimitProcessor.js';
-import { LineLimitError, LineLimitTooSmallError, LineLimitParseError } from '../../../src/core/file/lineLimitTypes.js';
+import { LineLimitError, LineLimitParseError, LineLimitTooSmallError } from '../../../src/core/file/lineLimitTypes.js';
 
 describe('Line Limit Configuration Tests', () => {
   let processor: LineLimitProcessor;
@@ -20,7 +20,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -42,7 +42,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -63,7 +63,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -85,7 +85,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -111,7 +111,7 @@ describe('Line Limit Configuration Tests', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).rejects.toThrow(LineLimitTooSmallError);
     });
 
@@ -124,7 +124,7 @@ describe('Line Limit Configuration Tests', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).rejects.toThrow(LineLimitTooSmallError);
     });
 
@@ -134,7 +134,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -155,7 +155,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -188,7 +188,7 @@ describe('Line Limit Configuration Tests', () => {
         '    </div>',
         '  );',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -220,7 +220,7 @@ describe('Line Limit Configuration Tests', () => {
         '    </div>',
         '  );',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -242,7 +242,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -266,7 +266,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       // First call
@@ -299,7 +299,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       // First call
@@ -336,7 +336,7 @@ describe('Line Limit Configuration Tests', () => {
         '    </div>',
         '  );',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -348,7 +348,7 @@ describe('Line Limit Configuration Tests', () => {
 
       expect(result.selectedLines).toHaveLength(5);
       expect(result.selectedLines[0].section).toBe('header'); // Import should be header
-      expect(result.selectedLines.some(line => line.section === 'core')).toBe(true); // Function should be core
+      expect(result.selectedLines.some((line) => line.section === 'core')).toBe(true); // Function should be core
     });
 
     test('should not preserve structure when disabled', async () => {
@@ -364,7 +364,7 @@ describe('Line Limit Configuration Tests', () => {
         '    </div>',
         '  );',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -376,7 +376,7 @@ describe('Line Limit Configuration Tests', () => {
 
       expect(result.selectedLines).toHaveLength(5);
       // When structure preservation is disabled, all lines might be treated as core
-      expect(result.selectedLines.every(line => line.section === 'core')).toBe(true);
+      expect(result.selectedLines.every((line) => line.section === 'core')).toBe(true);
     });
   });
 
@@ -387,7 +387,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -416,7 +416,7 @@ describe('Line Limit Configuration Tests', () => {
         '    </div>',
         '  );',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -440,7 +440,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       // First call with caching enabled
@@ -468,7 +468,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       // Different line limits
@@ -499,7 +499,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       // Test with invalid configuration (should still work with defaults)
@@ -521,7 +521,7 @@ describe('Line Limit Configuration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       // Test with a configuration that might cause issues
@@ -531,7 +531,7 @@ describe('Line Limit Configuration Tests', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).resolves.toBeDefined();
     });
   });

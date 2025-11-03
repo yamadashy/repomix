@@ -37,7 +37,13 @@ export const repomixConfigBaseSchema = z.object({
       topFilesLength: z.number().optional(),
       showLineNumbers: z.boolean().optional(),
       truncateBase64: z.boolean().optional(),
-      lineLimit: z.number().positive().optional().describe('Maximum number of lines to include per file'),
+      lineLimit: z
+        .number()
+        .positive()
+        .optional()
+        .describe(
+          'Maximum number of lines to include per file. Uses intelligent selection to preserve code structure with 30% header, 60% core logic, and 10% footer distribution. Must be a positive integer. When not specified, no line limiting is applied.',
+        ),
       copyToClipboard: z.boolean().optional(),
       includeEmptyDirectories: z.boolean().optional(),
       includeFullDirectoryStructure: z.boolean().optional(),

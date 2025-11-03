@@ -2,20 +2,20 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { collectFiles } from '../../src/core/file/fileCollect.js';
-import { searchFiles } from '../../src/core/file/fileSearch.js';
-import { generateOutput } from '../../src/core/output/outputGenerate.js';
-import { pack } from '../../src/core/packager.js';
-import { copyToClipboardIfEnabled } from '../../src/core/packager/copyToClipboardIfEnabled.js';
-import { writeOutputToDisk } from '../../src/core/packager/writeOutputToDisk.js';
-import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
-import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
 import { runCli } from '../../src/cli/cliRun.js';
 import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
-import type { GitDiffResult } from '../../src/core/git/gitDiffHandle.js';
+import { collectFiles } from '../../src/core/file/fileCollect.js';
+import { searchFiles } from '../../src/core/file/fileSearch.js';
 import type { FileCollectTask } from '../../src/core/file/workers/fileCollectWorker.js';
 import fileCollectWorker from '../../src/core/file/workers/fileCollectWorker.js';
 import fileProcessWorker from '../../src/core/file/workers/fileProcessWorker.js';
+import type { GitDiffResult } from '../../src/core/git/gitDiffHandle.js';
+import { generateOutput } from '../../src/core/output/outputGenerate.js';
+import { copyToClipboardIfEnabled } from '../../src/core/packager/copyToClipboardIfEnabled.js';
+import { writeOutputToDisk } from '../../src/core/packager/writeOutputToDisk.js';
+import { pack } from '../../src/core/packager.js';
+import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
+import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
 import type { WorkerOptions } from '../../src/shared/processConcurrency.js';
 import { isWindows } from '../testing/testUtils.js';
 
@@ -37,18 +37,18 @@ describe.runIf(!isWindows)('Line Limit Priority Order Integration Tests', () => 
   beforeEach(async () => {
     // Create a temporary directory for each test
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-line-limit-priority-test-'));
-    
+
     // Store original environment
     originalEnv = { ...process.env };
-    
+
     // Clear environment variable for clean testing
     delete process.env.REPOMIX_LINE_LIMIT;
-    
+
     // Mock console methods to capture output
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    
+
     // Mock clipboard functions
     vi.mock('../../src/core/packager/copyToClipboardIfEnabled.js');
   });
@@ -56,10 +56,10 @@ describe.runIf(!isWindows)('Line Limit Priority Order Integration Tests', () => 
   afterEach(async () => {
     // Restore original environment
     process.env = originalEnv;
-    
+
     // Restore mocks
     vi.restoreAllMocks();
-    
+
     // Clean up temporary directory after each test
     await fs.rm(tempDir, { recursive: true, force: true });
   });
@@ -168,9 +168,7 @@ describe.runIf(!isWindows)('Line Limit Priority Order Integration Tests', () => 
 
     // CLI with zero should be rejected before reaching our code (Commander.js validation)
     // This test verifies the validation happens at the CLI level
-    await expect(
-      runCli([tempDir], tempDir, { line: 0 })
-    ).rejects.toThrow();
+    await expect(runCli([tempDir], tempDir, { line: 0 })).rejects.toThrow();
   });
 
   test('should handle invalid environment variable and fall back to config file', async () => {
@@ -199,9 +197,7 @@ describe.runIf(!isWindows)('Line Limit Priority Order Integration Tests', () => 
 
     // Should fall back to config file value
     expect(result && result.config.output.lineLimit).toBe(50);
-    expect(loggerSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Invalid REPOMIX_LINE_LIMIT environment variable')
-    );
+    expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid REPOMIX_LINE_LIMIT environment variable'));
 
     loggerSpy.mockRestore();
   });
@@ -250,10 +246,7 @@ describe.runIf(!isWindows)('Line Limit Priority Order Integration Tests', () => 
     // Create test files
     const srcDir = path.join(tempDir, 'src');
     await fs.mkdir(srcDir, { recursive: true });
-    await fs.writeFile(
-      path.join(srcDir, 'test.js'),
-      'console.log("Hello World");\n'.repeat(20)
-    );
+    await fs.writeFile(path.join(srcDir, 'test.js'), 'console.log("Hello World");\n'.repeat(20));
 
     // Run with CLI options that override some but not all settings
     const result = await runCli([tempDir], tempDir, {
@@ -347,7 +340,7 @@ function function5() {
 const variable1 = 'This is a variable';
 const variable2 = 'This is another variable';
 
-export { function1, function2, function3, function4, function5, variable1, variable2 };`
+export { function1, function2, function3, function4, function5, variable1, variable2 };`,
     );
 
     // Run with CLI option
@@ -427,7 +420,7 @@ export { function1, function2, function3, function4, function5, variable1, varia
 
     // Verify that the CLI line limit was used in processing
     expect(packResult.processedFiles).toHaveLength(1);
-    
+
     const fileResult = packResult.processedFiles.find((f) => f.path.includes('large.js'));
     expect(fileResult).toBeDefined();
     expect(fileResult!.truncation).toBeDefined();
@@ -510,9 +503,9 @@ export { function1, function2, function3, function4, function5, variable1, varia
     // Test mergeConfigs directly to verify behavior
     const fileConfig = await loadFileConfig(tempDir, null);
     const cliConfig = {}; // No line limit in CLI config
-    
+
     const mergedConfig = mergeConfigs(tempDir, fileConfig, cliConfig);
-    
+
     // Environment should override config when CLI doesn't specify line limit
     expect(mergedConfig.output.lineLimit).toBe(75);
   });

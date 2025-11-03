@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
-import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import { processContent } from '../../../src/core/file/fileProcessContent.js';
+import type { RawFile } from '../../../src/core/file/fileTypes.js';
 
 // Mock dependencies
 vi.mock('../../../src/core/treeSitter/parseFile.js', () => ({
@@ -16,7 +16,9 @@ vi.mock('../../../src/core/file/fileManipulate.js', () => ({
 }));
 
 vi.mock('../../../src/core/file/truncateBase64.js', () => ({
-  truncateBase64Content: vi.fn((content: string) => content.replace(/base64:[a-zA-Z0-9+/=]+/g, '[BASE64_DATA_TRUNCATED]')),
+  truncateBase64Content: vi.fn((content: string) =>
+    content.replace(/base64:[a-zA-Z0-9+/=]+/g, '[BASE64_DATA_TRUNCATED]'),
+  ),
 }));
 
 vi.mock('../../../src/core/file/lineLimitProcessor.js', () => ({
@@ -130,7 +132,10 @@ describe('processContent', () => {
       const { truncateBase64Content } = await import('../../../src/core/file/truncateBase64.js');
       vi.mocked(truncateBase64Content).mockReturnValue('data:image/png;base64,[BASE64_DATA_TRUNCATED]');
 
-      const rawFile = createMockRawFile('test.js', 'const img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";');
+      const rawFile = createMockRawFile(
+        'test.js',
+        'const img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";',
+      );
       const config = createMockConfig({
         output: {
           ...createMockConfig().output,
@@ -146,8 +151,11 @@ describe('processContent', () => {
 
     test('should not truncate base64 content when disabled', async () => {
       const { truncateBase64Content } = await import('../../../src/core/file/truncateBase64.js');
-      
-      const rawFile = createMockRawFile('test.js', 'const img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";');
+
+      const rawFile = createMockRawFile(
+        'test.js',
+        'const img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";',
+      );
       const config = createMockConfig({
         output: {
           ...createMockConfig().output,
@@ -184,7 +192,10 @@ describe('processContent', () => {
       };
       vi.mocked(getFileManipulator).mockReturnValue(mockManipulator);
 
-      const rawFile = createMockRawFile('test.js', '// This is a comment\nconst x = 1;\n// Another comment\nconst y = 2;');
+      const rawFile = createMockRawFile(
+        'test.js',
+        '// This is a comment\nconst x = 1;\n// Another comment\nconst y = 2;',
+      );
       const config = createMockConfig({
         output: {
           ...createMockConfig().output,
@@ -439,16 +450,11 @@ describe('processContent', () => {
 
       const result = await processContent(rawFile, config);
 
-      expect(applyLineLimit).toHaveBeenCalledWith(
-        expect.any(String),
-        rawFile.path,
-        50,
-        {
-          preserveStructure: true,
-          showTruncationIndicators: false,
-          enableCaching: true,
-        },
-      );
+      expect(applyLineLimit).toHaveBeenCalledWith(expect.any(String), rawFile.path, 50, {
+        preserveStructure: true,
+        showTruncationIndicators: false,
+        enableCaching: true,
+      });
       expect(result.content).toBe('limited content');
       expect(result.truncation).toEqual({
         truncated: true,
@@ -646,9 +652,7 @@ describe('processContent', () => {
       await processContent(rawFile, config);
 
       expect(logger.trace).toHaveBeenCalledWith(`Processing file: ${rawFile.path}`);
-      expect(logger.trace).toHaveBeenCalledWith(
-        expect.stringContaining('Processed file:'),
-      );
+      expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining('Processed file:'));
     });
 
     test('should log line limit traces', async () => {
@@ -675,12 +679,8 @@ describe('processContent', () => {
 
       await processContent(rawFile, config);
 
-      expect(logger.trace).toHaveBeenCalledWith(
-        `About to apply line limit 50 to file: test.js with 100 lines`,
-      );
-      expect(logger.trace).toHaveBeenCalledWith(
-        `Applied line limit 50 to file: test.js`,
-      );
+      expect(logger.trace).toHaveBeenCalledWith(`About to apply line limit 50 to file: test.js with 100 lines`);
+      expect(logger.trace).toHaveBeenCalledWith(`Applied line limit 50 to file: test.js`);
     });
 
     test('should log line limit errors', async () => {
@@ -699,9 +699,7 @@ describe('processContent', () => {
 
       await processContent(rawFile, config);
 
-      expect(logger.error).toHaveBeenCalledWith(
-        'Failed to apply line limit to test.js: Line limit failed',
-      );
+      expect(logger.error).toHaveBeenCalledWith('Failed to apply line limit to test.js: Line limit failed');
     });
   });
 

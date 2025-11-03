@@ -1,5 +1,4 @@
-
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { Parser } from 'web-tree-sitter';
 import { TypeScriptLineLimitStrategy } from '../../../../src/core/file/lineLimitStrategies/TypeScriptLineLimitStrategy.js';
 import { loadLanguage } from '../../../../src/core/treeSitter/loadLanguage.js';
@@ -458,11 +457,7 @@ describe('TypeScriptLineLimitStrategy', () => {
 
   describe('calculateComplexity', () => {
     test('should calculate base complexity', () => {
-      const lines = [
-        'function simpleFunction(): string {',
-        '  return "simple";',
-        '}',
-      ];
+      const lines = ['function simpleFunction(): string {', '  return "simple";', '}'];
 
       const tree = parser.parse(lines.join('\n'));
       if (!tree) throw new Error('Failed to parse code');

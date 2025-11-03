@@ -13,10 +13,10 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
   beforeEach(async () => {
     // Create a temporary directory for each test
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-config-line-limit-test-'));
-    
+
     // Store original environment
     originalEnv = { ...process.env };
-    
+
     // Clear environment variable for clean testing
     delete process.env.REPOMIX_LINE_LIMIT;
   });
@@ -24,7 +24,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
   afterEach(async () => {
     // Restore original environment
     process.env = originalEnv;
-    
+
     // Clean up temporary directory after each test
     await fs.rm(tempDir, { recursive: true, force: true });
   });
@@ -37,7 +37,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         style: 'xml',
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(configContent, null, 2));
 
     const loadedConfig = await loadFileConfig(tempDir, null);
@@ -52,7 +52,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         style: 'markdown',
       },
     }`;
-    
+
     await fs.writeFile(configPath, configContent);
 
     const loadedConfig = await loadFileConfig(tempDir, null);
@@ -69,7 +69,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         },
       };
     `;
-    
+
     await fs.writeFile(configPath, configContent);
 
     const loadedConfig = await loadFileConfig(tempDir, null);
@@ -90,7 +90,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
       
       export default config;
     `;
-    
+
     await fs.writeFile(configPath, configContent);
 
     const loadedConfig = await loadFileConfig(tempDir, null);
@@ -99,7 +99,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
 
   test('should validate line limit in config file', async () => {
     const configPath = path.join(tempDir, 'repomix.config.json');
-    
+
     // Test negative line limit
     const invalidConfig1 = {
       output: {
@@ -107,9 +107,9 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         style: 'xml',
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(invalidConfig1, null, 2));
-    
+
     await expect(loadFileConfig(tempDir, null)).rejects.toThrow();
 
     // Test zero line limit
@@ -119,9 +119,9 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         style: 'xml',
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(invalidConfig2, null, 2));
-    
+
     await expect(loadFileConfig(tempDir, null)).rejects.toThrow();
 
     // Test non-integer line limit (should be caught by schema validation)
@@ -131,9 +131,9 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         style: 'xml',
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(invalidConfig3, null, 2));
-    
+
     await expect(loadFileConfig(tempDir, null)).rejects.toThrow();
   });
 
@@ -145,7 +145,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         fileSummary: false,
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(configContent, null, 2));
 
     const loadedConfig = await loadFileConfig(tempDir, null);
@@ -159,7 +159,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         lineLimit: 30,
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(configContent, null, 2));
 
     const loadedConfig = await loadFileConfig(tempDir, null);
@@ -173,12 +173,12 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         lineLimit: 40,
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(configContent, null, 2));
 
     const fileConfig = await loadFileConfig(tempDir, null);
     const mergedConfig = mergeConfigs(tempDir, fileConfig, {});
-    
+
     expect(mergedConfig.output.lineLimit).toBe(40);
     expect(mergedConfig.output.style).toBe('xml'); // Should use default
     expect(mergedConfig.output.fileSummary).toBe(true); // Should use default
@@ -192,7 +192,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         style: 'xml',
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(configContent, null, 2));
 
     const fileConfig = await loadFileConfig(tempDir, null);
@@ -201,9 +201,9 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         lineLimit: 25,
       },
     };
-    
+
     const mergedConfig = mergeConfigs(tempDir, fileConfig, cliConfig);
-    
+
     expect(mergedConfig.output.lineLimit).toBe(25); // CLI should override config
   });
 
@@ -215,7 +215,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         style: 'xml',
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(configContent, null, 2));
 
     // Set environment variable
@@ -223,9 +223,9 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
 
     const fileConfig = await loadFileConfig(tempDir, null);
     const cliConfig = {}; // No CLI line limit
-    
+
     const mergedConfig = mergeConfigs(tempDir, fileConfig, cliConfig);
-    
+
     expect(mergedConfig.output.lineLimit).toBe(75); // Environment should override config
   });
 
@@ -237,7 +237,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         style: 'xml',
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(configContent, null, 2));
 
     // Set environment variable
@@ -249,9 +249,9 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         lineLimit: 25,
       },
     };
-    
+
     const mergedConfig = mergeConfigs(tempDir, fileConfig, cliConfig);
-    
+
     expect(mergedConfig.output.lineLimit).toBe(25); // CLI should override environment
   });
 
@@ -263,7 +263,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         style: 'xml',
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(configContent, null, 2));
 
     // Set invalid environment variable
@@ -271,17 +271,15 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
 
     const fileConfig = await loadFileConfig(tempDir, null);
     const cliConfig = {};
-    
+
     // Mock logger to capture warning
     const loggerSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    
+
     const mergedConfig = mergeConfigs(tempDir, fileConfig, cliConfig);
-    
+
     expect(mergedConfig.output.lineLimit).toBe(50); // Should use config file value
-    expect(loggerSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Invalid REPOMIX_LINE_LIMIT environment variable')
-    );
-    
+    expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid REPOMIX_LINE_LIMIT environment variable'));
+
     loggerSpy.mockRestore();
   });
 
@@ -323,7 +321,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         encoding: 'cl100k_base',
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(configContent, null, 2));
 
     const loadedConfig = await loadFileConfig(tempDir, null);
@@ -343,7 +341,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         style: 'plain',
       },
     };
-    
+
     await fs.writeFile(customConfigPath, JSON.stringify(configContent, null, 2));
 
     const loadedConfig = await loadFileConfig(tempDir, 'custom.config.json');
@@ -351,9 +349,9 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
   });
 
   test('should handle missing custom config file', async () => {
-    await expect(
-      loadFileConfig(tempDir, 'nonexistent.config.json')
-    ).rejects.toThrow('Config file not found at nonexistent.config.json');
+    await expect(loadFileConfig(tempDir, 'nonexistent.config.json')).rejects.toThrow(
+      'Config file not found at nonexistent.config.json',
+    );
   });
 
   test('should validate config schema with line limit', async () => {
@@ -372,22 +370,32 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
     // Create multiple config files in priority order
     const jsConfig = path.join(tempDir, 'repomix.config.js');
     const jsonConfig = path.join(tempDir, 'repomix.config.json');
-    
-    await fs.writeFile(jsConfig, `
+
+    await fs.writeFile(
+      jsConfig,
+      `
       export default {
         output: {
           lineLimit: 30,
           style: 'xml',
         },
       };
-    `);
-    
-    await fs.writeFile(jsonConfig, JSON.stringify({
-      output: {
-        lineLimit: 60,
-        style: 'markdown',
-      },
-    }, null, 2));
+    `,
+    );
+
+    await fs.writeFile(
+      jsonConfig,
+      JSON.stringify(
+        {
+          output: {
+            lineLimit: 60,
+            style: 'markdown',
+          },
+        },
+        null,
+        2,
+      ),
+    );
 
     // Should load JS config (higher priority)
     const loadedConfig = await loadFileConfig(tempDir, null);
@@ -427,7 +435,7 @@ describe.runIf(!isWindows)('Configuration Line Limit Integration Tests', () => {
         },
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(configContent, null, 2));
 
     const loadedConfig = await loadFileConfig(tempDir, null);

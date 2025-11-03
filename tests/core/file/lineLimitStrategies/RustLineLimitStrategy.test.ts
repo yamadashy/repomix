@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { Parser } from 'web-tree-sitter';
 import { RustLineLimitStrategy } from '../../../../src/core/file/lineLimitStrategies/RustLineLimitStrategy.js';
 import { loadLanguage } from '../../../../src/core/treeSitter/loadLanguage.js';
@@ -67,7 +67,7 @@ describe('RustLineLimitStrategy', () => {
         '}',
         '',
         'pub trait Service {',
-        '    type Error: std::error::Error + Send + Sync + \'static;',
+        "    type Error: std::error::Error + Send + Sync + 'static;",
         '    fn initialize(&mut self) -> Result<(), Self::Error>;',
         '}',
         '',
@@ -326,11 +326,7 @@ describe('RustLineLimitStrategy', () => {
 
   describe('calculateComplexity', () => {
     test('should calculate base complexity', () => {
-      const lines = [
-        'fn simple_function() -> i32 {',
-        '    42',
-        '}',
-      ];
+      const lines = ['fn simple_function() -> i32 {', '    42', '}'];
 
       const tree = parser.parse(lines.join('\n'));
       if (!tree) throw new Error('Failed to parse code');

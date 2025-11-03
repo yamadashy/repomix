@@ -2,21 +2,21 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { collectFiles } from '../../src/core/file/fileCollect.js';
-import { searchFiles } from '../../src/core/file/fileSearch.js';
-import { generateOutput } from '../../src/core/output/outputGenerate.js';
-import { pack } from '../../src/core/packager.js';
-import { copyToClipboardIfEnabled } from '../../src/core/packager/copyToClipboardIfEnabled.js';
-import { writeOutputToDisk } from '../../src/core/packager/writeOutputToDisk.js';
-import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
-import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
-import { handleError, RepomixError } from '../../src/shared/errorHandle.js';
 import { runCli } from '../../src/cli/cliRun.js';
 import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
-import type { GitDiffResult } from '../../src/core/git/gitDiffHandle.js';
+import { collectFiles } from '../../src/core/file/fileCollect.js';
+import { searchFiles } from '../../src/core/file/fileSearch.js';
 import type { FileCollectTask } from '../../src/core/file/workers/fileCollectWorker.js';
 import fileCollectWorker from '../../src/core/file/workers/fileCollectWorker.js';
 import fileProcessWorker from '../../src/core/file/workers/fileProcessWorker.js';
+import type { GitDiffResult } from '../../src/core/git/gitDiffHandle.js';
+import { generateOutput } from '../../src/core/output/outputGenerate.js';
+import { copyToClipboardIfEnabled } from '../../src/core/packager/copyToClipboardIfEnabled.js';
+import { writeOutputToDisk } from '../../src/core/packager/writeOutputToDisk.js';
+import { pack } from '../../src/core/packager.js';
+import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
+import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
+import { handleError, RepomixError } from '../../src/shared/errorHandle.js';
 import type { WorkerOptions } from '../../src/shared/processConcurrency.js';
 import { isWindows } from '../testing/testUtils.js';
 
@@ -38,13 +38,13 @@ describe.runIf(!isWindows)('Line Limit Error Handling Integration Tests', () => 
   beforeEach(async () => {
     // Create a temporary directory for each test
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-line-limit-error-test-'));
-    
+
     // Store original environment
     originalEnv = { ...process.env };
-    
+
     // Clear environment variable for clean testing
     delete process.env.REPOMIX_LINE_LIMIT;
-    
+
     // Mock console methods to capture output
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -52,7 +52,7 @@ describe.runIf(!isWindows)('Line Limit Error Handling Integration Tests', () => 
     vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
       throw new Error(`process.exit called with code: ${code}`);
     });
-    
+
     // Mock clipboard functions
     vi.mock('../../src/core/packager/copyToClipboardIfEnabled.js');
   });
@@ -60,10 +60,10 @@ describe.runIf(!isWindows)('Line Limit Error Handling Integration Tests', () => 
   afterEach(async () => {
     // Restore original environment
     process.env = originalEnv;
-    
+
     // Restore mocks
     vi.restoreAllMocks();
-    
+
     // Clean up temporary directory after each test
     await fs.rm(tempDir, { recursive: true, force: true });
   });
@@ -73,19 +73,15 @@ describe.runIf(!isWindows)('Line Limit Error Handling Integration Tests', () => 
     await fs.writeFile(testFile, 'console.log("Hello World");');
 
     // Test with negative line limit
-    await expect(
-      runCli([tempDir], tempDir, { line: -5 })
-    ).rejects.toThrow(RepomixError);
+    await expect(runCli([tempDir], tempDir, { line: -5 })).rejects.toThrow(RepomixError);
 
     // Test with zero line limit
-    await expect(
-      runCli([tempDir], tempDir, { line: 0 })
-    ).rejects.toThrow(RepomixError);
+    await expect(runCli([tempDir], tempDir, { line: 0 })).rejects.toThrow(RepomixError);
   });
 
   test('should handle invalid config file line limit values', async () => {
     const configPath = path.join(tempDir, 'repomix.config.json');
-    
+
     // Test negative line limit in config
     const invalidConfig = {
       output: {
@@ -93,12 +89,10 @@ describe.runIf(!isWindows)('Line Limit Error Handling Integration Tests', () => 
         style: 'xml',
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(invalidConfig, null, 2));
-    
-    await expect(
-      loadFileConfig(tempDir, null)
-    ).rejects.toThrow();
+
+    await expect(loadFileConfig(tempDir, null)).rejects.toThrow();
 
     // Test zero line limit in config
     const invalidConfig2 = {
@@ -107,12 +101,10 @@ describe.runIf(!isWindows)('Line Limit Error Handling Integration Tests', () => 
         style: 'xml',
       },
     };
-    
+
     await fs.writeFile(configPath, JSON.stringify(invalidConfig2, null, 2));
-    
-    await expect(
-      loadFileConfig(tempDir, null)
-    ).rejects.toThrow();
+
+    await expect(loadFileConfig(tempDir, null)).rejects.toThrow();
   });
 
   test('should handle invalid environment variable line limit', async () => {
@@ -124,17 +116,15 @@ describe.runIf(!isWindows)('Line Limit Error Handling Integration Tests', () => 
 
     const fileConfig = await loadFileConfig(tempDir, null);
     const cliConfig = {};
-    
+
     // Mock logger to capture warning
     const loggerSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    
+
     const mergedConfig = mergeConfigs(tempDir, fileConfig, cliConfig);
-    
+
     expect(mergedConfig.output.lineLimit).toBeUndefined();
-    expect(loggerSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Invalid REPOMIX_LINE_LIMIT environment variable')
-    );
-    
+    expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid REPOMIX_LINE_LIMIT environment variable'));
+
     loggerSpy.mockRestore();
   });
 
@@ -151,7 +141,7 @@ function test() {
   return 'test result';
 }
 
-module.exports = test;`
+module.exports = test;`,
     );
 
     // Mock the line limit processor to throw an error
@@ -244,7 +234,7 @@ module.exports = test;`
 
     // Verify that processing completed despite the error
     expect(result.processedFiles).toHaveLength(1);
-    
+
     // Verify that the file has original content (fallback behavior)
     const fileResult = result.processedFiles.find((f) => f.path.includes('test.js'));
     expect(fileResult).toBeDefined();
@@ -262,7 +252,7 @@ module.exports = test;`
 function broken() {
   console.log('This is broken'
   // Missing closing parenthesis and brace
-  return 'broken';`
+  return 'broken';`,
     );
 
     const config = mergeConfigs(
@@ -350,7 +340,7 @@ function broken() {
 
     // Verify that processing completed
     expect(result.processedFiles).toHaveLength(1);
-    
+
     // Verify that the file was processed (even if line limiting failed)
     const fileResult = result.processedFiles.find((f) => f.path.includes('malformed.js'));
     expect(fileResult).toBeDefined();
@@ -361,14 +351,14 @@ function broken() {
     await fs.mkdir(srcDir, { recursive: true });
 
     // Create a binary file (simulated)
-    const binaryContent = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]); // PNG header
+    const binaryContent = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]); // PNG header
     await fs.writeFile(path.join(srcDir, 'binary.png'), binaryContent);
 
     // Create a text file
     await fs.writeFile(
       path.join(srcDir, 'text.js'),
       `// Text file
-console.log('This is a text file');`
+console.log('This is a text file');`,
     );
 
     const config = mergeConfigs(
@@ -466,7 +456,7 @@ console.log('This is a text file');`
     await fs.writeFile(
       path.join(srcDir, 'small.js'),
       `// Small file
-console.log('Hello World');`
+console.log('Hello World');`,
     );
 
     // Test with very large line limit
@@ -554,7 +544,7 @@ console.log('Hello World');`
 
     // Should handle large line limits without issues
     expect(result.processedFiles).toHaveLength(1);
-    
+
     const fileResult = result.processedFiles.find((f) => f.path.includes('small.js'));
     expect(fileResult).toBeDefined();
     expect(fileResult!.truncation).toBeDefined();
@@ -570,13 +560,13 @@ console.log('Hello World');`
     await fs.writeFile(
       path.join(srcDir, 'test.js'),
       `// Test file
-console.log('Hello World');`
+console.log('Hello World');`,
     );
 
     // Mock file processing to simulate permission error
     const originalProcessWorker = fileProcessWorker;
     vi.doMock('../../src/core/file/workers/fileProcessWorker.js', () => ({
-      default: vi.fn().mockRejectedValue(new Error('Permission denied'))
+      default: vi.fn().mockRejectedValue(new Error('Permission denied')),
     }));
 
     const config = mergeConfigs(
@@ -623,7 +613,14 @@ console.log('Hello World');`
         },
         writeOutputToDisk,
         copyToClipboardIfEnabled,
-        calculateMetrics: async (processedFiles, _output, _progressCallback, _config, _gitDiffResult, _gitLogResult) => {
+        calculateMetrics: async (
+          processedFiles,
+          _output,
+          _progressCallback,
+          _config,
+          _gitDiffResult,
+          _gitLogResult,
+        ) => {
           return {
             totalFiles: processedFiles.length,
             totalCharacters: processedFiles.reduce((acc, file) => acc + file.content.length, 0),
@@ -661,7 +658,7 @@ console.log('Hello World');`
             skippedFiles: [],
           };
         },
-      })
+      }),
     ).rejects.toThrow();
   });
 
@@ -676,7 +673,7 @@ console.log('Hello World');`
     await fs.writeFile(
       path.join(srcDir, 'normal.js'),
       `// Normal file
-console.log('Hello World');`
+console.log('Hello World');`,
     );
 
     const config = mergeConfigs(
@@ -763,7 +760,7 @@ console.log('Hello World');`
 
     // Should handle empty files without issues
     expect(result.processedFiles.length).toBeGreaterThanOrEqual(1);
-    
+
     const emptyFileResult = result.processedFiles.find((f) => f.path.includes('empty.js'));
     if (emptyFileResult) {
       expect(emptyFileResult.truncation).toBeDefined();
@@ -785,7 +782,7 @@ const unicode = 'Unicode test: αβγδεζηθ';
 
 console.log(specialChars);
 console.log(emoji);
-console.log(unicode);`
+console.log(unicode);`,
     );
 
     const config = mergeConfigs(
@@ -872,7 +869,7 @@ console.log(unicode);`
 
     // Should handle special characters without issues
     expect(result.processedFiles).toHaveLength(1);
-    
+
     const fileResult = result.processedFiles.find((f) => f.path.includes('special.js'));
     expect(fileResult).toBeDefined();
     expect(fileResult!.truncation).toBeDefined();

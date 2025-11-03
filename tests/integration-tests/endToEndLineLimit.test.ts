@@ -2,19 +2,19 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
 import { collectFiles } from '../../src/core/file/fileCollect.js';
 import { searchFiles } from '../../src/core/file/fileSearch.js';
-import { generateOutput } from '../../src/core/output/outputGenerate.js';
-import { pack } from '../../src/core/packager.js';
-import { copyToClipboardIfEnabled } from '../../src/core/packager/copyToClipboardIfEnabled.js';
-import { writeOutputToDisk } from '../../src/core/packager/writeOutputToDisk.js';
-import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
-import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
-import type { GitDiffResult } from '../../src/core/git/gitDiffHandle.js';
 import type { FileCollectTask } from '../../src/core/file/workers/fileCollectWorker.js';
 import fileCollectWorker from '../../src/core/file/workers/fileCollectWorker.js';
 import fileProcessWorker from '../../src/core/file/workers/fileProcessWorker.js';
-import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
+import type { GitDiffResult } from '../../src/core/git/gitDiffHandle.js';
+import { generateOutput } from '../../src/core/output/outputGenerate.js';
+import { copyToClipboardIfEnabled } from '../../src/core/packager/copyToClipboardIfEnabled.js';
+import { writeOutputToDisk } from '../../src/core/packager/writeOutputToDisk.js';
+import { pack } from '../../src/core/packager.js';
+import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
+import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
 import type { WorkerOptions } from '../../src/shared/processConcurrency.js';
 import { isWindows } from '../testing/testUtils.js';
 
@@ -36,13 +36,13 @@ describe.runIf(!isWindows)('End-to-End Line Limit Workflow Tests', () => {
   beforeEach(async () => {
     // Create a temporary directory for each test
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-e2e-line-limit-test-'));
-    
+
     // Store original environment
     originalEnv = { ...process.env };
-    
+
     // Clear environment variable for clean testing
     delete process.env.REPOMIX_LINE_LIMIT;
-    
+
     // Mock clipboard functions
     vi.mock('../../src/core/packager/copyToClipboardIfEnabled.js');
   });
@@ -50,10 +50,10 @@ describe.runIf(!isWindows)('End-to-End Line Limit Workflow Tests', () => {
   afterEach(async () => {
     // Restore original environment
     process.env = originalEnv;
-    
+
     // Restore mocks
     vi.restoreAllMocks();
-    
+
     // Clean up temporary directory after each test
     await fs.rm(tempDir, { recursive: true, force: true });
   });
@@ -95,13 +95,13 @@ function function5() {
 const variable1 = 'This is a variable';
 const variable2 = 'This is another variable';
 
-export { function1, function2, function3, function4, function5, variable1, variable2 };`
+export { function1, function2, function3, function4, function5, variable1, variable2 };`,
     );
 
     await fs.writeFile(
       path.join(srcDir, 'small.js'),
       `// Small JavaScript file
-export const hello = () => console.log('Hello World');`
+export const hello = () => console.log('Hello World');`,
     );
 
     await fs.writeFile(
@@ -129,7 +129,7 @@ class UserService {
   }
 }
 
-export { UserService, User };`
+export { UserService, User };`,
     );
 
     // Configure with line limit
@@ -218,7 +218,7 @@ export { UserService, User };`
 
     // Verify results
     expect(result.processedFiles).toHaveLength(3);
-    
+
     // Check that all files have truncation info
     result.processedFiles.forEach((file) => {
       expect(file.truncation).toBeDefined();
@@ -271,7 +271,7 @@ if __name__ == "__main__":
     processor = DataProcessor()
     data = ["apple", "banana", "cherry", "date"]
     results = processor.process_data(data)
-    processor.save_results(results, "output.txt")`
+    processor.save_results(results, "output.txt")`,
     );
 
     const config = mergeConfigs(
@@ -411,7 +411,7 @@ func main() {
 	if err := server.Start(); err != nil {
 		log.Fatal(err)
 	}
-}`
+}`,
     );
 
     const config = mergeConfigs(
@@ -561,7 +561,7 @@ public class DataAnalyzer {
             System.err.println("Error: " + e.getMessage());
         }
     }
-}`
+}`,
     );
 
     const config = mergeConfigs(
@@ -662,7 +662,7 @@ public class DataAnalyzer {
     const srcDir = path.join(tempDir, 'src');
     const libDir = path.join(tempDir, 'lib');
     const testsDir = path.join(tempDir, 'tests');
-    
+
     await fs.mkdir(srcDir, { recursive: true });
     await fs.mkdir(libDir, { recursive: true });
     await fs.mkdir(testsDir, { recursive: true });
@@ -715,7 +715,7 @@ app.listen(PORT, () => {
   console.log(\`Server running on port \${PORT}\`);
 });
 
-module.exports = app;`
+module.exports = app;`,
     );
 
     await fs.writeFile(
@@ -808,7 +808,7 @@ class Database {
 
 const db = new Database(path.join(__dirname, '../data/app.db'));
 
-module.exports = db;`
+module.exports = db;`,
     );
 
     await fs.writeFile(
@@ -855,7 +855,7 @@ describe('API Endpoints', () => {
       expect(response.body.content).toBe(postData.content);
     });
   });
-});`
+});`,
     );
 
     const config = mergeConfigs(
@@ -942,7 +942,7 @@ describe('API Endpoints', () => {
 
     // Verify all files were processed
     expect(result.processedFiles.length).toBeGreaterThan(0);
-    
+
     // Check that all files have truncation info
     result.processedFiles.forEach((file) => {
       expect(file.truncation).toBeDefined();
@@ -950,7 +950,12 @@ describe('API Endpoints', () => {
     });
 
     // Generate output
-    const output = await generateOutput([tempDir], config, result.processedFiles, result.processedFiles.map(f => f.path));
+    const output = await generateOutput(
+      [tempDir],
+      config,
+      result.processedFiles,
+      result.processedFiles.map((f) => f.path),
+    );
 
     expect(output).toContain('<?xml version="1.0" encoding="UTF-8"?>');
     expect(output).toContain('<repomix>');
@@ -1029,7 +1034,7 @@ class StringUtils {
   }
 }
 
-module.exports = StringUtils;`
+module.exports = StringUtils;`,
     );
 
     const config = mergeConfigs(

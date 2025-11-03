@@ -1,6 +1,5 @@
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
-import { LineLimitProcessor } from '../../../src/core/file/lineLimitProcessor.js';
-import { applyLineLimit } from '../../../src/core/file/lineLimitProcessor.js';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { applyLineLimit, LineLimitProcessor } from '../../../src/core/file/lineLimitProcessor.js';
 
 describe('Line Limit Integration Tests', () => {
   let processor: LineLimitProcessor;
@@ -20,7 +19,7 @@ describe('Line Limit Integration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -45,7 +44,7 @@ describe('Line Limit Integration Tests', () => {
         'const Component: React.FC<Props> = ({ message }) => {',
         '  return <div>{message}</div>;',
         '};',
-        'export default Component;'
+        'export default Component;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.tsx', {
@@ -71,7 +70,7 @@ describe('Line Limit Integration Tests', () => {
         '    return 0',
         '',
         'if __name__ == "__main__":',
-        '    sys.exit(main())'
+        '    sys.exit(main())',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.py', {
@@ -94,7 +93,7 @@ describe('Line Limit Integration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await applyLineLimit(content, 'test.jsx', 3, {
@@ -124,7 +123,7 @@ describe('Line Limit Integration Tests', () => {
         '    </div>',
         '  );',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await applyLineLimit(content, 'test.jsx', 5, {
@@ -144,7 +143,7 @@ describe('Line Limit Integration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await applyLineLimit(content, 'test.jsx', 3, {
@@ -166,7 +165,7 @@ describe('Line Limit Integration Tests', () => {
         'function Component1() {',
         '  return <div>Component 1</div>;',
         '}',
-        'export default Component1;'
+        'export default Component1;',
       ].join('\n');
 
       const file2Content = [
@@ -181,7 +180,7 @@ describe('Line Limit Integration Tests', () => {
         '    </div>',
         '  );',
         '}',
-        'export default Component2;'
+        'export default Component2;',
       ].join('\n');
 
       // Process both files with different line limits
@@ -213,7 +212,7 @@ describe('Line Limit Integration Tests', () => {
         'function JsComponent() {',
         '  return <div>JS Component</div>;',
         '}',
-        'export default JsComponent;'
+        'export default JsComponent;',
       ].join('\n');
 
       const pyContent = [
@@ -223,7 +222,7 @@ describe('Line Limit Integration Tests', () => {
         '    return True',
         '',
         'if __name__ == "__main__":',
-        '    python_function()'
+        '    python_function()',
       ].join('\n');
 
       const [jsResult, pyResult] = await Promise.all([
@@ -276,7 +275,7 @@ describe('Line Limit Integration Tests', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).rejects.toBeDefined();
     });
   });
@@ -309,7 +308,7 @@ describe('Line Limit Integration Tests', () => {
         '  );',
         '}',
         '',
-        'export default LargeComponent;'
+        'export default LargeComponent;',
       ];
 
       const content = lines.join('\n');
@@ -326,7 +325,7 @@ describe('Line Limit Integration Tests', () => {
       expect(result.selectedLines).toBeDefined();
       expect(result.originalLineCount).toBeGreaterThan(30);
       expect(result.limitedLineCount).toBe(20);
-      
+
       // Should complete within reasonable time
       expect(endTime - startTime).toBeLessThan(1000);
     });
@@ -337,7 +336,7 @@ describe('Line Limit Integration Tests', () => {
         'function Component() {',
         '  return <div>Test</div>;',
         '}',
-        'export default Component;'
+        'export default Component;',
       ].join('\n');
 
       // Process multiple files concurrently
@@ -347,7 +346,7 @@ describe('Line Limit Integration Tests', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       );
 
       const startTime = Date.now();
@@ -355,7 +354,7 @@ describe('Line Limit Integration Tests', () => {
       const endTime = Date.now();
 
       expect(results).toHaveLength(5);
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.selectedLines).toHaveLength(3);
         expect(result.originalLineCount).toBe(5);
         expect(result.limitedLineCount).toBe(3);
@@ -373,7 +372,7 @@ describe('Line Limit Integration Tests', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       // Test with structure preservation disabled

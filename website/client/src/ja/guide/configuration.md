@@ -99,6 +99,7 @@ JavaScript設定ファイルはTypeScriptと同様に機能し、`defineConfig`�
 | `output.removeEmptyLines`        | 出力から空行を削除してトークン数を削減するかどうか                                                                          | `false`                |
 | `output.showLineNumbers`         | 各行に行番号を追加するかどうか。コードの特定の部分を参照するのに役立ちます                                                 | `false`                |
 | `output.truncateBase64`          | 長いbase64データ文字列（例：画像）を切り詰めてトークン数を削減するかどうか                                                | `false`                |
+| `output.lineLimit`               | ファイルごとに含める最大行数。コード構造を保持するためのインテリジェント選択を使用します（30%ヘッダー、60%主要ロジック、10%フッター）。正の整数である必要があります。 | `null`                 |
 | `output.copyToClipboard`         | ファイルの保存に加えて、出力をシステムクリップボードにコピーするかどうか                                                   | `false`                |
 | `output.topFilesLength`          | 要約に表示するトップファイルの数。0に設定すると、要約は表示されません                                                       | `5`                    |
 | `output.includeEmptyDirectories` | リポジトリ構造に空のディレクトリを含めるかどうか                                                                           | `false`                |

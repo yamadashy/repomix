@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { Parser } from 'web-tree-sitter';
 import { GoLineLimitStrategy } from '../../../../src/core/file/lineLimitStrategies/GoLineLimitStrategy.js';
 import { loadLanguage } from '../../../../src/core/treeSitter/loadLanguage.js';
@@ -152,12 +152,12 @@ describe('GoLineLimitStrategy', () => {
         'func complexFunction(param string) string {',
         '	if param != "" {',
         '		for i, char := range param {',
-        '			if char == \'a\' {',
+        "			if char == 'a' {",
         '				defer func() {',
         '					fmt.Println("deferred")',
         '				}()',
         '				return processA(char)',
-        '			} else if char == \'b\' {',
+        "			} else if char == 'b' {",
         '				go func() {',
         '					processB(char)',
         '				}()',
@@ -489,13 +489,7 @@ describe('GoLineLimitStrategy', () => {
 
   describe('calculateComplexity', () => {
     test('should calculate base complexity', () => {
-      const lines = [
-        'package main',
-        '',
-        'func simpleFunction() string {',
-        '	return "simple"',
-        '}',
-      ];
+      const lines = ['package main', '', 'func simpleFunction() string {', '	return "simple"', '}'];
 
       const tree = parser.parse(lines.join('\n'));
       if (!tree) throw new Error('Failed to parse code');

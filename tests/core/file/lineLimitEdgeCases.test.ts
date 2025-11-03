@@ -1,8 +1,8 @@
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { LineLimitProcessor } from '../../../src/core/file/lineLimitProcessor.js';
 import { LineLimitStrategyRegistry } from '../../../src/core/file/lineLimitStrategies/LineLimitStrategyRegistry.js';
-import { LineLimitError, LineLimitTooSmallError, LineLimitParseError } from '../../../src/core/file/lineLimitTypes.js';
 import type { LanguageStrategy } from '../../../src/core/file/lineLimitTypes.js';
+import { LineLimitError, LineLimitParseError, LineLimitTooSmallError } from '../../../src/core/file/lineLimitTypes.js';
 
 describe('Line Limit Edge Cases and Error Handling', () => {
   let processor: LineLimitProcessor;
@@ -23,7 +23,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).rejects.toThrow(LineLimitTooSmallError);
     });
 
@@ -34,7 +34,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).rejects.toThrow(LineLimitTooSmallError);
     });
 
@@ -44,7 +44,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -53,7 +53,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         showTruncationIndicators: true,
         enableCaching: true,
       });
-      
+
       expect(result.selectedLines).toHaveLength(1);
       expect(result.selectedLines[0].lineNumber).toBe(0); // Should select import line
     });
@@ -67,7 +67,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         showTruncationIndicators: true,
         enableCaching: true,
       });
-      
+
       expect(result.selectedLines).toHaveLength(100);
       expect(result.originalLineCount).toBe(100);
       expect(result.limitedLineCount).toBe(100);
@@ -82,7 +82,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         showTruncationIndicators: true,
         enableCaching: true,
       });
-      
+
       expect(result.selectedLines).toHaveLength(0);
       expect(result.originalLineCount).toBe(0);
       expect(result.limitedLineCount).toBe(0);
@@ -96,7 +96,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         showTruncationIndicators: true,
         enableCaching: true,
       });
-      
+
       expect(result.selectedLines).toHaveLength(5);
       expect(result.originalLineCount).toBe(5);
       expect(result.limitedLineCount).toBe(5);
@@ -109,7 +109,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         '/**',
         ' * JSDoc comment',
         ' */',
-        '# Python style comment'
+        '# Python style comment',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.js', {
@@ -118,7 +118,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         showTruncationIndicators: true,
         enableCaching: true,
       });
-      
+
       expect(result.selectedLines).toHaveLength(6);
       expect(result.originalLineCount).toBe(6);
       expect(result.limitedLineCount).toBe(6);
@@ -133,7 +133,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         '  return <div>Hello',
         '    // Missing closing div and parenthesis',
         '  ',
-        'export default App;'
+        'export default App;',
       ];
 
       // Should not throw an error even with syntax issues
@@ -143,7 +143,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).resolves.toBeDefined();
     });
 
@@ -160,7 +160,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         'const obj = {',
         '  prop1: "value",',
         '  prop2: [1, 2, 3',
-        '};'
+        '};',
       ];
 
       await expect(
@@ -169,7 +169,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).resolves.toBeDefined();
     });
 
@@ -189,7 +189,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         '    public static void main(String[] args) {',
         '        System.out.println("This is Java");',
         '    }',
-        '}'
+        '}',
       ];
 
       // Should handle mixed content without crashing
@@ -199,7 +199,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).resolves.toBeDefined();
     });
   });
@@ -215,7 +215,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         '  return <div>Hello</div>;',
         '\x80\x81\x82\x83', // More binary data
         '}',
-        'export default App;'
+        'export default App;',
       ];
 
       await expect(
@@ -224,7 +224,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).resolves.toBeDefined();
     });
 
@@ -237,7 +237,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).resolves.toBeDefined();
     });
   });
@@ -249,7 +249,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ];
 
       await expect(
@@ -258,16 +258,12 @@ describe('Line Limit Edge Cases and Error Handling', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).rejects.toThrow(LineLimitError);
     });
 
     test('should handle files without extensions', async () => {
-      const content = [
-        '#!/usr/bin/env node',
-        'console.log("Hello World");',
-        'process.exit(0);'
-      ].join('\n');
+      const content = ['#!/usr/bin/env node', 'console.log("Hello World");', 'process.exit(0);'].join('\n');
 
       await expect(
         processor.applyLineLimit(content, 'script', {
@@ -275,7 +271,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).rejects.toThrow(LineLimitError);
     });
   });
@@ -287,18 +283,19 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ];
 
       // Process many files rapidly
-      for (let i = 0; i < 5; i++) { // Reduced for performance
+      for (let i = 0; i < 5; i++) {
+        // Reduced for performance
         await expect(
           processor.applyLineLimit(lines.join('\n'), `test${i}.jsx`, {
             lineLimit: 3,
             preserveStructure: true,
             showTruncationIndicators: true,
             enableCaching: true,
-          })
+          }),
         ).resolves.toBeDefined();
       }
     });
@@ -309,21 +306,26 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       // Process multiple files concurrently
-      const promises = Array.from({ length: 3 }, (_, i) => // Reduced for performance
-        processor.applyLineLimit(content, `test${i}.jsx`, {
-          lineLimit: 3,
-          preserveStructure: true,
-          showTruncationIndicators: true,
-          enableCaching: true,
-        })
+      const promises = Array.from(
+        { length: 3 },
+        (
+          _,
+          i, // Reduced for performance
+        ) =>
+          processor.applyLineLimit(content, `test${i}.jsx`, {
+            lineLimit: 3,
+            preserveStructure: true,
+            showTruncationIndicators: true,
+            enableCaching: true,
+          }),
       );
 
       const results = await Promise.all(promises);
-      
+
       results.forEach((result) => {
         expect(result.selectedLines).toHaveLength(3);
         expect(result.originalLineCount).toBe(5);
@@ -339,12 +341,14 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ];
 
       // Mock a strategy that throws during parsing
       const mockStrategy: LanguageStrategy = {
-        identifyHeaderLines: () => { throw new Error('Parse error'); },
+        identifyHeaderLines: () => {
+          throw new Error('Parse error');
+        },
         analyzeFunctions: () => [],
         identifyFooterLines: () => [],
         calculateComplexity: () => 0.5,
@@ -358,7 +362,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
           preserveStructure: true,
           showTruncationIndicators: true,
           enableCaching: true,
-        })
+        }),
       ).resolves.toBeDefined();
     });
   });
@@ -370,7 +374,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -379,7 +383,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         showTruncationIndicators: true,
         enableCaching: true,
       });
-      
+
       expect(result.selectedLines).toHaveLength(5);
       expect(result.originalLineCount).toBe(5);
       expect(result.limitedLineCount).toBe(5);
@@ -391,7 +395,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -400,7 +404,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         showTruncationIndicators: true,
         enableCaching: true,
       });
-      
+
       expect(result.selectedLines).toHaveLength(4);
       expect(result.originalLineCount).toBe(5);
       expect(result.limitedLineCount).toBe(4);
@@ -412,7 +416,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         'function App() {',
         '  return <div>Hello</div>;',
         '}',
-        'export default App;'
+        'export default App;',
       ].join('\n');
 
       const result = await processor.applyLineLimit(content, 'test.jsx', {
@@ -421,7 +425,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         showTruncationIndicators: true,
         enableCaching: true,
       });
-      
+
       expect(result.selectedLines).toHaveLength(5);
       expect(result.originalLineCount).toBe(5);
       expect(result.limitedLineCount).toBe(5);
@@ -436,21 +440,14 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         showTruncationIndicators: true,
         enableCaching: true,
       });
-      
+
       expect(result.selectedLines).toHaveLength(5);
       expect(result.originalLineCount).toBe(10);
       expect(result.limitedLineCount).toBe(5);
     });
 
     test('should handle lines with only special characters', async () => {
-      const lines = [
-        '!@#$%^&*()',
-        '[]{}|\\:";\'<>?,./',
-        '~`',
-        '±§¶',
-        '•°‰‡†‹›""–—',
-        '…‰‡†‹›""–—…‰‡†‹›""–—'
-      ];
+      const lines = ['!@#$%^&*()', '[]{}|\\:";\'<>?,./', '~`', '±§¶', '•°‰‡†‹›""–—', '…‰‡†‹›""–—…‰‡†‹›""–—'];
 
       const result = await processor.applyLineLimit(lines.join('\n'), 'test.txt', {
         lineLimit: 3,
@@ -458,7 +455,7 @@ describe('Line Limit Edge Cases and Error Handling', () => {
         showTruncationIndicators: true,
         enableCaching: true,
       });
-      
+
       expect(result.selectedLines).toHaveLength(3);
       expect(result.originalLineCount).toBe(6);
       expect(result.limitedLineCount).toBe(3);

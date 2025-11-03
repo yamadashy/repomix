@@ -1,4 +1,3 @@
-
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { LineLimitStrategyRegistry } from '../../../../src/core/file/lineLimitStrategies/LineLimitStrategyRegistry.js';
 import type { LanguageStrategy } from '../../../../src/core/file/lineLimitTypes.js';
@@ -148,10 +147,10 @@ describe('LineLimitStrategyRegistry', () => {
     test('should not reinitialize existing strategies', () => {
       LineLimitStrategyRegistry.initialize();
       const firstCallStrategies = LineLimitStrategyRegistry.getAllStrategies();
-      
+
       LineLimitStrategyRegistry.initialize();
       const secondCallStrategies = LineLimitStrategyRegistry.getAllStrategies();
-      
+
       expect(firstCallStrategies).toEqual(secondCallStrategies);
     });
 
@@ -159,11 +158,11 @@ describe('LineLimitStrategyRegistry', () => {
       // Registry should be empty initially
       const emptyStrategies = LineLimitStrategyRegistry.getAllStrategies();
       expect(Object.keys(emptyStrategies)).toHaveLength(0);
-      
+
       // Accessing a strategy should trigger initialization
       const strategy = LineLimitStrategyRegistry.getStrategy('typescript');
       expect(strategy).toBeDefined();
-      
+
       // Registry should now be populated
       const strategies = LineLimitStrategyRegistry.getAllStrategies();
       expect(Object.keys(strategies).length).toBeGreaterThan(0);
@@ -204,7 +203,7 @@ describe('LineLimitStrategyRegistry', () => {
     test('should return same strategy instance for multiple calls', () => {
       const strategy1 = LineLimitStrategyRegistry.getStrategy('typescript');
       const strategy2 = LineLimitStrategyRegistry.getStrategy('typescript');
-      
+
       expect(strategy1).toBe(strategy2);
     });
   });
@@ -245,7 +244,7 @@ describe('LineLimitStrategyRegistry', () => {
       // Registry should be empty initially
       LineLimitStrategyRegistry.clearStrategies();
       expect(LineLimitStrategyRegistry.hasStrategy('typescript')).toBe(false);
-      
+
       // After initialization, should return true
       LineLimitStrategyRegistry.initialize();
       expect(LineLimitStrategyRegistry.hasStrategy('typescript')).toBe(true);
@@ -261,17 +260,17 @@ describe('LineLimitStrategyRegistry', () => {
 
     test('should return all registered strategies', () => {
       LineLimitStrategyRegistry.initialize();
-      
+
       const strategies = LineLimitStrategyRegistry.getAllStrategies();
       const languageKeys = Object.keys(strategies);
-      
+
       expect(languageKeys.length).toBeGreaterThan(0);
       expect(languageKeys).toContain('typescript');
       expect(languageKeys).toContain('python');
       expect(languageKeys).toContain('java');
-      
+
       // Verify each strategy has required methods
-      Object.values(strategies).forEach(strategy => {
+      Object.values(strategies).forEach((strategy) => {
         expect(strategy).toHaveProperty('identifyHeaderLines');
         expect(strategy).toHaveProperty('analyzeFunctions');
         expect(strategy).toHaveProperty('identifyFooterLines');
@@ -281,17 +280,17 @@ describe('LineLimitStrategyRegistry', () => {
 
     test('should return a copy of strategies object', () => {
       LineLimitStrategyRegistry.initialize();
-      
+
       const strategies1 = LineLimitStrategyRegistry.getAllStrategies();
       const strategies2 = LineLimitStrategyRegistry.getAllStrategies();
-      
+
       expect(strategies1).toEqual(strategies2);
       expect(strategies1).not.toBe(strategies2); // Should be different objects
     });
 
     test('should auto-initialize when getting strategies', () => {
       LineLimitStrategyRegistry.clearStrategies();
-      
+
       const strategies = LineLimitStrategyRegistry.getAllStrategies();
       expect(Object.keys(strategies).length).toBeGreaterThan(0);
     });
@@ -306,9 +305,9 @@ describe('LineLimitStrategyRegistry', () => {
 
     test('should return all supported language keys', () => {
       LineLimitStrategyRegistry.initialize();
-      
+
       const languages = LineLimitStrategyRegistry.getSupportedLanguages();
-      
+
       expect(languages).toContain('typescript');
       expect(languages).toContain('python');
       expect(languages).toContain('java');
@@ -325,18 +324,18 @@ describe('LineLimitStrategyRegistry', () => {
 
     test('should return array of strings', () => {
       LineLimitStrategyRegistry.initialize();
-      
+
       const languages = LineLimitStrategyRegistry.getSupportedLanguages();
-      
+
       expect(Array.isArray(languages)).toBe(true);
-      languages.forEach(language => {
+      languages.forEach((language) => {
         expect(typeof language).toBe('string');
       });
     });
 
     test('should auto-initialize when getting languages', () => {
       LineLimitStrategyRegistry.clearStrategies();
-      
+
       const languages = LineLimitStrategyRegistry.getSupportedLanguages();
       expect(languages.length).toBeGreaterThan(0);
     });
@@ -360,7 +359,7 @@ describe('LineLimitStrategyRegistry', () => {
 
     test('should override existing strategy', () => {
       LineLimitStrategyRegistry.initialize();
-      
+
       const originalStrategy = LineLimitStrategyRegistry.getStrategy('typescript');
       expect(originalStrategy).toBeDefined();
 
@@ -452,11 +451,11 @@ describe('LineLimitStrategyRegistry', () => {
   describe('clearStrategies', () => {
     test('should clear all strategies', () => {
       LineLimitStrategyRegistry.initialize();
-      
+
       expect(LineLimitStrategyRegistry.getSupportedLanguages().length).toBeGreaterThan(0);
-      
+
       LineLimitStrategyRegistry.clearStrategies();
-      
+
       expect(LineLimitStrategyRegistry.getSupportedLanguages()).toEqual([]);
       expect(LineLimitStrategyRegistry.getAllStrategies()).toEqual({});
       expect(LineLimitStrategyRegistry.hasStrategy('typescript')).toBe(false);
@@ -465,21 +464,21 @@ describe('LineLimitStrategyRegistry', () => {
 
     test('should handle clearing empty registry', () => {
       LineLimitStrategyRegistry.clearStrategies();
-      
+
       expect(() => {
         LineLimitStrategyRegistry.clearStrategies();
       }).not.toThrow();
-      
+
       expect(LineLimitStrategyRegistry.getSupportedLanguages()).toEqual([]);
     });
 
     test('should allow reinitialization after clearing', () => {
       LineLimitStrategyRegistry.initialize();
       expect(LineLimitStrategyRegistry.getSupportedLanguages().length).toBeGreaterThan(0);
-      
+
       LineLimitStrategyRegistry.clearStrategies();
       expect(LineLimitStrategyRegistry.getSupportedLanguages()).toEqual([]);
-      
+
       LineLimitStrategyRegistry.initialize();
       expect(LineLimitStrategyRegistry.getSupportedLanguages().length).toBeGreaterThan(0);
     });
@@ -513,9 +512,33 @@ describe('LineLimitStrategyRegistry', () => {
 
     test('should handle multiple custom strategies', () => {
       const strategies = [
-        { name: 'lang1', strategy: { identifyHeaderLines: vi.fn(), analyzeFunctions: vi.fn(), identifyFooterLines: vi.fn(), calculateComplexity: vi.fn() } as LanguageStrategy },
-        { name: 'lang2', strategy: { identifyHeaderLines: vi.fn(), analyzeFunctions: vi.fn(), identifyFooterLines: vi.fn(), calculateComplexity: vi.fn() } as LanguageStrategy },
-        { name: 'lang3', strategy: { identifyHeaderLines: vi.fn(), analyzeFunctions: vi.fn(), identifyFooterLines: vi.fn(), calculateComplexity: vi.fn() } as LanguageStrategy },
+        {
+          name: 'lang1',
+          strategy: {
+            identifyHeaderLines: vi.fn(),
+            analyzeFunctions: vi.fn(),
+            identifyFooterLines: vi.fn(),
+            calculateComplexity: vi.fn(),
+          } as LanguageStrategy,
+        },
+        {
+          name: 'lang2',
+          strategy: {
+            identifyHeaderLines: vi.fn(),
+            analyzeFunctions: vi.fn(),
+            identifyFooterLines: vi.fn(),
+            calculateComplexity: vi.fn(),
+          } as LanguageStrategy,
+        },
+        {
+          name: 'lang3',
+          strategy: {
+            identifyHeaderLines: vi.fn(),
+            analyzeFunctions: vi.fn(),
+            identifyFooterLines: vi.fn(),
+            calculateComplexity: vi.fn(),
+          } as LanguageStrategy,
+        },
       ];
 
       strategies.forEach(({ name, strategy }) => {
