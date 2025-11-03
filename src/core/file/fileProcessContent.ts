@@ -22,9 +22,10 @@ import { truncateBase64Content } from './truncateBase64.js';
 export const processContent = async (
   rawFile: RawFile,
   config: RepomixConfigMerged,
-): Promise<{ content: string; truncation?: TruncationInfo }> => {
+): Promise<{ content: string; originalContent?: string; truncation?: TruncationInfo }> => {
   const processStartAt = process.hrtime.bigint();
   let processedContent = rawFile.content;
+  const originalContent = rawFile.content; // Store original content before any processing
   const manipulator = getFileManipulator(rawFile.path);
 
   logger.trace(`Processing file: ${rawFile.path}`);
@@ -95,11 +96,18 @@ export const processContent = async (
       const message = error instanceof Error ? error.message : String(error);
       logger.error(`Failed to apply line limit to ${rawFile.path}: ${message}`);
       // Continue with original content if line limiting fails
+      // Set truncation info to indicate no truncation occurred due to error
+      truncation = {
+        truncated: false,
+        originalLineCount: processedContent.split('\n').length,
+        truncatedLineCount: processedContent.split('\n').length,
+        lineLimit: config.output.lineLimit!,
+      };
     }
   }
 
   const processEndAt = process.hrtime.bigint();
   logger.trace(`Processed file: ${rawFile.path}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`);
 
-  return { content: processedContent, truncation };
+  return { content: processedContent, originalContent, truncation };
 };

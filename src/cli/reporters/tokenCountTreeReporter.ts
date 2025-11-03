@@ -12,16 +12,20 @@ export const reportTokenCountTree = (
   processedFiles: ProcessedFile[],
   fileTokenCounts: Record<string, number>,
   config: RepomixConfigMerged,
+  fileOriginalTokenCounts: Record<string, number> = {},
 ) => {
   const minTokenCount = typeof config.output.tokenCountTree === 'number' ? config.output.tokenCountTree : 0;
 
   const filesWithTokens: FileWithTokens[] = [];
   for (const file of processedFiles) {
     const tokens = fileTokenCounts[file.path];
+    const originalTokens = fileOriginalTokenCounts[file.path];
     if (tokens !== undefined) {
       filesWithTokens.push({
         path: file.path,
         tokens,
+        originalTokens,
+        truncated: file.truncation?.truncated || false,
       });
     }
   }
@@ -62,12 +66,23 @@ const displayNode = (node: TreeNode, prefix: string, isRoot: boolean, minTokenCo
   files.forEach((file, index) => {
     const isLastFile = index === files.length - 1 && entries.length === 0;
     const connector = isLastFile ? '└── ' : '├── ';
-    const tokenInfo = pc.dim(`(${file.tokens.toLocaleString()} tokens)`);
+
+    // Build token info string
+    let tokenInfo = pc.dim(`(${file.tokens.toLocaleString()} tokens)`);
+
+    // Add original token count if available and different from truncated
+    if (file.originalTokens && file.originalTokens !== file.tokens) {
+      const reduction = Math.round(((file.originalTokens - file.tokens) / file.originalTokens) * 100);
+      tokenInfo += pc.dim(` → ${file.originalTokens.toLocaleString()} original, ${reduction}% reduction`);
+    }
+
+    // Add truncation indicator if file was truncated
+    const truncationIndicator = file.truncated ? pc.yellow('[T] ') : '';
 
     if (isRoot && prefix === '') {
-      logger.log(`${connector}${file.name} ${tokenInfo}`);
+      logger.log(`${connector}${truncationIndicator}${file.name} ${tokenInfo}`);
     } else {
-      logger.log(`${prefix}${connector}${file.name} ${tokenInfo}`);
+      logger.log(`${prefix}${connector}${truncationIndicator}${file.name} ${tokenInfo}`);
     }
   });
 

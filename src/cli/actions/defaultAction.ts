@@ -90,7 +90,7 @@ export const runDefaultAction = async (
     const result = (await taskRunner.run(task)) as DefaultActionWorkerResult;
 
     // Report results in main process
-    reportResults(cwd, result.packResult, result.config);
+    reportResults(cwd, result.packResult, result.config, cliOptions.verbose || false);
 
     return {
       packResult: result.packResult,
@@ -280,6 +280,14 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.output = {
       ...cliConfig.output,
       tokenCountTree: options.tokenCountTree,
+    };
+  }
+
+  // Handle line limit option
+  if (options.line !== undefined) {
+    cliConfig.output = {
+      ...cliConfig.output,
+      lineLimit: options.line,
     };
   }
 

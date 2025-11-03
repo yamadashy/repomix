@@ -2,6 +2,8 @@ import path from 'node:path';
 import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import type { SkippedFileInfo } from '../core/file/fileCollect.js';
+import type { PerFileTruncation } from '../core/file/fileTypes.js';
+import { getTruncationStats } from '../core/file/truncationMetrics.js';
 import type { PackResult } from '../core/packager.js';
 import type { SuspiciousFileResult } from '../core/security/securityCheck.js';
 import { logger } from '../shared/logger.js';
@@ -10,7 +12,12 @@ import { reportTokenCountTree } from './reporters/tokenCountTreeReporter.js';
 /**
  * Reports the results of packing operation including top files, security check, summary, and completion.
  */
-export const reportResults = (cwd: string, packResult: PackResult, config: RepomixConfigMerged): void => {
+export const reportResults = (
+  cwd: string,
+  packResult: PackResult,
+  config: RepomixConfigMerged,
+  verbose: boolean = false,
+): void => {
   logger.log('');
 
   if (config.output.topFilesLength > 0) {
@@ -24,7 +31,30 @@ export const reportResults = (cwd: string, packResult: PackResult, config: Repom
   }
 
   if (config.output.tokenCountTree) {
-    reportTokenCountTree(packResult.processedFiles, packResult.fileTokenCounts, config);
+    reportTokenCountTree(
+      packResult.processedFiles,
+      packResult.fileTokenCounts,
+      config,
+      packResult.fileOriginalTokenCounts,
+    );
+    logger.log('');
+  }
+
+  // Display truncation statistics if available
+  if (packResult.truncationMetrics) {
+    const stats = getTruncationStats(packResult.truncationMetrics);
+    logger.log('📊 Truncation Statistics:');
+    logger.log(pc.dim('────────────────────'));
+    logger.log(stats.summary);
+    if (stats.reductionInfo) {
+      logger.log(stats.reductionInfo);
+    }
+    if (stats.lineLimitInfo) {
+      logger.log(stats.lineLimitInfo);
+    }
+    if (stats.tokenInfo) {
+      logger.log(stats.tokenInfo);
+    }
     logger.log('');
   }
 
@@ -42,6 +72,17 @@ export const reportResults = (cwd: string, packResult: PackResult, config: Repom
 
   reportSummary(packResult, config);
   logger.log('');
+
+  if (packResult.truncationMetrics) {
+    reportTruncationSummary(packResult.truncationMetrics);
+    logger.log('');
+
+    // Report verbose truncation details if enabled and available
+    if (verbose && packResult.truncationMetrics?.perFileTruncation) {
+      reportVerboseTruncationDetails(packResult.truncationMetrics.perFileTruncation);
+      logger.log('');
+    }
+  }
 
   reportCompletion();
 };
@@ -169,6 +210,45 @@ export const reportTopFiles = (
     const indexString = `${index + 1}.`.padEnd(3, ' ');
     logger.log(
       `${pc.white(`${indexString}`)} ${pc.white(filePath)} ${pc.dim(`(${tokenCount.toLocaleString()} tokens, ${charCount.toLocaleString()} chars, ${percentageOfTotal}%)`)}`,
+    );
+  });
+};
+
+export const reportTruncationSummary = (truncationMetrics: PackResult['truncationMetrics']) => {
+  if (!truncationMetrics) {
+    return;
+  }
+
+  const stats = getTruncationStats(truncationMetrics);
+
+  logger.log(pc.white('✂️  Truncation Summary:'));
+  logger.log(pc.dim('───────────────────────'));
+  logger.log(`${pc.white('  Summary:')} ${pc.white(stats.summary)}`);
+
+  if (stats.lineLimitInfo) {
+    logger.log(`${pc.white(' Line Limit:')} ${pc.white(stats.lineLimitInfo)}`);
+  }
+
+  if (stats.reductionInfo) {
+    logger.log(`${pc.white(' Reduction:')} ${pc.white(stats.reductionInfo)}`);
+  }
+};
+
+export const reportVerboseTruncationDetails = (perFileTruncation: PerFileTruncation[]) => {
+  if (!perFileTruncation || perFileTruncation.length === 0) {
+    return;
+  }
+
+  logger.log(pc.white('📝 Truncation Details (Verbose):'));
+  logger.log(pc.dim('──────────────────────────────'));
+
+  perFileTruncation.forEach((file: PerFileTruncation) => {
+    const status = file.truncated ? 'truncated' : 'unchanged';
+    const statusColor = file.truncated ? pc.yellow : pc.green;
+    const arrow = file.truncated ? '→' : '→';
+
+    logger.log(
+      `${pc.white(file.filePath)}: ${pc.white(file.originalLines.toString())} ${arrow} ${pc.white(file.truncatedLines.toString())} lines (${statusColor(status)})`,
     );
   });
 };

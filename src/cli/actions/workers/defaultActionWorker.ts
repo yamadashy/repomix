@@ -69,14 +69,22 @@ async function defaultActionWorker(
         },
         {},
         stdinFilePaths,
+        cliOptions.verbose || false,
       );
     } else {
       // Handle directory processing
       const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
 
-      packResult = await pack(targetPaths, config, (message) => {
-        spinner.update(message);
-      });
+      packResult = await pack(
+        targetPaths,
+        config,
+        (message) => {
+          spinner.update(message);
+        },
+        {},
+        undefined,
+        cliOptions.verbose || false,
+      );
     }
 
     spinner.succeed('Packing completed successfully!');

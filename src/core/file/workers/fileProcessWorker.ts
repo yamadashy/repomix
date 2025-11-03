@@ -18,6 +18,7 @@ export default async ({ rawFile, config }: FileProcessTask): Promise<ProcessedFi
   return {
     path: rawFile.path,
     content: processedResult.content,
+    originalContent: processedResult.originalContent,
     truncation: processedResult.truncation,
   };
 };
