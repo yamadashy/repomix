@@ -41,7 +41,9 @@ export const getMarkdownTemplate = () => {
 {{#each processedFiles}}
 ## File: {{{this.path}}}
 {{{../markdownCodeBlockDelimiter}}}{{{getFileExtension this.path}}}
-{{{this.content}}}
+{{{this.content}}}{{#if this.truncation.truncated}}
+
+// ... (truncated: showing {{this.truncation.truncatedLineCount}} of {{this.truncation.originalLineCount}} lines){{/if}}
 {{{../markdownCodeBlockDelimiter}}}
 
 {{/each}}

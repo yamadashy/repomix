@@ -36,7 +36,7 @@ describe('processContent', () => {
     } as RepomixConfigMerged;
 
     const result = await processContent(rawFile, config);
-    expect(result).toBe('const x = 1;\n\nconst y = 2;');
+    expect(result.content).toBe('const x = 1;\n\nconst y = 2;');
     expect(mockManipulator.removeComments).not.toHaveBeenCalled();
     expect(mockManipulator.removeEmptyLines).not.toHaveBeenCalled();
   });
@@ -57,7 +57,7 @@ describe('processContent', () => {
 
     const result = await processContent(rawFile, config);
     expect(mockManipulator.removeComments).toHaveBeenCalledWith(rawFile.content);
-    expect(result).toBe('const x = 1; \nconst y = 2;');
+    expect(result.content).toBe('const x = 1; \nconst y = 2;');
   });
 
   it('should remove empty lines when configured', async () => {
@@ -76,7 +76,7 @@ describe('processContent', () => {
 
     const result = await processContent(rawFile, config);
     expect(mockManipulator.removeEmptyLines).toHaveBeenCalledWith(rawFile.content);
-    expect(result).toBe('const x = 1;\nconst y = 2;');
+    expect(result.content).toBe('const x = 1;\nconst y = 2;');
   });
 
   it('should compress content using Tree-sitter when configured', async () => {
@@ -95,7 +95,7 @@ describe('processContent', () => {
 
     const result = await processContent(rawFile, config);
     expect(parseFile).toHaveBeenCalledWith(rawFile.content, rawFile.path, config);
-    expect(result).toBe('parsed content');
+    expect(result.content).toBe('parsed content');
   });
 
   it('should handle Tree-sitter parse failure gracefully', async () => {
@@ -115,7 +115,7 @@ describe('processContent', () => {
     vi.mocked(parseFile).mockResolvedValue(undefined);
 
     const result = await processContent(rawFile, config);
-    expect(result).toBe(rawFile.content);
+    expect(result.content).toBe(rawFile.content);
   });
 
   it('should handle Tree-sitter parse error', async () => {
@@ -153,7 +153,9 @@ describe('processContent', () => {
     } as RepomixConfigMerged;
 
     const result = await processContent(rawFile, config);
-    expect(result).toBe('1: const x = 1;\n2: const y = 2;\n3: const z = 3;');
+    expect(result).toEqual({
+      content: '1: const x = 1;\n2: const y = 2;\n3: const z = 3;',
+    });
   });
 
   it('should handle files without a manipulator', async () => {
@@ -173,6 +175,6 @@ describe('processContent', () => {
     vi.mocked(getFileManipulator).mockReturnValue(null);
 
     const result = await processContent(rawFile, config);
-    expect(result).toBe('some content');
+    expect(result.content).toBe('some content');
   });
 });

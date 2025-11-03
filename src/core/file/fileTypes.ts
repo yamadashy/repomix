@@ -6,4 +6,12 @@ export interface RawFile {
 export interface ProcessedFile {
   path: string;
   content: string;
+  truncation?: TruncationInfo;
+}
+
+export interface TruncationInfo {
+  truncated: boolean;
+  originalLineCount: number;
+  truncatedLineCount: number;
+  lineLimit: number;
 }

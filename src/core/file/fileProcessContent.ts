@@ -2,7 +2,8 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import { parseFile } from '../treeSitter/parseFile.js';
 import { getFileManipulator } from './fileManipulate.js';
-import type { RawFile } from './fileTypes.js';
+import type { RawFile, TruncationInfo } from './fileTypes.js';
+import { applyLineLimit } from './lineLimitProcessor.js';
 import { truncateBase64Content } from './truncateBase64.js';
 
 /**
@@ -16,9 +17,12 @@ import { truncateBase64Content } from './truncateBase64.js';
  *
  * @param rawFile Raw file data containing path and content
  * @param config Repomix configuration
- * @returns Processed content string
+ * @returns Processed content string and truncation info
  */
-export const processContent = async (rawFile: RawFile, config: RepomixConfigMerged): Promise<string> => {
+export const processContent = async (
+  rawFile: RawFile,
+  config: RepomixConfigMerged,
+): Promise<{ content: string; truncation?: TruncationInfo }> => {
   const processStartAt = process.hrtime.bigint();
   let processedContent = rawFile.content;
   const manipulator = getFileManipulator(rawFile.path);
@@ -59,8 +63,43 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
     processedContent = numberedLines.join('\n');
   }
 
+  let truncation: TruncationInfo | undefined;
+
+  // Apply line limiting if enabled
+  if (config.output.lineLimit) {
+    try {
+      const originalLineCount = processedContent.split('\n').length;
+      logger.trace(
+        `About to apply line limit ${config.output.lineLimit} to file: ${rawFile.path} with ${originalLineCount} lines`,
+      );
+
+      const lineLimitResult = await applyLineLimit(processedContent, rawFile.path, config.output.lineLimit, {
+        preserveStructure: true,
+        showTruncationIndicators: false, // We'll handle indicators in output styles
+        enableCaching: true,
+      });
+
+      processedContent = lineLimitResult.content;
+
+      if (lineLimitResult.truncation?.truncated) {
+        truncation = lineLimitResult.truncation;
+        logger.trace(
+          `File was truncated: ${rawFile.path} from ${lineLimitResult.truncation.originalLineCount} to ${lineLimitResult.truncation.truncatedLineCount} lines`,
+        );
+      } else {
+        logger.trace(`File was not truncated: ${rawFile.path}`);
+      }
+
+      logger.trace(`Applied line limit ${config.output.lineLimit} to file: ${rawFile.path}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error(`Failed to apply line limit to ${rawFile.path}: ${message}`);
+      // Continue with original content if line limiting fails
+    }
+  }
+
   const processEndAt = process.hrtime.bigint();
   logger.trace(`Processed file: ${rawFile.path}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`);
 
-  return processedContent;
+  return { content: processedContent, truncation };
 };
