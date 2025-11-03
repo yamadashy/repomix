@@ -178,7 +178,7 @@ export const searchFiles = async (
     // If explicit files are provided, add them to include patterns
     if (explicitFiles) {
       if (explicitFiles.length === 0) {
-        logger.debug('[stdin mode] No files received from stdin');
+        logger.warn('[stdin mode] No files received from stdin. Will search all files matching include patterns.');
       } else {
         logger.debug(`[stdin mode] Processing ${explicitFiles.length} explicit files`);
         logger.trace('[stdin mode] Explicit files (absolute):', explicitFiles);
