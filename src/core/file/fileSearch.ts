@@ -195,7 +195,10 @@ export const searchFiles = async (
           logger.trace('Loaded .gitignore patterns:', gitignorePatterns);
         } catch (error) {
           // .gitignore might not exist, which is fine
-          logger.trace('No .gitignore found or could not read:', error instanceof Error ? error.message : String(error));
+          logger.trace(
+            'No .gitignore found or could not read:',
+            error instanceof Error ? error.message : String(error),
+          );
         }
 
         // Read .repomixignore from root directory
