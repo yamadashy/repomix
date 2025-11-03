@@ -582,12 +582,23 @@ node_modules
         '/test/src/file3.ts',
       ];
 
-      // Mock globby to return the expected filtered files
-      vi.mocked(globby).mockResolvedValue(['src/file1.ts', 'src/file3.ts']);
+      // In new logic: globby is called with include patterns, and explicit files are filtered manually
+      // Globby returns files matching **/*.ts from the repo
+      vi.mocked(globby).mockResolvedValue(['src/other.ts']);
 
       const result = await searchFiles('/test', mockConfig, explicitFiles);
 
-      expect(result.filePaths).toEqual(['src/file1.ts', 'src/file3.ts']);
+      // Result should include:
+      // - src/other.ts (from globby)
+      // - src/file1.ts (from explicit files, passes ignore check)
+      // - src/file3.ts (from explicit files, passes ignore check)
+      // Excluded:
+      // - src/file1.test.ts (matched by **/*.test.ts ignore pattern)
+      // - src/file2.js (doesn't match *.ts pattern, but in stdin mode explicit files don't need to match include patterns)
+      expect(result.filePaths).toEqual(
+        expect.arrayContaining(['src/file1.ts', 'src/file2.js', 'src/file3.ts', 'src/other.ts']),
+      );
+      expect(result.filePaths).not.toContain('src/file1.test.ts');
       expect(result.emptyDirPaths).toEqual([]);
     });
 
@@ -603,12 +614,78 @@ node_modules
 
       const explicitFiles = ['/test/src/main.ts', '/test/tests/unit.test.ts', '/test/lib/utils.ts'];
 
-      // Mock globby to return the expected filtered files
-      vi.mocked(globby).mockResolvedValue(['src/main.ts', 'lib/utils.ts']);
+      // In new logic: no include patterns, so globby is not called
+      // Explicit files are filtered manually
+      const result = await searchFiles('/test', mockConfig, explicitFiles);
+
+      // Globby should not be called when includePatterns is empty
+      expect(globby).not.toHaveBeenCalled();
+
+      // Result should include files not matching ignore pattern
+      expect(result.filePaths).toEqual(['lib/utils.ts', 'src/main.ts']);
+      expect(result.emptyDirPaths).toEqual([]);
+    });
+
+    test('should apply .gitignore rules to explicit files in stdin mode', async () => {
+      const mockConfig = createMockConfig({
+        include: [],
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: false,
+          customPatterns: ['ignored.txt'],
+        },
+      });
+
+      const explicitFiles = ['/test/.gitignore', '/test/file1.ts', '/test/ignored.txt', '/test/file2.ts'];
 
       const result = await searchFiles('/test', mockConfig, explicitFiles);
 
-      expect(result.filePaths).toEqual(['lib/utils.ts', 'src/main.ts']);
+      // .gitignore rules should be applied via minimatch
+      expect(result.filePaths).toEqual(expect.arrayContaining(['.gitignore', 'file1.ts', 'file2.ts']));
+      expect(result.filePaths).not.toContain('ignored.txt');
+    });
+
+    test('should merge globby results and explicit files in stdin mode', async () => {
+      const mockConfig = createMockConfig({
+        include: ['src/**/*.ts'],
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      const explicitFiles = ['/test/README.md', '/test/src/duplicate.ts'];
+
+      // Globby returns files matching src/**/*.ts
+      vi.mocked(globby).mockResolvedValue(['src/duplicate.ts', 'src/other.ts']);
+
+      const result = await searchFiles('/test', mockConfig, explicitFiles);
+
+      // Should include both globby results and explicit files, with duplicates removed
+      expect(result.filePaths).toEqual(expect.arrayContaining(['README.md', 'src/duplicate.ts', 'src/other.ts']));
+      expect(result.filePaths).toHaveLength(3); // No duplicates
+    });
+
+    test('should not process empty directories in stdin mode', async () => {
+      const mockConfig = createMockConfig({
+        include: [],
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+        output: {
+          includeEmptyDirectories: true,
+        },
+      });
+
+      const explicitFiles = ['/test/file1.ts', '/test/file2.ts'];
+
+      const result = await searchFiles('/test', mockConfig, explicitFiles);
+
+      // Empty directories should not be processed in stdin mode
+      expect(result.filePaths).toEqual(['file1.ts', 'file2.ts']);
       expect(result.emptyDirPaths).toEqual([]);
     });
   });

@@ -173,48 +173,124 @@ export const searchFiles = async (
     }
 
     // Start with configured include patterns
-    let includePatterns = config.include.map((pattern) => escapeGlobPattern(pattern));
+    const includePatterns = config.include.map((pattern) => escapeGlobPattern(pattern));
 
-    // If explicit files are provided, add them to include patterns
+    // In stdin mode (explicitFiles provided), bypass globby for explicit files to avoid hang
+    // when .gitignore is both an ignore rules source and a match target
+    let filePaths: string[] = [];
+
     if (explicitFiles) {
-      const relativePaths = explicitFiles.map((filePath) => {
-        const relativePath = path.relative(rootDir, filePath);
-        // Escape the path to handle special characters
-        return escapeGlobPattern(relativePath);
-      });
-      includePatterns = [...includePatterns, ...relativePaths];
-    }
+      logger.debug('Stdin mode: processing explicit files separately from globby');
 
-    // If no include patterns at all, default to all files
-    if (includePatterns.length === 0) {
-      includePatterns = ['**/*'];
-    }
+      // In stdin mode, we need to manually read .gitignore files since we're not using globby's ignoreFiles
+      const allIgnorePatterns = [...adjustedIgnorePatterns];
 
-    logger.trace('Include patterns with explicit files:', includePatterns);
+      if (config.ignore.useGitignore) {
+        // Read .gitignore from root directory
+        const gitignorePath = path.join(rootDir, '.gitignore');
+        try {
+          const gitignoreContent = await fs.readFile(gitignorePath, 'utf8');
+          const gitignorePatterns = parseIgnoreContent(gitignoreContent);
+          allIgnorePatterns.push(...gitignorePatterns);
+          logger.trace('Loaded .gitignore patterns:', gitignorePatterns);
+        } catch (error) {
+          // .gitignore might not exist, which is fine
+          logger.trace('No .gitignore found or could not read:', error instanceof Error ? error.message : String(error));
+        }
 
-    const filePaths = await globby(includePatterns, {
-      cwd: rootDir,
-      ignore: [...adjustedIgnorePatterns],
-      ignoreFiles: [...ignoreFilePatterns],
-      onlyFiles: true,
-      absolute: false,
-      dot: true,
-      followSymbolicLinks: false,
-    }).catch((error: unknown) => {
-      // Handle EPERM errors specifically
-      const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
-      if (code === 'EPERM' || code === 'EACCES') {
-        throw new PermissionError(
-          `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
-          rootDir,
-        );
+        // Read .repomixignore from root directory
+        const repomixignorePath = path.join(rootDir, '.repomixignore');
+        try {
+          const repomixignoreContent = await fs.readFile(repomixignorePath, 'utf8');
+          const repomixignorePatterns = parseIgnoreContent(repomixignoreContent);
+          allIgnorePatterns.push(...repomixignorePatterns);
+          logger.trace('Loaded .repomixignore patterns:', repomixignorePatterns);
+        } catch (error) {
+          // .repomixignore might not exist, which is fine
+          logger.trace(
+            'No .repomixignore found or could not read:',
+            error instanceof Error ? error.message : String(error),
+          );
+        }
       }
-      throw error;
-    });
+
+      // 1. Run globby only for includePatterns (if any)
+      const globbyPatterns = includePatterns.length > 0 ? includePatterns : [];
+      const globbyResults =
+        globbyPatterns.length > 0
+          ? await globby(globbyPatterns, {
+              cwd: rootDir,
+              ignore: [...adjustedIgnorePatterns],
+              ignoreFiles: [...ignoreFilePatterns],
+              onlyFiles: true,
+              absolute: false,
+              dot: true,
+              followSymbolicLinks: false,
+            }).catch((error: unknown) => {
+              const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
+              if (code === 'EPERM' || code === 'EACCES') {
+                throw new PermissionError(
+                  `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
+                  rootDir,
+                );
+              }
+              throw error;
+            })
+          : [];
+
+      logger.trace('Globby results for includePatterns:', globbyResults);
+
+      // 2. Convert explicit files to relative paths
+      const relativePaths = explicitFiles.map((filePath) => path.relative(rootDir, filePath));
+
+      logger.trace('Explicit files (relative):', relativePaths);
+
+      // 3. Filter explicit files using ignore patterns (manually with minimatch)
+      const filteredExplicitFiles = relativePaths.filter((filePath) => {
+        // Check if file matches any ignore pattern
+        const shouldIgnore = allIgnorePatterns.some(
+          (pattern) => minimatch(filePath, pattern) || minimatch(`${filePath}/`, pattern),
+        );
+        return !shouldIgnore;
+      });
+
+      logger.trace('Filtered explicit files:', filteredExplicitFiles);
+
+      // 4. Merge globby results and filtered explicit files, removing duplicates
+      filePaths = [...new Set([...globbyResults, ...filteredExplicitFiles])];
+
+      logger.trace('Merged file paths:', filePaths);
+    } else {
+      // Normal mode: use globby with all patterns
+      const patterns = includePatterns.length > 0 ? includePatterns : ['**/*'];
+
+      logger.trace('Include patterns:', patterns);
+
+      filePaths = await globby(patterns, {
+        cwd: rootDir,
+        ignore: [...adjustedIgnorePatterns],
+        ignoreFiles: [...ignoreFilePatterns],
+        onlyFiles: true,
+        absolute: false,
+        dot: true,
+        followSymbolicLinks: false,
+      }).catch((error: unknown) => {
+        const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
+        if (code === 'EPERM' || code === 'EACCES') {
+          throw new PermissionError(
+            `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
+            rootDir,
+          );
+        }
+        throw error;
+      });
+    }
 
     let emptyDirPaths: string[] = [];
-    if (config.output.includeEmptyDirectories) {
-      const directories = await globby(includePatterns, {
+    if (config.output.includeEmptyDirectories && !explicitFiles) {
+      // Note: empty directory detection is only supported in normal mode, not in stdin mode
+      const patterns = includePatterns.length > 0 ? includePatterns : ['**/*'];
+      const directories = await globby(patterns, {
         cwd: rootDir,
         ignore: [...adjustedIgnorePatterns],
         ignoreFiles: [...ignoreFilePatterns],
