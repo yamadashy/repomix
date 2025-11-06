@@ -177,12 +177,25 @@ export const searchFiles = async (
 
     // If explicit files are provided, add them to include patterns
     if (explicitFiles) {
-      const relativePaths = explicitFiles.map((filePath) => {
-        const relativePath = path.relative(rootDir, filePath);
-        // Escape the path to handle special characters
-        return escapeGlobPattern(relativePath);
-      });
-      includePatterns = [...includePatterns, ...relativePaths];
+      if (explicitFiles.length === 0) {
+        logger.warn('[stdin mode] No files received from stdin. Will search all files matching include patterns.');
+      } else {
+        logger.debug(`[stdin mode] Processing ${explicitFiles.length} explicit files`);
+        logger.trace('[stdin mode] Explicit files (absolute):', explicitFiles);
+
+        const relativePaths = explicitFiles.map((filePath) => {
+          const relativePath = path.relative(rootDir, filePath);
+          // Escape the path to handle special characters
+          return escapeGlobPattern(relativePath);
+        });
+
+        logger.trace('[stdin mode] Explicit files (relative, escaped):', relativePaths);
+        logger.trace('[stdin mode] Include patterns before merge:', includePatterns);
+
+        includePatterns = [...includePatterns, ...relativePaths];
+
+        logger.debug(`[stdin mode] Total include patterns after merge: ${includePatterns.length}`);
+      }
     }
 
     // If no include patterns at all, default to all files
@@ -191,6 +204,11 @@ export const searchFiles = async (
     }
 
     logger.trace('Include patterns with explicit files:', includePatterns);
+    logger.trace('Ignore patterns:', adjustedIgnorePatterns);
+    logger.trace('Ignore file patterns (for globby):', ignoreFilePatterns);
+
+    logger.debug('[globby] Starting file search...');
+    const globbyStartTime = Date.now();
 
     const filePaths = await globby(includePatterns, {
       cwd: rootDir,
@@ -212,8 +230,14 @@ export const searchFiles = async (
       throw error;
     });
 
+    const globbyElapsedTime = Date.now() - globbyStartTime;
+    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+
     let emptyDirPaths: string[] = [];
     if (config.output.includeEmptyDirectories) {
+      logger.debug('[empty dirs] Searching for empty directories...');
+      const emptyDirStartTime = Date.now();
+
       const directories = await globby(includePatterns, {
         cwd: rootDir,
         ignore: [...adjustedIgnorePatterns],
@@ -224,9 +248,16 @@ export const searchFiles = async (
         followSymbolicLinks: false,
       });
 
+      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
+      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
+
+      const filterStartTime = Date.now();
       emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+      const filterTime = Date.now() - filterStartTime;
+      logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     }
 
+    logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
     logger.trace(`Filtered ${filePaths.length} files`);
 
     return {

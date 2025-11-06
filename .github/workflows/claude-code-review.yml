@@ -33,7 +33,7 @@ jobs:
 
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@e8bad572273ce919ba15fec95aef0ce974464753 # v1.0.13
+        uses: anthropics/claude-code-action@f30f5eecfce2f34fa72e40fa5f7bcdbdcad12eb8 # v1.0.14
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
@@ -51,10 +51,16 @@ jobs:
 
             Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
 
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            ## How to Comment:
+            1. Before starting your review, read ALL existing comments on this PR using `gh pr view --comments` to see the full conversation
+            2. If there are any previous comments from you (Claude), identify what feedback you've already provided
+            3. Only provide NEW feedback that hasn't been mentioned yet, or updates to previous feedback if the code has changed
+            4. Avoid repeating feedback that has already been given - focus on providing incremental value with each review
+            5. For highlighting specific code issues, use `mcp__github_inline_comment__create_inline_comment` to leave inline comments
+              - When possible, provide actionable fix suggestions with code examples
+            6. Use `gh pr comment` with your Bash tool to leave your overall review as a comment on the PR
+            7. Wrap detailed feedback in <details><summary>Details</summary>...</details> tags, keeping only a brief summary visible
 
-            Wrap detailed feedback in <details><summary>Details</summary>...</details> tags, keeping only a brief summary visible.
-          
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://docs.claude.com/en/docs/claude-code/cli-reference for available options
           claude_args: '--allowed-tools "mcp__github_inline_comment__create_inline_comment,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
