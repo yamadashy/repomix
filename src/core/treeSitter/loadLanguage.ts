@@ -19,7 +19,7 @@ export async function loadLanguage(langName: string): Promise<Language> {
 }
 
 async function getWasmPath(langName: string): Promise<string> {
-  const wasmPath = require.resolve(`tree-sitter-wasms/out/tree-sitter-${langName}.wasm`);
+  const wasmPath = require.resolve(`@repomix/tree-sitter-wasms/out/tree-sitter-${langName}.wasm`);
   try {
     await fs.access(wasmPath);
     return wasmPath;
