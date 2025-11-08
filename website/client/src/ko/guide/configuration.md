@@ -241,10 +241,10 @@ Repomix는 패키징 프로세스 중에 특정 파일이나 디렉토리를 제
 **우선순위** (높은 순서에서 낮은 순서):
 
 1. 사용자 정의 패턴(`ignore.customPatterns`)
-2. `.repomixignore`
-3. `.ignore`(`ignore.useDotIgnore`가 true이고 `--no-dot-ignore`가 사용되지 않은 경우)
-4. `.gitignore` 및 `.git/info/exclude`(`ignore.useGitignore`가 true이고 `--no-gitignore`가 사용되지 않은 경우)
-5. 기본 패턴(`ignore.useDefaultPatterns`가 true이고 `--no-default-patterns`가 사용되지 않은 경우)
+2. 무시 파일(`.repomixignore`, `.ignore`, `.gitignore`, `.git/info/exclude`):
+   - 중첩된 디렉터리에 있는 경우, 더 깊은 디렉터리의 파일이 더 높은 우선순위를 가집니다
+   - 같은 디렉터리에 있는 경우, 이러한 파일들은 특정 순서 없이 병합됩니다
+3. 기본 패턴(`ignore.useDefaultPatterns`가 true이고 `--no-default-patterns`가 사용되지 않은 경우)
 
 이 접근 방식을 통해 프로젝트의 필요에 따라 유연한 파일 제외 설정이 가능합니다. 보안에 민감한 파일과 대용량 바이너리 파일의 제외를 보장하면서 기밀 정보 유출을 방지하여 생성된 팩 파일의 크기를 최적화하는 데 도움이 됩니다.
 

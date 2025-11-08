@@ -241,10 +241,10 @@ Repomix bietet mehrere Methoden zum Festlegen von Ignorier-Mustern, um bestimmte
 **Prioritätsreihenfolge** (von höchster zu niedrigster):
 
 1. Benutzerdefinierte Muster (`ignore.customPatterns`)
-2. `.repomixignore`
-3. `.ignore` (wenn `ignore.useDotIgnore` true ist und `--no-dot-ignore` nicht verwendet wird)
-4. `.gitignore` und `.git/info/exclude` (wenn `ignore.useGitignore` true ist und `--no-gitignore` nicht verwendet wird)
-5. Standardmuster (wenn `ignore.useDefaultPatterns` true ist und `--no-default-patterns` nicht verwendet wird)
+2. Ignorier-Dateien (`.repomixignore`, `.ignore`, `.gitignore` und `.git/info/exclude`):
+   - Bei verschachtelten Verzeichnissen haben Dateien in tieferen Verzeichnissen höhere Priorität
+   - Bei Dateien im selben Verzeichnis werden diese ohne bestimmte Reihenfolge zusammengeführt
+3. Standardmuster (wenn `ignore.useDefaultPatterns` true ist und `--no-default-patterns` nicht verwendet wird)
 
 Dieser Ansatz ermöglicht eine flexible Konfiguration des Dateiausschlusses basierend auf den Anforderungen Ihres Projekts. Er hilft, die Größe der generierten Packdatei zu optimieren, indem er den Ausschluss sicherheitssensibler Dateien und großer Binärdateien gewährleistet und gleichzeitig die Preisgabe vertraulicher Informationen verhindert.
 

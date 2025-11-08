@@ -241,10 +241,10 @@ Repomix提供多种方法来设置忽略模式，以在打包过程中排除特�
 **优先顺序**（从高到低）：
 
 1. 自定义模式（`ignore.customPatterns`）
-2. `.repomixignore`
-3. `.ignore`（如果`ignore.useDotIgnore`为true且未使用`--no-dot-ignore`）
-4. `.gitignore`和`.git/info/exclude`（如果`ignore.useGitignore`为true且未使用`--no-gitignore`）
-5. 默认模式（如果`ignore.useDefaultPatterns`为true且未使用`--no-default-patterns`）
+2. 忽略文件（`.repomixignore`、`.ignore`、`.gitignore`和`.git/info/exclude`）：
+   - 在嵌套目录中时，更深层目录中的文件具有更高优先级
+   - 在同一目录中时，这些文件以不特定的顺序合并
+3. 默认模式（如果`ignore.useDefaultPatterns`为true且未使用`--no-default-patterns`）
 
 这种方法允许根据项目需求灵活配置文件排除。它通过确保排除安全敏感文件和大型二进制文件来帮助优化生成的打包文件的大小，同时防止机密信息泄漏。
 

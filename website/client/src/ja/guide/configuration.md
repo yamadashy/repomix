@@ -241,10 +241,10 @@ Repomixは、パッキングプロセス中に特定のファイルやディレ�
 **優先順位**（高い順）：
 
 1. カスタムパターン（`ignore.customPatterns`）
-2. `.repomixignore`
-3. `.ignore`（`ignore.useDotIgnore`がtrueで`--no-dot-ignore`が使用されていない場合）
-4. `.gitignore`および`.git/info/exclude`（`ignore.useGitignore`がtrueで`--no-gitignore`が使用されていない場合）
-5. デフォルトパターン（`ignore.useDefaultPatterns`がtrueで`--no-default-patterns`が使用されていない場合）
+2. 除外ファイル（`.repomixignore`、`.ignore`、`.gitignore`、`.git/info/exclude`）：
+   - ネストされたディレクトリにある場合、より深いディレクトリのファイルが優先されます
+   - 同じディレクトリにある場合、これらのファイルは順不同でマージされます
+3. デフォルトパターン（`ignore.useDefaultPatterns`がtrueで`--no-default-patterns`が使用されていない場合）
 
 このアプローチにより、プロジェクトのニーズに基づいて柔軟なファイル除外設定が可能になります。セキュリティ上機密性の高いファイルや大きなバイナリファイルの除外を確実にし、機密情報の漏洩を防ぎながら、生成されるパックファイルのサイズを最適化するのに役立ちます。
 

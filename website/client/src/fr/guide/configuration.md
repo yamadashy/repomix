@@ -241,10 +241,10 @@ Repomix offre plusieurs méthodes pour définir des motifs d'ignorance afin d'ex
 **Ordre de priorité** (du plus élevé au plus bas) :
 
 1. Motifs personnalisés (`ignore.customPatterns`)
-2. `.repomixignore`
-3. `.ignore` (si `ignore.useDotIgnore` est vrai et `--no-dot-ignore` n'est pas utilisé)
-4. `.gitignore` et `.git/info/exclude` (si `ignore.useGitignore` est vrai et `--no-gitignore` n'est pas utilisé)
-5. Motifs par défaut (si `ignore.useDefaultPatterns` est vrai et `--no-default-patterns` n'est pas utilisé)
+2. Fichiers d'ignorance (`.repomixignore`, `.ignore`, `.gitignore`, et `.git/info/exclude`) :
+   - Lorsqu'ils sont dans des répertoires imbriqués, les fichiers dans les répertoires plus profonds ont une priorité plus élevée
+   - Lorsqu'ils sont dans le même répertoire, ces fichiers sont fusionnés sans ordre particulier
+3. Motifs par défaut (si `ignore.useDefaultPatterns` est vrai et `--no-default-patterns` n'est pas utilisé)
 
 Cette approche permet une configuration flexible de l'exclusion de fichiers en fonction des besoins de votre projet. Elle aide à optimiser la taille du fichier empaqueté généré en garantissant l'exclusion des fichiers sensibles à la sécurité et des gros fichiers binaires, tout en empêchant la fuite d'informations confidentielles.
 

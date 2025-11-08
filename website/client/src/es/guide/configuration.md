@@ -241,10 +241,10 @@ Repomix ofrece múltiples métodos para establecer patrones de ignorar para excl
 **Orden de prioridad** (de mayor a menor):
 
 1. Patrones personalizados (`ignore.customPatterns`)
-2. `.repomixignore`
-3. `.ignore` (si `ignore.useDotIgnore` es verdadero y `--no-dot-ignore` no se usa)
-4. `.gitignore` y `.git/info/exclude` (si `ignore.useGitignore` es verdadero y `--no-gitignore` no se usa)
-5. Patrones predeterminados (si `ignore.useDefaultPatterns` es verdadero y `--no-default-patterns` no se usa)
+2. Archivos de ignorar (`.repomixignore`, `.ignore`, `.gitignore` y `.git/info/exclude`):
+   - Cuando están en directorios anidados, los archivos en directorios más profundos tienen mayor prioridad
+   - Cuando están en el mismo directorio, estos archivos se fusionan sin un orden particular
+3. Patrones predeterminados (si `ignore.useDefaultPatterns` es verdadero y `--no-default-patterns` no se usa)
 
 Este enfoque permite una configuración flexible de exclusión de archivos basada en las necesidades de su proyecto. Ayuda a optimizar el tamaño del archivo empaquetado generado asegurando la exclusión de archivos sensibles a la seguridad y archivos binarios grandes, mientras previene la fuga de información confidencial.
 

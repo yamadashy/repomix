@@ -223,10 +223,10 @@ Repomix cung cấp nhiều cách để chỉ định file nào nên được ign
 **Thứ tự ưu tiên** (từ cao đến thấp):
 
 1. Mẫu tùy chỉnh (`ignore.customPatterns`)
-2. `.repomixignore`
-3. `.ignore` (nếu `ignore.useDotIgnore` là true và không sử dụng `--no-dot-ignore`)
-4. `.gitignore` và `.git/info/exclude` (nếu `ignore.useGitignore` là true và không sử dụng `--no-gitignore`)
-5. Mẫu mặc định (nếu `ignore.useDefaultPatterns` là true và không sử dụng `--no-default-patterns`)
+2. File ignore (`.repomixignore`, `.ignore`, `.gitignore`, và `.git/info/exclude`):
+   - Khi trong các thư mục lồng nhau, file ở thư mục sâu hơn có ưu tiên cao hơn
+   - Khi trong cùng thư mục, các file này được hợp nhất không theo thứ tự cụ thể
+3. Mẫu mặc định (nếu `ignore.useDefaultPatterns` là true và không sử dụng `--no-default-patterns`)
 
 Ví dụ về `.repomixignore`:
 ```text
