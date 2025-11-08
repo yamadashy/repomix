@@ -53,17 +53,18 @@ describe('fileSearch', () => {
   });
 
   describe('getIgnoreFilePaths', () => {
-    test('should return correct paths when .gitignore and .repomixignore exist', async () => {
+    test('should return correct paths when .gitignore, .ignore and .repomixignore exist', async () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       const mockConfig = createMockConfig({
         ignore: {
           useGitignore: true,
+          useDotIgnore: true,
           useDefaultPatterns: true,
           customPatterns: [],
         },
       });
       const filePatterns = await getIgnoreFilePatterns(mockConfig);
-      expect(filePatterns).toEqual(['**/.gitignore', '**/.repomixignore']);
+      expect(filePatterns).toEqual(['**/.gitignore', '**/.ignore', '**/.repomixignore']);
     });
 
     test('should not include .gitignore when useGitignore is false', async () => {
@@ -71,12 +72,27 @@ describe('fileSearch', () => {
       const mockConfig = createMockConfig({
         ignore: {
           useGitignore: false,
+          useDotIgnore: true,
           useDefaultPatterns: true,
           customPatterns: [],
         },
       });
       const filePatterns = await getIgnoreFilePatterns(mockConfig);
-      expect(filePatterns).toEqual(['**/.repomixignore']);
+      expect(filePatterns).toEqual(['**/.ignore', '**/.repomixignore']);
+    });
+
+    test('should not include .ignore when useDotIgnore is false', async () => {
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: true,
+          useDotIgnore: false,
+          useDefaultPatterns: true,
+          customPatterns: [],
+        },
+      });
+      const filePatterns = await getIgnoreFilePatterns(mockConfig);
+      expect(filePatterns).toEqual(['**/.gitignore', '**/.repomixignore']);
     });
 
     test('should handle empty directories when enabled', async () => {

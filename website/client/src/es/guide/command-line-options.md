@@ -37,6 +37,7 @@
 - `--include <patterns>`: Lista de patrones de inclusión (separados por comas)
 - `-i, --ignore <patterns>`: Patrones de ignorar adicionales (separados por comas)
 - `--no-gitignore`: Deshabilitar uso de archivo .gitignore
+- `--no-dot-ignore`: Deshabilitar uso de archivo .ignore
 - `--no-default-patterns`: Deshabilitar patrones por defecto
 
 ## Opciones de repositorio remoto

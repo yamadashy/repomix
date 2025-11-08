@@ -110,6 +110,7 @@ JavaScript-Konfigurationsdateien funktionieren genauso wie TypeScript und unters
 | `output.git.includeLogsCount`    | Anzahl der Git-Log-Commits, die in die Ausgabe einbezogen werden sollen                                                   | `50`                   |
 | `include`                        | Zu einschließende Dateimuster (verwendet [glob-Muster](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)) | `[]`                   |
 | `ignore.useGitignore`            | Ob Muster aus der `.gitignore`-Datei des Projekts verwendet werden sollen                                                 | `true`                 |
+| `ignore.useDotIgnore`            | Ob Muster aus der `.ignore`-Datei des Projekts verwendet werden sollen                                                    | `true`                 |
 | `ignore.useDefaultPatterns`      | Ob Standard-Ignorier-Muster (node_modules, .git etc.) verwendet werden sollen                                             | `true`                 |
 | `ignore.customPatterns`          | Zusätzliche Ignorier-Muster (verwendet [glob-Muster](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)) | `[]`                   |
 | `security.enableSecurityCheck`   | Ob Secretlint verwendet werden soll, um Sicherheitsprüfungen auf sensible Informationen durchzuführen                    | `true`                 |
@@ -232,6 +233,7 @@ Oder verwenden Sie die Kommandozeilenoption `--include` für einmaliges Filtern.
 Repomix bietet mehrere Methoden zum Festlegen von Ignorier-Mustern, um bestimmte Dateien oder Verzeichnisse während des Packprozesses auszuschließen:
 
 - **.gitignore**: Standardmäßig werden die in den `.gitignore`-Dateien und `.git/info/exclude` Ihres Projekts aufgelisteten Muster verwendet. Dieses Verhalten kann über die Einstellung `ignore.useGitignore` oder die CLI-Option `--no-gitignore` gesteuert werden.
+- **.ignore**: Sie können eine `.ignore`-Datei im Stammverzeichnis Ihres Projekts verwenden, die dem gleichen Format wie `.gitignore` folgt. Diese Datei wird von Tools wie ripgrep und the silver searcher respektiert und reduziert die Notwendigkeit, mehrere Ignorier-Dateien zu pflegen. Dieses Verhalten kann über die Einstellung `ignore.useDotIgnore` oder die CLI-Option `--no-dot-ignore` gesteuert werden.
 - **Standardmuster**: Repomix enthält eine Standardliste häufig ausgeschlossener Dateien und Verzeichnisse (z.B. node_modules, .git, Binärdateien). Diese Funktion kann über die Einstellung `ignore.useDefaultPatterns` oder die CLI-Option `--no-default-patterns` gesteuert werden. Weitere Details finden Sie in [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts).
 - **.repomixignore**: Sie können eine `.repomixignore`-Datei in Ihrem Projektstamm erstellen, um Repomix-spezifische Ignorier-Muster zu definieren. Diese Datei folgt dem gleichen Format wie `.gitignore`.
 - **Benutzerdefinierte Muster**: Zusätzliche Ignorier-Muster können über die Option `ignore.customPatterns` in der Konfigurationsdatei angegeben werden. Sie können diese Einstellung mit der Kommandozeilenoption `-i, --ignore` überschreiben.
@@ -239,9 +241,10 @@ Repomix bietet mehrere Methoden zum Festlegen von Ignorier-Mustern, um bestimmte
 **Prioritätsreihenfolge** (von höchster zu niedrigster):
 
 1. Benutzerdefinierte Muster (`ignore.customPatterns`)
-2. `.repomixignore`
-3. `.gitignore` und `.git/info/exclude` (wenn `ignore.useGitignore` true ist und `--no-gitignore` nicht verwendet wird)
-4. Standardmuster (wenn `ignore.useDefaultPatterns` true ist und `--no-default-patterns` nicht verwendet wird)
+2. Ignorier-Dateien (`.repomixignore`, `.ignore`, `.gitignore` und `.git/info/exclude`):
+   - Bei verschachtelten Verzeichnissen haben Dateien in tieferen Verzeichnissen höhere Priorität
+   - Bei Dateien im selben Verzeichnis werden diese ohne bestimmte Reihenfolge zusammengeführt
+3. Standardmuster (wenn `ignore.useDefaultPatterns` true ist und `--no-default-patterns` nicht verwendet wird)
 
 Dieser Ansatz ermöglicht eine flexible Konfiguration des Dateiausschlusses basierend auf den Anforderungen Ihres Projekts. Er hilft, die Größe der generierten Packdatei zu optimieren, indem er den Ausschluss sicherheitssensibler Dateien und großer Binärdateien gewährleistet und gleichzeitig die Preisgabe vertraulicher Informationen verhindert.
 

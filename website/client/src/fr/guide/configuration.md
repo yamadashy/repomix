@@ -110,6 +110,7 @@ Les fichiers de configuration JavaScript fonctionnent de la même manière que T
 | `output.git.includeLogsCount`    | Nombre de commits de journaux git récents à inclure dans la sortie                                                                          | `50`                   |
 | `include`                        | Motifs des fichiers à inclure en utilisant les [motifs glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
 | `ignore.useGitignore`            | Indique s'il faut utiliser les motifs du fichier `.gitignore` du projet                                                      | `true`                 |
+| `ignore.useDotIgnore`            | Indique s'il faut utiliser les motifs du fichier `.ignore` du projet                                                         | `true`                 |
 | `ignore.useDefaultPatterns`      | Indique s'il faut utiliser les motifs d'ignorance par défaut (node_modules, .git, etc.)                                    | `true`                 |
 | `ignore.customPatterns`          | Motifs supplémentaires à ignorer en utilisant les [motifs glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
 | `security.enableSecurityCheck`   | Indique s'il faut effectuer des vérifications de sécurité à l'aide de Secretlint pour détecter les informations sensibles   | `true`                 |
@@ -232,6 +233,7 @@ Ou utilisez l'option en ligne de commande `--include` pour un filtrage ponctuel.
 Repomix offre plusieurs méthodes pour définir des motifs d'ignorance afin d'exclure des fichiers ou répertoires spécifiques pendant le processus d'empaquetage :
 
 - **.gitignore** : Par défaut, les motifs listés dans les fichiers `.gitignore` de votre projet et `.git/info/exclude` sont utilisés. Ce comportement peut être contrôlé avec le paramètre `ignore.useGitignore` ou l'option CLI `--no-gitignore`.
+- **.ignore** : Vous pouvez utiliser un fichier `.ignore` à la racine de votre projet, suivant le même format que `.gitignore`. Ce fichier est respecté par des outils comme ripgrep et the silver searcher, réduisant le besoin de maintenir plusieurs fichiers d'ignorance. Ce comportement peut être contrôlé avec le paramètre `ignore.useDotIgnore` ou l'option CLI `--no-dot-ignore`.
 - **Motifs par défaut** : Repomix inclut une liste par défaut de fichiers et répertoires couramment exclus (par exemple, node_modules, .git, fichiers binaires). Cette fonctionnalité peut être contrôlée avec le paramètre `ignore.useDefaultPatterns` ou l'option CLI `--no-default-patterns`. Veuillez consulter [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts) pour plus de détails.
 - **.repomixignore** : Vous pouvez créer un fichier `.repomixignore` à la racine de votre projet pour définir des motifs d'ignorance spécifiques à Repomix. Ce fichier suit le même format que `.gitignore`.
 - **Motifs personnalisés** : Des motifs d'ignorance supplémentaires peuvent être spécifiés en utilisant l'option `ignore.customPatterns` dans le fichier de configuration. Vous pouvez remplacer ce paramètre avec l'option en ligne de commande `-i, --ignore`.
@@ -239,9 +241,10 @@ Repomix offre plusieurs méthodes pour définir des motifs d'ignorance afin d'ex
 **Ordre de priorité** (du plus élevé au plus bas) :
 
 1. Motifs personnalisés (`ignore.customPatterns`)
-2. `.repomixignore`
-3. `.gitignore` et `.git/info/exclude` (si `ignore.useGitignore` est vrai et `--no-gitignore` n'est pas utilisé)
-4. Motifs par défaut (si `ignore.useDefaultPatterns` est vrai et `--no-default-patterns` n'est pas utilisé)
+2. Fichiers d'ignorance (`.repomixignore`, `.ignore`, `.gitignore`, et `.git/info/exclude`) :
+   - Lorsqu'ils sont dans des répertoires imbriqués, les fichiers dans les répertoires plus profonds ont une priorité plus élevée
+   - Lorsqu'ils sont dans le même répertoire, ces fichiers sont fusionnés sans ordre particulier
+3. Motifs par défaut (si `ignore.useDefaultPatterns` est vrai et `--no-default-patterns` n'est pas utilisé)
 
 Cette approche permet une configuration flexible de l'exclusion de fichiers en fonction des besoins de votre projet. Elle aide à optimiser la taille du fichier empaqueté généré en garantissant l'exclusion des fichiers sensibles à la sécurité et des gros fichiers binaires, tout en empêchant la fuite d'informations confidentielles.
 

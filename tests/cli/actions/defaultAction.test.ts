@@ -277,5 +277,32 @@ describe('defaultAction', () => {
 
       expect(config.output?.removeComments).toBe(true);
     });
+
+    it('should handle --no-gitignore flag', () => {
+      const options = {
+        gitignore: false,
+      };
+      const config = buildCliConfig(options);
+
+      expect(config.ignore?.useGitignore).toBe(false);
+    });
+
+    it('should handle --no-dot-ignore flag', () => {
+      const options = {
+        dotIgnore: false,
+      };
+      const config = buildCliConfig(options);
+
+      expect(config.ignore?.useDotIgnore).toBe(false);
+    });
+
+    it('should handle --no-default-patterns flag', () => {
+      const options = {
+        defaultPatterns: false,
+      };
+      const config = buildCliConfig(options);
+
+      expect(config.ignore?.useDefaultPatterns).toBe(false);
+    });
   });
 });

@@ -37,6 +37,7 @@
 - `--include <patterns>`: Daftar pola penyertaan (dipisahkan koma)
 - `-i, --ignore <patterns>`: Pola pengabaian tambahan (dipisahkan koma)
 - `--no-gitignore`: Menonaktifkan penggunaan file .gitignore
+- `--no-dot-ignore`: Menonaktifkan penggunaan file .ignore
 - `--no-default-patterns`: Menonaktifkan pola default
 
 ## Opsi Repositori Remote

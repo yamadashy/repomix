@@ -110,6 +110,7 @@ JavaScript設定檔的工作方式與TypeScript相同，支援`defineConfig`和�
 | `output.git.includeLogsCount`    | 在輸出中包含的git記錄提交數量                                                                                        | `50`                   |
 | `include`                        | 要包含的檔案模式（使用[glob模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)）                 | `[]`                   |
 | `ignore.useGitignore`            | 是否使用專案的`.gitignore`檔案中的模式                                                                                     | `true`                 |
+| `ignore.useDotIgnore`            | 是否使用專案的`.ignore`檔案中的模式                                                                                       | `true`                 |
 | `ignore.useDefaultPatterns`      | 是否使用預設忽略模式（node_modules、.git等）                                                                              | `true`                 |
 | `ignore.customPatterns`          | 額外的忽略模式（使用[glob模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)）                   | `[]`                   |
 | `security.enableSecurityCheck`   | 是否使用Secretlint執行安全檢查以檢測敏感資訊                                                                              | `true`                 |
@@ -232,6 +233,7 @@ Repomix支援使用[glob模式](https://github.com/mrmlnc/fast-glob?tab=readme-o
 Repomix提供多種方法來設定忽略模式，以在打包過程中排除特定檔案或目錄：
 
 - **.gitignore**：預設情況下，使用專案的`.gitignore`檔案和`.git/info/exclude`中列出的模式。此行為可以透過`ignore.useGitignore`設定或`--no-gitignore` CLI選項控制。
+- **.ignore**：您可以在專案根目錄中使用`.ignore`檔案，格式與`.gitignore`相同。ripgrep和the silver searcher等工具也會使用此檔案，減少維護多個忽略檔案的需求。此行為可以透過`ignore.useDotIgnore`設定或`--no-dot-ignore` CLI選項控制。
 - **預設模式**：Repomix包含常見排除檔案和目錄的預設清單（例如node_modules、.git、二進制檔案）。此功能可以透過`ignore.useDefaultPatterns`設定或`--no-default-patterns` CLI選項控制。有關詳細資訊，請參閱[defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts)。
 - **.repomixignore**：您可以在專案根目錄中建立`.repomixignore`檔案來定義Repomix特定的忽略模式。此檔案遵循與`.gitignore`相同的格式。
 - **自訂模式**：可以使用設定檔中的`ignore.customPatterns`選項指定其他忽略模式。您可以使用`-i, --ignore`命令列選項覆寫此設定。
@@ -239,9 +241,10 @@ Repomix提供多種方法來設定忽略模式，以在打包過程中排除特�
 **優先順序**（從高到低）：
 
 1. 自訂模式（`ignore.customPatterns`）
-2. `.repomixignore`
-3. `.gitignore`和`.git/info/exclude`（如果`ignore.useGitignore`為true且未使用`--no-gitignore`）
-4. 預設模式（如果`ignore.useDefaultPatterns`為true且未使用`--no-default-patterns`）
+2. 忽略檔案（`.repomixignore`、`.ignore`、`.gitignore`和`.git/info/exclude`）：
+   - 在巢狀目錄中時，更深層目錄中的檔案具有更高優先順序
+   - 在同一目錄中時，這些檔案以不特定的順序合併
+3. 預設模式（如果`ignore.useDefaultPatterns`為true且未使用`--no-default-patterns`）
 
 這種方法允許根據專案需求靈活設定檔案排除。它透過確保排除安全敏感檔案和大型二進制檔案來幫助優化產生的打包檔案的大小，同時防止機密資訊外洩。
 

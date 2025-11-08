@@ -37,6 +37,7 @@
 - `--include <patterns>`: これらのglobパターンに一致するファイルのみを含める（カンマ区切り、例：「src/**/*.js,*.md」）
 - `-i, --ignore <patterns>`: 除外する追加パターン（カンマ区切り、例：「*.test.js,docs/**」）
 - `--no-gitignore`: ファイルフィルタリングに.gitignoreルールを使用しない
+- `--no-dot-ignore`: ファイルフィルタリングに.ignoreルールを使用しない
 - `--no-default-patterns`: 組み込みの無視パターンを適用しない（node_modules、.git、buildディレクトリなど）
 
 ## リモートリポジトリオプション
