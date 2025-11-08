@@ -30,7 +30,9 @@ describe('loadLanguage', () => {
     await loadLanguage('javascript');
 
     expect(mockAccess).toHaveBeenCalledWith('/mock/path/@repomix/tree-sitter-wasms/out/tree-sitter-javascript.wasm');
-    expect(mockLoadLanguage).toHaveBeenCalledWith('/mock/path/@repomix/tree-sitter-wasms/out/tree-sitter-javascript.wasm');
+    expect(mockLoadLanguage).toHaveBeenCalledWith(
+      '/mock/path/@repomix/tree-sitter-wasms/out/tree-sitter-javascript.wasm',
+    );
   });
 
   it('should throw error when WASM file is not found', async () => {
