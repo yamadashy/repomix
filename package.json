@@ -1,6 +1,6 @@
 {
   "name": "repomix",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "A tool to pack repository contents to single file for AI consumption",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
