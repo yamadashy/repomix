@@ -295,10 +295,12 @@ export const parseIgnoreContent = (content: string): string[] => {
 export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promise<string[]> => {
   const ignoreFilePatterns: string[] = [];
 
-  // Note: Files added later in the array have higher priority.
-  // This follows the behavior of tools like ripgrep and fd where
-  // patterns from later files override patterns from earlier files.
-  // Priority order (low to high): .gitignore -> .ignore -> .repomixignore
+  // Note: When ignore files are found in nested directories, files in deeper
+  // directories have higher priority, following the behavior of ripgrep and fd.
+  // For example, `src/.ignore` patterns override `./.ignore` patterns.
+  //
+  // Multiple ignore files in the same directory (.gitignore, .ignore, .repomixignore)
+  // are all merged together. The order in this array does not affect priority.
 
   if (config.ignore.useGitignore) {
     ignoreFilePatterns.push('**/.gitignore');
