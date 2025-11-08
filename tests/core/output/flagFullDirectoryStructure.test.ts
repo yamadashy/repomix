@@ -36,6 +36,7 @@ const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): Repomix
   include: ['src/**/*.ts'],
   ignore: {
     useGitignore: true,
+    useDotIgnore: true,
     useDefaultPatterns: true,
     customPatterns: [],
   },

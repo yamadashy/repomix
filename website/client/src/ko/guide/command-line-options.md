@@ -37,6 +37,7 @@
 - `--include <patterns>`: 포함 패턴 목록 (쉼표로 구분)
 - `-i, --ignore <patterns>`: 추가 무시 패턴 (쉼표로 구분)
 - `--no-gitignore`: .gitignore 파일 사용 비활성화
+- `--no-dot-ignore`: .ignore 파일 사용 비활성화
 - `--no-default-patterns`: 기본 패턴 비활성화
 
 ## 원격 저장소 옵션

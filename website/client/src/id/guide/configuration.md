@@ -110,6 +110,7 @@ File konfigurasi JavaScript bekerja sama seperti TypeScript, mendukung `defineCo
 | `output.git.includeLogsCount`    | Jumlah commit log git yang akan disertakan dalam output                                                                    | `50`                   |
 | `include`                        | Pola file untuk disertakan menggunakan [pola glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)  | `[]`                   |
 | `ignore.useGitignore`            | Apakah akan menggunakan pola dari file `.gitignore` proyek                                                                  | `true`                 |
+| `ignore.useDotIgnore`            | Apakah akan menggunakan pola dari file `.ignore` proyek                                                                     | `true`                 |
 | `ignore.useDefaultPatterns`      | Apakah akan menggunakan pola ignore default (node_modules, .git, dll.)                                                     | `true`                 |
 | `ignore.customPatterns`          | Pola tambahan untuk diabaikan menggunakan [pola glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
 | `security.enableSecurityCheck`   | Apakah akan melakukan pemeriksaan keamanan menggunakan Secretlint untuk mendeteksi informasi sensitif                      | `true`                 |
@@ -211,12 +212,21 @@ Opsi baris perintah memiliki prioritas lebih tinggi daripada pengaturan file kon
 
 ## Pola Ignore
 
-Repomix menyediakan beberapa cara untuk menentukan file mana yang harus diabaikan. Pola diproses dalam urutan prioritas berikut:
+Repomix menyediakan beberapa cara untuk menentukan file mana yang harus diabaikan:
 
-1. Opsi CLI (`--ignore`)
-2. File `.repomixignore` di direktori proyek
-3. `.gitignore` dan `.git/info/exclude` (jika `ignore.useGitignore` adalah true)
-4. Pola default (jika `ignore.useDefaultPatterns` adalah true)
+- **.gitignore**: Secara default, pola yang tercantum dalam file `.gitignore` dan `.git/info/exclude` proyek digunakan. Perilaku ini dapat dikontrol dengan pengaturan `ignore.useGitignore` atau opsi CLI `--no-gitignore`.
+- **.ignore**: Anda dapat menggunakan file `.ignore` di direktori root proyek, mengikuti format yang sama dengan `.gitignore`. File ini digunakan oleh alat seperti ripgrep dan the silver searcher, mengurangi kebutuhan untuk memelihara beberapa file ignore. Perilaku ini dapat dikontrol dengan pengaturan `ignore.useDotIgnore` atau opsi CLI `--no-dot-ignore`.
+- **Pola default**: Repomix menyertakan daftar default file dan direktori yang biasanya dikecualikan (misalnya node_modules, .git, file biner). Fitur ini dapat dikontrol dengan pengaturan `ignore.useDefaultPatterns` atau opsi CLI `--no-default-patterns`. Silakan lihat [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts) untuk detail lebih lanjut.
+- **.repomixignore**: Anda dapat membuat file `.repomixignore` di direktori root proyek untuk mendefinisikan pola ignore khusus Repomix. File ini mengikuti format yang sama dengan `.gitignore`.
+- **Pola kustom**: Pola ignore tambahan dapat ditentukan menggunakan opsi `ignore.customPatterns` dalam file konfigurasi. Anda dapat menimpa pengaturan ini dengan opsi baris perintah `-i, --ignore`.
+
+**Urutan prioritas** (dari tinggi ke rendah):
+
+1. Pola kustom (`ignore.customPatterns`)
+2. `.repomixignore`
+3. `.ignore` (jika `ignore.useDotIgnore` adalah true dan tidak menggunakan `--no-dot-ignore`)
+4. `.gitignore` dan `.git/info/exclude` (jika `ignore.useGitignore` adalah true dan tidak menggunakan `--no-gitignore`)
+5. Pola default (jika `ignore.useDefaultPatterns` adalah true dan tidak menggunakan `--no-default-patterns`)
 
 Contoh `.repomixignore`:
 ```text

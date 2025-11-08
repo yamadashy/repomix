@@ -64,6 +64,7 @@ describe('defaultActionWorker', () => {
     include: ['**/*'],
     ignore: {
       useGitignore: true,
+      useDotIgnore: true,
       useDefaultPatterns: true,
       customPatterns: [],
     },

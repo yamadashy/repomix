@@ -37,6 +37,7 @@
 - `--include <patterns>`: Liste des motifs d'inclusion (séparés par des virgules)
 - `-i, --ignore <patterns>`: Motifs d'ignorance supplémentaires (séparés par des virgules)
 - `--no-gitignore`: Désactiver l'utilisation du fichier .gitignore
+- `--no-dot-ignore`: Désactiver l'utilisation du fichier .ignore
 - `--no-default-patterns`: Désactiver les motifs par défaut
 
 ## Options de dépôt distant

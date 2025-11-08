@@ -110,6 +110,7 @@ Los archivos de configuración JavaScript funcionan igual que TypeScript, admiti
 | `output.git.includeLogsCount`    | Número de commits de log de git a incluir en la salida                                                                          | `50`                   |
 | `include`                        | Patrones de archivos a incluir usando [patrones glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
 | `ignore.useGitignore`            | Indica si se deben usar los patrones del archivo `.gitignore` del proyecto                                                  | `true`                 |
+| `ignore.useDotIgnore`            | Indica si se deben usar los patrones del archivo `.ignore` del proyecto                                                     | `true`                 |
 | `ignore.useDefaultPatterns`      | Indica si se deben usar los patrones de ignorar predeterminados (node_modules, .git, etc.)                                | `true`                 |
 | `ignore.customPatterns`          | Patrones adicionales para ignorar usando [patrones glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
 | `security.enableSecurityCheck`   | Indica si se deben realizar comprobaciones de seguridad usando Secretlint para detectar información sensible               | `true`                 |
@@ -232,6 +233,7 @@ O use la opción de línea de comandos `--include` para filtrado único.
 Repomix ofrece múltiples métodos para establecer patrones de ignorar para excluir archivos o directorios específicos durante el proceso de empaquetado:
 
 - **.gitignore**: Por defecto, se utilizan los patrones listados en los archivos `.gitignore` de su proyecto y `.git/info/exclude`. Este comportamiento se puede controlar con la configuración `ignore.useGitignore` o la opción CLI `--no-gitignore`.
+- **.ignore**: Puede usar un archivo `.ignore` en la raíz de su proyecto, siguiendo el mismo formato que `.gitignore`. Este archivo es respetado por herramientas como ripgrep y the silver searcher, reduciendo la necesidad de mantener múltiples archivos de ignorar. Este comportamiento se puede controlar con la configuración `ignore.useDotIgnore` o la opción CLI `--no-dot-ignore`.
 - **Patrones predeterminados**: Repomix incluye una lista predeterminada de archivos y directorios comúnmente excluidos (por ejemplo, node_modules, .git, archivos binarios). Esta característica se puede controlar con la configuración `ignore.useDefaultPatterns` o la opción CLI `--no-default-patterns`. Consulte [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts) para más detalles.
 - **.repomixignore**: Puede crear un archivo `.repomixignore` en la raíz de su proyecto para definir patrones de ignorar específicos de Repomix. Este archivo sigue el mismo formato que `.gitignore`.
 - **Patrones personalizados**: Se pueden especificar patrones de ignorar adicionales usando la opción `ignore.customPatterns` en el archivo de configuración. Puede sobrescribir esta configuración con la opción de línea de comandos `-i, --ignore`.
@@ -240,8 +242,9 @@ Repomix ofrece múltiples métodos para establecer patrones de ignorar para excl
 
 1. Patrones personalizados (`ignore.customPatterns`)
 2. `.repomixignore`
-3. `.gitignore` y `.git/info/exclude` (si `ignore.useGitignore` es verdadero y `--no-gitignore` no se usa)
-4. Patrones predeterminados (si `ignore.useDefaultPatterns` es verdadero y `--no-default-patterns` no se usa)
+3. `.ignore` (si `ignore.useDotIgnore` es verdadero y `--no-dot-ignore` no se usa)
+4. `.gitignore` y `.git/info/exclude` (si `ignore.useGitignore` es verdadero y `--no-gitignore` no se usa)
+5. Patrones predeterminados (si `ignore.useDefaultPatterns` es verdadero y `--no-default-patterns` no se usa)
 
 Este enfoque permite una configuración flexible de exclusión de archivos basada en las necesidades de su proyecto. Ayuda a optimizar el tamaño del archivo empaquetado generado asegurando la exclusión de archivos sensibles a la seguridad y archivos binarios grandes, mientras previene la fuga de información confidencial.
 

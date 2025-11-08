@@ -54,6 +54,7 @@ describe('calculateGitDiffMetrics', () => {
     include: ['**/*'],
     ignore: {
       useGitignore: true,
+      useDotIgnore: true,
       useDefaultPatterns: true,
       customPatterns: [],
     },

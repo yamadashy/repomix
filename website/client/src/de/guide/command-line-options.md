@@ -37,6 +37,7 @@
 - `--include <patterns>`: Liste der Einschlussmuster (kommagetrennt)
 - `-i, --ignore <patterns>`: Zusätzliche Ignoriermuster (kommagetrennt)
 - `--no-gitignore`: .gitignore-Datei-Nutzung deaktivieren
+- `--no-dot-ignore`: .ignore-Datei-Nutzung deaktivieren
 - `--no-default-patterns`: Standardmuster deaktivieren
 
 ## Remote-Repository-Optionen

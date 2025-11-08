@@ -110,6 +110,7 @@ JavaScript 설정 파일은 TypeScript와 동일하게 작동하며 `defineConfi
 | `output.git.includeLogsCount`    | 포함할 Git 로그 커밋 수. 개발 패턴을 이해하기 위한 히스토리 깊이를 제한합니다                                          | `50`                   |
 | `include`                        | 포함할 파일 패턴([glob 패턴](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) 사용)                 | `[]`                   |
 | `ignore.useGitignore`            | 프로젝트의 `.gitignore` 파일의 패턴을 사용할지 여부                                                                        | `true`                 |
+| `ignore.useDotIgnore`            | 프로젝트의 `.ignore` 파일의 패턴을 사용할지 여부                                                                          | `true`                 |
 | `ignore.useDefaultPatterns`      | 기본 무시 패턴(node_modules, .git 등)을 사용할지 여부                                                                     | `true`                 |
 | `ignore.customPatterns`          | 추가 무시 패턴([glob 패턴](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) 사용)                   | `[]`                   |
 | `security.enableSecurityCheck`   | Secretlint를 사용하여 민감한 정보를 감지하는 보안 검사를 수행할지 여부                                                    | `true`                 |
@@ -232,6 +233,7 @@ Repomix는 [glob 패턴](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#
 Repomix는 패키징 프로세스 중에 특정 파일이나 디렉토리를 제외하기 위한 여러 방법을 제공합니다:
 
 - **.gitignore**: 기본적으로 프로젝트의 `.gitignore` 파일과 `.git/info/exclude`에 나열된 패턴이 사용됩니다. 이 동작은 `ignore.useGitignore` 설정 또는 `--no-gitignore` CLI 옵션으로 제어할 수 있습니다.
+- **.ignore**: 프로젝트 루트에 `.gitignore`와 동일한 형식의 `.ignore` 파일을 사용할 수 있습니다. 이 파일은 ripgrep 및 the silver searcher와 같은 도구에서도 사용되어 여러 무시 파일을 관리할 필요성을 줄입니다. 이 동작은 `ignore.useDotIgnore` 설정 또는 `--no-dot-ignore` CLI 옵션으로 제어할 수 있습니다.
 - **기본 패턴**: Repomix에는 일반적으로 제외되는 파일 및 디렉토리의 기본 목록(예: node_modules, .git, 바이너리 파일)이 포함되어 있습니다. 이 기능은 `ignore.useDefaultPatterns` 설정 또는 `--no-default-patterns` CLI 옵션으로 제어할 수 있습니다. 자세한 내용은 [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts)를 참조하세요.
 - **.repomixignore**: 프로젝트 루트에 `.repomixignore` 파일을 생성하여 Repomix 전용 무시 패턴을 정의할 수 있습니다. 이 파일은 `.gitignore`와 동일한 형식을 따릅니다.
 - **사용자 정의 패턴**: 설정 파일의 `ignore.customPatterns` 옵션을 사용하여 추가 무시 패턴을 지정할 수 있습니다. 이 설정은 `-i, --ignore` 명령줄 옵션으로 덮어쓸 수 있습니다.
@@ -240,8 +242,9 @@ Repomix는 패키징 프로세스 중에 특정 파일이나 디렉토리를 제
 
 1. 사용자 정의 패턴(`ignore.customPatterns`)
 2. `.repomixignore`
-3. `.gitignore` 및 `.git/info/exclude`(`ignore.useGitignore`가 true이고 `--no-gitignore`가 사용되지 않은 경우)
-4. 기본 패턴(`ignore.useDefaultPatterns`가 true이고 `--no-default-patterns`가 사용되지 않은 경우)
+3. `.ignore`(`ignore.useDotIgnore`가 true이고 `--no-dot-ignore`가 사용되지 않은 경우)
+4. `.gitignore` 및 `.git/info/exclude`(`ignore.useGitignore`가 true이고 `--no-gitignore`가 사용되지 않은 경우)
+5. 기본 패턴(`ignore.useDefaultPatterns`가 true이고 `--no-default-patterns`가 사용되지 않은 경우)
 
 이 접근 방식을 통해 프로젝트의 필요에 따라 유연한 파일 제외 설정이 가능합니다. 보안에 민감한 파일과 대용량 바이너리 파일의 제외를 보장하면서 기밀 정보 유출을 방지하여 생성된 팩 파일의 크기를 최적화하는 데 도움이 됩니다.
 

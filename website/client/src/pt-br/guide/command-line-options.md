@@ -37,6 +37,7 @@
 - `--include <patterns>`: Lista de padrões de inclusão (separados por vírgula)
 - `-i, --ignore <patterns>`: Padrões de ignorar adicionais (separados por vírgula)
 - `--no-gitignore`: Desabilitar uso do arquivo .gitignore
+- `--no-dot-ignore`: Desabilitar uso do arquivo .ignore
 - `--no-default-patterns`: Desabilitar padrões padrão
 
 ## Opções de Repositório Remoto

@@ -110,6 +110,7 @@ File cấu hình JavaScript hoạt động tương tự như TypeScript, hỗ tr
 | `output.git.includeLogsCount`    | Số lượng commit git logs để bao gồm trong đầu ra                                                                          | `50`                   |
 | `include`                        | Các mẫu file để bao gồm sử dụng [mẫu glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)         | `[]`                   |
 | `ignore.useGitignore`            | Có nên sử dụng các mẫu từ file `.gitignore` của dự án hay không                                                            | `true`                 |
+| `ignore.useDotIgnore`            | Có nên sử dụng các mẫu từ file `.ignore` của dự án hay không                                                               | `true`                 |
 | `ignore.useDefaultPatterns`      | Có nên sử dụng các mẫu ignore mặc định (node_modules, .git, v.v.) hay không                                               | `true`                 |
 | `ignore.customPatterns`          | Các mẫu bổ sung để ignore sử dụng [mẫu glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)       | `[]`                   |
 | `security.enableSecurityCheck`   | Có nên thực hiện kiểm tra bảo mật bằng Secretlint để phát hiện thông tin nhạy cảm hay không                                | `true`                 |
@@ -211,12 +212,21 @@ Các tùy chọn dòng lệnh có ưu tiên cao hơn cài đặt file cấu hìn
 
 ## Mẫu Ignore
 
-Repomix cung cấp nhiều cách để chỉ định file nào nên được ignore. Các mẫu được xử lý theo thứ tự ưu tiên sau:
+Repomix cung cấp nhiều cách để chỉ định file nào nên được ignore:
 
-1. Tùy chọn CLI (`--ignore`)
-2. File `.repomixignore` trong thư mục dự án
-3. `.gitignore` và `.git/info/exclude` (nếu `ignore.useGitignore` là true)
-4. Mẫu mặc định (nếu `ignore.useDefaultPatterns` là true)
+- **.gitignore**: Theo mặc định, các mẫu được liệt kê trong file `.gitignore` và `.git/info/exclude` của dự án được sử dụng. Hành vi này có thể được kiểm soát bằng cài đặt `ignore.useGitignore` hoặc tùy chọn CLI `--no-gitignore`.
+- **.ignore**: Bạn có thể sử dụng file `.ignore` trong thư mục gốc dự án, theo cùng định dạng với `.gitignore`. File này được các công cụ như ripgrep và the silver searcher sử dụng, giảm nhu cầu duy trì nhiều file ignore. Hành vi này có thể được kiểm soát bằng cài đặt `ignore.useDotIgnore` hoặc tùy chọn CLI `--no-dot-ignore`.
+- **Mẫu mặc định**: Repomix bao gồm danh sách mặc định các file và thư mục thường được loại trừ (ví dụ: node_modules, .git, file nhị phân). Tính năng này có thể được kiểm soát bằng cài đặt `ignore.useDefaultPatterns` hoặc tùy chọn CLI `--no-default-patterns`. Vui lòng xem [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts) để biết thêm chi tiết.
+- **.repomixignore**: Bạn có thể tạo file `.repomixignore` trong thư mục gốc dự án để định nghĩa các mẫu ignore cụ thể cho Repomix. File này tuân theo cùng định dạng với `.gitignore`.
+- **Mẫu tùy chỉnh**: Các mẫu ignore bổ sung có thể được chỉ định bằng tùy chọn `ignore.customPatterns` trong file cấu hình. Bạn có thể ghi đè cài đặt này bằng tùy chọn dòng lệnh `-i, --ignore`.
+
+**Thứ tự ưu tiên** (từ cao đến thấp):
+
+1. Mẫu tùy chỉnh (`ignore.customPatterns`)
+2. `.repomixignore`
+3. `.ignore` (nếu `ignore.useDotIgnore` là true và không sử dụng `--no-dot-ignore`)
+4. `.gitignore` và `.git/info/exclude` (nếu `ignore.useGitignore` là true và không sử dụng `--no-gitignore`)
+5. Mẫu mặc định (nếu `ignore.useDefaultPatterns` là true và không sử dụng `--no-default-patterns`)
 
 Ví dụ về `.repomixignore`:
 ```text

@@ -37,6 +37,7 @@
 - `--include <patterns>`: Danh sách các mẫu bao gồm (phân tách bằng dấu phẩy)
 - `-i, --ignore <patterns>`: Các mẫu bỏ qua bổ sung (phân tách bằng dấu phẩy)
 - `--no-gitignore`: Tắt việc sử dụng tệp .gitignore
+- `--no-dot-ignore`: Tắt việc sử dụng tệp .ignore
 - `--no-default-patterns`: Tắt các mẫu mặc định
 
 ## Tùy chọn Kho lưu trữ Từ xa

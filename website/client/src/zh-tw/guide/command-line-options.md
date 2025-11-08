@@ -37,6 +37,7 @@
 - `--include <patterns>`: 包含模式清單（逗號分隔）
 - `-i, --ignore <patterns>`: 附加忽略模式（逗號分隔）
 - `--no-gitignore`: 停用.gitignore檔案使用
+- `--no-dot-ignore`: 停用.ignore檔案使用
 - `--no-default-patterns`: 停用預設模式
 
 ## 遠端儲存庫選項
