@@ -127,6 +127,10 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   if (options.gitignore === false) {
     cliConfig.ignore = { ...cliConfig.ignore, useGitignore: options.gitignore };
   }
+  // Only apply dotIgnore setting if explicitly set to false
+  if (options.dotIgnore === false) {
+    cliConfig.ignore = { ...cliConfig.ignore, useDotIgnore: options.dotIgnore };
+  }
   // Only apply defaultPatterns setting if explicitly set to false
   if (options.defaultPatterns === false) {
     cliConfig.ignore = {

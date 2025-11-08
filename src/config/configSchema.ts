@@ -56,6 +56,7 @@ export const repomixConfigBaseSchema = z.object({
   ignore: z
     .object({
       useGitignore: z.boolean().optional(),
+      useDotIgnore: z.boolean().optional(),
       useDefaultPatterns: z.boolean().optional(),
       customPatterns: z.array(z.string()).optional(),
     })
@@ -111,6 +112,7 @@ export const repomixConfigDefaultSchema = z.object({
   include: z.array(z.string()).default([]),
   ignore: z.object({
     useGitignore: z.boolean().default(true),
+    useDotIgnore: z.boolean().default(true),
     useDefaultPatterns: z.boolean().default(true),
     customPatterns: z.array(z.string()).default([]),
   }),

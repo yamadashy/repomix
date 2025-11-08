@@ -83,7 +83,7 @@ This wouldn't have been possible without all of you using and supporting Repomix
 - **Token Counting**: Provides token counts for each file and the entire repository, useful for LLM context limits.
 - **Simple to Use**: You need just one command to pack your entire repository.
 - **Customizable**: Easily configure what to include or exclude.
-- **Git-Aware**: Automatically respects your `.gitignore` files and `.git/info/exclude`.
+- **Git-Aware**: Automatically respects your `.gitignore`, `.ignore`, and `.repomixignore` files.
 - **Security-Focused**: Incorporates [Secretlint](https://github.com/secretlint/secretlint) for robust security checks to detect and prevent inclusion of sensitive information.
 - **Code Compression**: The `--compress` option uses [Tree-sitter](https://github.com/tree-sitter/tree-sitter) to extract key code elements, reducing token count while preserving structure.
 
@@ -495,7 +495,7 @@ The JSON format structures the content as a hierarchical JSON object with camelC
     "purpose": "This file contains a packed representation of the entire repository's contents...",
     "fileFormat": "The content is organized as follows...",
     "usageGuidelines": "- This file should be treated as read-only...",
-    "notes": "- Some files may have been excluded based on .gitignore rules..."
+    "notes": "- Some files may have been excluded based on .gitignore, .ignore, and .repomixignore rules..."
   },
   "userProvidedHeader": "Custom header text if specified",
   "directoryStructure": "src/\n  cli/\n    cliOutput.ts\n    index.ts\n  config/\n    configLoader.ts",
@@ -637,6 +637,7 @@ Instruction
 - `--include <patterns>`: Include only files matching these glob patterns (comma-separated, e.g., "src/**/*.js,*.md")
 - `-i, --ignore <patterns>`: Additional patterns to exclude (comma-separated, e.g., "*.test.js,docs/**")
 - `--no-gitignore`: Don't use .gitignore rules for filtering files
+- `--no-dot-ignore`: Don't use .ignore rules for filtering files
 - `--no-default-patterns`: Don't apply built-in ignore patterns (node_modules, .git, build dirs, etc.)
 
 #### Remote Repository Options
@@ -933,7 +934,7 @@ When running as an MCP server, Repomix provides the following tools:
     - `directory`: Absolute path to the directory to pack
     - `compress`: (Optional, default: false) Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Reduces token usage by ~70% while preserving semantic meaning. Generally not needed since grep_repomix_output allows incremental content retrieval. Use only when you specifically need the entire codebase content for large repositories.
     - `includePatterns`: (Optional) Specify files to include using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "**/*.{js,ts}", "src/**,docs/**"). Only matching files will be processed.
-    - `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.
+    - `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore, .ignore, and built-in exclusions.
     - `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary for codebase analysis.
 
 2. **attach_packed_output**: Attach an existing Repomix packed output file for AI analysis
@@ -951,7 +952,7 @@ When running as an MCP server, Repomix provides the following tools:
     - `remote`: GitHub repository URL or user/repo format (e.g., "yamadashy/repomix", "https://github.com/user/repo", or "https://github.com/user/repo/tree/branch")
     - `compress`: (Optional, default: false) Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Reduces token usage by ~70% while preserving semantic meaning. Generally not needed since grep_repomix_output allows incremental content retrieval. Use only when you specifically need the entire codebase content for large repositories.
     - `includePatterns`: (Optional) Specify files to include using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "**/*.{js,ts}", "src/**,docs/**"). Only matching files will be processed.
-    - `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.
+    - `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore, .ignore, and built-in exclusions.
     - `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary for codebase analysis.
 
 4. **read_repomix_output**: Read the contents of a Repomix-generated output file. Supports partial reading with line range specification for large files.
@@ -1208,6 +1209,7 @@ Here's an explanation of the configuration options:
 | `output.git.includeLogsCount`   | Number of git log commits to include                                                                                         | `50`                   |
 | `include`                        | Patterns of files to include (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax))  | `[]`                   |
 | `ignore.useGitignore`            | Whether to use patterns from the project's `.gitignore` file                                                                 | `true`                 |
+| `ignore.useDotIgnore`            | Whether to use patterns from the project's `.ignore` file                                                                    | `true`                 |
 | `ignore.useDefaultPatterns`      | Whether to use default ignore patterns                                                                                       | `true`                 |
 | `ignore.customPatterns`          | Additional patterns to ignore (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)) | `[]`                   |
 | `security.enableSecurityCheck`   | Whether to perform security checks on files                                                                                  | `true`                 |
@@ -1323,6 +1325,7 @@ Repomix offers multiple methods to set ignore patterns for excluding specific fi
 process:
 
 - **.gitignore**: By default, patterns listed in your project's `.gitignore` files and `.git/info/exclude` are used. This behavior can be controlled with the `ignore.useGitignore` setting or the `--no-gitignore` cli option.
+- **.ignore**: You can use a `.ignore` file in your project root, following the same format as `.gitignore`. This file is respected by tools like ripgrep and the silver searcher, reducing the need to maintain multiple ignore files. This behavior can be controlled with the `ignore.useDotIgnore` setting or the `--no-dot-ignore` cli option.
 - **Default patterns**: Repomix includes a default list of commonly excluded files and directories (e.g., node_modules,
   .git, binary files). This feature can be controlled with the `ignore.useDefaultPatterns` setting or the `--no-default-patterns` cli option. Please
   see [defaultIgnore.ts](src/config/defaultIgnore.ts) for more details.
@@ -1335,8 +1338,9 @@ Priority Order (from highest to lowest):
 
 1. Custom patterns `ignore.customPatterns`
 2. `.repomixignore`
-3. `.gitignore` and `.git/info/exclude` (if `ignore.useGitignore` is true and `--no-gitignore` is not used)
-4. Default patterns (if `ignore.useDefaultPatterns` is true and `--no-default-patterns` is not used)
+3. `.ignore` (if `ignore.useDotIgnore` is true and `--no-dot-ignore` is not used)
+4. `.gitignore` and `.git/info/exclude` (if `ignore.useGitignore` is true and `--no-gitignore` is not used)
+5. Default patterns (if `ignore.useDefaultPatterns` is true and `--no-default-patterns` is not used)
 
 This approach allows for flexible file exclusion configuration based on your project's needs. It helps optimize the size
 of the generated pack file by ensuring the exclusion of security-sensitive files and large binary files, while
