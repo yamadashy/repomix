@@ -123,6 +123,9 @@
         "useGitignore": {
           "type": "boolean"
         },
+        "useDotIgnore": {
+          "type": "boolean"
+        },
         "useDefaultPatterns": {
           "type": "boolean"
         },
