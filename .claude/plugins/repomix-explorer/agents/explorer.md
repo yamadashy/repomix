@@ -1,6 +1,40 @@
 ---
 name: explorer
-description: Use this agent when the user wants to analyze or explore a codebase (remote repository or local repository) using Repomix. This includes scenarios like:\n\n- User asks to analyze a GitHub repository: "Can you analyze this repository: https://github.com/user/repo"\n- User wants to understand a local codebase: "Analyze the codebase in /path/to/project"\n- User requests insights about code structure: "What's the structure of this project?"\n- User wants to find specific patterns: "Find all React components in this repo"\n- User asks about code metrics: "How many lines of code are in this project?"\n- User wants to explore specific files or directories: "Show me the authentication logic"\n\nExamples:\n\n<example>\nuser: "Can you analyze this repository: https://github.com/facebook/react"\nassistant: "I'll use the repomix-explorer:explorer agent to analyze the React repository and provide insights about its structure and content."\n<commentary>\nThe user is requesting repository analysis, so use the Task tool to launch the repomix-explorer:explorer agent to process the remote repository.\n</commentary>\n</example>\n\n<example>\nuser: "I want to understand the structure of the project in ~/projects/my-app"\nassistant: "Let me use the repomix-explorer:explorer agent to analyze the local repository and provide you with a comprehensive overview."\n<commentary>\nThe user wants to analyze a local repository structure, so use the repomix-explorer:explorer agent to process the local codebase.\n</commentary>\n</example>\n\n<example>\nuser: "Find all authentication-related files in the yamadashy/repomix repository"\nassistant: "I'll use the repomix-explorer:explorer agent to search for authentication-related code in the Repomix repository."\n<commentary>\nThe user wants to find specific patterns in a remote repository, so use the repomix-explorer:explorer agent.\n</commentary>\n</example>
+description: |
+  Use this agent when the user wants to analyze or explore a codebase (remote repository or local repository) using Repomix. This includes scenarios like:
+
+  - User asks to analyze a GitHub repository: "Can you analyze this repository: https://github.com/user/repo"
+  - User wants to understand a local codebase: "Analyze the codebase in /path/to/project"
+  - User requests insights about code structure: "What's the structure of this project?"
+  - User wants to find specific patterns: "Find all React components in this repo"
+  - User asks about code metrics: "How many lines of code are in this project?"
+  - User wants to explore specific files or directories: "Show me the authentication logic"
+
+  Examples:
+
+  <example>
+  user: "Can you analyze this repository: https://github.com/facebook/react"
+  assistant: "I'll use the repomix-explorer:explorer agent to analyze the React repository and provide insights about its structure and content."
+  <commentary>
+  The user is requesting repository analysis, so use the Task tool to launch the repomix-explorer:explorer agent to process the remote repository.
+  </commentary>
+  </example>
+
+  <example>
+  user: "I want to understand the structure of the project in ~/projects/my-app"
+  assistant: "Let me use the repomix-explorer:explorer agent to analyze the local repository and provide you with a comprehensive overview."
+  <commentary>
+  The user wants to analyze a local repository structure, so use the repomix-explorer:explorer agent to process the local codebase.
+  </commentary>
+  </example>
+
+  <example>
+  user: "Find all authentication-related files in the yamadashy/repomix repository"
+  assistant: "I'll use the repomix-explorer:explorer agent to search for authentication-related code in the Repomix repository."
+  <commentary>
+  The user wants to find specific patterns in a remote repository, so use the repomix-explorer:explorer agent.
+  </commentary>
+  </example>
 model: inherit
 ---
 
