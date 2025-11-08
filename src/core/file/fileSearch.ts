@@ -295,15 +295,15 @@ export const parseIgnoreContent = (content: string): string[] => {
 export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promise<string[]> => {
   const ignoreFilePatterns: string[] = [];
 
-  ignoreFilePatterns.push('**/.repomixignore');
+  if (config.ignore.useGitignore) {
+    ignoreFilePatterns.push('**/.gitignore');
+  }
 
   if (config.ignore.useDotIgnore) {
     ignoreFilePatterns.push('**/.ignore');
   }
 
-  if (config.ignore.useGitignore) {
-    ignoreFilePatterns.push('**/.gitignore');
-  }
+  ignoreFilePatterns.push('**/.repomixignore');
 
   return ignoreFilePatterns;
 };

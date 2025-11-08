@@ -64,7 +64,7 @@ describe('fileSearch', () => {
         },
       });
       const filePatterns = await getIgnoreFilePatterns(mockConfig);
-      expect(filePatterns).toEqual(['**/.repomixignore', '**/.ignore', '**/.gitignore']);
+      expect(filePatterns).toEqual(['**/.gitignore', '**/.ignore', '**/.repomixignore']);
     });
 
     test('should not include .gitignore when useGitignore is false', async () => {
@@ -78,7 +78,7 @@ describe('fileSearch', () => {
         },
       });
       const filePatterns = await getIgnoreFilePatterns(mockConfig);
-      expect(filePatterns).toEqual(['**/.repomixignore', '**/.ignore']);
+      expect(filePatterns).toEqual(['**/.ignore', '**/.repomixignore']);
     });
 
     test('should not include .ignore when useDotIgnore is false', async () => {
@@ -92,7 +92,7 @@ describe('fileSearch', () => {
         },
       });
       const filePatterns = await getIgnoreFilePatterns(mockConfig);
-      expect(filePatterns).toEqual(['**/.repomixignore', '**/.gitignore']);
+      expect(filePatterns).toEqual(['**/.gitignore', '**/.repomixignore']);
     });
 
     test('should handle empty directories when enabled', async () => {
