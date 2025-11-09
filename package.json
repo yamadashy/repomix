@@ -100,7 +100,7 @@
     "strip-comments": "^2.0.1",
     "tiktoken": "^1.0.22",
     "tinypool": "^2.0.0",
-    "@repomix/tree-sitter-wasms": "^0.1.14",
+    "@repomix/tree-sitter-wasms": "^0.1.15",
     "web-tree-sitter": "^0.25.10",
     "zod": "^4.1.12"
   },
