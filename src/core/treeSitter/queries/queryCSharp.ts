@@ -1,3 +1,5 @@
+// Compatible with tree-sitter-c-sharp (bundled in @repomix/tree-sitter-wasms@0.1.15)
+// Adapted to grammar changes: removed 'bases' field syntax, renamed 'type_constraint' to 'type_parameter_constraint'
 export const queryCSharp = `
 (comment) @comment
 
@@ -6,7 +8,7 @@ export const queryCSharp = `
 ) @definition.class
 
 (class_declaration
-  bases: (base_list (_) @name.reference.class)
+  (base_list (_) @name.reference.class)
 ) @reference.class
 
 (interface_declaration
@@ -14,7 +16,7 @@ export const queryCSharp = `
 ) @definition.interface
 
 (interface_declaration
-  bases: (base_list (_) @name.reference.interface)
+  (base_list (_) @name.reference.interface)
 ) @reference.interface
 
 (method_declaration
@@ -25,16 +27,21 @@ export const queryCSharp = `
   type: (identifier) @name.reference.class
 ) @reference.class
 
-(type_parameter_constraints_clause
-  target: (identifier) @name.reference.class
-) @reference.class
-
-(type_constraint
-  type: (identifier) @name.reference.class
-) @reference.class
-
 (variable_declaration
   type: (identifier) @name.reference.class
+) @reference.class
+
+; Generic type constraints
+; Simple type constraints: where T : IComparable
+(type_parameter_constraint
+  type: (identifier) @name.reference.class
+) @reference.class
+
+; Nested type constraints: where T : IComparable?, where T : IComparable[]
+(type_parameter_constraint
+  (type
+    type: (identifier) @name.reference.class
+  )
 ) @reference.class
 
 (invocation_expression
