@@ -38,4 +38,47 @@ describe('parseFile for C#', () => {
       expect(result).toContain(expectContent);
     }
   });
+
+  test('should parse C# generic constraints', async () => {
+    const fileContent = `
+      // Generic class with simple constraint
+      class GenericClass<T> where T : IComparable {
+        public void Method() { }
+      }
+
+      // Generic class with nullable constraint
+      class NullableConstraint<T> where T : IComparable? {
+        public void Method() { }
+      }
+
+      // Generic class with multiple constraints
+      class MultipleConstraints<T> where T : class, IComparable {
+        public void Method() { }
+      }
+
+      // Generic method with constraint
+      void GenericMethod<T>() where T : IDisposable {
+        // Method body
+      }
+    `;
+    const filePath = 'generics.cs';
+    const config = {};
+    const result = await parseFile(fileContent, filePath, createMockConfig(config));
+    expect(typeof result).toBe('string');
+
+    const expectContents = [
+      '// Generic class with simple constraint',
+      'class GenericClass<T> where T : IComparable {',
+      '// Generic class with nullable constraint',
+      'class NullableConstraint<T> where T : IComparable? {',
+      '// Generic class with multiple constraints',
+      'class MultipleConstraints<T> where T : class, IComparable {',
+      '// Generic method with constraint',
+      'void GenericMethod<T>() where T : IDisposable {',
+    ];
+
+    for (const expectContent of expectContents) {
+      expect(result).toContain(expectContent);
+    }
+  });
 });

@@ -30,6 +30,10 @@ export const queryCSharp = `
 ) @reference.class
 
 (type_parameter_constraint
+  type: (identifier) @name.reference.class
+) @reference.class
+
+(type_parameter_constraint
   (type
     type: (identifier) @name.reference.class
   )
