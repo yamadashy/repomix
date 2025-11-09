@@ -60,6 +60,21 @@ describe('parseFile for C#', () => {
       void GenericMethod<T>() where T : IDisposable {
         // Method body
       }
+
+      // Multiple type parameters with separate constraints
+      class MultiParam<T, U> where T : IComparable where U : IDisposable {
+        public void Method() { }
+      }
+
+      // Constructor constraint
+      class ConstructorConstraint<T> where T : new() {
+        public void Method() { }
+      }
+
+      // Struct constraint
+      class StructConstraint<T> where T : struct {
+        public void Method() { }
+      }
     `;
     const filePath = 'generics.cs';
     const config = {};
@@ -75,6 +90,12 @@ describe('parseFile for C#', () => {
       'class MultipleConstraints<T> where T : class, IComparable {',
       '// Generic method with constraint',
       'void GenericMethod<T>() where T : IDisposable {',
+      '// Multiple type parameters with separate constraints',
+      'class MultiParam<T, U> where T : IComparable where U : IDisposable {',
+      '// Constructor constraint',
+      'class ConstructorConstraint<T> where T : new() {',
+      '// Struct constraint',
+      'class StructConstraint<T> where T : struct {',
     ];
 
     for (const expectContent of expectContents) {
