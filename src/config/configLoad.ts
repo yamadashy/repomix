@@ -196,15 +196,12 @@ export const mergeConfigs = (
       };
 
       const style = mergedOutput.style ?? baseConfig.output.style;
-      const filePathExplicit = Boolean(fileConfig.output?.filePath || cliConfig.output?.filePath);
+      const filePathExplicitlySet = Boolean(fileConfig.output?.filePath || cliConfig.output?.filePath);
 
-      if (mergedOutput.filePath == null) {
-        mergedOutput.filePath = defaultFilePathMap[style];
-        logger.trace('Default output file path is set to:', mergedOutput.filePath);
-      } else if (!filePathExplicit && mergedOutput.filePath === baseConfig.output.filePath) {
-        const desired = defaultFilePathMap[style];
-        if (desired !== mergedOutput.filePath) {
-          mergedOutput.filePath = desired;
+      if (!filePathExplicitlySet) {
+        const desiredPath = defaultFilePathMap[style];
+        if (mergedOutput.filePath !== desiredPath) {
+          mergedOutput.filePath = desiredPath;
           logger.trace('Adjusted output file path to match style:', mergedOutput.filePath);
         }
       }
