@@ -301,5 +301,45 @@ describe('configLoad', () => {
 
       expect(merged.tokenCount.encoding).toBe('cl100k_base');
     });
+
+    test('should map default filename to style when only style is provided via CLI', () => {
+      const merged = mergeConfigs(
+        process.cwd(),
+        {},
+        { output: { style: 'markdown' } },
+      );
+      expect(merged.output.filePath).toBe('repomix-output.md');
+      expect(merged.output.style).toBe('markdown');
+    });
+
+    test('should keep explicit CLI output filePath even when style is provided', () => {
+      const merged = mergeConfigs(
+        process.cwd(),
+        {},
+        { output: { style: 'markdown', filePath: 'custom-output.any' } },
+      );
+      expect(merged.output.filePath).toBe('custom-output.any');
+      expect(merged.output.style).toBe('markdown');
+    });
+
+    test('should keep explicit file config filePath even when style is provided via CLI', () => {
+      const merged = mergeConfigs(
+        process.cwd(),
+        { output: { filePath: 'from-file.txt' } },
+        { output: { style: 'markdown' } },
+      );
+      expect(merged.output.filePath).toBe('from-file.txt');
+      expect(merged.output.style).toBe('markdown');
+    });
+
+    test('should map default filename when style provided in file config and no filePath anywhere', () => {
+      const merged = mergeConfigs(
+        process.cwd(),
+        { output: { style: 'plain' } },
+        {},
+      );
+      expect(merged.output.filePath).toBe('repomix-output.txt');
+      expect(merged.output.style).toBe('plain');
+    });
   });
 });
