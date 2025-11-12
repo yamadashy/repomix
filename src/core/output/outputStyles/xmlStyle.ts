@@ -46,7 +46,9 @@ This section contains the contents of the repository's files.
 
 {{#each processedFiles}}
 <file path="{{{this.path}}}">
-{{{this.content}}}
+{{{this.content}}}{{#if this.truncation.truncated}}
+
+<!-- truncated: showing {{this.truncation.truncatedLineCount}} of {{this.truncation.originalLineCount}} lines -->{{/if}}
 </file>
 
 {{/each}}

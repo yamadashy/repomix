@@ -271,8 +271,12 @@ describe('outputGenerate', () => {
     expect(parsed).toHaveProperty('files');
     expect(parsed.files).toHaveProperty('file1.txt');
     expect(parsed.files).toHaveProperty('file2.txt');
-    expect(parsed.files['file1.txt']).toBe('content1');
-    expect(parsed.files['file2.txt']).toBe('content2');
+    expect(parsed.files['file1.txt']).toEqual({
+      content: 'content1',
+    });
+    expect(parsed.files['file2.txt']).toEqual({
+      content: 'content2',
+    });
   });
 
   test('generateOutput should exclude files section when files output is disabled', async () => {

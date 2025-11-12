@@ -286,6 +286,227 @@ repomix --include-logs --include-diffs
 
 The git logs include commit dates, messages, and file paths for each commit, providing valuable context for AI analysis of code evolution and development patterns.
 
+### Line Limiting
+
+Control the number of lines included per file to manage output size and focus on the most relevant code sections. Perfect for large codebases, AI context windows, and reducing processing costs.
+
+#### Feature Overview
+
+Line limiting helps you:
+- **Manage AI context windows** by reducing file sizes while preserving structure
+- **Reduce processing costs** by including only the most important code sections
+- **Focus on relevant code** by intelligently selecting key parts of each file
+- **Handle large repositories** without overwhelming AI models with excessive content
+
+#### Quick Start Examples
+
+Getting started with line limiting is simple:
+
+```bash
+# Basic usage - limit each file to 50 lines
+repomix --line 50 ./src
+
+# Use alias option for the same functionality
+repomix --line-limit 100 ./src
+
+# Combine with output format selection
+repomix --line 25 --output xml ./src
+
+# Apply to entire repository
+repomix --line 75 .
+```
+
+#### Basic CLI Usage
+
+Limit each file to a specific number of lines using intelligent selection:
+
+```bash
+# Limit each file to 50 lines
+repomix --line 50 ./src
+
+# Use alias option
+repomix --line-limit 100 ./src
+
+# Combine with output format
+repomix --line 25 --output xml ./src
+
+# Apply to multiple directories
+repomix --line 75 ./src ./tests ./docs
+```
+
+#### Configuration File Usage
+
+Set a default line limit in your configuration file:
+
+```json
+{
+  "output": {
+    "lineLimit": 75,
+    "style": "xml",
+    "ignore": ["node_modules", "*.test.js"]
+  }
+}
+```
+
+Or with TypeScript configuration:
+
+```typescript
+// repomix.config.ts
+import { defineConfig } from 'repomix';
+
+export default defineConfig({
+  output: {
+    lineLimit: 75,
+    style: 'xml',
+  },
+});
+```
+
+#### Environment Variable Usage
+
+Set a default line limit using environment variable:
+
+```bash
+# Set default line limit
+export REPOMIX_LINE_LIMIT=50
+repomix ./src
+
+# Override with CLI option
+export REPOMIX_LINE_LIMIT=100
+repomix --line 25 ./src  # Uses 25, not 100
+
+# Use in package.json scripts
+{
+  "scripts": {
+    "pack:small": "repomix --line 25 ./src",
+    "pack:medium": "repomix --line 100 ./src"
+  }
+}
+```
+
+#### Advanced Scenarios
+
+Process large repositories with strict line limits:
+
+```bash
+# Large repository with strict limits
+repomix --line 10 --output plain ./large-repo
+
+# Focus on specific file types
+repomix --line 100 --include "*.js,*.ts" ./src
+
+# Use with verbose output to see truncation details
+repomix --line 50 --verbose ./src
+
+# Combine with compression for maximum reduction
+repomix --line 30 --compress ./src
+
+# Apply to remote repositories
+repomix --line 50 --remote https://github.com/user/repo
+
+# Use with custom output file
+repomix --line 75 --output compact-repo.xml ./src
+```
+
+#### Integration with Other Features
+
+Line limiting works seamlessly with all Repomix features:
+
+```bash
+# Line limiting with git features
+repomix --line 50 --git-main-branch main ./src
+
+# Line limiting with security checks
+repomix --line 100 --security-check ./src
+
+# Line limiting with remote repositories
+repomix --line 25 --remote https://github.com/user/repo.git
+
+# Line limiting with MCP
+repomix --line 75 --mcp ./src
+
+# Line limiting with token count tree
+repomix --line 50 --token-count-tree ./src
+
+# Line limiting with custom ignore patterns
+repomix --line 75 --ignore "*.test.js,docs/**" ./src
+```
+
+#### How Line Limiting Works
+
+The line limiting feature uses an intelligent selection algorithm to preserve code structure:
+
+1. **Header Preservation (30% of limit)**
+   - Import statements and dependencies
+   - Export declarations
+   - Type definitions and interfaces
+   - Class and function signatures
+
+2. **Core Logic Distribution (60% of limit)**
+   - Even distribution across major functions/methods
+   - Priority to functions with more complex logic
+   - Include key algorithm implementations
+   - Preserve error handling and validation
+
+3. **Footer Preservation (10% of limit)**
+   - Module exports
+   - Event listeners and initializers
+   - Closing statements and cleanup
+
+#### Priority Order
+
+Line limit settings follow this priority order (highest to lowest):
+
+1. **CLI option** (`--line` or `--line-limit`)
+2. **Configuration file** (`output.lineLimit`)
+3. **Environment variable** (`REPOMIX_LINE_LIMIT`)
+
+#### Best Practices
+
+- **Start with higher limits** (100-200 lines) to understand code structure
+- **Gradually reduce** to find the optimal balance for your use case
+- **Use with compression** for large codebases to maximize context preservation
+- **Combine with verbose mode** to see which lines are selected
+- **Consider file types**: Some files (like configurations) may need higher limits than code files
+- **Test different limits** for different AI models and context windows
+
+#### Common Use Cases
+
+```bash
+# For Claude/GPT-4 with large context windows
+repomix --line 200 ./src
+
+# For smaller AI models with limited context
+repomix --line 50 ./src
+
+# For quick code reviews and summaries
+repomix --line 25 --compress ./src
+
+# For documentation generation
+repomix --line 100 --include "*.md,*.ts" ./docs ./src
+
+# For API endpoint analysis
+repomix --line 75 --include "routes/**,controllers/**" ./src
+```
+
+#### Troubleshooting
+
+If you're not getting the expected results:
+
+```bash
+# Use verbose mode to see truncation details
+repomix --line 50 --verbose ./src
+
+# Check if files are being truncated
+repomix --line 100 --token-count-tree ./src
+
+# Test with a single file first
+repomix --line 25 ./src/main.js
+
+# Verify configuration is being applied
+repomix --line 50 --config ./custom-config.json ./src
+```
+
 To compress the output:
 
 ```bash
@@ -624,6 +845,8 @@ Instruction
 - `--remove-comments`: Strip all code comments before packing
 - `--remove-empty-lines`: Remove blank lines from all files
 - `--truncate-base64`: Truncate long base64 data strings to reduce output size
+- `-l, --line <number>`: Maximum number of lines per file. Limits each file to specified number of lines using intelligent selection (30% header, 60% core logic, 10% footer)
+- `--line-limit <number>`: Alias for --line option. Maximum number of lines per file using intelligent selection
 - `--header-text <text>`: Custom text to include at the beginning of the output
 - `--instruction-file-path <path>`: Path to file containing custom instructions to include in output
 - `--include-empty-directories`: Include folders with no files in directory structure
@@ -682,6 +905,26 @@ repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
 # Remote repository with branch
 repomix --remote https://github.com/user/repo/tree/main
 
+# Line limiting examples
+repomix --line 50 ./src
+repomix --line-limit 100 --output markdown ./src
+repomix --line 25 --compress --verbose ./src
+
+# Advanced line limiting examples
+repomix --line 75 --include "*.ts,*.js" --output xml ./src
+repomix --line 30 --ignore "*.test.js" --style json ./src
+repomix --line 100 --token-count-tree --verbose ./src
+
+# Line limiting with remote repositories
+repomix --line 50 --remote https://github.com/user/repo
+repomix --line 25 --remote user/repo --output plain
+
+# Line limiting with configuration file
+repomix --line 50 --config custom-config.json ./src
+
+# Line limiting with git features
+repomix --line 75 --include-diffs --include-logs ./src
+repomix --line 50 --no-git-sort-by-changes ./src
 # Remote repository with commit
 repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb28655d85712680f1
 
@@ -1197,6 +1440,7 @@ Here's an explanation of the configuration options:
 | `output.removeEmptyLines`        | Whether to remove empty lines from the output                                                                                | `false`                |
 | `output.showLineNumbers`         | Whether to add line numbers to each line in the output                                                                       | `false`                |
 | `output.truncateBase64`          | Whether to truncate long base64 data strings (e.g., images) to reduce token count                                            | `false`                |
+| `output.lineLimit`               | Maximum number of lines to include per file. Uses intelligent selection to preserve code structure (30% header, 60% core, 10% footer) | `null`                 |
 | `output.copyToClipboard`         | Whether to copy the output to system clipboard in addition to saving the file                                                | `false`                |
 | `output.topFilesLength`          | Number of top files to display in the summary. If set to 0, no summary will be displayed                                     | `5`                    |
 | `output.tokenCountTree`          | Whether to display file tree with token count summaries. Can be boolean or number (minimum token count threshold)           | `false`                |
@@ -1262,6 +1506,7 @@ Example configuration:
     "tokenCountTree": false, // or true, or a number like 10 for minimum token threshold
     "showLineNumbers": false,
     "truncateBase64": false,
+    "lineLimit": 50, // Maximum number of lines to include per file. Uses intelligent selection to preserve code structure (30% header, 60% core logic, 10% footer)
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
     "git": {

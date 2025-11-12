@@ -122,8 +122,12 @@ describe('JSON Output Style', () => {
     const parsed = JSON.parse(result);
 
     expect(parsed.files).toBeDefined();
-    expect(parsed.files['src/index.ts']).toBe('console.log("Hello");');
-    expect(parsed.files['package.json']).toBe('{"name": "test"}');
+    expect(parsed.files['src/index.ts']).toEqual({
+      content: 'console.log("Hello");',
+    });
+    expect(parsed.files['package.json']).toEqual({
+      content: '{"name": "test"}',
+    });
   });
 
   test('should handle special characters in file content', async () => {
@@ -142,6 +146,8 @@ describe('JSON Output Style', () => {
     expect(() => JSON.parse(result)).not.toThrow();
 
     const parsed = JSON.parse(result);
-    expect(parsed.files['test.js']).toBe('const str = "Hello "world"\nNew line\tTab";');
+    expect(parsed.files['test.js']).toEqual({
+      content: 'const str = "Hello "world"\nNew line\tTab";',
+    });
   });
 });

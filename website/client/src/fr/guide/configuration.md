@@ -99,6 +99,7 @@ Les fichiers de configuration JavaScript fonctionnent de la même manière que T
 | `output.removeEmptyLines`        | Indique s'il faut supprimer les lignes vides de la sortie pour réduire le nombre de tokens                                   | `false`                |
 | `output.showLineNumbers`         | Indique s'il faut ajouter des numéros de ligne à chaque ligne. Utile pour référencer des parties spécifiques du code        | `false`                |
 | `output.truncateBase64`          | Indique s'il faut tronquer les chaînes de données base64 longues (par exemple, les images) pour réduire le nombre de tokens | `false`                |
+| `output.lineLimit`               | Nombre maximum de lignes à inclure par fichier. Utilise une sélection intelligente pour préserver la structure du code (30% en-tête, 60% logique principale, 10% pied de page). Doit être un entier positif. | `null`                 |
 | `output.copyToClipboard`         | Indique s'il faut copier la sortie dans le presse-papiers système en plus de sauvegarder le fichier                         | `false`                |
 | `output.topFilesLength`          | Nombre de fichiers principaux à afficher dans le résumé. Si défini à 0, aucun résumé ne sera affiché                        | `5`                    |
 | `output.includeEmptyDirectories` | Indique s'il faut inclure les répertoires vides dans la structure du dépôt                                                   | `false`                |

@@ -70,7 +70,7 @@ describe('fileProcess', () => {
 
       const result = await processContent({ path: filePath, content }, config);
 
-      expect(result).toBe('const a = 1;\nconst b = 2;');
+      expect(result.content).toBe('const a = 1;\nconst b = 2;');
     });
 
     it('should not remove comments or empty lines when not configured', async () => {
@@ -85,7 +85,7 @@ describe('fileProcess', () => {
 
       const result = await processContent({ path: filePath, content }, config);
 
-      expect(result).toBe(content.trim());
+      expect(result.content).toBe(content.trim());
     });
 
     it('should handle files without a manipulator', async () => {
@@ -100,7 +100,7 @@ describe('fileProcess', () => {
 
       const result = await processContent({ path: filePath, content }, config);
 
-      expect(result).toBe(content);
+      expect(result.content).toBe(content);
     });
 
     it('should add line numbers when showLineNumbers is true', async () => {
@@ -116,7 +116,7 @@ describe('fileProcess', () => {
 
       const result = await processContent({ path: filePath, content }, config);
 
-      expect(result).toBe('1: Line 1\n2: Line 2\n3: Line 3');
+      expect(result.content).toBe('1: Line 1\n2: Line 2\n3: Line 3');
     });
 
     it('should not add line numbers when showLineNumbers is false', async () => {
@@ -132,7 +132,7 @@ describe('fileProcess', () => {
 
       const result = await processContent({ path: filePath, content }, config);
 
-      expect(result).toBe('Line 1\nLine 2\nLine 3');
+      expect(result.content).toBe('Line 1\nLine 2\nLine 3');
     });
 
     it('should handle empty content when showLineNumbers is true', async () => {
@@ -148,7 +148,7 @@ describe('fileProcess', () => {
 
       const result = await processContent({ path: filePath, content }, config);
 
-      expect(result).toBe('1: ');
+      expect(result.content).toBe('1: ');
     });
 
     it('should pad line numbers correctly for files with many lines', async () => {
@@ -164,7 +164,7 @@ describe('fileProcess', () => {
 
       const result = await processContent({ path: filePath, content }, config);
 
-      const lines = result.split('\n');
+      const lines = result.content.split('\n');
       expect(lines[0]).toBe('  1: Line');
       expect(lines[9]).toBe(' 10: Line');
       expect(lines[99]).toBe('100: Line');

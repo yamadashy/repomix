@@ -14,10 +14,12 @@ export interface FileProcessTask {
 }
 
 export default async ({ rawFile, config }: FileProcessTask): Promise<ProcessedFile> => {
-  const processedContent = await processContent(rawFile, config);
+  const processedResult = await processContent(rawFile, config);
   return {
     path: rawFile.path,
-    content: processedContent,
+    content: processedResult.content,
+    originalContent: processedResult.originalContent,
+    truncation: processedResult.truncation,
   };
 };
 

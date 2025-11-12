@@ -8,7 +8,7 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { TokenCountPairTask, TokenCountTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
   totalFiles: number;
@@ -16,6 +16,7 @@ export interface CalculateMetricsResult {
   totalTokens: number;
   fileCharCounts: Record<string, number>;
   fileTokenCounts: Record<string, number>;
+  fileOriginalTokenCounts: Record<string, number>;
   gitDiffTokenCount: number;
   gitLogTokenCount: number;
 }
@@ -33,14 +34,23 @@ export const calculateMetrics = async (
     calculateGitDiffMetrics,
     calculateGitLogMetrics,
     taskRunner: undefined as TaskRunner<TokenCountTask, number> | undefined,
+    pairTaskRunner: undefined as TaskRunner<TokenCountPairTask, { original: number; truncated: number }> | undefined,
   },
 ): Promise<CalculateMetricsResult> => {
   progressCallback('Calculating metrics...');
 
-  // Initialize a single task runner for all metrics calculations
+  // Initialize task runners for all metrics calculations
   const taskRunner =
     deps.taskRunner ??
     initTaskRunner<TokenCountTask, number>({
+      numOfTasks: processedFiles.length,
+      workerPath: new URL('./workers/calculateMetricsWorker.js', import.meta.url).href,
+      runtime: 'worker_threads',
+    });
+
+  const pairTaskRunner =
+    deps.pairTaskRunner ??
+    initTaskRunner<TokenCountPairTask, { original: number; truncated: number }>({
       numOfTasks: processedFiles.length,
       workerPath: new URL('./workers/calculateMetricsWorker.js', import.meta.url).href,
       runtime: 'worker_threads',
@@ -68,7 +78,7 @@ export const calculateMetrics = async (
         metricsTargetPaths,
         config.tokenCount.encoding,
         progressCallback,
-        { taskRunner },
+        { taskRunner, pairTaskRunner },
       ),
       deps.calculateOutputMetrics(output, config.tokenCount.encoding, config.output.filePath, { taskRunner }),
       deps.calculateGitDiffMetrics(config, gitDiffResult, { taskRunner }),
@@ -86,8 +96,12 @@ export const calculateMetrics = async (
 
     // Build token counts only for top files
     const fileTokenCounts: Record<string, number> = {};
+    const fileOriginalTokenCounts: Record<string, number> = {};
     for (const file of selectiveFileMetrics) {
       fileTokenCounts[file.path] = file.tokenCount;
+      if (file.originalTokenCount !== undefined) {
+        fileOriginalTokenCounts[file.path] = file.originalTokenCount;
+      }
     }
 
     return {
@@ -96,13 +110,17 @@ export const calculateMetrics = async (
       totalTokens,
       fileCharCounts,
       fileTokenCounts,
+      fileOriginalTokenCounts,
       gitDiffTokenCount: gitDiffTokenCount,
       gitLogTokenCount: gitLogTokenCount.gitLogTokenCount,
     };
   } finally {
-    // Cleanup the task runner after all calculations are complete (only if we created it)
+    // Cleanup the task runners after all calculations are complete (only if we created them)
     if (!deps.taskRunner) {
       await taskRunner.cleanup();
+    }
+    if (!deps.pairTaskRunner) {
+      await pairTaskRunner.cleanup();
     }
   }
 };

@@ -3,6 +3,8 @@ import type { FileTokenInfo } from './types.js';
 export interface FileWithTokens {
   path: string;
   tokens: number;
+  originalTokens?: number;
+  truncated?: boolean;
 }
 
 export interface TreeNode {
@@ -40,6 +42,8 @@ export const buildTokenCountTree = (filesWithTokens: FileWithTokens[]): TreeNode
     current._files.push({
       name: fileName,
       tokens: file.tokens,
+      originalTokens: file.originalTokens,
+      truncated: file.truncated || false,
     });
   }
 

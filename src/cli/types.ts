@@ -57,6 +57,7 @@ export interface CliOptions extends OptionValues {
 
   // Other Options
   topFilesLen?: number;
+  line?: number;
   verbose?: boolean;
   quiet?: boolean;
 }

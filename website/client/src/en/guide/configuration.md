@@ -99,6 +99,7 @@ JavaScript configuration files work the same as TypeScript, supporting `defineCo
 | `output.removeEmptyLines`        | Whether to remove empty lines from the output to reduce token count                                                          | `false`                |
 | `output.showLineNumbers`         | Whether to add line numbers to each line. Helpful for referencing specific parts of code                                     | `false`                |
 | `output.truncateBase64`          | Whether to truncate long base64 data strings (e.g., images) to reduce token count                                            | `false`                |
+| `output.lineLimit`               | Maximum number of lines to include per file. Uses intelligent selection to preserve code structure (30% header, 60% core logic, 10% footer). Must be a positive integer. | `null`                 |
 | `output.copyToClipboard`         | Whether to copy the output to system clipboard in addition to saving the file                                                | `false`                |
 | `output.topFilesLength`          | Number of top files to display in the summary. If set to 0, no summary will be displayed                                     | `5`                    |
 | `output.includeEmptyDirectories` | Whether to include empty directories in the repository structure                                                             | `false`                |
@@ -162,6 +163,7 @@ Here's an example of a complete configuration file (`repomix.config.json`):
     "topFilesLength": 5,
     "showLineNumbers": false,
     "truncateBase64": false,
+    "lineLimit": 50,
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
     "git": {
@@ -365,3 +367,149 @@ When `output.removeComments` is set to `true`, comments are removed from support
 - Focusing on code structure and logic
 
 For supported languages and detailed examples, see the [Comment Removal Guide](comment-removal).
+
+### Line Limiting
+
+The line limiting feature helps you control the size of your output while preserving the most important code structure. This feature is particularly useful when working with large codebases or AI context windows.
+
+#### How Line Limiting Works
+
+The line limiting feature uses an intelligent selection algorithm to preserve code structure:
+
+1. **Header Preservation (30% of limit)**
+   - Import statements and dependencies
+   - Export declarations
+   - Type definitions and interfaces
+   - Class and function signatures
+
+2. **Core Logic Distribution (60% of limit)**
+   - Even distribution across major functions/methods
+   - Priority to functions with more complex logic
+   - Include key algorithm implementations
+   - Preserve error handling and validation
+
+3. **Footer Preservation (10% of limit)**
+   - Module exports
+   - Event listeners and initializers
+   - Closing statements and cleanup
+
+#### Configuration Examples
+
+##### Basic Line Limit Configuration
+
+```json
+{
+  "output": {
+    "lineLimit": 50,
+    "style": "xml"
+  }
+}
+```
+
+##### Advanced Configuration with Line Limit
+
+```json
+{
+  "output": {
+    "lineLimit": 100,
+    "style": "markdown",
+    "removeComments": true,
+    "compress": false
+  },
+  "ignore": {
+    "customPatterns": ["node_modules", "*.test.js"]
+  }
+}
+```
+
+##### Format-Specific Examples
+
+**JSON Configuration:**
+```json
+{
+  "output": {
+    "lineLimit": 75,
+    "filePath": "output.xml"
+  }
+}
+```
+
+**JSON5 Configuration:**
+```json5
+{
+  output: {
+    lineLimit: 25,
+    style: "markdown"
+  }
+}
+```
+
+**JavaScript Configuration:**
+```javascript
+module.exports = {
+  output: {
+    lineLimit: 100,
+    style: "plain"
+  }
+};
+```
+
+**TypeScript Configuration:**
+```typescript
+import { defineConfig } from 'repomix';
+
+export default defineConfig({
+  output: {
+    lineLimit: 75,
+    style: "xml",
+    ignore: ["node_modules"]
+  }
+});
+```
+
+#### Environment Variable Usage
+
+You can also set a default line limit using environment variables:
+
+```bash
+# Set default line limit
+export REPOMIX_LINE_LIMIT=75
+
+# Use with config file (environment variable overrides config)
+repomix ./src
+
+# Override with CLI option (CLI takes precedence)
+repomix --line 25 ./src  # Uses 25, not 75
+```
+
+#### Priority Order
+
+Line limit settings follow this priority order (highest to lowest):
+
+1. **CLI option** (`--line` or `--line-limit`)
+2. **Configuration file** (`output.lineLimit`)
+3. **Environment variable** (`REPOMIX_LINE_LIMIT`)
+
+#### Integration with Other Features
+
+Line limiting works seamlessly with other Repomix features:
+
+- **Output Formats**: Compatible with XML, Markdown, JSON, and Plain text formats
+- **File Selection**: Works with `include` and `ignore` patterns
+- **Compression**: Can be combined with `compress` for maximum reduction
+- **Git Integration**: Preserves git sorting and diff features
+- **Security**: Maintains security scanning on limited content
+
+#### Best Practices
+
+- **Start with higher limits** (100-200 lines) to understand code structure
+- **Gradually reduce** to find the optimal balance for your use case
+- **Use with compression** for large codebases to maximize context preservation
+- **Consider file types**: Some files (like configurations) may need higher limits than code files
+- **Test different limits** to find what works best for your specific AI model and use case
+
+#### Validation Rules
+
+- `lineLimit` must be a positive integer (minimum: 1)
+- When not specified, no line limiting is applied (default: `null`)
+- Invalid values will result in validation errors and helpful error messages

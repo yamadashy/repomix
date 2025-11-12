@@ -79,10 +79,19 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
       files: renderContext.filesEnabled
         ? {
             '#text': "This section contains the contents of the repository's files.",
-            file: renderContext.processedFiles.map((file) => ({
-              '#text': file.content,
-              '@_path': file.path,
-            })),
+            file: renderContext.processedFiles.map((file) => {
+              const fileData: any = {
+                '#text': file.content,
+                '@_path': file.path,
+              };
+
+              if (file.truncation?.truncated) {
+                fileData['#comment'] =
+                  `truncated: showing ${file.truncation.truncatedLineCount} of ${file.truncation.originalLineCount} lines`;
+              }
+
+              return fileData;
+            }),
           }
         : undefined,
       git_diffs: renderContext.gitDiffEnabled
@@ -133,10 +142,23 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
     ...(renderContext.filesEnabled && {
       files: renderContext.processedFiles.reduce(
         (acc, file) => {
-          acc[file.path] = file.content;
+          const fileData: any = {
+            content: file.content,
+          };
+
+          if (file.truncation) {
+            fileData.truncation = {
+              truncated: file.truncation.truncated,
+              originalLineCount: file.truncation.originalLineCount,
+              truncatedLineCount: file.truncation.truncatedLineCount,
+              lineLimit: file.truncation.lineLimit,
+            };
+          }
+
+          acc[file.path] = fileData;
           return acc;
         },
-        {} as Record<string, string>,
+        {} as Record<string, any>,
       ),
     }),
     ...(renderContext.gitDiffEnabled && {

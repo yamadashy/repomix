@@ -20,6 +20,13 @@ export interface TokenCountTask {
   path?: string;
 }
 
+export interface TokenCountPairTask {
+  originalContent: string;
+  truncatedContent: string;
+  encoding: TiktokenEncoding;
+  path?: string;
+}
+
 export const countTokens = async (task: TokenCountTask): Promise<number> => {
   const processStartAt = process.hrtime.bigint();
 
@@ -35,14 +42,38 @@ export const countTokens = async (task: TokenCountTask): Promise<number> => {
   }
 };
 
+export const countTokensPair = async (task: TokenCountPairTask): Promise<{ original: number; truncated: number }> => {
+  const processStartAt = process.hrtime.bigint();
+
+  try {
+    const counter = getTokenCounter(task.encoding);
+    const tokenCounts = counter.countTokensPair(task.originalContent, task.truncatedContent, task.path);
+
+    logger.trace(
+      `Counted token pair. Original: ${tokenCounts.original}, Truncated: ${tokenCounts.truncated}. Took: ${getProcessDuration(processStartAt)}ms`,
+    );
+    return tokenCounts;
+  } catch (error) {
+    logger.error('Error in token counting worker:', error);
+    throw error;
+  }
+};
+
 const getProcessDuration = (startTime: bigint): string => {
   const endTime = process.hrtime.bigint();
   return (Number(endTime - startTime) / 1e6).toFixed(2);
 };
 
-export default async (task: TokenCountTask): Promise<number> => {
-  return countTokens(task);
+export default async (
+  task: TokenCountTask | TokenCountPairTask,
+): Promise<number | { original: number; truncated: number }> => {
+  if ('originalContent' in task && 'truncatedContent' in task) {
+    return countTokensPair(task as TokenCountPairTask);
+  }
+  return countTokens(task as TokenCountTask);
 };
+
+export const countTokensPairWorker = countTokensPair;
 
 // Export cleanup function for Tinypool teardown
 export const onWorkerTermination = () => {

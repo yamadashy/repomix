@@ -5,6 +5,7 @@ import { initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { type FileManipulator, getFileManipulator } from './fileManipulate.js';
 import type { ProcessedFile, RawFile } from './fileTypes.js';
+import { formatTruncationProgress } from './truncationMetrics.js';
 import type { FileProcessTask } from './workers/fileProcessWorker.js';
 
 type GetFileManipulator = (filePath: string) => FileManipulator | null;
@@ -40,13 +41,27 @@ export const processFiles = async (
     logger.trace(`Starting file processing for ${rawFiles.length} files using worker pool`);
 
     let completedTasks = 0;
+    let truncatedCount = 0;
     const totalTasks = tasks.length;
 
     const results = await Promise.all(
       tasks.map((task) =>
         taskRunner.run(task).then((result) => {
           completedTasks++;
-          progressCallback(`Processing file... (${completedTasks}/${totalTasks}) ${pc.dim(task.rawFile.path)}`);
+
+          // Track truncation count
+          if (result.truncation?.truncated) {
+            truncatedCount++;
+          }
+
+          // Use enhanced progress message if line limit is enabled
+          if (config.output.lineLimit) {
+            const progressMessage = formatTruncationProgress(completedTasks, totalTasks, truncatedCount);
+            progressCallback(progressMessage);
+          } else {
+            progressCallback(`Processing file... (${completedTasks}/${totalTasks}) ${pc.dim(task.rawFile.path)}`);
+          }
+
           logger.trace(`Processing file... (${completedTasks}/${totalTasks}) ${task.rawFile.path}`);
           return result;
         }),

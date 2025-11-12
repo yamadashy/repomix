@@ -57,7 +57,9 @@ ${PLAIN_LONG_SEPARATOR}
 ${PLAIN_SEPARATOR}
 File: {{{this.path}}}
 ${PLAIN_SEPARATOR}
-{{{this.content}}}
+{{{this.content}}}{{#if this.truncation.truncated}}
+
+... (truncated: showing {{this.truncation.truncatedLineCount}} of {{this.truncation.originalLineCount}} lines){{/if}}
 
 {{/each}}
 {{/if}}

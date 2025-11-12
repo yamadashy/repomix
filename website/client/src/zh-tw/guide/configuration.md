@@ -98,6 +98,7 @@ JavaScript設定檔的工作方式與TypeScript相同，支援`defineConfig`和�
 | `output.removeComments`          | 是否從支援的檔案類型中刪除註解。可以減少雜訊和令牌數量                                                                    | `false`                |
 | `output.removeEmptyLines`        | 是否從輸出中刪除空行以減少令牌數量                                                                                         | `false`                |
 | `output.showLineNumbers`         | 是否為每行添加行號。有助於引用程式碼的特定部分                                                                             | `false`                |
+| `output.lineLimit`               | 每個檔案要包含的最大行數。使用智慧選擇來保留程式碼結構（30%標頭，60%核心邏輯，10%頁尾）。必須是正整數。 | `null`                 |
 | `output.truncateBase64`          | 是否截斷長的base64數據字符串（例如圖像）以減少令牌數量                                                                      | `false`                |
 | `output.copyToClipboard`         | 是否除了儲存檔案外還將輸出複製到系統剪貼簿                                                                                 | `false`                |
 | `output.topFilesLength`          | 在摘要中顯示的頂部檔案數量。如果設定為0，則不顯示摘要                                                                      | `5`                    |

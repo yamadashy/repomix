@@ -176,6 +176,19 @@ export const mergeConfigs = (
 
   const baseConfig = defaultConfig;
 
+  // Handle environment variable for line limit
+  const envLineLimit = process.env.REPOMIX_LINE_LIMIT;
+  let envLineLimitValue: number | undefined;
+  if (envLineLimit) {
+    const parsed = parseInt(envLineLimit, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      envLineLimitValue = parsed;
+      logger.trace(`Using line limit from environment variable: ${envLineLimitValue}`);
+    } else {
+      logger.warn(`Invalid REPOMIX_LINE_LIMIT environment variable: ${envLineLimit}. Must be a positive integer.`);
+    }
+  }
+
   const mergedConfig = {
     cwd,
     input: {
@@ -194,6 +207,11 @@ export const mergeConfigs = (
           ...cliConfig.output?.git,
         },
       };
+
+      // Apply environment variable line limit if set and not already overridden by CLI
+      if (envLineLimitValue !== undefined && !cliConfig.output?.lineLimit) {
+        mergedOutput.lineLimit = envLineLimitValue;
+      }
 
       if (mergedOutput.filePath == null) {
         const style = mergedOutput.style ?? baseConfig.output.style;

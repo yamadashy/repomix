@@ -5,7 +5,8 @@ import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
-import type { ProcessedFile } from './file/fileTypes.js';
+import type { ProcessedFile, TruncationMetrics } from './file/fileTypes.js';
+import { calculateTruncationMetrics } from './file/truncationMetrics.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics } from './metrics/calculateMetrics.js';
@@ -21,6 +22,7 @@ export interface PackResult {
   totalTokens: number;
   fileCharCounts: Record<string, number>;
   fileTokenCounts: Record<string, number>;
+  fileOriginalTokenCounts: Record<string, number>;
   gitDiffTokenCount: number;
   gitLogTokenCount: number;
   suspiciousFilesResults: SuspiciousFileResult[];
@@ -29,6 +31,7 @@ export interface PackResult {
   processedFiles: ProcessedFile[];
   safeFilePaths: string[];
   skippedFiles: SkippedFileInfo[];
+  truncationMetrics?: TruncationMetrics;
 }
 
 const defaultDeps = {
@@ -51,6 +54,7 @@ export const pack = async (
   progressCallback: RepomixProgressCallback = () => {},
   overrideDeps: Partial<typeof defaultDeps> = {},
   explicitFiles?: string[],
+  verbose: boolean = false,
 ): Promise<PackResult> => {
   const deps = {
     ...defaultDeps,
@@ -130,6 +134,18 @@ export const pack = async (
     deps.calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, gitLogResult),
   );
 
+  // Calculate truncation metrics if line limit is enabled
+  let truncationMetrics: TruncationMetrics | undefined;
+  if (config.output.lineLimit) {
+    truncationMetrics = calculateTruncationMetrics(
+      processedFiles,
+      config,
+      verbose,
+      metrics.fileTokenCounts,
+      metrics.fileOriginalTokenCounts,
+    );
+  }
+
   // Create a result object that includes metrics and security results
   const result = {
     ...metrics,
@@ -139,6 +155,7 @@ export const pack = async (
     processedFiles,
     safeFilePaths,
     skippedFiles: allSkippedFiles,
+    truncationMetrics,
   };
 
   logMemoryUsage('Pack - End');

@@ -42,6 +42,16 @@ export class TokenCounter {
     }
   }
 
+  public countTokensPair(
+    originalContent: string,
+    truncatedContent: string,
+    filePath?: string,
+  ): { original: number; truncated: number } {
+    const original = this.countTokens(originalContent, filePath);
+    const truncated = this.countTokens(truncatedContent, filePath);
+    return { original, truncated };
+  }
+
   public free(): void {
     this.encoding.free();
   }
