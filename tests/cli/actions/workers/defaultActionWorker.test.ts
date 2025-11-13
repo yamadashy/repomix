@@ -19,12 +19,13 @@ vi.mock('../../../../src/shared/logger.js', () => ({
   setLogLevelByWorkerData: vi.fn(),
 }));
 vi.mock('../../../../src/cli/cliSpinner.js', () => ({
-  Spinner: vi.fn().mockImplementation(() => ({
-    start: vi.fn(),
-    update: vi.fn(),
-    succeed: vi.fn(),
-    fail: vi.fn(),
-  })),
+  // biome-ignore lint/suspicious/noExplicitAny: Test mocks require flexible types
+  Spinner: vi.fn(function (this: any) {
+    this.start = vi.fn();
+    this.update = vi.fn();
+    this.succeed = vi.fn();
+    this.fail = vi.fn();
+  }),
 }));
 
 const mockPack = vi.mocked(pack);

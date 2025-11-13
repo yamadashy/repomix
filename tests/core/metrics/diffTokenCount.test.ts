@@ -7,7 +7,8 @@ import { createMockConfig } from '../../testing/testUtils.js';
 
 // Mock the TokenCounter
 vi.mock('../../../src/core/metrics/TokenCounter.js', () => ({
-  TokenCounter: vi.fn(),
+  // biome-ignore lint/suspicious/noExplicitAny: Test mocks require flexible types
+  TokenCounter: vi.fn() as any,
 }));
 
 describe('Diff Token Count Calculation', () => {
@@ -15,7 +16,8 @@ describe('Diff Token Count Calculation', () => {
     vi.resetAllMocks();
 
     // Setup TokenCounter mock
-    vi.mocked(TokenCounter).mockReturnValue({
+    // biome-ignore lint/suspicious/noExplicitAny: Test mocks require flexible types
+    (TokenCounter as any).mockReturnValue({
       countTokens: vi.fn((content) => {
         // Simple token counting for testing
         return content.split(/\s+/).length;

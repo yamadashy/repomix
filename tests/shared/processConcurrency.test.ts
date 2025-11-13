@@ -14,7 +14,7 @@ vi.mock('tinypool');
 describe('processConcurrency', () => {
   describe('getProcessConcurrency', () => {
     it('should use os.availableParallelism when available', () => {
-      const mockAvailableParallelism = vi.fn().mockReturnValue(4);
+      const mockAvailableParallelism = vi.fn(() => 4);
       vi.mocked(os).availableParallelism = mockAvailableParallelism;
 
       const result = getProcessConcurrency();
@@ -26,7 +26,7 @@ describe('processConcurrency', () => {
 
   describe('getWorkerThreadCount', () => {
     beforeEach(() => {
-      vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(8);
+      vi.mocked(os).availableParallelism = vi.fn(() => 8);
     });
 
     it('should return minimum 1 thread', () => {
@@ -67,7 +67,7 @@ describe('processConcurrency', () => {
 
   describe('initWorker', () => {
     beforeEach(() => {
-      vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
+      vi.mocked(os).availableParallelism = vi.fn(() => 4);
       vi.mocked(Tinypool).mockImplementation(() => ({}) as Tinypool);
     });
 
@@ -115,7 +115,7 @@ describe('processConcurrency', () => {
 
   describe('initTaskRunner', () => {
     beforeEach(() => {
-      vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
+      vi.mocked(os).availableParallelism = vi.fn(() => 4);
       vi.mocked(Tinypool).mockImplementation(
         () =>
           ({

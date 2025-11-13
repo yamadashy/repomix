@@ -31,7 +31,7 @@ const mockSpinner = {
 } as unknown as Spinner;
 
 vi.mock('../../../src/cli/cliSpinner', () => ({
-  Spinner: vi.fn().mockImplementation(() => mockSpinner),
+  Spinner: vi.fn(),
 }));
 vi.mock('../../../src/cli/cliReport');
 

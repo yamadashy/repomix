@@ -28,11 +28,16 @@ const mockFs = {
 const mockZipData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // Simple ZIP header
 
 describe('gitHubArchive', () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
-  let mockPipeline: ReturnType<typeof vi.fn>;
-  let mockTransform: ReturnType<typeof vi.fn>;
-  let mockCreateWriteStream: ReturnType<typeof vi.fn>;
-  let mockUnzip: ReturnType<typeof vi.fn>;
+  // biome-ignore lint/suspicious/noExplicitAny: Test mocks require flexible types
+  let mockFetch: any;
+  // biome-ignore lint/suspicious/noExplicitAny: Test mocks require flexible types
+  let mockPipeline: any;
+  // biome-ignore lint/suspicious/noExplicitAny: Test mocks require flexible types
+  let mockTransform: any;
+  // biome-ignore lint/suspicious/noExplicitAny: Test mocks require flexible types
+  let mockCreateWriteStream: any;
+  // biome-ignore lint/suspicious/noExplicitAny: Test mocks require flexible types
+  let mockUnzip: any;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -94,7 +99,8 @@ describe('gitHubArchive', () => {
       });
 
       // Mock unzip to extract files
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mock callback parameters
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         const extracted = {
           'repomix-main/': new Uint8Array(0), // Directory
           'repomix-main/test.txt': new Uint8Array([0x68, 0x65, 0x6c, 0x6c, 0x6f]), // "hello"
@@ -150,7 +156,8 @@ describe('gitHubArchive', () => {
         body: mockStream,
       });
 
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mock callback parameters
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         callback(null, {});
       });
 
@@ -187,7 +194,8 @@ describe('gitHubArchive', () => {
           }),
         });
 
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mock callback parameters
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         callback(null, {});
       });
 
@@ -226,7 +234,8 @@ describe('gitHubArchive', () => {
           }),
         });
 
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mock callback parameters
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         callback(null, {});
       });
 
@@ -287,7 +296,8 @@ describe('gitHubArchive', () => {
       });
 
       // Mock unzip to fail
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mock callback parameters
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         callback(new Error('Invalid ZIP file'));
       });
 
@@ -318,7 +328,8 @@ describe('gitHubArchive', () => {
       });
 
       // Mock unzip with dangerous paths
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mock callback parameters
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         const extracted = {
           'repomix-main/../../../etc/passwd': new Uint8Array([0x65, 0x76, 0x69, 0x6c]), // "evil"
           'repomix-main/safe.txt': new Uint8Array([0x73, 0x61, 0x66, 0x65]), // "safe"
@@ -360,7 +371,8 @@ describe('gitHubArchive', () => {
       });
 
       // Mock unzip with absolute path
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mock callback parameters
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         const extracted = {
           '/etc/passwd': new Uint8Array([0x65, 0x76, 0x69, 0x6c]), // "evil"
           'repomix-main/safe.txt': new Uint8Array([0x73, 0x61, 0x66, 0x65]), // "safe"
@@ -402,7 +414,8 @@ describe('gitHubArchive', () => {
       });
 
       // Mock unzip to fail
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mock callback parameters
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         callback(new Error('Extraction failed'));
       });
 

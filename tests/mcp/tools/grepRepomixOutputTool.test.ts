@@ -39,7 +39,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should use dependency injection for RegExp', () => {
-      const mockRegExp = vi.fn().mockReturnValue(/test/g) as unknown as RegExpConstructor;
+      const mockRegExp = vi.fn(() => /test/g) as unknown as RegExpConstructor;
       createRegexPattern('test', false, { RegExp: mockRegExp });
       expect(mockRegExp).toHaveBeenCalledWith('test', 'g');
     });
