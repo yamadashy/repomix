@@ -301,5 +301,77 @@ describe('configLoad', () => {
 
       expect(merged.tokenCount.encoding).toBe('cl100k_base');
     });
+
+    test('should update filePath when style changes from default without explicit output', () => {
+      const fileConfig: RepomixConfigFile = {};
+      const cliConfig: RepomixConfigCli = {
+        output: { style: 'plain' },
+      };
+
+      const result = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+
+      expect(result.output.style).toBe('plain');
+      expect(result.output.filePath).toBe('repomix-output.txt');
+    });
+
+    test('should update filePath for markdown style', () => {
+      const fileConfig: RepomixConfigFile = {};
+      const cliConfig: RepomixConfigCli = {
+        output: { style: 'markdown' },
+      };
+
+      const result = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+
+      expect(result.output.style).toBe('markdown');
+      expect(result.output.filePath).toBe('repomix-output.md');
+    });
+
+    test('should update filePath for json style', () => {
+      const fileConfig: RepomixConfigFile = {};
+      const cliConfig: RepomixConfigCli = {
+        output: { style: 'json' },
+      };
+
+      const result = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+
+      expect(result.output.style).toBe('json');
+      expect(result.output.filePath).toBe('repomix-output.json');
+    });
+
+    test('should respect explicit output path even when style changes', () => {
+      const fileConfig: RepomixConfigFile = {};
+      const cliConfig: RepomixConfigCli = {
+        output: { style: 'plain', filePath: 'custom-output.xml' },
+      };
+
+      const result = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+
+      expect(result.output.style).toBe('plain');
+      expect(result.output.filePath).toBe('custom-output.xml');
+    });
+
+    test('should respect file config filePath when CLI only changes style', () => {
+      const fileConfig: RepomixConfigFile = {
+        output: { filePath: 'config-output.txt' },
+      };
+      const cliConfig: RepomixConfigCli = {
+        output: { style: 'markdown' },
+      };
+
+      const result = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+
+      expect(result.output.style).toBe('markdown');
+      expect(result.output.filePath).toBe('config-output.txt');
+    });
+
+    test('should keep default xml filename when no style is specified', () => {
+      const fileConfig: RepomixConfigFile = {};
+      const cliConfig: RepomixConfigCli = {};
+
+      const result = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+
+      expect(result.output.style).toBe('xml');
+      expect(result.output.filePath).toBe('repomix-output.xml');
+    });
   });
 });

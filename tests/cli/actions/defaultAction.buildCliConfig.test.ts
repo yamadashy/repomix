@@ -26,44 +26,14 @@ describe('buildCliConfig', () => {
   });
 
   describe('style option', () => {
-    it('should handle plain style', () => {
+    it.each(['plain', 'xml', 'markdown', 'json'] as const)('should handle %s style', (style) => {
       const options: CliOptions = {
-        style: 'plain',
+        style,
       };
 
       const result = buildCliConfig(options);
 
-      expect(result.output?.style).toBe('plain');
-    });
-
-    it('should handle xml style', () => {
-      const options: CliOptions = {
-        style: 'xml',
-      };
-
-      const result = buildCliConfig(options);
-
-      expect(result.output?.style).toBe('xml');
-    });
-
-    it('should handle markdown style', () => {
-      const options: CliOptions = {
-        style: 'markdown',
-      };
-
-      const result = buildCliConfig(options);
-
-      expect(result.output?.style).toBe('markdown');
-    });
-
-    it('should handle json style', () => {
-      const options: CliOptions = {
-        style: 'json',
-      };
-
-      const result = buildCliConfig(options);
-
-      expect(result.output?.style).toBe('json');
+      expect(result.output?.style).toBe(style);
     });
   });
 });
