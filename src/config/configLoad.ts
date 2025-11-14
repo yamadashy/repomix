@@ -195,8 +195,11 @@ export const mergeConfigs = (
         },
       };
 
-      if (mergedOutput.filePath == null) {
-        const style = mergedOutput.style ?? baseConfig.output.style;
+      const style = mergedOutput.style ?? baseConfig.output.style;
+      const isFilePathDefault = mergedOutput.filePath === baseConfig.output.filePath;
+      const isStyleChanged = style !== baseConfig.output.style;
+
+      if (mergedOutput.filePath == null || (isFilePathDefault && isStyleChanged)) {
         mergedOutput.filePath = defaultFilePathMap[style];
         logger.trace('Default output file path is set to:', mergedOutput.filePath);
       }
