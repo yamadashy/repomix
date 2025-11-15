@@ -7,6 +7,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { expandLiteralInclude, isPlainPathPattern } from '../../shared/patternUtils.js';
 import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
@@ -173,7 +174,20 @@ export const searchFiles = async (
     }
 
     // Start with configured include patterns
-    let includePatterns = config.include.map((pattern) => escapeGlobPattern(pattern));
+    // Use smart pattern detection: plain paths get escaped and expanded,
+    // while advanced glob patterns are left untouched
+    let includePatterns: string[] = [];
+    for (const pattern of config.include) {
+      if (isPlainPathPattern(pattern)) {
+        // Plain path (no glob metacharacters) - treat as literal path
+        // This handles Next.js route groups like (site), (auth), etc.
+        includePatterns.push(...expandLiteralInclude(rootDir, pattern));
+      } else {
+        // Advanced glob pattern - pass through unchanged
+        // User knows what they're doing with *, ?, {}, etc.
+        includePatterns.push(pattern);
+      }
+    }
 
     // If explicit files are provided, add them to include patterns
     if (explicitFiles) {

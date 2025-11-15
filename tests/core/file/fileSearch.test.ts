@@ -532,6 +532,160 @@ node_modules
     });
   });
 
+  describe('searchFiles with smart pattern detection', () => {
+    const rootDir = '/test/project';
+
+    beforeEach(() => {
+      vi.mocked(fs.stat).mockResolvedValue({
+        isDirectory: () => true,
+        isFile: () => false,
+      } as Stats);
+      vi.mocked(checkDirectoryPermissions).mockResolvedValue({
+        hasAllPermission: true,
+        details: { read: true, write: true, execute: true },
+      });
+    });
+
+    test('should expand Next.js route group directories with literal paths', async () => {
+      const mockConfig = createMockConfig({
+        include: ['src/app/(site)'],
+      });
+
+      // Mock filesystem to show src/app/(site) exists as directory
+      vi.spyOn(require('node:fs'), 'existsSync').mockReturnValue(true);
+      vi.spyOn(require('node:fs'), 'statSync').mockReturnValue({
+        isDirectory: () => true,
+      } as any);
+
+      vi.mocked(globby).mockResolvedValue(['src/app/(site)/page.tsx', 'src/app/(site)/layout.tsx']);
+
+      await searchFiles(rootDir, mockConfig);
+
+      // Verify globby was called with escaped and expanded pattern
+      expect(globby).toHaveBeenCalledWith(
+        expect.arrayContaining(['src/app/\\(site\\)/**/*']),
+        expect.any(Object),
+      );
+    });
+
+    test('should handle nested route groups', async () => {
+      const mockConfig = createMockConfig({
+        include: ['src/app/(auth)/([id])'],
+      });
+
+      vi.spyOn(require('node:fs'), 'existsSync').mockReturnValue(true);
+      vi.spyOn(require('node:fs'), 'statSync').mockReturnValue({
+        isDirectory: () => true,
+      } as any);
+
+      vi.mocked(globby).mockResolvedValue(['src/app/(auth)/([id])/page.tsx']);
+
+      await searchFiles(rootDir, mockConfig);
+
+      expect(globby).toHaveBeenCalledWith(
+        expect.arrayContaining(['src/app/\\(auth\\)/\\(\\[id\\]\\)/**/*']),
+        expect.any(Object),
+      );
+    });
+
+    test('should preserve advanced glob patterns with parentheses', async () => {
+      const mockConfig = createMockConfig({
+        include: ['src/**/(page|layout).{ts,tsx}'],
+      });
+
+      vi.mocked(globby).mockResolvedValue(['src/app/home/page.tsx', 'src/app/home/layout.tsx']);
+
+      await searchFiles(rootDir, mockConfig);
+
+      // Should NOT escape the glob pattern - pass it through unchanged
+      expect(globby).toHaveBeenCalledWith(
+        expect.arrayContaining(['src/**/(page|layout).{ts,tsx}']),
+        expect.any(Object),
+      );
+    });
+
+    test('should handle mixed literal paths and glob patterns', async () => {
+      const mockConfig = createMockConfig({
+        include: ['src/app/(site)', 'src/**/*.{ts,tsx}'],
+      });
+
+      vi.spyOn(require('node:fs'), 'existsSync').mockImplementation((p: string) => {
+        const pathStr = typeof p === 'string' ? p : p.toString();
+        return pathStr.includes('(site)');
+      });
+      vi.spyOn(require('node:fs'), 'statSync').mockReturnValue({
+        isDirectory: () => true,
+      } as any);
+
+      vi.mocked(globby).mockResolvedValue([
+        'src/app/(site)/page.tsx',
+        'src/components/Button.tsx',
+        'src/utils/helper.ts',
+      ]);
+
+      await searchFiles(rootDir, mockConfig);
+
+      // Should have both: escaped literal path AND unmodified glob
+      const callArgs = vi.mocked(globby).mock.calls[0][0];
+      expect(callArgs).toContain('src/app/\\(site\\)/**/*');
+      expect(callArgs).toContain('src/**/*.{ts,tsx}');
+    });
+
+    test('should handle literal file paths with route groups', async () => {
+      const mockConfig = createMockConfig({
+        include: ['src/app/(site)/page.tsx'],
+      });
+
+      vi.spyOn(require('node:fs'), 'existsSync').mockReturnValue(true);
+      vi.spyOn(require('node:fs'), 'statSync').mockReturnValue({
+        isDirectory: () => false,
+      } as any);
+
+      vi.mocked(globby).mockResolvedValue(['src/app/(site)/page.tsx']);
+
+      await searchFiles(rootDir, mockConfig);
+
+      // File path should be escaped but NOT expanded with /**/*
+      expect(globby).toHaveBeenCalledWith(
+        expect.arrayContaining(['src/app/\\(site\\)/page.tsx']),
+        expect.any(Object),
+      );
+    });
+
+    test('should handle non-existent paths gracefully', async () => {
+      const mockConfig = createMockConfig({
+        include: ['src/nonexistent/(folder)'],
+      });
+
+      vi.spyOn(require('node:fs'), 'existsSync').mockReturnValue(false);
+
+      vi.mocked(globby).mockResolvedValue([]);
+
+      await searchFiles(rootDir, mockConfig);
+
+      // Non-existent path passed through as-is (might be intentional glob)
+      expect(globby).toHaveBeenCalledWith(
+        expect.arrayContaining(['src/nonexistent/(folder)']),
+        expect.any(Object),
+      );
+    });
+
+    test('should work with advanced glob features', async () => {
+      const mockConfig = createMockConfig({
+        include: ['src/**/{__tests__,tests}/**/*.test.ts', 'src/**/!(node_modules)/**/*.ts'],
+      });
+
+      vi.mocked(globby).mockResolvedValue(['src/utils/__tests__/helper.test.ts']);
+
+      await searchFiles(rootDir, mockConfig);
+
+      // Advanced glob patterns should pass through unchanged
+      const callArgs = vi.mocked(globby).mock.calls[0][0];
+      expect(callArgs).toContain('src/**/{__tests__,tests}/**/*.test.ts');
+      expect(callArgs).toContain('src/**/!(node_modules)/**/*.ts');
+    });
+  });
+
   describe('searchFiles path validation', () => {
     test('should throw error when target path does not exist', async () => {
       const error = new Error('ENOENT') as Error & { code: string };
