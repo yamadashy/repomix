@@ -195,6 +195,7 @@ export const mergeConfigs = (
         },
       };
 
+      // Auto-adjust filePath extension to match style when filePath is not explicitly set
       const style = mergedOutput.style ?? baseConfig.output.style;
       const filePathExplicitlySet = Boolean(fileConfig.output?.filePath || cliConfig.output?.filePath);
 
