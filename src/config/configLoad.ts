@@ -195,10 +195,16 @@ export const mergeConfigs = (
         },
       };
 
-      if (mergedOutput.filePath == null) {
-        const style = mergedOutput.style ?? baseConfig.output.style;
-        mergedOutput.filePath = defaultFilePathMap[style];
-        logger.trace('Default output file path is set to:', mergedOutput.filePath);
+      // Auto-adjust filePath extension to match style when filePath is not explicitly set
+      const style = mergedOutput.style ?? baseConfig.output.style;
+      const filePathExplicitlySet = Boolean(fileConfig.output?.filePath || cliConfig.output?.filePath);
+
+      if (!filePathExplicitlySet) {
+        const desiredPath = defaultFilePathMap[style];
+        if (mergedOutput.filePath !== desiredPath) {
+          mergedOutput.filePath = desiredPath;
+          logger.trace('Adjusted output file path to match style:', mergedOutput.filePath);
+        }
       }
 
       return mergedOutput;
