@@ -28,11 +28,14 @@ const mockFs = {
 const mockZipData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // Simple ZIP header
 
 describe('gitHubArchive', () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
-  let mockPipeline: ReturnType<typeof vi.fn>;
-  let mockTransform: ReturnType<typeof vi.fn>;
-  let mockCreateWriteStream: ReturnType<typeof vi.fn>;
-  let mockUnzip: ReturnType<typeof vi.fn>;
+  let mockFetch: ReturnType<typeof vi.fn<(input: string | Request | URL, init?: RequestInit) => Promise<Response>>>;
+  // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
+  let mockPipeline: ReturnType<typeof vi.fn<(...args: any[]) => Promise<void>>>;
+  let mockTransform: ReturnType<typeof vi.fn<() => Transform>>;
+  // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
+  let mockCreateWriteStream: ReturnType<typeof vi.fn<(...args: any[]) => any>>;
+  // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
+  let mockUnzip: any;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -61,7 +64,10 @@ describe('gitHubArchive', () => {
       write: vi.fn(),
       end: vi.fn(),
     });
-    mockTransform.mockImplementation(() => new Transform());
+    // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+    mockTransform.mockImplementation(function () {
+      return new Transform();
+    });
   });
 
   describe('downloadGitHubArchive', () => {
@@ -89,12 +95,13 @@ describe('gitHubArchive', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
+        headers: new Headers([['content-length', mockZipData.length.toString()]]),
         body: mockStream,
-      });
+      } as Response);
 
       // Mock unzip to extract files
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         const extracted = {
           'repomix-main/': new Uint8Array(0), // Directory
           'repomix-main/test.txt': new Uint8Array([0x68, 0x65, 0x6c, 0x6c, 0x6f]), // "hello"
@@ -146,11 +153,12 @@ describe('gitHubArchive', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
+        headers: new Headers([['content-length', mockZipData.length.toString()]]),
         body: mockStream,
-      });
+      } as Response);
 
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         callback(null, {});
       });
 
@@ -178,16 +186,17 @@ describe('gitHubArchive', () => {
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          headers: new Map([['content-length', mockZipData.length.toString()]]),
+          headers: new Headers([['content-length', mockZipData.length.toString()]]),
           body: new ReadableStream({
             start(controller) {
               controller.enqueue(mockZipData);
               controller.close();
             },
           }),
-        });
+        } as Response);
 
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         callback(null, {});
       });
 
@@ -211,22 +220,23 @@ describe('gitHubArchive', () => {
         .mockResolvedValueOnce({
           ok: false,
           status: 404,
-          headers: new Map(),
+          headers: new Headers(),
           body: null,
-        })
+        } as Response)
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          headers: new Map([['content-length', mockZipData.length.toString()]]),
+          headers: new Headers([['content-length', mockZipData.length.toString()]]),
           body: new ReadableStream({
             start(controller) {
               controller.enqueue(mockZipData);
               controller.close();
             },
           }),
-        });
+        } as Response);
 
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         callback(null, {});
       });
 
@@ -277,18 +287,19 @@ describe('gitHubArchive', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
+        headers: new Headers([['content-length', mockZipData.length.toString()]]),
         body: new ReadableStream({
           start(controller) {
             controller.enqueue(mockZipData);
             controller.close();
           },
         }),
-      });
+      } as Response);
 
       // Mock unzip to fail
-      mockUnzip.mockImplementation((_data, callback) => {
-        callback(new Error('Invalid ZIP file'));
+      // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
+        callback(new Error('Invalid ZIP file'), null);
       });
 
       await expect(
@@ -308,17 +319,18 @@ describe('gitHubArchive', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
+        headers: new Headers([['content-length', mockZipData.length.toString()]]),
         body: new ReadableStream({
           start(controller) {
             controller.enqueue(mockZipData);
             controller.close();
           },
         }),
-      });
+      } as Response);
 
       // Mock unzip with dangerous paths
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         const extracted = {
           'repomix-main/../../../etc/passwd': new Uint8Array([0x65, 0x76, 0x69, 0x6c]), // "evil"
           'repomix-main/safe.txt': new Uint8Array([0x73, 0x61, 0x66, 0x65]), // "safe"
@@ -350,17 +362,18 @@ describe('gitHubArchive', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
+        headers: new Headers([['content-length', mockZipData.length.toString()]]),
         body: new ReadableStream({
           start(controller) {
             controller.enqueue(mockZipData);
             controller.close();
           },
         }),
-      });
+      } as Response);
 
       // Mock unzip with absolute path
-      mockUnzip.mockImplementation((_data, callback) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
         const extracted = {
           '/etc/passwd': new Uint8Array([0x65, 0x76, 0x69, 0x6c]), // "evil"
           'repomix-main/safe.txt': new Uint8Array([0x73, 0x61, 0x66, 0x65]), // "safe"
@@ -392,18 +405,19 @@ describe('gitHubArchive', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
+        headers: new Headers([['content-length', mockZipData.length.toString()]]),
         body: new ReadableStream({
           start(controller) {
             controller.enqueue(mockZipData);
             controller.close();
           },
         }),
-      });
+      } as Response);
 
       // Mock unzip to fail
-      mockUnzip.mockImplementation((_data, callback) => {
-        callback(new Error('Extraction failed'));
+      // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
+      mockUnzip.mockImplementation((_data: any, callback: any) => {
+        callback(new Error('Extraction failed'), null);
       });
 
       await expect(
@@ -426,9 +440,9 @@ describe('gitHubArchive', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        headers: new Map(),
+        headers: new Headers(),
         body: null,
-      });
+      } as Response);
 
       await expect(
         downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, {
@@ -452,14 +466,14 @@ describe('gitHubArchive', () => {
               resolve({
                 ok: true,
                 status: 200,
-                headers: new Map(),
+                headers: new Headers(),
                 body: new ReadableStream({
                   start(controller) {
                     controller.enqueue(mockZipData);
                     controller.close();
                   },
                 }),
-              });
+              } as Response);
             }, 100); // Resolve after 100ms, but timeout is 50ms
           }),
       );

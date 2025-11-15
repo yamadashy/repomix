@@ -68,7 +68,10 @@ describe('processConcurrency', () => {
   describe('initWorker', () => {
     beforeEach(() => {
       vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
-      vi.mocked(Tinypool).mockImplementation(() => ({}) as Tinypool);
+      // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+      vi.mocked(Tinypool).mockImplementation(function () {
+        return {} as Tinypool;
+      });
     });
 
     it('should initialize Tinypool with correct configuration', () => {
@@ -116,13 +119,13 @@ describe('processConcurrency', () => {
   describe('initTaskRunner', () => {
     beforeEach(() => {
       vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
-      vi.mocked(Tinypool).mockImplementation(
-        () =>
-          ({
-            run: vi.fn(),
-            destroy: vi.fn(),
-          }) as unknown as Tinypool,
-      );
+      // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+      vi.mocked(Tinypool).mockImplementation(function () {
+        return {
+          run: vi.fn(),
+          destroy: vi.fn(),
+        } as unknown as Tinypool;
+      });
     });
 
     it('should return a TaskRunner with run and cleanup methods', () => {

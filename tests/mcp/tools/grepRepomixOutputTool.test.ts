@@ -39,7 +39,10 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should use dependency injection for RegExp', () => {
-      const mockRegExp = vi.fn().mockReturnValue(/test/g) as unknown as RegExpConstructor;
+      // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+      const mockRegExp = vi.fn(function (_pattern: string, _flags: string) {
+        return /test/g;
+      }) as unknown as RegExpConstructor;
       createRegexPattern('test', false, { RegExp: mockRegExp });
       expect(mockRegExp).toHaveBeenCalledWith('test', 'g');
     });

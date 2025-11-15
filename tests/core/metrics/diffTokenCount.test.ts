@@ -15,17 +15,20 @@ describe('Diff Token Count Calculation', () => {
     vi.resetAllMocks();
 
     // Setup TokenCounter mock
-    vi.mocked(TokenCounter).mockReturnValue({
-      countTokens: vi.fn((content) => {
-        // Simple token counting for testing
-        return content.split(/\s+/).length;
-      }),
-      free: vi.fn(),
-      encoding: {
-        encode: vi.fn(),
+    // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+    vi.mocked(TokenCounter).mockImplementation(function () {
+      return {
+        countTokens: vi.fn((content) => {
+          // Simple token counting for testing
+          return content.split(/\s+/).length;
+        }),
         free: vi.fn(),
-      },
-    } as unknown as TokenCounter);
+        encoding: {
+          encode: vi.fn(),
+          free: vi.fn(),
+        },
+      } as unknown as TokenCounter;
+    });
   });
 
   test('should calculate diff token count when diffs are included', async () => {

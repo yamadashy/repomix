@@ -70,7 +70,10 @@ describe('MCP Server', () => {
         ...createMockServerProps(),
       } as unknown as McpServer;
 
-      vi.mocked(McpServer).mockImplementation(() => mockMcpServer);
+      // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+      vi.mocked(McpServer).mockImplementation(function () {
+        return mockMcpServer;
+      });
       try {
         await runMcpServer({ processExit: mockExit });
       } catch (e) {
@@ -92,7 +95,10 @@ describe('MCP Server', () => {
         ...createMockServerProps(),
       } as unknown as McpServer;
 
-      vi.mocked(McpServer).mockImplementation(() => mockServer);
+      // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+      vi.mocked(McpServer).mockImplementation(function () {
+        return mockServer;
+      });
       await expect(runMcpServer({ processExit: mockExit })).resolves.toBeUndefined();
       mockLogger.trace.mockClear();
       process.emit('SIGINT');
@@ -116,7 +122,10 @@ describe('MCP Server', () => {
         ...createMockServerProps(),
       } as unknown as McpServer;
 
-      vi.mocked(McpServer).mockImplementation(() => mockServer);
+      // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+      vi.mocked(McpServer).mockImplementation(function () {
+        return mockServer;
+      });
       await expect(runMcpServer({ processExit: mockExit })).resolves.toBeUndefined();
       mockLogger.trace.mockClear();
       process.emit('SIGTERM');
@@ -141,7 +150,10 @@ describe('MCP Server', () => {
         ...createMockServerProps(),
       } as unknown as McpServer;
 
-      vi.mocked(McpServer).mockImplementation(() => mockServer);
+      // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+      vi.mocked(McpServer).mockImplementation(function () {
+        return mockServer;
+      });
       await expect(runMcpServer({ processExit: mockExit })).resolves.toBeUndefined();
       mockLogger.error.mockClear();
       process.emit('SIGINT');

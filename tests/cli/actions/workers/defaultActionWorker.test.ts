@@ -18,14 +18,18 @@ vi.mock('../../../../src/shared/logger.js', () => ({
   },
   setLogLevelByWorkerData: vi.fn(),
 }));
-vi.mock('../../../../src/cli/cliSpinner.js', () => ({
-  Spinner: vi.fn().mockImplementation(() => ({
-    start: vi.fn(),
-    update: vi.fn(),
-    succeed: vi.fn(),
-    fail: vi.fn(),
-  })),
-}));
+vi.mock('../../../../src/cli/cliSpinner.js', () => {
+  // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+  const SpinnerMock = vi.fn(function () {
+    return {
+      start: vi.fn(),
+      update: vi.fn(),
+      succeed: vi.fn(),
+      fail: vi.fn(),
+    };
+  });
+  return { Spinner: SpinnerMock };
+});
 
 const mockPack = vi.mocked(pack);
 

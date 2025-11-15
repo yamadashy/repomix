@@ -30,9 +30,13 @@ const mockSpinner = {
   isQuiet: false,
 } as unknown as Spinner;
 
-vi.mock('../../../src/cli/cliSpinner', () => ({
-  Spinner: vi.fn().mockImplementation(() => mockSpinner),
-}));
+vi.mock('../../../src/cli/cliSpinner', () => {
+  // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+  const SpinnerMock = vi.fn(function () {
+    return mockSpinner;
+  });
+  return { Spinner: SpinnerMock };
+});
 vi.mock('../../../src/cli/cliReport');
 
 describe('defaultAction', () => {
@@ -43,7 +47,10 @@ describe('defaultAction', () => {
     vi.clearAllMocks();
 
     // Ensure Spinner constructor returns mockSpinner
-    vi.mocked(Spinner).mockImplementation(() => mockSpinner);
+    // biome-ignore lint/complexity/useArrowFunction: Vitest v4 requires function constructors
+    vi.mocked(Spinner).mockImplementation(function () {
+      return mockSpinner;
+    });
 
     vi.mocked(packageJsonParser.getVersion).mockResolvedValue('1.0.0');
     vi.mocked(configLoader.loadFileConfig).mockResolvedValue({});
