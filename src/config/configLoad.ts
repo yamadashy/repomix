@@ -12,6 +12,7 @@ import {
   type RepomixConfigCli,
   type RepomixConfigFile,
   type RepomixConfigMerged,
+  type RepomixOutputStyle,
   repomixConfigFileSchema,
   repomixConfigMergedSchema,
 } from './configSchema.js';
@@ -167,6 +168,14 @@ const loadAndValidateConfig = async (
   }
 };
 
+// Mapping of output styles to their file extensions
+const styleToExtensionMap: Record<RepomixOutputStyle, string> = {
+  xml: '.xml',
+  markdown: '.md',
+  plain: '.txt',
+  json: '.json',
+} as const;
+
 export const mergeConfigs = (
   cwd: string,
   fileConfig: RepomixConfigFile,
@@ -204,6 +213,15 @@ export const mergeConfigs = (
         if (mergedOutput.filePath !== desiredPath) {
           mergedOutput.filePath = desiredPath;
           logger.trace('Adjusted output file path to match style:', mergedOutput.filePath);
+        }
+      } else {
+        // If filePath is explicitly set, check if it has an extension
+        const currentExtension = path.extname(mergedOutput.filePath);
+        if (!currentExtension) {
+          // No extension found, add the appropriate extension based on style
+          const extensionToAdd = styleToExtensionMap[style];
+          mergedOutput.filePath = `${mergedOutput.filePath}${extensionToAdd}`;
+          logger.trace('Added file extension to output path:', mergedOutput.filePath);
         }
       }
 

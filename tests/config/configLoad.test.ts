@@ -329,5 +329,65 @@ describe('configLoad', () => {
       expect(merged.output.filePath).toBe('repomix-output.txt');
       expect(merged.output.style).toBe('plain');
     });
+
+    test('should add extension when CLI filePath has no extension (default style)', () => {
+      const merged = mergeConfigs(process.cwd(), {}, { output: { filePath: 'myoutput' } });
+      expect(merged.output.filePath).toBe('myoutput.xml');
+      expect(merged.output.style).toBe('xml');
+    });
+
+    test('should add extension when CLI filePath has no extension (markdown style)', () => {
+      const merged = mergeConfigs(process.cwd(), {}, { output: { filePath: 'myoutput', style: 'markdown' } });
+      expect(merged.output.filePath).toBe('myoutput.md');
+      expect(merged.output.style).toBe('markdown');
+    });
+
+    test('should add extension when CLI filePath has no extension (plain style)', () => {
+      const merged = mergeConfigs(process.cwd(), {}, { output: { filePath: 'myoutput', style: 'plain' } });
+      expect(merged.output.filePath).toBe('myoutput.txt');
+      expect(merged.output.style).toBe('plain');
+    });
+
+    test('should add extension when CLI filePath has no extension (json style)', () => {
+      const merged = mergeConfigs(process.cwd(), {}, { output: { filePath: 'myoutput', style: 'json' } });
+      expect(merged.output.filePath).toBe('myoutput.json');
+      expect(merged.output.style).toBe('json');
+    });
+
+    test('should keep extension when CLI filePath already has extension', () => {
+      const merged = mergeConfigs(process.cwd(), {}, { output: { filePath: 'myoutput.txt', style: 'markdown' } });
+      expect(merged.output.filePath).toBe('myoutput.txt');
+      expect(merged.output.style).toBe('markdown');
+    });
+
+    test('should add extension when file config filePath has no extension', () => {
+      const merged = mergeConfigs(process.cwd(), { output: { filePath: 'myoutput', style: 'markdown' } }, {});
+      expect(merged.output.filePath).toBe('myoutput.md');
+      expect(merged.output.style).toBe('markdown');
+    });
+
+    test('should keep extension when file config filePath already has extension', () => {
+      const merged = mergeConfigs(process.cwd(), { output: { filePath: 'myoutput.custom', style: 'markdown' } }, {});
+      expect(merged.output.filePath).toBe('myoutput.custom');
+      expect(merged.output.style).toBe('markdown');
+    });
+
+    test('should add extension for paths with directories when no extension', () => {
+      const merged = mergeConfigs(process.cwd(), {}, { output: { filePath: 'output/myfile', style: 'json' } });
+      expect(merged.output.filePath).toBe('output/myfile.json');
+      expect(merged.output.style).toBe('json');
+    });
+
+    test('should keep extension for paths with directories when extension exists', () => {
+      const merged = mergeConfigs(process.cwd(), {}, { output: { filePath: 'output/myfile.txt', style: 'json' } });
+      expect(merged.output.filePath).toBe('output/myfile.txt');
+      expect(merged.output.style).toBe('json');
+    });
+
+    test('should add extension when style is changed via CLI but filePath has no extension', () => {
+      const merged = mergeConfigs(process.cwd(), { output: { filePath: 'myfile' } }, { output: { style: 'markdown' } });
+      expect(merged.output.filePath).toBe('myfile.md');
+      expect(merged.output.style).toBe('markdown');
+    });
   });
 });
