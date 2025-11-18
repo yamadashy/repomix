@@ -110,7 +110,7 @@
     "@types/node": "^24.10.0",
     "@types/strip-comments": "^2.0.4",
     "@typescript/native-preview": "^7.0.0-dev.20251104.1",
-    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/coverage-v8": "^4.0.8",
     "git-up": "^8.1.1",
     "oxlint": "^1.25.0",
     "rimraf": "^6.1.0",
@@ -118,7 +118,7 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vite": "^7.1.12",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.8"
   },
   "engines": {
     "node": ">=20.0.0",
