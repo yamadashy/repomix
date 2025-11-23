@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { mergeConfigs } from '../../src/config/configLoad.js';
-import type { RepomixConfigFile, RepomixConfigCli } from '../../src/config/configSchema.js';
+import type { RepomixConfigCli, RepomixConfigFile } from '../../src/config/configSchema.js';
 
 describe('configMerge', () => {
   describe('ignore settings merge', () => {

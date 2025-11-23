@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { describe, expect, test, afterEach } from 'vitest';
+import { afterEach, describe, expect, test } from 'vitest';
 import { searchFiles } from '../../../src/core/file/fileSearch.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
