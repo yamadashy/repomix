@@ -28,5 +28,5 @@ export interface ParseStrategy {
  */
 export function createParseStrategy(lang: SupportedLang): ParseStrategy {
   const config = getLanguageConfigByName(lang);
-  return config?.strategy ?? new DefaultParseStrategy();
+  return config?.createStrategy() ?? new DefaultParseStrategy();
 }

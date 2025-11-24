@@ -23,17 +23,38 @@ import { queryTypescript } from './queries/queryTypescript.js';
 import { queryVue } from './queries/queryVue.js';
 
 /**
+ * Type representing all supported language names
+ */
+export type SupportedLang =
+  | 'c'
+  | 'c_sharp'
+  | 'cpp'
+  | 'css'
+  | 'dart'
+  | 'go'
+  | 'java'
+  | 'javascript'
+  | 'php'
+  | 'python'
+  | 'ruby'
+  | 'rust'
+  | 'solidity'
+  | 'swift'
+  | 'typescript'
+  | 'vue';
+
+/**
  * Language configuration interface
  */
 export interface LanguageConfig {
   /** Language name */
-  name: string;
+  name: SupportedLang;
   /** File extensions for this language (without dot) */
   extensions: string[];
   /** Tree-sitter query string */
   query: string;
-  /** Parse strategy instance */
-  strategy: ParseStrategy;
+  /** Factory function to create parse strategy instance (lazy initialization) */
+  createStrategy: () => ParseStrategy;
 }
 
 /**
@@ -45,97 +66,97 @@ export const LANGUAGE_CONFIGS: LanguageConfig[] = [
     name: 'javascript',
     extensions: ['js', 'jsx', 'cjs', 'mjs', 'mjsx'],
     query: queryJavascript,
-    strategy: new TypeScriptParseStrategy(), // JavaScript uses TypeScript strategy
+    createStrategy: () => new TypeScriptParseStrategy(), // JavaScript uses TypeScript strategy
   },
   {
     name: 'typescript',
     extensions: ['ts', 'tsx', 'mts', 'mtsx', 'ctx'],
     query: queryTypescript,
-    strategy: new TypeScriptParseStrategy(),
+    createStrategy: () => new TypeScriptParseStrategy(),
   },
   {
     name: 'python',
     extensions: ['py'],
     query: queryPython,
-    strategy: new PythonParseStrategy(),
+    createStrategy: () => new PythonParseStrategy(),
   },
   {
     name: 'go',
     extensions: ['go'],
     query: queryGo,
-    strategy: new GoParseStrategy(),
+    createStrategy: () => new GoParseStrategy(),
   },
   {
     name: 'rust',
     extensions: ['rs'],
     query: queryRust,
-    strategy: new DefaultParseStrategy(),
+    createStrategy: () => new DefaultParseStrategy(),
   },
   {
     name: 'java',
     extensions: ['java'],
     query: queryJava,
-    strategy: new DefaultParseStrategy(),
+    createStrategy: () => new DefaultParseStrategy(),
   },
   {
     name: 'c_sharp',
     extensions: ['cs'],
     query: queryCSharp,
-    strategy: new DefaultParseStrategy(),
+    createStrategy: () => new DefaultParseStrategy(),
   },
   {
     name: 'ruby',
     extensions: ['rb'],
     query: queryRuby,
-    strategy: new DefaultParseStrategy(),
+    createStrategy: () => new DefaultParseStrategy(),
   },
   {
     name: 'php',
     extensions: ['php'],
     query: queryPhp,
-    strategy: new DefaultParseStrategy(),
+    createStrategy: () => new DefaultParseStrategy(),
   },
   {
     name: 'swift',
     extensions: ['swift'],
     query: querySwift,
-    strategy: new DefaultParseStrategy(),
+    createStrategy: () => new DefaultParseStrategy(),
   },
   {
     name: 'c',
     extensions: ['c', 'h'],
     query: queryC,
-    strategy: new DefaultParseStrategy(),
+    createStrategy: () => new DefaultParseStrategy(),
   },
   {
     name: 'cpp',
     extensions: ['cpp', 'hpp'],
     query: queryCpp,
-    strategy: new DefaultParseStrategy(),
+    createStrategy: () => new DefaultParseStrategy(),
   },
   {
     name: 'css',
     extensions: ['css'],
     query: queryCss,
-    strategy: new CssParseStrategy(),
+    createStrategy: () => new CssParseStrategy(),
   },
   {
     name: 'solidity',
     extensions: ['sol'],
     query: querySolidity,
-    strategy: new DefaultParseStrategy(),
+    createStrategy: () => new DefaultParseStrategy(),
   },
   {
     name: 'vue',
     extensions: ['vue'],
     query: queryVue,
-    strategy: new VueParseStrategy(),
+    createStrategy: () => new VueParseStrategy(),
   },
   {
     name: 'dart',
     extensions: ['dart'],
     query: queryDart,
-    strategy: new DefaultParseStrategy(),
+    createStrategy: () => new DefaultParseStrategy(),
   },
 ];
 
@@ -177,8 +198,3 @@ export function getLanguageConfigByName(languageName: string): LanguageConfig | 
 export function getSupportedLanguages(): string[] {
   return LANGUAGE_CONFIGS.map((config) => config.name);
 }
-
-/**
- * Type representing all supported language names
- */
-export type SupportedLang = (typeof LANGUAGE_CONFIGS)[number]['name'];

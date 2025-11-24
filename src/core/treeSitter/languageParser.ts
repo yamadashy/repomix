@@ -33,7 +33,12 @@ export class LanguageParser {
       const parser = new Parser();
       parser.setLanguage(lang);
       const query = new Query(lang, config.query);
-      const { strategy } = config;
+      // Create strategy instance lazily when first needed
+      // NOTE: Strategy instances are cached per language in this.loadedResources
+      // and shared across all files of the same language. This is safe because
+      // all current strategies are stateless and only use the parameters passed
+      // to their parseCapture method.
+      const strategy = config.createStrategy();
 
       const resources: LanguageResources = {
         lang: name,
@@ -80,7 +85,7 @@ export class LanguageParser {
   public guessTheLang(filePath: string): SupportedLang | undefined {
     const ext = this.getFileExtension(filePath);
     const config = getLanguageConfigByExtension(ext);
-    return config?.name as SupportedLang | undefined;
+    return config?.name;
   }
 
   public async init(): Promise<void> {
