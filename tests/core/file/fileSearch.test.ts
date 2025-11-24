@@ -9,6 +9,8 @@ import {
   escapeGlobPattern,
   getIgnoreFilePatterns,
   getIgnorePatterns,
+  listDirectories,
+  listFiles,
   normalizeGlobPattern,
   parseIgnoreContent,
   searchFiles,
@@ -338,6 +340,63 @@ node_modules
       expect(result.emptyDirPaths).toEqual([]);
     });
 
+    test.runIf(!isWindows)('should respect parent directory .gitignore patterns (v16 behavior)', async () => {
+      const mockConfig = createMockConfig({
+        include: ['**/*.js'],
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      // Simulate parent .gitignore pattern applying to subdirectory files
+      const mockFileStructure = [
+        'root/file1.js',
+        'root/subdir/file2.js',
+        'root/subdir/nested/file3.js',
+        // 'root/subdir/nested/ignored-by-parent.js' - filtered by parent .gitignore
+      ];
+
+      const mockGitignoreContent = {
+        '/mock/root/.gitignore': 'ignored-by-parent.js',
+      };
+
+      vi.mocked(globby).mockImplementation(async () => {
+        // Simulate globby v16 behavior: parent .gitignore patterns apply to all subdirectories
+        return mockFileStructure.filter((file) => {
+          const basename = path.basename(file);
+          const parentGitignore = mockGitignoreContent['/mock/root/.gitignore'];
+          if (minimatch(basename, parentGitignore)) {
+            return false;
+          }
+          return true;
+        });
+      });
+
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        return mockGitignoreContent[filePath as keyof typeof mockGitignoreContent] || '';
+      });
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      // Verify parent .gitignore pattern filtered out the file
+      expect(result.filePaths).toHaveLength(3);
+      expect(result.filePaths).toContain('root/file1.js');
+      expect(result.filePaths).toContain('root/subdir/file2.js');
+      expect(result.filePaths).toContain('root/subdir/nested/file3.js');
+      expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-parent.js');
+      expect(result.emptyDirPaths).toEqual([]);
+
+      // Verify gitignore option was passed to globby
+      expect(globby).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          gitignore: true,
+        }),
+      );
+    });
+
     test('should not apply .gitignore when useGitignore is false', async () => {
       const mockConfig = createMockConfig({
         include: ['**/*.js'],
@@ -629,6 +688,102 @@ node_modules
 
       expect(result.filePaths).toEqual(['lib/utils.ts', 'src/main.ts']);
       expect(result.emptyDirPaths).toEqual([]);
+    });
+  });
+
+  describe('createBaseGlobbyOptions consistency', () => {
+    test('should use consistent base options across all globby calls', async () => {
+      const mockConfig = createMockConfig({
+        include: ['**/*.ts'],
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: false,
+          customPatterns: ['*.test.ts'],
+        },
+      });
+
+      vi.mocked(globby).mockResolvedValue(['file1.ts', 'file2.ts']);
+
+      // Call all functions that use globby
+      await searchFiles('/test/root', mockConfig);
+      await listDirectories('/test/root', mockConfig);
+      await listFiles('/test/root', mockConfig);
+
+      // searchFiles calls globby twice (files + directories if includeEmptyDirectories is true)
+      // listDirectories calls globby once
+      // listFiles calls globby once
+      const calls = vi.mocked(globby).mock.calls;
+
+      // Verify all calls have consistent base options
+      for (const call of calls) {
+        const options = call[1];
+        expect(options).toMatchObject({
+          cwd: '/test/root',
+          gitignore: true,
+          ignoreFiles: expect.arrayContaining(['**/.repomixignore']),
+          absolute: false,
+          dot: true,
+          followSymbolicLinks: false,
+        });
+
+        // Each call should have either onlyFiles or onlyDirectories, but not both
+        const hasOnlyFiles = 'onlyFiles' in options && options.onlyFiles === true;
+        const hasOnlyDirectories = 'onlyDirectories' in options && options.onlyDirectories === true;
+        expect(hasOnlyFiles || hasOnlyDirectories).toBe(true);
+        expect(hasOnlyFiles && hasOnlyDirectories).toBe(false);
+      }
+    });
+
+    test('should respect gitignore config consistently across all functions', async () => {
+      const mockConfigWithoutGitignore = createMockConfig({
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      vi.mocked(globby).mockResolvedValue([]);
+
+      // Call all functions
+      await searchFiles('/test/root', mockConfigWithoutGitignore);
+      await listDirectories('/test/root', mockConfigWithoutGitignore);
+      await listFiles('/test/root', mockConfigWithoutGitignore);
+
+      // Verify all calls have gitignore: false
+      const calls = vi.mocked(globby).mock.calls;
+      for (const call of calls) {
+        const options = call[1];
+        expect(options).toMatchObject({
+          gitignore: false,
+        });
+      }
+    });
+
+    test('should apply custom ignore patterns consistently across all functions', async () => {
+      const customPatterns = ['*.custom', 'temp/**'];
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: false,
+          customPatterns,
+        },
+      });
+
+      vi.mocked(globby).mockResolvedValue([]);
+
+      // Call all functions
+      await searchFiles('/test/root', mockConfig);
+      await listDirectories('/test/root', mockConfig);
+      await listFiles('/test/root', mockConfig);
+
+      // Verify all calls include custom patterns in ignore array
+      const calls = vi.mocked(globby).mock.calls;
+      for (const call of calls) {
+        const options = call[1];
+        const ignorePatterns = options?.ignore as string[];
+        expect(ignorePatterns).toEqual(expect.arrayContaining(customPatterns));
+      }
     });
   });
 });
