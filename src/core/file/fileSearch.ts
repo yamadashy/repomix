@@ -213,6 +213,7 @@ export const searchFiles = async (
     const filePaths = await globby(includePatterns, {
       cwd: rootDir,
       ignore: [...adjustedIgnorePatterns],
+      gitignore: config.ignore.useGitignore,
       ignoreFiles: [...ignoreFilePatterns],
       onlyFiles: true,
       absolute: false,
@@ -241,6 +242,7 @@ export const searchFiles = async (
       const directories = await globby(includePatterns, {
         cwd: rootDir,
         ignore: [...adjustedIgnorePatterns],
+        gitignore: config.ignore.useGitignore,
         ignoreFiles: [...ignoreFilePatterns],
         onlyDirectories: true,
         absolute: false,
@@ -301,10 +303,9 @@ export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promis
   //
   // Multiple ignore files in the same directory (.gitignore, .ignore, .repomixignore)
   // are all merged together. The order in this array does not affect priority.
-
-  if (config.ignore.useGitignore) {
-    ignoreFilePatterns.push('**/.gitignore');
-  }
+  //
+  // .gitignore files are handled by globby's gitignore option (not ignoreFiles)
+  // to properly respect parent directory .gitignore files, matching Git's behavior.
 
   if (config.ignore.useDotIgnore) {
     ignoreFilePatterns.push('**/.ignore');
@@ -403,6 +404,7 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
     dot: true,
     followSymbolicLinks: false,
     ignore: [...adjustedIgnorePatterns],
+    gitignore: config.ignore.useGitignore,
     ignoreFiles: [...ignoreFilePatterns],
   });
 
@@ -448,6 +450,7 @@ export const listFiles = async (rootDir: string, config: RepomixConfigMerged): P
     dot: true,
     followSymbolicLinks: false,
     ignore: [...adjustedIgnorePatterns],
+    gitignore: config.ignore.useGitignore,
     ignoreFiles: [...ignoreFilePatterns],
   });
 
