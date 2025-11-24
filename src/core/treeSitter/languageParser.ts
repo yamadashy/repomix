@@ -5,7 +5,7 @@ import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { getLanguageConfigByExtension, getLanguageConfigByName, type SupportedLang } from './languageConfig.js';
 import { loadLanguage } from './loadLanguage.js';
-import type { ParseStrategy } from './parseStrategies/ParseStrategy.js';
+import type { ParseStrategy } from './parseStrategies/BaseParseStrategy.js';
 
 interface LanguageResources {
   lang: SupportedLang;

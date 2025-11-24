@@ -1,5 +1,22 @@
-import type { Node } from 'web-tree-sitter';
-import type { ParseContext, ParseStrategy } from './ParseStrategy.js';
+import type { Node, Query, Tree } from 'web-tree-sitter';
+import type { RepomixConfigMerged } from '../../../config/configSchema.js';
+
+export interface ParseContext {
+  fileContent: string;
+  lines: string[];
+  tree: Tree;
+  query: Query;
+  config: RepomixConfigMerged;
+}
+
+export interface ParseStrategy {
+  parseCapture(
+    capture: { node: Node; name: string },
+    lines: string[],
+    processedChunks: Set<string>,
+    context: ParseContext,
+  ): string | null;
+}
 
 /**
  * Common capture type constants used across different language strategies

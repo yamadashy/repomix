@@ -1,6 +1,6 @@
 import type { Node } from 'web-tree-sitter';
+import type { ParseContext } from './BaseParseStrategy.js';
 import { BaseParseStrategy } from './BaseParseStrategy.js';
-import type { ParseContext } from './ParseStrategy.js';
 
 export class CssParseStrategy extends BaseParseStrategy {
   parseCapture(

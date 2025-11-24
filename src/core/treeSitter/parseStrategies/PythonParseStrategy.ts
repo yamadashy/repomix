@@ -1,6 +1,6 @@
 import type { Node } from 'web-tree-sitter';
+import type { ParseContext } from './BaseParseStrategy.js';
 import { BaseParseStrategy, type ParseResult } from './BaseParseStrategy.js';
-import type { ParseContext } from './ParseStrategy.js';
 
 enum CaptureType {
   Comment = 'comment',

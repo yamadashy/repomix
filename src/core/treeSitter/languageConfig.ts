@@ -1,7 +1,7 @@
+import type { ParseStrategy } from './parseStrategies/BaseParseStrategy.js';
 import { CssParseStrategy } from './parseStrategies/CssParseStrategy.js';
 import { DefaultParseStrategy } from './parseStrategies/DefaultParseStrategy.js';
 import { GoParseStrategy } from './parseStrategies/GoParseStrategy.js';
-import type { ParseStrategy } from './parseStrategies/ParseStrategy.js';
 import { PythonParseStrategy } from './parseStrategies/PythonParseStrategy.js';
 import { TypeScriptParseStrategy } from './parseStrategies/TypeScriptParseStrategy.js';
 import { VueParseStrategy } from './parseStrategies/VueParseStrategy.js';
