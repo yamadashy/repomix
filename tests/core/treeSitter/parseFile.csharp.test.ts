@@ -212,4 +212,45 @@ describe('parseFile for C#', () => {
       expect(result).toContain(expectContent);
     }
   });
+
+  test('should parse multiple interface implementation', async () => {
+    const fileContent = `
+      // Multiple interfaces
+      public class MultiImpl : IDisposable, IComparable, ICloneable {
+        // Dispose method
+        public void Dispose() {
+          Console.WriteLine("Disposing");
+        }
+
+        // CompareTo method
+        public int CompareTo(object obj) {
+          return 0;
+        }
+
+        // Clone method
+        public object Clone() {
+          return this.MemberwiseClone();
+        }
+      }
+    `;
+    const filePath = 'dummy.cs';
+    const config = {};
+    const result = await parseFile(fileContent, filePath, createMockConfig(config));
+    expect(typeof result).toBe('string');
+
+    const expectContents = [
+      'Multiple interfaces',
+      'class MultiImpl',
+      'Dispose method',
+      'void Dispose()',
+      'CompareTo method',
+      'int CompareTo(',
+      'Clone method',
+      'object Clone()',
+    ];
+
+    for (const expectContent of expectContents) {
+      expect(result).toContain(expectContent);
+    }
+  });
 });
