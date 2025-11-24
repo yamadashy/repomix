@@ -175,4 +175,182 @@ describe('processContent', () => {
     const result = await processContent(rawFile, config);
     expect(result).toBe('some content');
   });
+
+  describe('ellipsis (...) preservation', () => {
+    it('should preserve ... in TypeScript spread operator without any processing', async () => {
+      const rawFile: RawFile = {
+        path: 'test.ts',
+        content: 'const arr = [...items];',
+      };
+      const config: RepomixConfigMerged = {
+        output: {
+          removeComments: false,
+          removeEmptyLines: false,
+          compress: false,
+          showLineNumbers: false,
+        },
+      } as RepomixConfigMerged;
+
+      const result = await processContent(rawFile, config);
+      expect(result).toContain('...');
+      expect(result).toBe('const arr = [...items];');
+    });
+
+    it('should preserve ... with removeComments enabled', async () => {
+      const rawFile: RawFile = {
+        path: 'test.ts',
+        content: '// Comment\nconst arr = [...items];',
+      };
+      const config: RepomixConfigMerged = {
+        output: {
+          removeComments: true,
+          removeEmptyLines: false,
+          compress: false,
+          showLineNumbers: false,
+        },
+      } as RepomixConfigMerged;
+
+      const result = await processContent(rawFile, config);
+      expect(result).toContain('...');
+      expect(result).toContain('[...items]');
+    });
+
+    it('should preserve ... with removeEmptyLines enabled', async () => {
+      const rawFile: RawFile = {
+        path: 'test.ts',
+        content: 'const arr = [...items];\n\nconst x = 1;',
+      };
+      const config: RepomixConfigMerged = {
+        output: {
+          removeComments: false,
+          removeEmptyLines: true,
+          compress: false,
+          showLineNumbers: false,
+        },
+      } as RepomixConfigMerged;
+
+      const result = await processContent(rawFile, config);
+      expect(result).toContain('...');
+      expect(result).toContain('[...items]');
+    });
+
+    it('should preserve ... with showLineNumbers enabled', async () => {
+      const rawFile: RawFile = {
+        path: 'test.ts',
+        content: 'const arr = [...items];',
+      };
+      const config: RepomixConfigMerged = {
+        output: {
+          removeComments: false,
+          removeEmptyLines: false,
+          compress: false,
+          showLineNumbers: true,
+        },
+      } as RepomixConfigMerged;
+
+      const result = await processContent(rawFile, config);
+      expect(result).toContain('...');
+      expect(result).toContain('[...items]');
+    });
+
+    it('should preserve ... with compress enabled (Tree-sitter)', async () => {
+      const rawFile: RawFile = {
+        path: 'test.ts',
+        content: 'function test(...args: any[]) { return args; }',
+      };
+      const config: RepomixConfigMerged = {
+        output: {
+          removeComments: false,
+          removeEmptyLines: false,
+          compress: true,
+          showLineNumbers: false,
+        },
+      } as RepomixConfigMerged;
+
+      // Mock parseFile to preserve ...
+      vi.mocked(parseFile).mockResolvedValue('function test(...args: any[])');
+
+      const result = await processContent(rawFile, config);
+      expect(result).toContain('...');
+      expect(result).toContain('...args');
+    });
+
+    it('should preserve multiple ... in same content', async () => {
+      const rawFile: RawFile = {
+        path: 'test.ts',
+        content: 'function test(...args: any[]) {\n  return [...args];\n}',
+      };
+      const config: RepomixConfigMerged = {
+        output: {
+          removeComments: false,
+          removeEmptyLines: false,
+          compress: false,
+          showLineNumbers: false,
+        },
+      } as RepomixConfigMerged;
+
+      const result = await processContent(rawFile, config);
+      expect(result).toContain('...args');
+      expect(result).toContain('[...args]');
+      // Count occurrences of ...
+      const ellipsisCount = (result.match(/\.\.\./g) || []).length;
+      expect(ellipsisCount).toBe(2);
+    });
+
+    it('should preserve ... in object spread', async () => {
+      const rawFile: RawFile = {
+        path: 'test.ts',
+        content: 'const obj = { ...props };',
+      };
+      const config: RepomixConfigMerged = {
+        output: {
+          removeComments: false,
+          removeEmptyLines: false,
+          compress: false,
+          showLineNumbers: false,
+        },
+      } as RepomixConfigMerged;
+
+      const result = await processContent(rawFile, config);
+      expect(result).toContain('...');
+      expect(result).toContain('...props');
+    });
+
+    it('should preserve standalone ...', async () => {
+      const rawFile: RawFile = {
+        path: 'test.py',
+        content: '# ...\npass',
+      };
+      const config: RepomixConfigMerged = {
+        output: {
+          removeComments: false,
+          removeEmptyLines: false,
+          compress: false,
+          showLineNumbers: false,
+        },
+      } as RepomixConfigMerged;
+
+      const result = await processContent(rawFile, config);
+      expect(result).toContain('...');
+    });
+
+    it('should preserve ... in strings', async () => {
+      const rawFile: RawFile = {
+        path: 'test.ts',
+        content: 'const msg = "Loading...";',
+      };
+      const config: RepomixConfigMerged = {
+        output: {
+          removeComments: false,
+          removeEmptyLines: false,
+          compress: false,
+          showLineNumbers: false,
+        },
+      } as RepomixConfigMerged;
+
+      const result = await processContent(rawFile, config);
+      expect(result).toContain('...');
+      expect(result).toContain('Loading...');
+    });
+  });
 });
