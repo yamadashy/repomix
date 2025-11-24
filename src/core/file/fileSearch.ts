@@ -1,7 +1,7 @@
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { globby } from 'globby';
+import { type Options as GlobbyOptions, globby } from 'globby';
 import { minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
@@ -146,31 +146,10 @@ export const searchFiles = async (
   }
 
   try {
-    const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
-      getIgnorePatterns(rootDir, config),
-      getIgnoreFilePatterns(config),
-    ]);
+    const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
-    // Normalize ignore patterns to handle trailing slashes consistently
-    const normalizedIgnorePatterns = ignorePatterns.map(normalizeGlobPattern);
-
-    logger.trace('Ignore patterns:', normalizedIgnorePatterns);
+    logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns:', ignoreFilePatterns);
-
-    // Check if .git is a worktree reference
-    const gitPath = path.join(rootDir, '.git');
-    const isWorktree = await isGitWorktreeRef(gitPath);
-
-    // Modify ignore patterns for git worktree
-    const adjustedIgnorePatterns = [...normalizedIgnorePatterns];
-    if (isWorktree) {
-      // Remove '.git/**' pattern and add '.git' to ignore the reference file
-      const gitIndex = adjustedIgnorePatterns.indexOf('.git/**');
-      if (gitIndex !== -1) {
-        adjustedIgnorePatterns.splice(gitIndex, 1);
-        adjustedIgnorePatterns.push('.git');
-      }
-    }
 
     // Start with configured include patterns
     let includePatterns = config.include.map((pattern) => escapeGlobPattern(pattern));
@@ -211,13 +190,8 @@ export const searchFiles = async (
     const globbyStartTime = Date.now();
 
     const filePaths = await globby(includePatterns, {
-      cwd: rootDir,
-      ignore: [...adjustedIgnorePatterns],
-      ignoreFiles: [...ignoreFilePatterns],
+      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
       onlyFiles: true,
-      absolute: false,
-      dot: true,
-      followSymbolicLinks: false,
     }).catch((error: unknown) => {
       // Handle EPERM errors specifically
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
@@ -239,13 +213,8 @@ export const searchFiles = async (
       const emptyDirStartTime = Date.now();
 
       const directories = await globby(includePatterns, {
-        cwd: rootDir,
-        ignore: [...adjustedIgnorePatterns],
-        ignoreFiles: [...ignoreFilePatterns],
+        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
         onlyDirectories: true,
-        absolute: false,
-        dot: true,
-        followSymbolicLinks: false,
       });
 
       const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
@@ -292,6 +261,63 @@ export const parseIgnoreContent = (content: string): string[] => {
   }, []);
 };
 
+/**
+ * Prepares ignore context including patterns and file patterns with git worktree handling.
+ * This logic is shared across searchFiles, listDirectories, and listFiles.
+ *
+ * @param rootDir The root directory to search
+ * @param config The merged configuration
+ * @returns Object containing adjusted ignore patterns and ignore file patterns
+ */
+const prepareIgnoreContext = async (
+  rootDir: string,
+  config: RepomixConfigMerged,
+): Promise<{ adjustedIgnorePatterns: string[]; ignoreFilePatterns: string[] }> => {
+  const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
+    getIgnorePatterns(rootDir, config),
+    getIgnoreFilePatterns(config),
+  ]);
+
+  // Normalize ignore patterns to handle trailing slashes consistently
+  const normalizedIgnorePatterns = ignorePatterns.map(normalizeGlobPattern);
+
+  // Check if .git is a worktree reference
+  const gitPath = path.join(rootDir, '.git');
+  const isWorktree = await isGitWorktreeRef(gitPath);
+
+  // Modify ignore patterns for git worktree
+  const adjustedIgnorePatterns = [...normalizedIgnorePatterns];
+  if (isWorktree) {
+    // Remove '.git/**' pattern and add '.git' to ignore the reference file
+    const gitIndex = adjustedIgnorePatterns.indexOf('.git/**');
+    if (gitIndex !== -1) {
+      adjustedIgnorePatterns.splice(gitIndex, 1);
+      adjustedIgnorePatterns.push('.git');
+    }
+  }
+
+  return { adjustedIgnorePatterns, ignoreFilePatterns };
+};
+
+/**
+ * Creates base globby options with common ignore patterns.
+ * Returns options that can be extended with specific settings like onlyFiles or onlyDirectories.
+ */
+const createBaseGlobbyOptions = (
+  rootDir: string,
+  config: RepomixConfigMerged,
+  ignorePatterns: string[],
+  ignoreFilePatterns: string[],
+): Omit<GlobbyOptions, 'onlyFiles' | 'onlyDirectories'> => ({
+  cwd: rootDir,
+  ignore: ignorePatterns,
+  gitignore: config.ignore.useGitignore,
+  ignoreFiles: ignoreFilePatterns,
+  absolute: false,
+  dot: true,
+  followSymbolicLinks: false,
+});
+
 export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promise<string[]> => {
   const ignoreFilePatterns: string[] = [];
 
@@ -301,10 +327,9 @@ export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promis
   //
   // Multiple ignore files in the same directory (.gitignore, .ignore, .repomixignore)
   // are all merged together. The order in this array does not affect priority.
-
-  if (config.ignore.useGitignore) {
-    ignoreFilePatterns.push('**/.gitignore');
-  }
+  //
+  // .gitignore files are handled by globby's gitignore option (not ignoreFiles)
+  // to properly respect parent directory .gitignore files, matching Git's behavior.
 
   if (config.ignore.useDotIgnore) {
     ignoreFilePatterns.push('**/.ignore');
@@ -373,37 +398,11 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
  * @returns Array of directory paths relative to rootDir
  */
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
-  const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
-    getIgnorePatterns(rootDir, config),
-    getIgnoreFilePatterns(config),
-  ]);
-
-  // Normalize ignore patterns to handle trailing slashes consistently
-  const normalizedIgnorePatterns = ignorePatterns.map(normalizeGlobPattern);
-
-  // Check if .git is a worktree reference
-  const gitPath = path.join(rootDir, '.git');
-  const isWorktree = await isGitWorktreeRef(gitPath);
-
-  // Modify ignore patterns for git worktree
-  const adjustedIgnorePatterns = [...normalizedIgnorePatterns];
-  if (isWorktree) {
-    // Remove '.git/**' pattern and add '.git' to ignore the reference file
-    const gitIndex = adjustedIgnorePatterns.indexOf('.git/**');
-    if (gitIndex !== -1) {
-      adjustedIgnorePatterns.splice(gitIndex, 1);
-      adjustedIgnorePatterns.push('.git');
-    }
-  }
+  const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
   const directories = await globby(['**/*'], {
-    cwd: rootDir,
+    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
-    absolute: false,
-    dot: true,
-    followSymbolicLinks: false,
-    ignore: [...adjustedIgnorePatterns],
-    ignoreFiles: [...ignoreFilePatterns],
   });
 
   return sortPaths(directories);
@@ -418,37 +417,11 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
  * @returns Array of file paths relative to rootDir
  */
 export const listFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
-  const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
-    getIgnorePatterns(rootDir, config),
-    getIgnoreFilePatterns(config),
-  ]);
-
-  // Normalize ignore patterns to handle trailing slashes consistently
-  const normalizedIgnorePatterns = ignorePatterns.map(normalizeGlobPattern);
-
-  // Check if .git is a worktree reference
-  const gitPath = path.join(rootDir, '.git');
-  const isWorktree = await isGitWorktreeRef(gitPath);
-
-  // Modify ignore patterns for git worktree
-  const adjustedIgnorePatterns = [...normalizedIgnorePatterns];
-  if (isWorktree) {
-    // Remove '.git/**' pattern and add '.git' to ignore the reference file
-    const gitIndex = adjustedIgnorePatterns.indexOf('.git/**');
-    if (gitIndex !== -1) {
-      adjustedIgnorePatterns.splice(gitIndex, 1);
-      adjustedIgnorePatterns.push('.git');
-    }
-  }
+  const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
   const files = await globby(['**/*'], {
-    cwd: rootDir,
+    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,
-    absolute: false,
-    dot: true,
-    followSymbolicLinks: false,
-    ignore: [...adjustedIgnorePatterns],
-    ignoreFiles: [...ignoreFilePatterns],
   });
 
   return sortPaths(files);
