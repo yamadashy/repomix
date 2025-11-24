@@ -6,7 +6,7 @@ export const queryCSharp = `
 ) @definition.class
 
 (class_declaration
-  bases: (base_list (_) @name.reference.class)
+  (base_list (_) @name.reference.class)
 ) @reference.class
 
 (interface_declaration
@@ -14,7 +14,7 @@ export const queryCSharp = `
 ) @definition.interface
 
 (interface_declaration
-  bases: (base_list (_) @name.reference.interface)
+  (base_list (_) @name.reference.interface)
 ) @reference.interface
 
 (method_declaration
@@ -26,10 +26,10 @@ export const queryCSharp = `
 ) @reference.class
 
 (type_parameter_constraints_clause
-  target: (identifier) @name.reference.class
+  (identifier) @name.reference.class
 ) @reference.class
 
-(type_constraint
+(type_parameter_constraint
   type: (identifier) @name.reference.class
 ) @reference.class
 
