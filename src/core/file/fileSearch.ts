@@ -1,7 +1,7 @@
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { globby } from 'globby';
+import { globby, type Options as GlobbyOptions } from 'globby';
 import { minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
@@ -211,14 +211,8 @@ export const searchFiles = async (
     const globbyStartTime = Date.now();
 
     const filePaths = await globby(includePatterns, {
-      cwd: rootDir,
-      ignore: [...adjustedIgnorePatterns],
-      gitignore: config.ignore.useGitignore,
-      ignoreFiles: [...ignoreFilePatterns],
+      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
       onlyFiles: true,
-      absolute: false,
-      dot: true,
-      followSymbolicLinks: false,
     }).catch((error: unknown) => {
       // Handle EPERM errors specifically
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
@@ -240,14 +234,8 @@ export const searchFiles = async (
       const emptyDirStartTime = Date.now();
 
       const directories = await globby(includePatterns, {
-        cwd: rootDir,
-        ignore: [...adjustedIgnorePatterns],
-        gitignore: config.ignore.useGitignore,
-        ignoreFiles: [...ignoreFilePatterns],
+        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
         onlyDirectories: true,
-        absolute: false,
-        dot: true,
-        followSymbolicLinks: false,
       });
 
       const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
@@ -293,6 +281,25 @@ export const parseIgnoreContent = (content: string): string[] => {
     return acc;
   }, []);
 };
+
+/**
+ * Creates base globby options with common ignore patterns.
+ * Returns options that can be extended with specific settings like onlyFiles or onlyDirectories.
+ */
+const createBaseGlobbyOptions = (
+  rootDir: string,
+  config: RepomixConfigMerged,
+  ignorePatterns: string[],
+  ignoreFilePatterns: string[],
+): Omit<GlobbyOptions, 'onlyFiles' | 'onlyDirectories'> => ({
+  cwd: rootDir,
+  ignore: [...ignorePatterns],
+  gitignore: config.ignore.useGitignore,
+  ignoreFiles: [...ignoreFilePatterns],
+  absolute: false,
+  dot: true,
+  followSymbolicLinks: false,
+});
 
 export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promise<string[]> => {
   const ignoreFilePatterns: string[] = [];
@@ -398,14 +405,8 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
   }
 
   const directories = await globby(['**/*'], {
-    cwd: rootDir,
+    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
-    absolute: false,
-    dot: true,
-    followSymbolicLinks: false,
-    ignore: [...adjustedIgnorePatterns],
-    gitignore: config.ignore.useGitignore,
-    ignoreFiles: [...ignoreFilePatterns],
   });
 
   return sortPaths(directories);
@@ -444,14 +445,8 @@ export const listFiles = async (rootDir: string, config: RepomixConfigMerged): P
   }
 
   const files = await globby(['**/*'], {
-    cwd: rootDir,
+    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,
-    absolute: false,
-    dot: true,
-    followSymbolicLinks: false,
-    ignore: [...adjustedIgnorePatterns],
-    gitignore: config.ignore.useGitignore,
-    ignoreFiles: [...ignoreFilePatterns],
   });
 
   return sortPaths(files);
