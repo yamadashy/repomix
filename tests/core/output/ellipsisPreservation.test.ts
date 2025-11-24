@@ -1,7 +1,7 @@
 import process from 'node:process';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { generateOutput } from '../../../src/core/output/outputGenerate.js';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
+import { generateOutput } from '../../../src/core/output/outputGenerate.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 vi.mock('fs/promises');
@@ -28,9 +28,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'const arr = [...items];'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'const arr = [...items];')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -50,9 +48,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'function test(...args: any[]) { return args; }'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'function test(...args: any[]) { return args; }')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -73,9 +69,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'const obj = { ...props, name: "test" };'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'const obj = { ...props, name: "test" };')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -96,9 +90,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', '// ...\nconst x = 1;'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', '// ...\nconst x = 1;')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -117,10 +109,7 @@ describe('ellipsisPreservation', () => {
       });
 
       const files: ProcessedFile[] = [
-        createTestFile(
-          'test.ts',
-          'function test(...args: any[]) {\n  const arr = [...args];\n  return { ...arr };\n}',
-        ),
+        createTestFile('test.ts', 'function test(...args: any[]) {\n  const arr = [...args];\n  return { ...arr };\n}'),
       ];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
@@ -146,9 +135,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'const arr = [...items];'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'const arr = [...items];')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -168,9 +155,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'function test(...args: any[]) { return args; }'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'function test(...args: any[]) { return args; }')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -192,9 +177,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'const arr = [...items];'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'const arr = [...items];')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -215,9 +198,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'const arr = [...items];'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'const arr = [...items];')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -238,9 +219,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'const arr = [...items];'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'const arr = [...items];')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -262,9 +241,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.js', 'const arr = [...items];'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.js', 'const arr = [...items];')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.js']);
 
@@ -283,9 +260,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.go', 'func test(args ...int) {}'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.go', 'func test(args ...int) {}')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.go']);
 
@@ -304,9 +279,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.py', '# ...\npass'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.py', '# ...\npass')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.py']);
 
@@ -327,9 +300,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', '// Comment\nconst arr = [...items];'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', '// Comment\nconst arr = [...items];')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -351,9 +322,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'const arr = [...items];\n\nconst x = 1;'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'const arr = [...items];\n\nconst x = 1;')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -374,9 +343,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'const x = "....";'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'const x = "....";')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -394,9 +361,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'const msg = "Loading...";'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'const msg = "Loading...";')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
@@ -415,9 +380,7 @@ describe('ellipsisPreservation', () => {
         },
       });
 
-      const files: ProcessedFile[] = [
-        createTestFile('test.ts', 'const msg = `Loading...`;'),
-      ];
+      const files: ProcessedFile[] = [createTestFile('test.ts', 'const msg = `Loading...`;')];
 
       const output = await generateOutput([process.cwd()], mockConfig, files, ['test.ts']);
 
