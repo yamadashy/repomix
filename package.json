@@ -80,7 +80,7 @@
   "dependencies": {
     "@clack/prompts": "^0.11.0",
     "@modelcontextprotocol/sdk": "^1.21.0",
-    "@repomix/tree-sitter-wasms": "^0.1.14",
+    "@repomix/tree-sitter-wasms": "^0.1.15",
     "@secretlint/core": "^11.2.5",
     "@secretlint/secretlint-rule-preset-recommend": "^11.2.5",
     "clipboardy": "^5.0.0",

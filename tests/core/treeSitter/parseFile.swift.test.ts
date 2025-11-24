@@ -196,6 +196,59 @@ describe('parseFile for Swift', () => {
     }
   });
 
+  test('should parse protocol methods correctly', async () => {
+    const fileContent = `
+      /// Protocol for database operations
+      protocol DatabaseProtocol {
+        /// Initialize the database connection
+        init(url: String)
+
+        /// Save data to the database
+        func save(_ data: String) throws
+
+        /// Fetch data from the database
+        func fetch(id: Int) -> String?
+
+        /// Subscript for accessing data by key
+        subscript(key: String) -> String? { get set }
+      }
+
+      /// Protocol with static requirements
+      protocol StaticProtocol {
+        /// Create a default instance
+        static func createDefault() -> Self
+
+        /// The version number
+        static var version: Int { get }
+      }
+    `;
+    const filePath = 'protocols.swift';
+    const config = {};
+    const result = await parseFile(fileContent, filePath, createMockConfig(config));
+    expect(typeof result).toBe('string');
+
+    const expectContents = [
+      'Protocol for database operations',
+      'protocol DatabaseProtocol',
+      'Initialize the database connection',
+      'init(url: String)',
+      'Save data to the database',
+      'func save(_ data: String) throws',
+      'Fetch data from the database',
+      'func fetch(id: Int) -> String?',
+      'Subscript for accessing data by key',
+      'subscript(key: String) -> String?',
+      'Protocol with static requirements',
+      'protocol StaticProtocol',
+      'Create a default instance',
+      'static func createDefault() -> Self',
+    ];
+
+    for (const expectContent of expectContents) {
+      expect(result).toContain(expectContent);
+    }
+  });
+
   test('should handle enums and generic types', async () => {
     const fileContent = `
       /// Represents a result with either a success value or an error
@@ -260,6 +313,71 @@ describe('parseFile for Swift', () => {
       'mutating func push(_ element: Element)',
       'Removes and returns the top element',
       'mutating func pop() -> Element?',
+    ];
+
+    for (const expectContent of expectContents) {
+      expect(result).toContain(expectContent);
+    }
+  });
+
+  test('should handle multiple subscripts with different parameter names', async () => {
+    const fileContent = `
+      /// A storage protocol with multiple subscript accessors
+      protocol Storage {
+        /// Access by string key
+        subscript(key: String) -> Value? { get set }
+
+        /// Access by integer index
+        subscript(index: Int) -> Value? { get set }
+
+        /// Access by range
+        subscript(range: Range<Int>) -> [Value] { get }
+      }
+
+      /// A dictionary-like class with multiple subscripts
+      class Dictionary {
+        /// Access by string key
+        subscript(key: String) -> Int? {
+          get { return nil }
+          set { }
+        }
+
+        /// Access by integer index
+        subscript(index: Int) -> String? {
+          get { return nil }
+          set { }
+        }
+
+        /// Access by key and default value
+        subscript(key: String, default defaultValue: Int) -> Int {
+          get { return defaultValue }
+          set { }
+        }
+      }
+    `;
+    const filePath = 'storage.swift';
+    const config = {};
+    const result = await parseFile(fileContent, filePath, createMockConfig(config));
+    expect(typeof result).toBe('string');
+
+    const expectContents = [
+      // Protocol
+      'A storage protocol with multiple subscript accessors',
+      'protocol Storage',
+      'Access by string key',
+      'subscript(key: String) -> Value?',
+      'Access by integer index',
+      'subscript(index: Int) -> Value?',
+      'Access by range',
+      'subscript(range: Range<Int>) -> [Value]',
+
+      // Class
+      'A dictionary-like class with multiple subscripts',
+      'class Dictionary',
+      'Access by string key',
+      'Access by integer index',
+      'Access by key and default value',
+      'subscript(key: String, default defaultValue: Int) -> Int',
     ];
 
     for (const expectContent of expectContents) {

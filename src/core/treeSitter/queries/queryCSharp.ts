@@ -5,16 +5,19 @@ export const queryCSharp = `
   name: (identifier) @name.definition.class
 ) @definition.class
 
+; Note: The 'bases:' field specifier was removed in tree-sitter-c_sharp 0.25+
+; The base_list node now directly contains base types without a named field
 (class_declaration
-  bases: (base_list (_) @name.reference.class)
+  (base_list (_) @name.reference.class)
 ) @reference.class
 
 (interface_declaration
   name: (identifier) @name.definition.interface
 ) @definition.interface
 
+; Captures base interfaces implemented by an interface
 (interface_declaration
-  bases: (base_list (_) @name.reference.interface)
+  (base_list (_) @name.reference.interface)
 ) @reference.interface
 
 (method_declaration
@@ -26,10 +29,10 @@ export const queryCSharp = `
 ) @reference.class
 
 (type_parameter_constraints_clause
-  target: (identifier) @name.reference.class
+  (identifier) @name.reference.class
 ) @reference.class
 
-(type_constraint
+(type_parameter_constraint
   type: (identifier) @name.reference.class
 ) @reference.class
 
