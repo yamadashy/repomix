@@ -401,6 +401,126 @@ node_modules
       );
     });
 
+    test.runIf(!isWindows)('should respect parent directory .ignore patterns', async () => {
+      // This test verifies that .ignore files in parent directories are respected,
+      // similar to .gitignore behavior in v16.
+      const mockConfig = createMockConfig({
+        include: ['**/*.js'],
+        ignore: {
+          useGitignore: false,
+          useDotIgnore: true,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      // Simulate parent .ignore pattern applying to subdirectory files
+      const mockFileStructure = [
+        'root/file1.js',
+        'root/subdir/file2.js',
+        'root/subdir/nested/file3.js',
+        // 'root/subdir/nested/ignored-by-parent.js' - filtered by parent .ignore
+      ];
+
+      const mockIgnoreContent = {
+        '/mock/root/.ignore': 'ignored-by-parent.js',
+      };
+
+      vi.mocked(globby).mockImplementation(async () => {
+        // Simulate parent .ignore patterns applying to all subdirectories
+        return mockFileStructure.filter((file) => {
+          const basename = path.basename(file);
+          const parentIgnore = mockIgnoreContent['/mock/root/.ignore'];
+          if (minimatch(basename, parentIgnore)) {
+            return false;
+          }
+          return true;
+        });
+      });
+
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        return mockIgnoreContent[filePath as keyof typeof mockIgnoreContent] || '';
+      });
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      // Verify parent .ignore pattern filtered out the file
+      expect(result.filePaths).toHaveLength(3);
+      expect(result.filePaths).toContain('root/file1.js');
+      expect(result.filePaths).toContain('root/subdir/file2.js');
+      expect(result.filePaths).toContain('root/subdir/nested/file3.js');
+      expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-parent.js');
+      expect(result.emptyDirPaths).toEqual([]);
+
+      // Verify ignoreFiles option includes .ignore
+      expect(globby).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          ignoreFiles: expect.arrayContaining(['**/.ignore']),
+        }),
+      );
+    });
+
+    test.runIf(!isWindows)('should respect parent directory .repomixignore patterns', async () => {
+      // This test verifies that .repomixignore files in parent directories are respected.
+      // .repomixignore is always enabled by default.
+      const mockConfig = createMockConfig({
+        include: ['**/*.js'],
+        ignore: {
+          useGitignore: false,
+          useDotIgnore: false,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      // Simulate parent .repomixignore pattern applying to subdirectory files
+      const mockFileStructure = [
+        'root/file1.js',
+        'root/subdir/file2.js',
+        'root/subdir/nested/file3.js',
+        // 'root/subdir/nested/ignored-by-repomix.js' - filtered by parent .repomixignore
+      ];
+
+      const mockIgnoreContent = {
+        '/mock/root/.repomixignore': 'ignored-by-repomix.js',
+      };
+
+      vi.mocked(globby).mockImplementation(async () => {
+        // Simulate parent .repomixignore patterns applying to all subdirectories
+        return mockFileStructure.filter((file) => {
+          const basename = path.basename(file);
+          const parentIgnore = mockIgnoreContent['/mock/root/.repomixignore'];
+          if (minimatch(basename, parentIgnore)) {
+            return false;
+          }
+          return true;
+        });
+      });
+
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        return mockIgnoreContent[filePath as keyof typeof mockIgnoreContent] || '';
+      });
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      // Verify parent .repomixignore pattern filtered out the file
+      expect(result.filePaths).toHaveLength(3);
+      expect(result.filePaths).toContain('root/file1.js');
+      expect(result.filePaths).toContain('root/subdir/file2.js');
+      expect(result.filePaths).toContain('root/subdir/nested/file3.js');
+      expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-repomix.js');
+      expect(result.emptyDirPaths).toEqual([]);
+
+      // Verify ignoreFiles option includes .repomixignore
+      expect(globby).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          ignoreFiles: expect.arrayContaining(['**/.repomixignore']),
+        }),
+      );
+    });
+
     test('should not apply .gitignore when useGitignore is false', async () => {
       const mockConfig = createMockConfig({
         include: ['**/*.js'],
@@ -473,6 +593,95 @@ node_modules
 
       // Verify the files were returned correctly
       expect(result.filePaths).toEqual(['file1.js', 'file2.js']);
+    });
+
+    test.runIf(!isWindows)('should handle git worktree with parent .gitignore correctly', async () => {
+      // This test verifies that git worktree environments correctly handle parent directory .gitignore files.
+      // It combines worktree detection with parent .gitignore pattern application.
+
+      // Mock .git file content for worktree
+      const gitWorktreeContent = 'gitdir: /path/to/main/repo/.git/worktrees/feature-branch';
+
+      // Mock fs.stat - first call for rootDir, subsequent calls for .git file
+      vi.mocked(fs.stat)
+        .mockResolvedValueOnce({
+          isDirectory: () => true,
+          isFile: () => false,
+        } as Stats)
+        .mockResolvedValue({
+          isFile: () => true,
+          isDirectory: () => false,
+        } as Stats);
+
+      // Override checkDirectoryPermissions mock for this test
+      vi.mocked(checkDirectoryPermissions).mockResolvedValue({
+        hasAllPermission: true,
+        details: { read: true, write: true, execute: true },
+      });
+
+      // Simulate parent .gitignore pattern in worktree environment
+      const mockFileStructure = [
+        'file1.js',
+        'file2.js',
+        'subdir/file3.js',
+        // 'subdir/ignored-in-worktree.js' - filtered by parent .gitignore
+      ];
+
+      const mockGitignoreContent = {
+        '/test/worktree/.gitignore': 'ignored-in-worktree.js',
+      };
+
+      // Mock globby to return filtered file structure
+      const filteredFiles = mockFileStructure.filter((file) => {
+        const basename = path.basename(file);
+        const parentGitignore = mockGitignoreContent['/test/worktree/.gitignore'];
+        if (minimatch(basename, parentGitignore)) {
+          return false;
+        }
+        return true;
+      });
+      vi.mocked(globby).mockResolvedValue(filteredFiles);
+
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        // Return worktree content for .git file, gitignore content for .gitignore
+        if ((filePath as string).endsWith('.git')) {
+          return gitWorktreeContent;
+        }
+        return mockGitignoreContent[filePath as keyof typeof mockGitignoreContent] || '';
+      });
+
+      const mockConfig = createMockConfig({
+        include: ['**/*.js'],
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: true, // Enable default patterns to trigger worktree detection
+          customPatterns: [],
+        },
+      });
+
+      const result = await searchFiles('/test/worktree', mockConfig);
+
+      // Verify parent .gitignore pattern filtered out the file in worktree
+      expect(result.filePaths).toHaveLength(3);
+      expect(result.filePaths).toContain('file1.js');
+      expect(result.filePaths).toContain('file2.js');
+      expect(result.filePaths).toContain('subdir/file3.js');
+      expect(result.filePaths).not.toContain('subdir/ignored-in-worktree.js');
+
+      // Verify .git file (not directory) is in ignore patterns (worktree-specific behavior)
+      // When .git is a worktree reference file, it should be ignored as a file, not as .git/**
+      const executeGlobbyCall = vi.mocked(globby).mock.calls[0];
+      const ignorePatterns = executeGlobbyCall[1]?.ignore as string[];
+      expect(ignorePatterns).toContain('.git');
+      expect(ignorePatterns).not.toContain('.git/**');
+
+      // Verify gitignore option was passed (enables parent .gitignore handling)
+      expect(globby).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          gitignore: true,
+        }),
+      );
     });
 
     test('should handle regular git repository correctly', async () => {
