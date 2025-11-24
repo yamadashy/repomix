@@ -54,7 +54,7 @@ describe('parseFile for JavaScript', () => {
       '// React component function',
       '* A hello world component',
       '* @param {string} name - The name to display',
-      'function sayHello(name) { console.log("Hello, " + name); }',
+      'function sayHello(name)',
     ];
 
     for (const expectContent of expectContents) {

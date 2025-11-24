@@ -1,7 +1,8 @@
 import type { Node } from 'web-tree-sitter';
-import type { ParseContext, ParseStrategy } from './ParseStrategy.js';
+import { BaseParseStrategy } from './BaseParseStrategy.js';
+import type { ParseContext } from './ParseStrategy.js';
 
-export class VueParseStrategy implements ParseStrategy {
+export class VueParseStrategy extends BaseParseStrategy {
   parseCapture(
     capture: { node: Node; name: string },
     lines: string[],
@@ -12,18 +13,12 @@ export class VueParseStrategy implements ParseStrategy {
     const startRow = node.startPosition.row;
     const endRow = node.endPosition.row;
 
-    if (!lines[startRow]) {
-      return null;
-    }
-
-    // Extract the content based on the capture type
-    const selectedLines = lines.slice(startRow, endRow + 1);
-    if (selectedLines.length < 1) {
+    const selectedLines = this.extractLines(lines, startRow, endRow);
+    if (!selectedLines) {
       return null;
     }
 
     const chunk = selectedLines.join('\n');
-    const _normalizedChunk = chunk.trim();
 
     // Create a unique ID for this chunk
     const chunkId = `${name}:${startRow}`;

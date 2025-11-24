@@ -1,12 +1,8 @@
 import type { Node, Query, Tree } from 'web-tree-sitter';
 import type { RepomixConfigMerged } from '../../../config/configSchema.js';
-import type { SupportedLang } from '../lang2Query.js';
-import { CssParseStrategy } from './CssParseStrategy.js';
+import type { SupportedLang } from '../languageConfig.js';
+import { getLanguageConfigByName } from '../languageConfig.js';
 import { DefaultParseStrategy } from './DefaultParseStrategy.js';
-import { GoParseStrategy } from './GoParseStrategy.js';
-import { PythonParseStrategy } from './PythonParseStrategy.js';
-import { TypeScriptParseStrategy } from './TypeScriptParseStrategy.js';
-import { VueParseStrategy } from './VueParseStrategy.js';
 
 export interface ParseContext {
   fileContent: string;
@@ -25,19 +21,12 @@ export interface ParseStrategy {
   ): string | null;
 }
 
+/**
+ * Create a parse strategy for the given language
+ * @param lang - The language name
+ * @returns Parse strategy instance
+ */
 export function createParseStrategy(lang: SupportedLang): ParseStrategy {
-  switch (lang) {
-    case 'typescript':
-      return new TypeScriptParseStrategy();
-    case 'python':
-      return new PythonParseStrategy();
-    case 'go':
-      return new GoParseStrategy();
-    case 'css':
-      return new CssParseStrategy();
-    case 'vue':
-      return new VueParseStrategy();
-    default:
-      return new DefaultParseStrategy();
-  }
+  const config = getLanguageConfigByName(lang);
+  return config?.strategy ?? new DefaultParseStrategy();
 }
