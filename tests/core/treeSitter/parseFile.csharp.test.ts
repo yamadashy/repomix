@@ -256,4 +256,76 @@ describe('parseFile for C#', () => {
       expect(result).toContain(expectContent);
     }
   });
+
+  test('should parse mixed inheritance with base class and interfaces', async () => {
+    const fileContent = `
+      // Base class
+      public class Animal {
+        public virtual void Speak() {
+          Console.WriteLine("Animal speaks");
+        }
+      }
+
+      // Interface for movement
+      public interface IMovable {
+        void Move();
+      }
+
+      // Interface for sound
+      public interface IAudible {
+        void Hear();
+      }
+
+      // Mixed inheritance: base class + multiple interfaces
+      public class Dog : Animal, IMovable, IAudible {
+        // Override Speak from Animal
+        public override void Speak() {
+          Console.WriteLine("Dog barks");
+        }
+
+        // Implementation of IMovable
+        public void Move() {
+          Console.WriteLine("Dog runs");
+        }
+
+        // Implementation of IAudible
+        public void Hear() {
+          Console.WriteLine("Dog listens");
+        }
+      }
+    `;
+    const filePath = 'inheritance.cs';
+    const config = {};
+    const result = await parseFile(fileContent, filePath, createMockConfig(config));
+    expect(typeof result).toBe('string');
+
+    const expectContents = [
+      // Base class
+      'Base class',
+      'class Animal',
+      'virtual void Speak()',
+
+      // Interfaces
+      'Interface for movement',
+      'interface IMovable',
+      'void Move()',
+      'Interface for sound',
+      'interface IAudible',
+      'void Hear()',
+
+      // Mixed inheritance class
+      'Mixed inheritance: base class + multiple interfaces',
+      'class Dog',
+      'Animal',
+      'IMovable',
+      'IAudible',
+      'void Move()',
+      'void Hear()',
+      'override void Speak()',
+    ];
+
+    for (const expectContent of expectContents) {
+      expect(result).toContain(expectContent);
+    }
+  });
 });

@@ -319,4 +319,69 @@ describe('parseFile for Swift', () => {
       expect(result).toContain(expectContent);
     }
   });
+
+  test('should handle multiple subscripts with different parameter names', async () => {
+    const fileContent = `
+      /// A storage protocol with multiple subscript accessors
+      protocol Storage {
+        /// Access by string key
+        subscript(key: String) -> Value? { get set }
+
+        /// Access by integer index
+        subscript(index: Int) -> Value? { get set }
+
+        /// Access by range
+        subscript(range: Range<Int>) -> [Value] { get }
+      }
+
+      /// A dictionary-like class with multiple subscripts
+      class Dictionary {
+        /// Access by string key
+        subscript(key: String) -> Int? {
+          get { return nil }
+          set { }
+        }
+
+        /// Access by integer index
+        subscript(index: Int) -> String? {
+          get { return nil }
+          set { }
+        }
+
+        /// Access by key and default value
+        subscript(key: String, default defaultValue: Int) -> Int {
+          get { return defaultValue }
+          set { }
+        }
+      }
+    `;
+    const filePath = 'storage.swift';
+    const config = {};
+    const result = await parseFile(fileContent, filePath, createMockConfig(config));
+    expect(typeof result).toBe('string');
+
+    const expectContents = [
+      // Protocol
+      'A storage protocol with multiple subscript accessors',
+      'protocol Storage',
+      'Access by string key',
+      'subscript(key: String) -> Value?',
+      'Access by integer index',
+      'subscript(index: Int) -> Value?',
+      'Access by range',
+      'subscript(range: Range<Int>) -> [Value]',
+
+      // Class
+      'A dictionary-like class with multiple subscripts',
+      'class Dictionary',
+      'Access by string key',
+      'Access by integer index',
+      'Access by key and default value',
+      'subscript(key: String, default defaultValue: Int) -> Int',
+    ];
+
+    for (const expectContent of expectContents) {
+      expect(result).toContain(expectContent);
+    }
+  });
 });

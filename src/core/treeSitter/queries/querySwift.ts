@@ -12,13 +12,7 @@ export const querySwift = `
     (function_declaration
       name: (simple_identifier) @name
     ) @definition.method
-    ; Note: Subscript currently captures parameter name (e.g., "key") rather than
-    ; the subscript itself. This may cause non-unique identifiers when multiple
-    ; subscripts use the same parameter name. Consider capturing the type signature
-    ; or the entire subscript declaration in future improvements.
-    (subscript_declaration
-      (parameter (simple_identifier) @name)
-    ) @definition.method
+    (subscript_declaration) @name.definition.method
     (init_declaration "init" @name) @definition.method
     (deinit_declaration "deinit" @name) @definition.method
   ]
@@ -29,10 +23,7 @@ export const querySwift = `
     (protocol_function_declaration
       name: (simple_identifier) @name
     ) @definition.method
-    ; Note: Same subscript parameter naming consideration as in class_body above
-    (subscript_declaration
-      (parameter (simple_identifier) @name)
-    ) @definition.method
+    (subscript_declaration) @name.definition.method
     (init_declaration "init" @name) @definition.method
   ]
 )
