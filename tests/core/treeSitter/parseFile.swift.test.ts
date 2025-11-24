@@ -196,6 +196,59 @@ describe('parseFile for Swift', () => {
     }
   });
 
+  test('should parse protocol methods correctly', async () => {
+    const fileContent = `
+      /// Protocol for database operations
+      protocol DatabaseProtocol {
+        /// Initialize the database connection
+        init(url: String)
+
+        /// Save data to the database
+        func save(_ data: String) throws
+
+        /// Fetch data from the database
+        func fetch(id: Int) -> String?
+
+        /// Subscript for accessing data by key
+        subscript(key: String) -> String? { get set }
+      }
+
+      /// Protocol with static requirements
+      protocol StaticProtocol {
+        /// Create a default instance
+        static func createDefault() -> Self
+
+        /// The version number
+        static var version: Int { get }
+      }
+    `;
+    const filePath = 'protocols.swift';
+    const config = {};
+    const result = await parseFile(fileContent, filePath, createMockConfig(config));
+    expect(typeof result).toBe('string');
+
+    const expectContents = [
+      'Protocol for database operations',
+      'protocol DatabaseProtocol',
+      'Initialize the database connection',
+      'init(url: String)',
+      'Save data to the database',
+      'func save(_ data: String) throws',
+      'Fetch data from the database',
+      'func fetch(id: Int) -> String?',
+      'Subscript for accessing data by key',
+      'subscript(key: String) -> String?',
+      'Protocol with static requirements',
+      'protocol StaticProtocol',
+      'Create a default instance',
+      'static func createDefault() -> Self',
+    ];
+
+    for (const expectContent of expectContents) {
+      expect(result).toContain(expectContent);
+    }
+  });
+
   test('should handle enums and generic types', async () => {
     const fileContent = `
       /// Represents a result with either a success value or an error
