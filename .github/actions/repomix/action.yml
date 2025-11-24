@@ -75,9 +75,7 @@ runs:
           ARGS+=(--ignore "${{ inputs.ignore }}")
         fi
 
-        if [ "${{ inputs.compress }}" = "false" ]; then
-          ARGS+=(--no-compress)
-        else
+        if [ "${{ inputs.compress }}" = "true" ]; then
           ARGS+=(--compress)
         fi
 
