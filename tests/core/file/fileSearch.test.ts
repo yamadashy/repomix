@@ -717,6 +717,7 @@ node_modules
       // Verify all calls have consistent base options
       for (const call of calls) {
         const options = call[1];
+        expect(options).toBeDefined();
         expect(options).toMatchObject({
           cwd: '/test/root',
           gitignore: true,
@@ -727,10 +728,12 @@ node_modules
         });
 
         // Each call should have either onlyFiles or onlyDirectories, but not both
-        const hasOnlyFiles = 'onlyFiles' in options && options.onlyFiles === true;
-        const hasOnlyDirectories = 'onlyDirectories' in options && options.onlyDirectories === true;
-        expect(hasOnlyFiles || hasOnlyDirectories).toBe(true);
-        expect(hasOnlyFiles && hasOnlyDirectories).toBe(false);
+        if (options) {
+          const hasOnlyFiles = 'onlyFiles' in options && options.onlyFiles === true;
+          const hasOnlyDirectories = 'onlyDirectories' in options && options.onlyDirectories === true;
+          expect(hasOnlyFiles || hasOnlyDirectories).toBe(true);
+          expect(hasOnlyFiles && hasOnlyDirectories).toBe(false);
+        }
       }
     });
 
