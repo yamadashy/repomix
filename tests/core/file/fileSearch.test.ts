@@ -721,7 +721,12 @@ node_modules
       // Verify all calls have consistent base options
       for (const call of calls) {
         const options = call[1];
+
+        // In our implementation globby is always called with an options object.
+        // Guard here to satisfy the type-checker and avoid undefined access.
         expect(options).toBeDefined();
+        if (!options) continue;
+
         expect(options).toMatchObject({
           cwd: '/test/root',
           gitignore: true,
@@ -761,6 +766,12 @@ node_modules
       const calls = vi.mocked(globby).mock.calls;
       for (const call of calls) {
         const options = call[1];
+
+        // In our implementation globby is always called with an options object.
+        // Guard here to satisfy the type-checker and avoid undefined access.
+        expect(options).toBeDefined();
+        if (!options) continue;
+
         expect(options).toMatchObject({
           gitignore: false,
         });
@@ -788,7 +799,13 @@ node_modules
       const calls = vi.mocked(globby).mock.calls;
       for (const call of calls) {
         const options = call[1];
-        const ignorePatterns = options?.ignore as string[];
+
+        // In our implementation globby is always called with an options object.
+        // Guard here to satisfy the type-checker and avoid undefined access.
+        expect(options).toBeDefined();
+        if (!options) continue;
+
+        const ignorePatterns = options.ignore as string[];
         expect(ignorePatterns).toEqual(expect.arrayContaining(customPatterns));
       }
     });
