@@ -241,6 +241,9 @@ describe('parseFile for C#', () => {
     const expectContents = [
       'Multiple interfaces',
       'class MultiImpl',
+      'IDisposable',
+      'IComparable',
+      'ICloneable',
       'Dispose method',
       'void Dispose()',
       'CompareTo method',
