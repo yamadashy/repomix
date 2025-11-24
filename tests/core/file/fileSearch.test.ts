@@ -341,6 +341,10 @@ node_modules
     });
 
     test.runIf(!isWindows)('should respect parent directory .gitignore patterns (v16 behavior)', async () => {
+      // This test verifies globby v16's key improvement: respecting parent directory .gitignore files.
+      // In v15, only .gitignore files in the cwd and below were checked.
+      // In v16, .gitignore files in parent directories (up to the git root) are also respected,
+      // matching Git's standard behavior. This makes Repomix's file filtering align with Git's expectations.
       const mockConfig = createMockConfig({
         include: ['**/*.js'],
         ignore: {
