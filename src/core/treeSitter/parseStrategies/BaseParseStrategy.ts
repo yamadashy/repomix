@@ -68,13 +68,19 @@ export abstract class BaseParseStrategy implements ParseStrategy {
 
   /**
    * Helper method to get capture types from a capture name
-   * @param name - The capture name to analyze
+   *
+   * NOTE: Uses includes() intentionally to match hierarchical capture names.
+   * Tree-sitter queries use captures like @name.definition.function for function names,
+   * which should match 'definition.function'. This is not a bug but a design choice.
+   *
+   * @param name - The capture name to analyze (e.g., 'name.definition.function')
    * @param captureTypes - Object containing capture type constants
    * @returns Set of matching capture types
    */
   protected getCaptureTypes<T extends Record<string, string>>(name: string, captureTypes: T): Set<T[keyof T]> {
     const types = new Set<T[keyof T]>();
     for (const type of Object.values(captureTypes)) {
+      // Uses includes() to match hierarchical names (e.g., 'name.definition.function' matches 'definition.function')
       if (name.includes(type)) {
         types.add(type as T[keyof T]);
       }
