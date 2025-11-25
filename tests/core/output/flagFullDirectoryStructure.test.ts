@@ -31,6 +31,12 @@ const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): Repomix
       includeDiffs: false,
       includeLogs: false,
       includeLogsCount: 5,
+      includeCommitHistory: false,
+      commitRange: 'HEAD~50..HEAD',
+      commitPatchDetail: 'stat' as const,
+      includeCommitGraph: true,
+      includeGitTags: true,
+      includeCommitPatches: true,
     },
   },
   include: ['src/**/*.ts'],
@@ -71,6 +77,7 @@ describe('includeFullDirectoryStructure flag', () => {
       processedFiles,
       undefined,
       undefined,
+      undefined,
       deps,
     );
 
@@ -101,6 +108,7 @@ describe('includeFullDirectoryStructure flag', () => {
       config,
       allFilePaths,
       processedFiles,
+      undefined,
       undefined,
       undefined,
       deps,

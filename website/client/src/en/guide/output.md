@@ -241,6 +241,50 @@ src/core/output/outputGenerate.ts
 2025-08-21 00:09:43 +0900|Merge pull request #795 from yamadashy/chore/ratchet-update-ci
 .github/workflows/ratchet-update.yml
 ```
+## Commit History Output
+
+When using `--include-commit-history`, the output includes detailed commit metadata and history:
+
+```xml
+<git_history>
+  <summary>
+    <total_commits>95</total_commits>
+    <merge_commits>12</merge_commits>
+    <range>v1.0..HEAD</range>
+    <detail_level>stat</detail_level>
+  </summary>
+
+  <commit_graph>
+    <!-- ASCII and Mermaid visualizations -->
+  </commit_graph>
+
+  <commits>
+    <commit hash="abc123" abbreviated_hash="abc123">
+      <author>
+        <name>John Doe</name>
+        <email>john@example.com</email>
+        <date>2025-11-20T12:00:00Z</date>
+      </author>
+      <committer>
+        <name>John Doe</name>
+        <email>john@example.com</email>
+        <date>2025-11-20T12:00:00Z</date>
+      </committer>
+      <message>feat: Add new feature</message>
+      <patch>
+        <!-- Diff content when using --commit-patch-detail full -->
+      </patch>
+    </commit>
+  </commits>
+</git_history>
+```
+
+**Patch Detail Levels:**
+- `full`: Complete diffs (largest output, best for code review)
+- `stat`: Change statistics only
+- `files`: Filenames only
+- `metadata`: No patches (smallest output)
+
 ## Usage with AI Models
 
 Each format works well with AI models, but consider:

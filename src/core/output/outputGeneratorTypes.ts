@@ -1,6 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
+import type { GitHistoryResult } from '../git/gitHistoryHandle.js';
 import type { GitLogCommit, GitLogResult } from '../git/gitLogHandle.js';
 
 export interface OutputGeneratorContext {
@@ -11,6 +12,7 @@ export interface OutputGeneratorContext {
   instruction: string;
   gitDiffResult: GitDiffResult | undefined;
   gitLogResult: GitLogResult | undefined;
+  gitHistoryResult: GitHistoryResult | undefined;
 }
 
 export interface RenderContext {
@@ -34,4 +36,8 @@ export interface RenderContext {
   readonly gitLogEnabled: boolean;
   readonly gitLogContent: string | undefined;
   readonly gitLogCommits: GitLogCommit[] | undefined;
+  readonly gitCommitHistoryEnabled: boolean;
+  readonly gitCommitHistorySummary: GitHistoryResult['summary'] | undefined;
+  readonly gitCommitGraph: GitHistoryResult['graph'] | undefined;
+  readonly gitCommitHistoryItems: GitHistoryResult['commits'] | undefined;
 }

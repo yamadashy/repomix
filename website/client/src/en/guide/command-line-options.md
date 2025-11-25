@@ -57,6 +57,19 @@
 
 ## MCP Options
 - `--mcp`: Run as Model Context Protocol server for AI tool integration
+
+## Git Commit History Options
+- `--include-commit-history`: Include comprehensive git commit history analysis with graph, patches, and metadata
+- `--commit-range <range>`: Git commit range to analyze (default: HEAD~50..HEAD, e.g., "main..feature-branch")
+- `--commit-patch-detail <level>`: Patch detail level (default: stat)
+  - `full`: Complete diffs (largest output, best for code review)
+  - `stat`: Change statistics
+  - `files`: Filenames only
+  - `metadata`: No patches (smallest output)
+- `--no-commit-graph`: Disable ASCII/Mermaid commit graph visualization
+- `--no-git-tags`: Exclude git tags from output
+- `--no-commit-patches`: Exclude patches (equivalent to `--commit-patch-detail metadata`)
+
 ## Examples
 
 ```bash
@@ -102,5 +115,11 @@ repomix --include-diffs --include-logs  # Include both diffs and logs
 # Token count analysis
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Only show files/directories with 1000+ tokens
+
+# Git commit history analysis
+repomix --include-commit-history  # Basic analysis
+repomix --include-commit-history --commit-patch-detail full  # Include full diffs
+repomix --include-commit-history --commit-range "v1.0..HEAD"  # Specific range
+repomix --include-commit-history --commit-patch-detail full -o analysis.xml
 ```
 

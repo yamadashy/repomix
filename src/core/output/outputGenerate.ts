@@ -8,6 +8,7 @@ import { type FileSearchResult, listDirectories, listFiles, searchFiles } from '
 import { generateTreeString } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
+import type { GitHistoryResult } from '../git/gitHistoryHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
 import { sortOutputFiles } from './outputSort.js';
@@ -55,6 +56,10 @@ const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): Re
     gitLogEnabled: outputGeneratorContext.config.output.git?.includeLogs,
     gitLogContent: outputGeneratorContext.gitLogResult?.logContent,
     gitLogCommits: outputGeneratorContext.gitLogResult?.commits,
+    gitCommitHistoryEnabled: outputGeneratorContext.config.output.git?.includeCommitHistory ?? false,
+    gitCommitHistorySummary: outputGeneratorContext.gitHistoryResult?.summary,
+    gitCommitGraph: outputGeneratorContext.gitHistoryResult?.graph,
+    gitCommitHistoryItems: outputGeneratorContext.gitHistoryResult?.commits,
   };
 };
 
@@ -152,6 +157,35 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
         files: commit.files,
       })),
     }),
+    ...(renderContext.gitCommitHistoryEnabled && {
+      gitCommitHistory: {
+        summary: renderContext.gitCommitHistorySummary,
+        ...(renderContext.gitCommitGraph && {
+          graph: {
+            commits: renderContext.gitCommitGraph.commits,
+            asciiGraph: renderContext.gitCommitGraph.graph,
+            mermaidGraph: renderContext.gitCommitGraph.mermaidGraph,
+            mergeCommits: renderContext.gitCommitGraph.mergeCommits,
+            tags: renderContext.gitCommitGraph.tags,
+          },
+        }),
+        commits: renderContext.gitCommitHistoryItems?.map((commit) => ({
+          metadata: {
+            hash: commit.metadata.hash,
+            abbreviatedHash: commit.metadata.abbreviatedHash,
+            parents: commit.metadata.parents,
+            author: commit.metadata.author,
+            committer: commit.metadata.committer,
+            message: commit.metadata.message,
+            body: commit.metadata.body,
+            files: commit.metadata.files,
+          },
+          ...(commit.patch && {
+            patch: commit.patch,
+          }),
+        })),
+      },
+    }),
     ...(renderContext.instruction && {
       instruction: renderContext.instruction,
     }),
@@ -225,6 +259,7 @@ export const generateOutput = async (
   allFilePaths: string[],
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
+  gitHistoryResult: GitHistoryResult | undefined = undefined,
   deps = {
     buildOutputGeneratorContext,
     generateHandlebarOutput,
@@ -243,6 +278,7 @@ export const generateOutput = async (
     sortedProcessedFiles,
     gitDiffResult,
     gitLogResult,
+    gitHistoryResult,
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
@@ -268,6 +304,7 @@ export const buildOutputGeneratorContext = async (
   processedFiles: ProcessedFile[],
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
+  gitHistoryResult: GitHistoryResult | undefined = undefined,
   deps = {
     listDirectories,
     listFiles,
@@ -347,5 +384,6 @@ export const buildOutputGeneratorContext = async (
     instruction: repositoryInstruction,
     gitDiffResult,
     gitLogResult,
+    gitHistoryResult,
   };
 };

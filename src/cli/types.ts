@@ -27,6 +27,13 @@ export interface CliOptions extends OptionValues {
   includeDiffs?: boolean;
   includeLogs?: boolean;
   includeLogsCount?: number;
+  // Git Commit History Analysis Options
+  includeCommitHistory?: boolean;
+  commitRange?: string;
+  commitPatchDetail?: 'full' | 'stat' | 'files' | 'metadata';
+  commitGraph?: boolean; // Set to false when --no-commit-graph is used
+  gitTags?: boolean; // Set to false when --no-git-tags is used
+  commitPatches?: boolean; // Set to false when --no-commit-patches is used
 
   // Filter Options
   include?: string;

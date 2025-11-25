@@ -80,6 +80,70 @@ This section contains the contents of the repository's files.
 </git_logs>
 {{/if}}
 
+{{#if gitCommitHistoryEnabled}}
+<git_history>
+<summary>
+<total_commits>{{{gitCommitHistorySummary.totalCommits}}}</total_commits>
+<merge_commits>{{{gitCommitHistorySummary.mergeCommits}}}</merge_commits>
+<range>{{{gitCommitHistorySummary.range}}}</range>
+<detail_level>{{{gitCommitHistorySummary.detailLevel}}}</detail_level>
+</summary>
+
+{{#if gitCommitGraph}}
+<commit_graph>
+<ascii_graph>
+{{{gitCommitGraph.graph}}}
+</ascii_graph>
+{{#if gitCommitGraph.mermaidGraph}}
+<mermaid_graph>
+{{{gitCommitGraph.mermaidGraph}}}
+</mermaid_graph>
+{{/if}}
+{{#if gitCommitGraph.tags}}
+<tags>
+{{#each gitCommitGraph.tags}}
+<tag name="{{{@key}}}">{{{this}}}</tag>
+{{/each}}
+</tags>
+{{/if}}
+</commit_graph>
+{{/if}}
+
+<commits>
+{{#each gitCommitHistoryItems}}
+<commit hash="{{{this.metadata.hash}}}" abbreviated_hash="{{{this.metadata.abbreviatedHash}}}">
+<author>
+<name>{{{this.metadata.author.name}}}</name>
+<email>{{{this.metadata.author.email}}}</email>
+<date>{{{this.metadata.author.date}}}</date>
+</author>
+<committer>
+<name>{{{this.metadata.committer.name}}}</name>
+<email>{{{this.metadata.committer.email}}}</email>
+<date>{{{this.metadata.committer.date}}}</date>
+</committer>
+{{#if this.metadata.parents}}
+<parents>
+{{#each this.metadata.parents}}
+<parent>{{{this}}}</parent>
+{{/each}}
+</parents>
+{{/if}}
+<message>{{{this.metadata.message}}}</message>
+{{#if this.metadata.body}}
+<body>{{{this.metadata.body}}}</body>
+{{/if}}
+{{#if this.patch}}
+<patch>
+{{{this.patch}}}
+</patch>
+{{/if}}
+</commit>
+{{/each}}
+</commits>
+</git_history>
+{{/if}}
+
 {{#if instruction}}
 <instruction>
 {{{instruction}}}

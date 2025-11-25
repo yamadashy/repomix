@@ -286,6 +286,24 @@ repomix --include-logs --include-diffs
 
 The git logs include commit dates, messages, and file paths for each commit, providing valuable context for AI analysis of code evolution and development patterns.
 
+To analyze git commit history:
+
+```bash
+# Include comprehensive commit history analysis
+repomix --include-commit-history
+
+# Customize the commit range
+repomix --include-commit-history --commit-range HEAD~100..HEAD
+
+# Include commit patches with different detail levels
+repomix --include-commit-history --commit-patch-detail full  # full, stat, files, metadata
+
+# Disable specific components
+repomix --include-commit-history --no-commit-graph --no-git-tags
+```
+
+The commit history feature provides commit metadata (hash, author, date, message, files), visual commit graph (ASCII + Mermaid diagram), git tags mapping, and configurable patch detail levels (full diffs, stats, file lists, or metadata only).
+
 To compress the output:
 
 ```bash
@@ -632,6 +650,12 @@ Instruction
 - `--include-diffs`: Add git diff section showing working tree and staged changes
 - `--include-logs`: Add git commit history with messages and changed files
 - `--include-logs-count <count>`: Number of recent commits to include with --include-logs (default: 50)
+- `--include-commit-history`: Include comprehensive git commit history analysis with graph, patches, and metadata
+- `--commit-range <range>`: Git commit range to analyze (default: HEAD~50..HEAD, e.g., "HEAD~100..HEAD" or "v1.0.0..HEAD")
+- `--commit-patch-detail <level>`: Patch detail level: full (complete diffs), stat (change statistics), files (filenames only), metadata (no patches) - default: stat
+- `--no-commit-graph`: Disable commit graph visualization (ASCII art and Mermaid diagram)
+- `--no-git-tags`: Exclude git tags from commit history output
+- `--no-commit-patches`: Exclude commit patches (only include metadata: hash, author, date, message)
 
 #### File Selection Options
 - `--include <patterns>`: Include only files matching these glob patterns (comma-separated, e.g., "src/**/*.js,*.md")

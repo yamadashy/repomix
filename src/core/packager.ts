@@ -7,6 +7,7 @@ import { processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
+import { getGitHistory } from './git/gitHistoryHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics } from './metrics/calculateMetrics.js';
 import { generateOutput } from './output/outputGenerate.js';
@@ -43,6 +44,7 @@ const defaultDeps = {
   sortPaths,
   getGitDiffs,
   getGitLogs,
+  getGitHistory,
 };
 
 export const pack = async (
@@ -104,6 +106,10 @@ export const pack = async (
   progressCallback('Getting git logs...');
   const gitLogResult = await deps.getGitLogs(rootDirs, config);
 
+  // Get git commit history if enabled - run this before security check
+  progressCallback('Analyzing git commit history...');
+  const gitHistoryResult = await deps.getGitHistory(rootDirs, config);
+
   // Run security check and get filtered safe files
   const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
     await withMemoryLogging('Security Check', () =>
@@ -118,7 +124,7 @@ export const pack = async (
 
   progressCallback('Generating output...');
   const output = await withMemoryLogging('Generate Output', () =>
-    deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
+    deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult, gitHistoryResult),
   );
 
   progressCallback('Writing output file...');

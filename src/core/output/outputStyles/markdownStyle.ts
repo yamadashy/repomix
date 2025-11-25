@@ -76,6 +76,71 @@ export const getMarkdownTemplate = () => {
 {{/each}}
 {{/if}}
 
+{{#if gitCommitHistoryEnabled}}
+# Git Commit History
+
+## Summary
+- **Total Commits**: {{{gitCommitHistorySummary.totalCommits}}}
+- **Merge Commits**: {{{gitCommitHistorySummary.mergeCommits}}}
+- **Range**: \`{{{gitCommitHistorySummary.range}}}\`
+- **Detail Level**: {{{gitCommitHistorySummary.detailLevel}}}
+
+{{#if gitCommitGraph}}
+## Commit Graph
+
+### Topology (ASCII)
+\`\`\`
+{{{gitCommitGraph.graph}}}
+\`\`\`
+
+{{#if gitCommitGraph.mermaidGraph}}
+### Mermaid Diagram
+\`\`\`mermaid
+{{{gitCommitGraph.mermaidGraph}}}
+\`\`\`
+{{/if}}
+
+{{#if gitCommitGraph.tags}}
+### Tags
+{{#each gitCommitGraph.tags}}
+- **{{{@key}}}**: \`{{{this}}}\`
+{{/each}}
+{{/if}}
+
+{{/if}}
+
+## Commits
+
+{{#each gitCommitHistoryItems}}
+### Commit {{{this.metadata.abbreviatedHash}}}
+
+**Hash**: \`{{{this.metadata.hash}}}\`
+**Author**: {{{this.metadata.author.name}}} <{{{this.metadata.author.email}}}>
+**Date**: {{{this.metadata.author.date}}}
+{{#if this.metadata.parents}}
+**Parents**: {{#each this.metadata.parents}}\`{{{this}}}\` {{/each}}
+{{/if}}
+**Message**: {{{this.metadata.message}}}
+
+{{#if this.metadata.body}}
+**Body**:
+\`\`\`
+{{{this.metadata.body}}}
+\`\`\`
+{{/if}}
+
+{{#if this.patch}}
+**Changes**:
+\`\`\`diff
+{{{this.patch}}}
+\`\`\`
+{{/if}}
+
+---
+
+{{/each}}
+{{/if}}
+
 {{#if instruction}}
 # Instruction
 {{{instruction}}}

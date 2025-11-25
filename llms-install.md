@@ -61,6 +61,9 @@ This tool packages a local code directory into a consolidated XML file for AI an
 - `includePatterns`: (Optional) Specify files to include using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "**/*.{js,ts}", "src/**,docs/**"). Only matching files will be processed.
 - `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.
 - `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary for codebase analysis.
+- `includeCommitHistory`: (Optional, default: false) Include comprehensive git commit history with visual graphs and commit metadata. Provides commit hash, author, date, message, changed files, visual commit graph (ASCII + Mermaid diagram), and git tags mapping.
+- `commitRange`: (Optional, default: 'HEAD~50..HEAD') Git commit range for history analysis. Accepts standard git range syntax (e.g., "HEAD~100..HEAD", "v1.0.0..HEAD", or specific commit hashes).
+- `commitPatchDetail`: (Optional, default: 'stat') Level of patch detail: 'full' (complete diffs), 'stat' (change statistics), 'files' (filenames only), or 'metadata' (no patches).
 
 **Example:**
 ```json
@@ -105,6 +108,9 @@ This tool fetches, clones, and packages a GitHub repository into a consolidated 
 - `includePatterns`: (Optional) Specify files to include using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "**/*.{js,ts}", "src/**,docs/**"). Only matching files will be processed.
 - `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.
 - `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary for codebase analysis.
+- `includeCommitHistory`: (Optional, default: false) Include comprehensive git commit history with visual graphs and commit metadata. Provides commit hash, author, date, message, changed files, visual commit graph (ASCII + Mermaid diagram), and git tags mapping.
+- `commitRange`: (Optional, default: 'HEAD~50..HEAD') Git commit range for history analysis. Accepts standard git range syntax (e.g., "HEAD~100..HEAD", "v1.0.0..HEAD", or specific commit hashes).
+- `commitPatchDetail`: (Optional, default: 'stat') Level of patch detail: 'full' (complete diffs), 'stat' (change statistics), 'files' (filenames only), or 'metadata' (no patches).
 
 **Example:**
 ```json
