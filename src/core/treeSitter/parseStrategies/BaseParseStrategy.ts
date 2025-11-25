@@ -50,6 +50,10 @@ export type ParseResult = {
 
 /**
  * Base abstract class providing common functionality for all parse strategies
+ *
+ * IMPORTANT: Strategy instances are shared across all files of the same language.
+ * Strategies MUST be stateless - do not add instance variables or mutable state.
+ * All data should come from method parameters only.
  */
 export abstract class BaseParseStrategy implements ParseStrategy {
   /**

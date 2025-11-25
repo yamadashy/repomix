@@ -195,6 +195,6 @@ export function getLanguageConfigByName(languageName: string): LanguageConfig | 
  * Get all supported language names
  * @returns Array of supported language names
  */
-export function getSupportedLanguages(): string[] {
+export function getSupportedLanguages(): SupportedLang[] {
   return LANGUAGE_CONFIGS.map((config) => config.name);
 }
