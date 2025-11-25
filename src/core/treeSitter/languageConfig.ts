@@ -160,17 +160,56 @@ export const LANGUAGE_CONFIGS: LanguageConfig[] = [
   },
 ];
 
-// Build lookup maps for efficient access
-const extensionToLanguageMap = new Map<string, LanguageConfig>();
-const languageNameToConfigMap = new Map<string, LanguageConfig>();
+/**
+ * Lookup maps for efficient O(1) access by extension or language name.
+ * Built lazily on first access to improve testability and avoid import-time side effects.
+ */
+let extensionToLanguageMap: Map<string, LanguageConfig> | null = null;
+let languageNameToConfigMap: Map<string, LanguageConfig> | null = null;
 
-for (const config of LANGUAGE_CONFIGS) {
-  // Map each extension to this language config
-  for (const ext of config.extensions) {
-    extensionToLanguageMap.set(ext, config);
+/**
+ * Build lookup maps from LANGUAGE_CONFIGS with validation.
+ * Throws an error if duplicate extensions are detected.
+ */
+function buildLookupMaps(): {
+  extensionMap: Map<string, LanguageConfig>;
+  nameMap: Map<string, LanguageConfig>;
+} {
+  const extensionMap = new Map<string, LanguageConfig>();
+  const nameMap = new Map<string, LanguageConfig>();
+
+  for (const config of LANGUAGE_CONFIGS) {
+    // Map each extension to this language config with collision detection
+    for (const ext of config.extensions) {
+      const existing = extensionMap.get(ext);
+      if (existing) {
+        throw new Error(`Duplicate extension '${ext}' found: claimed by both '${existing.name}' and '${config.name}'`);
+      }
+      extensionMap.set(ext, config);
+    }
+    // Map language name to config
+    nameMap.set(config.name, config);
   }
-  // Map language name to config
-  languageNameToConfigMap.set(config.name, config);
+
+  return { extensionMap, nameMap };
+}
+
+/**
+ * Get or initialize lookup maps (lazy initialization)
+ */
+function getLookupMaps(): {
+  extensionMap: Map<string, LanguageConfig>;
+  nameMap: Map<string, LanguageConfig>;
+} {
+  if (!extensionToLanguageMap || !languageNameToConfigMap) {
+    const maps = buildLookupMaps();
+    extensionToLanguageMap = maps.extensionMap;
+    languageNameToConfigMap = maps.nameMap;
+  }
+  return {
+    extensionMap: extensionToLanguageMap,
+    nameMap: languageNameToConfigMap,
+  };
 }
 
 /**
@@ -179,7 +218,8 @@ for (const config of LANGUAGE_CONFIGS) {
  * @returns Language configuration or undefined if not found
  */
 export function getLanguageConfigByExtension(extension: string): LanguageConfig | undefined {
-  return extensionToLanguageMap.get(extension);
+  const { extensionMap } = getLookupMaps();
+  return extensionMap.get(extension);
 }
 
 /**
@@ -188,7 +228,8 @@ export function getLanguageConfigByExtension(extension: string): LanguageConfig 
  * @returns Language configuration or undefined if not found
  */
 export function getLanguageConfigByName(languageName: string): LanguageConfig | undefined {
-  return languageNameToConfigMap.get(languageName);
+  const { nameMap } = getLookupMaps();
+  return nameMap.get(languageName);
 }
 
 /**
