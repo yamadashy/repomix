@@ -122,13 +122,13 @@ This adds valuable context about:
 For comprehensive commit history analysis with graphs and metadata:
 
 ```bash
-# Full analysis with complete diffs (recommended for code review)
-repomix --include-commit-history --commit-patch-detail full
+# Full analysis with line-by-line diffs (git log --patch)
+repomix --include-commit-history patch
 
 # Lighter analysis without diffs
-repomix --include-commit-history --commit-patch-detail metadata
+repomix --include-commit-history metadata
 
-# Analyze specific commit range
+# Analyze specific commit range (git log range syntax)
 repomix --include-commit-history --commit-range "v1.0..HEAD"
 
 # Analyze feature branch
@@ -137,8 +137,8 @@ repomix --include-commit-history --commit-range "main..feature-branch"
 
 This provides:
 - **Commit graph**: ASCII and Mermaid visualizations of branch structure
-- **Commit metadata**: Hash, author, committer, date, message, body, and files changed
-- **Full diffs**: Complete code changes when using `--commit-patch-detail full`
+- **Commit metadata**: Hash, author, committer, date, message, body, and list of files changed
+- **Patch content**: Configurable detail levels (patch for line-by-line diffs showing added/removed code, stat for per-file change counts like "file.ts | 25 ++++----", name-only for filenames only, metadata for commit info without diffs)
 - **Git tags**: Tag names mapped to commit hashes
 
 See [Git Commit History Tips](/guide/tips/git-commit-history) for detailed usage patterns.

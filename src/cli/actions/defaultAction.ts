@@ -281,23 +281,15 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   }
 
   // Configure git commit history analysis options
-  if (
-    options.includeCommitHistory ||
-    options.commitRange ||
-    options.commitPatchDetail ||
-    options.commitGraph === false ||
-    options.gitTags === false ||
-    options.commitPatches === false
-  ) {
+  if (options.includeCommitHistory || options.commitRange) {
     const gitCommitHistoryConfig = {
       ...cliConfig.output?.git,
-      ...(options.includeCommitHistory && { includeCommitHistory: true }),
+      includeCommitHistory: true,
       ...(options.commitRange && { commitRange: options.commitRange }),
-      ...(options.commitPatchDetail && { commitPatchDetail: options.commitPatchDetail }),
-      // Only apply these settings when explicitly set to false (to respect config file values)
-      ...(options.commitGraph === false && { includeCommitGraph: false }),
-      ...(options.gitTags === false && { includeGitTags: false }),
-      ...(options.commitPatches === false && { includeCommitPatches: false }),
+      // Handle optional level parameter: string value or true (boolean)
+      ...(typeof options.includeCommitHistory === 'string' && {
+        commitPatchDetail: options.includeCommitHistory as 'patch' | 'stat' | 'name-only' | 'metadata',
+      }),
     };
 
     cliConfig.output = {

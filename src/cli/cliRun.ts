@@ -142,17 +142,22 @@ export const run = async () => {
       )
       // Git Commit History Analysis Options
       .option(
-        '--include-commit-history',
-        'Include detailed git commit history analysis (includes graph, metadata, patches)',
+        '--include-commit-history [level]',
+        'Include git commit history with optional detail level: patch (line-by-line diffs), stat (per-file change counts), name-only (filenames), metadata (no diffs). Default: stat',
+        (value: string | boolean) => {
+          if (typeof value === 'string') {
+            const validLevels = ['patch', 'stat', 'name-only', 'metadata'];
+            if (!validLevels.includes(value)) {
+              throw new RepomixError(
+                `Invalid commit history level: '${value}'. Must be one of: ${validLevels.join(', ')}`,
+              );
+            }
+            return value;
+          }
+          return value;
+        },
       )
       .option('--commit-range <range>', 'Commit range to analyze (e.g., HEAD~20..HEAD, v1.0..v2.0, main..feature)')
-      .option(
-        '--commit-patch-detail <level>',
-        'Patch detail level: full (complete diffs), stat (file stats), files (names only), metadata (no diffs)',
-      )
-      .option('--no-commit-graph', 'Disable commit graph visualization')
-      .option('--no-git-tags', 'Exclude git tags from output')
-      .option('--no-commit-patches', 'Exclude per-commit patches from output')
       // File Selection Options
       .optionsGroup('File Selection Options')
       .option(

@@ -294,10 +294,10 @@ new file mode 100644
 </git_history>
 ```
 
-**Patch Detail Levels:**
-- `full`: Complete diffs (largest output, best for code review)
-- `stat`: Change statistics only
-- `files`: Filenames only
+**Patch Detail Levels** (match git log params):
+- `patch` (git log --patch): Line-by-line diffs (largest output, best for code review)
+- `stat` (git log --stat): Per-file change counts only
+- `name-only` (git log --name-only): Filenames only
 - `metadata`: No patches (smallest output)
 
 ## Usage with AI Models

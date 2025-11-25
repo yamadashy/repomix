@@ -50,7 +50,7 @@ export interface ParsedCommitRange {
 /**
  * Detail level for patches
  */
-export type PatchDetailLevel = 'full' | 'stat' | 'files' | 'metadata';
+export type PatchDetailLevel = 'patch' | 'stat' | 'name-only' | 'metadata';
 
 /**
  * Parse and validate a commit range
@@ -292,7 +292,7 @@ export const getCommitPatch = async (
     const args = ['-C', directory, 'show', '--no-color'];
 
     switch (detailLevel) {
-      case 'full':
+      case 'patch':
         // Full patch with diffs
         args.push('--patch');
         break;
@@ -300,7 +300,7 @@ export const getCommitPatch = async (
         // File stats (files changed, insertions, deletions)
         args.push('--stat');
         break;
-      case 'files':
+      case 'name-only':
         // Just file names
         args.push('--name-only');
         break;

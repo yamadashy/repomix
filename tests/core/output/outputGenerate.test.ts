@@ -382,7 +382,7 @@ describe('outputGenerate', () => {
         totalCommits: 1,
         mergeCommits: 0,
         range: 'HEAD~1..HEAD',
-        detailLevel: 'full' as const,
+        detailLevel: 'patch' as const,
       },
       graph: {
         commits: [],

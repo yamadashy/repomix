@@ -5,37 +5,43 @@ Repomix can include git commit history to help AI understand how a codebase evol
 ## Quick Start
 
 ```bash
-# Full analysis with diffs (recommended for detailed work)
-repomix --include-commit-history --commit-patch-detail full
+# Default: stat level (per-file change counts via git log --stat)
+repomix --include-commit-history
+
+# Full analysis with line-by-line diffs (git log --patch)
+repomix --include-commit-history patch
 
 # Lighter analysis without diffs
-repomix --include-commit-history --commit-patch-detail metadata
+repomix --include-commit-history metadata
 
-# Specific commit range
+# Specific commit range (git log range syntax)
 repomix --include-commit-history --commit-range "v1.0..HEAD"
 ```
 
 ## Patch Detail Levels
 
-| Level | Output Size | Contains | Best For |
-|-------|-------------|----------|----------|
-| `full` | Large (~3x) | Complete diffs | Detailed code review |
-| `stat` | Medium | Change statistics | Overview of changes |
-| `files` | Small | Filenames only | Quick scan |
-| `metadata` | Smallest | No patches | Commit messages only |
+Control diff content by passing a level to `--include-commit-history` (maps to git log parameters):
 
-**Recommendation**: Use `full` when you need to analyze actual code changes. The larger output is worth it.
+| Level | Git Param | Output Size | Contains | Best For |
+|-------|-----------|-------------|----------|----------|
+| `patch` | `--patch` | Large (~3x) | Line-by-line diffs | Detailed code review |
+| `stat` | `--stat` | Medium | Per-file change counts | Overview of changes (default) |
+| `name-only` | `--name-only` | Small | Filenames only | Quick scan |
+| `metadata` | (none) | Smallest | No patches | Commit messages only |
+
+**Recommendation**: Use `patch` when you need to analyze actual code changes. The larger output is worth it.
 
 ## Options Reference
 
 ```bash
---include-commit-history     # Enable commit history analysis
---commit-range <range>       # Range to analyze (default: HEAD~50..HEAD)
---commit-patch-detail <lvl>  # full, stat, files, metadata (default: stat)
---no-commit-graph            # Skip ASCII/Mermaid graph generation
---no-git-tags                # Exclude tag information
---no-commit-patches          # Metadata only (same as metadata detail level)
+--include-commit-history [level]  # Enable with optional level: patch, stat, name-only, metadata (default: stat)
+--commit-range <range>            # Range to analyze (default: HEAD~50..HEAD)
 ```
+
+**Advanced config file options** for fine-grained control:
+- `includeCommitGraph`: Include/exclude ASCII and Mermaid graph visualization (default: true)
+- `includeGitTags`: Include/exclude tag information (default: true)
+- `includeCommitPatches`: Include/exclude all patch content (default: true)
 
 ## Understanding the Output
 
@@ -50,7 +56,7 @@ The raw metadata (especially author/committer email addresses) allows AI systems
 
 ## Tips for Better Results
 
-1. **Choose the right detail level**: Use `full` for code review, `metadata` for quick overview
+1. **Choose the right detail level**: Use `patch` for code review, `metadata` for quick overview
 2. **Set appropriate commit range**: Analyze specific feature branches with `--commit-range "main..feature-branch"`
 3. **Combine with file filtering**: `--include "src/**/*.ts"` to focus on relevant files
 
@@ -58,8 +64,7 @@ The raw metadata (especially author/committer email addresses) allows AI systems
 
 ```bash
 # 1. Generate analysis of recent work
-repomix --include-commit-history --commit-range "v1.0..HEAD" \
-  --commit-patch-detail full -o analysis.xml
+repomix --include-commit-history patch --commit-range "v1.0..HEAD" -o analysis.xml
 
 # 2. Extract specific commit details
 grep -A 100 'hash="abc123"' analysis.xml

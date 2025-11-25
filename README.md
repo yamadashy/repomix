@@ -296,13 +296,13 @@ repomix --include-commit-history
 repomix --include-commit-history --commit-range HEAD~100..HEAD
 
 # Include commit patches with different detail levels
-repomix --include-commit-history --commit-patch-detail full  # full, stat, files, metadata
+repomix --include-commit-history patch  # patch, stat, name-only, metadata
 
 # Disable specific components
-repomix --include-commit-history --no-commit-graph --no-git-tags
+repomix --include-commit-history metadata  # commits only, no diffs
 ```
 
-The commit history feature provides commit metadata (hash, author, date, message, files), visual commit graph (ASCII + Mermaid diagram), git tags mapping, and configurable patch detail levels (full diffs, stats, file lists, or metadata only).
+The commit history feature provides commit metadata (hash, author, date, message, files changed), visual commit graph (ASCII + Mermaid diagram), git tags mapping, and configurable patch detail levels (line-by-line diffs showing added/removed code, per-file change counts like "file.ts | 25 ++++----", filenames only, or commit info without diffs).
 
 To compress the output:
 
@@ -650,12 +650,12 @@ Instruction
 - `--include-diffs`: Add git diff section showing working tree and staged changes
 - `--include-logs`: Add git commit history with messages and changed files
 - `--include-logs-count <count>`: Number of recent commits to include with --include-logs (default: 50)
-- `--include-commit-history`: Include comprehensive git commit history analysis with graph, patches, and metadata
+- `--include-commit-history [level]`: Include git commit history with optional detail level (default: stat)
+  - `patch`: line-by-line diffs showing added/removed code
+  - `stat`: per-file change counts (e.g., "file.ts | 25 ++++----")
+  - `name-only`: list of filenames that changed
+  - `metadata`: commit info only, no diffs
 - `--commit-range <range>`: Git commit range to analyze (default: HEAD~50..HEAD, e.g., "HEAD~100..HEAD" or "v1.0.0..HEAD")
-- `--commit-patch-detail <level>`: Patch detail level: full (complete diffs), stat (change statistics), files (filenames only), metadata (no patches) - default: stat
-- `--no-commit-graph`: Disable commit graph visualization (ASCII art and Mermaid diagram)
-- `--no-git-tags`: Exclude git tags from commit history output
-- `--no-commit-patches`: Exclude commit patches (only include metadata: hash, author, date, message)
 
 #### File Selection Options
 - `--include <patterns>`: Include only files matching these glob patterns (comma-separated, e.g., "src/**/*.js,*.md")

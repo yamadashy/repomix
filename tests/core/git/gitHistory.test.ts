@@ -311,7 +311,7 @@ describe('gitHistory', () => {
         stdout: 'diff --git a/file.ts b/file.ts\n@@ -1,3 +1,4 @@\n...',
       });
 
-      const result = await getCommitPatch('/test/dir', 'abc1234', 'full', {
+      const result = await getCommitPatch('/test/dir', 'abc1234', 'patch', {
         execFileAsync: mockExecFileAsync as never,
       });
 
@@ -351,7 +351,7 @@ describe('gitHistory', () => {
         stdout: 'src/file1.ts\nsrc/file2.ts\n',
       });
 
-      const result = await getCommitPatch('/test/dir', 'abc1234', 'files', {
+      const result = await getCommitPatch('/test/dir', 'abc1234', 'name-only', {
         execFileAsync: mockExecFileAsync as never,
       });
 

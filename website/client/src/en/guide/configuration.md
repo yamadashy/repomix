@@ -110,7 +110,7 @@ JavaScript configuration files work the same as TypeScript, supporting `defineCo
 | `output.git.includeLogsCount`    | Number of git log commits to include in the output                                                                          | `50`                   |
 | `output.git.includeCommitHistory` | Whether to include commit history with graph (ASCII/Mermaid), author/committer metadata, and code patches                   | `false`                |
 | `output.git.commitRange`         | Git commit range to analyze (e.g., "HEAD~50..HEAD", "v1.0..HEAD", "main..feature-branch")                                   | `"HEAD~50..HEAD"`      |
-| `output.git.commitPatchDetail`   | Patch detail level: `full` (complete diffs), `stat` (statistics), `files` (names only), `metadata` (no patches)            | `"stat"`               |
+| `output.git.commitPatchDetail`   | Patch detail level: `patch` (line-by-line diffs), `stat` (per-file change counts), `name-only` (filenames only), `metadata` (no patches)            | `"stat"`               |
 | `output.git.includeCommitGraph`  | Whether to include ASCII and Mermaid commit graph visualizations                                                             | `true`                 |
 | `output.git.includeGitTags`      | Whether to include git tags in commit history output                                                                         | `true`                 |
 | `output.git.includeCommitPatches` | Whether to include code patches (diffs) for each commit in history. Set to `false` for metadata-only output                 | `true`                 |
@@ -349,7 +349,7 @@ The `output.git` configuration provides powerful Git-aware features:
 **Commit History Analysis:**
 - `includeCommitHistory`: When true, includes commit graph (ASCII/Mermaid), author/committer metadata, parent hashes, commit body, and code patches for each commit. Provides more structured data than `includeLogs`. Default: `false`
 - `commitRange`: The Git commit range to analyze (e.g., "HEAD~50..HEAD", "v1.0..HEAD", "main..feature-branch"). Default: `"HEAD~50..HEAD"`
-- `commitPatchDetail`: Level of detail for commit patches: `full` (complete diffs), `stat` (file statistics), `files` (filenames only), `metadata` (no patches). Default: `"stat"`
+- `commitPatchDetail`: Level of detail for commit patches: `patch` (line-by-line diffs), `stat` (per-file change counts), `name-only` (filenames only), `metadata` (no patches). Default: `"stat"`
 - `includeCommitGraph`: Whether to include ASCII art and Mermaid diagram visualizations showing branch/merge topology (uses git's standard `--all` flag to show how branches connect within the range). Default: `true`
 - `includeGitTags`: Whether to include git tags mapped to commit hashes. Default: `true`
 - `includeCommitPatches`: Whether to include code patches (diffs) for each commit. Set to `false` for metadata-only output. Default: `true`
@@ -361,7 +361,7 @@ Example configuration for commit history analysis:
     "git": {
       "includeCommitHistory": true,
       "commitRange": "v1.0..HEAD",
-      "commitPatchDetail": "full",
+      "commitPatchDetail": "patch",
       "includeCommitGraph": true,
       "includeGitTags": true,
       "includeCommitPatches": true

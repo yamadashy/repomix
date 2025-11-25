@@ -108,7 +108,7 @@ describe('gitHistoryHandle', () => {
         output: {
           git: {
             includeCommitHistory: true,
-            commitPatchDetail: 'full',
+            commitPatchDetail: 'patch',
           },
         },
       });
@@ -121,8 +121,8 @@ describe('gitHistoryHandle', () => {
 
       const result = await getGitHistory(['/test/dir'], config, mockDeps);
 
-      expect(mockDeps.getCommitPatch).toHaveBeenCalledWith('/test/dir', 'abc1234567890', 'full');
-      expect(result?.summary.detailLevel).toBe('full');
+      expect(mockDeps.getCommitPatch).toHaveBeenCalledWith('/test/dir', 'abc1234567890', 'patch');
+      expect(result?.summary.detailLevel).toBe('patch');
     });
 
     it('should exclude graph when includeCommitGraph is false', async () => {
