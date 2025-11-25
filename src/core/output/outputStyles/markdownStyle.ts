@@ -129,6 +129,13 @@ export const getMarkdownTemplate = () => {
 \`\`\`
 {{/if}}
 
+{{#if this.metadata.files.length}}
+**Files Changed**:
+{{#each this.metadata.files}}
+- \`{{{this}}}\`
+{{/each}}
+{{/if}}
+
 {{#if this.patch}}
 **Changes**:
 \`\`\`diff

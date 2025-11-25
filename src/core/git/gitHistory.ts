@@ -84,6 +84,10 @@ export const parseCommitRange = (range: string): ParsedCommitRange => {
   };
 };
 
+// Null byte delimiter (via git's %x00) to separate format output from --name-only file list
+// Null bytes cannot appear in commit messages or file paths, making this a reliable delimiter
+const NULL_BYTE = '\0';
+
 /**
  * Get full metadata for a specific commit
  */
@@ -96,6 +100,7 @@ export const getCommitMetadata = async (
 ): Promise<CommitMetadata> => {
   try {
     // Get commit metadata with fuller format showing author and committer
+    // Use %x00 (null byte) as delimiter - it cannot appear in commit messages or file paths
     const formatString = [
       '%H', // Full hash
       '%h', // Abbreviated hash
@@ -108,6 +113,7 @@ export const getCommitMetadata = async (
       '%cI', // Committer date (ISO 8601)
       '%s', // Subject (first line of message)
       '%b', // Body (rest of message)
+      '%x00', // Null byte delimiter before file list (git format specifier)
     ].join('%n');
 
     const result = await deps.execFileAsync('git', [
@@ -120,8 +126,10 @@ export const getCommitMetadata = async (
       hash,
     ]);
 
-    // Don't filter empty lines yet - we need all metadata fields even if empty
-    const lines = result.stdout.split('\n');
+    // Split on null byte to separate format output from file list
+    const [formatOutput, fileListOutput] = result.stdout.split(NULL_BYTE);
+
+    const lines = formatOutput.split('\n');
 
     if (lines.length < 10) {
       throw new RepomixError(`Invalid git log output for commit ${hash}`);
@@ -140,23 +148,11 @@ export const getCommitMetadata = async (
       subject,
     ] = lines.slice(0, 10);
 
-    // Rest of the lines are: body (if any) + files
-    // Body ends when we hit file paths (relative paths typically start without special markers)
-    const bodyAndFiles = lines.slice(10);
-    const body: string[] = [];
-    const files: string[] = [];
+    // Lines after subject (index 10+) are the body
+    const body = lines.slice(10).join('\n').trim();
 
-    let inBody = true;
-    for (const line of bodyAndFiles) {
-      // Heuristic: file paths typically don't start with spaces (unlike indented body text)
-      // and commit bodies often have empty lines
-      if (inBody && (line.startsWith(' ') || line === '')) {
-        body.push(line);
-      } else {
-        inBody = false;
-        files.push(line);
-      }
-    }
+    // Files come after the delimiter
+    const files = fileListOutput ? fileListOutput.split('\n').filter(Boolean) : [];
 
     return {
       hash: fullHash,
@@ -173,7 +169,7 @@ export const getCommitMetadata = async (
         date: committerDate,
       },
       message: subject,
-      body: body.join('\n').trim(),
+      body,
       files,
     };
   } catch (error) {
@@ -327,7 +323,17 @@ export const getCommitPatch = async (
 };
 
 /**
+ * Escape special characters for Mermaid string literals
+ */
+const escapeMermaidString = (str: string): string => {
+  return str.replace(/"/g, "'").replace(/\n/g, ' ');
+};
+
+/**
  * Generate Mermaid diagram from commits
+ * Note: Mermaid gitGraph has limited syntax - it doesn't support arbitrary
+ * commit histories with merge visualization without branch context.
+ * We generate a simplified linear view with merge indicators.
  */
 const generateMermaidGraph = (commits: CommitMetadata[], tags: Record<string, string>): string => {
   const lines: string[] = [];
@@ -336,23 +342,29 @@ const generateMermaidGraph = (commits: CommitMetadata[], tags: Record<string, st
   // Reverse to show oldest first
   const reversed = [...commits].reverse();
 
-  // Build a simple linear graph (more complex merge visualization could be added)
   for (const commit of reversed) {
     const shortHash = commit.abbreviatedHash;
-    const shortMessage = commit.message.substring(0, 50);
+    // Escape quotes and limit message length
+    const shortMessage = escapeMermaidString(commit.message.substring(0, 40));
 
     // Check if this commit has a tag
     const tagForCommit = Object.entries(tags).find(([, hash]) => hash === commit.hash)?.[0];
 
-    if (commit.parents.length > 1) {
-      lines.push(`  merge ${shortHash} tag: "${shortMessage}"`);
-    } else {
-      lines.push(`  commit id: "${shortHash}: ${shortMessage}"`);
+    // Build commit line with optional tag
+    // Mermaid syntax: commit id: "..." [tag: "..."] [type: ...]
+    const isMerge = commit.parents.length > 1;
+    const messageWithMerge = isMerge ? `(merge) ${shortMessage}` : shortMessage;
+    const commitId = `${shortHash}: ${messageWithMerge}`;
+
+    let commitLine = `  commit id: "${commitId}"`;
+    if (tagForCommit) {
+      commitLine += ` tag: "${escapeMermaidString(tagForCommit)}"`;
+    }
+    if (isMerge) {
+      commitLine += ' type: HIGHLIGHT';
     }
 
-    if (tagForCommit) {
-      lines.push(`  commit tag: "${tagForCommit}"`);
-    }
+    lines.push(commitLine);
   }
 
   return lines.join('\n');

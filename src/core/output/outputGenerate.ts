@@ -105,6 +105,43 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
             })),
           }
         : undefined,
+      git_history: renderContext.gitCommitHistoryEnabled
+        ? {
+            summary: {
+              total_commits: renderContext.gitCommitHistorySummary?.totalCommits,
+              merge_commits: renderContext.gitCommitHistorySummary?.mergeCommits,
+              range: renderContext.gitCommitHistorySummary?.range,
+              detail_level: renderContext.gitCommitHistorySummary?.detailLevel,
+            },
+            commit_graph: renderContext.gitCommitGraph
+              ? {
+                  ascii_graph: renderContext.gitCommitGraph.graph,
+                  mermaid_graph: renderContext.gitCommitGraph.mermaidGraph,
+                  merge_commits: renderContext.gitCommitGraph.mergeCommits,
+                  tags: renderContext.gitCommitGraph.tags,
+                }
+              : undefined,
+            commits: renderContext.gitCommitHistoryItems?.map((commit) => ({
+              '@_hash': commit.metadata.hash,
+              '@_abbreviated_hash': commit.metadata.abbreviatedHash,
+              author: {
+                name: commit.metadata.author.name,
+                email: commit.metadata.author.email,
+                date: commit.metadata.author.date,
+              },
+              committer: {
+                name: commit.metadata.committer.name,
+                email: commit.metadata.committer.email,
+                date: commit.metadata.committer.date,
+              },
+              parents: commit.metadata.parents,
+              message: commit.metadata.message,
+              body: commit.metadata.body || undefined,
+              files: commit.metadata.files.length > 0 ? commit.metadata.files : undefined,
+              patch: commit.patch || undefined,
+            })),
+          }
+        : undefined,
       instruction: renderContext.instruction ? renderContext.instruction : undefined,
     },
   };

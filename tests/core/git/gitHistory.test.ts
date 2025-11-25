@@ -64,6 +64,10 @@ describe('gitHistory', () => {
   });
 
   describe('getCommitMetadata', () => {
+    // Null byte delimiter used by getCommitMetadata to separate format output from file list
+    // Matches the %x00 format specifier used in git log
+    const NULL_BYTE = '\0';
+
     it('should parse commit metadata correctly', async () => {
       const mockExecFileAsync = vi.fn().mockResolvedValue({
         stdout: [
@@ -80,7 +84,7 @@ describe('gitHistory', () => {
           '', // Empty line before body
           '  This is the commit body', // Body line 1
           '  with multiple lines', // Body line 2
-          '', // Empty line after body
+          NULL_BYTE, // Null byte separating body from files
           'src/file1.ts', // File 1
           'src/file2.ts', // File 2
         ].join('\n'),
@@ -123,7 +127,7 @@ describe('gitHistory', () => {
           'jane@example.com',
           '2025-11-23T19:20:00+00:00',
           'Initial commit',
-          '',
+          NULL_BYTE, // Null byte separating body from files
           'README.md',
         ].join('\n'),
       });
@@ -141,6 +145,119 @@ describe('gitHistory', () => {
       await expect(
         getCommitMetadata('/test/dir', 'invalid', { execFileAsync: mockExecFileAsync as never }),
       ).rejects.toThrow('Failed to get commit metadata for invalid');
+    });
+
+    it('should handle body text without leading spaces (edge case)', async () => {
+      // This tests the fix for the fragile heuristic that assumed body lines start with spaces
+      const mockExecFileAsync = vi.fn().mockResolvedValue({
+        stdout: [
+          'abc1234567890abcdef1234567890abcdef123456',
+          'abc1234',
+          'parent123',
+          'John Doe',
+          'john@example.com',
+          '2025-11-23T19:16:54+00:00',
+          'Jane Committer',
+          'jane@example.com',
+          '2025-11-23T19:20:00+00:00',
+          'fix: important bug fix',
+          'This body line has no leading space', // Body without leading space
+          'Neither does this one', // Another line without spaces
+          '',
+          'And this continues after blank', // More body after blank
+          NULL_BYTE, // Null byte reliably separates body from files
+          'src/bugfix.ts',
+        ].join('\n'),
+      });
+
+      const result = await getCommitMetadata('/test/dir', 'abc1234', {
+        execFileAsync: mockExecFileAsync as never,
+      });
+
+      expect(result.body).toBe(
+        'This body line has no leading space\nNeither does this one\n\nAnd this continues after blank',
+      );
+      expect(result.files).toEqual(['src/bugfix.ts']);
+    });
+
+    it('should handle empty body', async () => {
+      const mockExecFileAsync = vi.fn().mockResolvedValue({
+        stdout: [
+          'abc1234567890abcdef1234567890abcdef123456',
+          'abc1234',
+          'parent123',
+          'John Doe',
+          'john@example.com',
+          '2025-11-23T19:16:54+00:00',
+          'Jane Committer',
+          'jane@example.com',
+          '2025-11-23T19:20:00+00:00',
+          'chore: quick change',
+          NULL_BYTE, // No body, just null byte
+          'config.json',
+        ].join('\n'),
+      });
+
+      const result = await getCommitMetadata('/test/dir', 'abc1234', {
+        execFileAsync: mockExecFileAsync as never,
+      });
+
+      expect(result.body).toBe('');
+      expect(result.files).toEqual(['config.json']);
+    });
+
+    it('should handle files with special characters in paths', async () => {
+      const mockExecFileAsync = vi.fn().mockResolvedValue({
+        stdout: [
+          'abc1234567890abcdef1234567890abcdef123456',
+          'abc1234',
+          'parent123',
+          'John Doe',
+          'john@example.com',
+          '2025-11-23T19:16:54+00:00',
+          'Jane Committer',
+          'jane@example.com',
+          '2025-11-23T19:20:00+00:00',
+          'docs: update readme',
+          NULL_BYTE,
+          'docs/README (copy).md',
+          'src/utils/date-time.ts',
+          'tests/fixtures/data[1].json',
+        ].join('\n'),
+      });
+
+      const result = await getCommitMetadata('/test/dir', 'abc1234', {
+        execFileAsync: mockExecFileAsync as never,
+      });
+
+      expect(result.files).toEqual(['docs/README (copy).md', 'src/utils/date-time.ts', 'tests/fixtures/data[1].json']);
+    });
+
+    it('should handle commit with no files changed', async () => {
+      const mockExecFileAsync = vi.fn().mockResolvedValue({
+        stdout: [
+          'abc1234567890abcdef1234567890abcdef123456',
+          'abc1234',
+          'parent123',
+          'John Doe',
+          'john@example.com',
+          '2025-11-23T19:16:54+00:00',
+          'Jane Committer',
+          'jane@example.com',
+          '2025-11-23T19:20:00+00:00',
+          'chore: empty commit',
+          'Some body text',
+          NULL_BYTE,
+          // No files after null byte
+        ].join('\n'),
+      });
+
+      const result = await getCommitMetadata('/test/dir', 'abc1234', {
+        execFileAsync: mockExecFileAsync as never,
+      });
+
+      expect(result.body).toBe('Some body text');
+      expect(result.files).toEqual([]);
     });
   });
 
@@ -329,6 +446,126 @@ describe('gitHistory', () => {
       expect(result.graph).toContain('feat: add feature');
       expect(result.mermaidGraph).toContain('gitGraph');
       expect(result.tags).toEqual({ 'v1.0.0': 'abc1234567890' });
+    });
+
+    it('should generate valid Mermaid syntax for regular commits', async () => {
+      const mockExecFileAsync = vi
+        .fn()
+        .mockResolvedValueOnce({ stdout: '* abc1234 feat: add feature\n' })
+        .mockResolvedValueOnce({ stdout: 'abc1234567890\n' });
+
+      const mockGetCommitMetadata = vi.fn().mockResolvedValueOnce({
+        hash: 'abc1234567890',
+        abbreviatedHash: 'abc1234',
+        parents: ['parent123'],
+        author: { name: 'John', email: 'john@example.com', date: '2025-11-23' },
+        committer: { name: 'John', email: 'john@example.com', date: '2025-11-23' },
+        message: 'feat: add feature',
+        body: '',
+        files: ['src/file.ts'],
+      });
+
+      const result = await getCommitGraph('/test/dir', 'HEAD~1..HEAD', {
+        execFileAsync: mockExecFileAsync as never,
+        parseCommitRange,
+        getCommitMetadata: mockGetCommitMetadata,
+        getTags: async () => ({}),
+      });
+
+      // Valid Mermaid syntax: commit id: "..."
+      expect(result.mermaidGraph).toMatch(/commit id: "abc1234: feat: add feature"/);
+      // Should NOT contain invalid merge syntax
+      expect(result.mermaidGraph).not.toMatch(/merge abc1234/);
+    });
+
+    it('should generate valid Mermaid syntax for merge commits', async () => {
+      const mockExecFileAsync = vi
+        .fn()
+        .mockResolvedValueOnce({ stdout: '* abc1234 Merge branch feature\n' })
+        .mockResolvedValueOnce({ stdout: 'abc1234567890\n' });
+
+      const mockGetCommitMetadata = vi.fn().mockResolvedValueOnce({
+        hash: 'abc1234567890',
+        abbreviatedHash: 'abc1234',
+        parents: ['parent1', 'parent2'], // Multiple parents = merge commit
+        author: { name: 'John', email: 'john@example.com', date: '2025-11-23' },
+        committer: { name: 'John', email: 'john@example.com', date: '2025-11-23' },
+        message: 'Merge branch feature',
+        body: '',
+        files: [],
+      });
+
+      const result = await getCommitGraph('/test/dir', 'HEAD~1..HEAD', {
+        execFileAsync: mockExecFileAsync as never,
+        parseCommitRange,
+        getCommitMetadata: mockGetCommitMetadata,
+        getTags: async () => ({}),
+      });
+
+      // Merge commits should use commit syntax with (merge) indicator and HIGHLIGHT type
+      expect(result.mermaidGraph).toMatch(/commit id: "abc1234: \(merge\) Merge branch feature"/);
+      expect(result.mermaidGraph).toContain('type: HIGHLIGHT');
+      // Should NOT use invalid "merge <hash>" syntax
+      expect(result.mermaidGraph).not.toMatch(/^\s*merge\s+abc/m);
+    });
+
+    it('should generate valid Mermaid syntax for tagged commits', async () => {
+      const mockExecFileAsync = vi
+        .fn()
+        .mockResolvedValueOnce({ stdout: '* abc1234 (tag: v1.0.0) Release v1.0.0\n' })
+        .mockResolvedValueOnce({ stdout: 'abc1234567890\n' });
+
+      const mockGetCommitMetadata = vi.fn().mockResolvedValueOnce({
+        hash: 'abc1234567890',
+        abbreviatedHash: 'abc1234',
+        parents: ['parent123'],
+        author: { name: 'John', email: 'john@example.com', date: '2025-11-23' },
+        committer: { name: 'John', email: 'john@example.com', date: '2025-11-23' },
+        message: 'Release v1.0.0',
+        body: '',
+        files: ['package.json'],
+      });
+
+      const result = await getCommitGraph('/test/dir', 'HEAD~1..HEAD', {
+        execFileAsync: mockExecFileAsync as never,
+        parseCommitRange,
+        getCommitMetadata: mockGetCommitMetadata,
+        getTags: async () => ({ 'v1.0.0': 'abc1234567890' }),
+      });
+
+      // Tag should be on the same line as commit (valid Mermaid syntax)
+      expect(result.mermaidGraph).toMatch(/commit id: "abc1234: Release v1\.0\.0" tag: "v1\.0\.0"/);
+      // Should NOT have tag as separate commit line
+      expect(result.mermaidGraph).not.toMatch(/^\s*commit tag:/m);
+    });
+
+    it('should escape quotes in commit messages for Mermaid', async () => {
+      const mockExecFileAsync = vi
+        .fn()
+        .mockResolvedValueOnce({ stdout: '* abc1234 fix: handle "quoted" strings\n' })
+        .mockResolvedValueOnce({ stdout: 'abc1234567890\n' });
+
+      const mockGetCommitMetadata = vi.fn().mockResolvedValueOnce({
+        hash: 'abc1234567890',
+        abbreviatedHash: 'abc1234',
+        parents: ['parent123'],
+        author: { name: 'John', email: 'john@example.com', date: '2025-11-23' },
+        committer: { name: 'John', email: 'john@example.com', date: '2025-11-23' },
+        message: 'fix: handle "quoted" strings',
+        body: '',
+        files: ['src/parser.ts'],
+      });
+
+      const result = await getCommitGraph('/test/dir', 'HEAD~1..HEAD', {
+        execFileAsync: mockExecFileAsync as never,
+        parseCommitRange,
+        getCommitMetadata: mockGetCommitMetadata,
+        getTags: async () => ({}),
+      });
+
+      // Quotes should be escaped (replaced with single quotes) to avoid breaking Mermaid syntax
+      expect(result.mermaidGraph).toContain("'quoted'");
+      expect(result.mermaidGraph).not.toContain('"quoted"');
     });
   });
 });

@@ -108,11 +108,12 @@ JavaScript configuration files work the same as TypeScript, supporting `defineCo
 | `output.git.includeDiffs`        | Whether to include git diffs in the output. Shows both work tree and staged changes separately                               | `false`                |
 | `output.git.includeLogs`         | Whether to include git logs in the output. Shows commit history with dates, messages, and file paths                        | `false`                |
 | `output.git.includeLogsCount`    | Number of git log commits to include in the output                                                                          | `50`                   |
-| `output.git.includeCommitHistory` | Whether to include comprehensive commit history analysis with graph, patches, and metadata                                  | `false`                |
+| `output.git.includeCommitHistory` | Whether to include commit history with graph (ASCII/Mermaid), author/committer metadata, and code patches                   | `false`                |
 | `output.git.commitRange`         | Git commit range to analyze (e.g., "HEAD~50..HEAD", "v1.0..HEAD", "main..feature-branch")                                   | `"HEAD~50..HEAD"`      |
 | `output.git.commitPatchDetail`   | Patch detail level: `full` (complete diffs), `stat` (statistics), `files` (names only), `metadata` (no patches)            | `"stat"`               |
 | `output.git.includeCommitGraph`  | Whether to include ASCII and Mermaid commit graph visualizations                                                             | `true`                 |
 | `output.git.includeGitTags`      | Whether to include git tags in commit history output                                                                         | `true`                 |
+| `output.git.includeCommitPatches` | Whether to include code patches (diffs) for each commit in history. Set to `false` for metadata-only output                 | `true`                 |
 | `include`                        | Patterns of files to include using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)    | `[]`                   |
 | `ignore.useGitignore`            | Whether to use patterns from the project's `.gitignore` file                                                                 | `true`                 |
 | `ignore.useDotIgnore`            | Whether to use patterns from the project's `.ignore` file                                                                    | `true`                 |
@@ -174,7 +175,13 @@ Here's an example of a complete configuration file (`repomix.config.json`):
       "sortByChangesMaxCommits": 100,
       "includeDiffs": false,
       "includeLogs": false,
-      "includeLogsCount": 50
+      "includeLogsCount": 50,
+      "includeCommitHistory": false,
+      "commitRange": "HEAD~50..HEAD",
+      "commitPatchDetail": "stat",
+      "includeCommitGraph": true,
+      "includeGitTags": true,
+      "includeCommitPatches": true
     }
   },
   "include": ["**/*"],
@@ -330,13 +337,40 @@ For more details and examples, see the [Code Compression Guide](code-compress).
 
 The `output.git` configuration provides powerful Git-aware features:
 
+**File Sorting:**
 - `sortByChanges`: When true, files are sorted by the number of Git changes (commits that modified the file). Files with more changes appear at the bottom of the output. This helps prioritize more actively developed files. Default: `true`
 - `sortByChangesMaxCommits`: The maximum number of commits to analyze when counting file changes. Default: `100`
+
+**Simple Git Output:**
 - `includeDiffs`: When true, includes Git differences in the output (includes both work tree and staged changes separately). This allows the reader to see pending changes in the repository. Default: `false`
 - `includeLogs`: When true, includes Git commit history in the output. Shows commit dates, messages, and file paths for each commit. This helps AI understand development patterns and file relationships. Default: `false`
 - `includeLogsCount`: The number of recent commits to include in the git logs. Default: `50`
 
-Example configuration:
+**Commit History Analysis:**
+- `includeCommitHistory`: When true, includes commit graph (ASCII/Mermaid), author/committer metadata, parent hashes, commit body, and code patches for each commit. Provides more structured data than `includeLogs`. Default: `false`
+- `commitRange`: The Git commit range to analyze (e.g., "HEAD~50..HEAD", "v1.0..HEAD", "main..feature-branch"). Default: `"HEAD~50..HEAD"`
+- `commitPatchDetail`: Level of detail for commit patches: `full` (complete diffs), `stat` (file statistics), `files` (filenames only), `metadata` (no patches). Default: `"stat"`
+- `includeCommitGraph`: Whether to include ASCII art and Mermaid diagram visualizations showing branch/merge topology (uses git's standard `--all` flag to show how branches connect within the range). Default: `true`
+- `includeGitTags`: Whether to include git tags mapped to commit hashes. Default: `true`
+- `includeCommitPatches`: Whether to include code patches (diffs) for each commit. Set to `false` for metadata-only output. Default: `true`
+
+Example configuration for commit history analysis:
+```json
+{
+  "output": {
+    "git": {
+      "includeCommitHistory": true,
+      "commitRange": "v1.0..HEAD",
+      "commitPatchDetail": "full",
+      "includeCommitGraph": true,
+      "includeGitTags": true,
+      "includeCommitPatches": true
+    }
+  }
+}
+```
+
+Example configuration for basic git features:
 ```json
 {
   "output": {

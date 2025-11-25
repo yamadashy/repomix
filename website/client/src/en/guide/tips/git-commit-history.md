@@ -41,7 +41,7 @@ repomix --include-commit-history --commit-range "v1.0..HEAD"
 
 The output includes:
 - **Commit metadata**: hash, author name/email, committer name/email, date, message, body
-- **Visual graph**: ASCII art and Mermaid diagrams showing branch/merge topology
+- **Visual graph**: ASCII art and Mermaid diagrams showing branch/merge topology (uses git's `--all` flag to show how branches connect and merge, providing full context of the repository structure within the specified range)
 - **Git tags**: Tag names mapped to commit hashes
 - **File changes**: List of files modified in each commit
 - **Patches**: Diff output at the configured detail level

@@ -307,4 +307,240 @@ describe('outputGenerate', () => {
 
     expect(output).not.toContain('Directory Structure');
   });
+
+  test('generateOutput should include git commit history when enabled (markdown)', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.md',
+        style: 'markdown',
+        git: { includeCommitHistory: true },
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
+    const mockGitHistoryResult = {
+      summary: {
+        totalCommits: 2,
+        mergeCommits: 0,
+        range: 'HEAD~2..HEAD',
+        detailLevel: 'stat' as const,
+      },
+      graph: {
+        commits: [],
+        graph: '* abc123 feat: add feature',
+        mermaidGraph: 'gitGraph\n  commit id: "abc123: feat: add feature"',
+        mergeCommits: [],
+        tags: { 'v1.0.0': 'abc1234567890' },
+      },
+      commits: [
+        {
+          metadata: {
+            hash: 'abc1234567890',
+            abbreviatedHash: 'abc123',
+            parents: ['def456'],
+            author: { name: 'John Doe', email: 'john@example.com', date: '2025-11-20T12:00:00Z' },
+            committer: { name: 'John Doe', email: 'john@example.com', date: '2025-11-20T12:00:00Z' },
+            message: 'feat: add feature',
+            body: 'Extended description',
+            files: ['src/feature.ts', 'tests/feature.test.ts'],
+          },
+          patch: 'diff --git a/src/feature.ts',
+        },
+      ],
+    };
+
+    const output = await generateOutput(
+      [process.cwd()],
+      mockConfig,
+      mockProcessedFiles,
+      [],
+      undefined,
+      undefined,
+      mockGitHistoryResult,
+    );
+
+    expect(output).toContain('Git Commit History');
+    expect(output).toContain('feat: add feature');
+    expect(output).toContain('John Doe');
+    expect(output).toContain('john@example.com');
+    expect(output).toContain('Files Changed');
+    expect(output).toContain('src/feature.ts');
+    expect(output).toContain('tests/feature.test.ts');
+  });
+
+  test('generateOutput should include git commit history in parsable XML', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.xml',
+        style: 'xml',
+        parsableStyle: true,
+        git: { includeCommitHistory: true },
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
+    const mockGitHistoryResult = {
+      summary: {
+        totalCommits: 1,
+        mergeCommits: 0,
+        range: 'HEAD~1..HEAD',
+        detailLevel: 'full' as const,
+      },
+      graph: {
+        commits: [],
+        graph: '* abc123 fix: bug fix',
+        mermaidGraph: 'gitGraph\n  commit id: "abc123: fix: bug fix"',
+        mergeCommits: [],
+        tags: {},
+      },
+      commits: [
+        {
+          metadata: {
+            hash: 'abc1234567890abcdef',
+            abbreviatedHash: 'abc1234',
+            parents: ['parent123'],
+            author: { name: 'Jane Smith', email: 'jane@example.com', date: '2025-11-21T10:00:00Z' },
+            committer: { name: 'Jane Smith', email: 'jane@example.com', date: '2025-11-21T10:00:00Z' },
+            message: 'fix: bug fix',
+            body: '',
+            files: ['src/bugfix.ts'],
+          },
+          patch: 'diff --git a/src/bugfix.ts',
+        },
+      ],
+    };
+
+    const output = await generateOutput(
+      [process.cwd()],
+      mockConfig,
+      mockProcessedFiles,
+      [],
+      undefined,
+      undefined,
+      mockGitHistoryResult,
+    );
+
+    const parser = new XMLParser({ ignoreAttributes: false });
+    const parsedOutput = parser.parse(output);
+
+    expect(parsedOutput.repomix.git_history).toBeDefined();
+    expect(parsedOutput.repomix.git_history.summary.total_commits).toBe(1);
+    expect(parsedOutput.repomix.git_history.summary.range).toBe('HEAD~1..HEAD');
+    expect(parsedOutput.repomix.git_history.commit_graph.ascii_graph).toBe('* abc123 fix: bug fix');
+    // merge_commits is empty array in mock, which XMLBuilder omits from output
+    expect(parsedOutput.repomix.git_history.commit_graph.merge_commits).toBeUndefined();
+    // With single commit, fast-xml-parser returns object directly (not array)
+    const commit = Array.isArray(parsedOutput.repomix.git_history.commits)
+      ? parsedOutput.repomix.git_history.commits[0]
+      : parsedOutput.repomix.git_history.commits;
+    expect(commit['@_hash']).toBe('abc1234567890abcdef');
+    expect(commit.author.name).toBe('Jane Smith');
+    expect(commit.files).toBe('src/bugfix.ts');
+  });
+
+  test('generateOutput should include files list in XML commit history template', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.xml',
+        style: 'xml',
+        parsableStyle: false,
+        git: { includeCommitHistory: true },
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
+    const mockGitHistoryResult = {
+      summary: {
+        totalCommits: 1,
+        mergeCommits: 0,
+        range: 'HEAD~1..HEAD',
+        detailLevel: 'stat' as const,
+      },
+      commits: [
+        {
+          metadata: {
+            hash: 'abc1234567890',
+            abbreviatedHash: 'abc123',
+            parents: [],
+            author: { name: 'Test', email: 'test@example.com', date: '2025-11-20T12:00:00Z' },
+            committer: { name: 'Test', email: 'test@example.com', date: '2025-11-20T12:00:00Z' },
+            message: 'test commit',
+            body: '',
+            files: ['src/a.ts', 'src/b.ts', 'tests/a.test.ts'],
+          },
+          patch: '',
+        },
+      ],
+    };
+
+    const output = await generateOutput(
+      [process.cwd()],
+      mockConfig,
+      mockProcessedFiles,
+      [],
+      undefined,
+      undefined,
+      mockGitHistoryResult,
+    );
+
+    expect(output).toContain('<files>');
+    expect(output).toContain('<file>src/a.ts</file>');
+    expect(output).toContain('<file>src/b.ts</file>');
+    expect(output).toContain('<file>tests/a.test.ts</file>');
+    expect(output).toContain('</files>');
+  });
+
+  test('generateOutput should include merge_commits in parsable XML commit_graph', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.xml',
+        style: 'xml',
+        parsableStyle: true,
+        git: { includeCommitHistory: true },
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
+    const mockGitHistoryResult = {
+      summary: {
+        totalCommits: 2,
+        mergeCommits: 1,
+        range: 'HEAD~2..HEAD',
+        detailLevel: 'stat' as const,
+      },
+      graph: {
+        commits: [],
+        graph: '* merge123 Merge branch\n* abc123 feat: feature',
+        mermaidGraph: 'gitGraph\n  commit id: "abc123: feat: feature"',
+        mergeCommits: ['merge1234567890'],
+        tags: {},
+      },
+      commits: [
+        {
+          metadata: {
+            hash: 'merge1234567890',
+            abbreviatedHash: 'merge123',
+            parents: ['parent1', 'parent2'],
+            author: { name: 'Test', email: 'test@example.com', date: '2025-11-21T12:00:00Z' },
+            committer: { name: 'Test', email: 'test@example.com', date: '2025-11-21T12:00:00Z' },
+            message: 'Merge branch',
+            body: '',
+            files: [],
+          },
+          patch: '',
+        },
+      ],
+    };
+
+    const output = await generateOutput(
+      [process.cwd()],
+      mockConfig,
+      mockProcessedFiles,
+      [],
+      undefined,
+      undefined,
+      mockGitHistoryResult,
+    );
+
+    const parser = new XMLParser({ ignoreAttributes: false });
+    const parsedOutput = parser.parse(output);
+
+    expect(parsedOutput.repomix.git_history.commit_graph.merge_commits).toBe('merge1234567890');
+  });
 });

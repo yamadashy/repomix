@@ -133,6 +133,13 @@ This section contains the contents of the repository's files.
 {{#if this.metadata.body}}
 <body>{{{this.metadata.body}}}</body>
 {{/if}}
+{{#if this.metadata.files.length}}
+<files>
+{{#each this.metadata.files}}
+<file>{{{this}}}</file>
+{{/each}}
+</files>
+{{/if}}
 {{#if this.patch}}
 <patch>
 {{{this.patch}}}

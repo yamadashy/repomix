@@ -259,7 +259,7 @@ When using `--include-commit-history`, the output includes detailed commit metad
   </commit_graph>
 
   <commits>
-    <commit hash="abc123" abbreviated_hash="abc123">
+    <commit hash="abc123def456789" abbreviated_hash="abc123d">
       <author>
         <name>John Doe</name>
         <email>john@example.com</email>
@@ -270,9 +270,24 @@ When using `--include-commit-history`, the output includes detailed commit metad
         <email>john@example.com</email>
         <date>2025-11-20T12:00:00Z</date>
       </committer>
+      <parents>
+        <parent>def456abc789012</parent>
+      </parents>
       <message>feat: Add new feature</message>
+      <body>Extended commit message body with additional details.</body>
+      <files>
+        <file>src/feature.ts</file>
+        <file>tests/feature.test.ts</file>
+      </files>
       <patch>
-        <!-- Diff content when using --commit-patch-detail full -->
+diff --git a/src/feature.ts b/src/feature.ts
+new file mode 100644
+--- /dev/null
++++ b/src/feature.ts
+@@ -0,0 +1,5 @@
++export const newFeature = () => {
++  return 'Hello World';
++};
       </patch>
     </commit>
   </commits>
