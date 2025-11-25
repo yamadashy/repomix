@@ -61,7 +61,7 @@ export interface LanguageConfig {
  * Registry of all supported language configurations
  * @see https://unpkg.com/browse/tree-sitter-wasms@latest/out/
  */
-export const LANGUAGE_CONFIGS: LanguageConfig[] = [
+export const LANGUAGE_CONFIGS: readonly LanguageConfig[] = [
   {
     name: 'javascript',
     extensions: ['js', 'jsx', 'cjs', 'mjs', 'mjsx'],

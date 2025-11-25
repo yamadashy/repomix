@@ -19,28 +19,6 @@ export interface ParseStrategy {
 }
 
 /**
- * Common capture type constants used across different language strategies
- */
-export const CommonCaptureTypes = {
-  Comment: 'comment',
-  Class: 'definition.class',
-  Function: 'definition.function',
-  Method: 'definition.method',
-  Interface: 'definition.interface',
-  Type: 'definition.type',
-  Import: 'definition.import',
-  Property: 'definition.property',
-  Variable: 'definition.variable',
-  Constant: 'definition.constant',
-  Enum: 'definition.enum',
-  Struct: 'definition.struct',
-  Package: 'definition.package',
-  Module: 'definition.module',
-} as const;
-
-export type CommonCaptureType = (typeof CommonCaptureTypes)[keyof typeof CommonCaptureTypes];
-
-/**
  * Result type for parse operations
  */
 export type ParseResult = {

@@ -85,6 +85,9 @@ export class LanguageParser {
   public guessTheLang(filePath: string): SupportedLang | undefined {
     const ext = this.getFileExtension(filePath);
     const config = getLanguageConfigByExtension(ext);
+    if (!config) {
+      logger.debug(`No language configuration found for extension: ${ext}`);
+    }
     return config?.name;
   }
 
