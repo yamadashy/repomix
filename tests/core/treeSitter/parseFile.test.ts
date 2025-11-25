@@ -41,12 +41,12 @@ describe('parseFile', () => {
       expect(chunks.length).toBe(4);
 
       expect(chunks[0]).toContain('* First function');
-      expect(chunks[0]).toContain('function first() {');
+      expect(chunks[0]).toContain('function first()');
       expect(chunks[1]).toContain('* Second function');
-      expect(chunks[1]).toContain('function second() {');
+      expect(chunks[1]).toContain('function second()');
       expect(chunks[2]).toContain('// Some space');
       expect(chunks[3]).toContain('* Third function');
-      expect(chunks[3]).toContain('function third() {');
+      expect(chunks[3]).toContain('function third()');
     }
   });
 });

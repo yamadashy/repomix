@@ -1,5 +1,6 @@
 import type { Node } from 'web-tree-sitter';
-import type { ParseContext, ParseStrategy } from './ParseStrategy.js';
+import type { ParseContext } from './BaseParseStrategy.js';
+import { BaseParseStrategy, type ParseResult } from './BaseParseStrategy.js';
 
 enum CaptureType {
   Comment = 'comment',
@@ -9,12 +10,7 @@ enum CaptureType {
   TypeAlias = 'definition.type_alias',
 }
 
-type ParseResult = {
-  content: string | null;
-  processedSignatures?: Set<string>;
-};
-
-export class PythonParseStrategy implements ParseStrategy {
+export class PythonParseStrategy extends BaseParseStrategy {
   parseCapture(
     capture: { node: Node; name: string },
     lines: string[],
@@ -25,11 +21,11 @@ export class PythonParseStrategy implements ParseStrategy {
     const startRow = node.startPosition.row;
     const endRow = node.endPosition.row;
 
-    if (!lines[startRow]) {
+    if (!this.validateLineExists(lines, startRow)) {
       return null;
     }
 
-    const captureTypes = this.getCaptureType(name);
+    const captureTypes = this.getCaptureTypes(name, CaptureType);
 
     // Class definition
     if (captureTypes.has(CaptureType.Class)) {
@@ -57,16 +53,6 @@ export class PythonParseStrategy implements ParseStrategy {
     }
 
     return null;
-  }
-
-  private getCaptureType(name: string): Set<CaptureType> {
-    const types = new Set<CaptureType>();
-    for (const type of Object.values(CaptureType)) {
-      if (name.includes(type)) {
-        types.add(type);
-      }
-    }
-    return types;
   }
 
   private getDecorators(lines: string[], startRow: number): string[] {
@@ -104,12 +90,11 @@ export class PythonParseStrategy implements ParseStrategy {
     const classDefinition = this.getClassInheritance(lines, startRow);
     const fullDefinition = [...decorators, classDefinition].join('\n');
 
-    if (processedChunks.has(fullDefinition)) {
-      return { content: null };
+    if (!this.checkAndAddToProcessed(fullDefinition, processedChunks)) {
+      return this.createNullResult();
     }
 
-    processedChunks.add(fullDefinition);
-    return { content: fullDefinition };
+    return this.createResult(fullDefinition);
   }
 
   private parseFunctionDefinition(lines: string[], startRow: number, processedChunks: Set<string>): ParseResult {
@@ -117,16 +102,15 @@ export class PythonParseStrategy implements ParseStrategy {
     const signature = this.getFunctionSignature(lines, startRow);
 
     if (!signature) {
-      return { content: null };
+      return this.createNullResult();
     }
 
     const fullDefinition = [...decorators, signature].join('\n');
-    if (processedChunks.has(fullDefinition)) {
-      return { content: null };
+    if (!this.checkAndAddToProcessed(fullDefinition, processedChunks)) {
+      return this.createNullResult();
     }
 
-    processedChunks.add(fullDefinition);
-    return { content: fullDefinition };
+    return this.createResult(fullDefinition);
   }
 
   private parseDocstringOrComment(
@@ -137,22 +121,20 @@ export class PythonParseStrategy implements ParseStrategy {
   ): ParseResult {
     const content = lines.slice(startRow, endRow + 1).join('\n');
 
-    if (processedChunks.has(content)) {
-      return { content: null };
+    if (!this.checkAndAddToProcessed(content, processedChunks)) {
+      return this.createNullResult();
     }
 
-    processedChunks.add(content);
-    return { content };
+    return this.createResult(content);
   }
 
   private parseTypeAlias(lines: string[], startRow: number, processedChunks: Set<string>): ParseResult {
     const typeAlias = lines[startRow].trim();
 
-    if (processedChunks.has(typeAlias)) {
-      return { content: null };
+    if (!this.checkAndAddToProcessed(typeAlias, processedChunks)) {
+      return this.createNullResult();
     }
 
-    processedChunks.add(typeAlias);
-    return { content: typeAlias };
+    return this.createResult(typeAlias);
   }
 }

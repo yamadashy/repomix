@@ -3,10 +3,9 @@ import { Parser, Query } from 'web-tree-sitter';
 
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
-import { ext2Lang } from './ext2Lang.js';
-import { lang2Query, type SupportedLang } from './lang2Query.js';
+import { getLanguageConfigByExtension, getLanguageConfigByName, type SupportedLang } from './languageConfig.js';
 import { loadLanguage } from './loadLanguage.js';
-import { createParseStrategy, type ParseStrategy } from './parseStrategies/ParseStrategy.js';
+import type { ParseStrategy } from './parseStrategies/BaseParseStrategy.js';
 
 interface LanguageResources {
   lang: SupportedLang;
@@ -25,11 +24,21 @@ export class LanguageParser {
 
   private async prepareLang(name: SupportedLang): Promise<LanguageResources> {
     try {
+      const config = getLanguageConfigByName(name);
+      if (!config) {
+        throw new RepomixError(`Language configuration not found for: ${name}`);
+      }
+
       const lang = await loadLanguage(name);
       const parser = new Parser();
       parser.setLanguage(lang);
-      const query = new Query(lang, lang2Query[name]);
-      const strategy = createParseStrategy(name);
+      const query = new Query(lang, config.query);
+      // Create strategy instance lazily when first needed
+      // NOTE: Strategy instances are cached per language in this.loadedResources
+      // and shared across all files of the same language. This is safe because
+      // all current strategies are stateless and only use the parameters passed
+      // to their parseCapture method.
+      const strategy = config.createStrategy();
 
       const resources: LanguageResources = {
         lang: name,
@@ -75,10 +84,11 @@ export class LanguageParser {
 
   public guessTheLang(filePath: string): SupportedLang | undefined {
     const ext = this.getFileExtension(filePath);
-    if (!Object.keys(ext2Lang).includes(ext)) {
-      return undefined;
+    const config = getLanguageConfigByExtension(ext);
+    if (!config) {
+      logger.debug(`No language configuration found for extension: ${ext}`);
     }
-    return ext2Lang[ext as keyof typeof ext2Lang] as SupportedLang;
+    return config?.name;
   }
 
   public async init(): Promise<void> {

@@ -1,5 +1,6 @@
 import type { Node } from 'web-tree-sitter';
-import type { ParseContext, ParseStrategy } from './ParseStrategy.js';
+import type { ParseContext } from './BaseParseStrategy.js';
+import { BaseParseStrategy, type ParseResult } from './BaseParseStrategy.js';
 
 enum CaptureType {
   Comment = 'comment',
@@ -13,12 +14,7 @@ enum CaptureType {
   Property = 'definition.property',
 }
 
-type ParseResult = {
-  content: string | null;
-  processedSignatures?: Set<string>;
-};
-
-export class TypeScriptParseStrategy implements ParseStrategy {
+export class TypeScriptParseStrategy extends BaseParseStrategy {
   private static readonly FUNCTION_NAME_PATTERN = /(?:export\s+)?(?:const|let|var)\s+([a-zA-Z0-9_$]+)\s*=/;
 
   parseCapture(
@@ -31,11 +27,11 @@ export class TypeScriptParseStrategy implements ParseStrategy {
     const startRow = node.startPosition.row;
     const endRow = node.endPosition.row;
 
-    if (!lines[startRow]) {
+    if (!this.validateLineExists(lines, startRow)) {
       return null;
     }
 
-    const captureTypes = this.getCaptureType(name);
+    const captureTypes = this.getCaptureTypes(name, CaptureType);
 
     // Function capture
     if (captureTypes.has(CaptureType.Function) || captureTypes.has(CaptureType.Method)) {
@@ -74,16 +70,6 @@ export class TypeScriptParseStrategy implements ParseStrategy {
     return match?.[1] ?? null;
   }
 
-  private getCaptureType(name: string): Set<CaptureType> {
-    const types = new Set<CaptureType>();
-    for (const type of Object.values(CaptureType)) {
-      if (name.includes(type)) {
-        types.add(type);
-      }
-    }
-    return types;
-  }
-
   private parseFunctionDefinition(
     lines: string[],
     startRow: number,
@@ -92,23 +78,22 @@ export class TypeScriptParseStrategy implements ParseStrategy {
   ): ParseResult {
     const functionName = this.getFunctionName(lines, startRow);
     if (functionName && processedChunks.has(`func:${functionName}`)) {
-      return { content: null };
+      return this.createNullResult();
     }
 
     const signatureEndRow = this.findSignatureEnd(lines, startRow, endRow);
     const selectedLines = lines.slice(startRow, signatureEndRow + 1);
     const cleanedSignature = this.cleanFunctionSignature(selectedLines);
 
-    if (processedChunks.has(cleanedSignature)) {
-      return { content: null };
+    if (!this.checkAndAddToProcessed(cleanedSignature, processedChunks)) {
+      return this.createNullResult();
     }
 
-    processedChunks.add(cleanedSignature);
     if (functionName) {
       processedChunks.add(`func:${functionName}`);
     }
 
-    return { content: cleanedSignature };
+    return this.createResult(cleanedSignature);
   }
 
   private findSignatureEnd(lines: string[], startRow: number, endRow: number): number {
@@ -155,12 +140,11 @@ export class TypeScriptParseStrategy implements ParseStrategy {
     const cleanedLines = selectedLines.map((line) => line.replace(/\{.*$/, '').trim());
     const definition = cleanedLines.join('\n').trim();
 
-    if (processedChunks.has(definition)) {
-      return { content: null };
+    if (!this.checkAndAddToProcessed(definition, processedChunks)) {
+      return this.createNullResult();
     }
 
-    processedChunks.add(definition);
-    return { content: definition };
+    return this.createResult(definition);
   }
 
   private parseTypeOrImport(
@@ -172,11 +156,10 @@ export class TypeScriptParseStrategy implements ParseStrategy {
     const selectedLines = lines.slice(startRow, endRow + 1);
     const definition = selectedLines.join('\n').trim();
 
-    if (processedChunks.has(definition)) {
-      return { content: null };
+    if (!this.checkAndAddToProcessed(definition, processedChunks)) {
+      return this.createNullResult();
     }
 
-    processedChunks.add(definition);
-    return { content: definition };
+    return this.createResult(definition);
   }
 }

@@ -1,5 +1,6 @@
 import type { Node } from 'web-tree-sitter';
-import type { ParseContext, ParseStrategy } from './ParseStrategy.js';
+import type { ParseContext } from './BaseParseStrategy.js';
+import { BaseParseStrategy, type ParseResult } from './BaseParseStrategy.js';
 
 enum CaptureType {
   Comment = 'comment',
@@ -15,12 +16,7 @@ enum CaptureType {
   Constant = 'definition.constant',
 }
 
-type ParseResult = {
-  content: string | null;
-  processedSignatures?: Set<string>;
-};
-
-export class GoParseStrategy implements ParseStrategy {
+export class GoParseStrategy extends BaseParseStrategy {
   parseCapture(
     capture: { node: Node; name: string },
     lines: string[],
@@ -31,11 +27,11 @@ export class GoParseStrategy implements ParseStrategy {
     const startRow = node.startPosition.row;
     const endRow = node.endPosition.row;
 
-    if (!lines[startRow]) {
+    if (!this.validateLineExists(lines, startRow)) {
       return null;
     }
 
-    const captureTypes = this.getCaptureType(name);
+    const captureTypes = this.getCaptureTypes(name, CaptureType);
 
     // Comments
     if (captureTypes.has(CaptureType.Comment)) {
@@ -86,16 +82,6 @@ export class GoParseStrategy implements ParseStrategy {
     return null;
   }
 
-  private getCaptureType(name: string): Set<CaptureType> {
-    const types = new Set<CaptureType>();
-    for (const type of Object.values(CaptureType)) {
-      if (name.includes(type)) {
-        types.add(type);
-      }
-    }
-    return types;
-  }
-
   private getFunctionName(lines: string[], startRow: number): string | null {
     const line = lines[startRow];
     // "func funcName(" pattern detection
@@ -134,11 +120,10 @@ export class GoParseStrategy implements ParseStrategy {
 
   private parseSimpleDeclaration(lines: string[], startRow: number, processedChunks: Set<string>): ParseResult {
     const declaration = lines[startRow].trim();
-    if (processedChunks.has(declaration)) {
-      return { content: null };
+    if (!this.checkAndAddToProcessed(declaration, processedChunks)) {
+      return this.createNullResult();
     }
-    processedChunks.add(declaration);
-    return { content: declaration };
+    return this.createResult(declaration);
   }
 
   private parseBlockDeclaration(
@@ -152,11 +137,10 @@ export class GoParseStrategy implements ParseStrategy {
       : endRow;
 
     const declaration = lines.slice(startRow, blockEndRow + 1).join('\n');
-    if (processedChunks.has(declaration)) {
-      return { content: null };
+    if (!this.checkAndAddToProcessed(declaration, processedChunks)) {
+      return this.createNullResult();
     }
-    processedChunks.add(declaration);
-    return { content: declaration };
+    return this.createResult(declaration);
   }
 
   private parseFunctionOrMethod(
@@ -171,7 +155,7 @@ export class GoParseStrategy implements ParseStrategy {
     const name = getName.call(this, lines, startRow);
 
     if (name && processedChunks.has(`${nameKey}:${name}`)) {
-      return { content: null };
+      return this.createNullResult();
     }
 
     const signatureEndRow = this.findClosingToken(lines, startRow, endRow, '{', '{');
@@ -181,15 +165,14 @@ export class GoParseStrategy implements ParseStrategy {
       .trim();
     const cleanSignature = signature.split('{')[0].trim();
 
-    if (processedChunks.has(cleanSignature)) {
-      return { content: null };
+    if (!this.checkAndAddToProcessed(cleanSignature, processedChunks)) {
+      return this.createNullResult();
     }
 
-    processedChunks.add(cleanSignature);
     if (name) {
       processedChunks.add(`${nameKey}:${name}`);
     }
-    return { content: cleanSignature };
+    return this.createResult(cleanSignature);
   }
 
   private parseTypeDefinition(
@@ -203,10 +186,9 @@ export class GoParseStrategy implements ParseStrategy {
       : endRow;
 
     const definition = lines.slice(startRow, signatureEndRow + 1).join('\n');
-    if (processedChunks.has(definition)) {
-      return { content: null };
+    if (!this.checkAndAddToProcessed(definition, processedChunks)) {
+      return this.createNullResult();
     }
-    processedChunks.add(definition);
-    return { content: definition };
+    return this.createResult(definition);
   }
 }

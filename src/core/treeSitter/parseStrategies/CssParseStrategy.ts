@@ -1,7 +1,8 @@
 import type { Node } from 'web-tree-sitter';
-import type { ParseContext, ParseStrategy } from './ParseStrategy.js';
+import type { ParseContext } from './BaseParseStrategy.js';
+import { BaseParseStrategy } from './BaseParseStrategy.js';
 
-export class CssParseStrategy implements ParseStrategy {
+export class CssParseStrategy extends BaseParseStrategy {
   parseCapture(
     capture: { node: Node; name: string },
     lines: string[],
@@ -12,7 +13,7 @@ export class CssParseStrategy implements ParseStrategy {
     const startRow = node.startPosition.row;
     const endRow = node.endPosition.row;
 
-    if (!lines[startRow]) {
+    if (!this.validateLineExists(lines, startRow)) {
       return null;
     }
 
@@ -41,13 +42,10 @@ export class CssParseStrategy implements ParseStrategy {
     }
 
     const chunk = selectedLines.join('\n');
-    const normalizedChunk = chunk.trim();
-
-    if (processedChunks.has(normalizedChunk)) {
+    if (!this.checkAndAddToProcessed(chunk, processedChunks)) {
       return null;
     }
 
-    processedChunks.add(normalizedChunk);
     return chunk;
   }
 }
