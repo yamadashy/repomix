@@ -70,7 +70,7 @@ export const LANGUAGE_CONFIGS: LanguageConfig[] = [
   },
   {
     name: 'typescript',
-    extensions: ['ts', 'tsx', 'mts', 'mtsx', 'ctx'],
+    extensions: ['ts', 'tsx', 'mts', 'mtsx', 'cts'],
     query: queryTypescript,
     createStrategy: () => new TypeScriptParseStrategy(),
   },
