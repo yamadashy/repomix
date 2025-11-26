@@ -243,10 +243,10 @@ src/core/output/outputGenerate.ts
 ```
 ## Commit History Output
 
-When using `--include-logs` with diff format or enhancement flags (e.g., `--include-logs --patch --graph`), the output includes detailed commit metadata and history:
+When using `--include-logs` with enhancement flags (e.g., `--include-logs --patch --graph`), the output includes detailed commit metadata and history:
 
 ```xml
-<git_history>
+<git_logs>
   <summary>
     <total_commits>95</total_commits>
     <merge_commits>12</merge_commits>
@@ -255,31 +255,42 @@ When using `--include-logs` with diff format or enhancement flags (e.g., `--incl
   </summary>
 
   <commit_graph>
-    <!-- ASCII and Mermaid visualizations -->
+    <ascii_graph>* abc123d feat: Add new feature
+* def4567 Previous commit
+</ascii_graph>
+    <mermaid_graph>gitGraph
+      commit id: "abc123d: feat: Add new feature"
+      commit id: "def4567: Previous commit"
+    </mermaid_graph>
+    <tags>
+      <tag key="v1.0">abc1234567890</tag>
+    </tags>
   </commit_graph>
 
-  <commits>
-    <commit hash="abc123def456789" abbreviated_hash="abc123d">
-      <author>
-        <name>John Doe</name>
-        <email>john@example.com</email>
-        <date>2025-11-20T12:00:00Z</date>
-      </author>
-      <committer>
-        <name>John Doe</name>
-        <email>john@example.com</email>
-        <date>2025-11-20T12:00:00Z</date>
-      </committer>
-      <parents>
-        <parent>def456abc789012</parent>
-      </parents>
-      <message>feat: Add new feature</message>
-      <body>Extended commit message body with additional details.</body>
-      <files>
-        <file>src/feature.ts</file>
-        <file>tests/feature.test.ts</file>
-      </files>
-      <patch>
+  <git_log_commit>
+    <date>2025-11-20T12:00:00Z</date>
+    <message>feat: Add new feature</message>
+    <files>
+src/feature.ts
+tests/feature.test.ts
+    </files>
+    <hash>abc123def456789</hash>
+    <abbreviated_hash>abc123d</abbreviated_hash>
+    <author>
+      <name>John Doe</name>
+      <email>john@example.com</email>
+      <date>2025-11-20T12:00:00Z</date>
+    </author>
+    <committer>
+      <name>John Doe</name>
+      <email>john@example.com</email>
+      <date>2025-11-20T12:00:00Z</date>
+    </committer>
+    <parents>
+      <parent>def456abc789012</parent>
+    </parents>
+    <body>Extended commit message body with additional details.</body>
+    <patch>
 diff --git a/src/feature.ts b/src/feature.ts
 new file mode 100644
 --- /dev/null
@@ -288,10 +299,9 @@ new file mode 100644
 +export const newFeature = () => {
 +  return 'Hello World';
 +};
-      </patch>
-    </commit>
-  </commits>
-</git_history>
+    </patch>
+  </git_log_commit>
+</git_logs>
 ```
 
 **Diff Format Flags** (mutually exclusive - choose one):
