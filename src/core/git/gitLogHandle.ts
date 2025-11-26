@@ -19,10 +19,10 @@ export const GIT_LOG_RECORD_SEPARATOR = '\x00';
 // Git expects %x00 format in pretty format strings
 export const GIT_LOG_FORMAT_SEPARATOR = '%x00';
 
-// ===== Unified Git Log Types =====
+// ===== Git Log Result Types =====
 
 /**
- * Complete result for a single commit with metadata and optional patch
+ * Single commit with metadata and optional patch diff
  */
 export interface HistoryCommitResult {
   metadata: CommitMetadata;
@@ -40,34 +40,24 @@ export interface HistorySummary {
 }
 
 /**
- * Unified git log result - supports both simple and comprehensive modes
+ * Git log result with additive optional fields
  *
- * Simple mode (backward compatibility):
- * - logContent: present
- * - commits: array with minimal metadata
- * - graph, summary: undefined
- *
- * Comprehensive mode:
- * - commits: array with full metadata and optional patches
- * - graph: optional commit graph visualization
- * - summary: optional statistics
- * - logContent: undefined
+ * Structure is naturally backward and forward compatible:
+ * - logContent: raw git log string when fetched via git log command
+ * - commits: always present, contains commit metadata
+ * - graph: commit graph visualization when includeCommitGraph=true
+ * - summary: statistics when includeSummary=true
  */
 export interface GitLogResult {
-  // Always present
+  logContent?: string;
   commits: HistoryCommitResult[];
-
-  // Optional - only in comprehensive mode
   graph?: CommitGraph;
   summary?: HistorySummary;
-
-  // Optional - only in simple mode (backward compatibility)
-  logContent?: string;
 }
 
 /**
  * @deprecated Use HistoryCommitResult instead
- * Simple commit info for backward compatibility
+ * Commit info for git log command output parsing
  */
 export interface GitLogCommit {
   date: string;
@@ -133,169 +123,8 @@ export const getGitLog = async (
 };
 
 /**
- * Get simple git log with basic commit information
- * Used when only basic log output is needed without graphs or patches
- */
-const getSimpleGitLogs = async (
-  rootDirs: string[],
-  config: RepomixConfigMerged,
-  deps = {
-    getGitLog,
-  },
-): Promise<GitLogResult | undefined> => {
-  try {
-    // Use the first directory as the git repository root
-    const gitRoot = rootDirs[0] || config.cwd;
-    const maxCommits = config.output.git?.includeLogsCount || 50;
-    const logContent = await deps.getGitLog(gitRoot, maxCommits);
-
-    // Parse the raw log content into structured commits
-    const simpleCommits = parseGitLog(logContent);
-
-    // Convert to HistoryCommitResult format
-    const commits: HistoryCommitResult[] = simpleCommits.map((commit) => ({
-      metadata: {
-        hash: '',
-        abbreviatedHash: '',
-        parents: [],
-        author: {
-          name: '',
-          email: '',
-          date: commit.date,
-        },
-        committer: {
-          name: '',
-          email: '',
-          date: commit.date,
-        },
-        message: commit.message,
-        body: '',
-        files: commit.files,
-      },
-      patch: undefined,
-    }));
-
-    return {
-      commits,
-      logContent,
-    };
-  } catch (error) {
-    throw new RepomixError(`Failed to get git logs: ${(error as Error).message}`, { cause: error });
-  }
-};
-
-/**
- * Get comprehensive git history analysis with graphs, metadata, and patches
- * Used when detailed commit analysis is needed (graph visualization, patches, etc.)
- */
-const getComprehensiveGitHistory = async (
-  rootDirs: string[],
-  config: RepomixConfigMerged,
-  deps = {
-    isGitRepository,
-    getCommitGraph,
-    getCommitPatch,
-  },
-): Promise<GitLogResult | undefined> => {
-  try {
-    // Use the first directory as the git repository root
-    const gitRoot = rootDirs[0] || config.cwd;
-
-    // Check if this is a git repository
-    const isGitRepo = await deps.isGitRepository(gitRoot);
-    if (!isGitRepo) {
-      logger.trace(`Directory ${gitRoot} is not a git repository, skipping commit history analysis`);
-      return undefined;
-    }
-
-    // Get configuration options with defaults
-    const range = config.output.git.commitRange || 'HEAD~50..HEAD';
-    const detailLevel = (config.output.git.commitPatchDetail as PatchDetailLevel) || 'name-only';
-    const includeGraph = config.output.git.includeCommitGraph !== false;
-    const includeTags = config.output.git.includeGitTags !== false;
-    const includePatches = config.output.git.includeCommitPatches !== false;
-    const includeSummary = config.output.git.includeSummary || false;
-
-    logger.trace('Git history analysis configuration:', {
-      range,
-      detailLevel,
-      includeGraph,
-      includeTags,
-      includePatches,
-      includeSummary,
-    });
-
-    // Get commit graph (always fetch to get commit metadata and graph structure)
-    // The includeGraph/includeGitTags flags control what appears in the output
-    const graph = await deps.getCommitGraph(gitRoot, range);
-
-    // Process each commit
-    const commits: HistoryCommitResult[] = [];
-    for (const metadata of graph.commits) {
-      // Get patch if requested
-      const patch = includePatches
-        ? await deps.getCommitPatch(gitRoot, metadata.hash, detailLevel, includeSummary)
-        : undefined;
-
-      commits.push({
-        metadata,
-        patch,
-      });
-    }
-
-    // Calculate summary statistics
-    const summary: HistorySummary = {
-      totalCommits: commits.length,
-      mergeCommits: graph.mergeCommits.length,
-      range,
-      detailLevel,
-    };
-
-    logger.info(`✅ Git history analyzed ${commits.length} commits in range ${range}`);
-
-    // Conditionally include graph visualization and tags based on config
-    let outputGraph: CommitGraph | undefined = graph;
-    if (!includeGraph) {
-      // Don't include graph visualization at all
-      outputGraph = undefined;
-    } else if (!includeTags) {
-      // Include graph but without tags
-      outputGraph = {
-        ...graph,
-        tags: {},
-      };
-    }
-
-    return {
-      graph: outputGraph,
-      commits,
-      summary,
-    };
-  } catch (error) {
-    if (error instanceof RepomixError) {
-      throw error;
-    }
-    logger.trace('Failed to get git history:', (error as Error).message);
-    throw new RepomixError(`Failed to get git history: ${(error as Error).message}`, { cause: error });
-  }
-};
-
-/**
- * Unified git logs handler - routes to simple or comprehensive mode based on config
- *
- * Returns simple logs when:
- * - includeLogs is true AND
- * - includeCommitGraph is false AND
- * - includeSummary is false AND
- * - commitPatchDetail is undefined AND
- * - includeCommitPatches is false
- *
- * Returns comprehensive history when:
- * - includeLogs is true AND
- * - (includeCommitGraph is true OR includeSummary is true OR
- *    commitPatchDetail is defined OR includeCommitPatches is true)
- *
- * @returns GitLogResult with optional fields based on mode
+ * Get git logs with optional graph, patches, and summary
+ * Returns GitLogResult with fields populated based on config
  */
 export const getGitLogs = async (
   rootDirs: string[],
@@ -307,31 +136,92 @@ export const getGitLogs = async (
     getCommitPatch,
   },
 ): Promise<GitLogResult | undefined> => {
-  // Only run if git logs are enabled
   if (!config.output.git?.includeLogs) {
     logger.trace('Git logs not enabled');
     return undefined;
   }
 
-  // Determine which mode to use based on config
-  // Critical: Check commitPatchDetail to ensure diff format flags trigger comprehensive mode
-  const needsComprehensiveMode =
-    config.output.git.includeCommitGraph === true ||
-    config.output.git.includeSummary === true ||
-    config.output.git.includeCommitPatches === true ||
-    config.output.git.commitPatchDetail !== undefined;
+  try {
+    const gitRoot = rootDirs[0] || config.cwd;
 
-  if (needsComprehensiveMode) {
-    // Use comprehensive mode with graph, metadata, and patches
-    return getComprehensiveGitHistory(rootDirs, config, {
-      isGitRepository: deps.isGitRepository,
-      getCommitGraph: deps.getCommitGraph,
-      getCommitPatch: deps.getCommitPatch,
-    });
+    if (!(await deps.isGitRepository(gitRoot))) {
+      logger.trace(`Directory ${gitRoot} is not a git repository`);
+      return undefined;
+    }
+
+    const includeGraph = config.output.git.includeCommitGraph === true;
+    const includePatches = config.output.git.includeCommitPatches === true;
+    const includeSummary = config.output.git.includeSummary === true;
+
+    // Use git log --graph when graph, patches, or summary requested
+    if (includeGraph || includePatches || includeSummary) {
+      const range = config.output.git.commitRange || 'HEAD~50..HEAD';
+      const detailLevel = (config.output.git.commitPatchDetail as PatchDetailLevel) || 'name-only';
+      const includeTags = config.output.git.includeGitTags !== false;
+
+      logger.trace('Fetching git log with graph', {
+        range,
+        detailLevel,
+        includeGraph,
+        includeTags,
+        includePatches,
+        includeSummary,
+      });
+
+      const graph = await deps.getCommitGraph(gitRoot, range);
+      const commits: HistoryCommitResult[] = [];
+
+      for (const metadata of graph.commits) {
+        const patch = includePatches
+          ? await deps.getCommitPatch(gitRoot, metadata.hash, detailLevel, includeSummary)
+          : undefined;
+        commits.push({ metadata, patch });
+      }
+
+      logger.info(`✅ Analyzed ${commits.length} commits in range ${range}`);
+
+      return {
+        commits,
+        graph: includeGraph ? (includeTags ? graph : { ...graph, tags: {} }) : undefined,
+        summary: includeSummary
+          ? {
+              totalCommits: commits.length,
+              mergeCommits: graph.mergeCommits.length,
+              range,
+              detailLevel,
+            }
+          : undefined,
+      };
+    }
+
+    // Use git log command for basic commit history
+    const maxCommits = config.output.git?.includeLogsCount || 50;
+    const logContent = await deps.getGitLog(gitRoot, maxCommits);
+    const parsedCommits = parseGitLog(logContent);
+
+    const commits: HistoryCommitResult[] = parsedCommits.map((commit) => ({
+      metadata: {
+        hash: '',
+        abbreviatedHash: '',
+        parents: [],
+        author: { name: '', email: '', date: commit.date },
+        committer: { name: '', email: '', date: commit.date },
+        message: commit.message,
+        body: '',
+        files: commit.files,
+      },
+      patch: undefined,
+    }));
+
+    logger.info(`✅ Fetched ${commits.length} commits`);
+
+    return { commits, logContent };
+  } catch (error) {
+    if (error instanceof RepomixError) {
+      throw error;
+    }
+    const errorMessage = (error as Error).message;
+    logger.trace('Failed to get git logs:', errorMessage);
+    throw new RepomixError(`Failed to get git logs: ${errorMessage}`, { cause: error });
   }
-
-  // Use simple mode with basic log output
-  return getSimpleGitLogs(rootDirs, config, {
-    getGitLog: deps.getGitLog,
-  });
 };

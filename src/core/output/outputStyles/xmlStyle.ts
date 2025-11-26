@@ -77,17 +77,15 @@ This section contains the contents of the repository's files.
 </files>
 </git_log_commit>
 {{/each}}
-</git_logs>
-{{/if}}
 
-{{#if gitCommitHistoryEnabled}}
-<git_history>
+{{#if gitCommitHistorySummary}}
 <summary>
 <total_commits>{{{gitCommitHistorySummary.totalCommits}}}</total_commits>
 <merge_commits>{{{gitCommitHistorySummary.mergeCommits}}}</merge_commits>
 <range>{{{gitCommitHistorySummary.range}}}</range>
 <detail_level>{{{gitCommitHistorySummary.detailLevel}}}</detail_level>
 </summary>
+{{/if}}
 
 {{#if gitCommitGraph}}
 <commit_graph>
@@ -109,6 +107,7 @@ This section contains the contents of the repository's files.
 </commit_graph>
 {{/if}}
 
+{{#if gitCommitHistoryItems}}
 <commits>
 {{#each gitCommitHistoryItems}}
 <commit hash="{{{this.metadata.hash}}}" abbreviated_hash="{{{this.metadata.abbreviatedHash}}}">
@@ -148,7 +147,8 @@ This section contains the contents of the repository's files.
 </commit>
 {{/each}}
 </commits>
-</git_history>
+{{/if}}
+</git_logs>
 {{/if}}
 
 {{#if instruction}}

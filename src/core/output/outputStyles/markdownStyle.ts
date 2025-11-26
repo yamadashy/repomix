@@ -74,16 +74,15 @@ export const getMarkdownTemplate = () => {
 {{/each}}
 
 {{/each}}
-{{/if}}
 
-{{#if gitCommitHistoryEnabled}}
-# Git Commit History
-
+{{#if gitCommitHistorySummary}}
 ## Summary
 - **Total Commits**: {{{gitCommitHistorySummary.totalCommits}}}
 - **Merge Commits**: {{{gitCommitHistorySummary.mergeCommits}}}
 - **Range**: \`{{{gitCommitHistorySummary.range}}}\`
 - **Detail Level**: {{{gitCommitHistorySummary.detailLevel}}}
+
+{{/if}}
 
 {{#if gitCommitGraph}}
 ## Commit Graph
@@ -109,6 +108,7 @@ export const getMarkdownTemplate = () => {
 
 {{/if}}
 
+{{#if gitCommitHistoryItems}}
 ## Commits
 
 {{#each gitCommitHistoryItems}}
@@ -146,6 +146,7 @@ export const getMarkdownTemplate = () => {
 ---
 
 {{/each}}
+{{/if}}
 {{/if}}
 
 {{#if instruction}}

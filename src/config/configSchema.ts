@@ -122,7 +122,7 @@ export const repomixConfigDefaultSchema = z.object({
       includeCommitGraph: z.boolean().default(false),
       includeSummary: z.boolean().default(false),
       includeGitTags: z.boolean().default(true),
-      includeCommitPatches: z.boolean().default(true),
+      includeCommitPatches: z.boolean().default(false),
     }),
   }),
   include: z.array(z.string()).default([]),

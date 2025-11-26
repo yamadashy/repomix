@@ -327,7 +327,7 @@ describe('outputGenerate', () => {
       output: {
         filePath: 'output.md',
         style: 'markdown',
-        git: { includeCommitGraph: true, includeCommitPatches: true },
+        git: { includeLogs: true, includeCommitGraph: true, includeCommitPatches: true },
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
@@ -371,7 +371,7 @@ describe('outputGenerate', () => {
       mockGitLogResult,
     );
 
-    expect(output).toContain('Git Commit History');
+    expect(output).toContain('# Git Logs');
     expect(output).toContain('feat: add feature');
     expect(output).toContain('John Doe');
     expect(output).toContain('john@example.com');
@@ -386,7 +386,7 @@ describe('outputGenerate', () => {
         filePath: 'output.xml',
         style: 'xml',
         parsableStyle: true,
-        git: { includeCommitGraph: true, includeCommitPatches: true },
+        git: { includeLogs: true, includeCommitGraph: true, includeCommitPatches: true },
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
@@ -433,16 +433,16 @@ describe('outputGenerate', () => {
     const parser = new XMLParser({ ignoreAttributes: false });
     const parsedOutput = parser.parse(output);
 
-    expect(parsedOutput.repomix.git_history).toBeDefined();
-    expect(parsedOutput.repomix.git_history.summary.total_commits).toBe(1);
-    expect(parsedOutput.repomix.git_history.summary.range).toBe('HEAD~1..HEAD');
-    expect(parsedOutput.repomix.git_history.commit_graph.ascii_graph).toBe('* abc123 fix: bug fix');
+    expect(parsedOutput.repomix.git_logs).toBeDefined();
+    expect(parsedOutput.repomix.git_logs.summary.total_commits).toBe(1);
+    expect(parsedOutput.repomix.git_logs.summary.range).toBe('HEAD~1..HEAD');
+    expect(parsedOutput.repomix.git_logs.commit_graph.ascii_graph).toBe('* abc123 fix: bug fix');
     // merge_commits is empty array in mock, which XMLBuilder omits from output
-    expect(parsedOutput.repomix.git_history.commit_graph.merge_commits).toBeUndefined();
+    expect(parsedOutput.repomix.git_logs.commit_graph.merge_commits).toBeUndefined();
     // With single commit, fast-xml-parser returns object directly (not array)
-    const commit = Array.isArray(parsedOutput.repomix.git_history.commits)
-      ? parsedOutput.repomix.git_history.commits[0]
-      : parsedOutput.repomix.git_history.commits;
+    const commit = Array.isArray(parsedOutput.repomix.git_logs.commits)
+      ? parsedOutput.repomix.git_logs.commits[0]
+      : parsedOutput.repomix.git_logs.commits;
     expect(commit['@_hash']).toBe('abc1234567890abcdef');
     expect(commit.author.name).toBe('Jane Smith');
     expect(commit.files).toBe('src/bugfix.ts');
@@ -454,7 +454,7 @@ describe('outputGenerate', () => {
         filePath: 'output.xml',
         style: 'xml',
         parsableStyle: false,
-        git: { includeCommitGraph: true, includeCommitPatches: true },
+        git: { includeLogs: true, includeCommitGraph: true, includeCommitPatches: true },
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
@@ -504,7 +504,7 @@ describe('outputGenerate', () => {
         filePath: 'output.xml',
         style: 'xml',
         parsableStyle: true,
-        git: { includeCommitGraph: true, includeCommitPatches: true },
+        git: { includeLogs: true, includeCommitGraph: true, includeCommitPatches: true },
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
@@ -551,6 +551,6 @@ describe('outputGenerate', () => {
     const parser = new XMLParser({ ignoreAttributes: false });
     const parsedOutput = parser.parse(output);
 
-    expect(parsedOutput.repomix.git_history.commit_graph.merge_commits).toBe('merge1234567890');
+    expect(parsedOutput.repomix.git_logs.commit_graph.merge_commits).toBe('merge1234567890');
   });
 });
