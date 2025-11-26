@@ -65,13 +65,15 @@ describe('gitLogHandle', () => {
 
   describe('getGitLogs', () => {
     test('should return git logs when includeLogs is enabled', async () => {
-      const mockLogContent = `${GIT_LOG_RECORD_SEPARATOR}2024-01-01 10:00:00 +0900|Initial commit
-file1.txt
-file2.txt
-${GIT_LOG_RECORD_SEPARATOR}2024-01-02 11:00:00 +0900|Add feature
-src/feature.ts`;
+      // Mock output from execGitLogComplete with record/field separators
+      const RECORD_SEP = '\x1E';
+      const FIELD_SEP = '\x1F';
+      const NULL_BYTE = '\x00';
 
-      const mockGetGitLog = vi.fn().mockResolvedValue(mockLogContent);
+      const mockCompleteOutput = `${RECORD_SEP}abc123${FIELD_SEP}abc12${FIELD_SEP}${FIELD_SEP}Author One${FIELD_SEP}author1@example.com${FIELD_SEP}2024-01-01T10:00:00+09:00${FIELD_SEP}Author One${FIELD_SEP}author1@example.com${FIELD_SEP}2024-01-01T10:00:00+09:00${FIELD_SEP}Initial commit${FIELD_SEP}${NULL_BYTE}file1.txt
+file2.txt${RECORD_SEP}def456${FIELD_SEP}def45${FIELD_SEP}abc123${FIELD_SEP}Author Two${FIELD_SEP}author2@example.com${FIELD_SEP}2024-01-02T11:00:00+09:00${FIELD_SEP}Author Two${FIELD_SEP}author2@example.com${FIELD_SEP}2024-01-02T11:00:00+09:00${FIELD_SEP}Add feature${FIELD_SEP}${NULL_BYTE}src/feature.ts`;
+
+      const mockExecGitLogComplete = vi.fn().mockResolvedValue(mockCompleteOutput);
       const config: RepomixConfigMerged = {
         cwd: '/project',
         output: {
@@ -83,27 +85,34 @@ src/feature.ts`;
       } as RepomixConfigMerged;
 
       const result = await getGitLogs(['/project/src'], config, {
-        getGitLog: mockGetGitLog,
+        execGitLogComplete: mockExecGitLogComplete,
+        getTags: vi.fn().mockResolvedValue({}),
         isGitRepository: vi.fn().mockResolvedValue(true),
-        getCommitGraph: vi.fn(),
-        getCommitPatch: vi.fn(),
       });
 
       expect(result).toEqual({
         logCommits: [
           {
-            date: '2024-01-01 10:00:00 +0900',
+            date: '2024-01-01T10:00:00+09:00',
             message: 'Initial commit',
             files: ['file1.txt', 'file2.txt'],
           },
           {
-            date: '2024-01-02 11:00:00 +0900',
+            date: '2024-01-02T11:00:00+09:00',
             message: 'Add feature',
             files: ['src/feature.ts'],
           },
         ],
+        graph: undefined,
+        summary: undefined,
       });
-      expect(mockGetGitLog).toHaveBeenCalledWith('/project/src', 25);
+      expect(mockExecGitLogComplete).toHaveBeenCalledWith({
+        directory: '/project/src',
+        range: undefined,
+        maxCommits: 25,
+        includeGraph: false,
+        patchDetail: undefined,
+      });
     });
 
     test('should return undefined when includeLogs is disabled', async () => {
@@ -122,8 +131,13 @@ src/feature.ts`;
     });
 
     test('should use default commit count when includeLogsCount is not specified', async () => {
-      const mockGetGitLog = vi.fn().mockResolvedValue(`${GIT_LOG_RECORD_SEPARATOR}2024-01-01 10:00:00 +0900|Test commit
-test.txt`);
+      const RECORD_SEP = '\x1E';
+      const FIELD_SEP = '\x1F';
+      const NULL_BYTE = '\x00';
+
+      const mockCompleteOutput = `${RECORD_SEP}abc123${FIELD_SEP}abc12${FIELD_SEP}${FIELD_SEP}Author One${FIELD_SEP}author1@example.com${FIELD_SEP}2024-01-01T10:00:00+09:00${FIELD_SEP}Author One${FIELD_SEP}author1@example.com${FIELD_SEP}2024-01-01T10:00:00+09:00${FIELD_SEP}Test commit${FIELD_SEP}${NULL_BYTE}test.txt`;
+
+      const mockExecGitLogComplete = vi.fn().mockResolvedValue(mockCompleteOutput);
       const config: RepomixConfigMerged = {
         cwd: '/project',
         output: {
@@ -134,17 +148,22 @@ test.txt`);
       } as RepomixConfigMerged;
 
       await getGitLogs(['/project/src'], config, {
-        getGitLog: mockGetGitLog,
+        execGitLogComplete: mockExecGitLogComplete,
+        getTags: vi.fn().mockResolvedValue({}),
         isGitRepository: vi.fn().mockResolvedValue(true),
-        getCommitGraph: vi.fn(),
-        getCommitPatch: vi.fn(),
       });
 
-      expect(mockGetGitLog).toHaveBeenCalledWith('/project/src', 50);
+      expect(mockExecGitLogComplete).toHaveBeenCalledWith({
+        directory: '/project/src',
+        range: undefined,
+        maxCommits: 50,
+        includeGraph: false,
+        patchDetail: undefined,
+      });
     });
 
     test('should use first directory as git root', async () => {
-      const mockGetGitLog = vi.fn().mockResolvedValue('');
+      const mockExecGitLogComplete = vi.fn().mockResolvedValue('');
       const config: RepomixConfigMerged = {
         cwd: '/fallback',
         output: {
@@ -155,17 +174,22 @@ test.txt`);
       } as RepomixConfigMerged;
 
       await getGitLogs(['/first/dir', '/second/dir'], config, {
-        getGitLog: mockGetGitLog,
+        execGitLogComplete: mockExecGitLogComplete,
+        getTags: vi.fn().mockResolvedValue({}),
         isGitRepository: vi.fn().mockResolvedValue(true),
-        getCommitGraph: vi.fn(),
-        getCommitPatch: vi.fn(),
       });
 
-      expect(mockGetGitLog).toHaveBeenCalledWith('/first/dir', 50);
+      expect(mockExecGitLogComplete).toHaveBeenCalledWith({
+        directory: '/first/dir',
+        range: undefined,
+        maxCommits: 50,
+        includeGraph: false,
+        patchDetail: undefined,
+      });
     });
 
     test('should fallback to config.cwd when no directories provided', async () => {
-      const mockGetGitLog = vi.fn().mockResolvedValue('');
+      const mockExecGitLogComplete = vi.fn().mockResolvedValue('');
       const config: RepomixConfigMerged = {
         cwd: '/fallback',
         output: {
@@ -176,18 +200,23 @@ test.txt`);
       } as RepomixConfigMerged;
 
       await getGitLogs([], config, {
-        getGitLog: mockGetGitLog,
+        execGitLogComplete: mockExecGitLogComplete,
+        getTags: vi.fn().mockResolvedValue({}),
         isGitRepository: vi.fn().mockResolvedValue(true),
-        getCommitGraph: vi.fn(),
-        getCommitPatch: vi.fn(),
       });
 
-      expect(mockGetGitLog).toHaveBeenCalledWith('/fallback', 50);
+      expect(mockExecGitLogComplete).toHaveBeenCalledWith({
+        directory: '/fallback',
+        range: undefined,
+        maxCommits: 50,
+        includeGraph: false,
+        patchDetail: undefined,
+      });
     });
 
-    test('should throw RepomixError when getGitLog fails', async () => {
+    test('should throw RepomixError when execGitLogComplete fails', async () => {
       const mockError = new Error('git failed');
-      const mockGetGitLog = vi.fn().mockRejectedValue(mockError);
+      const mockExecGitLogComplete = vi.fn().mockRejectedValue(mockError);
       const config: RepomixConfigMerged = {
         cwd: '/project',
         output: {
@@ -199,24 +228,22 @@ test.txt`);
 
       await expect(
         getGitLogs(['/project'], config, {
-          getGitLog: mockGetGitLog,
+          execGitLogComplete: mockExecGitLogComplete,
+          getTags: vi.fn().mockResolvedValue({}),
           isGitRepository: vi.fn().mockResolvedValue(true),
-          getCommitGraph: vi.fn(),
-          getCommitPatch: vi.fn(),
         }),
       ).rejects.toThrow(RepomixError);
       await expect(
         getGitLogs(['/project'], config, {
-          getGitLog: mockGetGitLog,
+          execGitLogComplete: mockExecGitLogComplete,
+          getTags: vi.fn().mockResolvedValue({}),
           isGitRepository: vi.fn().mockResolvedValue(true),
-          getCommitGraph: vi.fn(),
-          getCommitPatch: vi.fn(),
         }),
       ).rejects.toThrow('Failed to get git logs: git failed');
     });
 
     test('should handle empty git log output', async () => {
-      const mockGetGitLog = vi.fn().mockResolvedValue('');
+      const mockExecGitLogComplete = vi.fn().mockResolvedValue('');
       const config: RepomixConfigMerged = {
         cwd: '/project',
         output: {
@@ -227,10 +254,9 @@ test.txt`);
       } as RepomixConfigMerged;
 
       const result = await getGitLogs(['/project'], config, {
-        getGitLog: mockGetGitLog,
+        execGitLogComplete: mockExecGitLogComplete,
+        getTags: vi.fn().mockResolvedValue({}),
         isGitRepository: vi.fn().mockResolvedValue(true),
-        getCommitGraph: vi.fn(),
-        getCommitPatch: vi.fn(),
       });
 
       expect(result).toEqual({
@@ -239,10 +265,10 @@ test.txt`);
     });
 
     test('should parse git log correctly with malformed separator content', async () => {
-      // Test behavior when log content doesn't match expected separator
-      const malformedLogContent = 'random content without separator';
+      // Test behavior when log content doesn't match expected separator format
+      const malformedLogContent = 'random content without proper RECORD_SEP or FIELD_SEP';
 
-      const mockGetGitLog = vi.fn().mockResolvedValue(malformedLogContent);
+      const mockExecGitLogComplete = vi.fn().mockResolvedValue(malformedLogContent);
       const config: RepomixConfigMerged = {
         cwd: '/project',
         output: {
@@ -253,10 +279,9 @@ test.txt`);
       } as RepomixConfigMerged;
 
       const result = await getGitLogs(['/project'], config, {
-        getGitLog: mockGetGitLog,
+        execGitLogComplete: mockExecGitLogComplete,
+        getTags: vi.fn().mockResolvedValue({}),
         isGitRepository: vi.fn().mockResolvedValue(true),
-        getCommitGraph: vi.fn(),
-        getCommitPatch: vi.fn(),
       });
 
       // Should return empty logCommits array when content cannot be parsed properly
@@ -264,10 +289,14 @@ test.txt`);
     });
 
     test('should handle Windows line endings (CRLF) correctly', async () => {
-      // Test with Windows-style line endings (\r\n)
-      const mockLogContent = `${GIT_LOG_RECORD_SEPARATOR}2024-01-01 10:00:00 +0900|Windows commit\r\nfile1.txt\r\nfile2.txt`;
+      // Test with Windows-style line endings (\r\n) in execGitLogComplete output format
+      const RECORD_SEP = '\x1E';
+      const FIELD_SEP = '\x1F';
+      const NULL_BYTE = '\x00';
 
-      const mockGetGitLog = vi.fn().mockResolvedValue(mockLogContent);
+      const mockCompleteOutput = `${RECORD_SEP}abc123${FIELD_SEP}abc12${FIELD_SEP}${FIELD_SEP}Author One${FIELD_SEP}author1@example.com${FIELD_SEP}2024-01-01T10:00:00+09:00${FIELD_SEP}Author One${FIELD_SEP}author1@example.com${FIELD_SEP}2024-01-01T10:00:00+09:00${FIELD_SEP}Windows commit${FIELD_SEP}${NULL_BYTE}file1.txt\r\nfile2.txt`;
+
+      const mockExecGitLogComplete = vi.fn().mockResolvedValue(mockCompleteOutput);
       const config: RepomixConfigMerged = {
         cwd: '/project',
         output: {
@@ -278,15 +307,14 @@ test.txt`);
       } as RepomixConfigMerged;
 
       const result = await getGitLogs(['/project'], config, {
-        getGitLog: mockGetGitLog,
+        execGitLogComplete: mockExecGitLogComplete,
+        getTags: vi.fn().mockResolvedValue({}),
         isGitRepository: vi.fn().mockResolvedValue(true),
-        getCommitGraph: vi.fn(),
-        getCommitPatch: vi.fn(),
       });
 
       expect(result?.logCommits).toEqual([
         {
-          date: '2024-01-01 10:00:00 +0900',
+          date: '2024-01-01T10:00:00+09:00',
           message: 'Windows commit',
           files: ['file1.txt', 'file2.txt'],
         },
@@ -294,10 +322,14 @@ test.txt`);
     });
 
     test('should handle mixed line endings correctly', async () => {
-      // Test with mixed Unix (\n) and Windows (\r\n) line endings
-      const mockLogContent = `${GIT_LOG_RECORD_SEPARATOR}2024-01-01 10:00:00 +0900|Mixed line endings\nfile1.txt\r\nfile2.txt`;
+      // Test with mixed Unix (\n) and Windows (\r\n) line endings in execGitLogComplete output format
+      const RECORD_SEP = '\x1E';
+      const FIELD_SEP = '\x1F';
+      const NULL_BYTE = '\x00';
 
-      const mockGetGitLog = vi.fn().mockResolvedValue(mockLogContent);
+      const mockCompleteOutput = `${RECORD_SEP}abc123${FIELD_SEP}abc12${FIELD_SEP}${FIELD_SEP}Author One${FIELD_SEP}author1@example.com${FIELD_SEP}2024-01-01T10:00:00+09:00${FIELD_SEP}Author One${FIELD_SEP}author1@example.com${FIELD_SEP}2024-01-01T10:00:00+09:00${FIELD_SEP}Mixed line endings${FIELD_SEP}${NULL_BYTE}file1.txt\nfile2.txt\r\nfile3.txt`;
+
+      const mockExecGitLogComplete = vi.fn().mockResolvedValue(mockCompleteOutput);
       const config: RepomixConfigMerged = {
         cwd: '/project',
         output: {
@@ -308,17 +340,16 @@ test.txt`);
       } as RepomixConfigMerged;
 
       const result = await getGitLogs(['/project'], config, {
-        getGitLog: mockGetGitLog,
+        execGitLogComplete: mockExecGitLogComplete,
+        getTags: vi.fn().mockResolvedValue({}),
         isGitRepository: vi.fn().mockResolvedValue(true),
-        getCommitGraph: vi.fn(),
-        getCommitPatch: vi.fn(),
       });
 
       expect(result?.logCommits).toEqual([
         {
-          date: '2024-01-01 10:00:00 +0900',
+          date: '2024-01-01T10:00:00+09:00',
           message: 'Mixed line endings',
-          files: ['file1.txt', 'file2.txt'],
+          files: ['file1.txt', 'file2.txt', 'file3.txt'],
         },
       ]);
     });

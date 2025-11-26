@@ -365,7 +365,7 @@ const escapeMermaidString = (str: string): string => {
  * commit histories with merge visualization without branch context.
  * We generate a simplified linear view with merge indicators.
  */
-const generateMermaidGraph = (commits: CommitMetadata[], tags: Record<string, string>): string => {
+export const generateMermaidGraph = (commits: CommitMetadata[], tags: Record<string, string>): string => {
   const lines: string[] = [];
   lines.push('gitGraph');
 

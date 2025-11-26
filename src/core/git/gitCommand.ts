@@ -4,6 +4,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import type { PatchDetailLevel } from './gitHistory.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -173,6 +174,108 @@ export const execGitLog = async (
     return result.stdout || '';
   } catch (error) {
     logger.trace('Failed to execute git log:', (error as Error).message);
+    throw error;
+  }
+};
+
+/**
+ * Options for execGitLogComplete
+ */
+export interface GitLogCompleteOptions {
+  directory: string;
+  range?: string; // e.g., "HEAD~50..HEAD"
+  maxCommits?: number; // e.g., 50 (used when no range)
+  includeGraph?: boolean; // Adds --graph --all
+  patchDetail?: PatchDetailLevel; // Adds --stat, --patch, etc.
+}
+
+/**
+ * Execute git log with full metadata format in a single optimized call
+ * Fetches all commit metadata, files, and optionally patches/graph in ONE git subprocess
+ *
+ * @param options - Configuration for what to include in output
+ * @returns Raw git log output with record separators for parsing
+ */
+export const execGitLogComplete = async (
+  options: GitLogCompleteOptions,
+  deps = {
+    execFileAsync,
+  },
+): Promise<string> => {
+  // Full metadata format - all fields needed for complete commit information
+  const RECORD_SEP = '%x1E'; // ASCII record separator between commits
+  const FIELD_SEP = '%x1F'; // ASCII unit separator between fields
+  const NULL_BYTE = '%x00'; // Separates metadata from files
+
+  const metadataFormat = [
+    '%H', // Full hash
+    '%h', // Abbreviated hash
+    '%P', // Parent hashes (space-separated)
+    '%an', // Author name
+    '%ae', // Author email
+    '%aI', // Author date (ISO 8601)
+    '%cn', // Committer name
+    '%ce', // Committer email
+    '%cI', // Committer date (ISO 8601)
+    '%s', // Subject (first line of message)
+    '%b', // Body (rest of message)
+  ].join(`%n${FIELD_SEP}`); // Use field separator for reliable parsing
+
+  const args = [
+    '-C',
+    options.directory,
+    'log',
+    `--pretty=format:${RECORD_SEP}${metadataFormat}${NULL_BYTE}`,
+    '--name-only',
+  ];
+
+  // Add patch format conditionally (git supports combining with --pretty)
+  if (options.patchDetail) {
+    switch (options.patchDetail) {
+      case 'patch':
+        args.push('--patch');
+        break;
+      case 'stat':
+        args.push('--stat');
+        break;
+      case 'numstat':
+        args.push('--numstat');
+        break;
+      case 'shortstat':
+        args.push('--shortstat');
+        break;
+      case 'dirstat':
+        args.push('--dirstat');
+        break;
+      case 'name-status':
+        args.push('--name-status');
+        break;
+      case 'raw':
+        args.push('--raw');
+        break;
+      case 'name-only':
+        // Already added via --name-only above
+        break;
+    }
+  }
+
+  // Add graph visualization conditionally
+  if (options.includeGraph) {
+    args.push('--graph', '--all');
+  }
+
+  // Add range or commit count
+  if (options.range) {
+    args.push(options.range);
+  } else if (options.maxCommits) {
+    args.push('-n', options.maxCommits.toString());
+  }
+
+  try {
+    const result = await deps.execFileAsync('git', args);
+    return result.stdout || '';
+  } catch (error) {
+    logger.trace('Failed to execute git log with complete metadata:', (error as Error).message);
     throw error;
   }
 };

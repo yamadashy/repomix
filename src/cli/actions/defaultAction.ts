@@ -327,7 +327,10 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
       ...cliConfig.output?.git,
       // Enable logs if any diff format or enhancement flag is used
       includeLogs: true,
-      ...(commitPatchDetail && { commitPatchDetail }),
+      ...(commitPatchDetail && {
+        commitPatchDetail,
+        includeCommitPatches: true,
+      }),
       ...(options.graph && { includeCommitGraph: true }),
       ...(options.summary && { includeSummary: true }),
       ...(options.commitRange && { commitRange: options.commitRange }),

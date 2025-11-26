@@ -1,12 +1,14 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
-import { execGitLog } from './gitCommand.js';
+import { execGitLog, execGitLogComplete, type GitLogCompleteOptions } from './gitCommand.js';
 import {
   type CommitGraph,
   type CommitMetadata,
+  generateMermaidGraph,
   getCommitGraph,
   getCommitPatch,
+  getTags,
   type PatchDetailLevel,
 } from './gitHistory.js';
 import { isGitRepository } from './gitRepositoryHandle.js';
@@ -122,6 +124,128 @@ const parseGitLog = (rawLogOutput: string, recordSeparator = GIT_LOG_RECORD_SEPA
   return commits;
 };
 
+/**
+ * Parsed commit from execGitLogComplete with all fields
+ */
+interface ParsedCommitComplete {
+  hash: string;
+  abbreviatedHash: string;
+  parents: string[];
+  author: { name: string; email: string; date: string };
+  committer: { name: string; email: string; date: string };
+  message: string;
+  body: string;
+  files: string[];
+  patch?: string; // Present if patchDetail was specified
+  graphPrefix?: string; // Present if --graph was used
+}
+
+/**
+ * Parse git log output from execGitLogComplete
+ * Handles interleaved metadata, files, patches, and graph prefixes
+ */
+const parseGitLogComplete = (
+  rawOutput: string,
+  options: {
+    hasGraph: boolean;
+    hasPatch: boolean;
+    patchFormat?: string;
+  },
+): ParsedCommitComplete[] => {
+  if (!rawOutput.trim()) {
+    return [];
+  }
+
+  const RECORD_SEP = '\x1E';
+  const FIELD_SEP = '\x1F';
+  const NULL_BYTE = '\x00';
+
+  const commits: ParsedCommitComplete[] = [];
+  const records = rawOutput.split(RECORD_SEP).filter(Boolean);
+
+  for (const record of records) {
+    let graphPrefix = '';
+    let content = record;
+
+    // Extract graph prefix if present (lines before first field separator)
+    if (options.hasGraph) {
+      const lines = record.split('\n');
+      const firstMetadataLine = lines.findIndex((l) => l.includes(FIELD_SEP));
+      if (firstMetadataLine > 0) {
+        graphPrefix = lines.slice(0, firstMetadataLine).join('\n');
+        content = lines.slice(firstMetadataLine).join('\n');
+      }
+    }
+
+    // Split metadata from files/patch section
+    const [metadataSection, filesAndPatch] = content.split(NULL_BYTE);
+    if (!metadataSection) continue;
+
+    // Parse metadata fields (remove graph prefixes from each line)
+    const fields = metadataSection.split(FIELD_SEP).map((f) => f.replace(/^[*|\/\\ ]+/, '').trim());
+
+    if (fields.length < 11) continue; // Need all metadata fields
+
+    const [
+      hash,
+      abbrevHash,
+      parentsStr,
+      authorName,
+      authorEmail,
+      authorDate,
+      committerName,
+      committerEmail,
+      committerDate,
+      subject,
+      ...bodyLines
+    ] = fields;
+
+    // Split files and patch (separated by blank lines)
+    let files: string[] = [];
+    let patch: string | undefined;
+
+    if (filesAndPatch) {
+      // Remove graph prefixes from file/patch section and normalize line endings
+      const cleanedSection = filesAndPatch
+        .split(/\r?\n/) // Handle both \n and \r\n
+        .map((line) => line.replace(/^[*|\/\\ ]+/, ''))
+        .join('\n');
+
+      const sections = cleanedSection.split(/\n\n+/); // Split on blank lines
+      const fileSection = sections[0];
+      files = fileSection ? fileSection.split('\n').filter((l) => l.trim() !== '') : [];
+
+      // Patch comes after files (if hasPatch)
+      if (options.hasPatch && sections.length > 1) {
+        patch = sections.slice(1).join('\n\n').trim();
+      }
+    }
+
+    commits.push({
+      hash: hash.trim(),
+      abbreviatedHash: abbrevHash.trim(),
+      parents: parentsStr ? parentsStr.trim().split(' ').filter(Boolean) : [],
+      author: {
+        name: authorName.trim(),
+        email: authorEmail.trim(),
+        date: authorDate.trim(),
+      },
+      committer: {
+        name: committerName.trim(),
+        email: committerEmail.trim(),
+        date: committerDate.trim(),
+      },
+      message: subject.trim(),
+      body: bodyLines.join('\n').trim(),
+      files,
+      patch,
+      ...(options.hasGraph && { graphPrefix }),
+    });
+  }
+
+  return commits;
+};
+
 export const getGitLog = async (
   directory: string,
   maxCommits: number,
@@ -151,10 +275,9 @@ export const getGitLogs = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
   deps = {
-    getGitLog,
+    execGitLogComplete,
+    getTags,
     isGitRepository,
-    getCommitGraph,
-    getCommitPatch,
   },
 ): Promise<GitLogResult | undefined> => {
   if (!config.output.git?.includeLogs) {
@@ -170,74 +293,107 @@ export const getGitLogs = async (
       return undefined;
     }
 
-    const includeGraph = config.output.git.includeCommitGraph === true;
-    const includePatches = config.output.git.includeCommitPatches === true;
-    const includeSummary = config.output.git.includeSummary === true;
+    const gitConfig = config.output.git;
 
-    // Use git log --graph when graph, patches, or summary requested
-    if (includeGraph || includePatches || includeSummary) {
-      const range = config.output.git.commitRange || 'HEAD~50..HEAD';
-      const detailLevel = (config.output.git.commitPatchDetail as PatchDetailLevel) || 'name-only';
-      const includeTags = config.output.git.includeGitTags !== false;
+    // Determine if enhanced mode needed
+    const needsEnhanced =
+      gitConfig.includeCommitGraph === true ||
+      gitConfig.includeCommitPatches === true ||
+      gitConfig.includeSummary === true;
 
-      logger.trace('Fetching git log with graph', {
-        range,
-        detailLevel,
-        includeGraph,
-        includeTags,
-        includePatches,
-        includeSummary,
-      });
+    const range = needsEnhanced ? (gitConfig.commitRange || 'HEAD~50..HEAD') : undefined;
+    const maxCommits = gitConfig.includeLogsCount || 50;
 
-      const graph = await deps.getCommitGraph(gitRoot, range);
-      const logCommits: GitLogCommit[] = [];
+    logger.trace('Fetching git logs (single optimized path)', {
+      needsEnhanced,
+      range,
+      maxCommits,
+      includeGraph: gitConfig.includeCommitGraph,
+      includePatches: gitConfig.includeCommitPatches,
+      includeSummary: gitConfig.includeSummary,
+    });
 
-      for (const metadata of graph.commits) {
-        const patch = includePatches
-          ? await deps.getCommitPatch(gitRoot, metadata.hash, detailLevel, includeSummary)
-          : undefined;
+    // SINGLE git log call with all requested features
+    const rawOutput = await deps.execGitLogComplete({
+      directory: gitRoot,
+      range,
+      maxCommits,
+      includeGraph: gitConfig.includeCommitGraph === true,
+      patchDetail: gitConfig.includeCommitPatches === true ? gitConfig.commitPatchDetail : undefined,
+    });
 
-        // Convert to GitLogCommit with extended fields
-        logCommits.push({
-          // Core fields
-          date: metadata.author.date,
-          message: metadata.message,
-          files: metadata.files,
-          // Extended fields
-          hash: metadata.hash,
-          abbreviatedHash: metadata.abbreviatedHash,
-          author: metadata.author,
-          committer: metadata.committer,
-          parents: metadata.parents,
-          body: metadata.body || undefined,
-          patch: patch || undefined,
-        });
-      }
+    // Parse complete output
+    const parsedCommits = parseGitLogComplete(rawOutput, {
+      hasGraph: gitConfig.includeCommitGraph === true,
+      hasPatch: gitConfig.includeCommitPatches === true,
+      patchFormat: gitConfig.commitPatchDetail,
+    });
 
-      logger.info(`✅ Analyzed ${logCommits.length} commits in range ${range}`);
+    logger.info(`✅ Fetched ${parsedCommits.length} commits`);
 
-      return {
-        logCommits,
-        graph: includeGraph ? (includeTags ? graph : { ...graph, tags: {} }) : undefined,
-        summary: includeSummary
-          ? {
-              totalCommits: logCommits.length,
-              mergeCommits: graph.mergeCommits.length,
-              range,
-              detailLevel,
-            }
-          : undefined,
+    // Map to GitLogCommit with progressive disclosure
+    const logCommits: GitLogCommit[] = parsedCommits.map((commit) => ({
+      // Core fields - always present
+      date: commit.author.date,
+      message: commit.message,
+      files: commit.files,
+      // Extended fields - only when enhanced mode
+      ...(needsEnhanced && {
+        hash: commit.hash,
+        abbreviatedHash: commit.abbreviatedHash,
+        author: commit.author,
+        committer: commit.committer,
+        parents: commit.parents,
+        body: commit.body || undefined,
+        patch: commit.patch || undefined,
+      }),
+    }));
+
+    // Build graph if requested
+    let graph: CommitGraph | undefined;
+    if (gitConfig.includeCommitGraph === true) {
+      const includeTags = gitConfig.includeGitTags !== false;
+      const tags = includeTags ? await deps.getTags(gitRoot) : {};
+
+      // Reconstruct ASCII graph from prefixes
+      const asciiGraph = parsedCommits.map((c) => c.graphPrefix).filter(Boolean).join('\n');
+
+      // Build metadata array for graph
+      const commitMetadata: CommitMetadata[] = parsedCommits.map((c) => ({
+        hash: c.hash,
+        abbreviatedHash: c.abbreviatedHash,
+        parents: c.parents,
+        author: c.author,
+        committer: c.committer,
+        message: c.message,
+        body: c.body,
+        files: c.files,
+      }));
+
+      const mergeCommits = commitMetadata.filter((c) => c.parents.length > 1).map((c) => c.hash);
+
+      const mermaidGraph = generateMermaidGraph(commitMetadata, tags);
+
+      graph = {
+        commits: commitMetadata,
+        graph: asciiGraph,
+        mermaidGraph,
+        mergeCommits,
+        tags,
       };
     }
 
-    // Use git log command for basic commit history
-    const maxCommits = config.output.git?.includeLogsCount || 50;
-    const logContent = await deps.getGitLog(gitRoot, maxCommits);
-    const logCommits = parseGitLog(logContent);
+    // Build summary if requested
+    const summary = gitConfig.includeSummary === true
+      ? {
+          totalCommits: logCommits.length,
+          mergeCommits: parsedCommits.filter((c) => c.parents.length > 1).length,
+          range: range || `last ${maxCommits} commits`,
+          detailLevel: (gitConfig.commitPatchDetail as PatchDetailLevel) || 'name-only',
+        }
+      : undefined;
 
-    logger.info(`✅ Fetched ${logCommits.length} commits`);
-
-    return { logCommits };
+    return { logCommits, graph, summary };
   } catch (error) {
     if (error instanceof RepomixError) {
       throw error;
