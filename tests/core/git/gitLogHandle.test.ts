@@ -193,6 +193,9 @@ test.txt`);
       await expect(
         getGitLogs(['/project'], config, {
           getGitLog: mockGetGitLog,
+          isGitRepository: vi.fn().mockResolvedValue(true),
+          getCommitGraph: vi.fn(),
+          getCommitPatch: vi.fn(),
         }),
       ).rejects.toThrow('Failed to get git logs: git failed');
     });
@@ -210,6 +213,9 @@ test.txt`);
 
       const result = await getGitLogs(['/project'], config, {
         getGitLog: mockGetGitLog,
+        isGitRepository: vi.fn().mockResolvedValue(true),
+        getCommitGraph: vi.fn(),
+        getCommitPatch: vi.fn(),
       });
 
       expect(result).toEqual({
@@ -234,11 +240,14 @@ test.txt`);
 
       const result = await getGitLogs(['/project'], config, {
         getGitLog: mockGetGitLog,
+        isGitRepository: vi.fn().mockResolvedValue(true),
+        getCommitGraph: vi.fn(),
+        getCommitPatch: vi.fn(),
       });
 
       // Should return empty commits array when content cannot be parsed properly
       expect(result?.commits).toEqual([]);
-      expect(result?.logContent).toBe(malformedLogContent);
+      expect((result as GitLogResult)?.logContent).toBe(malformedLogContent);
     });
 
     test('should handle Windows line endings (CRLF) correctly', async () => {
@@ -257,6 +266,9 @@ test.txt`);
 
       const result = await getGitLogs(['/project'], config, {
         getGitLog: mockGetGitLog,
+        isGitRepository: vi.fn().mockResolvedValue(true),
+        getCommitGraph: vi.fn(),
+        getCommitPatch: vi.fn(),
       });
 
       expect(result?.commits).toEqual([
@@ -284,6 +296,9 @@ test.txt`);
 
       const result = await getGitLogs(['/project'], config, {
         getGitLog: mockGetGitLog,
+        isGitRepository: vi.fn().mockResolvedValue(true),
+        getCommitGraph: vi.fn(),
+        getCommitPatch: vi.fn(),
       });
 
       expect(result?.commits).toEqual([

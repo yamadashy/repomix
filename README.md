@@ -286,23 +286,27 @@ repomix --include-logs --include-diffs
 
 The git logs include commit dates, messages, and file paths for each commit, providing valuable context for AI analysis of code evolution and development patterns.
 
-To analyze git commit history:
+To analyze git commit history with orthogonal flags:
 
 ```bash
-# Include comprehensive commit history analysis
-repomix --include-commit-history
+# Simple commit log (default name-only format)
+repomix --include-logs
 
-# Customize the commit range
-repomix --include-commit-history --commit-range HEAD~100..HEAD
+# With line-by-line diffs (git log --patch)
+repomix --include-logs --patch
 
-# Include commit patches with different detail levels
-repomix --include-commit-history patch  # patch, stat, name-only, metadata
+# With commit graph visualization (git log --graph --all)
+repomix --include-logs --graph
 
-# Disable specific components
-repomix --include-commit-history metadata  # commits only, no diffs
+# Full analysis: patches + graph + file operations summary
+repomix --include-logs --patch --graph --summary
+
+# Customize commit range (supports both .. and ... syntax)
+repomix --include-logs --commit-range "HEAD~100..HEAD"
+repomix --include-logs --commit-range "main...feature-branch"
 ```
 
-The commit history feature provides commit metadata (hash, author, date, message, files changed), visual commit graph (ASCII + Mermaid diagram), git tags mapping, and configurable patch detail levels (line-by-line diffs showing added/removed code, per-file change counts like "file.ts | 25 ++++----", filenames only, or commit info without diffs).
+The commit history feature provides commit metadata (hash, author, date, message, files changed), visual commit graph (ASCII + Mermaid diagram) with `--graph`, git tags mapping, and configurable diff formats (`--patch`, `--stat`, `--numstat`, `--shortstat`, `--dirstat`, `--name-only`, `--name-status`, `--raw`) that match git log parameters exactly.
 
 To compress the output:
 
@@ -650,12 +654,21 @@ Instruction
 - `--include-diffs`: Add git diff section showing working tree and staged changes
 - `--include-logs`: Add git commit history with messages and changed files
 - `--include-logs-count <count>`: Number of recent commits to include with --include-logs (default: 50)
-- `--include-commit-history [level]`: Include git commit history with optional detail level (default: stat)
-  - `patch`: line-by-line diffs showing added/removed code
-  - `stat`: per-file change counts (e.g., "file.ts | 25 ++++----")
-  - `name-only`: list of filenames that changed
-  - `metadata`: commit info only, no diffs
-- `--commit-range <range>`: Git commit range to analyze (default: HEAD~50..HEAD, e.g., "HEAD~100..HEAD" or "v1.0.0..HEAD")
+- `--commit-range <range>`: Git commit range to analyze (default: HEAD~50..HEAD, supports both .. and ... syntax, e.g., "HEAD~100..HEAD", "v1.0..v2.0", "main...feature-branch")
+
+**Git Log Diff Format Flags** (mutually exclusive - choose one):
+- `--stat`: Show per-file change counts (git log --stat)
+- `--patch`: Show line-by-line diffs (git log --patch)
+- `--numstat`: Show numeric additions/deletions per file (git log --numstat)
+- `--shortstat`: Show one-line summary of changes (git log --shortstat)
+- `--dirstat`: Show directory change distribution (git log --dirstat)
+- `--name-only`: Show filenames only (git log --name-only) - default with commit range
+- `--name-status`: Show filenames with A/M/D/R status (git log --name-status)
+- `--raw`: Show low-level format with SHA hashes and modes (git log --raw)
+
+**Git Log Enhancement Flags** (combinable with any diff format):
+- `--graph`: Include ASCII and Mermaid commit graph visualization (git log --graph --all)
+- `--summary`: Show file operations like creates, renames, mode changes (git log --summary)
 
 #### File Selection Options
 - `--include <patterns>`: Include only files matching these glob patterns (comma-separated, e.g., "src/**/*.js,*.md")

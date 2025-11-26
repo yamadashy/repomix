@@ -1,8 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { GitHistoryResult } from '../git/gitHistoryHandle.js';
-import type { GitLogCommit, GitLogResult } from '../git/gitLogHandle.js';
+import type { GitHistoryResult, GitLogCommit, GitLogResult } from '../git/gitLogHandle.js';
 
 export interface OutputGeneratorContext {
   generationDate: string;
@@ -11,8 +10,7 @@ export interface OutputGeneratorContext {
   config: RepomixConfigMerged;
   instruction: string;
   gitDiffResult: GitDiffResult | undefined;
-  gitLogResult: GitLogResult | undefined;
-  gitHistoryResult: GitHistoryResult | undefined;
+  gitLogResult: GitLogResult | GitHistoryResult | undefined;
 }
 
 export interface RenderContext {

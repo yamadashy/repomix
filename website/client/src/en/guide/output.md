@@ -243,7 +243,7 @@ src/core/output/outputGenerate.ts
 ```
 ## Commit History Output
 
-When using `--include-commit-history`, the output includes detailed commit metadata and history:
+When using `--include-logs` with diff format or enhancement flags (e.g., `--include-logs --patch --graph`), the output includes detailed commit metadata and history:
 
 ```xml
 <git_history>
@@ -294,11 +294,19 @@ new file mode 100644
 </git_history>
 ```
 
-**Patch Detail Levels** (match git log params):
-- `patch` (git log --patch): Line-by-line diffs (largest output, best for code review)
-- `stat` (git log --stat): Per-file change counts only
-- `name-only` (git log --name-only): Filenames only
-- `metadata`: No patches (smallest output)
+**Diff Format Flags** (mutually exclusive - choose one):
+- `--patch` (git log --patch): Line-by-line diffs (largest output, best for code review)
+- `--stat` (git log --stat): Per-file change counts
+- `--numstat` (git log --numstat): Numeric additions/deletions per file
+- `--shortstat` (git log --shortstat): One-line summary of changes
+- `--dirstat` (git log --dirstat): Directory change distribution
+- `--name-only` (git log --name-only): Filenames only (default)
+- `--name-status` (git log --name-status): Filenames with A/M/D/R status
+- `--raw` (git log --raw): Low-level format with SHA hashes and modes
+
+**Enhancement Flags** (combinable with any diff format):
+- `--graph`: Include ASCII and Mermaid commit graph visualization
+- `--summary`: Show file operations (creates, renames, mode changes)
 
 ## Usage with AI Models
 

@@ -48,7 +48,6 @@ describe('outputGenerate', () => {
       [],
       undefined,
       undefined,
-      undefined,
       mockDeps,
     );
 
@@ -58,7 +57,6 @@ describe('outputGenerate', () => {
       mockConfig,
       [],
       sortedFiles,
-      undefined,
       undefined,
       undefined,
     );
@@ -313,7 +311,7 @@ describe('outputGenerate', () => {
       output: {
         filePath: 'output.md',
         style: 'markdown',
-        git: { includeCommitHistory: true },
+        git: { includeCommitGraph: true, includeCommitPatches: true },
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
@@ -354,7 +352,6 @@ describe('outputGenerate', () => {
       mockProcessedFiles,
       [],
       undefined,
-      undefined,
       mockGitHistoryResult,
     );
 
@@ -373,7 +370,7 @@ describe('outputGenerate', () => {
         filePath: 'output.xml',
         style: 'xml',
         parsableStyle: true,
-        git: { includeCommitHistory: true },
+        git: { includeCommitGraph: true, includeCommitPatches: true },
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
@@ -414,7 +411,6 @@ describe('outputGenerate', () => {
       mockProcessedFiles,
       [],
       undefined,
-      undefined,
       mockGitHistoryResult,
     );
 
@@ -442,7 +438,7 @@ describe('outputGenerate', () => {
         filePath: 'output.xml',
         style: 'xml',
         parsableStyle: false,
-        git: { includeCommitHistory: true },
+        git: { includeCommitGraph: true, includeCommitPatches: true },
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
@@ -476,7 +472,6 @@ describe('outputGenerate', () => {
       mockProcessedFiles,
       [],
       undefined,
-      undefined,
       mockGitHistoryResult,
     );
 
@@ -493,7 +488,7 @@ describe('outputGenerate', () => {
         filePath: 'output.xml',
         style: 'xml',
         parsableStyle: true,
-        git: { includeCommitHistory: true },
+        git: { includeCommitGraph: true, includeCommitPatches: true },
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
@@ -533,7 +528,6 @@ describe('outputGenerate', () => {
       mockConfig,
       mockProcessedFiles,
       [],
-      undefined,
       undefined,
       mockGitHistoryResult,
     );

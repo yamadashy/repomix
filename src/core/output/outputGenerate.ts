@@ -8,8 +8,7 @@ import { type FileSearchResult, listDirectories, listFiles, searchFiles } from '
 import { generateTreeString } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { GitHistoryResult } from '../git/gitHistoryHandle.js';
-import type { GitLogResult } from '../git/gitLogHandle.js';
+import type { GitHistoryResult, GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
 import { sortOutputFiles } from './outputSort.js';
 import {
@@ -32,6 +31,21 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
 };
 
 const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  // Check if gitLogResult is comprehensive history (has summary field) or simple logs
+  const isComprehensiveHistory =
+    outputGeneratorContext.gitLogResult && 'summary' in outputGeneratorContext.gitLogResult;
+
+  // Extract simple log data (for backward compatibility)
+  const simpleLogContent = isComprehensiveHistory
+    ? undefined
+    : (outputGeneratorContext.gitLogResult as GitLogResult | undefined)?.logContent;
+  const simpleLogCommits = isComprehensiveHistory
+    ? undefined
+    : (outputGeneratorContext.gitLogResult as GitLogResult | undefined)?.commits;
+
+  // Extract comprehensive history data
+  const historyResult = isComprehensiveHistory ? (outputGeneratorContext.gitLogResult as GitHistoryResult) : undefined;
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -54,12 +68,12 @@ const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): Re
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
     gitLogEnabled: outputGeneratorContext.config.output.git?.includeLogs,
-    gitLogContent: outputGeneratorContext.gitLogResult?.logContent,
-    gitLogCommits: outputGeneratorContext.gitLogResult?.commits,
-    gitCommitHistoryEnabled: outputGeneratorContext.config.output.git?.includeCommitHistory ?? false,
-    gitCommitHistorySummary: outputGeneratorContext.gitHistoryResult?.summary,
-    gitCommitGraph: outputGeneratorContext.gitHistoryResult?.graph,
-    gitCommitHistoryItems: outputGeneratorContext.gitHistoryResult?.commits,
+    gitLogContent: simpleLogContent,
+    gitLogCommits: simpleLogCommits,
+    gitCommitHistoryEnabled: isComprehensiveHistory,
+    gitCommitHistorySummary: historyResult?.summary,
+    gitCommitGraph: historyResult?.graph,
+    gitCommitHistoryItems: historyResult?.commits,
   };
 };
 
@@ -295,8 +309,7 @@ export const generateOutput = async (
   processedFiles: ProcessedFile[],
   allFilePaths: string[],
   gitDiffResult: GitDiffResult | undefined = undefined,
-  gitLogResult: GitLogResult | undefined = undefined,
-  gitHistoryResult: GitHistoryResult | undefined = undefined,
+  gitLogResult: GitLogResult | GitHistoryResult | undefined = undefined,
   deps = {
     buildOutputGeneratorContext,
     generateHandlebarOutput,
@@ -315,7 +328,6 @@ export const generateOutput = async (
     sortedProcessedFiles,
     gitDiffResult,
     gitLogResult,
-    gitHistoryResult,
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
@@ -340,8 +352,7 @@ export const buildOutputGeneratorContext = async (
   allFilePaths: string[],
   processedFiles: ProcessedFile[],
   gitDiffResult: GitDiffResult | undefined = undefined,
-  gitLogResult: GitLogResult | undefined = undefined,
-  gitHistoryResult: GitHistoryResult | undefined = undefined,
+  gitLogResult: GitLogResult | GitHistoryResult | undefined = undefined,
   deps = {
     listDirectories,
     listFiles,
@@ -421,6 +432,5 @@ export const buildOutputGeneratorContext = async (
     instruction: repositoryInstruction,
     gitDiffResult,
     gitLogResult,
-    gitHistoryResult,
   };
 };

@@ -59,12 +59,25 @@
 - `--mcp`: Run as Model Context Protocol server for AI tool integration
 
 ## Git Commit History Options
-- `--include-commit-history [level]`: Include comprehensive git commit history analysis with graph, patches, and metadata. Optional levels (match git log params):
-  - `patch` (git log --patch): Line-by-line diffs (largest output, best for code review)
-  - `stat` (git log --stat): Per-file change counts (default)
-  - `name-only` (git log --name-only): Filenames only
-  - `metadata`: No patches (smallest output)
-- `--commit-range <range>`: Git commit range to analyze using git log syntax (default: HEAD~50..HEAD, e.g., "main..feature-branch")
+
+These orthogonal flags mirror git log's structure for fine-grained control:
+
+**Diff Format Flags** (mutually exclusive - choose one):
+- `--stat`: Show per-file change counts (git log --stat)
+- `--patch`: Show line-by-line diffs (git log --patch)
+- `--numstat`: Show numeric additions/deletions per file (git log --numstat)
+- `--shortstat`: Show one-line summary of changes (git log --shortstat)
+- `--dirstat`: Show directory change distribution (git log --dirstat)
+- `--name-only`: Show filenames only (git log --name-only) - default
+- `--name-status`: Show filenames with A/M/D/R status (git log --name-status)
+- `--raw`: Show low-level format with SHA hashes and modes (git log --raw)
+
+**Enhancement Flags** (combinable with any diff format):
+- `--graph`: Include ASCII and Mermaid commit graph visualization (git log --graph --all)
+- `--summary`: Show file operations like creates, renames, mode changes (git log --summary)
+
+**Range Options**:
+- `--commit-range <range>`: Git commit range to analyze (default: HEAD~50..HEAD, supports both .. and ... syntax, e.g., "HEAD~100..HEAD", "v1.0..v2.0", "main...feature-branch")
 
 ## Examples
 
@@ -112,11 +125,13 @@ repomix --include-diffs --include-logs  # Include both diffs and logs
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Only show files/directories with 1000+ tokens
 
-# Git commit history analysis
-repomix --include-commit-history  # Basic analysis with stat level
-repomix --include-commit-history patch  # Full diffs
-repomix --include-commit-history metadata  # Messages only
-repomix --include-commit-history --commit-range "v1.0..HEAD"  # Specific range
-repomix --include-commit-history patch -o analysis.xml  # Full analysis to file
+# Git commit history analysis with orthogonal flags
+repomix --include-logs  # Simple commit log (default name-only format)
+repomix --include-logs --patch  # Line-by-line diffs
+repomix --include-logs --graph  # With commit graph visualization
+repomix --include-logs --patch --graph --summary  # Full analysis
+repomix --include-logs --commit-range "v1.0..HEAD"  # Specific range (two-dot)
+repomix --include-logs --commit-range "main...feature"  # Symmetric diff (three-dot)
+repomix --include-logs --stat --graph -o analysis.xml  # Full analysis to file
 ```
 

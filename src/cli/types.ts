@@ -27,9 +27,21 @@ export interface CliOptions extends OptionValues {
   includeDiffs?: boolean;
   includeLogs?: boolean;
   includeLogsCount?: number;
-  // Git Commit History Analysis Options
-  includeCommitHistory?: boolean | string; // boolean (true) or patch detail level string
   commitRange?: string;
+
+  // Git Log Diff Format Flags (mutually exclusive)
+  stat?: boolean; // git log --stat: diffstat histogram
+  patch?: boolean; // git log --patch: line-by-line diffs
+  numstat?: boolean; // git log --numstat: numeric additions/deletions
+  shortstat?: boolean; // git log --shortstat: one-line summary
+  dirstat?: boolean; // git log --dirstat: directory distribution
+  nameOnly?: boolean; // git log --name-only: filenames only
+  nameStatus?: boolean; // git log --name-status: filenames with status
+  raw?: boolean; // git log --raw: low-level format
+
+  // Git Log Enhancement Flags (combinable with diff formats)
+  graph?: boolean; // git log --graph: show commit graph
+  summary?: boolean; // git log --summary: show file operations (creates, renames, mode changes)
 
   // Filter Options
   include?: string;

@@ -43,9 +43,9 @@ const semanticSuggestionMap: Record<string, string[]> = {
   console: ['--stdout'],
   terminal: ['--stdout'],
   pipe: ['--stdin'],
-  'git-commits': ['--include-commit-history'],
+  'git-commits': ['--include-logs', '--graph'],
   'commit-range': ['--commit-range'],
-  history: ['--include-logs', '--include-commit-history'],
+  history: ['--include-logs'],
 };
 
 export const run = async () => {
@@ -140,24 +140,24 @@ export const run = async () => {
           return Number(v);
         },
       )
-      // Git Commit History Analysis Options
       .option(
-        '--include-commit-history [level]',
-        'Include git commit history with optional detail level: patch (line-by-line diffs), stat (per-file change counts), name-only (filenames), metadata (no diffs). Default: stat',
-        (value: string | boolean) => {
-          if (typeof value === 'string') {
-            const validLevels = ['patch', 'stat', 'name-only', 'metadata'];
-            if (!validLevels.includes(value)) {
-              throw new RepomixError(
-                `Invalid commit history level: '${value}'. Must be one of: ${validLevels.join(', ')}`,
-              );
-            }
-            return value;
-          }
-          return value;
-        },
+        '--commit-range <range>',
+        'Commit range to analyze with git log (e.g., HEAD~20..HEAD, v1.0..v2.0, main..feature, default: HEAD~50..HEAD)',
       )
-      .option('--commit-range <range>', 'Commit range to analyze (e.g., HEAD~20..HEAD, v1.0..v2.0, main..feature)')
+      // Git Log Diff Format Options (mutually exclusive - matches git log parameters)
+      .optionsGroup('Git Log Diff Format Options')
+      .addOption(new Option('--stat', 'Show per-file change counts (git log --stat)'))
+      .addOption(new Option('--patch', 'Show line-by-line diffs (git log --patch)'))
+      .addOption(new Option('--numstat', 'Show numeric additions/deletions per file (git log --numstat)'))
+      .addOption(new Option('--shortstat', 'Show one-line summary of changes (git log --shortstat)'))
+      .addOption(new Option('--dirstat', 'Show directory change distribution (git log --dirstat)'))
+      .addOption(new Option('--name-only', 'Show filenames only (git log --name-only)'))
+      .addOption(new Option('--name-status', 'Show filenames with A/M/D/R status (git log --name-status)'))
+      .addOption(new Option('--raw', 'Show low-level format with SHA hashes and modes (git log --raw)'))
+      // Git Log Enhancement Options (combinable with diff formats)
+      .optionsGroup('Git Log Enhancement Options')
+      .option('--graph', 'Include ASCII and Mermaid commit graph visualization (git log --graph --all)')
+      .option('--summary', 'Show file operations like creates, renames, mode changes (git log --summary)')
       // File Selection Options
       .optionsGroup('File Selection Options')
       .option(

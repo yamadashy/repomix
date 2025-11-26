@@ -119,27 +119,46 @@ This adds valuable context about:
 
 ### Commit History Analysis
 
-For comprehensive commit history analysis with graphs and metadata:
+For comprehensive commit history analysis with orthogonal flags matching git log:
 
 ```bash
-# Full analysis with line-by-line diffs (git log --patch)
-repomix --include-commit-history patch
+# Simple commit log (default name-only format)
+repomix --include-logs
 
-# Lighter analysis without diffs
-repomix --include-commit-history metadata
+# With line-by-line diffs (git log --patch)
+repomix --include-logs --patch
 
-# Analyze specific commit range (git log range syntax)
-repomix --include-commit-history --commit-range "v1.0..HEAD"
+# With commit graph visualization (git log --graph --all)
+repomix --include-logs --graph
 
-# Analyze feature branch
-repomix --include-commit-history --commit-range "main..feature-branch"
+# Full analysis: patches + graph + file operations summary
+repomix --include-logs --patch --graph --summary
+
+# Analyze specific commit range (supports both .. and ... syntax)
+repomix --include-logs --commit-range "v1.0..HEAD"
+repomix --include-logs --commit-range "main...feature-branch"
 ```
 
+**Diff Format Flags** (mutually exclusive - choose one):
+- `--patch`: Line-by-line diffs (git log --patch)
+- `--stat`: Per-file change counts (git log --stat)
+- `--numstat`: Numeric additions/deletions (git log --numstat)
+- `--shortstat`: One-line summary (git log --shortstat)
+- `--dirstat`: Directory distribution (git log --dirstat)
+- `--name-only`: Filenames only (git log --name-only) - default
+- `--name-status`: Filenames with A/M/D/R status (git log --name-status)
+- `--raw`: Low-level format (git log --raw)
+
+**Enhancement Flags** (combinable with any diff format):
+- `--graph`: Include ASCII and Mermaid commit graph visualization
+- `--summary`: Show file operations (creates, renames, mode changes)
+
 This provides:
-- **Commit graph**: ASCII and Mermaid visualizations of branch structure
 - **Commit metadata**: Hash, author, committer, date, message, body, and list of files changed
-- **Patch content**: Configurable detail levels (patch for line-by-line diffs showing added/removed code, stat for per-file change counts like "file.ts | 25 ++++----", name-only for filenames only, metadata for commit info without diffs)
+- **Visual graph** (with `--graph`): ASCII and Mermaid visualizations of branch structure
+- **Patch content**: Configurable detail levels via diff format flags
 - **Git tags**: Tag names mapped to commit hashes
+- **File operations** (with `--summary`): Creates, renames, mode changes
 
 See [Git Commit History Tips](/guide/tips/git-commit-history) for detailed usage patterns.
 

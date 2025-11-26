@@ -48,9 +48,17 @@ export interface ParsedCommitRange {
 }
 
 /**
- * Detail level for patches
+ * Detail level for patches (matching git log parameters)
  */
-export type PatchDetailLevel = 'patch' | 'stat' | 'name-only' | 'metadata';
+export type PatchDetailLevel =
+  | 'patch' // git log --patch: line-by-line diffs
+  | 'stat' // git log --stat: diffstat histogram
+  | 'numstat' // git log --numstat: numeric additions/deletions
+  | 'shortstat' // git log --shortstat: one-line summary
+  | 'dirstat' // git log --dirstat: directory distribution
+  | 'name-only' // git log --name-only: filenames only
+  | 'name-status' // git log --name-status: filenames with status
+  | 'raw'; // git log --raw: low-level format
 
 /**
  * Parse and validate a commit range
@@ -284,6 +292,7 @@ export const getCommitPatch = async (
   directory: string,
   hash: string,
   detailLevel: PatchDetailLevel = 'stat',
+  includeSummary = false,
   deps = {
     execFileAsync,
   },
@@ -293,23 +302,44 @@ export const getCommitPatch = async (
 
     switch (detailLevel) {
       case 'patch':
-        // Full patch with diffs
+        // Full patch with line-by-line diffs (git log --patch)
         args.push('--patch');
         break;
       case 'stat':
-        // File stats (files changed, insertions, deletions)
+        // Diffstat histogram (git log --stat)
         args.push('--stat');
         break;
+      case 'numstat':
+        // Numeric additions/deletions per file (git log --numstat)
+        args.push('--numstat');
+        break;
+      case 'shortstat':
+        // One-line summary of changes (git log --shortstat)
+        args.push('--shortstat');
+        break;
+      case 'dirstat':
+        // Directory change distribution (git log --dirstat)
+        args.push('--dirstat');
+        break;
       case 'name-only':
-        // Just file names
+        // Filenames only (git log --name-only)
         args.push('--name-only');
         break;
-      case 'metadata':
-        // No diff, just commit metadata
-        args.push('--no-patch');
+      case 'name-status':
+        // Filenames with A/M/D/R status (git log --name-status)
+        args.push('--name-status');
+        break;
+      case 'raw':
+        // Low-level format with SHA hashes and modes (git log --raw)
+        args.push('--raw');
         break;
       default:
         throw new RepomixError(`Invalid detail level: ${detailLevel}`);
+    }
+
+    // Add --summary flag if requested (shows file operations like creates, renames, mode changes)
+    if (includeSummary) {
+      args.push('--summary');
     }
 
     args.push(hash);
