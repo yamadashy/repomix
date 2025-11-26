@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
+import type { GitLogResult } from '../../../src/core/git/gitLogHandle.js';
 import {
   GIT_LOG_FORMAT_SEPARATOR,
   GIT_LOG_RECORD_SEPARATOR,
@@ -83,20 +84,55 @@ src/feature.ts`;
 
       const result = await getGitLogs(['/project/src'], config, {
         getGitLog: mockGetGitLog,
+        isGitRepository: vi.fn().mockResolvedValue(true),
+        getCommitGraph: vi.fn(),
+        getCommitPatch: vi.fn(),
       });
 
       expect(result).toEqual({
         logContent: mockLogContent,
         commits: [
           {
-            date: '2024-01-01 10:00:00 +0900',
-            message: 'Initial commit',
-            files: ['file1.txt', 'file2.txt'],
+            metadata: {
+              hash: '',
+              abbreviatedHash: '',
+              parents: [],
+              author: {
+                name: '',
+                email: '',
+                date: '2024-01-01 10:00:00 +0900',
+              },
+              committer: {
+                name: '',
+                email: '',
+                date: '2024-01-01 10:00:00 +0900',
+              },
+              message: 'Initial commit',
+              body: '',
+              files: ['file1.txt', 'file2.txt'],
+            },
+            patch: undefined,
           },
           {
-            date: '2024-01-02 11:00:00 +0900',
-            message: 'Add feature',
-            files: ['src/feature.ts'],
+            metadata: {
+              hash: '',
+              abbreviatedHash: '',
+              parents: [],
+              author: {
+                name: '',
+                email: '',
+                date: '2024-01-02 11:00:00 +0900',
+              },
+              committer: {
+                name: '',
+                email: '',
+                date: '2024-01-02 11:00:00 +0900',
+              },
+              message: 'Add feature',
+              body: '',
+              files: ['src/feature.ts'],
+            },
+            patch: undefined,
           },
         ],
       });
@@ -132,6 +168,9 @@ test.txt`);
 
       await getGitLogs(['/project/src'], config, {
         getGitLog: mockGetGitLog,
+        isGitRepository: vi.fn().mockResolvedValue(true),
+        getCommitGraph: vi.fn(),
+        getCommitPatch: vi.fn(),
       });
 
       expect(mockGetGitLog).toHaveBeenCalledWith('/project/src', 50);
@@ -150,6 +189,9 @@ test.txt`);
 
       await getGitLogs(['/first/dir', '/second/dir'], config, {
         getGitLog: mockGetGitLog,
+        isGitRepository: vi.fn().mockResolvedValue(true),
+        getCommitGraph: vi.fn(),
+        getCommitPatch: vi.fn(),
       });
 
       expect(mockGetGitLog).toHaveBeenCalledWith('/first/dir', 50);
@@ -168,6 +210,9 @@ test.txt`);
 
       await getGitLogs([], config, {
         getGitLog: mockGetGitLog,
+        isGitRepository: vi.fn().mockResolvedValue(true),
+        getCommitGraph: vi.fn(),
+        getCommitPatch: vi.fn(),
       });
 
       expect(mockGetGitLog).toHaveBeenCalledWith('/fallback', 50);
@@ -188,6 +233,9 @@ test.txt`);
       await expect(
         getGitLogs(['/project'], config, {
           getGitLog: mockGetGitLog,
+          isGitRepository: vi.fn().mockResolvedValue(true),
+          getCommitGraph: vi.fn(),
+          getCommitPatch: vi.fn(),
         }),
       ).rejects.toThrow(RepomixError);
       await expect(
@@ -273,9 +321,25 @@ test.txt`);
 
       expect(result?.commits).toEqual([
         {
-          date: '2024-01-01 10:00:00 +0900',
-          message: 'Windows commit',
-          files: ['file1.txt', 'file2.txt'],
+          metadata: {
+            hash: '',
+            abbreviatedHash: '',
+            parents: [],
+            author: {
+              name: '',
+              email: '',
+              date: '2024-01-01 10:00:00 +0900',
+            },
+            committer: {
+              name: '',
+              email: '',
+              date: '2024-01-01 10:00:00 +0900',
+            },
+            message: 'Windows commit',
+            body: '',
+            files: ['file1.txt', 'file2.txt'],
+          },
+          patch: undefined,
         },
       ]);
     });
@@ -303,9 +367,25 @@ test.txt`);
 
       expect(result?.commits).toEqual([
         {
-          date: '2024-01-01 10:00:00 +0900',
-          message: 'Mixed line endings',
-          files: ['file1.txt', 'file2.txt'],
+          metadata: {
+            hash: '',
+            abbreviatedHash: '',
+            parents: [],
+            author: {
+              name: '',
+              email: '',
+              date: '2024-01-01 10:00:00 +0900',
+            },
+            committer: {
+              name: '',
+              email: '',
+              date: '2024-01-01 10:00:00 +0900',
+            },
+            message: 'Mixed line endings',
+            body: '',
+            files: ['file1.txt', 'file2.txt'],
+          },
+          patch: undefined,
         },
       ]);
     });

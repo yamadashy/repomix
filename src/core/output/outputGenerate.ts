@@ -8,7 +8,7 @@ import { type FileSearchResult, listDirectories, listFiles, searchFiles } from '
 import { generateTreeString } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { GitHistoryResult, GitLogResult } from '../git/gitLogHandle.js';
+import type { GitLogCommit, GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
 import { sortOutputFiles } from './outputSort.js';
 import {
@@ -31,20 +31,26 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
 };
 
 const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
-  // Check if gitLogResult is comprehensive history (has summary field) or simple logs
-  const isComprehensiveHistory =
-    !!(outputGeneratorContext.gitLogResult && 'summary' in outputGeneratorContext.gitLogResult);
+  const gitLogResult = outputGeneratorContext.gitLogResult;
 
-  // Extract simple log data (for backward compatibility)
-  const simpleLogContent = isComprehensiveHistory
-    ? undefined
-    : (outputGeneratorContext.gitLogResult as GitLogResult | undefined)?.logContent;
-  const simpleLogCommits = isComprehensiveHistory
-    ? undefined
-    : (outputGeneratorContext.gitLogResult as GitLogResult | undefined)?.commits;
+  // Helper to extract simple commit data for backward compatibility
+  const extractSimpleCommits = (result: GitLogResult | undefined): GitLogCommit[] | undefined => {
+    if (!result?.commits) return undefined;
 
-  // Extract comprehensive history data
-  const historyResult = isComprehensiveHistory ? (outputGeneratorContext.gitLogResult as GitHistoryResult) : undefined;
+    // If logContent exists, we're in simple mode - convert to GitLogCommit format
+    if (result.logContent) {
+      return result.commits.map((c) => ({
+        date: c.metadata.author.date,
+        message: c.metadata.message,
+        files: c.metadata.files,
+      }));
+    }
+
+    return undefined;
+  };
+
+  // Determine if comprehensive mode is enabled (has graph or summary)
+  const isComprehensiveHistory = !!(gitLogResult?.graph || gitLogResult?.summary);
 
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
@@ -68,12 +74,12 @@ const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): Re
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
     gitLogEnabled: outputGeneratorContext.config.output.git?.includeLogs,
-    gitLogContent: simpleLogContent,
-    gitLogCommits: simpleLogCommits,
+    gitLogContent: gitLogResult?.logContent,
+    gitLogCommits: extractSimpleCommits(gitLogResult),
     gitCommitHistoryEnabled: isComprehensiveHistory,
-    gitCommitHistorySummary: historyResult?.summary,
-    gitCommitGraph: historyResult?.graph,
-    gitCommitHistoryItems: historyResult?.commits,
+    gitCommitHistorySummary: gitLogResult?.summary,
+    gitCommitGraph: gitLogResult?.graph,
+    gitCommitHistoryItems: gitLogResult?.commits,
   };
 };
 
@@ -110,15 +116,16 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
             git_diff_staged: renderContext.gitDiffStaged,
           }
         : undefined,
-      git_logs: renderContext.gitLogEnabled
-        ? {
-            git_log_commit: renderContext.gitLogCommits?.map((commit) => ({
-              date: commit.date,
-              message: commit.message,
-              files: commit.files.map((file) => ({ '#text': file })),
-            })),
-          }
-        : undefined,
+      git_logs:
+        renderContext.gitLogEnabled && !renderContext.gitCommitHistoryEnabled
+          ? {
+              git_log_commit: renderContext.gitLogCommits?.map((commit) => ({
+                date: commit.date,
+                message: commit.message,
+                files: commit.files.map((file) => ({ '#text': file })),
+              })),
+            }
+          : undefined,
       git_history: renderContext.gitCommitHistoryEnabled
         ? {
             summary: {
@@ -201,13 +208,14 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
         staged: renderContext.gitDiffStaged,
       },
     }),
-    ...(renderContext.gitLogEnabled && {
-      gitLogs: renderContext.gitLogCommits?.map((commit) => ({
-        date: commit.date,
-        message: commit.message,
-        files: commit.files,
-      })),
-    }),
+    ...(renderContext.gitLogEnabled &&
+      !renderContext.gitCommitHistoryEnabled && {
+        gitLogs: renderContext.gitLogCommits?.map((commit) => ({
+          date: commit.date,
+          message: commit.message,
+          files: commit.files,
+        })),
+      }),
     ...(renderContext.gitCommitHistoryEnabled && {
       gitCommitHistory: {
         summary: renderContext.gitCommitHistorySummary,
@@ -309,7 +317,7 @@ export const generateOutput = async (
   processedFiles: ProcessedFile[],
   allFilePaths: string[],
   gitDiffResult: GitDiffResult | undefined = undefined,
-  gitLogResult: GitLogResult | GitHistoryResult | undefined = undefined,
+  gitLogResult: GitLogResult | undefined = undefined,
   deps = {
     buildOutputGeneratorContext,
     generateHandlebarOutput,
@@ -352,7 +360,7 @@ export const buildOutputGeneratorContext = async (
   allFilePaths: string[],
   processedFiles: ProcessedFile[],
   gitDiffResult: GitDiffResult | undefined = undefined,
-  gitLogResult: GitLogResult | GitHistoryResult | undefined = undefined,
+  gitLogResult: GitLogResult | undefined = undefined,
   deps = {
     listDirectories,
     listFiles,

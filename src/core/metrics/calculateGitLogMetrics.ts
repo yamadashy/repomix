@@ -1,7 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { TaskRunner } from '../../shared/processConcurrency.js';
-import type { GitHistoryResult, GitLogResult } from '../git/gitLogHandle.js';
+import type { GitLogResult } from '../git/gitLogHandle.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
 /**
@@ -9,7 +9,7 @@ import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
  */
 export const calculateGitLogMetrics = async (
   config: RepomixConfigMerged,
-  gitLogResult: GitLogResult | GitHistoryResult | undefined,
+  gitLogResult: GitLogResult | undefined,
   deps: { taskRunner: TaskRunner<TokenCountTask, number> },
 ): Promise<{ gitLogTokenCount: number }> => {
   // Return zero token count if git logs are disabled or no result
@@ -19,15 +19,8 @@ export const calculateGitLogMetrics = async (
     };
   }
 
-  // Extract log content based on result type
-  let logContent: string | undefined;
-  if ('logContent' in gitLogResult) {
-    // Simple log result
-    logContent = gitLogResult.logContent;
-  } else if ('graph' in gitLogResult && gitLogResult.graph) {
-    // Comprehensive history result - use graph.graph (ASCII art) for token counting
-    logContent = gitLogResult.graph.graph;
-  }
+  // Extract log content - try logContent first (simple mode), then graph.graph (comprehensive mode)
+  const logContent = gitLogResult.logContent || gitLogResult.graph?.graph;
 
   // Return zero token count if no git log content
   if (!logContent) {

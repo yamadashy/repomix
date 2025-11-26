@@ -232,9 +232,25 @@ describe('outputGenerate', () => {
       logContent: 'commit abc123\nAuthor: test',
       commits: [
         {
-          date: '2024-01-01',
-          message: 'Initial commit',
-          files: ['file1.txt'],
+          metadata: {
+            hash: '',
+            abbreviatedHash: '',
+            parents: [],
+            author: {
+              name: '',
+              email: '',
+              date: '2024-01-01',
+            },
+            committer: {
+              name: '',
+              email: '',
+              date: '2024-01-01',
+            },
+            message: 'Initial commit',
+            body: '',
+            files: ['file1.txt'],
+          },
+          patch: undefined,
         },
       ],
     };
@@ -315,7 +331,7 @@ describe('outputGenerate', () => {
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
-    const mockGitHistoryResult = {
+    const mockGitLogResult = {
       summary: {
         totalCommits: 2,
         mergeCommits: 0,
@@ -352,7 +368,7 @@ describe('outputGenerate', () => {
       mockProcessedFiles,
       [],
       undefined,
-      mockGitHistoryResult,
+      mockGitLogResult,
     );
 
     expect(output).toContain('Git Commit History');
@@ -374,7 +390,7 @@ describe('outputGenerate', () => {
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
-    const mockGitHistoryResult = {
+    const mockGitLogResult = {
       summary: {
         totalCommits: 1,
         mergeCommits: 0,
@@ -411,7 +427,7 @@ describe('outputGenerate', () => {
       mockProcessedFiles,
       [],
       undefined,
-      mockGitHistoryResult,
+      mockGitLogResult,
     );
 
     const parser = new XMLParser({ ignoreAttributes: false });
@@ -442,7 +458,7 @@ describe('outputGenerate', () => {
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
-    const mockGitHistoryResult = {
+    const mockGitLogResult = {
       summary: {
         totalCommits: 1,
         mergeCommits: 0,
@@ -472,7 +488,7 @@ describe('outputGenerate', () => {
       mockProcessedFiles,
       [],
       undefined,
-      mockGitHistoryResult,
+      mockGitLogResult,
     );
 
     expect(output).toContain('<files>');
@@ -492,7 +508,7 @@ describe('outputGenerate', () => {
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
-    const mockGitHistoryResult = {
+    const mockGitLogResult = {
       summary: {
         totalCommits: 2,
         mergeCommits: 1,
@@ -529,7 +545,7 @@ describe('outputGenerate', () => {
       mockProcessedFiles,
       [],
       undefined,
-      mockGitHistoryResult,
+      mockGitLogResult,
     );
 
     const parser = new XMLParser({ ignoreAttributes: false });

@@ -389,7 +389,7 @@ describe('gitHistory', () => {
 
     it('should throw error for invalid detail level', async () => {
       await expect(
-        getCommitPatch('/test/dir', 'abc1234', 'invalid' as never, {
+        getCommitPatch('/test/dir', 'abc1234', 'invalid' as never, false, {
           execFileAsync: vi.fn() as never,
         }),
       ).rejects.toThrow('Invalid detail level');
