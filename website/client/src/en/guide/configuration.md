@@ -109,7 +109,7 @@ JavaScript configuration files work the same as TypeScript, supporting `defineCo
 | `output.git.includeLogs`         | Whether to include git logs in the output. Shows commit history with dates, messages, and file paths                        | `false`                |
 | `output.git.includeLogsCount`    | Number of git log commits to include in the output                                                                          | `50`                   |
 | `output.git.commitRange`         | Git commit range to analyze (e.g., "HEAD~50..HEAD", "v1.0..HEAD", "main..feature-branch")                                   | `"HEAD~50..HEAD"`      |
-| `output.git.commitPatchDetail`   | Patch detail level: `patch` (line-by-line diffs), `stat` (per-file change counts), `name-only` (filenames only), `numstat`, `shortstat`, `dirstat`, `name-status`, or `raw` | `"stat"`               |
+| `output.git.commitPatchDetail`   | Patch detail level: `patch` (line-by-line diffs), `stat` (per-file change counts), `name-only` (filenames only), `numstat`, `shortstat`, `dirstat`, `name-status`, or `raw` | `"name-only"`          |
 | `output.git.includeCommitGraph`  | Whether to include ASCII and Mermaid commit graph visualizations                                                             | `false`                |
 | `output.git.includeSummary`      | Whether to include commit summary statistics (total commits, merge commits, etc.)                                           | `false`                |
 | `output.git.includeGitTags`      | Whether to include git tags in commit history output                                                                         | `true`                 |
@@ -177,7 +177,7 @@ Here's an example of a complete configuration file (`repomix.config.json`):
       "includeLogs": false,
       "includeLogsCount": 50,
       "commitRange": "HEAD~50..HEAD",
-      "commitPatchDetail": "stat",
+      "commitPatchDetail": "name-only",
       "includeCommitGraph": false,
       "includeSummary": false,
       "includeGitTags": true,
@@ -350,7 +350,7 @@ The `output.git` configuration provides powerful Git-aware features:
 When any of these flags are combined with `includeLogs`, the output automatically includes structured metadata (commit hash, author/committer info, parent hashes, commit body) in addition to basic commit information:
 
 - `commitRange`: The Git commit range to analyze (e.g., "HEAD~50..HEAD", "v1.0..HEAD", "main..feature-branch"). When specified, automatically provides structured commit metadata (hash, author, committer, parents, body) for all commits. Default: `"HEAD~50..HEAD"`
-- `commitPatchDetail`: Level of detail for commit patches: `patch` (line-by-line diffs), `stat` (per-file change counts), `numstat` (numeric stats), `shortstat` (one-line summary), `dirstat` (directory distribution), `name-only` (filenames only), `name-status` (filenames with A/M/D/R status), or `raw` (low-level format). Default: `"stat"`
+- `commitPatchDetail`: Level of detail for commit patches: `patch` (line-by-line diffs), `stat` (per-file change counts), `numstat` (numeric stats), `shortstat` (one-line summary), `dirstat` (directory distribution), `name-only` (filenames only), `name-status` (filenames with A/M/D/R status), or `raw` (low-level format). Default: `"name-only"`
 - `includeCommitGraph`: Whether to include ASCII art and Mermaid diagram visualizations showing branch/merge topology and commit relationships. When enabled, also provides structured commit metadata. Default: `false`
 - `includeSummary`: Whether to include commit summary statistics (total commits, merge commits, commit range info). When enabled, also provides structured commit metadata. Default: `false`
 - `includeGitTags`: Whether to include git tags mapped to commit hashes. Default: `true`

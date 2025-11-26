@@ -205,7 +205,7 @@ export interface GitLogStructuredOptions {
 }
 
 export interface GitLogTextBlobOptions extends GitLogStructuredOptions {
-  patchDetail: 'patch' | 'stat' | 'shortstat' | 'dirstat' | 'numstat';
+  patchDetail: 'patch' | 'stat' | 'shortstat' | 'dirstat' | 'numstat' | 'name-only' | 'name-status' | 'raw';
 }
 
 /** Pass 1: Structured metadata + files with -z --raw */
