@@ -22,14 +22,6 @@ export const GIT_LOG_FORMAT_SEPARATOR = '%x00';
 // ===== Git Log Result Types =====
 
 /**
- * Single commit with metadata and optional patch diff
- */
-export interface HistoryCommitResult {
-  metadata: CommitMetadata;
-  patch?: string;
-}
-
-/**
  * Summary statistics for git history analysis
  */
 export interface HistorySummary {
@@ -43,26 +35,55 @@ export interface HistorySummary {
  * Git log result with additive optional fields
  *
  * Structure is naturally backward and forward compatible:
- * - logContent: raw git log string when fetched via git log command
- * - commits: always present, contains commit metadata
+ * - logCommits: array of commits with progressive optional fields
  * - graph: commit graph visualization when includeCommitGraph=true
  * - summary: statistics when includeSummary=true
  */
 export interface GitLogResult {
-  logContent?: string;
-  commits: HistoryCommitResult[];
+  logCommits: GitLogCommit[];
   graph?: CommitGraph;
   summary?: HistorySummary;
 }
 
 /**
- * @deprecated Use HistoryCommitResult instead
- * Commit info for git log command output parsing
+ * Git log commit with progressive optional fields
+ *
+ * Core fields (always present):
+ * - date: commit date for display
+ * - message: commit message
+ * - files: list of changed files
+ *
+ * Extended fields (present when graph/summary/patches enabled):
+ * - hash: full commit hash
+ * - abbreviatedHash: short commit hash
+ * - author: author information
+ * - committer: committer information
+ * - parents: parent commit hashes
+ * - body: extended commit message
+ * - patch: diff content
  */
 export interface GitLogCommit {
+  // Core fields - always present
   date: string;
   message: string;
   files: string[];
+
+  // Extended fields - optional (when graph/summary/patches enabled)
+  hash?: string;
+  abbreviatedHash?: string;
+  author?: {
+    name: string;
+    email: string;
+    date: string;
+  };
+  committer?: {
+    name: string;
+    email: string;
+    date: string;
+  };
+  parents?: string[];
+  body?: string;
+  patch?: string;
 }
 
 const parseGitLog = (rawLogOutput: string, recordSeparator = GIT_LOG_RECORD_SEPARATOR): GitLogCommit[] => {
@@ -169,23 +190,38 @@ export const getGitLogs = async (
       });
 
       const graph = await deps.getCommitGraph(gitRoot, range);
-      const commits: HistoryCommitResult[] = [];
+      const logCommits: GitLogCommit[] = [];
 
       for (const metadata of graph.commits) {
         const patch = includePatches
           ? await deps.getCommitPatch(gitRoot, metadata.hash, detailLevel, includeSummary)
           : undefined;
-        commits.push({ metadata, patch });
+
+        // Convert to GitLogCommit with extended fields
+        logCommits.push({
+          // Core fields
+          date: metadata.author.date,
+          message: metadata.message,
+          files: metadata.files,
+          // Extended fields
+          hash: metadata.hash,
+          abbreviatedHash: metadata.abbreviatedHash,
+          author: metadata.author,
+          committer: metadata.committer,
+          parents: metadata.parents,
+          body: metadata.body || undefined,
+          patch: patch || undefined,
+        });
       }
 
-      logger.info(`✅ Analyzed ${commits.length} commits in range ${range}`);
+      logger.info(`✅ Analyzed ${logCommits.length} commits in range ${range}`);
 
       return {
-        commits,
+        logCommits,
         graph: includeGraph ? (includeTags ? graph : { ...graph, tags: {} }) : undefined,
         summary: includeSummary
           ? {
-              totalCommits: commits.length,
+              totalCommits: logCommits.length,
               mergeCommits: graph.mergeCommits.length,
               range,
               detailLevel,
@@ -197,25 +233,11 @@ export const getGitLogs = async (
     // Use git log command for basic commit history
     const maxCommits = config.output.git?.includeLogsCount || 50;
     const logContent = await deps.getGitLog(gitRoot, maxCommits);
-    const parsedCommits = parseGitLog(logContent);
+    const logCommits = parseGitLog(logContent);
 
-    const commits: HistoryCommitResult[] = parsedCommits.map((commit) => ({
-      metadata: {
-        hash: '',
-        abbreviatedHash: '',
-        parents: [],
-        author: { name: '', email: '', date: commit.date },
-        committer: { name: '', email: '', date: commit.date },
-        message: commit.message,
-        body: '',
-        files: commit.files,
-      },
-      patch: undefined,
-    }));
+    logger.info(`✅ Fetched ${logCommits.length} commits`);
 
-    logger.info(`✅ Fetched ${commits.length} commits`);
-
-    return { commits, logContent };
+    return { logCommits };
   } catch (error) {
     if (error instanceof RepomixError) {
       throw error;

@@ -33,18 +33,6 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
 const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
   const gitLogResult = outputGeneratorContext.gitLogResult;
 
-  // Extract basic commit format from result
-  const extractBasicCommits = (result: GitLogResult | undefined): GitLogCommit[] | undefined => {
-    if (!result?.commits) return undefined;
-    if (!result.logContent) return undefined;
-
-    return result.commits.map((c) => ({
-      date: c.metadata.author.date,
-      message: c.metadata.message,
-      files: c.metadata.files,
-    }));
-  };
-
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -67,11 +55,9 @@ const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): Re
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
     gitLogEnabled: outputGeneratorContext.config.output.git?.includeLogs,
-    gitLogContent: gitLogResult?.logContent,
-    gitLogCommits: extractBasicCommits(gitLogResult),
+    gitLogCommits: gitLogResult?.logCommits,
     gitCommitHistorySummary: gitLogResult?.summary,
     gitCommitGraph: gitLogResult?.graph,
-    gitCommitHistoryItems: gitLogResult?.commits,
   };
 };
 
@@ -128,40 +114,35 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
                 tags: renderContext.gitCommitGraph.tags,
               },
             }),
-            // Simple commit format for backward compatibility (when only includeLogs is enabled)
+            // Git log commits with progressive optional fields
             ...(renderContext.gitLogCommits && {
               git_log_commit: renderContext.gitLogCommits.map((commit) => ({
+                // Core fields
                 date: commit.date,
                 message: commit.message,
                 files: commit.files.map((file) => ({ '#text': file })),
+                // Extended optional fields
+                ...(commit.hash && { hash: commit.hash }),
+                ...(commit.abbreviatedHash && { abbreviated_hash: commit.abbreviatedHash }),
+                ...(commit.author && {
+                  author: {
+                    name: commit.author.name,
+                    email: commit.author.email,
+                    date: commit.author.date,
+                  },
+                }),
+                ...(commit.committer && {
+                  committer: {
+                    name: commit.committer.name,
+                    email: commit.committer.email,
+                    date: commit.committer.date,
+                  },
+                }),
+                ...(commit.parents && commit.parents.length > 0 && { parents: commit.parents }),
+                ...(commit.body && { body: commit.body }),
+                ...(commit.patch && { patch: commit.patch }),
               })),
             }),
-            // Commits with full metadata (when graph/summary/patches enabled) - but not when using backward compat git_log_commit
-            ...(renderContext.gitCommitHistoryItems &&
-            renderContext.gitCommitHistoryItems.length > 0 &&
-            !renderContext.gitLogCommits
-              ? {
-                  commits: renderContext.gitCommitHistoryItems.map((commit) => ({
-                    '@_hash': commit.metadata.hash,
-                    '@_abbreviated_hash': commit.metadata.abbreviatedHash,
-                    author: {
-                      name: commit.metadata.author.name,
-                      email: commit.metadata.author.email,
-                      date: commit.metadata.author.date,
-                    },
-                    committer: {
-                      name: commit.metadata.committer.name,
-                      email: commit.metadata.committer.email,
-                      date: commit.metadata.committer.date,
-                    },
-                    parents: commit.metadata.parents,
-                    message: commit.metadata.message,
-                    body: commit.metadata.body || undefined,
-                    files: commit.metadata.files.length > 0 ? commit.metadata.files : undefined,
-                    patch: commit.patch || undefined,
-                  })),
-                }
-              : {}),
           }
         : undefined,
       instruction: renderContext.instruction ? renderContext.instruction : undefined,
@@ -225,36 +206,23 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
             tags: renderContext.gitCommitGraph.tags,
           },
         }),
-        // Simple commit format for backward compatibility (when only includeLogs is enabled)
+        // Git log commits with progressive optional fields
         ...(renderContext.gitLogCommits && {
           logCommits: renderContext.gitLogCommits.map((commit) => ({
+            // Core fields
             date: commit.date,
             message: commit.message,
             files: commit.files,
+            // Extended optional fields
+            ...(commit.hash && { hash: commit.hash }),
+            ...(commit.abbreviatedHash && { abbreviatedHash: commit.abbreviatedHash }),
+            ...(commit.author && { author: commit.author }),
+            ...(commit.committer && { committer: commit.committer }),
+            ...(commit.parents && commit.parents.length > 0 && { parents: commit.parents }),
+            ...(commit.body && { body: commit.body }),
+            ...(commit.patch && { patch: commit.patch }),
           })),
         }),
-        // Commits with full metadata (when graph/summary/patches enabled) - but not when using backward compat logCommits
-        ...(renderContext.gitCommitHistoryItems &&
-        renderContext.gitCommitHistoryItems.length > 0 &&
-        !renderContext.gitLogCommits
-          ? {
-              commits: renderContext.gitCommitHistoryItems.map((commit) => ({
-                metadata: {
-                  hash: commit.metadata.hash,
-                  abbreviatedHash: commit.metadata.abbreviatedHash,
-                  parents: commit.metadata.parents,
-                  author: commit.metadata.author,
-                  committer: commit.metadata.committer,
-                  message: commit.metadata.message,
-                  body: commit.metadata.body,
-                  files: commit.metadata.files,
-                },
-                ...(commit.patch && {
-                  patch: commit.patch,
-                }),
-              })),
-            }
-          : {}),
       },
     }),
     ...(renderContext.instruction && {

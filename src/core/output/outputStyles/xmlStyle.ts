@@ -66,18 +66,6 @@ This section contains the contents of the repository's files.
 
 {{#if gitLogEnabled}}
 <git_logs>
-{{#each gitLogCommits}}
-<git_log_commit>
-<date>{{{this.date}}}</date>
-<message>{{{this.message}}}</message>
-<files>
-{{#each this.files}}
-{{{this}}}
-{{/each}}
-</files>
-</git_log_commit>
-{{/each}}
-
 {{#if gitCommitHistorySummary}}
 <summary>
 <total_commits>{{{gitCommitHistorySummary.totalCommits}}}</total_commits>
@@ -107,47 +95,52 @@ This section contains the contents of the repository's files.
 </commit_graph>
 {{/if}}
 
-{{#if gitCommitHistoryItems}}
-<commits>
-{{#each gitCommitHistoryItems}}
-<commit hash="{{{this.metadata.hash}}}" abbreviated_hash="{{{this.metadata.abbreviatedHash}}}">
+{{#each gitLogCommits}}
+<git_log_commit>
+<date>{{{this.date}}}</date>
+<message>{{{this.message}}}</message>
+<files>
+{{#each this.files}}
+{{{this}}}
+{{/each}}
+</files>
+{{#if this.hash}}
+<hash>{{{this.hash}}}</hash>
+{{/if}}
+{{#if this.abbreviatedHash}}
+<abbreviated_hash>{{{this.abbreviatedHash}}}</abbreviated_hash>
+{{/if}}
+{{#if this.author}}
 <author>
-<name>{{{this.metadata.author.name}}}</name>
-<email>{{{this.metadata.author.email}}}</email>
-<date>{{{this.metadata.author.date}}}</date>
+<name>{{{this.author.name}}}</name>
+<email>{{{this.author.email}}}</email>
+<date>{{{this.author.date}}}</date>
 </author>
+{{/if}}
+{{#if this.committer}}
 <committer>
-<name>{{{this.metadata.committer.name}}}</name>
-<email>{{{this.metadata.committer.email}}}</email>
-<date>{{{this.metadata.committer.date}}}</date>
+<name>{{{this.committer.name}}}</name>
+<email>{{{this.committer.email}}}</email>
+<date>{{{this.committer.date}}}</date>
 </committer>
-{{#if this.metadata.parents}}
+{{/if}}
+{{#if this.parents}}
 <parents>
-{{#each this.metadata.parents}}
+{{#each this.parents}}
 <parent>{{{this}}}</parent>
 {{/each}}
 </parents>
 {{/if}}
-<message>{{{this.metadata.message}}}</message>
-{{#if this.metadata.body}}
-<body>{{{this.metadata.body}}}</body>
-{{/if}}
-{{#if this.metadata.files.length}}
-<files>
-{{#each this.metadata.files}}
-<file>{{{this}}}</file>
-{{/each}}
-</files>
+{{#if this.body}}
+<body>{{{this.body}}}</body>
 {{/if}}
 {{#if this.patch}}
 <patch>
 {{{this.patch}}}
 </patch>
 {{/if}}
-</commit>
+</git_log_commit>
 {{/each}}
-</commits>
-{{/if}}
 </git_logs>
 {{/if}}
 

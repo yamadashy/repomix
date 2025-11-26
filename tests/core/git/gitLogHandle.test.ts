@@ -90,49 +90,16 @@ src/feature.ts`;
       });
 
       expect(result).toEqual({
-        logContent: mockLogContent,
-        commits: [
+        logCommits: [
           {
-            metadata: {
-              hash: '',
-              abbreviatedHash: '',
-              parents: [],
-              author: {
-                name: '',
-                email: '',
-                date: '2024-01-01 10:00:00 +0900',
-              },
-              committer: {
-                name: '',
-                email: '',
-                date: '2024-01-01 10:00:00 +0900',
-              },
-              message: 'Initial commit',
-              body: '',
-              files: ['file1.txt', 'file2.txt'],
-            },
-            patch: undefined,
+            date: '2024-01-01 10:00:00 +0900',
+            message: 'Initial commit',
+            files: ['file1.txt', 'file2.txt'],
           },
           {
-            metadata: {
-              hash: '',
-              abbreviatedHash: '',
-              parents: [],
-              author: {
-                name: '',
-                email: '',
-                date: '2024-01-02 11:00:00 +0900',
-              },
-              committer: {
-                name: '',
-                email: '',
-                date: '2024-01-02 11:00:00 +0900',
-              },
-              message: 'Add feature',
-              body: '',
-              files: ['src/feature.ts'],
-            },
-            patch: undefined,
+            date: '2024-01-02 11:00:00 +0900',
+            message: 'Add feature',
+            files: ['src/feature.ts'],
           },
         ],
       });
@@ -267,8 +234,7 @@ test.txt`);
       });
 
       expect(result).toEqual({
-        logContent: '',
-        commits: [],
+        logCommits: [],
       });
     });
 
@@ -293,9 +259,8 @@ test.txt`);
         getCommitPatch: vi.fn(),
       });
 
-      // Should return empty commits array when content cannot be parsed properly
-      expect(result?.commits).toEqual([]);
-      expect((result as GitLogResult)?.logContent).toBe(malformedLogContent);
+      // Should return empty logCommits array when content cannot be parsed properly
+      expect(result?.logCommits).toEqual([]);
     });
 
     test('should handle Windows line endings (CRLF) correctly', async () => {
@@ -319,27 +284,11 @@ test.txt`);
         getCommitPatch: vi.fn(),
       });
 
-      expect(result?.commits).toEqual([
+      expect(result?.logCommits).toEqual([
         {
-          metadata: {
-            hash: '',
-            abbreviatedHash: '',
-            parents: [],
-            author: {
-              name: '',
-              email: '',
-              date: '2024-01-01 10:00:00 +0900',
-            },
-            committer: {
-              name: '',
-              email: '',
-              date: '2024-01-01 10:00:00 +0900',
-            },
-            message: 'Windows commit',
-            body: '',
-            files: ['file1.txt', 'file2.txt'],
-          },
-          patch: undefined,
+          date: '2024-01-01 10:00:00 +0900',
+          message: 'Windows commit',
+          files: ['file1.txt', 'file2.txt'],
         },
       ]);
     });
@@ -365,27 +314,11 @@ test.txt`);
         getCommitPatch: vi.fn(),
       });
 
-      expect(result?.commits).toEqual([
+      expect(result?.logCommits).toEqual([
         {
-          metadata: {
-            hash: '',
-            abbreviatedHash: '',
-            parents: [],
-            author: {
-              name: '',
-              email: '',
-              date: '2024-01-01 10:00:00 +0900',
-            },
-            committer: {
-              name: '',
-              email: '',
-              date: '2024-01-01 10:00:00 +0900',
-            },
-            message: 'Mixed line endings',
-            body: '',
-            files: ['file1.txt', 'file2.txt'],
-          },
-          patch: undefined,
+          date: '2024-01-01 10:00:00 +0900',
+          message: 'Mixed line endings',
+          files: ['file1.txt', 'file2.txt'],
         },
       ]);
     });

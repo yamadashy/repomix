@@ -19,8 +19,18 @@ export const calculateGitLogMetrics = async (
     };
   }
 
-  // Extract log content - try logContent first (simple mode), then graph.graph (comprehensive mode)
-  const logContent = gitLogResult.logContent || gitLogResult.graph?.graph;
+  // Return zero token count if no commits to count
+  if (!gitLogResult.logCommits || gitLogResult.logCommits.length === 0) {
+    return {
+      gitLogTokenCount: 0,
+    };
+  }
+
+  // Serialize logCommits to string for token counting
+  // Include graph visualization if present for comprehensive token count
+  const graphContent = gitLogResult.graph?.graph || '';
+  const commitsContent = JSON.stringify(gitLogResult.logCommits);
+  const logContent = graphContent + commitsContent;
 
   // Return zero token count if no git log content
   if (!logContent) {

@@ -229,28 +229,11 @@ describe('outputGenerate', () => {
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
     const mockGitLogResult = {
-      logContent: 'commit abc123\nAuthor: test',
-      commits: [
+      logCommits: [
         {
-          metadata: {
-            hash: '',
-            abbreviatedHash: '',
-            parents: [],
-            author: {
-              name: '',
-              email: '',
-              date: '2024-01-01',
-            },
-            committer: {
-              name: '',
-              email: '',
-              date: '2024-01-01',
-            },
-            message: 'Initial commit',
-            body: '',
-            files: ['file1.txt'],
-          },
-          patch: undefined,
+          date: '2024-01-01',
+          message: 'Initial commit',
+          files: ['file1.txt'],
         },
       ],
     };
@@ -345,18 +328,17 @@ describe('outputGenerate', () => {
         mergeCommits: [],
         tags: { 'v1.0.0': 'abc1234567890' },
       },
-      commits: [
+      logCommits: [
         {
-          metadata: {
-            hash: 'abc1234567890',
-            abbreviatedHash: 'abc123',
-            parents: ['def456'],
-            author: { name: 'John Doe', email: 'john@example.com', date: '2025-11-20T12:00:00Z' },
-            committer: { name: 'John Doe', email: 'john@example.com', date: '2025-11-20T12:00:00Z' },
-            message: 'feat: add feature',
-            body: 'Extended description',
-            files: ['src/feature.ts', 'tests/feature.test.ts'],
-          },
+          date: '2025-11-20T12:00:00Z',
+          message: 'feat: add feature',
+          files: ['src/feature.ts', 'tests/feature.test.ts'],
+          hash: 'abc1234567890',
+          abbreviatedHash: 'abc123',
+          parents: ['def456'],
+          author: { name: 'John Doe', email: 'john@example.com', date: '2025-11-20T12:00:00Z' },
+          committer: { name: 'John Doe', email: 'john@example.com', date: '2025-11-20T12:00:00Z' },
+          body: 'Extended description',
           patch: 'diff --git a/src/feature.ts',
         },
       ],
@@ -404,18 +386,17 @@ describe('outputGenerate', () => {
         mergeCommits: [],
         tags: {},
       },
-      commits: [
+      logCommits: [
         {
-          metadata: {
-            hash: 'abc1234567890abcdef',
-            abbreviatedHash: 'abc1234',
-            parents: ['parent123'],
-            author: { name: 'Jane Smith', email: 'jane@example.com', date: '2025-11-21T10:00:00Z' },
-            committer: { name: 'Jane Smith', email: 'jane@example.com', date: '2025-11-21T10:00:00Z' },
-            message: 'fix: bug fix',
-            body: '',
-            files: ['src/bugfix.ts'],
-          },
+          date: '2025-11-21T10:00:00Z',
+          message: 'fix: bug fix',
+          files: ['src/bugfix.ts'],
+          hash: 'abc1234567890abcdef',
+          abbreviatedHash: 'abc1234',
+          parents: ['parent123'],
+          author: { name: 'Jane Smith', email: 'jane@example.com', date: '2025-11-21T10:00:00Z' },
+          committer: { name: 'Jane Smith', email: 'jane@example.com', date: '2025-11-21T10:00:00Z' },
+          body: '',
           patch: 'diff --git a/src/bugfix.ts',
         },
       ],
@@ -440,12 +421,14 @@ describe('outputGenerate', () => {
     // merge_commits is empty array in mock, which XMLBuilder omits from output
     expect(parsedOutput.repomix.git_logs.commit_graph.merge_commits).toBeUndefined();
     // With single commit, fast-xml-parser returns object directly (not array)
-    const commit = Array.isArray(parsedOutput.repomix.git_logs.commits)
-      ? parsedOutput.repomix.git_logs.commits[0]
-      : parsedOutput.repomix.git_logs.commits;
-    expect(commit['@_hash']).toBe('abc1234567890abcdef');
+    const commit = Array.isArray(parsedOutput.repomix.git_logs.git_log_commit)
+      ? parsedOutput.repomix.git_logs.git_log_commit[0]
+      : parsedOutput.repomix.git_logs.git_log_commit;
+    expect(commit.hash).toBe('abc1234567890abcdef');
     expect(commit.author.name).toBe('Jane Smith');
-    expect(commit.files).toBe('src/bugfix.ts');
+    // files is rendered as text nodes, so it will be a string or array depending on parser
+    expect(commit.files).toBeDefined();
+    expect(commit.files).toMatch(/src\/bugfix\.ts/);
   });
 
   test('generateOutput should include files list in XML commit history template', async () => {
@@ -465,18 +448,17 @@ describe('outputGenerate', () => {
         range: 'HEAD~1..HEAD',
         detailLevel: 'stat' as const,
       },
-      commits: [
+      logCommits: [
         {
-          metadata: {
-            hash: 'abc1234567890',
-            abbreviatedHash: 'abc123',
-            parents: [],
-            author: { name: 'Test', email: 'test@example.com', date: '2025-11-20T12:00:00Z' },
-            committer: { name: 'Test', email: 'test@example.com', date: '2025-11-20T12:00:00Z' },
-            message: 'test commit',
-            body: '',
-            files: ['src/a.ts', 'src/b.ts', 'tests/a.test.ts'],
-          },
+          date: '2025-11-20T12:00:00Z',
+          message: 'test commit',
+          files: ['src/a.ts', 'src/b.ts', 'tests/a.test.ts'],
+          hash: 'abc1234567890',
+          abbreviatedHash: 'abc123',
+          parents: [],
+          author: { name: 'Test', email: 'test@example.com', date: '2025-11-20T12:00:00Z' },
+          committer: { name: 'Test', email: 'test@example.com', date: '2025-11-20T12:00:00Z' },
+          body: '',
           patch: '',
         },
       ],
@@ -492,9 +474,9 @@ describe('outputGenerate', () => {
     );
 
     expect(output).toContain('<files>');
-    expect(output).toContain('<file>src/a.ts</file>');
-    expect(output).toContain('<file>src/b.ts</file>');
-    expect(output).toContain('<file>tests/a.test.ts</file>');
+    expect(output).toContain('src/a.ts');
+    expect(output).toContain('src/b.ts');
+    expect(output).toContain('tests/a.test.ts');
     expect(output).toContain('</files>');
   });
 
@@ -515,6 +497,20 @@ describe('outputGenerate', () => {
         range: 'HEAD~2..HEAD',
         detailLevel: 'stat' as const,
       },
+      logCommits: [
+        {
+          date: '2025-11-21T12:00:00Z',
+          message: 'Merge branch',
+          files: [],
+          hash: 'merge1234567890',
+          abbreviatedHash: 'merge123',
+          parents: ['parent1', 'parent2'],
+          author: { name: 'Test', email: 'test@example.com', date: '2025-11-21T12:00:00Z' },
+          committer: { name: 'Test', email: 'test@example.com', date: '2025-11-21T12:00:00Z' },
+          body: '',
+          patch: '',
+        },
+      ],
       graph: {
         commits: [],
         graph: '* merge123 Merge branch\n* abc123 feat: feature',
@@ -522,21 +518,6 @@ describe('outputGenerate', () => {
         mergeCommits: ['merge1234567890'],
         tags: {},
       },
-      commits: [
-        {
-          metadata: {
-            hash: 'merge1234567890',
-            abbreviatedHash: 'merge123',
-            parents: ['parent1', 'parent2'],
-            author: { name: 'Test', email: 'test@example.com', date: '2025-11-21T12:00:00Z' },
-            committer: { name: 'Test', email: 'test@example.com', date: '2025-11-21T12:00:00Z' },
-            message: 'Merge branch',
-            body: '',
-            files: [],
-          },
-          patch: '',
-        },
-      ],
     };
 
     const output = await generateOutput(

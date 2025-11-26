@@ -64,17 +64,6 @@ export const getMarkdownTemplate = () => {
 {{#if gitLogEnabled}}
 # Git Logs
 
-{{#each gitLogCommits}}
-## Commit: {{{this.date}}}
-**Message:** {{{this.message}}}
-
-**Files:**
-{{#each this.files}}
-- {{{this}}}
-{{/each}}
-
-{{/each}}
-
 {{#if gitCommitHistorySummary}}
 ## Summary
 - **Total Commits**: {{{gitCommitHistorySummary.totalCommits}}}
@@ -108,33 +97,34 @@ export const getMarkdownTemplate = () => {
 
 {{/if}}
 
-{{#if gitCommitHistoryItems}}
 ## Commits
 
-{{#each gitCommitHistoryItems}}
-### Commit {{{this.metadata.abbreviatedHash}}}
+{{#each gitLogCommits}}
+### Commit: {{{this.date}}}{{#if this.abbreviatedHash}} ({{{this.abbreviatedHash}}}){{/if}}
 
-**Hash**: \`{{{this.metadata.hash}}}\`
-**Author**: {{{this.metadata.author.name}}} <{{{this.metadata.author.email}}}>
-**Date**: {{{this.metadata.author.date}}}
-{{#if this.metadata.parents}}
-**Parents**: {{#each this.metadata.parents}}\`{{{this}}}\` {{/each}}
+{{#if this.hash}}
+**Hash**: \`{{{this.hash}}}\`
 {{/if}}
-**Message**: {{{this.metadata.message}}}
+{{#if this.author}}
+**Author**: {{{this.author.name}}} <{{{this.author.email}}}>
+{{/if}}
+**Message**: {{{this.message}}}
 
-{{#if this.metadata.body}}
+{{#if this.parents}}
+**Parents**: {{#each this.parents}}\`{{{this}}}\` {{/each}}
+
+{{/if}}
+{{#if this.body}}
 **Body**:
 \`\`\`
-{{{this.metadata.body}}}
+{{{this.body}}}
 \`\`\`
-{{/if}}
 
-{{#if this.metadata.files.length}}
+{{/if}}
 **Files Changed**:
-{{#each this.metadata.files}}
+{{#each this.files}}
 - \`{{{this}}}\`
 {{/each}}
-{{/if}}
 
 {{#if this.patch}}
 **Changes**:
@@ -146,7 +136,6 @@ export const getMarkdownTemplate = () => {
 ---
 
 {{/each}}
-{{/if}}
 {{/if}}
 
 {{#if instruction}}
