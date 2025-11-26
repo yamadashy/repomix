@@ -58,6 +58,25 @@
 ## MCP 옵션
 - `--mcp`: AI 도구 통합을 위한 Model Context Protocol 서버로 실행
 
+## Git 커밋 히스토리 옵션
+
+이 직교 플래그들은 git log의 구조를 반영하여 세밀한 제어를 제공합니다:
+
+**Diff 형식 플래그** (상호 배타적 - 하나 선택):
+- `--stat`: 파일별 변경 횟수 표시 (git log --stat)
+- `--patch`: 줄별 diff 표시 (git log --patch)
+- `--numstat`: 파일별 숫자 추가/삭제 표시 (git log --numstat)
+- `--shortstat`: 변경사항의 한 줄 요약 표시 (git log --shortstat)
+- `--dirstat`: 디렉토리 변경 분포 표시 (git log --dirstat)
+- `--name-only`: 파일명만 표시 (git log --name-only) - 기본값
+- `--name-status`: A/M/D/R 상태와 함께 파일명 표시 (git log --name-status)
+- `--raw`: SHA 해시와 모드가 포함된 저수준 형식 표시 (git log --raw)
+
+**출력 상세 수준 및 그래프 옵션** (모든 diff 형식과 조합 가능):
+- `--graph`: ASCII 및 Mermaid 커밋 그래프 시각화 포함 (git log --graph --all)
+- `--summary`: 생성, 이름 변경, 모드 변경 등 파일 작업 표시 (git log --summary)
+- `--commit-range <range>`: 분석할 Git 커밋 범위 (기본값: HEAD~50..HEAD, .. 및 ... 구문 모두 지원, 예: "HEAD~100..HEAD", "v1.0..v2.0", "main...feature-branch")
+
 ## 예시
 
 ```bash
