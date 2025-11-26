@@ -8,7 +8,7 @@ import { type FileSearchResult, listDirectories, listFiles, searchFiles } from '
 import { generateTreeString } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { GitLogCommit, GitLogResult } from '../git/gitLogHandle.js';
+import type { GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
 import { sortOutputFiles } from './outputSort.js';
 import {

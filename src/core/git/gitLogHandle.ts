@@ -1,13 +1,11 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
-import { execGitLog, execGitLogComplete, type GitLogCompleteOptions } from './gitCommand.js';
+import { execGitGraph, execGitLog, execGitLogStructured, execGitLogTextBlob } from './gitCommand.js';
 import {
   type CommitGraph,
   type CommitMetadata,
   generateMermaidGraph,
-  getCommitGraph,
-  getCommitPatch,
   getTags,
   type PatchDetailLevel,
 } from './gitHistory.js';
@@ -16,12 +14,9 @@ import { isGitRepository } from './gitRepositoryHandle.js';
 // Null character used as record separator in git log output for robust parsing
 // This ensures commits are split correctly even when commit messages contain newlines
 export const GIT_LOG_RECORD_SEPARATOR = '\x00';
-
-// Git format string for null character separator
-// Git expects %x00 format in pretty format strings
 export const GIT_LOG_FORMAT_SEPARATOR = '%x00';
 
-// ===== Git Log Result Types =====
+// ===== Types =====
 
 /**
  * Summary statistics for git history analysis
@@ -34,12 +29,10 @@ export interface HistorySummary {
 }
 
 /**
- * Git log result with additive optional fields
- *
- * Structure is naturally backward and forward compatible:
- * - logCommits: array of commits with progressive optional fields
- * - graph: commit graph visualization when includeCommitGraph=true
- * - summary: statistics when includeSummary=true
+ * Git log result with optional graph and summary
+ * - logCommits: always present, with progressive optional fields based on config
+ * - graph: present when includeCommitGraph=true
+ * - summary: present when includeSummary=true
  */
 export interface GitLogResult {
   logCommits: GitLogCommit[];
@@ -50,215 +43,170 @@ export interface GitLogResult {
 /**
  * Git log commit with progressive optional fields
  *
- * Core fields (always present):
- * - date: commit date for display
- * - message: commit message
- * - files: list of changed files
- *
- * Extended fields (present when graph/summary/patches enabled):
- * - hash: full commit hash
- * - abbreviatedHash: short commit hash
- * - author: author information
- * - committer: committer information
- * - parents: parent commit hashes
- * - body: extended commit message
- * - patch: diff content
+ * Core fields (always present): date, message, files
+ * Extended fields (when enhanced mode enabled): hash, author, committer, parents, body, patch
  */
 export interface GitLogCommit {
-  // Core fields - always present
   date: string;
   message: string;
   files: string[];
-
-  // Extended fields - optional (when graph/summary/patches enabled)
   hash?: string;
   abbreviatedHash?: string;
-  author?: {
-    name: string;
-    email: string;
-    date: string;
-  };
-  committer?: {
-    name: string;
-    email: string;
-    date: string;
-  };
+  author?: { name: string; email: string; date: string };
+  committer?: { name: string; email: string; date: string };
   parents?: string[];
   body?: string;
   patch?: string;
 }
 
-const parseGitLog = (rawLogOutput: string, recordSeparator = GIT_LOG_RECORD_SEPARATOR): GitLogCommit[] => {
-  if (!rawLogOutput.trim()) {
-    return [];
-  }
+// ===== Two-Pass Parser =====
+//
+// Architecture: Separates structured data from text blobs for robust parsing
+// - Pass 1 (execGitLogStructured): NUL-terminated metadata + raw file entries
+// - Pass 2 (execGitLogTextBlob): Patch/stat content matched by array index
+// - Pass 3 (execGitGraph): Separate call avoids graph prefix interleaving
+//
+// NUL (\x00) is used as the ONLY delimiter because git REJECTS commits containing
+// NUL bytes. This makes parsing 100% robust - NUL cannot appear in commit messages,
+// author names, emails, or any other commit content.
+//
+// With -z --raw, git uses double-NUL (\x00\x00) between commits, providing a safe
+// record separator that cannot be forged by commit content.
 
-  const commits: GitLogCommit[] = [];
-  // Split by record separator used in git log output
-  // This is more robust than splitting by double newlines, as commit messages may contain newlines
-  const logEntries = rawLogOutput.split(recordSeparator).filter(Boolean);
-
-  for (const entry of logEntries) {
-    // Split on both \n and \r\n to handle different line ending formats across platforms
-    const lines = entry.split(/\r?\n/).filter((line) => line.trim() !== '');
-    if (lines.length === 0) continue;
-
-    // First line contains date and message separated by |
-    const firstLine = lines[0];
-    const separatorIndex = firstLine.indexOf('|');
-    if (separatorIndex === -1) continue;
-
-    const date = firstLine.substring(0, separatorIndex);
-    const message = firstLine.substring(separatorIndex + 1);
-
-    // Remaining lines are file paths
-    const files = lines.slice(1).filter((line) => line.trim() !== '');
-
-    commits.push({
-      date,
-      message,
-      files,
-    });
-  }
-
-  return commits;
-};
-
-/**
- * Parsed commit from execGitLogComplete with all fields
- */
-interface ParsedCommitComplete {
+interface ParsedCommit {
   hash: string;
-  abbreviatedHash: string;
+  abbrevHash: string;
   parents: string[];
   author: { name: string; email: string; date: string };
   committer: { name: string; email: string; date: string };
   message: string;
   body: string;
   files: string[];
-  patch?: string; // Present if patchDetail was specified
-  graphPrefix?: string; // Present if --graph was used
+  patch?: string;
 }
 
+// Pre-compiled regexes for performance
+const HASH_REGEX = /^[0-9a-f]{40}$/i;
+const ABBREV_HASH_REGEX = /^[0-9a-f]{4,12}$/i;
+
+/** Fast check if string could be a 40-char hex hash (length + first char check before regex) */
+const isHash = (s: string): boolean => s.length === 40 && HASH_REGEX.test(s);
+
+/** Fast check if string looks like abbreviated hash sharing prefix with full hash */
+const isAbbrevOf = (abbrev: string, full: string): boolean =>
+  abbrev.length >= 4 && abbrev.length <= 12 && ABBREV_HASH_REGEX.test(abbrev) && full.startsWith(abbrev);
+
 /**
- * Parse git log output from execGitLogComplete
- * Handles interleaved metadata, files, patches, and graph prefixes
+ * Parse output from execGitLogStructured with optional patch content from execGitLogTextBlob
+ *
+ * Input format from -z --raw (all fields NUL-separated):
+ * - Fields 0-10: hash, abbrevHash, parents, authorName, authorEmail, authorDate,
+ *                committerName, committerEmail, committerDate, subject, body
+ * - Fields 11+: Raw file entries ":mode mode blob blob STATUS" followed by filename
+ * - Next commit starts when we see another 40-char hex hash
+ *
+ * NUL is 100% safe because git rejects commits containing NUL bytes in any content.
+ * We parse incrementally rather than splitting on double-NUL since empty fields
+ * also produce double-NUL sequences.
  */
-const parseGitLogComplete = (
-  rawOutput: string,
-  options: {
-    hasGraph: boolean;
-    hasPatch: boolean;
-    patchFormat?: string;
-  },
-): ParsedCommitComplete[] => {
-  if (!rawOutput.trim()) {
-    return [];
-  }
+const parseStructuredOutput = (output: string, patchOutput?: string): ParsedCommit[] => {
+  if (!output) return [];
 
-  const RECORD_SEP = '\x1E';
-  const FIELD_SEP = '\x1F';
-  const NULL_BYTE = '\x00';
+  // Split on single NUL - all fields are NUL-separated
+  const parts = output.split('\x00');
+  const patches = patchOutput ? patchOutput.split('\x00\x00').filter(Boolean) : [];
+  const commits: ParsedCommit[] = [];
+  let i = 0;
 
-  const commits: ParsedCommitComplete[] = [];
-  const records = rawOutput.split(RECORD_SEP).filter(Boolean);
-
-  for (const record of records) {
-    let graphPrefix = '';
-    let content = record;
-
-    // Extract graph prefix if present (lines before first field separator)
-    if (options.hasGraph) {
-      const lines = record.split('\n');
-      const firstMetadataLine = lines.findIndex((l) => l.includes(FIELD_SEP));
-      if (firstMetadataLine > 0) {
-        graphPrefix = lines.slice(0, firstMetadataLine).join('\n');
-        content = lines.slice(firstMetadataLine).join('\n');
-      }
+  while (i < parts.length) {
+    // Find start of commit (40-char hex hash) - use length check first for speed
+    const hashRaw = parts[i];
+    if (!hashRaw) {
+      i++;
+      continue;
+    }
+    const hash = hashRaw.trim();
+    if (!isHash(hash)) {
+      i++;
+      continue;
     }
 
-    // Split metadata from files/patch section
-    const [metadataSection, filesAndPatch] = content.split(NULL_BYTE);
-    if (!metadataSection) continue;
+    // Need at least 11 fields for metadata
+    if (i + 10 >= parts.length) break;
 
-    // Parse metadata fields (remove graph prefixes from each line)
-    const fields = metadataSection.split(FIELD_SEP).map((f) => f.replace(/^[*|\/\\ ]+/, '').trim());
+    // Extract metadata fields - trim once and store
+    const abbrev = parts[i + 1]?.trim() || '';
+    const parents = parts[i + 2]?.trim() || '';
+    const aName = parts[i + 3]?.trim() || '';
+    const aEmail = parts[i + 4]?.trim() || '';
+    const aDate = parts[i + 5]?.trim() || '';
+    const cName = parts[i + 6]?.trim() || '';
+    const cEmail = parts[i + 7]?.trim() || '';
+    const cDate = parts[i + 8]?.trim() || '';
+    const subject = parts[i + 9]?.trim() || '';
+    const body = parts[i + 10]?.trim() || '';
 
-    if (fields.length < 11) continue; // Need all metadata fields
+    i += 11; // Move past metadata fields
 
-    const [
-      hash,
-      abbrevHash,
-      parentsStr,
-      authorName,
-      authorEmail,
-      authorDate,
-      committerName,
-      committerEmail,
-      committerDate,
-      subject,
-      ...bodyLines
-    ] = fields;
-
-    // Split files and patch (separated by blank lines)
-    let files: string[] = [];
-    let patch: string | undefined;
-
-    if (filesAndPatch) {
-      // Remove graph prefixes from file/patch section and normalize line endings
-      const cleanedSection = filesAndPatch
-        .split(/\r?\n/) // Handle both \n and \r\n
-        .map((line) => line.replace(/^[*|\/\\ ]+/, ''))
-        .join('\n');
-
-      const sections = cleanedSection.split(/\n\n+/); // Split on blank lines
-      const fileSection = sections[0];
-      files = fileSection ? fileSection.split('\n').filter((l) => l.trim() !== '') : [];
-
-      // Patch comes after files (if hasPatch)
-      if (options.hasPatch && sections.length > 1) {
-        patch = sections.slice(1).join('\n\n').trim();
+    // Parse raw file entries until we hit the next commit or end
+    // Raw entry format: ":mode mode blob blob STATUS" followed by filename
+    const files: string[] = [];
+    while (i < parts.length) {
+      const partRaw = parts[i];
+      if (!partRaw) {
+        i++;
+        continue;
       }
+
+      // Check for raw entry (starts with ':') - most common case in file section
+      const firstChar = partRaw[0];
+      if (firstChar === ':' || (firstChar === '\n' && partRaw[1] === ':')) {
+        i++;
+        const filename = parts[i]?.trim();
+        if (filename) files.push(filename);
+        i++;
+        continue;
+      }
+
+      // Check for next commit boundary - only if length matches hash (40 chars)
+      const part = partRaw.trim();
+      if (part.length === 40 && isHash(part)) {
+        const nextPart = parts[i + 1]?.trim();
+        if (nextPart && isAbbrevOf(nextPart, part)) {
+          break; // This is definitely a new commit
+        }
+      }
+
+      i++;
     }
 
     commits.push({
-      hash: hash.trim(),
-      abbreviatedHash: abbrevHash.trim(),
-      parents: parentsStr ? parentsStr.trim().split(' ').filter(Boolean) : [],
-      author: {
-        name: authorName.trim(),
-        email: authorEmail.trim(),
-        date: authorDate.trim(),
-      },
-      committer: {
-        name: committerName.trim(),
-        email: committerEmail.trim(),
-        date: committerDate.trim(),
-      },
-      message: subject.trim(),
-      body: bodyLines.join('\n').trim(),
+      hash,
+      abbrevHash: abbrev,
+      parents: parents.split(' ').filter(Boolean),
+      author: { name: aName, email: aEmail, date: aDate },
+      committer: { name: cName, email: cEmail, date: cDate },
+      message: subject,
+      body,
       files,
-      patch,
-      ...(options.hasGraph && { graphPrefix }),
+      ...(patches[commits.length] && { patch: patches[commits.length].trim() }),
     });
   }
 
   return commits;
 };
 
+// ===== Public API =====
+
 export const getGitLog = async (
   directory: string,
   maxCommits: number,
-  deps = {
-    execGitLog,
-    isGitRepository,
-  },
+  deps = { execGitLog, isGitRepository },
 ): Promise<string> => {
   if (!(await deps.isGitRepository(directory))) {
     logger.trace(`Directory ${directory} is not a git repository`);
     return '';
   }
-
   try {
     return await deps.execGitLog(directory, maxCommits, GIT_LOG_FORMAT_SEPARATOR);
   } catch (error) {
@@ -269,99 +217,68 @@ export const getGitLog = async (
 
 /**
  * Get git logs with optional graph, patches, and summary
- * Returns GitLogResult with fields populated based on config
+ *
+ * Uses two-pass architecture:
+ * - Pass 1: Always fetch structured metadata + file lists
+ * - Pass 2: Fetch patch/stat content only if requested
+ * - Pass 3: Fetch graph separately to avoid prefix interleaving
  */
 export const getGitLogs = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
-  deps = {
-    execGitLogComplete,
-    getTags,
-    isGitRepository,
-  },
+  deps = { execGitLogStructured, execGitLogTextBlob, execGitGraph, getTags, isGitRepository },
 ): Promise<GitLogResult | undefined> => {
-  if (!config.output.git?.includeLogs) {
-    logger.trace('Git logs not enabled');
-    return undefined;
-  }
+  const gitConfig = config.output.git;
+  if (!gitConfig?.includeLogs) return undefined;
+
+  const gitRoot = rootDirs[0] || config.cwd;
+  if (!(await deps.isGitRepository(gitRoot))) return undefined;
 
   try {
-    const gitRoot = rootDirs[0] || config.cwd;
-
-    if (!(await deps.isGitRepository(gitRoot))) {
-      logger.trace(`Directory ${gitRoot} is not a git repository`);
-      return undefined;
-    }
-
-    const gitConfig = config.output.git;
-
-    // Determine if enhanced mode needed
-    const needsEnhanced =
-      gitConfig.includeCommitGraph === true ||
-      gitConfig.includeCommitPatches === true ||
-      gitConfig.includeSummary === true;
-
-    const range = needsEnhanced ? (gitConfig.commitRange || 'HEAD~50..HEAD') : undefined;
+    const needsEnhanced = gitConfig.includeCommitGraph || gitConfig.includeCommitPatches || gitConfig.includeSummary;
+    const range = needsEnhanced ? gitConfig.commitRange || 'HEAD~50..HEAD' : undefined;
     const maxCommits = gitConfig.includeLogsCount || 50;
+    const patchTypes = ['patch', 'stat', 'shortstat', 'dirstat', 'numstat'];
+    const needsPatch = gitConfig.includeCommitPatches && patchTypes.includes(gitConfig.commitPatchDetail || '');
 
-    logger.trace('Fetching git logs (single optimized path)', {
-      needsEnhanced,
-      range,
-      maxCommits,
-      includeGraph: gitConfig.includeCommitGraph,
-      includePatches: gitConfig.includeCommitPatches,
-      includeSummary: gitConfig.includeSummary,
-    });
+    // Fetch data
+    const structured = await deps.execGitLogStructured({ directory: gitRoot, range, maxCommits });
+    const patchOutput = needsPatch
+      ? await deps.execGitLogTextBlob({
+          directory: gitRoot,
+          range,
+          maxCommits,
+          patchDetail: gitConfig.commitPatchDetail as 'patch' | 'stat' | 'shortstat' | 'dirstat' | 'numstat',
+        })
+      : undefined;
 
-    // SINGLE git log call with all requested features
-    const rawOutput = await deps.execGitLogComplete({
-      directory: gitRoot,
-      range,
-      maxCommits,
-      includeGraph: gitConfig.includeCommitGraph === true,
-      patchDetail: gitConfig.includeCommitPatches === true ? gitConfig.commitPatchDetail : undefined,
-    });
+    const commits = parseStructuredOutput(structured, patchOutput);
+    logger.info(`✅ Fetched ${commits.length} commits`);
 
-    // Parse complete output
-    const parsedCommits = parseGitLogComplete(rawOutput, {
-      hasGraph: gitConfig.includeCommitGraph === true,
-      hasPatch: gitConfig.includeCommitPatches === true,
-      patchFormat: gitConfig.commitPatchDetail,
-    });
-
-    logger.info(`✅ Fetched ${parsedCommits.length} commits`);
-
-    // Map to GitLogCommit with progressive disclosure
-    const logCommits: GitLogCommit[] = parsedCommits.map((commit) => ({
-      // Core fields - always present
-      date: commit.author.date,
-      message: commit.message,
-      files: commit.files,
-      // Extended fields - only when enhanced mode
+    // Map to output format
+    const logCommits: GitLogCommit[] = commits.map((c) => ({
+      date: c.author.date,
+      message: c.message,
+      files: c.files,
       ...(needsEnhanced && {
-        hash: commit.hash,
-        abbreviatedHash: commit.abbreviatedHash,
-        author: commit.author,
-        committer: commit.committer,
-        parents: commit.parents,
-        body: commit.body || undefined,
-        patch: commit.patch || undefined,
+        hash: c.hash,
+        abbreviatedHash: c.abbrevHash,
+        author: c.author,
+        committer: c.committer,
+        parents: c.parents,
+        body: c.body || undefined,
+        patch: c.patch,
       }),
     }));
 
-    // Build graph if requested
+    // Graph (separate call)
     let graph: CommitGraph | undefined;
-    if (gitConfig.includeCommitGraph === true) {
-      const includeTags = gitConfig.includeGitTags !== false;
-      const tags = includeTags ? await deps.getTags(gitRoot) : {};
-
-      // Reconstruct ASCII graph from prefixes
-      const asciiGraph = parsedCommits.map((c) => c.graphPrefix).filter(Boolean).join('\n');
-
-      // Build metadata array for graph
-      const commitMetadata: CommitMetadata[] = parsedCommits.map((c) => ({
+    if (gitConfig.includeCommitGraph) {
+      const tags = gitConfig.includeGitTags !== false ? await deps.getTags(gitRoot) : {};
+      const asciiGraph = await deps.execGitGraph({ directory: gitRoot, range, maxCommits });
+      const metadata: CommitMetadata[] = commits.map((c) => ({
         hash: c.hash,
-        abbreviatedHash: c.abbreviatedHash,
+        abbreviatedHash: c.abbrevHash,
         parents: c.parents,
         author: c.author,
         committer: c.committer,
@@ -369,25 +286,20 @@ export const getGitLogs = async (
         body: c.body,
         files: c.files,
       }));
-
-      const mergeCommits = commitMetadata.filter((c) => c.parents.length > 1).map((c) => c.hash);
-
-      const mermaidGraph = generateMermaidGraph(commitMetadata, tags);
-
       graph = {
-        commits: commitMetadata,
+        commits: metadata,
         graph: asciiGraph,
-        mermaidGraph,
-        mergeCommits,
+        mermaidGraph: generateMermaidGraph(metadata, tags),
+        mergeCommits: metadata.filter((c) => c.parents.length > 1).map((c) => c.hash),
         tags,
       };
     }
 
-    // Build summary if requested
-    const summary = gitConfig.includeSummary === true
+    // Summary
+    const summary = gitConfig.includeSummary
       ? {
-          totalCommits: logCommits.length,
-          mergeCommits: parsedCommits.filter((c) => c.parents.length > 1).length,
+          totalCommits: commits.length,
+          mergeCommits: commits.filter((c) => c.parents.length > 1).length,
           range: range || `last ${maxCommits} commits`,
           detailLevel: (gitConfig.commitPatchDetail as PatchDetailLevel) || 'name-only',
         }
@@ -395,11 +307,7 @@ export const getGitLogs = async (
 
     return { logCommits, graph, summary };
   } catch (error) {
-    if (error instanceof RepomixError) {
-      throw error;
-    }
-    const errorMessage = (error as Error).message;
-    logger.trace('Failed to get git logs:', errorMessage);
-    throw new RepomixError(`Failed to get git logs: ${errorMessage}`, { cause: error });
+    if (error instanceof RepomixError) throw error;
+    throw new RepomixError(`Failed to get git logs: ${(error as Error).message}`, { cause: error });
   }
 };

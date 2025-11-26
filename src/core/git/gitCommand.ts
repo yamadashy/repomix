@@ -4,7 +4,6 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
-import type { PatchDetailLevel } from './gitHistory.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -178,104 +177,79 @@ export const execGitLog = async (
   }
 };
 
-/**
- * Options for execGitLogComplete
- */
-export interface GitLogCompleteOptions {
+// ===== Two-Pass Git Log =====
+//
+// Two-pass architecture for robust git log parsing:
+// - Pass 1 (execGitLogStructured): Metadata + NUL-terminated file entries via -z --raw
+// - Pass 2 (execGitLogTextBlob): Patch/stat text content, only when requested
+// - Pass 3 (execGitGraph): Separate graph call avoids prefix interleaving complexity
+//
+// Format separators - NUL (\x00) is used for ALL delimiters because:
+// - Git REJECTS commits containing NUL bytes ("a NUL byte in commit log message not allowed")
+// - This makes NUL 100% safe as a delimiter - it cannot appear in messages, names, or emails
+// - ASCII control characters like \x1E and \x1F CAN appear in commit messages (rare but possible)
+// - With -z --raw, git uses double-NUL (\x00\x00) between commits - we leverage this pattern
+export const NUL = '%x00'; // NUL byte - between ALL fields (git prevents NUL in commit content)
+
+// Metadata format string for --pretty=format:
+// All fields NUL-separated for robust parsing (git prevents NUL in commit content)
+// Fields: hash, abbrevHash, parents, authorName, authorEmail, authorDate,
+//         committerName, committerEmail, committerDate, subject, body
+// With -z --raw, git adds NUL after each raw file entry and double-NUL between commits
+const METADATA_FORMAT = `%H${NUL}%h${NUL}%P${NUL}%an${NUL}%ae${NUL}%aI${NUL}%cn${NUL}%ce${NUL}%cI${NUL}%s${NUL}%b${NUL}`;
+
+export interface GitLogStructuredOptions {
   directory: string;
-  range?: string; // e.g., "HEAD~50..HEAD"
-  maxCommits?: number; // e.g., 50 (used when no range)
-  includeGraph?: boolean; // Adds --graph --all
-  patchDetail?: PatchDetailLevel; // Adds --stat, --patch, etc.
+  range?: string;
+  maxCommits?: number;
 }
 
-/**
- * Execute git log with full metadata format in a single optimized call
- * Fetches all commit metadata, files, and optionally patches/graph in ONE git subprocess
- *
- * @param options - Configuration for what to include in output
- * @returns Raw git log output with record separators for parsing
- */
-export const execGitLogComplete = async (
-  options: GitLogCompleteOptions,
-  deps = {
-    execFileAsync,
-  },
+export interface GitLogTextBlobOptions extends GitLogStructuredOptions {
+  patchDetail: 'patch' | 'stat' | 'shortstat' | 'dirstat' | 'numstat';
+}
+
+/** Pass 1: Structured metadata + files with -z --raw */
+export const execGitLogStructured = async (
+  options: GitLogStructuredOptions,
+  deps = { execFileAsync },
 ): Promise<string> => {
-  // Full metadata format - all fields needed for complete commit information
-  const RECORD_SEP = '%x1E'; // ASCII record separator between commits
-  const FIELD_SEP = '%x1F'; // ASCII unit separator between fields
-  const NULL_BYTE = '%x00'; // Separates metadata from files
-
-  const metadataFormat = [
-    '%H', // Full hash
-    '%h', // Abbreviated hash
-    '%P', // Parent hashes (space-separated)
-    '%an', // Author name
-    '%ae', // Author email
-    '%aI', // Author date (ISO 8601)
-    '%cn', // Committer name
-    '%ce', // Committer email
-    '%cI', // Committer date (ISO 8601)
-    '%s', // Subject (first line of message)
-    '%b', // Body (rest of message)
-  ].join(`%n${FIELD_SEP}`); // Use field separator for reliable parsing
-
-  const args = [
-    '-C',
-    options.directory,
-    'log',
-    `--pretty=format:${RECORD_SEP}${metadataFormat}${NULL_BYTE}`,
-    '--name-only',
-  ];
-
-  // Add patch format conditionally (git supports combining with --pretty)
-  if (options.patchDetail) {
-    switch (options.patchDetail) {
-      case 'patch':
-        args.push('--patch');
-        break;
-      case 'stat':
-        args.push('--stat');
-        break;
-      case 'numstat':
-        args.push('--numstat');
-        break;
-      case 'shortstat':
-        args.push('--shortstat');
-        break;
-      case 'dirstat':
-        args.push('--dirstat');
-        break;
-      case 'name-status':
-        args.push('--name-status');
-        break;
-      case 'raw':
-        args.push('--raw');
-        break;
-      case 'name-only':
-        // Already added via --name-only above
-        break;
-    }
-  }
-
-  // Add graph visualization conditionally
-  if (options.includeGraph) {
-    args.push('--graph', '--all');
-  }
-
-  // Add range or commit count
-  if (options.range) {
-    args.push(options.range);
-  } else if (options.maxCommits) {
-    args.push('-n', options.maxCommits.toString());
-  }
+  const args = ['-C', options.directory, 'log', '-z', '--raw', `--pretty=format:${METADATA_FORMAT}`];
+  if (options.range) args.push(options.range);
+  else if (options.maxCommits) args.push('-n', options.maxCommits.toString());
 
   try {
-    const result = await deps.execFileAsync('git', args);
-    return result.stdout || '';
+    return (await deps.execFileAsync('git', args)).stdout || '';
   } catch (error) {
-    logger.trace('Failed to execute git log with complete metadata:', (error as Error).message);
+    logger.trace('Failed to execute git log structured:', (error as Error).message);
+    throw error;
+  }
+};
+
+/** Pass 2: Patch/stat text blob - uses double-NUL as record separator for consistency */
+export const execGitLogTextBlob = async (options: GitLogTextBlobOptions, deps = { execFileAsync }): Promise<string> => {
+  // Use double-NUL as separator - matches structured output format, 100% safe since git rejects NUL in content
+  const args = ['-C', options.directory, 'log', `--pretty=format:${NUL}${NUL}`, `--${options.patchDetail}`];
+  if (options.range) args.push(options.range);
+  else if (options.maxCommits) args.push('-n', options.maxCommits.toString());
+
+  try {
+    return (await deps.execFileAsync('git', args)).stdout || '';
+  } catch (error) {
+    logger.trace('Failed to execute git log text blob:', (error as Error).message);
+    throw error;
+  }
+};
+
+/** Graph visualization (separate call to avoid prefix interleaving) */
+export const execGitGraph = async (options: GitLogStructuredOptions, deps = { execFileAsync }): Promise<string> => {
+  const args = ['-C', options.directory, 'log', '--graph', '--oneline', '--all'];
+  if (options.range) args.push(options.range);
+  else if (options.maxCommits) args.push('-n', options.maxCommits.toString());
+
+  try {
+    return (await deps.execFileAsync('git', args)).stdout || '';
+  } catch (error) {
+    logger.trace('Failed to execute git graph:', (error as Error).message);
     throw error;
   }
 };
