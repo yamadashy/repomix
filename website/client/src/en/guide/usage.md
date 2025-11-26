@@ -149,7 +149,7 @@ repomix --include-logs --commit-range "main...feature-branch"
 - `--name-status`: Filenames with A/M/D/R status (git log --name-status)
 - `--raw`: Low-level format (git log --raw)
 
-**Enhancement Flags** (combinable with any diff format):
+**Output Verbosity & Graph Options** (combinable with any diff format):
 - `--graph`: Include ASCII and Mermaid commit graph visualization
 - `--summary`: Show file operations (creates, renames, mode changes)
 

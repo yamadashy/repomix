@@ -666,7 +666,7 @@ Instruction
 - `--name-status`: Show filenames with A/M/D/R status (git log --name-status)
 - `--raw`: Show low-level format with SHA hashes and modes (git log --raw)
 
-**Git Log Enhancement Flags** (combinable with any diff format):
+**Git Log Output Verbosity & Graph Options** (combinable with any diff format):
 - `--graph`: Include ASCII and Mermaid commit graph visualization (git log --graph --all)
 - `--summary`: Show file operations like creates, renames, mode changes (git log --summary)
 

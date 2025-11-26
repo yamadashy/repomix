@@ -72,11 +72,9 @@ These orthogonal flags mirror git log's structure for fine-grained control:
 - `--name-status`: Show filenames with A/M/D/R status (git log --name-status)
 - `--raw`: Show low-level format with SHA hashes and modes (git log --raw)
 
-**Enhancement Flags** (combinable with any diff format):
+**Output Verbosity & Graph Options** (combinable with any diff format):
 - `--graph`: Include ASCII and Mermaid commit graph visualization (git log --graph --all)
 - `--summary`: Show file operations like creates, renames, mode changes (git log --summary)
-
-**Range Options**:
 - `--commit-range <range>`: Git commit range to analyze (default: HEAD~50..HEAD, supports both .. and ... syntax, e.g., "HEAD~100..HEAD", "v1.0..v2.0", "main...feature-branch")
 
 ## Examples

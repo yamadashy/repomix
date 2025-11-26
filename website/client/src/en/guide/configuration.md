@@ -343,10 +343,10 @@ The `output.git` configuration provides powerful Git-aware features:
 
 **Simple Git Output:**
 - `includeDiffs`: When true, includes Git differences in the output (includes both work tree and staged changes separately). This allows the reader to see pending changes in the repository. Default: `false`
-- `includeLogs`: When true, includes Git commit history in the output. Shows commit dates, messages, and file paths for each commit. When used alone, provides basic commit information. When combined with enhancement flags below, provides structured metadata including commit hash, author/committer details, parent hashes, and commit body. Default: `false`
+- `includeLogs`: When true, includes Git commit history in the output. Shows commit dates, messages, and file paths for each commit. When used alone, provides basic commit information. When combined with output verbosity & graph options below, provides structured metadata including commit hash, author/committer details, parent hashes, and commit body. Default: `false`
 - `includeLogsCount`: The number of recent commits to include when using basic `includeLogs` without `commitRange`. Default: `50`
 
-**Commit History Enhancement:**
+**Detailed Commit History Options:**
 When any of these flags are combined with `includeLogs`, the output automatically includes structured metadata (commit hash, author/committer info, parent hashes, commit body) in addition to basic commit information:
 
 - `commitRange`: The Git commit range to analyze (e.g., "HEAD~50..HEAD", "v1.0..HEAD", "main..feature-branch"). When specified, automatically provides structured commit metadata (hash, author, committer, parents, body) for all commits. Default: `"HEAD~50..HEAD"`

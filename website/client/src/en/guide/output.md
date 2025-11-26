@@ -243,7 +243,7 @@ src/core/output/outputGenerate.ts
 ```
 ## Commit History Output
 
-When using `--include-logs` with enhancement flags (e.g., `--include-logs --patch --graph`), the output includes detailed commit metadata and history:
+When using `--include-logs` with output verbosity & graph options (e.g., `--include-logs --patch --graph`), the output includes detailed commit metadata and history:
 
 ```xml
 <git_logs>
@@ -314,7 +314,7 @@ new file mode 100644
 - `--name-status` (git log --name-status): Filenames with A/M/D/R status
 - `--raw` (git log --raw): Low-level format with SHA hashes and modes
 
-**Enhancement Flags** (combinable with any diff format):
+**Output Verbosity & Graph Options** (combinable with any diff format):
 - `--graph`: Include ASCII and Mermaid commit graph visualization
 - `--summary`: Show file operations (creates, renames, mode changes)
 

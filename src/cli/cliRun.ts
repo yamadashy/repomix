@@ -154,8 +154,8 @@ export const run = async () => {
       .addOption(new Option('--name-only', 'Show filenames only (git log --name-only)'))
       .addOption(new Option('--name-status', 'Show filenames with A/M/D/R status (git log --name-status)'))
       .addOption(new Option('--raw', 'Show low-level format with SHA hashes and modes (git log --raw)'))
-      // Git Log Enhancement Options (combinable with diff formats)
-      .optionsGroup('Git Log Enhancement Options')
+      // Git Log Output Verbosity & Graph Options (combinable with diff formats)
+      .optionsGroup('Git Log Output Verbosity & Graph Options')
       .option('--graph', 'Include ASCII and Mermaid commit graph visualization (git log --graph --all)')
       .option('--summary', 'Show file operations like creates, renames, mode changes (git log --summary)')
       // File Selection Options

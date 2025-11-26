@@ -41,7 +41,7 @@ Only one can be used at a time - these match git log parameters exactly:
 | `--name-status` | `--name-status` | Small | Files with A/M/D/R status | Change type tracking |
 | `--raw` | `--raw` | Small | SHA hashes and modes | Low-level git analysis |
 
-### Enhancement Flags (Combinable)
+### Output Verbosity & Graph Options (Combinable)
 
 These can be used together and with any diff format:
 

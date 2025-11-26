@@ -39,7 +39,7 @@ export interface CliOptions extends OptionValues {
   nameStatus?: boolean; // git log --name-status: filenames with status
   raw?: boolean; // git log --raw: low-level format
 
-  // Git Log Enhancement Flags (combinable with diff formats)
+  // Git Log Output Verbosity & Graph Options (combinable with diff formats)
   graph?: boolean; // git log --graph: show commit graph
   summary?: boolean; // git log --summary: show file operations (creates, renames, mode changes)
 
