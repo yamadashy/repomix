@@ -4,7 +4,7 @@ import { initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { GitLogResult } from '../git/gitLogHandle.js';
+import type { GitHistoryResult, GitLogResult } from '../git/gitLogHandle.js';
 import type { SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
 
 export interface SuspiciousFileResult {
@@ -17,7 +17,7 @@ export const runSecurityCheck = async (
   rawFiles: RawFile[],
   progressCallback: RepomixProgressCallback = () => {},
   gitDiffResult?: GitDiffResult,
-  gitLogResult?: GitLogResult,
+  gitLogResult?: GitLogResult | GitHistoryResult,
   deps = {
     initTaskRunner,
   },
@@ -46,10 +46,19 @@ export const runSecurityCheck = async (
 
   // Add Git log content for security checking if available
   if (gitLogResult) {
-    if (gitLogResult.logContent) {
+    // Check for simple log result (has logContent field)
+    if ('logContent' in gitLogResult && gitLogResult.logContent) {
       gitLogTasks.push({
         filePath: 'Git log history',
         content: gitLogResult.logContent,
+        type: 'gitLog',
+      });
+    }
+    // Check for comprehensive history result (has graph field)
+    if ('graph' in gitLogResult && gitLogResult.graph) {
+      gitLogTasks.push({
+        filePath: 'Git commit graph',
+        content: gitLogResult.graph.graph,
         type: 'gitLog',
       });
     }

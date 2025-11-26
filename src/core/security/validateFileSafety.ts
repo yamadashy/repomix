@@ -3,7 +3,7 @@ import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { GitLogResult } from '../git/gitLogHandle.js';
+import type { GitHistoryResult, GitLogResult } from '../git/gitLogHandle.js';
 import { filterOutUntrustedFiles } from './filterOutUntrustedFiles.js';
 import { runSecurityCheck, type SuspiciousFileResult } from './securityCheck.js';
 
@@ -15,7 +15,7 @@ export const validateFileSafety = async (
   progressCallback: RepomixProgressCallback,
   config: RepomixConfigMerged,
   gitDiffResult?: GitDiffResult,
-  gitLogResult?: GitLogResult,
+  gitLogResult?: GitLogResult | GitHistoryResult,
   deps = {
     runSecurityCheck,
     filterOutUntrustedFiles,

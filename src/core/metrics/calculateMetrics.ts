@@ -3,7 +3,7 @@ import { initTaskRunner, type TaskRunner } from '../../shared/processConcurrency
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { GitLogResult } from '../git/gitLogHandle.js';
+import type { GitHistoryResult, GitLogResult } from '../git/gitLogHandle.js';
 import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
@@ -26,7 +26,7 @@ export const calculateMetrics = async (
   progressCallback: RepomixProgressCallback,
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
-  gitLogResult: GitLogResult | undefined,
+  gitLogResult: GitLogResult | GitHistoryResult | undefined,
   deps = {
     calculateSelectiveFileMetrics,
     calculateOutputMetrics,

@@ -311,7 +311,7 @@ describe('gitHistory', () => {
         stdout: 'diff --git a/file.ts b/file.ts\n@@ -1,3 +1,4 @@\n...',
       });
 
-      const result = await getCommitPatch('/test/dir', 'abc1234', 'patch', {
+      const result = await getCommitPatch('/test/dir', 'abc1234', 'patch', false, {
         execFileAsync: mockExecFileAsync as never,
       });
 
@@ -331,7 +331,7 @@ describe('gitHistory', () => {
         stdout: ' src/file.ts | 5 +++--\n 1 file changed, 3 insertions(+), 2 deletions(-)',
       });
 
-      const result = await getCommitPatch('/test/dir', 'abc1234', 'stat', {
+      const result = await getCommitPatch('/test/dir', 'abc1234', 'stat', false, {
         execFileAsync: mockExecFileAsync as never,
       });
 
@@ -351,7 +351,7 @@ describe('gitHistory', () => {
         stdout: 'src/file1.ts\nsrc/file2.ts\n',
       });
 
-      const result = await getCommitPatch('/test/dir', 'abc1234', 'name-only', {
+      const result = await getCommitPatch('/test/dir', 'abc1234', 'name-only', false, {
         execFileAsync: mockExecFileAsync as never,
       });
 
@@ -366,12 +366,12 @@ describe('gitHistory', () => {
       expect(result).toContain('src/file1.ts');
     });
 
-    it('should get metadata only', async () => {
+    it('should add --summary flag when includeSummary is true', async () => {
       const mockExecFileAsync = vi.fn().mockResolvedValue({
-        stdout: 'commit abc1234\nAuthor: John\nDate: 2025-11-23\n\n    commit message\n',
+        stdout: 'diff --git a/file.ts b/file.ts\n create mode 100644 file.ts',
       });
 
-      const result = await getCommitPatch('/test/dir', 'abc1234', 'metadata', {
+      const result = await getCommitPatch('/test/dir', 'abc1234', 'patch', true, {
         execFileAsync: mockExecFileAsync as never,
       });
 
@@ -380,10 +380,11 @@ describe('gitHistory', () => {
         '/test/dir',
         'show',
         '--no-color',
-        '--no-patch',
+        '--patch',
+        '--summary',
         'abc1234',
       ]);
-      expect(result).toContain('commit abc1234');
+      expect(result).toContain('diff --git');
     });
 
     it('should throw error for invalid detail level', async () => {

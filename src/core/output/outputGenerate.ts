@@ -33,7 +33,7 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
 const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
   // Check if gitLogResult is comprehensive history (has summary field) or simple logs
   const isComprehensiveHistory =
-    outputGeneratorContext.gitLogResult && 'summary' in outputGeneratorContext.gitLogResult;
+    !!(outputGeneratorContext.gitLogResult && 'summary' in outputGeneratorContext.gitLogResult);
 
   // Extract simple log data (for backward compatibility)
   const simpleLogContent = isComprehensiveHistory
