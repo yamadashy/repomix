@@ -1026,7 +1026,7 @@ Repomix provides official plugins for [Claude Code](https://docs.anthropic.com/e
 
 **Alternatively, use the interactive plugin installer:**
 
-```bash
+```text
 /plugin
 ```
 
