@@ -2,45 +2,6 @@
 
 Repomix bietet offizielle Plugins für [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), die sich nahtlos in die KI-gestützte Entwicklungsumgebung integrieren. Diese Plugins ermöglichen es Ihnen, Codebases direkt innerhalb von Claude Code mithilfe natürlichsprachlicher Befehle zu analysieren und zu verpacken.
 
-## Verfügbare Plugins
-
-### 1. repomix-mcp (MCP-Server-Plugin)
-
-Basis-Plugin, das KI-gestützte Codebase-Analyse durch MCP-Server-Integration bereitstellt.
-
-**Funktionen:**
-- Lokale und entfernte Repositories verpacken
-- Verpackte Ausgaben durchsuchen
-- Dateien mit integriertem Sicherheitsscan lesen ([Secretlint](https://github.com/secretlint/secretlint))
-- Automatische Tree-sitter-Kompression (ca. 70% Token-Reduktion)
-
-### 2. repomix-commands (Slash-Befehls-Plugin)
-
-Bietet praktische Slash-Befehle mit Unterstützung für natürliche Sprache.
-
-**Verfügbare Befehle:**
-- `/repomix-commands:pack-local` - Lokale Codebase mit verschiedenen Optionen verpacken
-- `/repomix-commands:pack-remote` - Entfernte GitHub-Repositories verpacken und analysieren
-
-### 3. repomix-explorer:explorer (KI-Analyse-Agent-Plugin)
-
-KI-gesteuerter Repository-Analyse-Agent, der Codebases intelligent mit Repomix CLI erkundet.
-
-**Funktionen:**
-- Natürlichsprachliche Codebase-Erkundung und -Analyse
-- Intelligente Mustererkennung und Verständnis der Codestruktur
-- Inkrementelle Analyse mit grep und gezieltem Dateilesen
-- Automatische Kontextverwaltung für große Repositories
-
-**Verfügbare Befehle:**
-- `/repomix-explorer:explore-local` - Lokale Codebase mit KI-Unterstützung analysieren
-- `/repomix-explorer:explore-remote` - Entfernte GitHub-Repositories mit KI-Unterstützung analysieren
-
-**Funktionsweise:**
-1. Führt `npx repomix@latest` aus, um das Repository zu verpacken
-2. Nutzt Grep- und Read-Tools zur effizienten Durchsuchung der Ausgabe
-3. Bietet umfassende Analyse ohne übermäßigen Kontextverbrauch
-
 ## Installation
 
 ### 1. Repomix-Plugin-Marktplatz hinzufügen
@@ -79,6 +40,45 @@ Sie können auch das interaktive Plugin-Installationsprogramm verwenden:
 ```
 
 Dies öffnet eine interaktive Oberfläche, in der Sie verfügbare Plugins durchsuchen und installieren können.
+
+## Verfügbare Plugins
+
+### 1. repomix-mcp (MCP-Server-Plugin)
+
+Basis-Plugin, das KI-gestützte Codebase-Analyse durch MCP-Server-Integration bereitstellt.
+
+**Funktionen:**
+- Lokale und entfernte Repositories verpacken
+- Verpackte Ausgaben durchsuchen
+- Dateien mit integriertem Sicherheitsscan lesen ([Secretlint](https://github.com/secretlint/secretlint))
+- Automatische Tree-sitter-Kompression (ca. 70% Token-Reduktion)
+
+### 2. repomix-commands (Slash-Befehls-Plugin)
+
+Bietet praktische Slash-Befehle mit Unterstützung für natürliche Sprache.
+
+**Verfügbare Befehle:**
+- `/repomix-commands:pack-local` - Lokale Codebase mit verschiedenen Optionen verpacken
+- `/repomix-commands:pack-remote` - Entfernte GitHub-Repositories verpacken und analysieren
+
+### 3. repomix-explorer (KI-Analyse-Agent-Plugin)
+
+KI-gesteuerter Repository-Analyse-Agent, der Codebases intelligent mit Repomix CLI erkundet.
+
+**Funktionen:**
+- Natürlichsprachliche Codebase-Erkundung und -Analyse
+- Intelligente Mustererkennung und Verständnis der Codestruktur
+- Inkrementelle Analyse mit grep und gezieltem Dateilesen
+- Automatische Kontextverwaltung für große Repositories
+
+**Verfügbare Befehle:**
+- `/repomix-explorer:explore-local` - Lokale Codebase mit KI-Unterstützung analysieren
+- `/repomix-explorer:explore-remote` - Entfernte GitHub-Repositories mit KI-Unterstützung analysieren
+
+**Funktionsweise:**
+1. Führt `npx repomix@latest` aus, um das Repository zu verpacken
+2. Nutzt Grep- und Read-Tools zur effizienten Durchsuchung der Ausgabe
+3. Bietet umfassende Analyse ohne übermäßigen Kontextverbrauch
 
 ## Verwendungsbeispiele
 

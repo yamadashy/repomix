@@ -2,45 +2,6 @@
 
 Repomix 為 [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) 提供官方外掛，可與 AI 驅動的開發環境無縫整合。這些外掛讓您可以使用自然語言指令直接在 Claude Code 中分析和打包程式碼庫。
 
-## 可用外掛
-
-### 1. repomix-mcp（MCP 伺服器外掛）
-
-透過 MCP 伺服器整合提供 AI 驅動的程式碼庫分析的基礎外掛。
-
-**功能：**
-- 打包本地和遠端儲存庫
-- 搜尋打包輸出
-- 使用內建安全掃描讀取檔案（[Secretlint](https://github.com/secretlint/secretlint)）
-- 自動 Tree-sitter 壓縮（減少約 70% 的 token）
-
-### 2. repomix-commands（斜線指令外掛）
-
-提供支援自然語言的便利斜線指令。
-
-**可用指令：**
-- `/repomix-commands:pack-local` - 使用各種選項打包本地程式碼庫
-- `/repomix-commands:pack-remote` - 打包和分析遠端 GitHub 儲存庫
-
-### 3. repomix-explorer:explorer（AI 分析代理外掛）
-
-AI 驅動的儲存庫分析代理，使用 Repomix CLI 智慧探索程式碼庫。
-
-**功能：**
-- 自然語言程式碼庫探索和分析
-- 智慧模式發現和程式碼結構理解
-- 使用 grep 和定向檔案讀取進行增量分析
-- 大型儲存庫的自動上下文管理
-
-**可用指令：**
-- `/repomix-explorer:explore-local` - 使用 AI 輔助分析本地程式碼庫
-- `/repomix-explorer:explore-remote` - 使用 AI 輔助分析遠端 GitHub 儲存庫
-
-**運作方式：**
-1. 執行 `npx repomix@latest` 打包儲存庫
-2. 使用 Grep 和 Read 工具高效搜尋輸出
-3. 提供全面分析而不消耗過多上下文
-
 ## 安裝
 
 ### 1. 新增 Repomix 外掛市集
@@ -79,6 +40,45 @@ AI 驅動的儲存庫分析代理，使用 Repomix CLI 智慧探索程式碼庫�
 ```
 
 這將開啟一個互動式介面，您可以瀏覽並安裝可用的外掛。
+
+## 可用外掛
+
+### 1. repomix-mcp（MCP 伺服器外掛）
+
+透過 MCP 伺服器整合提供 AI 驅動的程式碼庫分析的基礎外掛。
+
+**功能：**
+- 打包本地和遠端儲存庫
+- 搜尋打包輸出
+- 使用內建安全掃描讀取檔案（[Secretlint](https://github.com/secretlint/secretlint)）
+- 自動 Tree-sitter 壓縮（減少約 70% 的 token）
+
+### 2. repomix-commands（斜線指令外掛）
+
+提供支援自然語言的便利斜線指令。
+
+**可用指令：**
+- `/repomix-commands:pack-local` - 使用各種選項打包本地程式碼庫
+- `/repomix-commands:pack-remote` - 打包和分析遠端 GitHub 儲存庫
+
+### 3. repomix-explorer（AI 分析代理外掛）
+
+AI 驅動的儲存庫分析代理，使用 Repomix CLI 智慧探索程式碼庫。
+
+**功能：**
+- 自然語言程式碼庫探索和分析
+- 智慧模式發現和程式碼結構理解
+- 使用 grep 和定向檔案讀取進行增量分析
+- 大型儲存庫的自動上下文管理
+
+**可用指令：**
+- `/repomix-explorer:explore-local` - 使用 AI 輔助分析本地程式碼庫
+- `/repomix-explorer:explore-remote` - 使用 AI 輔助分析遠端 GitHub 儲存庫
+
+**運作方式：**
+1. 執行 `npx repomix@latest` 打包儲存庫
+2. 使用 Grep 和 Read 工具高效搜尋輸出
+3. 提供全面分析而不消耗過多上下文
 
 ## 使用範例
 
