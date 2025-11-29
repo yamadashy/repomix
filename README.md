@@ -1001,63 +1001,6 @@ When running as an MCP server, Repomix provides the following tools:
 
 Repomix provides official plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) that integrate seamlessly with the AI-powered development environment.
 
-#### Available Plugins
-
-**1. repomix-mcp** (MCP Server Plugin)
-
-Foundation plugin that provides AI-powered codebase analysis through MCP server integration.
-
-**Features:**
-- Pack local and remote repositories
-- Search through packed outputs
-- Read files with built-in security scanning (Secretlint)
-- Automatic Tree-sitter compression (~70% token reduction)
-
-**2. repomix-commands** (Slash Commands Plugin)
-
-Provides convenient slash commands for quick operations with natural language support.
-
-**Available Commands:**
-- `/repomix-commands:pack-local` - Pack local codebase with various options
-- `/repomix-commands:pack-remote` - Pack and analyze remote GitHub repositories
-
-**Example usage:**
-```text
-/repomix-commands:pack-local
-Pack this project as markdown with compression
-
-/repomix-commands:pack-remote yamadashy/repomix
-Pack only TypeScript files from the yamadashy/repomix repository
-```
-
-**3. repomix-explorer:explorer** (AI Analysis Agent Plugin)
-
-AI-powered repository analysis agent that intelligently explores codebases using Repomix CLI.
-
-**Features:**
-- Natural language codebase exploration and analysis
-- Intelligent pattern discovery and code structure understanding
-- Incremental analysis using grep and targeted file reading
-- Automatic context management for large repositories
-
-**Available Commands:**
-- `/repomix-explorer:explore-local` - Analyze local codebase with AI assistance
-- `/repomix-explorer:explore-remote` - Analyze remote GitHub repositories with AI assistance
-
-**Example usage:**
-```text
-/repomix-explorer:explore-local ./src
-Find all authentication-related code
-
-/repomix-explorer:explore-remote facebook/react
-Show me the main component architecture
-```
-
-The agent automatically:
-1. Runs `npx repomix@latest` to pack the repository
-2. Uses Grep and Read tools to efficiently search the output
-3. Provides comprehensive analysis without consuming excessive context
-
 #### Installation
 
 **1. Add the Repomix plugin marketplace:**
@@ -1088,6 +1031,63 @@ The agent automatically:
 ```
 
 This will open an interactive interface where you can browse and install available plugins.
+
+#### Available Plugins
+
+**1. repomix-mcp** (MCP Server Plugin)
+
+Foundation plugin that provides AI-powered codebase analysis through MCP server integration.
+
+**Features:**
+- Pack local and remote repositories
+- Search through packed outputs
+- Read files with built-in security scanning (Secretlint)
+- Automatic Tree-sitter compression (~70% token reduction)
+
+**2. repomix-commands** (Slash Commands Plugin)
+
+Provides convenient slash commands for quick operations with natural language support.
+
+**Available Commands:**
+- `/repomix-commands:pack-local` - Pack local codebase with various options
+- `/repomix-commands:pack-remote` - Pack and analyze remote GitHub repositories
+
+**Example usage:**
+```text
+/repomix-commands:pack-local
+Pack this project as markdown with compression
+
+/repomix-commands:pack-remote yamadashy/repomix
+Pack only TypeScript files from the yamadashy/repomix repository
+```
+
+**3. repomix-explorer** (AI Analysis Agent Plugin)
+
+AI-powered repository analysis agent that intelligently explores codebases using Repomix CLI.
+
+**Features:**
+- Natural language codebase exploration and analysis
+- Intelligent pattern discovery and code structure understanding
+- Incremental analysis using grep and targeted file reading
+- Automatic context management for large repositories
+
+**Available Commands:**
+- `/repomix-explorer:explore-local` - Analyze local codebase with AI assistance
+- `/repomix-explorer:explore-remote` - Analyze remote GitHub repositories with AI assistance
+
+**Example usage:**
+```text
+/repomix-explorer:explore-local ./src
+Find all authentication-related code
+
+/repomix-explorer:explore-remote facebook/react
+Show me the main component architecture
+```
+
+The agent automatically:
+1. Runs `npx repomix@latest` to pack the repository
+2. Uses Grep and Read tools to efficiently search the output
+3. Provides comprehensive analysis without consuming excessive context
 
 #### Benefits
 
