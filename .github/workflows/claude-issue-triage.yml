@@ -23,7 +23,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_non_write_users: "*"
-          claude_args: '--allowed-tools "Bash(gh label list:*),Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh search:*)"'
+          claude_args: '--model opus --allowed-tools "Bash(gh label list:*),Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh search:*)"'
           prompt: |
             You're an issue triage assistant for the Repomix repository. Your task is to analyze the issue and select appropriate labels from the repository's label list.
 
