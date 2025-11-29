@@ -1,0 +1,75 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  triage-issue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Issue Triage
+        uses: anthropics/claude-code-action@6902c227aaa9536481b99d56f3014bbbad6c6da8 # v1.0.18
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_non_write_users: "*"
+          claude_args: '--allowed-tools "Bash(gh label list:*),Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh search:*)"'
+          prompt: |
+            You're an issue triage assistant for the Repomix repository. Your task is to analyze the issue and select appropriate labels from the repository's label list.
+
+            IMPORTANT: Don't post any comments or messages to the issue. Your only action should be to apply labels.
+
+            Issue Information:
+            - REPO: ${{ github.repository }}
+            - ISSUE_NUMBER: ${{ github.event.issue.number }}
+
+            TASK OVERVIEW:
+
+            1. First, fetch the list of labels available in this repository by running: `gh label list`. Run exactly this command with nothing else.
+
+            2. Next, use gh commands to get context about the issue:
+               - Use `gh issue view ${{ github.event.issue.number }}` to retrieve the current issue's details
+               - Use `gh search issues` to find similar issues that might provide context for proper categorization
+
+            3. Analyze the issue content, considering:
+               - The issue title and description
+               - The type of issue (bug report, feature request, question, etc.)
+               - Technical areas mentioned (output formats, language parsing, MCP server, security, CLI options, etc.)
+               - User impact and severity
+
+            4. Select appropriate labels from the available labels:
+               - Choose labels that accurately reflect the issue's nature
+               - Common categories for Repomix:
+                 - `bug`: Something isn't working correctly
+                 - `enhancement`: New feature or improvement request
+                 - `question`: User needs help or clarification
+                 - `documentation`: Documentation improvements needed
+                 - `needs investigation`: Requires deeper analysis to understand
+                 - `needs more information`: Issue lacks details to proceed
+                 - `needs discussion`: Requires team discussion before action
+                 - `good first issue`: Suitable for new contributors
+                 - `idea`: Early-stage feature concept
+               - If you find similar OPEN issues using gh search, consider using the `duplicate` label
+
+            5. Apply the selected labels:
+               - Use `gh issue edit ${{ github.event.issue.number }} --add-label "label1,label2"` to apply your selected labels
+               - DO NOT post any comments explaining your decision
+               - DO NOT communicate directly with users
+               - If no labels are clearly applicable, do not apply any labels
+
+            IMPORTANT GUIDELINES:
+            - Be thorough in your analysis
+            - Only select labels from the repository's available labels
+            - DO NOT post any comments to the issue
+            - Your ONLY action should be to apply labels using gh issue edit
+            - It's okay to not add any labels if none are clearly applicable
