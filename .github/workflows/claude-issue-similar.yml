@@ -23,7 +23,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_non_write_users: "*"
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh search:*)"'
+          claude_args: '--model opus --allowed-tools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh search:*)"'
           prompt: |
             You're an assistant that finds similar issues in the repository.
 
