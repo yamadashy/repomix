@@ -50,6 +50,7 @@ export const configZhCn = defineConfig({
             { text: '社区项目', link: '/zh-cn/guide/community-projects' },
             { text: '为Repomix做贡献', link: '/zh-cn/guide/development/' },
             { text: '赞助商', link: '/zh-cn/guide/sponsors' },
+            { text: 'Privacy Policy', link: '/zh-cn/guide/privacy' },
           ],
         },
       ],

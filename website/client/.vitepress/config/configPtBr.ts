@@ -53,6 +53,7 @@ export const configPtBr = defineConfig({
             { text: 'Projetos da Comunidade', link: '/pt-br/guide/community-projects' },
             { text: 'Contribuindo para o Repomix', link: '/pt-br/guide/development/' },
             { text: 'Patrocinadores', link: '/pt-br/guide/sponsors' },
+            { text: 'Privacy Policy', link: '/pt-br/guide/privacy' },
           ],
         },
       ],

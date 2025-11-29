@@ -53,6 +53,7 @@ export const configHi = defineConfig({
             { text: 'समुदाय प्रोजेक्ट्स', link: '/hi/guide/community-projects' },
             { text: 'Repomix में योगदान', link: '/hi/guide/development/' },
             { text: 'प्रायोजक', link: '/hi/guide/sponsors' },
+            { text: 'Privacy Policy', link: '/hi/guide/privacy' },
           ],
         },
       ],
