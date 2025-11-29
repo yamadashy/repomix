@@ -37,11 +37,6 @@
     "memory-check-one-file": "node --run repomix -- --verbose --include 'package.json' | grep Memory",
     "website": "docker compose -f website/compose.yml up --build",
     "website-generate-schema": "tsx website/client/scripts/generateSchema.ts",
-    "npm-publish": "node --run npm-publish-check-branch && node --run lint && node --run test-coverage && node --run build && npm publish",
-    "npm-publish-check-branch": "git branch --show-current | grep -q '^main$' || (echo 'Release is only allowed from the main branch' && exit 1)",
-    "npm-release-patch": "npm version patch && node --run npm-publish",
-    "npm-release-minor": "npm version minor && node --run npm-publish",
-    "npm-release-prerelease": "npm version prerelease && node --run npm-publish",
     "pinact-run": "pinact run",
     "pinact-check": "pinact run --check"
   },
