@@ -1001,6 +1001,37 @@ When running as an MCP server, Repomix provides the following tools:
 
 Repomix provides official plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) that integrate seamlessly with the AI-powered development environment.
 
+#### Installation
+
+**1. Add the Repomix plugin marketplace:**
+
+```text
+/plugin marketplace add yamadashy/repomix
+```
+
+**2. Install plugins:**
+
+```text
+# Install MCP server plugin (recommended foundation)
+/plugin install repomix-mcp@repomix
+
+# Install commands plugin (extends functionality)
+/plugin install repomix-commands@repomix
+
+# Install repository explorer plugin (AI-powered analysis)
+/plugin install repomix-explorer@repomix
+```
+
+**Note**: The `repomix-mcp` plugin is recommended as a foundation. The `repomix-commands` plugin provides convenient slash commands, while `repomix-explorer` adds AI-powered analysis capabilities. While you can install them independently, using all three provides the most comprehensive experience.
+
+**Alternatively, use the interactive plugin installer:**
+
+```text
+/plugin
+```
+
+This will open an interactive interface where you can browse and install available plugins.
+
 #### Available Plugins
 
 **1. repomix-mcp** (MCP Server Plugin)
@@ -1030,7 +1061,7 @@ Pack this project as markdown with compression
 Pack only TypeScript files from the yamadashy/repomix repository
 ```
 
-**3. repomix-explorer:explorer** (AI Analysis Agent Plugin)
+**3. repomix-explorer** (AI Analysis Agent Plugin)
 
 AI-powered repository analysis agent that intelligently explores codebases using Repomix CLI.
 
@@ -1057,37 +1088,6 @@ The agent automatically:
 1. Runs `npx repomix@latest` to pack the repository
 2. Uses Grep and Read tools to efficiently search the output
 3. Provides comprehensive analysis without consuming excessive context
-
-#### Installation
-
-**1. Add the Repomix plugin marketplace:**
-
-```text
-/plugin marketplace add yamadashy/repomix
-```
-
-**2. Install plugins:**
-
-```text
-# Install MCP server plugin (recommended foundation)
-/plugin install repomix-mcp@repomix
-
-# Install commands plugin (extends functionality)
-/plugin install repomix-commands@repomix
-
-# Install repository explorer plugin (AI-powered analysis)
-/plugin install repomix-explorer@repomix
-```
-
-**Note**: The `repomix-mcp` plugin is recommended as a foundation. The `repomix-commands` plugin provides convenient slash commands, while `repomix-explorer` adds AI-powered analysis capabilities. While you can install them independently, using all three provides the most comprehensive experience.
-
-**Alternatively, use the interactive plugin installer:**
-
-```bash
-/plugin
-```
-
-This will open an interactive interface where you can browse and install available plugins.
 
 #### Benefits
 

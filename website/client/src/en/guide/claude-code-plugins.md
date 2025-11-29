@@ -2,45 +2,6 @@
 
 Repomix provides official plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) that integrate seamlessly with the AI-powered development environment. These plugins make it easy to analyze and pack codebases directly within Claude Code using natural language commands.
 
-## Available Plugins
-
-### 1. repomix-mcp (MCP Server Plugin)
-
-Foundation plugin that provides AI-powered codebase analysis through MCP server integration.
-
-**Features:**
-- Pack local and remote repositories
-- Search through packed outputs
-- Read files with built-in security scanning ([Secretlint](https://github.com/secretlint/secretlint))
-- Automatic Tree-sitter compression (~70% token reduction)
-
-### 2. repomix-commands (Slash Commands Plugin)
-
-Provides convenient slash commands for quick operations with natural language support.
-
-**Available Commands:**
-- `/repomix-commands:pack-local` - Pack local codebase with various options
-- `/repomix-commands:pack-remote` - Pack and analyze remote GitHub repositories
-
-### 3. repomix-explorer:explorer (AI Analysis Agent Plugin)
-
-AI-powered repository analysis agent that intelligently explores codebases using Repomix CLI.
-
-**Features:**
-- Natural language codebase exploration and analysis
-- Intelligent pattern discovery and code structure understanding
-- Incremental analysis using grep and targeted file reading
-- Automatic context management for large repositories
-
-**Available Commands:**
-- `/repomix-explorer:explore-local` - Analyze local codebase with AI assistance
-- `/repomix-explorer:explore-remote` - Analyze remote GitHub repositories with AI assistance
-
-**How it works:**
-1. Runs `npx repomix@latest` to pack the repository
-2. Uses Grep and Read tools to efficiently search the output
-3. Provides comprehensive analysis without consuming excessive context
-
 ## Installation
 
 ### 1. Add the Repomix Plugin Marketplace
@@ -79,6 +40,45 @@ You can also use the interactive plugin installer:
 ```
 
 This opens an interactive interface where you can browse and install available plugins.
+
+## Available Plugins
+
+### 1. repomix-mcp (MCP Server Plugin)
+
+Foundation plugin that provides AI-powered codebase analysis through MCP server integration.
+
+**Features:**
+- Pack local and remote repositories
+- Search through packed outputs
+- Read files with built-in security scanning ([Secretlint](https://github.com/secretlint/secretlint))
+- Automatic Tree-sitter compression (~70% token reduction)
+
+### 2. repomix-commands (Slash Commands Plugin)
+
+Provides convenient slash commands for quick operations with natural language support.
+
+**Available Commands:**
+- `/repomix-commands:pack-local` - Pack local codebase with various options
+- `/repomix-commands:pack-remote` - Pack and analyze remote GitHub repositories
+
+### 3. repomix-explorer (AI Analysis Agent Plugin)
+
+AI-powered repository analysis agent that intelligently explores codebases using Repomix CLI.
+
+**Features:**
+- Natural language codebase exploration and analysis
+- Intelligent pattern discovery and code structure understanding
+- Incremental analysis using grep and targeted file reading
+- Automatic context management for large repositories
+
+**Available Commands:**
+- `/repomix-explorer:explore-local` - Analyze local codebase with AI assistance
+- `/repomix-explorer:explore-remote` - Analyze remote GitHub repositories with AI assistance
+
+**How it works:**
+1. Runs `npx repomix@latest` to pack the repository
+2. Uses Grep and Read tools to efficiently search the output
+3. Provides comprehensive analysis without consuming excessive context
 
 ## Usage Examples
 

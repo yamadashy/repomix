@@ -2,45 +2,6 @@
 
 Repomix는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview)용 공식 플러그인을 제공하여 AI 기반 개발 환경과 원활하게 통합됩니다. 이 플러그인을 사용하면 자연어 명령을 사용하여 Claude Code 내에서 직접 코드베이스를 분석하고 패키징할 수 있습니다.
 
-## 사용 가능한 플러그인
-
-### 1. repomix-mcp (MCP 서버 플러그인)
-
-MCP 서버 통합을 통해 AI 기반 코드베이스 분석을 제공하는 기본 플러그인입니다.
-
-**기능:**
-- 로컬 및 원격 저장소 패키징
-- 패키징된 출력 검색
-- 내장 보안 스캔으로 파일 읽기 ([Secretlint](https://github.com/secretlint/secretlint))
-- 자동 Tree-sitter 압축 (토큰 약 70% 감소)
-
-### 2. repomix-commands (슬래시 명령 플러그인)
-
-자연어 지원과 함께 편리한 슬래시 명령을 제공합니다.
-
-**사용 가능한 명령:**
-- `/repomix-commands:pack-local` - 다양한 옵션으로 로컬 코드베이스 패키징
-- `/repomix-commands:pack-remote` - 원격 GitHub 저장소 패키징 및 분석
-
-### 3. repomix-explorer:explorer (AI 분석 에이전트 플러그인)
-
-Repomix CLI를 사용하여 코드베이스를 지능적으로 탐색하는 AI 기반 저장소 분석 에이전트입니다.
-
-**기능:**
-- 자연어를 사용한 코드베이스 탐색 및 분석
-- 지능적인 패턴 발견 및 코드 구조 이해
-- grep 및 대상 파일 읽기를 사용한 점진적 분석
-- 대형 저장소를 위한 자동 컨텍스트 관리
-
-**사용 가능한 명령:**
-- `/repomix-explorer:explore-local` - AI 지원으로 로컬 코드베이스 분석
-- `/repomix-explorer:explore-remote` - AI 지원으로 원격 GitHub 저장소 분석
-
-**작동 방식:**
-1. `npx repomix@latest`를 실행하여 저장소 패키징
-2. Grep 및 Read 도구를 사용하여 출력을 효율적으로 검색
-3. 과도한 컨텍스트 소비 없이 포괄적인 분석 제공
-
 ## 설치
 
 ### 1. Repomix 플러그인 마켓플레이스 추가
@@ -79,6 +40,45 @@ Repomix CLI를 사용하여 코드베이스를 지능적으로 탐색하는 AI �
 ```
 
 사용 가능한 플러그인을 탐색하고 설치할 수 있는 대화형 인터페이스가 열립니다.
+
+## 사용 가능한 플러그인
+
+### 1. repomix-mcp (MCP 서버 플러그인)
+
+MCP 서버 통합을 통해 AI 기반 코드베이스 분석을 제공하는 기본 플러그인입니다.
+
+**기능:**
+- 로컬 및 원격 저장소 패키징
+- 패키징된 출력 검색
+- 내장 보안 스캔으로 파일 읽기 ([Secretlint](https://github.com/secretlint/secretlint))
+- 자동 Tree-sitter 압축 (토큰 약 70% 감소)
+
+### 2. repomix-commands (슬래시 명령 플러그인)
+
+자연어 지원과 함께 편리한 슬래시 명령을 제공합니다.
+
+**사용 가능한 명령:**
+- `/repomix-commands:pack-local` - 다양한 옵션으로 로컬 코드베이스 패키징
+- `/repomix-commands:pack-remote` - 원격 GitHub 저장소 패키징 및 분석
+
+### 3. repomix-explorer (AI 분석 에이전트 플러그인)
+
+Repomix CLI를 사용하여 코드베이스를 지능적으로 탐색하는 AI 기반 저장소 분석 에이전트입니다.
+
+**기능:**
+- 자연어를 사용한 코드베이스 탐색 및 분석
+- 지능적인 패턴 발견 및 코드 구조 이해
+- grep 및 대상 파일 읽기를 사용한 점진적 분석
+- 대형 저장소를 위한 자동 컨텍스트 관리
+
+**사용 가능한 명령:**
+- `/repomix-explorer:explore-local` - AI 지원으로 로컬 코드베이스 분석
+- `/repomix-explorer:explore-remote` - AI 지원으로 원격 GitHub 저장소 분석
+
+**작동 방식:**
+1. `npx repomix@latest`를 실행하여 저장소 패키징
+2. Grep 및 Read 도구를 사용하여 출력을 효율적으로 검색
+3. 과도한 컨텍스트 소비 없이 포괄적인 분석 제공
 
 ## 사용 예제
 

@@ -2,45 +2,6 @@
 
 Repomix menyediakan plugin resmi untuk [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) yang terintegrasi secara mulus dengan lingkungan pengembangan berbasis AI. Plugin ini memudahkan Anda untuk menganalisis dan mengemas codebase langsung di dalam Claude Code menggunakan perintah bahasa alami.
 
-## Plugin yang Tersedia
-
-### 1. repomix-mcp (Plugin Server MCP)
-
-Plugin dasar yang menyediakan analisis codebase berbasis AI melalui integrasi server MCP.
-
-**Fitur:**
-- Mengemas repositori lokal dan remote
-- Mencari output yang sudah dikemas
-- Membaca file dengan pemindaian keamanan bawaan ([Secretlint](https://github.com/secretlint/secretlint))
-- Kompresi Tree-sitter otomatis (mengurangi sekitar 70% token)
-
-### 2. repomix-commands (Plugin Perintah Slash)
-
-Menyediakan perintah slash yang praktis dengan dukungan bahasa alami.
-
-**Perintah yang Tersedia:**
-- `/repomix-commands:pack-local` - Mengemas codebase lokal dengan berbagai opsi
-- `/repomix-commands:pack-remote` - Mengemas dan menganalisis repositori GitHub remote
-
-### 3. repomix-explorer:explorer (Plugin Agen Analisis AI)
-
-Agen analisis repositori berbasis AI yang mengeksplorasi codebase secara cerdas menggunakan Repomix CLI.
-
-**Fitur:**
-- Eksplorasi dan analisis codebase dengan bahasa alami
-- Penemuan pola cerdas dan pemahaman struktur kode
-- Analisis bertahap menggunakan grep dan pembacaan file tertarget
-- Manajemen konteks otomatis untuk repositori besar
-
-**Perintah yang Tersedia:**
-- `/repomix-explorer:explore-local` - Menganalisis codebase lokal dengan bantuan AI
-- `/repomix-explorer:explore-remote` - Menganalisis repositori GitHub remote dengan bantuan AI
-
-**Cara kerjanya:**
-1. Menjalankan `npx repomix@latest` untuk mengemas repositori
-2. Menggunakan alat Grep dan Read untuk mencari output secara efisien
-3. Memberikan analisis komprehensif tanpa mengkonsumsi konteks berlebihan
-
 ## Instalasi
 
 ### 1. Tambahkan Marketplace Plugin Repomix
@@ -79,6 +40,45 @@ Anda juga dapat menggunakan installer plugin interaktif:
 ```
 
 Ini akan membuka antarmuka interaktif di mana Anda dapat menjelajahi dan menginstal plugin yang tersedia.
+
+## Plugin yang Tersedia
+
+### 1. repomix-mcp (Plugin Server MCP)
+
+Plugin dasar yang menyediakan analisis codebase berbasis AI melalui integrasi server MCP.
+
+**Fitur:**
+- Mengemas repositori lokal dan remote
+- Mencari output yang sudah dikemas
+- Membaca file dengan pemindaian keamanan bawaan ([Secretlint](https://github.com/secretlint/secretlint))
+- Kompresi Tree-sitter otomatis (mengurangi sekitar 70% token)
+
+### 2. repomix-commands (Plugin Perintah Slash)
+
+Menyediakan perintah slash yang praktis dengan dukungan bahasa alami.
+
+**Perintah yang Tersedia:**
+- `/repomix-commands:pack-local` - Mengemas codebase lokal dengan berbagai opsi
+- `/repomix-commands:pack-remote` - Mengemas dan menganalisis repositori GitHub remote
+
+### 3. repomix-explorer (Plugin Agen Analisis AI)
+
+Agen analisis repositori berbasis AI yang mengeksplorasi codebase secara cerdas menggunakan Repomix CLI.
+
+**Fitur:**
+- Eksplorasi dan analisis codebase dengan bahasa alami
+- Penemuan pola cerdas dan pemahaman struktur kode
+- Analisis bertahap menggunakan grep dan pembacaan file tertarget
+- Manajemen konteks otomatis untuk repositori besar
+
+**Perintah yang Tersedia:**
+- `/repomix-explorer:explore-local` - Menganalisis codebase lokal dengan bantuan AI
+- `/repomix-explorer:explore-remote` - Menganalisis repositori GitHub remote dengan bantuan AI
+
+**Cara kerjanya:**
+1. Menjalankan `npx repomix@latest` untuk mengemas repositori
+2. Menggunakan alat Grep dan Read untuk mencari output secara efisien
+3. Memberikan analisis komprehensif tanpa mengkonsumsi konteks berlebihan
 
 ## Contoh Penggunaan
 
