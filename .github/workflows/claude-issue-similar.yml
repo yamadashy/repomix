@@ -1,0 +1,75 @@
+name: Claude Similar Issues
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  find-similar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Find Similar Issues
+        uses: anthropics/claude-code-action@6902c227aaa9536481b99d56f3014bbbad6c6da8 # v1.0.18
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_non_write_users: "*"
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh search:*)"'
+          prompt: |
+            You're an assistant that finds similar issues in the repository.
+
+            Issue Information:
+            - REPO: ${{ github.repository }}
+            - ISSUE_NUMBER: ${{ github.event.issue.number }}
+
+            TASK:
+
+            1. First, get the current issue details:
+               ```
+               gh issue view ${{ github.event.issue.number }}
+               ```
+
+            2. Search for similar issues using keywords from the title and body:
+               - Use `gh search issues` with relevant keywords
+               - Search in this repository only: `repo:${{ github.repository }}`
+               - Exclude the current issue from results
+               - Look for both open and closed issues
+
+            3. Analyze the search results and select up to 3 most relevant similar issues:
+               - Consider title similarity
+               - Consider problem description similarity
+               - Prioritize issues that might help the user (solved issues, related discussions)
+
+            4. If you find relevant similar issues (1-3), post a helpful comment:
+               - Use `gh issue comment ${{ github.event.issue.number }} --body "..."`
+               - Format the comment nicely with links to the similar issues
+               - Briefly explain why each issue might be related
+               - Use this format:
+
+               ```
+               ### Related Issues
+
+               I found some similar issues that might be helpful:
+
+               - #123 - [Title] - Brief reason why it's related
+               - #456 - [Title] - Brief reason why it's related
+
+               These might provide additional context or solutions.
+               ```
+
+            5. If NO similar issues are found, do NOT post any comment. Simply end the task.
+
+            IMPORTANT:
+            - Maximum 3 similar issues
+            - Only comment if you find genuinely related issues
+            - Do NOT comment if no similar issues are found
+            - Be concise in your explanations
