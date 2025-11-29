@@ -1,0 +1,58 @@
+name: npm-publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Run in dry-run mode (no actual publish)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # Required for OIDC trusted publishing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version-file: .tool-versions
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check if version already published
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if npm view "repomix@${PACKAGE_VERSION}" version 2>/dev/null; then
+            echo "::error::Version ${PACKAGE_VERSION} is already published to npm"
+            exit 1
+          fi
+          echo "Version ${PACKAGE_VERSION} is not yet published"
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test-coverage
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify npm audit signatures
+        run: npm audit signatures
+
+      - name: Publish (dry-run)
+        if: ${{ inputs.dry-run }}
+        run: npm publish --provenance --dry-run
+
+      - name: Publish
+        if: ${{ !inputs.dry-run }}
+        run: npm publish --provenance
