@@ -57,6 +57,24 @@
 ## MCP选项
 - `--mcp`: 作为AI工具集成的Model Context Protocol服务器运行
 
+## Git提交历史选项
+
+这些正交标志反映了git log的结构以提供精细控制：
+
+**Diff格式标志**（互斥 - 选择一个）：
+- `--stat`：显示每个文件的更改计数（git log --stat）
+- `--patch`：显示逐行diff（git log --patch）
+- `--numstat`：显示每个文件的数字增减（git log --numstat）
+- `--shortstat`：显示更改的单行摘要（git log --shortstat）
+- `--dirstat`：显示目录更改分布（git log --dirstat）
+- `--name-only`：仅显示文件名（git log --name-only）- 默认
+- `--name-status`：显示带A/M/D/R状态的文件名（git log --name-status）
+- `--raw`：显示带SHA哈希和模式的底层格式（git log --raw）
+
+**输出详细程度和图表选项**（可与任何diff格式组合）：
+- `--graph`：包含ASCII和Mermaid提交图可视化（git log --graph --all）
+- `--summary`：显示文件操作如创建、重命名、模式更改（git log --summary）
+- `--commit-range <range>`：要分析的Git提交范围（默认：HEAD~50..HEAD，支持..和...两种语法，例如："HEAD~100..HEAD"、"v1.0..v2.0"、"main...feature-branch"）
 
 ## 示例
 

@@ -48,6 +48,14 @@ export const repomixConfigBaseSchema = z.object({
           includeDiffs: z.boolean().optional(),
           includeLogs: z.boolean().optional(),
           includeLogsCount: z.number().optional(),
+          commitRange: z.string().optional(),
+          commitPatchDetail: z
+            .enum(['patch', 'stat', 'numstat', 'shortstat', 'dirstat', 'name-only', 'name-status', 'raw'])
+            .optional(),
+          includeCommitGraph: z.boolean().optional(),
+          includeSummary: z.boolean().optional(),
+          includeGitTags: z.boolean().optional(),
+          includeCommitPatches: z.boolean().optional(),
         })
         .optional(),
     })
@@ -107,6 +115,14 @@ export const repomixConfigDefaultSchema = z.object({
       includeDiffs: z.boolean().default(false),
       includeLogs: z.boolean().default(false),
       includeLogsCount: z.number().int().min(1).default(50),
+      commitRange: z.string().default('HEAD~50..HEAD'),
+      commitPatchDetail: z
+        .enum(['patch', 'stat', 'numstat', 'shortstat', 'dirstat', 'name-only', 'name-status', 'raw'])
+        .default('name-only'),
+      includeCommitGraph: z.boolean().default(false),
+      includeSummary: z.boolean().default(false),
+      includeGitTags: z.boolean().default(true),
+      includeCommitPatches: z.boolean().default(false),
     }),
   }),
   include: z.array(z.string()).default([]),

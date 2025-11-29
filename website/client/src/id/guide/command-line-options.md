@@ -58,6 +58,25 @@
 ## Opsi MCP
 - `--mcp`: Jalankan sebagai server Model Context Protocol untuk integrasi alat AI
 
+## Opsi Riwayat Commit Git
+
+Flag independen ini mencerminkan struktur git log untuk kontrol terperinci:
+
+**Flag Format Diff** (saling eksklusif - pilih satu):
+- `--stat`: Menampilkan jumlah perubahan per file (git log --stat)
+- `--patch`: Menampilkan diff baris per baris (git log --patch)
+- `--numstat`: Menampilkan penambahan/penghapusan numerik per file (git log --numstat)
+- `--shortstat`: Menampilkan ringkasan satu baris perubahan (git log --shortstat)
+- `--dirstat`: Menampilkan distribusi perubahan direktori (git log --dirstat)
+- `--name-only`: Menampilkan nama file saja (git log --name-only) - default
+- `--name-status`: Menampilkan nama file dengan status A/M/D/R (git log --name-status)
+- `--raw`: Menampilkan format tingkat rendah dengan hash SHA dan mode (git log --raw)
+
+**Opsi Tingkat Detail Output dan Grafik** (dapat dikombinasikan dengan format diff apa pun):
+- `--graph`: Menyertakan visualisasi grafik commit ASCII dan Mermaid (git log --graph --all)
+- `--summary`: Menampilkan operasi file seperti pembuatan, penggantian nama, perubahan mode (git log --summary)
+- `--commit-range <range>`: Rentang commit Git untuk dianalisis (default: HEAD~50..HEAD, mendukung sintaks .. dan ..., contoh: "HEAD~100..HEAD", "v1.0..v2.0", "main...feature-branch")
+
 ## Contoh
 
 ```bash

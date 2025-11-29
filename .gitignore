@@ -54,3 +54,4 @@ repomix-output.json
 # private files
 .private/
 .env
+.claude

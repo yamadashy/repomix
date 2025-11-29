@@ -31,6 +31,8 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
 };
 
 const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  const gitLogResult = outputGeneratorContext.gitLogResult;
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -53,8 +55,9 @@ const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): Re
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
     gitLogEnabled: outputGeneratorContext.config.output.git?.includeLogs,
-    gitLogContent: outputGeneratorContext.gitLogResult?.logContent,
-    gitLogCommits: outputGeneratorContext.gitLogResult?.commits,
+    gitLogCommits: gitLogResult?.logCommits,
+    gitCommitHistorySummary: gitLogResult?.summary,
+    gitCommitGraph: gitLogResult?.graph,
   };
 };
 
@@ -93,11 +96,53 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
         : undefined,
       git_logs: renderContext.gitLogEnabled
         ? {
-            git_log_commit: renderContext.gitLogCommits?.map((commit) => ({
-              date: commit.date,
-              message: commit.message,
-              files: commit.files.map((file) => ({ '#text': file })),
-            })),
+            // Summary statistics (optional - only when includeSummary is enabled)
+            ...(renderContext.gitCommitHistorySummary && {
+              summary: {
+                total_commits: renderContext.gitCommitHistorySummary.totalCommits,
+                merge_commits: renderContext.gitCommitHistorySummary.mergeCommits,
+                range: renderContext.gitCommitHistorySummary.range,
+                detail_level: renderContext.gitCommitHistorySummary.detailLevel,
+              },
+            }),
+            // Commit graph visualization (optional - only when includeCommitGraph is enabled)
+            ...(renderContext.gitCommitGraph && {
+              commit_graph: {
+                ascii_graph: renderContext.gitCommitGraph.graph,
+                mermaid_graph: renderContext.gitCommitGraph.mermaidGraph,
+                merge_commits: renderContext.gitCommitGraph.mergeCommits,
+                tags: renderContext.gitCommitGraph.tags,
+              },
+            }),
+            // Git log commits with progressive optional fields
+            ...(renderContext.gitLogCommits && {
+              git_log_commit: renderContext.gitLogCommits.map((commit) => ({
+                // Core fields
+                date: commit.date,
+                message: commit.message,
+                files: commit.files.map((file) => ({ '#text': file })),
+                // Extended optional fields
+                ...(commit.hash && { hash: commit.hash }),
+                ...(commit.abbreviatedHash && { abbreviated_hash: commit.abbreviatedHash }),
+                ...(commit.author && {
+                  author: {
+                    name: commit.author.name,
+                    email: commit.author.email,
+                    date: commit.author.date,
+                  },
+                }),
+                ...(commit.committer && {
+                  committer: {
+                    name: commit.committer.name,
+                    email: commit.committer.email,
+                    date: commit.committer.date,
+                  },
+                }),
+                ...(commit.parents && commit.parents.length > 0 && { parents: commit.parents }),
+                ...(commit.body && { body: commit.body }),
+                ...(commit.patch && { patch: commit.patch }),
+              })),
+            }),
           }
         : undefined,
       instruction: renderContext.instruction ? renderContext.instruction : undefined,
@@ -146,11 +191,39 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
       },
     }),
     ...(renderContext.gitLogEnabled && {
-      gitLogs: renderContext.gitLogCommits?.map((commit) => ({
-        date: commit.date,
-        message: commit.message,
-        files: commit.files,
-      })),
+      gitLogs: {
+        // Summary statistics (optional - only when includeSummary is enabled)
+        ...(renderContext.gitCommitHistorySummary && {
+          summary: renderContext.gitCommitHistorySummary,
+        }),
+        // Commit graph visualization (optional - only when includeCommitGraph is enabled)
+        ...(renderContext.gitCommitGraph && {
+          graph: {
+            commits: renderContext.gitCommitGraph.commits,
+            asciiGraph: renderContext.gitCommitGraph.graph,
+            mermaidGraph: renderContext.gitCommitGraph.mermaidGraph,
+            mergeCommits: renderContext.gitCommitGraph.mergeCommits,
+            tags: renderContext.gitCommitGraph.tags,
+          },
+        }),
+        // Git log commits with progressive optional fields
+        ...(renderContext.gitLogCommits && {
+          logCommits: renderContext.gitLogCommits.map((commit) => ({
+            // Core fields
+            date: commit.date,
+            message: commit.message,
+            files: commit.files,
+            // Extended optional fields
+            ...(commit.hash && { hash: commit.hash }),
+            ...(commit.abbreviatedHash && { abbreviatedHash: commit.abbreviatedHash }),
+            ...(commit.author && { author: commit.author }),
+            ...(commit.committer && { committer: commit.committer }),
+            ...(commit.parents && commit.parents.length > 0 && { parents: commit.parents }),
+            ...(commit.body && { body: commit.body }),
+            ...(commit.patch && { patch: commit.patch }),
+          })),
+        }),
+      },
     }),
     ...(renderContext.instruction && {
       instruction: renderContext.instruction,

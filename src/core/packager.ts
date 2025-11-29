@@ -101,6 +101,7 @@ export const pack = async (
   const gitDiffResult = await deps.getGitDiffs(rootDirs, config);
 
   // Get git logs if enabled - run this before security check
+  // This now handles both simple logs and comprehensive history based on config
   progressCallback('Getting git logs...');
   const gitLogResult = await deps.getGitLogs(rootDirs, config);
 
