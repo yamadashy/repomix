@@ -25,7 +25,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   jq \
   nano \
   vim \
+  fd-find \
+  ripgrep \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Create symlink for fd (Debian/Ubuntu names it fdfind)
+RUN ln -s $(which fdfind) /usr/local/bin/fd
+
+# Install ast-grep
+RUN ARCH=$(dpkg --print-architecture) && \
+  case "$ARCH" in \
+    amd64) AST_ARCH="x86_64-unknown-linux-gnu" ;; \
+    arm64) AST_ARCH="aarch64-unknown-linux-gnu" ;; \
+    *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+  esac && \
+  wget -qO- "https://github.com/ast-grep/ast-grep/releases/latest/download/ast-grep-${AST_ARCH}.tar.gz" | tar xz -C /usr/local/bin
 
 # Ensure default node user has access to /usr/local/share
 RUN mkdir -p /usr/local/share/npm-global && \
@@ -33,10 +47,10 @@ RUN mkdir -p /usr/local/share/npm-global && \
 
 ARG USERNAME=node
 
-# Persist bash history.
-RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
-  && mkdir /commandhistory \
+# Persist shell history (both bash and zsh)
+RUN mkdir /commandhistory \
   && touch /commandhistory/.bash_history \
+  && touch /commandhistory/.zsh_history \
   && chown -R $USERNAME /commandhistory
 
 # Set `DEVCONTAINER` environment variable to help with orientation
@@ -75,7 +89,11 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
   -p fzf \
   -a "source /usr/share/doc/fzf/examples/key-bindings.zsh" \
   -a "source /usr/share/doc/fzf/examples/completion.zsh" \
-  -a "export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
+  -a "export HISTFILE=/commandhistory/.zsh_history" \
+  -a "export HISTSIZE=10000" \
+  -a "export SAVEHIST=10000" \
+  -a "setopt SHARE_HISTORY" \
+  -a "setopt HIST_IGNORE_DUPS" \
   -x
 
 # Install Claude
