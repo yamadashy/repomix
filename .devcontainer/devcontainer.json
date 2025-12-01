@@ -1,5 +1,5 @@
 {
-  "name": "Claude Code Sandbox",
+  "name": "Repomix",
   "build": {
     "dockerfile": "Dockerfile",
     "args": {
