@@ -12,7 +12,7 @@ function formatGitBlame(blameOutput: string): string {
     // \s+                 - Matches one or more spaces
     // \d+\)               - Matches the line number inside the parenthesis (e.g., 1)
     // (.*)                - Group 3: Matches the CODE LINE part, including leading space
-    const blameLineRegex = /^[a-f0-9]+\s*\((.+)\s+(\d{4}-\d{2}-\d{2})\s+\d+\)(.*)$/i;
+    const blameLineRegex = /^[\^]?[a-f0-9]+\s*\((.+)\s+(\d{4}-\d{2}-\d{2})\s+\d+\)(.*)$/i;
 
     const lines = blameOutput.split('\n');
     const formattedLines: string[] = [];
