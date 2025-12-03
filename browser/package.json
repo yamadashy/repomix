@@ -35,7 +35,7 @@
   "devDependencies": {
     "@types/chrome": "^0.1.31",
     "@types/node": "^24.10.1",
-    "@typescript/native-preview": "^7.0.0-dev.20251120.1",
+    "@typescript/native-preview": "^7.0.0-dev.20251126.1",
     "jsdom": "^27.2.0",
     "sharp": "^0.34.5",
     "tsx": "^4.20.6",
