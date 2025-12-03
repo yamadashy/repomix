@@ -4,6 +4,7 @@ import { parseFile } from '../treeSitter/parseFile.js';
 import { getFileManipulator } from './fileManipulate.js';
 import type { RawFile } from './fileTypes.js';
 import { truncateBase64Content } from './truncateBase64.js';
+import { getGitBlame } from '../git/gitBlameHandle.js';
 
 /**
  * Process the content of a file according to the configuration
@@ -24,6 +25,12 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
   const manipulator = getFileManipulator(rawFile.path);
 
   logger.trace(`Processing file: ${rawFile.path}`);
+  if (config.output.git?.showBlame) {
+    const blame = await getGitBlame(config.cwd, rawFile.path);
+    if (blame) {
+      processedContent = blame
+    }
+  }
 
   if (config.output.truncateBase64) {
     processedContent = truncateBase64Content(processedContent);
