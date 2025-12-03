@@ -49,6 +49,7 @@ describe('calculateGitLogMetrics', () => {
         includeDiffs: false,
         includeLogs: true,
         includeLogsCount: 50,
+        showBlame: false,
       },
     },
     include: ['**/*'],
