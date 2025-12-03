@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import { getFileManipulator } from '../../../src/core/file/fileManipulate.js';
 import { processContent } from '../../../src/core/file/fileProcessContent.js';
-import { getGitBlame } from '../../../src/core/git/gitBlameHandle.js';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
+import { getGitBlame } from '../../../src/core/git/gitBlameHandle.js';
 import { parseFile } from '../../../src/core/treeSitter/parseFile.js';
 
 vi.mock('../../../src/core/file/fileManipulate.js');
@@ -197,7 +197,7 @@ describe('processContent', () => {
 
     vi.mocked(getGitBlame).mockResolvedValue('blame content');
     const result = await processContent(rawFile, config);
-    
+
     expect(getGitBlame).toHaveBeenCalledWith(config.cwd, rawFile.path);
     expect(result).toBe('blame content');
   });
@@ -220,7 +220,7 @@ describe('processContent', () => {
 
     vi.mocked(getGitBlame).mockResolvedValue(null);
     const result = await processContent(rawFile, config);
-    
+
     expect(result).toBe('const x = 1;');
   });
 });

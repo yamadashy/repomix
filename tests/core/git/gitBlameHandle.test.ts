@@ -20,7 +20,7 @@ describe('gitBlameHandle', () => {
         isGitRepository: mockIsGitRepository,
       });
 
-      const expectedOutput = '[Author 2025-12-03] code line'
+      const expectedOutput = '[Author 2025-12-03] code line';
       expect(result).toBe(expectedOutput);
       expect(mockIsGitRepository).toHaveBeenCalledWith('/test/dir');
       expect(mockExecGitBlame).toHaveBeenCalledWith('/test/dir', 'file.ts');
@@ -38,9 +38,7 @@ describe('gitBlameHandle', () => {
       expect(result).toBeNull();
       expect(mockIsGitRepository).toHaveBeenCalledWith('/test/dir');
       expect(mockExecGitBlame).not.toHaveBeenCalled();
-      expect(logger.trace).toHaveBeenCalledWith(
-        'Directory /test/dir is not a git repository, skipping git blame',
-      );
+      expect(logger.trace).toHaveBeenCalledWith('Directory /test/dir is not a git repository, skipping git blame');
     });
 
     test('should return null when blame output is empty (e.g. untracked file)', async () => {
@@ -67,10 +65,7 @@ describe('gitBlameHandle', () => {
       });
 
       expect(result).toBeNull();
-      expect(logger.trace).toHaveBeenCalledWith(
-        'Failed to get git blame for file.ts:',
-        'git command failed',
-      );
+      expect(logger.trace).toHaveBeenCalledWith('Failed to get git blame for file.ts:', 'git command failed');
     });
   });
 });

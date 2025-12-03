@@ -405,30 +405,30 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
       ).rejects.toThrow('git command failed');
       expect(logger.trace).toHaveBeenCalledWith('Failed to execute git ls-remote:', 'git command failed');
     });
-  describe('execGitBlame', () => {
-    test('should return git blame output', async () => {
-      const mockBlame = 'e0b3c2 (Author 2023-01-01) code line';
-      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: mockBlame });
-      const result = await execGitBlame('/test/dir', 'file.ts', { execFileAsync: mockFileExecAsync });
-      expect(result).toBe(mockBlame);
-      expect(mockFileExecAsync).toHaveBeenCalledWith('git', [
-        '-C',
-        '/test/dir',
-        'blame',
-        '--date=short',
-        '-w',
-        'file.ts',
-      ]);
-    });
-    test('should return empty string when git blame fails', async () => {
-      const mockFileExecAsync = vi.fn().mockRejectedValue(new Error('git command failed'));
-      const result = await execGitBlame('/test/dir', 'file.ts', { execFileAsync: mockFileExecAsync });
-      expect(result).toBe('');
-      expect(logger.trace).toHaveBeenCalledWith(
-        'Failed to run git blame on file.ts in /test/dir:',
-        'git command failed',
-      );
+    describe('execGitBlame', () => {
+      test('should return git blame output', async () => {
+        const mockBlame = 'e0b3c2 (Author 2023-01-01) code line';
+        const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: mockBlame });
+        const result = await execGitBlame('/test/dir', 'file.ts', { execFileAsync: mockFileExecAsync });
+        expect(result).toBe(mockBlame);
+        expect(mockFileExecAsync).toHaveBeenCalledWith('git', [
+          '-C',
+          '/test/dir',
+          'blame',
+          '--date=short',
+          '-w',
+          'file.ts',
+        ]);
+      });
+      test('should return empty string when git blame fails', async () => {
+        const mockFileExecAsync = vi.fn().mockRejectedValue(new Error('git command failed'));
+        const result = await execGitBlame('/test/dir', 'file.ts', { execFileAsync: mockFileExecAsync });
+        expect(result).toBe('');
+        expect(logger.trace).toHaveBeenCalledWith(
+          'Failed to run git blame on file.ts in /test/dir:',
+          'git command failed',
+        );
+      });
     });
   });
-});
 });

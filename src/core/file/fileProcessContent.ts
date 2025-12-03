@@ -1,10 +1,10 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
+import { getGitBlame } from '../git/gitBlameHandle.js';
 import { parseFile } from '../treeSitter/parseFile.js';
 import { getFileManipulator } from './fileManipulate.js';
 import type { RawFile } from './fileTypes.js';
 import { truncateBase64Content } from './truncateBase64.js';
-import { getGitBlame } from '../git/gitBlameHandle.js';
 
 /**
  * Process the content of a file according to the configuration
@@ -28,7 +28,7 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
   if (config.output.git?.showBlame) {
     const blame = await getGitBlame(config.cwd, rawFile.path);
     if (blame) {
-      processedContent = blame
+      processedContent = blame;
     }
   }
 
