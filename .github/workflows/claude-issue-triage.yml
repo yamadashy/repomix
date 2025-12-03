@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 1
 
       - name: Run Claude Issue Triage
-        uses: anthropics/claude-code-action@6902c227aaa9536481b99d56f3014bbbad6c6da8 # v1.0.18
+        uses: anthropics/claude-code-action@a7e4c51380c42dd89b127f5e5f9be7b54020bc6b # v1.0.21
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_non_write_users: "*"
