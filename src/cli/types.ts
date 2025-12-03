@@ -27,6 +27,7 @@ export interface CliOptions extends OptionValues {
   includeDiffs?: boolean;
   includeLogs?: boolean;
   includeLogsCount?: number;
+  outputShowGitBlame?: boolean;
 
   // Filter Options
   include?: string;

@@ -280,6 +280,16 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     };
   }
 
+  if (options.outputShowGitBlame) {
+    cliConfig.output = {
+      ...cliConfig.output,
+      git: {
+        ...cliConfig.output?.git,
+        showBlame: true,
+      },
+    };
+  }
+
   if (options.tokenCountTree !== undefined) {
     cliConfig.output = {
       ...cliConfig.output,
