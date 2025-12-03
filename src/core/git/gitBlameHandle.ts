@@ -2,6 +2,11 @@ import { logger } from "../../shared/logger.js";
 import { execGitBlame } from "./gitCommand.js";
 import { isGitRepository } from "./gitRepositoryHandle.js";
 
+/**
+ * Formats the raw git blame output into a readable string
+ * @param blameOutput - The raw output from git blame
+ * @returns Formatted string with author, date, and code
+ */
 function formatGitBlame(blameOutput: string): string {
     // Regex breakdown:
     // ^[a-f0-9]+          - Matches the commit hash at the start of the line (e.g., a2d3c5fed)
@@ -33,6 +38,13 @@ function formatGitBlame(blameOutput: string): string {
     return formattedLines.join('\n');
 }
 
+/**
+ * Retrieves and formats git blame information for a file
+ * @param directory - The repository directory
+ * @param filePath - Path to the file
+ * @param deps - Dependencies
+ * @returns Formatted blame string or null if failed/skipped
+ */
 export const getGitBlame = async (
   directory: string,
   filePath: string,

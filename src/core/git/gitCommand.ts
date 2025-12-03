@@ -203,6 +203,13 @@ export const validateGitUrl = (url: string): void => {
   }
 };
 
+/**
+ * Executes git blame for a specific file
+ * @param directory - The repository directory
+ * @param filePath - Path to the file to blame
+ * @param deps - Dependencies
+ * @returns The raw git blame output
+ */
 export const execGitBlame = async (
   directory: string,
   filePath: string,
