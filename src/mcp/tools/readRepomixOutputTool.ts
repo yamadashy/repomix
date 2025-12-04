@@ -1,11 +1,7 @@
-// @ts-nocheck - Zod v3 compatibility for MCP SDK (imported by mcpAction.ts)
-// Note: @ts-expect-error would be preferable, but the type incompatibility extends
-// beyond .shape to the entire handler function signature, causing 9+ type errors per file.
-// This will be resolved when MCP SDK supports Zod v4.
 import fs from 'node:fs/promises';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { logger } from '../../shared/logger.js';
 import {
   buildMcpToolErrorResponse,
@@ -44,10 +40,8 @@ export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
       title: 'Read Repomix Output',
       description:
         'Read the contents of a Repomix-generated output file. Supports partial reading with line range specification for large files. This tool is designed for environments where direct file system access is limited (e.g., web-based environments, sandboxed applications). For direct file system access, use standard file operations.',
-      // biome-ignore lint/suspicious/noExplicitAny: Zod v3 compatibility for MCP SDK
-      inputSchema: readRepomixOutputInputSchema.shape as any,
-      // biome-ignore lint/suspicious/noExplicitAny: Zod v3 compatibility for MCP SDK
-      outputSchema: readRepomixOutputOutputSchema.shape as any,
+      inputSchema: readRepomixOutputInputSchema,
+      outputSchema: readRepomixOutputOutputSchema,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
