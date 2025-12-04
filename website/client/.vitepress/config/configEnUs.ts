@@ -45,6 +45,7 @@ export const configEnUs = defineConfig({
             { text: 'GitHub Actions', link: '/guide/github-actions' },
             { text: 'Using Repomix as a Library', link: '/guide/development/using-repomix-as-a-library' },
             { text: 'AI-Assisted Development Tips', link: '/guide/tips/best-practices' },
+            { text: 'Git Commit History Analysis', link: '/guide/tips/git-commit-history' },
           ],
         },
         {

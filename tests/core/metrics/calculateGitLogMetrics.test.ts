@@ -49,6 +49,12 @@ describe('calculateGitLogMetrics', () => {
         includeDiffs: false,
         includeLogs: true,
         includeLogsCount: 50,
+        commitRange: 'HEAD~50..HEAD',
+        commitPatchDetail: 'stat' as const,
+        includeCommitGraph: true,
+        includeSummary: false,
+        includeGitTags: true,
+        includeCommitPatches: true,
       },
     },
     include: ['**/*'],
@@ -87,8 +93,7 @@ describe('calculateGitLogMetrics', () => {
       };
 
       const gitLogResult: GitLogResult = {
-        logContent: 'some log content',
-        commits: [],
+        logCommits: [{ date: '2025-11-20', message: 'test', files: ['file.ts'] }],
       };
 
       const result = await calculateGitLogMetrics(configWithDisabledLogs, gitLogResult, {
@@ -108,8 +113,7 @@ describe('calculateGitLogMetrics', () => {
       } as RepomixConfigMerged;
 
       const gitLogResult: GitLogResult = {
-        logContent: 'some log content',
-        commits: [],
+        logCommits: [{ date: '2025-11-20', message: 'test', files: ['file.ts'] }],
       };
 
       const result = await calculateGitLogMetrics(configWithoutGit, gitLogResult, {
@@ -131,8 +135,7 @@ describe('calculateGitLogMetrics', () => {
 
     it('should return 0 when logContent is empty', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: '',
-        commits: [],
+        logCommits: [],
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -143,9 +146,8 @@ describe('calculateGitLogMetrics', () => {
     });
 
     it('should return 0 when logContent is undefined', async () => {
-      const gitLogResult = {
-        logContent: undefined as unknown as string,
-        commits: [],
+      const gitLogResult: GitLogResult = {
+        logCommits: [],
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -159,8 +161,13 @@ describe('calculateGitLogMetrics', () => {
   describe('when processing git logs', () => {
     it('should calculate tokens for git log content', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: 'commit abc123\nAuthor: Test User\nDate: 2023-01-01\n\nTest commit message',
-        commits: [],
+        logCommits: [
+          {
+            date: '2023-01-01',
+            message: 'Test commit message',
+            files: ['file.ts'],
+          },
+        ],
       };
 
       const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(15);
@@ -176,17 +183,19 @@ describe('calculateGitLogMetrics', () => {
 
       expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(1);
       expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'commit abc123\nAuthor: Test User\nDate: 2023-01-01\n\nTest commit message',
+        content: JSON.stringify(gitLogResult.logCommits),
         encoding: 'o200k_base',
       });
       expect(result).toEqual({ gitLogTokenCount: 15 });
     });
 
     it('should handle large log content correctly', async () => {
-      const largeLogContent = `${'commit '.repeat(1000)}large commit log`;
       const gitLogResult: GitLogResult = {
-        logContent: largeLogContent,
-        commits: [],
+        logCommits: Array.from({ length: 1000 }, (_, i) => ({
+          date: '2023-01-01',
+          message: `Commit ${i}`,
+          files: ['file.ts'],
+        })),
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -198,29 +207,23 @@ describe('calculateGitLogMetrics', () => {
     });
 
     it('should handle complex git log with multiple commits', async () => {
-      const complexLogContent = `commit abc123def456
-Author: John Doe <john@example.com>
-Date: Mon Jan 1 12:00:00 2023 +0000
-
-    Add new feature for user authentication
-
-    - Implemented OAuth2 integration
-    - Added user session management
-    - Updated security middleware
-
-commit def456ghi789
-Author: Jane Smith <jane@example.com>
-Date: Sun Dec 31 18:30:00 2022 +0000
-
-    Fix critical bug in payment processing
-
-    - Resolved transaction timeout issue
-    - Added proper error handling
-    - Improved logging for debugging`;
-
       const gitLogResult: GitLogResult = {
-        logContent: complexLogContent,
-        commits: [],
+        logCommits: [
+          {
+            date: 'Mon Jan 1 12:00:00 2023 +0000',
+            message: 'Add new feature for user authentication',
+            files: ['src/auth.ts', 'src/oauth.ts'],
+            author: { name: 'John Doe', email: 'john@example.com', date: '2023-01-01' },
+            body: '- Implemented OAuth2 integration\n- Added user session management\n- Updated security middleware',
+          },
+          {
+            date: 'Sun Dec 31 18:30:00 2022 +0000',
+            message: 'Fix critical bug in payment processing',
+            files: ['src/payment.ts'],
+            author: { name: 'Jane Smith', email: 'jane@example.com', date: '2022-12-31' },
+            body: '- Resolved transaction timeout issue\n- Added proper error handling\n- Improved logging for debugging',
+          },
+        ],
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -235,8 +238,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
   describe('error handling', () => {
     it('should return 0 when task runner fails', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: 'some log content',
-        commits: [],
+        logCommits: [{ date: '2023-01-01', message: 'test', files: ['file.ts'] }],
       };
 
       const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
@@ -254,8 +256,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
 
     it('should handle network timeout errors gracefully', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: 'test log content',
-        commits: [],
+        logCommits: [{ date: '2023-01-01', message: 'test', files: ['file.ts'] }],
       };
 
       const timeoutError = new Error('Request timeout');
@@ -276,8 +277,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
   describe('logging', () => {
     it('should log trace messages for successful calculation', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: 'test log content',
-        commits: [],
+        logCommits: [{ date: '2023-01-01', message: 'test', files: ['file.ts'] }],
       };
 
       await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -292,8 +292,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
 
     it('should not log completion message on error', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: 'test content',
-        commits: [],
+        logCommits: [{ date: '2023-01-01', message: 'test', files: ['file.ts'] }],
       };
 
       const errorTaskRunner = {
@@ -320,8 +319,13 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       };
 
       const gitLogResult: GitLogResult = {
-        logContent: 'test log content',
-        commits: [],
+        logCommits: [
+          {
+            date: '2023-01-01',
+            message: 'test log content',
+            files: ['test.ts'],
+          },
+        ],
       };
 
       const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(10);
@@ -336,7 +340,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       });
 
       expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'test log content',
+        content: JSON.stringify(gitLogResult.logCommits),
         encoding: 'cl100k_base',
       });
     });
@@ -345,8 +349,13 @@ Date: Sun Dec 31 18:30:00 2022 +0000
   describe('return value structure', () => {
     it('should always return an object with gitLogTokenCount property', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: 'test content',
-        commits: [],
+        logCommits: [
+          {
+            date: '2023-01-01',
+            message: 'test content',
+            files: ['test.ts'],
+          },
+        ],
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -359,8 +368,13 @@ Date: Sun Dec 31 18:30:00 2022 +0000
 
     it('should return consistent structure on error', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: 'test content',
-        commits: [],
+        logCommits: [
+          {
+            date: '2023-01-01',
+            message: 'test content',
+            files: ['test.ts'],
+          },
+        ],
       };
 
       const errorTaskRunner = {
@@ -380,8 +394,13 @@ Date: Sun Dec 31 18:30:00 2022 +0000
   describe('edge cases', () => {
     it('should handle very short log content', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: 'a',
-        commits: [],
+        logCommits: [
+          {
+            date: '2023-01-01',
+            message: 'a',
+            files: [],
+          },
+        ],
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -393,8 +412,13 @@ Date: Sun Dec 31 18:30:00 2022 +0000
 
     it('should handle log content with special characters', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: 'commit 🚀 emoji test\n\n日本語のコミットメッセージ\n\nSpecial chars: ñáéíóú',
-        commits: [],
+        logCommits: [
+          {
+            date: '2023-01-01',
+            message: 'commit 🚀 emoji test\n\n日本語のコミットメッセージ\n\nSpecial chars: ñáéíóú',
+            files: [],
+          },
+        ],
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -407,8 +431,13 @@ Date: Sun Dec 31 18:30:00 2022 +0000
 
     it('should handle log content with only whitespace', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: '   \n\t  \r\n   ',
-        commits: [],
+        logCommits: [
+          {
+            date: '2023-01-01',
+            message: '   \n\t  \r\n   ',
+            files: [],
+          },
+        ],
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {

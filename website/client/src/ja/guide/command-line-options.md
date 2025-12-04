@@ -58,6 +58,24 @@
 ## MCPオプション
 - `--mcp`: AI ツール統合用のModel Context Protocolサーバーとして実行
 
+## Gitコミット履歴オプション
+
+これらの直交フラグはgit logの構造を反映し、詳細な制御を提供します：
+
+**Diffフォーマットフラグ**（相互排他的 - 1つを選択）：
+- `--stat`：ファイルごとの変更数を表示（git log --stat）
+- `--patch`：行ごとのdiffを表示（git log --patch）
+- `--numstat`：ファイルごとの数値的な追加/削除を表示（git log --numstat）
+- `--shortstat`：変更の1行サマリーを表示（git log --shortstat）
+- `--dirstat`：ディレクトリの変更分布を表示（git log --dirstat）
+- `--name-only`：ファイル名のみを表示（git log --name-only）- デフォルト
+- `--name-status`：A/M/D/Rステータス付きでファイル名を表示（git log --name-status）
+- `--raw`：SHAハッシュとモード付きの低レベルフォーマットを表示（git log --raw）
+
+**出力詳細度とグラフオプション**（任意のdiffフォーマットと組み合わせ可能）：
+- `--graph`：ASCIIとMermaidのコミットグラフ可視化を含める（git log --graph --all）
+- `--summary`：作成、名前変更、モード変更などのファイル操作を表示（git log --summary）
+- `--commit-range <range>`：分析するGitコミット範囲（デフォルト：HEAD~50..HEAD、..と...の両方の構文をサポート、例："HEAD~100..HEAD"、"v1.0..v2.0"、"main...feature-branch"）
 
 ## 使用例
 

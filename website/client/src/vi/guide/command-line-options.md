@@ -58,6 +58,25 @@
 ## Tùy chọn MCP
 - `--mcp`: Chạy như máy chủ Model Context Protocol để tích hợp công cụ AI
 
+## Tùy chọn Lịch sử Commit Git
+
+Các flag trực giao này phản ánh cấu trúc của git log để kiểm soát chi tiết:
+
+**Các Flag Định dạng Diff** (loại trừ lẫn nhau - chọn một):
+- `--stat`: Hiển thị số lượng thay đổi theo từng file (git log --stat)
+- `--patch`: Hiển thị diff theo từng dòng (git log --patch)
+- `--numstat`: Hiển thị số thêm/xóa theo từng file (git log --numstat)
+- `--shortstat`: Hiển thị tóm tắt một dòng về các thay đổi (git log --shortstat)
+- `--dirstat`: Hiển thị phân bố thay đổi theo thư mục (git log --dirstat)
+- `--name-only`: Chỉ hiển thị tên file (git log --name-only) - mặc định
+- `--name-status`: Hiển thị tên file với trạng thái A/M/D/R (git log --name-status)
+- `--raw`: Hiển thị định dạng cấp thấp với hash SHA và mode (git log --raw)
+
+**Tùy chọn Mức độ Chi tiết Đầu ra và Đồ thị** (có thể kết hợp với bất kỳ định dạng diff nào):
+- `--graph`: Bao gồm trực quan hóa đồ thị commit ASCII và Mermaid (git log --graph --all)
+- `--summary`: Hiển thị các thao tác file như tạo, đổi tên, thay đổi mode (git log --summary)
+- `--commit-range <range>`: Phạm vi commit Git để phân tích (mặc định: HEAD~50..HEAD, hỗ trợ cả cú pháp .. và ..., ví dụ: "HEAD~100..HEAD", "v1.0..v2.0", "main...feature-branch")
+
 ## Ví dụ
 
 ```bash

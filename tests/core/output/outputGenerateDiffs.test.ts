@@ -86,7 +86,7 @@ describe('Output Generation with Diffs', () => {
       mockProcessedFiles,
       allFilePaths,
       gitDiffResult,
-      undefined,
+      undefined, // gitLogResult
       mockDeps,
     );
 
@@ -119,8 +119,8 @@ describe('Output Generation with Diffs', () => {
       mockConfig,
       mockProcessedFiles,
       allFilePaths,
-      undefined,
-      undefined,
+      undefined, // gitDiffResult
+      undefined, // gitLogResult
       mockDeps,
     );
 
@@ -153,8 +153,8 @@ describe('Output Generation with Diffs', () => {
       mockConfig,
       mockProcessedFiles,
       allFilePaths,
-      undefined,
-      undefined,
+      undefined, // gitDiffResult
+      undefined, // gitLogResult
       mockDeps,
     );
 
@@ -187,8 +187,8 @@ describe('Output Generation with Diffs', () => {
       mockConfig,
       mockProcessedFiles,
       allFilePaths,
-      undefined,
-      undefined,
+      undefined, // gitDiffResult
+      undefined, // gitLogResult
       mockDeps,
     );
 
@@ -231,8 +231,8 @@ describe('Output Generation with Diffs', () => {
       mockConfig,
       mockProcessedFiles,
       allFilePaths,
-      undefined,
-      undefined,
+      undefined, // gitDiffResult
+      undefined, // gitLogResult
       mockDeps,
     );
 
