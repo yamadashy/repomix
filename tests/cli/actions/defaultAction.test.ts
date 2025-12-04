@@ -8,6 +8,7 @@ import * as fileStdin from '../../../src/core/file/fileStdin.js';
 import * as packageJsonParser from '../../../src/core/file/packageJsonParse.js';
 import * as packager from '../../../src/core/packager.js';
 
+import { logger } from '../../../src/shared/logger.js';
 import * as processConcurrency from '../../../src/shared/processConcurrency.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
@@ -137,6 +138,61 @@ describe('defaultAction', () => {
 
   afterEach(() => {
     vi.resetAllMocks();
+  });
+
+  it('should log a warning when showBlame is true and incompatible options are enabled', async () => {
+    const warnSpy = vi.spyOn(logger, 'warn');
+
+    vi.mocked(configLoader.mergeConfigs).mockReturnValue(
+      createMockConfig({
+        cwd: process.cwd(),
+        input: {
+          maxFileSize: 50 * 1024 * 1024,
+        },
+        output: {
+          filePath: 'output.txt',
+          style: 'plain',
+          parsableStyle: false,
+          fileSummary: true,
+          directoryStructure: true,
+          topFilesLength: 5,
+          showLineNumbers: false,
+          removeComments: true, // Incompatible option
+          removeEmptyLines: true, // Incompatible option
+          compress: true, // Incompatible option
+          copyToClipboard: false,
+          stdout: false,
+          git: {
+            sortByChanges: true,
+            sortByChangesMaxCommits: 100,
+            includeDiffs: false,
+            showBlame: true, // Enabled blame
+          },
+          files: true,
+        },
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: true,
+          customPatterns: [],
+        },
+        include: [],
+        security: {
+          enableSecurityCheck: true,
+        },
+        tokenCount: {
+          encoding: 'o200k_base',
+        },
+      }),
+    );
+
+    await runDefaultAction(['.'], process.cwd(), {});
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Git blame is enabled. The following options will be ignored for files with blame info: compress, removeComments, removeEmptyLines.',
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      'This is because git blame modifies the file content structure, making it incompatible with these processing steps.',
+    );
   });
 
   it('should run the default command successfully', async () => {

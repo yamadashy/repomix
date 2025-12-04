@@ -23,12 +23,14 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
   const processStartAt = process.hrtime.bigint();
   let processedContent = rawFile.content;
   const manipulator = getFileManipulator(rawFile.path);
+  let isBlameApplied = false;
 
   logger.trace(`Processing file: ${rawFile.path}`);
   if (config.output.git?.showBlame) {
     const blame = await getGitBlame(config.cwd, rawFile.path);
     if (blame) {
       processedContent = blame;
+      isBlameApplied = true;
     }
   }
 
@@ -36,17 +38,20 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
     processedContent = truncateBase64Content(processedContent);
   }
 
-  if (manipulator && config.output.removeComments) {
+  // Skip comment removal if blame is applied, as the content structure is modified
+  if (manipulator && config.output.removeComments && !isBlameApplied) {
     processedContent = manipulator.removeComments(processedContent);
   }
 
-  if (config.output.removeEmptyLines && manipulator) {
+  // Skip empty line removal if blame is applied, as lines are no longer empty (they have blame info)
+  if (config.output.removeEmptyLines && manipulator && !isBlameApplied) {
     processedContent = manipulator.removeEmptyLines(processedContent);
   }
 
   processedContent = processedContent.trim();
 
-  if (config.output.compress) {
+  // Skip compression if blame is applied, as it breaks the syntax required for parsing
+  if (config.output.compress && !isBlameApplied) {
     try {
       const parsedContent = await parseFile(processedContent, rawFile.path, config);
       if (parsedContent === undefined) {
