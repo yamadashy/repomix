@@ -9,9 +9,10 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics } from './metrics/calculateMetrics.js';
-import { generateOutput } from './output/outputGenerate.js';
+import { generateOutput, generateSkillOutput } from './output/outputGenerate.js';
 import { copyToClipboardIfEnabled } from './packager/copyToClipboardIfEnabled.js';
 import { writeOutputToDisk } from './packager/writeOutputToDisk.js';
+import { writeSkillOutput } from './packager/writeSkillOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 
@@ -36,8 +37,10 @@ const defaultDeps = {
   collectFiles,
   processFiles,
   generateOutput,
+  generateSkillOutput,
   validateFileSafety,
   writeOutputToDisk,
+  writeSkillOutput,
   copyToClipboardIfEnabled,
   calculateMetrics,
   sortPaths,
@@ -117,14 +120,59 @@ export const pack = async (
   );
 
   progressCallback('Generating output...');
-  const output = await withMemoryLogging('Generate Output', () =>
-    deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
-  );
 
-  progressCallback('Writing output file...');
-  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+  let output: string;
 
-  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  // Check if skill generation is requested
+  if (config.generateSkill) {
+    // Generate codebaseMd first using markdown style
+    const markdownConfig: RepomixConfigMerged = {
+      ...config,
+      output: {
+        ...config.output,
+        style: 'markdown',
+      },
+    };
+    const codebaseMd = await withMemoryLogging('Generate Codebase Markdown', () =>
+      deps.generateOutput(rootDirs, markdownConfig, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
+    );
+
+    // Calculate metrics from codebaseMd to get accurate token count
+    const codebaseMetrics = await withMemoryLogging('Calculate Codebase Metrics', () =>
+      deps.calculateMetrics(processedFiles, codebaseMd, progressCallback, config, gitDiffResult, gitLogResult),
+    );
+
+    // Generate skill output with accurate token count
+    const skillOutput = await withMemoryLogging('Generate Skill Output', () =>
+      deps.generateSkillOutput(
+        config.generateSkill as string,
+        rootDirs,
+        config,
+        processedFiles,
+        allFilePaths,
+        codebaseMetrics.totalTokens,
+        gitDiffResult,
+        gitLogResult,
+      ),
+    );
+
+    progressCallback('Writing skill output...');
+    await withMemoryLogging('Write Skill Output', () =>
+      deps.writeSkillOutput(skillOutput, config.generateSkill as string, config.cwd),
+    );
+
+    // Use codebaseMd for final metrics
+    output = codebaseMd;
+  } else {
+    output = await withMemoryLogging('Generate Output', () =>
+      deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
+    );
+
+    progressCallback('Writing output file...');
+    await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+
+    await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  }
 
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
     deps.calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, gitLogResult),
