@@ -21,7 +21,9 @@ import {
 } from './outputStyleDecorate.js';
 import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
+import { generateSkillMd } from './outputStyles/skillStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
+import { generateProjectName, generateSkillDescription, validateSkillName } from './skillUtils.js';
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
   const maxBackticks = files
@@ -347,5 +349,72 @@ export const buildOutputGeneratorContext = async (
     instruction: repositoryInstruction,
     gitDiffResult,
     gitLogResult,
+  };
+};
+
+/**
+ * Result of skill output generation
+ */
+export interface SkillOutputResult {
+  skillMd: string;
+  codebaseMd: string;
+}
+
+/**
+ * Generates Claude Agent Skills format output.
+ * Creates SKILL.md and codebase.md (Markdown fixed).
+ */
+export const generateSkillOutput = async (
+  skillName: string,
+  rootDirs: string[],
+  config: RepomixConfigMerged,
+  processedFiles: ProcessedFile[],
+  allFilePaths: string[],
+  totalTokens: number,
+  gitDiffResult: GitDiffResult | undefined = undefined,
+  gitLogResult: GitLogResult | undefined = undefined,
+  deps = {
+    generateOutput,
+  },
+): Promise<SkillOutputResult> => {
+  // Validate and normalize skill name
+  const normalizedSkillName = validateSkillName(skillName);
+
+  // Generate project name from root directories
+  const projectName = generateProjectName(rootDirs);
+
+  // Generate skill description
+  const skillDescription = generateSkillDescription(normalizedSkillName, projectName);
+
+  // Generate SKILL.md content
+  const skillMd = generateSkillMd({
+    skillName: normalizedSkillName,
+    skillDescription,
+    projectName,
+    totalFiles: processedFiles.length,
+    totalTokens,
+  });
+
+  // Generate codebase.md using markdown style (fixed)
+  const markdownConfig: RepomixConfigMerged = {
+    ...config,
+    output: {
+      ...config.output,
+      style: 'markdown',
+    },
+  };
+
+  const codebaseMd = await deps.generateOutput(
+    rootDirs,
+    markdownConfig,
+    processedFiles,
+    allFilePaths,
+    gitDiffResult,
+    gitLogResult,
+  );
+
+  return {
+    skillMd,
+    codebaseMd,
   };
 };

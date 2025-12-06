@@ -6,6 +6,7 @@ import { registerPackRemoteRepositoryPrompt } from './prompts/packRemoteReposito
 import { registerAttachPackedOutputTool } from './tools/attachPackedOutputTool.js';
 import { registerFileSystemReadDirectoryTool } from './tools/fileSystemReadDirectoryTool.js';
 import { registerFileSystemReadFileTool } from './tools/fileSystemReadFileTool.js';
+import { registerGenerateSkillTool } from './tools/generateSkillTool.js';
 import { registerGrepRepomixOutputTool } from './tools/grepRepomixOutputTool.js';
 import { registerPackCodebaseTool } from './tools/packCodebaseTool.js';
 import { registerPackRemoteRepositoryTool } from './tools/packRemoteRepositoryTool.js';
@@ -17,6 +18,7 @@ import { registerReadRepomixOutputTool } from './tools/readRepomixOutputTool.js'
 const MCP_SERVER_INSTRUCTIONS =
   'Repomix MCP Server provides AI-optimized codebase analysis tools. ' +
   'Use pack_codebase or pack_remote_repository to consolidate code into a single XML file, ' +
+  'use generate_skill to create Claude Agent Skills from codebases, ' +
   'use attach_packed_output to work with existing packed outputs, ' +
   'then read_repomix_output and grep_repomix_output to analyze it. ' +
   'Perfect for code reviews, documentation generation, bug investigation, GitHub repository analysis, and understanding large codebases. ' +
@@ -39,6 +41,7 @@ export const createMcpServer = async () => {
   // Register the tools
   registerPackCodebaseTool(mcpServer);
   registerPackRemoteRepositoryTool(mcpServer);
+  registerGenerateSkillTool(mcpServer);
   registerAttachPackedOutputTool(mcpServer);
   registerReadRepomixOutputTool(mcpServer);
   registerGrepRepomixOutputTool(mcpServer);

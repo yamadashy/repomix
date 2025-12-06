@@ -49,6 +49,20 @@ export const runDefaultAction = async (
   const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
   logger.trace('Merged config:', config);
 
+  // Validate skill generation options
+  if (config.generateSkill) {
+    if (config.output.stdout) {
+      throw new RepomixError(
+        '--generate-skill cannot be used with --stdout. Skill output requires writing to filesystem.',
+      );
+    }
+    if (config.output.copyToClipboard) {
+      throw new RepomixError(
+        '--generate-skill cannot be used with --copy. Skill output is a directory and cannot be copied to clipboard.',
+      );
+    }
+  }
+
   // Handle stdin processing in main process (before worker creation)
   // This is necessary because child_process workers don't inherit stdin
   let stdinFilePaths: string[] | undefined;
@@ -285,6 +299,11 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
       ...cliConfig.output,
       tokenCountTree: options.tokenCountTree,
     };
+  }
+
+  // Skill generation
+  if (options.generateSkill) {
+    cliConfig.generateSkill = options.generateSkill;
   }
 
   try {

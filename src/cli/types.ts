@@ -55,6 +55,9 @@ export interface CliOptions extends OptionValues {
   // MCP
   mcp?: boolean;
 
+  // Skill Generation
+  generateSkill?: string;
+
   // Other Options
   topFilesLen?: number;
   verbose?: boolean;

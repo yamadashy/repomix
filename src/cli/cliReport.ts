@@ -65,7 +65,14 @@ export const reportSummary = (packResult: PackResult, config: RepomixConfigMerge
   logger.log(`${pc.white('  Total Files:')} ${pc.white(packResult.totalFiles.toLocaleString())} files`);
   logger.log(`${pc.white(' Total Tokens:')} ${pc.white(packResult.totalTokens.toLocaleString())} tokens`);
   logger.log(`${pc.white('  Total Chars:')} ${pc.white(packResult.totalCharacters.toLocaleString())} chars`);
-  logger.log(`${pc.white('       Output:')} ${pc.white(config.output.filePath)}`);
+
+  // Show skill output path or regular output path
+  if (config.generateSkill) {
+    const skillPath = `.claude/skills/${config.generateSkill}/`;
+    logger.log(`${pc.white('       Output:')} ${pc.white(skillPath)} ${pc.dim('(skill directory)')}`);
+  } else {
+    logger.log(`${pc.white('       Output:')} ${pc.white(config.output.filePath)}`);
+  }
   logger.log(`${pc.white('     Security:')} ${pc.white(securityCheckMessage)}`);
 
   if (config.output.git?.includeDiffs) {
