@@ -74,7 +74,7 @@ export const promptSkillLocation = async (
 
   if (dirExists) {
     const overwrite = await deps.confirm({
-      message: `Skill directory already exists: ${pc.yellow(skillDir)}\nDo you want to overwrite it?`,
+      message: `Skill directory already exists. Do you want to overwrite it?\n${pc.dim(`path: ${skillDir}`)}`,
     });
 
     if (deps.isCancel(overwrite) || !overwrite) {
