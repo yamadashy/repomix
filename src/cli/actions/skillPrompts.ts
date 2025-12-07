@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import * as prompts from '@clack/prompts';
 import pc from 'picocolors';
+import { getDisplayPath } from '../cliReport.js';
 
 export type SkillLocation = 'personal' | 'project';
 
@@ -73,8 +74,9 @@ export const promptSkillLocation = async (
   }
 
   if (dirExists) {
+    const displayPath = getDisplayPath(skillDir, cwd);
     const overwrite = await deps.confirm({
-      message: `Skill directory already exists. Do you want to overwrite it?\n${pc.dim(`path: ${skillDir}`)}`,
+      message: `Skill directory already exists. Do you want to overwrite it?\n${pc.dim(`path: ${displayPath}`)}`,
     });
 
     if (deps.isCancel(overwrite) || !overwrite) {

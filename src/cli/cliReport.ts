@@ -7,6 +7,13 @@ import type { SuspiciousFileResult } from '../core/security/securityCheck.js';
 import { logger } from '../shared/logger.js';
 import { reportTokenCountTree } from './reporters/tokenCountTreeReporter.js';
 
+/**
+ * Convert an absolute path to a relative path if it's under cwd, otherwise return as-is.
+ */
+export const getDisplayPath = (absolutePath: string, cwd: string): string => {
+  return absolutePath.startsWith(cwd) ? path.relative(cwd, absolutePath) : absolutePath;
+};
+
 export interface ReportOptions {
   skillDir?: string;
 }
@@ -81,13 +88,12 @@ export const reportSummary = (
   logger.log(`${pc.white('  Total Chars:')} ${pc.white(packResult.totalCharacters.toLocaleString())} chars`);
 
   // Show skill output path or regular output path
-  // Use relative path if under cwd, otherwise absolute path
   if (config.skillGenerate !== undefined && options.skillDir) {
-    const displayPath = options.skillDir.startsWith(cwd) ? path.relative(cwd, options.skillDir) : options.skillDir;
+    const displayPath = getDisplayPath(options.skillDir, cwd);
     logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)} ${pc.dim('(skill directory)')}`);
   } else {
     const outputPath = path.resolve(cwd, config.output.filePath);
-    const displayPath = outputPath.startsWith(cwd) ? path.relative(cwd, outputPath) : outputPath;
+    const displayPath = getDisplayPath(outputPath, cwd);
     logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)}`);
   }
   logger.log(`${pc.white('     Security:')} ${pc.white(securityCheckMessage)}`);
