@@ -10,7 +10,11 @@ const SKILL_DIR_NAME = '.claude/skills';
  *   .claude/skills/<skillName>/
  *   ├── SKILL.md
  *   └── references/
- *       └── codebase.md
+ *       ├── summary.md
+ *       ├── structure.md
+ *       ├── files.md
+ *       ├── git-diffs.md (if enabled)
+ *       └── git-logs.md (if enabled)
  */
 export const writeSkillOutput = async (
   output: SkillOutputResult,
@@ -25,16 +29,24 @@ export const writeSkillOutput = async (
   const referencesDir = path.join(skillDir, 'references');
 
   // Create directories
-  await deps.mkdir(skillDir, { recursive: true });
   await deps.mkdir(referencesDir, { recursive: true });
 
   // Write SKILL.md
   const skillMdPath = path.join(skillDir, 'SKILL.md');
   await deps.writeFile(skillMdPath, output.skillMd, 'utf-8');
 
-  // Write references/codebase.md
-  const codebaseMdPath = path.join(referencesDir, 'codebase.md');
-  await deps.writeFile(codebaseMdPath, output.codebaseMd, 'utf-8');
+  // Write reference files
+  await deps.writeFile(path.join(referencesDir, 'summary.md'), output.references.summary, 'utf-8');
+  await deps.writeFile(path.join(referencesDir, 'structure.md'), output.references.structure, 'utf-8');
+  await deps.writeFile(path.join(referencesDir, 'files.md'), output.references.files, 'utf-8');
+
+  // Write optional git files
+  if (output.references.gitDiffs) {
+    await deps.writeFile(path.join(referencesDir, 'git-diffs.md'), output.references.gitDiffs, 'utf-8');
+  }
+  if (output.references.gitLogs) {
+    await deps.writeFile(path.join(referencesDir, 'git-logs.md'), output.references.gitLogs, 'utf-8');
+  }
 
   return skillDir;
 };

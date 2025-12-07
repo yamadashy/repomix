@@ -89,13 +89,20 @@ export const runRemoteAction = async (
     }
 
     // Run the default action on the downloaded/cloned repository
-    result = await deps.runDefaultAction([tempDirPath], tempDirPath, cliOptions);
+    // Pass the remote URL for skill name auto-generation
+    const optionsWithRemoteUrl = { ...cliOptions, remoteUrl: repoUrl };
+    result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithRemoteUrl);
 
-    // Copy output file only when not in stdout mode
-    // In stdout mode, output is written directly to stdout without creating a file,
-    // so attempting to copy a non-existent file would cause an error and exit code 1
+    // Copy output to current directory
+    // Skip copy for stdout mode (output goes directly to stdout)
+    // For skill generation, copy the skill directory instead of a single file
     if (!cliOptions.stdout) {
-      await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
+      if (result.config.skillGenerate !== undefined) {
+        // Copy skill directory to current directory
+        await copySkillOutputToCurrentDirectory(tempDirPath, process.cwd());
+      } else {
+        await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
+      }
     }
 
     logger.trace(`Repository obtained via ${downloadMethod} method`);
@@ -181,6 +188,40 @@ export const cloneRepository = async (
 export const cleanupTempDirectory = async (directory: string): Promise<void> => {
   logger.trace(`Cleaning up temporary directory: ${directory}`);
   await fs.rm(directory, { recursive: true, force: true });
+};
+
+export const copySkillOutputToCurrentDirectory = async (sourceDir: string, targetDir: string): Promise<void> => {
+  const sourceClaudeDir = path.join(sourceDir, '.claude');
+  const targetClaudeDir = path.join(targetDir, '.claude');
+
+  try {
+    // Check if source .claude directory exists
+    await fs.access(sourceClaudeDir);
+  } catch {
+    // No skill output was generated
+    logger.trace('No .claude directory found in source, skipping skill output copy');
+    return;
+  }
+
+  try {
+    logger.trace(`Copying skill output from: ${sourceClaudeDir} to: ${targetClaudeDir}`);
+
+    // Copy the entire .claude directory
+    await fs.cp(sourceClaudeDir, targetClaudeDir, { recursive: true });
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+
+    if (nodeError.code === 'EPERM' || nodeError.code === 'EACCES') {
+      throw new RepomixError(
+        `Failed to copy skill output to ${targetClaudeDir}: Permission denied.
+
+The current directory may be protected or require elevated permissions.
+Please try running from a different directory (e.g., your home directory or Documents folder).`,
+      );
+    }
+
+    throw new RepomixError(`Failed to copy skill output: ${(error as Error).message}`);
+  }
 };
 
 export const copyOutputToCurrentDirectory = async (

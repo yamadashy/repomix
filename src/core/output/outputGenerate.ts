@@ -21,9 +21,16 @@ import {
 } from './outputStyleDecorate.js';
 import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { generateSkillMd } from './outputStyles/skillStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
-import { generateProjectName, generateSkillDescription, validateSkillName } from './skillUtils.js';
+import {
+  generateFilesSection,
+  generateGitDiffsSection,
+  generateGitLogsSection,
+  generateStructureSection,
+  generateSummarySection,
+} from './skill/skillSectionGenerators.js';
+import { generateSkillMd } from './skill/skillStyle.js';
+import { generateProjectName, generateSkillDescription, validateSkillName } from './skill/skillUtils.js';
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
   const maxBackticks = files
@@ -353,16 +360,27 @@ export const buildOutputGeneratorContext = async (
 };
 
 /**
+ * References for skill output - each becomes a separate file
+ */
+export interface SkillReferences {
+  summary: string;
+  structure: string;
+  files: string;
+  gitDiffs?: string;
+  gitLogs?: string;
+}
+
+/**
  * Result of skill output generation
  */
 export interface SkillOutputResult {
   skillMd: string;
-  codebaseMd: string;
+  references: SkillReferences;
 }
 
 /**
  * Generates Claude Agent Skills format output.
- * Creates SKILL.md and codebase.md (Markdown fixed).
+ * Creates SKILL.md and separate reference files (summary.md, structure.md, files.md, etc.).
  */
 export const generateSkillOutput = async (
   skillName: string,
@@ -374,7 +392,8 @@ export const generateSkillOutput = async (
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
   deps = {
-    generateOutput,
+    buildOutputGeneratorContext,
+    sortOutputFiles,
   },
 ): Promise<SkillOutputResult> => {
   // Validate and normalize skill name
@@ -386,16 +405,10 @@ export const generateSkillOutput = async (
   // Generate skill description
   const skillDescription = generateSkillDescription(normalizedSkillName, projectName);
 
-  // Generate SKILL.md content
-  const skillMd = generateSkillMd({
-    skillName: normalizedSkillName,
-    skillDescription,
-    projectName,
-    totalFiles: processedFiles.length,
-    totalTokens,
-  });
+  // Sort processed files by git change count if enabled
+  const sortedProcessedFiles = await deps.sortOutputFiles(processedFiles, config);
 
-  // Generate codebase.md using markdown style (fixed)
+  // Build output generator context with markdown style
   const markdownConfig: RepomixConfigMerged = {
     ...config,
     output: {
@@ -404,17 +417,38 @@ export const generateSkillOutput = async (
     },
   };
 
-  const codebaseMd = await deps.generateOutput(
+  const outputGeneratorContext = await deps.buildOutputGeneratorContext(
     rootDirs,
     markdownConfig,
-    processedFiles,
     allFilePaths,
+    sortedProcessedFiles,
     gitDiffResult,
     gitLogResult,
   );
+  const renderContext = createRenderContext(outputGeneratorContext);
+
+  // Generate each section separately
+  const references: SkillReferences = {
+    summary: generateSummarySection(renderContext),
+    structure: generateStructureSection(renderContext),
+    files: generateFilesSection(renderContext),
+    gitDiffs: generateGitDiffsSection(renderContext),
+    gitLogs: generateGitLogsSection(renderContext),
+  };
+
+  // Generate SKILL.md content with info about which reference files exist
+  const skillMd = generateSkillMd({
+    skillName: normalizedSkillName,
+    skillDescription,
+    projectName,
+    totalFiles: processedFiles.length,
+    totalTokens,
+    hasGitDiffs: !!references.gitDiffs,
+    hasGitLogs: !!references.gitLogs,
+  });
 
   return {
     skillMd,
-    codebaseMd,
+    references,
   };
 };

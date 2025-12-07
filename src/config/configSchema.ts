@@ -138,7 +138,7 @@ export const repomixConfigCliSchema = repomixConfigBaseSchema.and(
         stdout: z.boolean().optional(),
       })
       .optional(),
-    generateSkill: z.string().optional(),
+    skillGenerate: z.union([z.string(), z.boolean()]).optional(),
   }),
 );
 
@@ -149,6 +149,8 @@ export const repomixConfigMergedSchema = repomixConfigDefaultSchema
   .and(
     z.object({
       cwd: z.string(),
+      // Remote URL for skill name auto-generation (set by remoteAction)
+      remoteUrl: z.string().optional(),
     }),
   );
 

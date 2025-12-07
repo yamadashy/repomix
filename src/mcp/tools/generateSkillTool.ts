@@ -10,8 +10,9 @@ const generateSkillInputSchema = z.object({
   directory: z.string().describe('Directory to pack (Absolute path)'),
   skillName: z
     .string()
+    .optional()
     .describe(
-      'Name of the skill to generate (kebab-case, max 64 chars). Will be normalized if not in kebab-case. Used for the skill directory name and SKILL.md metadata.',
+      'Name of the skill to generate (kebab-case, max 64 chars). Will be normalized if not in kebab-case. Used for the skill directory name and SKILL.md metadata. If omitted, auto-generates as "repomix-reference-<folder-name>".',
     ),
   compress: z
     .boolean()
@@ -47,7 +48,7 @@ export const registerGenerateSkillTool = (mcpServer: McpServer) => {
     {
       title: 'Generate Claude Agent Skill',
       description:
-        'Generate a Claude Agent Skill from a local code directory. Creates a skill package at .claude/skills/<name>/ containing SKILL.md (entry point with metadata) and references/codebase.md (the packed codebase in Markdown format). This skill can be used by Claude to understand and reference the codebase.',
+        'Generate a Claude Agent Skill from a local code directory. Creates a skill package at .claude/skills/<name>/ containing SKILL.md (entry point with metadata) and references/ folder with summary.md, structure.md, files.md, and optionally git-diffs.md and git-logs.md. This skill can be used by Claude to understand and reference the codebase.',
       inputSchema: generateSkillInputSchema,
       outputSchema: generateSkillOutputSchema,
       annotations: {
@@ -59,8 +60,9 @@ export const registerGenerateSkillTool = (mcpServer: McpServer) => {
     },
     async ({ directory, skillName, compress, includePatterns, ignorePatterns }): Promise<CallToolResult> => {
       try {
+        // skillGenerate can be a string (explicit name) or true (auto-generate)
         const cliOptions = {
-          generateSkill: skillName,
+          skillGenerate: skillName ?? true,
           compress,
           include: includePatterns,
           ignore: ignorePatterns,
@@ -76,11 +78,14 @@ export const registerGenerateSkillTool = (mcpServer: McpServer) => {
         }
 
         const { packResult, config } = result;
-        const skillPath = path.join(directory, '.claude', 'skills', config.generateSkill || skillName);
+        // Get the actual skill name from config (may be auto-generated)
+        const actualSkillName =
+          typeof config.skillGenerate === 'string' ? config.skillGenerate : skillName || 'repomix-reference';
+        const skillPath = path.join(directory, '.claude', 'skills', actualSkillName);
 
         return buildMcpToolSuccessResponse({
           skillPath,
-          skillName: config.generateSkill || skillName,
+          skillName: actualSkillName,
           totalFiles: packResult.totalFiles,
           totalTokens: packResult.totalTokens,
           description: `Successfully generated Claude Agent Skill at ${skillPath}. The skill contains ${packResult.totalFiles} files with ${packResult.totalTokens.toLocaleString()} tokens.`,

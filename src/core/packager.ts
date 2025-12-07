@@ -10,6 +10,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics } from './metrics/calculateMetrics.js';
 import { generateOutput, generateSkillOutput } from './output/outputGenerate.js';
+import { generateDefaultSkillName } from './output/skill/skillUtils.js';
 import { copyToClipboardIfEnabled } from './packager/copyToClipboardIfEnabled.js';
 import { writeOutputToDisk } from './packager/writeOutputToDisk.js';
 import { writeSkillOutput } from './packager/writeSkillOutput.js';
@@ -38,6 +39,7 @@ const defaultDeps = {
   processFiles,
   generateOutput,
   generateSkillOutput,
+  generateDefaultSkillName,
   validateFileSafety,
   writeOutputToDisk,
   writeSkillOutput,
@@ -124,45 +126,58 @@ export const pack = async (
   let output: string;
 
   // Check if skill generation is requested
-  if (config.generateSkill) {
-    // Generate codebaseMd first using markdown style
-    const markdownConfig: RepomixConfigMerged = {
-      ...config,
-      output: {
-        ...config.output,
-        style: 'markdown',
-      },
-    };
-    const codebaseMd = await withMemoryLogging('Generate Codebase Markdown', () =>
-      deps.generateOutput(rootDirs, markdownConfig, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
-    );
+  if (config.skillGenerate !== undefined) {
+    // Resolve skill name: use provided name or auto-generate
+    const skillName =
+      typeof config.skillGenerate === 'string'
+        ? config.skillGenerate
+        : deps.generateDefaultSkillName(rootDirs, config.remoteUrl);
 
-    // Calculate metrics from codebaseMd to get accurate token count
-    const codebaseMetrics = await withMemoryLogging('Calculate Codebase Metrics', () =>
-      deps.calculateMetrics(processedFiles, codebaseMd, progressCallback, config, gitDiffResult, gitLogResult),
-    );
-
-    // Generate skill output with accurate token count
+    // Generate skill output (includes metrics calculation internally)
     const skillOutput = await withMemoryLogging('Generate Skill Output', () =>
       deps.generateSkillOutput(
-        config.generateSkill as string,
+        skillName,
         rootDirs,
         config,
         processedFiles,
         allFilePaths,
-        codebaseMetrics.totalTokens,
+        0,
+        gitDiffResult,
+        gitLogResult,
+      ),
+    );
+
+    // Calculate metrics from files section to get accurate token count
+    const skillMetrics = await withMemoryLogging('Calculate Skill Metrics', () =>
+      deps.calculateMetrics(
+        processedFiles,
+        skillOutput.references.files,
+        progressCallback,
+        config,
+        gitDiffResult,
+        gitLogResult,
+      ),
+    );
+
+    // Regenerate skill output with accurate token count
+    const finalSkillOutput = await withMemoryLogging('Generate Final Skill Output', () =>
+      deps.generateSkillOutput(
+        skillName,
+        rootDirs,
+        config,
+        processedFiles,
+        allFilePaths,
+        skillMetrics.totalTokens,
         gitDiffResult,
         gitLogResult,
       ),
     );
 
     progressCallback('Writing skill output...');
-    await withMemoryLogging('Write Skill Output', () =>
-      deps.writeSkillOutput(skillOutput, config.generateSkill as string, config.cwd),
-    );
+    await withMemoryLogging('Write Skill Output', () => deps.writeSkillOutput(finalSkillOutput, skillName, config.cwd));
 
-    // Use codebaseMd for final metrics
-    output = codebaseMd;
+    // Use files section for final metrics (most representative of content size)
+    output = finalSkillOutput.references.files;
   } else {
     output = await withMemoryLogging('Generate Output', () =>
       deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),

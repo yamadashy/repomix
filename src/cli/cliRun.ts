@@ -171,8 +171,8 @@ export const run = async () => {
       // Skill Generation
       .optionsGroup('Skill Generation (Experimental)')
       .option(
-        '--generate-skill <name>',
-        'Generate Claude Agent Skills format output to .claude/skills/<name>/ directory',
+        '--skill-generate [name]',
+        'Generate Claude Agent Skills format output to .claude/skills/<name>/ directory (name auto-generated if omitted)',
       )
       .action(commanderActionEndpoint);
 

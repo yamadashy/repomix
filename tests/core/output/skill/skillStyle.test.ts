@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { generateSkillMd, getSkillTemplate } from '../../../../src/core/output/outputStyles/skillStyle.js';
+import { generateSkillMd, getSkillTemplate } from '../../../../src/core/output/skill/skillStyle.js';
 
 describe('skillStyle', () => {
   describe('getSkillTemplate', () => {
@@ -9,7 +9,7 @@ describe('skillStyle', () => {
       expect(template).toContain('name:');
       expect(template).toContain('description:');
       expect(template).toContain('# ');
-      expect(template).toContain('references/codebase.md');
+      expect(template).toContain('references/');
     });
 
     test('should include statistics section', () => {
@@ -22,7 +22,14 @@ describe('skillStyle', () => {
     test('should include how to use section', () => {
       const template = getSkillTemplate();
       expect(template).toContain('## How to Use');
-      expect(template).toContain('Reading the Codebase');
+      expect(template).toContain('Understand the layout');
+    });
+
+    test('should reference multiple files', () => {
+      const template = getSkillTemplate();
+      expect(template).toContain('references/summary.md');
+      expect(template).toContain('references/structure.md');
+      expect(template).toContain('references/files.md');
     });
   });
 
@@ -62,7 +69,7 @@ describe('skillStyle', () => {
       expect(result.endsWith('\n')).toBe(true);
     });
 
-    test('should include reference to codebase.md', () => {
+    test('should include references to multiple files', () => {
       const context = {
         skillName: 'test-skill',
         skillDescription: 'Test description',
@@ -72,7 +79,51 @@ describe('skillStyle', () => {
       };
 
       const result = generateSkillMd(context);
-      expect(result).toContain('`references/codebase.md`');
+      expect(result).toContain('`references/summary.md`');
+      expect(result).toContain('`references/structure.md`');
+      expect(result).toContain('`references/files.md`');
+    });
+
+    test('should include git sections when hasGitDiffs is true', () => {
+      const context = {
+        skillName: 'test-skill',
+        skillDescription: 'Test description',
+        projectName: 'Test Project',
+        totalFiles: 1,
+        totalTokens: 100,
+        hasGitDiffs: true,
+      };
+
+      const result = generateSkillMd(context);
+      expect(result).toContain('references/git-diffs.md');
+    });
+
+    test('should include git log section when hasGitLogs is true', () => {
+      const context = {
+        skillName: 'test-skill',
+        skillDescription: 'Test description',
+        projectName: 'Test Project',
+        totalFiles: 1,
+        totalTokens: 100,
+        hasGitLogs: true,
+      };
+
+      const result = generateSkillMd(context);
+      expect(result).toContain('references/git-logs.md');
+    });
+
+    test('should not include git sections when not enabled', () => {
+      const context = {
+        skillName: 'test-skill',
+        skillDescription: 'Test description',
+        projectName: 'Test Project',
+        totalFiles: 1,
+        totalTokens: 100,
+      };
+
+      const result = generateSkillMd(context);
+      expect(result).not.toContain('git-diffs.md');
+      expect(result).not.toContain('git-logs.md');
     });
   });
 });

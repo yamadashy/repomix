@@ -46,19 +46,25 @@ export const runDefaultAction = async (
   logger.trace('CLI config:', cliConfig);
 
   // Merge default, file, and CLI configs
-  const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
+  let config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
+
+  // Add remoteUrl if provided (for skill name auto-generation in remote mode)
+  if (cliOptions.remoteUrl) {
+    config = { ...config, remoteUrl: cliOptions.remoteUrl };
+  }
+
   logger.trace('Merged config:', config);
 
   // Validate skill generation options
-  if (config.generateSkill) {
+  if (config.skillGenerate !== undefined) {
     if (config.output.stdout) {
       throw new RepomixError(
-        '--generate-skill cannot be used with --stdout. Skill output requires writing to filesystem.',
+        '--skill-generate cannot be used with --stdout. Skill output requires writing to filesystem.',
       );
     }
     if (config.output.copyToClipboard) {
       throw new RepomixError(
-        '--generate-skill cannot be used with --copy. Skill output is a directory and cannot be copied to clipboard.',
+        '--skill-generate cannot be used with --copy. Skill output is a directory and cannot be copied to clipboard.',
       );
     }
   }
@@ -302,8 +308,8 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   }
 
   // Skill generation
-  if (options.generateSkill) {
-    cliConfig.generateSkill = options.generateSkill;
+  if (options.skillGenerate !== undefined) {
+    cliConfig.skillGenerate = options.skillGenerate;
   }
 
   try {

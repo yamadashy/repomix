@@ -2,6 +2,7 @@ import path from 'node:path';
 
 const SKILL_NAME_MAX_LENGTH = 64;
 const SKILL_DESCRIPTION_MAX_LENGTH = 1024;
+const SKILL_NAME_PREFIX = 'repomix-reference';
 
 /**
  * Converts a string to kebab-case.
@@ -54,4 +55,51 @@ export const generateSkillDescription = (_skillName: string, projectName: string
   const description = `Reference codebase for ${projectName}. Use this skill when you need to understand the structure, implementation patterns, or code details of the ${projectName} project.`;
 
   return description.substring(0, SKILL_DESCRIPTION_MAX_LENGTH);
+};
+
+/**
+ * Extracts repository name from a URL or shorthand format.
+ * Examples:
+ * - https://github.com/yamadashy/repomix → repomix
+ * - yamadashy/repomix → repomix
+ * - git@github.com:yamadashy/repomix.git → repomix
+ */
+export const extractRepoName = (url: string): string => {
+  // Remove .git suffix if present
+  const cleanUrl = url.replace(/\.git$/, '');
+
+  // Try to match the last path segment
+  const match = cleanUrl.match(/\/([^/]+)$/);
+  if (match) {
+    return match[1];
+  }
+
+  // For shorthand format like "user/repo"
+  const shorthandMatch = cleanUrl.match(/^[^/]+\/([^/]+)$/);
+  if (shorthandMatch) {
+    return shorthandMatch[1];
+  }
+
+  return 'unknown';
+};
+
+/**
+ * Generates a default skill name based on the context.
+ * - For remote repositories: repomix-reference-<repo-name>
+ * - For local directories: repomix-reference-<folder-name>
+ */
+export const generateDefaultSkillName = (rootDirs: string[], remoteUrl?: string): string => {
+  let baseName: string;
+
+  if (remoteUrl) {
+    // Extract repo name from remote URL
+    baseName = extractRepoName(remoteUrl);
+  } else {
+    // Use local directory name
+    const primaryDir = rootDirs[0] || '.';
+    baseName = path.basename(path.resolve(primaryDir));
+  }
+
+  const skillName = `${SKILL_NAME_PREFIX}-${toKebabCase(baseName)}`;
+  return validateSkillName(skillName);
 };
