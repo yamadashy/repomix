@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import {
   type RepomixConfigCli,
@@ -7,6 +8,7 @@ import {
   repomixConfigCliSchema,
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
+import { generateDefaultSkillName } from '../../core/output/skill/skillUtils.js';
 import type { PackResult } from '../../core/packager.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
@@ -15,6 +17,7 @@ import { initTaskRunner } from '../../shared/processConcurrency.js';
 import { reportResults } from '../cliReport.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
+import { promptSkillLocation } from './skillPrompts.js';
 import type {
   DefaultActionTask,
   DefaultActionWorkerResult,
@@ -55,7 +58,8 @@ export const runDefaultAction = async (
 
   logger.trace('Merged config:', config);
 
-  // Validate skill generation options
+  // Validate skill generation options and prompt for location
+  let skillDir: string | undefined;
   if (config.skillGenerate !== undefined) {
     if (config.output.stdout) {
       throw new RepomixError(
@@ -66,6 +70,24 @@ export const runDefaultAction = async (
       throw new RepomixError(
         '--skill-generate cannot be used with --copy. Skill output is a directory and cannot be copied to clipboard.',
       );
+    }
+
+    // Use pre-computed skillDir if provided (from remoteAction), otherwise prompt
+    if (cliOptions.skillDir) {
+      skillDir = cliOptions.skillDir;
+    } else {
+      // Resolve skill name
+      const skillName =
+        typeof config.skillGenerate === 'string'
+          ? config.skillGenerate
+          : generateDefaultSkillName(
+              directories.map((d) => path.resolve(cwd, d)),
+              config.remoteUrl,
+            );
+
+      // Prompt for skill location (personal or project)
+      const promptResult = await promptSkillLocation(skillName, cwd);
+      skillDir = promptResult.skillDir;
     }
   }
 
@@ -104,6 +126,7 @@ export const runDefaultAction = async (
       config,
       cliOptions,
       stdinFilePaths,
+      skillDir,
     };
 
     // Run the task in worker (spinner is handled inside worker)

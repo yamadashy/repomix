@@ -3,12 +3,10 @@ import path from 'node:path';
 import { RepomixError } from '../../shared/errorHandle.js';
 import type { SkillOutputResult } from '../output/outputGenerate.js';
 
-const SKILL_DIR_NAME = '.claude/skills';
-
 /**
  * Writes skill output to the filesystem.
  * Creates the directory structure:
- *   .claude/skills/<skillName>/
+ *   <skillDir>/
  *   ├── SKILL.md
  *   └── references/
  *       ├── summary.md
@@ -19,14 +17,12 @@ const SKILL_DIR_NAME = '.claude/skills';
  */
 export const writeSkillOutput = async (
   output: SkillOutputResult,
-  skillName: string,
-  cwd: string,
+  skillDir: string,
   deps = {
     mkdir: fs.mkdir,
     writeFile: fs.writeFile,
   },
 ): Promise<string> => {
-  const skillDir = path.join(cwd, SKILL_DIR_NAME, skillName);
   const referencesDir = path.join(skillDir, 'references');
 
   try {

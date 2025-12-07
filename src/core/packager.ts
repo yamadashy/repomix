@@ -51,12 +51,17 @@ const defaultDeps = {
   getGitLogs,
 };
 
+export interface PackOptions {
+  skillDir?: string;
+}
+
 export const pack = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
   progressCallback: RepomixProgressCallback = () => {},
   overrideDeps: Partial<typeof defaultDeps> = {},
   explicitFiles?: string[],
+  options: PackOptions = {},
 ): Promise<PackResult> => {
   const deps = {
     ...defaultDeps,
@@ -127,7 +132,7 @@ export const pack = async (
   let output: string;
 
   // Check if skill generation is requested
-  if (config.skillGenerate !== undefined) {
+  if (config.skillGenerate !== undefined && options.skillDir) {
     // Resolve skill name: use provided name or auto-generate
     const skillName =
       typeof config.skillGenerate === 'string'
@@ -163,9 +168,8 @@ export const pack = async (
     const skillOutput = deps.generateSkillMdFromReferences(skillReferencesResult, skillMetrics.totalTokens);
 
     progressCallback('Writing skill output...');
-    await withMemoryLogging('Write Skill Output', () =>
-      deps.writeSkillOutput(skillOutput, skillReferencesResult.skillName, config.cwd),
-    );
+    const skillDir = options.skillDir;
+    await withMemoryLogging('Write Skill Output', () => deps.writeSkillOutput(skillOutput, skillDir));
 
     // Use files section for final metrics (most representative of content size)
     output = skillOutput.references.files;

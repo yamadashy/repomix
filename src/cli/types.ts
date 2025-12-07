@@ -58,6 +58,7 @@ export interface CliOptions extends OptionValues {
 
   // Skill Generation
   skillGenerate?: string | boolean;
+  skillDir?: string; // Pre-computed skill directory (used internally for remote repos)
 
   // Other Options
   topFilesLen?: number;

@@ -7,11 +7,13 @@ import { downloadGitHubArchive, isArchiveDownloadSupported } from '../../core/gi
 import { getRemoteRefs } from '../../core/git/gitRemoteHandle.js';
 import { isGitHubRepository, parseGitHubRepoInfo, parseRemoteValue } from '../../core/git/gitRemoteParse.js';
 import { isGitInstalled } from '../../core/git/gitRepositoryHandle.js';
+import { generateDefaultSkillName } from '../../core/output/skill/skillUtils.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
 import type { CliOptions } from '../types.js';
 import { type DefaultActionRunnerResult, runDefaultAction } from './defaultAction.js';
+import { promptSkillLocation, type SkillLocation } from './skillPrompts.js';
 
 export const runRemoteAction = async (
   repoUrl: string,
@@ -88,19 +90,34 @@ export const runRemoteAction = async (
       downloadMethod = 'git';
     }
 
+    // For skill generation, prompt for location using current directory (not temp directory)
+    let skillDir: string | undefined;
+    let skillLocation: SkillLocation | undefined;
+    if (cliOptions.skillGenerate !== undefined) {
+      const skillName =
+        typeof cliOptions.skillGenerate === 'string'
+          ? cliOptions.skillGenerate
+          : generateDefaultSkillName([tempDirPath], repoUrl);
+
+      const promptResult = await promptSkillLocation(skillName, process.cwd());
+      skillDir = promptResult.skillDir;
+      skillLocation = promptResult.location;
+    }
+
     // Run the default action on the downloaded/cloned repository
     // Pass the remote URL for skill name auto-generation
-    const optionsWithRemoteUrl = { ...cliOptions, remoteUrl: repoUrl };
+    const optionsWithRemoteUrl = { ...cliOptions, remoteUrl: repoUrl, skillDir };
     result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithRemoteUrl);
 
     // Copy output to current directory
     // Skip copy for stdout mode (output goes directly to stdout)
-    // For skill generation, copy the skill directory instead of a single file
+    // For skill generation with project location, copy the skill directory
+    // For personal location, skill is already written to ~/.claude/skills/
     if (!cliOptions.stdout) {
-      if (result.config.skillGenerate !== undefined) {
-        // Copy skill directory to current directory
+      if (result.config.skillGenerate !== undefined && skillLocation === 'project') {
+        // Copy skill directory to current directory (only for project skills)
         await copySkillOutputToCurrentDirectory(tempDirPath, process.cwd());
-      } else {
+      } else if (result.config.skillGenerate === undefined) {
         await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
       }
     }

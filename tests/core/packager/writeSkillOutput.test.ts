@@ -16,43 +16,38 @@ describe('writeSkillOutput', () => {
       },
     };
 
-    const skillName = 'test-skill';
-    const cwd = '/test/project';
+    const skillDir = '/test/project/.claude/skills/test-skill';
 
-    const result = await writeSkillOutput(output, skillName, cwd, {
+    const result = await writeSkillOutput(output, skillDir, {
       mkdir: mockMkdir as unknown as typeof import('node:fs/promises').mkdir,
       writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
     });
 
     // Check references directory was created (includes skill directory with recursive: true)
-    expect(mockMkdir).toHaveBeenCalledWith(path.join(cwd, '.claude/skills', skillName, 'references'), {
+    expect(mockMkdir).toHaveBeenCalledWith(path.join(skillDir, 'references'), {
       recursive: true,
     });
 
     // Check files were written
+    expect(mockWriteFile).toHaveBeenCalledWith(path.join(skillDir, 'SKILL.md'), output.skillMd, 'utf-8');
     expect(mockWriteFile).toHaveBeenCalledWith(
-      path.join(cwd, '.claude/skills', skillName, 'SKILL.md'),
-      output.skillMd,
-      'utf-8',
-    );
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      path.join(cwd, '.claude/skills', skillName, 'references', 'summary.md'),
+      path.join(skillDir, 'references', 'summary.md'),
       output.references.summary,
       'utf-8',
     );
     expect(mockWriteFile).toHaveBeenCalledWith(
-      path.join(cwd, '.claude/skills', skillName, 'references', 'structure.md'),
+      path.join(skillDir, 'references', 'structure.md'),
       output.references.structure,
       'utf-8',
     );
     expect(mockWriteFile).toHaveBeenCalledWith(
-      path.join(cwd, '.claude/skills', skillName, 'references', 'files.md'),
+      path.join(skillDir, 'references', 'files.md'),
       output.references.files,
       'utf-8',
     );
 
     // Check return value
-    expect(result).toBe(path.join(cwd, '.claude/skills', skillName));
+    expect(result).toBe(skillDir);
   });
 
   test('should write git-diffs.md and git-logs.md when provided', async () => {
@@ -70,28 +65,27 @@ describe('writeSkillOutput', () => {
       },
     };
 
-    const skillName = 'test-skill';
-    const cwd = '/test/project';
+    const skillDir = '/test/project/.claude/skills/test-skill';
 
-    await writeSkillOutput(output, skillName, cwd, {
+    await writeSkillOutput(output, skillDir, {
       mkdir: mockMkdir as unknown as typeof import('node:fs/promises').mkdir,
       writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
     });
 
     // Check git files were written
     expect(mockWriteFile).toHaveBeenCalledWith(
-      path.join(cwd, '.claude/skills', skillName, 'references', 'git-diffs.md'),
+      path.join(skillDir, 'references', 'git-diffs.md'),
       output.references.gitDiffs,
       'utf-8',
     );
     expect(mockWriteFile).toHaveBeenCalledWith(
-      path.join(cwd, '.claude/skills', skillName, 'references', 'git-logs.md'),
+      path.join(skillDir, 'references', 'git-logs.md'),
       output.references.gitLogs,
       'utf-8',
     );
   });
 
-  test('should handle skill names with special characters', async () => {
+  test('should handle skill directories with various paths', async () => {
     const mockMkdir = vi.fn().mockResolvedValue(undefined);
     const mockWriteFile = vi.fn().mockResolvedValue(undefined);
 
@@ -104,15 +98,14 @@ describe('writeSkillOutput', () => {
       },
     };
 
-    const skillName = 'my-special-skill';
-    const cwd = '/test/project';
+    const skillDir = '/home/user/.claude/skills/my-special-skill';
 
-    await writeSkillOutput(output, skillName, cwd, {
+    await writeSkillOutput(output, skillDir, {
       mkdir: mockMkdir as unknown as typeof import('node:fs/promises').mkdir,
       writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
     });
 
-    expect(mockMkdir).toHaveBeenCalledWith(path.join(cwd, '.claude/skills', 'my-special-skill', 'references'), {
+    expect(mockMkdir).toHaveBeenCalledWith(path.join(skillDir, 'references'), {
       recursive: true,
     });
   });
