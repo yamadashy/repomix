@@ -12,16 +12,25 @@ describe('skillStyle', () => {
       expect(template).toContain('references/');
     });
 
-    test('should include reference files table', () => {
+    test('should include files table with contents column', () => {
       const template = getSkillTemplate();
-      expect(template).toContain('## Reference Files');
-      expect(template).toContain('| File | Description |');
+      expect(template).toContain('## Files');
+      expect(template).toContain('| File | Contents |');
     });
 
-    test('should include quick reference section', () => {
+    test('should include how to use section with numbered steps', () => {
       const template = getSkillTemplate();
-      expect(template).toContain('## Quick Reference');
-      expect(template).toContain('Finding Files by Path');
+      expect(template).toContain('## How to Use');
+      expect(template).toContain('### 1. Find file locations');
+      expect(template).toContain('### 2. Read file contents');
+      expect(template).toContain('### 3. Search for code');
+    });
+
+    test('should include overview and common use cases', () => {
+      const template = getSkillTemplate();
+      expect(template).toContain('## Overview');
+      expect(template).toContain('## Common Use Cases');
+      expect(template).toContain('## Tips');
     });
 
     test('should reference multiple files', () => {

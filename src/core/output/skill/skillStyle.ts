@@ -20,26 +20,30 @@ description: {{{skillDescription}}}
 
 # {{{projectName}}} Codebase Reference
 
-This skill provides reference to the {{{projectName}}} codebase ({{{totalFiles}}} files, {{{totalTokens}}} tokens).
+{{{totalFiles}}} files | {{{totalTokens}}} tokens
 
-## Reference Files
+## Overview
 
-| File | Description |
-|------|-------------|
+Use this skill when you need to:
+- Understand project structure and file organization
+- Find where specific functionality is implemented
+- Read source code for any file
+- Search for code patterns or keywords
+
+## Files
+
+| File | Contents |
+|------|----------|
 | \`references/structure.md\` | Directory tree with line counts per file |
-| \`references/files.md\` | All file contents with \`## File: <path>\` headers |
-| \`references/summary.md\` | Purpose, format description, and excluded files info |
+| \`references/files.md\` | All file contents (header: \`## File: <path>\`) |
+| \`references/summary.md\` | Purpose and format explanation |
 
-## Quick Reference
+## How to Use
 
-### Finding Files by Path
-Grep in \`files.md\` using the header format:
-\`\`\`
-## File: src/components/Button.tsx
-\`\`\`
+### 1. Find file locations
 
-### Understanding Project Structure
-Check \`structure.md\` for the directory tree. Each file shows its line count:
+Check \`structure.md\` for the directory tree:
+
 \`\`\`
 src/
   index.ts (42 lines)
@@ -47,14 +51,41 @@ src/
     helpers.ts (128 lines)
 \`\`\`
 
-### Reading File Contents
-Files in \`files.md\` are formatted as:
+### 2. Read file contents
+
+Grep in \`files.md\` for the file path:
+
 \`\`\`
-## File: <file-path>
-\\\`\`\`<language>
-<content>
-\\\`\`\`
+## File: src/utils/helpers.ts
 \`\`\`
+
+### 3. Search for code
+
+Grep in \`files.md\` for keywords:
+
+\`\`\`
+function calculateTotal
+\`\`\`
+
+## Common Use Cases
+
+**Understand a feature:**
+1. Search \`structure.md\` for related file names
+2. Read the main implementation file in \`files.md\`
+3. Search for imports/references to trace dependencies
+
+**Debug an error:**
+1. Grep the error message or class name in \`files.md\`
+2. Check line counts in \`structure.md\` to find large files
+
+**Find all usages:**
+1. Grep function or variable name in \`files.md\`
+
+## Tips
+
+- Use line counts in \`structure.md\` to estimate file complexity
+- Search \`## File:\` pattern to jump between files
+- Check \`summary.md\` for excluded files and format details
 `;
 };
 
