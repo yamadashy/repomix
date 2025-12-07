@@ -81,7 +81,6 @@ repomix/
 
 - When writing commit body, the assistant shall include context about what led to this commit.
 - When writing commit body, the assistant shall describe the conversation or problem that motivated the change.
-- The assistant shall preserve the decision-making process for future reference.
 
 ## Pull Request Guidelines
 
@@ -99,7 +98,7 @@ repomix/
 
 ## PR Review Guidelines
 
-When reviewing pull requests, the assistant shall provide thoughtful feedback on:
+When reviewing pull requests, the assistant shall provide thoughtful feedback on the following topics:
 - Code quality and best practices
 - Potential bugs or issues
 - Suggestions for improvements
