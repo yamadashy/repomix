@@ -47,22 +47,23 @@ repomix/
 
 
 # Coding Guidelines
-- Follow the Airbnb JavaScript Style Guide.
-- Always maintain feature-based directory structure and avoid dependencies between features.
-- Split files into smaller, focused units when appropriate:
-  - Aim to keep code files under 250 lines. If a file exceeds 250 lines, split it into multiple files based on functionality.
-- Add comments to clarify non-obvious logic. **Ensure all comments are written in English.**
-- Provide corresponding unit tests for all new features.
-- After implementation, verify changes by running:
+
+- The assistant shall follow the Airbnb JavaScript Style Guide.
+- The assistant shall maintain feature-based directory structure and avoid dependencies between features.
+- If a file exceeds 250 lines, then the assistant shall split it into multiple files based on functionality.
+- Where non-obvious logic exists, the assistant shall add comments in English to clarify.
+- When implementing new features, the assistant shall provide corresponding unit tests.
+- When implementation is complete, the assistant shall verify changes by running:
   ```bash
   npm run lint  # Ensure code style compliance
   npm run test  # Verify all tests pass
   ```
 
 ## Commit Messages
-- Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification for all commit messages
-- Always include a scope in your commit messages
-- Format: `type(scope): Description`
+
+- The assistant shall follow the [Conventional Commits](https://www.conventionalcommits.org/) specification for all commit messages.
+- The assistant shall always include a scope in commit messages.
+- The assistant shall use the format: `type(scope): Description`
   ```
   # Examples:
   feat(cli): Add new --no-progress flag
@@ -72,18 +73,19 @@ repomix/
   refactor(core): Split packager into smaller modules
   test(cli): Add tests for new CLI options
   ```
-- Types: feat, fix, docs, style, refactor, test, chore, etc.
-- Scope should indicate the affected part of the codebase (cli, core, website, security, etc.)
-- Description should be clear and concise in present tense
-- Description must start with a capital letter
+- The assistant shall use types: feat, fix, docs, style, refactor, test, chore, etc.
+- The assistant shall use scope to indicate the affected part of the codebase (cli, core, website, security, etc.).
+- The assistant shall write description in clear, concise present tense starting with a capital letter.
 
 ### Commit Body Guidelines
-- Include context about what led to this commit
-- Describe the conversation or problem that motivated the change
-- This helps preserve the decision-making process for future reference
+
+- When writing commit body, the assistant shall include context about what led to this commit.
+- When writing commit body, the assistant shall describe the conversation or problem that motivated the change.
+- The assistant shall preserve the decision-making process for future reference.
 
 ## Pull Request Guidelines
-- All pull requests must follow the template:
+
+- When creating a pull request, the assistant shall follow the template:
   ```md
   <!-- Please include a summary of the changes -->
 
@@ -92,18 +94,20 @@ repomix/
   - [ ] Run `npm run test`
   - [ ] Run `npm run lint`
   ```
-- Include a clear summary of the changes at the top of the pull request description
-- Reference any related issues using the format `#issue-number`
+- When creating a pull request, the assistant shall include a clear summary of the changes at the top.
+- Where related issues exist, the assistant shall reference them using `#issue-number`.
 
 ## PR Review Guidelines
-When reviewing pull requests, provide thoughtful feedback on:
+
+When reviewing pull requests, the assistant shall provide thoughtful feedback on:
 - Code quality and best practices
 - Potential bugs or issues
 - Suggestions for improvements
 - Overall architecture and design decisions
 
 ## Dependencies and Testing
-- Inject dependencies through a deps object parameter for testability
+
+- The assistant shall inject dependencies through a deps object parameter for testability.
 - Example:
   ```typescript
   export const functionName = async (
@@ -117,21 +121,19 @@ When reviewing pull requests, provide thoughtful feedback on:
     // Use deps.defaultFunction1() instead of direct call
   };
   ```
-- Mock dependencies by passing test doubles through deps object
-- Use vi.mock() only when dependency injection is not feasible
+- When writing tests, the assistant shall mock dependencies by passing test doubles through deps object.
+- If dependency injection is not feasible, then the assistant shall use vi.mock().
 
 ## Generate Comprehensive Output
-- Include all content without abbreviation, unless specified otherwise
-- Optimize for handling large codebases while maintaining output quality
+
+- The assistant shall include all content without abbreviation, unless specified otherwise.
+- The assistant shall optimize for handling large codebases while maintaining output quality.
 
 # GitHub Release Note Guidelines
-When writing release notes, please follow these guidelines:
 
-- When referencing issues or PRs, use the gh command to verify the content:
+- When writing release notes, the assistant shall reference issues or PRs using gh command to verify content:
   ```bash
   gh issue view <issue-number>  # For checking issue content
   gh pr view <pr-number>        # For checking PR content
   ```
-  This helps ensure accuracy in release note descriptions.
-
-Please retrieve and reference the latest release notes from `.github/releases/` as they contain past release examples.
+- When writing release notes, the assistant shall retrieve and reference the latest release notes from `.github/releases/` as they contain past release examples.
