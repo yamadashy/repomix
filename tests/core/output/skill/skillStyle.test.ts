@@ -84,35 +84,7 @@ describe('skillStyle', () => {
       expect(result).toContain('`references/files.md`');
     });
 
-    test('should include git sections when hasGitDiffs is true', () => {
-      const context = {
-        skillName: 'test-skill',
-        skillDescription: 'Test description',
-        projectName: 'Test Project',
-        totalFiles: 1,
-        totalTokens: 100,
-        hasGitDiffs: true,
-      };
-
-      const result = generateSkillMd(context);
-      expect(result).toContain('references/git-diffs.md');
-    });
-
-    test('should include git log section when hasGitLogs is true', () => {
-      const context = {
-        skillName: 'test-skill',
-        skillDescription: 'Test description',
-        projectName: 'Test Project',
-        totalFiles: 1,
-        totalTokens: 100,
-        hasGitLogs: true,
-      };
-
-      const result = generateSkillMd(context);
-      expect(result).toContain('references/git-logs.md');
-    });
-
-    test('should not include git sections when not enabled', () => {
+    test('should not include git sections (skill output is for reference codebases)', () => {
       const context = {
         skillName: 'test-skill',
         skillDescription: 'Test description',

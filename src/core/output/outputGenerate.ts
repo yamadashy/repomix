@@ -24,8 +24,6 @@ import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
 import {
   generateFilesSection,
-  generateGitDiffsSection,
-  generateGitLogsSection,
   generateStructureSection,
   generateSummarySection,
 } from './skill/skillSectionGenerators.js';
@@ -376,8 +374,6 @@ export interface SkillReferences {
   summary: string;
   structure: string;
   files: string;
-  gitDiffs?: string;
-  gitLogs?: string;
 }
 
 /**
@@ -452,8 +448,6 @@ export const generateSkillReferences = async (
     summary: generateSummarySection(renderContext),
     structure: generateStructureSection(renderContext),
     files: generateFilesSection(renderContext),
-    gitDiffs: generateGitDiffsSection(renderContext),
-    gitLogs: generateGitLogsSection(renderContext),
   };
 
   return {
@@ -479,8 +473,6 @@ export const generateSkillMdFromReferences = (
     projectName: referencesResult.projectName,
     totalFiles: referencesResult.totalFiles,
     totalTokens,
-    hasGitDiffs: !!referencesResult.references.gitDiffs,
-    hasGitLogs: !!referencesResult.references.gitLogs,
   });
 
   return {

@@ -6,8 +6,6 @@ export interface SkillRenderContext {
   projectName: string;
   totalFiles: number;
   totalTokens: number;
-  hasGitDiffs?: boolean;
-  hasGitLogs?: boolean;
 }
 
 /**
@@ -40,31 +38,11 @@ Tree view of the project's directory structure with line counts for each file. S
 ### Files (\`references/files.md\`)
 Complete file contents. Each file is marked with \`## File: <file-path>\` header, allowing direct grep searches by file path.
 
-{{#if hasGitDiffs}}
-### Git Diffs (\`references/git-diffs.md\`)
-Current uncommitted changes (working tree and staged).
-
-{{/if}}
-{{#if hasGitLogs}}
-### Git Logs (\`references/git-logs.md\`)
-Recent commit history with dates, messages, and changed files.
-
-{{/if}}
 ## How to Use
 
 1. **Understand the layout**: Read \`structure.md\` first to see the project organization
 2. **Find specific code**: Search in \`files.md\` for functions, classes, or specific implementations
 3. **Get context**: Check \`summary.md\` for information about what's included and excluded
-{{#if hasGitDiffs}}
-4. **Check recent changes**: Review \`git-diffs.md\` for uncommitted modifications
-{{/if}}
-{{#if hasGitLogs}}
-{{#if hasGitDiffs}}
-5. **Review history**: See \`git-logs.md\` for recent commit history
-{{else}}
-4. **Review history**: See \`git-logs.md\` for recent commit history
-{{/if}}
-{{/if}}
 `;
 };
 

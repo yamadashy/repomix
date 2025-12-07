@@ -50,41 +50,6 @@ describe('writeSkillOutput', () => {
     expect(result).toBe(skillDir);
   });
 
-  test('should write git-diffs.md and git-logs.md when provided', async () => {
-    const mockMkdir = vi.fn().mockResolvedValue(undefined);
-    const mockWriteFile = vi.fn().mockResolvedValue(undefined);
-
-    const output = {
-      skillMd: '---\nname: test-skill\n---\n# Test Skill',
-      references: {
-        summary: '# Summary',
-        structure: '# Structure',
-        files: '# Files',
-        gitDiffs: '# Git Diffs\n\n```diff\n+added line\n```',
-        gitLogs: '# Git Logs\n\n## Commit: abc123\nFix bug',
-      },
-    };
-
-    const skillDir = '/test/project/.claude/skills/test-skill';
-
-    await writeSkillOutput(output, skillDir, {
-      mkdir: mockMkdir as unknown as typeof import('node:fs/promises').mkdir,
-      writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
-    });
-
-    // Check git files were written
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      path.join(skillDir, 'references', 'git-diffs.md'),
-      output.references.gitDiffs,
-      'utf-8',
-    );
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      path.join(skillDir, 'references', 'git-logs.md'),
-      output.references.gitLogs,
-      'utf-8',
-    );
-  });
-
   test('should handle skill directories with various paths', async () => {
     const mockMkdir = vi.fn().mockResolvedValue(undefined);
     const mockWriteFile = vi.fn().mockResolvedValue(undefined);

@@ -11,9 +11,7 @@ import type { SkillOutputResult } from '../output/outputGenerate.js';
  *   └── references/
  *       ├── summary.md
  *       ├── structure.md
- *       ├── files.md
- *       ├── git-diffs.md (if enabled)
- *       └── git-logs.md (if enabled)
+ *       └── files.md
  */
 export const writeSkillOutput = async (
   output: SkillOutputResult,
@@ -37,14 +35,6 @@ export const writeSkillOutput = async (
     await deps.writeFile(path.join(referencesDir, 'summary.md'), output.references.summary, 'utf-8');
     await deps.writeFile(path.join(referencesDir, 'structure.md'), output.references.structure, 'utf-8');
     await deps.writeFile(path.join(referencesDir, 'files.md'), output.references.files, 'utf-8');
-
-    // Write optional git files
-    if (output.references.gitDiffs) {
-      await deps.writeFile(path.join(referencesDir, 'git-diffs.md'), output.references.gitDiffs, 'utf-8');
-    }
-    if (output.references.gitLogs) {
-      await deps.writeFile(path.join(referencesDir, 'git-logs.md'), output.references.gitLogs, 'utf-8');
-    }
 
     return skillDir;
   } catch (error) {
