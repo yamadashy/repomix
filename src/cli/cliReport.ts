@@ -81,12 +81,14 @@ export const reportSummary = (
   logger.log(`${pc.white('  Total Chars:')} ${pc.white(packResult.totalCharacters.toLocaleString())} chars`);
 
   // Show skill output path or regular output path
+  // Use relative path if under cwd, otherwise absolute path
   if (config.skillGenerate !== undefined && options.skillDir) {
-    // Show relative path if under cwd, otherwise absolute path
     const displayPath = options.skillDir.startsWith(cwd) ? path.relative(cwd, options.skillDir) : options.skillDir;
     logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)} ${pc.dim('(skill directory)')}`);
   } else {
-    logger.log(`${pc.white('       Output:')} ${pc.white(config.output.filePath)}`);
+    const outputPath = path.resolve(cwd, config.output.filePath);
+    const displayPath = outputPath.startsWith(cwd) ? path.relative(cwd, outputPath) : outputPath;
+    logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)}`);
   }
   logger.log(`${pc.white('     Security:')} ${pc.white(securityCheckMessage)}`);
 
