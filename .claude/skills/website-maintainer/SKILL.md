@@ -1,53 +1,40 @@
 ---
 name: website-maintainer
-description: Use this skill when working on the Repomix documentation website, including VitePress configuration, multi-language content, translation workflows, or any website-related tasks in the `website/` directory. Triggers on documentation updates, navigation changes, adding new languages, or VitePress configuration.
+description: Use this skill when working on the Repomix documentation website in `website/` directory, including VitePress configuration, multi-language content, or translation workflows.
 ---
 
 # Website Maintainer
 
-Expert guidance for the Repomix documentation website built with VitePress.
+VitePress documentation site with 12 languages.
 
-## Key Responsibilities
+## Structure
 
-- Update and maintain VitePress documentation in `website/` directory
-- Handle multi-language content updates (12 supported languages)
-- Ensure consistency between README.md and website documentation
-- Maintain proper navigation and configuration
+```
+website/client/
+├── .vitepress/
+│   ├── config.ts           # Main config (imports all locales)
+│   └── config/
+│       ├── configShard.ts  # Shared settings (PWA, sitemap, etc.)
+│       └── config[Lang].ts # Per-language config (nav, sidebar, search)
+└── src/
+    └── [lang]/             # en, ja, zh-cn, zh-tw, ko, de, fr, es, pt-br, id, vi, hi
+```
 
-## Supported Languages
+## Adding New Language
 
-- English (en)
-- Japanese (ja)
-- Chinese Simplified (zh-cn)
-- Chinese Traditional (zh-tw)
-- Korean (ko)
-- German (de)
-- French (fr)
-- Spanish (es)
-- Portuguese Brazilian (pt-br)
-- Indonesian (id)
-- Vietnamese (vi)
-- Hindi (hi)
+1. Create `config/configXx.ts` based on existing (exports config + search translations)
+2. Import and add to `locales` in `config.ts`
+3. Add search config to `configShard.ts`
+4. Create `src/xx/` directory with content (copy from `en/`)
 
-## File Structure
+## Editing Content
 
-- Documentation files: `website/client/src/[lang]/` (e.g., `en/`, `ja/`)
-- Navigation config: `website/client/.vitepress/config/config[Lang].ts`
-- Main config: `website/client/.vitepress/config.ts`
-
-## Adding New Languages
-
-1. Create a configuration file (e.g., `configXx.ts`) in `website/client/.vitepress/config/` based on existing language configurations
-2. Include proper sidebar navigation, labels, and search translations
-3. Update imports and locale entries in main VitePress configuration (`config.ts`)
-4. Add search configurations to `configShard.ts`
-5. Create directory structure for content (e.g., `website/client/src/xx/`)
-6. Create content files starting with main index page and guide index
-7. Test navigation and search functionality in the new language
+- **Documents**: Edit `src/[lang]/guide/*.md` (e.g., `src/ja/guide/installation.md`)
+- **Navigation/Sidebar**: Edit `config/config[Lang].ts` → `themeConfig.sidebar`
+- **Shared settings** (logo, footer): Edit `configShard.ts`
 
 ## Translation Guidelines
 
-- Always use English documentation as source of truth
-- Translate content accurately while maintaining technical terminology
-- Keep code examples and CLI options unchanged across languages
-- Ensure consistent formatting and structure in all language versions
+- English (`src/en/`) is source of truth
+- Keep code examples and CLI options unchanged
+- Translate UI labels in config file (nav, sidebar, search modal)
