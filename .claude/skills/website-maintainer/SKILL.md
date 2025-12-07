@@ -9,7 +9,7 @@ VitePress documentation site with 12 languages.
 
 ## Structure
 
-```
+```plaintext
 website/client/
 ├── .vitepress/
 │   ├── config.ts           # Main config (imports all locales)

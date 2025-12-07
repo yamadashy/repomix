@@ -9,10 +9,10 @@ Cross-browser extension (Chrome/Firefox/Edge) using **WXT framework** with Manif
 
 ## Structure
 
-```
+```plaintext
 browser/
 ├── entrypoints/       # background.ts, content.ts
-├── public/_locales/   # i18n (13 languages)
+├── public/_locales/   # i18n (12 languages)
 ├── wxt.config.ts      # WXT configuration
 └── .output/           # Built files (chrome-mv3, firefox-mv2)
 ```
@@ -26,7 +26,7 @@ browser/
 
 ## i18n
 
-13 languages: en, ja, de, fr, es, pt_BR, id, vi, ko, zh_CN, zh_TW, hi
+12 languages: en, ja, de, fr, es, pt_BR, id, vi, ko, zh_CN, zh_TW, hi
 
 New language: Create `public/_locales/[code]/messages.json` with keys: appDescription, openWithRepomix
 
