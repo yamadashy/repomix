@@ -49,13 +49,18 @@ export const reportResults = (
   reportSkippedFiles(cwd, packResult.skippedFiles);
   logger.log('');
 
-  reportSummary(packResult, config, options);
+  reportSummary(cwd, packResult, config, options);
   logger.log('');
 
   reportCompletion();
 };
 
-export const reportSummary = (packResult: PackResult, config: RepomixConfigMerged, options: ReportOptions = {}) => {
+export const reportSummary = (
+  cwd: string,
+  packResult: PackResult,
+  config: RepomixConfigMerged,
+  options: ReportOptions = {},
+) => {
   let securityCheckMessage = '';
   if (config.security.enableSecurityCheck) {
     if (packResult.suspiciousFilesResults.length > 0) {
@@ -77,7 +82,9 @@ export const reportSummary = (packResult: PackResult, config: RepomixConfigMerge
 
   // Show skill output path or regular output path
   if (config.skillGenerate !== undefined && options.skillDir) {
-    logger.log(`${pc.white('       Output:')} ${pc.white(options.skillDir)} ${pc.dim('(skill directory)')}`);
+    // Show relative path if under cwd, otherwise absolute path
+    const displayPath = options.skillDir.startsWith(cwd) ? path.relative(cwd, options.skillDir) : options.skillDir;
+    logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)} ${pc.dim('(skill directory)')}`);
   } else {
     logger.log(`${pc.white('       Output:')} ${pc.white(config.output.filePath)}`);
   }
