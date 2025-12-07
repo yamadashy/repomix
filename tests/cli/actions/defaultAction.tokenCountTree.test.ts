@@ -109,6 +109,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: true,
         }),
       }),
+      { skillDir: undefined },
     );
   });
 
@@ -125,6 +126,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: false,
         }),
       }),
+      { skillDir: undefined },
     );
   });
 
@@ -155,6 +157,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: true,
         }),
       }),
+      { skillDir: undefined },
     );
   });
 
@@ -185,6 +188,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: 50,
         }),
       }),
+      { skillDir: undefined },
     );
   });
 });

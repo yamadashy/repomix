@@ -2,16 +2,24 @@ import path from 'node:path';
 import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import type { SkippedFileInfo } from '../core/file/fileCollect.js';
-import { generateDefaultSkillName } from '../core/output/skill/skillUtils.js';
 import type { PackResult } from '../core/packager.js';
 import type { SuspiciousFileResult } from '../core/security/securityCheck.js';
 import { logger } from '../shared/logger.js';
 import { reportTokenCountTree } from './reporters/tokenCountTreeReporter.js';
 
+export interface ReportOptions {
+  skillDir?: string;
+}
+
 /**
  * Reports the results of packing operation including top files, security check, summary, and completion.
  */
-export const reportResults = (cwd: string, packResult: PackResult, config: RepomixConfigMerged): void => {
+export const reportResults = (
+  cwd: string,
+  packResult: PackResult,
+  config: RepomixConfigMerged,
+  options: ReportOptions = {},
+): void => {
   logger.log('');
 
   if (config.output.topFilesLength > 0) {
@@ -41,13 +49,13 @@ export const reportResults = (cwd: string, packResult: PackResult, config: Repom
   reportSkippedFiles(cwd, packResult.skippedFiles);
   logger.log('');
 
-  reportSummary(packResult, config);
+  reportSummary(packResult, config, options);
   logger.log('');
 
   reportCompletion();
 };
 
-export const reportSummary = (packResult: PackResult, config: RepomixConfigMerged) => {
+export const reportSummary = (packResult: PackResult, config: RepomixConfigMerged, options: ReportOptions = {}) => {
   let securityCheckMessage = '';
   if (config.security.enableSecurityCheck) {
     if (packResult.suspiciousFilesResults.length > 0) {
@@ -68,13 +76,8 @@ export const reportSummary = (packResult: PackResult, config: RepomixConfigMerge
   logger.log(`${pc.white('  Total Chars:')} ${pc.white(packResult.totalCharacters.toLocaleString())} chars`);
 
   // Show skill output path or regular output path
-  if (config.skillGenerate !== undefined) {
-    const skillName =
-      typeof config.skillGenerate === 'string'
-        ? config.skillGenerate
-        : generateDefaultSkillName([config.cwd], config.remoteUrl);
-    const skillPath = `.claude/skills/${skillName}/`;
-    logger.log(`${pc.white('       Output:')} ${pc.white(skillPath)} ${pc.dim('(skill directory)')}`);
+  if (config.skillGenerate !== undefined && options.skillDir) {
+    logger.log(`${pc.white('       Output:')} ${pc.white(options.skillDir)} ${pc.dim('(skill directory)')}`);
   } else {
     logger.log(`${pc.white('       Output:')} ${pc.white(config.output.filePath)}`);
   }

@@ -133,7 +133,7 @@ export const runDefaultAction = async (
     const result = (await taskRunner.run(task)) as DefaultActionWorkerResult;
 
     // Report results in main process
-    reportResults(cwd, result.packResult, result.config);
+    reportResults(cwd, result.packResult, result.config, { skillDir });
 
     return {
       packResult: result.packResult,
