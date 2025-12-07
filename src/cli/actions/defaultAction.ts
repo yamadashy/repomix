@@ -15,9 +15,9 @@ import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { initTaskRunner } from '../../shared/processConcurrency.js';
 import { reportResults } from '../cliReport.js';
+import { promptSkillLocation } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
-import { promptSkillLocation } from './skillPrompts.js';
 import type {
   DefaultActionTask,
   DefaultActionWorkerResult,

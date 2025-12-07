@@ -11,9 +11,9 @@ import { generateDefaultSkillNameFromUrl } from '../../core/output/skill/skillUt
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
+import { promptSkillLocation, type SkillLocation } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { type DefaultActionRunnerResult, runDefaultAction } from './defaultAction.js';
-import { promptSkillLocation, type SkillLocation } from './skillPrompts.js';
 
 export const runRemoteAction = async (
   repoUrl: string,
