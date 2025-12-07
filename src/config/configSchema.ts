@@ -149,8 +149,6 @@ export const repomixConfigMergedSchema = repomixConfigDefaultSchema
   .and(
     z.object({
       cwd: z.string(),
-      // Remote URL for skill name auto-generation (set by remoteAction)
-      remoteUrl: z.string().optional(),
     }),
   );
 

@@ -49,16 +49,11 @@ export const runDefaultAction = async (
   logger.trace('CLI config:', cliConfig);
 
   // Merge default, file, and CLI configs
-  let config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
-
-  // Add remoteUrl if provided (for skill name auto-generation in remote mode)
-  if (cliOptions.remoteUrl) {
-    config = { ...config, remoteUrl: cliOptions.remoteUrl };
-  }
-
+  const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
   logger.trace('Merged config:', config);
 
   // Validate skill generation options and prompt for location
+  let skillName: string | undefined;
   let skillDir: string | undefined;
   if (config.skillGenerate !== undefined) {
     if (config.output.stdout) {
@@ -72,19 +67,17 @@ export const runDefaultAction = async (
       );
     }
 
+    // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
+    skillName =
+      cliOptions.skillName ??
+      (typeof config.skillGenerate === 'string'
+        ? config.skillGenerate
+        : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d))));
+
     // Use pre-computed skillDir if provided (from remoteAction), otherwise prompt
     if (cliOptions.skillDir) {
       skillDir = cliOptions.skillDir;
     } else {
-      // Resolve skill name
-      const skillName =
-        typeof config.skillGenerate === 'string'
-          ? config.skillGenerate
-          : generateDefaultSkillName(
-              directories.map((d) => path.resolve(cwd, d)),
-              config.remoteUrl,
-            );
-
       // Prompt for skill location (personal or project)
       const promptResult = await promptSkillLocation(skillName, cwd);
       skillDir = promptResult.skillDir;
@@ -126,6 +119,7 @@ export const runDefaultAction = async (
       config,
       cliOptions,
       stdinFilePaths,
+      skillName,
       skillDir,
     };
 

@@ -39,7 +39,6 @@ export interface CliOptions extends OptionValues {
   // Remote Repository Options
   remote?: string;
   remoteBranch?: string;
-  remoteUrl?: string; // The actual remote URL (for skill name auto-generation)
 
   // Configuration Options
   config?: string;
@@ -58,6 +57,7 @@ export interface CliOptions extends OptionValues {
 
   // Skill Generation
   skillGenerate?: string | boolean;
+  skillName?: string; // Pre-computed skill name (used internally for remote repos)
   skillDir?: string; // Pre-computed skill directory (used internally for remote repos)
 
   // Other Options

@@ -15,6 +15,7 @@ export interface DefaultActionTask {
   config: RepomixConfigMerged;
   cliOptions: CliOptions;
   stdinFilePaths?: string[];
+  skillName?: string;
   skillDir?: string;
 }
 
@@ -45,7 +46,7 @@ async function defaultActionWorker(
   }
 
   // At this point, task is guaranteed to be DefaultActionTask
-  const { directories, cwd, config, cliOptions, stdinFilePaths, skillDir } = task;
+  const { directories, cwd, config, cliOptions, stdinFilePaths, skillName, skillDir } = task;
 
   logger.trace('Worker: Using pre-loaded config:', config);
 
@@ -56,7 +57,7 @@ async function defaultActionWorker(
   let packResult: PackResult;
 
   try {
-    const packOptions = skillDir ? { skillDir } : {};
+    const packOptions = { ...(skillName && { skillName }), ...(skillDir && { skillDir }) };
 
     if (stdinFilePaths) {
       // Handle stdin processing with file paths from main process

@@ -43,7 +43,6 @@ export const createMockConfig = (config: DeepPartial<RepomixConfigMerged> = {}):
     },
     // CLI-only optional properties
     ...(config.skillGenerate !== undefined && { skillGenerate: config.skillGenerate }),
-    ...(config.remoteUrl !== undefined && { remoteUrl: config.remoteUrl }),
   };
 };
 

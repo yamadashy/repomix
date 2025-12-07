@@ -36,7 +36,7 @@ describe('writeSkillOutput', () => {
       'utf-8',
     );
     expect(mockWriteFile).toHaveBeenCalledWith(
-      path.join(skillDir, 'references', 'structure.md'),
+      path.join(skillDir, 'references', 'project-structure.md'),
       output.references.structure,
       'utf-8',
     );

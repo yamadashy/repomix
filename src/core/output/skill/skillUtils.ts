@@ -84,22 +84,22 @@ export const extractRepoName = (url: string): string => {
 };
 
 /**
- * Generates a default skill name based on the context.
- * - For remote repositories: repomix-reference-<repo-name>
- * - For local directories: repomix-reference-<folder-name>
+ * Generates a default skill name from a remote URL.
+ * Returns: repomix-reference-<repo-name>
  */
-export const generateDefaultSkillName = (rootDirs: string[], remoteUrl?: string): string => {
-  let baseName: string;
+export const generateDefaultSkillNameFromUrl = (remoteUrl: string): string => {
+  const baseName = extractRepoName(remoteUrl);
+  const skillName = `${SKILL_NAME_PREFIX}-${toKebabCase(baseName)}`;
+  return validateSkillName(skillName);
+};
 
-  if (remoteUrl) {
-    // Extract repo name from remote URL
-    baseName = extractRepoName(remoteUrl);
-  } else {
-    // Use local directory name
-    const primaryDir = rootDirs[0] || '.';
-    baseName = path.basename(path.resolve(primaryDir));
-  }
-
+/**
+ * Generates a default skill name from local directories.
+ * Returns: repomix-reference-<folder-name>
+ */
+export const generateDefaultSkillName = (rootDirs: string[]): string => {
+  const primaryDir = rootDirs[0] || '.';
+  const baseName = path.basename(path.resolve(primaryDir));
   const skillName = `${SKILL_NAME_PREFIX}-${toKebabCase(baseName)}`;
   return validateSkillName(skillName);
 };

@@ -7,7 +7,7 @@ import { downloadGitHubArchive, isArchiveDownloadSupported } from '../../core/gi
 import { getRemoteRefs } from '../../core/git/gitRemoteHandle.js';
 import { isGitHubRepository, parseGitHubRepoInfo, parseRemoteValue } from '../../core/git/gitRemoteParse.js';
 import { isGitInstalled } from '../../core/git/gitRepositoryHandle.js';
-import { generateDefaultSkillName } from '../../core/output/skill/skillUtils.js';
+import { generateDefaultSkillNameFromUrl } from '../../core/output/skill/skillUtils.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
@@ -91,13 +91,14 @@ export const runRemoteAction = async (
     }
 
     // For skill generation, prompt for location using current directory (not temp directory)
+    let skillName: string | undefined;
     let skillDir: string | undefined;
     let skillLocation: SkillLocation | undefined;
     if (cliOptions.skillGenerate !== undefined) {
-      const skillName =
+      skillName =
         typeof cliOptions.skillGenerate === 'string'
           ? cliOptions.skillGenerate
-          : generateDefaultSkillName([tempDirPath], repoUrl);
+          : generateDefaultSkillNameFromUrl(repoUrl);
 
       const promptResult = await promptSkillLocation(skillName, process.cwd());
       skillDir = promptResult.skillDir;
@@ -105,9 +106,9 @@ export const runRemoteAction = async (
     }
 
     // Run the default action on the downloaded/cloned repository
-    // Pass the remote URL for skill name auto-generation
-    const optionsWithRemoteUrl = { ...cliOptions, remoteUrl: repoUrl, skillDir };
-    result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithRemoteUrl);
+    // Pass the pre-computed skill name and directory
+    const optionsWithSkill = { ...cliOptions, skillName, skillDir };
+    result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithSkill);
 
     // Copy output to current directory
     // Skip copy for stdout mode (output goes directly to stdout)

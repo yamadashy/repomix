@@ -52,6 +52,7 @@ const defaultDeps = {
 };
 
 export interface PackOptions {
+  skillName?: string;
   skillDir?: string;
 }
 
@@ -133,11 +134,10 @@ export const pack = async (
 
   // Check if skill generation is requested
   if (config.skillGenerate !== undefined && options.skillDir) {
-    // Resolve skill name: use provided name or auto-generate
+    // Use pre-computed skill name or generate from directories
     const skillName =
-      typeof config.skillGenerate === 'string'
-        ? config.skillGenerate
-        : deps.generateDefaultSkillName(rootDirs, config.remoteUrl);
+      options.skillName ??
+      (typeof config.skillGenerate === 'string' ? config.skillGenerate : deps.generateDefaultSkillName(rootDirs));
 
     // Step 1: Generate skill references (summary, structure, files, git-diffs, git-logs)
     const skillReferencesResult = await withMemoryLogging('Generate Skill References', () =>
