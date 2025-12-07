@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { RepomixError } from '../../shared/errorHandle.js';
 import type { SkillOutputResult } from '../output/outputGenerate.js';
 
 const SKILL_DIR_NAME = '.claude/skills';
@@ -28,25 +29,38 @@ export const writeSkillOutput = async (
   const skillDir = path.join(cwd, SKILL_DIR_NAME, skillName);
   const referencesDir = path.join(skillDir, 'references');
 
-  // Create directories
-  await deps.mkdir(referencesDir, { recursive: true });
+  try {
+    // Create directories
+    await deps.mkdir(referencesDir, { recursive: true });
 
-  // Write SKILL.md
-  const skillMdPath = path.join(skillDir, 'SKILL.md');
-  await deps.writeFile(skillMdPath, output.skillMd, 'utf-8');
+    // Write SKILL.md
+    const skillMdPath = path.join(skillDir, 'SKILL.md');
+    await deps.writeFile(skillMdPath, output.skillMd, 'utf-8');
 
-  // Write reference files
-  await deps.writeFile(path.join(referencesDir, 'summary.md'), output.references.summary, 'utf-8');
-  await deps.writeFile(path.join(referencesDir, 'structure.md'), output.references.structure, 'utf-8');
-  await deps.writeFile(path.join(referencesDir, 'files.md'), output.references.files, 'utf-8');
+    // Write reference files
+    await deps.writeFile(path.join(referencesDir, 'summary.md'), output.references.summary, 'utf-8');
+    await deps.writeFile(path.join(referencesDir, 'structure.md'), output.references.structure, 'utf-8');
+    await deps.writeFile(path.join(referencesDir, 'files.md'), output.references.files, 'utf-8');
 
-  // Write optional git files
-  if (output.references.gitDiffs) {
-    await deps.writeFile(path.join(referencesDir, 'git-diffs.md'), output.references.gitDiffs, 'utf-8');
+    // Write optional git files
+    if (output.references.gitDiffs) {
+      await deps.writeFile(path.join(referencesDir, 'git-diffs.md'), output.references.gitDiffs, 'utf-8');
+    }
+    if (output.references.gitLogs) {
+      await deps.writeFile(path.join(referencesDir, 'git-logs.md'), output.references.gitLogs, 'utf-8');
+    }
+
+    return skillDir;
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === 'EPERM' || nodeError.code === 'EACCES') {
+      throw new RepomixError(
+        `Failed to write skill output to ${skillDir}: Permission denied. Please check directory permissions.`,
+        { cause: error instanceof Error ? error : undefined },
+      );
+    }
+    throw new RepomixError(`Failed to write skill output: ${error instanceof Error ? error.message : String(error)}`, {
+      cause: error instanceof Error ? error : undefined,
+    });
   }
-  if (output.references.gitLogs) {
-    await deps.writeFile(path.join(referencesDir, 'git-logs.md'), output.references.gitLogs, 'utf-8');
-  }
-
-  return skillDir;
 };

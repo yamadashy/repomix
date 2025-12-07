@@ -371,6 +371,17 @@ export interface SkillReferences {
 }
 
 /**
+ * Result of skill references generation (without SKILL.md)
+ */
+export interface SkillReferencesResult {
+  references: SkillReferences;
+  skillName: string;
+  projectName: string;
+  skillDescription: string;
+  totalFiles: number;
+}
+
+/**
  * Result of skill output generation
  */
 export interface SkillOutputResult {
@@ -379,23 +390,22 @@ export interface SkillOutputResult {
 }
 
 /**
- * Generates Claude Agent Skills format output.
- * Creates SKILL.md and separate reference files (summary.md, structure.md, files.md, etc.).
+ * Generates skill reference files (summary, structure, files, git-diffs, git-logs).
+ * This is the first step - call this, calculate metrics, then call generateSkillMdFromReferences.
  */
-export const generateSkillOutput = async (
+export const generateSkillReferences = async (
   skillName: string,
   rootDirs: string[],
   config: RepomixConfigMerged,
   processedFiles: ProcessedFile[],
   allFilePaths: string[],
-  totalTokens: number,
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
   deps = {
     buildOutputGeneratorContext,
     sortOutputFiles,
   },
-): Promise<SkillOutputResult> => {
+): Promise<SkillReferencesResult> => {
   // Validate and normalize skill name
   const normalizedSkillName = validateSkillName(skillName);
 
@@ -436,19 +446,35 @@ export const generateSkillOutput = async (
     gitLogs: generateGitLogsSection(renderContext),
   };
 
-  // Generate SKILL.md content with info about which reference files exist
-  const skillMd = generateSkillMd({
+  return {
+    references,
     skillName: normalizedSkillName,
-    skillDescription,
     projectName,
-    totalFiles: processedFiles.length,
+    skillDescription,
+    totalFiles: sortedProcessedFiles.length,
+  };
+};
+
+/**
+ * Generates SKILL.md content from references result and token count.
+ * This is the second step - call after calculating metrics.
+ */
+export const generateSkillMdFromReferences = (
+  referencesResult: SkillReferencesResult,
+  totalTokens: number,
+): SkillOutputResult => {
+  const skillMd = generateSkillMd({
+    skillName: referencesResult.skillName,
+    skillDescription: referencesResult.skillDescription,
+    projectName: referencesResult.projectName,
+    totalFiles: referencesResult.totalFiles,
     totalTokens,
-    hasGitDiffs: !!references.gitDiffs,
-    hasGitLogs: !!references.gitLogs,
+    hasGitDiffs: !!referencesResult.references.gitDiffs,
+    hasGitLogs: !!referencesResult.references.gitLogs,
   });
 
   return {
     skillMd,
-    references,
+    references: referencesResult.references,
   };
 };
