@@ -35,10 +35,10 @@ This skill provides reference to the {{{projectName}}} codebase.
 Overview of the packed content, including purpose, file format description, and important notes about excluded files.
 
 ### Directory Structure (\`references/structure.md\`)
-Tree view of the project's directory structure. Start here to understand the overall layout.
+Tree view of the project's directory structure with line counts for each file. Start here to understand the overall layout. Line counts help identify file sizes when using grep or read tools.
 
 ### Files (\`references/files.md\`)
-Complete file contents. Each file includes its path and full source code.
+Complete file contents. Each file is marked with \`## File: <file-path>\` header, allowing direct grep searches by file path.
 
 {{#if hasGitDiffs}}
 ### Git Diffs (\`references/git-diffs.md\`)
