@@ -10,8 +10,9 @@ import type { SkillOutputResult } from '../output/outputGenerate.js';
  *   ├── SKILL.md
  *   └── references/
  *       ├── summary.md
- *       ├── structure.md
- *       └── files.md
+ *       ├── project-structure.md
+ *       ├── files.md
+ *       └── tech-stack.md (if available)
  */
 export const writeSkillOutput = async (
   output: SkillOutputResult,
@@ -33,8 +34,13 @@ export const writeSkillOutput = async (
 
     // Write reference files
     await deps.writeFile(path.join(referencesDir, 'summary.md'), output.references.summary, 'utf-8');
-    await deps.writeFile(path.join(referencesDir, 'structure.md'), output.references.structure, 'utf-8');
+    await deps.writeFile(path.join(referencesDir, 'project-structure.md'), output.references.structure, 'utf-8');
     await deps.writeFile(path.join(referencesDir, 'files.md'), output.references.files, 'utf-8');
+
+    // Write tech-stack.md if available
+    if (output.references.techStack) {
+      await deps.writeFile(path.join(referencesDir, 'tech-stack.md'), output.references.techStack, 'utf-8');
+    }
 
     return skillDir;
   } catch (error) {

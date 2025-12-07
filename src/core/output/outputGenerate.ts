@@ -27,7 +27,9 @@ import {
   generateStructureSection,
   generateSummarySection,
 } from './skill/skillSectionGenerators.js';
+import { calculateStatistics, generateStatisticsSection } from './skill/skillStatistics.js';
 import { generateSkillMd } from './skill/skillStyle.js';
+import { detectTechStack, generateTechStackMd } from './skill/skillTechStack.js';
 import { generateProjectName, generateSkillDescription, validateSkillName } from './skill/skillUtils.js';
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
@@ -374,6 +376,7 @@ export interface SkillReferences {
   summary: string;
   structure: string;
   files: string;
+  techStack?: string;
 }
 
 /**
@@ -385,6 +388,9 @@ export interface SkillReferencesResult {
   projectName: string;
   skillDescription: string;
   totalFiles: number;
+  totalLines: number;
+  statisticsSection: string;
+  hasTechStack: boolean;
 }
 
 /**
@@ -396,7 +402,7 @@ export interface SkillOutputResult {
 }
 
 /**
- * Generates skill reference files (summary, structure, files, git-diffs, git-logs).
+ * Generates skill reference files (summary, structure, files, tech-stack).
  * This is the first step - call this, calculate metrics, then call generateSkillMdFromReferences.
  */
 export const generateSkillReferences = async (
@@ -443,11 +449,20 @@ export const generateSkillReferences = async (
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
+  // Calculate statistics
+  const statistics = calculateStatistics(sortedProcessedFiles, renderContext.fileLineCounts);
+  const statisticsSection = generateStatisticsSection(statistics);
+
+  // Detect tech stack
+  const techStack = detectTechStack(sortedProcessedFiles);
+  const techStackMd = techStack ? generateTechStackMd(techStack) : undefined;
+
   // Generate each section separately
   const references: SkillReferences = {
     summary: generateSummarySection(renderContext),
     structure: generateStructureSection(renderContext),
     files: generateFilesSection(renderContext),
+    techStack: techStackMd,
   };
 
   return {
@@ -456,6 +471,9 @@ export const generateSkillReferences = async (
     projectName,
     skillDescription,
     totalFiles: sortedProcessedFiles.length,
+    totalLines: statistics.totalLines,
+    statisticsSection,
+    hasTechStack: techStack !== null,
   };
 };
 
@@ -472,7 +490,10 @@ export const generateSkillMdFromReferences = (
     skillDescription: referencesResult.skillDescription,
     projectName: referencesResult.projectName,
     totalFiles: referencesResult.totalFiles,
+    totalLines: referencesResult.totalLines,
     totalTokens,
+    statisticsSection: referencesResult.statisticsSection,
+    hasTechStack: referencesResult.hasTechStack,
   });
 
   return {

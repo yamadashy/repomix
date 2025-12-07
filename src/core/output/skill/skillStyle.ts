@@ -5,7 +5,10 @@ export interface SkillRenderContext {
   skillDescription: string;
   projectName: string;
   totalFiles: number;
+  totalLines: number;
   totalTokens: number;
+  statisticsSection: string;
+  hasTechStack: boolean;
 }
 
 /**
@@ -20,7 +23,7 @@ description: {{{skillDescription}}}
 
 # {{{projectName}}} Codebase Reference
 
-{{{totalFiles}}} files | {{{totalTokens}}} tokens
+{{{totalFiles}}} files | {{{totalLines}}} lines | {{{totalTokens}}} tokens
 
 ## Overview
 
@@ -34,15 +37,20 @@ Use this skill when you need to:
 
 | File | Contents |
 |------|----------|
-| \`references/structure.md\` | Directory tree with line counts per file |
+| \`references/project-structure.md\` | Directory tree with line counts per file |
 | \`references/files.md\` | All file contents (header: \`## File: <path>\`) |
+{{#if hasTechStack}}
+| \`references/tech-stack.md\` | Languages, frameworks, and dependencies |
+{{/if}}
 | \`references/summary.md\` | Purpose and format explanation |
+
+{{{statisticsSection}}}
 
 ## How to Use
 
 ### 1. Find file locations
 
-Check \`structure.md\` for the directory tree:
+Check \`project-structure.md\` for the directory tree:
 
 \`\`\`
 src/
@@ -70,22 +78,25 @@ function calculateTotal
 ## Common Use Cases
 
 **Understand a feature:**
-1. Search \`structure.md\` for related file names
+1. Search \`project-structure.md\` for related file names
 2. Read the main implementation file in \`files.md\`
 3. Search for imports/references to trace dependencies
 
 **Debug an error:**
 1. Grep the error message or class name in \`files.md\`
-2. Check line counts in \`structure.md\` to find large files
+2. Check line counts in \`project-structure.md\` to find large files
 
 **Find all usages:**
 1. Grep function or variable name in \`files.md\`
 
 ## Tips
 
-- Use line counts in \`structure.md\` to estimate file complexity
+- Use line counts in \`project-structure.md\` to estimate file complexity
 - Search \`## File:\` pattern to jump between files
 - Check \`summary.md\` for excluded files and format details
+{{#if hasTechStack}}
+- Check \`tech-stack.md\` for languages, frameworks, and dependencies
+{{/if}}
 `;
 };
 

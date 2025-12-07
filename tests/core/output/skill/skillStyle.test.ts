@@ -36,20 +36,34 @@ describe('skillStyle', () => {
     test('should reference multiple files', () => {
       const template = getSkillTemplate();
       expect(template).toContain('references/summary.md');
-      expect(template).toContain('references/structure.md');
+      expect(template).toContain('references/project-structure.md');
       expect(template).toContain('references/files.md');
     });
   });
 
   describe('generateSkillMd', () => {
+    const createTestContext = (overrides = {}) => ({
+      skillName: 'test-skill',
+      skillDescription: 'Test description',
+      projectName: 'Test Project',
+      totalFiles: 1,
+      totalLines: 100,
+      totalTokens: 100,
+      statisticsSection: '## Statistics\n\n1 files | 100 lines',
+      hasTechStack: false,
+      ...overrides,
+    });
+
     test('should generate SKILL.md with all fields', () => {
-      const context = {
+      const context = createTestContext({
         skillName: 'my-project-skill',
         skillDescription: 'Reference codebase for My Project.',
         projectName: 'My Project',
         totalFiles: 42,
+        totalLines: 1000,
         totalTokens: 12345,
-      };
+        statisticsSection: '## Statistics\n\n42 files | 1,000 lines',
+      });
 
       const result = generateSkillMd(context);
 
@@ -65,45 +79,45 @@ describe('skillStyle', () => {
     });
 
     test('should end with newline', () => {
-      const context = {
-        skillName: 'test-skill',
-        skillDescription: 'Test description',
-        projectName: 'Test Project',
-        totalFiles: 1,
-        totalTokens: 100,
-      };
-
-      const result = generateSkillMd(context);
+      const result = generateSkillMd(createTestContext());
       expect(result.endsWith('\n')).toBe(true);
     });
 
     test('should include references to multiple files', () => {
-      const context = {
-        skillName: 'test-skill',
-        skillDescription: 'Test description',
-        projectName: 'Test Project',
-        totalFiles: 1,
-        totalTokens: 100,
-      };
-
-      const result = generateSkillMd(context);
+      const result = generateSkillMd(createTestContext());
       expect(result).toContain('`references/summary.md`');
-      expect(result).toContain('`references/structure.md`');
+      expect(result).toContain('`references/project-structure.md`');
       expect(result).toContain('`references/files.md`');
     });
 
     test('should not include git sections (skill output is for reference codebases)', () => {
-      const context = {
-        skillName: 'test-skill',
-        skillDescription: 'Test description',
-        projectName: 'Test Project',
-        totalFiles: 1,
-        totalTokens: 100,
-      };
-
-      const result = generateSkillMd(context);
+      const result = generateSkillMd(createTestContext());
       expect(result).not.toContain('git-diffs.md');
       expect(result).not.toContain('git-logs.md');
+    });
+
+    test('should include tech-stack reference when hasTechStack is true', () => {
+      const result = generateSkillMd(createTestContext({ hasTechStack: true }));
+      expect(result).toContain('`references/tech-stack.md`');
+    });
+
+    test('should not include tech-stack reference when hasTechStack is false', () => {
+      const result = generateSkillMd(createTestContext({ hasTechStack: false }));
+      expect(result).not.toContain('tech-stack.md');
+    });
+
+    test('should include statistics section', () => {
+      const result = generateSkillMd(
+        createTestContext({
+          statisticsSection: '## Statistics\n\n10 files | 500 lines',
+        }),
+      );
+      expect(result).toContain('## Statistics');
+    });
+
+    test('should include total lines in header', () => {
+      const result = generateSkillMd(createTestContext({ totalLines: 5000 }));
+      expect(result).toContain('5000 lines');
     });
   });
 });
