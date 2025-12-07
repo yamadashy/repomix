@@ -20,29 +20,41 @@ description: {{{skillDescription}}}
 
 # {{{projectName}}} Codebase Reference
 
-This skill provides reference to the {{{projectName}}} codebase.
-
-## Statistics
-
-- Total Files: {{{totalFiles}}}
-- Total Tokens: {{{totalTokens}}}
+This skill provides reference to the {{{projectName}}} codebase ({{{totalFiles}}} files, {{{totalTokens}}} tokens).
 
 ## Reference Files
 
-### Summary (\`references/summary.md\`)
-Overview of the packed content, including purpose, file format description, and important notes about excluded files.
+| File | Description |
+|------|-------------|
+| \`references/structure.md\` | Directory tree with line counts per file |
+| \`references/files.md\` | All file contents with \`## File: <path>\` headers |
+| \`references/summary.md\` | Purpose, format description, and excluded files info |
 
-### Directory Structure (\`references/structure.md\`)
-Tree view of the project's directory structure with line counts for each file. Start here to understand the overall layout. Line counts help identify file sizes when using grep or read tools.
+## Quick Reference
 
-### Files (\`references/files.md\`)
-Complete file contents. Each file is marked with \`## File: <file-path>\` header, allowing direct grep searches by file path.
+### Finding Files by Path
+Grep in \`files.md\` using the header format:
+\`\`\`
+## File: src/components/Button.tsx
+\`\`\`
 
-## How to Use
+### Understanding Project Structure
+Check \`structure.md\` for the directory tree. Each file shows its line count:
+\`\`\`
+src/
+  index.ts (42 lines)
+  utils/
+    helpers.ts (128 lines)
+\`\`\`
 
-1. **Understand the layout**: Read \`structure.md\` first to see the project organization
-2. **Find specific code**: Search in \`files.md\` for functions, classes, or specific implementations
-3. **Get context**: Check \`summary.md\` for information about what's included and excluded
+### Reading File Contents
+Files in \`files.md\` are formatted as:
+\`\`\`
+## File: <file-path>
+\\\`\`\`<language>
+<content>
+\\\`\`\`
+\`\`\`
 `;
 };
 

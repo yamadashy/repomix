@@ -12,17 +12,16 @@ describe('skillStyle', () => {
       expect(template).toContain('references/');
     });
 
-    test('should include statistics section', () => {
+    test('should include reference files table', () => {
       const template = getSkillTemplate();
-      expect(template).toContain('## Statistics');
-      expect(template).toContain('Total Files');
-      expect(template).toContain('Total Tokens');
+      expect(template).toContain('## Reference Files');
+      expect(template).toContain('| File | Description |');
     });
 
-    test('should include how to use section', () => {
+    test('should include quick reference section', () => {
       const template = getSkillTemplate();
-      expect(template).toContain('## How to Use');
-      expect(template).toContain('Understand the layout');
+      expect(template).toContain('## Quick Reference');
+      expect(template).toContain('Finding Files by Path');
     });
 
     test('should reference multiple files', () => {
@@ -52,8 +51,8 @@ describe('skillStyle', () => {
 
       // Check content
       expect(result).toContain('# My Project Codebase Reference');
-      expect(result).toContain('Total Files: 42');
-      expect(result).toContain('Total Tokens: 12345');
+      expect(result).toContain('42 files');
+      expect(result).toContain('12345 tokens');
     });
 
     test('should end with newline', () => {
