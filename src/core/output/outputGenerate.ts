@@ -39,6 +39,15 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
   return '`'.repeat(Math.max(3, maxBackticks + 1));
 };
 
+const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
+  const lineCounts: Record<string, number> = {};
+  for (const file of processedFiles) {
+    // Count lines by splitting on newlines
+    lineCounts[file.path] = file.content.split('\n').length;
+  }
+  return lineCounts;
+};
+
 const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
@@ -53,6 +62,7 @@ const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): Re
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
+    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,

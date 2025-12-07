@@ -21,6 +21,10 @@ const createMockContext = (overrides: Partial<RenderContext> = {}): RenderContex
     { path: 'src/index.ts', content: 'console.log("hello");' },
     { path: 'src/utils.ts', content: 'export const sum = (a, b) => a + b;' },
   ],
+  fileLineCounts: {
+    'src/index.ts': 1,
+    'src/utils.ts': 1,
+  },
   fileSummaryEnabled: true,
   directoryStructureEnabled: true,
   filesEnabled: true,

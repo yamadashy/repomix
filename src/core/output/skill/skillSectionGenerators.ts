@@ -1,4 +1,5 @@
 import Handlebars from 'handlebars';
+import { generateTreeStringWithLineCounts } from '../../file/fileTreeGenerate.js';
 import type { RenderContext } from '../outputGeneratorTypes.js';
 import { getLanguageFromFilePath } from '../outputStyleUtils.js';
 
@@ -29,11 +30,16 @@ export const generateSummarySection = (context: RenderContext): string => {
 
 /**
  * Generates the directory structure section for skill output.
+ * Includes line counts for each file to aid in grep searches.
  */
 export const generateStructureSection = (context: RenderContext): string => {
   if (!context.directoryStructureEnabled) {
     return '';
   }
+
+  // Generate tree string with line counts for skill output
+  const filePaths = context.processedFiles.map((f) => f.path);
+  const treeStringWithLineCounts = generateTreeStringWithLineCounts(filePaths, context.fileLineCounts);
 
   const template = Handlebars.compile(`# Directory Structure
 
@@ -42,7 +48,7 @@ export const generateStructureSection = (context: RenderContext): string => {
 \`\`\`
 `);
 
-  return template(context).trim();
+  return template({ treeString: treeStringWithLineCounts }).trim();
 };
 
 /**
