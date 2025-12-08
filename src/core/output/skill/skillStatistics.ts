@@ -140,14 +140,14 @@ export const calculateStatistics = (
     }))
     .sort((a, b) => b.fileCount - a.fileCount);
 
-  // Get largest files (top 5)
+  // Get largest files (top 10)
   const largestFiles = processedFiles
     .map((file) => ({
       path: file.path,
       lines: fileLineCounts[file.path] || file.content.split('\n').length,
     }))
     .sort((a, b) => b.lines - a.lines)
-    .slice(0, 5);
+    .slice(0, 10);
 
   return {
     totalFiles: processedFiles.length,

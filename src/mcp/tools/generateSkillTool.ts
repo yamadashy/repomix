@@ -47,8 +47,24 @@ export const registerGenerateSkillTool = (mcpServer: McpServer) => {
     'generate_skill',
     {
       title: 'Generate Claude Agent Skill',
-      description:
-        'Generate a Claude Agent Skill from a local code directory. Creates a skill package at .claude/skills/<name>/ containing SKILL.md (entry point with metadata) and references/ folder with summary.md, structure.md, files.md, and optionally git-diffs.md and git-logs.md. This skill can be used by Claude to understand and reference the codebase.',
+      description: `Generate a Claude Agent Skill from a local code directory. Creates a skill package containing SKILL.md (entry point with metadata) and references/ folder with summary.md, project-structure.md, files.md, and optionally tech-stack.md.
+
+Skill Types:
+- Project Skills: Created in <project>/.claude/skills/<name>/ - shared with the team via version control
+- Personal Skills: Created in ~/.claude/skills/<name>/ - private to your machine
+
+Output Structure:
+  .claude/skills/<skill-name>/
+  ├── SKILL.md                    # Entry point with usage guide
+  └── references/
+      ├── summary.md              # Purpose, format, and statistics
+      ├── project-structure.md    # Directory tree with line counts
+      ├── files.md                # All file contents
+      └── tech-stack.md           # Languages, frameworks, dependencies (if detected)
+
+Example Paths:
+- Project: /path/to/project/.claude/skills/repomix-reference-myproject/
+- Personal: ~/.claude/skills/repomix-reference-myproject/`,
       inputSchema: generateSkillInputSchema,
       outputSchema: generateSkillOutputSchema,
       annotations: {

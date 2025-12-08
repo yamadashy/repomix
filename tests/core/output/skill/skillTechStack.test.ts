@@ -145,6 +145,8 @@ tokio = { version = "1.0", features = ["full"] }`,
         ],
         devDependencies: [{ name: 'typescript', version: '^5.0.0' }],
         packageManager: 'npm',
+        runtimeVersions: [{ runtime: 'Node.js', version: '22.0.0' }],
+        configFiles: ['package.json', 'tsconfig.json'],
       };
 
       const result = generateTechStackMd(techStack);
@@ -155,26 +157,34 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result).toContain('## Frameworks');
       expect(result).toContain('- React');
       expect(result).toContain('- TypeScript');
+      expect(result).toContain('## Runtime Versions');
+      expect(result).toContain('- Node.js: 22.0.0');
       expect(result).toContain('## Package Manager');
       expect(result).toContain('- npm');
       expect(result).toContain('## Dependencies');
       expect(result).toContain('- react (^18.2.0)');
       expect(result).toContain('## Dev Dependencies');
       expect(result).toContain('- typescript (^5.0.0)');
+      expect(result).toContain('## Configuration Files');
+      expect(result).toContain('- package.json');
+      expect(result).toContain('- tsconfig.json');
     });
 
-    test('should limit dependencies to 20', () => {
+    test('should show all dependencies without truncation', () => {
       const techStack = {
         languages: ['Node.js'],
         frameworks: [],
         dependencies: Array.from({ length: 25 }, (_, i) => ({ name: `dep-${i}`, version: '1.0.0' })),
         devDependencies: [],
+        runtimeVersions: [],
+        configFiles: [],
       };
 
       const result = generateTechStackMd(techStack);
 
-      expect(result).toContain('... and 5 more');
-      expect(result).not.toContain('dep-24');
+      expect(result).toContain('- dep-0 (1.0.0)');
+      expect(result).toContain('- dep-24 (1.0.0)');
+      expect(result).not.toContain('... and');
     });
 
     test('should handle empty sections', () => {
@@ -183,6 +193,8 @@ tokio = { version = "1.0", features = ["full"] }`,
         frameworks: [],
         dependencies: [],
         devDependencies: [],
+        runtimeVersions: [],
+        configFiles: [],
       };
 
       const result = generateTechStackMd(techStack);
@@ -191,6 +203,128 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result).toContain('## Languages');
       expect(result).not.toContain('## Frameworks');
       expect(result).not.toContain('## Dependencies');
+      expect(result).not.toContain('## Configuration Files');
+    });
+  });
+
+  describe('detectTechStack with version files', () => {
+    test('should detect Node.js version from .node-version', () => {
+      const files: ProcessedFile[] = [{ path: '.node-version', content: '22.0.0\n' }];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.runtimeVersions).toHaveLength(1);
+      expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: '22.0.0' });
+    });
+
+    test('should detect Node.js version from .nvmrc', () => {
+      const files: ProcessedFile[] = [{ path: '.nvmrc', content: 'v20.10.0' }];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.runtimeVersions).toHaveLength(1);
+      expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: 'v20.10.0' });
+    });
+
+    test('should detect multiple runtimes from .tool-versions', () => {
+      const files: ProcessedFile[] = [
+        {
+          path: '.tool-versions',
+          content: `nodejs 22.0.0
+python 3.12.0
+ruby 3.3.0
+# this is a comment
+golang 1.22.0`,
+        },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.runtimeVersions).toHaveLength(4);
+      expect(result?.runtimeVersions).toContainEqual({ runtime: 'Node.js', version: '22.0.0' });
+      expect(result?.runtimeVersions).toContainEqual({ runtime: 'Python', version: '3.12.0' });
+      expect(result?.runtimeVersions).toContainEqual({ runtime: 'Ruby', version: '3.3.0' });
+      expect(result?.runtimeVersions).toContainEqual({ runtime: 'Go', version: '1.22.0' });
+    });
+
+    test('should detect Python version from .python-version', () => {
+      const files: ProcessedFile[] = [{ path: '.python-version', content: '3.11.5' }];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.runtimeVersions).toHaveLength(1);
+      expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Python', version: '3.11.5' });
+    });
+
+    test('should combine dependency files and version files', () => {
+      const files: ProcessedFile[] = [
+        {
+          path: 'package.json',
+          content: JSON.stringify({ dependencies: { express: '^4.18.0' } }),
+        },
+        { path: '.node-version', content: '22.0.0' },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.languages).toContain('Node.js');
+      expect(result?.dependencies).toHaveLength(1);
+      expect(result?.runtimeVersions).toHaveLength(1);
+      expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: '22.0.0' });
+    });
+  });
+
+  describe('detectTechStack with configuration files', () => {
+    test('should detect configuration files at root level', () => {
+      const files: ProcessedFile[] = [
+        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: 'tsconfig.json', content: '{}' },
+        { path: 'vitest.config.ts', content: 'export default {}' },
+        { path: '.eslintrc.json', content: '{}' },
+        { path: 'biome.json', content: '{}' },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.configFiles).toContain('package.json');
+      expect(result?.configFiles).toContain('tsconfig.json');
+      expect(result?.configFiles).toContain('vitest.config.ts');
+      expect(result?.configFiles).toContain('.eslintrc.json');
+      expect(result?.configFiles).toContain('biome.json');
+    });
+
+    test('should not detect configuration files in subdirectories', () => {
+      const files: ProcessedFile[] = [
+        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: 'packages/sub/tsconfig.json', content: '{}' },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.configFiles).toContain('package.json');
+      expect(result?.configFiles).not.toContain('tsconfig.json');
+    });
+
+    test('should detect docker and CI configuration files', () => {
+      const files: ProcessedFile[] = [
+        { path: 'Dockerfile', content: 'FROM node:22' },
+        { path: 'docker-compose.yml', content: 'version: 3' },
+        { path: '.gitignore', content: 'node_modules' },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.configFiles).toContain('Dockerfile');
+      expect(result?.configFiles).toContain('docker-compose.yml');
+      expect(result?.configFiles).toContain('.gitignore');
     });
   });
 });

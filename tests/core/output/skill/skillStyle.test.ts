@@ -49,7 +49,6 @@ describe('skillStyle', () => {
       totalFiles: 1,
       totalLines: 100,
       totalTokens: 100,
-      statisticsSection: '## Statistics\n\n1 files | 100 lines',
       hasTechStack: false,
       ...overrides,
     });
@@ -62,7 +61,6 @@ describe('skillStyle', () => {
         totalFiles: 42,
         totalLines: 1000,
         totalTokens: 12345,
-        statisticsSection: '## Statistics\n\n42 files | 1,000 lines',
       });
 
       const result = generateSkillMd(context);
@@ -106,13 +104,9 @@ describe('skillStyle', () => {
       expect(result).not.toContain('tech-stack.md');
     });
 
-    test('should include statistics section', () => {
-      const result = generateSkillMd(
-        createTestContext({
-          statisticsSection: '## Statistics\n\n10 files | 500 lines',
-        }),
-      );
-      expect(result).toContain('## Statistics');
+    test('should not include statistics section (moved to summary.md)', () => {
+      const result = generateSkillMd(createTestContext());
+      expect(result).not.toContain('## Statistics');
     });
 
     test('should include total lines in header', () => {

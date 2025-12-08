@@ -5,27 +5,43 @@ import { getLanguageFromFilePath } from '../outputStyleUtils.js';
 
 /**
  * Generates the summary section for skill output.
- * Contains purpose, file format, usage guidelines, and notes.
+ * Contains purpose, file format, usage guidelines, notes, and project statistics.
  */
-export const generateSummarySection = (context: RenderContext): string => {
+export const generateSummarySection = (context: RenderContext, statisticsSection?: string): string => {
   const template = Handlebars.compile(`{{{generationHeader}}}
 
-# File Summary
+# Summary
 
 ## Purpose
-{{{summaryPurpose}}}
 
-## File Format
-{{{summaryFileFormat}}}
+This is a reference codebase organized into multiple files for AI consumption.
+It is designed to be easily searchable using grep and other text-based tools.
+
+## File Structure
+
+This skill contains the following reference files:
+
+| File | Contents |
+|------|----------|
+| \`project-structure.md\` | Directory tree with line counts per file |
+| \`files.md\` | All file contents (search with \`## File: <path>\`) |
+| \`tech-stack.md\` | Languages, frameworks, and dependencies |
+| \`summary.md\` | This file - purpose and format explanation |
 
 ## Usage Guidelines
+
 {{{summaryUsageGuidelines}}}
 
 ## Notes
+
 {{{summaryNotes}}}
+
+{{#if statisticsSection}}
+{{{statisticsSection}}}
+{{/if}}
 `);
 
-  return template(context).trim();
+  return template({ ...context, statisticsSection }).trim();
 };
 
 /**

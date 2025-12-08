@@ -7,13 +7,13 @@ export interface SkillRenderContext {
   totalFiles: number;
   totalLines: number;
   totalTokens: number;
-  statisticsSection: string;
   hasTechStack: boolean;
 }
 
 /**
  * Returns the Handlebars template for SKILL.md.
  * Following Claude Agent Skills best practices for progressive disclosure.
+ * This template is generic and does not contain project-specific statistics.
  */
 export const getSkillTemplate = (): string => {
   return /* md */ `---
@@ -38,13 +38,11 @@ Use this skill when you need to:
 | File | Contents |
 |------|----------|
 | \`references/project-structure.md\` | Directory tree with line counts per file |
-| \`references/files.md\` | All file contents (header: \`## File: <path>\`) |
+| \`references/files.md\` | All file contents (search with \`## File: <path>\`) |
 {{#if hasTechStack}}
 | \`references/tech-stack.md\` | Languages, frameworks, and dependencies |
 {{/if}}
-| \`references/summary.md\` | Purpose and format explanation |
-
-{{{statisticsSection}}}
+| \`references/summary.md\` | Purpose, format explanation, and statistics |
 
 ## How to Use
 
@@ -93,7 +91,7 @@ function calculateTotal
 
 - Use line counts in \`project-structure.md\` to estimate file complexity
 - Search \`## File:\` pattern to jump between files
-- Check \`summary.md\` for excluded files and format details
+- Check \`summary.md\` for excluded files, format details, and file statistics
 {{#if hasTechStack}}
 - Check \`tech-stack.md\` for languages, frameworks, and dependencies
 {{/if}}

@@ -6,12 +6,19 @@ interface DependencyInfo {
   isDev?: boolean;
 }
 
+interface RuntimeVersion {
+  runtime: string;
+  version: string;
+}
+
 interface TechStackInfo {
   languages: string[];
   frameworks: string[];
   dependencies: DependencyInfo[];
   devDependencies: DependencyInfo[];
   packageManager?: string;
+  runtimeVersions: RuntimeVersion[];
+  configFiles: string[];
 }
 
 // Dependency file patterns and their parsers
@@ -282,6 +289,189 @@ function parseBuildGradle(content: string): Partial<TechStackInfo> {
   return { dependencies, frameworks: [...new Set(frameworks)] };
 }
 
+// Version manager files and their parsers
+const VERSION_FILES: Record<string, (content: string) => RuntimeVersion[]> = {
+  '.node-version': parseNodeVersion,
+  '.nvmrc': parseNodeVersion,
+  '.ruby-version': parseRubyVersion,
+  '.python-version': parsePythonVersion,
+  '.go-version': parseGoVersion,
+  '.java-version': parseJavaVersion,
+  '.tool-versions': parseToolVersions,
+};
+
+function parseNodeVersion(content: string): RuntimeVersion[] {
+  const version = content.trim();
+  if (version) {
+    return [{ runtime: 'Node.js', version }];
+  }
+  return [];
+}
+
+function parseRubyVersion(content: string): RuntimeVersion[] {
+  const version = content.trim();
+  if (version) {
+    return [{ runtime: 'Ruby', version }];
+  }
+  return [];
+}
+
+function parsePythonVersion(content: string): RuntimeVersion[] {
+  const version = content.trim();
+  if (version) {
+    return [{ runtime: 'Python', version }];
+  }
+  return [];
+}
+
+function parseGoVersion(content: string): RuntimeVersion[] {
+  const version = content.trim();
+  if (version) {
+    return [{ runtime: 'Go', version }];
+  }
+  return [];
+}
+
+function parseJavaVersion(content: string): RuntimeVersion[] {
+  const version = content.trim();
+  if (version) {
+    return [{ runtime: 'Java', version }];
+  }
+  return [];
+}
+
+// Configuration files to detect at root level
+const CONFIG_FILE_PATTERNS: string[] = [
+  // Package managers and dependencies
+  'package.json',
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'bun.lockb',
+  'requirements.txt',
+  'pyproject.toml',
+  'Pipfile',
+  'Pipfile.lock',
+  'poetry.lock',
+  'go.mod',
+  'go.sum',
+  'Cargo.toml',
+  'Cargo.lock',
+  'composer.json',
+  'composer.lock',
+  'Gemfile',
+  'Gemfile.lock',
+  'pom.xml',
+  'build.gradle',
+  'build.gradle.kts',
+  'settings.gradle',
+  'settings.gradle.kts',
+
+  // TypeScript/JavaScript config
+  'tsconfig.json',
+  'jsconfig.json',
+
+  // Build tools
+  'vite.config.ts',
+  'vite.config.js',
+  'vite.config.mjs',
+  'vitest.config.ts',
+  'vitest.config.js',
+  'vitest.config.mjs',
+  'webpack.config.js',
+  'webpack.config.ts',
+  'rollup.config.js',
+  'rollup.config.ts',
+  'esbuild.config.js',
+  'turbo.json',
+
+  // Linters and formatters
+  'biome.json',
+  'biome.jsonc',
+  '.eslintrc',
+  '.eslintrc.js',
+  '.eslintrc.cjs',
+  '.eslintrc.json',
+  '.eslintrc.yaml',
+  '.eslintrc.yml',
+  'eslint.config.js',
+  'eslint.config.mjs',
+  'eslint.config.cjs',
+  '.prettierrc',
+  '.prettierrc.js',
+  '.prettierrc.json',
+  '.prettierrc.yaml',
+  '.prettierrc.yml',
+  'prettier.config.js',
+  '.stylelintrc',
+  '.stylelintrc.json',
+
+  // Version managers
+  '.node-version',
+  '.nvmrc',
+  '.ruby-version',
+  '.python-version',
+  '.go-version',
+  '.java-version',
+  '.tool-versions',
+
+  // Docker
+  'Dockerfile',
+  'docker-compose.yml',
+  'docker-compose.yaml',
+  'compose.yml',
+  'compose.yaml',
+
+  // CI/CD
+  '.github',
+  '.gitlab-ci.yml',
+  'Jenkinsfile',
+  '.circleci',
+  '.travis.yml',
+
+  // Editor config
+  '.editorconfig',
+
+  // Git
+  '.gitignore',
+  '.gitattributes',
+];
+
+function parseToolVersions(content: string): RuntimeVersion[] {
+  const versions: RuntimeVersion[] = [];
+  const runtimeNameMap: Record<string, string> = {
+    nodejs: 'Node.js',
+    node: 'Node.js',
+    ruby: 'Ruby',
+    python: 'Python',
+    golang: 'Go',
+    go: 'Go',
+    java: 'Java',
+    rust: 'Rust',
+    elixir: 'Elixir',
+    erlang: 'Erlang',
+    php: 'PHP',
+    perl: 'Perl',
+    deno: 'Deno',
+    bun: 'Bun',
+  };
+
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    const parts = trimmed.split(/\s+/);
+    if (parts.length >= 2) {
+      const tool = parts[0].toLowerCase();
+      const version = parts[1];
+      const runtime = runtimeNameMap[tool] || tool;
+      versions.push({ runtime, version });
+    }
+  }
+
+  return versions;
+}
+
 /**
  * Detects tech stack from processed files.
  * Only checks root-level dependency files.
@@ -292,6 +482,8 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
     frameworks: [],
     dependencies: [],
     devDependencies: [],
+    runtimeVersions: [],
+    configFiles: [],
   };
 
   let foundAny = false;
@@ -305,6 +497,7 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
       if (dirDepth > 0) continue;
     }
 
+    // Check dependency files
     const config = DEPENDENCY_FILES[fileName];
     if (config) {
       foundAny = true;
@@ -323,6 +516,20 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
       if (parsed.packageManager) {
         result.packageManager = parsed.packageManager;
       }
+    }
+
+    // Check version manager files
+    const versionParser = VERSION_FILES[fileName];
+    if (versionParser) {
+      foundAny = true;
+      const versions = versionParser(file.content);
+      result.runtimeVersions.push(...versions);
+    }
+
+    // Check configuration files
+    if (CONFIG_FILE_PATTERNS.includes(fileName)) {
+      foundAny = true;
+      result.configFiles.push(fileName);
     }
   }
 
@@ -363,6 +570,16 @@ export const generateTechStackMd = (techStack: TechStackInfo): string => {
     lines.push('');
   }
 
+  // Runtime Versions
+  if (techStack.runtimeVersions.length > 0) {
+    lines.push('## Runtime Versions');
+    lines.push('');
+    for (const rv of techStack.runtimeVersions) {
+      lines.push(`- ${rv.runtime}: ${rv.version}`);
+    }
+    lines.push('');
+  }
+
   // Package Manager
   if (techStack.packageManager) {
     lines.push('## Package Manager');
@@ -371,32 +588,34 @@ export const generateTechStackMd = (techStack: TechStackInfo): string => {
     lines.push('');
   }
 
-  // Dependencies (limit to top 20 for readability)
+  // Dependencies
   if (techStack.dependencies.length > 0) {
     lines.push('## Dependencies');
     lines.push('');
-    const deps = techStack.dependencies.slice(0, 20);
-    for (const dep of deps) {
+    for (const dep of techStack.dependencies) {
       const version = dep.version ? ` (${dep.version})` : '';
       lines.push(`- ${dep.name}${version}`);
-    }
-    if (techStack.dependencies.length > 20) {
-      lines.push(`- ... and ${techStack.dependencies.length - 20} more`);
     }
     lines.push('');
   }
 
-  // Dev Dependencies (limit to top 10)
+  // Dev Dependencies
   if (techStack.devDependencies.length > 0) {
     lines.push('## Dev Dependencies');
     lines.push('');
-    const devDeps = techStack.devDependencies.slice(0, 10);
-    for (const dep of devDeps) {
+    for (const dep of techStack.devDependencies) {
       const version = dep.version ? ` (${dep.version})` : '';
       lines.push(`- ${dep.name}${version}`);
     }
-    if (techStack.devDependencies.length > 10) {
-      lines.push(`- ... and ${techStack.devDependencies.length - 10} more`);
+    lines.push('');
+  }
+
+  // Configuration Files
+  if (techStack.configFiles.length > 0) {
+    lines.push('## Configuration Files');
+    lines.push('');
+    for (const file of techStack.configFiles) {
+      lines.push(`- ${file}`);
     }
     lines.push('');
   }

@@ -62,8 +62,8 @@ describe('skillStatistics', () => {
       expect(result.largestFiles[2].path).toBe('small.ts');
     });
 
-    test('should limit largest files to 5', () => {
-      const files: ProcessedFile[] = Array.from({ length: 10 }, (_, i) => ({
+    test('should limit largest files to 10', () => {
+      const files: ProcessedFile[] = Array.from({ length: 15 }, (_, i) => ({
         path: `file${i}.ts`,
         content: 'a'.repeat(i + 1),
       }));
@@ -72,7 +72,7 @@ describe('skillStatistics', () => {
 
       const result = calculateStatistics(files, lineCounts);
 
-      expect(result.largestFiles.length).toBe(5);
+      expect(result.largestFiles.length).toBe(10);
     });
 
     test('should sort file types by file count', () => {
