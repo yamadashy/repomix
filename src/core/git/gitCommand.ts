@@ -218,7 +218,7 @@ export const execGitBlame = async (
   },
 ): Promise<string> => {
   try {
-    const result = await deps.execFileAsync('git', ['-C', directory, 'blame', '--date=short', '-w', filePath]);
+    const result = await deps.execFileAsync('git', ['-C', directory, 'blame', '--porcelain', '-w', filePath]);
 
     return result.stdout || '';
   } catch (error) {

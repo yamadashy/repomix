@@ -11,7 +11,10 @@ describe('gitBlameHandle', () => {
 
   describe('getGitBlame', () => {
     test('should return blame output when directory is a git repository', async () => {
-      const mockBlameOutput = 'e0b3c2 (Author 2025-12-03  1) code line';
+      const mockBlameOutput = `4b84c8a5a7b6c5d4e3f2a1b2c3d4e5f6a7b8c9d0
+author Author Name
+author-time 1733232000
+\tcode line`;
       const mockExecGitBlame = vi.fn().mockResolvedValue(mockBlameOutput);
       const mockIsGitRepository = vi.fn().mockResolvedValue(true);
 
@@ -20,7 +23,7 @@ describe('gitBlameHandle', () => {
         isGitRepository: mockIsGitRepository,
       });
 
-      const expectedOutput = '[Author 2025-12-03] code line';
+      const expectedOutput = '[Author Name 2024-12-03] code line';
       expect(result).toBe(expectedOutput);
       expect(mockIsGitRepository).toHaveBeenCalledWith('/test/dir');
       expect(mockExecGitBlame).toHaveBeenCalledWith('/test/dir', 'file.ts');

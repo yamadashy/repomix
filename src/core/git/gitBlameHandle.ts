@@ -3,35 +3,41 @@ import { execGitBlame } from './gitCommand.js';
 import { isGitRepository } from './gitRepositoryHandle.js';
 
 /**
- * Formats the raw git blame output into a readable string
- * @param blameOutput - The raw output from git blame
- * @returns Formatted string with author, date, and code
+ * Formats the output of 'git blame --porcelain' into readable annotated lines.
+ * @param blameOutput - Raw output from 'git blame --porcelain'
+ * @returns Formatted string with each line annotated by author and date.
  */
 function formatGitBlame(blameOutput: string): string {
-  // Regex breakdown:
-  // ^[a-f0-9]+          - Matches the commit hash at the start of the line (e.g., a2d3c5fed)
-  // \s*                 - Matches optional whitespace
-  // \((.+)              - Group 1: Matches the AUTHOR part (e.g., yamadashy, Kazuki Yamada)
-  // \s+                 - Matches one or more spaces
-  // (\d{4}-\d{2}-\d{2}) - Group 2: Matches the DATE part (e.g., 2025-02-17)
-  // \s+                 - Matches one or more spaces
-  // \d+\)               - Matches the line number inside the parenthesis (e.g., 1)
-  // (.*)                - Group 3: Matches the CODE LINE part, including leading space
-  const blameLineRegex = /^[\^]?[a-f0-9]+\s*\((.+)\s+(\d{4}-\d{2}-\d{2})\s+\d+\)(.*)$/i;
-
   const lines = blameOutput.split('\n');
   const formattedLines: string[] = [];
+  let currentAuthor = 'N/A';
+  let currentDate = 'N/A';
 
   for (const line of lines) {
-    const match = line.match(blameLineRegex);
-    if (match) {
-      const [, rawAuthor, date, codeLineRaw] = match;
-      const author = rawAuthor.trim();
-      const codeLine = codeLineRaw.startsWith(' ') ? codeLineRaw.substring(1) : codeLineRaw;
+    if (!line) continue;
 
-      formattedLines.push(`[${author} ${date}] ${codeLine}`);
-    } else if (line.trim().length > 0) {
-      formattedLines.push(`[N/A N/A] ${line.trim()}`);
+    if (/^[a-f0-9]{40}/.test(line)) {
+      continue;
+    }
+
+    if (line.startsWith('author ')) {
+      currentAuthor = line.substring('author '.length);
+      continue;
+    }
+    if (line.startsWith('author-time ')) {
+      const timestamp = parseInt(line.substring('author-time '.length), 10);
+      if (!Number.isNaN(timestamp)) {
+        currentDate = new Date(timestamp * 1000).toISOString().split('T')[0];
+      }
+      continue;
+    }
+
+    if (line.startsWith('\t')) {
+      const codeLine = line.substring(1);
+      const formattedLine = codeLine
+        ? `[${currentAuthor} ${currentDate}] ${codeLine}`
+        : `[${currentAuthor} ${currentDate}]`;
+      formattedLines.push(formattedLine);
     }
   }
 

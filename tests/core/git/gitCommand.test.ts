@@ -415,7 +415,7 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
           '-C',
           '/test/dir',
           'blame',
-          '--date=short',
+          '--porcelain',
           '-w',
           'file.ts',
         ]);
