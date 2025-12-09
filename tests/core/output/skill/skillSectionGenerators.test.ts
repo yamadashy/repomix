@@ -2,8 +2,6 @@ import { describe, expect, test } from 'vitest';
 import type { RenderContext } from '../../../../src/core/output/outputGeneratorTypes.js';
 import {
   generateFilesSection,
-  generateGitDiffsSection,
-  generateGitLogsSection,
   generateStructureSection,
   generateSummarySection,
 } from '../../../../src/core/output/skill/skillSectionGenerators.js';
@@ -121,81 +119,6 @@ describe('skillSectionGenerators', () => {
 
       expect(result).toContain('## File: Dockerfile');
       expect(result).toContain('FROM node:18');
-    });
-  });
-
-  describe('generateGitDiffsSection', () => {
-    test('should generate git diffs section when enabled', () => {
-      const context = createMockContext({
-        gitDiffEnabled: true,
-        gitDiffWorkTree: '- old line\n+ new line',
-        gitDiffStaged: '- staged old\n+ staged new',
-      });
-      const result = generateGitDiffsSection(context);
-
-      expect(result).not.toBeUndefined();
-      expect(result).toContain('# Git Diffs');
-      expect(result).toContain('## Working Tree Changes');
-      expect(result).toContain('```diff');
-      expect(result).toContain('- old line');
-      expect(result).toContain('+ new line');
-      expect(result).toContain('## Staged Changes');
-      expect(result).toContain('- staged old');
-    });
-
-    test('should return undefined when git diffs are disabled', () => {
-      const context = createMockContext({ gitDiffEnabled: false });
-      const result = generateGitDiffsSection(context);
-
-      expect(result).toBeUndefined();
-    });
-  });
-
-  describe('generateGitLogsSection', () => {
-    test('should generate git logs section when enabled', () => {
-      const context = createMockContext({
-        gitLogEnabled: true,
-        gitLogCommits: [
-          {
-            date: '2024-01-15',
-            message: 'feat: add new feature',
-            files: ['src/index.ts', 'src/feature.ts'],
-          },
-          {
-            date: '2024-01-14',
-            message: 'fix: bug fix',
-            files: ['src/utils.ts'],
-          },
-        ],
-      });
-      const result = generateGitLogsSection(context);
-
-      expect(result).not.toBeUndefined();
-      expect(result).toContain('# Git Logs');
-      expect(result).toContain('## Commit: 2024-01-15');
-      expect(result).toContain('**Message:** feat: add new feature');
-      expect(result).toContain('**Files:**');
-      expect(result).toContain('- src/index.ts');
-      expect(result).toContain('- src/feature.ts');
-      expect(result).toContain('## Commit: 2024-01-14');
-      expect(result).toContain('fix: bug fix');
-    });
-
-    test('should return undefined when git logs are disabled', () => {
-      const context = createMockContext({ gitLogEnabled: false });
-      const result = generateGitLogsSection(context);
-
-      expect(result).toBeUndefined();
-    });
-
-    test('should return undefined when git log commits are undefined', () => {
-      const context = createMockContext({
-        gitLogEnabled: true,
-        gitLogCommits: undefined,
-      });
-      const result = generateGitLogsSection(context);
-
-      expect(result).toBeUndefined();
     });
   });
 });
