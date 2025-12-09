@@ -109,7 +109,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: true,
         }),
       }),
-      { skillDir: undefined },
+      expect.any(Object),
     );
   });
 
@@ -126,7 +126,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: false,
         }),
       }),
-      { skillDir: undefined },
+      expect.any(Object),
     );
   });
 
@@ -157,7 +157,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: true,
         }),
       }),
-      { skillDir: undefined },
+      expect.any(Object),
     );
   });
 
@@ -188,7 +188,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: 50,
         }),
       }),
-      { skillDir: undefined },
+      expect.any(Object),
     );
   });
 });

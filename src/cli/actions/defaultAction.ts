@@ -53,8 +53,6 @@ export const runDefaultAction = async (
   logger.trace('Merged config:', config);
 
   // Validate skill generation options and prompt for location
-  let skillName: string | undefined;
-  let skillDir: string | undefined;
   if (config.skillGenerate !== undefined) {
     if (config.output.stdout) {
       throw new RepomixError(
@@ -68,19 +66,15 @@ export const runDefaultAction = async (
     }
 
     // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
-    skillName =
-      cliOptions.skillName ??
-      (typeof config.skillGenerate === 'string'
+    cliOptions.skillName ??=
+      typeof config.skillGenerate === 'string'
         ? config.skillGenerate
-        : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d))));
+        : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
 
-    // Use pre-computed skillDir if provided (from remoteAction), otherwise prompt
-    if (cliOptions.skillDir) {
-      skillDir = cliOptions.skillDir;
-    } else {
-      // Prompt for skill location (personal or project)
-      const promptResult = await promptSkillLocation(skillName, cwd);
-      skillDir = promptResult.skillDir;
+    // Prompt for skill location if not already set (from remoteAction)
+    if (!cliOptions.skillDir) {
+      const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
+      cliOptions.skillDir = promptResult.skillDir;
     }
   }
 
@@ -119,15 +113,13 @@ export const runDefaultAction = async (
       config,
       cliOptions,
       stdinFilePaths,
-      skillName,
-      skillDir,
     };
 
     // Run the task in worker (spinner is handled inside worker)
     const result = (await taskRunner.run(task)) as DefaultActionWorkerResult;
 
     // Report results in main process
-    reportResults(cwd, result.packResult, result.config, { skillDir });
+    reportResults(cwd, result.packResult, result.config, cliOptions);
 
     return {
       packResult: result.packResult,
