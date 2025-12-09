@@ -46,10 +46,19 @@ export const runSecurityCheck = async (
 
   // Add Git log content for security checking if available
   if (gitLogResult) {
-    if (gitLogResult.logContent) {
+    // Check logCommits content (serialize to string)
+    if (gitLogResult.logCommits && gitLogResult.logCommits.length > 0) {
       gitLogTasks.push({
-        filePath: 'Git log history',
-        content: gitLogResult.logContent,
+        filePath: 'Git log commits',
+        content: JSON.stringify(gitLogResult.logCommits),
+        type: 'gitLog',
+      });
+    }
+    // Check commit graph visualization if available
+    if (gitLogResult.graph) {
+      gitLogTasks.push({
+        filePath: 'Git commit graph',
+        content: gitLogResult.graph.graph,
         type: 'gitLog',
       });
     }

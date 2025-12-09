@@ -19,8 +19,21 @@ export const calculateGitLogMetrics = async (
     };
   }
 
+  // Return zero token count if no commits to count
+  if (!gitLogResult.logCommits || gitLogResult.logCommits.length === 0) {
+    return {
+      gitLogTokenCount: 0,
+    };
+  }
+
+  // Serialize logCommits to string for token counting
+  // Include graph visualization if present for comprehensive token count
+  const graphContent = gitLogResult.graph?.graph || '';
+  const commitsContent = JSON.stringify(gitLogResult.logCommits);
+  const logContent = graphContent + commitsContent;
+
   // Return zero token count if no git log content
-  if (!gitLogResult.logContent) {
+  if (!logContent) {
     return {
       gitLogTokenCount: 0,
     };
@@ -31,7 +44,7 @@ export const calculateGitLogMetrics = async (
     logger.trace('Starting git log token calculation using worker');
 
     const result = await deps.taskRunner.run({
-      content: gitLogResult.logContent,
+      content: logContent,
       encoding: config.tokenCount.encoding,
     });
 

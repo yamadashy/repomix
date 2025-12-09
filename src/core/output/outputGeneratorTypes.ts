@@ -32,6 +32,7 @@ export interface RenderContext {
   readonly gitDiffWorkTree: string | undefined;
   readonly gitDiffStaged: string | undefined;
   readonly gitLogEnabled: boolean;
-  readonly gitLogContent: string | undefined;
   readonly gitLogCommits: GitLogCommit[] | undefined;
+  readonly gitCommitHistorySummary: GitLogResult['summary'] | undefined;
+  readonly gitCommitGraph: GitLogResult['graph'] | undefined;
 }

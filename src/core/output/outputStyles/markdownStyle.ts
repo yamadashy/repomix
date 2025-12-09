@@ -64,14 +64,76 @@ export const getMarkdownTemplate = () => {
 {{#if gitLogEnabled}}
 # Git Logs
 
-{{#each gitLogCommits}}
-## Commit: {{{this.date}}}
-**Message:** {{{this.message}}}
+{{#if gitCommitHistorySummary}}
+## Summary
+- **Total Commits**: {{{gitCommitHistorySummary.totalCommits}}}
+- **Merge Commits**: {{{gitCommitHistorySummary.mergeCommits}}}
+- **Range**: \`{{{gitCommitHistorySummary.range}}}\`
+- **Detail Level**: {{{gitCommitHistorySummary.detailLevel}}}
 
-**Files:**
-{{#each this.files}}
-- {{{this}}}
+{{/if}}
+
+{{#if gitCommitGraph}}
+## Commit Graph
+
+### Topology (ASCII)
+\`\`\`
+{{{gitCommitGraph.graph}}}
+\`\`\`
+
+{{#if gitCommitGraph.mermaidGraph}}
+### Mermaid Diagram
+\`\`\`mermaid
+{{{gitCommitGraph.mermaidGraph}}}
+\`\`\`
+{{/if}}
+
+{{#if gitCommitGraph.tags}}
+### Tags
+{{#each gitCommitGraph.tags}}
+- **{{{@key}}}**: \`{{{this}}}\`
 {{/each}}
+{{/if}}
+
+{{/if}}
+
+## Commits
+
+{{#each gitLogCommits}}
+### Commit: {{{this.date}}}{{#if this.abbreviatedHash}} ({{{this.abbreviatedHash}}}){{/if}}
+
+{{#if this.hash}}
+**Hash**: \`{{{this.hash}}}\`
+{{/if}}
+{{#if this.author}}
+**Author**: {{{this.author.name}}} <{{{this.author.email}}}>
+{{/if}}
+**Message**: {{{this.message}}}
+
+{{#if this.parents}}
+**Parents**: {{#each this.parents}}\`{{{this}}}\` {{/each}}
+
+{{/if}}
+{{#if this.body}}
+**Body**:
+\`\`\`
+{{{this.body}}}
+\`\`\`
+
+{{/if}}
+**Files Changed**:
+{{#each this.files}}
+- \`{{{this}}}\`
+{{/each}}
+
+{{#if this.patch}}
+**Changes**:
+\`\`\`diff
+{{{this.patch}}}
+\`\`\`
+{{/if}}
+
+---
 
 {{/each}}
 {{/if}}

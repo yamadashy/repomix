@@ -241,6 +241,83 @@ src/core/output/outputGenerate.ts
 2025-08-21 00:09:43 +0900|Merge pull request #795 from yamadashy/chore/ratchet-update-ci
 .github/workflows/ratchet-update.yml
 ```
+## Commit History Output
+
+When using `--include-logs` with output verbosity & graph options (e.g., `--include-logs --patch --graph`), the output includes detailed commit metadata and history:
+
+```xml
+<git_logs>
+  <summary>
+    <total_commits>95</total_commits>
+    <merge_commits>12</merge_commits>
+    <range>v1.0..HEAD</range>
+    <detail_level>stat</detail_level>
+  </summary>
+
+  <commit_graph>
+    <ascii_graph>* abc123d feat: Add new feature
+* def4567 Previous commit
+</ascii_graph>
+    <mermaid_graph>gitGraph
+      commit id: "abc123d: feat: Add new feature"
+      commit id: "def4567: Previous commit"
+    </mermaid_graph>
+    <tags>
+      <tag key="v1.0">abc1234567890</tag>
+    </tags>
+  </commit_graph>
+
+  <git_log_commit>
+    <date>2025-11-20T12:00:00Z</date>
+    <message>feat: Add new feature</message>
+    <files>
+src/feature.ts
+tests/feature.test.ts
+    </files>
+    <hash>abc123def456789</hash>
+    <abbreviated_hash>abc123d</abbreviated_hash>
+    <author>
+      <name>John Doe</name>
+      <email>john@example.com</email>
+      <date>2025-11-20T12:00:00Z</date>
+    </author>
+    <committer>
+      <name>John Doe</name>
+      <email>john@example.com</email>
+      <date>2025-11-20T12:00:00Z</date>
+    </committer>
+    <parents>
+      <parent>def456abc789012</parent>
+    </parents>
+    <body>Extended commit message body with additional details.</body>
+    <patch>
+diff --git a/src/feature.ts b/src/feature.ts
+new file mode 100644
+--- /dev/null
++++ b/src/feature.ts
+@@ -0,0 +1,5 @@
++export const newFeature = () => {
++  return 'Hello World';
++};
+    </patch>
+  </git_log_commit>
+</git_logs>
+```
+
+**Diff Format Flags** (mutually exclusive - choose one):
+- `--patch` (git log --patch): Line-by-line diffs (largest output, best for code review)
+- `--stat` (git log --stat): Per-file change counts
+- `--numstat` (git log --numstat): Numeric additions/deletions per file
+- `--shortstat` (git log --shortstat): One-line summary of changes
+- `--dirstat` (git log --dirstat): Directory change distribution
+- `--name-only` (git log --name-only): Filenames only (default)
+- `--name-status` (git log --name-status): Filenames with A/M/D/R status
+- `--raw` (git log --raw): Low-level format with SHA hashes and modes
+
+**Output Verbosity & Graph Options** (combinable with any diff format):
+- `--graph`: Include ASCII and Mermaid commit graph visualization
+- `--summary`: Show file operations (creates, renames, mode changes)
+
 ## Usage with AI Models
 
 Each format works well with AI models, but consider:
