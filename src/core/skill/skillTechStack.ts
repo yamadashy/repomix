@@ -1,4 +1,4 @@
-import type { ProcessedFile } from '../../file/fileTypes.js';
+import type { ProcessedFile } from '../file/fileTypes.js';
 
 interface DependencyInfo {
   name: string;

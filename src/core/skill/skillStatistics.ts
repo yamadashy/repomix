@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { ProcessedFile } from '../../file/fileTypes.js';
+import type { ProcessedFile } from '../file/fileTypes.js';
 
 interface FileTypeStats {
   extension: string;

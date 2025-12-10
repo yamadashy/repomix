@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
-import { writeSkillOutput } from '../../../src/core/packager/writeSkillOutput.js';
+import { writeSkillOutput } from '../../../src/core/skill/writeSkillOutput.js';
 
 describe('writeSkillOutput', () => {
   test('should create skill directory structure and write files', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { generateSkillMd, getSkillTemplate } from '../../../../src/core/output/skill/skillStyle.js';
+import { generateSkillMd, getSkillTemplate } from '../../../src/core/skill/skillStyle.js';
 
 describe('skillStyle', () => {
   describe('getSkillTemplate', () => {

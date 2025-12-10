@@ -22,15 +22,6 @@ import {
 import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
-import {
-  generateFilesSection,
-  generateStructureSection,
-  generateSummarySection,
-} from './skill/skillSectionGenerators.js';
-import { calculateStatistics, generateStatisticsSection } from './skill/skillStatistics.js';
-import { generateSkillMd } from './skill/skillStyle.js';
-import { detectTechStack, generateTechStackMd } from './skill/skillTechStack.js';
-import { generateProjectName, generateSkillDescription, validateSkillName } from './skill/skillUtils.js';
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
   const maxBackticks = files
@@ -48,7 +39,7 @@ const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string
   return lineCounts;
 };
 
-const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -369,134 +360,11 @@ export const buildOutputGeneratorContext = async (
   };
 };
 
-/**
- * References for skill output - each becomes a separate file
- */
-export interface SkillReferences {
-  summary: string;
-  structure: string;
-  files: string;
-  techStack?: string;
-}
-
-/**
- * Result of skill references generation (without SKILL.md)
- */
-export interface SkillReferencesResult {
-  references: SkillReferences;
-  skillName: string;
-  projectName: string;
-  skillDescription: string;
-  totalFiles: number;
-  totalLines: number;
-  statisticsSection: string;
-  hasTechStack: boolean;
-}
-
-/**
- * Result of skill output generation
- */
-export interface SkillOutputResult {
-  skillMd: string;
-  references: SkillReferences;
-}
-
-/**
- * Generates skill reference files (summary, structure, files, tech-stack).
- * This is the first step - call this, calculate metrics, then call generateSkillMdFromReferences.
- */
-export const generateSkillReferences = async (
-  skillName: string,
-  rootDirs: string[],
-  config: RepomixConfigMerged,
-  processedFiles: ProcessedFile[],
-  allFilePaths: string[],
-  gitDiffResult: GitDiffResult | undefined = undefined,
-  gitLogResult: GitLogResult | undefined = undefined,
-  deps = {
-    buildOutputGeneratorContext,
-    sortOutputFiles,
-  },
-): Promise<SkillReferencesResult> => {
-  // Validate and normalize skill name
-  const normalizedSkillName = validateSkillName(skillName);
-
-  // Generate project name from root directories
-  const projectName = generateProjectName(rootDirs);
-
-  // Generate skill description
-  const skillDescription = generateSkillDescription(normalizedSkillName, projectName);
-
-  // Sort processed files by git change count if enabled
-  const sortedProcessedFiles = await deps.sortOutputFiles(processedFiles, config);
-
-  // Build output generator context with markdown style
-  const markdownConfig: RepomixConfigMerged = {
-    ...config,
-    output: {
-      ...config.output,
-      style: 'markdown',
-    },
-  };
-
-  const outputGeneratorContext = await deps.buildOutputGeneratorContext(
-    rootDirs,
-    markdownConfig,
-    allFilePaths,
-    sortedProcessedFiles,
-    gitDiffResult,
-    gitLogResult,
-  );
-  const renderContext = createRenderContext(outputGeneratorContext);
-
-  // Calculate statistics
-  const statistics = calculateStatistics(sortedProcessedFiles, renderContext.fileLineCounts);
-  const statisticsSection = generateStatisticsSection(statistics);
-
-  // Detect tech stack
-  const techStack = detectTechStack(sortedProcessedFiles);
-  const techStackMd = techStack ? generateTechStackMd(techStack) : undefined;
-
-  // Generate each section separately
-  const references: SkillReferences = {
-    summary: generateSummarySection(renderContext, statisticsSection),
-    structure: generateStructureSection(renderContext),
-    files: generateFilesSection(renderContext),
-    techStack: techStackMd,
-  };
-
-  return {
-    references,
-    skillName: normalizedSkillName,
-    projectName,
-    skillDescription,
-    totalFiles: sortedProcessedFiles.length,
-    totalLines: statistics.totalLines,
-    statisticsSection,
-    hasTechStack: techStack !== null,
-  };
-};
-
-/**
- * Generates SKILL.md content from references result and token count.
- * This is the second step - call after calculating metrics.
- */
-export const generateSkillMdFromReferences = (
-  referencesResult: SkillReferencesResult,
-  totalTokens: number,
-): SkillOutputResult => {
-  const skillMd = generateSkillMd({
-    skillName: referencesResult.skillName,
-    skillDescription: referencesResult.skillDescription,
-    projectName: referencesResult.projectName,
-    totalFiles: referencesResult.totalFiles,
-    totalLines: referencesResult.totalLines,
-    totalTokens,
-    hasTechStack: referencesResult.hasTechStack,
-  });
-
-  return {
-    skillMd,
-    references: referencesResult.references,
-  };
-};
+// Re-export skill types and functions from packSkill.ts for backward compatibility
+export {
+  generateSkillMdFromReferences,
+  generateSkillReferences,
+  type SkillOutputResult,
+  type SkillReferences,
+  type SkillReferencesResult,
+} from '../skill/packSkill.js';

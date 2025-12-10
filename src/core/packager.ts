@@ -9,13 +9,12 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics } from './metrics/calculateMetrics.js';
-import { generateOutput, generateSkillMdFromReferences, generateSkillReferences } from './output/outputGenerate.js';
-import { generateDefaultSkillName } from './output/skill/skillUtils.js';
+import { generateOutput } from './output/outputGenerate.js';
 import { copyToClipboardIfEnabled } from './packager/copyToClipboardIfEnabled.js';
 import { writeOutputToDisk } from './packager/writeOutputToDisk.js';
-import { writeSkillOutput } from './packager/writeSkillOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
+import { packSkill } from './skill/packSkill.js';
 
 export interface PackResult {
   totalFiles: number;
@@ -38,17 +37,14 @@ const defaultDeps = {
   collectFiles,
   processFiles,
   generateOutput,
-  generateSkillReferences,
-  generateSkillMdFromReferences,
-  generateDefaultSkillName,
   validateFileSafety,
   writeOutputToDisk,
-  writeSkillOutput,
   copyToClipboardIfEnabled,
   calculateMetrics,
   sortPaths,
   getGitDiffs,
   getGitLogs,
+  packSkill,
 };
 
 export interface PackOptions {
@@ -130,59 +126,37 @@ export const pack = async (
 
   progressCallback('Generating output...');
 
-  let output: string;
-
   // Check if skill generation is requested
   if (config.skillGenerate !== undefined && options.skillDir) {
-    // Use pre-computed skill name or generate from directories
-    const skillName =
-      options.skillName ??
-      (typeof config.skillGenerate === 'string' ? config.skillGenerate : deps.generateDefaultSkillName(rootDirs));
+    const result = await deps.packSkill({
+      rootDirs,
+      config,
+      options,
+      processedFiles,
+      allFilePaths,
+      gitDiffResult,
+      gitLogResult,
+      suspiciousFilesResults,
+      suspiciousGitDiffResults,
+      suspiciousGitLogResults,
+      safeFilePaths,
+      skippedFiles: allSkippedFiles,
+      progressCallback,
+    });
 
-    // Step 1: Generate skill references (summary, structure, files, git-diffs, git-logs)
-    const skillReferencesResult = await withMemoryLogging('Generate Skill References', () =>
-      deps.generateSkillReferences(
-        skillName,
-        rootDirs,
-        config,
-        processedFiles,
-        allFilePaths,
-        gitDiffResult,
-        gitLogResult,
-      ),
-    );
-
-    // Step 2: Calculate metrics from files section to get accurate token count
-    const skillMetrics = await withMemoryLogging('Calculate Skill Metrics', () =>
-      deps.calculateMetrics(
-        processedFiles,
-        skillReferencesResult.references.files,
-        progressCallback,
-        config,
-        gitDiffResult,
-        gitLogResult,
-      ),
-    );
-
-    // Step 3: Generate SKILL.md with accurate token count
-    const skillOutput = deps.generateSkillMdFromReferences(skillReferencesResult, skillMetrics.totalTokens);
-
-    progressCallback('Writing skill output...');
-    const skillDir = options.skillDir;
-    await withMemoryLogging('Write Skill Output', () => deps.writeSkillOutput(skillOutput, skillDir));
-
-    // Use files section for final metrics (most representative of content size)
-    output = skillOutput.references.files;
-  } else {
-    output = await withMemoryLogging('Generate Output', () =>
-      deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
-    );
-
-    progressCallback('Writing output file...');
-    await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
-
-    await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+    logMemoryUsage('Pack - End');
+    return result;
   }
+
+  // Normal output generation
+  const output = await withMemoryLogging('Generate Output', () =>
+    deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
+  );
+
+  progressCallback('Writing output file...');
+  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+
+  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
 
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
     deps.calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, gitLogResult),

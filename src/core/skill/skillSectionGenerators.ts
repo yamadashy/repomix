@@ -1,7 +1,7 @@
 import Handlebars from 'handlebars';
-import { generateTreeStringWithLineCounts } from '../../file/fileTreeGenerate.js';
-import type { RenderContext } from '../outputGeneratorTypes.js';
-import { getLanguageFromFilePath } from '../outputStyleUtils.js';
+import { generateTreeStringWithLineCounts } from '../file/fileTreeGenerate.js';
+import type { RenderContext } from '../output/outputGeneratorTypes.js';
+import { getLanguageFromFilePath } from '../output/outputStyleUtils.js';
 
 /**
  * Generates the summary section for skill output.

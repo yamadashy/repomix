@@ -4,7 +4,7 @@ import {
   generateSkillDescription,
   toKebabCase,
   validateSkillName,
-} from '../../../../src/core/output/skill/skillUtils.js';
+} from '../../../src/core/skill/skillUtils.js';
 
 describe('skillUtils', () => {
   describe('toKebabCase', () => {

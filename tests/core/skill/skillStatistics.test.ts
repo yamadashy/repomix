@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import type { ProcessedFile } from '../../../../src/core/file/fileTypes.js';
-import { calculateStatistics, generateStatisticsSection } from '../../../../src/core/output/skill/skillStatistics.js';
+import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
+import { calculateStatistics, generateStatisticsSection } from '../../../src/core/skill/skillStatistics.js';
 
 describe('skillStatistics', () => {
   describe('calculateStatistics', () => {

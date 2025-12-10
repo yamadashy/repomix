@@ -7,7 +7,7 @@ import { downloadGitHubArchive, isArchiveDownloadSupported } from '../../core/gi
 import { getRemoteRefs } from '../../core/git/gitRemoteHandle.js';
 import { isGitHubRepository, parseGitHubRepoInfo, parseRemoteValue } from '../../core/git/gitRemoteParse.js';
 import { isGitInstalled } from '../../core/git/gitRepositoryHandle.js';
-import { generateDefaultSkillNameFromUrl } from '../../core/output/skill/skillUtils.js';
+import { generateDefaultSkillNameFromUrl } from '../../core/skill/skillUtils.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';

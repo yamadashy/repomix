@@ -8,8 +8,8 @@ import {
   repomixConfigCliSchema,
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
-import { generateDefaultSkillName } from '../../core/output/skill/skillUtils.js';
 import type { PackResult } from '../../core/packager.js';
+import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import type { ProcessedFile } from '../../../../src/core/file/fileTypes.js';
-import { detectTechStack, generateTechStackMd } from '../../../../src/core/output/skill/skillTechStack.js';
+import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
+import { detectTechStack, generateTechStackMd } from '../../../src/core/skill/skillTechStack.js';
 
 describe('skillTechStack', () => {
   describe('detectTechStack', () => {
