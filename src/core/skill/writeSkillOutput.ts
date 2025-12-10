@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { RepomixError } from '../../shared/errorHandle.js';
-import type { SkillOutputResult } from '../output/outputGenerate.js';
+import type { SkillOutputResult } from './packSkill.js';
 
 /**
  * Writes skill output to the filesystem.

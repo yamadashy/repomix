@@ -359,12 +359,3 @@ export const buildOutputGeneratorContext = async (
     gitLogResult,
   };
 };
-
-// Re-export skill types and functions from packSkill.ts for backward compatibility
-export {
-  generateSkillMdFromReferences,
-  generateSkillReferences,
-  type SkillOutputResult,
-  type SkillReferences,
-  type SkillReferencesResult,
-} from '../skill/packSkill.js';
