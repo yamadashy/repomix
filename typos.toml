@@ -11,3 +11,7 @@ ignore-hidden = false
 extend-ignore-re = [
     "Việt Nam",
 ]
+
+[default.extend-words]
+# "styl" is the file extension for Stylus CSS preprocessor
+styl = "styl"

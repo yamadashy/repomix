@@ -1,6 +1,0 @@
-# Configuration for typos spell checker
-# https://github.com/crate-ci/typos
-
-[default.extend-words]
-# "styl" is the file extension for Stylus CSS preprocessor
-styl = "styl"
