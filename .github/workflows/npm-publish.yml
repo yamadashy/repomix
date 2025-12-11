@@ -52,8 +52,8 @@ jobs:
 
       - name: Publish (dry-run)
         if: ${{ inputs.dry-run }}
-        run: npm publish --provenance --dry-run
+        run: npm publish --provenance --access public --dry-run
 
       - name: Publish
         if: ${{ !inputs.dry-run }}
-        run: npm publish --provenance
+        run: npm publish --provenance --access public
