@@ -130,7 +130,7 @@ export const repomixConfigDefaultSchema = z.object({
 // File-specific schema. Add options for file path and style
 export const repomixConfigFileSchema = repomixConfigBaseSchema;
 
-// CLI-specific schema. Add options for standard output mode
+// CLI-specific schema. Add options for standard output mode and skill generation
 export const repomixConfigCliSchema = repomixConfigBaseSchema.and(
   z.object({
     output: z
@@ -138,6 +138,7 @@ export const repomixConfigCliSchema = repomixConfigBaseSchema.and(
         stdout: z.boolean().optional(),
       })
       .optional(),
+    skillGenerate: z.union([z.string(), z.boolean()]).optional(),
   }),
 );
 

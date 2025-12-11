@@ -8,9 +8,25 @@ import { logger } from '../shared/logger.js';
 import { reportTokenCountTree } from './reporters/tokenCountTreeReporter.js';
 
 /**
+ * Convert an absolute path to a relative path if it's under cwd, otherwise return as-is.
+ */
+export const getDisplayPath = (absolutePath: string, cwd: string): string => {
+  return absolutePath.startsWith(cwd) ? path.relative(cwd, absolutePath) : absolutePath;
+};
+
+export interface ReportOptions {
+  skillDir?: string;
+}
+
+/**
  * Reports the results of packing operation including top files, security check, summary, and completion.
  */
-export const reportResults = (cwd: string, packResult: PackResult, config: RepomixConfigMerged): void => {
+export const reportResults = (
+  cwd: string,
+  packResult: PackResult,
+  config: RepomixConfigMerged,
+  options: ReportOptions = {},
+): void => {
   logger.log('');
 
   if (config.output.topFilesLength > 0) {
@@ -40,13 +56,18 @@ export const reportResults = (cwd: string, packResult: PackResult, config: Repom
   reportSkippedFiles(cwd, packResult.skippedFiles);
   logger.log('');
 
-  reportSummary(packResult, config);
+  reportSummary(cwd, packResult, config, options);
   logger.log('');
 
   reportCompletion();
 };
 
-export const reportSummary = (packResult: PackResult, config: RepomixConfigMerged) => {
+export const reportSummary = (
+  cwd: string,
+  packResult: PackResult,
+  config: RepomixConfigMerged,
+  options: ReportOptions = {},
+) => {
   let securityCheckMessage = '';
   if (config.security.enableSecurityCheck) {
     if (packResult.suspiciousFilesResults.length > 0) {
@@ -65,7 +86,16 @@ export const reportSummary = (packResult: PackResult, config: RepomixConfigMerge
   logger.log(`${pc.white('  Total Files:')} ${pc.white(packResult.totalFiles.toLocaleString())} files`);
   logger.log(`${pc.white(' Total Tokens:')} ${pc.white(packResult.totalTokens.toLocaleString())} tokens`);
   logger.log(`${pc.white('  Total Chars:')} ${pc.white(packResult.totalCharacters.toLocaleString())} chars`);
-  logger.log(`${pc.white('       Output:')} ${pc.white(config.output.filePath)}`);
+
+  // Show skill output path or regular output path
+  if (config.skillGenerate !== undefined && options.skillDir) {
+    const displayPath = getDisplayPath(options.skillDir, cwd);
+    logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)} ${pc.dim('(skill directory)')}`);
+  } else {
+    const outputPath = path.resolve(cwd, config.output.filePath);
+    const displayPath = getDisplayPath(outputPath, cwd);
+    logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)}`);
+  }
   logger.log(`${pc.white('     Security:')} ${pc.white(securityCheckMessage)}`);
 
   if (config.output.git?.includeDiffs) {

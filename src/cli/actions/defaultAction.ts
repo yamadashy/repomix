@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import {
   type RepomixConfigCli,
@@ -8,11 +9,13 @@ import {
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import type { PackResult } from '../../core/packager.js';
+import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { initTaskRunner } from '../../shared/processConcurrency.js';
 import { reportResults } from '../cliReport.js';
+import { promptSkillLocation } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
 import type {
@@ -48,6 +51,32 @@ export const runDefaultAction = async (
   // Merge default, file, and CLI configs
   const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
   logger.trace('Merged config:', config);
+
+  // Validate skill generation options and prompt for location
+  if (config.skillGenerate !== undefined) {
+    if (config.output.stdout) {
+      throw new RepomixError(
+        '--skill-generate cannot be used with --stdout. Skill output requires writing to filesystem.',
+      );
+    }
+    if (config.output.copyToClipboard) {
+      throw new RepomixError(
+        '--skill-generate cannot be used with --copy. Skill output is a directory and cannot be copied to clipboard.',
+      );
+    }
+
+    // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
+    cliOptions.skillName ??=
+      typeof config.skillGenerate === 'string'
+        ? config.skillGenerate
+        : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
+
+    // Prompt for skill location if not already set (from remoteAction)
+    if (!cliOptions.skillDir) {
+      const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
+      cliOptions.skillDir = promptResult.skillDir;
+    }
+  }
 
   // Handle stdin processing in main process (before worker creation)
   // This is necessary because child_process workers don't inherit stdin
@@ -90,7 +119,7 @@ export const runDefaultAction = async (
     const result = (await taskRunner.run(task)) as DefaultActionWorkerResult;
 
     // Report results in main process
-    reportResults(cwd, result.packResult, result.config);
+    reportResults(cwd, result.packResult, result.config, cliOptions);
 
     return {
       packResult: result.packResult,
@@ -285,6 +314,11 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
       ...cliConfig.output,
       tokenCountTree: options.tokenCountTree,
     };
+  }
+
+  // Skill generation
+  if (options.skillGenerate !== undefined) {
+    cliConfig.skillGenerate = options.skillGenerate;
   }
 
   try {

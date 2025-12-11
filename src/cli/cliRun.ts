@@ -168,6 +168,12 @@ export const run = async () => {
       // MCP
       .optionsGroup('MCP')
       .option('--mcp', 'Run as Model Context Protocol server for AI tool integration')
+      // Skill Generation
+      .optionsGroup('Skill Generation (Experimental)')
+      .option(
+        '--skill-generate [name]',
+        'Generate Claude Agent Skills format output to .claude/skills/<name>/ directory (name auto-generated if omitted)',
+      )
       .action(commanderActionEndpoint);
 
     // Custom error handling function

@@ -55,6 +55,11 @@ export interface CliOptions extends OptionValues {
   // MCP
   mcp?: boolean;
 
+  // Skill Generation
+  skillGenerate?: string | boolean;
+  skillName?: string; // Pre-computed skill name (used internally for remote repos)
+  skillDir?: string; // Pre-computed skill directory (used internally for remote repos)
+
   // Other Options
   topFilesLen?: number;
   verbose?: boolean;

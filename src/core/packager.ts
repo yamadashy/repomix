@@ -14,6 +14,7 @@ import { copyToClipboardIfEnabled } from './packager/copyToClipboardIfEnabled.js
 import { writeOutputToDisk } from './packager/writeOutputToDisk.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
+import { packSkill } from './skill/packSkill.js';
 
 export interface PackResult {
   totalFiles: number;
@@ -43,7 +44,13 @@ const defaultDeps = {
   sortPaths,
   getGitDiffs,
   getGitLogs,
+  packSkill,
 };
+
+export interface PackOptions {
+  skillName?: string;
+  skillDir?: string;
+}
 
 export const pack = async (
   rootDirs: string[],
@@ -51,6 +58,7 @@ export const pack = async (
   progressCallback: RepomixProgressCallback = () => {},
   overrideDeps: Partial<typeof defaultDeps> = {},
   explicitFiles?: string[],
+  options: PackOptions = {},
 ): Promise<PackResult> => {
   const deps = {
     ...defaultDeps,
@@ -117,6 +125,30 @@ export const pack = async (
   );
 
   progressCallback('Generating output...');
+
+  // Check if skill generation is requested
+  if (config.skillGenerate !== undefined && options.skillDir) {
+    const result = await deps.packSkill({
+      rootDirs,
+      config,
+      options,
+      processedFiles,
+      allFilePaths,
+      gitDiffResult,
+      gitLogResult,
+      suspiciousFilesResults,
+      suspiciousGitDiffResults,
+      suspiciousGitLogResults,
+      safeFilePaths,
+      skippedFiles: allSkippedFiles,
+      progressCallback,
+    });
+
+    logMemoryUsage('Pack - End');
+    return result;
+  }
+
+  // Normal output generation
   const output = await withMemoryLogging('Generate Output', () =>
     deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
   );

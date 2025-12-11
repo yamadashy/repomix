@@ -7,9 +7,11 @@ import { downloadGitHubArchive, isArchiveDownloadSupported } from '../../core/gi
 import { getRemoteRefs } from '../../core/git/gitRemoteHandle.js';
 import { isGitHubRepository, parseGitHubRepoInfo, parseRemoteValue } from '../../core/git/gitRemoteParse.js';
 import { isGitInstalled } from '../../core/git/gitRepositoryHandle.js';
+import { generateDefaultSkillNameFromUrl } from '../../core/skill/skillUtils.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
+import { promptSkillLocation, type SkillLocation } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { type DefaultActionRunnerResult, runDefaultAction } from './defaultAction.js';
 
@@ -88,14 +90,37 @@ export const runRemoteAction = async (
       downloadMethod = 'git';
     }
 
-    // Run the default action on the downloaded/cloned repository
-    result = await deps.runDefaultAction([tempDirPath], tempDirPath, cliOptions);
+    // For skill generation, prompt for location using current directory (not temp directory)
+    let skillName: string | undefined;
+    let skillDir: string | undefined;
+    let skillLocation: SkillLocation | undefined;
+    if (cliOptions.skillGenerate !== undefined) {
+      skillName =
+        typeof cliOptions.skillGenerate === 'string'
+          ? cliOptions.skillGenerate
+          : generateDefaultSkillNameFromUrl(repoUrl);
 
-    // Copy output file only when not in stdout mode
-    // In stdout mode, output is written directly to stdout without creating a file,
-    // so attempting to copy a non-existent file would cause an error and exit code 1
+      const promptResult = await promptSkillLocation(skillName, process.cwd());
+      skillDir = promptResult.skillDir;
+      skillLocation = promptResult.location;
+    }
+
+    // Run the default action on the downloaded/cloned repository
+    // Pass the pre-computed skill name and directory
+    const optionsWithSkill = { ...cliOptions, skillName, skillDir };
+    result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithSkill);
+
+    // Copy output to current directory
+    // Skip copy for stdout mode (output goes directly to stdout)
+    // For skill generation with project location, copy the skill directory
+    // For personal location, skill is already written to ~/.claude/skills/
     if (!cliOptions.stdout) {
-      await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
+      if (result.config.skillGenerate !== undefined && skillLocation === 'project') {
+        // Copy skill directory to current directory (only for project skills)
+        await copySkillOutputToCurrentDirectory(tempDirPath, process.cwd());
+      } else if (result.config.skillGenerate === undefined) {
+        await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
+      }
     }
 
     logger.trace(`Repository obtained via ${downloadMethod} method`);
@@ -181,6 +206,40 @@ export const cloneRepository = async (
 export const cleanupTempDirectory = async (directory: string): Promise<void> => {
   logger.trace(`Cleaning up temporary directory: ${directory}`);
   await fs.rm(directory, { recursive: true, force: true });
+};
+
+export const copySkillOutputToCurrentDirectory = async (sourceDir: string, targetDir: string): Promise<void> => {
+  const sourceClaudeDir = path.join(sourceDir, '.claude');
+  const targetClaudeDir = path.join(targetDir, '.claude');
+
+  try {
+    // Check if source .claude directory exists
+    await fs.access(sourceClaudeDir);
+  } catch {
+    // No skill output was generated
+    logger.trace('No .claude directory found in source, skipping skill output copy');
+    return;
+  }
+
+  try {
+    logger.trace(`Copying skill output from: ${sourceClaudeDir} to: ${targetClaudeDir}`);
+
+    // Copy the entire .claude directory
+    await fs.cp(sourceClaudeDir, targetClaudeDir, { recursive: true });
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+
+    if (nodeError.code === 'EPERM' || nodeError.code === 'EACCES') {
+      throw new RepomixError(
+        `Failed to copy skill output to ${targetClaudeDir}: Permission denied.
+
+The current directory may be protected or require elevated permissions.
+Please try running from a different directory (e.g., your home directory or Documents folder).`,
+      );
+    }
+
+    throw new RepomixError(`Failed to copy skill output: ${(error as Error).message}`);
+  }
 };
 
 export const copyOutputToCurrentDirectory = async (

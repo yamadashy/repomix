@@ -44,6 +44,9 @@ repomix-output.json
 # repomix runner
 .repomix/
 
+# repomix references
+.claude/skills/repomix-reference-*/
+
 # Agent
 /.mcp.json
 .agents/local/

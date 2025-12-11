@@ -55,6 +55,9 @@ async function defaultActionWorker(
   let packResult: PackResult;
 
   try {
+    const { skillName, skillDir } = cliOptions;
+    const packOptions = { skillName, skillDir };
+
     if (stdinFilePaths) {
       // Handle stdin processing with file paths from main process
       // File paths were already read from stdin in the main process
@@ -69,14 +72,22 @@ async function defaultActionWorker(
         },
         {},
         stdinFilePaths,
+        packOptions,
       );
     } else {
       // Handle directory processing
       const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
 
-      packResult = await pack(targetPaths, config, (message) => {
-        spinner.update(message);
-      });
+      packResult = await pack(
+        targetPaths,
+        config,
+        (message) => {
+          spinner.update(message);
+        },
+        {},
+        undefined,
+        packOptions,
+      );
     }
 
     spinner.succeed('Packing completed successfully!');
