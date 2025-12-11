@@ -236,15 +236,8 @@ export const packSkill = async (params: PackSkillParams, deps = defaultDeps): Pr
   progressCallback('Writing skill output...');
   await withMemoryLogging('Write Skill Output', () => deps.writeSkillOutput(skillOutput, skillDir));
 
-  // Use files section for final metrics (most representative of content size)
-  const output = skillOutput.references.files;
-
-  const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, gitLogResult),
-  );
-
   return {
-    ...metrics,
+    ...skillMetrics,
     suspiciousFilesResults,
     suspiciousGitDiffResults,
     suspiciousGitLogResults,

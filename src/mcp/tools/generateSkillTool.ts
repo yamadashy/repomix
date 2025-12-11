@@ -3,7 +3,9 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { runCli } from '../../cli/cliRun.js';
+import { getSkillBaseDir } from '../../cli/prompts/skillPrompts.js';
 import type { CliOptions } from '../../cli/types.js';
+import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { buildMcpToolErrorResponse, buildMcpToolSuccessResponse, convertErrorToJson } from './mcpToolRuntime.js';
 
 const generateSkillInputSchema = z.object({
@@ -76,9 +78,15 @@ Example Paths:
     },
     async ({ directory, skillName, compress, includePatterns, ignorePatterns }): Promise<CallToolResult> => {
       try {
-        // skillGenerate can be a string (explicit name) or true (auto-generate)
+        // Pre-compute skill name and directory to avoid interactive prompts
+        // MCP is non-interactive, so we must specify skillDir explicitly
+        const actualSkillName = skillName ?? generateDefaultSkillName([directory]);
+        const skillDir = path.join(getSkillBaseDir(directory, 'project'), actualSkillName);
+
         const cliOptions = {
-          skillGenerate: skillName ?? true,
+          skillGenerate: actualSkillName,
+          skillName: actualSkillName,
+          skillDir,
           compress,
           include: includePatterns,
           ignore: ignorePatterns,
@@ -93,18 +101,14 @@ Example Paths:
           });
         }
 
-        const { packResult, config } = result;
-        // Get the actual skill name from config (may be auto-generated)
-        const actualSkillName =
-          typeof config.skillGenerate === 'string' ? config.skillGenerate : skillName || 'repomix-reference';
-        const skillPath = path.join(directory, '.claude', 'skills', actualSkillName);
+        const { packResult } = result;
 
         return buildMcpToolSuccessResponse({
-          skillPath,
+          skillPath: skillDir,
           skillName: actualSkillName,
           totalFiles: packResult.totalFiles,
           totalTokens: packResult.totalTokens,
-          description: `Successfully generated Claude Agent Skill at ${skillPath}. The skill contains ${packResult.totalFiles} files with ${packResult.totalTokens.toLocaleString()} tokens.`,
+          description: `Successfully generated Claude Agent Skill at ${skillDir}. The skill contains ${packResult.totalFiles} files with ${packResult.totalTokens.toLocaleString()} tokens.`,
         } satisfies z.infer<typeof generateSkillOutputSchema>);
       } catch (error) {
         return buildMcpToolErrorResponse(convertErrorToJson(error));
