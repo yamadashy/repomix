@@ -2,6 +2,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import { getSkillBaseDir, promptSkillLocation } from '../../../src/cli/prompts/skillPrompts.js';
+import { OperationCancelledError } from '../../../src/shared/errorHandle.js';
 
 // Helper to create mock deps with proper typing
 const createMockDeps = (overrides: {
@@ -74,27 +75,19 @@ describe('skillPrompts', () => {
       expect(result.location).toBe('personal');
     });
 
-    test('should exit when select is cancelled', async () => {
-      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
-        throw new Error('process.exit called');
-      });
-
+    test('should throw OperationCancelledError when select is cancelled', async () => {
       const mockDeps = createMockDeps({
         selectValue: Symbol('cancel'),
         isCancelFn: () => true,
         accessRejects: true,
       });
 
-      await expect(promptSkillLocation('test-skill', '/test/project', mockDeps)).rejects.toThrow('process.exit called');
-
-      mockExit.mockRestore();
+      await expect(promptSkillLocation('test-skill', '/test/project', mockDeps)).rejects.toThrow(
+        OperationCancelledError,
+      );
     });
 
-    test('should exit when overwrite is declined', async () => {
-      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
-        throw new Error('process.exit called');
-      });
-
+    test('should throw OperationCancelledError when overwrite is declined', async () => {
       const mockDeps = createMockDeps({
         selectValue: 'personal',
         confirmValue: false,
@@ -102,16 +95,12 @@ describe('skillPrompts', () => {
         accessRejects: false, // Directory exists
       });
 
-      await expect(promptSkillLocation('test-skill', '/test/project', mockDeps)).rejects.toThrow('process.exit called');
-
-      mockExit.mockRestore();
+      await expect(promptSkillLocation('test-skill', '/test/project', mockDeps)).rejects.toThrow(
+        OperationCancelledError,
+      );
     });
 
-    test('should exit when confirm is cancelled', async () => {
-      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
-        throw new Error('process.exit called');
-      });
-
+    test('should throw OperationCancelledError when confirm is cancelled', async () => {
       let callCount = 0;
       const mockDeps = createMockDeps({
         selectValue: 'personal',
@@ -124,9 +113,9 @@ describe('skillPrompts', () => {
         accessRejects: false, // Directory exists
       });
 
-      await expect(promptSkillLocation('test-skill', '/test/project', mockDeps)).rejects.toThrow('process.exit called');
-
-      mockExit.mockRestore();
+      await expect(promptSkillLocation('test-skill', '/test/project', mockDeps)).rejects.toThrow(
+        OperationCancelledError,
+      );
     });
   });
 });

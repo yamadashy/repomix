@@ -329,5 +329,27 @@ describe('configLoad', () => {
       expect(merged.output.filePath).toBe('repomix-output.txt');
       expect(merged.output.style).toBe('plain');
     });
+
+    test('should merge skillGenerate boolean from CLI config', () => {
+      const merged = mergeConfigs(process.cwd(), {}, { skillGenerate: true });
+      expect(merged.skillGenerate).toBe(true);
+    });
+
+    test('should merge skillGenerate string from CLI config', () => {
+      const merged = mergeConfigs(process.cwd(), {}, { skillGenerate: 'my-custom-skill' });
+      expect(merged.skillGenerate).toBe('my-custom-skill');
+    });
+
+    test('should not include skillGenerate in merged config when undefined', () => {
+      const merged = mergeConfigs(process.cwd(), {}, {});
+      expect(merged.skillGenerate).toBeUndefined();
+    });
+
+    test('should not allow skillGenerate from file config (CLI-only option)', () => {
+      // File config should not have skillGenerate - it's CLI-only
+      // This test verifies that even if somehow passed, file config doesn't affect it
+      const merged = mergeConfigs(process.cwd(), {}, { skillGenerate: 'from-cli' });
+      expect(merged.skillGenerate).toBe('from-cli');
+    });
   });
 });

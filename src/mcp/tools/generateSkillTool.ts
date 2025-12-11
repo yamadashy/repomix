@@ -73,7 +73,7 @@ Example Paths:
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
-        idempotentHint: false,
+        idempotentHint: true,
         openWorldHint: false,
       },
     },
@@ -83,6 +83,14 @@ Example Paths:
         if (!path.isAbsolute(directory)) {
           return buildMcpToolErrorResponse({
             errorMessage: `Directory must be an absolute path: ${directory}`,
+          });
+        }
+
+        // Validate directory path is normalized (no .., ., or redundant separators)
+        const normalizedDirectory = path.normalize(directory);
+        if (normalizedDirectory !== directory) {
+          return buildMcpToolErrorResponse({
+            errorMessage: `Directory path must be normalized. Use "${normalizedDirectory}" instead of "${directory}"`,
           });
         }
 

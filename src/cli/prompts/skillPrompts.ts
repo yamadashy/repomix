@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import * as prompts from '@clack/prompts';
 import pc from 'picocolors';
+import { OperationCancelledError } from '../../shared/errorHandle.js';
 import { getDisplayPath } from '../cliReport.js';
 
 export type SkillLocation = 'personal' | 'project';
@@ -12,9 +13,9 @@ export interface SkillPromptResult {
   skillDir: string;
 }
 
-const onCancelOperation = () => {
+const onCancelOperation = (): never => {
   prompts.cancel('Skill generation cancelled.');
-  process.exit(0);
+  throw new OperationCancelledError('Skill generation cancelled');
 };
 
 /**

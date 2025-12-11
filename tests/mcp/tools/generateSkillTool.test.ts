@@ -50,6 +50,7 @@ describe('GenerateSkillTool', () => {
     vi.mocked(path.join).mockImplementation((...args: string[]) => args.join('/'));
     vi.mocked(path.basename).mockImplementation((p: string) => p.split('/').pop() || '');
     vi.mocked(path.resolve).mockImplementation((...args: string[]) => args.join('/'));
+    vi.mocked(path.normalize).mockImplementation((p: string) => p);
 
     // Default: directory doesn't exist (for skill dir check)
     vi.mocked(fs.access).mockRejectedValue(new Error('ENOENT'));
@@ -87,6 +88,22 @@ describe('GenerateSkillTool', () => {
     expect(content.type).toBe('text');
     const parsedResult = JSON.parse((content as { type: 'text'; text: string }).text);
     expect(parsedResult.errorMessage).toContain('absolute path');
+  });
+
+  test('should reject non-normalized paths', async () => {
+    vi.mocked(path.isAbsolute).mockReturnValue(true);
+    vi.mocked(path.normalize).mockReturnValue('/test/project');
+
+    const result = await toolHandler({
+      directory: '/test/../test/project',
+    });
+
+    expect(result.isError).toBe(true);
+    const content = result.content[0];
+    expect(content.type).toBe('text');
+    const parsedResult = JSON.parse((content as { type: 'text'; text: string }).text);
+    expect(parsedResult.errorMessage).toContain('must be normalized');
+    expect(parsedResult.errorMessage).toContain('/test/project');
   });
 
   test('should reject inaccessible directories', async () => {

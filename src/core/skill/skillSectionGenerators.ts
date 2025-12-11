@@ -1,7 +1,10 @@
 import Handlebars from 'handlebars';
 import { generateTreeStringWithLineCounts } from '../file/fileTreeGenerate.js';
 import type { RenderContext } from '../output/outputGeneratorTypes.js';
-import { getLanguageFromFilePath } from '../output/outputStyleUtils.js';
+import { registerHandlebarsHelpers } from '../output/outputStyleUtils.js';
+
+// Register Handlebars helpers (idempotent)
+registerHandlebarsHelpers();
 
 /**
  * Generates the summary section for skill output.
@@ -74,13 +77,6 @@ export const generateStructureSection = (context: RenderContext): string => {
 export const generateFilesSection = (context: RenderContext): string => {
   if (!context.filesEnabled) {
     return '';
-  }
-
-  // Register the helper if not already registered
-  if (!Handlebars.helpers.getFileExtension) {
-    Handlebars.registerHelper('getFileExtension', (filePath: string) => {
-      return getLanguageFromFilePath(filePath);
-    });
   }
 
   const template = Handlebars.compile(`# Files

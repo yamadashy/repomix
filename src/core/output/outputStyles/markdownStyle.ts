@@ -1,5 +1,7 @@
-import Handlebars from 'handlebars';
-import { getLanguageFromFilePath } from '../outputStyleUtils.js';
+import { registerHandlebarsHelpers } from '../outputStyleUtils.js';
+
+// Register Handlebars helpers (idempotent)
+registerHandlebarsHelpers();
 
 export const getMarkdownTemplate = () => {
   return /* md */ `
@@ -83,7 +85,3 @@ export const getMarkdownTemplate = () => {
 {{/if}}
 `;
 };
-
-Handlebars.registerHelper('getFileExtension', (filePath: string) => {
-  return getLanguageFromFilePath(filePath);
-});
