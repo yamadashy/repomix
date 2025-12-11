@@ -21,8 +21,19 @@ export const toKebabCase = (str: string): string => {
 /**
  * Validates and normalizes a skill name.
  * Converts to kebab-case and truncates to 64 characters.
+ * Also rejects path traversal attempts.
  */
 export const validateSkillName = (name: string): string => {
+  // Reject path separators and null bytes to prevent path traversal
+  if (name.includes('/') || name.includes('\\') || name.includes('\0')) {
+    throw new Error('Skill name cannot contain path separators or null bytes');
+  }
+
+  // Reject dot-only names (., .., ...)
+  if (/^\.+$/.test(name)) {
+    throw new Error('Skill name cannot consist only of dots');
+  }
+
   const kebabName = toKebabCase(name);
 
   if (kebabName.length === 0) {

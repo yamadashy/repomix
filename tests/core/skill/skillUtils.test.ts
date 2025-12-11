@@ -67,6 +67,27 @@ describe('skillUtils', () => {
     test('should handle valid kebab-case names', () => {
       expect(validateSkillName('my-valid-skill-name')).toBe('my-valid-skill-name');
     });
+
+    // Security tests for path traversal prevention
+    test('should reject path traversal attempts with forward slashes', () => {
+      expect(() => validateSkillName('../../../etc/passwd')).toThrow('Skill name cannot contain path separators');
+      expect(() => validateSkillName('foo/bar')).toThrow('Skill name cannot contain path separators');
+    });
+
+    test('should reject path traversal attempts with backslashes', () => {
+      expect(() => validateSkillName('..\\..\\etc\\passwd')).toThrow('Skill name cannot contain path separators');
+      expect(() => validateSkillName('foo\\bar')).toThrow('Skill name cannot contain path separators');
+    });
+
+    test('should reject null bytes', () => {
+      expect(() => validateSkillName('foo\0bar')).toThrow('Skill name cannot contain path separators or null bytes');
+    });
+
+    test('should reject dot-only names', () => {
+      expect(() => validateSkillName('.')).toThrow('Skill name cannot consist only of dots');
+      expect(() => validateSkillName('..')).toThrow('Skill name cannot consist only of dots');
+      expect(() => validateSkillName('...')).toThrow('Skill name cannot consist only of dots');
+    });
   });
 
   describe('generateProjectName', () => {

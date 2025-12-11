@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -78,10 +79,36 @@ Example Paths:
     },
     async ({ directory, skillName, compress, includePatterns, ignorePatterns }): Promise<CallToolResult> => {
       try {
+        // Validate directory is an absolute path
+        if (!path.isAbsolute(directory)) {
+          return buildMcpToolErrorResponse({
+            errorMessage: `Directory must be an absolute path: ${directory}`,
+          });
+        }
+
+        // Check if directory exists and is accessible
+        try {
+          await fs.access(directory);
+        } catch {
+          return buildMcpToolErrorResponse({
+            errorMessage: `Directory not accessible: ${directory}`,
+          });
+        }
+
         // Pre-compute skill name and directory to avoid interactive prompts
         // MCP is non-interactive, so we must specify skillDir explicitly
         const actualSkillName = skillName ?? generateDefaultSkillName([directory]);
         const skillDir = path.join(getSkillBaseDir(directory, 'project'), actualSkillName);
+
+        // Check if skill directory already exists (MCP cannot prompt for overwrite)
+        try {
+          await fs.access(skillDir);
+          return buildMcpToolErrorResponse({
+            errorMessage: `Skill directory already exists: ${skillDir}. Please remove it first or use a different skill name.`,
+          });
+        } catch {
+          // Directory doesn't exist - this is expected
+        }
 
         const cliOptions = {
           skillGenerate: actualSkillName,
