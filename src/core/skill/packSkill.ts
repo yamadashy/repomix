@@ -199,6 +199,12 @@ export const packSkill = async (params: PackSkillParams, deps = defaultDeps): Pr
     progressCallback,
   } = params;
 
+  // Validate skillDir early to fail fast (before expensive operations)
+  const { skillDir } = options;
+  if (!skillDir) {
+    throw new Error('skillDir is required for skill generation');
+  }
+
   // Use pre-computed skill name or generate from directories
   const skillName =
     options.skillName ??
@@ -226,12 +232,6 @@ export const packSkill = async (params: PackSkillParams, deps = defaultDeps): Pr
 
   // Step 3: Generate SKILL.md with accurate token count
   const skillOutput = generateSkillMdFromReferences(skillReferencesResult, skillMetrics.totalTokens);
-
-  // Validate skillDir (should always be set when packSkill is called)
-  const { skillDir } = options;
-  if (!skillDir) {
-    throw new Error('skillDir is required for skill generation');
-  }
 
   progressCallback('Writing skill output...');
   await withMemoryLogging('Write Skill Output', () => deps.writeSkillOutput(skillOutput, skillDir));

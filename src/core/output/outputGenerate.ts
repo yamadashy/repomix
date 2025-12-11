@@ -33,8 +33,16 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
 const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
   const lineCounts: Record<string, number> = {};
   for (const file of processedFiles) {
-    // Count lines by splitting on newlines
-    lineCounts[file.path] = file.content.split('\n').length;
+    // Count lines: empty files have 0 lines, otherwise count newlines + 1
+    // (unless the content ends with a newline, in which case the last "line" is empty)
+    const content = file.content;
+    if (content.length === 0) {
+      lineCounts[file.path] = 0;
+    } else {
+      // Count actual lines (text editor style: number of \n + 1, but trailing \n doesn't add extra line)
+      const newlineCount = (content.match(/\n/g) || []).length;
+      lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
+    }
   }
   return lineCounts;
 };

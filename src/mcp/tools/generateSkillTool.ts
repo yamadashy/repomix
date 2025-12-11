@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { runCli } from '../../cli/cliRun.js';
 import { getSkillBaseDir } from '../../cli/prompts/skillPrompts.js';
 import type { CliOptions } from '../../cli/types.js';
-import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
+import { generateDefaultSkillName, validateSkillName } from '../../core/skill/skillUtils.js';
 import { buildMcpToolErrorResponse, buildMcpToolSuccessResponse, convertErrorToJson } from './mcpToolRuntime.js';
 
 const generateSkillInputSchema = z.object({
@@ -52,9 +52,7 @@ export const registerGenerateSkillTool = (mcpServer: McpServer) => {
       title: 'Generate Claude Agent Skill',
       description: `Generate a Claude Agent Skill from a local code directory. Creates a skill package containing SKILL.md (entry point with metadata) and references/ folder with summary.md, project-structure.md, files.md, and optionally tech-stack.md.
 
-Skill Types:
-- Project Skills: Created in <project>/.claude/skills/<name>/ - shared with the team via version control
-- Personal Skills: Created in ~/.claude/skills/<name>/ - private to your machine
+This tool creates Project Skills in <project>/.claude/skills/<name>/, which are shared with the team via version control.
 
 Output Structure:
   .claude/skills/<skill-name>/
@@ -65,9 +63,8 @@ Output Structure:
       ├── files.md                # All file contents
       └── tech-stack.md           # Languages, frameworks, dependencies (if detected)
 
-Example Paths:
-- Project: /path/to/project/.claude/skills/repomix-reference-myproject/
-- Personal: ~/.claude/skills/repomix-reference-myproject/`,
+Example Path:
+  /path/to/project/.claude/skills/repomix-reference-myproject/`,
       inputSchema: generateSkillInputSchema,
       outputSchema: generateSkillOutputSchema,
       annotations: {
@@ -105,7 +102,8 @@ Example Paths:
 
         // Pre-compute skill name and directory to avoid interactive prompts
         // MCP is non-interactive, so we must specify skillDir explicitly
-        const actualSkillName = skillName ?? generateDefaultSkillName([directory]);
+        // Normalize user-provided skill name to ensure consistent kebab-case format
+        const actualSkillName = skillName ? validateSkillName(skillName) : generateDefaultSkillName([directory]);
         const skillDir = path.join(getSkillBaseDir(directory, 'project'), actualSkillName);
 
         // Check if skill directory already exists (MCP cannot prompt for overwrite)
