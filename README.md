@@ -1151,9 +1151,9 @@ The Skills are generated with the following structure:
 If no name is provided, Repomix auto-generates one:
 
 ```bash
-repomix src/                           # → repomix-reference-src
-repomix --remote user/repo             # → repomix-reference-repo
-repomix --skill-generate custom-name   # → custom-name (normalized to kebab-case)
+repomix src/ --skill-generate                # → repomix-reference-src
+repomix --remote user/repo --skill-generate  # → repomix-reference-repo
+repomix --skill-generate custom-name         # → custom-name (normalized to kebab-case)
 ```
 
 #### Integration with Repomix Features

@@ -18,7 +18,7 @@ repomix --skill-generate
 repomix --skill-generate my-project-reference
 
 # 特定のディレクトリから生成
-repomix --skill-generate path/to/directory
+repomix path/to/directory --skill-generate
 
 # リモートリポジトリから生成
 repomix --remote https://github.com/user/repo --skill-generate
@@ -110,9 +110,9 @@ export function main() {
 名前が指定されない場合、Repomixは以下のパターンで自動生成します：
 
 ```bash
-repomix src/                           # → repomix-reference-src
-repomix --remote user/repo             # → repomix-reference-repo
-repomix --skill-generate custom-name   # → custom-name（ケバブケースに正規化）
+repomix src/ --skill-generate                # → repomix-reference-src
+repomix --remote user/repo --skill-generate  # → repomix-reference-repo
+repomix --skill-generate custom-name         # → custom-name（ケバブケースに正規化）
 ```
 
 Skills名は：
