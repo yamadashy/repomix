@@ -1,20 +1,20 @@
-# スキル生成
+# Agent Skills生成
 
-Repomixは[Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills)形式の出力を生成できます。これにより、AIアシスタントの再利用可能なコードベースリファレンスとして使用できる構造化されたスキルディレクトリが作成されます。
+Repomixは[Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills)形式の出力を生成できます。これにより、AIアシスタントの再利用可能なコードベースリファレンスとして使用できる構造化されたSkillsディレクトリが作成されます。
 
-## スキル生成とは
+## Agent Skills生成とは
 
-スキル生成は、コードベースを整理されたClaude Agent Skillに変換します。単一のパッキングファイルを生成する代わりに、AIの理解とgrep検索に最適化された複数のリファレンスファイルを含む構造化されたディレクトリを作成します。
+Agent Skills生成は、コードベースを整理されたClaude Agent Skillsに変換します。単一のパッキングファイルを生成する代わりに、AIの理解とgrep検索に最適化された複数のリファレンスファイルを含む構造化されたディレクトリを作成します。
 
 ## 基本的な使い方
 
-ローカルディレクトリからスキルを生成します：
+ローカルディレクトリからSkillsを生成します：
 
 ```bash
-# カレントディレクトリからスキルを生成
+# カレントディレクトリからSkillsを生成
 repomix --skill-generate
 
-# カスタムスキル名で生成
+# カスタムSkills名で生成
 repomix --skill-generate my-project-reference
 
 # 特定のディレクトリから生成
@@ -24,22 +24,22 @@ repomix --skill-generate path/to/directory
 repomix --remote https://github.com/user/repo --skill-generate
 ```
 
-## スキル保存先の選択
+## Skills保存先の選択
 
-コマンドを実行すると、Repomixはスキルの保存先を選択するよう促します：
+コマンドを実行すると、RepomixはSkillsの保存先を選択するよう促します：
 
-1. **個人用スキル** (`~/.claude/skills/`) - マシン上のすべてのプロジェクトで利用可能
-2. **プロジェクト用スキル** (`.claude/skills/`) - gitを通じてチームと共有
+1. **Personal Skills** (`~/.claude/skills/`) - マシン上のすべてのプロジェクトで利用可能
+2. **Project Skills** (`.claude/skills/`) - gitを通じてチームと共有
 
-スキルディレクトリが既に存在する場合は、上書きの確認が求められます。
+Skillsディレクトリが既に存在する場合は、上書きの確認が求められます。
 
 ## 生成される構造
 
-スキルは以下の構造で生成されます：
+Skillsは以下の構造で生成されます：
 
 ```
 .claude/skills/<skill-name>/
-├── SKILL.md                    # メインのスキルメタデータとドキュメント
+├── SKILL.md                    # メインのSkillsメタデータとドキュメント
 └── references/
     ├── summary.md              # 目的、フォーマット、統計情報
     ├── project-structure.md    # 行数付きディレクトリツリー
@@ -51,10 +51,10 @@ repomix --remote https://github.com/user/repo --skill-generate
 
 #### SKILL.md
 
-メインのスキルファイルで、以下を含みます：
-- スキル名、説明、プロジェクト情報
+メインのSkillsファイルで、以下を含みます：
+- Skills名、説明、プロジェクト情報
 - ファイル数、行数、トークン数
-- スキルの使用方法の概要
+- Skillsの使用方法の概要
 - ファイルの場所とフォーマットの説明
 - 一般的なユースケースとヒント
 
@@ -63,7 +63,7 @@ repomix --remote https://github.com/user/repo --skill-generate
 以下を含みます：
 - **目的**: AI利用のためのリファレンスコードベースであることを説明
 - **ファイル構造**: 各リファレンスファイルの内容を文書化
-- **使用ガイドライン**: スキルを効果的に使用する方法
+- **使用ガイドライン**: Skillsを効果的に使用する方法
 - **統計情報**: ファイルタイプ、言語、最大ファイルの内訳
 
 #### references/project-structure.md
@@ -105,7 +105,7 @@ export function main() {
 
 検出対象ファイル: `package.json`、`requirements.txt`、`Cargo.toml`、`go.mod`、`.nvmrc`、`pyproject.toml` など
 
-## 自動生成されるスキル名
+## 自動生成されるSkills名
 
 名前が指定されない場合、Repomixは以下のパターンで自動生成します：
 
@@ -115,41 +115,41 @@ repomix --remote user/repo             # → repomix-reference-repo
 repomix --skill-generate custom-name   # → custom-name（ケバブケースに正規化）
 ```
 
-スキル名は：
+Skills名は：
 - ケバブケース（小文字、ハイフン区切り）に変換
 - 最大64文字に制限
 - パストラバーサルから保護
 
 ## Repomixオプションとの統合
 
-スキル生成はすべての標準Repomixオプションを尊重します：
+Skills生成はすべての標準Repomixオプションを尊重します：
 
 ```bash
-# ファイルフィルタリング付きでスキルを生成
+# ファイルフィルタリング付きでSkillsを生成
 repomix --skill-generate --include "src/**/*.ts" --ignore "**/*.test.ts"
 
-# 圧縮付きでスキルを生成
+# 圧縮付きでSkillsを生成
 repomix --skill-generate --compress
 
-# リモートリポジトリからスキルを生成
+# リモートリポジトリからSkillsを生成
 repomix --remote yamadashy/repomix --skill-generate
 
-# 特定の出力フォーマットオプションでスキルを生成
+# 特定の出力フォーマットオプションでSkillsを生成
 repomix --skill-generate --remove-comments --remove-empty-lines
 ```
 
 ## 制限事項
 
 `--skill-generate`オプションは以下と併用できません：
-- `--stdout` - スキル出力にはファイルシステムへの書き込みが必要
-- `--copy` - スキル出力はディレクトリであり、クリップボードにコピー不可
+- `--stdout` - Skills出力にはファイルシステムへの書き込みが必要
+- `--copy` - Skills出力はディレクトリであり、クリップボードにコピー不可
 
-## 生成されたスキルの使用
+## 生成されたSkillsの使用
 
-生成されたスキルはClaudeで以下のように使用できます：
+生成されたSkillsはClaudeで以下のように使用できます：
 
 1. **Claude Code**: `~/.claude/skills/`または`.claude/skills/`に保存された場合、自動的に利用可能
-2. **Claude Web**: コードベース分析のためにスキルディレクトリをClaudeにアップロード
+2. **Claude Web**: コードベース分析のためにSkillsディレクトリをClaudeにアップロード
 3. **チーム共有**: チーム全体でアクセスできるように`.claude/skills/`をリポジトリにコミット
 
 ## 使用例ワークフロー
@@ -160,7 +160,7 @@ repomix --skill-generate --remove-comments --remove-empty-lines
 # 興味のあるオープンソースプロジェクトをクローンして分析
 repomix --remote facebook/react --skill-generate react-reference
 
-# スキルは ~/.claude/skills/react-reference/ に保存される
+# Skillsは ~/.claude/skills/react-reference/ に保存される
 # これで任意のClaudeの会話でReactのコードベースを参照できる
 ```
 
@@ -170,15 +170,15 @@ repomix --remote facebook/react --skill-generate react-reference
 # プロジェクトディレクトリで
 cd my-project
 
-# チーム用のスキルを生成
+# チーム用のSkillsを生成
 repomix --skill-generate
 
-# プロンプトで「プロジェクト用スキル」を選択
-# スキルは .claude/skills/repomix-reference-my-project/ に保存される
+# プロンプトで「Project Skills」を選択
+# Skillsは .claude/skills/repomix-reference-my-project/ に保存される
 
 # コミットしてチームと共有
 git add .claude/skills/
-git commit -m "コードベースリファレンススキルを追加"
+git commit -m "Add codebase reference Skills"
 ```
 
 ## 関連リソース

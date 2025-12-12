@@ -1,20 +1,20 @@
-# Skill Generation
+# Agent Skills Generation
 
-Repomix can generate [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) format output, creating a structured skill directory that can be used as a reusable codebase reference for AI assistants.
+Repomix can generate [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) format output, creating a structured Skills directory that can be used as a reusable codebase reference for AI assistants.
 
-## What is Skill Generation?
+## What is Agent Skills Generation?
 
-Skill generation transforms your codebase into a well-organized Claude Agent Skill. Instead of generating a single packed file, it creates a structured directory with multiple reference files optimized for AI comprehension and grep-friendly searching.
+Agent Skills generation transforms your codebase into a well-organized Claude Agent Skills. Instead of generating a single packed file, it creates a structured directory with multiple reference files optimized for AI comprehension and grep-friendly searching.
 
 ## Basic Usage
 
-Generate a skill from your local directory:
+Generate Skills from your local directory:
 
 ```bash
-# Generate a skill from current directory
+# Generate Skills from current directory
 repomix --skill-generate
 
-# Generate with custom skill name
+# Generate with custom Skills name
 repomix --skill-generate my-project-reference
 
 # Generate from specific directory
@@ -24,22 +24,22 @@ repomix --skill-generate path/to/directory
 repomix --remote https://github.com/user/repo --skill-generate
 ```
 
-## Skill Location Selection
+## Skills Location Selection
 
-When you run the command, Repomix prompts you to choose where to save the skill:
+When you run the command, Repomix prompts you to choose where to save the Skills:
 
 1. **Personal Skills** (`~/.claude/skills/`) - Available across all projects on your machine
 2. **Project Skills** (`.claude/skills/`) - Shared with your team via git
 
-If the skill directory already exists, you'll be prompted to confirm overwriting it.
+If the Skills directory already exists, you'll be prompted to confirm overwriting it.
 
 ## Generated Structure
 
-The skill is generated with the following structure:
+The Skills are generated with the following structure:
 
 ```
 .claude/skills/<skill-name>/
-├── SKILL.md                    # Main skill metadata & documentation
+├── SKILL.md                    # Main Skills metadata & documentation
 └── references/
     ├── summary.md              # Purpose, format, and statistics
     ├── project-structure.md    # Directory tree with line counts
@@ -51,10 +51,10 @@ The skill is generated with the following structure:
 
 #### SKILL.md
 
-The main skill file containing:
-- Skill name, description, and project info
+The main Skills file containing:
+- Skills name, description, and project info
 - File count, line count, and token count
-- Overview of how to use the skill
+- Overview of how to use the Skills
 - File locations and format explanation
 - Common use cases and tips
 
@@ -63,7 +63,7 @@ The main skill file containing:
 Contains:
 - **Purpose**: Explains this is a reference codebase for AI consumption
 - **File Structure**: Documents what's in each reference file
-- **Usage Guidelines**: How to use the skill effectively
+- **Usage Guidelines**: How to use the Skills effectively
 - **Statistics**: Breakdown by file type, language, and largest files
 
 #### references/project-structure.md
@@ -105,7 +105,7 @@ Auto-detected tech stack from dependency files:
 
 Detected from files like: `package.json`, `requirements.txt`, `Cargo.toml`, `go.mod`, `.nvmrc`, `pyproject.toml`, etc.
 
-## Auto-Generated Skill Names
+## Auto-Generated Skills Names
 
 If no name is provided, Repomix auto-generates one using this pattern:
 
@@ -115,41 +115,41 @@ repomix --remote user/repo             # → repomix-reference-repo
 repomix --skill-generate custom-name   # → custom-name (normalized to kebab-case)
 ```
 
-Skill names are:
+Skills names are:
 - Converted to kebab-case (lowercase, hyphen-separated)
 - Limited to 64 characters maximum
 - Protected against path traversal
 
 ## Integration with Repomix Options
 
-Skill generation respects all standard Repomix options:
+Skills generation respects all standard Repomix options:
 
 ```bash
-# Generate skill with file filtering
+# Generate Skills with file filtering
 repomix --skill-generate --include "src/**/*.ts" --ignore "**/*.test.ts"
 
-# Generate skill with compression
+# Generate Skills with compression
 repomix --skill-generate --compress
 
-# Generate skill from remote repository
+# Generate Skills from remote repository
 repomix --remote yamadashy/repomix --skill-generate
 
-# Generate skill with specific output format options
+# Generate Skills with specific output format options
 repomix --skill-generate --remove-comments --remove-empty-lines
 ```
 
 ## Limitations
 
 The `--skill-generate` option cannot be used with:
-- `--stdout` - Skill output requires writing to filesystem
-- `--copy` - Skill output is a directory, not copyable to clipboard
+- `--stdout` - Skills output requires writing to filesystem
+- `--copy` - Skills output is a directory, not copyable to clipboard
 
 ## Using Generated Skills
 
-Once generated, you can use the skill with Claude:
+Once generated, you can use the Skills with Claude:
 
-1. **Claude Code**: The skill is automatically available if saved to `~/.claude/skills/` or `.claude/skills/`
-2. **Claude Web**: Upload the skill directory to Claude for codebase analysis
+1. **Claude Code**: The Skills are automatically available if saved to `~/.claude/skills/` or `.claude/skills/`
+2. **Claude Web**: Upload the Skills directory to Claude for codebase analysis
 3. **Team Sharing**: Commit `.claude/skills/` to your repository for team-wide access
 
 ## Example Workflow
@@ -160,7 +160,7 @@ Once generated, you can use the skill with Claude:
 # Clone and analyze an interesting open source project
 repomix --remote facebook/react --skill-generate react-reference
 
-# The skill is saved to ~/.claude/skills/react-reference/
+# The Skills are saved to ~/.claude/skills/react-reference/
 # Now you can reference React's codebase in any Claude conversation
 ```
 
@@ -170,15 +170,15 @@ repomix --remote facebook/react --skill-generate react-reference
 # In your project directory
 cd my-project
 
-# Generate a skill for your team
+# Generate Skills for your team
 repomix --skill-generate
 
 # Choose "Project Skills" when prompted
-# The skill is saved to .claude/skills/repomix-reference-my-project/
+# The Skills are saved to .claude/skills/repomix-reference-my-project/
 
 # Commit and share with your team
 git add .claude/skills/
-git commit -m "Add codebase reference skill"
+git commit -m "Add codebase reference Skills"
 ```
 
 ## Related Resources
