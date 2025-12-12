@@ -6,6 +6,9 @@ This feature is particularly powerful when you want to reference implementations
 
 Instead of generating a single packed file, Skills generation creates a structured directory with multiple reference files optimized for AI comprehension and grep-friendly searching.
 
+> [!NOTE]
+> This is an experimental feature. The output format and options may change in future releases based on user feedback.
+
 ## Basic Usage
 
 Generate Skills from your local directory:
