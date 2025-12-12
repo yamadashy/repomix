@@ -129,7 +129,7 @@ Skills生成はすべての標準Repomixオプションを尊重します：
 repomix --skill-generate --include "src/**/*.ts" --ignore "**/*.test.ts"
 
 # ドキュメントのみでSkillsを生成
-repomix --remote user/repo --skill-generate --include "docs/**"
+repomix --remote user/repo --skill-generate --include docs
 
 # 圧縮付きでSkillsを生成
 repomix --skill-generate --compress
