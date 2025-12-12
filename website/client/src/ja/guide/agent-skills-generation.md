@@ -36,6 +36,12 @@ repomix --remote https://github.com/user/repo --skill-generate
 
 Skillsディレクトリが既に存在する場合は、上書きの確認が求められます。
 
+> [!TIP]
+> 参照用リポジトリ（自分のプロジェクト以外）のSkillsを生成する場合は、大きなファイルのコミットを避けるため`.gitignore`への追加を検討してください：
+> ```
+> .claude/skills/repomix-reference-*/
+> ```
+
 ## 生成される構造
 
 Skillsは以下の構造で生成されます：
