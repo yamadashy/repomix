@@ -2,9 +2,9 @@
 
 Repomix can generate [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) format output, creating a structured Skills directory that can be used as a reusable codebase reference for AI assistants.
 
-## What is Agent Skills Generation?
+This feature is particularly powerful when you want to reference implementations from remote repositories. By generating Skills from open source projects, you can easily ask Claude to reference specific patterns or implementations while working on your own code.
 
-Agent Skills generation transforms your codebase into a well-organized Claude Agent Skills. Instead of generating a single packed file, it creates a structured directory with multiple reference files optimized for AI comprehension and grep-friendly searching.
+Instead of generating a single packed file, Skills generation creates a structured directory with multiple reference files optimized for AI comprehension and grep-friendly searching.
 
 ## Basic Usage
 

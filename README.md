@@ -1104,7 +1104,7 @@ For more details, see the plugin documentation in the `.claude/plugins/` directo
 
 ### Agent Skills Generation
 
-Repomix can generate [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) format output, creating a structured Skills directory that can be used as a reusable codebase reference for AI assistants.
+Repomix can generate [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) format output, creating a structured Skills directory that can be used as a reusable codebase reference for AI assistants. This feature is particularly powerful when you want to reference implementations from remote repositories.
 
 #### Basic Usage
 
