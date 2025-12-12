@@ -55,8 +55,8 @@ async function defaultActionWorker(
   let packResult: PackResult;
 
   try {
-    const { skillName, skillDir } = cliOptions;
-    const packOptions = { skillName, skillDir };
+    const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
+    const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
 
     if (stdinFilePaths) {
       // Handle stdin processing with file paths from main process

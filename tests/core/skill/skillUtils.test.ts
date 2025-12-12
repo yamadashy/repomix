@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   generateProjectName,
+  generateProjectNameFromUrl,
   generateSkillDescription,
   toKebabCase,
   validateSkillName,
@@ -87,6 +88,48 @@ describe('skillUtils', () => {
       expect(() => validateSkillName('.')).toThrow('Skill name cannot consist only of dots');
       expect(() => validateSkillName('..')).toThrow('Skill name cannot consist only of dots');
       expect(() => validateSkillName('...')).toThrow('Skill name cannot consist only of dots');
+    });
+  });
+
+  describe('generateProjectNameFromUrl', () => {
+    test('should extract and convert GitHub URL to title case', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite')).toBe('Vite');
+    });
+
+    test('should handle kebab-case repo names', () => {
+      expect(generateProjectNameFromUrl('https://github.com/yamadashy/repomix')).toBe('Repomix');
+    });
+
+    test('should handle snake_case repo names', () => {
+      expect(generateProjectNameFromUrl('https://github.com/user/my_project_name')).toBe('My Project Name');
+    });
+
+    test('should handle shorthand format', () => {
+      expect(generateProjectNameFromUrl('yamadashy/repomix')).toBe('Repomix');
+    });
+
+    test('should handle .git suffix', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite.git')).toBe('Vite');
+    });
+
+    test('should handle trailing slash', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite/')).toBe('Vite');
+    });
+
+    test('should handle multiple trailing slashes', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite///')).toBe('Vite');
+    });
+
+    test('should handle query string', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite?tab=readme')).toBe('Vite');
+    });
+
+    test('should handle fragment', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite#installation')).toBe('Vite');
+    });
+
+    test('should handle trailing slash with .git suffix', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite.git/')).toBe('Vite');
     });
   });
 
