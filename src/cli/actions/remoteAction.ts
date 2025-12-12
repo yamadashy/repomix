@@ -7,7 +7,7 @@ import { downloadGitHubArchive, isArchiveDownloadSupported } from '../../core/gi
 import { getRemoteRefs } from '../../core/git/gitRemoteHandle.js';
 import { isGitHubRepository, parseGitHubRepoInfo, parseRemoteValue } from '../../core/git/gitRemoteParse.js';
 import { isGitInstalled } from '../../core/git/gitRepositoryHandle.js';
-import { generateDefaultSkillNameFromUrl } from '../../core/skill/skillUtils.js';
+import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../../core/skill/skillUtils.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
@@ -94,11 +94,15 @@ export const runRemoteAction = async (
     let skillName: string | undefined;
     let skillDir: string | undefined;
     let skillLocation: SkillLocation | undefined;
+    let skillProjectName: string | undefined;
     if (cliOptions.skillGenerate !== undefined) {
       skillName =
         typeof cliOptions.skillGenerate === 'string'
           ? cliOptions.skillGenerate
           : generateDefaultSkillNameFromUrl(repoUrl);
+
+      // Generate project name from URL for use in skill description
+      skillProjectName = generateProjectNameFromUrl(repoUrl);
 
       const promptResult = await promptSkillLocation(skillName, process.cwd());
       skillDir = promptResult.skillDir;
@@ -106,8 +110,9 @@ export const runRemoteAction = async (
     }
 
     // Run the default action on the downloaded/cloned repository
-    // Pass the pre-computed skill name and directory
-    const optionsWithSkill = { ...cliOptions, skillName, skillDir };
+    // Pass the pre-computed skill name, directory, project name, and source URL
+    const skillSourceUrl = cliOptions.skillGenerate !== undefined ? repoUrl : undefined;
+    const optionsWithSkill = { ...cliOptions, skillName, skillDir, skillProjectName, skillSourceUrl };
     result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithSkill);
 
     // Copy output to current directory
@@ -209,29 +214,31 @@ export const cleanupTempDirectory = async (directory: string): Promise<void> => 
 };
 
 export const copySkillOutputToCurrentDirectory = async (sourceDir: string, targetDir: string): Promise<void> => {
-  const sourceClaudeDir = path.join(sourceDir, '.claude');
-  const targetClaudeDir = path.join(targetDir, '.claude');
+  // Only copy .claude/skills/ directory, not the entire .claude directory
+  // This prevents conflicts with repository's own .claude config (commands, agents, etc.)
+  const sourceSkillsDir = path.join(sourceDir, '.claude', 'skills');
+  const targetSkillsDir = path.join(targetDir, '.claude', 'skills');
 
   try {
-    // Check if source .claude directory exists
-    await fs.access(sourceClaudeDir);
+    // Check if source .claude/skills directory exists
+    await fs.access(sourceSkillsDir);
   } catch {
     // No skill output was generated
-    logger.trace('No .claude directory found in source, skipping skill output copy');
+    logger.trace('No .claude/skills directory found in source, skipping skill output copy');
     return;
   }
 
   try {
-    logger.trace(`Copying skill output from: ${sourceClaudeDir} to: ${targetClaudeDir}`);
+    logger.trace(`Copying skill output from: ${sourceSkillsDir} to: ${targetSkillsDir}`);
 
-    // Copy the entire .claude directory
-    await fs.cp(sourceClaudeDir, targetClaudeDir, { recursive: true });
+    // Copy only the skills directory
+    await fs.cp(sourceSkillsDir, targetSkillsDir, { recursive: true });
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
 
     if (nodeError.code === 'EPERM' || nodeError.code === 'EACCES') {
       throw new RepomixError(
-        `Failed to copy skill output to ${targetClaudeDir}: Permission denied.
+        `Failed to copy skill output to ${targetSkillsDir}: Permission denied.
 
 The current directory may be protected or require elevated permissions.
 Please try running from a different directory (e.g., your home directory or Documents folder).`,

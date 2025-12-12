@@ -44,6 +44,7 @@ export interface SkillReferencesResult {
   totalLines: number;
   statisticsSection: string;
   hasTechStack: boolean;
+  sourceUrl?: string;
 }
 
 /**
@@ -74,6 +75,8 @@ export const generateSkillReferences = async (
   allFilePaths: string[],
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
+  skillProjectName?: string,
+  skillSourceUrl?: string,
   deps = {
     buildOutputGeneratorContext,
     sortOutputFiles,
@@ -82,8 +85,8 @@ export const generateSkillReferences = async (
   // Validate and normalize skill name
   const normalizedSkillName = validateSkillName(skillName);
 
-  // Generate project name from root directories
-  const projectName = generateProjectName(rootDirs);
+  // Use provided project name or generate from root directories
+  const projectName = skillProjectName ?? generateProjectName(rootDirs);
 
   // Generate skill description
   const skillDescription = generateSkillDescription(normalizedSkillName, projectName);
@@ -135,6 +138,7 @@ export const generateSkillReferences = async (
     totalLines: statistics.totalLines,
     statisticsSection,
     hasTechStack: techStack !== null,
+    sourceUrl: skillSourceUrl,
   };
 };
 
@@ -154,6 +158,7 @@ export const generateSkillMdFromReferences = (
     totalLines: referencesResult.totalLines,
     totalTokens,
     hasTechStack: referencesResult.hasTechStack,
+    sourceUrl: referencesResult.sourceUrl,
   });
 
   return {
@@ -212,10 +217,21 @@ export const packSkill = async (params: PackSkillParams, deps = defaultDeps): Pr
 
   // Step 1: Generate skill references (summary, structure, files, tech-stack)
   const skillReferencesResult = await withMemoryLogging('Generate Skill References', () =>
-    generateSkillReferences(skillName, rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult, {
-      buildOutputGeneratorContext: deps.buildOutputGeneratorContext,
-      sortOutputFiles: deps.sortOutputFiles,
-    }),
+    generateSkillReferences(
+      skillName,
+      rootDirs,
+      config,
+      processedFiles,
+      allFilePaths,
+      gitDiffResult,
+      gitLogResult,
+      options.skillProjectName,
+      options.skillSourceUrl,
+      {
+        buildOutputGeneratorContext: deps.buildOutputGeneratorContext,
+        sortOutputFiles: deps.sortOutputFiles,
+      },
+    ),
   );
 
   // Step 2: Calculate metrics from files section to get accurate token count

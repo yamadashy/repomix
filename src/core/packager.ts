@@ -50,6 +50,8 @@ const defaultDeps = {
 export interface PackOptions {
   skillName?: string;
   skillDir?: string;
+  skillProjectName?: string;
+  skillSourceUrl?: string;
 }
 
 export const pack = async (

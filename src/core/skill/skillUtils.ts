@@ -69,6 +69,20 @@ export const generateSkillDescription = (_skillName: string, projectName: string
 };
 
 /**
+ * Generates a human-readable project name from a remote URL.
+ * Uses the repository name extracted from the URL, converted to Title Case.
+ */
+export const generateProjectNameFromUrl = (remoteUrl: string): string => {
+  const repoName = extractRepoName(remoteUrl);
+
+  // Convert kebab-case or snake_case to Title Case
+  return repoName
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim();
+};
+
+/**
  * Extracts repository name from a URL or shorthand format.
  * Examples:
  * - https://github.com/yamadashy/repomix → repomix
