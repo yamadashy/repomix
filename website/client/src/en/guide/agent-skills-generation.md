@@ -128,6 +128,9 @@ Skills generation respects all standard Repomix options:
 # Generate Skills with file filtering
 repomix --skill-generate --include "src/**/*.ts" --ignore "**/*.test.ts"
 
+# Generate Skills for documentation only
+repomix --remote user/repo --skill-generate --include "docs/**"
+
 # Generate Skills with compression
 repomix --skill-generate --compress
 
