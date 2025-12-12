@@ -131,9 +131,6 @@ Skills generation respects all standard Repomix options:
 # Generate Skills with file filtering
 repomix --skill-generate --include "src/**/*.ts" --ignore "**/*.test.ts"
 
-# Generate Skills for documentation only
-repomix --remote user/repo --skill-generate --include docs
-
 # Generate Skills with compression
 repomix --skill-generate --compress
 
@@ -142,6 +139,21 @@ repomix --remote yamadashy/repomix --skill-generate
 
 # Generate Skills with specific output format options
 repomix --skill-generate --remove-comments --remove-empty-lines
+```
+
+### Documentation-Only Skills
+
+Using `--include`, you can generate Skills containing only the documentation from a GitHub repository. This is useful when you want Claude to reference specific library or framework documentation while working on your code:
+
+```bash
+# Claude Code Action documentation
+repomix --remote https://github.com/anthropics/claude-code-action --include docs --skill-generate
+
+# Vite documentation
+repomix --remote https://github.com/vitejs/vite --include docs --skill-generate
+
+# React documentation
+repomix --remote https://github.com/reactjs/react.dev --include src/content --skill-generate
 ```
 
 ## Limitations

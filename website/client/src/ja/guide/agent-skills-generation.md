@@ -131,9 +131,6 @@ Skills生成はすべての標準Repomixオプションを尊重します：
 # ファイルフィルタリング付きでSkillsを生成
 repomix --skill-generate --include "src/**/*.ts" --ignore "**/*.test.ts"
 
-# ドキュメントのみでSkillsを生成
-repomix --remote user/repo --skill-generate --include docs
-
 # 圧縮付きでSkillsを生成
 repomix --skill-generate --compress
 
@@ -142,6 +139,21 @@ repomix --remote yamadashy/repomix --skill-generate
 
 # 特定の出力フォーマットオプションでSkillsを生成
 repomix --skill-generate --remove-comments --remove-empty-lines
+```
+
+### ドキュメントのみのSkills
+
+`--include`を使用すると、GitHubリポジトリからドキュメントのみを含むSkillsを生成できます。これは、コードを書きながらClaudeに特定のライブラリやフレームワークのドキュメントを参照させたい場合に便利です：
+
+```bash
+# Claude Code Actionのドキュメント
+repomix --remote https://github.com/anthropics/claude-code-action --include docs --skill-generate
+
+# Viteのドキュメント
+repomix --remote https://github.com/vitejs/vite --include docs --skill-generate
+
+# Reactのドキュメント
+repomix --remote https://github.com/reactjs/react.dev --include src/content --skill-generate
 ```
 
 ## 制限事項
