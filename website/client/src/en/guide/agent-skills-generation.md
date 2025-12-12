@@ -37,7 +37,7 @@ When you run the command, Repomix prompts you to choose where to save the Skills
 If the Skills directory already exists, you'll be prompted to confirm overwriting it.
 
 > [!TIP]
-> When generating Project Skills for reference repositories (not your own project), consider adding them to `.gitignore` to avoid committing large files:
+> When generating Project Skills, consider adding them to `.gitignore` to avoid committing large files:
 > ```
 > .claude/skills/repomix-reference-*/
 > ```
