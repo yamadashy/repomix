@@ -253,7 +253,7 @@ describe('packSkill', () => {
       const result = generateSkillMdFromReferences(referencesResult, 500);
 
       expect(result.skillMd).toContain('https://github.com/vitejs/vite');
-      expect(result.skillMd).toContain('from [https://github.com/vitejs/vite]');
+      expect(result.skillMd).toContain('from [Test Project](https://github.com/vitejs/vite)');
     });
 
     test('should not include source URL when not provided', () => {

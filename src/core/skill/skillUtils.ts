@@ -44,18 +44,24 @@ export const validateSkillName = (name: string): string => {
 };
 
 /**
+ * Converts a string to Title Case.
+ * Handles kebab-case, snake_case, and other separators.
+ */
+const toTitleCase = (str: string): string => {
+  return str
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim();
+};
+
+/**
  * Generates a human-readable project name from root directories.
  * Uses the first directory's basename, converted to Title Case.
  */
 export const generateProjectName = (rootDirs: string[]): string => {
   const primaryDir = rootDirs[0] || '.';
   const dirName = path.basename(path.resolve(primaryDir));
-
-  // Convert kebab-case or snake_case to Title Case
-  return dirName
-    .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-    .trim();
+  return toTitleCase(dirName);
 };
 
 /**
@@ -74,24 +80,24 @@ export const generateSkillDescription = (_skillName: string, projectName: string
  */
 export const generateProjectNameFromUrl = (remoteUrl: string): string => {
   const repoName = extractRepoName(remoteUrl);
-
-  // Convert kebab-case or snake_case to Title Case
-  return repoName
-    .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-    .trim();
+  return toTitleCase(repoName);
 };
 
 /**
  * Extracts repository name from a URL or shorthand format.
  * Examples:
  * - https://github.com/yamadashy/repomix → repomix
+ * - https://github.com/yamadashy/repomix/ → repomix
  * - yamadashy/repomix → repomix
  * - git@github.com:yamadashy/repomix.git → repomix
  */
 export const extractRepoName = (url: string): string => {
-  // Remove .git suffix if present
-  const cleanUrl = url.replace(/\.git$/, '');
+  // Clean URL: trim, remove query/fragment, trailing slashes, and .git suffix
+  const cleanUrl = url
+    .trim()
+    .replace(/[?#].*$/, '') // Remove query string and fragment
+    .replace(/\/+$/, '') // Remove trailing slashes
+    .replace(/\.git$/, ''); // Remove .git suffix
 
   // Try to match the last path segment
   const match = cleanUrl.match(/\/([^/]+)$/);

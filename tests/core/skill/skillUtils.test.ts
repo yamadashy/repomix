@@ -111,6 +111,26 @@ describe('skillUtils', () => {
     test('should handle .git suffix', () => {
       expect(generateProjectNameFromUrl('https://github.com/vitejs/vite.git')).toBe('Vite');
     });
+
+    test('should handle trailing slash', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite/')).toBe('Vite');
+    });
+
+    test('should handle multiple trailing slashes', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite///')).toBe('Vite');
+    });
+
+    test('should handle query string', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite?tab=readme')).toBe('Vite');
+    });
+
+    test('should handle fragment', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite#installation')).toBe('Vite');
+    });
+
+    test('should handle trailing slash with .git suffix', () => {
+      expect(generateProjectNameFromUrl('https://github.com/vitejs/vite.git/')).toBe('Vite');
+    });
   });
 
   describe('generateProjectName', () => {
