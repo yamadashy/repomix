@@ -38,7 +38,7 @@ repomix --remote https://github.com/user/repo --skill-generate
 
 > [!TIP]
 > Project Skills जनरेट करते समय, बड़ी फाइलों को कमिट करने से बचने के लिए उन्हें `.gitignore` में जोड़ने पर विचार करें:
-> ```
+> ```gitignore
 > .claude/skills/repomix-reference-*/
 > ```
 
@@ -46,7 +46,7 @@ repomix --remote https://github.com/user/repo --skill-generate
 
 Skills निम्नलिखित स्ट्रक्चर के साथ जनरेट होते हैं:
 
-```
+```text
 .claude/skills/<skill-name>/
 ├── SKILL.md                    # मेन Skills मेटाडेटा और डॉक्यूमेंटेशन
 └── references/
@@ -79,7 +79,7 @@ Skills निम्नलिखित स्ट्रक्चर के सा�
 
 आसान फाइल डिस्कवरी के लिए प्रति फाइल लाइन काउंट के साथ डायरेक्टरी ट्री:
 
-```
+```text
 src/
   index.ts (42 lines)
   utils/
@@ -91,7 +91,7 @@ src/
 
 सभी फाइल कंटेंट सिंटैक्स हाइलाइटिंग हेडर के साथ, grep-फ्रेंडली सर्चिंग के लिए ऑप्टिमाइज़:
 
-```markdown
+````markdown
 ## File: src/index.ts
 ```typescript
 import { sum } from './utils/helpers';
@@ -100,7 +100,7 @@ export function main() {
   console.log(sum(1, 2));
 }
 ```
-```
+````
 
 #### references/tech-stack.md
 
@@ -121,7 +121,7 @@ export function main() {
 ```bash
 repomix src/ --skill-generate                # → repomix-reference-src
 repomix --remote user/repo --skill-generate  # → repomix-reference-repo
-repomix --skill-generate custom-name         # → custom-name (kebab-case में नॉर्मलाइज़)
+repomix --skill-generate CustomName          # → custom-name (kebab-case में नॉर्मलाइज़)
 ```
 
 Skills नाम:

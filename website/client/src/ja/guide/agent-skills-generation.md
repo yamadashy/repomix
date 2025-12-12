@@ -38,7 +38,7 @@ Skillsディレクトリが既に存在する場合は、上書きの確認が�
 
 > [!TIP]
 > Project Skillsを生成する場合は、大きなファイルのコミットを避けるため`.gitignore`への追加を検討してください：
-> ```
+> ```gitignore
 > .claude/skills/repomix-reference-*/
 > ```
 
@@ -46,7 +46,7 @@ Skillsディレクトリが既に存在する場合は、上書きの確認が�
 
 Skillsは以下の構造で生成されます：
 
-```
+```text
 .claude/skills/<skill-name>/
 ├── SKILL.md                    # メインのSkillsメタデータとドキュメント
 └── references/
@@ -79,7 +79,7 @@ Skillsは以下の構造で生成されます：
 
 ファイル探索を容易にするための、各ファイルの行数付きディレクトリツリー：
 
-```
+```text
 src/
   index.ts (42 lines)
   utils/
@@ -91,7 +91,7 @@ src/
 
 grep検索に最適化された、シンタックスハイライト付きのすべてのファイル内容：
 
-```markdown
+````markdown
 ## File: src/index.ts
 ```typescript
 import { sum } from './utils/helpers';
@@ -100,7 +100,7 @@ export function main() {
   console.log(sum(1, 2));
 }
 ```
-```
+````
 
 #### references/tech-stack.md
 
@@ -121,7 +121,7 @@ export function main() {
 ```bash
 repomix src/ --skill-generate                # → repomix-reference-src
 repomix --remote user/repo --skill-generate  # → repomix-reference-repo
-repomix --skill-generate custom-name         # → custom-name（ケバブケースに正規化）
+repomix --skill-generate CustomName          # → custom-name（ケバブケースに正規化）
 ```
 
 Skills名は：

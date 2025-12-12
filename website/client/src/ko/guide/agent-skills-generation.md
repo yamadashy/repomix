@@ -38,7 +38,7 @@ Skills 디렉토리가 이미 존재하면 덮어쓰기 확인 메시지가 표�
 
 > [!TIP]
 > Project Skills를 생성할 때는 대용량 파일의 커밋을 피하기 위해 `.gitignore`에 추가하는 것을 고려하세요:
-> ```
+> ```gitignore
 > .claude/skills/repomix-reference-*/
 > ```
 
@@ -46,7 +46,7 @@ Skills 디렉토리가 이미 존재하면 덮어쓰기 확인 메시지가 표�
 
 Skills는 다음 구조로 생성됩니다:
 
-```
+```text
 .claude/skills/<skill-name>/
 ├── SKILL.md                    # 메인 Skills 메타데이터 및 문서
 └── references/
@@ -79,7 +79,7 @@ Skills는 다음 구조로 생성됩니다:
 
 파일 탐색을 위한 파일당 행 수가 포함된 디렉토리 트리:
 
-```
+```text
 src/
   index.ts (42 lines)
   utils/
@@ -91,7 +91,7 @@ src/
 
 grep 친화적인 검색에 최적화된 구문 강조 헤더가 있는 모든 파일 내용:
 
-```markdown
+````markdown
 ## File: src/index.ts
 ```typescript
 import { sum } from './utils/helpers';
@@ -100,7 +100,7 @@ export function main() {
   console.log(sum(1, 2));
 }
 ```
-```
+````
 
 #### references/tech-stack.md
 
@@ -121,7 +121,7 @@ export function main() {
 ```bash
 repomix src/ --skill-generate                # → repomix-reference-src
 repomix --remote user/repo --skill-generate  # → repomix-reference-repo
-repomix --skill-generate custom-name         # → custom-name (kebab-case로 정규화)
+repomix --skill-generate CustomName          # → custom-name (kebab-case로 정규화)
 ```
 
 Skills 이름은:

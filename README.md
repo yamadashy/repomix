@@ -1128,14 +1128,14 @@ When you run the command, Repomix prompts you to choose where to save the Skills
 
 The Skills are generated with the following structure:
 
-```
+```text
 .claude/skills/<skill-name>/
-├── SKILL.md                    # Main Skills metadata & documentation
+├── SKILL.md                 # Main Skills metadata & documentation
 └── references/
-    ├── summary.md              # Purpose, format, and statistics
-    ├── project-structure.md    # Directory tree with line counts
-    ├── files.md                # All file contents (grep-friendly)
-    └── tech-stack.md           # Languages, frameworks, dependencies
+    ├── summary.md           # Purpose, format, and statistics
+    ├── project-structure.md # Directory tree with line counts
+    ├── files.md             # All file contents (grep-friendly)
+    └── tech-stack.md        # Languages, frameworks, dependencies
 ```
 
 #### What's Included
@@ -1153,7 +1153,7 @@ If no name is provided, Repomix auto-generates one:
 ```bash
 repomix src/ --skill-generate                # → repomix-reference-src
 repomix --remote user/repo --skill-generate  # → repomix-reference-repo
-repomix --skill-generate custom-name         # → custom-name (normalized to kebab-case)
+repomix --skill-generate CustomName          # → custom-name (normalized to kebab-case)
 ```
 
 #### Integration with Repomix Features

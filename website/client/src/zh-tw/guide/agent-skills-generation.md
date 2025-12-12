@@ -38,7 +38,7 @@ repomix --remote https://github.com/user/repo --skill-generate
 
 > [!TIP]
 > 生成 Project Skills 時，建議將其新增到 `.gitignore` 以避免提交大型檔案：
-> ```
+> ```gitignore
 > .claude/skills/repomix-reference-*/
 > ```
 
@@ -46,7 +46,7 @@ repomix --remote https://github.com/user/repo --skill-generate
 
 Skills 按以下結構生成：
 
-```
+```text
 .claude/skills/<skill-name>/
 ├── SKILL.md                    # Skills 主要中繼資料和文件
 └── references/
@@ -79,7 +79,7 @@ Skills 按以下結構生成：
 
 帶有每個檔案行數的目錄樹，便於檔案發現：
 
-```
+```text
 src/
   index.ts (42 lines)
   utils/
@@ -91,7 +91,7 @@ src/
 
 所有帶語法高亮標頭的檔案內容，針對 grep 友善搜尋最佳化：
 
-```markdown
+````markdown
 ## File: src/index.ts
 ```typescript
 import { sum } from './utils/helpers';
@@ -100,7 +100,7 @@ export function main() {
   console.log(sum(1, 2));
 }
 ```
-```
+````
 
 #### references/tech-stack.md
 
@@ -121,7 +121,7 @@ export function main() {
 ```bash
 repomix src/ --skill-generate                # → repomix-reference-src
 repomix --remote user/repo --skill-generate  # → repomix-reference-repo
-repomix --skill-generate custom-name         # → custom-name（規範化為 kebab-case）
+repomix --skill-generate CustomName          # → custom-name（規範化為 kebab-case）
 ```
 
 Skills 名稱會：

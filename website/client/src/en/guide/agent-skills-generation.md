@@ -38,7 +38,7 @@ If the Skills directory already exists, you'll be prompted to confirm overwritin
 
 > [!TIP]
 > When generating Project Skills, consider adding them to `.gitignore` to avoid committing large files:
-> ```
+> ```gitignore
 > .claude/skills/repomix-reference-*/
 > ```
 
@@ -46,7 +46,7 @@ If the Skills directory already exists, you'll be prompted to confirm overwritin
 
 The Skills are generated with the following structure:
 
-```
+```text
 .claude/skills/<skill-name>/
 ├── SKILL.md                    # Main Skills metadata & documentation
 └── references/
@@ -79,7 +79,7 @@ Contains:
 
 Directory tree with line counts per file for easy file discovery:
 
-```
+```text
 src/
   index.ts (42 lines)
   utils/
@@ -91,7 +91,7 @@ src/
 
 All file contents with syntax highlighting headers, optimized for grep-friendly searching:
 
-```markdown
+````markdown
 ## File: src/index.ts
 ```typescript
 import { sum } from './utils/helpers';
@@ -100,7 +100,7 @@ export function main() {
   console.log(sum(1, 2));
 }
 ```
-```
+````
 
 #### references/tech-stack.md
 
@@ -121,7 +121,7 @@ If no name is provided, Repomix auto-generates one using this pattern:
 ```bash
 repomix src/ --skill-generate                # → repomix-reference-src
 repomix --remote user/repo --skill-generate  # → repomix-reference-repo
-repomix --skill-generate custom-name         # → custom-name (normalized to kebab-case)
+repomix --skill-generate CustomName          # → custom-name (normalized to kebab-case)
 ```
 
 Skills names are:

@@ -38,7 +38,7 @@ Nếu thư mục Skills đã tồn tại, bạn sẽ được yêu cầu xác nh
 
 > [!TIP]
 > Khi tạo Project Skills, hãy cân nhắc thêm chúng vào `.gitignore` để tránh commit các file lớn:
-> ```
+> ```gitignore
 > .claude/skills/repomix-reference-*/
 > ```
 
@@ -46,7 +46,7 @@ Nếu thư mục Skills đã tồn tại, bạn sẽ được yêu cầu xác nh
 
 Skills được tạo với cấu trúc sau:
 
-```
+```text
 .claude/skills/<skill-name>/
 ├── SKILL.md                    # Metadata chính và tài liệu Skills
 └── references/
@@ -79,7 +79,7 @@ Chứa:
 
 Cây thư mục với số dòng mỗi file để dễ dàng khám phá:
 
-```
+```text
 src/
   index.ts (42 lines)
   utils/
@@ -91,7 +91,7 @@ src/
 
 Tất cả nội dung file với header syntax highlighting, được tối ưu hóa cho tìm kiếm tương thích grep:
 
-```markdown
+````markdown
 ## File: src/index.ts
 ```typescript
 import { sum } from './utils/helpers';
@@ -100,7 +100,7 @@ export function main() {
   console.log(sum(1, 2));
 }
 ```
-```
+````
 
 #### references/tech-stack.md
 
@@ -121,7 +121,7 @@ Nếu không cung cấp tên, Repomix tự động tạo một tên theo mẫu n
 ```bash
 repomix src/ --skill-generate                # → repomix-reference-src
 repomix --remote user/repo --skill-generate  # → repomix-reference-repo
-repomix --skill-generate custom-name         # → custom-name (chuẩn hóa thành kebab-case)
+repomix --skill-generate CustomName          # → custom-name (chuẩn hóa thành kebab-case)
 ```
 
 Tên Skills sẽ:

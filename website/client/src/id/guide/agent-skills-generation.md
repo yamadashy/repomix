@@ -38,7 +38,7 @@ Jika direktori Skills sudah ada, Anda akan diminta untuk mengkonfirmasi penimpaa
 
 > [!TIP]
 > Saat menghasilkan Project Skills, pertimbangkan untuk menambahkannya ke `.gitignore` untuk menghindari commit file besar:
-> ```
+> ```gitignore
 > .claude/skills/repomix-reference-*/
 > ```
 
@@ -46,7 +46,7 @@ Jika direktori Skills sudah ada, Anda akan diminta untuk mengkonfirmasi penimpaa
 
 Skills dihasilkan dengan struktur berikut:
 
-```
+```text
 .claude/skills/<skill-name>/
 ├── SKILL.md                    # Metadata utama Skills & dokumentasi
 └── references/
@@ -79,7 +79,7 @@ Berisi:
 
 Pohon direktori dengan jumlah baris per file untuk penemuan file yang mudah:
 
-```
+```text
 src/
   index.ts (42 lines)
   utils/
@@ -91,7 +91,7 @@ src/
 
 Semua konten file dengan header syntax highlighting, dioptimalkan untuk pencarian kompatibel grep:
 
-```markdown
+````markdown
 ## File: src/index.ts
 ```typescript
 import { sum } from './utils/helpers';
@@ -100,7 +100,7 @@ export function main() {
   console.log(sum(1, 2));
 }
 ```
-```
+````
 
 #### references/tech-stack.md
 
@@ -121,7 +121,7 @@ Jika tidak ada nama yang diberikan, Repomix otomatis menghasilkan satu dengan po
 ```bash
 repomix src/ --skill-generate                # → repomix-reference-src
 repomix --remote user/repo --skill-generate  # → repomix-reference-repo
-repomix --skill-generate custom-name         # → custom-name (dinormalisasi ke kebab-case)
+repomix --skill-generate CustomName          # → custom-name (dinormalisasi ke kebab-case)
 ```
 
 Nama Skills akan:
