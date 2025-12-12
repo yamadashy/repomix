@@ -658,6 +658,9 @@ Instruction
 #### MCP
 - `--mcp`: Run as Model Context Protocol server for AI tool integration
 
+#### Agent Skills Generation
+- `--skill-generate [name]`: Generate Claude Agent Skills format output to `.claude/skills/<name>/` directory (name auto-generated if omitted)
+
 #### Examples
 
 ```bash
@@ -1098,6 +1101,75 @@ The agent automatically:
 - **Token Optimization**: Tree-sitter compression for large codebases
 
 For more details, see the plugin documentation in the `.claude/plugins/` directory.
+
+### Agent Skills Generation
+
+Repomix can generate [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) format output, creating a structured Skills directory that can be used as a reusable codebase reference for AI assistants. This feature is particularly powerful when you want to reference implementations from remote repositories.
+
+#### Basic Usage
+
+```bash
+# Generate Skills from local directory
+repomix --skill-generate
+
+# Generate with custom Skills name
+repomix --skill-generate my-project-reference
+
+# Generate from remote repository
+repomix --remote https://github.com/user/repo --skill-generate
+```
+
+When you run the command, Repomix prompts you to choose where to save the Skills:
+
+1. **Personal Skills** (`~/.claude/skills/`) - Available across all projects on your machine
+2. **Project Skills** (`.claude/skills/`) - Shared with your team via git
+
+#### Generated Structure
+
+The Skills are generated with the following structure:
+
+```text
+.claude/skills/<skill-name>/
+├── SKILL.md                 # Main Skills metadata & documentation
+└── references/
+    ├── summary.md           # Purpose, format, and statistics
+    ├── project-structure.md # Directory tree with line counts
+    ├── files.md             # All file contents (grep-friendly)
+    └── tech-stack.md        # Languages, frameworks, dependencies
+```
+
+#### What's Included
+
+- **SKILL.md**: Contains Skills metadata, file/line/token counts, overview, and usage instructions
+- **summary.md**: Explains the Skills' purpose, usage guidelines, and provides statistics breakdown by file type and language
+- **project-structure.md**: Directory tree with line counts per file for easy file discovery
+- **files.md**: All file contents with syntax highlighting headers, optimized for grep-friendly searching
+- **tech-stack.md**: Auto-detected tech stack from dependency files (`package.json`, `requirements.txt`, `Cargo.toml`, etc.)
+
+#### Auto-Generated Skills Names
+
+If no name is provided, Repomix auto-generates one:
+
+```bash
+repomix src/ --skill-generate                # → repomix-reference-src
+repomix --remote user/repo --skill-generate  # → repomix-reference-repo
+repomix --skill-generate CustomName          # → custom-name (normalized to kebab-case)
+```
+
+#### Integration with Repomix Features
+
+Skills generation respects all standard Repomix options:
+
+```bash
+# Generate Skills with file filtering
+repomix --skill-generate --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# Generate Skills with compression
+repomix --skill-generate --compress
+
+# Generate Skills from remote repository
+repomix --remote yamadashy/repomix --skill-generate
+```
 
 ## ⚙️ Configuration
 

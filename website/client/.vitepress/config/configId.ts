@@ -42,6 +42,7 @@ export const configId = defineConfig({
           items: [
             { text: 'Server MCP', link: '/id/guide/mcp-server' },
             { text: 'Plugin Claude Code', link: '/id/guide/claude-code-plugins' },
+            { text: 'Pembuatan Agent Skills', link: '/id/guide/agent-skills-generation' },
             { text: 'GitHub Actions', link: '/id/guide/github-actions' },
             {
               text: 'Menggunakan Repomix sebagai Library',
