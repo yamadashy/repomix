@@ -9,6 +9,7 @@ import { configItSearch } from './configIt';
 import { configJaSearch } from './configJa';
 import { configKoSearch } from './configKo';
 import { configPtBrSearch } from './configPtBr';
+import { configRuSearch } from './configRu';
 import { configViSearch } from './configVi';
 import { configZhCnSearch } from './configZhCn';
 import { configZhTwSearch } from './configZhTw';
@@ -76,6 +77,7 @@ export const configShard = defineConfig({
           ...configJaSearch,
           ...configKoSearch,
           ...configPtBrSearch,
+          ...configRuSearch,
           ...configViSearch,
           ...configZhCnSearch,
           ...configZhTwSearch,
