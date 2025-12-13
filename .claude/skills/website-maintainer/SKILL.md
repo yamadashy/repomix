@@ -5,7 +5,7 @@ description: Use this skill when working on the Repomix documentation website in
 
 # Website Maintainer
 
-VitePress documentation site with 12 languages.
+VitePress documentation site with 13 languages.
 
 ## Structure
 
@@ -17,7 +17,7 @@ website/client/
 │       ├── configShard.ts  # Shared settings (PWA, sitemap, etc.)
 │       └── config[Lang].ts # Per-language config (nav, sidebar, search)
 └── src/
-    └── [lang]/             # en, ja, zh-cn, zh-tw, ko, de, fr, es, pt-br, id, vi, hi
+    └── [lang]/             # en, ja, zh-cn, zh-tw, ko, de, fr, es, pt-br, id, vi, hi, it
 ```
 
 ## Adding New Language
