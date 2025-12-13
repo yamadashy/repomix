@@ -26,11 +26,11 @@
 ```
 
 ```yaml
-- name: Pack repository with Repomix (JSON format)
+- name: Pack repository with Repomix (Plain text format)
   uses: yamadashy/repomix/.github/actions/repomix@main
   with:
-    output: repomix-output.json
-    style: json
+    output: repomix-output.txt
+    style: plain
 ```
 
 ## Упаковка нескольких директорий со сжатием
@@ -76,7 +76,7 @@
 | `ignore`          | Glob-паттерны для игнорирования через запятую | `""`             |
 | `output`          | Путь к выходному файлу                      | `repomix-output.xml`     |
 | `compress`        | Включить умное сжатие                       | `true`            |
-| `style`           | Стиль вывода (xml, markdown, json, plain)   | `xml`             |
+| `style`           | Стиль вывода (xml, markdown, plain)         | `xml`             |
 | `additional-args` | Дополнительные CLI-аргументы для repomix    | `""`             |
 | `repomix-version` | Версия npm-пакета для установки             | `latest`          |
 
