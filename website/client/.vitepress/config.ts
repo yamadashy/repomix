@@ -9,6 +9,7 @@ import { configIt } from './config/configIt';
 import { configJa } from './config/configJa';
 import { configKo } from './config/configKo';
 import { configPtBr } from './config/configPtBr';
+import { configRu } from './config/configRu';
 import { configShard } from './config/configShard';
 import { configVi } from './config/configVi';
 import { configZhCn } from './config/configZhCn';
@@ -30,5 +31,6 @@ export default defineConfig({
     hi: { label: 'हिन्दी', ...configHi },
     id: { label: 'Indonesia', ...configId },
     vi: { label: 'Tiếng Việt', ...configVi },
+    ru: { label: 'Русский', ...configRu },
   },
 });
