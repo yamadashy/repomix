@@ -8,29 +8,20 @@ npx repomix@latest
 
 ## Installazione Globale
 
-### npm
-
-```bash
+::: code-group
+```bash [npm]
 npm install -g repomix
 ```
-
-### Yarn
-
-```bash
+```bash [yarn]
 yarn global add repomix
 ```
-
-### Bun
-
-```bash
+```bash [bun]
 bun add -g repomix
 ```
-
-### Homebrew (macOS/Linux)
-
-```bash
+```bash [Homebrew]
 brew install repomix
 ```
+:::
 
 ## Installazione con Docker
 
