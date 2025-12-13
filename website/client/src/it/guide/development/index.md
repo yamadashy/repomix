@@ -86,7 +86,7 @@ docker run -v ./:/app -it --rm repomix
 
 Il progetto è organizzato nelle seguenti directory:
 
-```
+```text
 src/
 ├── cli/          # Implementazione CLI
 ├── config/       # Gestione configurazione

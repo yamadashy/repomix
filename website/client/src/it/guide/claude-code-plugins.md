@@ -140,10 +140,10 @@ Altri esempi:
 
 ## Risorse Correlate
 
-- [Documentazione Server MCP](/guide/mcp-server) - Scopri di più sul server MCP sottostante
-- [Configurazione](/guide/configuration) - Personalizza il comportamento di Repomix
-- [Sicurezza](/guide/security) - Comprendi le funzionalità di sicurezza
-- [Opzioni da Linea di Comando](/guide/command-line-options) - Opzioni CLI disponibili
+- [Documentazione Server MCP](/it/guide/mcp-server) - Scopri di più sul server MCP sottostante
+- [Configurazione](/it/guide/configuration) - Personalizza il comportamento di Repomix
+- [Sicurezza](/it/guide/security) - Comprendi le funzionalità di sicurezza
+- [Opzioni da Linea di Comando](/it/guide/command-line-options) - Opzioni CLI disponibili
 
 ## Codice Sorgente dei Plugin
 
