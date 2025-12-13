@@ -15,12 +15,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 1
 
       - name: Find Similar Issues
-        uses: anthropics/claude-code-action@a7e4c51380c42dd89b127f5e5f9be7b54020bc6b # v1.0.21
+        uses: anthropics/claude-code-action@6337623ebba10cf8c8214b507993f8062fd4ccfb # v1.0.22
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_non_write_users: "*"
