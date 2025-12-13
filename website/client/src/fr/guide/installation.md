@@ -15,6 +15,9 @@ npm install -g repomix
 ```bash [yarn]
 yarn global add repomix
 ```
+```bash [pnpm]
+pnpm add -g repomix
+```
 ```bash [bun]
 bun add -g repomix
 ```
