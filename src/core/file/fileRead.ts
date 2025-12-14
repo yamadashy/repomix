@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import iconv from 'iconv-lite';
-import { isBinary } from 'istextorbinary';
+import isBinaryPath from 'is-binary-path';
+import { isBinaryFile } from 'isbinaryfile';
 import jschardet from 'jschardet';
 import { logger } from '../../shared/logger.js';
 
@@ -28,7 +29,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
       return { content: null, skippedReason: 'size-limit' };
     }
 
-    if (isBinary(filePath)) {
+    if (isBinaryPath(filePath)) {
       logger.debug(`Skipping binary file: ${filePath}`);
       return { content: null, skippedReason: 'binary-extension' };
     }
@@ -37,7 +38,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
 
     const buffer = await fs.readFile(filePath);
 
-    if (isBinary(null, buffer)) {
+    if (await isBinaryFile(buffer)) {
       logger.debug(`Skipping binary file (content check): ${filePath}`);
       return { content: null, skippedReason: 'binary-content' };
     }
