@@ -1,21 +1,18 @@
 import * as fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { readRawFile } from '../../../src/core/file/fileRead.js';
 
 describe('readRawFile', () => {
-  const testDir = path.join(process.cwd(), 'tests', 'fixtures', 'fileRead');
+  let testDir: string;
 
   beforeEach(async () => {
-    await fs.mkdir(testDir, { recursive: true });
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-fileRead-'));
   });
 
   afterEach(async () => {
-    try {
-      await fs.rm(testDir, { recursive: true });
-    } catch {
-      // Ignore if directory doesn't exist
-    }
+    await fs.rm(testDir, { recursive: true, force: true });
   });
 
   test('should read normal text file successfully', async () => {

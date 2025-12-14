@@ -51,6 +51,16 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     // Only skip if there are actual decode errors (U+FFFD replacement characters)
     // Don't rely on jschardet confidence as it can return low values for valid UTF-8/ASCII files
     if (content.includes('\uFFFD')) {
+      // For UTF-8, distinguish invalid byte sequences from a legitimate U+FFFD in the source
+      if (encoding.toLowerCase() === 'utf-8') {
+        try {
+          let utf8 = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+          if (utf8.charCodeAt(0) === 0xfeff) utf8 = utf8.slice(1); // strip UTF-8 BOM
+          return { content: utf8 };
+        } catch {
+          // fall through to skip below
+        }
+      }
       logger.debug(`Skipping file due to encoding errors (detected: ${encoding}): ${filePath}`);
       return { content: null, skippedReason: 'encoding-error' };
     }
