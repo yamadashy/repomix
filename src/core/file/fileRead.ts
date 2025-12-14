@@ -43,16 +43,15 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
       return { content: null, skippedReason: 'binary-content' };
     }
 
-    const { encoding: detectedEncoding, confidence } = jschardet.detect(buffer) ?? {};
+    const { encoding: detectedEncoding } = jschardet.detect(buffer) ?? {};
     const encoding = detectedEncoding && iconv.encodingExists(detectedEncoding) ? detectedEncoding : 'utf-8';
 
     const content = iconv.decode(buffer, encoding, { stripBOM: true });
 
-    // Heuristics: U+FFFD indicates decode errors; very low confidence implies unreliable guess.
-    if (content.includes('\uFFFD') || (typeof confidence === 'number' && confidence < 0.2)) {
-      logger.debug(
-        `Skipping file due to encoding errors (${encoding}, confidence=${(confidence ?? 0).toFixed(2)}): ${filePath}`,
-      );
+    // Only skip if there are actual decode errors (U+FFFD replacement characters)
+    // Don't rely on jschardet confidence as it can return low values for valid UTF-8/ASCII files
+    if (content.includes('\uFFFD')) {
+      logger.debug(`Skipping file due to encoding errors (detected: ${encoding}): ${filePath}`);
       return { content: null, skippedReason: 'encoding-error' };
     }
 
