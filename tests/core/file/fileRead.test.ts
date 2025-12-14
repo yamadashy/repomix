@@ -69,6 +69,20 @@ def hello():
     expect(result.skippedReason).toBeUndefined();
   });
 
+  test('should read file containing legitimate U+FFFD character', async () => {
+    // This tests that files with intentional U+FFFD characters in the source
+    // are NOT skipped (TextDecoder can decode them successfully)
+    const filePath = path.join(testDir, 'with-replacement-char.txt');
+    // U+FFFD is a valid Unicode character that can appear in source files
+    const content = 'Some text with replacement char: \uFFFD and more text';
+    await fs.writeFile(filePath, content, 'utf-8');
+
+    const result = await readRawFile(filePath, 1024);
+
+    expect(result.content).toBe(content);
+    expect(result.skippedReason).toBeUndefined();
+  });
+
   test('should skip file with actual decode errors (U+FFFD)', async () => {
     const filePath = path.join(testDir, 'invalid.txt');
     // Create a file with a UTF-8 BOM followed by valid text and invalid UTF-8 sequences
