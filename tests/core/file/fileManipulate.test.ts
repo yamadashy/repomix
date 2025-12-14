@@ -295,11 +295,16 @@ describe('fileManipulate', () => {
         Another docstring
         """
       `,
+      // preserveNewlines keeps newlines for line number preservation
       expected: `
 
         def test():
 
+
+
           return True
+
+
 
 `,
     },
@@ -314,10 +319,13 @@ describe('fileManipulate', () => {
         docstring
         """
       `,
+      // preserveNewlines keeps newlines for line number preservation
       expected: `
         var = """
         string variable
         """
+
+
 
 `,
     },
@@ -373,7 +381,12 @@ describe('fileManipulate', () => {
         '''
         """
       `,
+      // preserveNewlines keeps newlines for line number preservation
       expected: `
+
+
+
+
 
 `,
     },
@@ -391,8 +404,15 @@ describe('fileManipulate', () => {
         """
         return True
     `,
+      // preserveNewlines keeps newlines for line number preservation
       expected: `
       def func():
+
+
+
+
+
+
 
         return True
 `,
@@ -461,11 +481,16 @@ describe('fileManipulate', () => {
         # Another comment
         return x
     `,
+      // preserveNewlines keeps newlines for line number preservation
       expected: `
 
       def func():
 
+
+
         x = 5
+
+
 
 
         return x
@@ -554,8 +579,12 @@ describe('fileManipulate', () => {
         """
         return True
     `,
+      // preserveNewlines keeps newlines for line number preservation
       expected: `
       def func():
+
+
+
 
         return True
 `,

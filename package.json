@@ -75,6 +75,7 @@
   "dependencies": {
     "@clack/prompts": "^0.11.0",
     "@modelcontextprotocol/sdk": "^1.24.3",
+    "@repomix/strip-comments": "^2.4.1",
     "@repomix/tree-sitter-wasms": "^0.1.15",
     "@secretlint/core": "^11.2.5",
     "@secretlint/secretlint-rule-preset-recommend": "^11.2.5",
@@ -94,7 +95,6 @@
     "log-update": "^7.0.2",
     "minimatch": "^10.1.1",
     "picocolors": "^1.1.1",
-    "strip-comments": "^2.0.1",
     "tiktoken": "^1.0.22",
     "tinypool": "^2.0.0",
     "web-tree-sitter": "^0.25.10",
