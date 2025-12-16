@@ -1,5 +1,5 @@
 import path from 'node:path';
-import strip from 'strip-comments';
+import strip from '@repomix/strip-comments';
 
 export interface FileManipulator {
   removeComments(content: string): string;
@@ -42,269 +42,6 @@ class StripCommentsManipulator extends BaseManipulator {
   }
 }
 
-class CppManipulator extends BaseManipulator {
-  removeComments(content: string): string {
-    let result = strip(content, {
-      language: 'c',
-      preserveNewlines: true,
-    });
-
-    result = result
-      .split('\n')
-      .map((line) => {
-        const tripleSlashIndex = line.indexOf('///');
-        if (tripleSlashIndex !== -1) {
-          return line.substring(0, tripleSlashIndex).trimEnd();
-        }
-        return line;
-      })
-      .join('\n');
-
-    return rtrimLines(result);
-  }
-}
-
-enum GoParserState {
-  Normal = 0,
-  InLineComment = 1,
-  InBlockComment = 2,
-  InDoubleQuoteString = 3,
-  InRawString = 4,
-  InRuneLiteral = 5,
-}
-
-class GoManipulator extends BaseManipulator {
-  removeComments(content: string): string {
-    if (!content) return '';
-
-    let state: GoParserState = GoParserState.Normal;
-    let result = '';
-    let i = 0;
-    let hasNonWhitespaceOnLine = false; // Track if line has non-whitespace content
-
-    while (i < content.length) {
-      const char = content[i];
-      const nextChar = i + 1 < content.length ? content[i + 1] : null;
-
-      switch (state) {
-        case GoParserState.Normal:
-          if (char === '/' && nextChar === '/') {
-            // Go directive handling
-            if (!hasNonWhitespaceOnLine) {
-              if (content.startsWith('//go:', i)) {
-                // Preserve //go: directives
-                const lineEnd = content.indexOf('\n', i);
-                if (lineEnd === -1) {
-                  result += content.substring(i);
-                  i = content.length;
-                } else {
-                  result += content.substring(i, lineEnd + 1);
-                  i = lineEnd + 1;
-                  hasNonWhitespaceOnLine = false;
-                }
-                continue;
-              }
-            }
-            state = GoParserState.InLineComment;
-            i += 2; // skip '//'
-            continue;
-          }
-          if (char === '/' && nextChar === '*') {
-            state = GoParserState.InBlockComment;
-            i += 2; // skip '/*'
-            continue;
-          }
-          result += char;
-          if (char !== ' ' && char !== '\t' && char !== '\n') {
-            hasNonWhitespaceOnLine = true;
-          }
-          if (char === '"') {
-            state = GoParserState.InDoubleQuoteString;
-          } else if (char === '`') {
-            state = GoParserState.InRawString;
-          } else if (char === "'") {
-            state = GoParserState.InRuneLiteral;
-          }
-          break;
-
-        case GoParserState.InLineComment:
-          // Skip text within line comments until newline
-          if (char === '\n') {
-            result += char;
-            state = GoParserState.Normal;
-            hasNonWhitespaceOnLine = false;
-          }
-          // Skip all other characters
-          break;
-
-        case GoParserState.InBlockComment:
-          // Go block comments do not nest - first */ closes the comment
-          if (char === '*' && nextChar === '/') {
-            state = GoParserState.Normal;
-            i += 2; // skip '*/'
-            continue;
-          }
-          if (char === '\n') {
-            // Preserve newlines in block comments to maintain line structure
-            result += char;
-            hasNonWhitespaceOnLine = false;
-          }
-          // Skip all other characters within block comments
-          break;
-
-        case GoParserState.InDoubleQuoteString:
-          result += char;
-          if (char === '\\' && nextChar !== null) {
-            // Handle escape sequences
-            result += nextChar;
-            i += 2;
-            continue;
-          }
-          if (char === '"') {
-            state = GoParserState.Normal;
-          }
-          break;
-
-        case GoParserState.InRawString:
-          result += char;
-          if (char === '`') {
-            state = GoParserState.Normal;
-          }
-          break;
-
-        case GoParserState.InRuneLiteral:
-          result += char;
-          if (char === '\\' && nextChar !== null) {
-            // Handle escape sequences
-            result += nextChar;
-            i += 2;
-            continue;
-          }
-          if (char === "'") {
-            state = GoParserState.Normal;
-          }
-          break;
-      }
-
-      if (char === '\n') {
-        hasNonWhitespaceOnLine = false;
-      }
-      i++;
-    }
-    return rtrimLines(result);
-  }
-}
-
-class PythonManipulator extends BaseManipulator {
-  removeDocStrings(content: string): string {
-    if (!content) return '';
-    const lines = content.split('\n');
-
-    let result = '';
-
-    let buffer = '';
-    let quoteType: '' | "'" | '"' = '';
-    let tripleQuotes = 0;
-
-    const doubleQuoteRegex = /^\s*(?<!\\)(?:""")\s*(?:\n)?[\s\S]*?(?<!("""))(?<!\\)(?:""")/gm;
-    const singleQuoteRegex = /^\s*(?<!\\)(?:''')\s*(?:\n)?[\s\S]*?(?<!('''))(?<!\\)(?:''')/gm;
-
-    const sz = lines.length;
-    for (let i = 0; i < sz; i++) {
-      const line = lines[i] + (i !== sz - 1 ? '\n' : '');
-      buffer += line;
-      if (quoteType === '') {
-        const indexSingle = line.search(/(?<!["])(?<!\\)'''(?!["])/g);
-        const indexDouble = line.search(/(?<!['])(?<!\\)"""(?!['])/g);
-        if (indexSingle !== -1 && (indexDouble === -1 || indexSingle < indexDouble)) {
-          quoteType = "'";
-        } else if (indexDouble !== -1 && (indexSingle === -1 || indexDouble < indexSingle)) {
-          quoteType = '"';
-        }
-      }
-      if (quoteType === "'") {
-        tripleQuotes += (line.match(/(?<!["])(?<!\\)'''(?!["])/g) || []).length;
-      }
-      if (quoteType === '"') {
-        tripleQuotes += (line.match(/(?<!['])(?<!\\)"""(?!['])/g) || []).length;
-      }
-
-      if (tripleQuotes % 2 === 0) {
-        const docstringRegex = quoteType === '"' ? doubleQuoteRegex : singleQuoteRegex;
-        buffer = buffer.replace(docstringRegex, '');
-        result += buffer;
-        buffer = '';
-        tripleQuotes = 0;
-        quoteType = '';
-      }
-    }
-
-    result += buffer;
-    return result;
-  }
-
-  removeHashComments(content: string): string {
-    const searchInPairs = (pairs: [number, number][], hashIndex: number): boolean => {
-      return pairs.some(([start, end]) => hashIndex > start && hashIndex < end);
-    };
-
-    let result = '';
-    const pairs: [number, number][] = [];
-    let prevQuote = 0;
-    while (prevQuote < content.length) {
-      const openingQuote = content.slice(prevQuote + 1).search(/(?<!\\)(?:"|'|'''|""")/g) + prevQuote + 1;
-      if (openingQuote === prevQuote) break;
-
-      let closingQuote = -1;
-      if (content.startsWith('"""', openingQuote) || content.startsWith("'''", openingQuote)) {
-        const quoteType = content.slice(openingQuote, openingQuote + 3);
-        closingQuote = content.indexOf(quoteType, openingQuote + 3);
-      } else {
-        const quoteType = content[openingQuote];
-        closingQuote = content.indexOf(quoteType, openingQuote + 1);
-      }
-
-      if (closingQuote === -1) break;
-      pairs.push([openingQuote, closingQuote]);
-      prevQuote = closingQuote;
-    }
-    let prevHash = 0;
-    while (prevHash < content.length) {
-      const hashIndex = content.slice(prevHash).search(/(?<!\\)#/g) + prevHash;
-      if (hashIndex === prevHash - 1) {
-        result += content.slice(prevHash);
-        break;
-      }
-
-      const isInsideString = searchInPairs(pairs, hashIndex);
-      const nextNewLine = content.indexOf('\n', hashIndex);
-
-      if (!isInsideString) {
-        if (nextNewLine === -1) {
-          result += content.slice(prevHash);
-          break;
-        }
-        result += `${content.slice(prevHash, hashIndex)}\n`;
-      } else {
-        if (nextNewLine === -1) {
-          result += content.slice(prevHash);
-          break;
-        }
-        result += `${content.slice(prevHash, nextNewLine)}\n`;
-      }
-
-      prevHash = nextNewLine + 1;
-    }
-    return result;
-  }
-
-  removeComments(content: string): string {
-    let result = this.removeDocStrings(content);
-    result = this.removeHashComments(result);
-    return rtrimLines(result);
-  }
-}
-
 class CompositeManipulator extends BaseManipulator {
   private manipulators: FileManipulator[];
 
@@ -321,14 +58,14 @@ class CompositeManipulator extends BaseManipulator {
 const manipulators: Record<string, FileManipulator> = {
   '.c': new StripCommentsManipulator('c'),
   '.h': new StripCommentsManipulator('c'),
-  '.hpp': new CppManipulator(),
-  '.cpp': new CppManipulator(),
-  '.cc': new CppManipulator(),
-  '.cxx': new CppManipulator(),
+  '.hpp': new StripCommentsManipulator('cpp'),
+  '.cpp': new StripCommentsManipulator('cpp'),
+  '.cc': new StripCommentsManipulator('cpp'),
+  '.cxx': new StripCommentsManipulator('cpp'),
   '.cs': new StripCommentsManipulator('csharp'),
   '.css': new StripCommentsManipulator('css'),
   '.dart': new StripCommentsManipulator('c'),
-  '.go': new GoManipulator(),
+  '.go': new StripCommentsManipulator('go'),
   '.html': new StripCommentsManipulator('html'),
   '.java': new StripCommentsManipulator('java'),
   '.js': new StripCommentsManipulator('javascript'),
@@ -336,6 +73,7 @@ const manipulators: Record<string, FileManipulator> = {
   '.kt': new StripCommentsManipulator('c'),
   '.less': new StripCommentsManipulator('less'),
   '.php': new StripCommentsManipulator('php'),
+  '.py': new StripCommentsManipulator('python'),
   '.rb': new StripCommentsManipulator('ruby'),
   '.rs': new StripCommentsManipulator('c'),
   '.sass': new StripCommentsManipulator('sass'),
@@ -349,8 +87,6 @@ const manipulators: Record<string, FileManipulator> = {
   '.xml': new StripCommentsManipulator('xml'),
   '.yaml': new StripCommentsManipulator('perl'),
   '.yml': new StripCommentsManipulator('perl'),
-
-  '.py': new PythonManipulator(),
 
   '.vue': new CompositeManipulator(
     new StripCommentsManipulator('html'),
