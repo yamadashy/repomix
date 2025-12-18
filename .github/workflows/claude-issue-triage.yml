@@ -8,6 +8,9 @@ jobs:
   triage-issue:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    concurrency:
+      group: claude-issue-${{ github.event.issue.number }}
+      cancel-in-progress: false
     permissions:
       contents: read
       issues: write
