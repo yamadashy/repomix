@@ -48,6 +48,8 @@ describe('packager', () => {
         safeFilePaths: mockFilePaths,
         safeRawFiles: mockSafeRawFiles,
         suspiciousFilesResults: [],
+        suspiciousGitDiffResults: [],
+        suspiciousGitLogResults: [],
       }),
       generateOutput: vi.fn().mockResolvedValue(mockOutput),
       writeOutputToDisk: vi.fn().mockResolvedValue(undefined),
@@ -64,6 +66,8 @@ describe('packager', () => {
           'file1.txt': 10,
           [file2Path]: 10,
         },
+        gitDiffTokenCount: 0,
+        gitLogTokenCount: 0,
       }),
     };
 

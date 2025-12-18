@@ -1,4 +1,5 @@
 import type { RepomixConfigMerged } from '../config/configSchema.js';
+import { RepomixError } from '../shared/errorHandle.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
@@ -10,6 +11,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics } from './metrics/calculateMetrics.js';
 import { generateOutput } from './output/outputGenerate.js';
+import { generateSplitOutputParts } from './output/outputSplit.js';
 import { copyToClipboardIfEnabled } from './packager/copyToClipboardIfEnabled.js';
 import { writeOutputToDisk } from './packager/writeOutputToDisk.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
@@ -24,6 +26,7 @@ export interface PackResult {
   fileTokenCounts: Record<string, number>;
   gitDiffTokenCount: number;
   gitLogTokenCount: number;
+  outputFiles?: string[];
   suspiciousFilesResults: SuspiciousFileResult[];
   suspiciousGitDiffResults: SuspiciousFileResult[];
   suspiciousGitLogResults: SuspiciousFileResult[];
@@ -151,22 +154,72 @@ export const pack = async (
   }
 
   // Normal output generation
-  const output = await withMemoryLogging('Generate Output', () =>
-    deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
-  );
+  const splitMaxBytes = config.output.splitOutput;
+  let outputFiles: string[] | undefined;
+  let outputForMetrics: string | string[];
 
-  progressCallback('Writing output file...');
-  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+  if (splitMaxBytes !== undefined) {
+    if (config.output.stdout || config.output.filePath === '-') {
+      throw new RepomixError('splitOutput cannot be used with stdout');
+    }
+    if (config.output.copyToClipboard) {
+      throw new RepomixError('splitOutput cannot be used with copyToClipboard');
+    }
 
-  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+    const parts = await withMemoryLogging('Generate Split Output', async () => {
+      return await generateSplitOutputParts({
+        rootDirs,
+        baseConfig: config,
+        processedFiles,
+        allFilePaths,
+        maxBytesPerPart: splitMaxBytes,
+        gitDiffResult,
+        gitLogResult,
+        progressCallback,
+        deps: {
+          generateOutput: deps.generateOutput,
+        },
+      });
+    });
+
+    progressCallback('Writing output files...');
+    await withMemoryLogging('Write Split Output', async () => {
+      for (const part of parts) {
+        const partConfig = {
+          ...config,
+          output: {
+            ...config.output,
+            stdout: false,
+            filePath: part.filePath,
+          },
+        };
+        // eslint-disable-next-line no-await-in-loop
+        await deps.writeOutputToDisk(part.content, partConfig);
+      }
+    });
+
+    outputFiles = parts.map((p) => p.filePath);
+    outputForMetrics = parts.map((p) => p.content);
+  } else {
+    const output = await withMemoryLogging('Generate Output', () =>
+      deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
+    );
+
+    progressCallback('Writing output file...');
+    await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+
+    await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+    outputForMetrics = output;
+  }
 
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, gitLogResult),
+    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),
   );
 
   // Create a result object that includes metrics and security results
   const result = {
     ...metrics,
+    ...(outputFiles && { outputFiles }),
     suspiciousFilesResults,
     suspiciousGitDiffResults,
     suspiciousGitLogResults,
