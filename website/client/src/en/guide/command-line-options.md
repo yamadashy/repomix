@@ -26,6 +26,7 @@
 - `--truncate-base64`: Truncate long base64 data strings to reduce output size
 - `--header-text <text>`: Custom text to include at the beginning of the output
 - `--instruction-file-path <path>`: Path to file containing custom instructions to include in output
+- `--split-output <size>`: Split output into multiple numbered files (e.g., repomix-output.1.xml, repomix-output.2.xml); size like 500kb or 2mb
 - `--include-empty-directories`: Include folders with no files in directory structure
 - `--include-full-directory-structure`: Show entire repository tree in the Directory Structure section, even when using --include patterns
 - `--no-git-sort-by-changes`: Don't sort files by git change frequency (default: most changed files first)
@@ -76,6 +77,9 @@ repomix --stdout | llm "Please explain what this code does."
 # Custom output with compression
 repomix --compress
 
+# Split output into multiple files (max size per part)
+repomix --split-output 20mb
+
 # Process specific files with patterns
 repomix --include "src/**/*.ts,*.md" --ignore "*.test.js,docs/**"
 
@@ -103,4 +107,3 @@ repomix --include-diffs --include-logs  # Include both diffs and logs
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Only show files/directories with 1000+ tokens
 ```
-

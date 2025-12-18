@@ -100,6 +100,7 @@ JavaScript configuration files work the same as TypeScript, supporting `defineCo
 | `output.showLineNumbers`         | Whether to add line numbers to each line. Helpful for referencing specific parts of code                                     | `false`                |
 | `output.truncateBase64`          | Whether to truncate long base64 data strings (e.g., images) to reduce token count                                            | `false`                |
 | `output.copyToClipboard`         | Whether to copy the output to system clipboard in addition to saving the file                                                | `false`                |
+| `output.splitOutput`             | Split output into multiple numbered files by maximum size per part (in bytes). This keeps each file under the limit and avoids splitting files across parts | `null`                 |
 | `output.topFilesLength`          | Number of top files to display in the summary. If set to 0, no summary will be displayed                                     | `5`                    |
 | `output.includeEmptyDirectories` | Whether to include empty directories in the repository structure                                                             | `false`                |
 | `output.includeFullDirectoryStructure` | When using `include` patterns, whether to display the complete directory tree (respecting ignore patterns) while still processing only the included files. Provides full repository context for AI analysis | `false`                |

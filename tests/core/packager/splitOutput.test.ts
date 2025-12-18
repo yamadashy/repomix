@@ -81,4 +81,3 @@ describe('packager split output', () => {
     expect(result.outputFiles).toEqual(['repomix-output.1.xml', 'repomix-output.2.xml']);
   });
 });
-
