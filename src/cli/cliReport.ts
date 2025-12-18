@@ -92,9 +92,20 @@ export const reportSummary = (
     const displayPath = getDisplayPath(options.skillDir, cwd);
     logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)} ${pc.dim('(skill directory)')}`);
   } else {
-    const outputPath = path.resolve(cwd, config.output.filePath);
-    const displayPath = getDisplayPath(outputPath, cwd);
-    logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)}`);
+    if (packResult.outputFiles && packResult.outputFiles.length > 0) {
+      const first = packResult.outputFiles[0];
+      const last = packResult.outputFiles[packResult.outputFiles.length - 1];
+      const firstDisplayPath = getDisplayPath(path.resolve(cwd, first), cwd);
+      const lastDisplayPath = getDisplayPath(path.resolve(cwd, last), cwd);
+
+      logger.log(
+        `${pc.white('       Output:')} ${pc.white(firstDisplayPath)} ${pc.dim('…')} ${pc.white(lastDisplayPath)} ${pc.dim(`(${packResult.outputFiles.length} parts)`)}`,
+      );
+    } else {
+      const outputPath = path.resolve(cwd, config.output.filePath);
+      const displayPath = getDisplayPath(outputPath, cwd);
+      logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)}`);
+    }
   }
   logger.log(`${pc.white('     Security:')} ${pc.white(securityCheckMessage)}`);
 

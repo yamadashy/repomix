@@ -22,7 +22,7 @@ export interface CalculateMetricsResult {
 
 export const calculateMetrics = async (
   processedFiles: ProcessedFile[],
-  output: string,
+  output: string | string[],
   progressCallback: RepomixProgressCallback,
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
@@ -47,6 +47,7 @@ export const calculateMetrics = async (
     });
 
   try {
+    const outputParts = Array.isArray(output) ? output : [output];
     // For top files display optimization: calculate token counts only for top files by character count
     // However, if tokenCountTree is enabled, calculate for all files to avoid double calculation
     const topFilesLength = config.output.topFilesLength;
@@ -62,7 +63,7 @@ export const calculateMetrics = async (
           .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
           .map((file) => file.path);
 
-    const [selectiveFileMetrics, totalTokens, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+    const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
       deps.calculateSelectiveFileMetrics(
         processedFiles,
         metricsTargetPaths,
@@ -70,13 +71,20 @@ export const calculateMetrics = async (
         progressCallback,
         { taskRunner },
       ),
-      deps.calculateOutputMetrics(output, config.tokenCount.encoding, config.output.filePath, { taskRunner }),
+      Promise.all(
+        outputParts.map(async (part, index) => {
+          const partPath =
+            outputParts.length > 1 ? `${config.output.filePath}.part-${index + 1}` : config.output.filePath;
+          return await deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
+        }),
+      ),
       deps.calculateGitDiffMetrics(config, gitDiffResult, { taskRunner }),
       deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner }),
     ]);
 
+    const totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
     const totalFiles = processedFiles.length;
-    const totalCharacters = output.length;
+    const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
 
     // Build character counts for all files
     const fileCharCounts: Record<string, number> = {};

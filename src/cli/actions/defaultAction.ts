@@ -52,6 +52,20 @@ export const runDefaultAction = async (
   const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
   logger.trace('Merged config:', config);
 
+  if (config.output.splitOutput !== undefined) {
+    if (config.output.stdout || config.output.filePath === '-') {
+      throw new RepomixError(
+        '--split-output cannot be used with --stdout (or --output "-"). Split output requires writing to filesystem.',
+      );
+    }
+    if (config.skillGenerate !== undefined) {
+      throw new RepomixError('--split-output cannot be used with --skill-generate. Skill output is a directory.');
+    }
+    if (config.output.copyToClipboard) {
+      throw new RepomixError('--split-output cannot be used with --copy. Split output generates multiple files.');
+    }
+  }
+
   // Validate skill generation options and prompt for location
   if (config.skillGenerate !== undefined) {
     if (config.output.stdout) {
@@ -271,6 +285,13 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.output = {
       ...cliConfig.output,
       includeFullDirectoryStructure: options.includeFullDirectoryStructure,
+    };
+  }
+
+  if (options.splitOutput !== undefined) {
+    cliConfig.output = {
+      ...cliConfig.output,
+      splitOutput: options.splitOutput,
     };
   }
 
