@@ -25,6 +25,15 @@ repomix --include "src/**/*.ts,**/*.md"
 repomix --ignore "**/*.log,tmp/"
 ```
 
+### Split Output Into Multiple Files
+
+When the packed output is too large for your tooling (or AI context window), you can split it into multiple numbered files.
+
+```bash
+# Split output into repomix-output.1.xml, repomix-output.2.xml, ...
+repomix --split-output 20mb
+```
+
 ### Remote Repositories
 ```bash
 # Using GitHub URL
