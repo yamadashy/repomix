@@ -16,6 +16,7 @@
   ],
   "ignoreDeps": [
     "node",
+    "isbinaryfile", // v6+ requires Node.js >= 24
   ],
   "minimumReleaseAge": "7 days"
 }
