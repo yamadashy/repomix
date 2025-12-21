@@ -38,7 +38,7 @@ This generates numbered files like:
 - `repomix-output.2.xml`
 - `repomix-output.3.xml`
 
-Size can be specified with units: `500kb`, `1mb`, `2mb`, etc.
+Size can be specified with units: `500kb`, `1mb`, `2mb`, `1.5mb`, etc. Decimal values are supported.
 
 > [!NOTE]
 > Files are grouped by top-level directory to maintain context. A single file or directory will never be split across multiple output files.
