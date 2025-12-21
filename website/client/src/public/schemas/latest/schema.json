@@ -74,11 +74,6 @@
         "includeFullDirectoryStructure": {
           "type": "boolean"
         },
-        "splitOutput": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 9007199254740991
-        },
         "tokenCountTree": {
           "anyOf": [
             {
