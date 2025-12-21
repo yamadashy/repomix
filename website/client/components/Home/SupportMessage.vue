@@ -7,14 +7,18 @@ const messages = [
     type: 'sponsor',
     link: 'https://github.com/sponsors/yamadashy',
     icon: HeartHandshake,
-    text: 'Your support helps maintain and improve it. Thank you!',
+    prefix: '',
+    linkText: 'Become a sponsor',
+    suffix: ' to support Repomix development',
     color: '#b04386',
   },
   {
     type: 'star',
     link: 'https://github.com/yamadashy/repomix',
     icon: Star,
-    text: 'If you like Repomix, please give us a star on GitHub!',
+    prefix: '',
+    linkText: 'Star this project',
+    suffix: ' if you find it useful!',
     color: '#f1c40f',
   },
 ];
@@ -24,7 +28,9 @@ const supportMessage = computed(() => ({
   type: messages[currentMessageIndex.value].type,
   link: messages[currentMessageIndex.value].link,
   icon: messages[currentMessageIndex.value].icon,
-  text: messages[currentMessageIndex.value].text,
+  prefix: messages[currentMessageIndex.value].prefix,
+  linkText: messages[currentMessageIndex.value].linkText,
+  suffix: messages[currentMessageIndex.value].suffix,
   color: messages[currentMessageIndex.value].color,
 }));
 </script>
@@ -34,7 +40,7 @@ const supportMessage = computed(() => ({
     <div class="support-message">
       <a :href="supportMessage.link" target="_blank" rel="noopener noreferrer" class="support-link">
         <component :is="supportMessage.icon" :size="14" class="support-icon" />
-        {{ supportMessage.text }}
+        {{ supportMessage.prefix }}<span class="link-text">{{ supportMessage.linkText }}</span>{{ supportMessage.suffix }}
       </a>
     </div>
   </div>
@@ -78,6 +84,16 @@ const supportMessage = computed(() => ({
 
 .support-link:hover {
   color: var(--vp-c-brand-1);
+}
+
+.link-text {
+  text-decoration: underline;
+  text-decoration-color: var(--vp-c-text-3);
+  transition: text-decoration-color 0.3s ease;
+}
+
+.support-link:hover .link-text {
+  text-decoration-color: var(--vp-c-brand-1);
 }
 
 @media (max-width: 768px) {
