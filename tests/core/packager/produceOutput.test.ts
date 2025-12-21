@@ -47,8 +47,8 @@ describe('produceOutput', () => {
     it('passes git diff and log results to generateOutput', async () => {
       const mockDeps = createMockDeps();
       const mockConfig = createMockConfig();
-      const gitDiffResult = { workTreeDiff: 'diff', stagedDiff: '' };
-      const gitLogResult = { logs: 'logs' };
+      const gitDiffResult = { workTreeDiffContent: 'diff', stagedDiffContent: '' };
+      const gitLogResult = { logContent: 'logs', commits: [] };
 
       await produceOutput(
         ['/root'],
@@ -61,14 +61,7 @@ describe('produceOutput', () => {
         mockDeps,
       );
 
-      expect(mockDeps.generateOutput).toHaveBeenCalledWith(
-        ['/root'],
-        mockConfig,
-        [],
-        [],
-        gitDiffResult,
-        gitLogResult,
-      );
+      expect(mockDeps.generateOutput).toHaveBeenCalledWith(['/root'], mockConfig, [], [], gitDiffResult, gitLogResult);
     });
 
     it('calls progress callback with correct message', async () => {
