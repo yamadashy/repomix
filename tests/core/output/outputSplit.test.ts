@@ -16,6 +16,17 @@ describe('outputSplit', () => {
     it('returns the file itself for root files', () => {
       expect(getRootEntry('README.md')).toBe('README.md');
     });
+
+    it('handles edge cases: empty string and paths with leading separators', () => {
+      // Empty string returns empty string (fallback to normalized)
+      expect(getRootEntry('')).toBe('');
+
+      // Path with leading separator - first element is empty, so returns normalized path
+      expect(getRootEntry('/absolute/path.ts')).toBe('/absolute/path.ts');
+
+      // Just a separator
+      expect(getRootEntry('/')).toBe('/');
+    });
   });
 
   describe('buildOutputSplitGroups', () => {
