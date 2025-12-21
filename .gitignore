@@ -28,6 +28,7 @@ repomix-output.txt
 repomix-output.xml
 repomix-output.md
 repomix-output.json
+repomix-output.*
 
 # ESLint cache
 .eslintcache
