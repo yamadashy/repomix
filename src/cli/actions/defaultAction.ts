@@ -52,19 +52,11 @@ export const runDefaultAction = async (
   const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
   logger.trace('Merged config:', config);
 
+  // Validate conflicting options
+  validateConflictingOptions(config);
+
   // Validate skill generation options and prompt for location
   if (config.skillGenerate !== undefined) {
-    if (config.output.stdout) {
-      throw new RepomixError(
-        '--skill-generate cannot be used with --stdout. Skill output requires writing to filesystem.',
-      );
-    }
-    if (config.output.copyToClipboard) {
-      throw new RepomixError(
-        '--skill-generate cannot be used with --copy. Skill output is a directory and cannot be copied to clipboard.',
-      );
-    }
-
     // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
     cliOptions.skillName ??=
       typeof config.skillGenerate === 'string'
@@ -274,6 +266,13 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     };
   }
 
+  if (options.splitOutput !== undefined) {
+    cliConfig.output = {
+      ...cliConfig.output,
+      splitOutput: options.splitOutput,
+    };
+  }
+
   // Only apply gitSortByChanges setting if explicitly set to false
   if (options.gitSortByChanges === false) {
     cliConfig.output = {
@@ -365,5 +364,48 @@ const waitForWorkerReady = async (taskRunner: {
 
   if (!pingSuccessful) {
     logger.debug('All Worker ping attempts failed, proceeding anyway...');
+  }
+};
+
+/**
+ * Validates that conflicting CLI options are not used together.
+ * Throws RepomixError if incompatible options are detected.
+ */
+const validateConflictingOptions = (config: RepomixConfigMerged): void => {
+  const isStdoutMode = config.output.stdout || config.output.filePath === '-';
+
+  // Define option states for conflict checking
+  const options = {
+    splitOutput: {
+      enabled: config.output.splitOutput !== undefined,
+      name: '--split-output',
+    },
+    skillGenerate: {
+      enabled: config.skillGenerate !== undefined,
+      name: '--skill-generate',
+    },
+    stdout: {
+      enabled: isStdoutMode,
+      name: '--stdout',
+    },
+    copy: {
+      enabled: config.output.copyToClipboard,
+      name: '--copy',
+    },
+  };
+
+  // Define conflicts: [optionA, optionB, errorMessage]
+  const conflicts: [keyof typeof options, keyof typeof options, string][] = [
+    ['splitOutput', 'stdout', 'Split output requires writing to filesystem.'],
+    ['splitOutput', 'skillGenerate', 'Skill output is a directory.'],
+    ['splitOutput', 'copy', 'Split output generates multiple files.'],
+    ['skillGenerate', 'stdout', 'Skill output requires writing to filesystem.'],
+    ['skillGenerate', 'copy', 'Skill output is a directory and cannot be copied to clipboard.'],
+  ];
+
+  for (const [optionA, optionB, message] of conflicts) {
+    if (options[optionA].enabled && options[optionB].enabled) {
+      throw new RepomixError(`${options[optionA].name} cannot be used with ${options[optionB].name}. ${message}`);
+    }
   }
 };

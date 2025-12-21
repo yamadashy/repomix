@@ -626,6 +626,7 @@ Instruction
 - `--truncate-base64`: Truncate long base64 data strings to reduce output size
 - `--header-text <text>`: Custom text to include at the beginning of the output
 - `--instruction-file-path <path>`: Path to file containing custom instructions to include in output
+- `--split-output <size>`: Split output into multiple numbered files (e.g., repomix-output.1.xml, repomix-output.2.xml); size like 500kb, 2mb, or 1.5mb
 - `--include-empty-directories`: Include folders with no files in directory structure
 - `--include-full-directory-structure`: Show complete directory tree in output, including files not matched by --include patterns
 - `--no-git-sort-by-changes`: Don't sort files by git change frequency (default: most changed files first)
@@ -681,6 +682,9 @@ repomix --compress
 
 # Process specific files
 repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
+
+# Split output into multiple files (max size per part)
+repomix --split-output 20mb
 
 # Remote repository with branch
 repomix --remote https://github.com/user/repo/tree/main
@@ -836,6 +840,24 @@ This helps you:
 - **Optimize file selection** using `--include` and `--ignore` patterns  
 - **Plan compression strategies** by targeting the largest contributors
 - **Balance content vs. context** when preparing code for AI analysis
+
+### Splitting Output for Large Codebases
+
+When working with large codebases, the packed output may exceed file size limits imposed by some AI tools (e.g., Google AI Studio's 1MB limit). Use `--split-output` to automatically split the output into multiple files:
+
+```bash
+repomix --split-output 1mb
+```
+
+This generates numbered files like:
+- `repomix-output.1.xml`
+- `repomix-output.2.xml`
+- `repomix-output.3.xml`
+
+Size can be specified with units: `500kb`, `1mb`, `2mb`, `1.5mb`, etc. Decimal values are supported.
+
+> [!NOTE]
+> Files are grouped by top-level directory to maintain context. A single file or directory will never be split across multiple output files.
 
 ### MCP Server Integration
 
