@@ -5,6 +5,7 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
+import type { generateOutput } from './outputGenerate.js';
 
 export interface OutputSplitGroup {
   rootEntry: string;
@@ -19,6 +20,8 @@ export interface OutputSplitPart {
   byteLength: number;
   groups: OutputSplitGroup[];
 }
+
+export type GenerateOutputFn = typeof generateOutput;
 
 export const getRootEntry = (relativeFilePath: string): string => {
   const normalized = relativeFilePath.replaceAll(path.win32.sep, path.posix.sep);
@@ -67,6 +70,52 @@ export const buildSplitOutputFilePath = (baseFilePath: string, partIndex: number
 
 const getUtf8ByteLength = (content: string): number => Buffer.byteLength(content, 'utf8');
 
+const makeChunkConfig = (baseConfig: RepomixConfigMerged, partIndex: number): RepomixConfigMerged => {
+  if (partIndex === 1) {
+    return baseConfig;
+  }
+
+  // For non-first chunks, disable git diffs/logs to avoid repeating large sections.
+  const git = {
+    ...baseConfig.output.git,
+    includeDiffs: false,
+    includeLogs: false,
+  };
+
+  return {
+    ...baseConfig,
+    output: {
+      ...baseConfig.output,
+      git,
+    },
+  };
+};
+
+const renderGroups = async (
+  groupsToRender: OutputSplitGroup[],
+  partIndex: number,
+  rootDirs: string[],
+  baseConfig: RepomixConfigMerged,
+  gitDiffResult: GitDiffResult | undefined,
+  gitLogResult: GitLogResult | undefined,
+  progressCallback: RepomixProgressCallback,
+  generateOutput: GenerateOutputFn,
+): Promise<string> => {
+  const chunkProcessedFiles = groupsToRender.flatMap((g) => g.processedFiles);
+  const chunkAllFilePaths = groupsToRender.flatMap((g) => g.allFilePaths);
+  const chunkConfig = makeChunkConfig(baseConfig, partIndex);
+
+  progressCallback(`Generating output (part ${partIndex})...`);
+  return await generateOutput(
+    rootDirs,
+    chunkConfig,
+    chunkProcessedFiles,
+    chunkAllFilePaths,
+    partIndex === 1 ? gitDiffResult : undefined,
+    partIndex === 1 ? gitLogResult : undefined,
+  );
+};
+
 export const generateSplitOutputParts = async ({
   rootDirs,
   baseConfig,
@@ -87,14 +136,7 @@ export const generateSplitOutputParts = async ({
   gitLogResult: GitLogResult | undefined;
   progressCallback: RepomixProgressCallback;
   deps: {
-    generateOutput: (
-      rootDirsArg: string[],
-      configArg: RepomixConfigMerged,
-      processedFilesArg: ProcessedFile[],
-      allFilePathsArg: string[],
-      gitDiffArg: GitDiffResult | undefined,
-      gitLogArg: GitLogResult | undefined,
-    ) => Promise<string>;
+    generateOutput: GenerateOutputFn;
   };
 }): Promise<OutputSplitPart[]> => {
   if (!Number.isSafeInteger(maxBytesPerPart) || maxBytesPerPart <= 0) {
@@ -110,47 +152,28 @@ export const generateSplitOutputParts = async ({
   let currentGroups: OutputSplitGroup[] = [];
   let currentContent = '';
 
-  const makeChunkConfig = (partIndex: number) => {
-    if (partIndex === 1) {
-      return baseConfig;
-    }
-
-    // For non-first chunks, disable git diffs/logs to avoid repeating large sections.
-    const git = {
-      ...baseConfig.output.git,
-      includeDiffs: false,
-      includeLogs: false,
-    };
-
-    return {
-      ...baseConfig,
-      output: {
-        ...baseConfig.output,
-        git,
-      },
-    };
-  };
-
-  const renderGroups = async (groupsToRender: OutputSplitGroup[], partIndex: number): Promise<string> => {
-    const chunkProcessedFiles = groupsToRender.flatMap((g) => g.processedFiles);
-    const chunkAllFilePaths = groupsToRender.flatMap((g) => g.allFilePaths);
-    const chunkConfig = makeChunkConfig(partIndex);
-
-    progressCallback(`Generating output (part ${partIndex})...`);
-    return await deps.generateOutput(
-      rootDirs,
-      chunkConfig,
-      chunkProcessedFiles,
-      chunkAllFilePaths,
-      partIndex === 1 ? gitDiffResult : undefined,
-      partIndex === 1 ? gitLogResult : undefined,
-    );
-  };
-
+  // Note: This algorithm has O(N²) complexity where N is the number of groups.
+  // For each group, we render all accumulated groups to measure the exact output size.
+  // This approach is intentional because:
+  // 1. The final output size cannot be predicted by simple addition - the output includes
+  //    a file tree structure and template formatting (XML/Markdown) that vary non-linearly.
+  // 2. Headers, footers, and file tree size change based on the combination of groups.
+  // 3. For typical repositories with ~10-20 top-level directories, this is acceptable.
+  // If performance becomes an issue, consider caching individual group content sizes
+  // and estimating combined sizes with a safety margin.
   for (const group of groups) {
     const partIndex = parts.length + 1;
     const nextGroups = [...currentGroups, group];
-    const nextContent = await renderGroups(nextGroups, partIndex);
+    const nextContent = await renderGroups(
+      nextGroups,
+      partIndex,
+      rootDirs,
+      baseConfig,
+      gitDiffResult,
+      gitLogResult,
+      progressCallback,
+      deps.generateOutput,
+    );
     const nextBytes = getUtf8ByteLength(nextContent);
 
     if (nextBytes <= maxBytesPerPart) {
@@ -176,7 +199,16 @@ export const generateSplitOutputParts = async ({
     });
 
     const newPartIndex = parts.length + 1;
-    const singleGroupContent = await renderGroups([group], newPartIndex);
+    const singleGroupContent = await renderGroups(
+      [group],
+      newPartIndex,
+      rootDirs,
+      baseConfig,
+      gitDiffResult,
+      gitLogResult,
+      progressCallback,
+      deps.generateOutput,
+    );
     const singleGroupBytes = getUtf8ByteLength(singleGroupContent);
     if (singleGroupBytes > maxBytesPerPart) {
       throw new RepomixError(
