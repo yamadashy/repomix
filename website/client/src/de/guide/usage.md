@@ -25,6 +25,24 @@ repomix --include "src/**/*.ts,**/*.md"
 repomix --ignore "**/*.log,tmp/"
 ```
 
+### Ausgabe in mehrere Dateien aufteilen
+
+Bei der Arbeit mit großen Codebasen kann die gepackte Ausgabe Dateigrößenlimits einiger KI-Tools überschreiten (z.B. Google AI Studios 1MB-Limit). Verwenden Sie `--split-output`, um die Ausgabe automatisch in mehrere Dateien aufzuteilen:
+
+```bash
+repomix --split-output 1mb
+```
+
+Dies erzeugt nummerierte Dateien wie:
+- `repomix-output.1.xml`
+- `repomix-output.2.xml`
+- `repomix-output.3.xml`
+
+Die Größe kann mit Einheiten angegeben werden: `500kb`, `1mb`, `2mb`, `1.5mb` usw. Dezimalwerte werden unterstützt.
+
+> [!NOTE]
+> Dateien werden nach Top-Level-Verzeichnis gruppiert, um den Kontext zu erhalten. Eine einzelne Datei oder ein Verzeichnis wird nie auf mehrere Ausgabedateien aufgeteilt.
+
 ### Remote-Repositories
 ```bash
 # Mit GitHub-URL

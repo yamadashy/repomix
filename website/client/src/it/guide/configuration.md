@@ -100,6 +100,7 @@ I file di configurazione JavaScript funzionano allo stesso modo di TypeScript, s
 | `output.showLineNumbers`         | Se aggiungere numeri di riga a ogni riga. Utile per riferirsi a parti specifiche del codice        | `false`                |
 | `output.truncateBase64`          | Se troncare le stringhe di dati base64 lunghe (es. immagini) per ridurre il conteggio token | `false`                |
 | `output.copyToClipboard`         | Se copiare l'output negli appunti di sistema oltre a salvare il file                         | `false`                |
+| `output.splitOutput`             | Dividi l'output in più file numerati per dimensione massima per parte. Quando usi CLI, specifica dimensioni leggibili come `500kb` o `2mb`. Questo mantiene ogni file sotto il limite ed evita di dividere i file di origine tra le parti | Non impostato |
 | `output.topFilesLength`          | Numero dei file principali da mostrare nel riepilogo. Se impostato a 0, nessun riepilogo sarà mostrato                        | `5`                    |
 | `output.includeEmptyDirectories` | Se includere le directory vuote nella struttura del repository                                                   | `false`                |
 | `output.includeFullDirectoryStructure` | Quando si usano pattern `include`, se mostrare l'albero completo delle directory (rispettando i pattern ignore) mentre si elaborano solo i file inclusi. Fornisce contesto completo del repository per l'analisi IA | `false`                |

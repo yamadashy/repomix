@@ -30,6 +30,24 @@ repomix --include "src/**/*.ts,**/*.md"
 repomix --ignore "**/*.log,tmp/"
 ```
 
+### Dividere l'Output in Più File
+
+Quando si lavora con codebase di grandi dimensioni, l'output impacchettato potrebbe superare i limiti di dimensione dei file imposti da alcuni strumenti AI (ad esempio, il limite di 1MB di Google AI Studio). Usa `--split-output` per dividere automaticamente l'output in più file:
+
+```bash
+repomix --split-output 1mb
+```
+
+Questo genera file numerati come:
+- `repomix-output.1.xml`
+- `repomix-output.2.xml`
+- `repomix-output.3.xml`
+
+La dimensione può essere specificata con unità: `500kb`, `1mb`, `2mb`, `1.5mb`, ecc. Sono supportati valori decimali.
+
+> [!NOTE]
+> I file sono raggruppati per directory di primo livello per mantenere il contesto. Un singolo file o directory non verrà mai diviso tra più file di output.
+
 ### Repository Remoti
 
 ```bash

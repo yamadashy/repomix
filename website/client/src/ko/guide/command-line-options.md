@@ -26,6 +26,7 @@
 - `--truncate-base64`: Base64 데이터 문자열 자르기 활성화
 - `--header-text <text>`: 파일 헤더에 포함할 사용자 정의 텍스트
 - `--instruction-file-path <path>`: 상세한 사용자 정의 지침이 포함된 파일 경로
+- `--split-output <size>`: 출력을 여러 번호가 매겨진 파일로 분할 (예: repomix-output.1.xml, repomix-output.2.xml); 500kb, 2mb, 1.5mb 등의 크기 지정
 - `--include-empty-directories`: 출력에 빈 디렉토리 포함
 - `--include-full-directory-structure`: --include 패턴 사용 시에도 디렉토리 구조 섹션에 전체 저장소 트리 표시
 - `--include-diffs`: 출력에 git 차이점 포함 (작업 트리와 스테이징된 변경사항을 별도로 포함)

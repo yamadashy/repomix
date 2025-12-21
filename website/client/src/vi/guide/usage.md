@@ -158,6 +158,24 @@ repomix --no-respect-gitignore
 repomix --ignore "**/*.log,tmp/,**/*.min.js"
 ```
 
+### Chia Đầu Ra Thành Nhiều Tệp
+
+Khi làm việc với các codebase lớn, đầu ra đã đóng gói có thể vượt quá giới hạn kích thước tệp được áp dụng bởi một số công cụ AI (ví dụ: giới hạn 1MB của Google AI Studio). Sử dụng `--split-output` để tự động chia đầu ra thành nhiều tệp:
+
+```bash
+repomix --split-output 1mb
+```
+
+Điều này tạo ra các tệp được đánh số như:
+- `repomix-output.1.xml`
+- `repomix-output.2.xml`
+- `repomix-output.3.xml`
+
+Kích thước có thể được chỉ định với đơn vị: `500kb`, `1mb`, `2mb`, `1.5mb`, v.v. Giá trị thập phân được hỗ trợ.
+
+> [!NOTE]
+> Các tệp được nhóm theo thư mục cấp cao nhất để duy trì ngữ cảnh. Một tệp hoặc thư mục đơn lẻ sẽ không bao giờ bị chia thành nhiều tệp đầu ra.
+
 ### Sử dụng .repomixignore
 
 Bạn cũng có thể tạo một tệp `.repomixignore` trong thư mục gốc của dự án để chỉ định các mẫu bỏ qua cụ thể cho Repomix.

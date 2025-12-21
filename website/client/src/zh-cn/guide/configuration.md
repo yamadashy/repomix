@@ -100,6 +100,7 @@ JavaScript配置文件的工作方式与TypeScript相同，支持`defineConfig`�
 | `output.showLineNumbers`         | 是否为每行添加行号。有助于引用代码的特定部分                                                                               | `false`                |
 | `output.truncateBase64`          | 是否截断长的base64数据字符串（例如图像）以减少令牌数量                                                                      | `false`                |
 | `output.copyToClipboard`         | 是否除了保存文件外还将输出复制到系统剪贴板                                                                                 | `false`                |
+| `output.splitOutput`             | 按每部分最大大小将输出拆分为多个编号文件。使用 CLI 时，指定可读大小如 `500kb` 或 `2mb`。这使每个文件保持在限制以下，并避免跨部分拆分源文件 | 未设置 |
 | `output.topFilesLength`          | 在摘要中显示的顶部文件数量。如果设置为0，则不显示摘要                                                                      | `5`                    |
 | `output.includeEmptyDirectories` | 是否在仓库结构中包含空目录                                                                                                 | `false`                |
 | `output.includeFullDirectoryStructure` | 使用`include`模式时，是否显示完整的目录树（遵守ignore模式）同时仅处理包含的文件。为AI分析提供完整的仓库上下文 | `false`                |

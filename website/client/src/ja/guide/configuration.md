@@ -100,6 +100,7 @@ JavaScript設定ファイルはTypeScriptと同様に機能し、`defineConfig`�
 | `output.showLineNumbers`         | 各行に行番号を追加するかどうか。コードの特定の部分を参照するのに役立ちます                                                 | `false`                |
 | `output.truncateBase64`          | 長いbase64データ文字列（例：画像）を切り詰めてトークン数を削減するかどうか                                                | `false`                |
 | `output.copyToClipboard`         | ファイルの保存に加えて、出力をシステムクリップボードにコピーするかどうか                                                   | `false`                |
+| `output.splitOutput`             | パートあたりの最大サイズで出力を複数の番号付きファイルに分割します。CLIを使用する場合、`500kb`や`2mb`のような読みやすいサイズを指定します。これにより各ファイルが制限以下に保たれ、単一のソースファイルがパート間で分割されることを防ぎます | 未設定 |
 | `output.topFilesLength`          | 要約に表示するトップファイルの数。0に設定すると、要約は表示されません                                                       | `5`                    |
 | `output.includeEmptyDirectories` | リポジトリ構造に空のディレクトリを含めるかどうか                                                                           | `false`                |
 | `output.includeFullDirectoryStructure` | `include`パターンを使用する際、includeされたファイルのみを処理しながら、完全なディレクトリツリー（ignoreパターンに従う）を表示するかどうか。AI分析のための完全なリポジトリコンテキストを提供します | `false`                |

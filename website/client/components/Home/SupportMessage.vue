@@ -3,14 +3,14 @@ import { HeartHandshake, Star } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const messages = [
-  {
-    type: 'sponsor',
-    link: 'https://github.com/sponsors/yamadashy',
-    icon: HeartHandshake,
-    linkText: 'Become a sponsor',
-    suffix: ' to support Repomix development',
-    color: '#b04386',
-  },
+  // {
+  //   type: 'sponsor',
+  //   link: 'https://github.com/sponsors/yamadashy',
+  //   icon: HeartHandshake,
+  //   linkText: 'Become a sponsor',
+  //   suffix: ' to support Repomix development',
+  //   color: '#b04386',
+  // },
   {
     type: 'star',
     link: 'https://github.com/yamadashy/repomix',
