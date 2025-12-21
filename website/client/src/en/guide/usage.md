@@ -27,12 +27,21 @@ repomix --ignore "**/*.log,tmp/"
 
 ### Split Output Into Multiple Files
 
-When the packed output is too large for your tooling (or AI context window), you can split it into multiple numbered files.
+When working with large codebases, the packed output may exceed file size limits imposed by some AI tools (e.g., Google AI Studio's 1MB limit). Use `--split-output` to automatically split the output into multiple files:
 
 ```bash
-# Split output into repomix-output.1.xml, repomix-output.2.xml, ...
-repomix --split-output 20mb
+repomix --split-output 1mb
 ```
+
+This generates numbered files like:
+- `repomix-output.1.xml`
+- `repomix-output.2.xml`
+- `repomix-output.3.xml`
+
+Size can be specified with units: `500kb`, `1mb`, `2mb`, etc.
+
+> [!NOTE]
+> Files are grouped by top-level directory to maintain context. A single file or directory will never be split across multiple output files.
 
 ### Remote Repositories
 ```bash
