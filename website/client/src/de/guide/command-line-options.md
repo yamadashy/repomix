@@ -26,6 +26,7 @@
 - `--truncate-base64`: Kürzung von Base64-Datenstrings aktivieren
 - `--header-text <text>`: Benutzerdefinierten Text im Dateikopf einschließen
 - `--instruction-file-path <path>`: Pfad zu einer Datei mit detaillierten benutzerdefinierten Anweisungen
+- `--split-output <size>`: Ausgabe in mehrere nummerierte Dateien aufteilen (z.B. repomix-output.1.xml, repomix-output.2.xml); Größe wie 500kb, 2mb oder 1.5mb
 - `--include-empty-directories`: Leere Verzeichnisse in die Ausgabe einschließen
 - `--include-full-directory-structure`: Gesamten Repository-Baum im Verzeichnisstruktur-Abschnitt anzeigen, auch bei Verwendung von --include-Mustern
 - `--include-diffs`: Git-Diffs in die Ausgabe einschließen (beinhaltet Arbeitsbaum- und gestufte Änderungen separat)

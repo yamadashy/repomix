@@ -26,6 +26,7 @@
 - `--truncate-base64`: 截断长base64数据字符串以减少输出大小
 - `--header-text <text>`: 在输出开头包含的自定义文本
 - `--instruction-file-path <path>`: 包含要在输出中包含的自定义指令的文件路径
+- `--split-output <size>`: 将输出拆分为多个编号文件（例如 repomix-output.1.xml, repomix-output.2.xml）；大小如 500kb、2mb 或 1.5mb
 - `--include-empty-directories`: 在目录结构中包含没有文件的文件夹
 - `--include-full-directory-structure`: 即使使用 --include 模式，也在目录结构部分显示完整的仓库树
 - `--no-git-sort-by-changes`: 不按git更改频率排序文件（默认：最常更改的文件优先）

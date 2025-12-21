@@ -26,6 +26,7 @@
 - `--truncate-base64`: Base64 डेटा स्ट्रिंग्स की कटाई सक्षम करें
 - `--header-text <text>`: फ़ाइल हेडर में शामिल करने के लिए कस्टम टेक्स्ट
 - `--instruction-file-path <path>`: विस्तृत कस्टम निर्देश वाली फ़ाइल का पथ
+- `--split-output <size>`: आउटपुट को कई नंबर वाली फ़ाइलों में विभाजित करें (जैसे repomix-output.1.xml, repomix-output.2.xml); आकार जैसे 500kb, 2mb, या 1.5mb
 - `--include-empty-directories`: आउटपुट में खाली डायरेक्टरियां शामिल करें
 - `--include-full-directory-structure`: --include पैटर्न का उपयोग करते समय भी डायरेक्टरी संरचना सेक्शन में संपूर्ण रिपॉजिटरी ट्री दिखाएं
 - `--include-diffs`: आउटपुट में git diffs शामिल करें (कार्य ट्री और staged परिवर्तनों को अलग से शामिल करता है)

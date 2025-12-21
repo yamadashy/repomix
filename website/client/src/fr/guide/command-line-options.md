@@ -26,6 +26,7 @@
 - `--truncate-base64`: Activer la troncature des chaînes de données base64
 - `--header-text <text>`: Texte personnalisé à inclure dans l'en-tête du fichier
 - `--instruction-file-path <path>`: Chemin vers un fichier contenant des instructions personnalisées détaillées
+- `--split-output <size>`: Diviser la sortie en plusieurs fichiers numérotés (ex: repomix-output.1.xml, repomix-output.2.xml); taille comme 500kb, 2mb ou 1.5mb
 - `--include-empty-directories`: Inclure les répertoires vides dans la sortie
 - `--include-full-directory-structure`: Afficher l'arborescence complète du dépôt dans la section Structure de répertoire, même lors de l'utilisation de motifs --include
 - `--include-diffs`: Inclure les diffs git dans la sortie (inclut les modifications de l'arbre de travail et les modifications indexées séparément)

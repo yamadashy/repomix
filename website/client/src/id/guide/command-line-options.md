@@ -26,6 +26,7 @@
 - `--truncate-base64`: Mengaktifkan pemotongan string data base64
 - `--header-text <text>`: Teks kustom untuk disertakan dalam header file
 - `--instruction-file-path <path>`: Jalur ke file yang berisi instruksi kustom terperinci
+- `--split-output <size>`: Membagi output menjadi beberapa file bernomor (mis: repomix-output.1.xml, repomix-output.2.xml); ukuran seperti 500kb, 2mb, atau 1.5mb
 - `--include-empty-directories`: Menyertakan direktori kosong dalam output
 - `--include-full-directory-structure`: Menampilkan pohon repositori lengkap di bagian Struktur Direktori, bahkan saat menggunakan pola --include
 - `--include-diffs`: Menyertakan diff git dalam output (menyertakan perubahan pohon kerja dan perubahan staged secara terpisah)

@@ -100,6 +100,7 @@ File cấu hình JavaScript hoạt động tương tự như TypeScript, hỗ tr
 | `output.showLineNumbers`         | Có nên thêm số dòng vào mỗi dòng hay không. Hữu ích để tham chiếu các phần cụ thể của mã                                   | `false`                |
 | `output.truncateBase64`          | Có nên cắt bớt các chuỗi dữ liệu base64 dài (ví dụ: hình ảnh) để giảm số lượng token hay không                            | `false`                |
 | `output.copyToClipboard`         | Có nên sao chép đầu ra vào clipboard hệ thống ngoài việc lưu file hay không                                                | `false`                |
+| `output.splitOutput`             | Chia đầu ra thành nhiều tệp được đánh số theo kích thước tối đa mỗi phần. Khi sử dụng CLI, chỉ định kích thước dễ đọc như `500kb` hoặc `2mb`. Điều này giữ mỗi tệp dưới giới hạn và tránh chia tệp giữa các phần | Không đặt |
 | `output.topFilesLength`          | Số file hàng đầu để hiển thị trong tóm tắt. Nếu đặt thành 0, sẽ không hiển thị tóm tắt                                     | `5`                    |
 | `output.includeEmptyDirectories` | Có nên bao gồm các thư mục trống trong cấu trúc repository hay không                                                       | `false`                |
 | `output.includeFullDirectoryStructure` | Khi sử dụng mẫu `include`, có nên hiển thị cây thư mục hoàn chỉnh (tuân theo mẫu ignore) trong khi vẫn chỉ xử lý các file được bao gồm hay không. Cung cấp ngữ cảnh repository đầy đủ cho phân tích AI | `false`                |
