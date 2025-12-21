@@ -12,9 +12,15 @@ describe('parseHumanSizeToBytes', () => {
     expect(parseHumanSizeToBytes('3MB')).toBe(3 * 1024 * 1024);
   });
 
+  it('parses decimal values', () => {
+    expect(parseHumanSizeToBytes('2.5mb')).toBe(Math.floor(2.5 * 1024 * 1024));
+    expect(parseHumanSizeToBytes('1.5kb')).toBe(Math.floor(1.5 * 1024));
+    expect(parseHumanSizeToBytes('0.5MB')).toBe(Math.floor(0.5 * 1024 * 1024));
+  });
+
   it('rejects invalid formats', () => {
     expect(() => parseHumanSizeToBytes('100')).toThrow(/Invalid size/i);
-    expect(() => parseHumanSizeToBytes('0kb')).toThrow(/positive integer/i);
+    expect(() => parseHumanSizeToBytes('0kb')).toThrow(/positive number/i);
     expect(() => parseHumanSizeToBytes('1gb')).toThrow(/Invalid size/i);
   });
 
