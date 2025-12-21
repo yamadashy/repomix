@@ -841,6 +841,24 @@ This helps you:
 - **Plan compression strategies** by targeting the largest contributors
 - **Balance content vs. context** when preparing code for AI analysis
 
+### Splitting Output for Large Codebases
+
+When working with large codebases, the packed output may exceed file size limits imposed by some AI tools (e.g., Google AI Studio's 1MB limit). Use `--split-output` to automatically split the output into multiple files:
+
+```bash
+repomix --split-output 1mb
+```
+
+This generates numbered files like:
+- `repomix-output.1.xml`
+- `repomix-output.2.xml`
+- `repomix-output.3.xml`
+
+Size can be specified with units: `500kb`, `1mb`, `2mb`, etc.
+
+> [!NOTE]
+> Files are grouped by top-level directory to maintain context. A single file or directory will never be split across multiple output files.
+
 ### MCP Server Integration
 
 Repomix supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), allowing AI assistants to directly interact with your codebase. When run as an MCP server, Repomix provides tools that enable AI assistants to package local or remote repositories for analysis without requiring manual file preparation.
