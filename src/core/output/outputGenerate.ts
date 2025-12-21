@@ -23,6 +23,35 @@ import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
 
+// Cache for compiled Handlebars templates to avoid recompilation on every call
+const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
+
+const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
+  const cached = compiledTemplateCache.get(style);
+  if (cached) {
+    return cached;
+  }
+
+  let template: string;
+  switch (style) {
+    case 'xml':
+      template = getXmlTemplate();
+      break;
+    case 'markdown':
+      template = getMarkdownTemplate();
+      break;
+    case 'plain':
+      template = getPlainTemplate();
+      break;
+    default:
+      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
+  }
+
+  const compiled = Handlebars.compile(template);
+  compiledTemplateCache.set(style, compiled);
+  return compiled;
+};
+
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
   const maxBackticks = files
     .flatMap((file) => file.content.match(/`+/g) ?? [])
@@ -190,23 +219,8 @@ const generateHandlebarOutput = async (
   renderContext: RenderContext,
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
-  let template: string;
-  switch (config.output.style) {
-    case 'xml':
-      template = getXmlTemplate();
-      break;
-    case 'markdown':
-      template = getMarkdownTemplate();
-      break;
-    case 'plain':
-      template = getPlainTemplate();
-      break;
-    default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${config.output.style}`);
-  }
-
   try {
-    const compiledTemplate = Handlebars.compile(template);
+    const compiledTemplate = getCompiledTemplate(config.output.style);
     return `${compiledTemplate(renderContext).trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
