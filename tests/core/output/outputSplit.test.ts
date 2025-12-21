@@ -129,5 +129,132 @@ describe('outputSplit', () => {
 
       expect(result).toEqual([]);
     });
+
+    it('successfully splits output into multiple parts when content exceeds limit', async () => {
+      // Create files in different root entries
+      const processedFiles = [
+        { path: 'src/a.ts', content: 'source a' },
+        { path: 'src/b.ts', content: 'source b' },
+        { path: 'tests/test.ts', content: 'test content' },
+        { path: 'docs/readme.md', content: 'documentation' },
+      ];
+      const allFilePaths = ['src/a.ts', 'src/b.ts', 'tests/test.ts', 'docs/readme.md'];
+
+      // Mock that returns different sizes based on number of groups
+      // Each group adds ~50 bytes, so 2 groups = ~100 bytes
+      const mockGenerateOutput = async (_rootDirs: string[], _config: unknown, files: Array<{ path: string }>) => {
+        // Generate output proportional to number of files + some base overhead
+        const baseSize = 30;
+        const perFileSize = 40;
+        return 'x'.repeat(baseSize + files.length * perFileSize);
+      };
+
+      const result = await generateSplitOutputParts({
+        rootDirs: ['/test'],
+        baseConfig: createMockConfig(),
+        processedFiles,
+        allFilePaths,
+        maxBytesPerPart: 120, // Force split after ~2 files worth
+        gitDiffResult: undefined,
+        gitLogResult: undefined,
+        progressCallback: () => {},
+        deps: { generateOutput: mockGenerateOutput as ReturnType<typeof createMockDeps>['generateOutput'] },
+      });
+
+      // Should create multiple parts
+      expect(result.length).toBeGreaterThan(1);
+
+      // Each part should have correct structure
+      for (const part of result) {
+        expect(part.index).toBeGreaterThan(0);
+        expect(part.filePath).toContain(`.${part.index}.`);
+        expect(part.content).toBeTruthy();
+        expect(part.byteLength).toBeGreaterThan(0);
+        expect(part.groups.length).toBeGreaterThan(0);
+      }
+
+      // All groups should be distributed across parts (no duplicates)
+      const allGroupRootEntries = result.flatMap((p) => p.groups.map((g) => g.rootEntry));
+      const uniqueRootEntries = [...new Set(allGroupRootEntries)];
+      expect(allGroupRootEntries.length).toBe(uniqueRootEntries.length);
+
+      // Should cover all root entries: docs, src, tests
+      expect(uniqueRootEntries.sort()).toEqual(['docs', 'src', 'tests']);
+    });
+
+    it('includes git diff/log only in first part', async () => {
+      const processedFiles = [
+        { path: 'src/a.ts', content: 'source a' },
+        { path: 'tests/test.ts', content: 'test content' },
+      ];
+      const allFilePaths = ['src/a.ts', 'tests/test.ts'];
+
+      const gitDiffResult = { workTreeDiffContent: 'diff content', stagedDiffContent: '' };
+      const gitLogResult = { logContent: 'log content', commits: [] };
+
+      // Track what gitDiffResult/gitLogResult were passed for each call
+      const callArgs: Array<{
+        partIndex: number;
+        gitDiffResult: unknown;
+        gitLogResult: unknown;
+      }> = [];
+
+      const mockGenerateOutput = async (
+        _rootDirs: string[],
+        config: { output: { git?: { includeDiffs?: boolean; includeLogs?: boolean } } },
+        files: Array<{ path: string }>,
+        _allFilePaths: string[],
+        passedGitDiffResult: unknown,
+        passedGitLogResult: unknown,
+      ) => {
+        // Determine part index based on config (part 1 has includeDiffs/includeLogs true)
+        const isFirstPart = config.output.git?.includeDiffs !== false;
+        callArgs.push({
+          partIndex: isFirstPart ? 1 : callArgs.filter((c) => !c.gitDiffResult).length + 2,
+          gitDiffResult: passedGitDiffResult,
+          gitLogResult: passedGitLogResult,
+        });
+
+        // Return size that forces split
+        return 'x'.repeat(100 + files.length * 50);
+      };
+
+      await generateSplitOutputParts({
+        rootDirs: ['/test'],
+        baseConfig: {
+          ...createMockConfig(),
+          output: {
+            ...createMockConfig().output,
+            git: {
+              includeDiffs: true,
+              includeLogs: true,
+            },
+          },
+        } as Parameters<typeof generateSplitOutputParts>[0]['baseConfig'],
+        processedFiles,
+        allFilePaths,
+        maxBytesPerPart: 150, // Force split
+        gitDiffResult: gitDiffResult as Parameters<typeof generateSplitOutputParts>[0]['gitDiffResult'],
+        gitLogResult: gitLogResult as Parameters<typeof generateSplitOutputParts>[0]['gitLogResult'],
+        progressCallback: () => {},
+        deps: { generateOutput: mockGenerateOutput as ReturnType<typeof createMockDeps>['generateOutput'] },
+      });
+
+      // Find calls where git data was passed (should only be for part 1)
+      const callsWithGitData = callArgs.filter((c) => c.gitDiffResult !== undefined);
+      const callsWithoutGitData = callArgs.filter((c) => c.gitDiffResult === undefined);
+
+      // At least one call should have git data (part 1)
+      expect(callsWithGitData.length).toBeGreaterThan(0);
+
+      // All calls with git data should have the correct values
+      for (const call of callsWithGitData) {
+        expect(call.gitDiffResult).toEqual(gitDiffResult);
+        expect(call.gitLogResult).toEqual(gitLogResult);
+      }
+
+      // Calls without git data should exist (part 2+)
+      expect(callsWithoutGitData.length).toBeGreaterThan(0);
+    });
   });
 });

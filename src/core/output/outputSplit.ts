@@ -150,6 +150,7 @@ export const generateSplitOutputParts = async ({
   const parts: OutputSplitPart[] = [];
   let currentGroups: OutputSplitGroup[] = [];
   let currentContent = '';
+  let currentBytes = 0;
 
   // Note: This algorithm has O(N²) complexity where N is the number of groups.
   // For each group, we render all accumulated groups to measure the exact output size.
@@ -178,6 +179,7 @@ export const generateSplitOutputParts = async ({
     if (nextBytes <= maxBytesPerPart) {
       currentGroups = nextGroups;
       currentContent = nextContent;
+      currentBytes = nextBytes;
       continue;
     }
 
@@ -193,7 +195,7 @@ export const generateSplitOutputParts = async ({
       index: partIndex,
       filePath: buildSplitOutputFilePath(baseConfig.output.filePath, partIndex),
       content: currentContent,
-      byteLength: getUtf8ByteLength(currentContent),
+      byteLength: currentBytes,
       groups: currentGroups,
     });
 
@@ -218,6 +220,7 @@ export const generateSplitOutputParts = async ({
 
     currentGroups = [group];
     currentContent = singleGroupContent;
+    currentBytes = singleGroupBytes;
   }
 
   if (currentGroups.length > 0) {
@@ -226,7 +229,7 @@ export const generateSplitOutputParts = async ({
       index: finalIndex,
       filePath: buildSplitOutputFilePath(baseConfig.output.filePath, finalIndex),
       content: currentContent,
-      byteLength: getUtf8ByteLength(currentContent),
+      byteLength: currentBytes,
       groups: currentGroups,
     });
   }
