@@ -4,6 +4,7 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
+import { buildSplitOutputFilePath } from '../output/outputSplit.js';
 import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
@@ -74,7 +75,9 @@ export const calculateMetrics = async (
       Promise.all(
         outputParts.map(async (part, index) => {
           const partPath =
-            outputParts.length > 1 ? `${config.output.filePath}.part-${index + 1}` : config.output.filePath;
+            outputParts.length > 1
+              ? buildSplitOutputFilePath(config.output.filePath, index + 1)
+              : config.output.filePath;
           return await deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
         }),
       ),
