@@ -1,5 +1,4 @@
 import type { RepomixConfigMerged } from '../config/configSchema.js';
-import { RepomixError } from '../shared/errorHandle.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
@@ -159,13 +158,6 @@ export const pack = async (
   let outputForMetrics: string | string[];
 
   if (splitMaxBytes !== undefined) {
-    if (config.output.stdout || config.output.filePath === '-') {
-      throw new RepomixError('splitOutput cannot be used with stdout');
-    }
-    if (config.output.copyToClipboard) {
-      throw new RepomixError('splitOutput cannot be used with copyToClipboard');
-    }
-
     const parts = await withMemoryLogging('Generate Split Output', async () => {
       return await generateSplitOutputParts({
         rootDirs,
