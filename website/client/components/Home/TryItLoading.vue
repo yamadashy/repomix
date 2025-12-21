@@ -23,7 +23,7 @@
 
 <style scoped>
 .loading {
-  padding: 36px;
+  padding: 24px;
   text-align: center;
 }
 
