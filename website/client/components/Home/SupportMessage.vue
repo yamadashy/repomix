@@ -7,7 +7,6 @@ const messages = [
     type: 'sponsor',
     link: 'https://github.com/sponsors/yamadashy',
     icon: HeartHandshake,
-    prefix: '',
     linkText: 'Become a sponsor',
     suffix: ' to support Repomix development',
     color: '#b04386',
@@ -16,7 +15,6 @@ const messages = [
     type: 'star',
     link: 'https://github.com/yamadashy/repomix',
     icon: Star,
-    prefix: '',
     linkText: 'Star this project',
     suffix: ' if you find it useful!',
     color: '#f1c40f',
@@ -24,15 +22,7 @@ const messages = [
 ];
 
 const currentMessageIndex = ref(Math.floor(Math.random() * messages.length));
-const supportMessage = computed(() => ({
-  type: messages[currentMessageIndex.value].type,
-  link: messages[currentMessageIndex.value].link,
-  icon: messages[currentMessageIndex.value].icon,
-  prefix: messages[currentMessageIndex.value].prefix,
-  linkText: messages[currentMessageIndex.value].linkText,
-  suffix: messages[currentMessageIndex.value].suffix,
-  color: messages[currentMessageIndex.value].color,
-}));
+const supportMessage = computed(() => messages[currentMessageIndex.value]);
 </script>
 
 <template>
@@ -40,7 +30,7 @@ const supportMessage = computed(() => ({
     <div class="support-message">
       <a :href="supportMessage.link" target="_blank" rel="noopener noreferrer" class="support-link">
         <component :is="supportMessage.icon" :size="14" class="support-icon" />
-        {{ supportMessage.prefix }}<span class="link-text">{{ supportMessage.linkText }}</span>{{ supportMessage.suffix }}
+        <span class="link-text">{{ supportMessage.linkText }}</span>{{ supportMessage.suffix }}
       </a>
     </div>
   </div>
