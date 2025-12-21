@@ -9,10 +9,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics } from './metrics/calculateMetrics.js';
-import { generateOutput } from './output/outputGenerate.js';
-import { generateSplitOutputParts } from './output/outputSplit.js';
-import { copyToClipboardIfEnabled } from './packager/copyToClipboardIfEnabled.js';
-import { writeOutputToDisk } from './packager/writeOutputToDisk.js';
+import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import { packSkill } from './skill/packSkill.js';
@@ -38,10 +35,8 @@ const defaultDeps = {
   searchFiles,
   collectFiles,
   processFiles,
-  generateOutput,
   validateFileSafety,
-  writeOutputToDisk,
-  copyToClipboardIfEnabled,
+  produceOutput,
   calculateMetrics,
   sortPaths,
   getGitDiffs,
@@ -152,57 +147,16 @@ export const pack = async (
     return result;
   }
 
-  // Normal output generation
-  const splitMaxBytes = config.output.splitOutput;
-  let outputFiles: string[] | undefined;
-  let outputForMetrics: string | string[];
-
-  if (splitMaxBytes !== undefined) {
-    const parts = await withMemoryLogging('Generate Split Output', async () => {
-      return await generateSplitOutputParts({
-        rootDirs,
-        baseConfig: config,
-        processedFiles,
-        allFilePaths,
-        maxBytesPerPart: splitMaxBytes,
-        gitDiffResult,
-        gitLogResult,
-        progressCallback,
-        deps: {
-          generateOutput: deps.generateOutput,
-        },
-      });
-    });
-
-    progressCallback('Writing output files...');
-    await withMemoryLogging('Write Split Output', async () => {
-      for (const part of parts) {
-        const partConfig = {
-          ...config,
-          output: {
-            ...config.output,
-            stdout: false,
-            filePath: part.filePath,
-          },
-        };
-        // eslint-disable-next-line no-await-in-loop
-        await deps.writeOutputToDisk(part.content, partConfig);
-      }
-    });
-
-    outputFiles = parts.map((p) => p.filePath);
-    outputForMetrics = parts.map((p) => p.content);
-  } else {
-    const output = await withMemoryLogging('Generate Output', () =>
-      deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
-    );
-
-    progressCallback('Writing output file...');
-    await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
-
-    await deps.copyToClipboardIfEnabled(output, progressCallback, config);
-    outputForMetrics = output;
-  }
+  // Generate and write output (handles both single and split output)
+  const { outputFiles, outputForMetrics } = await deps.produceOutput(
+    rootDirs,
+    config,
+    processedFiles,
+    allFilePaths,
+    gitDiffResult,
+    gitLogResult,
+    progressCallback,
+  );
 
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
     deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),

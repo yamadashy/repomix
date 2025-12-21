@@ -3,7 +3,7 @@ import { pack } from '../../../src/core/packager.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 describe('packager split output', () => {
-  it('writes multiple numbered output files without splitting within a root folder', async () => {
+  it('passes split output results correctly through the packager', async () => {
     const processedFiles = [
       { path: 'a/file1.txt', content: '11111' },
       { path: 'b/file2.txt', content: '22222' },
@@ -24,11 +24,9 @@ describe('packager split output', () => {
       },
     });
 
-    const writeOutputToDisk = vi.fn().mockResolvedValue(undefined);
-    const generateOutput = vi.fn().mockImplementation(async (_rootDirs, _config, processedFilesArg) => {
-      // Make output size depend on number of processed files in this chunk
-      const chunkSize = (processedFilesArg as typeof processedFiles).length === 1 ? 10 : 25;
-      return 'x'.repeat(chunkSize);
+    const produceOutput = vi.fn().mockResolvedValue({
+      outputFiles: ['repomix-output.1.xml', 'repomix-output.2.xml'],
+      outputForMetrics: ['x'.repeat(10), 'x'.repeat(10)],
     });
 
     const calculateMetrics = vi.fn().mockResolvedValue({
@@ -55,19 +53,19 @@ describe('packager split output', () => {
       }),
       getGitDiffs: vi.fn().mockResolvedValue(undefined),
       getGitLogs: vi.fn().mockResolvedValue(undefined),
-      generateOutput,
-      writeOutputToDisk,
-      copyToClipboardIfEnabled: vi.fn().mockResolvedValue(undefined),
+      produceOutput,
       calculateMetrics,
     });
 
-    expect(generateOutput).toHaveBeenCalled();
-    expect(writeOutputToDisk).toHaveBeenCalledTimes(2);
-
-    const firstConfig = writeOutputToDisk.mock.calls[0][1];
-    const secondConfig = writeOutputToDisk.mock.calls[1][1];
-    expect(firstConfig.output.filePath).toBe('repomix-output.1.xml');
-    expect(secondConfig.output.filePath).toBe('repomix-output.2.xml');
+    expect(produceOutput).toHaveBeenCalledWith(
+      ['root'],
+      mockConfig,
+      processedFiles,
+      allFilePaths,
+      undefined,
+      undefined,
+      expect.any(Function),
+    );
 
     expect(calculateMetrics).toHaveBeenCalledWith(
       processedFiles,
