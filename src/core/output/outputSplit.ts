@@ -1,4 +1,5 @@
 import path from 'node:path';
+import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
@@ -98,14 +99,12 @@ const renderGroups = async (
   baseConfig: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
-  progressCallback: RepomixProgressCallback,
   generateOutput: GenerateOutputFn,
 ): Promise<string> => {
   const chunkProcessedFiles = groupsToRender.flatMap((g) => g.processedFiles);
   const chunkAllFilePaths = groupsToRender.flatMap((g) => g.allFilePaths);
   const chunkConfig = makeChunkConfig(baseConfig, partIndex);
 
-  progressCallback(`Generating output (part ${partIndex})...`);
   return await generateOutput(
     rootDirs,
     chunkConfig,
@@ -164,6 +163,7 @@ export const generateSplitOutputParts = async ({
   for (const group of groups) {
     const partIndex = parts.length + 1;
     const nextGroups = [...currentGroups, group];
+    progressCallback(`Generating output... (part ${partIndex}) ${pc.dim(`evaluating ${group.rootEntry}`)}`);
     const nextContent = await renderGroups(
       nextGroups,
       partIndex,
@@ -171,7 +171,6 @@ export const generateSplitOutputParts = async ({
       baseConfig,
       gitDiffResult,
       gitLogResult,
-      progressCallback,
       deps.generateOutput,
     );
     const nextBytes = getUtf8ByteLength(nextContent);
@@ -199,6 +198,7 @@ export const generateSplitOutputParts = async ({
     });
 
     const newPartIndex = parts.length + 1;
+    progressCallback(`Generating output... (part ${newPartIndex}) ${pc.dim(`evaluating ${group.rootEntry}`)}`);
     const singleGroupContent = await renderGroups(
       [group],
       newPartIndex,
@@ -206,7 +206,6 @@ export const generateSplitOutputParts = async ({
       baseConfig,
       gitDiffResult,
       gitLogResult,
-      progressCallback,
       deps.generateOutput,
     );
     const singleGroupBytes = getUtf8ByteLength(singleGroupContent);
