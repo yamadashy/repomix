@@ -120,7 +120,7 @@ export const run = async () => {
       .addOption(
         new Option(
           '--split-output <size>',
-          'Split output into multiple numbered files (e.g., repomix-output.1.xml, repomix-output.2.xml); size like 500kb or 2mb',
+          'Split output into multiple numbered files (e.g., repomix-output.1.xml, repomix-output.2.xml); size like 500kb, 2mb, or 2.5mb',
         ).argParser(parseHumanSizeToBytes),
       )
       .option('--include-empty-directories', 'Include folders with no files in directory structure')
