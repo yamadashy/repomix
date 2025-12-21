@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildOutputSplitGroups,
   buildSplitOutputFilePath,
+  generateSplitOutputParts,
   getRootEntry,
 } from '../../../src/core/output/outputSplit.js';
 
@@ -45,6 +46,88 @@ describe('outputSplit', () => {
 
     it('appends part index when no extension exists', () => {
       expect(buildSplitOutputFilePath('output', 3)).toBe('output.3');
+    });
+  });
+
+  describe('generateSplitOutputParts', () => {
+    const createMockConfig = () =>
+      ({
+        output: {
+          filePath: 'repomix-output.xml',
+          git: {
+            includeDiffs: false,
+            includeLogs: false,
+          },
+        },
+      }) as Parameters<typeof generateSplitOutputParts>[0]['baseConfig'];
+
+    const createMockDeps = (outputSize: number) => ({
+      generateOutput: async () => 'x'.repeat(outputSize),
+    });
+
+    it('throws error when single root entry exceeds maxBytesPerPart', async () => {
+      const processedFiles = [{ path: 'src/large.ts', content: 'large content' }];
+      const allFilePaths = ['src/large.ts'];
+
+      await expect(
+        generateSplitOutputParts({
+          rootDirs: ['/test'],
+          baseConfig: createMockConfig(),
+          processedFiles,
+          allFilePaths,
+          maxBytesPerPart: 10, // Very small limit
+          gitDiffResult: undefined,
+          gitLogResult: undefined,
+          progressCallback: () => {},
+          deps: createMockDeps(100), // Output larger than limit
+        }),
+      ).rejects.toThrow(/exceeds max size/);
+    });
+
+    it('throws error for invalid maxBytesPerPart', async () => {
+      await expect(
+        generateSplitOutputParts({
+          rootDirs: ['/test'],
+          baseConfig: createMockConfig(),
+          processedFiles: [],
+          allFilePaths: [],
+          maxBytesPerPart: 0,
+          gitDiffResult: undefined,
+          gitLogResult: undefined,
+          progressCallback: () => {},
+          deps: createMockDeps(0),
+        }),
+      ).rejects.toThrow(/Invalid maxBytesPerPart/);
+
+      await expect(
+        generateSplitOutputParts({
+          rootDirs: ['/test'],
+          baseConfig: createMockConfig(),
+          processedFiles: [],
+          allFilePaths: [],
+          maxBytesPerPart: -1,
+          gitDiffResult: undefined,
+          gitLogResult: undefined,
+          progressCallback: () => {},
+          deps: createMockDeps(0),
+        }),
+      ).rejects.toThrow(/Invalid maxBytesPerPart/);
+    });
+
+    it('returns empty array when no files provided', async () => {
+      const result = await generateSplitOutputParts({
+        rootDirs: ['/test'],
+        baseConfig: createMockConfig(),
+        processedFiles: [],
+        allFilePaths: [],
+        maxBytesPerPart: 1000,
+        gitDiffResult: undefined,
+        gitLogResult: undefined,
+        progressCallback: () => {},
+        deps: createMockDeps(0),
+      });
+
+      expect(result).toEqual([]);
     });
   });
 });
