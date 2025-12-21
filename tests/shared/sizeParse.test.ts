@@ -17,4 +17,9 @@ describe('parseHumanSizeToBytes', () => {
     expect(() => parseHumanSizeToBytes('0kb')).toThrow(/positive integer/i);
     expect(() => parseHumanSizeToBytes('1gb')).toThrow(/Invalid size/i);
   });
+
+  it('rejects values that would overflow safe integer range', () => {
+    // 8589934592 is a safe integer, but 8589934592 * 1024 * 1024 = 9007199254740992 exceeds MAX_SAFE_INTEGER
+    expect(() => parseHumanSizeToBytes('8589934592mb')).toThrow(/too large/i);
+  });
 });

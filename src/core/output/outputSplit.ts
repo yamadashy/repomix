@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
+import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
@@ -84,7 +85,7 @@ export const generateSplitOutputParts = async ({
   maxBytesPerPart: number;
   gitDiffResult: GitDiffResult | undefined;
   gitLogResult: GitLogResult | undefined;
-  progressCallback: (message: string) => void;
+  progressCallback: RepomixProgressCallback;
   deps: {
     generateOutput: (
       rootDirsArg: string[],
