@@ -1,7 +1,9 @@
 <template>
   <div class="loading">
-    <div class="spinner"></div>
-    <p>Processing repository...</p>
+    <div class="loading-header">
+      <div class="spinner"></div>
+      <p>Processing repository...</p>
+    </div>
     <div class="sponsor-section">
       <p class="sponsor-header">Special thanks to:</p>
       <a href="https://go.warp.dev/repomix" target="_blank" rel="noopener noreferrer">
@@ -27,11 +29,22 @@
   text-align: center;
 }
 
+.loading-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.loading-header p {
+  margin: 0;
+}
+
 .spinner {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto 16px;
-  border: 3px solid var(--vp-c-brand-1);
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--vp-c-brand-1);
   border-radius: 50%;
   border-top-color: transparent;
   animation: spin 1s linear infinite;
