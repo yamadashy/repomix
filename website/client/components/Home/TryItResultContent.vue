@@ -2,7 +2,7 @@
 import ace, { type Ace } from 'ace-builds';
 import themeTomorrowUrl from 'ace-builds/src-noconflict/theme-tomorrow?url';
 import themeTomorrowNightUrl from 'ace-builds/src-noconflict/theme-tomorrow_night?url';
-import { BarChart2, Copy, Download, GitFork, HeartHandshake, PackageSearch, Share, Star } from 'lucide-vue-next';
+import { BarChart2, Copy, Download, GitFork, PackageSearch, Share } from 'lucide-vue-next';
 import { useData } from 'vitepress';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { VAceEditor } from 'vue3-ace-editor';
@@ -15,6 +15,7 @@ import {
   getEditorOptions,
   shareResult,
 } from '../utils/resultViewer';
+import SupportMessage from './SupportMessage.vue';
 
 ace.config.setModuleUrl('ace/theme/tomorrow', themeTomorrowUrl);
 ace.config.setModuleUrl('ace/theme/tomorrow_night', themeTomorrowNightUrl);
@@ -115,32 +116,6 @@ const hideTooltip = () => {
     tooltipContent.value.style.visibility = 'hidden';
   }
 };
-
-const messages = [
-  {
-    type: 'sponsor',
-    link: 'https://github.com/sponsors/yamadashy',
-    icon: HeartHandshake,
-    text: 'Your support helps maintain and improve it. Thank you!',
-    color: '#b04386',
-  },
-  {
-    type: 'star',
-    link: 'https://github.com/yamadashy/repomix',
-    icon: Star,
-    text: 'If you like Repomix, please give us a star on GitHub!',
-    color: '#f1c40f',
-  },
-];
-
-const currentMessageIndex = ref(Math.floor(Math.random() * messages.length));
-const supportMessage = computed(() => ({
-  type: messages[currentMessageIndex.value].type,
-  link: messages[currentMessageIndex.value].link,
-  icon: messages[currentMessageIndex.value].icon,
-  text: messages[currentMessageIndex.value].text,
-  color: messages[currentMessageIndex.value].color,
-}));
 
 const handleResize = () => {
   isMobile.value = window.innerWidth <= 768;
@@ -251,13 +226,8 @@ onUnmounted(() => {
         />
       </div>
     </div>
-    <div class="support-notice">
-      <div class="support-message">
-        <a :href="supportMessage.link" target="_blank" rel="noopener noreferrer" class="support-link">
-          <component :is="supportMessage.icon" :size="14" class="support-icon" />
-          {{ supportMessage.text }}
-        </a>
-      </div>
+    <div class="support-wrapper">
+      <SupportMessage />
     </div>
   </div>
 </template>
@@ -406,44 +376,8 @@ dd {
   font-family: var(--vp-font-family-mono);
 }
 
-.support-notice {
+.support-wrapper {
   grid-column: 1 / -1;
-  padding: 8px;
-  background: var(--vp-c-bg-soft);
-  border-top: 1px solid var(--vp-c-border);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 45px;
-}
-
-.support-message {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--vp-c-text-2);
-  font-size: 12px;
-  width: 100%;
-}
-
-.support-icon {
-  flex-shrink: 0;
-  transition: color 0.3s ease;
-  color: v-bind('supportMessage.color');
-}
-
-.support-link {
-  text-decoration: none;
-  font-weight: normal;
-  transition: color 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.support-link:hover {
-  color: var(--vp-c-brand-1);
 }
 
 .mobile-only {
@@ -466,14 +400,6 @@ dd {
 
   .output-panel {
     height: 500px;
-  }
-
-  .support-notice {
-    padding: 16px;
-  }
-
-  .support-message {
-    max-width: 100%;
   }
 
   .mobile-only {
