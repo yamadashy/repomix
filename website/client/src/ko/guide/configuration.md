@@ -100,7 +100,7 @@ JavaScript 설정 파일은 TypeScript와 동일하게 작동하며 `defineConfi
 | `output.showLineNumbers`         | 각 줄에 줄 번호를 추가할지 여부. 코드의 특정 부분을 참조하는 데 도움이 됩니다                                            | `false`                |
 | `output.truncateBase64`          | 토큰 수를 줄이기 위해 긴 base64 데이터 문자열(예: 이미지)을 자를지 여부                                                  | `false`                |
 | `output.copyToClipboard`         | 파일 저장 외에도 출력을 시스템 클립보드에 복사할지 여부                                                                    | `false`                |
-| `output.splitOutput`             | 파트당 최대 크기로 출력을 여러 번호가 매겨진 파일로 분할합니다. CLI를 사용할 때 `500kb` 또는 `2mb`와 같이 읽기 쉬운 크기를 지정합니다. 이렇게 하면 각 파일이 제한 이하로 유지되고 파일이 파트 간에 분할되는 것을 방지합니다 | 미설정 |
+| `output.splitOutput`             | 파트당 최대 크기로 출력을 여러 번호가 매겨진 파일로 분할합니다. CLI를 사용할 때 `500kb` 또는 `2mb`와 같이 읽기 쉬운 크기를 지정합니다. 이렇게 하면 각 파일이 제한 이하로 유지되고 단일 소스 파일이 파트 간에 분할되는 것을 방지합니다 | 미설정 |
 | `output.topFilesLength`          | 요약에 표시할 상위 파일 수. 0으로 설정하면 요약이 표시되지 않습니다                                                        | `5`                    |
 | `output.includeEmptyDirectories` | 저장소 구조에 빈 디렉토리를 포함할지 여부                                                                                  | `false`                |
 | `output.includeFullDirectoryStructure` | `include` 패턴 사용 시, 포함된 파일만 처리하면서 완전한 디렉토리 트리(무시 패턴 준수)를 표시할지 여부. AI 분석을 위한 전체 저장소 컨텍스트 제공 | `false`                |
