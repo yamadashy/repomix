@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import * as prompts from '@clack/prompts';
 import pc from 'picocolors';
-import { OperationCancelledError } from '../../shared/errorHandle.js';
+import { OperationCancelledError, RepomixError } from '../../shared/errorHandle.js';
 import { getDisplayPath } from '../cliReport.js';
 
 export type SkillLocation = 'personal' | 'project';
@@ -89,4 +89,33 @@ export const promptSkillLocation = async (
     location: location as SkillLocation,
     skillDir,
   };
+};
+
+/**
+ * Prepare skill directory for non-interactive mode.
+ * Handles force overwrite by removing existing directory.
+ */
+export const prepareSkillDir = async (
+  skillDir: string,
+  force: boolean,
+  deps = {
+    access: fs.access,
+    rm: fs.rm,
+  },
+): Promise<void> => {
+  let dirExists = false;
+  try {
+    await deps.access(skillDir);
+    dirExists = true;
+  } catch {
+    // Directory doesn't exist - good to go
+  }
+
+  if (dirExists) {
+    if (force) {
+      await deps.rm(skillDir, { recursive: true, force: true });
+    } else {
+      throw new RepomixError(`Skill directory already exists: ${skillDir}. Use --force to overwrite.`);
+    }
+  }
 };

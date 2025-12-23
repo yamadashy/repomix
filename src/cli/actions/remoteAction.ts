@@ -11,7 +11,7 @@ import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
-import { promptSkillLocation, type SkillLocation } from '../prompts/skillPrompts.js';
+import { prepareSkillDir, promptSkillLocation, type SkillLocation } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { type DefaultActionRunnerResult, runDefaultAction } from './defaultAction.js';
 
@@ -104,9 +104,23 @@ export const runRemoteAction = async (
       // Generate project name from URL for use in skill description
       skillProjectName = generateProjectNameFromUrl(repoUrl);
 
-      const promptResult = await promptSkillLocation(skillName, process.cwd());
-      skillDir = promptResult.skillDir;
-      skillLocation = promptResult.location;
+      if (cliOptions.skillOutput) {
+        // Non-interactive mode: use provided path directly
+        skillDir = path.isAbsolute(cliOptions.skillOutput)
+          ? cliOptions.skillOutput
+          : path.resolve(process.cwd(), cliOptions.skillOutput);
+
+        // Prepare directory (handle force overwrite)
+        await prepareSkillDir(skillDir, cliOptions.force ?? false);
+
+        // Determine location based on path (for copy logic)
+        skillLocation = skillDir.startsWith(path.join(os.homedir(), '.claude')) ? 'personal' : 'project';
+      } else {
+        // Interactive mode: prompt for skill location
+        const promptResult = await promptSkillLocation(skillName, process.cwd());
+        skillDir = promptResult.skillDir;
+        skillLocation = promptResult.location;
+      }
     }
 
     // Run the default action on the downloaded/cloned repository
