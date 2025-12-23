@@ -1292,6 +1292,7 @@ Here's an explanation of the configuration options:
 | `output.showLineNumbers`         | Whether to add line numbers to each line in the output                                                                       | `false`                |
 | `output.truncateBase64`          | Whether to truncate long base64 data strings (e.g., images) to reduce token count                                            | `false`                |
 | `output.copyToClipboard`         | Whether to copy the output to system clipboard in addition to saving the file                                                | `false`                |
+| `output.splitOutput`             | Split output into multiple numbered files by maximum size per part (e.g., `1000000` for ~1MB). Keeps each file under the limit and avoids splitting files across parts | Not set                |
 | `output.topFilesLength`          | Number of top files to display in the summary. If set to 0, no summary will be displayed                                     | `5`                    |
 | `output.tokenCountTree`          | Whether to display file tree with token count summaries. Can be boolean or number (minimum token count threshold)           | `false`                |
 | `output.includeEmptyDirectories` | Whether to include empty directories in the repository structure                                                             | `false`                |
@@ -1357,6 +1358,7 @@ Example configuration:
     "showLineNumbers": false,
     "truncateBase64": false,
     "copyToClipboard": false,
+    "splitOutput": null, // or a number like 1000000 for ~1MB per file
     "includeEmptyDirectories": false,
     "git": {
       "sortByChanges": true,
