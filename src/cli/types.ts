@@ -63,7 +63,7 @@ export interface CliOptions extends OptionValues {
   skillProjectName?: string; // Pre-computed project name for skill description (used internally for remote repos)
   skillSourceUrl?: string; // Source URL for skill (used internally for remote repos only)
   skillOutput?: string; // Output path for skill (skips location prompt)
-  force?: boolean; // Force overwrite without confirmation
+  force?: boolean; // Skip all confirmation prompts
 
   // Other Options
   topFilesLen?: number;
