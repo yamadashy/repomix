@@ -72,7 +72,7 @@ export const runDefaultAction = async (
         : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
 
     // Determine skill directory
-    if (cliOptions.skillOutput) {
+    if (cliOptions.skillOutput && !cliOptions.skillDir) {
       // Non-interactive mode: use provided path directly
       cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
     } else if (!cliOptions.skillDir) {

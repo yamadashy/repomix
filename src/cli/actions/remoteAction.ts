@@ -132,9 +132,10 @@ export const runRemoteAction = async (
     // Skip copy for stdout mode (output goes directly to stdout)
     // For skill generation with project location, copy the skill directory
     // For personal location, skill is already written to ~/.claude/skills/
+    // For --skill-output, skill is already written directly to the specified path
     if (!cliOptions.stdout) {
-      if (result.config.skillGenerate !== undefined && skillLocation === 'project') {
-        // Copy skill directory to current directory (only for project skills)
+      if (result.config.skillGenerate !== undefined && skillLocation === 'project' && !cliOptions.skillOutput) {
+        // Copy skill directory to current directory (only for project skills without --skill-output)
         await copySkillOutputToCurrentDirectory(tempDirPath, process.cwd());
       } else if (result.config.skillGenerate === undefined) {
         await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
