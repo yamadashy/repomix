@@ -5,7 +5,7 @@ import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { type FileSearchResult, listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
-import { generateTreeString } from '../file/fileTreeGenerate.js';
+import { type FilesByRoot, generateTreeString, generateTreeStringWithRoots } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
@@ -111,41 +111,41 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
     repomix: {
       file_summary: renderContext.fileSummaryEnabled
         ? {
-            '#text': renderContext.generationHeader,
-            purpose: renderContext.summaryPurpose,
-            file_format: `${renderContext.summaryFileFormat}
+          '#text': renderContext.generationHeader,
+          purpose: renderContext.summaryPurpose,
+          file_format: `${renderContext.summaryFileFormat}
 5. Repository files, each consisting of:
   - File path as an attribute
   - Full contents of the file`,
-            usage_guidelines: renderContext.summaryUsageGuidelines,
-            notes: renderContext.summaryNotes,
-          }
+          usage_guidelines: renderContext.summaryUsageGuidelines,
+          notes: renderContext.summaryNotes,
+        }
         : undefined,
       user_provided_header: renderContext.headerText,
       directory_structure: renderContext.directoryStructureEnabled ? renderContext.treeString : undefined,
       files: renderContext.filesEnabled
         ? {
-            '#text': "This section contains the contents of the repository's files.",
-            file: renderContext.processedFiles.map((file) => ({
-              '#text': file.content,
-              '@_path': file.path,
-            })),
-          }
+          '#text': "This section contains the contents of the repository's files.",
+          file: renderContext.processedFiles.map((file) => ({
+            '#text': file.content,
+            '@_path': file.path,
+          })),
+        }
         : undefined,
       git_diffs: renderContext.gitDiffEnabled
         ? {
-            git_diff_work_tree: renderContext.gitDiffWorkTree,
-            git_diff_staged: renderContext.gitDiffStaged,
-          }
+          git_diff_work_tree: renderContext.gitDiffWorkTree,
+          git_diff_staged: renderContext.gitDiffStaged,
+        }
         : undefined,
       git_logs: renderContext.gitLogEnabled
         ? {
-            git_log_commit: renderContext.gitLogCommits?.map((commit) => ({
-              date: commit.date,
-              message: commit.message,
-              files: commit.files.map((file) => ({ '#text': file })),
-            })),
-          }
+          git_log_commit: renderContext.gitLogCommits?.map((commit) => ({
+            date: commit.date,
+            message: commit.message,
+            files: commit.files.map((file) => ({ '#text': file })),
+          })),
+        }
         : undefined,
       instruction: renderContext.instruction ? renderContext.instruction : undefined,
     },
@@ -257,6 +257,7 @@ export const generateOutput = async (
   allFilePaths: string[],
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
+  filePathsByRoot?: FilesByRoot[],
   deps = {
     buildOutputGeneratorContext,
     generateHandlebarOutput,
@@ -275,6 +276,7 @@ export const generateOutput = async (
     sortedProcessedFiles,
     gitDiffResult,
     gitLogResult,
+    filePathsByRoot,
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
@@ -300,6 +302,7 @@ export const buildOutputGeneratorContext = async (
   processedFiles: ProcessedFile[],
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
+  filePathsByRoot?: FilesByRoot[],
   deps = {
     listDirectories,
     listFiles,
@@ -371,9 +374,19 @@ export const buildOutputGeneratorContext = async (
     }
   }
 
+  // Generate tree string - use multi-root format if multiple roots are provided
+  let treeString: string;
+  if (filePathsByRoot && filePathsByRoot.length > 1) {
+    // Multiple roots: generate labeled tree sections
+    treeString = generateTreeStringWithRoots(filePathsByRoot, directoryPathsForTree);
+  } else {
+    // Single root or no root info: use standard flat tree
+    treeString = generateTreeString(filePathsForTree, directoryPathsForTree);
+  }
+
   return {
     generationDate: new Date().toISOString(),
-    treeString: generateTreeString(filePathsForTree, directoryPathsForTree),
+    treeString,
     processedFiles,
     config,
     instruction: repositoryInstruction,
@@ -381,3 +394,4 @@ export const buildOutputGeneratorContext = async (
     gitLogResult,
   };
 };
+
