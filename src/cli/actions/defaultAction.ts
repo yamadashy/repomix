@@ -15,7 +15,7 @@ import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { initTaskRunner } from '../../shared/processConcurrency.js';
 import { reportResults } from '../cliReport.js';
-import { prepareSkillDir, promptSkillLocation } from '../prompts/skillPrompts.js';
+import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
 import type {
@@ -74,13 +74,7 @@ export const runDefaultAction = async (
     // Determine skill directory
     if (cliOptions.skillOutput) {
       // Non-interactive mode: use provided path directly
-      const skillDir = path.isAbsolute(cliOptions.skillOutput)
-        ? cliOptions.skillOutput
-        : path.resolve(cwd, cliOptions.skillOutput);
-
-      // Prepare directory (handle force overwrite)
-      await prepareSkillDir(skillDir, cliOptions.force ?? false);
-      cliOptions.skillDir = skillDir;
+      cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
     } else if (!cliOptions.skillDir) {
       // Interactive mode: prompt for skill location
       const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);

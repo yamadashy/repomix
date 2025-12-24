@@ -1,7 +1,12 @@
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
-import { getSkillBaseDir, prepareSkillDir, promptSkillLocation } from '../../../src/cli/prompts/skillPrompts.js';
+import {
+  getSkillBaseDir,
+  getSkillLocation,
+  prepareSkillDir,
+  promptSkillLocation,
+} from '../../../src/cli/prompts/skillPrompts.js';
 import { OperationCancelledError, RepomixError } from '../../../src/shared/errorHandle.js';
 
 // Helper to create mock deps with proper typing
@@ -121,8 +126,10 @@ describe('skillPrompts', () => {
 
   describe('prepareSkillDir', () => {
     test('should succeed when directory does not exist', async () => {
+      const enoentError = new Error('ENOENT') as NodeJS.ErrnoException;
+      enoentError.code = 'ENOENT';
       const mockDeps = {
-        access: vi.fn().mockRejectedValue(new Error('ENOENT')),
+        access: vi.fn().mockRejectedValue(enoentError),
         rm: vi.fn(),
       };
 
@@ -151,6 +158,30 @@ describe('skillPrompts', () => {
 
       await expect(prepareSkillDir('/test/skill-dir', true, mockDeps)).resolves.toBeUndefined();
       expect(mockDeps.rm).toHaveBeenCalledWith('/test/skill-dir', { recursive: true, force: true });
+    });
+
+    test('should re-throw non-ENOENT errors', async () => {
+      const permissionError = new Error('EACCES') as NodeJS.ErrnoException;
+      permissionError.code = 'EACCES';
+      const mockDeps = {
+        access: vi.fn().mockRejectedValue(permissionError),
+        rm: vi.fn(),
+      };
+
+      await expect(prepareSkillDir('/test/skill-dir', false, mockDeps)).rejects.toThrow(permissionError);
+      expect(mockDeps.rm).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getSkillLocation', () => {
+    test('should return personal for paths under ~/.claude/skills', () => {
+      const personalPath = path.join(os.homedir(), '.claude', 'skills', 'my-skill');
+      expect(getSkillLocation(personalPath)).toBe('personal');
+    });
+
+    test('should return project for paths not under ~/.claude/skills', () => {
+      expect(getSkillLocation('/project/.claude/skills/my-skill')).toBe('project');
+      expect(getSkillLocation('/some/other/path')).toBe('project');
     });
   });
 });

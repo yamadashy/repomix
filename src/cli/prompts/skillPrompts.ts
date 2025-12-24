@@ -103,19 +103,37 @@ export const prepareSkillDir = async (
     rm: fs.rm,
   },
 ): Promise<void> => {
-  let dirExists = false;
   try {
     await deps.access(skillDir);
-    dirExists = true;
-  } catch {
-    // Directory doesn't exist - good to go
-  }
-
-  if (dirExists) {
+    // Directory exists
     if (force) {
       await deps.rm(skillDir, { recursive: true, force: true });
     } else {
       throw new RepomixError(`Skill directory already exists: ${skillDir}. Use --force to overwrite.`);
     }
+  } catch (error) {
+    // Re-throw if it's not a "file not found" error
+    if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+      throw error;
+    }
+    // Directory doesn't exist - good to go
   }
+};
+
+/**
+ * Resolve skill output path and prepare directory for non-interactive mode.
+ * Returns the resolved skill directory path.
+ */
+export const resolveAndPrepareSkillDir = async (skillOutput: string, cwd: string, force: boolean): Promise<string> => {
+  const skillDir = path.isAbsolute(skillOutput) ? skillOutput : path.resolve(cwd, skillOutput);
+  await prepareSkillDir(skillDir, force);
+  return skillDir;
+};
+
+/**
+ * Determine skill location type based on the skill directory path.
+ */
+export const getSkillLocation = (skillDir: string): SkillLocation => {
+  const personalSkillsBase = getSkillBaseDir('', 'personal');
+  return skillDir.startsWith(personalSkillsBase) ? 'personal' : 'project';
 };
