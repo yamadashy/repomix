@@ -181,6 +181,8 @@ export const run = async () => {
         '--skill-generate [name]',
         'Generate Claude Agent Skills format output to .claude/skills/<name>/ directory (name auto-generated if omitted)',
       )
+      .option('--skill-output <path>', 'Specify skill output directory path directly (skips location prompt)')
+      .option('-f, --force', 'Skip all confirmation prompts (currently: skill directory overwrite)')
       .action(commanderActionEndpoint);
 
     // Custom error handling function
