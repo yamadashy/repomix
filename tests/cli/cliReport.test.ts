@@ -49,7 +49,7 @@ describe('cliReport', () => {
         skippedFiles: [],
       };
 
-      reportSummary(packResult, config);
+      reportSummary('/test/project', packResult, config);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('1 suspicious file(s) detected and excluded'));
     });
@@ -76,7 +76,7 @@ describe('cliReport', () => {
         skippedFiles: [],
       };
 
-      reportSummary(packResult, config);
+      reportSummary('/test/project', packResult, config);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Git diffs included'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('50 tokens'));
@@ -104,7 +104,7 @@ describe('cliReport', () => {
         skippedFiles: [],
       };
 
-      reportSummary(packResult, config);
+      reportSummary('/test/project', packResult, config);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('No git diffs included'));
     });
@@ -131,7 +131,7 @@ describe('cliReport', () => {
         skippedFiles: [],
       };
 
-      reportSummary(packResult, config);
+      reportSummary('/test/project', packResult, config);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Git logs included'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('30 tokens'));
@@ -159,7 +159,7 @@ describe('cliReport', () => {
         skippedFiles: [],
       };
 
-      reportSummary(packResult, config);
+      reportSummary('/test/project', packResult, config);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('No git logs included'));
     });
@@ -185,7 +185,7 @@ describe('cliReport', () => {
         skippedFiles: [],
       };
 
-      reportSummary(packResult, config);
+      reportSummary('/test/project', packResult, config);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Security check disabled'));
     });

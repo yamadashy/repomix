@@ -23,6 +23,7 @@ export interface CliOptions extends OptionValues {
   instructionFilePath?: string;
   includeEmptyDirectories?: boolean;
   includeFullDirectoryStructure?: boolean;
+  splitOutput?: number; // bytes
   gitSortByChanges?: boolean;
   includeDiffs?: boolean;
   includeLogs?: boolean;
@@ -55,6 +56,13 @@ export interface CliOptions extends OptionValues {
 
   // MCP
   mcp?: boolean;
+
+  // Skill Generation
+  skillGenerate?: string | boolean;
+  skillName?: string; // Pre-computed skill name (used internally for remote repos)
+  skillDir?: string; // Pre-computed skill directory (used internally for remote repos)
+  skillProjectName?: string; // Pre-computed project name for skill description (used internally for remote repos)
+  skillSourceUrl?: string; // Source URL for skill (used internally for remote repos only)
 
   // Other Options
   topFilesLen?: number;

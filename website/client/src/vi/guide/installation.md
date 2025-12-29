@@ -16,35 +16,23 @@ Lệnh này sẽ tải và chạy phiên bản mới nhất của Repomix trực
 
 Để sử dụng Repomix từ bất kỳ đâu trong hệ thống của bạn, bạn có thể cài đặt nó toàn cục:
 
-### Sử dụng npm
-
-```bash
+::: code-group
+```bash [npm]
 npm install -g repomix
 ```
-
-### Sử dụng yarn
-
-```bash
+```bash [yarn]
 yarn global add repomix
 ```
-
-### Sử dụng pnpm
-
-```bash
+```bash [pnpm]
 pnpm add -g repomix
 ```
-
-### Sử dụng Bun
-
-```bash
+```bash [bun]
 bun add -g repomix
 ```
-
-### Sử dụng Homebrew (macOS/Linux)
-
-```bash
+```bash [Homebrew]
 brew install repomix
 ```
+:::
 
 Sau khi cài đặt toàn cục, bạn có thể chạy Repomix từ bất kỳ thư mục nào:
 

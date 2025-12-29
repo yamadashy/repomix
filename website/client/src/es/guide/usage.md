@@ -25,6 +25,24 @@ repomix --include "src/**/*.ts,**/*.md"
 repomix --ignore "**/*.log,tmp/"
 ```
 
+### Dividir Salida en Múltiples Archivos
+
+Al trabajar con grandes bases de código, la salida empaquetada puede exceder los límites de tamaño de archivo impuestos por algunas herramientas de IA (por ejemplo, el límite de 1MB de Google AI Studio). Use `--split-output` para dividir automáticamente la salida en múltiples archivos:
+
+```bash
+repomix --split-output 1mb
+```
+
+Esto genera archivos numerados como:
+- `repomix-output.1.xml`
+- `repomix-output.2.xml`
+- `repomix-output.3.xml`
+
+El tamaño se puede especificar con unidades: `500kb`, `1mb`, `2mb`, `1.5mb`, etc. Se admiten valores decimales.
+
+> [!NOTE]
+> Los archivos se agrupan por directorio de nivel superior para mantener el contexto. Un solo archivo o directorio nunca se dividirá entre múltiples archivos de salida.
+
 ### Repositorios remotos
 ```bash
 # Usando la URL de GitHub

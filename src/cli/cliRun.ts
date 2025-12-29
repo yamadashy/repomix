@@ -4,6 +4,7 @@ import pc from 'picocolors';
 import { getVersion } from '../core/file/packageJsonParse.js';
 import { handleError, RepomixError } from '../shared/errorHandle.js';
 import { logger, repomixLogLevels } from '../shared/logger.js';
+import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
 import { runDefaultAction } from './actions/defaultAction.js';
 import { runInitAction } from './actions/initAction.js';
 import { runMcpAction } from './actions/mcpAction.js';
@@ -116,6 +117,12 @@ export const run = async () => {
       .option('--truncate-base64', 'Truncate long base64 data strings to reduce output size')
       .option('--header-text <text>', 'Custom text to include at the beginning of the output')
       .option('--instruction-file-path <path>', 'Path to file containing custom instructions to include in output')
+      .addOption(
+        new Option(
+          '--split-output <size>',
+          'Split output into multiple numbered files (e.g., repomix-output.1.xml, repomix-output.2.xml); size like 500kb, 2mb, or 2.5mb',
+        ).argParser(parseHumanSizeToBytes),
+      )
       .option('--include-empty-directories', 'Include folders with no files in directory structure')
       .option(
         '--include-full-directory-structure',
@@ -169,6 +176,12 @@ export const run = async () => {
       // MCP
       .optionsGroup('MCP')
       .option('--mcp', 'Run as Model Context Protocol server for AI tool integration')
+      // Skill Generation
+      .optionsGroup('Skill Generation (Experimental)')
+      .option(
+        '--skill-generate [name]',
+        'Generate Claude Agent Skills format output to .claude/skills/<name>/ directory (name auto-generated if omitted)',
+      )
       .action(commanderActionEndpoint);
 
     // Custom error handling function

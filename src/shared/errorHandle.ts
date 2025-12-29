@@ -17,6 +17,13 @@ export class RepomixConfigValidationError extends RepomixError {
   }
 }
 
+export class OperationCancelledError extends RepomixError {
+  constructor(message = 'Operation cancelled') {
+    super(message);
+    this.name = 'OperationCancelledError';
+  }
+}
+
 export const handleError = (error: unknown): void => {
   logger.log('');
 

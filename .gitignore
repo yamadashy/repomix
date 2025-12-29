@@ -28,6 +28,7 @@ repomix-output.txt
 repomix-output.xml
 repomix-output.md
 repomix-output.json
+repomix-output.*
 
 # ESLint cache
 .eslintcache
@@ -43,6 +44,9 @@ repomix-output.json
 
 # repomix runner
 .repomix/
+
+# repomix references
+.claude/skills/repomix-reference-*/
 
 # Agent
 /.mcp.json

@@ -17,35 +17,23 @@ Ini akan mengunduh dan menjalankan Repomix secara langsung di direktori proyek A
 
 Untuk penggunaan berulang, Anda dapat menginstal Repomix secara global:
 
-### Menggunakan npm
-
-```bash
+::: code-group
+```bash [npm]
 npm install -g repomix
 ```
-
-### Menggunakan yarn
-
-```bash
+```bash [yarn]
 yarn global add repomix
 ```
-
-### Menggunakan pnpm
-
-```bash
+```bash [pnpm]
 pnpm add -g repomix
 ```
-
-### Menggunakan Bun
-
-```bash
+```bash [bun]
 bun add -g repomix
 ```
-
-### Menggunakan Homebrew (macOS/Linux)
-
-```bash
+```bash [Homebrew]
 brew install repomix
 ```
+:::
 
 ## Menggunakan Docker
 

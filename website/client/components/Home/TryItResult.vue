@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import type { TabType } from '../../types/ui';
 import type { FileInfo, PackResult } from '../api/client';
+import SupportMessage from './SupportMessage.vue';
 import TryItFileSelection from './TryItFileSelection.vue';
 import TryItLoading from './TryItLoading.vue';
 import TryItResultContent from './TryItResultContent.vue';
@@ -47,7 +48,10 @@ const handleRepack = (selectedFiles: FileInfo[]) => {
 
 <template>
   <div class="result-viewer">
-    <TryItLoading v-if="loading && !result" />
+    <template v-if="loading && !result">
+      <TryItLoading />
+      <SupportMessage />
+    </template>
     <TryItResultErrorContent
       v-else-if="error"
       :message="error"

@@ -13,56 +13,34 @@ on:
 jobs:
   claude-review:
     # Skip if:
+    # - PR is a draft
     # - PR is from a fork (secrets are not available)
     # - PR is from a bot (workflow validation may fail)
     if: |
+      github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.type != 'Bot'
 
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
       id-token: write
-    
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 1
 
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@a7e4c51380c42dd89b127f5e5f9be7b54020bc6b # v1.0.21
+        uses: anthropics/claude-code-action@6337623ebba10cf8c8214b507993f8062fd4ccfb # v1.0.22
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            REPO: ${{ github.repository }}
-            PR NUMBER: ${{ github.event.pull_request.number }}
-
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
-
-            Perform a premortem analysis: identify potential failure scenarios (e.g., edge cases, integration issues, deployment risks) and suggest mitigations.
-
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
-
-            ## How to Comment:
-            1. Before starting your review, read ALL existing comments on this PR using `gh pr view --comments` to see the full conversation
-            2. If there are any previous comments from you (Claude), identify what feedback you've already provided
-            3. Only provide NEW feedback that hasn't been mentioned yet, or updates to previous feedback if the code has changed
-            4. Avoid repeating feedback that has already been given - focus on providing incremental value with each review
-            5. For highlighting specific code issues, use `mcp__github_inline_comment__create_inline_comment` to leave inline comments
-              - When possible, provide actionable fix suggestions with code examples
-            6. Use `gh pr comment` with your Bash tool to leave your overall review as a comment on the PR
-            7. Wrap detailed feedback in <details><summary>Details</summary>...</details> tags, keeping only a brief summary visible
-
+          prompt: "/git:pr-review REPO: ${{ github.repository }} PR_NUMBER: ${{ github.event.pull_request.number }}"
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://docs.claude.com/en/docs/claude-code/cli-reference for available options
-          claude_args: '--model opus --allowed-tools "mcp__github_inline_comment__create_inline_comment,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+          # or https://code.claude.com/docs/en/cli-reference for available options
+          claude_args: '--model opus'
 

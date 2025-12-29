@@ -25,6 +25,24 @@ repomix --include "src/**/*.ts,**/*.md"
 repomix --ignore "**/*.log,tmp/"
 ```
 
+### 출력을 여러 파일로 분할
+
+대규모 코드베이스로 작업할 때 패키징된 출력이 일부 AI 도구의 파일 크기 제한을 초과할 수 있습니다 (예: Google AI Studio의 1MB 제한). `--split-output`을 사용하여 출력을 자동으로 여러 파일로 분할합니다:
+
+```bash
+repomix --split-output 1mb
+```
+
+이렇게 하면 다음과 같은 번호가 매겨진 파일이 생성됩니다:
+- `repomix-output.1.xml`
+- `repomix-output.2.xml`
+- `repomix-output.3.xml`
+
+크기는 단위와 함께 지정할 수 있습니다: `500kb`, `1mb`, `2mb`, `1.5mb` 등. 소수점 값도 지원됩니다.
+
+> [!NOTE]
+> 컨텍스트를 유지하기 위해 파일은 최상위 디렉토리별로 그룹화됩니다. 단일 파일이나 디렉토리는 여러 출력 파일로 분할되지 않습니다.
+
 ### 원격 저장소 처리
 ```bash
 # GitHub URL 사용

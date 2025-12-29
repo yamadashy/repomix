@@ -68,7 +68,48 @@ export const treeToString = (node: TreeNode, prefix = ''): string => {
   return result;
 };
 
+/**
+ * Converts a tree to string with line counts for files.
+ * @param node The tree node to convert
+ * @param lineCounts Map of file paths to line counts
+ * @param prefix Current indentation prefix
+ * @param currentPath Current path being built (for looking up line counts)
+ */
+export const treeToStringWithLineCounts = (
+  node: TreeNode,
+  lineCounts: Record<string, number>,
+  prefix = '',
+  currentPath = '',
+): string => {
+  sortTreeNodes(node);
+  let result = '';
+
+  for (const child of node.children) {
+    const childPath = currentPath ? `${currentPath}/${child.name}` : child.name;
+
+    if (child.isDirectory) {
+      result += `${prefix}${child.name}/\n`;
+      result += treeToStringWithLineCounts(child, lineCounts, `${prefix}  `, childPath);
+    } else {
+      const lineCount = lineCounts[childPath];
+      const lineCountSuffix = lineCount !== undefined ? ` (${lineCount} lines)` : '';
+      result += `${prefix}${child.name}${lineCountSuffix}\n`;
+    }
+  }
+
+  return result;
+};
+
 export const generateTreeString = (files: string[], emptyDirPaths: string[] = []): string => {
   const tree = generateFileTree(files, emptyDirPaths);
   return treeToString(tree).trim();
+};
+
+export const generateTreeStringWithLineCounts = (
+  files: string[],
+  lineCounts: Record<string, number>,
+  emptyDirPaths: string[] = [],
+): string => {
+  const tree = generateFileTree(files, emptyDirPaths);
+  return treeToStringWithLineCounts(tree, lineCounts).trim();
 };

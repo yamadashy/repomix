@@ -16,9 +16,7 @@ import type { FileCollectTask } from '../../src/core/file/workers/fileCollectWor
 import fileCollectWorker from '../../src/core/file/workers/fileCollectWorker.js';
 import fileProcessWorker from '../../src/core/file/workers/fileProcessWorker.js';
 import type { GitDiffResult } from '../../src/core/git/gitDiffHandle.js';
-import { generateOutput } from '../../src/core/output/outputGenerate.js';
-import { copyToClipboardIfEnabled } from '../../src/core/packager/copyToClipboardIfEnabled.js';
-import { writeOutputToDisk } from '../../src/core/packager/writeOutputToDisk.js';
+import { produceOutput } from '../../src/core/packager/produceOutput.js';
 import { pack } from '../../src/core/packager.js';
 import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
 import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
@@ -119,7 +117,6 @@ describe.runIf(!isWindows)('packager integration', () => {
           }
           return processedFiles;
         },
-        generateOutput,
         validateFileSafety: (rawFiles, progressCallback, config) => {
           const gitDiffMock: GitDiffResult = {
             workTreeDiffContent: '',
@@ -130,8 +127,7 @@ describe.runIf(!isWindows)('packager integration', () => {
             filterOutUntrustedFiles,
           });
         },
-        writeOutputToDisk,
-        copyToClipboardIfEnabled,
+        produceOutput,
         calculateMetrics: async (
           processedFiles,
           _output,

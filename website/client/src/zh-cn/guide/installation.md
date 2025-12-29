@@ -8,25 +8,23 @@ npx repomix@latest
 
 ## 全局安装
 
-### npm 安装
-```bash
+::: code-group
+```bash [npm]
 npm install -g repomix
 ```
-
-### Yarn 安装
-```bash
+```bash [yarn]
 yarn global add repomix
 ```
-
-### Bun 安装
-```bash
+```bash [pnpm]
+pnpm add -g repomix
+```
+```bash [bun]
 bun add -g repomix
 ```
-
-### Homebrew 安装（macOS/Linux）
-```bash
+```bash [Homebrew]
 brew install repomix
 ```
+:::
 
 ## Docker 安装
 

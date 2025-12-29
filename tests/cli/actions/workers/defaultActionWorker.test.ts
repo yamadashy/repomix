@@ -158,6 +158,9 @@ describe('defaultActionWorker', () => {
         [path.resolve('/test/project', 'src'), path.resolve('/test/project', 'tests')],
         mockConfig,
         expect.any(Function),
+        {},
+        undefined,
+        {},
       );
       expect(result).toEqual({
         packResult: mockPackResult,
@@ -177,7 +180,14 @@ describe('defaultActionWorker', () => {
 
       const result = (await defaultActionWorker(task)) as DefaultActionWorkerResult;
 
-      expect(mockPack).toHaveBeenCalledWith([path.resolve('/test/project', '.')], mockConfig, expect.any(Function));
+      expect(mockPack).toHaveBeenCalledWith(
+        [path.resolve('/test/project', '.')],
+        mockConfig,
+        expect.any(Function),
+        {},
+        undefined,
+        {},
+      );
       expect(result).toEqual({
         packResult: mockPackResult,
         config: mockConfig,
@@ -196,7 +206,7 @@ describe('defaultActionWorker', () => {
 
       await defaultActionWorker(task);
 
-      expect(mockPack).toHaveBeenCalledWith([], mockConfig, expect.any(Function));
+      expect(mockPack).toHaveBeenCalledWith([], mockConfig, expect.any(Function), {}, undefined, {});
     });
   });
 
@@ -214,10 +224,14 @@ describe('defaultActionWorker', () => {
 
       const result = (await defaultActionWorker(task)) as DefaultActionWorkerResult;
 
-      expect(mockPack).toHaveBeenCalledWith(['/test/project'], mockConfig, expect.any(Function), {}, [
-        'file1.txt',
-        'file2.txt',
-      ]);
+      expect(mockPack).toHaveBeenCalledWith(
+        ['/test/project'],
+        mockConfig,
+        expect.any(Function),
+        {},
+        ['file1.txt', 'file2.txt'],
+        {},
+      );
       expect(result).toEqual({
         packResult: mockPackResult,
         config: mockConfig,
@@ -237,7 +251,7 @@ describe('defaultActionWorker', () => {
 
       await defaultActionWorker(task);
 
-      expect(mockPack).toHaveBeenCalledWith(['/test/project'], mockConfig, expect.any(Function), {}, ['file1.txt']);
+      expect(mockPack).toHaveBeenCalledWith(['/test/project'], mockConfig, expect.any(Function), {}, ['file1.txt'], {});
     });
   });
 
@@ -341,6 +355,9 @@ describe('defaultActionWorker', () => {
         ],
         mockConfig,
         expect.any(Function),
+        {},
+        undefined,
+        {},
       );
     });
 
@@ -360,6 +377,9 @@ describe('defaultActionWorker', () => {
         [path.resolve('/test/project', '/absolute/path1'), path.resolve('/test/project', '/absolute/path2')],
         mockConfig,
         expect.any(Function),
+        {},
+        undefined,
+        {},
       );
     });
   });

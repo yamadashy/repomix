@@ -23,6 +23,35 @@ import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
 
+// Cache for compiled Handlebars templates to avoid recompilation on every call
+const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
+
+const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
+  const cached = compiledTemplateCache.get(style);
+  if (cached) {
+    return cached;
+  }
+
+  let template: string;
+  switch (style) {
+    case 'xml':
+      template = getXmlTemplate();
+      break;
+    case 'markdown':
+      template = getMarkdownTemplate();
+      break;
+    case 'plain':
+      template = getPlainTemplate();
+      break;
+    default:
+      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
+  }
+
+  const compiled = Handlebars.compile(template);
+  compiledTemplateCache.set(style, compiled);
+  return compiled;
+};
+
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
   const maxBackticks = files
     .flatMap((file) => file.content.match(/`+/g) ?? [])
@@ -30,7 +59,24 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
   return '`'.repeat(Math.max(3, maxBackticks + 1));
 };
 
-const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
+  const lineCounts: Record<string, number> = {};
+  for (const file of processedFiles) {
+    // Count lines: empty files have 0 lines, otherwise count newlines + 1
+    // (unless the content ends with a newline, in which case the last "line" is empty)
+    const content = file.content;
+    if (content.length === 0) {
+      lineCounts[file.path] = 0;
+    } else {
+      // Count actual lines (text editor style: number of \n + 1, but trailing \n doesn't add extra line)
+      const newlineCount = (content.match(/\n/g) || []).length;
+      lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
+    }
+  }
+  return lineCounts;
+};
+
+export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -44,6 +90,7 @@ const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): Re
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
+    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
@@ -172,23 +219,8 @@ const generateHandlebarOutput = async (
   renderContext: RenderContext,
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
-  let template: string;
-  switch (config.output.style) {
-    case 'xml':
-      template = getXmlTemplate();
-      break;
-    case 'markdown':
-      template = getMarkdownTemplate();
-      break;
-    case 'plain':
-      template = getPlainTemplate();
-      break;
-    default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${config.output.style}`);
-  }
-
   try {
-    const compiledTemplate = Handlebars.compile(template);
+    const compiledTemplate = getCompiledTemplate(config.output.style);
     return `${compiledTemplate(renderContext).trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {

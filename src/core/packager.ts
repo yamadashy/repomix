@@ -9,11 +9,10 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics } from './metrics/calculateMetrics.js';
-import { generateOutput } from './output/outputGenerate.js';
-import { copyToClipboardIfEnabled } from './packager/copyToClipboardIfEnabled.js';
-import { writeOutputToDisk } from './packager/writeOutputToDisk.js';
+import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
+import { packSkill } from './skill/packSkill.js';
 
 export interface PackResult {
   totalFiles: number;
@@ -23,6 +22,7 @@ export interface PackResult {
   fileTokenCounts: Record<string, number>;
   gitDiffTokenCount: number;
   gitLogTokenCount: number;
+  outputFiles?: string[];
   suspiciousFilesResults: SuspiciousFileResult[];
   suspiciousGitDiffResults: SuspiciousFileResult[];
   suspiciousGitLogResults: SuspiciousFileResult[];
@@ -35,15 +35,21 @@ const defaultDeps = {
   searchFiles,
   collectFiles,
   processFiles,
-  generateOutput,
   validateFileSafety,
-  writeOutputToDisk,
-  copyToClipboardIfEnabled,
+  produceOutput,
   calculateMetrics,
   sortPaths,
   getGitDiffs,
   getGitLogs,
+  packSkill,
 };
+
+export interface PackOptions {
+  skillName?: string;
+  skillDir?: string;
+  skillProjectName?: string;
+  skillSourceUrl?: string;
+}
 
 export const pack = async (
   rootDirs: string[],
@@ -51,6 +57,7 @@ export const pack = async (
   progressCallback: RepomixProgressCallback = () => {},
   overrideDeps: Partial<typeof defaultDeps> = {},
   explicitFiles?: string[],
+  options: PackOptions = {},
 ): Promise<PackResult> => {
   const deps = {
     ...defaultDeps,
@@ -117,22 +124,48 @@ export const pack = async (
   );
 
   progressCallback('Generating output...');
-  const output = await withMemoryLogging('Generate Output', () =>
-    deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
+
+  // Check if skill generation is requested
+  if (config.skillGenerate !== undefined && options.skillDir) {
+    const result = await deps.packSkill({
+      rootDirs,
+      config,
+      options,
+      processedFiles,
+      allFilePaths,
+      gitDiffResult,
+      gitLogResult,
+      suspiciousFilesResults,
+      suspiciousGitDiffResults,
+      suspiciousGitLogResults,
+      safeFilePaths,
+      skippedFiles: allSkippedFiles,
+      progressCallback,
+    });
+
+    logMemoryUsage('Pack - End');
+    return result;
+  }
+
+  // Generate and write output (handles both single and split output)
+  const { outputFiles, outputForMetrics } = await deps.produceOutput(
+    rootDirs,
+    config,
+    processedFiles,
+    allFilePaths,
+    gitDiffResult,
+    gitLogResult,
+    progressCallback,
   );
 
-  progressCallback('Writing output file...');
-  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
-
-  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
-
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, gitLogResult),
+    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),
   );
 
   // Create a result object that includes metrics and security results
   const result = {
     ...metrics,
+    ...(outputFiles && { outputFiles }),
     suspiciousFilesResults,
     suspiciousGitDiffResults,
     suspiciousGitLogResults,

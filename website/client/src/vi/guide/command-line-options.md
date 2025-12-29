@@ -26,6 +26,7 @@
 - `--truncate-base64`: Bật cắt ngắn chuỗi dữ liệu base64
 - `--header-text <text>`: Văn bản tùy chỉnh để bao gồm trong tiêu đề tệp
 - `--instruction-file-path <path>`: Đường dẫn đến tệp chứa hướng dẫn tùy chỉnh chi tiết
+- `--split-output <size>`: Chia đầu ra thành nhiều tệp được đánh số (ví dụ: repomix-output.1.xml, repomix-output.2.xml); ví dụ: 500kb, 2mb hoặc 1.5mb
 - `--include-empty-directories`: Bao gồm các thư mục trống trong đầu ra
 - `--include-full-directory-structure`: Hiển thị cây kho lưu trữ đầy đủ trong phần Cấu trúc Thư mục, ngay cả khi sử dụng các mẫu --include
 - `--include-diffs`: Bao gồm các diff git trong đầu ra (bao gồm các thay đổi cây làm việc và các thay đổi đã staged riêng biệt)

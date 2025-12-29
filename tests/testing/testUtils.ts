@@ -14,7 +14,7 @@ type DeepPartial<T> = {
 
 export const createMockConfig = (config: DeepPartial<RepomixConfigMerged> = {}): RepomixConfigMerged => {
   return {
-    cwd: process.cwd(),
+    cwd: config.cwd ?? process.cwd(),
     input: {
       ...defaultConfig.input,
       ...config.input,
@@ -41,6 +41,8 @@ export const createMockConfig = (config: DeepPartial<RepomixConfigMerged> = {}):
       ...defaultConfig.tokenCount,
       ...config.tokenCount,
     },
+    // CLI-only optional properties
+    ...(config.skillGenerate !== undefined && { skillGenerate: config.skillGenerate }),
   };
 };
 
