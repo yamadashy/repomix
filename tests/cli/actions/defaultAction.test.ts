@@ -368,6 +368,7 @@ describe('defaultAction', () => {
       };
       const config = buildCliConfig(options);
       expect(config.output?.git?.showBlame).toBe(true);
+    });
 
     it('should handle --skill-generate with string name', () => {
       const options: CliOptions = {

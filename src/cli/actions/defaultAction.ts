@@ -66,6 +66,8 @@ export const runDefaultAction = async (
       logger.warn(
         'This is because git blame modifies the file content structure, making it incompatible with these processing steps.',
       );
+    }
+  }
 
   // Validate conflicting options
   validateConflictingOptions(config);
