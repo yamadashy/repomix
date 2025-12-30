@@ -9,9 +9,7 @@ A persistent memory space for storing knowledge that survives across conversatio
 
 **Location:** `.claude/skills/memory/memories/`
 
-## When to Use
-
-### Proactive (Agent-initiated)
+## Proactive Usage
 
 Save memories when you discover something worth preserving:
 - Research findings that took effort to uncover
@@ -26,13 +24,6 @@ Check memories when starting related work:
 Organize memories when needed:
 - Consolidate scattered notes on the same topic
 - Remove outdated or superseded information
-
-### Reactive (User-initiated)
-
-When the user explicitly asks to:
-- Save or remember something: "remember this", "save this", "note this down"
-- Recall information: "what did we discuss about...", "check your notes on..."
-- Organize: "clean up your memories", "consolidate notes on..."
 
 ## Operations
 
