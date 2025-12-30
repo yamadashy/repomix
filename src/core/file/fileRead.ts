@@ -1,9 +1,11 @@
 import * as fs from 'node:fs/promises';
-import iconv from 'iconv-lite';
+import iconvLite from 'iconv-lite';
 import isBinaryPath from 'is-binary-path';
 import { isBinaryFile } from 'isbinaryfile';
 import jschardet from 'jschardet';
 import { logger } from '../../shared/logger.js';
+
+const iconv = iconvLite.default ?? iconvLite;
 
 export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
 

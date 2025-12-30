@@ -1,7 +1,7 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import iconv from 'iconv-lite';
+import iconvLite from 'iconv-lite';
 import isBinaryPath from 'is-binary-path';
 import { isBinaryFile } from 'isbinaryfile';
 import jschardet from 'jschardet';
@@ -12,6 +12,8 @@ import fileCollectWorker from '../../../src/core/file/workers/fileCollectWorker.
 import { logger } from '../../../src/shared/logger.js';
 import type { WorkerOptions, WorkerRuntime } from '../../../src/shared/processConcurrency.js';
 import { createMockConfig } from '../../testing/testUtils.js';
+
+const iconv = iconvLite.default ?? iconvLite;
 
 // Define the max file size constant for tests
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB

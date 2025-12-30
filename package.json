@@ -86,7 +86,7 @@
     "git-url-parse": "^16.1.0",
     "globby": "^16.0.0",
     "handlebars": "^4.7.8",
-    "iconv-lite": "^0.7.0",
+    "iconv-lite": "^0.7.1",
     "is-binary-path": "^3.0.0",
     "isbinaryfile": "^5.0.2",
     "jiti": "^2.6.1",
