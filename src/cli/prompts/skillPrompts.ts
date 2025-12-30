@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import * as prompts from '@clack/prompts';
 import pc from 'picocolors';
-import { OperationCancelledError } from '../../shared/errorHandle.js';
+import { OperationCancelledError, RepomixError } from '../../shared/errorHandle.js';
 import { getDisplayPath } from '../cliReport.js';
 
 export type SkillLocation = 'personal' | 'project';
@@ -89,4 +89,57 @@ export const promptSkillLocation = async (
     location: location as SkillLocation,
     skillDir,
   };
+};
+
+/**
+ * Prepare skill directory for non-interactive mode.
+ * Handles force overwrite by removing existing directory.
+ */
+export const prepareSkillDir = async (
+  skillDir: string,
+  force: boolean,
+  deps = {
+    access: fs.access,
+    rm: fs.rm,
+    stat: fs.stat,
+  },
+): Promise<void> => {
+  try {
+    await deps.access(skillDir);
+    // Path exists - check if it's a directory
+    const stats = await deps.stat(skillDir);
+    if (!stats.isDirectory()) {
+      throw new RepomixError(`Skill output path exists but is not a directory: ${skillDir}`);
+    }
+    // Directory exists
+    if (force) {
+      await deps.rm(skillDir, { recursive: true, force: true });
+    } else {
+      throw new RepomixError(`Skill directory already exists: ${skillDir}. Use --force to overwrite.`);
+    }
+  } catch (error) {
+    // Re-throw if it's not a "file not found" error
+    if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+      throw error;
+    }
+    // Directory doesn't exist - good to go
+  }
+};
+
+/**
+ * Resolve skill output path and prepare directory for non-interactive mode.
+ * Returns the resolved skill directory path.
+ */
+export const resolveAndPrepareSkillDir = async (skillOutput: string, cwd: string, force: boolean): Promise<string> => {
+  const skillDir = path.isAbsolute(skillOutput) ? skillOutput : path.resolve(cwd, skillOutput);
+  await prepareSkillDir(skillDir, force);
+  return skillDir;
+};
+
+/**
+ * Determine skill location type based on the skill directory path.
+ */
+export const getSkillLocation = (skillDir: string): SkillLocation => {
+  const personalSkillsBase = getSkillBaseDir('', 'personal');
+  return skillDir.startsWith(personalSkillsBase) ? 'personal' : 'project';
 };

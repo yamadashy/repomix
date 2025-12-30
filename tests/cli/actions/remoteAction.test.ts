@@ -2,11 +2,7 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { DefaultActionRunnerResult } from '../../../src/cli/actions/defaultAction.js';
-import {
-  copyOutputToCurrentDirectory,
-  copySkillOutputToCurrentDirectory,
-  runRemoteAction,
-} from '../../../src/cli/actions/remoteAction.js';
+import { copyOutputToCurrentDirectory, runRemoteAction } from '../../../src/cli/actions/remoteAction.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -288,74 +284,6 @@ describe('remoteAction functions', () => {
 
       await expect(copyOutputToCurrentDirectory(sourceDir, targetDir, fileName)).rejects.toThrow(
         /Permission denied.*protected.*--output.*--stdout/s,
-      );
-    });
-  });
-
-  describe('copySkillOutputToCurrentDirectory', () => {
-    test('should copy .claude/skills directory when it exists', async () => {
-      const sourceDir = '/tmp/repomix-123';
-      const targetDir = '/target/dir';
-
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.cp).mockResolvedValue(undefined);
-
-      await copySkillOutputToCurrentDirectory(sourceDir, targetDir);
-
-      expect(fs.access).toHaveBeenCalledWith(path.join(sourceDir, '.claude', 'skills'));
-      expect(fs.cp).toHaveBeenCalledWith(
-        path.join(sourceDir, '.claude', 'skills'),
-        path.join(targetDir, '.claude', 'skills'),
-        { recursive: true },
-      );
-    });
-
-    test('should skip copy when .claude/skills directory does not exist', async () => {
-      const sourceDir = '/tmp/repomix-123';
-      const targetDir = '/target/dir';
-
-      vi.mocked(fs.access).mockRejectedValue(new Error('ENOENT'));
-      vi.mocked(fs.cp).mockResolvedValue(undefined);
-
-      await copySkillOutputToCurrentDirectory(sourceDir, targetDir);
-
-      expect(fs.access).toHaveBeenCalledWith(path.join(sourceDir, '.claude', 'skills'));
-      expect(fs.cp).not.toHaveBeenCalled();
-    });
-
-    test('should throw helpful error message for EPERM permission errors', async () => {
-      const sourceDir = '/tmp/repomix-123';
-      const targetDir = '/protected/dir';
-
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      const epermError = new Error('operation not permitted') as NodeJS.ErrnoException;
-      epermError.code = 'EPERM';
-      vi.mocked(fs.cp).mockRejectedValue(epermError);
-
-      await expect(copySkillOutputToCurrentDirectory(sourceDir, targetDir)).rejects.toThrow(/Permission denied/);
-    });
-
-    test('should throw helpful error message for EACCES permission errors', async () => {
-      const sourceDir = '/tmp/repomix-123';
-      const targetDir = '/protected/dir';
-
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      const eaccesError = new Error('permission denied') as NodeJS.ErrnoException;
-      eaccesError.code = 'EACCES';
-      vi.mocked(fs.cp).mockRejectedValue(eaccesError);
-
-      await expect(copySkillOutputToCurrentDirectory(sourceDir, targetDir)).rejects.toThrow(/Permission denied/);
-    });
-
-    test('should throw generic error for other failures', async () => {
-      const sourceDir = '/tmp/repomix-123';
-      const targetDir = '/target/dir';
-
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.cp).mockRejectedValue(new Error('Disk full'));
-
-      await expect(copySkillOutputToCurrentDirectory(sourceDir, targetDir)).rejects.toThrow(
-        'Failed to copy skill output: Disk full',
       );
     });
   });

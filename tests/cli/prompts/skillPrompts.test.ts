@@ -1,8 +1,14 @@
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
-import { getSkillBaseDir, promptSkillLocation } from '../../../src/cli/prompts/skillPrompts.js';
-import { OperationCancelledError } from '../../../src/shared/errorHandle.js';
+import {
+  getSkillBaseDir,
+  getSkillLocation,
+  prepareSkillDir,
+  promptSkillLocation,
+  resolveAndPrepareSkillDir,
+} from '../../../src/cli/prompts/skillPrompts.js';
+import { OperationCancelledError, RepomixError } from '../../../src/shared/errorHandle.js';
 
 // Helper to create mock deps with proper typing
 const createMockDeps = (overrides: {
@@ -116,6 +122,117 @@ describe('skillPrompts', () => {
       await expect(promptSkillLocation('test-skill', '/test/project', mockDeps)).rejects.toThrow(
         OperationCancelledError,
       );
+    });
+  });
+
+  describe('prepareSkillDir', () => {
+    const createMockStats = (isDir: boolean) => ({
+      isDirectory: () => isDir,
+      isFile: () => !isDir,
+    });
+
+    test('should succeed when directory does not exist', async () => {
+      const enoentError = new Error('ENOENT') as NodeJS.ErrnoException;
+      enoentError.code = 'ENOENT';
+      const mockDeps = {
+        access: vi.fn().mockRejectedValue(enoentError),
+        rm: vi.fn(),
+        stat: vi.fn(),
+      };
+
+      await expect(prepareSkillDir('/test/skill-dir', false, mockDeps)).resolves.toBeUndefined();
+      expect(mockDeps.rm).not.toHaveBeenCalled();
+      expect(mockDeps.stat).not.toHaveBeenCalled();
+    });
+
+    test('should throw RepomixError when directory exists and force is false', async () => {
+      const mockDeps = {
+        access: vi.fn().mockResolvedValue(undefined),
+        rm: vi.fn(),
+        stat: vi.fn().mockResolvedValue(createMockStats(true)),
+      };
+
+      await expect(prepareSkillDir('/test/skill-dir', false, mockDeps)).rejects.toThrow(RepomixError);
+      await expect(prepareSkillDir('/test/skill-dir', false, mockDeps)).rejects.toThrow(
+        'Skill directory already exists: /test/skill-dir. Use --force to overwrite.',
+      );
+      expect(mockDeps.rm).not.toHaveBeenCalled();
+    });
+
+    test('should remove directory when force is true and directory exists', async () => {
+      const mockDeps = {
+        access: vi.fn().mockResolvedValue(undefined),
+        rm: vi.fn().mockResolvedValue(undefined),
+        stat: vi.fn().mockResolvedValue(createMockStats(true)),
+      };
+
+      await expect(prepareSkillDir('/test/skill-dir', true, mockDeps)).resolves.toBeUndefined();
+      expect(mockDeps.rm).toHaveBeenCalledWith('/test/skill-dir', { recursive: true, force: true });
+    });
+
+    test('should throw RepomixError when path exists but is a file', async () => {
+      const mockDeps = {
+        access: vi.fn().mockResolvedValue(undefined),
+        rm: vi.fn(),
+        stat: vi.fn().mockResolvedValue(createMockStats(false)),
+      };
+
+      await expect(prepareSkillDir('/test/config.json', false, mockDeps)).rejects.toThrow(RepomixError);
+      await expect(prepareSkillDir('/test/config.json', false, mockDeps)).rejects.toThrow(
+        'Skill output path exists but is not a directory: /test/config.json',
+      );
+      expect(mockDeps.rm).not.toHaveBeenCalled();
+    });
+
+    test('should throw RepomixError when path is a file even with force flag', async () => {
+      const mockDeps = {
+        access: vi.fn().mockResolvedValue(undefined),
+        rm: vi.fn(),
+        stat: vi.fn().mockResolvedValue(createMockStats(false)),
+      };
+
+      await expect(prepareSkillDir('/test/config.json', true, mockDeps)).rejects.toThrow(RepomixError);
+      await expect(prepareSkillDir('/test/config.json', true, mockDeps)).rejects.toThrow(
+        'Skill output path exists but is not a directory: /test/config.json',
+      );
+      expect(mockDeps.rm).not.toHaveBeenCalled();
+    });
+
+    test('should re-throw non-ENOENT errors', async () => {
+      const permissionError = new Error('EACCES') as NodeJS.ErrnoException;
+      permissionError.code = 'EACCES';
+      const mockDeps = {
+        access: vi.fn().mockRejectedValue(permissionError),
+        rm: vi.fn(),
+        stat: vi.fn(),
+      };
+
+      await expect(prepareSkillDir('/test/skill-dir', false, mockDeps)).rejects.toThrow(permissionError);
+      expect(mockDeps.rm).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resolveAndPrepareSkillDir', () => {
+    test('should resolve relative path to absolute path', async () => {
+      const result = await resolveAndPrepareSkillDir('my-skill', '/test/project', false);
+      expect(result).toBe(path.resolve('/test/project', 'my-skill'));
+    });
+
+    test('should keep absolute path as is', async () => {
+      const result = await resolveAndPrepareSkillDir('/absolute/path/skill', '/test/project', false);
+      expect(result).toBe('/absolute/path/skill');
+    });
+  });
+
+  describe('getSkillLocation', () => {
+    test('should return personal for paths under ~/.claude/skills', () => {
+      const personalPath = path.join(os.homedir(), '.claude', 'skills', 'my-skill');
+      expect(getSkillLocation(personalPath)).toBe('personal');
+    });
+
+    test('should return project for paths not under ~/.claude/skills', () => {
+      expect(getSkillLocation('/project/.claude/skills/my-skill')).toBe('project');
+      expect(getSkillLocation('/some/other/path')).toBe('project');
     });
   });
 });
