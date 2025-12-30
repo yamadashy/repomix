@@ -29,7 +29,10 @@ Organize memories when needed:
 
 ### Reactive (User-initiated)
 
-When the user asks to save, remember, or recall something.
+When the user explicitly asks to:
+- Save or remember something: "remember this", "save this", "note this down"
+- Recall information: "what did we discuss about...", "check your notes on..."
+- Organize: "clean up your memories", "consolidate notes on..."
 
 ## Operations
 
