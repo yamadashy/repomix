@@ -1,6 +1,6 @@
 ---
 name: memory
-description: "Use this skill when the user asks to save notes, record something, remember information, or recall previously saved knowledge. Triggers on phrases like: 'save this', 'note this', 'remember this', 'record this', 'what did we discuss about...'"
+description: "Use this skill when the user asks to save notes, remember information, recall knowledge, or organize memories. Also use proactively when you discover valuable findings worth preserving."
 ---
 
 # Agent Memory
