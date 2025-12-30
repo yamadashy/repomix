@@ -1,22 +1,32 @@
 ---
-name: memory
-description: "Persistent memory for the agent. Save research findings, decisions, learnings, and notes to the memories/ folder. Use `/memory` to save, recall, list, search, or organize notes."
+name: agent-notes
+description: "Use this skill when the user asks to save notes, record something, remember information, or recall previously saved knowledge. Triggers on phrases like: 'save this', 'note this', 'remember this', 'record this', 'what did we discuss about...'"
 ---
 
-# Memory - Agent's Persistent Knowledge Base
+# Agent Notes - Persistent Knowledge Base
 
 A persistent memory system for storing and retrieving knowledge across conversations.
 
 ## Location
 
-All memories are stored in: `.claude/skills/memory/memories/`
+All notes are stored in: `.claude/skills/memory/memories/`
+
+## When to Use
+
+**Save notes when user says:**
+- "save this", "note this", "remember this", "record this"
+- "keep this for later", "don't forget this"
+
+**Recall notes when user says:**
+- "what did we discuss about...", "do you have notes on..."
+- "what do you remember about...", "check your notes"
 
 ## Operations
 
-### Save (`/memory save` or `/memory`)
-Save new knowledge to the memory store.
+### Save
+Save new knowledge to the notes store.
 
-**When to save:**
+**What to save:**
 - Research findings about the codebase
 - Architecture decisions and their rationale
 - Troubleshooting steps that worked
@@ -25,41 +35,38 @@ Save new knowledge to the memory store.
 - Useful commands or workflows discovered
 
 **How to save:**
-1. Determine appropriate category or create new file
+1. Determine appropriate filename
 2. Use frontmatter for metadata (created, updated, tags)
 3. Write clear, future-readable content
 4. Include context for why this knowledge matters
 
-### Recall (`/memory recall`)
-Retrieve relevant memories for the current context.
+### Recall
+Retrieve relevant notes for the current context.
 
-1. Search memories for keywords related to current task
-2. Read relevant memory files
+1. Search notes for keywords related to current task
+2. Read relevant note files
 3. Apply knowledge to current situation
 
-### List (`/memory list`)
-Show all available memories.
+### List
+Show all available notes.
 
 ```bash
-# List all memory files
 fd . .claude/skills/memory/memories/ --type f
 ```
 
-### Search (`/memory search <query>`)
-Find memories containing specific keywords.
+### Search
+Find notes containing specific keywords.
 
 ```bash
-# Search for specific content
 rg "<query>" .claude/skills/memory/memories/
 ```
 
-### Organize (`/memory organize`)
-Restructure and clean up memories.
+### Organize
+Restructure and clean up notes.
 
-1. Review existing memories for duplicates
+1. Review existing notes for duplicates
 2. Consolidate related knowledge
-3. Update `_index.md` if it exists
-4. Archive outdated information
+3. Archive outdated information
 
 ## File Format
 
