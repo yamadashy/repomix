@@ -57,10 +57,10 @@ RUN mkdir /commandhistory \
 ENV DEVCONTAINER=true
 
 # Create workspace and config directories and set permissions
-RUN mkdir -p /workspace /home/node/.claude && \
+RUN mkdir -p /workspace/repomix /home/node/.claude && \
   chown -R node:node /workspace /home/node/.claude
 
-WORKDIR /workspace
+WORKDIR /workspace/repomix
 
 ARG GIT_DELTA_VERSION=0.18.2
 RUN ARCH=$(dpkg --print-architecture) && \
