@@ -23,6 +23,10 @@ Check memories when starting related work:
 - Before investigating a problem area
 - When working on a feature you've touched before
 
+Organize memories when needed:
+- Consolidate scattered notes on the same topic
+- Remove outdated or superseded information
+
 ### Reactive (User-initiated)
 
 When the user asks to save, remember, or recall something.
