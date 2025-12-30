@@ -44,6 +44,7 @@ jobs:
 
             2. Next, use gh commands to get context about the issue:
                - Use `gh issue view ${{ github.event.issue.number }}` to retrieve the current issue's details
+               - Check if the issue already has any labels applied and avoid adding duplicate or conflicting labels
                - Use `gh search issues` to find similar issues that might provide context for proper categorization
 
             3. Analyze the issue content, considering:
@@ -68,6 +69,7 @@ jobs:
 
             5. Apply the selected labels:
                - Use `gh issue edit ${{ github.event.issue.number }} --add-label "label1,label2"` to apply your selected labels
+               - Do not remove existing labels
                - DO NOT post any comments explaining your decision
                - DO NOT communicate directly with users
                - If no labels are clearly applicable, do not apply any labels
