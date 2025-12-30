@@ -104,6 +104,10 @@ export const runRemoteAction = async (
       skillProjectName = generateProjectNameFromUrl(repoUrl);
 
       if (cliOptions.skillOutput) {
+        // Validate --skill-output is not empty or whitespace only
+        if (!cliOptions.skillOutput.trim()) {
+          throw new RepomixError('--skill-output path cannot be empty');
+        }
         // Non-interactive mode: use provided path directly
         skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, process.cwd(), cliOptions.force ?? false);
       } else {

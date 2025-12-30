@@ -101,10 +101,16 @@ export const prepareSkillDir = async (
   deps = {
     access: fs.access,
     rm: fs.rm,
+    stat: fs.stat,
   },
 ): Promise<void> => {
   try {
     await deps.access(skillDir);
+    // Path exists - check if it's a directory
+    const stats = await deps.stat(skillDir);
+    if (!stats.isDirectory()) {
+      throw new RepomixError(`Skill output path exists but is not a directory: ${skillDir}`);
+    }
     // Directory exists
     if (force) {
       await deps.rm(skillDir, { recursive: true, force: true });

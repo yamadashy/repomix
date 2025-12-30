@@ -63,6 +63,11 @@ export const runDefaultAction = async (
     throw new RepomixError('--force can only be used with --skill-generate');
   }
 
+  // Validate --skill-output is not empty or whitespace only
+  if (cliOptions.skillOutput !== undefined && !cliOptions.skillOutput.trim()) {
+    throw new RepomixError('--skill-output path cannot be empty');
+  }
+
   // Validate skill generation options and prompt for location
   if (config.skillGenerate !== undefined) {
     // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
