@@ -65,10 +65,10 @@ tags: [performance, worker]
 
 ```bash
 # List all memories
-fd . .claude/skills/memory/memories/ --type f --exclude .gitignore
+fd . .claude/skills/memory/memories/ --type f
 
 # Search by content
-rg "<query>" .claude/skills/memory/memories/
+rg "<query>" .claude/skills/memory/memories/ -g "*.md"
 ```
 
 ### Maintain
