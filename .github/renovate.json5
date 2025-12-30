@@ -17,6 +17,7 @@
   "ignoreDeps": [
     "node",
     "isbinaryfile", // v6+ requires Node.js >= 24
+    "iconv-lite", // v0.7.1 has broken ESM types: https://github.com/pillarjs/iconv-lite/issues/363
   ],
   "minimumReleaseAge": "7 days"
 }
