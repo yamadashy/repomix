@@ -28,11 +28,10 @@ Before starting your own review, evaluate existing AI bot inline review comments
    ```
 
 2. **Filter bot inline comments**:
-   - Only evaluate comments where `user.type === "Bot"`
+   - Only evaluate comments where `user.type === "Bot"` and `path` field is not null (inline comments only)
    - **SKIP comments from `claude`** - do not respond to Claude's own comments
-   - **SKIP if Claude already replied** - check `in_reply_to_id` field to see if any comment from `claude` already exists as a reply
+   - **SKIP if Claude already replied** - for each bot comment, check if any comment exists where `user.login` contains `claude` and `in_reply_to_id` matches the bot comment's `id`
    - Target bots: `gemini-code-assist[bot]`, `coderabbitai[bot]`, etc.
-   - Skip non-inline comments (general PR comments)
 
 3. **Judge priority for each inline comment**:
    - **Required**: Security issues, clear bugs, potential crashes, critical logic errors
@@ -41,9 +40,7 @@ Before starting your own review, evaluate existing AI bot inline review comments
 
 4. **Reply to each bot inline comment** with your judgment (in English):
    ```bash
-   gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies -f body="\`Priority: {Required/Recommended/Not needed}\`
-
-   {Brief explanation of your judgment}"
+   gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies -f body="\`Priority: {Required/Recommended/Not needed}\`\n\n{Brief explanation of your judgment}"
    ```
 
 5. **If clarification is needed**, ask in the reply:
