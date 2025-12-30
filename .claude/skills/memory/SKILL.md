@@ -66,7 +66,8 @@ Restructure and clean up notes.
 
 1. Review existing notes for duplicates
 2. Consolidate related knowledge
-3. Archive outdated information
+3. Update `updated` timestamps in modified files
+4. Archive outdated information
 
 ## File Format
 
@@ -93,7 +94,7 @@ The actual knowledge, findings, or notes.
 
 ## Directory Structure (Suggested, Not Required)
 
-```
+```text
 memories/
 ├── _index.md         # Optional: Table of contents
 ├── research/         # Investigation results
