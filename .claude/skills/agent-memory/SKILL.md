@@ -78,15 +78,15 @@ Use summary-first approach to efficiently find relevant memories:
 ls .claude/skills/agent-memory/memories/
 
 # 2. View all summaries
-rg "^summary:" .claude/skills/agent-memory/memories/ -I -H
+rg "^summary:" .claude/skills/agent-memory/memories/ --no-ignore --hidden
 
 # 3. Search summaries for keyword
-rg "^summary:.*keyword" .claude/skills/agent-memory/memories/ -I -H -i
+rg "^summary:.*keyword" .claude/skills/agent-memory/memories/ --no-ignore --hidden -i
 
 # 4. Read specific memory file if relevant
 ```
 
-**Note:** Memory files are gitignored, so use `--no-ignore` (or `-I`) and `--hidden` (or `-H`) flags.
+**Note:** Memory files are gitignored, so use `--no-ignore` and `--hidden` flags with ripgrep.
 
 ## Operations
 
