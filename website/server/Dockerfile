@@ -3,6 +3,9 @@
 # ==============================================================================
 FROM node:24-alpine AS builder
 
+# Install git (required for GitHub-based npm dependencies)
+RUN apk add --no-cache git
+
 WORKDIR /app
 COPY package*.json ./
 
@@ -20,11 +23,14 @@ RUN npm run build
 # ==============================================================================
 FROM node:24-alpine AS deps
 
+# Install git (required for GitHub-based npm dependencies)
+RUN apk add --no-cache git
+
 WORKDIR /app
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm ci --only=production --ignore-scripts && \
+RUN npm ci --omit=dev --ignore-scripts && \
     npm cache clean --force
 
 # ==============================================================================
