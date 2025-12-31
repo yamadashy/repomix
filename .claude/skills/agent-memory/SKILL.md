@@ -34,7 +34,7 @@ Guidelines:
 - Consolidate or reorganize as the knowledge base evolves
 
 Example:
-```
+```text
 memories/
 ├── file-processing/
 │   └── large-file-memory-issue.md
@@ -98,6 +98,7 @@ rg "^summary:.*keyword" .claude/skills/agent-memory/memories/ -I -H -i
 
 ```bash
 mkdir -p .claude/skills/agent-memory/memories/category-name/
+# Note: Check if file exists before writing to avoid accidental overwrites
 cat > .claude/skills/agent-memory/memories/category-name/filename.md << 'EOF'
 ---
 summary: "Brief description of this memory"
