@@ -30,7 +30,7 @@ Organize memories when needed:
 When possible, organize memories into category folders. No predefined structure - create categories that make sense for the content.
 
 Guidelines:
-- Use kebab-case for folder names
+- Use kebab-case for folder and file names
 - Consolidate or reorganize as the knowledge base evolves
 
 Example:
@@ -54,7 +54,7 @@ All memories must include frontmatter with a `summary` field. The summary should
 ```yaml
 ---
 summary: "1-2 line description of what this memory contains"
-created: 2025-01-15
+created: 2025-01-15  # YYYY-MM-DD format
 ---
 ```
 
@@ -83,7 +83,13 @@ rg "^summary:" .claude/skills/agent-memory/memories/ --no-ignore --hidden
 # 3. Search summaries for keyword
 rg "^summary:.*keyword" .claude/skills/agent-memory/memories/ --no-ignore --hidden -i
 
-# 4. Read specific memory file if relevant
+# 4. Search by tag
+rg "^tags:.*keyword" .claude/skills/agent-memory/memories/ --no-ignore --hidden -i
+
+# 5. Full-text search (when summary search isn't enough)
+rg "keyword" .claude/skills/agent-memory/memories/ --no-ignore --hidden -i
+
+# 6. Read specific memory file if relevant
 ```
 
 **Note:** Memory files are gitignored, so use `--no-ignore` and `--hidden` flags with ripgrep.
@@ -113,10 +119,15 @@ EOF
 
 ### Maintain
 
-- Update memories when information changes
-- Delete memories that are no longer relevant
-- Consolidate related memories when they grow
-- Reorganize categories as the knowledge base evolves
+- **Update**: When information changes, update the content and add `updated` field to frontmatter
+- **Delete**: Remove memories that are no longer relevant
+  ```bash
+  rm .claude/skills/agent-memory/memories/category-name/filename.md
+  # Remove empty category folders
+  rmdir .claude/skills/agent-memory/memories/category-name/ 2>/dev/null || true
+  ```
+- **Consolidate**: Merge related memories when they grow
+- **Reorganize**: Move memories to better-fitting categories as the knowledge base evolves
 
 ## Guidelines
 
