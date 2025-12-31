@@ -149,7 +149,7 @@ describe('defaultAction', () => {
 
     expect(processConcurrency.initTaskRunner).toHaveBeenCalledWith({
       numOfTasks: 1,
-      workerPath: expect.stringContaining('defaultActionWorker.js'),
+      workerType: 'defaultAction',
       runtime: 'child_process',
     });
 

@@ -1,12 +1,13 @@
 import os from 'node:os';
 import { type Options, Tinypool } from 'tinypool';
 import { logger } from './logger.js';
+import { type WorkerType, getUnifiedWorkerPath } from './unifiedWorker.js';
 
 export type WorkerRuntime = NonNullable<Options['runtime']>;
 
 export interface WorkerOptions {
   numOfTasks: number;
-  workerPath: string;
+  workerType: WorkerType;
   runtime: WorkerRuntime;
 }
 
@@ -32,11 +33,14 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
-  const { numOfTasks, workerPath, runtime = 'child_process' } = options;
+  const { numOfTasks, workerType, runtime = 'child_process' } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
 
+  // Use unified worker entry point for bundling support
+  const workerPath = getUnifiedWorkerPath();
+
   logger.trace(
-    `Initializing worker pool with min=${minThreads}, max=${maxThreads} threads, runtime=${runtime}. Worker path: ${workerPath}`,
+    `Initializing worker pool with min=${minThreads}, max=${maxThreads} threads, runtime=${runtime}. Worker type: ${workerType}`,
   );
 
   const startTime = process.hrtime.bigint();
@@ -49,12 +53,16 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
     idleTimeout: 5000,
     teardown: 'onWorkerTermination',
     workerData: {
+      workerType,
       logLevel: logger.getLogLevel(),
     },
     // Only add env for child_process workers
     ...(runtime === 'child_process' && {
       env: {
         ...process.env,
+        // Pass worker type as environment variable for child_process workers
+        // This is needed because workerData is not directly accessible in child_process runtime
+        REPOMIX_WORKER_TYPE: workerType,
         // Pass log level as environment variable for child_process workers
         REPOMIX_LOG_LEVEL: logger.getLogLevel().toString(),
         // Ensure color support in child_process workers

@@ -36,6 +36,11 @@ function defaultActionWorker(task: PingTask): Promise<PingResult>;
 async function defaultActionWorker(
   task: DefaultActionTask | PingTask,
 ): Promise<DefaultActionWorkerResult | PingResult> {
+  // Debug: Log received task
+  if (process.env.REPOMIX_DEBUG_WORKER) {
+    console.error('[DefaultActionWorker] Task received:', typeof task, task);
+  }
+
   // Handle ping requests for Bun compatibility check
   if ('ping' in task) {
     return {
@@ -43,19 +48,35 @@ async function defaultActionWorker(
     };
   }
 
+  // Validate task structure
+  if (!task || typeof task !== 'object') {
+    throw new Error(`Invalid task: expected object, got ${typeof task}`);
+  }
+
   // At this point, task is guaranteed to be DefaultActionTask
-  const { directories, cwd, config, cliOptions, stdinFilePaths } = task;
+  const { directories, cwd, config, cliOptions = {}, stdinFilePaths } = task;
+
+  // Additional validation for required fields
+  if (!directories || !Array.isArray(directories)) {
+    throw new Error(`Invalid task.directories: expected array, got ${typeof directories}. Task keys: ${Object.keys(task).join(', ')}`);
+  }
 
   logger.trace('Worker: Using pre-loaded config:', config);
+  logger.trace('Worker: cliOptions:', cliOptions);
 
   // Initialize spinner in worker
-  const spinner = new Spinner('Initializing...', cliOptions);
+  // Use optional cliOptions to handle bundled environments where cliOptions might be undefined
+  const spinner = new Spinner('Initializing...', cliOptions as CliOptions);
   spinner.start();
 
   let packResult: PackResult;
 
   try {
-    const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
+    // Use optional chaining to safely access cliOptions properties
+    const skillName = (cliOptions as CliOptions)?.skillName;
+    const skillDir = (cliOptions as CliOptions)?.skillDir;
+    const skillProjectName = (cliOptions as CliOptions)?.skillProjectName;
+    const skillSourceUrl = (cliOptions as CliOptions)?.skillSourceUrl;
     const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
 
     if (stdinFilePaths) {
