@@ -67,7 +67,11 @@ describe('calculateGitDiffMetrics', () => {
     cwd: '/test/project',
   };
 
-  const mockTaskRunner = mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' });
+  const mockTaskRunner = mockInitTaskRunner({
+    numOfTasks: 1,
+    workerType: 'calculateMetrics',
+    runtime: 'worker_threads',
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();

@@ -161,7 +161,11 @@ describe('calculateOutputMetrics', () => {
     };
 
     await calculateOutputMetrics(content, encoding, undefined, {
-      taskRunner: mockChunkTrackingTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+      taskRunner: mockChunkTrackingTaskRunner({
+        numOfTasks: 1,
+        workerType: 'calculateMetrics',
+        runtime: 'worker_threads',
+      }),
     });
 
     // Check that chunks are roughly equal in size

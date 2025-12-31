@@ -51,6 +51,6 @@ export default async ({ filePath, rootDir, maxFileSize }: FileCollectTask): Prom
 };
 
 // Export cleanup function for Tinypool teardown (no cleanup needed for this worker)
-export const onWorkerTermination = () => {
+export const onWorkerTermination = async (): Promise<void> => {
   // No cleanup needed for file collection worker
 };
