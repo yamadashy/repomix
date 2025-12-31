@@ -37,107 +37,179 @@ export type WorkerType =
 type WorkerHandler = (task: any) => Promise<any>;
 type WorkerCleanup = () => void | Promise<void>;
 
-// Store the loaded handler and cleanup function
-let loadedHandler: WorkerHandler | null = null;
-let loadedCleanup: WorkerCleanup | null = null;
+// Cache loaded handlers by worker type
+const handlerCache = new Map<WorkerType, { handler: WorkerHandler; cleanup?: WorkerCleanup }>();
 
 /**
  * Dynamically load the appropriate worker handler based on workerType.
  * Uses dynamic imports to avoid loading all worker code when not needed.
+ * Results are cached for reuse.
  */
 const loadWorkerHandler = async (workerType: WorkerType): Promise<{ handler: WorkerHandler; cleanup?: WorkerCleanup }> => {
+  // Check cache first
+  const cached = handlerCache.get(workerType);
+  if (cached) {
+    return cached;
+  }
+
+  let result: { handler: WorkerHandler; cleanup?: WorkerCleanup };
+
   switch (workerType) {
     case 'fileCollect': {
       const module = await import('../core/file/workers/fileCollectWorker.js');
-      return { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
+      result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
+      break;
     }
     case 'fileProcess': {
       const module = await import('../core/file/workers/fileProcessWorker.js');
-      return { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
+      result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
+      break;
     }
     case 'securityCheck': {
       const module = await import('../core/security/workers/securityCheckWorker.js');
-      return { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
+      result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
+      break;
     }
     case 'calculateMetrics': {
       const module = await import('../core/metrics/workers/calculateMetricsWorker.js');
-      return { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
+      result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
+      break;
     }
     case 'defaultAction': {
       const module = await import('../cli/actions/workers/defaultActionWorker.js');
-      return { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
+      result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
+      break;
     }
     default:
       throw new Error(`Unknown worker type: ${workerType}`);
   }
+
+  // Cache the result
+  handlerCache.set(workerType, result);
+  return result;
 };
 
 /**
- * Initialize the worker handler if running as a Tinypool worker.
- * This is called at module load time.
+ * Infer worker type from task structure.
+ * This is used in bundled environments where Tinypool may reuse child processes
+ * across different worker pools.
  */
-const initializeWorker = async (): Promise<void> => {
-  if (!isTinypoolWorker()) {
-    return;
+const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
+  if (!task || typeof task !== 'object') {
+    return null;
   }
 
-  // Get workerType from multiple sources:
-  // 1. worker_threads workerData (for worker_threads runtime)
-  // 2. Environment variable (for child_process runtime)
-  const workerType: WorkerType | undefined =
-    (workerData as { workerType?: WorkerType } | undefined)?.workerType ??
-    (process.env.REPOMIX_WORKER_TYPE as WorkerType | undefined);
+  const taskObj = task as Record<string, unknown>;
 
-  // Debug: Log worker initialization
-  if (process.env.REPOMIX_DEBUG_WORKER) {
-    console.error(
-      `[UnifiedWorker] Initializing: workerType=${workerType}, ` +
-        `env.REPOMIX_WORKER_TYPE=${process.env.REPOMIX_WORKER_TYPE}, ` +
-        `workerData=${JSON.stringify(workerData)}, ` +
-        `PID=${process.pid}`,
-    );
+  // defaultAction: has directories, cwd, config, cliOptions
+  if ('directories' in taskObj && 'cwd' in taskObj && 'config' in taskObj) {
+    return 'defaultAction';
   }
 
-  if (!workerType) {
-    throw new Error('Worker started without workerType (check workerData or REPOMIX_WORKER_TYPE env)');
+  // defaultAction ping task
+  if ('ping' in taskObj) {
+    return 'defaultAction';
   }
 
-  const { handler, cleanup } = await loadWorkerHandler(workerType);
-  loadedHandler = handler;
-  loadedCleanup = cleanup ?? null;
+  // fileCollect: has filePath, rootDir, maxFileSize
+  if ('filePath' in taskObj && 'rootDir' in taskObj && 'maxFileSize' in taskObj) {
+    return 'fileCollect';
+  }
+
+  // fileProcess: has filePath, content, config (with output property)
+  if ('filePath' in taskObj && 'content' in taskObj && 'config' in taskObj) {
+    return 'fileProcess';
+  }
+
+  // securityCheck: has filePath, content (no config)
+  if ('filePath' in taskObj && 'content' in taskObj && !('config' in taskObj)) {
+    return 'securityCheck';
+  }
+
+  // calculateMetrics: has filePath, content, encoding
+  if ('filePath' in taskObj && 'content' in taskObj && 'encoding' in taskObj) {
+    return 'calculateMetrics';
+  }
+
+  return null;
 };
 
-// Initialize worker on module load (only in worker threads)
-const initPromise = initializeWorker();
+/**
+ * Get workerType from workerData.
+ * In Tinypool child_process mode, workerData is an array.
+ */
+const getWorkerTypeFromWorkerData = (): WorkerType | undefined => {
+  if (!workerData) {
+    return undefined;
+  }
+
+  // Handle array format (Tinypool child_process mode)
+  if (Array.isArray(workerData)) {
+    for (const item of workerData) {
+      if (item && typeof item === 'object' && 'workerType' in item) {
+        return item.workerType as WorkerType;
+      }
+    }
+    return undefined;
+  }
+
+  // Handle object format (worker_threads mode)
+  if (typeof workerData === 'object' && 'workerType' in workerData) {
+    return (workerData as { workerType?: WorkerType }).workerType;
+  }
+
+  return undefined;
+};
 
 /**
  * Default export for Tinypool.
- * This function is called for each task and delegates to the loaded handler.
+ * This function is called for each task and delegates to the appropriate handler.
+ *
+ * In bundled environments where Tinypool may reuse child processes across different
+ * worker pools, we use task-based inference to determine the correct handler.
  */
 export default async (task: unknown): Promise<unknown> => {
-  // Ensure initialization is complete
-  await initPromise;
+  // Determine worker type: try workerData/env first, then infer from task
+  let workerType: WorkerType | undefined =
+    getWorkerTypeFromWorkerData() ?? (process.env.REPOMIX_WORKER_TYPE as WorkerType | undefined);
 
-  if (!loadedHandler) {
-    throw new Error('Worker handler not initialized');
-  }
+  // In bundled environments, Tinypool may reuse child processes.
+  // If the task doesn't match the initially configured worker type, infer from task.
+  const inferredType = inferWorkerTypeFromTask(task);
 
-  // Debug: Log task details in bundled environment
+  // Debug: Log task details
   if (process.env.REPOMIX_DEBUG_WORKER) {
-    console.error('[UnifiedWorker] Task received:', JSON.stringify(task, null, 2));
+    console.error(
+      `[UnifiedWorker] Task received: workerType=${workerType}, inferredType=${inferredType}, ` +
+        `PID=${process.pid}, task=${JSON.stringify(task, null, 2)}`,
+    );
   }
 
-  return loadedHandler(task);
+  // Use inferred type if available (more reliable in bundled env)
+  if (inferredType) {
+    workerType = inferredType;
+  }
+
+  if (!workerType) {
+    throw new Error('Cannot determine worker type from workerData, env, or task structure');
+  }
+
+  // Load handler (cached)
+  const { handler } = await loadWorkerHandler(workerType);
+  return handler(task);
 };
 
 /**
  * Cleanup function for Tinypool teardown.
- * Delegates to the loaded worker's cleanup function.
+ * Cleans up all cached handlers.
  */
 export const onWorkerTermination = async (): Promise<void> => {
-  if (loadedCleanup) {
-    await loadedCleanup();
+  for (const { cleanup } of handlerCache.values()) {
+    if (cleanup) {
+      await cleanup();
+    }
   }
+  handlerCache.clear();
 };
 
 /**
