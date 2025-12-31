@@ -9,28 +9,10 @@
  * based on the workerType specified in workerData.
  */
 
-import { isMainThread, workerData } from 'node:worker_threads';
-
-// Detect if running as a Tinypool worker
-// For worker_threads: isMainThread is false
-// For child_process: process.__tinypool_state__.isTinypoolWorker is true
-const isTinypoolWorker = (): boolean => {
-  // Check for child_process runtime (Tinypool sets this before importing worker)
-  const tinypoolState = (process as NodeJS.Process & { __tinypool_state__?: { isTinypoolWorker?: boolean } }).__tinypool_state__;
-  if (tinypoolState?.isTinypoolWorker) {
-    return true;
-  }
-  // Check for worker_threads runtime
-  return !isMainThread;
-};
+import { workerData } from 'node:worker_threads';
 
 // Worker type definitions
-export type WorkerType =
-  | 'fileCollect'
-  | 'fileProcess'
-  | 'securityCheck'
-  | 'calculateMetrics'
-  | 'defaultAction';
+export type WorkerType = 'fileCollect' | 'fileProcess' | 'securityCheck' | 'calculateMetrics' | 'defaultAction';
 
 // Worker handler type - uses 'any' to accommodate different worker signatures
 // biome-ignore lint/suspicious/noExplicitAny: Worker handlers have varying signatures
@@ -45,7 +27,9 @@ const handlerCache = new Map<WorkerType, { handler: WorkerHandler; cleanup?: Wor
  * Uses dynamic imports to avoid loading all worker code when not needed.
  * Results are cached for reuse.
  */
-const loadWorkerHandler = async (workerType: WorkerType): Promise<{ handler: WorkerHandler; cleanup?: WorkerCleanup }> => {
+const loadWorkerHandler = async (
+  workerType: WorkerType,
+): Promise<{ handler: WorkerHandler; cleanup?: WorkerCleanup }> => {
   // Check cache first
   const cached = handlerCache.get(workerType);
   if (cached) {
@@ -177,14 +161,6 @@ export default async (task: unknown): Promise<unknown> => {
   // If the task doesn't match the initially configured worker type, infer from task.
   const inferredType = inferWorkerTypeFromTask(task);
 
-  // Debug: Log task details
-  if (process.env.REPOMIX_DEBUG_WORKER) {
-    console.error(
-      `[UnifiedWorker] Task received: workerType=${workerType}, inferredType=${inferredType}, ` +
-        `PID=${process.pid}, task=${JSON.stringify(task, null, 2)}`,
-    );
-  }
-
   // Use inferred type if available (more reliable in bundled env)
   if (inferredType) {
     workerType = inferredType;
@@ -210,20 +186,4 @@ export const onWorkerTermination = async (): Promise<void> => {
     }
   }
   handlerCache.clear();
-};
-
-/**
- * Get the path to this unified worker module.
- * Used by processConcurrency.ts to spawn workers.
- *
- * In bundled environments, set REPOMIX_WORKER_PATH to the bundled file path.
- * The bundled file should contain all worker code, and when imported as a worker,
- * the isTinypoolWorker() check will trigger initialization.
- */
-export const getUnifiedWorkerPath = (): string => {
-  // Allow override for bundled environments
-  if (process.env.REPOMIX_WORKER_PATH) {
-    return process.env.REPOMIX_WORKER_PATH;
-  }
-  return new URL('./unifiedWorker.js', import.meta.url).href;
 };

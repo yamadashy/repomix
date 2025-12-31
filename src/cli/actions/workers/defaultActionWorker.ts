@@ -36,11 +36,6 @@ function defaultActionWorker(task: PingTask): Promise<PingResult>;
 async function defaultActionWorker(
   task: DefaultActionTask | PingTask,
 ): Promise<DefaultActionWorkerResult | PingResult> {
-  // Debug: Log received task
-  if (process.env.REPOMIX_DEBUG_WORKER) {
-    console.error('[DefaultActionWorker] Task received:', typeof task, task);
-  }
-
   // Handle ping requests for Bun compatibility check
   if ('ping' in task) {
     return {
@@ -58,7 +53,9 @@ async function defaultActionWorker(
 
   // Additional validation for required fields
   if (!directories || !Array.isArray(directories)) {
-    throw new Error(`Invalid task.directories: expected array, got ${typeof directories}. Task keys: ${Object.keys(task).join(', ')}`);
+    throw new Error(
+      `Invalid task.directories: expected array, got ${typeof directories}. Task keys: ${Object.keys(task).join(', ')}`,
+    );
   }
 
   logger.trace('Worker: Using pre-loaded config:', config);

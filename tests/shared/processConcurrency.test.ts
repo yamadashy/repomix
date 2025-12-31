@@ -10,9 +10,6 @@ import {
 
 vi.mock('node:os');
 vi.mock('tinypool');
-vi.mock('../../src/shared/unifiedWorker.js', () => ({
-  getUnifiedWorkerPath: () => '/mocked/path/to/unifiedWorker.js',
-}));
 
 describe('processConcurrency', () => {
   describe('getProcessConcurrency', () => {
@@ -78,7 +75,7 @@ describe('processConcurrency', () => {
       const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'fileCollect', runtime: 'child_process' });
 
       expect(Tinypool).toHaveBeenCalledWith({
-        filename: '/mocked/path/to/unifiedWorker.js',
+        filename: expect.stringContaining('fileCollectWorker.js'),
         runtime: 'child_process',
         minThreads: 1,
         maxThreads: 4, // Math.min(4, 500/100) = 4
@@ -101,7 +98,7 @@ describe('processConcurrency', () => {
       const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'securityCheck', runtime: 'worker_threads' });
 
       expect(Tinypool).toHaveBeenCalledWith({
-        filename: '/mocked/path/to/unifiedWorker.js',
+        filename: expect.stringContaining('securityCheckWorker.js'),
         runtime: 'worker_threads',
         minThreads: 1,
         maxThreads: 4, // Math.min(4, 500/100) = 4

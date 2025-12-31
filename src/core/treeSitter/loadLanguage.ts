@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
-import path from 'node:path';
 import { createRequire } from 'node:module';
+import path from 'node:path';
 import { Language } from 'web-tree-sitter';
 
 const require = createRequire(import.meta.url);

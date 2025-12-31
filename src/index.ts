@@ -64,6 +64,5 @@ export { runRemoteAction } from './cli/actions/remoteAction.js';
 export {
   default as unifiedWorkerHandler,
   onWorkerTermination as unifiedWorkerTermination,
-  getUnifiedWorkerPath,
   type WorkerType,
 } from './shared/unifiedWorker.js';
