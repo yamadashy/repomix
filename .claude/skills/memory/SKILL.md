@@ -63,12 +63,14 @@ tags: [performance, worker]
 
 ### Recall
 
+**Note:** Memory files are gitignored, so use `--no-ignore` (or `-I`) and `--hidden` (or `-H`) flags.
+
 ```bash
 # List all memories
-fd . .claude/skills/memory/memories/ --type f
+fd . .claude/skills/memory/memories/ --type f --no-ignore --hidden
 
 # Search by content
-rg "<query>" .claude/skills/memory/memories/ -g "*.md"
+rg "<query>" .claude/skills/memory/memories/ --no-ignore --hidden
 ```
 
 ### Maintain

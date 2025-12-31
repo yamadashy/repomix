@@ -39,7 +39,9 @@ RUN ARCH=$(dpkg --print-architecture) && \
     arm64) AST_ARCH="aarch64-unknown-linux-gnu" ;; \
     *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
   esac && \
-  wget -qO- "https://github.com/ast-grep/ast-grep/releases/latest/download/ast-grep-${AST_ARCH}.tar.gz" | tar xz -C /usr/local/bin
+  wget -q "https://github.com/ast-grep/ast-grep/releases/latest/download/app-${AST_ARCH}.zip" -O /tmp/ast-grep.zip && \
+  unzip -q /tmp/ast-grep.zip -d /usr/local/bin && \
+  rm /tmp/ast-grep.zip
 
 # Ensure default node user has access to /usr/local/share
 RUN mkdir -p /usr/local/share/npm-global && \
