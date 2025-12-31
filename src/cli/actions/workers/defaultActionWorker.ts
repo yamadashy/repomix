@@ -116,7 +116,7 @@ async function defaultActionWorker(
 export default defaultActionWorker;
 
 // Export cleanup function for Tinypool teardown
-export const onWorkerTermination = async () => {
+export const onWorkerTermination = async (): Promise<void> => {
   // Any cleanup needed when worker terminates
   // Currently no specific cleanup required for defaultAction worker
 };
