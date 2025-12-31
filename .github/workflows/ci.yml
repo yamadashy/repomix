@@ -227,7 +227,7 @@ jobs:
       # Run build directly instead of using npm scripts with node --run which is not supported in older Node versions
       - run: ./node_modules/.bin/rimraf lib && ./node_modules/.bin/tsc -p tsconfig.build.json --sourceMap --declaration
       - name: Install only production dependencies
-        run: npm ci --omit=dev
+        run: npm ci --omit=dev --ignore-scripts
       - run: node bin/repomix.cjs
       - run: node bin/repomix.cjs --version
       - run: node bin/repomix.cjs --help
