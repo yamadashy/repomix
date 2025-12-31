@@ -1,15 +1,45 @@
 import os from 'node:os';
 import { type Options, Tinypool } from 'tinypool';
 import { logger } from './logger.js';
-import { type WorkerType, getUnifiedWorkerPath } from './unifiedWorker.js';
 
 export type WorkerRuntime = NonNullable<Options['runtime']>;
+
+// Worker type definitions - shared with unifiedWorker.ts
+export type WorkerType = 'fileCollect' | 'fileProcess' | 'securityCheck' | 'calculateMetrics' | 'defaultAction';
 
 export interface WorkerOptions {
   numOfTasks: number;
   workerType: WorkerType;
   runtime: WorkerRuntime;
 }
+
+/**
+ * Get the worker file path for a given worker type.
+ * In bundled environments (REPOMIX_WORKER_PATH set), uses the unified worker.
+ * Otherwise, uses individual worker files.
+ */
+const getWorkerPath = (workerType: WorkerType): string => {
+  // Bundled environment: use unified worker path
+  if (process.env.REPOMIX_WORKER_PATH) {
+    return process.env.REPOMIX_WORKER_PATH;
+  }
+
+  // Non-bundled environment: use individual worker files
+  switch (workerType) {
+    case 'fileCollect':
+      return new URL('../core/file/workers/fileCollectWorker.js', import.meta.url).href;
+    case 'fileProcess':
+      return new URL('../core/file/workers/fileProcessWorker.js', import.meta.url).href;
+    case 'securityCheck':
+      return new URL('../core/security/workers/securityCheckWorker.js', import.meta.url).href;
+    case 'calculateMetrics':
+      return new URL('../core/metrics/workers/calculateMetricsWorker.js', import.meta.url).href;
+    case 'defaultAction':
+      return new URL('../cli/actions/workers/defaultActionWorker.js', import.meta.url).href;
+    default:
+      throw new Error(`Unknown worker type: ${workerType}`);
+  }
+};
 
 // Worker initialization is expensive, so we prefer fewer threads unless there are many files
 const TASKS_PER_THREAD = 100;
@@ -36,8 +66,8 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
   const { numOfTasks, workerType, runtime = 'child_process' } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
 
-  // Use unified worker entry point for bundling support
-  const workerPath = getUnifiedWorkerPath();
+  // Get worker path - uses unified worker in bundled env, individual files otherwise
+  const workerPath = getWorkerPath(workerType);
 
   logger.trace(
     `Initializing worker pool with min=${minThreads}, max=${maxThreads} threads, runtime=${runtime}. Worker type: ${workerType}`,
