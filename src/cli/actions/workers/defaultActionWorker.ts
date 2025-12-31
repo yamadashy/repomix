@@ -56,7 +56,7 @@ async function defaultActionWorker(
   }
 
   // Provide defaults for bundled environments where cliOptions might be undefined
-  const safeCliOptions: CliOptions = cliOptions ?? ({} as CliOptions);
+  const safeCliOptions: CliOptions = cliOptions ?? {};
 
   logger.trace('Worker: Using pre-loaded config:', config);
 
