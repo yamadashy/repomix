@@ -100,7 +100,7 @@ rg "keyword" .claude/skills/agent-memory/memories/ --no-ignore --hidden -i
 
 1. Determine appropriate category for the content
 2. Check if existing category fits, or create new one
-3. Write file with required frontmatter
+3. Write file with required frontmatter (use `date +%Y-%m-%d` for current date)
 
 ```bash
 mkdir -p .claude/skills/agent-memory/memories/category-name/
@@ -122,7 +122,7 @@ EOF
 - **Update**: When information changes, update the content and add `updated` field to frontmatter
 - **Delete**: Remove memories that are no longer relevant
   ```bash
-  rm .claude/skills/agent-memory/memories/category-name/filename.md
+  trash .claude/skills/agent-memory/memories/category-name/filename.md
   # Remove empty category folders
   rmdir .claude/skills/agent-memory/memories/category-name/ 2>/dev/null || true
   ```
