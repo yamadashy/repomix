@@ -49,31 +49,24 @@ async function defaultActionWorker(
   }
 
   // At this point, task is guaranteed to be DefaultActionTask
-  const { directories, cwd, config, cliOptions = {}, stdinFilePaths } = task;
+  const { directories, cwd, config, cliOptions, stdinFilePaths } = task;
 
-  // Additional validation for required fields
   if (!directories || !Array.isArray(directories)) {
-    throw new Error(
-      `Invalid task.directories: expected array, got ${typeof directories}. Task keys: ${Object.keys(task).join(', ')}`,
-    );
+    throw new Error('Invalid task: directories must be an array');
   }
 
-  logger.trace('Worker: Using pre-loaded config:', config);
-  logger.trace('Worker: cliOptions:', cliOptions);
+  // Provide defaults for bundled environments where cliOptions might be undefined
+  const safeCliOptions: CliOptions = cliOptions ?? ({} as CliOptions);
 
-  // Initialize spinner in worker
-  // Use optional cliOptions to handle bundled environments where cliOptions might be undefined
-  const spinner = new Spinner('Initializing...', cliOptions as CliOptions);
+  logger.trace('Worker: Using pre-loaded config:', config);
+
+  const spinner = new Spinner('Initializing...', safeCliOptions);
   spinner.start();
 
   let packResult: PackResult;
 
   try {
-    // Use optional chaining to safely access cliOptions properties
-    const skillName = (cliOptions as CliOptions)?.skillName;
-    const skillDir = (cliOptions as CliOptions)?.skillDir;
-    const skillProjectName = (cliOptions as CliOptions)?.skillProjectName;
-    const skillSourceUrl = (cliOptions as CliOptions)?.skillSourceUrl;
+    const { skillName, skillDir, skillProjectName, skillSourceUrl } = safeCliOptions;
     const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
 
     if (stdinFilePaths) {

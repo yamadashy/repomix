@@ -1,11 +1,12 @@
 import os from 'node:os';
 import { type Options, Tinypool } from 'tinypool';
 import { logger } from './logger.js';
+import type { WorkerType } from './unifiedWorker.js';
 
 export type WorkerRuntime = NonNullable<Options['runtime']>;
 
-// Worker type definitions - shared with unifiedWorker.ts
-export type WorkerType = 'fileCollect' | 'fileProcess' | 'securityCheck' | 'calculateMetrics' | 'defaultAction';
+// Re-export WorkerType for external consumers
+export type { WorkerType } from './unifiedWorker.js';
 
 export interface WorkerOptions {
   numOfTasks: number;

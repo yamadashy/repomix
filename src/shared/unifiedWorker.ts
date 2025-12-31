@@ -100,19 +100,19 @@ const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
     return 'fileCollect';
   }
 
-  // fileProcess: has filePath, content, config (with output property)
+  // fileProcess: has filePath, content, config
   if ('filePath' in taskObj && 'content' in taskObj && 'config' in taskObj) {
     return 'fileProcess';
   }
 
-  // securityCheck: has filePath, content (no config)
-  if ('filePath' in taskObj && 'content' in taskObj && !('config' in taskObj)) {
-    return 'securityCheck';
-  }
-
-  // calculateMetrics: has filePath, content, encoding
+  // calculateMetrics: has filePath, content, encoding (must check before securityCheck)
   if ('filePath' in taskObj && 'content' in taskObj && 'encoding' in taskObj) {
     return 'calculateMetrics';
+  }
+
+  // securityCheck: has filePath, content (no config, no encoding)
+  if ('filePath' in taskObj && 'content' in taskObj) {
+    return 'securityCheck';
   }
 
   return null;
