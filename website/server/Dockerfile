@@ -1,5 +1,5 @@
 # ==============================================================================
-# Base image
+# Build stage
 # ==============================================================================
 FROM node:24-alpine AS builder
 
@@ -12,26 +12,14 @@ COPY package*.json ./
 # Install all dependencies (including dev dependencies for build)
 RUN npm ci
 
-# Copy source code
+# Copy source code and build
 COPY . .
-
-# Build TypeScript
 RUN npm run build
 
-# ==============================================================================
-# Production dependencies
-# ==============================================================================
-FROM node:24-alpine AS deps
-
-# Install git (required for GitHub-based npm dependencies)
-RUN apk add --no-cache git
-
-WORKDIR /app
-COPY package*.json ./
-
-# Install only production dependencies
-RUN npm ci --omit=dev --ignore-scripts && \
-    npm cache clean --force
+# Bundle the server with esbuild for unified worker support
+RUN npx esbuild dist/index.js --bundle --platform=node --target=node20 \
+    --format=esm --outfile=dist-bundled/server.mjs --external:tinypool \
+    --banner:js="import { createRequire as _createRequire } from 'module'; const require = _createRequire(import.meta.url); import { fileURLToPath as _fileURLToPath } from 'url'; import { dirname as _dirname } from 'path'; const __filename = _fileURLToPath(import.meta.url); const __dirname = _dirname(__filename);"
 
 # ==============================================================================
 # Runtime image
@@ -43,18 +31,23 @@ RUN apk add --no-cache git ca-certificates
 
 WORKDIR /app
 
-# Copy built application
-COPY --from=builder /app/dist ./dist
+# Copy bundled server
+COPY --from=builder /app/dist-bundled ./dist-bundled
 
-# Copy production dependencies
-COPY --from=deps /app/node_modules ./node_modules
+# Copy WASM files for tree-sitter (may be hoisted to root node_modules)
+COPY --from=builder /app/node_modules/@repomix/tree-sitter-wasms/out/*.wasm ./wasm/
 
-# Set environment variables
+# Copy tinypool (external dependency)
+COPY --from=builder /app/node_modules/tinypool ./node_modules/tinypool
+
+# Set environment variables for bundled mode
 ENV NODE_ENV=production \
-    PORT=8080
+    PORT=8080 \
+    REPOMIX_WORKER_PATH=/app/dist-bundled/server.mjs \
+    REPOMIX_WASM_DIR=/app/wasm
 
 # Expose port
 EXPOSE 8080
 
-# Start the server directly
-CMD ["node", "dist/index.js"]
+# Start the bundled server
+CMD ["node", "dist-bundled/server.mjs"]
