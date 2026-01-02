@@ -26,6 +26,9 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=8080
+      # Unset bundled mode for local development (volume mount overwrites bundled files)
+      - REPOMIX_WORKER_PATH=
+      - REPOMIX_WASM_DIR=
     # override default command
     command: sh -c "npm i && npm run dev"
     develop:

@@ -12,10 +12,11 @@ export class Spinner {
   private interval: ReturnType<typeof setInterval> | null = null;
   private readonly isQuiet: boolean;
 
-  constructor(message: string, cliOptions: CliOptions) {
+  constructor(message: string, cliOptions?: CliOptions) {
     this.message = message;
     // If the user has specified the verbose flag, don't show the spinner
-    this.isQuiet = cliOptions.quiet || cliOptions.verbose || cliOptions.stdout || false;
+    // Use optional chaining to handle undefined cliOptions (e.g., in bundled worker environments)
+    this.isQuiet = cliOptions?.quiet || cliOptions?.verbose || cliOptions?.stdout || false;
   }
 
   start(): void {

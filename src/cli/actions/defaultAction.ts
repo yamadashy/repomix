@@ -107,7 +107,7 @@ export const runDefaultAction = async (
   // Create worker task runner
   const taskRunner = initTaskRunner<DefaultActionTask | PingTask, DefaultActionWorkerResult | PingResult>({
     numOfTasks: 1,
-    workerPath: new URL('./workers/defaultActionWorker.js', import.meta.url).href,
+    workerType: 'defaultAction',
     runtime: 'child_process',
   });
 

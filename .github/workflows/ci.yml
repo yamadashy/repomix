@@ -86,9 +86,16 @@ jobs:
         with:
           node-version-file: .tool-versions
           cache: npm
+      - name: Build and link local repomix
+        run: |
+          npm ci
+          npm run build
+          npm link
       - name: Install website server dependencies
         working-directory: website/server
-        run: npm ci
+        run: |
+          npm ci
+          npm link repomix
       - name: Lint website server
         working-directory: website/server
         run: npm run lint

@@ -43,19 +43,30 @@ async function defaultActionWorker(
     };
   }
 
+  // Validate task structure
+  if (!task || typeof task !== 'object') {
+    throw new Error(`Invalid task: expected object, got ${typeof task}`);
+  }
+
   // At this point, task is guaranteed to be DefaultActionTask
   const { directories, cwd, config, cliOptions, stdinFilePaths } = task;
 
+  if (!directories || !Array.isArray(directories)) {
+    throw new Error('Invalid task: directories must be an array');
+  }
+
+  // Provide defaults for bundled environments where cliOptions might be undefined
+  const safeCliOptions: CliOptions = cliOptions ?? {};
+
   logger.trace('Worker: Using pre-loaded config:', config);
 
-  // Initialize spinner in worker
-  const spinner = new Spinner('Initializing...', cliOptions);
+  const spinner = new Spinner('Initializing...', safeCliOptions);
   spinner.start();
 
   let packResult: PackResult;
 
   try {
-    const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
+    const { skillName, skillDir, skillProjectName, skillSourceUrl } = safeCliOptions;
     const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
 
     if (stdinFilePaths) {
@@ -105,7 +116,7 @@ async function defaultActionWorker(
 export default defaultActionWorker;
 
 // Export cleanup function for Tinypool teardown
-export const onWorkerTermination = async () => {
+export const onWorkerTermination = async (): Promise<void> => {
   // Any cleanup needed when worker terminates
   // Currently no specific cleanup required for defaultAction worker
 };
