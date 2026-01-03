@@ -5,9 +5,7 @@
   "scripts": {
     "dev": "PORT=8080 tsx watch src/index.ts",
     "build": "tsc",
-    "bundle": "npm run build && npm run bundle:esbuild && npm run bundle:wasm",
-    "bundle:esbuild": "esbuild dist/index.js --bundle --platform=node --target=node20 --format=esm --outfile=dist-bundled/server.mjs --external:tinypool --external:tiktoken --banner:js=\"import { createRequire as _createRequire } from 'module'; const require = _createRequire(import.meta.url); import { fileURLToPath as _fileURLToPath } from 'url'; import { dirname as _dirname } from 'path'; const __filename = _fileURLToPath(import.meta.url); const __dirname = _dirname(__filename);\"",
-    "bundle:wasm": "mkdir -p dist-bundled/wasm && find node_modules -name '*.wasm' -path '*tree-sitter-wasms/out/*' -exec cp {} dist-bundled/wasm/ \\;",
+    "bundle": "node scripts/bundle.mjs",
     "lint": "npm run lint-tsc",
     "lint-tsc": "tsgo --noEmit",
     "start": "node dist/index.js",
