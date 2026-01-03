@@ -1,3 +1,4 @@
+import module from 'node:module';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { compress } from 'hono/compress';
@@ -35,6 +36,7 @@ if (!isTinypoolWorker() && !isWarmupMode()) {
   logInfo('Server starting', {
     metrics: {
       processConcurrency: getProcessConcurrency(),
+      compileCacheDir: module.getCompileCacheDir(),
     },
   });
 
