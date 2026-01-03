@@ -6,6 +6,18 @@
 # Useful for testing esbuild bundling, compile cache, and startup performance locally.
 
 services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+    environment:
+      - NODE_ENV=development
+    command: sh -c "npm i && npm run docs:dev -- --port 5173 --host"
+
   server:
     build:
       context: ./server
