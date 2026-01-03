@@ -52,8 +52,7 @@ const __dirname = _dirname(__filename);
     banner: { js: banner },
     // Minification & optimization
     minify: true,
-    treeShaking: true,
-    legalComments: 'none',
+    legalComments: 'eof',
     drop: ['debugger'],
   });
 
