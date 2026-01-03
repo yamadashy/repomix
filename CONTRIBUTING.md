@@ -95,8 +95,8 @@ The website source code is located in the `website` directory. The main componen
 - `website/client`: Frontend code (Vue.js components, styles, etc.)
 - `website/server`: Backend API server
 
-When updating documentation, you only need to update the English version (`website/client/src/en/`).
-The maintainers will handle translations to other languages.
+When updating documentation, contributors only need to update the README.md file.
+The maintainers will handle the website documentation updates.
 
 ## Releasing
 
