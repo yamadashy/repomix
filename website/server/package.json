@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "PORT=8080 tsx watch src/index.ts",
     "build": "tsc",
+    "bundle": "node scripts/bundle.mjs",
     "lint": "npm run lint-tsc",
     "lint-tsc": "tsgo --noEmit",
     "start": "node dist/index.js",
-    "clean": "rimraf dist",
+    "start:bundle": "node dist-bundled/server.mjs",
+    "clean": "rimraf dist dist-bundled",
     "cloud-deploy": "gcloud builds submit --config=cloudbuild.yaml ."
   },
   "dependencies": {
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@types/node": "^24.10.4",
     "@typescript/native-preview": "^7.0.0-dev.20251226.1",
+    "esbuild": "^0.27.2",
     "rimraf": "^6.1.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

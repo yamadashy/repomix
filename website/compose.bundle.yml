@@ -1,0 +1,30 @@
+# Run website with bundled server (production-like build)
+# $ docker compose -f website/compose.bundle.yml up --build
+#
+# This compose file builds and runs the server in bundled mode,
+# similar to the production Cloud Run environment.
+# Useful for testing esbuild bundling, compile cache, and startup performance locally.
+
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+    environment:
+      - NODE_ENV=development
+    command: sh -c "npm i && npm run docs:dev -- --port 5173 --host"
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # Use development mode to avoid Google Cloud Logging authentication errors
+      - NODE_ENV=development
+    # No volume mounts - use the bundled files from Docker image

@@ -37,6 +37,7 @@
     "memory-check": "node --run repomix -- --verbose | grep Memory",
     "memory-check-one-file": "node --run repomix -- --verbose --include 'package.json' | grep Memory",
     "website": "docker compose -f website/compose.yml up --build",
+    "website-bundle": "docker compose -f website/compose.bundle.yml up --build",
     "website-generate-schema": "tsx website/client/scripts/generateSchema.ts",
     "pinact-run": "pinact run",
     "pinact-check": "pinact run --check"
