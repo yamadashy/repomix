@@ -58,20 +58,9 @@ const __dirname = _dirname(__filename);
     entryFileNames: 'server.mjs',
     inlineDynamicImports: true,
     banner,
-    // Minification & optimization
-    minify: {
-      compress: {
-        dropConsole: true,
-        dropDebugger: true,
-        unused: true,
-      },
-      mangle: {
-        toplevel: true,
-      },
-    },
-    legalComments: 'none',
-    minifyInternalExports: true,
-    sourcemap: false,
+    // Minification & optimization (equivalent to esbuild config)
+    minify: true,
+    legalComments: 'inline',  // Rolldown only supports 'none' | 'inline'
   });
 
   console.log('Bundle created: dist-bundled/server.mjs');
