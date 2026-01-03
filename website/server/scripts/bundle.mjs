@@ -50,6 +50,11 @@ const __dirname = _dirname(__filename);
     outfile: join(distBundledDir, 'server.mjs'),
     external: ['tinypool', 'tiktoken'],
     banner: { js: banner },
+    // Minification & optimization
+    minify: true,
+    treeShaking: true,
+    legalComments: 'none',
+    drop: ['debugger'],
   });
 
   console.log('Bundle created: dist-bundled/server.mjs');
