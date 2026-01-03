@@ -39,8 +39,11 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should use dependency injection for RegExp', () => {
-      const mockRegExp = vi.fn().mockReturnValue(/test/g) as unknown as RegExpConstructor;
-      createRegexPattern('test', false, { RegExp: mockRegExp });
+      // Create a mock that works as a constructor using regular function syntax
+      const mockRegExp = vi.fn().mockImplementation(function (this: unknown, pattern: string, flags: string) {
+        return new RegExp(pattern, flags);
+      });
+      createRegexPattern('test', false, { RegExp: mockRegExp as unknown as RegExpConstructor });
       expect(mockRegExp).toHaveBeenCalledWith('test', 'g');
     });
   });

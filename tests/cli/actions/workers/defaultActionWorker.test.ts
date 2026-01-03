@@ -18,13 +18,42 @@ vi.mock('../../../../src/shared/logger.js', () => ({
   },
   setLogLevelByWorkerData: vi.fn(),
 }));
-vi.mock('../../../../src/cli/cliSpinner.js', () => ({
-  Spinner: vi.fn().mockImplementation(() => ({
+
+// Use vi.hoisted to ensure mock is available in vi.mock factory
+const { MockSpinner, getLastSpinnerInstance } = vi.hoisted(() => {
+  let lastInstance: ReturnType<typeof createMockSpinnerInstance> | null = null;
+
+  const createMockSpinnerInstance = () => ({
     start: vi.fn(),
     update: vi.fn(),
     succeed: vi.fn(),
     fail: vi.fn(),
-  })),
+  });
+
+  // Create a class that can be used with 'new'
+  class MockSpinner {
+    start: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    succeed: ReturnType<typeof vi.fn>;
+    fail: ReturnType<typeof vi.fn>;
+
+    constructor() {
+      const instance = createMockSpinnerInstance();
+      this.start = instance.start;
+      this.update = instance.update;
+      this.succeed = instance.succeed;
+      this.fail = instance.fail;
+      lastInstance = instance;
+    }
+  }
+
+  const getLastSpinnerInstance = () => lastInstance;
+
+  return { MockSpinner, getLastSpinnerInstance };
+});
+
+vi.mock('../../../../src/cli/cliSpinner.js', () => ({
+  Spinner: MockSpinner,
 }));
 
 const mockPack = vi.mocked(pack);
@@ -304,14 +333,13 @@ describe('defaultActionWorker', () => {
 
       await defaultActionWorker(task);
 
-      // The spinner mock should be imported and we can verify the calls
-      const { Spinner } = await import('../../../../src/cli/cliSpinner.js');
-      const mockSpinner = vi.mocked(Spinner).mock.results[0]?.value;
+      // Get the last spinner instance that was created
+      const mockSpinner = getLastSpinnerInstance();
 
-      expect(mockSpinner.start).toHaveBeenCalled();
-      expect(mockSpinner.update).toHaveBeenCalledWith('Processing files...');
-      expect(mockSpinner.update).toHaveBeenCalledWith('Calculating metrics...');
-      expect(mockSpinner.succeed).toHaveBeenCalledWith('Packing completed successfully!');
+      expect(mockSpinner?.start).toHaveBeenCalled();
+      expect(mockSpinner?.update).toHaveBeenCalledWith('Processing files...');
+      expect(mockSpinner?.update).toHaveBeenCalledWith('Calculating metrics...');
+      expect(mockSpinner?.succeed).toHaveBeenCalledWith('Packing completed successfully!');
     });
 
     it('should fail spinner on error', async () => {
@@ -326,10 +354,10 @@ describe('defaultActionWorker', () => {
 
       await expect(defaultActionWorker(task)).rejects.toThrow('Pack failed');
 
-      const { Spinner } = await import('../../../../src/cli/cliSpinner.js');
-      const mockSpinner = vi.mocked(Spinner).mock.results[0]?.value;
+      // Get the last spinner instance that was created
+      const mockSpinner = getLastSpinnerInstance();
 
-      expect(mockSpinner.fail).toHaveBeenCalledWith('Error during packing');
+      expect(mockSpinner?.fail).toHaveBeenCalledWith('Error during packing');
     });
   });
 
