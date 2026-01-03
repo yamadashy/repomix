@@ -44,11 +44,20 @@ COPY --from=builder /app/dist-bundled ./dist-bundled
 COPY --from=builder /app/node_modules/tinypool ./node_modules/tinypool
 COPY --from=builder /app/node_modules/tiktoken ./node_modules/tiktoken
 
+# Copy warmup script for compile cache generation
+COPY --from=builder /app/warmup.mjs ./warmup.mjs
+
 # Set environment variables for bundled mode
+# NODE_COMPILE_CACHE enables V8 compile cache to reduce cold start latency
 ENV NODE_ENV=production \
     PORT=8080 \
     REPOMIX_WORKER_PATH=/app/dist-bundled/server.mjs \
-    REPOMIX_WASM_DIR=/app/dist-bundled/wasm
+    REPOMIX_WASM_DIR=/app/dist-bundled/wasm \
+    NODE_COMPILE_CACHE=/app/.compile-cache
+
+# Generate compile cache at build time
+# This pre-compiles all modules so cold starts use cached compiled code
+RUN node warmup.mjs
 
 # Expose port
 EXPOSE 8080

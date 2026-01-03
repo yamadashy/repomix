@@ -22,8 +22,13 @@ const isTinypoolWorker = (): boolean => {
   return tinypoolState?.isTinypoolWorker ?? false;
 };
 
-// Skip server initialization if running as a Tinypool worker
-if (!isTinypoolWorker()) {
+// Check if running in warmup mode (for compile cache generation)
+const isWarmupMode = (): boolean => {
+  return process.env.WARMUP_MODE === 'true';
+};
+
+// Skip server initialization if running as a Tinypool worker or in warmup mode
+if (!isTinypoolWorker() && !isWarmupMode()) {
   const API_TIMEOUT_MS = 35_000;
 
   // Log server metrics on startup
