@@ -21,7 +21,7 @@ const wasmDir = join(distBundledDir, 'wasm');
 /**
  * Build TypeScript to JavaScript
  */
-function buildTypeScript () {
+function buildTypeScript() {
   console.log('Building TypeScript...');
   execSync('npm run build', { cwd: rootDir, stdio: 'inherit' });
 }
@@ -29,7 +29,7 @@ function buildTypeScript () {
 /**
  * Bundle with Rolldown
  */
-async function bundleWithRolldown () {
+async function bundleWithRolldown() {
   console.log('Bundling with Rolldown...');
 
   // ESM banner to provide CommonJS compatibility
@@ -98,7 +98,7 @@ function collectWasmFiles() {
 /**
  * Main bundle process
  */
-async function main () {
+async function main() {
   console.log('Starting bundle process...\n');
 
   buildTypeScript();
