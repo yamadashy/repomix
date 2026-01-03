@@ -45,6 +45,11 @@ const __dirname = _dirname(__filename);
     input: join(rootDir, 'dist/index.js'),
     platform: 'node',
     external: ['tinypool', 'tiktoken'],
+    // Aggressive tree-shaking
+    treeshake: {
+      moduleSideEffects: false,
+      annotations: true,
+    },
   });
 
   await build.write({
@@ -53,6 +58,20 @@ const __dirname = _dirname(__filename);
     entryFileNames: 'server.mjs',
     inlineDynamicImports: true,
     banner,
+    // Minification & optimization
+    minify: {
+      compress: {
+        dropConsole: true,
+        dropDebugger: true,
+        unused: true,
+      },
+      mangle: {
+        toplevel: true,
+      },
+    },
+    legalComments: 'none',
+    minifyInternalExports: true,
+    sourcemap: false,
   });
 
   console.log('Bundle created: dist-bundled/server.mjs');
