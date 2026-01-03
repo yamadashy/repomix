@@ -16,14 +16,17 @@ Save memories when you discover something worth preserving:
 - Non-obvious patterns or gotchas in the codebase
 - Solutions to tricky problems
 - Architectural decisions and their rationale
+- In-progress work that may be resumed later
 
 Check memories when starting related work:
 - Before investigating a problem area
 - When working on a feature you've touched before
+- When resuming work after a conversation break
 
 Organize memories when needed:
 - Consolidate scattered memories on the same topic
 - Remove outdated or superseded information
+- Update status field when work completes, gets blocked, or is abandoned
 
 ## Folder Structure
 
@@ -64,6 +67,7 @@ created: 2025-01-15  # YYYY-MM-DD format
 summary: "Worker thread memory leak during large file processing - cause and solution"
 created: 2025-01-15
 updated: 2025-01-20
+status: in-progress  # in-progress | resolved | blocked | abandoned
 tags: [performance, worker, memory-leak]
 related: [src/core/file/fileProcessor.ts]
 ---
@@ -131,7 +135,17 @@ EOF
 
 ## Guidelines
 
-1. **Write for your future self**: Include enough context to be useful later
+1. **Write self-contained notes**: Include full context so the reader needs no prior knowledge to understand and act on the content
 2. **Keep summaries decisive**: Reading the summary should tell you if you need the details
 3. **Stay current**: Update or delete outdated information
 4. **Be practical**: Save what's actually useful, not everything
+
+## Content Reference
+
+When writing detailed memories, consider including:
+- **Context**: Goal, background, constraints
+- **State**: What's done, in progress, or blocked
+- **Details**: Key files, commands, code snippets
+- **Next steps**: What to do next, open questions
+
+Not all memories need all sections - use what's relevant.
