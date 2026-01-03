@@ -12,5 +12,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    environment:
+      # Use development mode to avoid Google Cloud Logging authentication errors
+      - NODE_ENV=development
     # No volume mounts - use the bundled files from Docker image
-    # Environment variables are set in Dockerfile (production defaults)
