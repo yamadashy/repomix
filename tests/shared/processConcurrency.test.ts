@@ -9,7 +9,21 @@ import {
 } from '../../src/shared/processConcurrency.js';
 
 vi.mock('node:os');
-vi.mock('tinypool');
+
+// Use vi.hoisted for class mock that needs to work as constructor
+const { MockTinypool } = vi.hoisted(() => {
+  // Create a mock function wrapped class for spy functionality
+  const MockTinypool = vi.fn().mockImplementation(function (this: unknown) {
+    (this as Record<string, unknown>).run = vi.fn();
+    (this as Record<string, unknown>).destroy = vi.fn();
+    return this;
+  });
+  return { MockTinypool };
+});
+
+vi.mock('tinypool', () => ({
+  Tinypool: MockTinypool,
+}));
 
 describe('processConcurrency', () => {
   describe('getProcessConcurrency', () => {
@@ -68,7 +82,12 @@ describe('processConcurrency', () => {
   describe('initWorker', () => {
     beforeEach(() => {
       vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
-      vi.mocked(Tinypool).mockImplementation(() => ({}) as Tinypool);
+      // Use regular function syntax for constructor mock
+      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+        (this as Record<string, unknown>).run = vi.fn();
+        (this as Record<string, unknown>).destroy = vi.fn();
+        return this as Tinypool;
+      });
     });
 
     it('should initialize Tinypool with correct configuration', () => {
@@ -116,13 +135,12 @@ describe('processConcurrency', () => {
   describe('initTaskRunner', () => {
     beforeEach(() => {
       vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
-      vi.mocked(Tinypool).mockImplementation(
-        () =>
-          ({
-            run: vi.fn(),
-            destroy: vi.fn(),
-          }) as unknown as Tinypool,
-      );
+      // Use regular function syntax for constructor mock
+      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+        (this as Record<string, unknown>).run = vi.fn();
+        (this as Record<string, unknown>).destroy = vi.fn();
+        return this as Tinypool;
+      });
     });
 
     it('should return a TaskRunner with run and cleanup methods', () => {

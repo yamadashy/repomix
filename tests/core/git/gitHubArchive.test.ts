@@ -1,5 +1,8 @@
+import type { createWriteStream, WriteStream } from 'node:fs';
+import type * as fsPromises from 'node:fs/promises';
 import * as path from 'node:path';
 import { Transform } from 'node:stream';
+import type { pipeline as pipelineType } from 'node:stream/promises';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   type ArchiveDownloadOptions,
@@ -16,31 +19,41 @@ vi.mock('fflate', () => ({
   unzip: vi.fn(),
 }));
 
-// Mock file system operations
-const mockFs = {
-  mkdir: vi.fn(),
-  readFile: vi.fn(),
-  writeFile: vi.fn(),
-  unlink: vi.fn(),
-};
+// Type for the deps parameter of downloadGitHubArchive
+interface MockDeps {
+  fetch: typeof globalThis.fetch;
+  fs: typeof fsPromises;
+  pipeline: typeof pipelineType;
+  Transform: typeof Transform;
+  createWriteStream: typeof createWriteStream;
+}
 
 // Simple ZIP test data
 const mockZipData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // Simple ZIP header
 
 describe('gitHubArchive', () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
-  let mockPipeline: ReturnType<typeof vi.fn>;
-  let mockTransform: ReturnType<typeof vi.fn>;
-  let mockCreateWriteStream: ReturnType<typeof vi.fn>;
+  // Define typed mock functions
+  const mockFs = {
+    mkdir: vi.fn<typeof fsPromises.mkdir>(),
+    readFile: vi.fn<typeof fsPromises.readFile>(),
+    writeFile: vi.fn<typeof fsPromises.writeFile>(),
+    unlink: vi.fn<typeof fsPromises.unlink>(),
+  };
+
+  let mockFetch: ReturnType<typeof vi.fn<typeof globalThis.fetch>>;
+  let mockPipeline: ReturnType<typeof vi.fn<typeof pipelineType>>;
+  let mockTransformConstructor: typeof Transform;
+  let mockCreateWriteStream: ReturnType<typeof vi.fn<typeof createWriteStream>>;
   let mockUnzip: ReturnType<typeof vi.fn>;
+  let mockDeps: MockDeps;
 
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    mockFetch = vi.fn();
-    mockPipeline = vi.fn();
-    mockTransform = vi.fn();
-    mockCreateWriteStream = vi.fn();
+    mockFetch = vi.fn<typeof globalThis.fetch>();
+    mockPipeline = vi.fn<typeof pipelineType>();
+    mockTransformConstructor = Transform;
+    mockCreateWriteStream = vi.fn<typeof createWriteStream>();
 
     // Get the mocked unzip function
     const { unzip } = await import('fflate');
@@ -60,8 +73,17 @@ describe('gitHubArchive', () => {
     mockCreateWriteStream.mockReturnValue({
       write: vi.fn(),
       end: vi.fn(),
-    });
-    mockTransform.mockImplementation(() => new Transform());
+    } as unknown as WriteStream);
+
+    // Create mockDeps with type casting for mock objects
+    // Using 'as unknown as Type' pattern is idiomatic for test mocks
+    mockDeps = {
+      fetch: mockFetch,
+      fs: mockFs as unknown as typeof fsPromises,
+      pipeline: mockPipeline as unknown as typeof pipelineType,
+      Transform: mockTransformConstructor,
+      createWriteStream: mockCreateWriteStream,
+    };
   });
 
   describe('downloadGitHubArchive', () => {
@@ -91,7 +113,7 @@ describe('gitHubArchive', () => {
         status: 200,
         headers: new Map([['content-length', mockZipData.length.toString()]]),
         body: mockStream,
-      });
+      } as unknown as Response);
 
       // Mock unzip to extract files
       mockUnzip.mockImplementation((_data, callback) => {
@@ -102,15 +124,7 @@ describe('gitHubArchive', () => {
         callback(null, extracted);
       });
 
-      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, undefined, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
+      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, undefined, mockDeps);
 
       // Verify directory creation
       expect(mockFs.mkdir).toHaveBeenCalledWith(mockTargetDirectory, { recursive: true });
@@ -148,21 +162,13 @@ describe('gitHubArchive', () => {
         status: 200,
         headers: new Map([['content-length', mockZipData.length.toString()]]),
         body: mockStream,
-      });
+      } as unknown as Response);
 
       mockUnzip.mockImplementation((_data, callback) => {
         callback(null, {});
       });
 
-      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, mockProgressCallback, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
+      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, mockProgressCallback, mockDeps);
 
       // Progress callback is called via Transform stream, which is handled internally
       // Just verify the download completed successfully
@@ -185,22 +191,14 @@ describe('gitHubArchive', () => {
               controller.close();
             },
           }),
-        });
+        } as unknown as Response);
 
       mockUnzip.mockImplementation((_data, callback) => {
         callback(null, {});
       });
 
       // Use fewer retries to speed up test
-      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 2 }, undefined, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
+      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 2 }, undefined, mockDeps);
 
       expect(mockFetch).toHaveBeenCalledTimes(3);
     });
@@ -213,7 +211,7 @@ describe('gitHubArchive', () => {
           status: 404,
           headers: new Map(),
           body: null,
-        })
+        } as unknown as Response)
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
@@ -224,7 +222,7 @@ describe('gitHubArchive', () => {
               controller.close();
             },
           }),
-        });
+        } as unknown as Response);
 
       mockUnzip.mockImplementation((_data, callback) => {
         callback(null, {});
@@ -232,15 +230,7 @@ describe('gitHubArchive', () => {
 
       const repoInfoNoRef = { owner: 'yamadashy', repo: 'repomix' };
 
-      await downloadGitHubArchive(repoInfoNoRef, mockTargetDirectory, mockOptions, undefined, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
+      await downloadGitHubArchive(repoInfoNoRef, mockTargetDirectory, mockOptions, undefined, mockDeps);
 
       // Should try HEAD first, then master branch
       expect(mockFetch).toHaveBeenCalledWith(
@@ -257,15 +247,7 @@ describe('gitHubArchive', () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
 
       await expect(
-        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 2 }, undefined, {
-          fetch: mockFetch,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          fs: mockFs as any,
-          pipeline: mockPipeline,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          Transform: mockTransform as any,
-          createWriteStream: mockCreateWriteStream,
-        }),
+        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 2 }, undefined, mockDeps),
       ).rejects.toThrow(RepomixError);
 
       // Multiple URLs are tried even with ref: main, fallback, tag
@@ -284,7 +266,7 @@ describe('gitHubArchive', () => {
             controller.close();
           },
         }),
-      });
+      } as unknown as Response);
 
       // Mock unzip to fail
       mockUnzip.mockImplementation((_data, callback) => {
@@ -292,15 +274,7 @@ describe('gitHubArchive', () => {
       });
 
       await expect(
-        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, {
-          fetch: mockFetch,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          fs: mockFs as any,
-          pipeline: mockPipeline,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          Transform: mockTransform as any,
-          createWriteStream: mockCreateWriteStream,
-        }),
+        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, mockDeps),
       ).rejects.toThrow(RepomixError);
     });
 
@@ -315,7 +289,7 @@ describe('gitHubArchive', () => {
             controller.close();
           },
         }),
-      });
+      } as unknown as Response);
 
       // Mock unzip with dangerous paths
       mockUnzip.mockImplementation((_data, callback) => {
@@ -326,15 +300,7 @@ describe('gitHubArchive', () => {
         callback(null, extracted);
       });
 
-      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, undefined, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
+      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, undefined, mockDeps);
 
       // Should write both files - the path normalization doesn't completely prevent this case
       expect(mockFs.writeFile).toHaveBeenCalledWith(
@@ -357,7 +323,7 @@ describe('gitHubArchive', () => {
             controller.close();
           },
         }),
-      });
+      } as unknown as Response);
 
       // Mock unzip with absolute path
       mockUnzip.mockImplementation((_data, callback) => {
@@ -368,15 +334,7 @@ describe('gitHubArchive', () => {
         callback(null, extracted);
       });
 
-      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, undefined, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
+      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, undefined, mockDeps);
 
       // Should only write safe file, not the absolute path
       expect(mockFs.writeFile).toHaveBeenCalledWith(
@@ -399,7 +357,7 @@ describe('gitHubArchive', () => {
             controller.close();
           },
         }),
-      });
+      } as unknown as Response);
 
       // Mock unzip to fail
       mockUnzip.mockImplementation((_data, callback) => {
@@ -407,15 +365,7 @@ describe('gitHubArchive', () => {
       });
 
       await expect(
-        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, {
-          fetch: mockFetch,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          fs: mockFs as any,
-          pipeline: mockPipeline,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          Transform: mockTransform as any,
-          createWriteStream: mockCreateWriteStream,
-        }),
+        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, mockDeps),
       ).rejects.toThrow();
 
       // Should still attempt cleanup
@@ -428,18 +378,10 @@ describe('gitHubArchive', () => {
         status: 200,
         headers: new Map(),
         body: null,
-      });
+      } as unknown as Response);
 
       await expect(
-        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, {
-          fetch: mockFetch,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          fs: mockFs as any,
-          pipeline: mockPipeline,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          Transform: mockTransform as any,
-          createWriteStream: mockCreateWriteStream,
-        }),
+        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, mockDeps),
       ).rejects.toThrow(RepomixError);
     });
 
@@ -459,7 +401,7 @@ describe('gitHubArchive', () => {
                     controller.close();
                   },
                 }),
-              });
+              } as unknown as Response);
             }, 100); // Resolve after 100ms, but timeout is 50ms
           }),
       );
@@ -467,15 +409,13 @@ describe('gitHubArchive', () => {
       const shortTimeout = 50; // 50ms timeout for faster test
 
       await expect(
-        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { timeout: shortTimeout, retries: 1 }, undefined, {
-          fetch: mockFetch,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          fs: mockFs as any,
-          pipeline: mockPipeline,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          Transform: mockTransform as any,
-          createWriteStream: mockCreateWriteStream,
-        }),
+        downloadGitHubArchive(
+          mockRepoInfo,
+          mockTargetDirectory,
+          { timeout: shortTimeout, retries: 1 },
+          undefined,
+          mockDeps,
+        ),
       ).rejects.toThrow();
     });
   });
