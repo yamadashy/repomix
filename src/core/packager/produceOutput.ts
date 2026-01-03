@@ -1,6 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { withMemoryLogging } from '../../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
+import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
@@ -28,6 +29,7 @@ export const produceOutput = async (
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
+  filePathsByRoot?: FilesByRoot[],
   overrideDeps: Partial<typeof defaultDeps> = {},
 ): Promise<ProduceOutputResult> => {
   const deps = { ...defaultDeps, ...overrideDeps };
@@ -44,6 +46,7 @@ export const produceOutput = async (
       gitDiffResult,
       gitLogResult,
       progressCallback,
+      filePathsByRoot,
       deps,
     );
   }
@@ -56,6 +59,7 @@ export const produceOutput = async (
     gitDiffResult,
     gitLogResult,
     progressCallback,
+    filePathsByRoot,
     deps,
   );
 };
@@ -69,6 +73,7 @@ const generateAndWriteSplitOutput = async (
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
+  filePathsByRoot: FilesByRoot[] | undefined,
   deps: typeof defaultDeps,
 ): Promise<ProduceOutputResult> => {
   const parts = await withMemoryLogging('Generate Split Output', async () => {
@@ -81,6 +86,7 @@ const generateAndWriteSplitOutput = async (
       gitDiffResult,
       gitLogResult,
       progressCallback,
+      filePathsByRoot,
       deps: {
         generateOutput: deps.generateOutput,
       },
@@ -117,10 +123,11 @@ const generateAndWriteSingleOutput = async (
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
+  filePathsByRoot: FilesByRoot[] | undefined,
   deps: typeof defaultDeps,
 ): Promise<ProduceOutputResult> => {
   const output = await withMemoryLogging('Generate Output', () =>
-    deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult),
+    deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult, filePathsByRoot),
   );
 
   progressCallback('Writing output file...');

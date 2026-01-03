@@ -113,3 +113,76 @@ export const generateTreeStringWithLineCounts = (
   const tree = generateFileTree(files, emptyDirPaths);
   return treeToStringWithLineCounts(tree, lineCounts).trim();
 };
+
+/**
+ * Represents files grouped by their root directory.
+ */
+export interface FilesByRoot {
+  rootLabel: string;
+  files: string[];
+}
+
+/**
+ * Generates a tree string with root directory labels when multiple roots are provided.
+ * For single root, returns the standard flat tree.
+ * For multiple roots, each section is labeled with [rootLabel]/.
+ *
+ * @param filesByRoot Array of root directories with their files
+ * @param emptyDirPaths Optional paths to empty directories
+ */
+export const generateTreeStringWithRoots = (filesByRoot: FilesByRoot[], emptyDirPaths: string[] = []): string => {
+  // Single root: use existing behavior without labels
+  if (filesByRoot.length === 1) {
+    return generateTreeString(filesByRoot[0].files, emptyDirPaths);
+  }
+
+  // Multiple roots: generate labeled sections
+  const sections: string[] = [];
+
+  for (const { rootLabel, files } of filesByRoot) {
+    if (files.length === 0) {
+      continue;
+    }
+
+    const tree = generateFileTree(files, emptyDirPaths);
+    const treeContent = treeToString(tree, '  ');
+    sections.push(`[${rootLabel}]/\n${treeContent}`);
+  }
+
+  return sections.join('\n').trim();
+};
+
+/**
+ * Generates a tree string with root directory labels and line counts.
+ * For single root, returns the standard flat tree with line counts.
+ * For multiple roots, each section is labeled with [rootLabel]/.
+ *
+ * @param filesByRoot Array of root directories with their files
+ * @param lineCounts Map of file paths to line counts
+ * @param emptyDirPaths Optional paths to empty directories
+ */
+export const generateTreeStringWithRootsAndLineCounts = (
+  filesByRoot: FilesByRoot[],
+  lineCounts: Record<string, number>,
+  emptyDirPaths: string[] = [],
+): string => {
+  // Single root: use existing behavior without labels
+  if (filesByRoot.length === 1) {
+    return generateTreeStringWithLineCounts(filesByRoot[0].files, lineCounts, emptyDirPaths);
+  }
+
+  // Multiple roots: generate labeled sections
+  const sections: string[] = [];
+
+  for (const { rootLabel, files } of filesByRoot) {
+    if (files.length === 0) {
+      continue;
+    }
+
+    const tree = generateFileTree(files, emptyDirPaths);
+    const treeContent = treeToStringWithLineCounts(tree, lineCounts, '  ');
+    sections.push(`[${rootLabel}]/\n${treeContent}`);
+  }
+
+  return sections.join('\n').trim();
+};

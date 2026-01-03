@@ -3,6 +3,7 @@ import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
+import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
@@ -99,6 +100,7 @@ const renderGroups = async (
   baseConfig: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
+  filePathsByRoot: FilesByRoot[] | undefined,
   generateOutput: GenerateOutputFn,
 ): Promise<string> => {
   const chunkProcessedFiles = groupsToRender.flatMap((g) => g.processedFiles);
@@ -112,6 +114,7 @@ const renderGroups = async (
     chunkAllFilePaths,
     partIndex === 1 ? gitDiffResult : undefined,
     partIndex === 1 ? gitLogResult : undefined,
+    filePathsByRoot,
   );
 };
 
@@ -124,6 +127,7 @@ export const generateSplitOutputParts = async ({
   gitDiffResult,
   gitLogResult,
   progressCallback,
+  filePathsByRoot,
   deps,
 }: {
   rootDirs: string[];
@@ -134,6 +138,7 @@ export const generateSplitOutputParts = async ({
   gitDiffResult: GitDiffResult | undefined;
   gitLogResult: GitLogResult | undefined;
   progressCallback: RepomixProgressCallback;
+  filePathsByRoot?: FilesByRoot[];
   deps: {
     generateOutput: GenerateOutputFn;
   };
@@ -172,6 +177,7 @@ export const generateSplitOutputParts = async ({
       baseConfig,
       gitDiffResult,
       gitLogResult,
+      filePathsByRoot,
       deps.generateOutput,
     );
     const nextBytes = getUtf8ByteLength(nextContent);
@@ -186,7 +192,7 @@ export const generateSplitOutputParts = async ({
     if (currentGroups.length === 0) {
       throw new RepomixError(
         `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-          `Part size ${nextBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
+        `Part size ${nextBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
       );
     }
 
@@ -208,13 +214,14 @@ export const generateSplitOutputParts = async ({
       baseConfig,
       gitDiffResult,
       gitLogResult,
+      filePathsByRoot,
       deps.generateOutput,
     );
     const singleGroupBytes = getUtf8ByteLength(singleGroupContent);
     if (singleGroupBytes > maxBytesPerPart) {
       throw new RepomixError(
         `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-          `Part size ${singleGroupBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
+        `Part size ${singleGroupBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
       );
     }
 
