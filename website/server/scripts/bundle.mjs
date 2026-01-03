@@ -46,13 +46,6 @@ const __dirname = _dirname(__filename);
     input: join(rootDir, 'dist/index.js'),
     platform: 'node',
     external: ['tinypool', 'tiktoken'],
-    // Aggressive tree-shaking
-    treeshake: {
-      moduleSideEffects: false,
-      commonjs: true,
-      propertyReadSideEffects: false,
-      propertyWriteSideEffects: false
-    },
     plugins: [
       swc(defineRollupSwcOption({
         minify: true,
