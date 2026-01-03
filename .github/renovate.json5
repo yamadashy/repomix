@@ -2,7 +2,6 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-    'group:allNonMajor'
   ],
   "schedule": ["before 9am on saturday"],
   "rangeStrategy": "bump",
@@ -12,6 +11,50 @@
     {
       matchDepTypes: ['peerDependencies'],
       enabled: false,
+    },
+    // Root package.json
+    {
+      matchFileNames: ['package.json'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'root non-major dependencies',
+    },
+    {
+      matchFileNames: ['package.json'],
+      matchUpdateTypes: ['major'],
+      groupName: 'root major dependencies',
+    },
+    // Browser extension
+    {
+      matchFileNames: ['browser/package.json'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'browser non-major dependencies',
+    },
+    {
+      matchFileNames: ['browser/package.json'],
+      matchUpdateTypes: ['major'],
+      groupName: 'browser major dependencies',
+    },
+    // Website packages (client & server)
+    {
+      matchFileNames: ['website/**/package.json'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'website non-major dependencies',
+    },
+    {
+      matchFileNames: ['website/**/package.json'],
+      matchUpdateTypes: ['major'],
+      groupName: 'website major dependencies',
+    },
+    // Scripts packages
+    {
+      matchFileNames: ['scripts/**/package.json'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'scripts non-major dependencies',
+    },
+    {
+      matchFileNames: ['scripts/**/package.json'],
+      matchUpdateTypes: ['major'],
+      groupName: 'scripts major dependencies',
     },
   ],
   "ignoreDeps": [
