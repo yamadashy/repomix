@@ -12,19 +12,9 @@ COPY package*.json ./
 # Install all dependencies (including dev dependencies for build)
 RUN npm ci
 
-# Copy source code and build
+# Copy source code and bundle
 COPY . .
-RUN npm run build
-
-# Bundle the server with esbuild for unified worker support
-# tiktoken must be external because it loads WASM files from __dirname
-RUN npx esbuild dist/index.js --bundle --platform=node --target=node20 \
-    --format=esm --outfile=dist-bundled/server.mjs --external:tinypool --external:tiktoken \
-    --banner:js="import { createRequire as _createRequire } from 'module'; const require = _createRequire(import.meta.url); import { fileURLToPath as _fileURLToPath } from 'url'; import { dirname as _dirname } from 'path'; const __filename = _fileURLToPath(import.meta.url); const __dirname = _dirname(__filename);"
-
-# Collect WASM files from wherever they are in node_modules
-RUN mkdir -p dist-bundled/wasm && \
-    find node_modules -name "*.wasm" -path "*tree-sitter-wasms/out/*" -exec cp {} dist-bundled/wasm/ \;
+RUN npm run bundle
 
 
 # ==============================================================================
