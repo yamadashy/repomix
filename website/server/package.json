@@ -25,7 +25,7 @@
   "devDependencies": {
     "@types/node": "^24.10.4",
     "@typescript/native-preview": "^7.0.0-dev.20251226.1",
-    "esbuild": "^0.25.5",
+    "esbuild": "^0.27.2",
     "rimraf": "^6.1.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
