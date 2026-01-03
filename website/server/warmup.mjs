@@ -23,3 +23,7 @@ await import('./dist-bundled/server.mjs');
 flushCompileCache();
 
 console.log('Compile cache generated successfully');
+
+// Explicitly exit the process
+// Some modules (like winston/logging) may keep the event loop alive
+process.exit(0);
