@@ -56,7 +56,7 @@ export interface PackOptions {
 export const pack = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
-  progressCallback: RepomixProgressCallback = () => { },
+  progressCallback: RepomixProgressCallback = () => {},
   overrideDeps: Partial<typeof defaultDeps> = {},
   explicitFiles?: string[],
   options: PackOptions = {},

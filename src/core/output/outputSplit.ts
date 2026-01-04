@@ -192,7 +192,7 @@ export const generateSplitOutputParts = async ({
     if (currentGroups.length === 0) {
       throw new RepomixError(
         `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-        `Part size ${nextBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
+          `Part size ${nextBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
       );
     }
 
@@ -221,7 +221,7 @@ export const generateSplitOutputParts = async ({
     if (singleGroupBytes > maxBytesPerPart) {
       throw new RepomixError(
         `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-        `Part size ${singleGroupBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
+          `Part size ${singleGroupBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
       );
     }
 

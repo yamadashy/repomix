@@ -111,41 +111,41 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
     repomix: {
       file_summary: renderContext.fileSummaryEnabled
         ? {
-          '#text': renderContext.generationHeader,
-          purpose: renderContext.summaryPurpose,
-          file_format: `${renderContext.summaryFileFormat}
+            '#text': renderContext.generationHeader,
+            purpose: renderContext.summaryPurpose,
+            file_format: `${renderContext.summaryFileFormat}
 5. Repository files, each consisting of:
   - File path as an attribute
   - Full contents of the file`,
-          usage_guidelines: renderContext.summaryUsageGuidelines,
-          notes: renderContext.summaryNotes,
-        }
+            usage_guidelines: renderContext.summaryUsageGuidelines,
+            notes: renderContext.summaryNotes,
+          }
         : undefined,
       user_provided_header: renderContext.headerText,
       directory_structure: renderContext.directoryStructureEnabled ? renderContext.treeString : undefined,
       files: renderContext.filesEnabled
         ? {
-          '#text': "This section contains the contents of the repository's files.",
-          file: renderContext.processedFiles.map((file) => ({
-            '#text': file.content,
-            '@_path': file.path,
-          })),
-        }
+            '#text': "This section contains the contents of the repository's files.",
+            file: renderContext.processedFiles.map((file) => ({
+              '#text': file.content,
+              '@_path': file.path,
+            })),
+          }
         : undefined,
       git_diffs: renderContext.gitDiffEnabled
         ? {
-          git_diff_work_tree: renderContext.gitDiffWorkTree,
-          git_diff_staged: renderContext.gitDiffStaged,
-        }
+            git_diff_work_tree: renderContext.gitDiffWorkTree,
+            git_diff_staged: renderContext.gitDiffStaged,
+          }
         : undefined,
       git_logs: renderContext.gitLogEnabled
         ? {
-          git_log_commit: renderContext.gitLogCommits?.map((commit) => ({
-            date: commit.date,
-            message: commit.message,
-            files: commit.files.map((file) => ({ '#text': file })),
-          })),
-        }
+            git_log_commit: renderContext.gitLogCommits?.map((commit) => ({
+              date: commit.date,
+              message: commit.message,
+              files: commit.files.map((file) => ({ '#text': file })),
+            })),
+          }
         : undefined,
       instruction: renderContext.instruction ? renderContext.instruction : undefined,
     },
@@ -394,4 +394,3 @@ export const buildOutputGeneratorContext = async (
     gitLogResult,
   };
 };
-
