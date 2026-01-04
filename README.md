@@ -1733,6 +1733,20 @@ async function analyzeFiles(directory) {
 
 For more examples, check the source code at [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts) which demonstrates how repomix.com uses the library.
 
+### Bundling
+
+When bundling repomix with tools like Rolldown or esbuild, some dependencies must remain external and WASM files need to be copied:
+
+**External dependencies (cannot be bundled):**
+- `tinypool` - Spawns worker threads using file paths
+- `tiktoken` - Loads WASM files dynamically at runtime
+
+**WASM files to copy:**
+- `web-tree-sitter.wasm` → Same directory as bundled JS (for code compression feature)
+- Tree-sitter language files → Directory specified by `REPOMIX_WASM_DIR` environment variable
+
+For a working example, see [website/server/scripts/bundle.mjs](https://github.com/yamadashy/repomix/blob/main/website/server/scripts/bundle.mjs).
+
 ## 🤝 Contribution
 
 We welcome contributions from the community! To get started, please refer to our [Contributing Guide](CONTRIBUTING.md).
