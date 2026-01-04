@@ -123,6 +123,34 @@ export interface FilesByRoot {
 }
 
 /**
+ * Internal helper function to generate multi-root tree sections.
+ * Extracts common logic used by both generateTreeStringWithRoots and generateTreeStringWithRootsAndLineCounts.
+ *
+ * Note: Empty directories (emptyDirPaths) are not included in multi-root output.
+ * This is because emptyDirPaths would need to be filtered per-root to avoid cross-root
+ * contamination, which would require additional complexity. For most use cases,
+ * empty directories are less important in multi-root scenarios.
+ */
+const generateMultiRootSections = (
+  filesByRoot: FilesByRoot[],
+  treeToStringFn: (tree: TreeNode, prefix: string) => string,
+): string => {
+  const sections: string[] = [];
+
+  for (const { rootLabel, files } of filesByRoot) {
+    if (files.length === 0) {
+      continue;
+    }
+
+    const tree = generateFileTree(files);
+    const treeContent = treeToStringFn(tree, '  ');
+    sections.push(`[${rootLabel}]/\n${treeContent}`);
+  }
+
+  return sections.join('\n').trim();
+};
+
+/**
  * Generates a tree string with root directory labels when multiple roots are provided.
  * For single root, returns the standard flat tree.
  * For multiple roots, each section is labeled with [rootLabel]/.
@@ -137,19 +165,7 @@ export const generateTreeStringWithRoots = (filesByRoot: FilesByRoot[], emptyDir
   }
 
   // Multiple roots: generate labeled sections
-  const sections: string[] = [];
-
-  for (const { rootLabel, files } of filesByRoot) {
-    if (files.length === 0) {
-      continue;
-    }
-
-    const tree = generateFileTree(files, emptyDirPaths);
-    const treeContent = treeToString(tree, '  ');
-    sections.push(`[${rootLabel}]/\n${treeContent}`);
-  }
-
-  return sections.join('\n').trim();
+  return generateMultiRootSections(filesByRoot, (tree, prefix) => treeToString(tree, prefix));
 };
 
 /**
@@ -172,17 +188,5 @@ export const generateTreeStringWithRootsAndLineCounts = (
   }
 
   // Multiple roots: generate labeled sections
-  const sections: string[] = [];
-
-  for (const { rootLabel, files } of filesByRoot) {
-    if (files.length === 0) {
-      continue;
-    }
-
-    const tree = generateFileTree(files, emptyDirPaths);
-    const treeContent = treeToStringWithLineCounts(tree, lineCounts, '  ');
-    sections.push(`[${rootLabel}]/\n${treeContent}`);
-  }
-
-  return sections.join('\n').trim();
+  return generateMultiRootSections(filesByRoot, (tree, prefix) => treeToStringWithLineCounts(tree, lineCounts, prefix));
 };

@@ -151,8 +151,9 @@ export const pack = async (
 
   // Build filePathsByRoot for multi-root tree generation
   // Use directory basename as the label for each root
+  // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
   const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
-    rootLabel: path.basename(rootDir),
+    rootLabel: path.basename(rootDir) || rootDir,
     files: filePaths,
   }));
 

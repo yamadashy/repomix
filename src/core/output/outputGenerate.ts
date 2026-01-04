@@ -374,13 +374,13 @@ export const buildOutputGeneratorContext = async (
     }
   }
 
-  // Generate tree string - use multi-root format if multiple roots are provided
+  // Generate tree string - use multi-root format if filePathsByRoot is provided
+  // generateTreeStringWithRoots handles single root case internally
   let treeString: string;
-  if (filePathsByRoot && filePathsByRoot.length > 1) {
-    // Multiple roots: generate labeled tree sections
+  if (filePathsByRoot) {
     treeString = generateTreeStringWithRoots(filePathsByRoot, directoryPathsForTree);
   } else {
-    // Single root or no root info: use standard flat tree
+    // Fallback for when root info is not available
     treeString = generateTreeString(filePathsForTree, directoryPathsForTree);
   }
 
