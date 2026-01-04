@@ -1742,7 +1742,7 @@ When bundling repomix with tools like Rolldown or esbuild, some dependencies mus
 - `tiktoken` - Loads WASM files dynamically at runtime
 
 **WASM files to copy:**
-- `web-tree-sitter.wasm` → Same directory as bundled JS (for code compression feature)
+- `web-tree-sitter.wasm` → Same directory as bundled JS (required for code compression feature)
 - Tree-sitter language files → Directory specified by `REPOMIX_WASM_DIR` environment variable
 
 For a working example, see [website/server/scripts/bundle.mjs](https://github.com/yamadashy/repomix/blob/main/website/server/scripts/bundle.mjs).
