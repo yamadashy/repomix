@@ -39,8 +39,7 @@ tests
 coverage
 .nyc_output
 
-# Docker files
-Dockerfile
+# Docker files (keep Dockerfile - needed for Cloud Build)
 .dockerignore
 
 # Temporary files
