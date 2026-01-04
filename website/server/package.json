@@ -23,11 +23,13 @@
     "zod": "^4.2.1"
   },
   "devDependencies": {
+    "@swc/core": "^1.15.8",
     "@types/node": "^24.10.4",
     "@typescript/native-preview": "^7.0.0-dev.20251226.1",
-    "esbuild": "^0.27.2",
     "rimraf": "^6.1.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "rolldown": "^1.0.0-beta.58",
+    "rollup-plugin-swc3": "^0.12.1"
   }
 }

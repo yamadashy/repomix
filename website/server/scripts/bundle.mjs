@@ -1,7 +1,7 @@
 /**
  * Bundle script for website server
  *
- * Creates a production-ready bundle using esbuild and collects WASM files.
+ * Creates a production-ready bundle using Rolldown and collects WASM files.
  *
  * Usage: node scripts/bundle.mjs
  */
@@ -10,7 +10,8 @@ import { execSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as esbuild from 'esbuild';
+import { rolldown } from 'rolldown';
+import { defineRollupSwcOption, swc } from 'rollup-plugin-swc3';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
@@ -26,10 +27,10 @@ function buildTypeScript() {
 }
 
 /**
- * Bundle with esbuild
+ * Bundle with Rolldown
  */
-async function bundleWithEsbuild() {
-  console.log('Bundling with esbuild...');
+async function bundleWithRolldown() {
+  console.log('Bundling with Rolldown...');
 
   // ESM banner to provide CommonJS compatibility
   const banner = `
@@ -41,19 +42,29 @@ const __filename = _fileURLToPath(import.meta.url);
 const __dirname = _dirname(__filename);
 `.trim();
 
-  await esbuild.build({
-    entryPoints: [join(rootDir, 'dist/index.js')],
-    bundle: true,
+  const build = await rolldown({
+    input: join(rootDir, 'dist/index.js'),
     platform: 'node',
-    target: 'node24',
-    format: 'esm',
-    outfile: join(distBundledDir, 'server.mjs'),
     external: ['tinypool', 'tiktoken'],
-    banner: { js: banner },
-    // Minification & optimization
+    plugins: [
+      swc(
+        defineRollupSwcOption({
+          minify: true,
+        }),
+      ),
+    ],
+  });
+
+  await build.write({
+    dir: distBundledDir,
+    format: 'esm',
+    entryFileNames: 'server.mjs',
+    inlineDynamicImports: true,
+    banner,
+    // Minification & optimization (equivalent to esbuild config)
     minify: true,
-    legalComments: 'eof',
-    drop: ['debugger'],
+    minifyInternalExports: true,
+    legalComments: 'inline', // Rolldown only supports 'none' | 'inline'
   });
 
   console.log('Bundle created: dist-bundled/server.mjs');
@@ -93,7 +104,7 @@ async function main() {
   console.log('Starting bundle process...\n');
 
   buildTypeScript();
-  await bundleWithEsbuild();
+  await bundleWithRolldown();
   collectWasmFiles();
 
   console.log('\nBundle complete!');
