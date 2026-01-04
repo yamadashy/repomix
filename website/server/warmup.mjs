@@ -18,6 +18,7 @@ process.env.WARMUP_MODE = 'true';
 
 // Import all bundled modules to trigger compilation
 import { readdirSync } from 'node:fs';
+
 const distDir = new URL('./dist-bundled/', import.meta.url);
 const allModules = readdirSync(distDir).filter((f) => f.endsWith('.mjs'));
 for (const file of allModules) {

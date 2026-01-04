@@ -82,7 +82,6 @@ async function bundleAll() {
   }
 }
 
-
 /**
  * Get file size in MB
  */
