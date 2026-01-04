@@ -11,25 +11,13 @@ import { rateLimitMiddleware } from './middlewares/rateLimit.js';
 import { logInfo, logMemoryUsage } from './utils/logger.js';
 import { getProcessConcurrency } from './utils/processConcurrency.js';
 
-// Re-export unified worker for bundled environment
-// When this file is used as a Tinypool worker, it needs to export the handler
-export { unifiedWorkerHandler as default, unifiedWorkerTermination as onWorkerTermination } from 'repomix';
-
-// Check if running as a Tinypool worker (bundled environment)
-// In bundled mode, this file is used both as server entry and worker entry
-const isTinypoolWorker = (): boolean => {
-  const tinypoolState = (process as NodeJS.Process & { __tinypool_state__?: { isTinypoolWorker?: boolean } })
-    .__tinypool_state__;
-  return tinypoolState?.isTinypoolWorker ?? false;
-};
-
 // Check if running in warmup mode (for compile cache generation)
 const isWarmupMode = (): boolean => {
   return process.env.WARMUP_MODE === 'true';
 };
 
-// Skip server initialization if running as a Tinypool worker or in warmup mode
-if (!isTinypoolWorker() && !isWarmupMode()) {
+// Skip server initialization in warmup mode
+if (!isWarmupMode()) {
   const API_TIMEOUT_MS = 35_000;
 
   // Log server metrics on startup

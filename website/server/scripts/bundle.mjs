@@ -1,22 +1,35 @@
 /**
  * Bundle script for website server
  *
- * Creates a production-ready bundle using Rolldown and collects WASM files.
+ * Creates production-ready bundles using Rolldown and collects WASM files.
+ * Generates two separate bundles:
+ * - server.mjs: Full server bundle with all dependencies
+ * - worker.mjs: Minimal worker bundle for tinypool workers
  *
  * Usage: node scripts/bundle.mjs
  */
 
 import { execSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { rolldown } from 'rolldown';
-import { defineRollupSwcOption, swc } from 'rollup-plugin-swc3';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
 const distBundledDir = join(rootDir, 'dist-bundled');
 const wasmDir = join(distBundledDir, 'wasm');
+
+/**
+ * Clean dist-bundled directory
+ */
+function cleanDistBundled() {
+  console.log('Cleaning dist-bundled...');
+  if (existsSync(distBundledDir)) {
+    rmSync(distBundledDir, { recursive: true });
+  }
+  mkdirSync(distBundledDir, { recursive: true });
+}
 
 /**
  * Build TypeScript to JavaScript
@@ -27,47 +40,55 @@ function buildTypeScript() {
 }
 
 /**
- * Bundle with Rolldown
+ * Bundle server with Rolldown (full bundle with all server dependencies)
  */
-async function bundleWithRolldown() {
-  console.log('Bundling with Rolldown...');
-
-  // ESM banner to provide CommonJS compatibility
-  const banner = `
-import { createRequire as _createRequire } from 'module';
-const require = _createRequire(import.meta.url);
-import { fileURLToPath as _fileURLToPath } from 'url';
-import { dirname as _dirname } from 'path';
-const __filename = _fileURLToPath(import.meta.url);
-const __dirname = _dirname(__filename);
-`.trim();
+async function bundleAll() {
+  console.log('Bundling with code splitting...');
 
   const build = await rolldown({
-    input: join(rootDir, 'dist/index.js'),
+    input: {
+      server: join(rootDir, 'dist/index.js'),
+      worker: join(rootDir, 'dist/worker-entry.js'),
+    },
     platform: 'node',
     external: ['tinypool', 'tiktoken'],
-    plugins: [
-      swc(
-        defineRollupSwcOption({
-          minify: true,
-        }),
-      ),
-    ],
   });
 
   await build.write({
     dir: distBundledDir,
     format: 'esm',
-    entryFileNames: 'server.mjs',
-    inlineDynamicImports: true,
-    banner,
-    // Minification & optimization (equivalent to esbuild config)
+    entryFileNames: '[name].mjs',
+    chunkFileNames: '[name]-[hash].mjs',
+    // Note: No banner - Rolldown generates necessary shims via rolldown-runtime chunk
     minify: true,
-    minifyInternalExports: true,
-    legalComments: 'inline', // Rolldown only supports 'none' | 'inline'
+    legalComments: 'inline',
+    // Force code splitting with advancedChunks
+    advancedChunks: {
+      groups: [
+        {
+          name: 'shared',
+          minSize: 100_000, // 100KB minimum for shared chunks
+          minShareCount: 2, // Module must be used by at least 2 entry points
+        },
+      ],
+    },
   });
 
-  console.log('Bundle created: dist-bundled/server.mjs');
+  // Report bundle sizes
+  const files = readdirSync(distBundledDir).filter((f) => f.endsWith('.mjs'));
+  for (const file of files) {
+    const size = getFileSizeMB(join(distBundledDir, file));
+    console.log(`Bundle created: dist-bundled/${file} (${size} MB)`);
+  }
+}
+
+
+/**
+ * Get file size in MB
+ */
+function getFileSizeMB(filePath) {
+  const stats = statSync(filePath);
+  return (stats.size / 1024 / 1024).toFixed(2);
 }
 
 /**
@@ -103,8 +124,9 @@ function collectWasmFiles() {
 async function main() {
   console.log('Starting bundle process...\n');
 
+  cleanDistBundled();
   buildTypeScript();
-  await bundleWithRolldown();
+  await bundleAll();
   collectWasmFiles();
 
   console.log('\nBundle complete!');

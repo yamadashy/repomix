@@ -30,7 +30,9 @@ WORKDIR /app
 # Copy bundled server and WASM files
 COPY --from=builder /app/dist-bundled ./dist-bundled
 
-# Copy external dependencies (tinypool and tiktoken with its WASM files)
+# Copy external dependencies (cannot be bundled due to runtime requirements)
+# - tinypool: spawns worker threads using file paths
+# - tiktoken: loads WASM files dynamically at runtime
 COPY --from=builder /app/node_modules/tinypool ./node_modules/tinypool
 COPY --from=builder /app/node_modules/tiktoken ./node_modules/tiktoken
 
@@ -41,7 +43,7 @@ COPY --from=builder /app/warmup.mjs ./warmup.mjs
 # NODE_COMPILE_CACHE enables V8 compile cache to reduce cold start latency
 ENV NODE_ENV=production \
     PORT=8080 \
-    REPOMIX_WORKER_PATH=/app/dist-bundled/server.mjs \
+    REPOMIX_WORKER_PATH=/app/dist-bundled/worker.mjs \
     REPOMIX_WASM_DIR=/app/dist-bundled/wasm \
     NODE_COMPILE_CACHE=/app/.compile-cache
 

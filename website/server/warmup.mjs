@@ -16,8 +16,13 @@ enableCompileCache();
 // Set warmup mode to prevent server from actually starting
 process.env.WARMUP_MODE = 'true';
 
-// Import the server module to trigger compilation of all dependencies
-await import('./dist-bundled/server.mjs');
+// Import all bundled modules to trigger compilation
+import { readdirSync } from 'node:fs';
+const distDir = new URL('./dist-bundled/', import.meta.url);
+const allModules = readdirSync(distDir).filter((f) => f.endsWith('.mjs'));
+for (const file of allModules) {
+  await import(`./dist-bundled/${file}`);
+}
 
 // Flush cache to disk immediately (default is on process exit)
 flushCompileCache();
