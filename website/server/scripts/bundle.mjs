@@ -92,7 +92,7 @@ function getFileSizeMB(filePath) {
 }
 
 /**
- * Collect tree-sitter WASM files from node_modules
+ * Collect WASM files from node_modules
  */
 function collectWasmFiles() {
   console.log('Collecting WASM files...');
@@ -102,7 +102,17 @@ function collectWasmFiles() {
     mkdirSync(wasmDir, { recursive: true });
   }
 
-  // Find and copy tree-sitter WASM files
+  // Copy web-tree-sitter.wasm to dist-bundled root
+  // (web-tree-sitter looks for WASM file in the same directory as the JS file)
+  const webTreeSitterWasm = join(rootDir, 'node_modules/web-tree-sitter/web-tree-sitter.wasm');
+  if (existsSync(webTreeSitterWasm)) {
+    cpSync(webTreeSitterWasm, join(distBundledDir, 'web-tree-sitter.wasm'));
+    console.log('Copied web-tree-sitter.wasm to dist-bundled/');
+  } else {
+    console.warn('Warning: web-tree-sitter.wasm not found');
+  }
+
+  // Find and copy tree-sitter language WASM files
   const treeSitterWasmsDir = join(rootDir, 'node_modules/@repomix/tree-sitter-wasms/out');
 
   if (existsSync(treeSitterWasmsDir)) {
@@ -112,7 +122,7 @@ function collectWasmFiles() {
       cpSync(join(treeSitterWasmsDir, file), join(wasmDir, file));
     }
 
-    console.log(`Copied ${wasmFiles.length} WASM files to dist-bundled/wasm/`);
+    console.log(`Copied ${wasmFiles.length} language WASM files to dist-bundled/wasm/`);
   } else {
     console.warn('Warning: tree-sitter-wasms not found');
   }
