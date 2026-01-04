@@ -36,8 +36,8 @@
     "time-bun": "bun run build && time bun bin/repomix.cjs",
     "memory-check": "node --run repomix -- --verbose | grep Memory",
     "memory-check-one-file": "node --run repomix -- --verbose --include 'package.json' | grep Memory",
-    "website": "docker compose -f website/compose.yml up --build",
-    "website-bundle": "docker compose -f website/compose.bundle.yml up --build",
+    "website": "docker compose -f website/compose.yml build --no-cache && docker compose -f website/compose.yml up",
+    "website-bundle": "docker compose -f website/compose.bundle.yml build --no-cache && docker compose -f website/compose.bundle.yml up",
     "website-generate-schema": "tsx website/client/scripts/generateSchema.ts",
     "pinact-run": "pinact run",
     "pinact-check": "pinact run --check"
