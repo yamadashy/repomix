@@ -100,6 +100,30 @@ jobs:
         working-directory: website/server
         run: npm run lint
 
+  bundle-website-server:
+    name: Bundle Website Server
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+      - name: Build and link local repomix
+        run: |
+          npm ci
+          npm run build
+          npm link
+      - name: Install website server dependencies
+        working-directory: website/server
+        run: |
+          npm ci
+          npm link repomix
+      - name: Bundle website server
+        working-directory: website/server
+        run: npm run bundle
+
   lint-browser:
     name: Lint Browser Extension
     runs-on: ubuntu-latest
