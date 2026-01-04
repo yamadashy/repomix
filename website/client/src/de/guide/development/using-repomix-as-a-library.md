@@ -81,6 +81,20 @@ async function analyzeFiles(directory) {
 }
 ```
 
+## Bündelung
+
+Beim Bündeln von Repomix mit Tools wie Rolldown oder esbuild müssen einige Abhängigkeiten extern bleiben und WASM-Dateien müssen kopiert werden:
+
+**Externe Abhängigkeiten (können nicht gebündelt werden):**
+- `tinypool` - Startet Worker-Threads unter Verwendung von Dateipfaden
+- `tiktoken` - Lädt WASM-Dateien dynamisch zur Laufzeit
+
+**Zu kopierende WASM-Dateien:**
+- `web-tree-sitter.wasm` → Gleiches Verzeichnis wie das gebündelte JS (erforderlich für die Code-Komprimierungsfunktion)
+- Tree-sitter-Sprachdateien → Verzeichnis, das durch die Umgebungsvariable `REPOMIX_WASM_DIR` angegeben wird
+
+Ein funktionierendes Beispiel finden Sie unter [website/server/scripts/bundle.mjs](https://github.com/yamadashy/repomix/blob/main/website/server/scripts/bundle.mjs).
+
 ## Reales Beispiel
 
 Die Repomix-Website ([repomix.com](https://repomix.com)) verwendet Repomix als Bibliothek zur Verarbeitung von Remote-Repositories. Sie können die Implementierung in [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts) sehen. 

@@ -81,6 +81,20 @@ async function analyzeFiles(directory) {
 }
 ```
 
+## Бандлинг
+
+При бандлинге repomix с помощью инструментов вроде Rolldown или esbuild, некоторые зависимости должны оставаться внешними, и WASM-файлы необходимо скопировать:
+
+**Внешние зависимости (не могут быть забандлены):**
+- `tinypool` - Запускает рабочие потоки, используя пути к файлам
+- `tiktoken` - Динамически загружает WASM-файлы во время выполнения
+
+**WASM-файлы для копирования:**
+- `web-tree-sitter.wasm` → В ту же директорию, что и забандленный JS (требуется для функции сжатия кода)
+- Языковые файлы Tree-sitter → Директория, указанная переменной окружения `REPOMIX_WASM_DIR`
+
+Рабочий пример можно посмотреть в [website/server/scripts/bundle.mjs](https://github.com/yamadashy/repomix/blob/main/website/server/scripts/bundle.mjs).
+
 ## Реальный пример
 
 Сайт Repomix ([repomix.com](https://repomix.com)) использует Repomix как библиотеку для обработки удалённых репозиториев. Вы можете увидеть реализацию в [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts).

@@ -81,6 +81,20 @@ async function analyzeFiles(directory) {
 }
 ```
 
+## 打包
+
+使用 Rolldown 或 esbuild 等工具打包 repomix 時，某些依賴項必須保持為 external，並且需要複製 WASM 文件：
+
+**External 依賴項（無法打包）：**
+- `tinypool` - 使用文件路徑生成 worker 線程
+- `tiktoken` - 在運行時動態加載 WASM 文件
+
+**需要複製的 WASM 文件：**
+- `web-tree-sitter.wasm` → 與打包後的 JS 相同的目錄（代碼壓縮功能需要）
+- Tree-sitter 語言文件 → `REPOMIX_WASM_DIR` 環境變數指定的目錄
+
+有關實際示例，請參閱 [website/server/scripts/bundle.mjs](https://github.com/yamadashy/repomix/blob/main/website/server/scripts/bundle.mjs)。
+
 ## 實際示例
 
 Repomix 網站（[repomix.com](https://repomix.com)）使用 Repomix 作為庫來處理遠端倉庫。您可以在 [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts) 中查看實現。
