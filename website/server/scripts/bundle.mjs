@@ -11,7 +11,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { rolldown } from 'rolldown';
-import { swc, defineRollupSwcOption } from 'rollup-plugin-swc3'
+import { defineRollupSwcOption, swc } from 'rollup-plugin-swc3';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
@@ -47,10 +47,12 @@ const __dirname = _dirname(__filename);
     platform: 'node',
     external: ['tinypool', 'tiktoken'],
     plugins: [
-      swc(defineRollupSwcOption({
-        minify: true,
-      })),
-    ]
+      swc(
+        defineRollupSwcOption({
+          minify: true,
+        }),
+      ),
+    ],
   });
 
   await build.write({
@@ -62,7 +64,7 @@ const __dirname = _dirname(__filename);
     // Minification & optimization (equivalent to esbuild config)
     minify: true,
     minifyInternalExports: true,
-    legalComments: 'inline',  // Rolldown only supports 'none' | 'inline'
+    legalComments: 'inline', // Rolldown only supports 'none' | 'inline'
   });
 
   console.log('Bundle created: dist-bundled/server.mjs');
