@@ -3,12 +3,17 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { getSubmoduleNames, loadMonorepoConfig } from '../config/monorepoConfigLoader.js';
 import { DependencyGraph } from '../dependency/dependencyGraph.js';
+import { validateProjectRoot } from '../security/pathValidator.js';
 import { buildMcpToolErrorResponse, buildMcpToolSuccessResponse, convertErrorToJson } from './mcpToolRuntime.js';
 
 const listSubmodulesInputSchema = z.object({
   showDependencies: z.boolean().default(false).describe('Include dependency relationships in the response'),
   showStats: z.boolean().default(false).describe('Include dependency graph statistics'),
-  projectRoot: z.string().optional().describe('Project root directory (defaults to current working directory)'),
+  projectRoot: z
+    .string()
+    .max(4096)
+    .optional()
+    .describe('Project root directory (defaults to current working directory)'),
 });
 
 const listSubmodulesOutputSchema = z.object({
@@ -55,7 +60,8 @@ export const registerListSubmodulesTool = (mcpServer: McpServer): void => {
     },
     async ({ showDependencies, showStats, projectRoot }): Promise<CallToolResult> => {
       try {
-        const rootDir = projectRoot || process.cwd();
+        // Validate and normalize project root to prevent path traversal
+        const rootDir = validateProjectRoot(projectRoot);
 
         // Load configuration
         const config = await loadMonorepoConfig(rootDir);

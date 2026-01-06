@@ -7,14 +7,19 @@ import type { MonorepoConfig, SubmoduleConfig } from '../config/monorepoConfigLo
 import { MONOREPO_CONFIG_FILE, saveMonorepoConfig } from '../config/monorepoConfigLoader.js';
 import { ProjectDetector } from '../detection/projectDetector.js';
 import { generateCacheScript, JustfileGenerator } from '../generation/justfileGenerator.js';
+import { validateProjectRoot } from '../security/pathValidator.js';
 import { buildMcpToolErrorResponse, buildMcpToolSuccessResponse, convertErrorToJson } from './mcpToolRuntime.js';
 
 const initMonorepoConfigInputSchema = z.object({
-  projectRoot: z.string().optional().describe('Project root directory (defaults to current working directory)'),
+  projectRoot: z
+    .string()
+    .max(4096)
+    .optional()
+    .describe('Project root directory (defaults to current working directory)'),
   detectGitSubmodules: z.boolean().default(true).describe('Detect and mark git submodules'),
   generateJustfile: z.boolean().default(true).describe('Generate justfile for cache management'),
   generateScript: z.boolean().default(true).describe('Generate cache management script'),
-  cacheDirectory: z.string().default('.repomix-cache').describe('Cache directory path'),
+  cacheDirectory: z.string().min(1).max(255).default('.repomix-cache').describe('Cache directory path'),
   compress: z.boolean().default(true).describe('Enable compression by default'),
   style: z.enum(['xml', 'markdown', 'json', 'plain']).default('xml').describe('Default output format'),
 });
@@ -64,7 +69,8 @@ export const registerInitMonorepoConfigTool = (mcpServer: McpServer): void => {
       style,
     }): Promise<CallToolResult> => {
       try {
-        const rootDir = projectRoot || process.cwd();
+        // Validate and normalize project root to prevent path traversal
+        const rootDir = validateProjectRoot(projectRoot);
 
         // 1. Detect project structure
         const detector = new ProjectDetector(rootDir);

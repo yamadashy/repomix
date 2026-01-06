@@ -4,14 +4,20 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { CacheManager } from '../cache/cacheManager.js';
 import { getSubmoduleNames, loadMonorepoConfig } from '../config/monorepoConfigLoader.js';
+import { validateProjectRoot } from '../security/pathValidator.js';
 import { buildMcpToolErrorResponse, buildMcpToolSuccessResponse, convertErrorToJson } from './mcpToolRuntime.js';
 
 const invalidateSubmoduleCacheInputSchema = z.object({
   submodules: z
-    .array(z.string())
+    .array(z.string().min(1).max(255))
+    .max(100)
     .optional()
     .describe('List of submodule names to invalidate. If not provided, invalidates all caches.'),
-  projectRoot: z.string().optional().describe('Project root directory (defaults to current working directory)'),
+  projectRoot: z
+    .string()
+    .max(4096)
+    .optional()
+    .describe('Project root directory (defaults to current working directory)'),
 });
 
 const invalidateSubmoduleCacheOutputSchema = z.object({
@@ -41,7 +47,8 @@ export const registerInvalidateSubmoduleCacheTool = (mcpServer: McpServer): void
     },
     async ({ submodules, projectRoot }): Promise<CallToolResult> => {
       try {
-        const rootDir = projectRoot || process.cwd();
+        // Validate and normalize project root to prevent path traversal
+        const rootDir = validateProjectRoot(projectRoot);
 
         // Load configuration
         const config = await loadMonorepoConfig(rootDir);

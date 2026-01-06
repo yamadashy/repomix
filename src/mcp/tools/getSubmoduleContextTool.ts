@@ -8,6 +8,7 @@ import { defaultFilePathMap } from '../../config/configSchema.js';
 import { CacheManager } from '../cache/cacheManager.js';
 import { getSubmodule, loadMonorepoConfig } from '../config/monorepoConfigLoader.js';
 import { DependencyGraph } from '../dependency/dependencyGraph.js';
+import { validateProjectRoot, validateSubmodulePath } from '../security/pathValidator.js';
 import {
   buildMcpToolErrorResponse,
   buildMcpToolSuccessResponse,
@@ -16,11 +17,19 @@ import {
 } from './mcpToolRuntime.js';
 
 const getSubmoduleContextInputSchema = z.object({
-  submoduleName: z.string().describe('Name of the submodule to load (as defined in .repomix-monorepo.json)'),
+  submoduleName: z
+    .string()
+    .min(1)
+    .max(255)
+    .describe('Name of the submodule to load (as defined in .repomix-monorepo.json)'),
   includeDependencies: z.boolean().default(false).describe('Whether to include dependency submodules in the response'),
   forceRegenerate: z.boolean().default(false).describe('Force regenerate cache even if valid cache exists'),
   compress: z.boolean().default(true).describe('Enable Tree-sitter compression to reduce token usage (~70% reduction)'),
-  projectRoot: z.string().optional().describe('Project root directory (defaults to current working directory)'),
+  projectRoot: z
+    .string()
+    .max(4096)
+    .optional()
+    .describe('Project root directory (defaults to current working directory)'),
 });
 
 const getSubmoduleContextOutputSchema = z.object({
@@ -63,7 +72,8 @@ export const registerGetSubmoduleContextTool = (mcpServer: McpServer): void => {
     },
     async ({ submoduleName, includeDependencies, forceRegenerate, compress, projectRoot }): Promise<CallToolResult> => {
       try {
-        const rootDir = projectRoot || process.cwd();
+        // Validate and normalize project root to prevent path traversal
+        const rootDir = validateProjectRoot(projectRoot);
 
         // 1. Load configuration
         const config = await loadMonorepoConfig(rootDir);
@@ -188,7 +198,8 @@ async function generateSubmoduleContent(
   const outputFileName = defaultFilePathMap[styleKey];
   const outputFilePath = path.join(tempDir, outputFileName);
 
-  const fullPath = path.join(rootDir, submodulePath);
+  // Validate submodule path to prevent path traversal
+  const fullPath = validateSubmodulePath(submodulePath, rootDir);
 
   const cliOptions: CliOptions = {
     compress: options.compress,

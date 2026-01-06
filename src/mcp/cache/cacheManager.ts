@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { logger } from '../../shared/logger.js';
+import { sanitizeSubmoduleName, validatePathWithinRoot } from '../security/pathValidator.js';
 import type { CacheCheckResult, CachedContent, CacheMetadata } from './cacheTypes.js';
 
 const execFileAsync = promisify(execFile);
@@ -48,14 +49,16 @@ export class CacheManager {
    * Get the full path for a submodule's cache file
    */
   private getContentPath(submoduleName: string): string {
-    return path.join(this.cacheDir, `${submoduleName}.xml`);
+    const safeName = sanitizeSubmoduleName(submoduleName);
+    return path.join(this.cacheDir, `${safeName}.xml`);
   }
 
   /**
    * Get the full path for a submodule's metadata file
    */
   private getMetaPath(submoduleName: string): string {
-    return path.join(this.cacheDir, `${submoduleName}.meta.json`);
+    const safeName = sanitizeSubmoduleName(submoduleName);
+    return path.join(this.cacheDir, `${safeName}.meta.json`);
   }
 
   /**
@@ -87,7 +90,8 @@ export class CacheManager {
     try {
       if (isGitSubmodule) {
         // Git submodule: read its own HEAD
-        const fullPath = path.join(this.rootDir, submodulePath);
+        // Validate path stays within root to prevent path traversal
+        const fullPath = validatePathWithinRoot(submodulePath, this.rootDir);
         const result = await this.deps.execFileAsync('git', ['-C', fullPath, 'rev-parse', 'HEAD']);
         return result.stdout.trim();
       }
@@ -117,7 +121,8 @@ export class CacheManager {
 
       // Further check: are there actual file changes in this submodule?
       if (isGitSubmodule) {
-        const fullPath = path.join(this.rootDir, submodulePath);
+        // Validate path stays within root to prevent path traversal
+        const fullPath = validatePathWithinRoot(submodulePath, this.rootDir);
         const result = await this.deps.execFileAsync('git', [
           '-C',
           fullPath,

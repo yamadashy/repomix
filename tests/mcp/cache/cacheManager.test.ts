@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CacheManager, type CacheManagerDeps } from '../../../src/mcp/cache/cacheManager.js';
 import type { CacheMetadata } from '../../../src/mcp/cache/cacheTypes.js';
 
