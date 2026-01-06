@@ -9,6 +9,7 @@ const execFileAsync = promisify(execFile);
 
 const GIT_REMOTE_TIMEOUT = 30000;
 const gitRemoteEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
+const gitRemoteOpts = { timeout: GIT_REMOTE_TIMEOUT, env: gitRemoteEnv };
 
 export const execGitLogFilenames = async (
   directory: string,
