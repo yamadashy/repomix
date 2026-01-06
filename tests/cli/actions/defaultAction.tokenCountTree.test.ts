@@ -13,6 +13,11 @@ vi.mock('../../../src/shared/processConcurrency.js');
 vi.mock('../../../src/cli/actions/migrationAction.js', () => ({
   runMigrationAction: vi.fn(),
 }));
+vi.mock('../../../src/core/lock/index', () => ({
+  acquireLock: vi.fn().mockResolvedValue('/mock/.repomix.lock'),
+  releaseLock: vi.fn().mockResolvedValue(undefined),
+  FileLockError: class FileLockError extends Error {},
+}));
 
 describe('defaultAction with tokenCountTree', () => {
   const mockLoadFileConfig = configLoad.loadFileConfig as Mock;
