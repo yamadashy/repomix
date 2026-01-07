@@ -119,7 +119,11 @@ export const execGitShallowClone = async (
     await deps.execFileAsync('git', ['-C', directory, 'init']);
     await deps.execFileAsync('git', ['-C', directory, 'remote', 'add', '--', 'origin', url]);
     try {
-      await deps.execFileAsync('git', ['-C', directory, 'fetch', '--depth', '1', 'origin', remoteBranch], gitRemoteOpts);
+      await deps.execFileAsync(
+        'git',
+        ['-C', directory, 'fetch', '--depth', '1', 'origin', remoteBranch],
+        gitRemoteOpts,
+      );
       await deps.execFileAsync('git', ['-C', directory, 'checkout', 'FETCH_HEAD']);
     } catch (err: unknown) {
       // git fetch --depth 1 origin <short SHA> always throws "couldn't find remote ref" error
