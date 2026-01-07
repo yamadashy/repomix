@@ -123,13 +123,22 @@ index 123..456 100644
     };
 
     // Call generateOutput with mocked deps
-    const _output = await generateOutput(rootDirs, mockConfig, processedFiles, ['file1.js'], gitDiffResult, undefined, {
-      buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
-      generateHandlebarOutput: mockGenerateHandlebarOutput,
-      generateParsableXmlOutput: mockGenerateParsableXmlOutput,
-      generateParsableJsonOutput: vi.fn(),
-      sortOutputFiles: mockSortOutputFiles,
-    });
+    const _output = await generateOutput(
+      rootDirs,
+      mockConfig,
+      processedFiles,
+      ['file1.js'],
+      gitDiffResult,
+      undefined,
+      undefined,
+      {
+        buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
+        generateHandlebarOutput: mockGenerateHandlebarOutput,
+        generateParsableXmlOutput: mockGenerateParsableXmlOutput,
+        generateParsableJsonOutput: vi.fn(),
+        sortOutputFiles: mockSortOutputFiles,
+      },
+    );
 
     // Check that the output was generated with the correct template
     expect(mockBuildOutputGeneratorContext).toHaveBeenCalled();
@@ -187,13 +196,22 @@ index 123..456 100644
     };
 
     // Call generateOutput with mocked deps
-    const _output = await generateOutput(rootDirs, mockConfig, processedFiles, ['file1.js'], gitDiffResult, undefined, {
-      buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
-      generateHandlebarOutput: mockGenerateHandlebarOutput,
-      generateParsableXmlOutput: mockGenerateParsableXmlOutput,
-      generateParsableJsonOutput: vi.fn(),
-      sortOutputFiles: mockSortOutputFiles,
-    });
+    const _output = await generateOutput(
+      rootDirs,
+      mockConfig,
+      processedFiles,
+      ['file1.js'],
+      gitDiffResult,
+      undefined,
+      undefined,
+      {
+        buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
+        generateHandlebarOutput: mockGenerateHandlebarOutput,
+        generateParsableXmlOutput: mockGenerateParsableXmlOutput,
+        generateParsableJsonOutput: vi.fn(),
+        sortOutputFiles: mockSortOutputFiles,
+      },
+    );
 
     // For markdown output, should use Handlebars
     expect(mockGenerateHandlebarOutput).toHaveBeenCalled();

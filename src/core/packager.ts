@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
@@ -5,6 +6,7 @@ import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
+import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
@@ -147,6 +149,14 @@ export const pack = async (
     return result;
   }
 
+  // Build filePathsByRoot for multi-root tree generation
+  // Use directory basename as the label for each root
+  // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
+  const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
+    rootLabel: path.basename(rootDir) || rootDir,
+    files: filePaths,
+  }));
+
   // Generate and write output (handles both single and split output)
   const { outputFiles, outputForMetrics } = await deps.produceOutput(
     rootDirs,
@@ -156,6 +166,7 @@ export const pack = async (
     gitDiffResult,
     gitLogResult,
     progressCallback,
+    filePathsByRoot,
   );
 
   const metrics = await withMemoryLogging('Calculate Metrics', () =>

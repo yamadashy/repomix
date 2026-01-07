@@ -25,6 +25,7 @@ describe('produceOutput', () => {
         undefined,
         undefined,
         progressCallback,
+        undefined,
         mockDeps,
       );
 
@@ -33,6 +34,7 @@ describe('produceOutput', () => {
         mockConfig,
         processedFiles,
         allFilePaths,
+        undefined,
         undefined,
         undefined,
       );
@@ -58,10 +60,19 @@ describe('produceOutput', () => {
         gitDiffResult as Parameters<typeof produceOutput>[4],
         gitLogResult as Parameters<typeof produceOutput>[5],
         vi.fn(),
+        undefined,
         mockDeps,
       );
 
-      expect(mockDeps.generateOutput).toHaveBeenCalledWith(['/root'], mockConfig, [], [], gitDiffResult, gitLogResult);
+      expect(mockDeps.generateOutput).toHaveBeenCalledWith(
+        ['/root'],
+        mockConfig,
+        [],
+        [],
+        gitDiffResult,
+        gitLogResult,
+        undefined,
+      );
     });
 
     it('calls progress callback with correct message', async () => {
@@ -69,7 +80,7 @@ describe('produceOutput', () => {
       const mockConfig = createMockConfig();
       const progressCallback = vi.fn();
 
-      await produceOutput(['/root'], mockConfig, [], [], undefined, undefined, progressCallback, mockDeps);
+      await produceOutput(['/root'], mockConfig, [], [], undefined, undefined, progressCallback, undefined, mockDeps);
 
       expect(progressCallback).toHaveBeenCalledWith('Writing output file...');
     });
@@ -104,6 +115,7 @@ describe('produceOutput', () => {
         undefined,
         undefined,
         progressCallback,
+        undefined,
         mockDeps,
       );
 
@@ -122,7 +134,7 @@ describe('produceOutput', () => {
       });
       const progressCallback = vi.fn();
 
-      await produceOutput(['/root'], mockConfig, [], [], undefined, undefined, progressCallback, mockDeps);
+      await produceOutput(['/root'], mockConfig, [], [], undefined, undefined, progressCallback, undefined, mockDeps);
 
       expect(progressCallback).toHaveBeenCalledWith('Writing output files...');
     });
@@ -136,7 +148,7 @@ describe('produceOutput', () => {
         },
       });
 
-      await produceOutput(['/root'], mockConfig, [], [], undefined, undefined, vi.fn(), mockDeps);
+      await produceOutput(['/root'], mockConfig, [], [], undefined, undefined, vi.fn(), undefined, mockDeps);
 
       expect(mockDeps.copyToClipboardIfEnabled).not.toHaveBeenCalled();
     });

@@ -65,6 +65,7 @@ describe('packager split output', () => {
       undefined,
       undefined,
       expect.any(Function),
+      [{ rootLabel: 'root', files: allFilePaths }],
     );
 
     expect(calculateMetrics).toHaveBeenCalledWith(
