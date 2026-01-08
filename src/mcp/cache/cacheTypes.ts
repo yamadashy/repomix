@@ -2,6 +2,23 @@
  * Types for Monorepo Submodule Caching
  */
 
+import { z } from 'zod';
+
+/**
+ * Schema for cache metadata validation
+ */
+export const CacheMetadataSchema = z.object({
+  submodule: z.string().describe('Submodule name'),
+  generatedAt: z.string().describe('When the cache was generated'),
+  gitCommit: z.string().describe('Git commit hash when cache was generated'),
+  fileCount: z.number().int().nonnegative().describe('Number of files in the submodule'),
+  tokenCount: z.number().int().nonnegative().describe('Total token count of the content'),
+  dependencies: z.array(z.string()).describe('List of dependencies (other submodule names)'),
+  repomixVersion: z.string().describe('Repomix version used to generate'),
+  compressed: z.boolean().describe('Whether compression was enabled'),
+  isGitSubmodule: z.boolean().optional().describe('Whether this is a git submodule'),
+});
+
 /**
  * Metadata stored alongside cached content
  */

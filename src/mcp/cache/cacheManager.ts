@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { logger } from '../../shared/logger.js';
 import { sanitizeSubmoduleName, validatePathWithinRoot } from '../security/pathValidator.js';
 import type { CacheCheckResult, CachedContent, CacheMetadata } from './cacheTypes.js';
+import { CacheMetadataSchema } from './cacheTypes.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -78,7 +79,8 @@ export class CacheManager {
    */
   private async readMeta(metaPath: string): Promise<CacheMetadata> {
     const content = await this.deps.fsReadFile(metaPath, 'utf-8');
-    return JSON.parse(content) as CacheMetadata;
+    const parsed = JSON.parse(content);
+    return CacheMetadataSchema.parse(parsed);
   }
 
   /**
