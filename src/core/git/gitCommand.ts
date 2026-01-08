@@ -7,6 +7,10 @@ import { logger } from '../../shared/logger.js';
 
 const execFileAsync = promisify(execFile);
 
+const GIT_REMOTE_TIMEOUT = 30000;
+const gitRemoteEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
+const gitRemoteOpts = { timeout: GIT_REMOTE_TIMEOUT, env: gitRemoteEnv };
+
 export const execGitLogFilenames = async (
   directory: string,
   maxCommits = 100,
@@ -93,7 +97,7 @@ export const execLsRemote = async (
   validateGitUrl(url);
 
   try {
-    const result = await deps.execFileAsync('git', ['ls-remote', '--heads', '--tags', '--', url]);
+    const result = await deps.execFileAsync('git', ['ls-remote', '--heads', '--tags', '--', url], gitRemoteOpts);
     return result.stdout || '';
   } catch (error) {
     logger.trace('Failed to execute git ls-remote:', (error as Error).message);
@@ -115,7 +119,11 @@ export const execGitShallowClone = async (
     await deps.execFileAsync('git', ['-C', directory, 'init']);
     await deps.execFileAsync('git', ['-C', directory, 'remote', 'add', '--', 'origin', url]);
     try {
-      await deps.execFileAsync('git', ['-C', directory, 'fetch', '--depth', '1', 'origin', remoteBranch]);
+      await deps.execFileAsync(
+        'git',
+        ['-C', directory, 'fetch', '--depth', '1', 'origin', remoteBranch],
+        gitRemoteOpts,
+      );
       await deps.execFileAsync('git', ['-C', directory, 'checkout', 'FETCH_HEAD']);
     } catch (err: unknown) {
       // git fetch --depth 1 origin <short SHA> always throws "couldn't find remote ref" error
@@ -139,11 +147,11 @@ export const execGitShallowClone = async (
 
       // Maybe the error is due to a short SHA, let's try again
       // Can't use --depth 1 here as we need to fetch the specific commit
-      await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin']);
+      await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin'], gitRemoteOpts);
       await deps.execFileAsync('git', ['-C', directory, 'checkout', remoteBranch]);
     }
   } else {
-    await deps.execFileAsync('git', ['clone', '--depth', '1', '--', url, directory]);
+    await deps.execFileAsync('git', ['clone', '--depth', '1', '--', url, directory], gitRemoteOpts);
   }
 
   // Clean up .git directory
