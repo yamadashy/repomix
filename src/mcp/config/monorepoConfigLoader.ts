@@ -34,10 +34,20 @@ const RepomixConfigSchema = z.object({
 });
 
 /**
+ * Maximum allowed submodules in monorepo configuration
+ */
+const MAX_SUBMODULES = 1000;
+
+/**
  * Schema for monorepo configuration
  */
 export const MonorepoConfigSchema = z.object({
-  submodules: z.record(z.string(), SubmoduleConfigSchema).describe('Map of submodule name to configuration'),
+  submodules: z
+    .record(z.string(), SubmoduleConfigSchema)
+    .refine((obj) => Object.keys(obj).length <= MAX_SUBMODULES, {
+      message: `Too many submodules defined (maximum: ${MAX_SUBMODULES})`,
+    })
+    .describe('Map of submodule name to configuration'),
   cache: CacheConfigSchema.default({
     directory: '.repomix-cache',
     enabled: true,
