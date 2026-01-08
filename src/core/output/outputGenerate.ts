@@ -5,7 +5,7 @@ import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { type FileSearchResult, listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
-import { generateTreeString } from '../file/fileTreeGenerate.js';
+import { type FilesByRoot, generateTreeString, generateTreeStringWithRoots } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
@@ -257,6 +257,7 @@ export const generateOutput = async (
   allFilePaths: string[],
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
+  filePathsByRoot?: FilesByRoot[],
   deps = {
     buildOutputGeneratorContext,
     generateHandlebarOutput,
@@ -275,6 +276,7 @@ export const generateOutput = async (
     sortedProcessedFiles,
     gitDiffResult,
     gitLogResult,
+    filePathsByRoot,
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
@@ -300,6 +302,7 @@ export const buildOutputGeneratorContext = async (
   processedFiles: ProcessedFile[],
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
+  filePathsByRoot?: FilesByRoot[],
   deps = {
     listDirectories,
     listFiles,
@@ -371,9 +374,19 @@ export const buildOutputGeneratorContext = async (
     }
   }
 
+  // Generate tree string - use multi-root format if filePathsByRoot is provided
+  // generateTreeStringWithRoots handles single root case internally
+  let treeString: string;
+  if (filePathsByRoot) {
+    treeString = generateTreeStringWithRoots(filePathsByRoot, directoryPathsForTree);
+  } else {
+    // Fallback for when root info is not available
+    treeString = generateTreeString(filePathsForTree, directoryPathsForTree);
+  }
+
   return {
     generationDate: new Date().toISOString(),
-    treeString: generateTreeString(filePathsForTree, directoryPathsForTree),
+    treeString,
     processedFiles,
     config,
     instruction: repositoryInstruction,
