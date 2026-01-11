@@ -137,10 +137,11 @@ EOF
 
 ## Guidelines
 
-1. **Write self-contained notes**: Include full context so the reader needs no prior knowledge to understand and act on the content
-2. **Keep summaries decisive**: Reading the summary should tell you if you need the details
-3. **Stay current**: Update or delete outdated information
-4. **Be practical**: Save what's actually useful, not everything
+1. **Write for resumption**: Memories exist to resume work later. Capture all key points needed to continue without losing context - decisions made, reasons why, current state, and next steps.
+2. **Write self-contained notes**: Include full context so the reader needs no prior knowledge to understand and act on the content
+3. **Keep summaries decisive**: Reading the summary should tell you if you need the details
+4. **Stay current**: Update or delete outdated information
+5. **Be practical**: Save what's actually useful, not everything
 
 ## Content Reference
 
