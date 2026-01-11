@@ -53,6 +53,8 @@ This is just an example. Structure freely based on actual content.
 
 All memories must include frontmatter with a `summary` field. The summary should be concise enough to determine whether to read the full content.
 
+**Summary is the decision point**: Agents scan summaries via `rg "^summary:"` to decide which memories to read in full. Write summaries that contain enough context to make this decision - what the memory is about, the key problem or topic, and why it matters.
+
 **Required:**
 ```yaml
 ---
