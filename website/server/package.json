@@ -19,12 +19,12 @@
     "hono": "^4.11.3",
     "repomix": "github:yamadashy/repomix#main",
     "winston": "^3.19.0",
-    "zod": "^4.2.1"
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@swc/core": "^1.15.8",
     "@types/node": "^24.10.4",
-    "@typescript/native-preview": "^7.0.0-dev.20251226.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260104.1",
     "rimraf": "^6.1.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
