@@ -53,6 +53,8 @@ This is just an example. Structure freely based on actual content.
 
 All memories must include frontmatter with a `summary` field. The summary should be concise enough to determine whether to read the full content.
 
+**Summary is the decision point**: Agents scan summaries via `rg "^summary:"` to decide which memories to read in full. Write summaries that contain enough context to make this decision - what the memory is about, the key problem or topic, and why it matters.
+
 **Required:**
 ```yaml
 ---
@@ -135,10 +137,11 @@ EOF
 
 ## Guidelines
 
-1. **Write self-contained notes**: Include full context so the reader needs no prior knowledge to understand and act on the content
-2. **Keep summaries decisive**: Reading the summary should tell you if you need the details
-3. **Stay current**: Update or delete outdated information
-4. **Be practical**: Save what's actually useful, not everything
+1. **Write for resumption**: Memories exist to resume work later. Capture all key points needed to continue without losing context - decisions made, reasons why, current state, and next steps.
+2. **Write self-contained notes**: Include full context so the reader needs no prior knowledge to understand and act on the content
+3. **Keep summaries decisive**: Reading the summary should tell you if you need the details
+4. **Stay current**: Update or delete outdated information
+5. **Be practical**: Save what's actually useful, not everything
 
 ## Content Reference
 
