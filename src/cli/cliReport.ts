@@ -151,7 +151,8 @@ export const reportSecurityCheck = (
     logger.log(pc.yellow(`${suspiciousFilesResults.length} suspicious file(s) detected and excluded from the output:`));
     suspiciousFilesResults.forEach((suspiciousFilesResult, index) => {
       const relativeFilePath = path.relative(rootDir, suspiciousFilesResult.filePath);
-      logger.log(`${index + 1}. ${relativeFilePath}`);
+      const indexString = `${index + 1}.`.padEnd(3, ' ');
+      logger.log(`${indexString}${relativeFilePath}`);
       const issueCount = suspiciousFilesResult.messages.length;
       const issueText = issueCount === 1 ? 'security issue' : 'security issues';
       logger.log(pc.dim(`   - ${issueCount} ${issueText} detected`));
@@ -173,7 +174,8 @@ const reportSuspiciousGitContent = (title: string, results: SuspiciousFileResult
   logger.log('');
   logger.log(pc.yellow(`${results.length} security issue(s) found in ${title}:`));
   results.forEach((suspiciousResult, index) => {
-    logger.log(`${index + 1}. ${suspiciousResult.filePath}`);
+    const indexString = `${index + 1}.`.padEnd(3, ' ');
+    logger.log(`${indexString}${suspiciousResult.filePath}`);
     const issueCount = suspiciousResult.messages.length;
     const issueText = issueCount === 1 ? 'security issue' : 'security issues';
     logger.log(pc.dim(`   - ${issueCount} ${issueText} detected`));
@@ -227,7 +229,8 @@ export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileIn
   }
 
   binaryContentFiles.forEach((file, index) => {
-    logger.log(`${index + 1}. ${file.path}`);
+    const indexString = `${index + 1}.`.padEnd(3, ' ');
+    logger.log(`${indexString}${file.path}`);
   });
 
   logger.log(pc.yellow('\nThese files have been excluded from the output.'));
