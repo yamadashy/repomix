@@ -75,22 +75,22 @@ export const reportSummary = (
         `${packResult.suspiciousFilesResults.length.toLocaleString()} suspicious file(s) detected and excluded`,
       );
     } else {
-      securityCheckMessage = pc.white('✔ No suspicious files detected');
+      securityCheckMessage = '✔ No suspicious files detected';
     }
   } else {
     securityCheckMessage = pc.dim('Security check disabled');
   }
 
-  logger.log(pc.white('📊 Pack Summary:'));
+  logger.log('📊 Pack Summary:');
   logger.log(pc.dim('────────────────'));
-  logger.log(`${pc.white('  Total Files:')} ${pc.white(packResult.totalFiles.toLocaleString())} files`);
-  logger.log(`${pc.white(' Total Tokens:')} ${pc.white(packResult.totalTokens.toLocaleString())} tokens`);
-  logger.log(`${pc.white('  Total Chars:')} ${pc.white(packResult.totalCharacters.toLocaleString())} chars`);
+  logger.log(`  Total Files: ${packResult.totalFiles.toLocaleString()} files`);
+  logger.log(` Total Tokens: ${packResult.totalTokens.toLocaleString()} tokens`);
+  logger.log(`  Total Chars: ${packResult.totalCharacters.toLocaleString()} chars`);
 
   // Show skill output path or regular output path
   if (config.skillGenerate !== undefined && options.skillDir) {
     const displayPath = getDisplayPath(options.skillDir, cwd);
-    logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)} ${pc.dim('(skill directory)')}`);
+    logger.log(`       Output: ${displayPath} ${pc.dim('(skill directory)')}`);
   } else {
     if (packResult.outputFiles && packResult.outputFiles.length > 0) {
       const first = packResult.outputFiles[0];
@@ -99,38 +99,34 @@ export const reportSummary = (
       const lastDisplayPath = getDisplayPath(path.resolve(cwd, last), cwd);
 
       logger.log(
-        `${pc.white('       Output:')} ${pc.white(firstDisplayPath)} ${pc.dim('…')} ${pc.white(lastDisplayPath)} ${pc.dim(`(${packResult.outputFiles.length} parts)`)}`,
+        `       Output: ${firstDisplayPath} ${pc.dim('…')} ${lastDisplayPath} ${pc.dim(`(${packResult.outputFiles.length} parts)`)}`,
       );
     } else {
       const outputPath = path.resolve(cwd, config.output.filePath);
       const displayPath = getDisplayPath(outputPath, cwd);
-      logger.log(`${pc.white('       Output:')} ${pc.white(displayPath)}`);
+      logger.log(`       Output: ${displayPath}`);
     }
   }
-  logger.log(`${pc.white('     Security:')} ${pc.white(securityCheckMessage)}`);
+  logger.log(`     Security: ${securityCheckMessage}`);
 
   if (config.output.git?.includeDiffs) {
     let gitDiffsMessage = '';
     if (packResult.gitDiffTokenCount) {
-      gitDiffsMessage = pc.white(
-        `✔ Git diffs included ${pc.dim(`(${packResult.gitDiffTokenCount.toLocaleString()} tokens)`)}`,
-      );
+      gitDiffsMessage = `✔ Git diffs included ${pc.dim(`(${packResult.gitDiffTokenCount.toLocaleString()} tokens)`)}`;
     } else {
       gitDiffsMessage = pc.dim('✖ No git diffs included');
     }
-    logger.log(`${pc.white('    Git Diffs:')} ${gitDiffsMessage}`);
+    logger.log(`    Git Diffs: ${gitDiffsMessage}`);
   }
 
   if (config.output.git?.includeLogs) {
     let gitLogsMessage = '';
     if (packResult.gitLogTokenCount) {
-      gitLogsMessage = pc.white(
-        `✔ Git logs included ${pc.dim(`(${packResult.gitLogTokenCount.toLocaleString()} tokens)`)}`,
-      );
+      gitLogsMessage = `✔ Git logs included ${pc.dim(`(${packResult.gitLogTokenCount.toLocaleString()} tokens)`)}`;
     } else {
       gitLogsMessage = pc.dim('✖ No git logs included');
     }
-    logger.log(`${pc.white('     Git Logs:')} ${gitLogsMessage}`);
+    logger.log(`     Git Logs: ${gitLogsMessage}`);
   }
 };
 
@@ -145,17 +141,18 @@ export const reportSecurityCheck = (
     return;
   }
 
-  logger.log(pc.white('🔎 Security Check:'));
+  logger.log('🔎 Security Check:');
   logger.log(pc.dim('──────────────────'));
 
   // Report results for files
   if (suspiciousFilesResults.length === 0) {
-    logger.log(`${pc.green('✔')} ${pc.white('No suspicious files detected.')}`);
+    logger.log(`${pc.green('✔')} No suspicious files detected.`);
   } else {
     logger.log(pc.yellow(`${suspiciousFilesResults.length} suspicious file(s) detected and excluded from the output:`));
     suspiciousFilesResults.forEach((suspiciousFilesResult, index) => {
       const relativeFilePath = path.relative(rootDir, suspiciousFilesResult.filePath);
-      logger.log(`${pc.white(`${index + 1}.`)} ${pc.white(relativeFilePath)}`);
+      const indexString = `${index + 1}.`.padEnd(3, ' ');
+      logger.log(`${indexString}${relativeFilePath}`);
       const issueCount = suspiciousFilesResult.messages.length;
       const issueText = issueCount === 1 ? 'security issue' : 'security issues';
       logger.log(pc.dim(`   - ${issueCount} ${issueText} detected`));
@@ -177,7 +174,8 @@ const reportSuspiciousGitContent = (title: string, results: SuspiciousFileResult
   logger.log('');
   logger.log(pc.yellow(`${results.length} security issue(s) found in ${title}:`));
   results.forEach((suspiciousResult, index) => {
-    logger.log(`${pc.white(`${index + 1}.`)} ${pc.white(suspiciousResult.filePath)}`);
+    const indexString = `${index + 1}.`.padEnd(3, ' ');
+    logger.log(`${indexString}${suspiciousResult.filePath}`);
     const issueCount = suspiciousResult.messages.length;
     const issueText = issueCount === 1 ? 'security issue' : 'security issues';
     logger.log(pc.dim(`   - ${issueCount} ${issueText} detected`));
@@ -193,7 +191,7 @@ export const reportTopFiles = (
   totalTokens: number,
 ) => {
   const topFilesLengthStrLen = topFilesLength.toString().length;
-  logger.log(pc.white(`📈 Top ${topFilesLength} Files by Token Count:`));
+  logger.log(`📈 Top ${topFilesLength} Files by Token Count:`);
   logger.log(pc.dim(`─────────────────────────────${'─'.repeat(topFilesLengthStrLen)}`));
 
   // Filter files that have token counts (top candidates by char count)
@@ -209,7 +207,7 @@ export const reportTopFiles = (
     const percentageOfTotal = totalTokens > 0 ? Number(((tokenCount / totalTokens) * 100).toFixed(1)) : 0;
     const indexString = `${index + 1}.`.padEnd(3, ' ');
     logger.log(
-      `${pc.white(`${indexString}`)} ${pc.white(filePath)} ${pc.dim(`(${tokenCount.toLocaleString()} tokens, ${charCount.toLocaleString()} chars, ${percentageOfTotal}%)`)}`,
+      `${indexString} ${filePath} ${pc.dim(`(${tokenCount.toLocaleString()} tokens, ${charCount.toLocaleString()} chars, ${percentageOfTotal}%)`)}`,
     );
   });
 };
@@ -221,7 +219,7 @@ export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileIn
     return;
   }
 
-  logger.log(pc.white('📄 Binary Files Detected:'));
+  logger.log('📄 Binary Files Detected:');
   logger.log(pc.dim('─────────────────────────'));
 
   if (binaryContentFiles.length === 1) {
@@ -231,7 +229,8 @@ export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileIn
   }
 
   binaryContentFiles.forEach((file, index) => {
-    logger.log(`${pc.white(`${index + 1}.`)} ${pc.white(file.path)}`);
+    const indexString = `${index + 1}.`.padEnd(3, ' ');
+    logger.log(`${indexString}${file.path}`);
   });
 
   logger.log(pc.yellow('\nThese files have been excluded from the output.'));
@@ -240,7 +239,7 @@ export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileIn
 
 export const reportCompletion = () => {
   logger.log(pc.green('🎉 All Done!'));
-  logger.log(pc.white('Your repository has been successfully packed.'));
+  logger.log('Your repository has been successfully packed.');
 
   logger.log('');
   logger.log(`💡 Repomix is now available in your browser! Try it at ${pc.underline('https://repomix.com')}`);

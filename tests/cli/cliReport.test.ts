@@ -9,7 +9,6 @@ import { createMockConfig } from '../testing/testUtils.js';
 vi.mock('../../src/shared/logger');
 vi.mock('picocolors', () => ({
   default: {
-    white: (str: string) => `WHITE:${str}`,
     dim: (str: string) => `DIM:${str}`,
     green: (str: string) => `GREEN:${str}`,
     yellow: (str: string) => `YELLOW:${str}`,
@@ -208,9 +207,9 @@ describe('cliReport', () => {
 
       reportSecurityCheck('/root', [], [], [], config);
 
-      expect(logger.log).toHaveBeenCalledWith('WHITE:🔎 Security Check:');
+      expect(logger.log).toHaveBeenCalledWith('🔎 Security Check:');
       expect(logger.log).toHaveBeenCalledWith('DIM:──────────────────');
-      expect(logger.log).toHaveBeenCalledWith('GREEN:✔ WHITE:No suspicious files detected.');
+      expect(logger.log).toHaveBeenCalledWith('GREEN:✔ No suspicious files detected.');
     });
 
     test('should print details of suspicious files when found', () => {
@@ -229,7 +228,7 @@ describe('cliReport', () => {
       reportSecurityCheck('/root', suspiciousFiles, [], [], config);
 
       expect(logger.log).toHaveBeenCalledWith('YELLOW:1 suspicious file(s) detected and excluded from the output:');
-      expect(logger.log).toHaveBeenCalledWith(`WHITE:1. WHITE:${configRelativePath}`);
+      expect(logger.log).toHaveBeenCalledWith(`1. ${configRelativePath}`);
       expect(logger.log).toHaveBeenCalledWith('DIM:   - 2 security issues detected');
       expect(logger.log).toHaveBeenCalledWith(
         expect.stringContaining('Please review these files for potential sensitive information.'),
@@ -328,7 +327,7 @@ describe('cliReport', () => {
       reportCompletion();
 
       expect(logger.log).toHaveBeenCalledWith('GREEN:🎉 All Done!');
-      expect(logger.log).toHaveBeenCalledWith('WHITE:Your repository has been successfully packed.');
+      expect(logger.log).toHaveBeenCalledWith('Your repository has been successfully packed.');
     });
   });
 });
