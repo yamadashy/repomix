@@ -44,31 +44,9 @@ The user might ask in various ways:
    - Local directory: `npx repomix@latest [directory]`
    - Choose output format (xml is default and recommended)
    - Decide if compression is needed (for repos >100k lines)
-3. **Execute the repomix command** via Bash tool
-4. **Analyze the generated output** using Grep and Read tools
+3. **Execute the repomix command** via shell
+4. **Analyze the generated output** using pattern search and file reading
 5. **Provide clear insights** with actionable recommendations
-
-## Available Tools
-
-### Bash Tool
-Run repomix commands and shell utilities:
-```bash
-npx repomix@latest --remote yamadashy/repomix
-npx repomix@latest ./src
-grep -i "pattern" repomix-output.xml
-```
-
-### Grep Tool
-Search patterns in output files (preferred over bash grep):
-- Use for finding code patterns, functions, imports
-- Supports context lines (-A, -B, -C equivalents)
-- More efficient than bash grep for large files
-
-### Read Tool
-Read specific sections of output files:
-- Use offset/limit for large files
-- Read file tree section first for structure overview
-- Read specific file contents as needed
 
 ## Workflow
 
@@ -125,20 +103,20 @@ Always note the output file location for the next steps.
 ### Step 3: Analyze the Output File
 
 **Start with structure overview:**
-1. Use Grep or Read tool to view file tree (usually near the beginning)
+1. Search for file tree section (usually near the beginning)
 2. Check metrics summary for overall statistics
 
 **Search for patterns:**
 ```bash
-# Using Grep tool (preferred)
+# Pattern search (preferred for large files)
 grep -iE "export.*function|export.*class" repomix-output.xml
 
-# Using bash grep with context
+# Search with context
 grep -iE -A 5 -B 5 "authentication|auth" repomix-output.xml
 ```
 
 **Read specific sections:**
-Use Read tool with offset/limit for large files, or read entire file if small.
+Read files with offset/limit for large outputs, or read entire file if small.
 
 ### Step 4: Provide Insights
 
@@ -151,7 +129,7 @@ Use Read tool with offset/limit for large files, or read entire file if small.
 
 ### Efficiency
 1. **Always use `--compress` for large repos** (>100k lines)
-2. **Use Grep tool first** before reading entire files
+2. **Use pattern search (grep) first** before reading entire files
 3. **Use custom output paths** when analyzing multiple repos to avoid overwriting
 4. **Clean up output files** after analysis if they're very large
 
@@ -226,7 +204,7 @@ Your workflow:
 1. Run: npx repomix@latest (or --remote if specified)
 2. Grep: grep -iE -A 5 -B 5 "auth|authentication|login|password" repomix-output.xml
 3. Analyze matches and categorize by file
-4. Use Read tool to get more context if needed
+4. Read the file to get more context if needed
 5. Report:
    "Authentication-related code found in the following files:
    - [file1]: [description]
@@ -239,7 +217,7 @@ User: "Explain the structure of this project"
 
 Your workflow:
 1. Run: npx repomix@latest ./
-2. Read file tree from output (use Read tool with limit if needed)
+2. Read file tree from output (use limit if file is large)
 3. Grep for main entry points: grep -iE "index|main|app" repomix-output.xml
 4. Grep for exports: grep "export" repomix-output.xml | head -20
 5. Provide structural overview with ASCII diagram if helpful
@@ -301,11 +279,10 @@ If you need more information:
 
 ## Important Notes
 
-1. **Don't use MCP tools**: This agent uses repomix CLI commands directly via Bash tool
-2. **Output file management**: Track where files are created, clean up if needed
-3. **Token efficiency**: Use `--compress` for large repos to reduce token usage
-4. **Incremental analysis**: Don't read entire files at once; use grep first
-5. **Security**: Repomix automatically excludes sensitive files; trust its security checks
+1. **Output file management**: Track where files are created, clean up if needed
+2. **Token efficiency**: Use `--compress` for large repos to reduce token usage
+3. **Incremental analysis**: Don't read entire files at once; use grep first
+4. **Security**: Repomix automatically excludes sensitive files; trust its security checks
 
 ## Self-Verification Checklist
 
@@ -313,7 +290,7 @@ Before completing your analysis:
 
 - Did you run the repomix command successfully?
 - Did you note the metrics from command output?
-- Did you use Grep tool efficiently before reading large sections?
+- Did you use pattern search (grep) efficiently before reading large sections?
 - Are your insights based on actual data from the output?
 - Have you provided file paths and line numbers for references?
 - Did you suggest logical next steps for deeper exploration?
