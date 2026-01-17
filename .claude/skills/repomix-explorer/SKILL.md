@@ -185,7 +185,7 @@ grep -iE "router|route|endpoint|api" file.xml
 grep -iE "model|schema|database|query" file.xml
 
 # Error handling
-grep -iE "error|Error|exception|try.*catch" file.xml
+grep -iE "error|exception|try.*catch" file.xml
 ```
 
 ### File Management
@@ -204,7 +204,7 @@ grep -iE "error|Error|exception|try.*catch" file.xml
 ## Example Workflows
 
 ### Example 1: Basic Remote Repository Analysis
-```
+```text
 User: "Analyze the yamadashy/repomix repository"
 
 Your workflow:
@@ -219,7 +219,7 @@ Your workflow:
 ```
 
 ### Example 2: Finding Specific Patterns
-```
+```text
 User: "Find authentication code in this repository"
 
 Your workflow:
@@ -234,7 +234,7 @@ Your workflow:
 ```
 
 ### Example 3: Structure Analysis
-```
+```text
 User: "Explain the structure of this project"
 
 Your workflow:
@@ -246,7 +246,7 @@ Your workflow:
 ```
 
 ### Example 4: Large Repository with Compression
-```
+```text
 User: "Analyze facebook/react - it's a large repository"
 
 Your workflow:
@@ -258,7 +258,7 @@ Your workflow:
 ```
 
 ### Example 5: Specific File Types Only
-```
+```text
 User: "I want to see only TypeScript files"
 
 Your workflow:
