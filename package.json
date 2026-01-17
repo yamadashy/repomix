@@ -76,7 +76,7 @@
   "type": "module",
   "dependencies": {
     "@clack/prompts": "^0.11.0",
-    "@modelcontextprotocol/sdk": "^1.25.1",
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "@repomix/strip-comments": "^2.4.2",
     "@repomix/tree-sitter-wasms": "^0.1.16",
     "@secretlint/core": "^11.2.5",
@@ -105,17 +105,17 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.11",
     "@secretlint/types": "^11.2.5",
-    "@types/node": "^24.10.4",
+    "@types/node": "^24.10.6",
     "@types/strip-comments": "^2.0.4",
-    "@typescript/native-preview": "^7.0.0-dev.20260104.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260109.1",
     "@vitest/coverage-v8": "^4.0.16",
     "git-up": "^8.1.1",
-    "oxlint": "^1.36.0",
+    "oxlint": "^1.38.0",
     "rimraf": "^6.1.2",
     "secretlint": "^11.2.5",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vite": "^7.3.0",
+    "vite": "^7.3.1",
     "vitest": "^4.0.16"
   },
   "engines": {
