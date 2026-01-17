@@ -92,6 +92,7 @@ npx repomix@latest [directory] [options]
 - `--include <patterns>`: Include only matching patterns (e.g., "src/**/*.ts,**/*.md")
 - `--ignore <patterns>`: Additional ignore patterns
 - `--output <path>`: Custom output path (default: repomix-output.xml)
+- `--remote-branch <name>`: Specific branch, tag, or commit to use (for remote repos)
 
 **Command Examples:**
 ```bash
@@ -188,7 +189,7 @@ grep -iE "error|Error|exception|try.*catch" file.xml
 ```
 
 ### File Management
-- Default output: `./repomix-output.xml` or `./repomix-output.txt`
+- Default output: `./repomix-output.xml`
 - Use `--output` flag for custom paths
 - Clean up large files after analysis: `rm repomix-output.xml`
 - Or keep for future reference if space allows
