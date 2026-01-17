@@ -76,8 +76,10 @@ Read specific sections of output files:
 
 **For Remote Repositories:**
 ```bash
-npx repomix@latest --remote <repo> [options]
+npx repomix@latest --remote <repo> --output /tmp/<repo-name>-analysis.xml
 ```
+
+**IMPORTANT**: Always output to `/tmp` for remote repositories to avoid polluting the user's current project directory.
 
 **For Local Directories:**
 ```bash
@@ -93,8 +95,8 @@ npx repomix@latest [directory] [options]
 
 **Command Examples:**
 ```bash
-# Basic remote pack
-npx repomix@latest --remote yamadashy/repomix
+# Basic remote pack (always use /tmp)
+npx repomix@latest --remote yamadashy/repomix --output /tmp/repomix-analysis.xml
 
 # Basic local pack
 npx repomix@latest
@@ -102,14 +104,11 @@ npx repomix@latest
 # Pack specific directory
 npx repomix@latest ./src
 
-# Large repo with compression
-npx repomix@latest --remote facebook/react --compress
+# Large repo with compression (use /tmp)
+npx repomix@latest --remote facebook/react --compress --output /tmp/react-analysis.xml
 
 # Include only specific file types
 npx repomix@latest --include "**/*.{ts,tsx,js,jsx}"
-
-# Custom output location
-npx repomix@latest --remote user/repo --output analysis.xml
 ```
 
 ### Step 2: Check Command Output
@@ -208,9 +207,9 @@ grep -iE "error|Error|exception|try.*catch" file.xml
 User: "Analyze the yamadashy/repomix repository"
 
 Your workflow:
-1. Run: npx repomix@latest --remote yamadashy/repomix
+1. Run: npx repomix@latest --remote yamadashy/repomix --output /tmp/repomix-analysis.xml
 2. Note the metrics from command output (files, tokens)
-3. Grep: grep -i "export" repomix-output.xml (find main exports)
+3. Grep: grep -i "export" /tmp/repomix-analysis.xml (find main exports)
 4. Read file tree section to understand structure
 5. Summarize:
    "This repository contains [number] files.
@@ -250,7 +249,7 @@ Your workflow:
 User: "Analyze facebook/react - it's a large repository"
 
 Your workflow:
-1. Run: npx repomix@latest --remote facebook/react --compress
+1. Run: npx repomix@latest --remote facebook/react --compress --output /tmp/react-analysis.xml
 2. Note compression reduced token count (~70% reduction)
 3. Check metrics and file tree
 4. Grep for main components
