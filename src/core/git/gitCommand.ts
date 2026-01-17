@@ -190,7 +190,9 @@ export const execGitLog = async (
  * @throws {RepomixError} If the URL is invalid or contains potentially dangerous parameters
  */
 export const validateGitUrl = (url: string): void => {
-  if (url.includes('--upload-pack') || url.includes('--config') || url.includes('--exec')) {
+  // Block dangerous git parameters that could be used for command injection
+  const dangerousParams = ['--upload-pack', '--receive-pack', '--config', '--exec'];
+  if (dangerousParams.some((param) => url.includes(param))) {
     throw new RepomixError(`Invalid repository URL. URL contains potentially dangerous parameters: ${url}`);
   }
 

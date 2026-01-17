@@ -365,18 +365,23 @@ file.txt`;
     });
   });
 
-  test('should reject URLs with dangerous parameters', async () => {
-    const mockFileExecAsync = vi.fn();
+  describe('validateGitUrl security checks', () => {
+    test.each([
+      ['--upload-pack', 'https://github.com/user/repo.git --upload-pack=evil-command'],
+      ['--receive-pack', 'https://github.com/user/repo.git --receive-pack=evil-command'],
+      ['--config', 'https://github.com/user/repo.git --config=core.sshCommand=evil-command'],
+      ['--exec', 'https://github.com/user/repo.git --exec=evil-command'],
+    ])('should reject URLs with %s parameter', async (_param, url) => {
+      const mockFileExecAsync = vi.fn();
+      const directory = '/tmp/repo';
+      const remoteBranch = undefined;
 
-    const url = 'https://github.com/user/repo.git --upload-pack=evil-command';
-    const directory = '/tmp/repo';
-    const remoteBranch = undefined;
+      await expect(
+        execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
+      ).rejects.toThrow('Invalid repository URL. URL contains potentially dangerous parameters');
 
-    await expect(
-      execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
-    ).rejects.toThrow('Invalid repository URL. URL contains potentially dangerous parameters');
-
-    expect(mockFileExecAsync).not.toHaveBeenCalled();
+      expect(mockFileExecAsync).not.toHaveBeenCalled();
+    });
   });
 
   describe('execLsRemote', () => {
