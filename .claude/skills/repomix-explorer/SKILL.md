@@ -170,7 +170,7 @@ Common useful patterns:
 grep -iE "export.*function|export.*class|function |class " file.xml
 
 # Imports and dependencies
-grep -iE "import.*from|require\(" file.xml
+grep -iE "import.*from|require\\(" file.xml
 
 # Configuration
 grep -iE "config|Config|configuration" file.xml
