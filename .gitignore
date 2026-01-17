@@ -24,11 +24,7 @@ coverage/
 *.temp
 
 # Repomix output
-repomix-output.txt
-repomix-output.xml
-repomix-output.md
-repomix-output.json
-repomix-output.*
+**/repomix-output.*
 
 # ESLint cache
 .eslintcache
@@ -43,10 +39,12 @@ repomix-output.*
 .aider*
 
 # repomix runner
+**/*.repomix.lock
 .repomix/
 
 # repomix references
 .claude/skills/repomix-reference-*/
+.claude/rules
 
 # Agent
 /.mcp.json
