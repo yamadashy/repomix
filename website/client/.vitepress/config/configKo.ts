@@ -43,6 +43,7 @@ export const configKo = defineConfig({
             { text: 'MCP 서버', link: '/ko/guide/mcp-server' },
             { text: 'Claude Code 플러그인', link: '/ko/guide/claude-code-plugins' },
             { text: 'Agent Skills 생성', link: '/ko/guide/agent-skills-generation' },
+            { text: 'Repomix Explorer Skill', link: '/ko/guide/repomix-explorer-skill' },
             { text: 'GitHub Actions', link: '/ko/guide/github-actions' },
             { text: 'Repomix를 라이브러리로 사용하기', link: '/ko/guide/development/using-repomix-as-a-library' },
             { text: 'AI 지원 개발 팁', link: '/ko/guide/tips/best-practices' },

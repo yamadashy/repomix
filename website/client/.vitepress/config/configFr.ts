@@ -43,6 +43,7 @@ export const configFr = defineConfig({
             { text: 'Serveur MCP', link: '/fr/guide/mcp-server' },
             { text: 'Plugins Claude Code', link: '/fr/guide/claude-code-plugins' },
             { text: "Génération d'Agent Skills", link: '/fr/guide/agent-skills-generation' },
+            { text: 'Repomix Explorer Skill', link: '/fr/guide/repomix-explorer-skill' },
             { text: 'GitHub Actions', link: '/fr/guide/github-actions' },
             {
               text: 'Utiliser Repomix comme bibliothèque',

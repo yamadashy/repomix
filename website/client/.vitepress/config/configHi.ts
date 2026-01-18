@@ -43,6 +43,7 @@ export const configHi = defineConfig({
             { text: 'MCP सर्वर', link: '/hi/guide/mcp-server' },
             { text: 'Claude Code प्लगइन्स', link: '/hi/guide/claude-code-plugins' },
             { text: 'Agent Skills जनरेशन', link: '/hi/guide/agent-skills-generation' },
+            { text: 'Repomix Explorer Skill', link: '/hi/guide/repomix-explorer-skill' },
             { text: 'GitHub Actions', link: '/hi/guide/github-actions' },
             { text: 'Repomix को लाइब्रेरी के रूप में उपयोग', link: '/hi/guide/development/using-repomix-as-a-library' },
             { text: 'AI-सहायक विकास टिप्स', link: '/hi/guide/tips/best-practices' },
