@@ -1,4 +1,4 @@
-# Repomix Explorer Skill
+# Repomix Explorer Skill (Agent Skills)
 
 Repomix provides a ready-to-use **Repomix Explorer** skill that enables AI coding assistants to analyze and explore codebases using Repomix CLI.
 
