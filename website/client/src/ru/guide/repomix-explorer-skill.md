@@ -16,14 +16,14 @@ npx add-skill yamadashy/repomix --skill repomix-explorer
 
 После установки вы можете анализировать кодовые базы с помощью инструкций на естественном языке.
 
-**Анализ удалённых репозиториев:**
+#### Анализ удалённых репозиториев
 
 ```text
 "What's the structure of this repo?
 https://github.com/facebook/react"
 ```
 
-**Исследование локальных кодовых баз:**
+#### Исследование локальных кодовых баз
 
 ```text
 "What's in this project?

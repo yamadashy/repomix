@@ -16,14 +16,14 @@ Perintah ini menginstal skill ke direktori skills asisten AI Anda (misalnya `.cl
 
 Setelah diinstal, Anda dapat menganalisis codebase dengan instruksi bahasa alami.
 
-**Analisis repository jarak jauh:**
+#### Analisis repository jarak jauh
 
 ```text
 "What's the structure of this repo?
 https://github.com/facebook/react"
 ```
 
-**Jelajahi codebase lokal:**
+#### Jelajahi codebase lokal
 
 ```text
 "What's in this project?

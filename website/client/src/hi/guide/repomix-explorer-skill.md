@@ -16,14 +16,14 @@ npx add-skill yamadashy/repomix --skill repomix-explorer
 
 इंस्टॉल होने के बाद, आप प्राकृतिक भाषा निर्देशों के साथ कोडबेस का विश्लेषण कर सकते हैं।
 
-**रिमोट रिपॉजिटरी का विश्लेषण करें:**
+#### रिमोट रिपॉजिटरी का विश्लेषण करें
 
 ```text
 "What's the structure of this repo?
 https://github.com/facebook/react"
 ```
 
-**लोकल कोडबेस का अन्वेषण करें:**
+#### लोकल कोडबेस का अन्वेषण करें
 
 ```text
 "What's in this project?

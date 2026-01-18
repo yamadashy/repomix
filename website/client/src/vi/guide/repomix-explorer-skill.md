@@ -16,14 +16,14 @@ Lệnh này cài đặt skill vào thư mục skills của trợ lý AI của b�
 
 Sau khi cài đặt, bạn có thể phân tích codebase bằng các hướng dẫn ngôn ngữ tự nhiên.
 
-**Phân tích repository từ xa:**
+#### Phân tích repository từ xa
 
 ```text
 "What's the structure of this repo?
 https://github.com/facebook/react"
 ```
 
-**Khám phá codebase cục bộ:**
+#### Khám phá codebase cục bộ
 
 ```text
 "What's in this project?

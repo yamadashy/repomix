@@ -16,14 +16,14 @@ Dieser Befehl installiert den Skill in das Skills-Verzeichnis Ihres KI-Assistent
 
 Nach der Installation können Sie Codebasen mit natürlichen Sprachanweisungen analysieren.
 
-**Remote-Repositories analysieren:**
+#### Remote-Repositories analysieren
 
 ```text
 "What's the structure of this repo?
 https://github.com/facebook/react"
 ```
 
-**Lokale Codebasen erkunden:**
+#### Lokale Codebasen erkunden
 
 ```text
 "What's in this project?

@@ -16,14 +16,14 @@ Este comando instala o skill no diretório de skills do seu assistente de IA (ex
 
 Uma vez instalado, você pode analisar bases de código com instruções em linguagem natural.
 
-**Analisar repositórios remotos:**
+#### Analisar repositórios remotos
 
 ```text
 "What's the structure of this repo?
 https://github.com/facebook/react"
 ```
 
-**Explorar bases de código locais:**
+#### Explorar bases de código locais
 
 ```text
 "What's in this project?

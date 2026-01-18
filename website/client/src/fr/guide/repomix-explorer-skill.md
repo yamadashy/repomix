@@ -16,14 +16,14 @@ Cette commande installe le skill dans le répertoire des skills de votre assista
 
 Une fois installé, vous pouvez analyser des bases de code avec des instructions en langage naturel.
 
-**Analyser des dépôts distants:**
+#### Analyser des dépôts distants
 
 ```text
 "What's the structure of this repo?
 https://github.com/facebook/react"
 ```
 
-**Explorer des bases de code locales:**
+#### Explorer des bases de code locales
 
 ```text
 "What's in this project?

@@ -16,14 +16,14 @@ npx add-skill yamadashy/repomix --skill repomix-explorer
 
 安裝後，您可以使用自然語言指令分析程式碼庫。
 
-**分析遠端倉庫：**
+#### 分析遠端倉庫
 
 ```text
 "What's the structure of this repo?
 https://github.com/facebook/react"
 ```
 
-**探索本地程式碼庫：**
+#### 探索本地程式碼庫
 
 ```text
 "What's in this project?

@@ -16,14 +16,14 @@ Questo comando installa lo skill nella directory degli skill del tuo assistente 
 
 Una volta installato, puoi analizzare codebase con istruzioni in linguaggio naturale.
 
-**Analizzare repository remoti:**
+#### Analizzare repository remoti
 
 ```text
 "What's the structure of this repo?
 https://github.com/facebook/react"
 ```
 
-**Esplorare codebase locali:**
+#### Esplorare codebase locali
 
 ```text
 "What's in this project?

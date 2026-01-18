@@ -16,14 +16,14 @@ This command installs the skill to your AI assistant's skills directory (e.g., `
 
 Once installed, you can analyze codebases with natural language instructions.
 
-**Analyze remote repositories:**
+#### Analyze remote repositories
 
 ```text
 "What's the structure of this repo?
 https://github.com/facebook/react"
 ```
 
-**Explore local codebases:**
+#### Explore local codebases
 
 ```text
 "What's in this project?
