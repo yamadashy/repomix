@@ -43,6 +43,7 @@ export const configEnUs = defineConfig({
             { text: 'MCP Server', link: '/guide/mcp-server' },
             { text: 'Claude Code Plugins', link: '/guide/claude-code-plugins' },
             { text: 'Agent Skills Generation', link: '/guide/agent-skills-generation' },
+            { text: 'Repomix Explorer Skill', link: '/guide/repomix-explorer-skill' },
             { text: 'GitHub Actions', link: '/guide/github-actions' },
             { text: 'Using Repomix as a Library', link: '/guide/development/using-repomix-as-a-library' },
             { text: 'AI-Assisted Development Tips', link: '/guide/tips/best-practices' },

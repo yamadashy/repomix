@@ -1193,6 +1193,38 @@ repomix --skill-generate --compress
 repomix --remote yamadashy/repomix --skill-generate
 ```
 
+### Repomix Explorer Skill (Agent Skills)
+
+Repomix provides a ready-to-use **Repomix Explorer** skill that enables AI coding assistants to analyze and explore codebases using Repomix CLI. This skill is designed to work with various AI tools including Claude Code, Cursor, Codex, GitHub Copilot, and more.
+
+#### Quick Install
+
+```bash
+npx add-skill yamadashy/repomix --skill repomix-explorer
+```
+
+This command installs the skill to your AI assistant's skills directory (e.g., `.claude/skills/`), making it immediately available.
+
+#### What It Does
+
+Once installed, you can analyze codebases with natural language instructions.
+
+Analyze remote repositories:
+
+```text
+"What's the structure of this repo?
+https://github.com/facebook/react"
+```
+
+Explore local codebases:
+
+```text
+"What's in this project?
+~/projects/my-app"
+```
+
+This is useful not only for understanding codebases, but also when you want to implement features by referencing your other repositories.
+
 ## ⚙️ Configuration
 
 Repomix supports multiple configuration file formats for flexibility and ease of use.

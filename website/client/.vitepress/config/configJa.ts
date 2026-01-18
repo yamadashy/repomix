@@ -41,6 +41,7 @@ export const configJa = defineConfig({
             { text: 'MCPサーバー', link: '/ja/guide/mcp-server' },
             { text: 'Claude Codeプラグイン', link: '/ja/guide/claude-code-plugins' },
             { text: 'Agent Skills生成', link: '/ja/guide/agent-skills-generation' },
+            { text: 'Repomix Explorer Skill', link: '/ja/guide/repomix-explorer-skill' },
             { text: 'GitHub Actions', link: '/ja/guide/github-actions' },
             { text: 'ライブラリとしての使用', link: '/ja/guide/development/using-repomix-as-a-library' },
             { text: 'AI支援開発のヒント', link: '/ja/guide/tips/best-practices' },

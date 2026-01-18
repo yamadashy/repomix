@@ -43,6 +43,7 @@ export const configVi = defineConfig({
             { text: 'Máy chủ MCP', link: '/vi/guide/mcp-server' },
             { text: 'Plugin Claude Code', link: '/vi/guide/claude-code-plugins' },
             { text: 'Tạo Agent Skills', link: '/vi/guide/agent-skills-generation' },
+            { text: 'Repomix Explorer Skill', link: '/vi/guide/repomix-explorer-skill' },
             { text: 'GitHub Actions', link: '/vi/guide/github-actions' },
             {
               text: 'Sử dụng Repomix như một thư viện',
