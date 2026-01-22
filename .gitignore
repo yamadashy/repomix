@@ -4,7 +4,9 @@ node_modules/
 # Build output
 lib/
 website/client/.vitepress/dist/
+website/client/.vitepress/cache/
 website/server/dist/
+website/server/.compile-cache/
 
 # Logs
 *.log
