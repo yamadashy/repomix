@@ -10,7 +10,9 @@ steps:
       - '$_REGION-docker.pkg.dev/$PROJECT_ID/repomix/server:latest'
       - '--build-arg'
       - 'NODE_ENV=production'
-      - '.'
+      - '-f'
+      - 'website/server/Dockerfile'
+      - 'website/server'
 
   # Push the container image
   - name: 'gcr.io/cloud-builders/docker'
