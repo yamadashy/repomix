@@ -1,3 +1,23 @@
+/**
+ * File parsing using tree-sitter for the compress feature.
+ *
+ * Why we use web-tree-sitter (WASM) instead of node-tree-sitter (native bindings):
+ *
+ * 1. Cross-platform compatibility: WASM works identically across all platforms
+ *    without requiring native compilation.
+ *
+ * 2. Easy installation: No build tools (Python, C++ compiler, node-gyp) required.
+ *    Users can install Repomix with just `npm install` on any environment.
+ *
+ * 3. Fewer dependencies: All language parsers are bundled in a single package
+ *    (@repomix/tree-sitter-wasms) instead of 15+ separate native packages.
+ *
+ * 4. Reliability: Native modules can fail to build on certain Node.js versions
+ *    (e.g., Node.js v23 has known issues with node-tree-sitter).
+ *
+ * The performance overhead of WASM is acceptable for the compress feature's use case.
+ */
+
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { SupportedLang } from './languageConfig.js';
