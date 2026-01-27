@@ -16,7 +16,7 @@
   "dependencies": {
     "@hono/node-server": "^1.19.8",
     "fflate": "^0.8.2",
-    "hono": "^4.11.4",
+    "hono": "^4.11.7",
     "repomix": "github:yamadashy/repomix#main",
     "winston": "^3.19.0",
     "zod": "^4.3.5"
