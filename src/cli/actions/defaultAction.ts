@@ -8,6 +8,7 @@ import {
   repomixConfigCliSchema,
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
+import { acquireLock, FileLockError, releaseLock } from '../../core/lock/index.js';
 import type { PackResult } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
@@ -104,6 +105,21 @@ export const runDefaultAction = async (
     logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
   }
 
+  // Acquire lock for the working directory (skip for stdout mode)
+  const isStdoutMode = config.output.stdout === true;
+  let lockPath: string | undefined;
+
+  if (!isStdoutMode) {
+    try {
+      lockPath = await acquireLock(cwd);
+    } catch (error) {
+      if (error instanceof FileLockError) {
+        throw new RepomixError(error.message);
+      }
+      throw error;
+    }
+  }
+
   // Create worker task runner
   const taskRunner = initTaskRunner<DefaultActionTask | PingTask, DefaultActionWorkerResult | PingResult>({
     numOfTasks: 1,
@@ -137,6 +153,11 @@ export const runDefaultAction = async (
   } finally {
     // Always cleanup worker pool
     await taskRunner.cleanup();
+
+    // Release lock if acquired
+    if (lockPath) {
+      await releaseLock(lockPath);
+    }
   }
 };
 
