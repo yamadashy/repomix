@@ -368,9 +368,9 @@ dd {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 12px 16px;
-  background: linear-gradient(135deg, var(--vp-c-brand-soft) 0%, var(--vp-c-bg-soft) 100%);
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--vp-c-bg-soft);
   border-top: 1px solid var(--vp-c-border);
 }
 
@@ -401,6 +401,10 @@ dd {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  background: var(--vp-c-bg);
+  border: 1px solid var(--vp-c-border);
+  border-radius: 4px;
+  padding: 4px 8px;
 }
 
 .cli-banner-copy {

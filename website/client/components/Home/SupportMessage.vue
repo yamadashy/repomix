@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { HeartHandshake, Star } from 'lucide-vue-next';
+import { Star } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const messages = [
@@ -26,73 +26,50 @@ const supportMessage = computed(() => messages[currentMessageIndex.value]);
 </script>
 
 <template>
-  <div class="support-notice">
-    <div class="support-message">
-      <a :href="supportMessage.link" target="_blank" rel="noopener noreferrer" class="support-link">
-        <component :is="supportMessage.icon" :size="14" class="support-icon" />
-        <span class="link-text">{{ supportMessage.linkText }}</span>{{ supportMessage.suffix }}
-      </a>
-    </div>
+  <div class="support-banner">
+    <a :href="supportMessage.link" target="_blank" rel="noopener noreferrer" class="support-link">
+      <component :is="supportMessage.icon" :size="14" class="support-icon" />
+      <span class="link-text">{{ supportMessage.linkText }}</span>{{ supportMessage.suffix }}
+    </a>
   </div>
 </template>
 
 <style scoped>
-.support-notice {
-  padding: 8px;
-  background: var(--vp-c-bg-soft);
-  border-top: 1px solid var(--vp-c-border);
+.support-banner {
   display: flex;
-  justify-content: center;
   align-items: center;
-  text-align: center;
-  min-height: 45px;
+  justify-content: center;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(255, 140, 0, 0.05) 0%, var(--vp-c-bg-soft) 100%);
+  border-top: 1px solid var(--vp-c-border);
 }
 
-.support-message {
+.support-link {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: var(--vp-c-text-2);
+  gap: 6px;
   font-size: 12px;
-  width: 100%;
+  color: var(--vp-c-text-2);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.support-link:hover {
+  color: var(--vp-c-text-1);
 }
 
 .support-icon {
   flex-shrink: 0;
-  transition: color 0.3s ease;
   color: v-bind('supportMessage.color');
-}
-
-.support-link {
-  text-decoration: none;
-  font-weight: normal;
-  transition: color 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.support-link:hover {
-  color: var(--vp-c-brand-1);
 }
 
 .link-text {
   text-decoration: underline;
   text-decoration-color: var(--vp-c-text-3);
-  transition: text-decoration-color 0.3s ease;
+  transition: text-decoration-color 0.2s ease;
 }
 
 .support-link:hover .link-text {
-  text-decoration-color: var(--vp-c-brand-1);
-}
-
-@media (max-width: 768px) {
-  .support-notice {
-    padding: 16px;
-  }
-
-  .support-message {
-    max-width: 100%;
-  }
+  text-decoration-color: var(--vp-c-text-1);
 }
 </style>
