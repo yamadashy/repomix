@@ -95,6 +95,7 @@
           :error="error"
           :error-type="errorType"
           :repository-url="inputRepositoryUrl"
+          :pack-options="packOptions"
           @repack="handleRepack"
         />
       </div>

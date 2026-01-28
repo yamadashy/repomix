@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import { AlertCircle, AlertTriangle, Copy } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import type { PackOptions } from '../../composables/usePackOptions';
+import { generateCliCommand } from '../utils/cliCommand';
 
 const props = defineProps<{
   message: string;
   repositoryUrl?: string;
   errorType?: 'error' | 'warning';
+  packOptions?: PackOptions;
 }>();
 
 const copied = ref(false);
 const commandWithRepo = computed(() => {
-  const baseCommand = 'npx repomix --remote';
-  return props.repositoryUrl ? `${baseCommand} ${props.repositoryUrl}` : `${baseCommand} <repository-url>`;
+  if (!props.repositoryUrl) {
+    return 'npx repomix --remote <repository-url>';
+  }
+  return generateCliCommand(props.repositoryUrl, props.packOptions);
 });
 
 const copyCommand = async (event: Event) => {
