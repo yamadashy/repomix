@@ -212,3 +212,27 @@ export const validateGitUrl = (url: string): void => {
     throw new RepomixError(`Invalid repository URL. Please provide a valid URL: ${redactedUrl}`);
   }
 };
+
+/**
+ * Executes git blame for a specific file
+ * @param directory - The repository directory
+ * @param filePath - Path to the file to blame
+ * @param deps - Dependencies
+ * @returns The raw git blame output
+ */
+export const execGitBlame = async (
+  directory: string,
+  filePath: string,
+  deps = {
+    execFileAsync,
+  },
+): Promise<string> => {
+  try {
+    const result = await deps.execFileAsync('git', ['-C', directory, 'blame', '--porcelain', '-w', filePath]);
+
+    return result.stdout || '';
+  } catch (error) {
+    logger.trace(`Failed to run git blame on ${filePath} in ${directory}:`, (error as Error).message);
+    return '';
+  }
+};
