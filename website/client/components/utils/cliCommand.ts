@@ -1,11 +1,15 @@
-import type { PackOptions } from '../../composables/usePackOptions';
+import type { PackOptions } from '../../composables/usePackOptions.js';
+import { isValidRemoteValue } from './validation.js';
+
+// Escape a string for safe use in shell commands
+const shellEscape = (value: string): string => `'${value.replace(/'/g, "'\\''")}'`;
 
 export function generateCliCommand(repositoryUrl: string | undefined, packOptions?: PackOptions): string {
   const parts: string[] = ['npx repomix'];
 
-  // Add remote repository URL
-  if (repositoryUrl) {
-    parts.push(`--remote ${repositoryUrl}`);
+  // Add remote repository URL (only for valid remote values, not uploaded file names)
+  if (repositoryUrl && isValidRemoteValue(repositoryUrl)) {
+    parts.push(`--remote ${shellEscape(repositoryUrl)}`);
   }
 
   // Only add options if packOptions is provided
@@ -42,10 +46,10 @@ export function generateCliCommand(repositoryUrl: string | undefined, packOption
 
     // String options
     if (packOptions.includePatterns?.trim()) {
-      parts.push(`--include "${packOptions.includePatterns.trim()}"`);
+      parts.push(`--include ${shellEscape(packOptions.includePatterns.trim())}`);
     }
     if (packOptions.ignorePatterns?.trim()) {
-      parts.push(`--ignore "${packOptions.ignorePatterns.trim()}"`);
+      parts.push(`--ignore ${shellEscape(packOptions.ignorePatterns.trim())}`);
     }
   }
 
