@@ -1,10 +1,22 @@
-import type { PackOptions } from '../../composables/usePackOptions.js';
 import { isValidRemoteValue } from './validation.js';
+
+export interface CliCommandPackOptions {
+  format?: string;
+  removeComments?: boolean;
+  removeEmptyLines?: boolean;
+  showLineNumbers?: boolean;
+  fileSummary?: boolean;
+  directoryStructure?: boolean;
+  includePatterns?: string;
+  ignorePatterns?: string;
+  outputParsable?: boolean;
+  compress?: boolean;
+}
 
 // Escape a string for safe use in shell commands
 const shellEscape = (value: string): string => `'${value.replace(/'/g, "'\\''")}'`;
 
-export function generateCliCommand(repositoryUrl: string | undefined, packOptions?: PackOptions): string {
+export function generateCliCommand(repositoryUrl: string | undefined, packOptions?: CliCommandPackOptions): string {
   const parts: string[] = ['npx repomix'];
 
   // Add remote repository URL (only for valid remote values, not uploaded file names)

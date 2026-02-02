@@ -1,20 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { generateCliCommand } from '../../website/client/components/utils/cliCommand.js';
+import { type CliCommandPackOptions, generateCliCommand } from '../../website/client/components/utils/cliCommand.js';
 
-interface PackOptionsForTest {
-  format: 'xml' | 'markdown' | 'plain';
-  removeComments: boolean;
-  removeEmptyLines: boolean;
-  showLineNumbers: boolean;
-  fileSummary: boolean;
-  directoryStructure: boolean;
-  includePatterns: string;
-  ignorePatterns: string;
-  outputParsable: boolean;
-  compress: boolean;
-}
-
-const createOptions = (overrides: Partial<PackOptionsForTest> = {}): PackOptionsForTest => ({
+const createOptions = (overrides: Partial<CliCommandPackOptions> = {}): CliCommandPackOptions => ({
   format: 'xml',
   removeComments: false,
   removeEmptyLines: false,
