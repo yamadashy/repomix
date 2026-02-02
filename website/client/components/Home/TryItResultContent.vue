@@ -2,11 +2,13 @@
 import ace, { type Ace } from 'ace-builds';
 import themeTomorrowUrl from 'ace-builds/src-noconflict/theme-tomorrow?url';
 import themeTomorrowNightUrl from 'ace-builds/src-noconflict/theme-tomorrow_night?url';
-import { BarChart2, Copy, Download, GitFork, PackageSearch, Share } from 'lucide-vue-next';
+import { BarChart2, Copy, Download, GitFork, PackageSearch, Share, Terminal } from 'lucide-vue-next';
 import { useData } from 'vitepress';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { VAceEditor } from 'vue3-ace-editor';
+import type { PackOptions } from '../../composables/usePackOptions';
 import type { PackResult } from '../api/client';
+import { generateCliCommand } from '../utils/cliCommand';
 import {
   canShareFiles,
   copyToClipboard,
@@ -25,6 +27,7 @@ const darkTheme = 'tomorrow_night';
 
 const props = defineProps<{
   result: PackResult;
+  packOptions?: PackOptions;
 }>();
 
 const copied = ref(false);
@@ -50,6 +53,28 @@ watch(isDark, (newIsDark) => {
 const formattedTimestamp = computed(() => {
   return formatTimestamp(props.result.metadata.timestamp);
 });
+
+// Generate CLI command for local execution
+const cliCommand = computed(() => {
+  return generateCliCommand(props.result.metadata.repository, props.packOptions);
+});
+
+const commandCopied = ref(false);
+
+const handleCopyCommand = async (event: Event) => {
+  event.preventDefault();
+  event.stopPropagation();
+
+  try {
+    await navigator.clipboard.writeText(cliCommand.value);
+    commandCopied.value = true;
+    setTimeout(() => {
+      commandCopied.value = false;
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy command:', err);
+  }
+};
 
 const handleCopy = async (event: Event) => {
   event.preventDefault();
@@ -179,6 +204,7 @@ onUnmounted(() => {
           </li>
         </ol>
       </div>
+
     </div>
 
     <div class="output-panel">
@@ -225,6 +251,21 @@ onUnmounted(() => {
           @mount="handleEditorMount"
         />
       </div>
+    </div>
+    <div class="cli-banner">
+      <div class="cli-banner-content">
+        <Terminal :size="16" class="cli-banner-icon" />
+        <span class="cli-banner-label">Run locally:</span>
+        <code class="cli-banner-command">{{ cliCommand }}</code>
+      </div>
+      <button
+        class="cli-banner-copy"
+        @click="handleCopyCommand"
+        :class="{ copied: commandCopied }"
+      >
+        <Copy :size="14" />
+        <span>{{ commandCopied ? 'Copied!' : 'Copy' }}</span>
+      </button>
     </div>
     <div class="support-wrapper">
       <SupportMessage />
@@ -320,6 +361,97 @@ dd {
   color: var(--vp-c-text-1);
   display: flex;
   align-items: center;
+}
+
+.cli-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--vp-c-bg-soft);
+  border-top: 1px solid var(--vp-c-border);
+}
+
+.cli-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cli-banner-icon {
+  color: var(--vp-c-brand-1);
+  flex-shrink: 0;
+}
+
+.cli-banner-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--vp-c-text-2);
+  flex-shrink: 0;
+}
+
+.cli-banner-command {
+  font-size: 13px;
+  font-family: var(--vp-font-family-mono);
+  color: var(--vp-c-text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--vp-c-bg);
+  border: 1px solid var(--vp-c-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.cli-banner-copy {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--vp-c-brand-1);
+  border-radius: 6px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-brand-1);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cli-banner-copy:hover {
+  background: var(--vp-c-brand-1);
+  color: white;
+}
+
+.cli-banner-copy.copied {
+  background: var(--vp-c-brand-1);
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .cli-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .cli-banner-content {
+    flex-wrap: wrap;
+  }
+
+  .cli-banner-command {
+    white-space: normal;
+    word-break: break-all;
+  }
+
+  .cli-banner-copy {
+    justify-content: center;
+  }
 }
 
 .output-panel {
