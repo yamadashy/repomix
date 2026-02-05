@@ -20,7 +20,7 @@
    <br>
 
    <a href="https://git-tower.com/?utm_source=repomix&utm_medium=referral">
-      <img alt="Tower sponsorship" height="225" src="website/client/src/public/images/sponsors/tower/tower-dock-icon-dark.png">
+      <img alt="Tower sponsorship" height="225" src="website/client/src/public/images/sponsors/tower/tower-dock-icon-light.png">
    </a>
 
 ### [Tower, the most powerful Git client for Mac and Windows](https://git-tower.com/?utm_source=repomix&utm_medium=referral)
