@@ -28,3 +28,10 @@
 </div>
 
 [![Sponsors](https://cdn.jsdelivr.net/gh/yamadashy/sponsor-list/sponsors/sponsors.png)](https://github.com/sponsors/yamadashy)
+
+<div align="center" style="margin: 8px 0 0;">
+  <p style="margin: 0 0 12px;">Please consider sponsoring me.</p>
+  <a href="https://github.com/sponsors/yamadashy" target="_blank">
+    <img alt="Sponsor" src="/images/github-like-sponsor-button.svg" height="28">
+  </a>
+</div>
