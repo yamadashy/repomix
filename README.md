@@ -1158,7 +1158,7 @@ When you run the command, Repomix prompts you to choose where to save the Skills
 
 #### Non-Interactive Usage
 
-For CI pipelines and automation scripts, you can skip all interactive prompts:
+For CI pipelines and automation scripts, you can skip all interactive prompts using `--skill-output` and `--force`:
 
 ```bash
 # Specify output directory directly

@@ -59,8 +59,8 @@ repomix --remote user/repo --skill-generate my-skill --skill-output ./output --f
 
 | Opción | Descripción |
 | --- | --- |
-| `--skill-output <path>` | Especificar directamente la ruta del directorio de salida de skills (omite la solicitud de ubicación) |
-| `-f, --force` | Omitir todas las solicitudes de confirmación (ej.: sobrescritura del directorio de skills) |
+| `--skill-output <path>` | Especificar directamente la ruta del directorio de salida de skills (omite la solicitud de ubicación). |
+| `-f, --force` | Omitir todas las solicitudes de confirmación (ej.: sobrescritura del directorio de skills). |
 
 ## Estructura Generada
 
