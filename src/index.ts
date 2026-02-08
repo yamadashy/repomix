@@ -13,7 +13,12 @@ export type { FileSearchResult } from './core/file/fileSearch.js';
 export { generateFileTree, generateTreeString, treeToString, type TreeNode } from './core/file/fileTreeGenerate.js';
 
 // Git
-export { isValidRemoteValue, isValidShorthand, parseRemoteValue } from './core/git/gitRemoteParse.js';
+export {
+  isExplicitRemoteUrl,
+  isValidRemoteValue,
+  isValidShorthand,
+  parseRemoteValue,
+} from './core/git/gitRemoteParse.js';
 
 // Security
 export { runSecurityCheck } from './core/security/securityCheck.js';
