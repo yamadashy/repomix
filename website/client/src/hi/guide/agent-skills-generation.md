@@ -42,6 +42,26 @@ repomix --remote https://github.com/user/repo --skill-generate
 > .claude/skills/repomix-reference-*/
 > ```
 
+## गैर-इंटरैक्टिव उपयोग
+
+CI पाइपलाइन और ऑटोमेशन स्क्रिप्ट के लिए, आप `--skill-output` और `--force` का उपयोग करके सभी इंटरैक्टिव प्रॉम्प्ट को छोड़ सकते हैं:
+
+```bash
+# आउटपुट डायरेक्टरी सीधे निर्दिष्ट करें (स्थान चयन प्रॉम्प्ट छोड़ें)
+repomix --skill-generate --skill-output ./my-skills
+
+# --force से ओवरराइट पुष्टि छोड़ें
+repomix --skill-generate --skill-output ./my-skills --force
+
+# पूर्ण गैर-इंटरैक्टिव उदाहरण
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| विकल्प | विवरण |
+| --- | --- |
+| `--skill-output <path>` | स्किल आउटपुट डायरेक्टरी पथ सीधे निर्दिष्ट करें (स्थान प्रॉम्प्ट छोड़ें) |
+| `-f, --force` | सभी पुष्टि प्रॉम्प्ट छोड़ें (जैसे: स्किल डायरेक्टरी ओवरराइट) |
+
 ## जनरेटेड स्ट्रक्चर
 
 Skills निम्नलिखित स्ट्रक्चर के साथ जनरेट होते हैं:

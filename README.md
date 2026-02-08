@@ -669,6 +669,8 @@ Instruction
 
 #### Agent Skills Generation
 - `--skill-generate [name]`: Generate Claude Agent Skills format output to `.claude/skills/<name>/` directory (name auto-generated if omitted)
+- `--skill-output <path>`: Specify skill output directory path directly (skips location prompt)
+- `-f, --force`: Skip all confirmation prompts (e.g., skill directory overwrite)
 
 #### Examples
 
@@ -1153,6 +1155,21 @@ When you run the command, Repomix prompts you to choose where to save the Skills
 
 1. **Personal Skills** (`~/.claude/skills/`) - Available across all projects on your machine
 2. **Project Skills** (`.claude/skills/`) - Shared with your team via git
+
+#### Non-Interactive Usage
+
+For CI pipelines and automation scripts, you can skip all interactive prompts:
+
+```bash
+# Specify output directory directly
+repomix --skill-generate --skill-output ./my-skills
+
+# Skip overwrite confirmation with --force
+repomix --skill-generate --skill-output ./my-skills --force
+
+# Full non-interactive example
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
 
 #### Generated Structure
 

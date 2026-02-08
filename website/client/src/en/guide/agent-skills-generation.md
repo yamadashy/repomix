@@ -42,6 +42,26 @@ If the Skills directory already exists, you'll be prompted to confirm overwritin
 > .claude/skills/repomix-reference-*/
 > ```
 
+## Non-Interactive Usage
+
+For CI pipelines and automation scripts, you can skip all interactive prompts using `--skill-output` and `--force`:
+
+```bash
+# Specify output directory directly (skips location prompt)
+repomix --skill-generate --skill-output ./my-skills
+
+# Skip overwrite confirmation with --force
+repomix --skill-generate --skill-output ./my-skills --force
+
+# Full non-interactive example
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| Option | Description |
+| --- | --- |
+| `--skill-output <path>` | Specify skill output directory path directly (skips location prompt) |
+| `-f, --force` | Skip all confirmation prompts (e.g., skill directory overwrite) |
+
 ## Generated Structure
 
 The Skills are generated with the following structure:

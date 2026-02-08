@@ -42,6 +42,26 @@ Si le répertoire Skills existe déjà, on vous demandera de confirmer l'écrase
 > .claude/skills/repomix-reference-*/
 > ```
 
+## Utilisation non interactive
+
+Pour les pipelines CI et les scripts d'automatisation, vous pouvez ignorer toutes les invites interactives en utilisant `--skill-output` et `--force` :
+
+```bash
+# Spécifier directement le répertoire de sortie (ignore l'invite de sélection d'emplacement)
+repomix --skill-generate --skill-output ./my-skills
+
+# Ignorer la confirmation de remplacement avec --force
+repomix --skill-generate --skill-output ./my-skills --force
+
+# Exemple non interactif complet
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| Option | Description |
+| --- | --- |
+| `--skill-output <path>` | Spécifier directement le chemin du répertoire de sortie des skills (ignore l'invite d'emplacement) |
+| `-f, --force` | Ignorer toutes les invites de confirmation (ex : remplacement du répertoire de skills) |
+
 ## Structure Générée
 
 Les Skills sont générés avec la structure suivante :

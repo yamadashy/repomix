@@ -42,6 +42,26 @@ Skillsディレクトリが既に存在する場合は、上書きの確認が�
 > .claude/skills/repomix-reference-*/
 > ```
 
+## 非インタラクティブ利用
+
+CIパイプラインや自動化スクリプトでは、`--skill-output`と`--force`を使用してすべてのインタラクティブプロンプトをスキップできます：
+
+```bash
+# 出力ディレクトリを直接指定（ロケーションプロンプトをスキップ）
+repomix --skill-generate --skill-output ./my-skills
+
+# --forceで上書き確認をスキップ
+repomix --skill-generate --skill-output ./my-skills --force
+
+# 完全な非インタラクティブ例
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| オプション | 説明 |
+| --- | --- |
+| `--skill-output <path>` | スキル出力ディレクトリパスを直接指定（ロケーションプロンプトをスキップ） |
+| `-f, --force` | すべての確認プロンプトをスキップ（例：スキルディレクトリの上書き） |
+
 ## 生成される構造
 
 Skillsは以下の構造で生成されます：

@@ -42,6 +42,26 @@ Si el directorio de Skills ya existe, se le pedirá confirmar la sobrescritura.
 > .claude/skills/repomix-reference-*/
 > ```
 
+## Uso no interactivo
+
+Para pipelines de CI y scripts de automatización, puede omitir todas las solicitudes interactivas usando `--skill-output` y `--force`:
+
+```bash
+# Especificar directamente el directorio de salida (omite la solicitud de ubicación)
+repomix --skill-generate --skill-output ./my-skills
+
+# Omitir la confirmación de sobrescritura con --force
+repomix --skill-generate --skill-output ./my-skills --force
+
+# Ejemplo no interactivo completo
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| Opción | Descripción |
+| --- | --- |
+| `--skill-output <path>` | Especificar directamente la ruta del directorio de salida de skills (omite la solicitud de ubicación) |
+| `-f, --force` | Omitir todas las solicitudes de confirmación (ej.: sobrescritura del directorio de skills) |
+
 ## Estructura Generada
 
 Los Skills se generan con la siguiente estructura:
