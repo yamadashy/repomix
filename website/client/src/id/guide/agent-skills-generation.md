@@ -42,6 +42,26 @@ Jika direktori Skills sudah ada, Anda akan diminta untuk mengkonfirmasi penimpaa
 > .claude/skills/repomix-reference-*/
 > ```
 
+## Penggunaan Non-Interaktif
+
+Untuk pipeline CI dan skrip otomasi, Anda dapat melewati semua prompt interaktif menggunakan `--skill-output` dan `--force`:
+
+```bash
+# Tentukan direktori output secara langsung (melewati prompt pemilihan lokasi)
+repomix --skill-generate --skill-output ./my-skills
+
+# Lewati konfirmasi penimpaan dengan --force
+repomix --skill-generate --skill-output ./my-skills --force
+
+# Contoh non-interaktif lengkap
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| Opsi | Deskripsi |
+| --- | --- |
+| `--skill-output <path>` | Tentukan jalur direktori output skill secara langsung (melewati prompt lokasi) |
+| `-f, --force` | Lewati semua prompt konfirmasi (misalnya: penimpaan direktori skill) |
+
 ## Struktur yang Dihasilkan
 
 Skills dihasilkan dengan struktur berikut:

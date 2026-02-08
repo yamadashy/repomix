@@ -42,6 +42,26 @@ Se la directory Skills esiste già, ti verrà chiesto di confermare la sovrascri
 > .claude/skills/repomix-reference-*/
 > ```
 
+## Utilizzo non interattivo
+
+Per pipeline CI e script di automazione, è possibile saltare tutti i prompt interattivi utilizzando `--skill-output` e `--force`:
+
+```bash
+# Specificare direttamente la directory di output (salta il prompt di selezione posizione)
+repomix --skill-generate --skill-output ./my-skills
+
+# Saltare la conferma di sovrascrittura con --force
+repomix --skill-generate --skill-output ./my-skills --force
+
+# Esempio non interattivo completo
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| Opzione | Descrizione |
+| --- | --- |
+| `--skill-output <path>` | Specifica direttamente il percorso della directory di output delle skill (salta il prompt di posizione) |
+| `-f, --force` | Salta tutti i prompt di conferma (es.: sovrascrittura della directory delle skill) |
+
 ## Struttura Generata
 
 Gli Skills vengono generati con la seguente struttura:

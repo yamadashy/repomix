@@ -42,6 +42,26 @@ Wenn das Skills-Verzeichnis bereits existiert, werden Sie aufgefordert, das Übe
 > .claude/skills/repomix-reference-*/
 > ```
 
+## Nicht-interaktive Nutzung
+
+Für CI-Pipelines und Automatisierungsskripte können Sie alle interaktiven Eingabeaufforderungen mit `--skill-output` und `--force` überspringen:
+
+```bash
+# Ausgabeverzeichnis direkt angeben (überspringt die Standortauswahl)
+repomix --skill-generate --skill-output ./my-skills
+
+# Überschreibbestätigung mit --force überspringen
+repomix --skill-generate --skill-output ./my-skills --force
+
+# Vollständiges nicht-interaktives Beispiel
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| Option | Beschreibung |
+| --- | --- |
+| `--skill-output <path>` | Skill-Ausgabeverzeichnis direkt angeben (überspringt die Standortauswahl) |
+| `-f, --force` | Alle Bestätigungsaufforderungen überspringen (z.B. Skill-Verzeichnis überschreiben) |
+
 ## Generierte Struktur
 
 Die Skills werden mit folgender Struktur generiert:

@@ -42,6 +42,26 @@ Se o diretório de Skills já existir, será solicitada confirmação para sobre
 > .claude/skills/repomix-reference-*/
 > ```
 
+## Uso não interativo
+
+Para pipelines de CI e scripts de automação, você pode pular todos os prompts interativos usando `--skill-output` e `--force`:
+
+```bash
+# Especificar diretamente o diretório de saída (pula o prompt de seleção de local)
+repomix --skill-generate --skill-output ./my-skills
+
+# Pular a confirmação de sobrescrita com --force
+repomix --skill-generate --skill-output ./my-skills --force
+
+# Exemplo não interativo completo
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| Opção | Descrição |
+| --- | --- |
+| `--skill-output <path>` | Especificar diretamente o caminho do diretório de saída de skills (pula o prompt de local) |
+| `-f, --force` | Pular todos os prompts de confirmação (ex.: sobrescrita do diretório de skills) |
+
 ## Estrutura Gerada
 
 Os Skills são gerados com a seguinte estrutura:

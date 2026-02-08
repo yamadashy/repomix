@@ -42,6 +42,26 @@ Nếu thư mục Skills đã tồn tại, bạn sẽ được yêu cầu xác nh
 > .claude/skills/repomix-reference-*/
 > ```
 
+## Sử Dụng Không Tương Tác
+
+Đối với pipeline CI và script tự động hóa, bạn có thể bỏ qua tất cả các lời nhắc tương tác bằng `--skill-output` và `--force`:
+
+```bash
+# Chỉ định trực tiếp thư mục đầu ra (bỏ qua lời nhắc chọn vị trí)
+repomix --skill-generate --skill-output ./my-skills
+
+# Bỏ qua xác nhận ghi đè với --force
+repomix --skill-generate --skill-output ./my-skills --force
+
+# Ví dụ không tương tác đầy đủ
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| Tùy chọn | Mô tả |
+| --- | --- |
+| `--skill-output <path>` | Chỉ định trực tiếp đường dẫn thư mục đầu ra skill (bỏ qua lời nhắc vị trí) |
+| `-f, --force` | Bỏ qua tất cả lời nhắc xác nhận (ví dụ: ghi đè thư mục skill) |
+
 ## Cấu Trúc Được Tạo
 
 Skills được tạo với cấu trúc sau:

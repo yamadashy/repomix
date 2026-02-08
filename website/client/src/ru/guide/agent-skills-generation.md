@@ -42,6 +42,26 @@ repomix --remote https://github.com/user/repo --skill-generate
 > .claude/skills/repomix-reference-*/
 > ```
 
+## Неинтерактивное использование
+
+Для CI-конвейеров и скриптов автоматизации можно пропустить все интерактивные запросы с помощью `--skill-output` и `--force`:
+
+```bash
+# Указать директорию вывода напрямую (пропускает запрос выбора расположения)
+repomix --skill-generate --skill-output ./my-skills
+
+# Пропустить подтверждение перезаписи с --force
+repomix --skill-generate --skill-output ./my-skills --force
+
+# Полный неинтерактивный пример
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| Опция | Описание |
+| --- | --- |
+| `--skill-output <path>` | Указать путь директории вывода навыков напрямую (пропускает запрос расположения) |
+| `-f, --force` | Пропустить все запросы подтверждения (например: перезапись директории навыков) |
+
 ## Генерируемая структура
 
 Skills генерируются со следующей структурой:

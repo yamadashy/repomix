@@ -42,6 +42,26 @@ repomix --remote https://github.com/user/repo --skill-generate
 > .claude/skills/repomix-reference-*/
 > ```
 
+## 非互動式使用
+
+對於 CI 管道和自動化腳本，可以使用 `--skill-output` 和 `--force` 跳過所有互動式提示：
+
+```bash
+# 直接指定輸出目錄（跳過位置選擇提示）
+repomix --skill-generate --skill-output ./my-skills
+
+# 使用 --force 跳過覆蓋確認
+repomix --skill-generate --skill-output ./my-skills --force
+
+# 完整的非互動式範例
+repomix --remote user/repo --skill-generate my-skill --skill-output ./output --force
+```
+
+| 選項 | 說明 |
+| --- | --- |
+| `--skill-output <path>` | 直接指定技能輸出目錄路徑（跳過位置選擇提示） |
+| `-f, --force` | 跳過所有確認提示（例如：技能目錄覆蓋） |
+
 ## 生成的結構
 
 Skills 按以下結構生成：
