@@ -70,7 +70,7 @@ describe('fileCollect', () => {
     vi.mocked(isBinaryFile).mockResolvedValue(false);
     vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('file content'));
     vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
-    vi.mocked(iconv.decode).mockReturnValue('decoded content');
+    vi.mocked(iconv.decode).mockReturnValue('file content');
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       initTaskRunner: mockInitTaskRunner,
@@ -78,8 +78,8 @@ describe('fileCollect', () => {
 
     expect(result).toEqual({
       rawFiles: [
-        { path: 'file1.txt', content: 'decoded content' },
-        { path: 'file2.txt', content: 'decoded content' },
+        { path: 'file1.txt', content: 'file content' },
+        { path: 'file2.txt', content: 'file content' },
       ],
       skippedFiles: [],
     });
@@ -96,14 +96,14 @@ describe('fileCollect', () => {
     vi.mocked(isBinaryFile).mockResolvedValue(false);
     vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('file content'));
     vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
-    vi.mocked(iconv.decode).mockReturnValue('decoded content');
+    vi.mocked(iconv.decode).mockReturnValue('file content');
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       initTaskRunner: mockInitTaskRunner,
     });
 
     expect(result).toEqual({
-      rawFiles: [{ path: 'text.txt', content: 'decoded content' }],
+      rawFiles: [{ path: 'text.txt', content: 'file content' }],
       skippedFiles: [{ path: 'binary.bin', reason: 'binary-extension' }],
     });
     expect(logger.debug).toHaveBeenCalledWith(`Skipping binary file: ${path.resolve('/root/binary.bin')}`);
@@ -130,14 +130,14 @@ describe('fileCollect', () => {
     vi.mocked(isBinaryFile).mockResolvedValue(false);
     vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('file content'));
     vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
-    vi.mocked(iconv.decode).mockReturnValue('decoded content');
+    vi.mocked(iconv.decode).mockReturnValue('file content');
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       initTaskRunner: mockInitTaskRunner,
     });
 
     expect(result).toEqual({
-      rawFiles: [{ path: 'normal.txt', content: 'decoded content' }],
+      rawFiles: [{ path: 'normal.txt', content: 'file content' }],
       skippedFiles: [{ path: 'large.txt', reason: 'size-limit' }],
     });
     expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining('File exceeds size limit:'));
@@ -174,14 +174,14 @@ describe('fileCollect', () => {
     vi.mocked(isBinaryFile).mockResolvedValue(false);
     vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('file content'));
     vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
-    vi.mocked(iconv.decode).mockReturnValue('decoded content');
+    vi.mocked(iconv.decode).mockReturnValue('file content');
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       initTaskRunner: mockInitTaskRunner,
     });
 
     expect(result).toEqual({
-      rawFiles: [{ path: 'small.txt', content: 'decoded content' }],
+      rawFiles: [{ path: 'small.txt', content: 'file content' }],
       skippedFiles: [{ path: 'medium.txt', reason: 'size-limit' }],
     });
     expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining('File exceeds size limit:'));
@@ -225,7 +225,7 @@ describe('fileCollect', () => {
     vi.mocked(isBinaryFile).mockResolvedValue(false);
     vi.mocked(fs.readFile).mockResolvedValue(Buffer.from('file content'));
     vi.mocked(jschardet.detect).mockReturnValue({ encoding: 'utf-8', confidence: 0.99 });
-    vi.mocked(iconv.decode).mockReturnValue('decoded content');
+    vi.mocked(iconv.decode).mockReturnValue('file content');
 
     await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       initTaskRunner: mockInitTaskRunner,

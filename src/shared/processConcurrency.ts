@@ -12,6 +12,7 @@ export interface WorkerOptions {
   numOfTasks: number;
   workerType: WorkerType;
   runtime: WorkerRuntime;
+  concurrentTasksPerWorker?: number;
 }
 
 /**
@@ -64,7 +65,7 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
-  const { numOfTasks, workerType, runtime = 'child_process' } = options;
+  const { numOfTasks, workerType, runtime = 'child_process', concurrentTasksPerWorker } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
 
   // Get worker path - uses unified worker in bundled env, individual files otherwise
@@ -83,6 +84,7 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
     maxThreads,
     idleTimeout: 5000,
     teardown: 'onWorkerTermination',
+    ...(concurrentTasksPerWorker != null && { concurrentTasksPerWorker }),
     workerData: {
       workerType,
       logLevel: logger.getLogLevel(),

@@ -27,6 +27,7 @@ export const collectFiles = async (
     numOfTasks: filePaths.length,
     workerType: 'fileCollect',
     runtime: 'worker_threads',
+    concurrentTasksPerWorker: 3,
   });
   const tasks = filePaths.map(
     (filePath) =>

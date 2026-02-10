@@ -43,24 +43,25 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
       return { content: null, skippedReason: 'binary-content' };
     }
 
+    // Fast path: Try UTF-8 decoding first (covers ~99% of source code files)
+    // This skips the expensive jschardet.detect() which scans the entire buffer
+    // through multiple encoding probers with frequency table lookups
+    try {
+      let content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+      if (content.charCodeAt(0) === 0xfeff) {
+        content = content.slice(1); // strip UTF-8 BOM
+      }
+      return { content };
+    } catch {
+      // Not valid UTF-8, fall through to encoding detection
+    }
+
+    // Slow path: Detect encoding with jschardet for non-UTF-8 files (e.g., Shift-JIS, EUC-KR)
     const { encoding: detectedEncoding } = jschardet.detect(buffer) ?? {};
     const encoding = detectedEncoding && iconv.encodingExists(detectedEncoding) ? detectedEncoding : 'utf-8';
-
     const content = iconv.decode(buffer, encoding, { stripBOM: true });
 
-    // Only skip if there are actual decode errors (U+FFFD replacement characters)
-    // Don't rely on jschardet confidence as it can return low values for valid UTF-8/ASCII files
     if (content.includes('\uFFFD')) {
-      // For UTF-8, distinguish invalid byte sequences from a legitimate U+FFFD in the source
-      if (encoding.toLowerCase() === 'utf-8') {
-        try {
-          let utf8 = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
-          if (utf8.charCodeAt(0) === 0xfeff) utf8 = utf8.slice(1); // strip UTF-8 BOM
-          return { content: utf8 };
-        } catch {
-          // fall through to skip below
-        }
-      }
       logger.debug(`Skipping file due to encoding errors (detected: ${encoding}): ${filePath}`);
       return { content: null, skippedReason: 'encoding-error' };
     }
