@@ -9,34 +9,21 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
 import type { RepomixConfigFile, RepomixConfigMerged, RepomixOutputStyle } from '../../src/config/configSchema.js';
 import { collectFiles } from '../../src/core/file/fileCollect.js';
+import { readRawFile } from '../../src/core/file/fileRead.js';
 import { searchFiles } from '../../src/core/file/fileSearch.js';
 import type { ProcessedFile } from '../../src/core/file/fileTypes.js';
-
-import type { FileCollectTask } from '../../src/core/file/workers/fileCollectWorker.js';
-import fileCollectWorker from '../../src/core/file/workers/fileCollectWorker.js';
 import fileProcessWorker from '../../src/core/file/workers/fileProcessWorker.js';
 import type { GitDiffResult } from '../../src/core/git/gitDiffHandle.js';
 import { produceOutput } from '../../src/core/packager/produceOutput.js';
 import { pack } from '../../src/core/packager.js';
 import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
 import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
-import type { WorkerOptions } from '../../src/shared/processConcurrency.js';
+
 import { isWindows } from '../testing/testUtils.js';
 
 const fixturesDir = path.join(__dirname, 'fixtures', 'packager');
 const inputsDir = path.join(fixturesDir, 'inputs');
 const outputsDir = path.join(fixturesDir, 'outputs');
-
-const mockCollectFileInitTaskRunner = <T, R>(_options: WorkerOptions) => {
-  return {
-    run: async (task: T) => {
-      return (await fileCollectWorker(task as FileCollectTask)) as R;
-    },
-    cleanup: async () => {
-      // Mock cleanup - no-op for tests
-    },
-  };
-};
 
 describe.runIf(!isWindows)('packager integration', () => {
   const testCases = [
@@ -107,7 +94,7 @@ describe.runIf(!isWindows)('packager integration', () => {
         sortPaths: (filePaths) => filePaths,
         collectFiles: (filePaths, rootDir, config, progressCallback) => {
           return collectFiles(filePaths, rootDir, config, progressCallback, {
-            initTaskRunner: mockCollectFileInitTaskRunner,
+            readRawFile,
           });
         },
         processFiles: async (rawFiles, config, _progressCallback) => {
