@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  v6.0.2
 
       - name: Pack repository with Repomix
         uses: ./.github/actions/repomix
@@ -20,7 +20,7 @@ jobs:
           output: repomix-output.xml
 
       - name: Upload Repomix output
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  v6.0.0
         with:
           name: repomix-output.xml
           path: repomix-output.xml
