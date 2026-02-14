@@ -278,6 +278,32 @@ describe('gitHubArchive', () => {
       ).rejects.toThrow(RepomixError);
     });
 
+    test('should not retry on extraction error', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Map([['content-length', mockZipData.length.toString()]]),
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(mockZipData);
+            controller.close();
+          },
+        }),
+      } as unknown as Response);
+
+      // Mock unzip to fail
+      mockUnzip.mockImplementation((_data, callback) => {
+        callback(new Error('Invalid ZIP file'));
+      });
+
+      await expect(
+        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 3 }, undefined, mockDeps),
+      ).rejects.toThrow(RepomixError);
+
+      // Should only fetch once - extraction errors should not trigger retries
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
     test('should handle path traversal attack', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
