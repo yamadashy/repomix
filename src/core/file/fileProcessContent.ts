@@ -83,8 +83,8 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
         if (data.lineNumber !== null) {
           return `${data.lineNumber.toString().padStart(padding)}: ${data.content}`;
         }
-        // For separator lines, just add padding spaces
-        return `${' '.repeat(padding)}  ${data.content}`;
+        // For separator lines, add padding spaces to align with ": " (colon + space)
+        return `${' '.repeat(padding + 2)}${data.content}`;
       });
 
       processedContent = numberedLines.join('\n');

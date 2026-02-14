@@ -219,6 +219,7 @@ describe('processContent', () => {
 
     const result = await processContent(rawFile, config);
     expect(parseFile).toHaveBeenCalledWith(rawFile.content, rawFile.path, config);
+    // Separator should have padding (1) + ": " (2) = 3 spaces before the separator
     expect(result).toBe('1: function a()\n   ⋮----\n5: function b()');
   });
 
