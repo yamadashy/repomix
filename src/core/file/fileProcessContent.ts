@@ -52,7 +52,9 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
       //re-throw error
       throw error;
     }
-  } else if (config.output.showLineNumbers) {
+  }
+
+  if (config.output.showLineNumbers) {
     const lines = processedContent.split('\n');
     const padding = lines.length.toString().length;
     const numberedLines = lines.map((line, i) => `${(i + 1).toString().padStart(padding)}: ${line}`);

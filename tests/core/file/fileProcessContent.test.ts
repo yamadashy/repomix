@@ -156,6 +156,27 @@ describe('processContent', () => {
     expect(result).toBe('1: const x = 1;\n2: const y = 2;\n3: const z = 3;');
   });
 
+  it('should add line numbers to compressed content when both options are enabled', async () => {
+    const rawFile: RawFile = {
+      path: 'test.ts',
+      content: 'const x = 1;\nconst y = 2;\nconst z = 3;',
+    };
+    const config: RepomixConfigMerged = {
+      output: {
+        removeComments: false,
+        removeEmptyLines: false,
+        compress: true,
+        showLineNumbers: true,
+      },
+    } as RepomixConfigMerged;
+
+    vi.mocked(parseFile).mockResolvedValue('compressed line 1\ncompressed line 2');
+
+    const result = await processContent(rawFile, config);
+    expect(parseFile).toHaveBeenCalledWith(rawFile.content, rawFile.path, config);
+    expect(result).toBe('1: compressed line 1\n2: compressed line 2');
+  });
+
   it('should handle files without a manipulator', async () => {
     const rawFile: RawFile = {
       path: 'test.unknown',
