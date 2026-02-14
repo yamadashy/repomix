@@ -156,6 +156,73 @@ describe('processContent', () => {
     expect(result).toBe('1: const x = 1;\n2: const y = 2;\n3: const z = 3;');
   });
 
+  it('should add line numbers to compressed content when both options are enabled', async () => {
+    const rawFile: RawFile = {
+      path: 'test.ts',
+      content: 'const x = 1;\nconst y = 2;\nconst z = 3;',
+    };
+    const config: RepomixConfigMerged = {
+      output: {
+        removeComments: false,
+        removeEmptyLines: false,
+        compress: true,
+        showLineNumbers: true,
+      },
+    } as RepomixConfigMerged;
+
+    vi.mocked(parseFile).mockResolvedValue('compressed line 1\ncompressed line 2');
+
+    const result = await processContent(rawFile, config);
+    expect(parseFile).toHaveBeenCalledWith(rawFile.content, rawFile.path, config);
+    expect(result).toBe('1: compressed line 1\n2: compressed line 2');
+  });
+
+  it('should preserve original line numbers when compressed content has line markers', async () => {
+    const rawFile: RawFile = {
+      path: 'test.ts',
+      content: 'line 1\nline 2\nline 3\nline 4\nline 5',
+    };
+    const config: RepomixConfigMerged = {
+      output: {
+        removeComments: false,
+        removeEmptyLines: false,
+        compress: true,
+        showLineNumbers: true,
+      },
+    } as RepomixConfigMerged;
+
+    // Simulate parseFile returning content with preserved line numbers
+    // (skipping lines 2 and 4 as if they were compressed out)
+    vi.mocked(parseFile).mockResolvedValue('@LINE:1@line 1\n@LINE:3@line 3\n@LINE:5@line 5');
+
+    const result = await processContent(rawFile, config);
+    expect(parseFile).toHaveBeenCalledWith(rawFile.content, rawFile.path, config);
+    expect(result).toBe('1: line 1\n3: line 3\n5: line 5');
+  });
+
+  it('should handle chunk separators correctly with preserved line numbers', async () => {
+    const rawFile: RawFile = {
+      path: 'test.ts',
+      content: 'function a() {}\nfunction b() {}',
+    };
+    const config: RepomixConfigMerged = {
+      output: {
+        removeComments: false,
+        removeEmptyLines: false,
+        compress: true,
+        showLineNumbers: true,
+      },
+    } as RepomixConfigMerged;
+
+    // Simulate parseFile returning chunks with separator
+    vi.mocked(parseFile).mockResolvedValue('@LINE:1@function a()\n⋮----\n@LINE:5@function b()');
+
+    const result = await processContent(rawFile, config);
+    expect(parseFile).toHaveBeenCalledWith(rawFile.content, rawFile.path, config);
+    // Separator should have padding (1) + ": " (2) = 3 spaces before the separator
+    expect(result).toBe('1: function a()\n   ⋮----\n5: function b()');
+  });
+
   it('should handle files without a manipulator', async () => {
     const rawFile: RawFile = {
       path: 'test.unknown',
