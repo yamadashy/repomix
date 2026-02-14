@@ -7,7 +7,11 @@ import { registerAttachPackedOutputTool } from './tools/attachPackedOutputTool.j
 import { registerFileSystemReadDirectoryTool } from './tools/fileSystemReadDirectoryTool.js';
 import { registerFileSystemReadFileTool } from './tools/fileSystemReadFileTool.js';
 import { registerGenerateSkillTool } from './tools/generateSkillTool.js';
+import { registerGetSubmoduleContextTool } from './tools/getSubmoduleContextTool.js';
 import { registerGrepRepomixOutputTool } from './tools/grepRepomixOutputTool.js';
+import { registerInitMonorepoConfigTool } from './tools/initMonorepoConfigTool.js';
+import { registerInvalidateSubmoduleCacheTool } from './tools/invalidateSubmoduleCacheTool.js';
+import { registerListSubmodulesTool } from './tools/listSubmodulesTool.js';
 import { registerPackCodebaseTool } from './tools/packCodebaseTool.js';
 import { registerPackRemoteRepositoryTool } from './tools/packRemoteRepositoryTool.js';
 import { registerReadRepomixOutputTool } from './tools/readRepomixOutputTool.js';
@@ -21,6 +25,9 @@ const MCP_SERVER_INSTRUCTIONS =
   'use generate_skill to create Claude Agent Skills from codebases, ' +
   'use attach_packed_output to work with existing packed outputs, ' +
   'then read_repomix_output and grep_repomix_output to analyze it. ' +
+  'For monorepos, use init_monorepo_config to auto-detect and configure submodules, ' +
+  'list_submodules to see available submodules, get_submodule_context to load specific submodule content with caching, ' +
+  'and invalidate_submodule_cache to force cache refresh. ' +
   'Perfect for code reviews, documentation generation, bug investigation, GitHub repository analysis, and understanding large codebases. ' +
   'Includes security scanning and supports compression for token efficiency.';
 
@@ -47,6 +54,12 @@ export const createMcpServer = async () => {
   registerGrepRepomixOutputTool(mcpServer);
   registerFileSystemReadFileTool(mcpServer);
   registerFileSystemReadDirectoryTool(mcpServer);
+
+  // Register monorepo tools
+  registerInitMonorepoConfigTool(mcpServer);
+  registerListSubmodulesTool(mcpServer);
+  registerGetSubmoduleContextTool(mcpServer);
+  registerInvalidateSubmoduleCacheTool(mcpServer);
 
   return mcpServer;
 };
