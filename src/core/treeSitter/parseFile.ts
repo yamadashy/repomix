@@ -98,6 +98,21 @@ export const parseFile = async (fileContent: string, filePath: string, config: R
   const filteredChunks = filterDuplicatedChunks(capturedChunks);
   const mergedChunks = mergeAdjacentChunks(filteredChunks);
 
+  // Preserve original line numbers if showLineNumbers is enabled
+  if (config.output?.showLineNumbers) {
+    const chunksWithLineNumbers = mergedChunks.map((chunk) => {
+      const chunkLines = chunk.content.split('\n');
+      return chunkLines
+        .map((line, index) => {
+          const originalLineNumber = chunk.startRow + index + 1; // startRow is 0-indexed, line numbers are 1-indexed
+          return `@LINE:${originalLineNumber}@${line}`;
+        })
+        .join('\n');
+    });
+
+    return chunksWithLineNumbers.join(`\n${CHUNK_SEPARATOR}\n`).trim();
+  }
+
   return mergedChunks
     .map((chunk) => chunk.content)
     .join(`\n${CHUNK_SEPARATOR}\n`)
