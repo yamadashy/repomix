@@ -36,7 +36,7 @@ jobs:
 
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@0ed5eeaa54d3b0170e79f1ff29996342cf0605f1 # v1.0.40
+        uses: anthropics/claude-code-action@b113f49a56229d8276e2bf05743ad6900121239c # v1.0.45
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: "/git:pr-review REPO: ${{ github.repository }} PR_NUMBER: ${{ github.event.pull_request.number }}"
