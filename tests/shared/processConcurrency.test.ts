@@ -91,17 +91,17 @@ describe('processConcurrency', () => {
     });
 
     it('should initialize Tinypool with correct configuration', () => {
-      const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'fileCollect', runtime: 'child_process' });
+      const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'fileProcess', runtime: 'child_process' });
 
       expect(Tinypool).toHaveBeenCalledWith({
-        filename: expect.stringContaining('fileCollectWorker.js'),
+        filename: expect.stringContaining('fileProcessWorker.js'),
         runtime: 'child_process',
         minThreads: 1,
         maxThreads: 4, // Math.min(4, 500/100) = 4
         idleTimeout: 5000,
         teardown: 'onWorkerTermination',
         workerData: {
-          workerType: 'fileCollect',
+          workerType: 'fileProcess',
           logLevel: 2,
         },
         env: expect.objectContaining({

@@ -2,10 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // We need to test the internal functions, so we'll test through the module behavior
 // Mock all worker modules
-vi.mock('../../src/core/file/workers/fileCollectWorker.js', () => ({
-  default: vi.fn().mockResolvedValue({ collected: true }),
-  onWorkerTermination: vi.fn(),
-}));
 vi.mock('../../src/core/file/workers/fileProcessWorker.js', () => ({
   default: vi.fn().mockResolvedValue({ processed: true }),
   onWorkerTermination: vi.fn(),
@@ -59,20 +55,6 @@ describe('unifiedWorker', () => {
 
       const defaultActionWorker = await import('../../src/cli/actions/workers/defaultActionWorker.js');
       expect(defaultActionWorker.default).toHaveBeenCalledWith(task);
-    });
-
-    it('should infer fileCollect from task with filePath, rootDir, maxFileSize', async () => {
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
-      const task = {
-        filePath: 'test.ts',
-        rootDir: '/root',
-        maxFileSize: 1000,
-      };
-
-      await handler(task);
-
-      const fileCollectWorker = await import('../../src/core/file/workers/fileCollectWorker.js');
-      expect(fileCollectWorker.default).toHaveBeenCalledWith(task);
     });
 
     it('should infer fileProcess from task with rawFile and config', async () => {

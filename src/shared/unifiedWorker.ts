@@ -12,7 +12,7 @@
 import { workerData } from 'node:worker_threads';
 
 // Worker type definitions
-export type WorkerType = 'fileCollect' | 'fileProcess' | 'securityCheck' | 'calculateMetrics' | 'defaultAction';
+export type WorkerType = 'fileProcess' | 'securityCheck' | 'calculateMetrics' | 'defaultAction';
 
 // Worker handler type - uses 'any' to accommodate different worker signatures
 // biome-ignore lint/suspicious/noExplicitAny: Worker handlers have varying signatures
@@ -39,11 +39,6 @@ const loadWorkerHandler = async (
   let result: { handler: WorkerHandler; cleanup?: WorkerCleanup };
 
   switch (workerType) {
-    case 'fileCollect': {
-      const module = await import('../core/file/workers/fileCollectWorker.js');
-      result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
-      break;
-    }
     case 'fileProcess': {
       const module = await import('../core/file/workers/fileProcessWorker.js');
       result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
@@ -93,11 +88,6 @@ const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
   // defaultAction ping task
   if ('ping' in taskObj) {
     return 'defaultAction';
-  }
-
-  // fileCollect: has filePath, rootDir, maxFileSize
-  if ('filePath' in taskObj && 'rootDir' in taskObj && 'maxFileSize' in taskObj) {
-    return 'fileCollect';
   }
 
   // fileProcess: has rawFile (nested object) and config

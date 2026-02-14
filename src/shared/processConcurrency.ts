@@ -27,8 +27,6 @@ const getWorkerPath = (workerType: WorkerType): string => {
 
   // Non-bundled environment: use individual worker files
   switch (workerType) {
-    case 'fileCollect':
-      return new URL('../core/file/workers/fileCollectWorker.js', import.meta.url).href;
     case 'fileProcess':
       return new URL('../core/file/workers/fileProcessWorker.js', import.meta.url).href;
     case 'securityCheck':
