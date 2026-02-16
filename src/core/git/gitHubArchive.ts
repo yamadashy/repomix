@@ -1,9 +1,7 @@
-import { createWriteStream } from 'node:fs';
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { unzip } from 'fflate';
+import * as zlib from 'node:zlib';
+import { extract as tarExtract } from 'tar';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import {
@@ -11,7 +9,6 @@ import {
   buildGitHubMasterArchiveUrl,
   buildGitHubTagArchiveUrl,
   checkGitHubResponse,
-  getArchiveFilename,
 } from './gitHubArchiveApi.js';
 import type { GitHubRepoInfo } from './gitRemoteParse.js';
 
@@ -28,26 +25,33 @@ export interface ArchiveDownloadProgress {
 
 export type ProgressCallback = (progress: ArchiveDownloadProgress) => void;
 
+export interface ArchiveDownloadDeps {
+  fetch: typeof globalThis.fetch;
+  pipeline: typeof pipeline;
+  Transform: typeof Transform;
+  tarExtract: typeof tarExtract;
+  createGunzip: typeof zlib.createGunzip;
+}
+
+const defaultDeps: ArchiveDownloadDeps = {
+  fetch: globalThis.fetch,
+  pipeline,
+  Transform,
+  tarExtract,
+  createGunzip: zlib.createGunzip,
+};
+
 /**
- * Downloads and extracts a GitHub repository archive
+ * Downloads and extracts a GitHub repository archive using streaming tar.gz extraction
  */
 export const downloadGitHubArchive = async (
   repoInfo: GitHubRepoInfo,
   targetDirectory: string,
   options: ArchiveDownloadOptions = {},
   onProgress?: ProgressCallback,
-  deps = {
-    fetch: globalThis.fetch,
-    fs,
-    pipeline,
-    Transform,
-    createWriteStream,
-  },
+  deps: ArchiveDownloadDeps = defaultDeps,
 ): Promise<void> => {
   const { timeout = 30000, retries = 3 } = options;
-
-  // Ensure target directory exists
-  await deps.fs.mkdir(targetDirectory, { recursive: true });
 
   let lastError: Error | null = null;
 
@@ -63,7 +67,7 @@ export const downloadGitHubArchive = async (
       try {
         logger.trace(`Downloading GitHub archive from: ${archiveUrl} (attempt ${attempt}/${retries})`);
 
-        await downloadAndExtractArchive(archiveUrl, targetDirectory, repoInfo, timeout, onProgress, deps);
+        await downloadAndExtractArchive(archiveUrl, targetDirectory, timeout, onProgress, deps);
 
         logger.trace('Successfully downloaded and extracted GitHub archive');
         return; // Success - exit early
@@ -102,61 +106,22 @@ export const downloadGitHubArchive = async (
 };
 
 /**
- * Downloads and extracts archive from a single URL
+ * Downloads and extracts a tar.gz archive from a single URL using streaming pipeline.
+ * The HTTP response is streamed through gunzip and tar extract directly to disk,
+ * without writing a temporary archive file.
  */
 const downloadAndExtractArchive = async (
   archiveUrl: string,
   targetDirectory: string,
-  repoInfo: GitHubRepoInfo,
   timeout: number,
   onProgress?: ProgressCallback,
-  deps = {
-    fetch: globalThis.fetch,
-    fs,
-    pipeline,
-    Transform,
-    createWriteStream,
-  },
-): Promise<void> => {
-  // Download the archive
-  const tempArchivePath = path.join(targetDirectory, getArchiveFilename(repoInfo));
-
-  await downloadFile(archiveUrl, tempArchivePath, timeout, onProgress, deps);
-
-  try {
-    // Extract the archive
-    await extractZipArchive(tempArchivePath, targetDirectory, repoInfo, { fs: deps.fs });
-  } finally {
-    // Clean up the downloaded archive file
-    try {
-      await deps.fs.unlink(tempArchivePath);
-    } catch (error) {
-      logger.trace('Failed to cleanup archive file:', (error as Error).message);
-    }
-  }
-};
-
-/**
- * Downloads a file from URL with progress tracking
- */
-const downloadFile = async (
-  url: string,
-  filePath: string,
-  timeout: number,
-  onProgress?: ProgressCallback,
-  deps = {
-    fetch: globalThis.fetch,
-    fs,
-    pipeline,
-    Transform,
-    createWriteStream,
-  },
+  deps: ArchiveDownloadDeps = defaultDeps,
 ): Promise<void> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const response = await deps.fetch(url, {
+    const response = await deps.fetch(archiveUrl, {
       signal: controller.signal,
     });
 
@@ -171,7 +136,6 @@ const downloadFile = async (
     let downloaded = 0;
     let lastProgressUpdate = 0;
 
-    // Use Readable.fromWeb for better stream handling
     const nodeStream = Readable.fromWeb(response.body);
 
     // Transform stream for progress tracking
@@ -193,7 +157,6 @@ const downloadFile = async (
         callback(null, chunk);
       },
       flush(callback) {
-        // Send final progress update
         if (onProgress) {
           onProgress({
             downloaded,
@@ -205,137 +168,27 @@ const downloadFile = async (
       },
     });
 
-    // Write to file
-    const writeStream = deps.createWriteStream(filePath);
-    await deps.pipeline(nodeStream, progressStream, writeStream);
+    // Stream: HTTP response -> progress tracking -> gunzip -> tar extract to disk
+    // strip: 1 removes the top-level "repo-branch/" directory from archive paths
+    const extractStream = deps.tarExtract({
+      cwd: targetDirectory,
+      strip: 1,
+    });
+    const gunzipStream = deps.createGunzip();
+
+    try {
+      await deps.pipeline(nodeStream, progressStream, gunzipStream, extractStream);
+    } catch (pipelineError) {
+      throw new RepomixError(`Failed to extract archive: ${(pipelineError as Error).message}`);
+    } finally {
+      // Explicitly destroy streams to release handles.
+      // Bun's pipeline() may not fully clean up, causing subsequent worker_threads to hang.
+      nodeStream.destroy();
+      progressStream.destroy();
+      gunzipStream.destroy();
+    }
   } finally {
     clearTimeout(timeoutId);
-  }
-};
-
-/**
- * Extracts a ZIP archive using fflate library
- */
-const extractZipArchive = async (
-  archivePath: string,
-  targetDirectory: string,
-  repoInfo: GitHubRepoInfo,
-  deps = {
-    fs,
-  },
-): Promise<void> => {
-  try {
-    // Always use in-memory extraction for simplicity and reliability
-    await extractZipArchiveInMemory(archivePath, targetDirectory, repoInfo, deps);
-  } catch (error) {
-    throw new RepomixError(`Failed to extract archive: ${(error as Error).message}`);
-  }
-};
-
-/**
- * Extracts ZIP archive by loading it entirely into memory (faster for small files)
- */
-const extractZipArchiveInMemory = async (
-  archivePath: string,
-  targetDirectory: string,
-  repoInfo: GitHubRepoInfo,
-  deps = {
-    fs,
-  },
-): Promise<void> => {
-  // Read the ZIP file as a buffer
-  const zipBuffer = await deps.fs.readFile(archivePath);
-  const zipUint8Array = new Uint8Array(zipBuffer);
-
-  // Extract ZIP using fflate
-  await new Promise<void>((resolve, reject) => {
-    unzip(zipUint8Array, (err, extracted) => {
-      if (err) {
-        reject(new RepomixError(`Failed to extract ZIP archive: ${err.message}`));
-        return;
-      }
-
-      // Process extracted files concurrently in the callback
-      processExtractedFiles(extracted, targetDirectory, repoInfo, deps).then(resolve).catch(reject);
-    });
-  });
-};
-
-/**
- * Process extracted files sequentially to avoid EMFILE errors
- */
-const processExtractedFiles = async (
-  extracted: Record<string, Uint8Array>,
-  targetDirectory: string,
-  repoInfo: GitHubRepoInfo,
-  deps = {
-    fs,
-  },
-): Promise<void> => {
-  const repoPrefix = `${repoInfo.repo}-`;
-  const createdDirs = new Set<string>();
-
-  // Process files sequentially to avoid EMFILE errors completely
-  for (const [filePath, fileData] of Object.entries(extracted)) {
-    // GitHub archives have a top-level directory like "repo-branch/"
-    // We need to remove this prefix from the file paths
-    let relativePath = filePath;
-
-    // Find and remove the repo prefix
-    const pathParts = filePath.split('/');
-    if (pathParts.length > 0 && pathParts[0].startsWith(repoPrefix)) {
-      // Remove the first directory (repo-branch/)
-      relativePath = pathParts.slice(1).join('/');
-    }
-
-    // Skip empty paths (root directory)
-    if (!relativePath) {
-      continue;
-    }
-
-    // Sanitize relativePath to prevent path traversal attacks
-    const sanitized = path.normalize(relativePath).replace(/^(\.\.([/\\]|$))+/, '');
-
-    // Reject absolute paths outright
-    if (path.isAbsolute(sanitized)) {
-      logger.trace(`Absolute path detected in archive, skipping: ${relativePath}`);
-      continue;
-    }
-
-    const targetPath = path.resolve(targetDirectory, sanitized);
-    if (!targetPath.startsWith(path.resolve(targetDirectory))) {
-      logger.trace(`Unsafe path detected in archive, skipping: ${relativePath}`);
-      continue;
-    }
-
-    // Check if this entry is a directory (ends with /) or empty file data indicates directory
-    const isDirectory = filePath.endsWith('/') || (fileData.length === 0 && relativePath.endsWith('/'));
-
-    if (isDirectory) {
-      // Create directory immediately
-      if (!createdDirs.has(targetPath)) {
-        logger.trace(`Creating directory: ${targetPath}`);
-        await deps.fs.mkdir(targetPath, { recursive: true });
-        createdDirs.add(targetPath);
-      }
-    } else {
-      // Create parent directory if needed and write file
-      const parentDir = path.dirname(targetPath);
-      if (!createdDirs.has(parentDir)) {
-        logger.trace(`Creating parent directory for file: ${parentDir}`);
-        await deps.fs.mkdir(parentDir, { recursive: true });
-        createdDirs.add(parentDir);
-      }
-
-      // Write file sequentially
-      logger.trace(`Writing file: ${targetPath}`);
-      try {
-        await deps.fs.writeFile(targetPath, fileData);
-      } catch (fileError) {
-        logger.trace(`Failed to write file ${targetPath}: ${(fileError as Error).message}`);
-        throw fileError;
-      }
-    }
   }
 };
 

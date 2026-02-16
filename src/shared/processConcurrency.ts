@@ -62,8 +62,13 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
-  const { numOfTasks, workerType, runtime = 'child_process' } = options;
+  const { numOfTasks, workerType, runtime: requestedRuntime = 'child_process' } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
+
+  // Bun's worker_threads implementation has compatibility issues with Tinypool,
+  // causing hangs with large task counts. Use child_process runtime as a workaround.
+  const runtime: WorkerRuntime =
+    process.versions?.bun && requestedRuntime === 'worker_threads' ? 'child_process' : requestedRuntime;
 
   // Get worker path - uses unified worker in bundled env, individual files otherwise
   const workerPath = getWorkerPath(workerType);
