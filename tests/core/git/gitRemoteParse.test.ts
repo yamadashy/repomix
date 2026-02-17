@@ -282,6 +282,16 @@ describe('remoteAction functions', () => {
       expect(isExplicitRemoteUrl('git@ssh.dev.azure.com:v3/org/project/repo')).toBe(true);
     });
 
+    test('should return true for ssh:// URLs', () => {
+      expect(isExplicitRemoteUrl('ssh://git@github.com/user/repo.git')).toBe(true);
+      expect(isExplicitRemoteUrl('ssh://git@gitlab.com/user/repo.git')).toBe(true);
+    });
+
+    test('should return true for git:// URLs', () => {
+      expect(isExplicitRemoteUrl('git://github.com/user/repo.git')).toBe(true);
+      expect(isExplicitRemoteUrl('git://gitlab.com/user/repo.git')).toBe(true);
+    });
+
     test('should return false for shorthand format', () => {
       expect(isExplicitRemoteUrl('user/repo')).toBe(false);
       expect(isExplicitRemoteUrl('yamadashy/repomix')).toBe(false);

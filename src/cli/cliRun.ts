@@ -276,7 +276,7 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     return await runRemoteAction(options.remote, options);
   }
 
-  // Auto-detect explicit remote URLs (https:// and git@) in positional arguments
+  // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
   if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
     logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
     return await runRemoteAction(directories[0], options);

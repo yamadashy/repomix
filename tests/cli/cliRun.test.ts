@@ -224,6 +224,26 @@ describe('cliRun', () => {
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
+    test('should auto-detect ssh:// URL and execute remote action', async () => {
+      await runCli(['ssh://git@github.com/user/repo.git'], process.cwd(), {});
+
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+        'ssh://git@github.com/user/repo.git',
+        expect.any(Object),
+      );
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should auto-detect git:// URL and execute remote action', async () => {
+      await runCli(['git://github.com/user/repo.git'], process.cwd(), {});
+
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+        'git://github.com/user/repo.git',
+        expect.any(Object),
+      );
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
     test('should not auto-detect shorthand format as remote URL', async () => {
       await runCli(['user/repo'], process.cwd(), {});
 
