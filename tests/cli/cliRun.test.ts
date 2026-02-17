@@ -237,10 +237,7 @@ describe('cliRun', () => {
     test('should auto-detect git:// URL and execute remote action', async () => {
       await runCli(['git://github.com/user/repo.git'], process.cwd(), {});
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
-        'git://github.com/user/repo.git',
-        expect.any(Object),
-      );
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('git://github.com/user/repo.git', expect.any(Object));
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
