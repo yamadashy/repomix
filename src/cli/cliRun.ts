@@ -2,6 +2,7 @@ import process from 'node:process';
 import { Option, program } from 'commander';
 import pc from 'picocolors';
 import { getVersion } from '../core/file/packageJsonParse.js';
+import { isExplicitRemoteUrl } from '../core/git/gitRemoteParse.js';
 import { handleError, RepomixError } from '../shared/errorHandle.js';
 import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
@@ -273,6 +274,12 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
 
   if (options.remote) {
     return await runRemoteAction(options.remote, options);
+  }
+
+  // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
+  if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
+    logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
+    return await runRemoteAction(directories[0], options);
   }
 
   return await runDefaultAction(directories, cwd, options);
