@@ -178,8 +178,6 @@ const downloadAndExtractArchive = async (
 
     try {
       await deps.pipeline(nodeStream, progressStream, gunzipStream, extractStream);
-    } catch (pipelineError) {
-      throw new RepomixError(`Failed to extract archive: ${(pipelineError as Error).message}`);
     } finally {
       // Explicitly destroy streams to release handles.
       // Bun's pipeline() may not fully clean up, causing subsequent worker_threads to hang.
