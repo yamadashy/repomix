@@ -4,7 +4,6 @@ import {
   buildGitHubMasterArchiveUrl,
   buildGitHubTagArchiveUrl,
   checkGitHubResponse,
-  getArchiveFilename,
 } from '../../../src/core/git/gitHubArchiveApi.js';
 import { parseGitHubRepoInfo } from '../../../src/core/git/gitRemoteParse.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
@@ -67,32 +66,6 @@ describe('GitHub Archive API', () => {
       const repoInfo = { owner: 'user', repo: 'repo' };
       const url = buildGitHubTagArchiveUrl(repoInfo);
       expect(url).toBeNull();
-    });
-  });
-
-  describe('getArchiveFilename', () => {
-    test('should generate filename for default branch (HEAD)', () => {
-      const repoInfo = { owner: 'user', repo: 'myrepo' };
-      const filename = getArchiveFilename(repoInfo);
-      expect(filename).toBe('myrepo-HEAD.tar.gz');
-    });
-
-    test('should generate filename for specific branch', () => {
-      const repoInfo = { owner: 'user', repo: 'myrepo', ref: 'develop' };
-      const filename = getArchiveFilename(repoInfo);
-      expect(filename).toBe('myrepo-develop.tar.gz');
-    });
-
-    test('should generate filename for tag with slash', () => {
-      const repoInfo = { owner: 'user', repo: 'myrepo', ref: 'release/v1.0' };
-      const filename = getArchiveFilename(repoInfo);
-      expect(filename).toBe('myrepo-v1.0.tar.gz');
-    });
-
-    test('should generate filename for commit SHA', () => {
-      const repoInfo = { owner: 'user', repo: 'myrepo', ref: 'abc123' };
-      const filename = getArchiveFilename(repoInfo);
-      expect(filename).toBe('myrepo-abc123.tar.gz');
     });
   });
 

@@ -52,21 +52,6 @@ export const buildGitHubTagArchiveUrl = (repoInfo: GitHubRepoInfo): string | nul
 };
 
 /**
- * Gets the expected archive filename from GitHub
- * Format: repo-branch.tar.gz or repo-sha.tar.gz
- * Note: This is used as a fallback identifier; streaming extraction does not require temp files
- */
-export const getArchiveFilename = (repoInfo: GitHubRepoInfo): string => {
-  const { repo, ref } = repoInfo;
-  const refPart = ref || 'HEAD';
-
-  // GitHub uses the last part of the ref for the filename
-  const refName = refPart.includes('/') ? refPart.split('/').pop() : refPart;
-
-  return `${repo}-${refName}.tar.gz`;
-};
-
-/**
  * Checks if a response indicates a GitHub API rate limit or error
  */
 export const checkGitHubResponse = (response: Response): void => {
