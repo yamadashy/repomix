@@ -425,6 +425,7 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
       expect(result).toBeInstanceOf(RepomixError);
       expect(result.message).toContain('timed out after 30 seconds');
       expect(result.message).toContain(url);
+      expect(result.cause).toBe(error);
     });
 
     test('should create timeout error when SIGTERM signal is present', () => {
@@ -497,6 +498,33 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
       expect(result.message).toContain('Some unknown git error');
       expect(result.message).toContain('fetch');
       expect(result.message).toContain(url);
+      expect(result.cause).toBe(error);
+    });
+
+    test('should redact credentials from URL in error messages', () => {
+      const urlWithCreds = 'https://user:password123@github.com/user/repo.git';
+      const error = new Error('Some git error');
+      const result = createGitRemoteError(error, urlWithCreds, 'clone');
+
+      expect(result).toBeInstanceOf(RepomixError);
+      expect(result.message).not.toContain('password123');
+      expect(result.message).not.toContain('user:password123');
+      expect(result.message).toContain('***@github.com');
+    });
+
+    test('should handle non-Error inputs safely', () => {
+      const result = createGitRemoteError('string error', url, 'fetch');
+
+      expect(result).toBeInstanceOf(RepomixError);
+      expect(result.message).toContain('string error');
+      expect(result.message).not.toContain('undefined');
+    });
+
+    test('should handle null error input safely', () => {
+      const result = createGitRemoteError(null, url, 'clone');
+
+      expect(result).toBeInstanceOf(RepomixError);
+      expect(result.message).not.toContain('undefined');
     });
   });
 
@@ -570,6 +598,43 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
       await expect(
         execLsRemote('https://github.com/user/private-repo.git', { execFileAsync: mockFileExecAsync }),
       ).rejects.toThrow('Authentication required');
+    });
+
+    test('execGitShallowClone should throw RepomixError when short-SHA retry fails', async () => {
+      const shortSha = 'ce9b621';
+      const refNotFoundError = new Error(
+        `Command failed: git fetch --depth 1 origin ${shortSha}\nfatal: couldn't find remote ref ${shortSha}`,
+      );
+      const retryTimeoutError = Object.assign(new Error('Command failed: git fetch'), {
+        killed: true,
+        signal: 'SIGTERM',
+      });
+      const mockFileExecAsync = vi
+        .fn()
+        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // git init
+        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // git remote add
+        .mockRejectedValueOnce(refNotFoundError) // git fetch --depth 1 (triggers short-SHA fallback)
+        .mockRejectedValueOnce(retryTimeoutError); // git fetch origin (retry fails with timeout)
+
+      await expect(
+        execGitShallowClone('https://github.com/user/repo.git', '/tmp/repo', shortSha, {
+          execFileAsync: mockFileExecAsync,
+        }),
+      ).rejects.toThrow('timed out after 30 seconds');
+
+      expect(mockFileExecAsync).toHaveBeenCalledTimes(4);
+    });
+
+    test('execGitShallowClone should throw RepomixError when git init fails', async () => {
+      const mockFileExecAsync = vi.fn().mockRejectedValueOnce(new Error('permission denied'));
+
+      await expect(
+        execGitShallowClone('https://github.com/user/repo.git', '/tmp/repo', 'main', {
+          execFileAsync: mockFileExecAsync,
+        }),
+      ).rejects.toThrow('Failed to initialize local git repository');
+
+      expect(mockFileExecAsync).toHaveBeenCalledTimes(1);
     });
   });
 });
