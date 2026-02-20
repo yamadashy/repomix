@@ -34,7 +34,7 @@ export { setWasmBasePath } from './core/treeSitter/loadLanguage.js';
 // ---------------------------------------------------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------------------------------------------------
-export { loadFileConfig, mergeConfigs } from './config/configLoad.js';
+export { loadFileConfig, mergeConfigs, findLocalConfigPath } from './config/configLoad.js';
 export type { RepomixConfigFile as RepomixConfig } from './config/configSchema.js';
 export { defineConfig } from './config/configSchema.js';
 export { defaultIgnoreList } from './config/defaultIgnore.js';
