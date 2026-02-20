@@ -316,6 +316,9 @@ const createBaseGlobbyOptions = (
   absolute: false,
   dot: true,
   followSymbolicLinks: false,
+  // Force case-sensitive pattern matching regardless of OS filesystem case sensitivity.
+  // Without this, on macOS (HFS+/APFS case-insensitive), the default ignore pattern
+  // `build/**` would incorrectly exclude Pants BUILD files.
   caseSensitiveMatch: true,
 });
 
