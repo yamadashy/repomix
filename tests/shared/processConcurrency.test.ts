@@ -106,7 +106,6 @@ describe('processConcurrency', () => {
         },
         env: expect.objectContaining({
           REPOMIX_LOG_LEVEL: '2',
-          FORCE_COLOR: expect.any(String),
           TERM: expect.any(String),
         }),
       });
@@ -165,6 +164,80 @@ describe('processConcurrency', () => {
       );
       expect(taskRunner).toHaveProperty('run');
       expect(taskRunner).toHaveProperty('cleanup');
+    });
+  });
+
+  describe('color propagation to worker processes', () => {
+    beforeEach(() => {
+      vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
+      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+        (this as Record<string, unknown>).run = vi.fn();
+        (this as Record<string, unknown>).destroy = vi.fn();
+        return this as Tinypool;
+      });
+    });
+
+    it('should propagate NO_COLOR to worker when NO_COLOR env is set', () => {
+      const originalNoColor = process.env.NO_COLOR;
+      process.env.NO_COLOR = '1';
+      try {
+        createWorkerPool({ numOfTasks: 100, workerType: 'fileProcess', runtime: 'child_process' });
+
+        expect(Tinypool).toHaveBeenCalledWith(
+          expect.objectContaining({
+            env: expect.objectContaining({
+              NO_COLOR: '1',
+            }),
+          }),
+        );
+      } finally {
+        if (originalNoColor === undefined) {
+          delete process.env.NO_COLOR;
+        } else {
+          process.env.NO_COLOR = originalNoColor;
+        }
+      }
+    });
+
+    it('should propagate NO_COLOR to worker when --no-color is in argv', () => {
+      const originalArgv = process.argv;
+      process.argv = [...originalArgv, '--no-color'];
+      try {
+        createWorkerPool({ numOfTasks: 100, workerType: 'fileProcess', runtime: 'child_process' });
+
+        expect(Tinypool).toHaveBeenCalledWith(
+          expect.objectContaining({
+            env: expect.objectContaining({
+              NO_COLOR: '1',
+            }),
+          }),
+        );
+      } finally {
+        process.argv = originalArgv;
+      }
+    });
+
+    it('should set FORCE_COLOR when colors are not disabled', () => {
+      const originalNoColor = process.env.NO_COLOR;
+      delete process.env.NO_COLOR;
+      const originalArgv = process.argv;
+      process.argv = originalArgv.filter((arg) => arg !== '--no-color');
+      try {
+        createWorkerPool({ numOfTasks: 100, workerType: 'fileProcess', runtime: 'child_process' });
+
+        expect(Tinypool).toHaveBeenCalledWith(
+          expect.objectContaining({
+            env: expect.objectContaining({
+              FORCE_COLOR: expect.any(String),
+            }),
+          }),
+        );
+      } finally {
+        if (originalNoColor !== undefined) {
+          process.env.NO_COLOR = originalNoColor;
+        }
+        process.argv = originalArgv;
+      }
     });
   });
 });
