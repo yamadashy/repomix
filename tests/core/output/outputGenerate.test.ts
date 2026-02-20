@@ -293,6 +293,77 @@ describe('outputGenerate', () => {
     expect(output).not.toContain('content1');
   });
 
+  test('generateOutput should exclude files section in xml style when files is false', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.xml',
+        style: 'xml',
+        files: false,
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+
+    expect(output).not.toContain('file1.txt');
+    expect(output).not.toContain('content1');
+    expect(output).not.toContain('<file path=');
+  });
+
+  test('generateOutput should exclude files section in parsable xml style when files is false', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.xml',
+        style: 'xml',
+        parsableStyle: true,
+        files: false,
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: '<div>foo</div>' }];
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+
+    const parser = new XMLParser({ ignoreAttributes: false });
+    const parsedOutput = parser.parse(output);
+    expect(parsedOutput.repomix.files).toBeUndefined();
+  });
+
+  test('generateOutput should exclude files section in markdown style when files is false', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.md',
+        style: 'markdown',
+        files: false,
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+
+    expect(output).not.toContain('## File: file1.txt');
+    expect(output).not.toContain('content1');
+    expect(output).not.toContain('# Files');
+  });
+
+  test('generateOutput should exclude files section in json style when files is false', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.json',
+        style: 'json',
+        files: false,
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [
+      { path: 'file1.txt', content: 'content1' },
+      { path: 'file2.txt', content: 'content2' },
+    ];
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+
+    const parsed = JSON.parse(output);
+    expect(parsed).not.toHaveProperty('files');
+  });
+
   test('generateOutput should exclude directory structure when disabled', async () => {
     const mockConfig = createMockConfig({
       output: {
