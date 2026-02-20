@@ -290,6 +290,7 @@ node_modules
           absolute: false,
           dot: true,
           followSymbolicLinks: false,
+          caseSensitiveMatch: true,
         }),
       );
     });
@@ -943,6 +944,7 @@ node_modules
           absolute: false,
           dot: true,
           followSymbolicLinks: false,
+          caseSensitiveMatch: true,
         });
 
         // Each call should have either onlyFiles or onlyDirectories, but not both
