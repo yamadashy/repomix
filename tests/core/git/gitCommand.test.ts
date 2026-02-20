@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
+  createGitRemoteError,
   execGitDiff,
   execGitLog,
   execGitLogFilenames,
@@ -8,6 +9,7 @@ import {
   execGitVersion,
   execLsRemote,
 } from '../../../src/core/git/gitCommand.js';
+import { RepomixError } from '../../../src/shared/errorHandle.js';
 import { logger } from '../../../src/shared/logger.js';
 
 vi.mock('../../../src/shared/logger');
@@ -142,7 +144,7 @@ file2.ts
 
       await expect(
         execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
-      ).rejects.toThrow('Authentication failed');
+      ).rejects.toThrow('Authentication required');
 
       expect(mockFileExecAsync).toHaveBeenCalledWith(
         'git',
@@ -193,7 +195,7 @@ file2.ts
 
       await expect(
         execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
-      ).rejects.toThrow('Authentication failed');
+      ).rejects.toThrow('Authentication required');
       expect(mockFileExecAsync).toHaveBeenCalledTimes(3);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(1, 'git', ['-C', directory, 'init']);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(2, 'git', [
@@ -268,7 +270,7 @@ file2.ts
 
       await expect(
         execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
-      ).rejects.toThrow(errMessage);
+      ).rejects.toThrow(RepomixError);
       expect(mockFileExecAsync).toHaveBeenCalledTimes(3);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(1, 'git', ['-C', directory, 'init']);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(2, 'git', [
@@ -408,8 +410,166 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
 
       await expect(
         execLsRemote('https://github.com/user/repo.git', { execFileAsync: mockFileExecAsync }),
-      ).rejects.toThrow('git command failed');
+      ).rejects.toThrow(RepomixError);
       expect(logger.trace).toHaveBeenCalledWith('Failed to execute git ls-remote:', 'git command failed');
+    });
+  });
+
+  describe('createGitRemoteError', () => {
+    const url = 'https://github.com/user/repo.git';
+
+    test('should create timeout error when process was killed', () => {
+      const error = Object.assign(new Error('Command failed'), { killed: true, signal: 'SIGTERM' });
+      const result = createGitRemoteError(error, url, 'clone');
+
+      expect(result).toBeInstanceOf(RepomixError);
+      expect(result.message).toContain('timed out after 30 seconds');
+      expect(result.message).toContain(url);
+    });
+
+    test('should create timeout error when SIGTERM signal is present', () => {
+      const error = Object.assign(new Error('Command failed'), { signal: 'SIGTERM' });
+      const result = createGitRemoteError(error, url, 'ls-remote');
+
+      expect(result).toBeInstanceOf(RepomixError);
+      expect(result.message).toContain('timed out');
+      expect(result.message).toContain('ls-remote');
+    });
+
+    test('should create authentication error for auth failures', () => {
+      const error = Object.assign(new Error('Command failed'), {
+        stderr: 'fatal: Authentication failed for https://github.com/user/repo.git',
+      });
+      const result = createGitRemoteError(error, url, 'clone');
+
+      expect(result).toBeInstanceOf(RepomixError);
+      expect(result.message).toContain('Authentication required');
+      expect(result.message).toContain('private');
+    });
+
+    test('should create authentication error when username prompt fails', () => {
+      const error = Object.assign(new Error('Command failed'), {
+        stderr: 'fatal: could not read Username for',
+      });
+      const result = createGitRemoteError(error, url, 'fetch');
+
+      expect(result).toBeInstanceOf(RepomixError);
+      expect(result.message).toContain('Authentication required');
+    });
+
+    test('should create not-found error for missing repositories', () => {
+      const error = Object.assign(new Error('Command failed'), {
+        stderr: 'ERROR: Repository not found.',
+      });
+      const result = createGitRemoteError(error, url, 'clone');
+
+      expect(result).toBeInstanceOf(RepomixError);
+      expect(result.message).toContain('Repository not found');
+      expect(result.message).toContain('verify the URL');
+    });
+
+    test('should create connection error for DNS failures', () => {
+      const error = Object.assign(new Error('Command failed'), {
+        stderr: 'fatal: Could not resolve host: github.com',
+      });
+      const result = createGitRemoteError(error, url, 'ls-remote');
+
+      expect(result).toBeInstanceOf(RepomixError);
+      expect(result.message).toContain('Unable to connect');
+      expect(result.message).toContain('network connection');
+    });
+
+    test('should create connection error for refused connections', () => {
+      const error = Object.assign(new Error('Command failed'), {
+        stderr: 'fatal: Connection refused',
+      });
+      const result = createGitRemoteError(error, url, 'clone');
+
+      expect(result).toBeInstanceOf(RepomixError);
+      expect(result.message).toContain('Unable to connect');
+    });
+
+    test('should create generic error as fallback', () => {
+      const error = new Error('Some unknown git error');
+      const result = createGitRemoteError(error, url, 'fetch');
+
+      expect(result).toBeInstanceOf(RepomixError);
+      expect(result.message).toContain('Some unknown git error');
+      expect(result.message).toContain('fetch');
+      expect(result.message).toContain(url);
+    });
+  });
+
+  describe('timeout and error handling for remote operations', () => {
+    test('execLsRemote should throw timeout error when process is killed', async () => {
+      const timeoutError = Object.assign(new Error('Command failed: git ls-remote'), {
+        killed: true,
+        signal: 'SIGTERM',
+      });
+      const mockFileExecAsync = vi.fn().mockRejectedValue(timeoutError);
+
+      await expect(
+        execLsRemote('https://github.com/user/repo.git', { execFileAsync: mockFileExecAsync }),
+      ).rejects.toThrow('timed out after 30 seconds');
+    });
+
+    test('execGitShallowClone should throw timeout error when clone times out', async () => {
+      const timeoutError = Object.assign(new Error('Command failed: git clone'), {
+        killed: true,
+        signal: 'SIGTERM',
+      });
+      const mockFileExecAsync = vi.fn().mockRejectedValue(timeoutError);
+
+      await expect(
+        execGitShallowClone('https://github.com/user/repo.git', '/tmp/repo', undefined, {
+          execFileAsync: mockFileExecAsync,
+        }),
+      ).rejects.toThrow('timed out after 30 seconds');
+    });
+
+    test('execGitShallowClone should throw timeout error when fetch with branch times out', async () => {
+      const timeoutError = Object.assign(new Error('Command failed: git fetch'), {
+        killed: true,
+        signal: 'SIGTERM',
+      });
+      const mockFileExecAsync = vi
+        .fn()
+        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // git init
+        .mockResolvedValueOnce({ stdout: '', stderr: '' }) // git remote add
+        .mockRejectedValueOnce(timeoutError); // git fetch times out
+
+      await expect(
+        execGitShallowClone('https://github.com/user/repo.git', '/tmp/repo', 'main', {
+          execFileAsync: mockFileExecAsync,
+        }),
+      ).rejects.toThrow('timed out after 30 seconds');
+
+      // Should not attempt short SHA fallback after timeout
+      expect(mockFileExecAsync).toHaveBeenCalledTimes(3);
+    });
+
+    test('execGitShallowClone should throw descriptive error for repo not found on clone', async () => {
+      const error = Object.assign(new Error('Command failed'), {
+        stderr: 'ERROR: Repository not found.',
+      });
+      const mockFileExecAsync = vi.fn().mockRejectedValue(error);
+
+      await expect(
+        execGitShallowClone('https://github.com/user/repo.git', '/tmp/repo', undefined, {
+          execFileAsync: mockFileExecAsync,
+        }),
+      ).rejects.toThrow('Repository not found');
+    });
+
+    test('execLsRemote should throw descriptive error for authentication failures', async () => {
+      const error = Object.assign(new Error('Command failed'), {
+        stderr: "fatal: could not read Username for 'https://github.com': terminal prompts disabled",
+      });
+      const mockFileExecAsync = vi.fn().mockRejectedValue(error);
+
+      await expect(
+        execLsRemote('https://github.com/user/private-repo.git', { execFileAsync: mockFileExecAsync }),
+      ).rejects.toThrow('Authentication required');
     });
   });
 });
