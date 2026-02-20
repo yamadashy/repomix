@@ -69,4 +69,10 @@ export interface CliOptions extends OptionValues {
   topFilesLen?: number;
   verbose?: boolean;
   quiet?: boolean;
+
+  // Color Options
+  // The --no-color flag is handled by picocolors which checks process.argv.
+  // This property exists for Commander type compatibility and for propagating
+  // color settings to worker processes.
+  color?: boolean;
 }
