@@ -241,3 +241,12 @@ export const mergeConfigs = (
     throw error;
   }
 };
+
+/**
+ * Searches for a config file in the given directory using the default config file name priority order.
+ * Returns the absolute path to the found config file, or null if none found.
+ */
+export const findLocalConfigPath = async (dir: string): Promise<string | null> => {
+  const configPaths = defaultConfigPaths.map((configPath) => path.resolve(dir, configPath));
+  return await findConfigFile(configPaths, 'local (cwd)');
+};
