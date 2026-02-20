@@ -351,5 +351,25 @@ describe('configLoad', () => {
       const merged = mergeConfigs(process.cwd(), {}, { skillGenerate: 'from-cli' });
       expect(merged.skillGenerate).toBe('from-cli');
     });
+
+    test('should respect files: false from CLI config', () => {
+      const merged = mergeConfigs(process.cwd(), {}, { output: { files: false } });
+      expect(merged.output.files).toBe(false);
+    });
+
+    test('should respect files: false from file config', () => {
+      const merged = mergeConfigs(process.cwd(), { output: { files: false } }, {});
+      expect(merged.output.files).toBe(false);
+    });
+
+    test('should let CLI files: false override file config files: true', () => {
+      const merged = mergeConfigs(process.cwd(), { output: { files: true } }, { output: { files: false } });
+      expect(merged.output.files).toBe(false);
+    });
+
+    test('should default files to true when not set in any config', () => {
+      const merged = mergeConfigs(process.cwd(), {}, {});
+      expect(merged.output.files).toBe(true);
+    });
   });
 });
