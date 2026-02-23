@@ -182,18 +182,6 @@ describe('gitHubArchive', () => {
       ).rejects.toThrow(RepomixError);
     });
 
-    test('should not retry on extraction error', async () => {
-      mockFetch.mockResolvedValue(createMockResponse());
-      mockPipeline.mockRejectedValue(new RepomixError('Failed to extract archive: tar error'));
-
-      await expect(
-        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 3 }, undefined, mockDeps),
-      ).rejects.toThrow(RepomixError);
-
-      // Should only fetch once - extraction errors should not trigger retries
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
-
     test('should handle missing response body', async () => {
       mockFetch.mockResolvedValue(createMockResponse({ body: null } as unknown as Partial<Response>));
 

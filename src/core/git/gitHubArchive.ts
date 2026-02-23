@@ -75,12 +75,6 @@ export const downloadGitHubArchive = async (
         lastError = error as Error;
         logger.trace(`Archive download attempt ${attempt} failed:`, lastError.message);
 
-        // If it's an extraction error, don't retry - the same archive will fail again
-        const isExtractionError = lastError instanceof RepomixError && lastError.message.includes('Failed to extract');
-        if (isExtractionError) {
-          throw lastError;
-        }
-
         // If it's a 404-like error and we have more URLs to try, don't retry this URL
         const isNotFoundError =
           lastError instanceof RepomixError &&
