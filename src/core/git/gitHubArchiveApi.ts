@@ -3,9 +3,9 @@ import type { GitHubRepoInfo } from './gitRemoteParse.js';
 
 /**
  * Constructs GitHub archive download URL
- * Format: https://github.com/owner/repo/archive/refs/heads/branch.zip
- * For tags: https://github.com/owner/repo/archive/refs/tags/tag.zip
- * For commits: https://github.com/owner/repo/archive/commit.zip
+ * Format: https://github.com/owner/repo/archive/refs/heads/branch.tar.gz
+ * For tags:    https://github.com/owner/repo/archive/refs/tags/tag.tar.gz
+ * For commits: https://github.com/owner/repo/archive/commit.tar.gz
  */
 export const buildGitHubArchiveUrl = (repoInfo: GitHubRepoInfo): string => {
   const { owner, repo, ref } = repoInfo;
@@ -13,18 +13,18 @@ export const buildGitHubArchiveUrl = (repoInfo: GitHubRepoInfo): string => {
 
   if (!ref) {
     // Default to HEAD (repository's default branch)
-    return `${baseUrl}/HEAD.zip`;
+    return `${baseUrl}/HEAD.tar.gz`;
   }
 
   // Check if ref looks like a commit SHA (40 hex chars or shorter)
   const isCommitSha = /^[0-9a-f]{4,40}$/i.test(ref);
   if (isCommitSha) {
-    return `${baseUrl}/${encodeURIComponent(ref)}.zip`;
+    return `${baseUrl}/${encodeURIComponent(ref)}.tar.gz`;
   }
 
   // For branches and tags, we need to determine the type
   // Default to branch format, will fallback to tag if needed
-  return `${baseUrl}/refs/heads/${encodeURIComponent(ref)}.zip`;
+  return `${baseUrl}/refs/heads/${encodeURIComponent(ref)}.tar.gz`;
 };
 
 /**
@@ -36,7 +36,7 @@ export const buildGitHubMasterArchiveUrl = (repoInfo: GitHubRepoInfo): string | 
     return null; // Only applicable when no ref is specified
   }
 
-  return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive/refs/heads/master.zip`;
+  return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive/refs/heads/master.tar.gz`;
 };
 
 /**
@@ -48,21 +48,7 @@ export const buildGitHubTagArchiveUrl = (repoInfo: GitHubRepoInfo): string | nul
     return null; // Not applicable for commits or no ref
   }
 
-  return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive/refs/tags/${encodeURIComponent(ref)}.zip`;
-};
-
-/**
- * Gets the expected archive filename from GitHub
- * Format: repo-branch.zip or repo-sha.zip
- */
-export const getArchiveFilename = (repoInfo: GitHubRepoInfo): string => {
-  const { repo, ref } = repoInfo;
-  const refPart = ref || 'HEAD';
-
-  // GitHub uses the last part of the ref for the filename
-  const refName = refPart.includes('/') ? refPart.split('/').pop() : refPart;
-
-  return `${repo}-${refName}.zip`;
+  return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive/refs/tags/${encodeURIComponent(ref)}.tar.gz`;
 };
 
 /**

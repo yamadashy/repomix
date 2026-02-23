@@ -4,7 +4,6 @@ import {
   buildGitHubMasterArchiveUrl,
   buildGitHubTagArchiveUrl,
   checkGitHubResponse,
-  getArchiveFilename,
 } from '../../../src/core/git/gitHubArchiveApi.js';
 import { parseGitHubRepoInfo } from '../../../src/core/git/gitRemoteParse.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
@@ -14,25 +13,25 @@ describe('GitHub Archive API', () => {
     test('should build URL for default branch (HEAD)', () => {
       const repoInfo = { owner: 'user', repo: 'repo' };
       const url = buildGitHubArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/HEAD.zip');
+      expect(url).toBe('https://github.com/user/repo/archive/HEAD.tar.gz');
     });
 
     test('should build URL for specific branch', () => {
       const repoInfo = { owner: 'user', repo: 'repo', ref: 'develop' };
       const url = buildGitHubArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/refs/heads/develop.zip');
+      expect(url).toBe('https://github.com/user/repo/archive/refs/heads/develop.tar.gz');
     });
 
     test('should build URL for commit SHA', () => {
       const repoInfo = { owner: 'user', repo: 'repo', ref: 'abc123def456' };
       const url = buildGitHubArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/abc123def456.zip');
+      expect(url).toBe('https://github.com/user/repo/archive/abc123def456.tar.gz');
     });
 
     test('should build URL for full commit SHA', () => {
       const repoInfo = { owner: 'user', repo: 'repo', ref: 'abc123def456789012345678901234567890abcd' };
       const url = buildGitHubArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/abc123def456789012345678901234567890abcd.zip');
+      expect(url).toBe('https://github.com/user/repo/archive/abc123def456789012345678901234567890abcd.tar.gz');
     });
   });
 
@@ -40,7 +39,7 @@ describe('GitHub Archive API', () => {
     test('should build URL for master branch fallback', () => {
       const repoInfo = { owner: 'user', repo: 'repo' };
       const url = buildGitHubMasterArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/refs/heads/master.zip');
+      expect(url).toBe('https://github.com/user/repo/archive/refs/heads/master.tar.gz');
     });
 
     test('should return null when ref is specified', () => {
@@ -54,7 +53,7 @@ describe('GitHub Archive API', () => {
     test('should build URL for tag', () => {
       const repoInfo = { owner: 'user', repo: 'repo', ref: 'v1.0.0' };
       const url = buildGitHubTagArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/refs/tags/v1.0.0.zip');
+      expect(url).toBe('https://github.com/user/repo/archive/refs/tags/v1.0.0.tar.gz');
     });
 
     test('should return null for commit SHA', () => {
@@ -67,32 +66,6 @@ describe('GitHub Archive API', () => {
       const repoInfo = { owner: 'user', repo: 'repo' };
       const url = buildGitHubTagArchiveUrl(repoInfo);
       expect(url).toBeNull();
-    });
-  });
-
-  describe('getArchiveFilename', () => {
-    test('should generate filename for default branch (HEAD)', () => {
-      const repoInfo = { owner: 'user', repo: 'myrepo' };
-      const filename = getArchiveFilename(repoInfo);
-      expect(filename).toBe('myrepo-HEAD.zip');
-    });
-
-    test('should generate filename for specific branch', () => {
-      const repoInfo = { owner: 'user', repo: 'myrepo', ref: 'develop' };
-      const filename = getArchiveFilename(repoInfo);
-      expect(filename).toBe('myrepo-develop.zip');
-    });
-
-    test('should generate filename for tag with slash', () => {
-      const repoInfo = { owner: 'user', repo: 'myrepo', ref: 'release/v1.0' };
-      const filename = getArchiveFilename(repoInfo);
-      expect(filename).toBe('myrepo-v1.0.zip');
-    });
-
-    test('should generate filename for commit SHA', () => {
-      const repoInfo = { owner: 'user', repo: 'myrepo', ref: 'abc123' };
-      const filename = getArchiveFilename(repoInfo);
-      expect(filename).toBe('myrepo-abc123.zip');
     });
   });
 
