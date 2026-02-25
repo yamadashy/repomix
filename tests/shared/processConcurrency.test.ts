@@ -239,5 +239,37 @@ describe('processConcurrency', () => {
         process.argv = originalArgv;
       }
     });
+
+    it('should not leak FORCE_COLOR when NO_COLOR is enabled', () => {
+      const originalNoColor = process.env.NO_COLOR;
+      const originalForceColor = process.env.FORCE_COLOR;
+      process.env.NO_COLOR = '1';
+      process.env.FORCE_COLOR = '1';
+      try {
+        createWorkerPool({ numOfTasks: 100, workerType: 'fileProcess', runtime: 'child_process' });
+
+        expect(Tinypool).toHaveBeenCalledWith(
+          expect.objectContaining({
+            env: expect.objectContaining({
+              NO_COLOR: '1',
+            }),
+          }),
+        );
+
+        const callArgs = vi.mocked(Tinypool).mock.calls.at(-1)?.[0];
+        expect(callArgs?.env?.FORCE_COLOR).toBeUndefined();
+      } finally {
+        if (originalNoColor === undefined) {
+          delete process.env.NO_COLOR;
+        } else {
+          process.env.NO_COLOR = originalNoColor;
+        }
+        if (originalForceColor === undefined) {
+          delete process.env.FORCE_COLOR;
+        } else {
+          process.env.FORCE_COLOR = originalForceColor;
+        }
+      }
+    });
   });
 });
