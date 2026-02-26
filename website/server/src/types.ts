@@ -28,6 +28,11 @@ interface PackSummary {
   totalTokens: number;
 }
 
+export interface SuspiciousFile {
+  filePath: string;
+  messages: string[];
+}
+
 export interface PackResult {
   content: string;
   format: string;
@@ -37,6 +42,7 @@ export interface PackResult {
     summary?: PackSummary;
     topFiles?: TopFile[];
     allFiles?: FileInfo[];
+    suspiciousFiles?: SuspiciousFile[];
   };
 }
 

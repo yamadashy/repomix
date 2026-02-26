@@ -38,7 +38,7 @@ export async function processZipFile(file: File, format: string, options: PackOp
     fileSummary: options.fileSummary,
     directoryStructure: options.directoryStructure,
     compress: options.compress,
-    securityCheck: false,
+    securityCheck: true,
     topFilesLen: 10,
     include: options.includePatterns,
     ignore: options.ignorePatterns,
@@ -68,6 +68,15 @@ export async function processZipFile(file: File, format: string, options: PackOp
     // Read the generated file
     const content = await fs.readFile(outputFilePath, 'utf-8');
 
+    // Map suspicious files results
+    const suspiciousFiles =
+      packResult.suspiciousFilesResults.length > 0
+        ? packResult.suspiciousFilesResults.map((suspiciousResult) => ({
+            filePath: suspiciousResult.filePath,
+            messages: suspiciousResult.messages,
+          }))
+        : undefined;
+
     // Create pack result
     const packResultData: PackResult = {
       content,
@@ -88,6 +97,7 @@ export async function processZipFile(file: File, format: string, options: PackOp
           }))
           .sort((a, b) => b.charCount - a.charCount)
           .slice(0, cliOptions.topFilesLen),
+        suspiciousFiles,
       },
     };
 
