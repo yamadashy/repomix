@@ -216,7 +216,7 @@ onUnmounted(() => {
           <li v-for="file in result.metadata.suspiciousFiles" :key="file.filePath">
             <div class="file-path">{{ file.filePath }}</div>
             <div class="suspicious-messages">
-              <span v-for="(message, index) in file.messages" :key="index" class="suspicious-message">{{ message }}</span>
+              <span v-for="(message, index) in file.messages" :key="`${message}-${index}`" class="suspicious-message">{{ message }}</span>
             </div>
           </li>
         </ul>

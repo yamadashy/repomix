@@ -71,9 +71,9 @@ export async function processZipFile(file: File, format: string, options: PackOp
     // Map suspicious files results
     const suspiciousFiles =
       packResult.suspiciousFilesResults.length > 0
-        ? packResult.suspiciousFilesResults.map((result) => ({
-            filePath: result.filePath,
-            messages: result.messages,
+        ? packResult.suspiciousFilesResults.map((suspiciousResult) => ({
+            filePath: suspiciousResult.filePath,
+            messages: suspiciousResult.messages,
           }))
         : undefined;
 
