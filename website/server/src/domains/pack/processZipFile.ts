@@ -38,7 +38,7 @@ export async function processZipFile(file: File, format: string, options: PackOp
     fileSummary: options.fileSummary,
     directoryStructure: options.directoryStructure,
     compress: options.compress,
-    securityCheck: false,
+    securityCheck: true,
     topFilesLen: 10,
     include: options.includePatterns,
     ignore: options.ignorePatterns,
