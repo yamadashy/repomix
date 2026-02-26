@@ -2,7 +2,7 @@
 import ace, { type Ace } from 'ace-builds';
 import themeTomorrowUrl from 'ace-builds/src-noconflict/theme-tomorrow?url';
 import themeTomorrowNightUrl from 'ace-builds/src-noconflict/theme-tomorrow_night?url';
-import { BarChart2, Copy, Download, GitFork, PackageSearch, Share, Terminal } from 'lucide-vue-next';
+import { AlertTriangle, BarChart2, Copy, Download, GitFork, PackageSearch, Share, Terminal } from 'lucide-vue-next';
 import { useData } from 'vitepress';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { VAceEditor } from 'vue3-ace-editor';
@@ -48,6 +48,10 @@ watch(isDark, (newIsDark) => {
   if (editorInstance.value) {
     editorInstance.value.setTheme(newIsDark ? `ace/theme/${darkTheme}` : `ace/theme/${lightTheme}`);
   }
+});
+
+const hasSuspiciousFiles = computed(() => {
+  return props.result.metadata.suspiciousFiles && props.result.metadata.suspiciousFiles.length > 0;
 });
 
 const formattedTimestamp = computed(() => {
@@ -205,6 +209,19 @@ onUnmounted(() => {
         </ol>
       </div>
 
+      <div class="metadata-section security-warning" v-if="hasSuspiciousFiles">
+        <h3><AlertTriangle :size="16" class="section-icon warning-icon" /> Security Alert</h3>
+        <p class="warning-description">The following files were excluded because they may contain sensitive information:</p>
+        <ul class="suspicious-files-list">
+          <li v-for="file in result.metadata.suspiciousFiles" :key="file.filePath">
+            <div class="file-path">{{ file.filePath }}</div>
+            <div class="suspicious-messages">
+              <span v-for="(message, index) in file.messages" :key="index" class="suspicious-message">{{ message }}</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
     </div>
 
     <div class="output-panel">
@@ -348,6 +365,50 @@ dd {
   margin-bottom: 8px;
   border-left: 2px solid var(--vp-c-divider);
   padding-left: 8px;
+}
+
+.security-warning {
+  background: var(--vp-c-warning-soft);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.warning-icon {
+  color: var(--vp-c-warning-1);
+}
+
+.warning-description {
+  font-size: 12px;
+  color: var(--vp-c-text-2);
+  margin: 0 0 8px;
+}
+
+.suspicious-files-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.suspicious-files-list li {
+  margin-bottom: 6px;
+  border-left: 2px solid var(--vp-c-warning-1);
+  padding-left: 8px;
+}
+
+.suspicious-files-list li:last-child {
+  margin-bottom: 0;
+}
+
+.suspicious-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.suspicious-message {
+  font-size: 12px;
+  color: var(--vp-c-text-2);
 }
 
 .file-path {
