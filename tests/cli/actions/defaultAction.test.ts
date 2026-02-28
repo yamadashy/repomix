@@ -305,6 +305,24 @@ describe('defaultAction', () => {
       expect(config.ignore?.useDefaultPatterns).toBe(false);
     });
 
+    it('should handle --no-files flag', () => {
+      const options = {
+        files: false,
+      };
+      const config = buildCliConfig(options);
+
+      expect(config.output?.files).toBe(false);
+    });
+
+    it('should not set files in config when files option is true (Commander default)', () => {
+      const options = {
+        files: true,
+      };
+      const config = buildCliConfig(options);
+
+      expect(config.output?.files).toBeUndefined();
+    });
+
     it('should handle --skill-generate with string name', () => {
       const options: CliOptions = {
         skillGenerate: 'my-skill',
