@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import pc from 'picocolors';
+import { findLocalConfigPath } from '../../config/configLoad.js';
 import { execGitShallowClone } from '../../core/git/gitCommand.js';
 import { downloadGitHubArchive, isArchiveDownloadSupported } from '../../core/git/gitHubArchive.js';
 import { getRemoteRefs } from '../../core/git/gitRemoteHandle.js';
@@ -117,10 +118,26 @@ export const runRemoteAction = async (
       }
     }
 
+    // Resolve config path from the current working directory (not the temp directory)
+    // so that local config files are respected when using --remote
+    const resolvedOptions = { ...cliOptions };
+    if (resolvedOptions.config) {
+      // If a config path is explicitly provided, resolve it relative to CWD
+      if (!path.isAbsolute(resolvedOptions.config)) {
+        resolvedOptions.config = path.resolve(process.cwd(), resolvedOptions.config);
+      }
+    } else {
+      // If no config is specified, search for a default config file in CWD
+      const localConfigPath = await findLocalConfigPath(process.cwd());
+      if (localConfigPath) {
+        resolvedOptions.config = localConfigPath;
+      }
+    }
+
     // Run the default action on the downloaded/cloned repository
     // Pass the pre-computed skill name, directory, project name, and source URL
     const skillSourceUrl = cliOptions.skillGenerate !== undefined ? repoUrl : undefined;
-    const optionsWithSkill = { ...cliOptions, skillName, skillDir, skillProjectName, skillSourceUrl };
+    const optionsWithSkill = { ...resolvedOptions, skillName, skillDir, skillProjectName, skillSourceUrl };
     result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithSkill);
 
     // Copy output to current directory (only for non-skill generation)
