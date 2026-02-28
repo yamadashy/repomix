@@ -73,6 +73,12 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
   );
 
   const startTime = process.hrtime.bigint();
+  const noColorEnabled = Boolean(process.env.NO_COLOR) || process.argv.includes('--no-color');
+  const childProcessEnv = { ...process.env };
+  if (noColorEnabled) {
+    // Ensure child workers do not inherit FORCE_COLOR when NO_COLOR is active.
+    delete childProcessEnv.FORCE_COLOR;
+  }
 
   const pool = new Tinypool({
     filename: workerPath,
@@ -88,14 +94,17 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
     // Only add env for child_process workers
     ...(runtime === 'child_process' && {
       env: {
-        ...process.env,
+        ...childProcessEnv,
         // Pass worker type as environment variable for child_process workers
         // This is needed because workerData is not directly accessible in child_process runtime
         REPOMIX_WORKER_TYPE: workerType,
         // Pass log level as environment variable for child_process workers
         REPOMIX_LOG_LEVEL: logger.getLogLevel().toString(),
-        // Ensure color support in child_process workers
-        FORCE_COLOR: process.env.FORCE_COLOR || (process.stdout.isTTY ? '1' : '0'),
+        // Propagate color settings to child_process workers
+        // Respect NO_COLOR env var and --no-color flag; only set FORCE_COLOR when colors are enabled
+        ...(noColorEnabled
+          ? { NO_COLOR: '1' }
+          : { FORCE_COLOR: process.env.FORCE_COLOR || (process.stdout.isTTY ? '1' : '0') }),
         // Pass terminal capabilities
         TERM: process.env.TERM || 'xterm-256color',
       },
