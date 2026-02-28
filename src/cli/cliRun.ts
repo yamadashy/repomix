@@ -145,6 +145,7 @@ export const run = async () => {
           return Number(v);
         },
       )
+      .option('--output-show-git-blame', 'Show git blame information in the output')
       // File Selection Options
       .optionsGroup('File Selection Options')
       .option(

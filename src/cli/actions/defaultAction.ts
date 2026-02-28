@@ -52,6 +52,23 @@ export const runDefaultAction = async (
   const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
   logger.trace('Merged config:', config);
 
+
+  if (config.output.git?.showBlame) {
+    const incompatibleOptions: string[] = [];
+    if (config.output.compress) incompatibleOptions.push('compress');
+    if (config.output.removeComments) incompatibleOptions.push('removeComments');
+    if (config.output.removeEmptyLines) incompatibleOptions.push('removeEmptyLines');
+
+    if (incompatibleOptions.length > 0) {
+      logger.warn(
+        `Git blame is enabled. The following options will be ignored for files with blame info: ${incompatibleOptions.join(', ')}.`,
+      );
+      logger.warn(
+        'This is because git blame modifies the file content structure, making it incompatible with these processing steps.',
+      );
+    }
+  }
+
   // Validate conflicting options
   validateConflictingOptions(config);
 
@@ -84,6 +101,7 @@ export const runDefaultAction = async (
       // Interactive mode: prompt for skill location
       const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
       cliOptions.skillDir = promptResult.skillDir;
+
     }
   }
 
@@ -322,6 +340,16 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.output = {
       ...cliConfig.output,
       git: gitLogConfig,
+    };
+  }
+
+  if (options.outputShowGitBlame) {
+    cliConfig.output = {
+      ...cliConfig.output,
+      git: {
+        ...cliConfig.output?.git,
+        showBlame: true,
+      },
     };
   }
 

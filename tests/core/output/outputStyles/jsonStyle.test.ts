@@ -31,6 +31,7 @@ const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): Repomix
       includeDiffs: false,
       includeLogs: false,
       includeLogsCount: 5,
+      showBlame: false,
     },
   },
   include: [],

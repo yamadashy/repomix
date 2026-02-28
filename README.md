@@ -626,6 +626,7 @@ Instruction
 - `--parsable-style`: Escape special characters to ensure valid XML/Markdown (needed when output contains code that breaks formatting)
 - `--compress`: Extract essential code structure (classes, functions, interfaces) using Tree-sitter parsing
 - `--output-show-line-numbers`: Prefix each line with its line number in the output
+- `--output-show-git-blame`: Show git blame information (author, date) for each line
 - `--no-file-summary`: Omit the file summary section from output
 - `--no-directory-structure`: Omit the directory tree visualization from output
 - `--no-files`: Generate metadata only without file contents (useful for repository analysis)
@@ -1359,6 +1360,7 @@ Here's an explanation of the configuration options:
 | `output.git.includeDiffs`       | Whether to include git diffs in the output (includes both work tree and staged changes separately)                          | `false`                |
 | `output.git.includeLogs`        | Whether to include git logs in the output (includes commit history with dates, messages, and file paths)                   | `false`                |
 | `output.git.includeLogsCount`   | Number of git log commits to include                                                                                         | `50`                   |
+| `output.git.showBlame`          | Whether to include git blame information for each line                                                                       | `false`                |
 | `include`                        | Patterns of files to include (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax))  | `[]`                   |
 | `ignore.useGitignore`            | Whether to use patterns from the project's `.gitignore` file                                                                 | `true`                 |
 | `ignore.useDotIgnore`            | Whether to use patterns from the project's `.ignore` file                                                                    | `true`                 |

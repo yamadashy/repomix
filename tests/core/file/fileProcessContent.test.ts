@@ -3,10 +3,12 @@ import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import { getFileManipulator } from '../../../src/core/file/fileManipulate.js';
 import { processContent } from '../../../src/core/file/fileProcessContent.js';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
+import { getGitBlame } from '../../../src/core/git/gitBlameHandle.js';
 import { parseFile } from '../../../src/core/treeSitter/parseFile.js';
 
 vi.mock('../../../src/core/file/fileManipulate.js');
 vi.mock('../../../src/core/treeSitter/parseFile.js');
+vi.mock('../../../src/core/git/gitBlameHandle.js');
 vi.mock('../../../src/shared/logger.js');
 
 describe('processContent', () => {
@@ -19,6 +21,7 @@ describe('processContent', () => {
     vi.resetAllMocks();
     vi.mocked(getFileManipulator).mockReturnValue(mockManipulator);
     vi.mocked(parseFile).mockResolvedValue('parsed content');
+    vi.mocked(getGitBlame).mockResolvedValue(null);
   });
 
   it('should process content with default config', async () => {
@@ -174,5 +177,50 @@ describe('processContent', () => {
 
     const result = await processContent(rawFile, config);
     expect(result).toBe('some content');
+  });
+
+  it('should use git blame content when configured', async () => {
+    const rawFile: RawFile = {
+      path: 'test.ts',
+      content: 'const x = 1;',
+    };
+    const config: RepomixConfigMerged = {
+      cwd: '/test/dir',
+      output: {
+        removeComments: false,
+        removeEmptyLines: false,
+        compress: false,
+        showLineNumbers: false,
+        git: { showBlame: true },
+      },
+    } as RepomixConfigMerged;
+
+    vi.mocked(getGitBlame).mockResolvedValue('blame content');
+    const result = await processContent(rawFile, config);
+
+    expect(getGitBlame).toHaveBeenCalledWith(config.cwd, rawFile.path);
+    expect(result).toBe('blame content');
+  });
+
+  it('should fallback to original content when git blame returns null', async () => {
+    const rawFile: RawFile = {
+      path: 'test.ts',
+      content: 'const x = 1;',
+    };
+    const config: RepomixConfigMerged = {
+      cwd: '/test/dir',
+      output: {
+        removeComments: false,
+        removeEmptyLines: false,
+        compress: false,
+        showLineNumbers: false,
+        git: { showBlame: true },
+      },
+    } as RepomixConfigMerged;
+
+    vi.mocked(getGitBlame).mockResolvedValue(null);
+    const result = await processContent(rawFile, config);
+
+    expect(result).toBe('const x = 1;');
   });
 });

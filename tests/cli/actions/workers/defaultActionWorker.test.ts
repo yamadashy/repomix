@@ -88,6 +88,7 @@ describe('defaultActionWorker', () => {
         includeDiffs: false,
         includeLogs: false,
         includeLogsCount: 50,
+        showBlame: false,
       },
     },
     include: ['**/*'],
