@@ -351,5 +351,54 @@ describe('configLoad', () => {
       const merged = mergeConfigs(process.cwd(), {}, { skillGenerate: 'from-cli' });
       expect(merged.skillGenerate).toBe('from-cli');
     });
+
+    // Regression tests for #959: .ignore file should work when customPatterns is defined
+    test('should preserve useDotIgnore default when only customPatterns is defined in fileConfig', () => {
+      const fileConfig: RepomixConfigFile = {
+        ignore: {
+          customPatterns: ['bin/'],
+        },
+      };
+      const cliConfig: RepomixConfigCli = {};
+      const merged = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+
+      expect(merged.ignore.useDotIgnore).toBe(true);
+      expect(merged.ignore.useGitignore).toBe(true);
+      expect(merged.ignore.useDefaultPatterns).toBe(true);
+      expect(merged.ignore.customPatterns).toContain('bin/');
+    });
+
+    test('should preserve all ignore boolean flags when customPatterns is defined in both sources', () => {
+      const fileConfig: RepomixConfigFile = {
+        ignore: {
+          customPatterns: ['from-file/'],
+        },
+      };
+      const cliConfig: RepomixConfigCli = {
+        ignore: {
+          customPatterns: ['from-cli/'],
+        },
+      };
+      const merged = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+
+      expect(merged.ignore.useDotIgnore).toBe(true);
+      expect(merged.ignore.useGitignore).toBe(true);
+      expect(merged.ignore.useDefaultPatterns).toBe(true);
+      expect(merged.ignore.customPatterns).toEqual(['from-file/', 'from-cli/']);
+    });
+
+    test('should allow explicitly disabling useDotIgnore alongside customPatterns', () => {
+      const fileConfig: RepomixConfigFile = {
+        ignore: {
+          useDotIgnore: false,
+          customPatterns: ['bin/'],
+        },
+      };
+      const cliConfig: RepomixConfigCli = {};
+      const merged = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+
+      expect(merged.ignore.useDotIgnore).toBe(false);
+      expect(merged.ignore.customPatterns).toContain('bin/');
+    });
   });
 });
