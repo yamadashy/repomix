@@ -17,6 +17,11 @@ vi.mock('../../../src/core/file/packageJsonParse');
 vi.mock('../../../src/core/file/fileStdin');
 vi.mock('../../../src/shared/logger');
 vi.mock('../../../src/shared/processConcurrency');
+vi.mock('../../../src/core/lock/index', () => ({
+  acquireLock: vi.fn().mockResolvedValue('/mock/.repomix.lock'),
+  releaseLock: vi.fn().mockResolvedValue(undefined),
+  FileLockError: class FileLockError extends Error {},
+}));
 
 const mockSpinner = {
   start: vi.fn() as MockedFunction<() => void>,
