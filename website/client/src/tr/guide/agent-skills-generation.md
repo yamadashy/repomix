@@ -227,7 +227,7 @@ git commit -m "Add codebase reference Skills"
 
 ## İlgili Kaynaklar
 
-- [Claude Code Eklentileri](/guide/claude-code-plugins) - Claude Code için Repomix eklentileri hakkında bilgi edinin
-- [MCP Sunucusu](/guide/mcp-server) - Alternatif entegrasyon yöntemi
-- [Kod Sıkıştırma](/guide/code-compress) - Sıkıştırmayla token sayısını azaltın
-- [Yapılandırma](/guide/configuration) - Repomix davranışını özelleştirin
+- [Claude Code Eklentileri](/tr/guide/claude-code-plugins) - Claude Code için Repomix eklentileri hakkında bilgi edinin
+- [MCP Sunucusu](/tr/guide/mcp-server) - Alternatif entegrasyon yöntemi
+- [Kod Sıkıştırma](/tr/guide/code-compress) - Sıkıştırmayla token sayısını azaltın
+- [Yapılandırma](/tr/guide/configuration) - Repomix davranışını özelleştirin

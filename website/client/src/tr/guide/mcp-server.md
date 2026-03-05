@@ -74,7 +74,7 @@ Cursor'da `Cursor Settings` > `MCP` > `+ Add new global MCP server` yolunu izley
 claude mcp add repomix -- npx -y repomix --mcp
 ```
 
-Alternatif olarak, daha kolay bir deneyim için **resmi Repomix eklentilerini** kullanabilirsiniz. Eklentiler doğal dil komutları ve daha basit kurulum sunar. Ayrıntılar için [Claude Code Eklentileri](/guide/claude-code-plugins) belgelerine bakın.
+Alternatif olarak, daha kolay bir deneyim için **resmi Repomix eklentilerini** kullanabilirsiniz. Eklentiler doğal dil komutları ve daha basit kurulum sunar. Ayrıntılar için [Claude Code Eklentileri](/tr/guide/claude-code-plugins) belgelerine bakın.
 
 ### npx yerine Docker Kullanımı
 

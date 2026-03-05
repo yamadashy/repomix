@@ -27,7 +27,7 @@ Hepsi bu kadar! Tüm deponuzu yapay zeka dostu bir formatta içeren bir `repomix
 
 Ardından bu dosyayı bir yapay zeka asistanına şu şekilde bir mesajla gönderebilirsiniz:
 
-```
+```text
 Bu dosya, depodaki tüm dosyaları tek bir araya getirir.
 Kodu yeniden yapılandırmak istiyorum, önce lütfen gözden geçirin.
 ```

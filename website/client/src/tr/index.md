@@ -224,23 +224,23 @@ Bir geliştirici, mevcut kod tabanlarından kod bağlamı çıkarmak için Repom
 
 Yazarlar, blog yazıları, belgeler ve kitaplar gibi yazılı içeriklerini LLM uyumlu formatlara paketlemek için Repomix'i kullanıyor; bu sayede okuyucular yapay zeka destekli soru-cevap sistemleri aracılığıyla uzmanlıklarıyla etkileşime girebiliyor.
 
-[Daha fazla kullanım örneğini keşfedin →](/guide/use-cases)
+[Daha fazla kullanım örneğini keşfedin →](/tr/guide/use-cases)
 
 ## İleri Düzey Kullanıcı Rehberi
 
 Repomix, gelişmiş kullanım senaryoları için güçlü özellikler sunar. İşte ileri düzey kullanıcılar için bazı temel rehberler:
 
-- **[MCP Sunucusu](/guide/mcp-server)** - Yapay zeka asistanları için Model Context Protocol entegrasyonu
-- **[GitHub Actions](/guide/github-actions)** - CI/CD iş akışlarında kod tabanı paketlemeyi otomatikleştirme
-- **[Kod Sıkıştırma](/guide/code-compress)** - Tree-sitter tabanlı akıllı sıkıştırma (yaklaşık %70 token azaltımı)
-- **[Kütüphane Olarak Kullanım](/guide/development/using-repomix-as-a-library)** - Repomix'i Node.js uygulamalarınıza entegre etme
-- **[Özel Talimatlar](/guide/custom-instructions)** - Çıktılara özel istemler ve talimatlar ekleme
-- **[Güvenlik Özellikleri](/guide/security)** - Yerleşik Secretlint entegrasyonu ve güvenlik kontrolleri
-- **[En İyi Uygulamalar](/guide/tips/best-practices)** - Kanıtlanmış stratejilerle yapay zeka iş akışlarınızı optimize edin
+- **[MCP Sunucusu](/tr/guide/mcp-server)** - Yapay zeka asistanları için Model Context Protocol entegrasyonu
+- **[GitHub Actions](/tr/guide/github-actions)** - CI/CD iş akışlarında kod tabanı paketlemeyi otomatikleştirme
+- **[Kod Sıkıştırma](/tr/guide/code-compress)** - Tree-sitter tabanlı akıllı sıkıştırma (yaklaşık %70 token azaltımı)
+- **[Kütüphane Olarak Kullanım](/tr/guide/development/using-repomix-as-a-library)** - Repomix'i Node.js uygulamalarınıza entegre etme
+- **[Özel Talimatlar](/tr/guide/custom-instructions)** - Çıktılara özel istemler ve talimatlar ekleme
+- **[Güvenlik Özellikleri](/tr/guide/security)** - Yerleşik Secretlint entegrasyonu ve güvenlik kontrolleri
+- **[En İyi Uygulamalar](/tr/guide/tips/best-practices)** - Kanıtlanmış stratejilerle yapay zeka iş akışlarınızı optimize edin
 
 ### Daha Fazla Örnek
 ::: tip Daha fazla yardıma mı ihtiyacınız var? 💡
-Kapsamlı belgelerimizi [Rehber](/guide/) bölümünden inceleyin ya da daha fazla örnek ve kaynak kod için [GitHub Deposunu](https://github.com/yamadashy/repomix) ziyaret edin.
+Kapsamlı belgelerimizi [Rehber](/tr/guide/) bölümünden inceleyin ya da daha fazla örnek ve kaynak kod için [GitHub Deposunu](https://github.com/yamadashy/repomix) ziyaret edin.
 :::
 
 </div>

@@ -16,14 +16,14 @@ Bu komut, beceriyi AI asistanınızın beceriler dizinine (örn. `.claude/skills
 
 Kurulduktan sonra doğal dil talimatlarıyla kod tabanlarını analiz edebilirsiniz.
 
-#### Uzak depoları analiz etme
+### Uzak depoları analiz etme
 
 ```text
 "Bu deponun yapısı nedir?
 https://github.com/facebook/react"
 ```
 
-#### Yerel kod tabanlarını keşfetme
+### Yerel kod tabanlarını keşfetme
 
 ```text
 "Bu projede neler var?
@@ -79,6 +79,6 @@ Beceri şunları içerir:
 
 ## İlgili Kaynaklar
 
-- [Ajan Becerileri Oluşturma](/guide/agent-skills-generation) - Kod tabanlarından kendi becerilerinizi oluşturun
-- [Claude Code Eklentileri](/guide/claude-code-plugins) - Claude Code için Repomix eklentileri
-- [MCP Sunucusu](/guide/mcp-server) - Alternatif entegrasyon yöntemi
+- [Ajan Becerileri Oluşturma](/tr/guide/agent-skills-generation) - Kod tabanlarından kendi becerilerinizi oluşturun
+- [Claude Code Eklentileri](/tr/guide/claude-code-plugins) - Claude Code için Repomix eklentileri
+- [MCP Sunucusu](/tr/guide/mcp-server) - Alternatif entegrasyon yöntemi

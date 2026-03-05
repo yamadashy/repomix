@@ -140,10 +140,10 @@ Diğer örnekler:
 
 ## İlgili Kaynaklar
 
-- [MCP Sunucu Belgeleri](/guide/mcp-server) - Temel MCP sunucusu hakkında bilgi edinin
-- [Yapılandırma](/guide/configuration) - Repomix davranışını özelleştirin
-- [Güvenlik](/guide/security) - Güvenlik özelliklerini anlayın
-- [Komut Satırı Seçenekleri](/guide/command-line-options) - Kullanılabilir CLI seçenekleri
+- [MCP Sunucu Belgeleri](/tr/guide/mcp-server) - Temel MCP sunucusu hakkında bilgi edinin
+- [Yapılandırma](/tr/guide/configuration) - Repomix davranışını özelleştirin
+- [Güvenlik](/tr/guide/security) - Güvenlik özelliklerini anlayın
+- [Komut Satırı Seçenekleri](/tr/guide/command-line-options) - Kullanılabilir CLI seçenekleri
 
 ## Eklenti Kaynak Kodu
 

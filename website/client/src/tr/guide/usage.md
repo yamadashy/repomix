@@ -145,7 +145,7 @@ repomix --token-count-tree
 
 Bu seçenek, token sayılarıyla birlikte kod tabanınızın hiyerarşik bir görünümünü gösterir:
 
-```
+```text
 🔢 Token Count Tree:
 ────────────────────
 └── src/ (70,925 tokens)
@@ -220,4 +220,4 @@ Yapılandırma dosyasını başlatın:
 repomix --init
 ```
 
-Ayrıntılı seçenekler için [Yapılandırma Rehberi](/guide/configuration)'ne bakın.
+Ayrıntılı seçenekler için [Yapılandırma Rehberi](/tr/guide/configuration)'ne bakın.

@@ -249,7 +249,7 @@ Repomix, paketleme işlemi sırasında belirli dosyaları veya dizinleri hariç 
 
 Bu yaklaşım, projenizin ihtiyaçlarına göre esnek dosya hariç tutma yapılandırmasına olanak tanır. Güvenlik açısından hassas dosyaların ve büyük ikili dosyaların hariç tutulmasını sağlayarak oluşturulan paket dosyasının boyutunu optimize etmeye ve gizli bilgilerin sızmasını önlemeye yardımcı olur.
 
-**Not:** İkili dosyalar varsayılan olarak paketlenmiş çıktıya dahil edilmez, ancak yolları çıktı dosyasının "Depo Yapısı" bölümünde listelenir. Bu, paket dosyasını verimli ve metin tabanlı tutarken depo yapısının tam bir görünümünü sağlar. Daha fazla ayrıntı için [İkili Dosya İşleme](#binary-files-handling) bölümüne bakın.
+**Not:** İkili dosyalar varsayılan olarak paketlenmiş çıktıya dahil edilmez, ancak yolları çıktı dosyasının "Depo Yapısı" bölümünde listelenir. Bu, paket dosyasını verimli ve metin tabanlı tutarken depo yapısının tam bir görünümünü sağlar. Daha fazla ayrıntı için [İkili Dosya İşleme](#ikili-dosya-isleme) bölümüne bakın.
 
 `.repomixignore` örneği:
 ```text
