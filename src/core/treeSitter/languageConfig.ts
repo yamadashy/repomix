@@ -40,6 +40,7 @@ export type SupportedLang =
   | 'rust'
   | 'solidity'
   | 'swift'
+  | 'tsx'
   | 'typescript'
   | 'vue';
 
@@ -70,7 +71,13 @@ export const LANGUAGE_CONFIGS: readonly LanguageConfig[] = [
   },
   {
     name: 'typescript',
-    extensions: ['ts', 'tsx', 'mts', 'mtsx', 'cts'],
+    extensions: ['ts', 'mts', 'cts'],
+    query: queryTypescript,
+    createStrategy: () => new TypeScriptParseStrategy(),
+  },
+  {
+    name: 'tsx',
+    extensions: ['tsx', 'mtsx'],
     query: queryTypescript,
     createStrategy: () => new TypeScriptParseStrategy(),
   },

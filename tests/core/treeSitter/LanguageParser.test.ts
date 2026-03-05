@@ -13,6 +13,7 @@ describe('LanguageParser', () => {
       const testCases = [
         { filePath: 'file.js', expected: 'javascript' },
         { filePath: 'file.ts', expected: 'typescript' },
+        { filePath: 'file.tsx', expected: 'tsx' },
         { filePath: 'file.sol', expected: 'solidity' },
         { filePath: 'Contract.sol', expected: 'solidity' },
         { filePath: 'path/to/MyContract.sol', expected: 'solidity' },

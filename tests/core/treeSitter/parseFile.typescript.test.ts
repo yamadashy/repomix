@@ -102,6 +102,46 @@ describe('TypeScript File Parsing', () => {
         expect(result).toContain(expectContent);
       }
     });
+
+    test('should parse TSX with JSX syntax correctly', async () => {
+      const fileContent = `
+        import React from 'react';
+
+        interface ButtonProps {
+          label: string;
+          onClick: () => void;
+          disabled?: boolean;
+        }
+
+        /**
+         * A reusable button component
+         */
+        export function Button({ label, onClick, disabled }: ButtonProps) {
+          return (
+            <button onClick={onClick} disabled={disabled}>
+              {label}
+            </button>
+          );
+        }
+      `;
+      const filePath = 'Button.tsx';
+      const config = {};
+      const result = await parseFile(fileContent, filePath, config as RepomixConfigMerged);
+      expect(typeof result).toBe('string');
+
+      const expectContents = [
+        'ButtonProps',
+        'label',
+        'onClick',
+        'disabled',
+        'Button',
+        'A reusable button component',
+      ];
+
+      for (const expectContent of expectContents) {
+        expect(result).toContain(expectContent);
+      }
+    });
   });
 
   describe('TypeScript Parse Strategy', () => {
