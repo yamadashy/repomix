@@ -11,6 +11,7 @@ import { configKo } from './config/configKo';
 import { configPtBr } from './config/configPtBr';
 import { configRu } from './config/configRu';
 import { configShard } from './config/configShard';
+import { configTr } from './config/configTr';
 import { configVi } from './config/configVi';
 import { configZhCn } from './config/configZhCn';
 import { configZhTw } from './config/configZhTw';
@@ -32,5 +33,6 @@ export default defineConfig({
     id: { label: 'Indonesia', ...configId },
     vi: { label: 'Tiếng Việt', ...configVi },
     ru: { label: 'Русский', ...configRu },
+    tr: { label: 'Türkçe', ...configTr },
   },
 });
