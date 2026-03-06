@@ -16,6 +16,9 @@ on:
         required: false
         default: '50'
 
+permissions:
+  contents: read
+
 jobs:
   memory-test:
     name: Memory Test
