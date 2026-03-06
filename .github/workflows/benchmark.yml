@@ -54,12 +54,11 @@ jobs:
 
       # Run memory test
       - name: Run memory test
-        run: |
-          ITERATIONS=${{ github.event.inputs.iterations || '50' }}
-          DELAY=${{ github.event.inputs.delay || '50' }}
-          node --expose-gc dist/memory-test.js $ITERATIONS $DELAY
+        run: node --expose-gc dist/memory-test.js "$ITERATIONS" "$DELAY"
         env:
           CI: true
+          ITERATIONS: ${{ github.event.inputs.iterations || '50' }}
+          DELAY: ${{ github.event.inputs.delay || '50' }}
 
       # Upload memory test results if available
       - name: Upload memory test results
