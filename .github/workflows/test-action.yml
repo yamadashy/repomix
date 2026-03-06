@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/actions/repomix/**'
 
+permissions:
+  contents: read
+
 jobs:
   test-action:
     name: Test Node.js ${{ matrix.node-version }}
