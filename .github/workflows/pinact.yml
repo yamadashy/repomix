@@ -1,6 +1,10 @@
 name: Pinact
 on:
   pull_request: {}
+
+permissions:
+  contents: read
+
 jobs:
   pinact:
     runs-on: ubuntu-24.04
