@@ -290,6 +290,7 @@ node_modules
           absolute: false,
           dot: true,
           followSymbolicLinks: false,
+          caseSensitiveMatch: true,
         }),
       );
     });
@@ -943,6 +944,7 @@ node_modules
           absolute: false,
           dot: true,
           followSymbolicLinks: false,
+          caseSensitiveMatch: true,
         });
 
         // Each call should have either onlyFiles or onlyDirectories, but not both
@@ -954,6 +956,29 @@ node_modules
         }
       }
     });
+    test('should not exclude uppercase BUILD files when build/** is in ignore patterns', async () => {
+      const mockConfig = createMockConfig({
+        include: ['**/*'],
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: false,
+          customPatterns: ['build/**'],
+        },
+      });
+
+      // Globby with caseSensitiveMatch: true should NOT exclude BUILD files
+      vi.mocked(globby).mockResolvedValue(['src/BUILD', 'BUILD']);
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      expect(result.filePaths).toContain('src/BUILD');
+      expect(result.filePaths).toContain('BUILD');
+      expect(globby).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ caseSensitiveMatch: true }),
+      );
+    });
+
 
     test('should respect gitignore config consistently across all functions', async () => {
       const mockConfigWithoutGitignore = createMockConfig({
