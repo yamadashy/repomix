@@ -1,0 +1,5 @@
+rules:
+  artipacked:
+    ignore:
+      # git-auto-commit-action requires persist-credentials for pushing
+      - schema-update.yml
