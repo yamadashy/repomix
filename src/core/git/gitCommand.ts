@@ -11,6 +11,67 @@ const GIT_REMOTE_TIMEOUT = 30000;
 const gitRemoteEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
 const gitRemoteOpts = { timeout: GIT_REMOTE_TIMEOUT, env: gitRemoteEnv };
 
+interface ExecFileError extends Error {
+  killed?: boolean;
+  signal?: string;
+  code?: number | string;
+  stderr?: string;
+}
+
+/**
+ * Redacts embedded credentials from a URL to prevent sensitive information leakage.
+ * e.g., "https://user:password@github.com/repo.git" -> "https://***@github.com/repo.git"
+ */
+const redactUrl = (url: string): string => {
+  return url.replace(/^(https?:\/\/)([^@/]+)@/i, '$1***@');
+};
+
+export const createGitRemoteError = (error: unknown, url: string, operation: string): RepomixError => {
+  const err = error as Partial<ExecFileError>;
+  const message = err?.message || String(error);
+  const stderr = err?.stderr || message;
+  const safeUrl = redactUrl(url);
+
+  // Timeout: process was killed by the timeout option
+  if (err?.killed || err?.signal === 'SIGTERM') {
+    return new RepomixError(
+      `Git ${operation} timed out after ${GIT_REMOTE_TIMEOUT / 1000} seconds for ${safeUrl}. The repository may be inaccessible, or the network connection is too slow.`,
+      { cause: error },
+    );
+  }
+
+  // Authentication failure
+  if (stderr.includes('Authentication failed') || stderr.includes('could not read Username')) {
+    return new RepomixError(
+      `Git ${operation} failed for ${safeUrl}: Authentication required. The repository may be private or the URL may be incorrect.`,
+      { cause: error },
+    );
+  }
+
+  // Repository not found
+  if (stderr.includes('does not exist') || stderr.includes('Repository not found')) {
+    return new RepomixError(
+      `Git ${operation} failed for ${safeUrl}: Repository not found. Please verify the URL is correct.`,
+      { cause: error },
+    );
+  }
+
+  // Connection errors
+  if (
+    stderr.includes('Could not resolve host') ||
+    stderr.includes('Failed to connect') ||
+    stderr.includes('Connection refused')
+  ) {
+    return new RepomixError(
+      `Git ${operation} failed for ${safeUrl}: Unable to connect to the remote host. Please check your network connection and the URL.`,
+      { cause: error },
+    );
+  }
+
+  // Generic fallback
+  return new RepomixError(`Git ${operation} failed for ${safeUrl}: ${message}`, { cause: error });
+};
+
 export const execGitLogFilenames = async (
   directory: string,
   maxCommits = 100,
@@ -101,7 +162,7 @@ export const execLsRemote = async (
     return result.stdout || '';
   } catch (error) {
     logger.trace('Failed to execute git ls-remote:', (error as Error).message);
-    throw error;
+    throw createGitRemoteError(error, url, 'ls-remote');
   }
 };
 
@@ -116,8 +177,12 @@ export const execGitShallowClone = async (
   validateGitUrl(url);
 
   if (remoteBranch) {
-    await deps.execFileAsync('git', ['-C', directory, 'init']);
-    await deps.execFileAsync('git', ['-C', directory, 'remote', 'add', '--', 'origin', url]);
+    try {
+      await deps.execFileAsync('git', ['-C', directory, 'init']);
+      await deps.execFileAsync('git', ['-C', directory, 'remote', 'add', '--', 'origin', url]);
+    } catch (initErr) {
+      throw new RepomixError(`Failed to initialize local git repository for ${redactUrl(url)}`, { cause: initErr });
+    }
     try {
       await deps.execFileAsync(
         'git',
@@ -126,13 +191,19 @@ export const execGitShallowClone = async (
       );
       await deps.execFileAsync('git', ['-C', directory, 'checkout', 'FETCH_HEAD']);
     } catch (err: unknown) {
+      // Check for timeout first — no point retrying if the remote is unreachable
+      const execErr = err as Partial<ExecFileError>;
+      if (execErr?.killed || execErr?.signal === 'SIGTERM') {
+        throw createGitRemoteError(err, url, 'fetch');
+      }
+
       // git fetch --depth 1 origin <short SHA> always throws "couldn't find remote ref" error
       const isRefNotfoundError =
         err instanceof Error && err.message.includes(`couldn't find remote ref ${remoteBranch}`);
 
       if (!isRefNotfoundError) {
         // Rethrow error as nothing else we can do
-        throw err;
+        throw createGitRemoteError(err, url, 'fetch');
       }
 
       // Short SHA detection - matches a hexadecimal string of 4 to 39 characters
@@ -142,16 +213,24 @@ export const execGitShallowClone = async (
 
       if (isNotShortSHA) {
         // Rethrow error as nothing else we can do
-        throw err;
+        throw createGitRemoteError(err, url, 'fetch');
       }
 
       // Maybe the error is due to a short SHA, let's try again
       // Can't use --depth 1 here as we need to fetch the specific commit
-      await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin'], gitRemoteOpts);
-      await deps.execFileAsync('git', ['-C', directory, 'checkout', remoteBranch]);
+      try {
+        await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin'], gitRemoteOpts);
+        await deps.execFileAsync('git', ['-C', directory, 'checkout', remoteBranch]);
+      } catch (retryErr) {
+        throw createGitRemoteError(retryErr, url, 'fetch');
+      }
     }
   } else {
-    await deps.execFileAsync('git', ['clone', '--depth', '1', '--', url, directory], gitRemoteOpts);
+    try {
+      await deps.execFileAsync('git', ['clone', '--depth', '1', '--', url, directory], gitRemoteOpts);
+    } catch (error) {
+      throw createGitRemoteError(error, url, 'clone');
+    }
   }
 
   // Clean up .git directory
