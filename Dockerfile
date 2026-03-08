@@ -14,7 +14,7 @@ COPY . .
 RUN npm ci \
     && npm run build \
     && npm link \
-    && npm prune --production \
+    && npm prune --omit=dev \
     && npm cache clean --force
 
 WORKDIR /app
