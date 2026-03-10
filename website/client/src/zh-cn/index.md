@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Repomix
-titleTemplate: 将代码库打包成AI友好的格式
+titleTemplate: 将代码库打包为 AI 友好的格式
 aside: false
 editLink: false
 
@@ -19,8 +19,8 @@ features:
     details: 集成 Secretlint 进行强大的安全检查，检测并防止敏感信息的泄露。
 
   - icon: 📊
-    title: 令牌计数
-    details: 提供每个文件和整个代码库的令牌计数，便于控制 LLM 上下文限制。
+    title: Token 计数
+    details: 提供每个文件和整个代码库的 Token 数量统计，方便管理 LLM 上下文窗口。
 
 ---
 
@@ -67,13 +67,13 @@ AI 将分析您的整个代码库并提供全面的见解：
 
 ## 为什么选择 Repomix？
 
-Repomix的强项在于可以与ChatGPT、Claude、Gemini、Grok等订阅服务配合使用而无需担心成本，同时提供完整的代码库上下文，消除了文件探索的需要——使分析更快速，往往也更准确。
+Repomix 的优势在于能够搭配 ChatGPT、Claude、Gemini、Grok 等任何订阅服务使用，无需额外费用。它提供完整的代码库上下文，省去了逐个查看文件的麻烦，让分析更快速、更准确。
 
-通过将整个代码库作为上下文，Repomix支持广泛的应用场景，包括实现规划、错误调查、第三方库安全检查、文档生成等等。
+有了整个代码库作为上下文，Repomix 可以应用于各种场景，包括方案设计、Bug 排查、第三方库安全审计、文档生成等。
 
 ## 使用 CLI 工具 {#using-the-cli-tool}
 
-Repomix 可以作为命令行工具使用，提供强大的功能和自定义选项。
+Repomix 可以作为命令行工具使用，功能丰富且支持灵活配置。
 
 **CLI 工具可以访问私有仓库**，因为它使用您本地安装的 Git。
 
@@ -232,7 +232,7 @@ Repomix 为高级用例提供强大的功能。以下是高级用户的一些重
 
 - **[MCP 服务器](./guide/mcp-server)** - AI 助手的 Model Context Protocol 集成
 - **[GitHub Actions](./guide/github-actions)** - 在 CI/CD 工作流中自动化代码库打包
-- **[代码压缩](./guide/code-compress)** - 基于 Tree-sitter 的智能压缩（约 70% 令牌减少）
+- **[代码压缩](./guide/code-compress)** - 基于 Tree-sitter 的智能压缩（可减少约 70% Token）
 - **[作为库使用](./guide/development/using-repomix-as-a-library)** - 将 Repomix 集成到您的 Node.js 应用程序中
 - **[自定义指令](./guide/custom-instructions)** - 为输出添加自定义提示和指令
 - **[安全功能](./guide/security)** - 内置 Secretlint 集成和安全检查

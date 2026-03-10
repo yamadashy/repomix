@@ -67,9 +67,9 @@ Al discutir cambios específicos, la IA puede ayudar a generar código. Con func
 
 ## ¿Por qué Repomix?
 
-La fortaleza de Repomix radica en su capacidad de trabajar con servicios de suscripción como ChatGPT, Claude, Gemini, Grok sin preocuparse por los costos, mientras proporciona un contexto completo de la base de código que elimina la necesidad de explorar archivos, haciendo el análisis más rápido y a menudo más preciso.
+Repomix se puede usar con cualquier servicio de suscripción como ChatGPT, Claude, Gemini o Grok sin preocuparte por costos adicionales. Al proporcionar el contexto completo de tu código, elimina la necesidad de explorar archivos uno por uno, haciendo el análisis más rápido y preciso.
 
-Con toda la base de código disponible como contexto, Repomix permite una amplia gama de aplicaciones que incluyen planificación de implementación, investigación de errores, verificaciones de seguridad de bibliotecas de terceros, generación de documentación y mucho más.
+Con todo el código disponible como contexto, Repomix permite una amplia variedad de usos: planificación de implementaciones, investigación de bugs, auditorías de seguridad de bibliotecas de terceros, generación de documentación y mucho más.
 
 ## Usando la herramienta CLI {#using-the-cli-tool}
 
@@ -143,7 +143,7 @@ npx repomix --remote yamadashy/repomix
 npx repomix --remote https://github.com/yamadashy/repomix
 npx repomix --remote https://github.com/yamadashy/repomix/tree/main
 
-# Usando URL de confirmación
+# Usando URL del commit
 npx repomix --remote https://github.com/yamadashy/repomix/commit/836abcd7335137228ad77feb28655d85712680f1
 ```
 

@@ -58,7 +58,7 @@ export const configId = defineConfig({
             { text: 'Proyek Komunitas', link: '/id/guide/community-projects' },
             { text: 'Berkontribusi ke Repomix', link: '/id/guide/development/' },
             { text: 'Sponsor', link: '/id/guide/sponsors' },
-            { text: 'Privacy Policy', link: '/id/guide/privacy' },
+            { text: 'Kebijakan Privasi', link: '/id/guide/privacy' },
           ],
         },
       ],

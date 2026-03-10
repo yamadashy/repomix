@@ -58,7 +58,7 @@ export const configIt = defineConfig({
             { text: 'Progetti della Community', link: '/it/guide/community-projects' },
             { text: 'Contribuire a Repomix', link: '/it/guide/development/' },
             { text: 'Sponsor', link: '/it/guide/sponsors' },
-            { text: 'Privacy Policy', link: '/it/guide/privacy' },
+            { text: 'Informativa sulla Privacy', link: '/it/guide/privacy' },
           ],
         },
       ],

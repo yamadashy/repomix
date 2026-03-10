@@ -44,15 +44,15 @@ Feliz codificação! 🚀
 
 ## Por que Repomix?
 
-A força do Repomix reside em sua capacidade de trabalhar com serviços de assinatura como ChatGPT, Claude, Gemini, Grok sem se preocupar com custos, enquanto fornece contexto completo da base de código que elimina a necessidade de exploração de arquivos—tornando a análise mais rápida e frequentemente mais precisa.
+O Repomix pode ser usado com qualquer serviço de assinatura como ChatGPT, Claude, Gemini ou Grok, sem se preocupar com custos extras. Ao fornecer o contexto completo do código, ele elimina a necessidade de explorar arquivos um por um, tornando a análise mais rápida e precisa.
 
-Com toda a base de código disponível como contexto, o Repomix permite uma ampla gama de aplicações incluindo planejamento de implementação, investigação de bugs, verificações de segurança de bibliotecas de terceiros, geração de documentação e muito mais.
+Com toda a base de código disponível como contexto, o Repomix possibilita diversas aplicações: planejamento de implementação, investigação de bugs, verificações de segurança de bibliotecas de terceiros, geração de documentação e muito mais.
 
 ## Principais Recursos
 
 - **Saída Otimizada para IA**: Formata seu código-fonte para fácil processamento por IA
 - **Contagem de Tokens**: Rastreia o uso de tokens para limites de contexto de LLM
-- **Consciente do Git**: Respeita seus arquivos `.gitignore` e `.git/info/exclude`
+- **Integração com Git**: Respeita seus arquivos `.gitignore` e `.git/info/exclude`
 - **Focado em Segurança**: Detecta informações sensíveis
 - **Múltiplos Formatos de Saída**: Escolha entre texto simples, XML ou Markdown
 
