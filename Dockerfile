@@ -9,12 +9,12 @@ RUN mkdir /repomix
 WORKDIR /repomix
 
 # Install dependencies and build repomix, then link the package to the global scope
-# To reduce the size of the layer, npm ci and npm link are executed in the same RUN command
+# To reduce the size of the layer, all steps are executed in the same RUN command
 COPY . .
 RUN npm ci \
     && npm run build \
+    && npm ci --omit=dev \
     && npm link \
-    && npm prune --omit=dev \
     && npm cache clean --force
 
 WORKDIR /app
