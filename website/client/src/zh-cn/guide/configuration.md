@@ -213,11 +213,11 @@ Repomix 按以下顺序查找配置文件：
 
 ## 包含模式
 
-Repomix支持使用[glob模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)指定要包含的文件。这允许更灵活和强大的文件选择：
+Repomix 支持使用 [glob 模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)指定要包含的文件。这允许更灵活和强大的文件选择：
 
-- 使用`**/*.js`包含任何目录中的所有JavaScript文件
-- 使用`src/**/*`包含`src`目录及其子目录中的所有文件
-- 组合多个模式，如`["src/**/*.js", "**/*.md"]`以包含`src`中的JavaScript文件和所有Markdown文件
+- 使用 `**/*.js` 包含任何目录中的所有 JavaScript 文件
+- 使用 `src/**/*` 包含 `src` 目录及其子目录中的所有文件
+- 组合多个模式，如 `["src/**/*.js", "**/*.md"]` 以包含 `src` 中的 JavaScript 文件和所有 Markdown 文件
 
 你可以在配置文件中指定包含模式：
 
@@ -227,11 +227,11 @@ Repomix支持使用[glob模式](https://github.com/mrmlnc/fast-glob?tab=readme-o
 }
 ```
 
-或使用`--include`命令行选项进行一次性过滤。
+或使用 `--include` 命令行选项进行一次性过滤。
 
 ## 忽略模式
 
-Repomix提供多种方法来设置忽略模式，以在打包过程中排除特定文件或目录：
+Repomix 提供多种方法来设置忽略模式，以在打包过程中排除特定文件或目录：
 
 - **.gitignore**：默认情况下，使用项目的`.gitignore`文件和`.git/info/exclude`中列出的模式。此行为可以通过`ignore.useGitignore`设置或`--no-gitignore` CLI选项控制。
 - **.ignore**：你可以在项目根目录中使用`.ignore`文件，遵循与`.gitignore`相同的格式。ripgrep和the silver searcher等工具也会遵守此文件，减少了维护多个忽略文件的需要。此行为可以通过`ignore.useDotIgnore`设置或`--no-dot-ignore` CLI选项控制。
