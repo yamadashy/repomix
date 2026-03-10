@@ -2,7 +2,7 @@
 
 Repomix 可以生成 [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) 格式的输出，创建一个结构化的 Skills 目录，可作为 AI 助手的可重用代码库参考。
 
-当您想要参考远程仓库的实现时，此功能特别强大。通过从开源项目生成 Skills，您可以轻松让 Claude 在您编写代码时参考特定的模式或实现。
+当你想要参考远程仓库的实现时，此功能特别强大。通过从开源项目生成 Skills，你可以轻松让 Claude 在你编写代码时参考特定的模式或实现。
 
 Skills 生成不是生成单个打包文件，而是创建一个包含多个参考文件的结构化目录，这些文件针对 AI 理解和 grep 友好搜索进行了优化。
 
@@ -29,12 +29,12 @@ repomix --remote https://github.com/user/repo --skill-generate
 
 ## Skills 保存位置选择
 
-运行命令时，Repomix 会提示您选择 Skills 的保存位置：
+运行命令时，Repomix 会提示你选择 Skills 的保存位置：
 
-1. **Personal Skills** (`~/.claude/skills/`) - 在您机器上的所有项目中可用
+1. **Personal Skills** (`~/.claude/skills/`) - 在你机器上的所有项目中可用
 2. **Project Skills** (`.claude/skills/`) - 通过 git 与团队共享
 
-如果 Skills 目录已存在，系统会提示您确认是否覆盖。
+如果 Skills 目录已存在，系统会提示你确认是否覆盖。
 
 > [!TIP]
 > 生成 Project Skills 时，建议将其添加到 `.gitignore` 以避免提交大文件：
@@ -169,7 +169,7 @@ repomix --skill-generate --remove-comments --remove-empty-lines
 
 ### 仅文档 Skills
 
-使用 `--include`，您可以生成仅包含 GitHub 仓库文档的 Skills。当您希望 Claude 在编写代码时参考特定库或框架的文档时，这很有用：
+使用 `--include`，你可以生成仅包含 GitHub 仓库文档的 Skills。当你希望 Claude 在编写代码时参考特定库或框架的文档时，这很有用：
 
 ```bash
 # Claude Code Action 文档
@@ -190,7 +190,7 @@ repomix --remote https://github.com/reactjs/react.dev --include src/content --sk
 
 ## 使用生成的 Skills
 
-生成后，您可以在 Claude 中使用这些 Skills：
+生成后，你可以在 Claude 中使用这些 Skills：
 
 1. **Claude Code**：如果保存到 `~/.claude/skills/` 或 `.claude/skills/`，Skills 会自动可用
 2. **Claude Web**：将 Skills 目录上传到 Claude 进行代码库分析
@@ -205,13 +205,13 @@ repomix --remote https://github.com/reactjs/react.dev --include src/content --sk
 repomix --remote facebook/react --skill-generate react-reference
 
 # Skills 保存到 ~/.claude/skills/react-reference/
-# 现在您可以在任何 Claude 对话中参考 React 的代码库
+# 现在你可以在任何 Claude 对话中参考 React 的代码库
 ```
 
 ### 团队项目文档
 
 ```bash
-# 在您的项目目录中
+# 在你的项目目录中
 cd my-project
 
 # 为团队生成 Skills

@@ -1,6 +1,6 @@
 # Claude Code 插件
 
-Repomix 为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) 提供官方插件，可与 AI 驱动的开发环境无缝集成。这些插件使您可以使用自然语言命令直接在 Claude Code 中分析和打包代码库。
+Repomix 为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) 提供官方插件，可与 AI 驱动的开发环境无缝集成。这些插件使你可以使用自然语言命令直接在 Claude Code 中分析和打包代码库。
 
 ## 安装
 
@@ -33,13 +33,13 @@ Repomix 为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overvie
 
 ### 替代方案：交互式安装
 
-您也可以使用交互式插件安装程序：
+你也可以使用交互式插件安装程序：
 
 ```text
 /plugin
 ```
 
-这将打开一个交互式界面，您可以浏览并安装可用的插件。
+这将打开一个交互式界面，你可以浏览并安装可用的插件。
 
 ## 可用插件
 
@@ -140,10 +140,10 @@ AI 驱动的仓库分析代理，使用 Repomix CLI 智能探索代码库。
 
 ## 相关资源
 
-- [MCP 服务器文档](/guide/mcp-server) - 了解底层 MCP 服务器
-- [配置](/guide/configuration) - 自定义 Repomix 行为
-- [安全性](/guide/security) - 了解安全功能
-- [命令行选项](/guide/command-line-options) - 可用的 CLI 选项
+- [MCP 服务器文档](/zh-cn/guide/mcp-server) - 了解底层 MCP 服务器
+- [配置](/zh-cn/guide/configuration) - 自定义 Repomix 行为
+- [安全性](/zh-cn/guide/security) - 了解安全功能
+- [命令行选项](/zh-cn/guide/command-line-options) - 可用的 CLI 选项
 
 ## 插件源代码
 
@@ -156,7 +156,7 @@ AI 驱动的仓库分析代理，使用 Repomix CLI 智能探索代码库。
 
 ## 反馈和支持
 
-如果您遇到问题或对 Claude Code 插件有建议：
+如果你遇到问题或对 Claude Code 插件有建议：
 
 - [在 GitHub 上提交 issue](https://github.com/yamadashy/repomix/issues)
 - [加入我们的 Discord 社区](https://discord.gg/wNYzTwZFku)
