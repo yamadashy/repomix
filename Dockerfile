@@ -13,8 +13,8 @@ WORKDIR /repomix
 COPY . .
 RUN npm ci \
     && npm run build \
-    && npm ci --omit=dev \
     && npm link \
+    && npm ci --omit=dev \
     && npm cache clean --force
 
 WORKDIR /app
