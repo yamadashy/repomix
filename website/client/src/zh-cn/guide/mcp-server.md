@@ -107,7 +107,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 
 **参数：**
 - `directory`：（必需）要打包的目录的绝对路径
-- `compress`：（可选，默认值：false）启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义含义的同时减少约 70% 的 token 用量。由于 grep_repomix_output 允许增量内容检索，通常不需要。仅在你特别需要大型仓库的整个代码库内容时使用。
+- `compress`：（可选，默认值：false）启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义信息的同时减少约 70% 的 token 用量。由于 grep_repomix_output 支持按需检索内容，一般不需要启用此选项。仅在你特别需要大型仓库的整个代码库内容时使用。
 - `includePatterns`：（可选）使用 fast-glob 模式指定要包含的文件。多个模式可以用逗号分隔（例如，"**/*.{js,ts}", "src/**,docs/**"）。只有匹配的文件会被处理。
 - `ignorePatterns`：（可选）使用 fast-glob 模式指定要排除的其他文件。多个模式可以用逗号分隔（例如，"test/**,*.spec.js", "node_modules/**,dist/**"）。这些模式补充 .gitignore 和内置排除。
 - `topFilesLength`：（可选，默认值：10）在代码库分析的指标摘要中显示的最大文件数（按大小排序）。
@@ -129,7 +129,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 
 **参数：**
 - `remote`：（必需）GitHub 仓库 URL 或用户/仓库格式（例如，"yamadashy/repomix", "https://github.com/user/repo", 或 "https://github.com/user/repo/tree/branch"）
-- `compress`：（可选，默认值：false）启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义含义的同时减少约 70% 的 token 用量。由于 grep_repomix_output 允许增量内容检索，通常不需要。仅在你特别需要大型仓库的整个代码库内容时使用。
+- `compress`：（可选，默认值：false）启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义信息的同时减少约 70% 的 token 用量。由于 grep_repomix_output 支持按需检索内容，一般不需要启用此选项。仅在你特别需要大型仓库的整个代码库内容时使用。
 - `includePatterns`：（可选）使用 fast-glob 模式指定要包含的文件。多个模式可以用逗号分隔（例如，"**/*.{js,ts}", "src/**,docs/**"）。只有匹配的文件会被处理。
 - `ignorePatterns`：（可选）使用 fast-glob 模式指定要排除的其他文件。多个模式可以用逗号分隔（例如，"test/**,*.spec.js", "node_modules/**,dist/**"）。这些模式补充 .gitignore 和内置排除。
 - `topFilesLength`：（可选，默认值：10）在代码库分析的指标摘要中显示的最大文件数（按大小排序）。

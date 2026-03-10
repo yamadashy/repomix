@@ -58,7 +58,7 @@ repomix --remote user/repo --remote-branch 935b695
 
 ### 文件列表输入（stdin）
 
-通过 stdin 传递文件路径以获得终极灵活性：
+通过 stdin 传递文件路径，实现最大灵活性：
 
 ```bash
 # 使用 find 命令
@@ -95,7 +95,7 @@ cat file-list.txt | repomix --stdin
 echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
 ```
 
-`--stdin` 选项允许你向 Repomix 传递文件路径列表，在选择要打包的文件时提供终极灵活性。
+`--stdin` 选项允许你向 Repomix 传递文件路径列表，在选择要打包的文件时提供最大的灵活性。
 
 使用 `--stdin` 时，指定的文件实际上被添加到包含模式中。这意味着正常的包含和忽略行为仍然适用 - 通过 stdin 指定的文件如果匹配忽略模式仍会被排除。
 
