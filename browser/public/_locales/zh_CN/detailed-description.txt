@@ -1,24 +1,24 @@
-这个浏览器扩展程序为GitHub仓库页面添加了一个便捷的"Repomix"按钮，让您可以快速使用Repomix打包和分析仓库。Repomix是一个强大的工具，可以将软件仓库转换为AI分析友好的单个文件。
+这个浏览器扩展程序为 GitHub 仓库页面添加了一个便捷的"Repomix"按钮，让你可以快速使用 Repomix 打包和分析仓库。Repomix 是一个强大的工具，可以将软件仓库转换为 AI 分析友好的单个文件。
 
 🛠️ 功能:
-- 一键访问任何GitHub仓库的Repomix
+- 一键访问任何 GitHub 仓库的 Repomix
 - 更多精彩功能即将推出 - 敬请期待功能增强！
 
 🚀 使用方法:
 1. 安装扩展程序
-2. 导航到任何GitHub仓库
+2. 导航到任何 GitHub 仓库
 3. 点击仓库标题中的"Repomix"按钮
-4. 您将被重定向到Repomix网页界面
-5. 为AI分析生成仓库的打包版本
+4. 你将被重定向到 Repomix 网页界面
+5. 为 AI 分析生成仓库的打包版本
 
-✨ 什么是Repomix？
-Repomix是一个创新工具，可以将您的整个代码库打包成一个针对AI分析优化的综合文件。它支持多种输出格式（XML、Markdown、纯文本），包含安全检查以排除敏感信息，并提供有关代码的详细指标。
+✨ 什么是 Repomix？
+Repomix 是一个可以将你的整个代码库打包成一个 AI 友好文件的工具。它支持多种输出格式（XML、Markdown、纯文本），包含安全检查以排除敏感信息，并提供有关代码的详细指标。
 
 💻 开源:
-这个扩展程序和Repomix本身都是开源项目。您可以查看源代码、贡献代码或自己构建扩展程序。
+这个扩展程序和 Repomix 本身都是开源项目。你可以查看源代码、贡献代码或自己构建扩展程序。
 更多详情，请访问:
 https://github.com/yamadashy/repomix
 
 🌐 了解更多:
 - 官方网站: https://repomix.com
-- GitHub仓库: https://github.com/yamadashy/repomix
+- GitHub 仓库: https://github.com/yamadashy/repomix

@@ -233,25 +233,25 @@ Repomix 支持使用 [glob 模式](https://github.com/mrmlnc/fast-glob?tab=readm
 
 Repomix 提供多种方法来设置忽略模式，以在打包过程中排除特定文件或目录：
 
-- **.gitignore**：默认情况下，使用项目的`.gitignore`文件和`.git/info/exclude`中列出的模式。此行为可以通过`ignore.useGitignore`设置或`--no-gitignore` CLI选项控制。
-- **.ignore**：你可以在项目根目录中使用`.ignore`文件，遵循与`.gitignore`相同的格式。ripgrep和the silver searcher等工具也会遵守此文件，减少了维护多个忽略文件的需要。此行为可以通过`ignore.useDotIgnore`设置或`--no-dot-ignore` CLI选项控制。
-- **默认模式**：Repomix包含常见排除文件和目录的默认列表（例如node_modules、.git、二进制文件）。此功能可以通过`ignore.useDefaultPatterns`设置或`--no-default-patterns` CLI选项控制。有关详细信息，请参阅[defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts)。
-- **.repomixignore**：你可以在项目根目录中创建`.repomixignore`文件来定义Repomix特定的忽略模式。此文件遵循与`.gitignore`相同的格式。
-- **自定义模式**：可以使用配置文件中的`ignore.customPatterns`选项指定其他忽略模式。你可以使用`-i, --ignore`命令行选项覆盖此设置。
+- **.gitignore**：默认情况下，使用项目的 `.gitignore` 文件和 `.git/info/exclude` 中列出的模式。此行为可以通过 `ignore.useGitignore` 设置或 `--no-gitignore` CLI 选项控制。
+- **.ignore**：你可以在项目根目录中使用 `.ignore` 文件，遵循与 `.gitignore` 相同的格式。ripgrep 和 the silver searcher 等工具也会遵守此文件，减少了维护多个忽略文件的需要。此行为可以通过 `ignore.useDotIgnore` 设置或 `--no-dot-ignore` CLI 选项控制。
+- **默认模式**：Repomix 包含常见排除文件和目录的默认列表（例如 node_modules、.git、二进制文件）。此功能可以通过 `ignore.useDefaultPatterns` 设置或 `--no-default-patterns` CLI 选项控制。有关详细信息，请参阅 [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts)。
+- **.repomixignore**：你可以在项目根目录中创建 `.repomixignore` 文件来定义 Repomix 特定的忽略模式。此文件遵循与 `.gitignore` 相同的格式。
+- **自定义模式**：可以使用配置文件中的 `ignore.customPatterns` 选项指定其他忽略模式。你可以使用 `-i, --ignore` 命令行选项覆盖此设置。
 
 **优先顺序**（从高到低）：
 
 1. 自定义模式（`ignore.customPatterns`）
-2. 忽略文件（`.repomixignore`、`.ignore`、`.gitignore`和`.git/info/exclude`）：
+2. 忽略文件（`.repomixignore`、`.ignore`、`.gitignore` 和 `.git/info/exclude`）：
    - 在嵌套目录中时，更深层目录中的文件具有更高优先级
    - 在同一目录中时，这些文件的合并顺序不确定
-3. 默认模式（如果`ignore.useDefaultPatterns`为true且未使用`--no-default-patterns`）
+3. 默认模式（如果 `ignore.useDefaultPatterns` 为 true 且未使用 `--no-default-patterns`）
 
 这种方法允许根据项目需求灵活配置文件排除。它通过确保排除安全敏感文件和大型二进制文件来帮助优化生成的打包文件的大小，同时防止机密信息泄漏。
 
 **注意：**默认情况下，二进制文件不包含在打包输出中，但它们的路径列在输出文件的"仓库结构"部分。这提供了仓库结构的完整概述，同时保持打包文件高效且基于文本。有关详细信息，请参阅[二进制文件处理](#二进制文件处理)。
 
-`.repomixignore`示例：
+`.repomixignore` 示例：
 ```text
 # 缓存目录
 .cache/
@@ -267,7 +267,7 @@ build/
 
 ## 默认忽略模式
 
-当`ignore.useDefaultPatterns`为true时，Repomix自动忽略以下常见模式：
+当 `ignore.useDefaultPatterns` 为 true 时，Repomix 自动忽略以下常见模式：
 ```text
 node_modules/**
 .git/**
@@ -275,20 +275,20 @@ coverage/**
 dist/**
 ```
 
-完整列表请参见[defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts)
+完整列表请参见 [defaultIgnore.ts](https://github.com/yamadashy/repomix/blob/main/src/config/defaultIgnore.ts)
 
 ## 二进制文件处理
 
 二进制文件（如图像、PDF、编译的二进制文件、归档文件等）经过特殊处理以保持高效的基于文本的输出：
 
-- **文件内容**：二进制文件**不包含**在打包输出中，以保持文件基于文本且对AI处理高效
+- **文件内容**：二进制文件**不包含**在打包输出中，以保持文件基于文本且对 AI 处理高效
 - **目录结构**：二进制文件**路径被列出**在目录结构部分，提供仓库的完整概述
 
 这种方法确保你获得仓库结构的完整视图，同时保持为 AI 处理而优化的高效纯文本输出。
 
 **示例：**
 
-如果你的仓库包含`logo.png`和`app.jar`：
+如果你的仓库包含 `logo.png` 和 `app.jar`：
 - 它们将出现在目录结构部分
 - 它们的内容将不会包含在文件部分
 
@@ -303,15 +303,15 @@ build/
   app.jar
 ```
 
-这样，AI工具可以理解这些二进制文件存在于你的项目结构中，而无需处理其二进制内容。
+这样，AI 工具可以理解这些二进制文件存在于你的项目结构中，而无需处理其二进制内容。
 
-**注意：**你可以使用`input.maxFileSize`配置选项（默认值：50MB）控制最大文件大小阈值。大于此限制的文件将被完全跳过。
+**注意：**你可以使用 `input.maxFileSize` 配置选项（默认值：50 MB）控制最大文件大小阈值。大于此限制的文件将被完全跳过。
 
 ## 高级功能
 
 ### 代码压缩
 
-代码压缩功能（通过`output.compress: true`启用）使用 [Tree-sitter](https://github.com/tree-sitter/tree-sitter) 智能提取基本代码结构，同时移除实现细节。这有助于在保持重要的结构信息的同时减少 token 数量。
+代码压缩功能（通过 `output.compress: true` 启用）使用 [Tree-sitter](https://github.com/tree-sitter/tree-sitter) 智能提取基本代码结构，同时移除实现细节。这有助于在保持重要的结构信息的同时减少 token 数量。
 
 主要优点：
 - 显著减少 token 数量
@@ -322,15 +322,15 @@ build/
 
 更多详细信息和示例，请参阅[代码压缩指南](code-compress)。
 
-### Git集成
+### Git 集成
 
-`output.git`配置提供强大的Git感知功能：
+`output.git` 配置提供强大的 Git 感知功能：
 
-- `sortByChanges`：当设置为true时，文件按Git更改次数（修改该文件的提交数）排序。更改次数较多的文件出现在输出的底部。这有助于优先处理更活跃开发的文件。默认值：`true`
+- `sortByChanges`：当设置为 true 时，文件按 Git 更改次数（修改该文件的提交数）排序。更改次数较多的文件出现在输出的底部。这有助于优先处理更活跃开发的文件。默认值：`true`
 - `sortByChangesMaxCommits`：计算文件更改次数时要分析的最大提交数。默认值：`100`
-- `includeDiffs`：当设置为true时，在输出中包含Git差异（同时分别包含工作树和暂存区的更改）。这允许读者查看存储库中的待处理更改。默认值：`false`
-- `includeLogs`：当设置为true时，在输出中包含Git日志。显示提交历史的日期、消息和文件路径，帮助AI理解哪些文件通常一起更改。默认值：`false`
-- `includeLogsCount`：要包含的Git日志提交数量。控制用于分析开发规律的历史深度。默认值：`50`
+- `includeDiffs`：当设置为 true 时，在输出中包含 Git 差异（同时分别包含工作树和暂存区的更改）。这允许读者查看存储库中的待处理更改。默认值：`false`
+- `includeLogs`：当设置为 true 时，在输出中包含 Git 日志。显示提交历史的日期、消息和文件路径，帮助 AI 理解哪些文件通常一起更改。默认值：`false`
+- `includeLogsCount`：要包含的 Git 日志提交数量。控制用于分析开发规律的历史深度。默认值：`50`
 
 配置示例：
 ```json
@@ -349,9 +349,9 @@ build/
 
 ### 安全检查
 
-当`security.enableSecurityCheck`启用时，Repomix使用[Secretlint](https://github.com/secretlint/secretlint)在将代码库包含在输出中之前检测敏感信息。这有助于防止意外暴露：
+当 `security.enableSecurityCheck` 启用时，Repomix 使用 [Secretlint](https://github.com/secretlint/secretlint) 在将代码库包含在输出中之前检测敏感信息。这有助于防止意外暴露：
 
-- API密钥
+- API 密钥
 - 访问令牌
 - 私钥
 - 密码
@@ -359,7 +359,7 @@ build/
 
 ### 注释移除
 
-当`output.removeComments`设置为`true`时，将从支持的文件类型中移除注释，以减少输出大小并专注于核心代码内容。这在以下情况特别有用：
+当 `output.removeComments` 设置为 `true` 时，将从支持的文件类型中移除注释，以减少输出大小并专注于核心代码内容。这在以下情况特别有用：
 
 - 处理大量文档化的代码
 - 尝试减少 token 数量
