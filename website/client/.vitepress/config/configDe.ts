@@ -2,7 +2,7 @@ import { type DefaultTheme, defineConfig } from 'vitepress';
 
 export const configDe = defineConfig({
   lang: 'de',
-  description: 'Paketieren Sie Ihre Codebasis in KI-freundliche Formate',
+  description: 'Ihre Codebasis in KI-freundliche Formate verpacken',
   themeConfig: {
     nav: [
       { text: 'Anleitung', link: '/de/guide/', activeMatch: '^/de/guide/' },
