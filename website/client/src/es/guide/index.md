@@ -44,7 +44,7 @@ Al discutir cambios específicos, la IA puede ayudar a generar código. Con func
 
 ## ¿Por qué Repomix?
 
-Repomix se puede usar con cualquier servicio de suscripción como ChatGPT, Claude, Gemini o Grok sin preocuparte por costos adicionales. Al proporcionar el contexto completo de tu código, elimina la necesidad de explorar archivos uno por uno, haciendo el análisis más rápido y preciso.
+Repomix se puede usar con cualquier servicio de suscripción como ChatGPT, Claude, Gemini o Grok sin preocuparte por costos adicionales. Al proporcionar el contexto completo de tu código, Repomix elimina la necesidad de explorar archivos uno por uno, haciendo el análisis más rápido y preciso.
 
 Con todo el código disponible como contexto, Repomix permite una amplia variedad de usos: planificación de implementaciones, investigación de bugs, auditorías de seguridad de bibliotecas de terceros, generación de documentación y mucho más.
 

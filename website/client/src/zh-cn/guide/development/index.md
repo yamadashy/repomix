@@ -5,11 +5,11 @@
 ## 如何贡献
 
 - **为仓库加星**: 通过[为仓库加星](https://github.com/yamadashy/repomix)来表示你的支持！
-- **创建问题**: 发现了bug？有新功能的想法？通过[创建问题](https://github.com/yamadashy/repomix/issues)让我们知道。
-- **提交拉取请求**: 找到了可以修复或改进的地方？提交PR吧！
-- **传播消息**: 在社交媒体、博客或技术社区中分享你使用Repomix的经验。
-- **使用Repomix**: 最有价值的反馈来自实际使用，请随时将Repomix集成到你自己的项目中！
-- **赞助**: 通过[成为赞助者](https://github.com/sponsors/yamadashy)来支持Repomix的开发。
+- **创建问题**: 发现了 bug？有新功能的想法？通过[创建问题](https://github.com/yamadashy/repomix/issues)让我们知道。
+- **提交拉取请求**: 找到了可以修复或改进的地方？提交 PR 吧！
+- **传播消息**: 在社交媒体、博客或技术社区中分享你使用 Repomix 的经验。
+- **使用 Repomix**: 最有价值的反馈来自实际使用，请随时将 Repomix 集成到你自己的项目中！
+- **赞助**: 通过[成为赞助者](https://github.com/sponsors/yamadashy)来支持 Repomix 的开发。
 
 ## 快速开始
 

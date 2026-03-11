@@ -67,7 +67,7 @@ Feliz codificação! 🚀
 
 ## Por que Repomix?
 
-O Repomix pode ser usado com qualquer serviço de assinatura como ChatGPT, Claude, Gemini ou Grok, sem se preocupar com custos extras. Ao fornecer o contexto completo do código, ele elimina a necessidade de explorar arquivos um por um, tornando a análise mais rápida e precisa.
+O Repomix pode ser usado com qualquer serviço de assinatura como ChatGPT, Claude, Gemini ou Grok, sem custos extras pelo Repomix em si. Ao fornecer o contexto completo do código, ele elimina a necessidade de explorar arquivos um por um, tornando a análise mais rápida e precisa.
 
 Com toda a base de código disponível como contexto, o Repomix possibilita diversas aplicações: planejamento de implementação, investigação de bugs, verificações de segurança de bibliotecas de terceiros, geração de documentação e muito mais.
 

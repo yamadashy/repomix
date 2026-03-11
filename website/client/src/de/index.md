@@ -67,7 +67,7 @@ Viel Spaß beim Programmieren! 🚀
 
 ## Warum Repomix?
 
-Repomix funktioniert mit jedem Abo-Service wie ChatGPT, Claude, Gemini oder Grok – ganz ohne zusätzliche Kosten. Da der vollständige Codebasis-Kontext bereitgestellt wird, entfällt das mühsame Durchsuchen einzelner Dateien, was die Analyse schneller und präziser macht.
+Repomix funktioniert mit Diensten wie ChatGPT, Claude, Gemini oder Grok – ganz ohne zusätzliche Kosten für Repomix selbst. Da der vollständige Codebasis-Kontext bereitgestellt wird, entfällt das mühsame Durchsuchen einzelner Dateien, was die Analyse schneller und präziser macht.
 
 Mit der gesamten Codebasis als Kontext eröffnet Repomix vielfältige Einsatzmöglichkeiten: Implementierungsplanung, Fehleranalyse, Sicherheitsprüfungen von Drittanbieter-Bibliotheken, Dokumentationserstellung und vieles mehr.
 
