@@ -262,7 +262,7 @@ export const getGitLogs = async (
       : undefined;
 
     const commits = parseStructuredOutput(structured, patchOutput);
-    logger.info(`✅ Fetched ${commits.length} commits`);
+    logger.trace(`Fetched ${commits.length} commits`);
 
     // Map to output format
     const logCommits: GitLogCommit[] = commits.map((c) => ({
