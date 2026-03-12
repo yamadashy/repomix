@@ -15,6 +15,7 @@ describe('gitHistory', () => {
         from: 'HEAD~10',
         to: 'HEAD',
         raw: 'HEAD~10..HEAD',
+        separator: '..',
       });
     });
 
@@ -24,6 +25,7 @@ describe('gitHistory', () => {
         from: 'v1.0',
         to: 'v2.0',
         raw: 'v1.0..v2.0',
+        separator: '..',
       });
     });
 
@@ -33,6 +35,17 @@ describe('gitHistory', () => {
         from: 'main',
         to: 'feature',
         raw: 'main..feature',
+        separator: '..',
+      });
+    });
+
+    it('should parse three-dot range main...feature', () => {
+      const result = parseCommitRange('main...feature');
+      expect(result).toEqual({
+        from: 'main',
+        to: 'feature',
+        raw: 'main...feature',
+        separator: '...',
       });
     });
 
@@ -42,6 +55,7 @@ describe('gitHistory', () => {
         from: 'abc1234^',
         to: 'abc1234',
         raw: 'abc1234',
+        separator: '..',
       });
     });
 
@@ -51,6 +65,7 @@ describe('gitHistory', () => {
         from: 'HEAD~5',
         to: 'HEAD',
         raw: '  HEAD~5 .. HEAD  ',
+        separator: '..',
       });
     });
 
@@ -60,6 +75,10 @@ describe('gitHistory', () => {
 
     it('should throw error for invalid range format', () => {
       expect(() => parseCommitRange('HEAD~10..')).toThrow('Invalid commit range format');
+    });
+
+    it('should throw error for invalid three-dot range', () => {
+      expect(() => parseCommitRange('main...')).toThrow('Invalid commit range format');
     });
   });
 
@@ -315,14 +334,11 @@ describe('gitHistory', () => {
         execFileAsync: mockExecFileAsync as never,
       });
 
-      expect(mockExecFileAsync).toHaveBeenCalledWith('git', [
-        '-C',
-        '/test/dir',
-        'show',
-        '--no-color',
-        '--patch',
-        'abc1234',
-      ]);
+      expect(mockExecFileAsync).toHaveBeenCalledWith(
+        'git',
+        ['-C', '/test/dir', 'show', '--no-color', '--patch', 'abc1234'],
+        { maxBuffer: 52428800 },
+      );
       expect(result).toContain('diff --git');
     });
 
@@ -335,14 +351,11 @@ describe('gitHistory', () => {
         execFileAsync: mockExecFileAsync as never,
       });
 
-      expect(mockExecFileAsync).toHaveBeenCalledWith('git', [
-        '-C',
-        '/test/dir',
-        'show',
-        '--no-color',
-        '--stat',
-        'abc1234',
-      ]);
+      expect(mockExecFileAsync).toHaveBeenCalledWith(
+        'git',
+        ['-C', '/test/dir', 'show', '--no-color', '--stat', 'abc1234'],
+        { maxBuffer: 52428800 },
+      );
       expect(result).toContain('file changed');
     });
 
@@ -355,14 +368,11 @@ describe('gitHistory', () => {
         execFileAsync: mockExecFileAsync as never,
       });
 
-      expect(mockExecFileAsync).toHaveBeenCalledWith('git', [
-        '-C',
-        '/test/dir',
-        'show',
-        '--no-color',
-        '--name-only',
-        'abc1234',
-      ]);
+      expect(mockExecFileAsync).toHaveBeenCalledWith(
+        'git',
+        ['-C', '/test/dir', 'show', '--no-color', '--name-only', 'abc1234'],
+        { maxBuffer: 52428800 },
+      );
       expect(result).toContain('src/file1.ts');
     });
 
@@ -375,15 +385,11 @@ describe('gitHistory', () => {
         execFileAsync: mockExecFileAsync as never,
       });
 
-      expect(mockExecFileAsync).toHaveBeenCalledWith('git', [
-        '-C',
-        '/test/dir',
-        'show',
-        '--no-color',
-        '--patch',
-        '--summary',
-        'abc1234',
-      ]);
+      expect(mockExecFileAsync).toHaveBeenCalledWith(
+        'git',
+        ['-C', '/test/dir', 'show', '--no-color', '--patch', '--summary', 'abc1234'],
+        { maxBuffer: 52428800 },
+      );
       expect(result).toContain('diff --git');
     });
 

@@ -45,6 +45,7 @@ export interface ParsedCommitRange {
   from: string;
   to: string;
   raw: string;
+  separator: '..' | '...';
 }
 
 /**
@@ -71,30 +72,32 @@ export const parseCommitRange = (range: string): ParsedCommitRange => {
 
   // Handle single commit (treated as commit^..commit)
   if (!range.includes('..')) {
-    return {
-      from: `${range}^`,
-      to: range,
-      raw: range,
-    };
+    return { from: `${range}^`, to: range, raw: range, separator: '..' };
   }
 
-  // Handle range formats
-  const [from, to] = range.split('..');
+  // Three-dot (...) must be checked before two-dot (..) to avoid mis-split
+  const tripleIdx = range.indexOf('...');
+  if (tripleIdx !== -1) {
+    const from = range.slice(0, tripleIdx).trim();
+    const to = range.slice(tripleIdx + 3).trim();
+    if (!from || !to) {
+      throw new RepomixError(`Invalid commit range format: '${range}'. Expected format: 'from...to'`);
+    }
+    return { from, to, raw: range, separator: '...' };
+  }
 
+  const [from, to] = range.split('..');
   if (!from || !to) {
     throw new RepomixError(`Invalid commit range format: '${range}'. Expected format: 'from..to'`);
   }
 
-  return {
-    from: from.trim(),
-    to: to.trim(),
-    raw: range,
-  };
+  return { from: from.trim(), to: to.trim(), raw: range, separator: '..' };
 };
 
 // Null byte delimiter (via git's %x00) to separate format output from --name-only file list
 // Null bytes cannot appear in commit messages or file paths, making this a reliable delimiter
 const NULL_BYTE = '\0';
+const GIT_LOG_MAX_BUFFER = 50 * 1024 * 1024; // 50MB — git log --patch on large repos
 
 /**
  * Get full metadata for a specific commit
@@ -124,15 +127,11 @@ export const getCommitMetadata = async (
       '%x00', // Null byte delimiter before file list (git format specifier)
     ].join('%n');
 
-    const result = await deps.execFileAsync('git', [
-      '-C',
-      directory,
-      'log',
-      '-1',
-      `--pretty=format:${formatString}`,
-      '--name-only',
-      hash,
-    ]);
+    const result = await deps.execFileAsync(
+      'git',
+      ['-C', directory, 'log', '-1', `--pretty=format:${formatString}`, '--name-only', hash],
+      { maxBuffer: GIT_LOG_MAX_BUFFER },
+    );
 
     // Split on null byte to separate format output from file list
     const [formatOutput, fileListOutput] = result.stdout.split(NULL_BYTE);
@@ -203,25 +202,27 @@ export const getCommitGraph = async (
     const parsedRange = deps.parseCommitRange(range);
 
     // Get ASCII graph
-    const graphResult = await deps.execFileAsync('git', [
-      '-C',
-      directory,
-      'log',
-      '--graph',
-      '--oneline',
-      '--decorate',
-      '--all',
-      `${parsedRange.from}..${parsedRange.to}`,
-    ]);
+    const graphResult = await deps.execFileAsync(
+      'git',
+      [
+        '-C',
+        directory,
+        'log',
+        '--graph',
+        '--oneline',
+        '--decorate',
+        '--all',
+        `${parsedRange.from}${parsedRange.separator}${parsedRange.to}`,
+      ],
+      { maxBuffer: GIT_LOG_MAX_BUFFER },
+    );
 
     // Get list of commit hashes in range
-    const hashesResult = await deps.execFileAsync('git', [
-      '-C',
-      directory,
-      'log',
-      '--pretty=format:%H',
-      `${parsedRange.from}..${parsedRange.to}`,
-    ]);
+    const hashesResult = await deps.execFileAsync(
+      'git',
+      ['-C', directory, 'log', '--pretty=format:%H', `${parsedRange.from}${parsedRange.separator}${parsedRange.to}`],
+      { maxBuffer: GIT_LOG_MAX_BUFFER },
+    );
 
     const hashes = hashesResult.stdout.split('\n').filter(Boolean);
 
@@ -344,7 +345,7 @@ export const getCommitPatch = async (
 
     args.push(hash);
 
-    const result = await deps.execFileAsync('git', args);
+    const result = await deps.execFileAsync('git', args, { maxBuffer: GIT_LOG_MAX_BUFFER });
     return result.stdout;
   } catch (error) {
     logger.trace('Failed to get commit patch:', (error as Error).message);

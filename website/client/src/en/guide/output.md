@@ -243,7 +243,7 @@ src/core/output/outputGenerate.ts
 ```
 ## Commit History Output
 
-When using `--include-logs` with output verbosity & graph options (e.g., `--include-logs --patch --graph`), the output includes detailed commit metadata and history:
+When using `--include-logs` with output verbosity & graph options (e.g., `--include-logs --git-patch --git-graph`), the output includes detailed commit metadata and history:
 
 ```xml
 <git_logs>
@@ -305,18 +305,18 @@ new file mode 100644
 ```
 
 **Diff Format Flags** (mutually exclusive - choose one):
-- `--patch` (git log --patch): Line-by-line diffs (largest output, best for code review)
-- `--stat` (git log --stat): Per-file change counts
-- `--numstat` (git log --numstat): Numeric additions/deletions per file
-- `--shortstat` (git log --shortstat): One-line summary of changes
-- `--dirstat` (git log --dirstat): Directory change distribution
-- `--name-only` (git log --name-only): Filenames only (default)
-- `--name-status` (git log --name-status): Filenames with A/M/D/R status
-- `--raw` (git log --raw): Low-level format with SHA hashes and modes
+- `--git-patch` (git log --patch): Line-by-line diffs (largest output, best for code review)
+- `--git-stat` (git log --stat): Per-file change counts
+- `--git-numstat` (git log --numstat): Numeric additions/deletions per file
+- `--git-shortstat` (git log --shortstat): One-line summary of changes
+- `--git-dirstat` (git log --dirstat): Directory change distribution
+- `--git-name-only` (git log --name-only): Filenames only (default)
+- `--git-name-status` (git log --name-status): Filenames with A/M/D/R status
+- `--git-raw` (git log --raw): Low-level format with SHA hashes and modes
 
 **Output Verbosity & Graph Options** (combinable with any diff format):
-- `--graph`: Include ASCII and Mermaid commit graph visualization
-- `--summary`: Show file operations (creates, renames, mode changes)
+- `--git-graph`: Include ASCII and Mermaid commit graph visualization
+- `--git-summary`: Show file operations (creates, renames, mode changes)
 
 ## Usage with AI Models
 

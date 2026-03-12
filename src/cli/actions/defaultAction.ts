@@ -330,19 +330,19 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
 
   // Validate mutually exclusive diff format flags
   const diffFormatFlags = [
-    options.stat,
-    options.patch,
-    options.numstat,
-    options.shortstat,
-    options.dirstat,
-    options.nameOnly,
-    options.nameStatus,
-    options.raw,
+    options.gitStat,
+    options.gitPatch,
+    options.gitNumstat,
+    options.gitShortstat,
+    options.gitDirstat,
+    options.gitNameOnly,
+    options.gitNameStatus,
+    options.gitRaw,
   ].filter(Boolean);
 
   if (diffFormatFlags.length > 1) {
     throw new RepomixError(
-      'Only one git log diff format flag can be used at a time: --stat, --patch, --numstat, --shortstat, --dirstat, --name-only, --name-status, or --raw',
+      'Only one git log diff format flag can be used at a time: --git-stat, --git-patch, --git-numstat, --git-shortstat, --git-dirstat, --git-name-only, --git-name-status, or --git-raw',
     );
   }
 
@@ -357,17 +357,17 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     | 'name-status'
     | 'raw'
     | undefined;
-  if (options.stat) commitPatchDetail = 'stat';
-  else if (options.patch) commitPatchDetail = 'patch';
-  else if (options.numstat) commitPatchDetail = 'numstat';
-  else if (options.shortstat) commitPatchDetail = 'shortstat';
-  else if (options.dirstat) commitPatchDetail = 'dirstat';
-  else if (options.nameOnly) commitPatchDetail = 'name-only';
-  else if (options.nameStatus) commitPatchDetail = 'name-status';
-  else if (options.raw) commitPatchDetail = 'raw';
+  if (options.gitStat) commitPatchDetail = 'stat';
+  else if (options.gitPatch) commitPatchDetail = 'patch';
+  else if (options.gitNumstat) commitPatchDetail = 'numstat';
+  else if (options.gitShortstat) commitPatchDetail = 'shortstat';
+  else if (options.gitDirstat) commitPatchDetail = 'dirstat';
+  else if (options.gitNameOnly) commitPatchDetail = 'name-only';
+  else if (options.gitNameStatus) commitPatchDetail = 'name-status';
+  else if (options.gitRaw) commitPatchDetail = 'raw';
 
   // Apply git log configuration if any git log flags are set
-  if (commitPatchDetail || options.graph || options.summary || options.commitRange) {
+  if (commitPatchDetail || options.gitGraph || options.gitSummary || options.commitRange) {
     const gitLogEnhancementConfig = {
       ...cliConfig.output?.git,
       // Enable logs if any diff format or enhancement flag is used
@@ -376,8 +376,8 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
         commitPatchDetail,
         includeCommitPatches: true,
       }),
-      ...(options.graph && { includeCommitGraph: true }),
-      ...(options.summary && { includeSummary: true }),
+      ...(options.gitGraph && { includeCommitGraph: true }),
+      ...(options.gitSummary && { includeSummary: true }),
       ...(options.commitRange && { commitRange: options.commitRange }),
     };
 

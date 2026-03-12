@@ -529,5 +529,142 @@ describe('gitLogHandle', () => {
       // Verify graph is included in result
       expect(result?.graph?.graph).toBe(mockGraphOutput);
     });
+
+    test('should call execGitLogTextBlob when name-only is requested', async () => {
+      const mockStructuredOutput = createStructuredOutput([
+        {
+          hash: HASH1,
+          abbrevHash: 'abc12',
+          authorName: 'Author One',
+          authorEmail: 'author1@example.com',
+          authorDate: '2024-01-01T10:00:00+09:00',
+          committerName: 'Author One',
+          committerEmail: 'author1@example.com',
+          committerDate: '2024-01-01T10:00:00+09:00',
+          subject: 'Test commit',
+          files: [{ filename: 'test.txt', status: 'M' }],
+        },
+      ]);
+
+      const mockPatchOutput = `${NUL}${NUL}test.txt`;
+      const mockExecGitLogStructured = vi.fn().mockResolvedValue(mockStructuredOutput);
+      const mockExecGitLogTextBlob = vi.fn().mockResolvedValue(mockPatchOutput);
+
+      const config: RepomixConfigMerged = {
+        cwd: '/project',
+        output: {
+          git: {
+            includeLogs: true,
+            includeCommitPatches: true,
+            commitPatchDetail: 'name-only',
+          },
+        },
+      } as RepomixConfigMerged;
+
+      await getGitLogs(['/project'], config, {
+        execGitLogStructured: mockExecGitLogStructured,
+        execGitLogTextBlob: mockExecGitLogTextBlob,
+        execGitGraph: vi.fn().mockResolvedValue(''),
+        getTags: vi.fn().mockResolvedValue({}),
+        isGitRepository: vi.fn().mockResolvedValue(true),
+      });
+
+      expect(mockExecGitLogTextBlob).toHaveBeenCalledWith({
+        directory: '/project',
+        range: 'HEAD~50..HEAD',
+        maxCommits: 50,
+        patchDetail: 'name-only',
+      });
+    });
+
+    test('should call execGitLogTextBlob when name-status is requested', async () => {
+      const mockStructuredOutput = createStructuredOutput([
+        {
+          hash: HASH1,
+          abbrevHash: 'abc12',
+          authorName: 'Author One',
+          authorEmail: 'author1@example.com',
+          authorDate: '2024-01-01T10:00:00+09:00',
+          committerName: 'Author One',
+          committerEmail: 'author1@example.com',
+          committerDate: '2024-01-01T10:00:00+09:00',
+          subject: 'Test commit',
+          files: [{ filename: 'test.txt', status: 'M' }],
+        },
+      ]);
+
+      const mockPatchOutput = `${NUL}${NUL}M\ttest.txt`;
+      const mockExecGitLogStructured = vi.fn().mockResolvedValue(mockStructuredOutput);
+      const mockExecGitLogTextBlob = vi.fn().mockResolvedValue(mockPatchOutput);
+
+      const config: RepomixConfigMerged = {
+        cwd: '/project',
+        output: {
+          git: {
+            includeLogs: true,
+            includeCommitPatches: true,
+            commitPatchDetail: 'name-status',
+          },
+        },
+      } as RepomixConfigMerged;
+
+      await getGitLogs(['/project'], config, {
+        execGitLogStructured: mockExecGitLogStructured,
+        execGitLogTextBlob: mockExecGitLogTextBlob,
+        execGitGraph: vi.fn().mockResolvedValue(''),
+        getTags: vi.fn().mockResolvedValue({}),
+        isGitRepository: vi.fn().mockResolvedValue(true),
+      });
+
+      expect(mockExecGitLogTextBlob).toHaveBeenCalledWith({
+        directory: '/project',
+        range: 'HEAD~50..HEAD',
+        maxCommits: 50,
+        patchDetail: 'name-status',
+      });
+    });
+
+    test('should use explicit commitRange even without graph/patch/summary flags', async () => {
+      const mockStructuredOutput = createStructuredOutput([
+        {
+          hash: HASH1,
+          abbrevHash: 'abc12',
+          authorName: 'Author One',
+          authorEmail: 'author1@example.com',
+          authorDate: '2024-01-01T10:00:00+09:00',
+          committerName: 'Author One',
+          committerEmail: 'author1@example.com',
+          committerDate: '2024-01-01T10:00:00+09:00',
+          subject: 'Test commit',
+          files: [{ filename: 'test.txt', status: 'M' }],
+        },
+      ]);
+
+      const mockExecGitLogStructured = vi.fn().mockResolvedValue(mockStructuredOutput);
+
+      const config: RepomixConfigMerged = {
+        cwd: '/project',
+        output: {
+          git: {
+            includeLogs: true,
+            commitRange: 'v1.0..v2.0',
+          },
+        },
+      } as RepomixConfigMerged;
+
+      await getGitLogs(['/project'], config, {
+        execGitLogStructured: mockExecGitLogStructured,
+        execGitLogTextBlob: vi.fn().mockResolvedValue(''),
+        execGitGraph: vi.fn().mockResolvedValue(''),
+        getTags: vi.fn().mockResolvedValue({}),
+        isGitRepository: vi.fn().mockResolvedValue(true),
+      });
+
+      expect(mockExecGitLogStructured).toHaveBeenCalledWith({
+        directory: '/project',
+        range: 'v1.0..v2.0',
+        maxCommits: 50,
+      });
+    });
   });
 });

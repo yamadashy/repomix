@@ -293,20 +293,20 @@ To analyze git commit history with orthogonal flags:
 repomix --include-logs
 
 # With line-by-line diffs (git log --patch)
-repomix --include-logs --patch
+repomix --include-logs --git-patch
 
 # With commit graph visualization (git log --graph --all)
-repomix --include-logs --graph
+repomix --include-logs --git-graph
 
 # Full analysis: patches + graph + file operations summary
-repomix --include-logs --patch --graph --summary
+repomix --include-logs --git-patch --git-graph --git-summary
 
 # Customize commit range (supports both .. and ... syntax)
 repomix --include-logs --commit-range "HEAD~100..HEAD"
 repomix --include-logs --commit-range "main...feature-branch"
 ```
 
-The commit history feature provides commit metadata (hash, author, date, message, files changed), visual commit graph (ASCII + Mermaid diagram) with `--graph`, git tags mapping, and configurable diff formats (`--patch`, `--stat`, `--numstat`, `--shortstat`, `--dirstat`, `--name-only`, `--name-status`, `--raw`) that match git log parameters exactly.
+The commit history feature provides commit metadata (hash, author, date, message, files changed), visual commit graph (ASCII + Mermaid diagram) with `--git-graph`, git tags mapping, and configurable diff formats (`--git-patch`, `--git-stat`, `--git-numstat`, `--git-shortstat`, `--git-dirstat`, `--git-name-only`, `--git-name-status`, `--git-raw`) that match git log parameters exactly.
 
 To compress the output:
 
@@ -658,18 +658,18 @@ Instruction
 - `--commit-range <range>`: Git commit range to analyze (default: HEAD~50..HEAD, supports both .. and ... syntax, e.g., "HEAD~100..HEAD", "v1.0..v2.0", "main...feature-branch")
 
 **Git Log Diff Format Flags** (mutually exclusive - choose one):
-- `--stat`: Show per-file change counts (git log --stat)
-- `--patch`: Show line-by-line diffs (git log --patch)
-- `--numstat`: Show numeric additions/deletions per file (git log --numstat)
-- `--shortstat`: Show one-line summary of changes (git log --shortstat)
-- `--dirstat`: Show directory change distribution (git log --dirstat)
-- `--name-only`: Show filenames only (git log --name-only) - default with commit range
-- `--name-status`: Show filenames with A/M/D/R status (git log --name-status)
-- `--raw`: Show low-level format with SHA hashes and modes (git log --raw)
+- `--git-stat`: Show per-file change counts (git log --stat)
+- `--git-patch`: Show line-by-line diffs (git log --patch)
+- `--git-numstat`: Show numeric additions/deletions per file (git log --numstat)
+- `--git-shortstat`: Show one-line summary of changes (git log --shortstat)
+- `--git-dirstat`: Show directory change distribution (git log --dirstat)
+- `--git-name-only`: Show filenames only (git log --name-only) - default with commit range
+- `--git-name-status`: Show filenames with A/M/D/R status (git log --name-status)
+- `--git-raw`: Show low-level format with SHA hashes and modes (git log --raw)
 
 **Git Log Output Verbosity & Graph Options** (combinable with any diff format):
-- `--graph`: Include ASCII and Mermaid commit graph visualization (git log --graph --all)
-- `--summary`: Show file operations like creates, renames, mode changes (git log --summary)
+- `--git-graph`: Include ASCII and Mermaid commit graph visualization (git log --graph --all)
+- `--git-summary`: Show file operations like creates, renames, mode changes (git log --summary)
 
 #### File Selection Options
 - `--include <patterns>`: Include only files matching these glob patterns (comma-separated, e.g., "src/**/*.js,*.md")

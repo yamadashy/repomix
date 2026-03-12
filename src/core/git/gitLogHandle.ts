@@ -236,9 +236,10 @@ export const getGitLogs = async (
 
   try {
     const needsEnhanced = gitConfig.includeCommitGraph || gitConfig.includeCommitPatches || gitConfig.includeSummary;
-    const range = needsEnhanced ? gitConfig.commitRange || 'HEAD~50..HEAD' : undefined;
+    const hasExplicitRange = !!gitConfig.commitRange && gitConfig.commitRange !== 'HEAD~50..HEAD';
+    const range = needsEnhanced || hasExplicitRange ? gitConfig.commitRange || 'HEAD~50..HEAD' : undefined;
     const maxCommits = gitConfig.includeLogsCount || 50;
-    const patchTypes = ['patch', 'stat', 'shortstat', 'dirstat', 'numstat', 'raw'];
+    const patchTypes = ['patch', 'stat', 'shortstat', 'dirstat', 'numstat', 'name-only', 'name-status', 'raw'];
     const needsPatch = gitConfig.includeCommitPatches && patchTypes.includes(gitConfig.commitPatchDetail || '');
 
     // Fetch data

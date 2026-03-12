@@ -8,6 +8,7 @@ import { logger } from '../../shared/logger.js';
 const execFileAsync = promisify(execFile);
 
 const GIT_REMOTE_TIMEOUT = 30000;
+const GIT_LOG_MAX_BUFFER = 50 * 1024 * 1024; // 50MB — git log --patch on large repos
 const gitRemoteEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
 const gitRemoteOpts = { timeout: GIT_REMOTE_TIMEOUT, env: gitRemoteEnv };
 
@@ -222,11 +223,11 @@ export const execGitLogStructured = async (
   deps = { execFileAsync },
 ): Promise<string> => {
   const args = ['-C', options.directory, 'log', '-z', '--raw', `--pretty=format:${METADATA_FORMAT}`];
+  if (options.maxCommits) args.push('-n', options.maxCommits.toString());
   if (options.range) args.push(options.range);
-  else if (options.maxCommits) args.push('-n', options.maxCommits.toString());
 
   try {
-    return (await deps.execFileAsync('git', args)).stdout || '';
+    return (await deps.execFileAsync('git', args, { maxBuffer: GIT_LOG_MAX_BUFFER })).stdout || '';
   } catch (error) {
     logger.trace('Failed to execute git log structured:', (error as Error).message);
     throw error;
@@ -237,11 +238,11 @@ export const execGitLogStructured = async (
 export const execGitLogTextBlob = async (options: GitLogTextBlobOptions, deps = { execFileAsync }): Promise<string> => {
   // Use double-NUL as separator - matches structured output format, 100% safe since git rejects NUL in content
   const args = ['-C', options.directory, 'log', `--pretty=format:${NUL}${NUL}`, `--${options.patchDetail}`];
+  if (options.maxCommits) args.push('-n', options.maxCommits.toString());
   if (options.range) args.push(options.range);
-  else if (options.maxCommits) args.push('-n', options.maxCommits.toString());
 
   try {
-    return (await deps.execFileAsync('git', args)).stdout || '';
+    return (await deps.execFileAsync('git', args, { maxBuffer: GIT_LOG_MAX_BUFFER })).stdout || '';
   } catch (error) {
     logger.trace('Failed to execute git log text blob:', (error as Error).message);
     throw error;
@@ -251,11 +252,11 @@ export const execGitLogTextBlob = async (options: GitLogTextBlobOptions, deps = 
 /** Graph visualization (separate call to avoid prefix interleaving) */
 export const execGitGraph = async (options: GitLogStructuredOptions, deps = { execFileAsync }): Promise<string> => {
   const args = ['-C', options.directory, 'log', '--graph', '--oneline', '--all'];
+  if (options.maxCommits) args.push('-n', options.maxCommits.toString());
   if (options.range) args.push(options.range);
-  else if (options.maxCommits) args.push('-n', options.maxCommits.toString());
 
   try {
-    return (await deps.execFileAsync('git', args)).stdout || '';
+    return (await deps.execFileAsync('git', args, { maxBuffer: GIT_LOG_MAX_BUFFER })).stdout || '';
   } catch (error) {
     logger.trace('Failed to execute git graph:', (error as Error).message);
     throw error;

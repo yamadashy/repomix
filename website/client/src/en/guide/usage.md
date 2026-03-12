@@ -144,13 +144,13 @@ For comprehensive commit history analysis with orthogonal flags matching git log
 repomix --include-logs
 
 # With line-by-line diffs (git log --patch)
-repomix --include-logs --patch
+repomix --include-logs --git-patch
 
 # With commit graph visualization (git log --graph --all)
-repomix --include-logs --graph
+repomix --include-logs --git-graph
 
 # Full analysis: patches + graph + file operations summary
-repomix --include-logs --patch --graph --summary
+repomix --include-logs --git-patch --git-graph --git-summary
 
 # Analyze specific commit range (supports both .. and ... syntax)
 repomix --include-logs --commit-range "v1.0..HEAD"
@@ -158,25 +158,25 @@ repomix --include-logs --commit-range "main...feature-branch"
 ```
 
 **Diff Format Flags** (mutually exclusive - choose one):
-- `--patch`: Line-by-line diffs (git log --patch)
-- `--stat`: Per-file change counts (git log --stat)
-- `--numstat`: Numeric additions/deletions (git log --numstat)
-- `--shortstat`: One-line summary (git log --shortstat)
-- `--dirstat`: Directory distribution (git log --dirstat)
-- `--name-only`: Filenames only (git log --name-only) - default
-- `--name-status`: Filenames with A/M/D/R status (git log --name-status)
-- `--raw`: Low-level format (git log --raw)
+- `--git-patch`: Line-by-line diffs (git log --patch)
+- `--git-stat`: Per-file change counts (git log --stat)
+- `--git-numstat`: Numeric additions/deletions (git log --numstat)
+- `--git-shortstat`: One-line summary (git log --shortstat)
+- `--git-dirstat`: Directory distribution (git log --dirstat)
+- `--git-name-only`: Filenames only (git log --name-only) - default
+- `--git-name-status`: Filenames with A/M/D/R status (git log --name-status)
+- `--git-raw`: Low-level format (git log --raw)
 
 **Output Verbosity & Graph Options** (combinable with any diff format):
-- `--graph`: Include ASCII and Mermaid commit graph visualization
-- `--summary`: Show file operations (creates, renames, mode changes)
+- `--git-graph`: Include ASCII and Mermaid commit graph visualization
+- `--git-summary`: Show file operations (creates, renames, mode changes)
 
 This provides:
 - **Commit metadata**: Hash, author, committer, date, message, body, and list of files changed
-- **Visual graph** (with `--graph`): ASCII and Mermaid visualizations of branch structure
+- **Visual graph** (with `--git-graph`): ASCII and Mermaid visualizations of branch structure
 - **Patch content**: Configurable detail levels via diff format flags
 - **Git tags**: Tag names mapped to commit hashes
-- **File operations** (with `--summary`): Creates, renames, mode changes
+- **File operations** (with `--git-summary`): Creates, renames, mode changes
 
 See [Git Commit History Tips](/guide/tips/git-commit-history) for detailed usage patterns.
 

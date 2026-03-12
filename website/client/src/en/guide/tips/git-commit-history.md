@@ -9,13 +9,13 @@ Repomix can include git commit history to help AI understand how a codebase evol
 repomix --include-logs
 
 # With line-by-line diffs (git log --patch)
-repomix --include-logs --patch
+repomix --include-logs --git-patch
 
 # With commit graph visualization (git log --graph --all)
-repomix --include-logs --graph
+repomix --include-logs --git-graph
 
 # Full analysis: patches + graph + file operations summary
-repomix --include-logs --patch --graph --summary
+repomix --include-logs --git-patch --git-graph --git-summary
 
 # Specific commit range (both .. and ... syntaxes supported)
 repomix --include-logs --commit-range "v1.0..HEAD"
@@ -32,14 +32,14 @@ Only one can be used at a time - these match git log parameters exactly:
 
 | Flag | Git Parameter | Output Size | Contains | Best For |
 |------|---------------|-------------|----------|----------|
-| `--patch` | `--patch` | Large (~3x) | Line-by-line diffs | Detailed code review |
-| `--stat` | `--stat` | Medium | Per-file change counts | Overview of changes |
-| `--numstat` | `--numstat` | Small | Numeric +/- per file | Statistical analysis |
-| `--shortstat` | `--shortstat` | Small | One-line summary | Quick metrics |
-| `--dirstat` | `--dirstat` | Small | Directory distribution | Architecture changes |
-| `--name-only` | `--name-only` | Smallest | Filenames only | File tracking (default) |
-| `--name-status` | `--name-status` | Small | Files with A/M/D/R status | Change type tracking |
-| `--raw` | `--raw` | Small | SHA hashes and modes | Low-level git analysis |
+| `--git-patch` | `--patch` | Large (~3x) | Line-by-line diffs | Detailed code review |
+| `--git-stat` | `--stat` | Medium | Per-file change counts | Overview of changes |
+| `--git-numstat` | `--numstat` | Small | Numeric +/- per file | Statistical analysis |
+| `--git-shortstat` | `--shortstat` | Small | One-line summary | Quick metrics |
+| `--git-dirstat` | `--dirstat` | Small | Directory distribution | Architecture changes |
+| `--git-name-only` | `--name-only` | Smallest | Filenames only | File tracking (default) |
+| `--git-name-status` | `--name-status` | Small | Files with A/M/D/R status | Change type tracking |
+| `--git-raw` | `--raw` | Small | SHA hashes and modes | Low-level git analysis |
 
 ### Output Verbosity & Graph Options (Combinable)
 
@@ -47,8 +47,8 @@ These can be used together and with any diff format:
 
 | Flag | Git Parameter | Purpose |
 |------|---------------|---------|
-| `--graph` | `--graph --all` | Include ASCII and Mermaid commit graph visualization |
-| `--summary` | `--summary` | Show file operations (creates, renames, mode changes) |
+| `--git-graph` | `--graph --all` | Include ASCII and Mermaid commit graph visualization |
+| `--git-summary` | `--summary` | Show file operations (creates, renames, mode changes) |
 
 ## Commit Range Syntax
 
@@ -97,7 +97,7 @@ For fine-grained control beyond CLI flags:
 The output includes:
 
 - **Commit metadata**: hash, author name/email, committer name/email, date, message, body
-- **Visual graph** (with `--graph`): ASCII art and Mermaid diagrams showing branch/merge topology (uses git's `--all` flag to show how branches connect and merge, providing full context of the repository structure within the specified range)
+- **Visual graph** (with `--git-graph`): ASCII art and Mermaid diagrams showing branch/merge topology (uses git's `--all` flag to show how branches connect and merge, providing full context of the repository structure within the specified range)
 - **Git tags**: Tag names mapped to commit hashes
 - **File changes**: List of files modified in each commit
 - **Patches**: Diff output at the configured detail level
@@ -109,44 +109,44 @@ The raw metadata (especially author/committer email addresses) allows AI systems
 ### Code Review Workflow
 ```bash
 # Review feature branch changes with full diffs and graph
-repomix --include-logs --patch --graph --commit-range "main..feature-branch"
+repomix --include-logs --git-patch --git-graph --commit-range "main..feature-branch"
 ```
 
 ### Statistical Analysis
 ```bash
 # Analyze change distribution across directories
-repomix --include-logs --dirstat --commit-range "v1.0..v2.0"
+repomix --include-logs --git-dirstat --commit-range "v1.0..v2.0"
 
 # Get numeric addition/deletion counts
-repomix --include-logs --numstat --commit-range "HEAD~100..HEAD"
+repomix --include-logs --git-numstat --commit-range "HEAD~100..HEAD"
 ```
 
 ### Change Type Tracking
 ```bash
 # Track which files were added, modified, or deleted
-repomix --include-logs --name-status --summary --commit-range "main...develop"
+repomix --include-logs --git-name-status --git-summary --commit-range "main...develop"
 ```
 
 ### Quick Scans
 ```bash
 # Just see which files changed (minimal output)
-repomix --include-logs --name-only --commit-range "HEAD~10..HEAD"
+repomix --include-logs --git-name-only --commit-range "HEAD~10..HEAD"
 
 # One-line summary of total changes
-repomix --include-logs --shortstat --commit-range "v2.0..HEAD"
+repomix --include-logs --git-shortstat --commit-range "v2.0..HEAD"
 ```
 
 ### Architecture Evolution
 ```bash
 # Understand how project structure evolved
-repomix --include-logs --graph --dirstat --commit-range "v1.0..v3.0"
+repomix --include-logs --git-graph --git-dirstat --commit-range "v1.0..v3.0"
 ```
 
 ## Tips for Better Results
 
-1. **Choose the right diff format**: Use `--patch` for code review, `--name-only` for quick overview, `--numstat` for statistics
+1. **Choose the right diff format**: Use `--git-patch` for code review, `--git-name-only` for quick overview, `--git-numstat` for statistics
 2. **Use commit ranges strategically**: Analyze specific features with `main..feature-branch` or use three-dot syntax `main...feature-branch` for symmetric difference
-3. **Combine flags thoughtfully**: `--patch --graph --summary` gives comprehensive analysis but large output
+3. **Combine flags thoughtfully**: `--git-patch --git-graph --git-summary` gives comprehensive analysis but large output
 4. **Filter files first**: Combine with `--include "src/**/*.ts"` to focus on relevant files
 5. **Leverage both range syntaxes**: Two-dot (`..`) for "what's new in this branch", three-dot (`...`) for "what's different between branches"
 
@@ -154,19 +154,19 @@ repomix --include-logs --graph --dirstat --commit-range "v1.0..v3.0"
 
 ```bash
 # Full forensic analysis of a feature
-repomix --include-logs --patch --graph --summary \
+repomix --include-logs --git-patch --git-graph --git-summary \
   --commit-range "main..feature-auth" \
   --include "src/**/*.ts" \
   -o feature-auth-analysis.xml
 
 # Compare two development branches
-repomix --include-logs --stat --graph \
+repomix --include-logs --git-stat --git-graph \
   --commit-range "develop...staging"
 
 # Track file renames and mode changes
-repomix --include-logs --name-status --summary \
+repomix --include-logs --git-name-status --git-summary \
   --commit-range "v2.0..HEAD"
 
 # Low-level git object analysis
-repomix --include-logs --raw --commit-range "HEAD~5..HEAD"
+repomix --include-logs --git-raw --commit-range "HEAD~5..HEAD"
 ```

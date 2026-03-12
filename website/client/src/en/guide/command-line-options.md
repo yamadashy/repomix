@@ -64,18 +64,18 @@
 These orthogonal flags mirror git log's structure for fine-grained control:
 
 **Diff Format Flags** (mutually exclusive - choose one):
-- `--stat`: Show per-file change counts (git log --stat)
-- `--patch`: Show line-by-line diffs (git log --patch)
-- `--numstat`: Show numeric additions/deletions per file (git log --numstat)
-- `--shortstat`: Show one-line summary of changes (git log --shortstat)
-- `--dirstat`: Show directory change distribution (git log --dirstat)
-- `--name-only`: Show filenames only (git log --name-only) - default
-- `--name-status`: Show filenames with A/M/D/R status (git log --name-status)
-- `--raw`: Show low-level format with SHA hashes and modes (git log --raw)
+- `--git-stat`: Show per-file change counts (git log --stat)
+- `--git-patch`: Show line-by-line diffs (git log --patch)
+- `--git-numstat`: Show numeric additions/deletions per file (git log --numstat)
+- `--git-shortstat`: Show one-line summary of changes (git log --shortstat)
+- `--git-dirstat`: Show directory change distribution (git log --dirstat)
+- `--git-name-only`: Show filenames only (git log --name-only) - default
+- `--git-name-status`: Show filenames with A/M/D/R status (git log --name-status)
+- `--git-raw`: Show low-level format with SHA hashes and modes (git log --raw)
 
 **Output Verbosity & Graph Options** (combinable with any diff format):
-- `--graph`: Include ASCII and Mermaid commit graph visualization (git log --graph --all)
-- `--summary`: Show file operations like creates, renames, mode changes (git log --summary)
+- `--git-graph`: Include ASCII and Mermaid commit graph visualization (git log --graph --all)
+- `--git-summary`: Show file operations like creates, renames, mode changes (git log --summary)
 - `--commit-range <range>`: Git commit range to analyze (default: HEAD~50..HEAD, supports both .. and ... syntax, e.g., "HEAD~100..HEAD", "v1.0..v2.0", "main...feature-branch")
 
 ## Examples
@@ -129,10 +129,10 @@ repomix --token-count-tree 1000  # Only show files/directories with 1000+ tokens
 
 # Git commit history analysis with orthogonal flags
 repomix --include-logs  # Simple commit log (default name-only format)
-repomix --include-logs --patch  # Line-by-line diffs
-repomix --include-logs --graph  # With commit graph visualization
-repomix --include-logs --patch --graph --summary  # Full analysis
+repomix --include-logs --git-patch  # Line-by-line diffs
+repomix --include-logs --git-graph  # With commit graph visualization
+repomix --include-logs --git-patch --git-graph --git-summary  # Full analysis
 repomix --include-logs --commit-range "v1.0..HEAD"  # Specific range (two-dot)
 repomix --include-logs --commit-range "main...feature"  # Symmetric diff (three-dot)
-repomix --include-logs --stat --graph -o analysis.xml  # Full analysis to file
+repomix --include-logs --git-stat --git-graph -o analysis.xml  # Full analysis to file
 ```
