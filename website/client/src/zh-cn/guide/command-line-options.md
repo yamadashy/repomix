@@ -101,6 +101,6 @@ echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
 
 # Token 计数分析
 repomix --token-count-tree
-repomix --token-count-tree 1000  # 仅显示拥有 1000+ token 的文件/目录
+repomix --token-count-tree 1000  # 仅显示拥有 1000+ Token 的文件
 ```
 

@@ -72,9 +72,9 @@ npm install
 npm run repomix
 ```
 
-### Docker开发
+### Docker 开发
 
-你也可以使用Docker运行Repomix：
+你也可以使用 Docker 运行 Repomix：
 
 ```bash
 # 构建镜像
@@ -140,7 +140,7 @@ npm run build
 npm publish
 ```
 
-新版本由维护者管理。如果你认为需要发布，请打开一个Issue进行讨论。
+新版本由维护者管理。如果你认为需要发布，请打开一个 Issue 进行讨论。
 
 ## 需要帮助？
 
