@@ -1,5 +1,7 @@
-import * as path from 'node:path';
-import { Transform } from 'node:stream';
+import { Transform, Writable } from 'node:stream';
+import type { pipeline as pipelineType } from 'node:stream/promises';
+import type * as zlib from 'node:zlib';
+import type { extract as tarExtractType } from 'tar';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   type ArchiveDownloadOptions,
@@ -12,56 +14,53 @@ import { RepomixError } from '../../../src/shared/errorHandle.js';
 
 // Mock modules
 vi.mock('../../../src/shared/logger');
-vi.mock('fflate', () => ({
-  unzip: vi.fn(),
-}));
 
-// Mock file system operations
-const mockFs = {
-  mkdir: vi.fn(),
-  readFile: vi.fn(),
-  writeFile: vi.fn(),
-  unlink: vi.fn(),
-};
+// Type for the deps parameter of downloadGitHubArchive
+interface MockDeps {
+  fetch: typeof globalThis.fetch;
+  pipeline: typeof pipelineType;
+  Transform: typeof Transform;
+  tarExtract: typeof tarExtractType;
+  createGunzip: typeof zlib.createGunzip;
+}
 
-// Simple ZIP test data
-const mockZipData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // Simple ZIP header
+// Simple test data
+const mockStreamData = new Uint8Array([0x1f, 0x8b, 0x08, 0x00]); // gzip magic bytes
 
 describe('gitHubArchive', () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
-  let mockPipeline: ReturnType<typeof vi.fn>;
-  let mockTransform: ReturnType<typeof vi.fn>;
-  let mockCreateWriteStream: ReturnType<typeof vi.fn>;
-  let mockUnzip: ReturnType<typeof vi.fn>;
+  let mockFetch: ReturnType<typeof vi.fn<typeof globalThis.fetch>>;
+  let mockPipeline: ReturnType<typeof vi.fn<typeof pipelineType>>;
+  let mockTarExtract: ReturnType<typeof vi.fn<typeof tarExtractType>>;
+  let mockCreateGunzip: ReturnType<typeof vi.fn<typeof zlib.createGunzip>>;
+  let mockDeps: MockDeps;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
 
-    mockFetch = vi.fn();
-    mockPipeline = vi.fn();
-    mockTransform = vi.fn();
-    mockCreateWriteStream = vi.fn();
+    mockFetch = vi.fn<typeof globalThis.fetch>();
+    mockPipeline = vi.fn<typeof pipelineType>().mockResolvedValue(undefined);
+    mockTarExtract = vi.fn<typeof tarExtractType>().mockReturnValue(
+      new Writable({
+        write(_chunk, _enc, cb) {
+          cb();
+        },
+      }) as unknown as ReturnType<typeof tarExtractType>,
+    );
+    mockCreateGunzip = vi.fn<typeof zlib.createGunzip>().mockReturnValue(
+      new Transform({
+        transform(chunk, _enc, cb) {
+          cb(null, chunk);
+        },
+      }) as unknown as ReturnType<typeof zlib.createGunzip>,
+    );
 
-    // Get the mocked unzip function
-    const { unzip } = await import('fflate');
-    mockUnzip = vi.mocked(unzip);
-
-    // Reset fs mocks
-    for (const mock of Object.values(mockFs)) {
-      mock.mockReset();
-    }
-
-    // Setup default successful behaviors
-    mockFs.mkdir.mockResolvedValue(undefined);
-    mockFs.unlink.mockResolvedValue(undefined);
-    mockFs.readFile.mockResolvedValue(Buffer.from(mockZipData));
-    mockFs.writeFile.mockResolvedValue(undefined);
-    mockPipeline.mockResolvedValue(undefined);
-    mockCreateWriteStream.mockReturnValue({
-      write: vi.fn(),
-      end: vi.fn(),
-    });
-    mockTransform.mockImplementation(() => new Transform());
+    mockDeps = {
+      fetch: mockFetch,
+      pipeline: mockPipeline as unknown as typeof pipelineType,
+      Transform,
+      tarExtract: mockTarExtract as unknown as typeof tarExtractType,
+      createGunzip: mockCreateGunzip as unknown as typeof zlib.createGunzip,
+    };
   });
 
   describe('downloadGitHubArchive', () => {
@@ -77,178 +76,88 @@ describe('gitHubArchive', () => {
       retries: 3,
     };
 
-    test('should successfully download and extract archive', async () => {
-      // Mock successful response with stream
-      const mockStream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(mockZipData);
-          controller.close();
-        },
-      });
-
-      mockFetch.mockResolvedValue({
+    const createMockResponse = (overrides: Partial<Response> = {}): Response => {
+      return {
         ok: true,
         status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
-        body: mockStream,
-      });
+        headers: new Map([['content-length', mockStreamData.length.toString()]]),
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(mockStreamData);
+            controller.close();
+          },
+        }),
+        ...overrides,
+      } as unknown as Response;
+    };
 
-      // Mock unzip to extract files
-      mockUnzip.mockImplementation((_data, callback) => {
-        const extracted = {
-          'repomix-main/': new Uint8Array(0), // Directory
-          'repomix-main/test.txt': new Uint8Array([0x68, 0x65, 0x6c, 0x6c, 0x6f]), // "hello"
-        };
-        callback(null, extracted);
-      });
+    test('should successfully download and extract archive', async () => {
+      mockFetch.mockResolvedValue(createMockResponse());
 
-      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, undefined, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
+      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, undefined, mockDeps);
 
-      // Verify directory creation
-      expect(mockFs.mkdir).toHaveBeenCalledWith(mockTargetDirectory, { recursive: true });
-
-      // Verify fetch was called
+      // Verify fetch was called with tar.gz URL
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://github.com/yamadashy/repomix/archive/refs/heads/main.zip',
+        'https://github.com/yamadashy/repomix/archive/refs/heads/main.tar.gz',
         expect.objectContaining({
           signal: expect.any(AbortSignal),
         }),
       );
 
-      // Verify file operations
-      expect(mockFs.writeFile).toHaveBeenCalledWith(
-        path.resolve(mockTargetDirectory, 'test.txt'),
-        expect.any(Uint8Array),
-      );
+      // Verify tar extract was called with correct options
+      expect(mockTarExtract).toHaveBeenCalledWith({
+        cwd: mockTargetDirectory,
+        strip: 1,
+      });
 
-      // Verify cleanup
-      expect(mockFs.unlink).toHaveBeenCalledWith(path.join(mockTargetDirectory, 'repomix-main.zip'));
+      // Verify streaming pipeline was used
+      expect(mockPipeline).toHaveBeenCalledTimes(1);
     });
 
     test('should handle progress callback', async () => {
       const mockProgressCallback: ProgressCallback = vi.fn();
+      mockFetch.mockResolvedValue(createMockResponse());
 
-      const mockStream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(mockZipData);
-          controller.close();
-        },
-      });
+      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, mockProgressCallback, mockDeps);
 
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
-        body: mockStream,
-      });
-
-      mockUnzip.mockImplementation((_data, callback) => {
-        callback(null, {});
-      });
-
-      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, mockProgressCallback, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
-
-      // Progress callback is called via Transform stream, which is handled internally
-      // Just verify the download completed successfully
       expect(mockFetch).toHaveBeenCalled();
-      expect(mockUnzip).toHaveBeenCalled();
+      expect(mockPipeline).toHaveBeenCalled();
     });
 
-    test('should retry on failure', async () => {
-      // First two attempts fail, third succeeds
+    test('should retry on network failure', async () => {
       mockFetch
         .mockRejectedValueOnce(new Error('Network error'))
         .mockRejectedValueOnce(new Error('Network error'))
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          headers: new Map([['content-length', mockZipData.length.toString()]]),
-          body: new ReadableStream({
-            start(controller) {
-              controller.enqueue(mockZipData);
-              controller.close();
-            },
-          }),
-        });
+        .mockResolvedValueOnce(createMockResponse());
 
-      mockUnzip.mockImplementation((_data, callback) => {
-        callback(null, {});
-      });
-
-      // Use fewer retries to speed up test
-      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 2 }, undefined, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
+      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 2 }, undefined, mockDeps);
 
       expect(mockFetch).toHaveBeenCalledTimes(3);
     });
 
     test('should try fallback URLs on 404', async () => {
-      // Mock 404 for main branch, success for master branch
       mockFetch
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 404,
-          headers: new Map(),
-          body: null,
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          headers: new Map([['content-length', mockZipData.length.toString()]]),
-          body: new ReadableStream({
-            start(controller) {
-              controller.enqueue(mockZipData);
-              controller.close();
-            },
-          }),
-        });
-
-      mockUnzip.mockImplementation((_data, callback) => {
-        callback(null, {});
-      });
+        .mockResolvedValueOnce(
+          createMockResponse({
+            ok: false,
+            status: 404,
+            headers: new Map(),
+            body: null,
+          } as unknown as Partial<Response>),
+        )
+        .mockResolvedValueOnce(createMockResponse());
 
       const repoInfoNoRef = { owner: 'yamadashy', repo: 'repomix' };
 
-      await downloadGitHubArchive(repoInfoNoRef, mockTargetDirectory, mockOptions, undefined, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
+      await downloadGitHubArchive(repoInfoNoRef, mockTargetDirectory, mockOptions, undefined, mockDeps);
 
       // Should try HEAD first, then master branch
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://github.com/yamadashy/repomix/archive/HEAD.zip',
+        'https://github.com/yamadashy/repomix/archive/HEAD.tar.gz',
         expect.any(Object),
       );
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://github.com/yamadashy/repomix/archive/refs/heads/master.zip',
+        'https://github.com/yamadashy/repomix/archive/refs/heads/master.tar.gz',
         expect.any(Object),
       );
     });
@@ -257,225 +166,56 @@ describe('gitHubArchive', () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
 
       await expect(
-        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 2 }, undefined, {
-          fetch: mockFetch,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          fs: mockFs as any,
-          pipeline: mockPipeline,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          Transform: mockTransform as any,
-          createWriteStream: mockCreateWriteStream,
-        }),
+        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 2 }, undefined, mockDeps),
       ).rejects.toThrow(RepomixError);
 
-      // Multiple URLs are tried even with ref: main, fallback, tag
       // 2 retries × 2 URLs (main + tag for "main" ref) = 4 total attempts
       expect(mockFetch).toHaveBeenCalledTimes(4);
     });
 
-    test('should handle ZIP extraction error', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
-        body: new ReadableStream({
-          start(controller) {
-            controller.enqueue(mockZipData);
-            controller.close();
-          },
-        }),
-      });
-
-      // Mock unzip to fail
-      mockUnzip.mockImplementation((_data, callback) => {
-        callback(new Error('Invalid ZIP file'));
-      });
+    test('should handle extraction error', async () => {
+      mockFetch.mockResolvedValue(createMockResponse());
+      mockPipeline.mockRejectedValue(new Error('tar extraction failed'));
 
       await expect(
-        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, {
-          fetch: mockFetch,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          fs: mockFs as any,
-          pipeline: mockPipeline,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          Transform: mockTransform as any,
-          createWriteStream: mockCreateWriteStream,
-        }),
+        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, mockDeps),
       ).rejects.toThrow(RepomixError);
     });
 
-    test('should handle path traversal attack', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
-        body: new ReadableStream({
-          start(controller) {
-            controller.enqueue(mockZipData);
-            controller.close();
-          },
-        }),
-      });
-
-      // Mock unzip with dangerous paths
-      mockUnzip.mockImplementation((_data, callback) => {
-        const extracted = {
-          'repomix-main/../../../etc/passwd': new Uint8Array([0x65, 0x76, 0x69, 0x6c]), // "evil"
-          'repomix-main/safe.txt': new Uint8Array([0x73, 0x61, 0x66, 0x65]), // "safe"
-        };
-        callback(null, extracted);
-      });
-
-      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, undefined, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
-
-      // Should write both files - the path normalization doesn't completely prevent this case
-      expect(mockFs.writeFile).toHaveBeenCalledWith(
-        path.resolve(mockTargetDirectory, 'safe.txt'),
-        expect.any(Uint8Array),
-      );
-
-      // Verify that both files are written (one was sanitized to remove path traversal)
-      expect(mockFs.writeFile).toHaveBeenCalledTimes(2);
-    });
-
-    test('should handle absolute paths in ZIP', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
-        body: new ReadableStream({
-          start(controller) {
-            controller.enqueue(mockZipData);
-            controller.close();
-          },
-        }),
-      });
-
-      // Mock unzip with absolute path
-      mockUnzip.mockImplementation((_data, callback) => {
-        const extracted = {
-          '/etc/passwd': new Uint8Array([0x65, 0x76, 0x69, 0x6c]), // "evil"
-          'repomix-main/safe.txt': new Uint8Array([0x73, 0x61, 0x66, 0x65]), // "safe"
-        };
-        callback(null, extracted);
-      });
-
-      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, undefined, {
-        fetch: mockFetch,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        fs: mockFs as any,
-        pipeline: mockPipeline,
-        // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-        Transform: mockTransform as any,
-        createWriteStream: mockCreateWriteStream,
-      });
-
-      // Should only write safe file, not the absolute path
-      expect(mockFs.writeFile).toHaveBeenCalledWith(
-        path.resolve(mockTargetDirectory, 'safe.txt'),
-        expect.any(Uint8Array),
-      );
-
-      // Should not write the absolute path file
-      expect(mockFs.writeFile).not.toHaveBeenCalledWith('/etc/passwd', expect.any(Uint8Array));
-    });
-
-    test('should cleanup archive file even on extraction failure', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: new Map([['content-length', mockZipData.length.toString()]]),
-        body: new ReadableStream({
-          start(controller) {
-            controller.enqueue(mockZipData);
-            controller.close();
-          },
-        }),
-      });
-
-      // Mock unzip to fail
-      mockUnzip.mockImplementation((_data, callback) => {
-        callback(new Error('Extraction failed'));
-      });
-
-      await expect(
-        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, {
-          fetch: mockFetch,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          fs: mockFs as any,
-          pipeline: mockPipeline,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          Transform: mockTransform as any,
-          createWriteStream: mockCreateWriteStream,
-        }),
-      ).rejects.toThrow();
-
-      // Should still attempt cleanup
-      expect(mockFs.unlink).toHaveBeenCalledWith(path.join(mockTargetDirectory, 'repomix-main.zip'));
-    });
-
     test('should handle missing response body', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: new Map(),
-        body: null,
-      });
+      mockFetch.mockResolvedValue(createMockResponse({ body: null } as unknown as Partial<Response>));
 
       await expect(
-        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, {
-          fetch: mockFetch,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          fs: mockFs as any,
-          pipeline: mockPipeline,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          Transform: mockTransform as any,
-          createWriteStream: mockCreateWriteStream,
-        }),
+        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, mockDeps),
       ).rejects.toThrow(RepomixError);
     });
 
     test('should handle timeout', async () => {
-      // Mock a fetch that takes too long
       mockFetch.mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            setTimeout(() => {
-              resolve({
-                ok: true,
-                status: 200,
-                headers: new Map(),
-                body: new ReadableStream({
-                  start(controller) {
-                    controller.enqueue(mockZipData);
-                    controller.close();
-                  },
-                }),
-              });
-            }, 100); // Resolve after 100ms, but timeout is 50ms
+        (_url: string | URL | Request, init?: RequestInit) =>
+          new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+              resolve(createMockResponse());
+            }, 100);
+
+            // Respect AbortSignal so timeout actually cancels the fetch
+            init?.signal?.addEventListener('abort', () => {
+              clearTimeout(timer);
+              reject(new DOMException('The operation was aborted', 'AbortError'));
+            });
           }),
       );
 
-      const shortTimeout = 50; // 50ms timeout for faster test
+      const shortTimeout = 50;
 
       await expect(
-        downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { timeout: shortTimeout, retries: 1 }, undefined, {
-          fetch: mockFetch,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          fs: mockFs as any,
-          pipeline: mockPipeline,
-          // biome-ignore lint/suspicious/noExplicitAny: Test mocks require any type
-          Transform: mockTransform as any,
-          createWriteStream: mockCreateWriteStream,
-        }),
+        downloadGitHubArchive(
+          mockRepoInfo,
+          mockTargetDirectory,
+          { timeout: shortTimeout, retries: 1 },
+          undefined,
+          mockDeps,
+        ),
       ).rejects.toThrow();
     });
   });

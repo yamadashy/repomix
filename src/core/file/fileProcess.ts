@@ -23,7 +23,7 @@ export const processFiles = async (
 ): Promise<ProcessedFile[]> => {
   const taskRunner = deps.initTaskRunner<FileProcessTask, ProcessedFile>({
     numOfTasks: rawFiles.length,
-    workerPath: new URL('./workers/fileProcessWorker.js', import.meta.url).href,
+    workerType: 'fileProcess',
     // High memory usage and leak risk
     runtime: 'worker_threads',
   });

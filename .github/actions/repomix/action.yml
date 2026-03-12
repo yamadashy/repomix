@@ -43,7 +43,7 @@ runs:
   using: "composite"
   steps:
     - name: Setup Node.js
-      uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+      uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
       with:
         node-version: "24"
     - name: Install project dependencies
@@ -56,46 +56,56 @@ runs:
         fi
     - name: Install Repomix
       shell: bash
+      env:
+        REPOMIX_VERSION: ${{ inputs.repomix-version }}
       run: |
-        npm install --global repomix@${{ inputs.repomix-version }}
+        npm install --global "repomix@${REPOMIX_VERSION}"
     - name: Run Repomix
       id: build
       shell: bash
+      env:
+        INPUT_DIRECTORIES: ${{ inputs.directories }}
+        INPUT_INCLUDE: ${{ inputs.include }}
+        INPUT_IGNORE: ${{ inputs.ignore }}
+        INPUT_COMPRESS: ${{ inputs.compress }}
+        INPUT_STYLE: ${{ inputs.style }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+        INPUT_ADDITIONAL_ARGS: ${{ inputs.additional-args }}
       run: |
         set -e
         # Using an array for safer command execution
         # Safely split directories input into an array, handling spaces correctly
-        IFS=' ' read -r -a ARGS <<< "${{ inputs.directories }}"
+        IFS=' ' read -r -a ARGS <<< "${INPUT_DIRECTORIES}"
 
-        if [ -n "${{ inputs.include }}" ]; then
-          ARGS+=(--include "${{ inputs.include }}")
+        if [ -n "${INPUT_INCLUDE}" ]; then
+          ARGS+=(--include "${INPUT_INCLUDE}")
         fi
 
-        if [ -n "${{ inputs.ignore }}" ]; then
-          ARGS+=(--ignore "${{ inputs.ignore }}")
+        if [ -n "${INPUT_IGNORE}" ]; then
+          ARGS+=(--ignore "${INPUT_IGNORE}")
         fi
 
-        if [ "${{ inputs.compress }}" = "true" ]; then
+        if [ "${INPUT_COMPRESS}" = "true" ]; then
           ARGS+=(--compress)
         fi
 
-        if [ -n "${{ inputs.style }}" ]; then
-          ARGS+=(--style "${{ inputs.style }}")
+        if [ -n "${INPUT_STYLE}" ]; then
+          ARGS+=(--style "${INPUT_STYLE}")
         fi
 
-        ARGS+=(--output "${{ inputs.output }}")
+        ARGS+=(--output "${INPUT_OUTPUT}")
 
         # Only add additional args if not empty
-        if [ -n "${{ inputs.additional-args }}" ]; then
+        if [ -n "${INPUT_ADDITIONAL_ARGS}" ]; then
           # Use safer parsing for additional arguments
-          IFS=' ' read -r -a ADDITIONAL_ARGS <<< "${{ inputs.additional-args }}"
+          IFS=' ' read -r -a ADDITIONAL_ARGS <<< "${INPUT_ADDITIONAL_ARGS}"
           ARGS+=("${ADDITIONAL_ARGS[@]}")
         fi
 
         echo "Running: repomix ${ARGS[*]}"
         repomix "${ARGS[@]}"
 
-        echo "output_file=${{ inputs.output }}" >> "$GITHUB_OUTPUT"
+        echo "output_file=${INPUT_OUTPUT}" >> "$GITHUB_OUTPUT"
 
 outputs:
   output_file:

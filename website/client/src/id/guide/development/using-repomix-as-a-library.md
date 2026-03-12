@@ -245,3 +245,17 @@ interface PackResult {
 ```
 
 Untuk informasi lebih lanjut tentang API, lihat [kode sumber Repomix](https://github.com/yamadashy/repomix).
+
+## Bundling
+
+Saat membundle repomix dengan tools seperti Rolldown atau esbuild, beberapa dependency harus tetap external dan file WASM perlu disalin:
+
+**Dependency external (tidak dapat dibundle):**
+- `tinypool` - Memulai worker thread menggunakan path file
+- `tiktoken` - Memuat file WASM secara dinamis saat runtime
+
+**File WASM yang perlu disalin:**
+- `web-tree-sitter.wasm` → Direktori yang sama dengan JS yang dibundle (diperlukan untuk fitur kompresi kode)
+- File bahasa Tree-sitter → Direktori yang ditentukan oleh variabel lingkungan `REPOMIX_WASM_DIR`
+
+Untuk contoh yang berfungsi, lihat [website/server/scripts/bundle.mjs](https://github.com/yamadashy/repomix/blob/main/website/server/scripts/bundle.mjs).

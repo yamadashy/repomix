@@ -1,0 +1,70 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist
+dist-bundled
+build
+*.tsbuildinfo
+.compile-cache
+
+# Development files
+.git
+.gitignore
+.env
+.env.*
+.npmrc
+.yarnrc
+.editorconfig
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test files
+__tests__
+test
+tests
+coverage
+.nyc_output
+
+# Docker files (keep Dockerfile - needed for Cloud Build)
+.dockerignore
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.temp
+
+# Log files
+logs
+*.log
+
+# Cache directories
+.npm
+.eslintcache
+
+# Cloud platform specific
+.gcloudignore
+cloudbuild.yaml
+cloudbuild.yml
+
+# TypeScript source maps
+*.map
+
+# Misc
+.github
+.circleci
+.husky

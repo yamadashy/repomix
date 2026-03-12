@@ -1,13 +1,17 @@
 import path from 'node:path';
-import { describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
-import { sortOutputFiles } from '../../../src/core/output/outputSort.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 vi.mock('node:fs/promises');
 
 describe('outputSort', () => {
   const sep = path.sep;
+
+  // Reset module cache before each test to ensure clean state for caching tests
+  beforeEach(async () => {
+    vi.resetModules();
+  });
 
   describe('sort by git changes', () => {
     const mockConfig = createMockConfig({
@@ -21,6 +25,7 @@ describe('outputSort', () => {
     });
 
     test('should sort files by git change count', async () => {
+      const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input: ProcessedFile[] = [
         { path: `src${sep}utils${sep}file1.ts`, content: 'content1' },
         { path: `src${sep}utils${sep}file2.ts`, content: 'content2' },
@@ -53,6 +58,7 @@ describe('outputSort', () => {
     });
 
     test('should return original order when git is not installed', async () => {
+      const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input: ProcessedFile[] = [
         { path: `src${sep}utils${sep}file1.ts`, content: 'content1' },
         { path: `src${sep}utils${sep}file2.ts`, content: 'content2' },
@@ -71,6 +77,7 @@ describe('outputSort', () => {
     });
 
     test('should return original order when git command fails', async () => {
+      const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input: ProcessedFile[] = [
         { path: `src${sep}utils${sep}file1.ts`, content: 'content1' },
         { path: `src${sep}utils${sep}file2.ts`, content: 'content2' },
@@ -88,6 +95,7 @@ describe('outputSort', () => {
     });
 
     test('should return original order when git sort is disabled', async () => {
+      const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input: ProcessedFile[] = [
         { path: `src${sep}utils${sep}file1.ts`, content: 'content1' },
         { path: `src${sep}utils${sep}file2.ts`, content: 'content2' },
@@ -113,6 +121,42 @@ describe('outputSort', () => {
       expect(result).toEqual(input);
       expect(mockGetFileChangeCount).not.toHaveBeenCalled();
       expect(mockIsGitInstalled).not.toHaveBeenCalled();
+    });
+
+    test('should cache git file change counts for repeated calls', async () => {
+      const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
+      const input1: ProcessedFile[] = [
+        { path: `src${sep}file1.ts`, content: 'content1' },
+        { path: `src${sep}file2.ts`, content: 'content2' },
+      ];
+      const input2: ProcessedFile[] = [{ path: `src${sep}file3.ts`, content: 'content3' }];
+
+      const mockGetFileChangeCount = vi.fn().mockResolvedValue({
+        [`src${sep}file1.ts`]: 5,
+        [`src${sep}file2.ts`]: 10,
+        [`src${sep}file3.ts`]: 2,
+      });
+      const mockIsGitInstalled = vi.fn().mockResolvedValue(true);
+
+      // First call - should call getFileChangeCount
+      await sortOutputFiles(input1, mockConfig, {
+        getFileChangeCount: mockGetFileChangeCount,
+        isGitInstalled: mockIsGitInstalled,
+      });
+
+      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
+      expect(mockIsGitInstalled).toHaveBeenCalledTimes(1);
+
+      // Second call with same config - should use cache
+      await sortOutputFiles(input2, mockConfig, {
+        getFileChangeCount: mockGetFileChangeCount,
+        isGitInstalled: mockIsGitInstalled,
+      });
+
+      // getFileChangeCount should NOT be called again (cached)
+      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
+      // isGitInstalled should also be cached
+      expect(mockIsGitInstalled).toHaveBeenCalledTimes(1);
     });
   });
 });

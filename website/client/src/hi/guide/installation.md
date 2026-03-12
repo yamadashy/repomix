@@ -14,35 +14,23 @@ npx repomix@latest
 
 ## ग्लोबल इंस्टॉलेशन
 
-### npm के साथ
-
-```bash
+::: code-group
+```bash [npm]
 npm install -g repomix
 ```
-
-### yarn के साथ
-
-```bash
+```bash [yarn]
 yarn global add repomix
 ```
-
-### pnpm के साथ
-
-```bash
+```bash [pnpm]
 pnpm add -g repomix
 ```
-
-### Bun
-
-```bash
+```bash [bun]
 bun add -g repomix
 ```
-
-### Homebrew के साथ (macOS और Linux)
-
-```bash
+```bash [Homebrew]
 brew install repomix
 ```
+:::
 
 ## प्रोजेक्ट-स्पेसिफिक इंस्टॉलेशन
 

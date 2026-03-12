@@ -9,7 +9,21 @@ import {
 } from '../../src/shared/processConcurrency.js';
 
 vi.mock('node:os');
-vi.mock('tinypool');
+
+// Use vi.hoisted for class mock that needs to work as constructor
+const { MockTinypool } = vi.hoisted(() => {
+  // Create a mock function wrapped class for spy functionality
+  const MockTinypool = vi.fn().mockImplementation(function (this: unknown) {
+    (this as Record<string, unknown>).run = vi.fn();
+    (this as Record<string, unknown>).destroy = vi.fn();
+    return this;
+  });
+  return { MockTinypool };
+});
+
+vi.mock('tinypool', () => ({
+  Tinypool: MockTinypool,
+}));
 
 describe('processConcurrency', () => {
   describe('getProcessConcurrency', () => {
@@ -68,21 +82,26 @@ describe('processConcurrency', () => {
   describe('initWorker', () => {
     beforeEach(() => {
       vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
-      vi.mocked(Tinypool).mockImplementation(() => ({}) as Tinypool);
+      // Use regular function syntax for constructor mock
+      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+        (this as Record<string, unknown>).run = vi.fn();
+        (this as Record<string, unknown>).destroy = vi.fn();
+        return this as Tinypool;
+      });
     });
 
     it('should initialize Tinypool with correct configuration', () => {
-      const workerPath = '/path/to/worker.js';
-      const tinypool = createWorkerPool({ numOfTasks: 500, workerPath, runtime: 'child_process' });
+      const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'fileProcess', runtime: 'child_process' });
 
       expect(Tinypool).toHaveBeenCalledWith({
-        filename: workerPath,
+        filename: expect.stringContaining('fileProcessWorker.js'),
         runtime: 'child_process',
         minThreads: 1,
         maxThreads: 4, // Math.min(4, 500/100) = 4
         idleTimeout: 5000,
         teardown: 'onWorkerTermination',
         workerData: {
+          workerType: 'fileProcess',
           logLevel: 2,
         },
         env: expect.objectContaining({
@@ -95,17 +114,17 @@ describe('processConcurrency', () => {
     });
 
     it('should initialize Tinypool with worker_threads runtime when specified', () => {
-      const workerPath = '/path/to/worker.js';
-      const tinypool = createWorkerPool({ numOfTasks: 500, workerPath, runtime: 'worker_threads' });
+      const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'securityCheck', runtime: 'worker_threads' });
 
       expect(Tinypool).toHaveBeenCalledWith({
-        filename: workerPath,
+        filename: expect.stringContaining('securityCheckWorker.js'),
         runtime: 'worker_threads',
         minThreads: 1,
         maxThreads: 4, // Math.min(4, 500/100) = 4
         idleTimeout: 5000,
         teardown: 'onWorkerTermination',
         workerData: {
+          workerType: 'securityCheck',
           logLevel: 2,
         },
       });
@@ -116,18 +135,16 @@ describe('processConcurrency', () => {
   describe('initTaskRunner', () => {
     beforeEach(() => {
       vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
-      vi.mocked(Tinypool).mockImplementation(
-        () =>
-          ({
-            run: vi.fn(),
-            destroy: vi.fn(),
-          }) as unknown as Tinypool,
-      );
+      // Use regular function syntax for constructor mock
+      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+        (this as Record<string, unknown>).run = vi.fn();
+        (this as Record<string, unknown>).destroy = vi.fn();
+        return this as Tinypool;
+      });
     });
 
     it('should return a TaskRunner with run and cleanup methods', () => {
-      const workerPath = '/path/to/worker.js';
-      const taskRunner = initTaskRunner({ numOfTasks: 100, workerPath, runtime: 'child_process' });
+      const taskRunner = initTaskRunner({ numOfTasks: 100, workerType: 'fileProcess', runtime: 'child_process' });
 
       expect(taskRunner).toHaveProperty('run');
       expect(taskRunner).toHaveProperty('cleanup');
@@ -136,12 +153,14 @@ describe('processConcurrency', () => {
     });
 
     it('should pass runtime parameter to createWorkerPool', () => {
-      const workerPath = '/path/to/worker.js';
-      const taskRunner = initTaskRunner({ numOfTasks: 100, workerPath, runtime: 'worker_threads' });
+      const taskRunner = initTaskRunner({ numOfTasks: 100, workerType: 'calculateMetrics', runtime: 'worker_threads' });
 
       expect(Tinypool).toHaveBeenCalledWith(
         expect.objectContaining({
           runtime: 'worker_threads',
+          workerData: expect.objectContaining({
+            workerType: 'calculateMetrics',
+          }),
         }),
       );
       expect(taskRunner).toHaveProperty('run');

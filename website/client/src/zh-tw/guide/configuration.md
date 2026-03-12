@@ -100,6 +100,7 @@ JavaScript設定檔的工作方式與TypeScript相同，支援`defineConfig`和�
 | `output.showLineNumbers`         | 是否為每行添加行號。有助於引用程式碼的特定部分                                                                             | `false`                |
 | `output.truncateBase64`          | 是否截斷長的base64數據字符串（例如圖像）以減少令牌數量                                                                      | `false`                |
 | `output.copyToClipboard`         | 是否除了儲存檔案外還將輸出複製到系統剪貼簿                                                                                 | `false`                |
+| `output.splitOutput`             | 按每部分最大大小將輸出拆分為多個編號檔案（例如，`1000000` 表示約1MB）。CLI 接受可讀大小如 `500kb` 或 `2mb`。使每個檔案保持在限制以下，並避免跨部分拆分來源檔案 | 未設定 |
 | `output.topFilesLength`          | 在摘要中顯示的頂部檔案數量。如果設定為0，則不顯示摘要                                                                      | `5`                    |
 | `output.includeEmptyDirectories` | 是否在儲存庫結構中包含空目錄                                                                                               | `false`                |
 | `output.includeFullDirectoryStructure` | 使用`include`模式時，是否顯示完整的目錄樹（遵守ignore模式）同時僅處理包含的檔案。為AI分析提供完整的儲存庫上下文 | `false`                |

@@ -7,9 +7,11 @@ import { downloadGitHubArchive, isArchiveDownloadSupported } from '../../core/gi
 import { getRemoteRefs } from '../../core/git/gitRemoteHandle.js';
 import { isGitHubRepository, parseGitHubRepoInfo, parseRemoteValue } from '../../core/git/gitRemoteParse.js';
 import { isGitInstalled } from '../../core/git/gitRepositoryHandle.js';
+import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../../core/skill/skillUtils.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
+import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { type DefaultActionRunnerResult, runDefaultAction } from './defaultAction.js';
 
@@ -88,13 +90,44 @@ export const runRemoteAction = async (
       downloadMethod = 'git';
     }
 
-    // Run the default action on the downloaded/cloned repository
-    result = await deps.runDefaultAction([tempDirPath], tempDirPath, cliOptions);
+    // For skill generation, prompt for location using current directory (not temp directory)
+    let skillName: string | undefined;
+    let skillDir: string | undefined;
+    let skillProjectName: string | undefined;
+    if (cliOptions.skillGenerate !== undefined) {
+      skillName =
+        typeof cliOptions.skillGenerate === 'string'
+          ? cliOptions.skillGenerate
+          : generateDefaultSkillNameFromUrl(repoUrl);
 
-    // Copy output file only when not in stdout mode
-    // In stdout mode, output is written directly to stdout without creating a file,
-    // so attempting to copy a non-existent file would cause an error and exit code 1
-    if (!cliOptions.stdout) {
+      // Generate project name from URL for use in skill description
+      skillProjectName = generateProjectNameFromUrl(repoUrl);
+
+      if (cliOptions.skillOutput) {
+        // Validate --skill-output is not empty or whitespace only
+        if (!cliOptions.skillOutput.trim()) {
+          throw new RepomixError('--skill-output path cannot be empty');
+        }
+        // Non-interactive mode: use provided path directly
+        skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, process.cwd(), cliOptions.force ?? false);
+      } else {
+        // Interactive mode: prompt for skill location
+        const promptResult = await promptSkillLocation(skillName, process.cwd());
+        skillDir = promptResult.skillDir;
+      }
+    }
+
+    // Run the default action on the downloaded/cloned repository
+    // Pass the pre-computed skill name, directory, project name, and source URL
+    const skillSourceUrl = cliOptions.skillGenerate !== undefined ? repoUrl : undefined;
+    const optionsWithSkill = { ...cliOptions, skillName, skillDir, skillProjectName, skillSourceUrl };
+    result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithSkill);
+
+    // Copy output to current directory (only for non-skill generation)
+    // Skip copy for stdout mode (output goes directly to stdout)
+    // For skill generation, the skill is already written directly to the target directory
+    // (either via --skill-output path or via promptSkillLocation which uses process.cwd())
+    if (!cliOptions.stdout && result.config.skillGenerate === undefined) {
       await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
     }
 

@@ -13,7 +13,12 @@ export type { FileSearchResult } from './core/file/fileSearch.js';
 export { generateFileTree, generateTreeString, treeToString, type TreeNode } from './core/file/fileTreeGenerate.js';
 
 // Git
-export { isValidRemoteValue, isValidShorthand, parseRemoteValue } from './core/git/gitRemoteParse.js';
+export {
+  isExplicitRemoteUrl,
+  isValidRemoteValue,
+  isValidShorthand,
+  parseRemoteValue,
+} from './core/git/gitRemoteParse.js';
 
 // Security
 export { runSecurityCheck } from './core/security/securityCheck.js';
@@ -24,6 +29,7 @@ export { TokenCounter } from './core/metrics/TokenCounter.js';
 
 // Tree-sitter
 export { parseFile } from './core/treeSitter/parseFile.js';
+export { setWasmBasePath } from './core/treeSitter/loadLanguage.js';
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Config
@@ -56,3 +62,12 @@ export { runDefaultAction, buildCliConfig } from './cli/actions/defaultAction.js
 
 // Remote action
 export { runRemoteAction } from './cli/actions/remoteAction.js';
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Worker (for bundled environments)
+// ---------------------------------------------------------------------------------------------------------------------
+export {
+  default as unifiedWorkerHandler,
+  onWorkerTermination as unifiedWorkerTermination,
+  type WorkerType,
+} from './shared/unifiedWorker.js';

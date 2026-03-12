@@ -25,6 +25,24 @@ repomix --include "src/**/*.ts,**/*.md"
 repomix --ignore "**/*.log,tmp/"
 ```
 
+### 将输出拆分为多个文件
+
+处理大型代码库时，打包的输出可能会超过某些 AI 工具施加的文件大小限制（例如 Google AI Studio 的 1MB 限制）。使用 `--split-output` 自动将输出拆分为多个文件：
+
+```bash
+repomix --split-output 1mb
+```
+
+这将生成编号文件如：
+- `repomix-output.1.xml`
+- `repomix-output.2.xml`
+- `repomix-output.3.xml`
+
+大小可以用单位指定：`500kb`、`1mb`、`2mb`、`1.5mb` 等。支持小数值。
+
+> [!NOTE]
+> 文件按顶级目录分组以保持上下文。单个文件或目录永远不会被拆分到多个输出文件中。
+
 ### 处理远程仓库
 ```bash
 # 使用 GitHub URL

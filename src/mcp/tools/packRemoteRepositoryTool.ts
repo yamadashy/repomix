@@ -1,11 +1,7 @@
-// @ts-nocheck - Zod v3 compatibility for MCP SDK (imported by mcpAction.ts)
-// Note: @ts-expect-error would be preferable, but the type incompatibility extends
-// beyond .shape to the entire handler function signature, causing 9+ type errors per file.
-// This will be resolved when MCP SDK supports Zod v4.
 import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { runCli } from '../../cli/cliRun.js';
 import type { CliOptions } from '../../cli/types.js';
 import { defaultFilePathMap } from '../../config/configSchema.js';
@@ -72,10 +68,8 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
       title: 'Pack Remote Repository',
       description:
         'Fetch, clone, and package a GitHub repository into a consolidated file for AI analysis. This tool automatically clones the remote repository, analyzes its structure, and generates a comprehensive report. Supports multiple output formats: XML (structured with <file> tags), Markdown (human-readable with ## headers and code blocks), JSON (machine-readable with files as key-value pairs), and Plain text (simple format with separators). Also supports various GitHub URL formats and includes security checks to prevent exposure of sensitive information.',
-      // biome-ignore lint/suspicious/noExplicitAny: Zod v3 compatibility for MCP SDK
-      inputSchema: packRemoteRepositoryInputSchema.shape as any,
-      // biome-ignore lint/suspicious/noExplicitAny: Zod v3 compatibility for MCP SDK
-      outputSchema: packRemoteRepositoryOutputSchema.shape as any,
+      inputSchema: packRemoteRepositoryInputSchema,
+      outputSchema: packRemoteRepositoryOutputSchema,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

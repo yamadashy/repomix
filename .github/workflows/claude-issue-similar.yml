@@ -8,6 +8,9 @@ jobs:
   find-similar:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    concurrency:
+      group: claude-issue-${{ github.event.issue.number }}
+      cancel-in-progress: false
     permissions:
       contents: read
       issues: write
@@ -15,16 +18,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Find Similar Issues
-        uses: anthropics/claude-code-action@6902c227aaa9536481b99d56f3014bbbad6c6da8 # v1.0.18
+        uses: anthropics/claude-code-action@ba7fa4bcf054319261202aef93d71a89112a8d00 # v1.0.64
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           allowed_non_write_users: "*"
-          claude_args: '--model opus --allowed-tools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh search:*)"'
+          claude_args: '--model opus --allowedTools "Bash(gh issue view ${{ github.event.issue.number }}:*),Bash(gh issue comment ${{ github.event.issue.number }}:*),Bash(gh search:*)"'
           prompt: |
             You're an assistant that finds similar issues in the repository.
 

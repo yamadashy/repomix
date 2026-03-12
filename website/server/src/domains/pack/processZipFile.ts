@@ -6,9 +6,7 @@ import { type CliOptions, runDefaultAction, setLogLevel } from 'repomix';
 import type { PackOptions, PackResult } from '../../types.js';
 import { AppError } from '../../utils/errorHandler.js';
 import { logMemoryUsage } from '../../utils/logger.js';
-import { generateCacheKey } from './utils/cache.js';
 import { cleanupTempDirectory, copyOutputToCurrentDirectory, createTempDirectory } from './utils/fileUtils.js';
-import { cache } from './utils/sharedInstance.js';
 
 // Enhanced ZIP extraction limits
 const ZIP_SECURITY_LIMITS = {
@@ -27,14 +25,6 @@ export async function processZipFile(file: File, format: string, options: PackOp
     throw new AppError('File is required for file processing', 400);
   }
 
-  const cacheKey = generateCacheKey(`${file.name}-${file.size}-${file.lastModified}`, format, options, 'file');
-
-  // Check if the result is already cached
-  const cachedResult = await cache.get(cacheKey);
-  if (cachedResult) {
-    return cachedResult;
-  }
-
   const outputFilePath = `repomix-output-${randomUUID()}.txt`;
 
   // Create CLI options
@@ -48,7 +38,7 @@ export async function processZipFile(file: File, format: string, options: PackOp
     fileSummary: options.fileSummary,
     directoryStructure: options.directoryStructure,
     compress: options.compress,
-    securityCheck: false,
+    securityCheck: true,
     topFilesLen: 10,
     include: options.includePatterns,
     ignore: options.ignorePatterns,
@@ -78,6 +68,15 @@ export async function processZipFile(file: File, format: string, options: PackOp
     // Read the generated file
     const content = await fs.readFile(outputFilePath, 'utf-8');
 
+    // Map suspicious files results
+    const suspiciousFiles =
+      packResult.suspiciousFilesResults.length > 0
+        ? packResult.suspiciousFilesResults.map((suspiciousResult) => ({
+            filePath: suspiciousResult.filePath,
+            messages: suspiciousResult.messages,
+          }))
+        : undefined;
+
     // Create pack result
     const packResultData: PackResult = {
       content,
@@ -98,11 +97,9 @@ export async function processZipFile(file: File, format: string, options: PackOp
           }))
           .sort((a, b) => b.charCount - a.charCount)
           .slice(0, cliOptions.topFilesLen),
+        suspiciousFiles,
       },
     };
-
-    // Save the result to cache
-    await cache.set(cacheKey, packResultData);
 
     // Log memory usage after processing
     logMemoryUsage('ZIP file processing completed', {

@@ -2,11 +2,13 @@
 import ace, { type Ace } from 'ace-builds';
 import themeTomorrowUrl from 'ace-builds/src-noconflict/theme-tomorrow?url';
 import themeTomorrowNightUrl from 'ace-builds/src-noconflict/theme-tomorrow_night?url';
-import { BarChart2, Copy, Download, GitFork, HeartHandshake, PackageSearch, Share, Star } from 'lucide-vue-next';
+import { AlertTriangle, BarChart2, Copy, Download, GitFork, PackageSearch, Share, Terminal } from 'lucide-vue-next';
 import { useData } from 'vitepress';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { VAceEditor } from 'vue3-ace-editor';
+import type { PackOptions } from '../../composables/usePackOptions';
 import type { PackResult } from '../api/client';
+import { generateCliCommand } from '../utils/cliCommand';
 import {
   canShareFiles,
   copyToClipboard,
@@ -15,6 +17,7 @@ import {
   getEditorOptions,
   shareResult,
 } from '../utils/resultViewer';
+import SupportMessage from './SupportMessage.vue';
 
 ace.config.setModuleUrl('ace/theme/tomorrow', themeTomorrowUrl);
 ace.config.setModuleUrl('ace/theme/tomorrow_night', themeTomorrowNightUrl);
@@ -24,6 +27,7 @@ const darkTheme = 'tomorrow_night';
 
 const props = defineProps<{
   result: PackResult;
+  packOptions?: PackOptions;
 }>();
 
 const copied = ref(false);
@@ -46,9 +50,35 @@ watch(isDark, (newIsDark) => {
   }
 });
 
+const hasSuspiciousFiles = computed(() => {
+  return props.result.metadata.suspiciousFiles && props.result.metadata.suspiciousFiles.length > 0;
+});
+
 const formattedTimestamp = computed(() => {
   return formatTimestamp(props.result.metadata.timestamp);
 });
+
+// Generate CLI command for local execution
+const cliCommand = computed(() => {
+  return generateCliCommand(props.result.metadata.repository, props.packOptions);
+});
+
+const commandCopied = ref(false);
+
+const handleCopyCommand = async (event: Event) => {
+  event.preventDefault();
+  event.stopPropagation();
+
+  try {
+    await navigator.clipboard.writeText(cliCommand.value);
+    commandCopied.value = true;
+    setTimeout(() => {
+      commandCopied.value = false;
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy command:', err);
+  }
+};
 
 const handleCopy = async (event: Event) => {
   event.preventDefault();
@@ -116,32 +146,6 @@ const hideTooltip = () => {
   }
 };
 
-const messages = [
-  {
-    type: 'sponsor',
-    link: 'https://github.com/sponsors/yamadashy',
-    icon: HeartHandshake,
-    text: 'Your support helps maintain and improve it. Thank you!',
-    color: '#b04386',
-  },
-  {
-    type: 'star',
-    link: 'https://github.com/yamadashy/repomix',
-    icon: Star,
-    text: 'If you like Repomix, please give us a star on GitHub!',
-    color: '#f1c40f',
-  },
-];
-
-const currentMessageIndex = ref(Math.floor(Math.random() * messages.length));
-const supportMessage = computed(() => ({
-  type: messages[currentMessageIndex.value].type,
-  link: messages[currentMessageIndex.value].link,
-  icon: messages[currentMessageIndex.value].icon,
-  text: messages[currentMessageIndex.value].text,
-  color: messages[currentMessageIndex.value].color,
-}));
-
 const handleResize = () => {
   isMobile.value = window.innerWidth <= 768;
 };
@@ -204,6 +208,20 @@ onUnmounted(() => {
           </li>
         </ol>
       </div>
+
+      <div class="metadata-section security-warning" v-if="hasSuspiciousFiles">
+        <h3><AlertTriangle :size="16" class="section-icon warning-icon" /> Security Alert</h3>
+        <p class="warning-description">The following files were excluded because they may contain sensitive information:</p>
+        <ul class="suspicious-files-list">
+          <li v-for="file in result.metadata.suspiciousFiles" :key="file.filePath">
+            <div class="file-path">{{ file.filePath }}</div>
+            <div class="suspicious-messages">
+              <span v-for="(message, index) in file.messages" :key="`${message}-${index}`" class="suspicious-message">{{ message }}</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
     </div>
 
     <div class="output-panel">
@@ -251,13 +269,23 @@ onUnmounted(() => {
         />
       </div>
     </div>
-    <div class="support-notice">
-      <div class="support-message">
-        <a :href="supportMessage.link" target="_blank" rel="noopener noreferrer" class="support-link">
-          <component :is="supportMessage.icon" :size="14" class="support-icon" />
-          {{ supportMessage.text }}
-        </a>
+    <div class="cli-banner">
+      <div class="cli-banner-content">
+        <Terminal :size="16" class="cli-banner-icon" />
+        <span class="cli-banner-label">Run locally:</span>
+        <code class="cli-banner-command">{{ cliCommand }}</code>
       </div>
+      <button
+        class="cli-banner-copy"
+        @click="handleCopyCommand"
+        :class="{ copied: commandCopied }"
+      >
+        <Copy :size="14" />
+        <span>{{ commandCopied ? 'Copied!' : 'Copy' }}</span>
+      </button>
+    </div>
+    <div class="support-wrapper">
+      <SupportMessage />
     </div>
   </div>
 </template>
@@ -339,6 +367,50 @@ dd {
   padding-left: 8px;
 }
 
+.security-warning {
+  background: var(--vp-c-warning-soft);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.warning-icon {
+  color: var(--vp-c-warning-1);
+}
+
+.warning-description {
+  font-size: 12px;
+  color: var(--vp-c-text-2);
+  margin: 0 0 8px;
+}
+
+.suspicious-files-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.suspicious-files-list li {
+  margin-bottom: 6px;
+  border-left: 2px solid var(--vp-c-warning-1);
+  padding-left: 8px;
+}
+
+.suspicious-files-list li:last-child {
+  margin-bottom: 0;
+}
+
+.suspicious-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.suspicious-message {
+  font-size: 12px;
+  color: var(--vp-c-text-2);
+}
+
 .file-path {
   color: var(--vp-c-text-1);
   margin-bottom: 2px;
@@ -350,6 +422,97 @@ dd {
   color: var(--vp-c-text-1);
   display: flex;
   align-items: center;
+}
+
+.cli-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--vp-c-bg-soft);
+  border-top: 1px solid var(--vp-c-border);
+}
+
+.cli-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cli-banner-icon {
+  color: var(--vp-c-brand-1);
+  flex-shrink: 0;
+}
+
+.cli-banner-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--vp-c-text-2);
+  flex-shrink: 0;
+}
+
+.cli-banner-command {
+  font-size: 13px;
+  font-family: var(--vp-font-family-mono);
+  color: var(--vp-c-text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--vp-c-bg);
+  border: 1px solid var(--vp-c-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.cli-banner-copy {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--vp-c-brand-1);
+  border-radius: 6px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-brand-1);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cli-banner-copy:hover {
+  background: var(--vp-c-brand-1);
+  color: white;
+}
+
+.cli-banner-copy.copied {
+  background: var(--vp-c-brand-1);
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .cli-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .cli-banner-content {
+    flex-wrap: wrap;
+  }
+
+  .cli-banner-command {
+    white-space: normal;
+    word-break: break-all;
+  }
+
+  .cli-banner-copy {
+    justify-content: center;
+  }
 }
 
 .output-panel {
@@ -406,44 +569,8 @@ dd {
   font-family: var(--vp-font-family-mono);
 }
 
-.support-notice {
+.support-wrapper {
   grid-column: 1 / -1;
-  padding: 8px;
-  background: var(--vp-c-bg-soft);
-  border-top: 1px solid var(--vp-c-border);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 45px;
-}
-
-.support-message {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--vp-c-text-2);
-  font-size: 12px;
-  width: 100%;
-}
-
-.support-icon {
-  flex-shrink: 0;
-  transition: color 0.3s ease;
-  color: v-bind('supportMessage.color');
-}
-
-.support-link {
-  text-decoration: none;
-  font-weight: normal;
-  transition: color 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.support-link:hover {
-  color: var(--vp-c-brand-1);
 }
 
 .mobile-only {
@@ -466,14 +593,6 @@ dd {
 
   .output-panel {
     height: 500px;
-  }
-
-  .support-notice {
-    padding: 16px;
-  }
-
-  .support-message {
-    max-width: 100%;
   }
 
   .mobile-only {

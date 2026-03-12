@@ -12,11 +12,18 @@
   
   <br>
 
-   <a href="https://tuple.app/repomix" target="_blank">
-      <img alt="Tuple sponsorship" width="400" src="/images/sponsors/tuple/github_repo_sponsorship.png">
+   <a href="https://git-tower.com/?utm_source=repomix&utm_medium=referral" target="_blank">
+      <img alt="Tower sponsorship" width="400" src="/images/sponsors/tower/tower-most-powerful-git-client.png">
    </a>
 
-  [Tuple, the premier screen sharing app for developers on macOS and Windows.](https://tuple.app/repomix)
+  [Tower, the most powerful Git client for Mac and Windows](https://git-tower.com/?utm_source=repomix&utm_medium=referral)
 </div>
 
 [![Sponsors](https://cdn.jsdelivr.net/gh/yamadashy/sponsor-list/sponsors/sponsors.png)](https://github.com/sponsors/yamadashy)
+
+<div align="center" style="margin: 8px 0 0;">
+  <p style="margin: 0 0 12px;">Please consider sponsoring me.</p>
+  <a href="https://github.com/sponsors/yamadashy" target="_blank">
+    <img alt="Sponsor" src="/images/github-like-sponsor-button.svg" height="28">
+  </a>
+</div>

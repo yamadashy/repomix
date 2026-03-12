@@ -40,6 +40,7 @@ export const repomixConfigBaseSchema = z.object({
       copyToClipboard: z.boolean().optional(),
       includeEmptyDirectories: z.boolean().optional(),
       includeFullDirectoryStructure: z.boolean().optional(),
+      splitOutput: z.number().int().min(1).optional(),
       tokenCountTree: z.union([z.boolean(), z.number(), z.string()]).optional(),
       git: z
         .object({
@@ -108,6 +109,7 @@ export const repomixConfigDefaultSchema = z.object({
     copyToClipboard: z.boolean().default(false),
     includeEmptyDirectories: z.boolean().optional(),
     includeFullDirectoryStructure: z.boolean().default(false),
+    splitOutput: z.number().int().min(1).optional(),
     tokenCountTree: z.union([z.boolean(), z.number(), z.string()]).default(false),
     git: z.object({
       sortByChanges: z.boolean().default(true),
@@ -146,7 +148,7 @@ export const repomixConfigDefaultSchema = z.object({
 // File-specific schema. Add options for file path and style
 export const repomixConfigFileSchema = repomixConfigBaseSchema;
 
-// CLI-specific schema. Add options for standard output mode
+// CLI-specific schema. Add options for standard output mode and skill generation
 export const repomixConfigCliSchema = repomixConfigBaseSchema.and(
   z.object({
     output: z
@@ -154,6 +156,7 @@ export const repomixConfigCliSchema = repomixConfigBaseSchema.and(
         stdout: z.boolean().optional(),
       })
       .optional(),
+    skillGenerate: z.union([z.string(), z.boolean()]).optional(),
   }),
 );
 

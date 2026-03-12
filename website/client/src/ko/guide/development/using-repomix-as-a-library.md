@@ -81,6 +81,20 @@ async function analyzeFiles(directory) {
 }
 ```
 
+## 번들링
+
+Rolldown이나 esbuild 같은 도구로 repomix를 번들링할 때, 일부 의존성은 external로 유지해야 하며 WASM 파일을 복사해야 합니다:
+
+**External 의존성 (번들 불가):**
+- `tinypool` - 파일 경로를 사용하여 워커 스레드 생성
+- `tiktoken` - 런타임에 WASM 파일을 동적으로 로드
+
+**복사해야 할 WASM 파일:**
+- `web-tree-sitter.wasm` → 번들된 JS와 동일한 디렉토리 (코드 압축 기능에 필요)
+- Tree-sitter 언어 파일 → `REPOMIX_WASM_DIR` 환경 변수로 지정된 디렉토리
+
+실제 예제는 [website/server/scripts/bundle.mjs](https://github.com/yamadashy/repomix/blob/main/website/server/scripts/bundle.mjs)를 참조하세요.
+
 ## 실제 사례
 
 Repomix 웹사이트([repomix.com](https://repomix.com))는 원격 저장소를 처리하기 위해 라이브러리로 Repomix를 사용합니다. [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts)에서 구현을 확인할 수 있습니다. 

@@ -109,6 +109,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: true,
         }),
       }),
+      expect.any(Object),
     );
   });
 
@@ -125,6 +126,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: false,
         }),
       }),
+      expect.any(Object),
     );
   });
 
@@ -155,6 +157,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: true,
         }),
       }),
+      expect.any(Object),
     );
   });
 
@@ -185,6 +188,7 @@ describe('defaultAction with tokenCountTree', () => {
           tokenCountTree: 50,
         }),
       }),
+      expect.any(Object),
     );
   });
 });

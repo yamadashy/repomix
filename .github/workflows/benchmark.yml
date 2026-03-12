@@ -16,6 +16,9 @@ on:
         required: false
         default: '50'
 
+permissions:
+  contents: read
+
 jobs:
   memory-test:
     name: Memory Test
@@ -25,8 +28,10 @@ jobs:
       run:
         working-directory: scripts/memory
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
           node-version-file: .tool-versions
           cache: npm
@@ -54,16 +59,15 @@ jobs:
 
       # Run memory test
       - name: Run memory test
-        run: |
-          ITERATIONS=${{ github.event.inputs.iterations || '50' }}
-          DELAY=${{ github.event.inputs.delay || '50' }}
-          node --expose-gc dist/memory-test.js $ITERATIONS $DELAY
+        run: node --expose-gc dist/memory-test.js "$ITERATIONS" "$DELAY"
         env:
           CI: true
+          ITERATIONS: ${{ github.event.inputs.iterations || '50' }}
+          DELAY: ${{ github.event.inputs.delay || '50' }}
 
       # Upload memory test results if available
       - name: Upload memory test results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: memory-test-results-${{ github.run_id }}
@@ -80,8 +84,10 @@ jobs:
       run:
         working-directory: scripts/memory
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
           node-version-file: .tool-versions
           cache: npm
@@ -115,7 +121,7 @@ jobs:
 
       # Upload detailed memory test results
       - name: Upload detailed memory test results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: memory-test-results-full-${{ github.run_id }}

@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { isGitHubRepository, parseGitHubRepoInfo, parseRemoteValue } from '../../../src/core/git/gitRemoteParse.js';
+import {
+  isExplicitRemoteUrl,
+  isGitHubRepository,
+  parseGitHubRepoInfo,
+  parseRemoteValue,
+} from '../../../src/core/git/gitRemoteParse.js';
 import { isValidRemoteValue } from '../../../src/index.js';
 
 vi.mock('../../../src/shared/logger');
@@ -261,6 +266,50 @@ describe('remoteAction functions', () => {
     test('should accept legitimate GitHub URLs', () => {
       expect(parseGitHubRepoInfo('https://github.com/user/repo')).not.toBeNull();
       expect(parseGitHubRepoInfo('https://www.github.com/user/repo')).not.toBeNull();
+    });
+  });
+
+  describe('isExplicitRemoteUrl', () => {
+    test('should return true for HTTPS URLs', () => {
+      expect(isExplicitRemoteUrl('https://github.com/user/repo')).toBe(true);
+      expect(isExplicitRemoteUrl('https://gitlab.com/user/repo')).toBe(true);
+      expect(isExplicitRemoteUrl('https://bitbucket.org/user/repo')).toBe(true);
+    });
+
+    test('should return true for git@ SSH URLs', () => {
+      expect(isExplicitRemoteUrl('git@github.com:user/repo.git')).toBe(true);
+      expect(isExplicitRemoteUrl('git@gitlab.com:user/repo.git')).toBe(true);
+      expect(isExplicitRemoteUrl('git@ssh.dev.azure.com:v3/org/project/repo')).toBe(true);
+    });
+
+    test('should return true for ssh:// URLs', () => {
+      expect(isExplicitRemoteUrl('ssh://git@github.com/user/repo.git')).toBe(true);
+      expect(isExplicitRemoteUrl('ssh://git@gitlab.com/user/repo.git')).toBe(true);
+    });
+
+    test('should return true for git:// URLs', () => {
+      expect(isExplicitRemoteUrl('git://github.com/user/repo.git')).toBe(true);
+      expect(isExplicitRemoteUrl('git://gitlab.com/user/repo.git')).toBe(true);
+    });
+
+    test('should return false for shorthand format', () => {
+      expect(isExplicitRemoteUrl('user/repo')).toBe(false);
+      expect(isExplicitRemoteUrl('yamadashy/repomix')).toBe(false);
+    });
+
+    test('should return false for local paths', () => {
+      expect(isExplicitRemoteUrl('.')).toBe(false);
+      expect(isExplicitRemoteUrl('./src')).toBe(false);
+      expect(isExplicitRemoteUrl('/absolute/path')).toBe(false);
+      expect(isExplicitRemoteUrl('relative/path')).toBe(false);
+    });
+
+    test('should return false for http:// URLs', () => {
+      expect(isExplicitRemoteUrl('http://example.com/repo')).toBe(false);
+    });
+
+    test('should return false for empty string', () => {
+      expect(isExplicitRemoteUrl('')).toBe(false);
     });
   });
 

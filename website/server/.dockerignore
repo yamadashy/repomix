@@ -6,8 +6,10 @@ yarn-error.log*
 
 # Build outputs
 dist
+dist-bundled
 build
 *.tsbuildinfo
+.compile-cache
 
 # Development files
 .git

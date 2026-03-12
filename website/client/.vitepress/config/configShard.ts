@@ -5,9 +5,12 @@ import { configDeSearch } from './configDe';
 import { configEsSearch } from './configEs';
 import { configHiSearch } from './configHi';
 import { configIdSearch } from './configId';
+import { configItSearch } from './configIt';
 import { configJaSearch } from './configJa';
 import { configKoSearch } from './configKo';
 import { configPtBrSearch } from './configPtBr';
+import { configRuSearch } from './configRu';
+import { configTrSearch } from './configTr';
 import { configViSearch } from './configVi';
 import { configZhCnSearch } from './configZhCn';
 import { configZhTwSearch } from './configZhTw';
@@ -71,9 +74,12 @@ export const configShard = defineConfig({
           ...configEsSearch,
           ...configHiSearch,
           ...configIdSearch,
+          ...configItSearch,
           ...configJaSearch,
           ...configKoSearch,
           ...configPtBrSearch,
+          ...configRuSearch,
+          ...configTrSearch,
           ...configViSearch,
           ...configZhCnSearch,
           ...configZhTwSearch,

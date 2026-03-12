@@ -209,6 +209,52 @@ describe('cliRun', () => {
       expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object));
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
+
+    test('should auto-detect HTTPS URL and execute remote action', async () => {
+      await runCli(['https://github.com/user/repo'], process.cwd(), {});
+
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('https://github.com/user/repo', expect.any(Object));
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should auto-detect git@ SSH URL and execute remote action', async () => {
+      await runCli(['git@github.com:user/repo.git'], process.cwd(), {});
+
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('git@github.com:user/repo.git', expect.any(Object));
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should auto-detect ssh:// URL and execute remote action', async () => {
+      await runCli(['ssh://git@github.com/user/repo.git'], process.cwd(), {});
+
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+        'ssh://git@github.com/user/repo.git',
+        expect.any(Object),
+      );
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should auto-detect git:// URL and execute remote action', async () => {
+      await runCli(['git://github.com/user/repo.git'], process.cwd(), {});
+
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('git://github.com/user/repo.git', expect.any(Object));
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should not auto-detect shorthand format as remote URL', async () => {
+      await runCli(['user/repo'], process.cwd(), {});
+
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object));
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+    });
+
+    test('should prioritize explicit --remote flag over auto-detected URL', async () => {
+      await runCli(['https://github.com/other/repo'], process.cwd(), {
+        remote: 'yamadashy/repomix',
+      });
+
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object));
+    });
   });
 
   describe('parsable style flag', () => {

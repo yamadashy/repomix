@@ -1,14 +1,13 @@
 {
-  "compileOnSave": false,
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "target": "es2016",
+    "moduleDetection": "force",
+    "target": "es2022",
     "outDir": "./lib",
     "rootDir": ".",
     "strict": true,
-    "esModuleInterop": true,
-    "noImplicitAny": true,
+    "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "lib": ["es2022"],
     "declaration": true,

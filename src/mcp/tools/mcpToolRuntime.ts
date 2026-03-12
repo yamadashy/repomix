@@ -1,4 +1,3 @@
-// @ts-nocheck - Zod v3 compatibility for MCP SDK (imported by mcpAction.ts)
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';

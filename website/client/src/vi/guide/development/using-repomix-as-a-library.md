@@ -304,6 +304,20 @@ async function safelyPackRepo() {
 }
 ```
 
+## Bundling
+
+Khi đóng gói repomix bằng các công cụ như Rolldown hoặc esbuild, một số dependency phải giữ là external và các tệp WASM cần được sao chép:
+
+**Dependency external (không thể đóng gói):**
+- `tinypool` - Sinh worker thread sử dụng đường dẫn tệp
+- `tiktoken` - Tải tệp WASM động trong runtime
+
+**Tệp WASM cần sao chép:**
+- `web-tree-sitter.wasm` → Cùng thư mục với JS đã đóng gói (cần thiết cho tính năng nén mã)
+- Tệp ngôn ngữ Tree-sitter → Thư mục được chỉ định bởi biến môi trường `REPOMIX_WASM_DIR`
+
+Để xem ví dụ thực tế, tham khảo [website/server/scripts/bundle.mjs](https://github.com/yamadashy/repomix/blob/main/website/server/scripts/bundle.mjs).
+
 ## Tiếp theo là gì?
 
 - [Đóng góp cho Repomix](./index.md): Tìm hiểu cách đóng góp cho dự án

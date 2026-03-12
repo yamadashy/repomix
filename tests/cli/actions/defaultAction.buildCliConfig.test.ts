@@ -24,4 +24,16 @@ describe('buildCliConfig', () => {
       expect(result.output?.tokenCountTree).toBe(100);
     });
   });
+
+  describe('splitOutput option', () => {
+    it('should map splitOutput (bytes) into config', () => {
+      const options: CliOptions = {
+        splitOutput: 1024,
+      };
+
+      const result = buildCliConfig(options);
+
+      expect(result.output?.splitOutput).toBe(1024);
+    });
+  });
 });

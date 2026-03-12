@@ -81,6 +81,20 @@ async function analyzeFiles(directory) {
 }
 ```
 
+## バンドル
+
+RolldownやesbuildなどのツールでRepomixをバンドルする場合、一部の依存関係はexternalにする必要があり、WASMファイルのコピーも必要です：
+
+**external必須の依存関係（バンドル不可）：**
+- `tinypool` - ファイルパスを使用してワーカースレッドを起動
+- `tiktoken` - 実行時にWASMファイルを動的に読み込み
+
+**コピーが必要なWASMファイル：**
+- `web-tree-sitter.wasm` → バンドルされたJSと同じディレクトリ（コード圧縮機能に必要）
+- Tree-sitter言語ファイル → `REPOMIX_WASM_DIR`環境変数で指定したディレクトリ
+
+実際の例は[website/server/scripts/bundle.mjs](https://github.com/yamadashy/repomix/blob/main/website/server/scripts/bundle.mjs)を参照してください。
+
 ## 実世界の例
 
 Repomixウェブサイト（[repomix.com](https://repomix.com)）では、ライブラリとしてRepomixを使用してリモートリポジトリを処理しています。実装は[website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts)で確認できます。 

@@ -42,6 +42,8 @@ export const configEs = defineConfig({
           items: [
             { text: 'Servidor MCP', link: '/es/guide/mcp-server' },
             { text: 'Plugins de Claude Code', link: '/es/guide/claude-code-plugins' },
+            { text: 'Generación de Agent Skills', link: '/es/guide/agent-skills-generation' },
+            { text: 'Repomix Explorer Skill', link: '/es/guide/repomix-explorer-skill' },
             { text: 'GitHub Actions', link: '/es/guide/github-actions' },
             { text: 'Usar Repomix como Biblioteca', link: '/es/guide/development/using-repomix-as-a-library' },
             { text: 'Consejos para Desarrollo Asistido por IA', link: '/es/guide/tips/best-practices' },

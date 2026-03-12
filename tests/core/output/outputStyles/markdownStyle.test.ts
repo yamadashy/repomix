@@ -143,7 +143,7 @@ describe('markdownStyle', () => {
       expect(getExtension('file.html')).toBe('html');
       expect(getExtension('file.css')).toBe('css');
       expect(getExtension('file.scss')).toBe('scss');
-      expect(getExtension('file.sass')).toBe('scss');
+      expect(getExtension('file.sass')).toBe('sass');
       expect(getExtension('file.vue')).toBe('vue');
     });
 
@@ -158,7 +158,7 @@ describe('markdownStyle', () => {
 
     // System programming languages
     test('should handle system programming language extensions', () => {
-      expect(getExtension('file.c')).toBe('cpp');
+      expect(getExtension('file.c')).toBe('c');
       expect(getExtension('file.cpp')).toBe('cpp');
       expect(getExtension('file.rs')).toBe('rust');
       expect(getExtension('file.swift')).toBe('swift');

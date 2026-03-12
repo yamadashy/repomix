@@ -1,0 +1,7 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="92" height="28" xml:space="preserve">
+    <rect width="92" height="28" fill="#F6F8FA" stroke="rgba(27, 31, 36, 0.15)" rx="6"/>
+    <path fill="#BF3989" fill-rule="evenodd" d="M17.25 8.5c-1.336 0-2.75 1.164-2.75 3 0 2.15 1.58 4.144 3.365 5.682A20.565 20.565 0 0 0 21 19.393a20.561 20.561 0 0 0 3.135-2.211C25.92 15.644 27.5 13.65 27.5 11.5c0-1.836-1.414-3-2.75-3-1.373 0-2.609.986-3.029 2.456a.75.75 0 0 1-1.442 0c-.42-1.47-1.656-2.456-3.029-2.456zM21 20.25l-.345.666-.002-.001-.006-.003-.018-.01a7.643 7.643 0 0 1-.31-.17 22.075 22.075 0 0 1-3.434-2.414C15.045 16.731 13 14.35 13 11.5 13 8.836 15.086 7 17.25 7c1.547 0 2.903.802 3.75 2.02C21.847 7.802 23.203 7 24.75 7 26.914 7 29 8.836 29 11.5c0 2.85-2.045 5.231-3.885 6.818a22.08 22.08 0 0 1-3.744 2.584l-.018.01-.006.003h-.002L21 20.25zm0 0 .345.666a.752.752 0 0 1-.69 0L21 20.25z"/>
+    <text x="36" y="19" fill="#24292F" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'" font-size="12">Sponsor</text>
+</svg>

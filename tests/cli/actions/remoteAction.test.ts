@@ -9,7 +9,9 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();
   return {
     ...actual,
+    access: vi.fn(),
     copyFile: vi.fn(),
+    cp: vi.fn(),
     mkdir: vi.fn(),
   };
 });

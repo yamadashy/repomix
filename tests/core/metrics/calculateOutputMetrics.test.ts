@@ -24,7 +24,7 @@ describe('calculateOutputMetrics', () => {
     const path = 'test.txt';
 
     const result = await calculateOutputMetrics(content, encoding, path, {
-      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerPath: '', runtime: 'worker_threads' }),
+      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
     expect(result).toBe(2); // 'test content' should be counted as 2 tokens
@@ -35,7 +35,7 @@ describe('calculateOutputMetrics', () => {
     const encoding = 'o200k_base';
 
     const result = await calculateOutputMetrics(content, encoding, undefined, {
-      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerPath: '', runtime: 'worker_threads' }),
+      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
     expect(result).toBe(2);
@@ -59,7 +59,7 @@ describe('calculateOutputMetrics', () => {
 
     await expect(
       calculateOutputMetrics(content, encoding, undefined, {
-        taskRunner: mockErrorTaskRunner({ numOfTasks: 1, workerPath: '', runtime: 'worker_threads' }),
+        taskRunner: mockErrorTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
       }),
     ).rejects.toThrow('Worker error');
 
@@ -71,7 +71,7 @@ describe('calculateOutputMetrics', () => {
     const encoding = 'o200k_base';
 
     const result = await calculateOutputMetrics(content, encoding, undefined, {
-      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerPath: '', runtime: 'worker_threads' }),
+      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
     expect(result).toBe(0);
@@ -82,7 +82,7 @@ describe('calculateOutputMetrics', () => {
     const encoding = 'o200k_base';
 
     const result = await calculateOutputMetrics(content, encoding, undefined, {
-      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerPath: '', runtime: 'worker_threads' }),
+      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
     expect(result).toBeGreaterThan(0);
@@ -110,7 +110,7 @@ describe('calculateOutputMetrics', () => {
     };
 
     const result = await calculateOutputMetrics(content, encoding, path, {
-      taskRunner: mockParallelTaskRunner({ numOfTasks: 1, workerPath: '', runtime: 'worker_threads' }),
+      taskRunner: mockParallelTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
     expect(chunksProcessed).toBeGreaterThan(1); // Should have processed multiple chunks
@@ -135,7 +135,7 @@ describe('calculateOutputMetrics', () => {
 
     await expect(
       calculateOutputMetrics(content, encoding, undefined, {
-        taskRunner: mockErrorTaskRunner({ numOfTasks: 1, workerPath: '', runtime: 'worker_threads' }),
+        taskRunner: mockErrorTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
       }),
     ).rejects.toThrow('Parallel processing error');
 
@@ -161,7 +161,11 @@ describe('calculateOutputMetrics', () => {
     };
 
     await calculateOutputMetrics(content, encoding, undefined, {
-      taskRunner: mockChunkTrackingTaskRunner({ numOfTasks: 1, workerPath: '', runtime: 'worker_threads' }),
+      taskRunner: mockChunkTrackingTaskRunner({
+        numOfTasks: 1,
+        workerType: 'calculateMetrics',
+        runtime: 'worker_threads',
+      }),
     });
 
     // Check that chunks are roughly equal in size

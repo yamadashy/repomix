@@ -26,6 +26,7 @@
 - `--truncate-base64`: Habilitar truncamento de strings de dados base64
 - `--header-text <text>`: Texto personalizado para incluir no cabeçalho do arquivo
 - `--instruction-file-path <path>`: Caminho para um arquivo contendo instruções personalizadas detalhadas
+- `--split-output <size>`: Dividir saída em múltiplos arquivos numerados (ex: repomix-output.1.xml, repomix-output.2.xml); com tamanhos como 500kb, 2mb ou 1.5mb
 - `--include-empty-directories`: Incluir diretórios vazios na saída
 - `--include-full-directory-structure`: Mostrar a árvore completa do repositório na seção Estrutura de Diretórios, mesmo ao usar padrões --include
 - `--include-diffs`: Incluir diffs do git na saída (inclui mudanças da árvore de trabalho e mudanças em stage separadamente)

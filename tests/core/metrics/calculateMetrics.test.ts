@@ -61,7 +61,7 @@ describe('calculateMetrics', () => {
 
     const result = await calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, undefined, {
       calculateSelectiveFileMetrics,
-      calculateOutputMetrics: () => Promise.resolve(30),
+      calculateOutputMetrics: async () => 30,
       calculateGitDiffMetrics: () => Promise.resolve(0),
       calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
       taskRunner: mockTaskRunner,

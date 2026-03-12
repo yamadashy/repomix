@@ -37,6 +37,24 @@ Untuk mengecualikan file atau direktori tertentu:
 repomix --ignore "**/*.log,tmp/"
 ```
 
+### Membagi Output ke Beberapa File
+
+Saat bekerja dengan codebase besar, output yang dikemas mungkin melebihi batas ukuran file yang diberlakukan oleh beberapa alat AI (misalnya, batas 1MB Google AI Studio). Gunakan `--split-output` untuk secara otomatis membagi output menjadi beberapa file:
+
+```bash
+repomix --split-output 1mb
+```
+
+Ini menghasilkan file bernomor seperti:
+- `repomix-output.1.xml`
+- `repomix-output.2.xml`
+- `repomix-output.3.xml`
+
+Ukuran dapat ditentukan dengan unit: `500kb`, `1mb`, `2mb`, `1.5mb`, dll. Nilai desimal didukung.
+
+> [!NOTE]
+> File dikelompokkan berdasarkan direktori tingkat atas untuk mempertahankan konteks. Satu file atau direktori tidak akan pernah dibagi di antara beberapa file output.
+
 ## Mengemas Repositori Jarak Jauh
 
 Repomix dapat mengemas repositori GitHub publik:

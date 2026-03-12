@@ -205,6 +205,20 @@ async function processInBrowser() {
 }
 ```
 
+## बंडलिंग
+
+Rolldown या esbuild जैसे टूल्स के साथ repomix को बंडल करते समय, कुछ डिपेंडेंसी को external रखना होगा और WASM फाइलों को कॉपी करना होगा:
+
+**External डिपेंडेंसी (बंडल नहीं की जा सकती):**
+- `tinypool` - फाइल पाथ का उपयोग करके वर्कर थ्रेड्स स्पॉन करता है
+- `tiktoken` - रनटाइम पर WASM फाइलें डायनामिकली लोड करता है
+
+**कॉपी करने के लिए WASM फाइलें:**
+- `web-tree-sitter.wasm` → बंडल किए गए JS के समान डायरेक्टरी (कोड कंप्रेशन फीचर के लिए आवश्यक)
+- Tree-sitter लैंग्वेज फाइलें → `REPOMIX_WASM_DIR` एनवायरनमेंट वेरिएबल द्वारा निर्दिष्ट डायरेक्टरी
+
+एक कार्यशील उदाहरण के लिए, [website/server/scripts/bundle.mjs](https://github.com/yamadashy/repomix/blob/main/website/server/scripts/bundle.mjs) देखें।
+
 ## अगला क्या है?
 
 - [विकास गाइड](index.md) पढ़ें

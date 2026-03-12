@@ -4,7 +4,9 @@ node_modules/
 # Build output
 lib/
 website/client/.vitepress/dist/
+website/client/.vitepress/cache/
 website/server/dist/
+website/server/.compile-cache/
 
 # Logs
 *.log
@@ -28,6 +30,7 @@ repomix-output.txt
 repomix-output.xml
 repomix-output.md
 repomix-output.json
+repomix-output.*
 
 # ESLint cache
 .eslintcache
@@ -43,6 +46,9 @@ repomix-output.json
 
 # repomix runner
 .repomix/
+
+# repomix references
+.claude/skills/repomix-reference-*/
 
 # Agent
 /.mcp.json

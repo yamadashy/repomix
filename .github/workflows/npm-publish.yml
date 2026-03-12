@@ -18,12 +18,18 @@ jobs:
       id-token: write # Required for OIDC trusted publishing
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
           node-version-file: .tool-versions
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Update npm to latest version
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci
@@ -51,8 +57,8 @@ jobs:
 
       - name: Publish (dry-run)
         if: ${{ inputs.dry-run }}
-        run: npm publish --provenance --dry-run
+        run: npm publish --provenance --access public --dry-run
 
       - name: Publish
         if: ${{ !inputs.dry-run }}
-        run: npm publish --provenance
+        run: npm publish --provenance --access public

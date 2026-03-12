@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import type { PackOptions } from '../../composables/usePackOptions';
 import type { TabType } from '../../types/ui';
 import type { FileInfo, PackResult } from '../api/client';
+import SupportMessage from './SupportMessage.vue';
 import TryItFileSelection from './TryItFileSelection.vue';
 import TryItLoading from './TryItLoading.vue';
 import TryItResultContent from './TryItResultContent.vue';
@@ -13,6 +15,7 @@ interface Props {
   error?: string | null;
   errorType?: 'error' | 'warning';
   repositoryUrl?: string;
+  packOptions?: PackOptions;
 }
 
 interface Emits {
@@ -47,12 +50,16 @@ const handleRepack = (selectedFiles: FileInfo[]) => {
 
 <template>
   <div class="result-viewer">
-    <TryItLoading v-if="loading && !result" />
+    <template v-if="loading && !result">
+      <TryItLoading />
+      <SupportMessage />
+    </template>
     <TryItResultErrorContent
       v-else-if="error"
       :message="error"
       :error-type="errorType"
       :repository-url="repositoryUrl"
+      :pack-options="packOptions"
     />
     <div v-else-if="result" class="result-content">
       <!-- Tab Navigation -->
@@ -77,7 +84,7 @@ const handleRepack = (selectedFiles: FileInfo[]) => {
 
       <!-- Tab Content -->
       <div v-show="activeTab === 'result' || !hasFileSelection">
-        <TryItResultContent :result="result" />
+        <TryItResultContent :result="result" :pack-options="packOptions" />
       </div>
       <div v-show="activeTab === 'files' && hasFileSelection">
         <TryItFileSelection

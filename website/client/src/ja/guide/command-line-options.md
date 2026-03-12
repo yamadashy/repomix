@@ -26,6 +26,7 @@
 - `--truncate-base64`: 出力サイズを削減するため長いbase64データ文字列を切り詰め
 - `--header-text <text>`: 出力の冒頭に含めるカスタムテキスト
 - `--instruction-file-path <path>`: 出力に含めるカスタム指示を含むファイルのパス
+- `--split-output <size>`: 出力を複数の番号付きファイルに分割（例: repomix-output.1.xml, repomix-output.2.xml）; 500kb、2mb、1.5mbなどのサイズ指定
 - `--include-empty-directories`: ディレクトリ構造にファイルのないフォルダを含める
 - `--include-full-directory-structure`: --includeパターンを使用する場合でも、ディレクトリ構造セクションにリポジトリ全体のツリーを表示
 - `--no-git-sort-by-changes`: Git変更頻度によるファイルのソートをしない（デフォルト：最も変更の多いファイルを優先）

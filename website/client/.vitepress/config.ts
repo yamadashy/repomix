@@ -5,10 +5,13 @@ import { configEs } from './config/configEs';
 import { configFr } from './config/configFr';
 import { configHi } from './config/configHi';
 import { configId } from './config/configId';
+import { configIt } from './config/configIt';
 import { configJa } from './config/configJa';
 import { configKo } from './config/configKo';
 import { configPtBr } from './config/configPtBr';
+import { configRu } from './config/configRu';
 import { configShard } from './config/configShard';
+import { configTr } from './config/configTr';
 import { configVi } from './config/configVi';
 import { configZhCn } from './config/configZhCn';
 import { configZhTw } from './config/configZhTw';
@@ -25,8 +28,11 @@ export default defineConfig({
     ko: { label: '한국어', ...configKo },
     de: { label: 'Deutsch', ...configDe },
     fr: { label: 'Français', ...configFr },
+    it: { label: 'Italiano', ...configIt },
     hi: { label: 'हिन्दी', ...configHi },
     id: { label: 'Indonesia', ...configId },
     vi: { label: 'Tiếng Việt', ...configVi },
+    ru: { label: 'Русский', ...configRu },
+    tr: { label: 'Türkçe', ...configTr },
   },
 });

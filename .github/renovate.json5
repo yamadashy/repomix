@@ -2,9 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-    "schedule:weekly",
-    'group:allNonMajor'
   ],
+  "schedule": ["before 9am on saturday"],
   "rangeStrategy": "bump",
   "dependencyDashboard": false,
   "labels": ["dependencies", "renovate"],
@@ -13,9 +12,55 @@
       matchDepTypes: ['peerDependencies'],
       enabled: false,
     },
+    // Root package.json
+    {
+      matchFileNames: ['package.json'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'root non-major dependencies',
+    },
+    {
+      matchFileNames: ['package.json'],
+      matchUpdateTypes: ['major'],
+      groupName: 'root major dependencies',
+    },
+    // Browser extension
+    {
+      matchFileNames: ['browser/package.json'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'browser non-major dependencies',
+    },
+    {
+      matchFileNames: ['browser/package.json'],
+      matchUpdateTypes: ['major'],
+      groupName: 'browser major dependencies',
+    },
+    // Website packages (client & server)
+    {
+      matchFileNames: ['website/**/package.json'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'website non-major dependencies',
+    },
+    {
+      matchFileNames: ['website/**/package.json'],
+      matchUpdateTypes: ['major'],
+      groupName: 'website major dependencies',
+    },
+    // Scripts packages
+    {
+      matchFileNames: ['scripts/**/package.json'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'scripts non-major dependencies',
+    },
+    {
+      matchFileNames: ['scripts/**/package.json'],
+      matchUpdateTypes: ['major'],
+      groupName: 'scripts major dependencies',
+    },
   ],
   "ignoreDeps": [
     "node",
+    "isbinaryfile", // v6+ requires Node.js >= 24
+    "iconv-lite", // v0.7.1 has broken ESM types: https://github.com/pillarjs/iconv-lite/issues/363
   ],
   "minimumReleaseAge": "7 days"
 }

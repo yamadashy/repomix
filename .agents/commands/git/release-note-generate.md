@@ -22,10 +22,11 @@ Based on analysis of existing release notes in `.github/releases/`, this documen
 
 ### Required Sections
 
-#### 1. What's New 🚀
-- Always the first section
+#### 1. What's New 🚀 or Improvements ⚡
+- Use **What's New 🚀** for completely new features or capabilities
+- Use **Improvements ⚡** for enhancements to existing features, new options added to existing commands, or incremental improvements
 - Use `###` for feature subsections
-- Include PR numbers in parentheses: `(#793)`
+- Include PR numbers and related issue numbers in parentheses: `(#PR, #issue)`
 - Lead with the most significant features first
 
 #### 2. How to Update
@@ -46,10 +47,6 @@ Based on analysis of existing release notes in `.github/releases/`, this documen
 
 ### Optional Sections (Use When Relevant)
 
-#### Improvements ⚡
-- For enhancements to existing features
-- Less significant than "What's New" items
-
 #### Internal Changes 🔧
 - **Generally avoid including this section** - internal changes are typically not relevant to users
 - Only include if the internal change has direct user-visible benefits or impacts
@@ -60,6 +57,7 @@ Based on analysis of existing release notes in `.github/releases/`, this documen
 
 #### Documentation 📚
 - For documentation improvements
+- Include links to the relevant documentation pages (e.g., README sections, website pages)
 
 ## Writing Style and Tone
 
@@ -103,7 +101,9 @@ repomix --option-name
 ```
 
 ### PR References and Credits
-- Include PR numbers for all features: `### Feature Name (#123)`
+- Include PR numbers and related issue numbers for all features: `### Feature Name (#123, #456)`
+  - PR number comes first, followed by the issue number it closes/fixes
+  - Check PR body for "Closes #xxx", "Fixes #xxx", or "addresses #xxx" to find related issues
 - Credit contributors: `Special thanks to @username for this contribution! 🎉`
 - For first-time contributors, mention it: `Special thanks to @BBboy01 for their first contribution...`
 
@@ -133,11 +133,13 @@ repomix --option-name
 Before publishing, verify:
 
 - [ ] Header captures the release theme with enthusiasm
-- [ ] All features include PR references
+- [ ] All features include PR references and related issue numbers where applicable
+- [ ] "What's New" vs "Improvements" is used appropriately (new features vs enhancements)
 - [ ] Contributors are credited appropriately  
 - [ ] Code examples are properly formatted and realistic
 - [ ] Benefits for AI analysis/user workflows are clearly stated
 - [ ] Commands can be copy-pasted and work as shown
+- [ ] Documentation sections include links to relevant pages
 - [ ] Consistent emoji usage across sections
 - [ ] Footer message is identical to previous releases
 - [ ] Links to Discord and GitHub are correct

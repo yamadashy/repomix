@@ -23,6 +23,7 @@ export interface RenderContext {
   readonly instruction: string;
   readonly treeString: string;
   readonly processedFiles: ReadonlyArray<ProcessedFile>;
+  readonly fileLineCounts: Record<string, number>;
   readonly fileSummaryEnabled: boolean;
   readonly directoryStructureEnabled: boolean;
   readonly filesEnabled: boolean;

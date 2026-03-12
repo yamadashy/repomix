@@ -1,18 +1,32 @@
-import { LoggingWinston } from '@google-cloud/logging-winston';
 import winston from 'winston';
 import { formatMemoryUsage, getMemoryUsage } from './memory.js';
+
+// Map winston levels to Cloud Logging severity levels
+// https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#LogSeverity
+const cloudLoggingSeverity = winston.format((info) => {
+  const severityMap: Record<string, string> = {
+    error: 'ERROR',
+    warn: 'WARNING',
+    info: 'INFO',
+    debug: 'DEBUG',
+  };
+  info.severity = severityMap[info.level] || 'DEFAULT';
+  return info;
+});
 
 // Configure transports based on environment
 function createLogger() {
   const isProduction = process.env.NODE_ENV === 'production';
 
-  const transports: winston.transport[] = isProduction
-    ? [new LoggingWinston()]
-    : [
-        new winston.transports.Console({
-          format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
-        }),
-      ];
+  // Use Console transport for both environments
+  // Cloud Run automatically sends stdout to Cloud Logging
+  const transports: winston.transport[] = [
+    new winston.transports.Console({
+      format: isProduction
+        ? winston.format.combine(cloudLoggingSeverity(), winston.format.json())
+        : winston.format.combine(winston.format.timestamp(), winston.format.json()),
+    }),
+  ];
 
   return winston.createLogger({
     level: isProduction ? 'info' : 'debug',

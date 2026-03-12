@@ -36,7 +36,7 @@ describe('calculateSelectiveFileMetrics', () => {
       'o200k_base',
       progressCallback,
       {
-        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerPath: '', runtime: 'worker_threads' }),
+        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
       },
     );
 
@@ -57,7 +57,7 @@ describe('calculateSelectiveFileMetrics', () => {
       'o200k_base',
       progressCallback,
       {
-        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerPath: '', runtime: 'worker_threads' }),
+        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
       },
     );
 

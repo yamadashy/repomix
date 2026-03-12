@@ -230,6 +230,8 @@ export const mergeConfigs = (
       ...fileConfig.tokenCount,
       ...cliConfig.tokenCount,
     },
+    // Skill generation (CLI only)
+    ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
   };
 
   try {

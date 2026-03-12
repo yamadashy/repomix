@@ -25,6 +25,11 @@ export interface PackRequest {
   file?: File;
 }
 
+export interface SuspiciousFile {
+  filePath: string;
+  messages: string[];
+}
+
 export interface PackResult {
   content: string;
   format: string;
@@ -42,6 +47,7 @@ export interface PackResult {
       tokenCount: number;
     }[];
     allFiles?: FileInfo[];
+    suspiciousFiles?: SuspiciousFile[];
   };
 }
 

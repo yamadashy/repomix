@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import {
   type RepomixConfigCli,
@@ -8,11 +9,13 @@ import {
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import type { PackResult } from '../../core/packager.js';
+import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { initTaskRunner } from '../../shared/processConcurrency.js';
 import { reportResults } from '../cliReport.js';
+import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
 import type {
@@ -49,6 +52,41 @@ export const runDefaultAction = async (
   const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
   logger.trace('Merged config:', config);
 
+  // Validate conflicting options
+  validateConflictingOptions(config);
+
+  // Validate --skill-output and --force require --skill-generate
+  if (cliOptions.skillOutput && config.skillGenerate === undefined) {
+    throw new RepomixError('--skill-output can only be used with --skill-generate');
+  }
+  if (cliOptions.force && config.skillGenerate === undefined) {
+    throw new RepomixError('--force can only be used with --skill-generate');
+  }
+
+  // Validate --skill-output is not empty or whitespace only
+  if (cliOptions.skillOutput !== undefined && !cliOptions.skillOutput.trim()) {
+    throw new RepomixError('--skill-output path cannot be empty');
+  }
+
+  // Validate skill generation options and prompt for location
+  if (config.skillGenerate !== undefined) {
+    // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
+    cliOptions.skillName ??=
+      typeof config.skillGenerate === 'string'
+        ? config.skillGenerate
+        : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
+
+    // Determine skill directory
+    if (cliOptions.skillOutput && !cliOptions.skillDir) {
+      // Non-interactive mode: use provided path directly
+      cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
+    } else if (!cliOptions.skillDir) {
+      // Interactive mode: prompt for skill location
+      const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
+      cliOptions.skillDir = promptResult.skillDir;
+    }
+  }
+
   // Handle stdin processing in main process (before worker creation)
   // This is necessary because child_process workers don't inherit stdin
   let stdinFilePaths: string[] | undefined;
@@ -69,7 +107,7 @@ export const runDefaultAction = async (
   // Create worker task runner
   const taskRunner = initTaskRunner<DefaultActionTask | PingTask, DefaultActionWorkerResult | PingResult>({
     numOfTasks: 1,
-    workerPath: new URL('./workers/defaultActionWorker.js', import.meta.url).href,
+    workerType: 'defaultAction',
     runtime: 'child_process',
   });
 
@@ -90,7 +128,7 @@ export const runDefaultAction = async (
     const result = (await taskRunner.run(task)) as DefaultActionWorkerResult;
 
     // Report results in main process
-    reportResults(cwd, result.packResult, result.config);
+    reportResults(cwd, result.packResult, result.config, cliOptions);
 
     return {
       packResult: result.packResult,
@@ -245,6 +283,13 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     };
   }
 
+  if (options.splitOutput !== undefined) {
+    cliConfig.output = {
+      ...cliConfig.output,
+      splitOutput: options.splitOutput,
+    };
+  }
+
   // Only apply gitSortByChanges setting if explicitly set to false
   if (options.gitSortByChanges === false) {
     cliConfig.output = {
@@ -349,6 +394,11 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     };
   }
 
+  // Skill generation
+  if (options.skillGenerate !== undefined) {
+    cliConfig.skillGenerate = options.skillGenerate;
+  }
+
   try {
     return repomixConfigCliSchema.parse(cliConfig);
   } catch (error) {
@@ -393,5 +443,48 @@ const waitForWorkerReady = async (taskRunner: {
 
   if (!pingSuccessful) {
     logger.debug('All Worker ping attempts failed, proceeding anyway...');
+  }
+};
+
+/**
+ * Validates that conflicting CLI options are not used together.
+ * Throws RepomixError if incompatible options are detected.
+ */
+const validateConflictingOptions = (config: RepomixConfigMerged): void => {
+  const isStdoutMode = config.output.stdout || config.output.filePath === '-';
+
+  // Define option states for conflict checking
+  const options = {
+    splitOutput: {
+      enabled: config.output.splitOutput !== undefined,
+      name: '--split-output',
+    },
+    skillGenerate: {
+      enabled: config.skillGenerate !== undefined,
+      name: '--skill-generate',
+    },
+    stdout: {
+      enabled: isStdoutMode,
+      name: '--stdout',
+    },
+    copy: {
+      enabled: config.output.copyToClipboard,
+      name: '--copy',
+    },
+  };
+
+  // Define conflicts: [optionA, optionB, errorMessage]
+  const conflicts: [keyof typeof options, keyof typeof options, string][] = [
+    ['splitOutput', 'stdout', 'Split output requires writing to filesystem.'],
+    ['splitOutput', 'skillGenerate', 'Skill output is a directory.'],
+    ['splitOutput', 'copy', 'Split output generates multiple files.'],
+    ['skillGenerate', 'stdout', 'Skill output requires writing to filesystem.'],
+    ['skillGenerate', 'copy', 'Skill output is a directory and cannot be copied to clipboard.'],
+  ];
+
+  for (const [optionA, optionB, message] of conflicts) {
+    if (options[optionA].enabled && options[optionB].enabled) {
+      throw new RepomixError(`${options[optionA].name} cannot be used with ${options[optionB].name}. ${message}`);
+    }
   }
 };

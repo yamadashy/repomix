@@ -1,2 +1,4 @@
 dist
+dist-bundled
 node_modules
+.compile-cache

@@ -149,7 +149,7 @@ describe('defaultAction', () => {
 
     expect(processConcurrency.initTaskRunner).toHaveBeenCalledWith({
       numOfTasks: 1,
-      workerPath: expect.stringContaining('defaultActionWorker.js'),
+      workerType: 'defaultAction',
       runtime: 'child_process',
     });
 
@@ -303,6 +303,92 @@ describe('defaultAction', () => {
       const config = buildCliConfig(options);
 
       expect(config.ignore?.useDefaultPatterns).toBe(false);
+    });
+
+    it('should handle --skill-generate with string name', () => {
+      const options: CliOptions = {
+        skillGenerate: 'my-skill',
+      };
+      const config = buildCliConfig(options);
+
+      expect(config.skillGenerate).toBe('my-skill');
+    });
+
+    it('should handle --skill-generate without name (boolean true)', () => {
+      const options: CliOptions = {
+        skillGenerate: true,
+      };
+      const config = buildCliConfig(options);
+
+      expect(config.skillGenerate).toBe(true);
+    });
+  });
+
+  describe('skill-generate validation', () => {
+    it('should throw error when --skill-generate is used with --stdout', async () => {
+      vi.mocked(configLoader.mergeConfigs).mockReturnValue(
+        createMockConfig({
+          cwd: process.cwd(),
+          skillGenerate: 'my-skill',
+          output: {
+            stdout: true,
+            filePath: 'output.txt',
+            style: 'plain',
+            parsableStyle: false,
+            fileSummary: true,
+            directoryStructure: true,
+            topFilesLength: 5,
+            showLineNumbers: false,
+            removeComments: false,
+            removeEmptyLines: false,
+            compress: false,
+            copyToClipboard: false,
+            files: true,
+          },
+        }),
+      );
+
+      const options: CliOptions = {
+        skillGenerate: 'my-skill',
+        stdout: true,
+      };
+
+      await expect(runDefaultAction(['.'], process.cwd(), options)).rejects.toThrow(
+        '--skill-generate cannot be used with --stdout',
+      );
+    });
+
+    it('should throw error when --skill-generate is used with --copy', async () => {
+      vi.mocked(configLoader.mergeConfigs).mockReturnValue(
+        createMockConfig({
+          cwd: process.cwd(),
+          skillGenerate: 'my-skill',
+          output: {
+            copyToClipboard: true,
+            stdout: false,
+            filePath: 'output.txt',
+            style: 'plain',
+            parsableStyle: false,
+            fileSummary: true,
+            directoryStructure: true,
+            topFilesLength: 5,
+            showLineNumbers: false,
+            removeComments: false,
+            removeEmptyLines: false,
+            compress: false,
+            files: true,
+          },
+        }),
+      );
+
+      const options: CliOptions = {
+        skillGenerate: 'my-skill',
+        copy: true,
+      };
+
+      await expect(runDefaultAction(['.'], process.cwd(), options)).rejects.toThrow(
+        '--skill-generate cannot be used with --copy',
+      );
     });
   });
 });

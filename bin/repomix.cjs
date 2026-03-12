@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+// https://nodejs.org/api/module.html#module-compile-cache
+const nodeModule = require('node:module');
+if (nodeModule.enableCompileCache && !process.env.NODE_DISABLE_COMPILE_CACHE) {
+  try {
+    nodeModule.enableCompileCache();
+  } catch {
+    // Ignore errors
+  }
+}
+
 const nodeVersion = process.versions.node;
 const [major] = nodeVersion.split('.').map(Number);
 
