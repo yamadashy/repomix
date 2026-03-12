@@ -4,7 +4,7 @@
 
 ## 基本用法
 
-在工作流 YAML 文件中添加以下步骤以打包您的仓库：
+在工作流 YAML 文件中添加以下步骤以打包你的仓库：
 
 ```yaml
 - name: Pack repository with Repomix

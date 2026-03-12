@@ -1,10 +1,10 @@
 {
   "appDescription": {
-    "message": "为GitHub仓库添加一个按钮，快速访问Repomix",
+    "message": "为 GitHub 仓库添加一个按钮，快速访问 Repomix",
     "description": "The description of the extension"
   },
   "openWithRepomix": {
-    "message": "使用Repomix打开",
+    "message": "使用 Repomix 打开",
     "description": "Button tooltip text for opening repository with Repomix"
   }
 }

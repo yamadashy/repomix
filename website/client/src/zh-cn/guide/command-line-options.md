@@ -3,27 +3,27 @@
 ## 基本选项
 - `-v, --version`: 显示版本信息并退出
 
-## CLI输入/输出选项
-- `--verbose`: 启用详细调试日志（显示文件处理、令牌计数和配置详细信息）
+## CLI 输入/输出选项
+- `--verbose`: 启用详细调试日志（显示文件处理、token 计数和配置详细信息）
 - `--quiet`: 抑制除错误外的所有控制台输出（用于脚本编写）
 - `--stdout`: 将打包输出直接写入标准输出而不是文件（抑制所有日志记录）
 - `--stdin`: 从标准输入逐行读取文件路径（指定的文件直接处理）
 - `--copy`: 处理后将生成的输出复制到系统剪贴板
-- `--token-count-tree [threshold]`: 显示带有令牌计数的文件树；可选阈值仅显示≥N令牌的文件（例如：--token-count-tree 100）
+- `--token-count-tree [threshold]`: 显示带有 token 计数的文件树；可选阈值仅显示 ≥N token 的文件（例如：--token-count-tree 100）
 - `--top-files-len <number>`: 摘要中显示的最大文件数（默认：5，例如：--top-files-len 20）
 
-## Repomix输出选项
+## Repomix 输出选项
 - `-o, --output <file>`: 输出文件路径（默认：repomix-output.xml，使用"-"输出到标准输出）
 - `--style <type>`: 输出格式：xml、markdown、json或plain（默认：xml）
 - `--parsable-style`: 转义特殊字符以确保有效的XML/Markdown（当输出包含破坏格式的代码时需要）
-- `--compress`: 使用Tree-sitter解析提取基本代码结构（类、函数、接口）
+- `--compress`: 使用 Tree-sitter 解析提取基本代码结构（类、函数、接口）
 - `--output-show-line-numbers`: 为输出中的每行添加行号前缀
 - `--no-file-summary`: 从输出中省略文件摘要部分
 - `--no-directory-structure`: 从输出中省略目录树可视化
 - `--no-files`: 仅生成元数据而不包含文件内容（用于仓库分析）
 - `--remove-comments`: 打包前剥离所有代码注释
 - `--remove-empty-lines`: 从所有文件中删除空行
-- `--truncate-base64`: 截断长base64数据字符串以减少输出大小
+- `--truncate-base64`: 截断长 base64 数据字符串以减少输出大小
 - `--header-text <text>`: 在输出开头包含的自定义文本
 - `--instruction-file-path <path>`: 包含要在输出中包含的自定义指令的文件路径
 - `--split-output <size>`: 将输出拆分为多个编号文件（例如 repomix-output.1.xml, repomix-output.2.xml）；例如 500kb、2mb 或 1.5mb
@@ -52,10 +52,10 @@
 ## 安全选项
 - `--no-security-check`: 跳过扫描API密钥和密码等敏感数据
 
-## 令牌计数选项
+## Token 计数选项
 - `--token-count-encoding <encoding>`: 用于计数的分词器模型：o200k_base（GPT-4o）、cl100k_base（GPT-3.5/4）等（默认：o200k_base）
 
-## MCP选项
+## MCP 选项
 - `--mcp`: 作为AI工具集成的Model Context Protocol服务器运行
 
 
@@ -99,8 +99,8 @@ find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin
 echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
 
-# 令牌计数分析
+# Token 计数分析
 repomix --token-count-tree
-repomix --token-count-tree 1000  # 仅显示拥有1000+令牌的文件/目录
+repomix --token-count-tree 1000  # 仅显示拥有 1000+ Token 的文件
 ```
 

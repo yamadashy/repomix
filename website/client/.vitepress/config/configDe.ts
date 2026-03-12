@@ -2,7 +2,7 @@ import { type DefaultTheme, defineConfig } from 'vitepress';
 
 export const configDe = defineConfig({
   lang: 'de',
-  description: 'Paketieren Sie Ihre Codebasis in KI-freundliche Formate',
+  description: 'Ihre Codebasis in KI-freundliche Formate verpacken',
   themeConfig: {
     nav: [
       { text: 'Anleitung', link: '/de/guide/', activeMatch: '^/de/guide/' },
@@ -55,7 +55,7 @@ export const configDe = defineConfig({
             { text: 'Community-Projekte', link: '/de/guide/community-projects' },
             { text: 'Zu Repomix beitragen', link: '/de/guide/development/' },
             { text: 'Sponsoren', link: '/de/guide/sponsors' },
-            { text: 'Privacy Policy', link: '/de/guide/privacy' },
+            { text: 'Datenschutzrichtlinie', link: '/de/guide/privacy' },
           ],
         },
       ],

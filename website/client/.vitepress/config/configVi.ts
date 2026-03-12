@@ -58,7 +58,7 @@ export const configVi = defineConfig({
             { text: 'Dự án Cộng đồng', link: '/vi/guide/community-projects' },
             { text: 'Đóng góp cho Repomix', link: '/vi/guide/development/' },
             { text: 'Nhà tài trợ', link: '/vi/guide/sponsors' },
-            { text: 'Privacy Policy', link: '/vi/guide/privacy' },
+            { text: 'Chính sách Bảo mật', link: '/vi/guide/privacy' },
           ],
         },
       ],

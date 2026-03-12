@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Repomix
-titleTemplate: Packen Sie Ihren Codebase in KI-freundliche Formate
+titleTemplate: Ihre Codebasis in KI-freundliche Formate verpacken
 aside: false
 editLink: false
 
@@ -11,7 +11,7 @@ features:
     details: Formatiert Ihren Codebase so, dass er für KI leicht zu verstehen und zu verarbeiten ist.
 
   - icon: ⚙️
-    title: Git-Bewusst
+    title: Git-kompatibel
     details: Berücksichtigt automatisch Ihre .gitignore-Dateien.
 
   - icon: 🛡️
@@ -42,7 +42,7 @@ Dies wäre ohne Sie alle, die Repomix nutzen und unterstützen, nicht möglich g
 
 ## Was ist Repomix?
 
-Repomix ist ein leistungsstarkes Tool, das Ihre gesamte Codebasis in eine einzige KI-freundliche Datei paketiert. Ob Sie an Code-Reviews, Refactoring arbeiten oder KI-Unterstützung für Ihr Projekt benötigen, Repomix macht es einfach, den gesamten Repository-Kontext mit KI-Tools zu teilen.
+Repomix ist ein leistungsstarkes Tool, das Ihre gesamte Codebasis in eine einzige, KI-freundliche Datei verpackt. Ob Code-Review, Refactoring oder KI-gestützte Projektunterstützung – mit Repomix teilen Sie den gesamten Repository-Kontext ganz einfach mit KI-Tools.
 
 <YouTubeVideo :videoId="VIDEO_IDS.REPOMIX_DEMO" />
 
@@ -67,13 +67,13 @@ Viel Spaß beim Programmieren! 🚀
 
 ## Warum Repomix?
 
-Repomix zeichnet sich durch seine Fähigkeit aus, mit Abonnement-Services wie ChatGPT, Claude, Gemini, Grok zu arbeiten, ohne sich um Kosten sorgen zu müssen, während es einen vollständigen Codebase-Kontext bereitstellt, der die Notwendigkeit zur Dateierkundung eliminiert – was die Analyse schneller und oft genauer macht.
+Repomix funktioniert mit Diensten wie ChatGPT, Claude, Gemini oder Grok – ganz ohne zusätzliche Kosten für Repomix selbst. Da der vollständige Codebasis-Kontext bereitgestellt wird, entfällt das mühsame Durchsuchen einzelner Dateien, was die Analyse schneller und präziser macht.
 
-Mit der gesamten Codebase als verfügbarem Kontext ermöglicht Repomix eine breite Palette von Anwendungen, einschließlich Implementierungsplanung, Fehleruntersuchung, Sicherheitsprüfungen von Drittanbieter-Bibliotheken, Dokumentationsgenerierung und vieles mehr.
+Mit der gesamten Codebasis als Kontext eröffnet Repomix vielfältige Einsatzmöglichkeiten: Implementierungsplanung, Fehleranalyse, Sicherheitsprüfungen von Drittanbieter-Bibliotheken, Dokumentationserstellung und vieles mehr.
 
 ## Verwendung des CLI-Tools {#using-the-cli-tool}
 
-Repomix kann als Kommandozeilen-Tool verwendet werden und bietet leistungsstarke Funktionen und Anpassungsoptionen.
+Repomix lässt sich als Kommandozeilen-Tool nutzen und bietet vielseitige Funktionen sowie flexible Anpassungsmöglichkeiten.
 
 **Das CLI-Tool kann auf private Repositories zugreifen**, da es Ihr lokal installiertes Git verwendet.
 

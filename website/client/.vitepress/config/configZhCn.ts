@@ -2,11 +2,14 @@ import { type DefaultTheme, defineConfig } from 'vitepress';
 
 export const configZhCn = defineConfig({
   lang: 'zh-CN',
-  description: '将代码库打包成AI友好的格式',
+  description: '将代码库打包为 AI 友好的格式',
   themeConfig: {
     nav: [
       { text: '指南', link: '/zh-cn/guide/', activeMatch: '^/zh-cn/guide/' },
-      { text: 'Chrome扩展', link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa' },
+      {
+        text: 'Chrome 扩展',
+        link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa',
+      },
       { text: '加入 Discord', link: 'https://discord.gg/wNYzTwZFku' },
     ],
     sidebar: {
@@ -28,7 +31,7 @@ export const configZhCn = defineConfig({
             { text: '命令行选项', link: '/zh-cn/guide/command-line-options' },
             { text: '配置', link: '/zh-cn/guide/configuration' },
             { text: '自定义指令', link: '/zh-cn/guide/custom-instructions' },
-            { text: 'GitHub仓库处理', link: '/zh-cn/guide/remote-repository-processing' },
+            { text: 'GitHub 仓库处理', link: '/zh-cn/guide/remote-repository-processing' },
             { text: '注释移除', link: '/zh-cn/guide/comment-removal' },
             { text: '代码压缩', link: '/zh-cn/guide/code-compress' },
             { text: '安全性', link: '/zh-cn/guide/security' },
@@ -43,16 +46,16 @@ export const configZhCn = defineConfig({
             { text: 'Repomix Explorer Skill', link: '/zh-cn/guide/repomix-explorer-skill' },
             { text: 'GitHub Actions', link: '/zh-cn/guide/github-actions' },
             { text: '作为库使用 Repomix', link: '/zh-cn/guide/development/using-repomix-as-a-library' },
-            { text: 'AI辅助开发技巧', link: '/zh-cn/guide/tips/best-practices' },
+            { text: 'AI 辅助开发技巧', link: '/zh-cn/guide/tips/best-practices' },
           ],
         },
         {
           text: '社区',
           items: [
             { text: '社区项目', link: '/zh-cn/guide/community-projects' },
-            { text: '为Repomix做贡献', link: '/zh-cn/guide/development/' },
+            { text: '为 Repomix 做贡献', link: '/zh-cn/guide/development/' },
             { text: '赞助商', link: '/zh-cn/guide/sponsors' },
-            { text: 'Privacy Policy', link: '/zh-cn/guide/privacy' },
+            { text: '隐私政策', link: '/zh-cn/guide/privacy' },
           ],
         },
       ],

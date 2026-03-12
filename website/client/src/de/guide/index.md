@@ -6,7 +6,7 @@ import YouTubeVideo from '../../../components/YouTubeVideo.vue'
 import { VIDEO_IDS } from '../../../utils/videos'
 </script>
 
-Repomix ist ein Tool, das Ihr gesamtes Repository in eine einzige, KI-freundliche Datei verpackt. Es wurde entwickelt, um Ihren Codebase an große Sprachmodelle (LLMs) wie ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity, Gemma, Llama und mehr zu übergeben.
+Repomix ist ein Tool, das Ihr gesamtes Repository in eine einzige, KI-freundliche Datei verpackt. Es wurde entwickelt, um Ihre Codebasis an große Sprachmodelle (LLMs) wie ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity, Gemma, Llama und weitere zu übergeben.
 
 <YouTubeVideo :videoId="VIDEO_IDS.REPOMIX_DEMO" />
 
@@ -44,15 +44,15 @@ Viel Spaß beim Programmieren! 🚀
 
 ## Warum Repomix?
 
-Repomix zeichnet sich durch seine Fähigkeit aus, mit Abonnement-Services wie ChatGPT, Claude, Gemini, Grok zu arbeiten, ohne sich um Kosten sorgen zu müssen, während es einen vollständigen Codebase-Kontext bereitstellt, der die Notwendigkeit zur Dateierkundung eliminiert – was die Analyse schneller und oft genauer macht.
+Repomix funktioniert mit jedem Abo-Service wie ChatGPT, Claude, Gemini oder Grok – ganz ohne zusätzliche Kosten. Da der vollständige Codebasis-Kontext bereitgestellt wird, entfällt das mühsame Durchsuchen einzelner Dateien, was die Analyse schneller und präziser macht.
 
-Mit der gesamten Codebase als verfügbarem Kontext ermöglicht Repomix eine breite Palette von Anwendungen, einschließlich Implementierungsplanung, Fehleruntersuchung, Sicherheitsprüfungen von Drittanbieter-Bibliotheken, Dokumentationsgenerierung und vieles mehr.
+Mit der gesamten Codebasis als Kontext eröffnet Repomix vielfältige Einsatzmöglichkeiten: Implementierungsplanung, Fehleranalyse, Sicherheitsprüfungen von Drittanbieter-Bibliotheken, Dokumentationserstellung und vieles mehr.
 
 ## Kernfunktionen
 
-- **KI-optimierte Ausgabe**: Formatiert Ihren Codebase für einfache KI-Verarbeitung
-- **Token-Zählung**: Verfolgt Token-Nutzung für LLM-Kontextgrenzen
-- **Git-bewusst**: Berücksichtigt Ihre `.gitignore`-Dateien und `.git/info/exclude`-Dateien
+- **KI-optimierte Ausgabe**: Formatiert Ihre Codebasis für einfache KI-Verarbeitung
+- **Token-Zählung**: Verfolgt die Token-Nutzung für LLM-Kontextgrenzen
+- **Git-kompatibel**: Berücksichtigt Ihre `.gitignore`- und `.git/info/exclude`-Dateien
 - **Sicherheitsorientiert**: Erkennt sensible Informationen
 - **Mehrere Ausgabeformate**: Wählen Sie zwischen Klartext, XML oder Markdown
 

@@ -1,10 +1,10 @@
 # 作为库使用 Repomix
 
-除了作为 CLI 工具使用 Repomix 外，您还可以将其功能直接集成到 Node.js 应用程序中。
+除了作为 CLI 工具使用 Repomix 外，你还可以将其功能直接集成到 Node.js 应用程序中。
 
 ## 安装
 
-在您的项目中安装 Repomix 作为依赖项：
+在你的项目中安装 Repomix 作为依赖项：
 
 ```bash
 npm install repomix
@@ -34,13 +34,13 @@ async function packProject() {
 `result.packResult` 包含有关处理文件的信息，包括：
 - `totalFiles`：处理的文件数量
 - `totalCharacters`：总字符数
-- `totalTokens`：总令牌数（对 LLM 上下文限制有用）
+- `totalTokens`：总 token 数（对 LLM 上下文限制有用）
 - `fileCharCounts`：每个文件的字符数
-- `fileTokenCounts`：每个文件的令牌数
+- `fileTokenCounts`：每个文件的 token 数
 
 ## 处理远程仓库
 
-您可以克隆并处理远程仓库：
+你可以克隆并处理远程仓库：
 
 ```javascript
 import { runCli, type CliOptions } from 'repomix';
@@ -59,7 +59,7 @@ async function processRemoteRepo(repoUrl) {
 
 ## 使用核心组件
 
-要获得更多控制，您可以直接使用 Repomix 的低级 API：
+要获得更多控制，你可以直接使用 Repomix 的低级 API：
 
 ```javascript
 import { searchFiles, collectFiles, processFiles, TokenCounter } from 'repomix';
@@ -70,7 +70,7 @@ async function analyzeFiles(directory) {
   const rawFiles = await collectFiles(filePaths, directory);
   const processedFiles = await processFiles(rawFiles, { /* 配置 */ });
   
-  // 计算令牌
+  // 计算 token
   const tokenCounter = new TokenCounter('o200k_base');
   
   // 返回分析结果
@@ -97,4 +97,4 @@ async function analyzeFiles(directory) {
 
 ## 实际示例
 
-Repomix 网站（[repomix.com](https://repomix.com)）使用 Repomix 作为库来处理远程仓库。您可以在 [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts) 中查看实现。 
+Repomix 网站（[repomix.com](https://repomix.com)）使用 Repomix 作为库来处理远程仓库。你可以在 [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts) 中查看实现。 

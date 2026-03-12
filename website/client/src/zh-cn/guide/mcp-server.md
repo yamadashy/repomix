@@ -1,6 +1,6 @@
 # MCP服务器
 
-Repomix 支持 [Model Context Protocol (MCP)](https://modelcontextprotocol.io)，允许 AI 助手直接与您的代码库交互。当作为 MCP 服务器运行时，Repomix 提供了工具，使 AI 助手能够在无需手动准备文件的情况下打包本地或远程仓库进行分析。
+Repomix 支持 [Model Context Protocol (MCP)](https://modelcontextprotocol.io)，允许 AI 助手直接与你的代码库交互。当作为 MCP 服务器运行时，Repomix 提供了工具，使 AI 助手能够在无需手动准备文件的情况下打包本地或远程仓库进行分析。
 
 > [!NOTE]  
 > 这是一个实验性功能，我们将根据用户反馈和实际使用情况积极改进
@@ -17,11 +17,11 @@ repomix --mcp
 
 ## 配置 MCP 服务器
 
-要将 Repomix 作为 MCP 服务器与 Claude 等 AI 助手一起使用，您需要配置 MCP 设置：
+要将 Repomix 作为 MCP 服务器与 Claude 等 AI 助手一起使用，你需要配置 MCP 设置：
 
 ### 对于 VS Code
 
-您可以使用以下方法之一在 VS Code 中安装 Repomix MCP 服务器：
+你可以使用以下方法之一在 VS Code 中安装 Repomix MCP 服务器：
 
 1. **使用安装徽章：**
 
@@ -74,11 +74,11 @@ repomix --mcp
 claude mcp add repomix -- npx -y repomix --mcp
 ```
 
-或者，您可以使用**官方Repomix插件**获得更便捷的体验。插件提供自然语言命令和更简单的设置。详情请参阅[Claude Code插件](/zh-cn/guide/claude-code-plugins)文档。
+或者，你可以使用**官方Repomix插件**获得更便捷的体验。插件提供自然语言命令和更简单的设置。详情请参阅[Claude Code插件](/zh-cn/guide/claude-code-plugins)文档。
 
 ### 使用 Docker 代替 npx
 
-您可以使用 Docker 代替 npx 来运行 Repomix 作为 MCP 服务器：
+你可以使用 Docker 代替 npx 来运行 Repomix 作为 MCP 服务器：
 
 ```json
 {
@@ -107,7 +107,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 
 **参数：**
 - `directory`：（必需）要打包的目录的绝对路径
-- `compress`：（可选，默认值：false）启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义含义的同时减少约 70% 的令牌使用量。由于 grep_repomix_output 允许增量内容检索，通常不需要。仅在您特别需要大型仓库的整个代码库内容时使用。
+- `compress`：（可选，默认值：false）启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义信息的同时减少约 70% 的 token 用量。由于 grep_repomix_output 支持按需检索内容，一般不需要启用此选项。仅在你特别需要大型仓库的整个代码库内容时使用。
 - `includePatterns`：（可选）使用 fast-glob 模式指定要包含的文件。多个模式可以用逗号分隔（例如，"**/*.{js,ts}", "src/**,docs/**"）。只有匹配的文件会被处理。
 - `ignorePatterns`：（可选）使用 fast-glob 模式指定要排除的其他文件。多个模式可以用逗号分隔（例如，"test/**,*.spec.js", "node_modules/**,dist/**"）。这些模式补充 .gitignore 和内置排除。
 - `topFilesLength`：（可选，默认值：10）在代码库分析的指标摘要中显示的最大文件数（按大小排序）。
@@ -129,7 +129,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 
 **参数：**
 - `remote`：（必需）GitHub 仓库 URL 或用户/仓库格式（例如，"yamadashy/repomix", "https://github.com/user/repo", 或 "https://github.com/user/repo/tree/branch"）
-- `compress`：（可选，默认值：false）启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义含义的同时减少约 70% 的令牌使用量。由于 grep_repomix_output 允许增量内容检索，通常不需要。仅在您特别需要大型仓库的整个代码库内容时使用。
+- `compress`：（可选，默认值：false）启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义信息的同时减少约 70% 的 token 用量。由于 grep_repomix_output 支持按需检索内容，一般不需要启用此选项。仅在你特别需要大型仓库的整个代码库内容时使用。
 - `includePatterns`：（可选）使用 fast-glob 模式指定要包含的文件。多个模式可以用逗号分隔（例如，"**/*.{js,ts}", "src/**,docs/**"）。只有匹配的文件会被处理。
 - `ignorePatterns`：（可选）使用 fast-glob 模式指定要排除的其他文件。多个模式可以用逗号分隔（例如，"test/**,*.spec.js", "node_modules/**,dist/**"）。这些模式补充 .gitignore 和内置排除。
 - `topFilesLength`：（可选，默认值：10）在代码库分析的指标摘要中显示的最大文件数（按大小排序）。
@@ -246,9 +246,9 @@ const dirContent = await tools.file_system_read_directory({
 
 将 Repomix 作为 MCP 服务器使用提供了几个优势：
 
-1. **直接集成**：AI 助手可以直接分析您的代码库，无需手动文件准备。
+1. **直接集成**：AI 助手可以直接分析你的代码库，无需手动文件准备。
 2. **高效工作流**：通过消除手动生成和上传文件的需求，简化了代码分析过程。
 3. **一致输出**：确保 AI 助手以一致、优化的格式接收代码库。
-4. **高级功能**：利用 Repomix 的所有功能，如代码压缩、令牌计数和安全检查。
+4. **高级功能**：利用 Repomix 的所有功能，如代码压缩、token 计数和安全检查。
 
-配置完成后，您的 AI 助手可以直接使用 Repomix 的功能来分析代码库，使代码分析工作流更加高效。
+配置完成后，你的 AI 助手可以直接使用 Repomix 的功能来分析代码库，使代码分析工作流更加高效。
