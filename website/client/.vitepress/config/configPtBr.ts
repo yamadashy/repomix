@@ -11,6 +11,7 @@ export const configPtBr = defineConfig({
         link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa',
       },
       { text: 'Entrar no Discord', link: 'https://discord.gg/wNYzTwZFku' },
+      { text: 'Política de Privacidade', link: '/pt-br/guide/privacy' },
     ],
     sidebar: {
       '/pt-br/guide/': [

@@ -11,6 +11,7 @@ export const configId = defineConfig({
         link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa',
       },
       { text: 'Bergabung Discord', link: 'https://discord.gg/wNYzTwZFku' },
+      { text: 'Kebijakan Privasi', link: '/id/guide/privacy' },
     ],
     sidebar: {
       '/id/guide/': [

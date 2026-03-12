@@ -11,6 +11,7 @@ export const configRu = defineConfig({
         link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa',
       },
       { text: 'Присоединиться к Discord', link: 'https://discord.gg/wNYzTwZFku' },
+      { text: 'Политика конфиденциальности', link: '/ru/guide/privacy' },
     ],
     sidebar: {
       '/ru/guide/': [

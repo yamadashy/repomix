@@ -11,6 +11,7 @@ export const configKo = defineConfig({
         link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa',
       },
       { text: 'Discord 참여', link: 'https://discord.gg/wNYzTwZFku' },
+      { text: '개인정보 처리방침', link: '/ko/guide/privacy' },
     ],
     sidebar: {
       '/ko/guide/': [

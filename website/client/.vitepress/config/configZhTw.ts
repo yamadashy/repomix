@@ -11,6 +11,7 @@ export const configZhTw = defineConfig({
         link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa',
       },
       { text: '加入 Discord', link: 'https://discord.gg/wNYzTwZFku' },
+      { text: '隱私權政策', link: '/zh-tw/guide/privacy' },
     ],
     sidebar: {
       '/zh-tw/guide/': [

@@ -9,6 +9,7 @@ export const configJa = defineConfig({
       { text: '使い方', link: '/ja/guide/', activeMatch: '^/ja/guide/' },
       { text: 'Chrome拡張', link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa' },
       { text: 'Discordに参加', link: 'https://discord.gg/wNYzTwZFku' },
+      { text: 'プライバシーポリシー', link: '/ja/guide/privacy' },
     ],
     sidebar: {
       '/ja/guide/': [

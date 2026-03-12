@@ -11,6 +11,7 @@ export const configTr = defineConfig({
         link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa',
       },
       { text: "Discord'a Katıl", link: 'https://discord.gg/wNYzTwZFku' },
+      { text: 'Gizlilik Politikası', link: '/tr/guide/privacy' },
     ],
     sidebar: {
       '/tr/guide/': [

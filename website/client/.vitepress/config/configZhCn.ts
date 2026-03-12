@@ -11,6 +11,7 @@ export const configZhCn = defineConfig({
         link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa',
       },
       { text: '加入 Discord', link: 'https://discord.gg/wNYzTwZFku' },
+      { text: '隐私政策', link: '/zh-cn/guide/privacy' },
     ],
     sidebar: {
       '/zh-cn/guide/': [

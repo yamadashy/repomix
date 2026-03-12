@@ -11,6 +11,7 @@ export const configHi = defineConfig({
         link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa',
       },
       { text: 'Discord में शामिल हों', link: 'https://discord.gg/wNYzTwZFku' },
+      { text: 'गोपनीयता नीति', link: '/hi/guide/privacy' },
     ],
     sidebar: {
       '/hi/guide/': [

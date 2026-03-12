@@ -11,6 +11,7 @@ export const configVi = defineConfig({
         link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa',
       },
       { text: 'Tham gia Discord', link: 'https://discord.gg/wNYzTwZFku' },
+      { text: 'Chính sách Bảo mật', link: '/vi/guide/privacy' },
     ],
     sidebar: {
       '/vi/guide/': [

@@ -11,6 +11,7 @@ export const configEnUs = defineConfig({
         link: 'https://chromewebstore.google.com/detail/repomix/fimfamikepjgchehkohedilpdigcpkoa',
       },
       { text: 'Join Discord', link: 'https://discord.gg/wNYzTwZFku' },
+      { text: 'Privacy Policy', link: '/guide/privacy' },
     ],
     sidebar: {
       '/guide/': [
