@@ -1,8 +1,10 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
+import process from 'node:process';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { DefaultActionRunnerResult } from '../../../src/cli/actions/defaultAction.js';
 import { copyOutputToCurrentDirectory, runRemoteAction } from '../../../src/cli/actions/remoteAction.js';
+import { findLocalConfigPath } from '../../../src/config/configLoad.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -17,6 +19,9 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 });
 vi.mock('../../../src/shared/logger');
 vi.mock('../../../src/cli/cliSpinner');
+vi.mock('../../../src/config/configLoad.js', () => ({
+  findLocalConfigPath: vi.fn(),
+}));
 
 describe('remoteAction functions', () => {
   beforeEach(() => {
@@ -204,6 +209,146 @@ describe('remoteAction functions', () => {
       expect(isGitInstalledMock).toHaveBeenCalledTimes(1); // Git check should be called when fallback to git clone
       expect(execGitShallowCloneMock).not.toHaveBeenCalled();
     });
+  });
+
+  test('should resolve relative config path from CWD when --remote is used with -c option', async () => {
+    const runDefaultActionMock = vi.fn(async () => {
+      return {
+        packResult: {
+          totalFiles: 1,
+          totalCharacters: 1,
+          totalTokens: 1,
+          fileCharCounts: {},
+          fileTokenCounts: {},
+          suspiciousFilesResults: [],
+          suspiciousGitDiffResults: [],
+          suspiciousGitLogResults: [],
+          processedFiles: [],
+          safeFilePaths: [],
+          gitDiffTokenCount: 0,
+          gitLogTokenCount: 0,
+          skippedFiles: [],
+        },
+        config: createMockConfig(),
+      } satisfies DefaultActionRunnerResult;
+    });
+
+    vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+    await runRemoteAction(
+      'https://gitlab.com/owner/repo.git',
+      { config: 'my-config.json' },
+      {
+        isGitInstalled: async () => Promise.resolve(true),
+        execGitShallowClone: vi.fn(),
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('not supported')),
+        isGitHubRepository: vi.fn().mockReturnValue(false),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+      },
+    );
+
+    // Verify the config path was resolved to an absolute path from CWD
+    const calledOptions = runDefaultActionMock.mock.calls[0][2];
+    expect(path.isAbsolute(calledOptions.config)).toBe(true);
+    expect(calledOptions.config).toBe(path.resolve(process.cwd(), 'my-config.json'));
+  });
+
+  test('should search for default config in CWD when --remote is used without -c option', async () => {
+    const runDefaultActionMock = vi.fn(async () => {
+      return {
+        packResult: {
+          totalFiles: 1,
+          totalCharacters: 1,
+          totalTokens: 1,
+          fileCharCounts: {},
+          fileTokenCounts: {},
+          suspiciousFilesResults: [],
+          suspiciousGitDiffResults: [],
+          suspiciousGitLogResults: [],
+          processedFiles: [],
+          safeFilePaths: [],
+          gitDiffTokenCount: 0,
+          gitLogTokenCount: 0,
+          skippedFiles: [],
+        },
+        config: createMockConfig(),
+      } satisfies DefaultActionRunnerResult;
+    });
+
+    // Mock findLocalConfigPath to return a config found in CWD
+    const mockConfigPath = path.resolve(process.cwd(), 'repomix.config.json');
+    vi.mocked(findLocalConfigPath).mockResolvedValue(mockConfigPath);
+
+    vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+    await runRemoteAction(
+      'https://gitlab.com/owner/repo.git',
+      {},
+      {
+        isGitInstalled: async () => Promise.resolve(true),
+        execGitShallowClone: vi.fn(),
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('not supported')),
+        isGitHubRepository: vi.fn().mockReturnValue(false),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+      },
+    );
+
+    // Verify that findLocalConfigPath was called with CWD
+    expect(findLocalConfigPath).toHaveBeenCalledWith(process.cwd());
+
+    // Verify the resolved config path was passed to runDefaultAction
+    const calledOptions = runDefaultActionMock.mock.calls[0][2];
+    expect(calledOptions.config).toBe(mockConfigPath);
+  });
+
+  test('should not set config when no local config exists in CWD for --remote', async () => {
+    const runDefaultActionMock = vi.fn(async () => {
+      return {
+        packResult: {
+          totalFiles: 1,
+          totalCharacters: 1,
+          totalTokens: 1,
+          fileCharCounts: {},
+          fileTokenCounts: {},
+          suspiciousFilesResults: [],
+          suspiciousGitDiffResults: [],
+          suspiciousGitLogResults: [],
+          processedFiles: [],
+          safeFilePaths: [],
+          gitDiffTokenCount: 0,
+          gitLogTokenCount: 0,
+          skippedFiles: [],
+        },
+        config: createMockConfig(),
+      } satisfies DefaultActionRunnerResult;
+    });
+
+    // Mock findLocalConfigPath to return null (no config found)
+    vi.mocked(findLocalConfigPath).mockResolvedValue(null);
+
+    vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+    await runRemoteAction(
+      'https://gitlab.com/owner/repo.git',
+      {},
+      {
+        isGitInstalled: async () => Promise.resolve(true),
+        execGitShallowClone: vi.fn(),
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('not supported')),
+        isGitHubRepository: vi.fn().mockReturnValue(false),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+      },
+    );
+
+    // Verify the config option was not set
+    const calledOptions = runDefaultActionMock.mock.calls[0][2];
+    expect(calledOptions.config).toBeUndefined();
   });
 
   describe('copyOutputToCurrentDirectory', () => {
