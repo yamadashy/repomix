@@ -17,6 +17,56 @@ import { configZhTwSearch } from './configZhTw';
 
 const googleAnalyticsTag = 'G-7PTT4PLC69';
 
+// JSON-LD Structured Data
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      name: 'Repomix',
+      url: 'https://repomix.com',
+      description: 'Pack your codebase into AI-friendly formats',
+    },
+    {
+      '@type': 'SoftwareApplication',
+      name: 'Repomix',
+      description:
+        'A tool that packs your entire repository into a single, AI-friendly file for use with Large Language Models (LLMs) like ChatGPT, Claude, Gemini, and more.',
+      url: 'https://repomix.com',
+      applicationCategory: 'DeveloperApplication',
+      operatingSystem: 'Windows, macOS, Linux',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+      },
+      license: 'https://opensource.org/licenses/MIT',
+      isAccessibleForFree: true,
+      installUrl: 'https://www.npmjs.com/package/repomix',
+      downloadUrl: 'https://www.npmjs.com/package/repomix',
+      softwareRequirements: 'Node.js 20.0.0 or higher',
+      image: 'https://repomix.com/images/repomix-logo.svg',
+      screenshot: 'https://repomix.com/images/og-image-large.png',
+      author: {
+        '@type': 'Person',
+        name: 'Kazuki Yamada',
+        url: 'https://github.com/yamadashy',
+      },
+      sameAs: ['https://github.com/yamadashy/repomix', 'https://www.npmjs.com/package/repomix'],
+      featureList: [
+        'AI-optimized output formats (XML, Markdown, JSON, Plain Text)',
+        'Token counting for LLM context limits',
+        'Git-aware file processing',
+        'Security-focused with Secretlint integration',
+        'Remote repository processing',
+        'MCP Server integration',
+        'Code compression with Tree-sitter',
+        'Custom instructions support',
+      ],
+    },
+  ],
+};
+
 // PWA Manifest Configuration
 const manifest: Partial<ManifestOptions> = {
   name: 'Repomix',
@@ -101,6 +151,9 @@ export const configShard = defineConfig({
   },
 
   head: [
+    // JSON-LD Structured Data
+    ['script', { type: 'application/ld+json' }, JSON.stringify(jsonLd)],
+
     // Favicon
     ['link', { rel: 'icon', href: '/images/repomix-logo.svg' }],
 
