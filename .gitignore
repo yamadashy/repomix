@@ -61,3 +61,4 @@ repomix-output.*
 # private files
 .private/
 .env
+.claude

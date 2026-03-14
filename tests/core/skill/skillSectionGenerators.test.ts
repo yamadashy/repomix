@@ -32,8 +32,9 @@ const createMockContext = (overrides: Partial<RenderContext> = {}): RenderContex
   gitDiffWorkTree: undefined,
   gitDiffStaged: undefined,
   gitLogEnabled: false,
-  gitLogContent: undefined,
   gitLogCommits: undefined,
+  gitCommitHistorySummary: undefined,
+  gitCommitGraph: undefined,
   ...overrides,
 });
 

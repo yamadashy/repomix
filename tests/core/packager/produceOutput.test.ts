@@ -50,7 +50,7 @@ describe('produceOutput', () => {
       const mockDeps = createMockDeps();
       const mockConfig = createMockConfig();
       const gitDiffResult = { workTreeDiffContent: 'diff', stagedDiffContent: '' };
-      const gitLogResult = { logContent: 'logs', commits: [] };
+      const gitLogResult = { logCommits: [] };
 
       await produceOutput(
         ['/root'],

@@ -45,6 +45,9 @@ const semanticSuggestionMap: Record<string, string[]> = {
   console: ['--stdout'],
   terminal: ['--stdout'],
   pipe: ['--stdin'],
+  'git-commits': ['--include-logs', '--git-graph'],
+  'commit-range': ['--commit-range'],
+  history: ['--include-logs'],
 };
 
 export const run = async () => {
@@ -145,6 +148,24 @@ export const run = async () => {
           return Number(v);
         },
       )
+      .option(
+        '--commit-range <range>',
+        'Commit range to analyze with git log (e.g., HEAD~20..HEAD, v1.0..v2.0, main..feature, default: HEAD~50..HEAD)',
+      )
+      // Git Log Diff Format Options (mutually exclusive - matches git log parameters)
+      .optionsGroup('Git Log Diff Format Options')
+      .addOption(new Option('--git-stat', 'Show per-file change counts (git log --stat)'))
+      .addOption(new Option('--git-patch', 'Show line-by-line diffs (git log --patch)'))
+      .addOption(new Option('--git-numstat', 'Show numeric additions/deletions per file (git log --numstat)'))
+      .addOption(new Option('--git-shortstat', 'Show one-line summary of changes (git log --shortstat)'))
+      .addOption(new Option('--git-dirstat', 'Show directory change distribution (git log --dirstat)'))
+      .addOption(new Option('--git-name-only', 'Show filenames only (git log --name-only)'))
+      .addOption(new Option('--git-name-status', 'Show filenames with A/M/D/R status (git log --name-status)'))
+      .addOption(new Option('--git-raw', 'Show low-level format with SHA hashes and modes (git log --raw)'))
+      // Git Log Output Verbosity & Graph Options (combinable with diff formats)
+      .optionsGroup('Git Log Output Verbosity & Graph Options')
+      .option('--git-graph', 'Include ASCII and Mermaid commit graph visualization (git log --graph --all)')
+      .option('--git-summary', 'Show file operations like creates, renames, mode changes (git log --summary)')
       // File Selection Options
       .optionsGroup('File Selection Options')
       .option(

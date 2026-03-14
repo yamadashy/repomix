@@ -28,6 +28,21 @@ export interface CliOptions extends OptionValues {
   includeDiffs?: boolean;
   includeLogs?: boolean;
   includeLogsCount?: number;
+  commitRange?: string;
+
+  // Git Log Diff Format Flags (mutually exclusive, --git- prefix per yamadashy)
+  gitStat?: boolean;
+  gitPatch?: boolean;
+  gitNumstat?: boolean;
+  gitShortstat?: boolean;
+  gitDirstat?: boolean;
+  gitNameOnly?: boolean;
+  gitNameStatus?: boolean;
+  gitRaw?: boolean;
+
+  // Git Log Output Verbosity & Graph Options (combinable with diff formats)
+  gitGraph?: boolean;
+  gitSummary?: boolean;
 
   // Filter Options
   include?: string;

@@ -59,6 +59,25 @@
 ## Opções MCP
 - `--mcp`: Executar como servidor Model Context Protocol para integração de ferramentas de IA
 
+## Opções de Histórico de Commits do Git
+
+Esses flags independentes espelham a estrutura do git log para controle detalhado:
+
+**Flags de Formato de Diff** (mutuamente exclusivos - escolha um):
+- `--git-stat`: Mostrar contagem de alterações por arquivo (git log --stat)
+- `--git-patch`: Mostrar diffs linha por linha (git log --patch)
+- `--git-numstat`: Mostrar adições/exclusões numéricas por arquivo (git log --numstat)
+- `--git-shortstat`: Mostrar resumo de uma linha das alterações (git log --shortstat)
+- `--git-dirstat`: Mostrar distribuição de alterações por diretório (git log --dirstat)
+- `--git-name-only`: Mostrar apenas nomes de arquivos (git log --name-only) - padrão
+- `--git-name-status`: Mostrar nomes de arquivos com status A/M/D/R (git log --name-status)
+- `--git-raw`: Mostrar formato de baixo nível com hashes SHA e modos (git log --raw)
+
+**Opções de Nível de Detalhe e Gráfico** (combináveis com qualquer formato de diff):
+- `--git-graph`: Incluir visualização de gráfico de commits ASCII e Mermaid (git log --graph --all)
+- `--git-summary`: Mostrar operações de arquivos como criações, renomeações, mudanças de modo (git log --summary)
+- `--commit-range <range>`: Intervalo de commits Git para analisar (padrão: HEAD~50..HEAD, suporta sintaxes .. e ..., ex: "HEAD~100..HEAD", "v1.0..v2.0", "main...feature-branch")
+
 ## Exemplos
 
 ```bash

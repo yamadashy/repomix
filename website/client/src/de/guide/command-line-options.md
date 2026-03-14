@@ -59,6 +59,25 @@
 ## MCP-Optionen
 - `--mcp`: Als Model Context Protocol Server für AI-Tool-Integration ausführen
 
+## Git-Commit-Verlaufsoptionen
+
+Diese unabhängigen Flags spiegeln die Struktur von git log für eine detaillierte Kontrolle wider:
+
+**Diff-Format-Flags** (sich gegenseitig ausschließend - wählen Sie eines):
+- `--git-stat`: Änderungsanzahl pro Datei anzeigen (git log --stat)
+- `--git-patch`: Zeilenweise Diffs anzeigen (git log --patch)
+- `--git-numstat`: Numerische Hinzufügungen/Löschungen pro Datei anzeigen (git log --numstat)
+- `--git-shortstat`: Einzeilige Zusammenfassung der Änderungen anzeigen (git log --shortstat)
+- `--git-dirstat`: Verzeichnis-Änderungsverteilung anzeigen (git log --dirstat)
+- `--git-name-only`: Nur Dateinamen anzeigen (git log --name-only) - Standard
+- `--git-name-status`: Dateinamen mit A/M/D/R-Status anzeigen (git log --name-status)
+- `--git-raw`: Low-Level-Format mit SHA-Hashes und Modi anzeigen (git log --raw)
+
+**Optionen für Ausgabedetails und Graphen** (kombinierbar mit jedem Diff-Format):
+- `--git-graph`: ASCII- und Mermaid-Commit-Graph-Visualisierung einschließen (git log --graph --all)
+- `--git-summary`: Dateioperationen wie Erstellen, Umbenennen, Modusänderungen anzeigen (git log --summary)
+- `--commit-range <range>`: Git-Commit-Bereich zur Analyse (Standard: HEAD~50..HEAD, unterstützt sowohl .. als auch ... Syntax, z.B. "HEAD~100..HEAD", "v1.0..v2.0", "main...feature-branch")
+
 ## Beispiele
 
 ```bash

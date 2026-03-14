@@ -61,6 +61,12 @@ This tool packages a local code directory into a consolidated XML file for AI an
 - `includePatterns`: (Optional) Specify files to include using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "**/*.{js,ts}", "src/**,docs/**"). Only matching files will be processed.
 - `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.
 - `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary for codebase analysis.
+- `includeLogs`: (Optional, default: false) Include git commit history with commit dates, messages, and file paths for each commit.
+- `commitRange`: (Optional, default: 'HEAD~50..HEAD') Git commit range for history analysis. Accepts standard git range syntax (e.g., "HEAD~100..HEAD", "v1.0.0..HEAD", or specific commit hashes).
+- `commitPatchDetail`: (Optional, default: 'name-only') Level of patch detail using git log params: 'patch' (git log --patch: line-by-line diffs), 'stat' (git log --stat: per-file change counts), 'numstat', 'shortstat', 'dirstat', 'name-only' (git log --name-only: filenames only), 'name-status' (filenames with A/M/D/R status), or 'raw' (low-level format).
+- `includeCommitGraph`: (Optional, default: false) Include ASCII art and Mermaid diagram visualizations showing branch/merge topology.
+- `includeSummary`: (Optional, default: false) Include commit summary statistics (total commits, merge commits, commit range).
+- `includeCommitPatches`: (Optional, default: false) Include code patches (diffs) for each commit in history.
 
 **Example:**
 ```json
@@ -105,6 +111,12 @@ This tool fetches, clones, and packages a GitHub repository into a consolidated 
 - `includePatterns`: (Optional) Specify files to include using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "**/*.{js,ts}", "src/**,docs/**"). Only matching files will be processed.
 - `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.
 - `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary for codebase analysis.
+- `includeLogs`: (Optional, default: false) Include git commit history with commit dates, messages, and file paths for each commit.
+- `commitRange`: (Optional, default: 'HEAD~50..HEAD') Git commit range for history analysis. Accepts standard git range syntax (e.g., "HEAD~100..HEAD", "v1.0.0..HEAD", or specific commit hashes).
+- `commitPatchDetail`: (Optional, default: 'name-only') Level of patch detail using git log params: 'patch' (git log --patch: line-by-line diffs), 'stat' (git log --stat: per-file change counts), 'numstat', 'shortstat', 'dirstat', 'name-only' (git log --name-only: filenames only), 'name-status' (filenames with A/M/D/R status), or 'raw' (low-level format).
+- `includeCommitGraph`: (Optional, default: false) Include ASCII art and Mermaid diagram visualizations showing branch/merge topology.
+- `includeSummary`: (Optional, default: false) Include commit summary statistics (total commits, merge commits, commit range).
+- `includeCommitPatches`: (Optional, default: false) Include code patches (diffs) for each commit in history.
 
 **Example:**
 ```json

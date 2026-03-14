@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   execGitDiff,
+  execGitGraph,
   execGitLog,
   execGitLogFilenames,
+  execGitLogStructured,
+  execGitLogTextBlob,
   execGitRevParse,
   execGitShallowClone,
   execGitVersion,
@@ -381,6 +384,84 @@ file.txt`;
       ).rejects.toThrow('Invalid repository URL. URL contains potentially dangerous parameters');
 
       expect(mockFileExecAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('execGitLogStructured', () => {
+    test('should pass maxBuffer option to execFileAsync', async () => {
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: 'output' });
+      await execGitLogStructured(
+        { directory: '/test', range: 'HEAD~5..HEAD', maxCommits: 10 },
+        { execFileAsync: mockFileExecAsync },
+      );
+      expect(mockFileExecAsync).toHaveBeenCalledWith(
+        'git',
+        expect.any(Array),
+        expect.objectContaining({ maxBuffer: 50 * 1024 * 1024 }),
+      );
+    });
+
+    test('should include both -n and range when both provided', async () => {
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: 'output' });
+      await execGitLogStructured(
+        { directory: '/test', range: 'HEAD~5..HEAD', maxCommits: 10 },
+        { execFileAsync: mockFileExecAsync },
+      );
+      const args = mockFileExecAsync.mock.calls[0][1] as string[];
+      expect(args).toContain('-n');
+      expect(args).toContain('10');
+      expect(args).toContain('HEAD~5..HEAD');
+    });
+  });
+
+  describe('execGitLogTextBlob', () => {
+    test('should pass maxBuffer option to execFileAsync', async () => {
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: 'output' });
+      await execGitLogTextBlob(
+        { directory: '/test', range: 'HEAD~5..HEAD', maxCommits: 10, patchDetail: 'stat' },
+        { execFileAsync: mockFileExecAsync },
+      );
+      expect(mockFileExecAsync).toHaveBeenCalledWith(
+        'git',
+        expect.any(Array),
+        expect.objectContaining({ maxBuffer: 50 * 1024 * 1024 }),
+      );
+    });
+
+    test('should include both -n and range when both provided', async () => {
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: 'output' });
+      await execGitLogTextBlob(
+        { directory: '/test', range: 'HEAD~5..HEAD', maxCommits: 10, patchDetail: 'patch' },
+        { execFileAsync: mockFileExecAsync },
+      );
+      const args = mockFileExecAsync.mock.calls[0][1] as string[];
+      expect(args).toContain('-n');
+      expect(args).toContain('10');
+      expect(args).toContain('HEAD~5..HEAD');
+    });
+  });
+
+  describe('execGitGraph', () => {
+    test('should pass maxBuffer option to execFileAsync', async () => {
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: 'output' });
+      await execGitGraph({ directory: '/test', range: 'HEAD~5..HEAD' }, { execFileAsync: mockFileExecAsync });
+      expect(mockFileExecAsync).toHaveBeenCalledWith(
+        'git',
+        expect.any(Array),
+        expect.objectContaining({ maxBuffer: 50 * 1024 * 1024 }),
+      );
+    });
+
+    test('should include both -n and range when both provided', async () => {
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: 'output' });
+      await execGitGraph(
+        { directory: '/test', range: 'HEAD~5..HEAD', maxCommits: 10 },
+        { execFileAsync: mockFileExecAsync },
+      );
+      const args = mockFileExecAsync.mock.calls[0][1] as string[];
+      expect(args).toContain('-n');
+      expect(args).toContain('10');
+      expect(args).toContain('HEAD~5..HEAD');
     });
   });
 
