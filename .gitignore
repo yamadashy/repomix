@@ -53,6 +53,7 @@ repomix-output.*
 # Agent
 /.mcp.json
 .agents/local/
+.claude/settings.local.json
 
 # serena
 .serena/
