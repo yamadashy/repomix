@@ -222,6 +222,7 @@ export const execGitLogStructured = async (
   options: GitLogStructuredOptions,
   deps = { execFileAsync },
 ): Promise<string> => {
+  if (options.range) validateCommitRange(options.range);
   const args = ['-C', options.directory, 'log', '-z', '--raw', `--pretty=format:${METADATA_FORMAT}`];
   if (options.maxCommits) args.push('-n', options.maxCommits.toString());
   if (options.range) args.push(options.range);
@@ -236,6 +237,7 @@ export const execGitLogStructured = async (
 
 /** Pass 2: Patch/stat text blob - uses double-NUL as record separator for consistency */
 export const execGitLogTextBlob = async (options: GitLogTextBlobOptions, deps = { execFileAsync }): Promise<string> => {
+  if (options.range) validateCommitRange(options.range);
   // Use double-NUL as separator - matches structured output format, 100% safe since git rejects NUL in content
   const args = ['-C', options.directory, 'log', `--pretty=format:${NUL}${NUL}`, `--${options.patchDetail}`];
   if (options.maxCommits) args.push('-n', options.maxCommits.toString());
@@ -251,6 +253,7 @@ export const execGitLogTextBlob = async (options: GitLogTextBlobOptions, deps = 
 
 /** Graph visualization (separate call to avoid prefix interleaving) */
 export const execGitGraph = async (options: GitLogStructuredOptions, deps = { execFileAsync }): Promise<string> => {
+  if (options.range) validateCommitRange(options.range);
   const args = ['-C', options.directory, 'log', '--graph', '--oneline', '--all'];
   if (options.maxCommits) args.push('-n', options.maxCommits.toString());
   if (options.range) args.push(options.range);
@@ -260,6 +263,18 @@ export const execGitGraph = async (options: GitLogStructuredOptions, deps = { ex
   } catch (error) {
     logger.trace('Failed to execute git graph:', (error as Error).message);
     throw error;
+  }
+};
+
+/**
+ * Validates a commit range string to prevent git flag injection.
+ * execFile prevents shell injection, but git interprets leading '--' as flags,
+ * allowing e.g. '--output=<file>' to write files or '--pretty=...' to corrupt output.
+ * @throws {RepomixError} If the range starts with '-'
+ */
+export const validateCommitRange = (range: string): void => {
+  if (range.startsWith('-')) {
+    throw new RepomixError(`Invalid commit range: '${range}'. Range must not start with '-'.`);
   }
 };
 

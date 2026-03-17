@@ -49,7 +49,10 @@ export const repomixConfigBaseSchema = z.object({
           includeDiffs: z.boolean().optional(),
           includeLogs: z.boolean().optional(),
           includeLogsCount: z.number().optional(),
-          commitRange: z.string().optional(),
+          commitRange: z
+            .string()
+            .refine((v) => !v.startsWith('-'), { message: "commitRange must not start with '-'" })
+            .optional(),
           commitPatchDetail: z
             .enum(['patch', 'stat', 'numstat', 'shortstat', 'dirstat', 'name-only', 'name-status', 'raw'])
             .optional(),
@@ -117,7 +120,10 @@ export const repomixConfigDefaultSchema = z.object({
       includeDiffs: z.boolean().default(false),
       includeLogs: z.boolean().default(false),
       includeLogsCount: z.number().int().min(1).default(50),
-      commitRange: z.string().default('HEAD~50..HEAD'),
+      commitRange: z
+        .string()
+        .refine((v) => !v.startsWith('-'), { message: "commitRange must not start with '-'" })
+        .default('HEAD~50..HEAD'),
       commitPatchDetail: z
         .enum(['patch', 'stat', 'numstat', 'shortstat', 'dirstat', 'name-only', 'name-status', 'raw'])
         .default('name-only'),

@@ -80,6 +80,18 @@ describe('gitHistory', () => {
     it('should throw error for invalid three-dot range', () => {
       expect(() => parseCommitRange('main...')).toThrow('Invalid commit range format');
     });
+
+    it('should throw error for range starting with -- (flag injection attempt)', () => {
+      expect(() => parseCommitRange('--output=/tmp/evil')).toThrow("must not start with '-'");
+    });
+
+    it('should throw error for range starting with - (flag injection attempt)', () => {
+      expect(() => parseCommitRange('-n')).toThrow("must not start with '-'");
+    });
+
+    it('should throw error for --pretty injection attempt', () => {
+      expect(() => parseCommitRange('--pretty=INJECTED')).toThrow("must not start with '-'");
+    });
   });
 
   describe('getCommitMetadata', () => {

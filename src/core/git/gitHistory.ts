@@ -70,6 +70,12 @@ export const parseCommitRange = (range: string): ParsedCommitRange => {
     throw new RepomixError('Commit range must be a non-empty string');
   }
 
+  // Reject values starting with '-' to prevent git flag injection (e.g. --output=, --pretty=)
+  // execFile prevents shell injection but git itself would interpret leading '--' as flags
+  if (range.startsWith('-')) {
+    throw new RepomixError(`Invalid commit range: '${range}'. Range must not start with '-'.`);
+  }
+
   // Handle single commit (treated as commit^..commit)
   if (!range.includes('..')) {
     return { from: `${range}^`, to: range, raw: range, separator: '..' };
