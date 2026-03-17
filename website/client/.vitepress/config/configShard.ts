@@ -1,7 +1,7 @@
 import { visualizer } from 'rollup-plugin-visualizer';
 import { type ManifestOptions, VitePWA } from 'vite-plugin-pwa';
-import llmstxt from 'vitepress-plugin-llms';
 import { defineConfig } from 'vitepress';
+import llmstxt from 'vitepress-plugin-llms';
 import { configDeSearch } from './configDe';
 import { configEsSearch } from './configEs';
 import { configHiSearch } from './configHi';
