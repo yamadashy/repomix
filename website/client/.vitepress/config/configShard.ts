@@ -1,5 +1,6 @@
 import { visualizer } from 'rollup-plugin-visualizer';
 import { type ManifestOptions, VitePWA } from 'vite-plugin-pwa';
+import llmstxt from 'vitepress-plugin-llms';
 import { defineConfig } from 'vitepress';
 import { configDeSearch } from './configDe';
 import { configEsSearch } from './configEs';
@@ -213,6 +214,10 @@ export const configShard = defineConfig({
       },
     },
     plugins: [
+      ...llmstxt({
+        workDir: 'en',
+        domain: 'https://repomix.com',
+      }),
       VitePWA({
         registerType: 'autoUpdate',
         manifest,
