@@ -13,12 +13,24 @@ interface CacheEntry {
 export class RequestCache<T> {
   private cache: Map<string, CacheEntry> = new Map();
   private readonly ttl: number;
+  private readonly cleanupIntervalId: NodeJS.Timeout;
 
   constructor(ttlInSeconds = 60) {
     this.ttl = ttlInSeconds * 1000;
 
     // Set up periodic cache cleanup
-    setInterval(() => this.cleanup(), ttlInSeconds * 1000);
+    // Use .bind() to avoid capturing the surrounding scope in a closure
+    this.cleanupIntervalId = setInterval(this.cleanup.bind(this), ttlInSeconds * 1000);
+
+    // Allow the process to exit even if the interval is still active
+    if (this.cleanupIntervalId.unref) {
+      this.cleanupIntervalId.unref();
+    }
+  }
+
+  dispose(): void {
+    clearInterval(this.cleanupIntervalId);
+    this.cache.clear();
   }
 
   async get(key: string): Promise<T | undefined> {

@@ -112,7 +112,10 @@ const downloadAndExtractArchive = async (
   deps: ArchiveDownloadDeps = defaultDeps,
 ): Promise<void> => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  // Use .bind() instead of an arrow function to avoid capturing the surrounding scope
+  // (response, streams, etc.) in a closure, which would prevent GC of those large objects
+  // until the timeout fires or is cleared.
+  const timeoutId = setTimeout(controller.abort.bind(controller), timeout);
 
   try {
     const response = await deps.fetch(archiveUrl, {

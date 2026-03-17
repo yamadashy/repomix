@@ -74,11 +74,10 @@ export function usePackRequest() {
     inputRepositoryUrl.value = inputUrl.value;
 
     // Set up automatic timeout
-    const timeoutId = setTimeout(() => {
-      if (requestController) {
-        requestController.abort('timeout');
-      }
-    }, TIMEOUT_MS);
+    // Use .bind() instead of a closure to avoid capturing the surrounding scope
+    // (request data, callbacks, etc.), which would prevent GC of those objects.
+    const abortOnTimeout = requestController.abort.bind(requestController, 'timeout');
+    const timeoutId = setTimeout(abortOnTimeout, TIMEOUT_MS);
 
     try {
       await handlePackRequest(
