@@ -112,7 +112,8 @@ const downloadAndExtractArchive = async (
   deps: ArchiveDownloadDeps = defaultDeps,
 ): Promise<void> => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const abort = controller.abort.bind(controller);
+  const timeoutId = setTimeout(abort, timeout);
 
   try {
     const response = await deps.fetch(archiveUrl, {
