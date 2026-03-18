@@ -16,6 +16,14 @@ import { configViSearch } from './configVi';
 import { configZhCnSearch } from './configZhCn';
 import { configZhTwSearch } from './configZhTw';
 
+// Site Metadata
+const siteName = 'Repomix';
+const siteUrl = 'https://repomix.com';
+const siteDescription = 'Pack your codebase into AI-friendly formats';
+const ogImageUrl = `${siteUrl}/images/og-image-large.png`;
+const githubUrl = 'https://github.com/yamadashy/repomix';
+const npmUrl = 'https://www.npmjs.com/package/repomix';
+
 const googleAnalyticsTag = 'G-7PTT4PLC69';
 
 // JSON-LD Structured Data
@@ -24,16 +32,16 @@ const jsonLd = {
   '@graph': [
     {
       '@type': 'WebSite',
-      name: 'Repomix',
-      url: 'https://repomix.com',
-      description: 'Pack your codebase into AI-friendly formats',
+      name: siteName,
+      url: siteUrl,
+      description: siteDescription,
     },
     {
       '@type': 'SoftwareApplication',
-      name: 'Repomix',
+      name: siteName,
       description:
         'A tool that packs your entire repository into a single, AI-friendly file for use with Large Language Models (LLMs) like ChatGPT, Claude, Gemini, and more.',
-      url: 'https://repomix.com',
+      url: siteUrl,
       applicationCategory: 'DeveloperApplication',
       operatingSystem: 'Windows, macOS, Linux',
       offers: {
@@ -43,17 +51,17 @@ const jsonLd = {
       },
       license: 'https://opensource.org/licenses/MIT',
       isAccessibleForFree: true,
-      installUrl: 'https://www.npmjs.com/package/repomix',
-      downloadUrl: 'https://www.npmjs.com/package/repomix',
+      installUrl: npmUrl,
+      downloadUrl: npmUrl,
       softwareRequirements: 'Node.js 20.0.0 or higher',
-      image: 'https://repomix.com/images/repomix-logo.svg',
-      screenshot: 'https://repomix.com/images/og-image-large.png',
+      image: `${siteUrl}/images/repomix-logo.svg`,
+      screenshot: ogImageUrl,
       author: {
         '@type': 'Person',
         name: 'Kazuki Yamada',
         url: 'https://github.com/yamadashy',
       },
-      sameAs: ['https://github.com/yamadashy/repomix', 'https://www.npmjs.com/package/repomix'],
+      sameAs: [githubUrl, npmUrl],
       featureList: [
         'AI-optimized output formats (XML, Markdown, JSON, Plain Text)',
         'Token counting for LLM context limits',
@@ -70,9 +78,9 @@ const jsonLd = {
 
 // PWA Manifest Configuration
 const manifest: Partial<ManifestOptions> = {
-  name: 'Repomix',
-  short_name: 'Repomix',
-  description: 'Pack your codebase into AI-friendly formats',
+  name: siteName,
+  short_name: siteName,
+  description: siteDescription,
   theme_color: '#f97316',
   background_color: '#ffffff',
   display: 'standalone',
@@ -97,7 +105,7 @@ const manifest: Partial<ManifestOptions> = {
 };
 
 export const configShard = defineConfig({
-  title: 'Repomix',
+  title: siteName,
 
   srcDir: 'src',
 
@@ -111,7 +119,7 @@ export const configShard = defineConfig({
   metaChunk: true,
 
   sitemap: {
-    hostname: 'https://repomix.com/',
+    hostname: `${siteUrl}/`,
   },
 
   // Shared configuration
@@ -140,7 +148,7 @@ export const configShard = defineConfig({
     socialLinks: [
       { icon: 'x', link: 'https://x.com/repomix_ai' },
       { icon: 'discord', link: 'https://discord.gg/wNYzTwZFku' },
-      { icon: 'github', link: 'https://github.com/yamadashy/repomix' },
+      { icon: 'github', link: githubUrl },
     ],
     footer: {
       message: 'Released under the MIT License.',
@@ -160,24 +168,24 @@ export const configShard = defineConfig({
 
     // OGP
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:title', content: 'Repomix' }],
-    ['meta', { property: 'og:site_name', content: 'Repomix' }],
-    ['meta', { property: 'og:image', content: 'https://repomix.com/images/og-image-large.png' }],
-    ['meta', { property: 'og:url', content: 'https://repomix.com' }],
-    ['meta', { property: 'og:description', content: 'Pack your codebase into AI-friendly formats' }],
+    ['meta', { property: 'og:title', content: siteName }],
+    ['meta', { property: 'og:site_name', content: siteName }],
+    ['meta', { property: 'og:image', content: ogImageUrl }],
+    ['meta', { property: 'og:url', content: siteUrl }],
+    ['meta', { property: 'og:description', content: siteDescription }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { property: 'twitter:domain', content: 'https://repomix.com' }],
-    ['meta', { property: 'twitter:url', content: 'https://repomix.com' }],
-    ['meta', { name: 'twitter:title', content: 'Repomix' }],
-    ['meta', { name: 'twitter:description', content: 'Pack your codebase into AI-friendly formats' }],
-    ['meta', { name: 'twitter:image', content: 'https://repomix.com/images/og-image-large.png' }],
-    ['meta', { name: 'thumbnail', content: 'https://repomix.com/images/og-image-large.png' }],
+    ['meta', { property: 'twitter:domain', content: siteUrl }],
+    ['meta', { property: 'twitter:url', content: siteUrl }],
+    ['meta', { name: 'twitter:title', content: siteName }],
+    ['meta', { name: 'twitter:description', content: siteDescription }],
+    ['meta', { name: 'twitter:image', content: ogImageUrl }],
+    ['meta', { name: 'thumbnail', content: ogImageUrl }],
 
     // PWA
     ['meta', { name: 'theme-color', content: '#f97316' }],
     ['meta', { name: 'apple-mobile-web-app-capable', content: 'yes' }],
     ['meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black' }],
-    ['meta', { name: 'apple-mobile-web-app-title', content: 'Repomix' }],
+    ['meta', { name: 'apple-mobile-web-app-title', content: siteName }],
     ['link', { rel: 'apple-touch-icon', href: '/images/pwa/repomix-192x192.png' }],
     ['link', { rel: 'mask-icon', href: '/images/repomix-logo.svg', color: '#f97316' }],
 
@@ -216,7 +224,7 @@ export const configShard = defineConfig({
     plugins: [
       ...llmstxt({
         workDir: 'en',
-        domain: 'https://repomix.com',
+        domain: siteUrl,
       }),
       VitePWA({
         registerType: 'autoUpdate',
