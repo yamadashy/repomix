@@ -83,13 +83,19 @@ export const pack = async (
   const allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
   const sortedFilePaths = deps.sortPaths(allFilePaths);
 
-  // Regroup sorted file paths by rootDir
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
-    rootDir,
-    filePaths: sortedFilePaths.filter((filePath: string) =>
-      filePathsByDir.find((item) => item.rootDir === rootDir)?.filePaths.includes(filePath),
-    ),
-  }));
+  // Regroup sorted file paths by rootDir using O(N) Map/Set lookup
+  // This replaces the previous O(N²) implementation that used nested array operations
+  const pathsByRootMap = new Map<string, Set<string>>(
+    filePathsByDir.map((item) => [item.rootDir, new Set(item.filePaths)]),
+  );
+
+  const sortedFilePathsByDir = rootDirs.map((rootDir) => {
+    const fileSet = pathsByRootMap.get(rootDir);
+    return {
+      rootDir,
+      filePaths: fileSet ? sortedFilePaths.filter((filePath) => fileSet.has(filePath)) : [],
+    };
+  });
 
   progressCallback('Collecting files...');
   const collectResults = await withMemoryLogging(
