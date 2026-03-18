@@ -174,7 +174,7 @@ export const configShard = defineConfig({
     ['meta', { property: 'og:url', content: siteUrl }],
     ['meta', { property: 'og:description', content: siteDescription }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { property: 'twitter:domain', content: siteUrl }],
+    ['meta', { property: 'twitter:domain', content: 'repomix.com' }],
     ['meta', { property: 'twitter:url', content: siteUrl }],
     ['meta', { name: 'twitter:title', content: siteName }],
     ['meta', { name: 'twitter:description', content: siteDescription }],
