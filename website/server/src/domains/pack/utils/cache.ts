@@ -13,12 +13,20 @@ interface CacheEntry {
 export class RequestCache<T> {
   private cache: Map<string, CacheEntry> = new Map();
   private readonly ttl: number;
+  private readonly cleanupIntervalId: ReturnType<typeof setInterval>;
 
   constructor(ttlInSeconds = 60) {
     this.ttl = ttlInSeconds * 1000;
 
     // Set up periodic cache cleanup
-    setInterval(() => this.cleanup(), ttlInSeconds * 1000);
+    // Use .bind() to avoid capturing the surrounding scope in the closure
+    this.cleanupIntervalId = setInterval(this.cleanup.bind(this), ttlInSeconds * 1000);
+    this.cleanupIntervalId.unref();
+  }
+
+  dispose(): void {
+    clearInterval(this.cleanupIntervalId);
+    this.cache.clear();
   }
 
   async get(key: string): Promise<T | undefined> {
