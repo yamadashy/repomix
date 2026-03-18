@@ -95,18 +95,20 @@ const generateAndWriteSplitOutput = async (
 
   progressCallback('Writing output files...');
   await withMemoryLogging('Write Split Output', async () => {
-    for (const part of parts) {
-      const partConfig = {
-        ...config,
-        output: {
-          ...config.output,
-          stdout: false,
-          filePath: part.filePath,
-        },
-      };
-      // eslint-disable-next-line no-await-in-loop
-      await deps.writeOutputToDisk(part.content, partConfig);
-    }
+    // Write all parts in parallel for better I/O performance
+    await Promise.all(
+      parts.map((part) => {
+        const partConfig = {
+          ...config,
+          output: {
+            ...config.output,
+            stdout: false,
+            filePath: part.filePath,
+          },
+        };
+        return deps.writeOutputToDisk(part.content, partConfig);
+      }),
+    );
   });
 
   return {

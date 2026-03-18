@@ -55,14 +55,14 @@ export const parseFile = async (fileContent: string, filePath: string, config: R
   const processedChunks = new Set<string>();
   const capturedChunks: CapturedChunk[] = [];
 
-  try {
-    // Parse the file content into an Abstract Syntax Tree (AST)
-    const tree = parser.parse(fileContent);
-    if (!tree) {
-      logger.debug(`Failed to parse file: ${filePath}`);
-      return undefined;
-    }
+  // Parse the file content into an Abstract Syntax Tree (AST)
+  const tree = parser.parse(fileContent);
+  if (!tree) {
+    logger.debug(`Failed to parse file: ${filePath}`);
+    return undefined;
+  }
 
+  try {
     // Get the appropriate parse strategy for the language
     const parseStrategy = await languageParser.getStrategyForLang(lang);
 
@@ -93,6 +93,10 @@ export const parseFile = async (fileContent: string, filePath: string, config: R
     }
   } catch (error: unknown) {
     logger.log(`Error parsing file: ${error}\n`);
+  } finally {
+    // Delete the tree to prevent memory leaks
+    // web-tree-sitter Tree objects hold native WASM memory that must be explicitly freed
+    tree.delete();
   }
 
   const filteredChunks = filterDuplicatedChunks(capturedChunks);

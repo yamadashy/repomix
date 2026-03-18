@@ -6,10 +6,30 @@ export interface TreeNode {
   isDirectory: boolean;
 }
 
-const createTreeNode = (name: string, isDirectory: boolean): TreeNode => ({ name, children: [], isDirectory });
+// Internal interface with Map for O(1) lookup during tree construction
+interface InternalTreeNode extends TreeNode {
+  childrenMap: Map<string, InternalTreeNode>;
+}
+
+const createInternalNode = (name: string, isDirectory: boolean): InternalTreeNode => ({
+  name,
+  children: [],
+  isDirectory,
+  childrenMap: new Map(),
+});
+
+// Clean up internal Map references after tree construction
+const cleanupInternalRefs = (node: InternalTreeNode): TreeNode => {
+  for (const child of node.children) {
+    cleanupInternalRefs(child as InternalTreeNode);
+  }
+  // Delete the Map to free memory (it's no longer needed after construction)
+  node.childrenMap.clear();
+  return node;
+};
 
 export const generateFileTree = (files: string[], emptyDirPaths: string[] = []): TreeNode => {
-  const root: TreeNode = createTreeNode('root', true);
+  const root: InternalTreeNode = createInternalNode('root', true);
 
   for (const file of files) {
     addPathToTree(root, file, false);
@@ -20,28 +40,32 @@ export const generateFileTree = (files: string[], emptyDirPaths: string[] = []):
     addPathToTree(root, dir, true);
   }
 
-  return root;
+  return cleanupInternalRefs(root);
 };
 
-const addPathToTree = (root: TreeNode, path: string, isDirectory: boolean): void => {
+const addPathToTree = (root: InternalTreeNode, path: string, isDirectory: boolean): void => {
   const parts = path.split(nodepath.sep);
   let currentNode = root;
 
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
     const isLastPart = i === parts.length - 1;
-    let child = currentNode.children.find((c) => c.name === part);
+
+    // Use Map for O(1) lookup instead of O(N) array search
+    let child = currentNode.childrenMap.get(part);
 
     if (!child) {
-      child = createTreeNode(part, !isLastPart || isDirectory);
+      child = createInternalNode(part, !isLastPart || isDirectory);
       currentNode.children.push(child);
+      currentNode.childrenMap.set(part, child);
     }
 
     currentNode = child;
   }
 };
 
-const sortTreeNodes = (node: TreeNode) => {
+// Sort tree nodes recursively (called once before stringification)
+const sortTreeNodes = (node: TreeNode): void => {
   node.children.sort((a, b) => {
     if (a.isDirectory === b.isDirectory) {
       return a.name.localeCompare(b.name);
@@ -54,14 +78,45 @@ const sortTreeNodes = (node: TreeNode) => {
   }
 };
 
-export const treeToString = (node: TreeNode, prefix = ''): string => {
-  sortTreeNodes(node);
+// Internal helper that converts tree to string without sorting
+const treeToStringInternal = (node: TreeNode, prefix: string): string => {
   let result = '';
 
   for (const child of node.children) {
     result += `${prefix}${child.name}${child.isDirectory ? '/' : ''}\n`;
     if (child.isDirectory) {
-      result += treeToString(child, `${prefix}  `);
+      result += treeToStringInternal(child, `${prefix}  `);
+    }
+  }
+
+  return result;
+};
+
+export const treeToString = (node: TreeNode, prefix = ''): string => {
+  // Sort once at the top level, not recursively during stringification
+  sortTreeNodes(node);
+  return treeToStringInternal(node, prefix);
+};
+
+// Internal helper that converts tree to string with line counts without sorting
+const treeToStringWithLineCountsInternal = (
+  node: TreeNode,
+  lineCounts: Record<string, number>,
+  prefix: string,
+  currentPath: string,
+): string => {
+  let result = '';
+
+  for (const child of node.children) {
+    const childPath = currentPath ? `${currentPath}/${child.name}` : child.name;
+
+    if (child.isDirectory) {
+      result += `${prefix}${child.name}/\n`;
+      result += treeToStringWithLineCountsInternal(child, lineCounts, `${prefix}  `, childPath);
+    } else {
+      const lineCount = lineCounts[childPath];
+      const lineCountSuffix = lineCount !== undefined ? ` (${lineCount} lines)` : '';
+      result += `${prefix}${child.name}${lineCountSuffix}\n`;
     }
   }
 
@@ -81,23 +136,9 @@ export const treeToStringWithLineCounts = (
   prefix = '',
   currentPath = '',
 ): string => {
+  // Sort once at the top level, not recursively during stringification
   sortTreeNodes(node);
-  let result = '';
-
-  for (const child of node.children) {
-    const childPath = currentPath ? `${currentPath}/${child.name}` : child.name;
-
-    if (child.isDirectory) {
-      result += `${prefix}${child.name}/\n`;
-      result += treeToStringWithLineCounts(child, lineCounts, `${prefix}  `, childPath);
-    } else {
-      const lineCount = lineCounts[childPath];
-      const lineCountSuffix = lineCount !== undefined ? ` (${lineCount} lines)` : '';
-      result += `${prefix}${child.name}${lineCountSuffix}\n`;
-    }
-  }
-
-  return result;
+  return treeToStringWithLineCountsInternal(node, lineCounts, prefix, currentPath);
 };
 
 export const generateTreeString = (files: string[], emptyDirPaths: string[] = []): string => {
