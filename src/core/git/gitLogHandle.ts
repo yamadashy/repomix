@@ -161,10 +161,24 @@ const parseStructuredOutput = (output: string, patchOutput?: string): ParsedComm
       // Check for raw entry (starts with ':') - most common case in file section
       const firstChar = partRaw[0];
       if (firstChar === ':' || (firstChar === '\n' && partRaw[1] === ':')) {
+        // git -z --raw: rename (R) and copy (C) entries have two NUL-separated filenames
+        // Format: ":mode mode blob blob R100\0old-name\0new-name"
+        // All other statuses (A/M/D/T/U/X) have a single filename
+        const rawLine = firstChar === '\n' ? partRaw.slice(1) : partRaw;
+        const statusField = rawLine.split(' ').pop() || '';
+        const isRenameOrCopy = statusField[0] === 'R' || statusField[0] === 'C';
+
         i++;
         const filename = parts[i]?.trim();
         if (filename) files.push(filename);
         i++;
+
+        if (isRenameOrCopy) {
+          // Consume and record the destination filename as well
+          const destFilename = parts[i]?.trim();
+          if (destFilename) files.push(destFilename);
+          i++;
+        }
         continue;
       }
 

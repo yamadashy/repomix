@@ -32,7 +32,7 @@ const createStructuredOutput = (
     committerDate: string;
     subject: string;
     body?: string;
-    files: Array<{ filename: string; status: string }>;
+    files: Array<{ filename: string; status: string; newFilename?: string }>;
   }>,
 ): string => {
   return commits
@@ -53,7 +53,13 @@ const createStructuredOutput = (
       ].join(NUL);
 
       // Raw file entries: ":mode mode blob blob STATUS\x00filename\x00"
-      const rawEntries = c.files.map((f) => `:100644 100644 abc123 def456 ${f.status}${NUL}${f.filename}`).join(NUL);
+      // For rename (R) and copy (C): ":mode mode blob blob R100\x00old-name\x00new-name"
+      const rawEntries = c.files
+        .map((f) => {
+          const base = `:100644 100644 abc123 def456 ${f.status}${NUL}${f.filename}`;
+          return f.newFilename ? `${base}${NUL}${f.newFilename}` : base;
+        })
+        .join(NUL);
 
       return `${metadata}${NUL}${rawEntries}`;
     })
@@ -622,6 +628,82 @@ describe('gitLogHandle', () => {
         maxCommits: 50,
         patchDetail: 'name-status',
       });
+    });
+
+    test('should capture both old and new filenames for rename entries', async () => {
+      const mockStructuredOutput = createStructuredOutput([
+        {
+          hash: HASH1,
+          abbrevHash: 'abc12',
+          authorName: 'Author One',
+          authorEmail: 'author1@example.com',
+          authorDate: '2024-01-01T10:00:00+09:00',
+          committerName: 'Author One',
+          committerEmail: 'author1@example.com',
+          committerDate: '2024-01-01T10:00:00+09:00',
+          subject: 'Rename file',
+          files: [
+            { filename: 'old-name.txt', status: 'R100', newFilename: 'new-name.txt' },
+            { filename: 'another.ts', status: 'M' },
+          ],
+        },
+      ]);
+
+      const mockExecGitLogStructured = vi.fn().mockResolvedValue(mockStructuredOutput);
+      const config: RepomixConfigMerged = {
+        cwd: '/project',
+        output: { git: { includeLogs: true } },
+      } as RepomixConfigMerged;
+
+      const result = await getGitLogs(['/project'], config, {
+        execGitLogStructured: mockExecGitLogStructured,
+        execGitLogTextBlob: vi.fn().mockResolvedValue(''),
+        execGitGraph: vi.fn().mockResolvedValue(''),
+        getTags: vi.fn().mockResolvedValue({}),
+        isGitRepository: vi.fn().mockResolvedValue(true),
+      });
+
+      // Both old and new filenames must be captured for rename entries
+      expect(result?.logCommits[0].files).toContain('old-name.txt');
+      expect(result?.logCommits[0].files).toContain('new-name.txt');
+      expect(result?.logCommits[0].files).toContain('another.ts');
+      expect(result?.logCommits[0].files.length).toBe(3);
+    });
+
+    test('should capture both source and destination filenames for copy entries', async () => {
+      const mockStructuredOutput = createStructuredOutput([
+        {
+          hash: HASH1,
+          abbrevHash: 'abc12',
+          authorName: 'Author One',
+          authorEmail: 'author1@example.com',
+          authorDate: '2024-01-01T10:00:00+09:00',
+          committerName: 'Author One',
+          committerEmail: 'author1@example.com',
+          committerDate: '2024-01-01T10:00:00+09:00',
+          subject: 'Copy file',
+          files: [{ filename: 'src/original.ts', status: 'C75', newFilename: 'src/copy.ts' }],
+        },
+      ]);
+
+      const mockExecGitLogStructured = vi.fn().mockResolvedValue(mockStructuredOutput);
+      const config: RepomixConfigMerged = {
+        cwd: '/project',
+        output: { git: { includeLogs: true } },
+      } as RepomixConfigMerged;
+
+      const result = await getGitLogs(['/project'], config, {
+        execGitLogStructured: mockExecGitLogStructured,
+        execGitLogTextBlob: vi.fn().mockResolvedValue(''),
+        execGitGraph: vi.fn().mockResolvedValue(''),
+        getTags: vi.fn().mockResolvedValue({}),
+        isGitRepository: vi.fn().mockResolvedValue(true),
+      });
+
+      // Both source and destination must be captured for copy entries
+      expect(result?.logCommits[0].files).toContain('src/original.ts');
+      expect(result?.logCommits[0].files).toContain('src/copy.ts');
+      expect(result?.logCommits[0].files.length).toBe(2);
     });
 
     test('should use explicit commitRange even without graph/patch/summary flags', async () => {
