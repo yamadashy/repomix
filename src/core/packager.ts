@@ -83,12 +83,11 @@ export const pack = async (
   const allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
   const sortedFilePaths = deps.sortPaths(allFilePaths);
 
-  // Regroup sorted file paths by rootDir
+  // Regroup sorted file paths by rootDir using Set for O(1) lookups
+  const fileSetByRoot = new Map(filePathsByDir.map((item) => [item.rootDir, new Set(item.filePaths)]));
   const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
     rootDir,
-    filePaths: sortedFilePaths.filter((filePath: string) =>
-      filePathsByDir.find((item) => item.rootDir === rootDir)?.filePaths.includes(filePath),
-    ),
+    filePaths: sortedFilePaths.filter((filePath: string) => fileSetByRoot.get(rootDir)?.has(filePath)),
   }));
 
   progressCallback('Collecting files...');

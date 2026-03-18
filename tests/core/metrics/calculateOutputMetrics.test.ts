@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { calculateOutputMetrics } from '../../../src/core/metrics/calculateOutputMetrics.js';
 import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
-import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
+import { getProcessConcurrency, type WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
@@ -114,7 +114,7 @@ describe('calculateOutputMetrics', () => {
     });
 
     expect(chunksProcessed).toBeGreaterThan(1); // Should have processed multiple chunks
-    expect(result).toBe(100_000); // 1000 chunks * 100 tokens per chunk
+    expect(result).toBe(chunksProcessed * 100); // Each chunk returns 100 tokens
   });
 
   it('should handle errors in parallel processing', async () => {
@@ -168,11 +168,10 @@ describe('calculateOutputMetrics', () => {
       }),
     });
 
-    // Check that chunks are roughly equal in size
-    const _expectedChunkSize = Math.ceil(content.length / 1000); // CHUNK_SIZE is 1000
+    // Check that chunks are roughly equal in size and match CPU core count
     const chunkSizes = processedChunks.map((chunk) => chunk.length);
 
-    expect(processedChunks.length).toBe(1000); // Should have 1000 chunks
+    expect(processedChunks.length).toBe(getProcessConcurrency()); // Should match available CPU cores
     expect(Math.max(...chunkSizes) - Math.min(...chunkSizes)).toBeLessThanOrEqual(1); // Chunks should be almost equal in size
     expect(processedChunks.join('')).toBe(content); // All content should be processed
   });
