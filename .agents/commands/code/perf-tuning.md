@@ -1,7 +1,7 @@
 # Goal
-Improve performance or memory usage of the source code in the `src` folder without causing regressions.
+Improve performance or memory usage of `src` and related code (tests, configs, dependencies) without causing regressions.
 
-Think broadly — algorithm changes, architectural restructuring, parallelization, caching strategies, dependency replacements, and I/O reduction are all fair game. Small logic tweaks that only shave a few milliseconds on a 1000-file run are not worth pursuing. Aim for changes with meaningful, measurable impact.
+Think broadly — algorithm changes, architectural restructuring, parallelization, caching strategies, library replacements, dependency upgrades, and I/O reduction are all fair game. Small logic tweaks that only shave a few milliseconds on a 1000-file run are not worth pursuing. Aim for changes with meaningful, measurable impact.
 
 # Steps
 
