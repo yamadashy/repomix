@@ -69,14 +69,17 @@ export const pack = async (
   logMemoryUsage('Pack - Start');
 
   progressCallback('Searching for files...');
-  const filePathsByDir = await withMemoryLogging('Search Files', async () =>
+  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
-      rootDirs.map(async (rootDir) => ({
-        rootDir,
-        filePaths: (await deps.searchFiles(rootDir, config, explicitFiles)).filePaths,
-      })),
+      rootDirs.map(async (rootDir) => {
+        const result = await deps.searchFiles(rootDir, config, explicitFiles);
+        return { rootDir, ...result };
+      }),
     ),
   );
+
+  const filePathsByDir = searchResultsByDir.map(({ rootDir, filePaths }) => ({ rootDir, filePaths }));
+  const allEmptyDirPaths = [...new Set(searchResultsByDir.flatMap(({ emptyDirPaths }) => emptyDirPaths))].sort();
 
   // Sort file paths
   progressCallback('Sorting files...');
@@ -167,6 +170,7 @@ export const pack = async (
     gitLogResult,
     progressCallback,
     filePathsByRoot,
+    allEmptyDirPaths,
   );
 
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
