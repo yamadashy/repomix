@@ -1,4 +1,4 @@
-import type { TiktokenEncoding } from 'tiktoken';
+import type { TiktokenEncoding } from 'tiktoken/init';
 import { logger } from '../../shared/logger.js';
 import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';

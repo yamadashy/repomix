@@ -9,6 +9,7 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
+import { getCompiledTiktokenWasmModule } from './wasmModuleCache.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
@@ -38,6 +39,10 @@ export const calculateMetrics = async (
 ): Promise<CalculateMetricsResult> => {
   progressCallback('Calculating metrics...');
 
+  // Pre-compile tiktoken WASM module once in the main thread and pass it to workers
+  // This avoids each worker independently compiling the ~5.3MB WASM binary (~250ms each)
+  const tiktokenWasmModule = await getCompiledTiktokenWasmModule();
+
   // Initialize a single task runner for all metrics calculations
   const taskRunner =
     deps.taskRunner ??
@@ -45,6 +50,7 @@ export const calculateMetrics = async (
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
+      extraWorkerData: { tiktokenWasmModule },
     });
 
   try {

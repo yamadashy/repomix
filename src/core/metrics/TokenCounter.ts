@@ -1,5 +1,25 @@
-import { get_encoding, type Tiktoken, type TiktokenEncoding } from 'tiktoken';
+import { get_encoding, init, type Tiktoken, type TiktokenEncoding } from 'tiktoken/init';
 import { logger } from '../../shared/logger.js';
+
+/**
+ * Initialize tiktoken with a pre-compiled WebAssembly module.
+ *
+ * When called with a module, tiktoken skips the expensive WASM compilation step
+ * and only performs instantiation (~6ms vs ~250ms).
+ * When called without a module, falls back to reading and compiling from disk.
+ */
+export const initTiktokenWasm = async (wasmModule?: WebAssembly.Module): Promise<void> => {
+  if (wasmModule) {
+    await init((imports) => WebAssembly.instantiate(wasmModule, imports));
+  } else {
+    const fs = await import('node:fs/promises');
+    const { createRequire } = await import('node:module');
+    const require = createRequire(import.meta.url);
+    const wasmPath = require.resolve('tiktoken/tiktoken_bg.wasm');
+    const wasmBinary = await fs.readFile(wasmPath);
+    await init((imports) => WebAssembly.instantiate(wasmBinary, imports));
+  }
+};
 
 export class TokenCounter {
   private encoding: Tiktoken;

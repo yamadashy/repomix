@@ -1,5 +1,5 @@
 import pc from 'picocolors';
-import type { TiktokenEncoding } from 'tiktoken';
+import type { TiktokenEncoding } from 'tiktoken/init';
 import { logger } from '../../shared/logger.js';
 import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';

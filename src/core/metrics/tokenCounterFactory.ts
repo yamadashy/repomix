@@ -1,4 +1,4 @@
-import type { TiktokenEncoding } from 'tiktoken';
+import type { TiktokenEncoding } from 'tiktoken/init';
 import { logger } from '../../shared/logger.js';
 import { TokenCounter } from './TokenCounter.js';
 

@@ -1,4 +1,4 @@
-import type { TiktokenEncoding } from 'tiktoken';
+import type { TiktokenEncoding } from 'tiktoken/init';
 import { z } from 'zod';
 
 // Output style enum

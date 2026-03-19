@@ -1,5 +1,7 @@
-import type { TiktokenEncoding } from 'tiktoken';
+import { workerData } from 'node:worker_threads';
+import type { TiktokenEncoding } from 'tiktoken/init';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
+import { initTiktokenWasm } from '../TokenCounter.js';
 import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 
 /**
@@ -14,6 +16,11 @@ import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 // This must be called before any logging operations in the worker
 setLogLevelByWorkerData();
 
+// Initialize tiktoken WASM with the pre-compiled module from the main thread.
+// If workerData.tiktokenWasmModule is present, this avoids re-compiling the ~5.3MB
+// WASM binary in each worker thread (~6ms instantiation vs ~250ms compile+instantiate).
+const wasmInitPromise = initTiktokenWasm(workerData?.tiktokenWasmModule as WebAssembly.Module | undefined);
+
 export interface TokenCountTask {
   content: string;
   encoding: TiktokenEncoding;
@@ -21,6 +28,9 @@ export interface TokenCountTask {
 }
 
 export const countTokens = async (task: TokenCountTask): Promise<number> => {
+  // Ensure WASM is initialized before first token count
+  await wasmInitPromise;
+
   const processStartAt = process.hrtime.bigint();
 
   try {
