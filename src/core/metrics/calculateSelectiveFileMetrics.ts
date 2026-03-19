@@ -1,16 +1,16 @@
 import pc from 'picocolors';
-import type { TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
 import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
+import type { TokenEncoding } from './tokenEncoding.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 import type { FileMetrics } from './workers/types.js';
 
 export const calculateSelectiveFileMetrics = async (
   processedFiles: ProcessedFile[],
   targetFilePaths: string[],
-  tokenCounterEncoding: TiktokenEncoding,
+  tokenCounterEncoding: TokenEncoding,
   progressCallback: RepomixProgressCallback,
   deps: { taskRunner: TaskRunner<TokenCountTask, number> },
 ): Promise<FileMetrics[]> => {

@@ -1,10 +1,18 @@
-import { get_encoding, type Tiktoken } from 'tiktoken';
 import { afterEach, beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
 import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 import { logger } from '../../../src/shared/logger.js';
 
-vi.mock('tiktoken', () => ({
-  get_encoding: vi.fn(),
+vi.mock('gpt-tokenizer/GptEncoding', () => {
+  const mockGetEncodingApi = vi.fn();
+  return {
+    GptEncoding: {
+      getEncodingApi: mockGetEncodingApi,
+    },
+  };
+});
+
+vi.mock('gpt-tokenizer/resolveEncoding', () => ({
+  resolveEncoding: vi.fn(),
 }));
 
 vi.mock('../../../src/shared/logger');
@@ -13,18 +21,17 @@ describe('TokenCounter', () => {
   let tokenCounter: TokenCounter;
   let mockEncoder: {
     encode: Mock;
-    free: Mock;
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Initialize mock encoder
     mockEncoder = {
       encode: vi.fn(),
-      free: vi.fn(),
     };
 
     // Setup mock encoder behavior
-    vi.mocked(get_encoding).mockReturnValue(mockEncoder as unknown as Tiktoken);
+    const { GptEncoding } = await import('gpt-tokenizer/GptEncoding');
+    vi.mocked(GptEncoding.getEncodingApi).mockReturnValue(mockEncoder as never);
 
     // Create new TokenCounter instance
     tokenCounter = new TokenCounter('o200k_base');
@@ -35,8 +42,10 @@ describe('TokenCounter', () => {
     vi.resetAllMocks();
   });
 
-  test('should initialize with o200k_base encoding', () => {
-    expect(get_encoding).toHaveBeenCalledWith('o200k_base');
+  test('should initialize with o200k_base encoding', async () => {
+    const { GptEncoding } = await import('gpt-tokenizer/GptEncoding');
+    const { resolveEncoding } = await import('gpt-tokenizer/resolveEncoding');
+    expect(GptEncoding.getEncodingApi).toHaveBeenCalledWith('o200k_base', resolveEncoding);
   });
 
   test('should correctly count tokens for simple text', () => {
@@ -47,7 +56,7 @@ describe('TokenCounter', () => {
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(3); // Length of mockTokens
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncoder.encode).toHaveBeenCalledWith(text, { disallowedSpecial: new Set() });
   });
 
   test('should handle empty string', () => {
@@ -56,7 +65,7 @@ describe('TokenCounter', () => {
     const count = tokenCounter.countTokens('');
 
     expect(count).toBe(0);
-    expect(mockEncoder.encode).toHaveBeenCalledWith('', [], []);
+    expect(mockEncoder.encode).toHaveBeenCalledWith('', { disallowedSpecial: new Set() });
   });
 
   test('should handle multi-line text', () => {
@@ -67,7 +76,7 @@ describe('TokenCounter', () => {
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(6);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncoder.encode).toHaveBeenCalledWith(text, { disallowedSpecial: new Set() });
   });
 
   test('should handle special characters', () => {
@@ -78,7 +87,7 @@ describe('TokenCounter', () => {
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(3);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncoder.encode).toHaveBeenCalledWith(text, { disallowedSpecial: new Set() });
   });
 
   test('should handle unicode characters', () => {
@@ -89,7 +98,7 @@ describe('TokenCounter', () => {
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(4);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncoder.encode).toHaveBeenCalledWith(text, { disallowedSpecial: new Set() });
   });
 
   test('should handle code snippets', () => {
@@ -104,7 +113,7 @@ describe('TokenCounter', () => {
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(10);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncoder.encode).toHaveBeenCalledWith(text, { disallowedSpecial: new Set() });
   });
 
   test('should handle markdown text', () => {
@@ -122,7 +131,7 @@ describe('TokenCounter', () => {
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(15);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncoder.encode).toHaveBeenCalledWith(text, { disallowedSpecial: new Set() });
   });
 
   test('should handle very long text', () => {
@@ -133,7 +142,7 @@ describe('TokenCounter', () => {
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(100);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncoder.encode).toHaveBeenCalledWith(text, { disallowedSpecial: new Set() });
   });
 
   test('should properly handle encoding errors without file path', () => {
@@ -160,8 +169,8 @@ describe('TokenCounter', () => {
     expect(logger.warn).toHaveBeenCalledWith('Failed to count tokens. path: test.txt, error: Encoding error');
   });
 
-  test('should free encoder resources on cleanup', () => {
-    tokenCounter.free();
-    expect(mockEncoder.free).toHaveBeenCalled();
+  test('should free without errors', () => {
+    // free() is a no-op for gpt-tokenizer but should not throw
+    expect(() => tokenCounter.free()).not.toThrow();
   });
 });

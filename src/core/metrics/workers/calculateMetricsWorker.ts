@@ -1,13 +1,13 @@
-import type { TiktokenEncoding } from 'tiktoken';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
 import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
+import type { TokenEncoding } from '../tokenEncoding.js';
 
 /**
  * Simple token counting worker for metrics calculation.
  *
- * This worker provides a focused interface for counting tokens from text content,
- * using the Tiktoken encoding. All complex metric calculation logic is handled
- * by the calling side to maintain separation of concerns.
+ * This worker provides a focused interface for counting tokens from text content.
+ * All complex metric calculation logic is handled by the calling side to maintain
+ * separation of concerns.
  */
 
 // Initialize logger configuration from workerData at module load time
@@ -16,7 +16,7 @@ setLogLevelByWorkerData();
 
 export interface TokenCountTask {
   content: string;
-  encoding: TiktokenEncoding;
+  encoding: TokenEncoding;
   path?: string;
 }
 

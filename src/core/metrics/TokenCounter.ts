@@ -1,14 +1,16 @@
-import { get_encoding, type Tiktoken, type TiktokenEncoding } from 'tiktoken';
+import { GptEncoding } from 'gpt-tokenizer/GptEncoding';
+import { resolveEncoding } from 'gpt-tokenizer/resolveEncoding';
 import { logger } from '../../shared/logger.js';
+import type { TokenEncoding } from './tokenEncoding.js';
 
 export class TokenCounter {
-  private encoding: Tiktoken;
+  private encoding: GptEncoding;
 
-  constructor(encodingName: TiktokenEncoding) {
+  constructor(encodingName: TokenEncoding) {
     const startTime = process.hrtime.bigint();
 
-    // Setup encoding with the specified model
-    this.encoding = get_encoding(encodingName);
+    // Setup encoding with the specified encoding name
+    this.encoding = GptEncoding.getEncodingApi(encodingName, resolveEncoding);
 
     const endTime = process.hrtime.bigint();
     const initTime = Number(endTime - startTime) / 1e6; // Convert to milliseconds
@@ -23,7 +25,7 @@ export class TokenCounter {
       // This treats special tokens as ordinary text rather than control tokens,
       // which is appropriate for general code/text analysis where we're not
       // actually sending the content to an LLM API.
-      return this.encoding.encode(content, [], []).length;
+      return this.encoding.encode(content, { disallowedSpecial: new Set() }).length;
     } catch (error) {
       let message = '';
       if (error instanceof Error) {
@@ -42,7 +44,7 @@ export class TokenCounter {
     }
   }
 
-  public free(): void {
-    this.encoding.free();
-  }
+  // No-op for backward compatibility.
+  // gpt-tokenizer is pure JavaScript and does not require explicit resource cleanup.
+  public free(): void {}
 }
