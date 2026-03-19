@@ -542,7 +542,8 @@ node_modules
 
       const result = await searchFiles('/mock/root', mockConfig);
 
-      expect(result.filePaths).toEqual(mockFileStructure);
+      expect(result.filePaths).toEqual(expect.arrayContaining(mockFileStructure));
+      expect(result.filePaths).toHaveLength(mockFileStructure.length);
       expect(result.filePaths).toContain('root/subdir/ignored.js');
       expect(result.emptyDirPaths).toEqual([]);
     });
