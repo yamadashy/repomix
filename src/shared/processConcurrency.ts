@@ -12,6 +12,7 @@ export interface WorkerOptions {
   numOfTasks: number;
   workerType: WorkerType;
   runtime: WorkerRuntime;
+  extraWorkerData?: Record<string, unknown>;
 }
 
 /**
@@ -62,7 +63,7 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
-  const { numOfTasks, workerType, runtime = 'child_process' } = options;
+  const { numOfTasks, workerType, runtime = 'child_process', extraWorkerData } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
 
   // Get worker path - uses unified worker in bundled env, individual files otherwise
@@ -84,6 +85,7 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
     workerData: {
       workerType,
       logLevel: logger.getLogLevel(),
+      ...extraWorkerData,
     },
     // Only add env for child_process workers
     ...(runtime === 'child_process' && {

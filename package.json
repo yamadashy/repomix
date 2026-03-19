@@ -41,7 +41,8 @@
     "website-generate-schema": "tsx website/client/scripts/generateSchema.ts",
     "pinact-run": "pinact run",
     "pinact-check": "pinact run --check",
-    "benchmark-tokenizer": "tsx scripts/benchmark-tokenizer/benchmark.ts"
+    "benchmark-tokenizer": "tsx scripts/benchmark-tokenizer/benchmark.ts",
+    "benchmark-tokenizer-worker": "tsx scripts/benchmark-tokenizer/benchmark-worker.ts"
   },
   "keywords": [
     "repository",
