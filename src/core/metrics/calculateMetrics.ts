@@ -39,9 +39,18 @@ export const calculateMetrics = async (
 ): Promise<CalculateMetricsResult> => {
   progressCallback('Calculating metrics...');
 
-  // Pre-compile tiktoken WASM module once in the main thread and pass it to workers
-  // This avoids each worker independently compiling the ~5.3MB WASM binary (~250ms each)
-  const tiktokenWasmModule = await getCompiledTiktokenWasmModule();
+  // Pre-compile tiktoken WASM module once in the main thread and pass it to workers.
+  // This avoids each worker independently compiling the ~5.3MB WASM binary (~250ms each).
+  // Only compile when we will create our own task runner; skip if deps.taskRunner is provided.
+  let tiktokenWasmModule: WebAssembly.Module | undefined;
+  if (!deps.taskRunner) {
+    try {
+      tiktokenWasmModule = await getCompiledTiktokenWasmModule();
+    } catch {
+      // Fall back to per-worker compilation if main thread precompile fails
+      tiktokenWasmModule = undefined;
+    }
+  }
 
   // Initialize a single task runner for all metrics calculations
   const taskRunner =
@@ -50,7 +59,7 @@ export const calculateMetrics = async (
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
-      extraWorkerData: { tiktokenWasmModule },
+      extraWorkerData: tiktokenWasmModule ? { tiktokenWasmModule } : undefined,
     });
 
   try {

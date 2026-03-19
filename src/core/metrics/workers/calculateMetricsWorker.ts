@@ -16,10 +16,15 @@ import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 // This must be called before any logging operations in the worker
 setLogLevelByWorkerData();
 
+// Extract the pre-compiled WASM module from workerData.
+// Tinypool wraps workerData as [tinypoolPrivateData, userWorkerData], so we access index [1].
+const userWorkerData = Array.isArray(workerData) ? workerData[1] : workerData;
+const wasmModule = userWorkerData?.tiktokenWasmModule;
+
 // Initialize tiktoken WASM with the pre-compiled module from the main thread.
-// If workerData.tiktokenWasmModule is present, this avoids re-compiling the ~5.3MB
+// If a valid WebAssembly.Module is present, this avoids re-compiling the ~5.3MB
 // WASM binary in each worker thread (~6ms instantiation vs ~250ms compile+instantiate).
-const wasmInitPromise = initTiktokenWasm(workerData?.tiktokenWasmModule as WebAssembly.Module | undefined);
+const wasmInitPromise = initTiktokenWasm(wasmModule instanceof WebAssembly.Module ? wasmModule : undefined);
 
 export interface TokenCountTask {
   content: string;
