@@ -12,6 +12,7 @@ export interface WorkerOptions {
   numOfTasks: number;
   workerType: WorkerType;
   runtime: WorkerRuntime;
+  extraWorkerData?: Record<string, unknown>;
 }
 
 /**
@@ -84,6 +85,7 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
     workerData: {
       workerType,
       logLevel: logger.getLogLevel(),
+      ...options.extraWorkerData,
     },
     // Only add env for child_process workers
     ...(runtime === 'child_process' && {

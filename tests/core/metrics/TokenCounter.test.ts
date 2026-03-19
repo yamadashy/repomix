@@ -1,10 +1,11 @@
-import { get_encoding, type Tiktoken } from 'tiktoken';
+import { get_encoding, type Tiktoken } from 'tiktoken/init';
 import { afterEach, beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
 import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 import { logger } from '../../../src/shared/logger.js';
 
-vi.mock('tiktoken', () => ({
+vi.mock('tiktoken/init', () => ({
   get_encoding: vi.fn(),
+  init: vi.fn(),
 }));
 
 vi.mock('../../../src/shared/logger');

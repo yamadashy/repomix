@@ -1,5 +1,44 @@
-import { get_encoding, type Tiktoken, type TiktokenEncoding } from 'tiktoken';
+import { get_encoding, init, type Tiktoken, type TiktokenEncoding } from 'tiktoken/init';
 import { logger } from '../../shared/logger.js';
+
+let wasmInitPromise: Promise<void> | null = null;
+
+/**
+ * Initialize tiktoken WASM module.
+ * If a pre-compiled WebAssembly.Module is provided (from main thread via workerData),
+ * only instantiation is needed (fast path ~5ms).
+ * Otherwise, reads and compiles the WASM file from disk (slow path ~100ms).
+ *
+ * This function is idempotent - calling it multiple times is safe.
+ */
+export const initTiktokenWasm = (compiledModule?: WebAssembly.Module): Promise<void> => {
+  if (!wasmInitPromise) {
+    wasmInitPromise = (async () => {
+      const startTime = process.hrtime.bigint();
+
+      if (compiledModule) {
+        // Fast path: use pre-compiled module from main thread
+        await init(async (imports) => new WebAssembly.Instance(compiledModule, imports));
+      } else {
+        // Slow path: read and compile WASM from disk
+        const fs = await import('node:fs');
+        const { createRequire } = await import('node:module');
+        const require = createRequire(import.meta.url);
+        const wasmPath = require.resolve('tiktoken/tiktoken_bg.wasm');
+        const bytes = fs.readFileSync(wasmPath);
+        const module = new WebAssembly.Module(bytes);
+        await init(async (imports) => new WebAssembly.Instance(module, imports));
+      }
+
+      const endTime = process.hrtime.bigint();
+      const initTime = Number(endTime - startTime) / 1e6;
+      logger.debug(
+        `Tiktoken WASM initialized in ${initTime.toFixed(2)}ms${compiledModule ? ' (pre-compiled)' : ' (from disk)'}`,
+      );
+    })();
+  }
+  return wasmInitPromise;
+};
 
 export class TokenCounter {
   private encoding: Tiktoken;
