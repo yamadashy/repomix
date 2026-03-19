@@ -1,10 +1,14 @@
 import path from 'node:path';
 
 // Sort paths for general use (not affected by git change count)
+// Uses decorate-sort-undecorate to pre-compute path.split() once per path
+// instead of O(N log N) repeated splits during comparisons
 export const sortPaths = (filePaths: string[]): string[] => {
-  return filePaths.sort((a, b) => {
-    const partsA = a.split(path.sep);
-    const partsB = b.split(path.sep);
+  const decorated = filePaths.map((p) => ({ original: p, parts: p.split(path.sep) }));
+
+  decorated.sort((a, b) => {
+    const partsA = a.parts;
+    const partsB = b.parts;
 
     for (let i = 0; i < Math.min(partsA.length, partsB.length); i++) {
       if (partsA[i] !== partsB[i]) {
@@ -21,4 +25,6 @@ export const sortPaths = (filePaths: string[]): string[] => {
     // Sort by path length when all parts are equal
     return partsA.length - partsB.length;
   });
+
+  return decorated.map((d) => d.original);
 };

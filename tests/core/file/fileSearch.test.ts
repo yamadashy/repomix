@@ -531,19 +531,25 @@ node_modules
         },
       });
 
+      const sep = path.sep;
       const mockFileStructure = [
-        'root/file1.js',
-        'root/another/file3.js',
-        'root/subdir/file2.js',
-        'root/subdir/ignored.js',
+        `root${sep}file1.js`,
+        `root${sep}another${sep}file3.js`,
+        `root${sep}subdir${sep}file2.js`,
+        `root${sep}subdir${sep}ignored.js`,
       ];
 
       vi.mocked(globby).mockResolvedValue(mockFileStructure);
 
       const result = await searchFiles('/mock/root', mockConfig);
 
-      expect(result.filePaths).toEqual(mockFileStructure);
-      expect(result.filePaths).toContain('root/subdir/ignored.js');
+      expect(result.filePaths).toEqual([
+        `root${sep}another${sep}file3.js`,
+        `root${sep}subdir${sep}file2.js`,
+        `root${sep}subdir${sep}ignored.js`,
+        `root${sep}file1.js`,
+      ]);
+      expect(result.filePaths).toContain(`root${sep}subdir${sep}ignored.js`);
       expect(result.emptyDirPaths).toEqual([]);
     });
 
