@@ -40,9 +40,7 @@
     "website-bundle": "docker compose -f website/compose.bundle.yml build --no-cache && docker compose -f website/compose.bundle.yml up",
     "website-generate-schema": "tsx website/client/scripts/generateSchema.ts",
     "pinact-run": "pinact run",
-    "pinact-check": "pinact run --check",
-    "benchmark-tokenizer": "tsx scripts/benchmark-tokenizer/benchmark.ts",
-    "benchmark-tokenizer-worker": "tsx scripts/benchmark-tokenizer/benchmark-worker.ts"
+    "pinact-check": "pinact run --check"
   },
   "keywords": [
     "repository",
@@ -115,7 +113,6 @@
     "oxlint": "^1.50.0",
     "rimraf": "^6.1.3",
     "secretlint": "^11.3.1",
-    "tiktoken": "^1.0.22",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
