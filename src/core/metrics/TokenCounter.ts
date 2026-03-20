@@ -44,7 +44,8 @@ export class TokenCounter {
     }
   }
 
-  // No-op for backward compatibility.
-  // gpt-tokenizer is pure JavaScript and does not require explicit resource cleanup.
+  // No-op retained for public API backward compatibility.
+  // gpt-tokenizer is pure JavaScript — memory is managed by GC,
+  // unlike tiktoken which required explicit WASM resource cleanup.
   public free(): void {}
 }
