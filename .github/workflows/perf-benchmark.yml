@@ -177,6 +177,7 @@ jobs:
           - Warmup: 2 runs (discarded)
           - Measurement: 10 runs (median)
           - ±: IQR (Interquartile Range) — middle 50% of measurements spread
+          - [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
 
           </details>"
 
