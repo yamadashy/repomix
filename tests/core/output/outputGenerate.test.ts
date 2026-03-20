@@ -1,9 +1,18 @@
 import process from 'node:process';
-import { XMLParser } from 'fast-xml-parser';
+import { DOMParser } from '@xmldom/xmldom';
 import { describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { generateOutput } from '../../../src/core/output/outputGenerate.js';
 import { createMockConfig } from '../../testing/testUtils.js';
+
+const createStrictXmlParser = () => {
+  const throwOnError = (msg: string) => {
+    throw new Error(msg);
+  };
+  return new DOMParser({
+    errorHandler: { warning: throwOnError, error: throwOnError, fatalError: throwOnError },
+  });
+};
 
 describe('outputGenerate', () => {
   const mockDeps = {
@@ -109,20 +118,17 @@ describe('outputGenerate', () => {
 
     const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
 
-    const parser = new XMLParser({ ignoreAttributes: false });
-    const parsedOutput = parser.parse(output);
+    const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
+    const repomix = doc.documentElement;
 
-    expect(parsedOutput.repomix.file_summary).not.toBeUndefined();
-    expect(parsedOutput.repomix.files.file).toEqual([
-      {
-        '#text': mockProcessedFiles[0].content,
-        '@_path': mockProcessedFiles[0].path,
-      },
-      {
-        '#text': mockProcessedFiles[1].content,
-        '@_path': mockProcessedFiles[1].path,
-      },
-    ]);
+    expect(repomix.getElementsByTagName('file_summary').length).toBe(1);
+
+    const fileElements = repomix.getElementsByTagName('file');
+    expect(fileElements.length).toBe(2);
+    expect(fileElements[0].getAttribute('path')).toBe(mockProcessedFiles[0].path);
+    expect(fileElements[0].textContent).toBe(mockProcessedFiles[0].content);
+    expect(fileElements[1].getAttribute('path')).toBe(mockProcessedFiles[1].path);
+    expect(fileElements[1].textContent).toBe(mockProcessedFiles[1].content);
   });
 
   test('generateOutput should write correct content to file (parsable markdown style)', async () => {
@@ -178,10 +184,11 @@ describe('outputGenerate', () => {
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: '<div>foo</div>' }];
     const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
-    const parser = new XMLParser({ ignoreAttributes: false });
-    const parsedOutput = parser.parse(output);
-    expect(parsedOutput.repomix['#text']).toBeUndefined();
-    expect(parsedOutput.repomix.user_provided_header).toBe('XML HEADER');
+    const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
+    const repomix = doc.documentElement;
+    expect(repomix.getElementsByTagName('file_summary').length).toBe(0);
+    const header = repomix.getElementsByTagName('user_provided_header')[0];
+    expect(header.textContent).toBe('XML HEADER');
   });
 
   test('generateOutput (markdown) omits generationHeader when fileSummaryEnabled is false, but always includes headerText', async () => {

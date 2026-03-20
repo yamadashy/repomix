@@ -130,7 +130,7 @@ const downloadAndExtractArchive = async (
     let downloaded = 0;
     let lastProgressUpdate = 0;
 
-    const nodeStream = Readable.fromWeb(response.body);
+    const nodeStream = Readable.fromWeb(response.body as import('node:stream/web').ReadableStream);
 
     // Transform stream for progress tracking
     const progressStream = new deps.Transform({
