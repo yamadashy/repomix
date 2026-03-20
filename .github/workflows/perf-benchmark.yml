@@ -1,0 +1,142 @@
+name: Performance Benchmark
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: perf-benchmark-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  benchmark:
+    name: Performance Benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Checkout PR branch and main branch into separate directories for isolation
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: pr-branch
+          persist-credentials: false
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: main
+          path: main-branch
+          persist-credentials: false
+
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version-file: pr-branch/.tool-versions
+          cache: npm
+          cache-dependency-path: |
+            pr-branch/package-lock.json
+            main-branch/package-lock.json
+
+      - name: Install and build (PR branch)
+        working-directory: pr-branch
+        run: npm ci && npm run build
+
+      - name: Install and build (main branch)
+        working-directory: main-branch
+        run: npm ci && npm run build
+
+      - name: Run benchmark
+        id: benchmark
+        run: |
+          # Benchmark function: 2 warmup runs + 5 measured runs, returns median
+          benchmark() {
+            local dir=$1
+            local times=()
+
+            # Warmup runs to stabilize OS page cache and JIT
+            for i in 1 2; do
+              node "$dir/bin/repomix.cjs" "$dir" --output /tmp/repomix-bench-output.txt > /dev/null 2>&1 || true
+            done
+
+            # Measurement runs
+            for i in 1 2 3 4 5; do
+              start=$(date +%s%N)
+              node "$dir/bin/repomix.cjs" "$dir" --output /tmp/repomix-bench-output.txt > /dev/null 2>&1
+              end=$(date +%s%N)
+              elapsed=$(( (end - start) / 1000000 ))
+              times+=($elapsed)
+            done
+
+            # Sort and return median (3rd of 5)
+            IFS=$'\n' sorted=($(sort -n <<<"${times[*]}")); unset IFS
+            echo "${sorted[2]}"
+          }
+
+          echo "Benchmarking PR branch..."
+          PR_TIME=$(benchmark "$GITHUB_WORKSPACE/pr-branch")
+          echo "PR branch median: ${PR_TIME}ms"
+
+          echo "Benchmarking main branch..."
+          MAIN_TIME=$(benchmark "$GITHUB_WORKSPACE/main-branch")
+          echo "main branch median: ${MAIN_TIME}ms"
+
+          # Calculate diff
+          DIFF=$((PR_TIME - MAIN_TIME))
+          if [ "$MAIN_TIME" -gt 0 ]; then
+            DIFF_PCT=$(awk "BEGIN {printf \"%.1f\", ($DIFF / $MAIN_TIME) * 100}")
+          else
+            DIFF_PCT="N/A"
+          fi
+
+          # Format as seconds
+          PR_SEC=$(awk "BEGIN {printf \"%.2f\", $PR_TIME / 1000}")
+          MAIN_SEC=$(awk "BEGIN {printf \"%.2f\", $MAIN_TIME / 1000}")
+          DIFF_SEC=$(awk "BEGIN {printf \"%+.2f\", $DIFF / 1000}")
+          DIFF_PCT_FMT=$(awk "BEGIN {printf \"%+.1f\", $DIFF_PCT + 0}")
+
+          echo "pr_time=$PR_SEC" >> "$GITHUB_OUTPUT"
+          echo "main_time=$MAIN_SEC" >> "$GITHUB_OUTPUT"
+          echo "diff=$DIFF_SEC" >> "$GITHUB_OUTPUT"
+          echo "diff_pct=$DIFF_PCT_FMT" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TIME: ${{ steps.benchmark.outputs.pr_time }}
+          MAIN_TIME: ${{ steps.benchmark.outputs.main_time }}
+          DIFF: ${{ steps.benchmark.outputs.diff }}
+          DIFF_PCT: ${{ steps.benchmark.outputs.diff_pct }}
+        run: |
+          COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
+
+          BODY="${COMMENT_MARKER}
+          ## ⚡ Performance Benchmark
+
+          Packing the repomix repository with \`node bin/repomix.cjs\`
+
+          | | Time |
+          |---|---:|
+          | PR branch | ${PR_TIME}s |
+          | main branch | ${MAIN_TIME}s |
+          | **Diff** | **${DIFF}s (${DIFF_PCT}%)** |
+
+          <details>
+          <summary>Details</summary>
+
+          - Warmup: 2 runs (discarded)
+          - Measurement: 5 runs (median)
+          - Runner: \`ubuntu-latest\`
+
+          </details>"
+
+          # Find existing comment by marker
+          COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id" | head -1)
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" -X PATCH -f body="$BODY"
+          else
+            gh pr comment "$PR_NUMBER" --body "$BODY"
+          fi
