@@ -45,7 +45,7 @@ query {
 }'
 
 # Regular issue comments (non-review)
-gh api repos/OWNER/REPO/issues/NUM/comments \
+gh api --paginate repos/OWNER/REPO/issues/NUM/comments \
   --jq '.[] | {id: .node_id, author: .user.login, body: .body}'
 ```
 
