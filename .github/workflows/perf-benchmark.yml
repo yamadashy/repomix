@@ -10,7 +10,6 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   benchmark:
@@ -115,8 +114,10 @@ jobs:
     needs: benchmark
     runs-on: ubuntu-latest
     if: always()
+    permissions:
+      pull-requests: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: results
           pattern: bench-result-*
