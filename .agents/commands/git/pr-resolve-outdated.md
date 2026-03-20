@@ -35,7 +35,7 @@ query {
           id
           isResolved
           isOutdated
-          comments(first: 5) {
+          comments(first: 20) {
             nodes { id body author { login } isMinimized }
           }
         }
@@ -46,14 +46,17 @@ query {
 
 # Regular issue comments (non-review)
 gh api repos/OWNER/REPO/issues/NUM/comments \
-  --jq '.[] | {id: .node_id, author: .user.login, body: .body[:150]}'
+  --jq '.[] | {id: .node_id, author: .user.login, body: .body}'
 ```
 
 ### 3. Classify each comment
 
-For each bot comment that is **not already minimized**, determine its status:
+For each bot comment that is **not already minimized**, determine its status.
+
+Note: Review threads expose `isMinimized` in the GraphQL response. For regular issue comments fetched via REST, minimized comments are hidden by default, so returned comments are not yet minimized.
 
 **Review threads (unresolved):**
+- If `isOutdated: true` (GitHub sets this when the referenced code has been updated) → likely **addressed**
 - Check the current code to see if the suggested fix or concern has been addressed
 - If the relevant code has been changed/removed, or the concern no longer applies → mark as **addressed**
 - If the code is unchanged and the concern is still valid → leave untouched
