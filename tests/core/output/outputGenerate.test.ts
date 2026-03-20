@@ -5,6 +5,15 @@ import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { generateOutput } from '../../../src/core/output/outputGenerate.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
+const createStrictXmlParser = () => {
+  const throwOnError = (msg: string) => {
+    throw new Error(msg);
+  };
+  return new DOMParser({
+    errorHandler: { warning: throwOnError, error: throwOnError, fatalError: throwOnError },
+  });
+};
+
 describe('outputGenerate', () => {
   const mockDeps = {
     buildOutputGeneratorContext: vi.fn(),
@@ -109,7 +118,7 @@ describe('outputGenerate', () => {
 
     const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
 
-    const doc = new DOMParser().parseFromString(output, 'text/xml');
+    const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
     const repomix = doc.documentElement;
 
     expect(repomix.getElementsByTagName('file_summary').length).toBe(1);
@@ -175,7 +184,7 @@ describe('outputGenerate', () => {
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: '<div>foo</div>' }];
     const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
-    const doc = new DOMParser().parseFromString(output, 'text/xml');
+    const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
     const repomix = doc.documentElement;
     expect(repomix.getElementsByTagName('file_summary').length).toBe(0);
     const header = repomix.getElementsByTagName('user_provided_header')[0];
