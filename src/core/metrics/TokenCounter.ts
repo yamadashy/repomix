@@ -1,21 +1,32 @@
 import { GptEncoding } from 'gpt-tokenizer/GptEncoding';
-import { resolveEncoding } from 'gpt-tokenizer/resolveEncoding';
+import { resolveEncodingAsync } from 'gpt-tokenizer/resolveEncodingAsync';
 import { logger } from '../../shared/logger.js';
 import type { TokenEncoding } from './tokenEncoding.js';
 
 export class TokenCounter {
   private encoding: GptEncoding;
 
-  constructor(encodingName: TokenEncoding) {
+  private constructor(encoding: GptEncoding) {
+    this.encoding = encoding;
+  }
+
+  /**
+   * Create a TokenCounter instance asynchronously.
+   * Uses dynamic import to load only the required BPE encoding data,
+   * avoiding the cost of loading all encodings (~4MB) on every worker.
+   */
+  public static async create(encodingName: TokenEncoding): Promise<TokenCounter> {
     const startTime = process.hrtime.bigint();
 
-    // Setup encoding with the specified encoding name
-    this.encoding = GptEncoding.getEncodingApi(encodingName, resolveEncoding);
+    const ranks = await resolveEncodingAsync(encodingName);
+    const encoding = GptEncoding.getEncodingApi(encodingName, () => ranks);
 
     const endTime = process.hrtime.bigint();
     const initTime = Number(endTime - startTime) / 1e6; // Convert to milliseconds
 
     logger.debug(`TokenCounter initialization took ${initTime.toFixed(2)}ms`);
+
+    return new TokenCounter(encoding);
   }
 
   public countTokens(content: string, filePath?: string): number {

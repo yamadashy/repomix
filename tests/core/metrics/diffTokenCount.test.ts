@@ -7,24 +7,23 @@ import { createMockConfig } from '../../testing/testUtils.js';
 
 // Mock the TokenCounter
 vi.mock('../../../src/core/metrics/TokenCounter.js', () => ({
-  TokenCounter: vi.fn(),
+  TokenCounter: {
+    create: vi.fn(),
+  },
 }));
 
 describe('Diff Token Count Calculation', () => {
   beforeEach(() => {
     vi.resetAllMocks();
 
-    // Setup TokenCounter mock using mockImplementation for class constructor
-    vi.mocked(TokenCounter).mockImplementation(
-      () =>
-        ({
-          countTokens: vi.fn((content: string) => {
-            // Simple token counting for testing
-            return content.split(/\s+/).length;
-          }),
-          free: vi.fn(),
-        }) as unknown as TokenCounter,
-    );
+    // Setup TokenCounter mock using static create factory
+    vi.mocked(TokenCounter.create).mockResolvedValue({
+      countTokens: vi.fn((content: string) => {
+        // Simple token counting for testing
+        return content.split(/\s+/).length;
+      }),
+      free: vi.fn(),
+    } as unknown as TokenCounter);
   });
 
   test('should calculate diff token count when diffs are included', async () => {

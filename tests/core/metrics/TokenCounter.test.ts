@@ -11,8 +11,8 @@ vi.mock('gpt-tokenizer/GptEncoding', () => {
   };
 });
 
-vi.mock('gpt-tokenizer/resolveEncoding', () => ({
-  resolveEncoding: vi.fn(),
+vi.mock('gpt-tokenizer/resolveEncodingAsync', () => ({
+  resolveEncodingAsync: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../../../src/shared/logger');
@@ -33,8 +33,8 @@ describe('TokenCounter', () => {
     const { GptEncoding } = await import('gpt-tokenizer/GptEncoding');
     vi.mocked(GptEncoding.getEncodingApi).mockReturnValue(mockEncoder as never);
 
-    // Create new TokenCounter instance
-    tokenCounter = new TokenCounter('o200k_base');
+    // Create new TokenCounter instance via async factory
+    tokenCounter = await TokenCounter.create('o200k_base');
   });
 
   afterEach(() => {
@@ -44,8 +44,7 @@ describe('TokenCounter', () => {
 
   test('should initialize with o200k_base encoding', async () => {
     const { GptEncoding } = await import('gpt-tokenizer/GptEncoding');
-    const { resolveEncoding } = await import('gpt-tokenizer/resolveEncoding');
-    expect(GptEncoding.getEncodingApi).toHaveBeenCalledWith('o200k_base', resolveEncoding);
+    expect(GptEncoding.getEncodingApi).toHaveBeenCalledWith('o200k_base', expect.any(Function));
   });
 
   test('should correctly count tokens for simple text', () => {

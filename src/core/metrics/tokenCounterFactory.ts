@@ -9,10 +9,10 @@ const tokenCounters = new Map<TokenEncoding, TokenCounter>();
  * Get or create a TokenCounter instance for the given encoding.
  * This ensures only one TokenCounter exists per encoding per worker thread to optimize memory usage.
  */
-export const getTokenCounter = (encoding: TokenEncoding): TokenCounter => {
+export const getTokenCounter = async (encoding: TokenEncoding): Promise<TokenCounter> => {
   let tokenCounter = tokenCounters.get(encoding);
   if (!tokenCounter) {
-    tokenCounter = new TokenCounter(encoding);
+    tokenCounter = await TokenCounter.create(encoding);
     tokenCounters.set(encoding, tokenCounter);
   }
   return tokenCounter;

@@ -24,7 +24,7 @@ export const countTokens = async (task: TokenCountTask): Promise<number> => {
   const processStartAt = process.hrtime.bigint();
 
   try {
-    const counter = getTokenCounter(task.encoding);
+    const counter = await getTokenCounter(task.encoding);
     const tokenCount = counter.countTokens(task.content, task.path);
 
     logger.trace(`Counted tokens. Count: ${tokenCount}. Took: ${getProcessDuration(processStartAt)}ms`);
