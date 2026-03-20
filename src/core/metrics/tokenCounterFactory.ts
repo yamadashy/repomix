@@ -13,7 +13,12 @@ export const getTokenCounter = async (encoding: TokenEncoding): Promise<TokenCou
   let tokenCounter = tokenCounters.get(encoding);
   if (!tokenCounter) {
     tokenCounter = await TokenCounter.create(encoding);
-    tokenCounters.set(encoding, tokenCounter);
+    // Guard against concurrent calls: only set if no other call populated the cache
+    if (!tokenCounters.has(encoding)) {
+      tokenCounters.set(encoding, tokenCounter);
+    } else {
+      tokenCounter = tokenCounters.get(encoding)!;
+    }
   }
   return tokenCounter;
 };
