@@ -113,7 +113,7 @@ jobs:
     name: Comment Results
     needs: benchmark
     runs-on: ubuntu-latest
-    if: always()
+    if: ${{ !cancelled() }}
     permissions:
       pull-requests: write
     steps:
@@ -122,11 +122,8 @@ jobs:
           path: results
           pattern: bench-result-*
 
-      - name: Comment on PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+      - name: Generate benchmark report
+        id: report
         run: |
           generate_row() {
             local os=$1
@@ -164,10 +161,7 @@ jobs:
             echo "| ${label} | ${pr_sec}s (±${pr_iqr_sec}s) | ${main_sec}s (±${main_iqr_sec}s) | ${diff_sec}s (${diff_pct}%) |"
           }
 
-          COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
-
-          BODY="${COMMENT_MARKER}
-          ## ⚡ Performance Benchmark
+          BODY="## ⚡ Performance Benchmark
 
           Packing the repomix repository with \`node bin/repomix.cjs\`
 
@@ -184,6 +178,22 @@ jobs:
           - Measurement: 10 runs (median, ± = IQR)
 
           </details>"
+
+          echo "$BODY" >> "$GITHUB_STEP_SUMMARY"
+
+          # Save report for comment step
+          echo "$BODY" > "$RUNNER_TEMP/benchmark-report.md"
+
+      - name: Comment on PR
+        if: ${{ github.event.pull_request.head.repo.fork == false }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
+          BODY="${COMMENT_MARKER}
+          $(cat "$RUNNER_TEMP/benchmark-report.md")"
 
           # Find existing comment by marker
           COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id" | head -1)
