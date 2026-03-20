@@ -18,10 +18,16 @@ import type { TokenEncoding } from '../tokenEncoding.js';
 // This must be called before any logging operations in the worker
 setLogLevelByWorkerData();
 
-// Retrieve pre-built encoding data from workerData (if provided by main thread)
-const preBuiltEncodingData = (workerData as Record<string, unknown> | undefined)?.encodingData as
-  | EncodingData
-  | undefined;
+// Retrieve pre-built encoding data from workerData (if provided by main thread).
+// Tinypool wraps workerData as [tinypoolPrivateData, userWorkerData],
+// so we access the user data at index 1.
+const getUserWorkerData = (): Record<string, unknown> | undefined => {
+  if (Array.isArray(workerData) && workerData.length > 1) {
+    return workerData[1] as Record<string, unknown>;
+  }
+  return workerData as Record<string, unknown> | undefined;
+};
+const preBuiltEncodingData = getUserWorkerData()?.encodingData as EncodingData | undefined;
 
 export interface TokenCountTask {
   content: string;
