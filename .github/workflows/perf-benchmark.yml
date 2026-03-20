@@ -175,7 +175,8 @@ jobs:
           <summary>Details</summary>
 
           - Warmup: 2 runs (discarded)
-          - Measurement: 10 runs (median, ± = IQR)
+          - Measurement: 10 runs (median)
+          - ±: IQR (Interquartile Range) — middle 50% of measurements spread
 
           </details>"
 
