@@ -14,9 +14,13 @@ permissions:
 
 jobs:
   benchmark:
-    name: Performance Benchmark
-    runs-on: ubuntu-latest
+    name: Benchmark (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       # Checkout PR branch and main branch into separate directories for isolation
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -47,69 +51,106 @@ jobs:
         run: npm ci && npm run build
 
       - name: Run benchmark
-        id: benchmark
+        shell: bash
         run: |
-          # Benchmark function: 2 warmup runs + 5 measured runs, returns median
-          benchmark() {
-            local dir=$1
-            local times=()
+          cat > "$RUNNER_TEMP/benchmark.mjs" << 'BENCHSCRIPT'
+          import { execFileSync } from 'node:child_process';
+          import { tmpdir } from 'node:os';
+          import { join } from 'node:path';
+          import { writeFileSync } from 'node:fs';
 
-            # Warmup runs to stabilize OS page cache and JIT
-            for i in 1 2; do
-              node "$dir/bin/repomix.cjs" "$dir" --output /tmp/repomix-bench-output.txt > /dev/null 2>&1 || true
-            done
+          const [prDir, mainDir] = process.argv.slice(2);
+          const output = join(tmpdir(), 'repomix-bench-output.txt');
 
-            # Measurement runs
-            for i in 1 2 3 4 5; do
-              start=$(date +%s%N)
-              node "$dir/bin/repomix.cjs" "$dir" --output /tmp/repomix-bench-output.txt > /dev/null 2>&1
-              end=$(date +%s%N)
-              elapsed=$(( (end - start) / 1000000 ))
-              times+=($elapsed)
-            done
+          function benchmark(dir) {
+            const bin = join(dir, 'bin', 'repomix.cjs');
 
-            # Sort and return median (3rd of 5)
-            IFS=$'\n' sorted=($(sort -n <<<"${times[*]}")); unset IFS
-            echo "${sorted[2]}"
+            // Warmup runs to stabilize OS page cache and JIT
+            for (let i = 0; i < 2; i++) {
+              try {
+                execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
+              } catch {}
+            }
+
+            // Measurement runs
+            const times = [];
+            for (let i = 0; i < 5; i++) {
+              const start = Date.now();
+              execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
+              times.push(Date.now() - start);
+            }
+
+            times.sort((a, b) => a - b);
+            return times[Math.floor(times.length / 2)];
           }
 
-          echo "Benchmarking PR branch..."
-          PR_TIME=$(benchmark "$GITHUB_WORKSPACE/pr-branch")
-          echo "PR branch median: ${PR_TIME}ms"
+          console.error('Benchmarking PR branch...');
+          const prTime = benchmark(prDir);
+          console.error(`PR median: ${prTime}ms`);
 
-          echo "Benchmarking main branch..."
-          MAIN_TIME=$(benchmark "$GITHUB_WORKSPACE/main-branch")
-          echo "main branch median: ${MAIN_TIME}ms"
+          console.error('Benchmarking main branch...');
+          const mainTime = benchmark(mainDir);
+          console.error(`main median: ${mainTime}ms`);
 
-          # Calculate diff
-          DIFF=$((PR_TIME - MAIN_TIME))
-          if [ "$MAIN_TIME" -gt 0 ]; then
-            DIFF_PCT=$(awk "BEGIN {printf \"%.1f\", ($DIFF / $MAIN_TIME) * 100}")
-          else
-            DIFF_PCT="N/A"
-          fi
+          const result = { pr: prTime, main: mainTime };
+          writeFileSync(join(process.env.RUNNER_TEMP, 'bench-result.json'), JSON.stringify(result));
+          BENCHSCRIPT
 
-          # Format as seconds
-          PR_SEC=$(awk "BEGIN {printf \"%.2f\", $PR_TIME / 1000}")
-          MAIN_SEC=$(awk "BEGIN {printf \"%.2f\", $MAIN_TIME / 1000}")
-          DIFF_SEC=$(awk "BEGIN {printf \"%+.2f\", $DIFF / 1000}")
-          DIFF_PCT_FMT=$(awk "BEGIN {printf \"%+.1f\", $DIFF_PCT + 0}")
+          node "$RUNNER_TEMP/benchmark.mjs" "$GITHUB_WORKSPACE/pr-branch" "$GITHUB_WORKSPACE/main-branch"
 
-          echo "pr_time=$PR_SEC" >> "$GITHUB_OUTPUT"
-          echo "main_time=$MAIN_SEC" >> "$GITHUB_OUTPUT"
-          echo "diff=$DIFF_SEC" >> "$GITHUB_OUTPUT"
-          echo "diff_pct=$DIFF_PCT_FMT" >> "$GITHUB_OUTPUT"
+      - name: Upload benchmark result
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: bench-result-${{ matrix.os }}
+          path: ${{ runner.temp }}/bench-result.json
+          retention-days: 1
+
+  comment:
+    name: Comment Results
+    needs: benchmark
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: results
+          pattern: bench-result-*
 
       - name: Comment on PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TIME: ${{ steps.benchmark.outputs.pr_time }}
-          MAIN_TIME: ${{ steps.benchmark.outputs.main_time }}
-          DIFF: ${{ steps.benchmark.outputs.diff }}
-          DIFF_PCT: ${{ steps.benchmark.outputs.diff_pct }}
         run: |
+          generate_row() {
+            local os=$1
+            local label=$2
+            local file="results/bench-result-${os}/bench-result.json"
+
+            if [ ! -f "$file" ]; then
+              echo "| ${label} | - | - | - |"
+              return
+            fi
+
+            local pr_ms main_ms
+            pr_ms=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$file','utf8')).pr)")
+            main_ms=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$file','utf8')).main)")
+
+            local diff=$((pr_ms - main_ms))
+            local pr_sec main_sec diff_sec diff_pct
+            pr_sec=$(awk "BEGIN {printf \"%.2f\", $pr_ms / 1000}")
+            main_sec=$(awk "BEGIN {printf \"%.2f\", $main_ms / 1000}")
+            diff_sec=$(awk "BEGIN {printf \"%+.2f\", $diff / 1000}")
+
+            if [ "$main_ms" -gt 0 ]; then
+              diff_pct=$(awk "BEGIN {printf \"%+.1f\", ($diff / $main_ms) * 100}")
+            else
+              diff_pct="N/A"
+            fi
+
+            echo "| ${label} | ${pr_sec}s | ${main_sec}s | ${diff_sec}s (${diff_pct}%) |"
+          }
+
           COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
 
           BODY="${COMMENT_MARKER}
@@ -117,18 +158,17 @@ jobs:
 
           Packing the repomix repository with \`node bin/repomix.cjs\`
 
-          | | Time |
-          |---|---:|
-          | PR branch | ${PR_TIME}s |
-          | main branch | ${MAIN_TIME}s |
-          | **Diff** | **${DIFF}s (${DIFF_PCT}%)** |
+          | Runner | PR | main | Diff |
+          |---|---:|---:|---:|
+          $(generate_row "ubuntu-latest" "Ubuntu")
+          $(generate_row "macos-latest" "macOS")
+          $(generate_row "windows-latest" "Windows")
 
           <details>
           <summary>Details</summary>
 
           - Warmup: 2 runs (discarded)
           - Measurement: 5 runs (median)
-          - Runner: \`ubuntu-latest\`
 
           </details>"
 
