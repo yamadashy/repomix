@@ -74,25 +74,30 @@ jobs:
 
             // Measurement runs
             const times = [];
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 10; i++) {
               const start = Date.now();
               execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
               times.push(Date.now() - start);
             }
 
             times.sort((a, b) => a - b);
-            return times[Math.floor(times.length / 2)];
+            const median = times[Math.floor(times.length / 2)];
+            // IQR: Q3 - Q1 (interquartile range)
+            const q1 = times[Math.floor(times.length * 0.25)];
+            const q3 = times[Math.floor(times.length * 0.75)];
+            const iqr = q3 - q1;
+            return { median, iqr };
           }
 
           console.error('Benchmarking PR branch...');
-          const prTime = benchmark(prDir);
-          console.error(`PR median: ${prTime}ms`);
+          const pr = benchmark(prDir);
+          console.error(`PR median: ${pr.median}ms (±${pr.iqr}ms)`);
 
           console.error('Benchmarking main branch...');
-          const mainTime = benchmark(mainDir);
-          console.error(`main median: ${mainTime}ms`);
+          const main = benchmark(mainDir);
+          console.error(`main median: ${main.median}ms (±${main.iqr}ms)`);
 
-          const result = { pr: prTime, main: mainTime };
+          const result = { pr: pr.median, prIqr: pr.iqr, main: main.median, mainIqr: main.iqr };
           writeFileSync(join(process.env.RUNNER_TEMP, 'bench-result.json'), JSON.stringify(result));
           BENCHSCRIPT
 
@@ -132,14 +137,21 @@ jobs:
               return
             fi
 
-            local pr_ms main_ms
-            pr_ms=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$file','utf8')).pr)")
-            main_ms=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$file','utf8')).main)")
+            local data
+            data=$(node -e "console.log(JSON.stringify(JSON.parse(require('fs').readFileSync('$file','utf8'))))")
+
+            local pr_ms main_ms pr_iqr main_iqr
+            pr_ms=$(node -e "console.log(JSON.parse('$data').pr)")
+            main_ms=$(node -e "console.log(JSON.parse('$data').main)")
+            pr_iqr=$(node -e "console.log(JSON.parse('$data').prIqr)")
+            main_iqr=$(node -e "console.log(JSON.parse('$data').mainIqr)")
 
             local diff=$((pr_ms - main_ms))
-            local pr_sec main_sec diff_sec diff_pct
+            local pr_sec main_sec pr_iqr_sec main_iqr_sec diff_sec diff_pct
             pr_sec=$(awk "BEGIN {printf \"%.2f\", $pr_ms / 1000}")
             main_sec=$(awk "BEGIN {printf \"%.2f\", $main_ms / 1000}")
+            pr_iqr_sec=$(awk "BEGIN {printf \"%.2f\", $pr_iqr / 1000}")
+            main_iqr_sec=$(awk "BEGIN {printf \"%.2f\", $main_iqr / 1000}")
             diff_sec=$(awk "BEGIN {printf \"%+.2f\", $diff / 1000}")
 
             if [ "$main_ms" -gt 0 ]; then
@@ -148,7 +160,7 @@ jobs:
               diff_pct="N/A"
             fi
 
-            echo "| ${label} | ${pr_sec}s | ${main_sec}s | ${diff_sec}s (${diff_pct}%) |"
+            echo "| ${label} | ${pr_sec}s (±${pr_iqr_sec}s) | ${main_sec}s (±${main_iqr_sec}s) | ${diff_sec}s (${diff_pct}%) |"
           }
 
           COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
@@ -168,7 +180,7 @@ jobs:
           <summary>Details</summary>
 
           - Warmup: 2 runs (discarded)
-          - Measurement: 5 runs (median)
+          - Measurement: 10 runs (median, ± = IQR)
 
           </details>"
 
