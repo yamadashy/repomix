@@ -1,27 +1,21 @@
 import { GptEncoding } from 'gpt-tokenizer/GptEncoding';
 import { resolveEncoding } from 'gpt-tokenizer/resolveEncoding';
 import { logger } from '../../shared/logger.js';
-import { type EncodingData, restoreEncodingFromData } from './encodingCache.js';
 import type { TokenEncoding } from './tokenEncoding.js';
 
 export class TokenCounter {
   private encoding: GptEncoding;
 
-  constructor(encodingName: TokenEncoding, preBuiltData?: EncodingData) {
+  constructor(encodingName: TokenEncoding) {
     const startTime = process.hrtime.bigint();
 
-    if (preBuiltData) {
-      // Fast path: restore from pre-built data shared by the main thread (~0.03ms)
-      this.encoding = restoreEncodingFromData(preBuiltData);
-    } else {
-      // Slow path: build from scratch (~60-90ms)
-      this.encoding = GptEncoding.getEncodingApi(encodingName, resolveEncoding);
-    }
+    // Setup encoding with the specified encoding name
+    this.encoding = GptEncoding.getEncodingApi(encodingName, resolveEncoding);
 
     const endTime = process.hrtime.bigint();
     const initTime = Number(endTime - startTime) / 1e6; // Convert to milliseconds
 
-    logger.debug(`TokenCounter initialization took ${initTime.toFixed(2)}ms${preBuiltData ? ' (pre-built)' : ''}`);
+    logger.debug(`TokenCounter initialization took ${initTime.toFixed(2)}ms`);
   }
 
   public countTokens(content: string, filePath?: string): number {

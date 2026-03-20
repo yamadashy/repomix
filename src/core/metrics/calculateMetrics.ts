@@ -9,7 +9,6 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
-import { preBuildEncodingData } from './encodingCache.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
@@ -39,10 +38,6 @@ export const calculateMetrics = async (
 ): Promise<CalculateMetricsResult> => {
   progressCallback('Calculating metrics...');
 
-  // Pre-build encoding data in the main thread to share with workers.
-  // This avoids each worker spending ~60-90ms building the BPE encoder Map.
-  const encodingData = preBuildEncodingData(config.tokenCount.encoding);
-
   // Initialize a single task runner for all metrics calculations
   const taskRunner =
     deps.taskRunner ??
@@ -50,7 +45,6 @@ export const calculateMetrics = async (
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
-      extraWorkerData: { encodingData },
     });
 
   try {

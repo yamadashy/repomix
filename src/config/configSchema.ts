@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { TokenEncoding } from '../core/metrics/tokenEncoding.js';
+import { tokenEncodings } from '../core/metrics/tokenEncoding.js';
 
 // Output style enum
 export const repomixOutputStyleSchema = z.enum(['xml', 'markdown', 'json', 'plain']);
@@ -122,10 +122,7 @@ export const repomixConfigDefaultSchema = z.object({
     enableSecurityCheck: z.boolean().default(true),
   }),
   tokenCount: z.object({
-    encoding: z
-      .string()
-      .default('o200k_base')
-      .transform((val) => val as TokenEncoding),
+    encoding: z.enum(tokenEncodings).default('o200k_base'),
   }),
 });
 
