@@ -30,10 +30,8 @@ jobs:
           BODY="${COMMENT_MARKER}
           ## ⚡ Performance Benchmark
 
-          | | |
-          |---|---|
-          | **Latest commit:** | \`${SHORT_SHA}\` |
-          | **Status:** | ⚡ Benchmark in progress... |
+          <table><tr><td><strong>Latest commit:</strong></td><td><code>${SHORT_SHA}</code></td></tr>
+          <tr><td><strong>Status:</strong></td><td>⚡ Benchmark in progress...</td></tr></table>
 
           [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
 
@@ -167,7 +165,7 @@ jobs:
             local file="results/bench-result-${os}/bench-result.json"
 
             if [ ! -f "$file" ]; then
-              echo "| **${label}:** | - |"
+              echo "<tr><td><strong>${label}:</strong></td><td>-</td></tr>"
               return
             fi
 
@@ -194,18 +192,17 @@ jobs:
               diff_pct="N/A"
             fi
 
-            echo "| **${label}:** | ${main_sec}s (±${main_iqr_sec}s) → ${pr_sec}s (±${pr_iqr_sec}s) · ${diff_sec}s (${diff_pct}%) |"
+            echo "<tr><td><strong>${label}:</strong></td><td>${main_sec}s (±${main_iqr_sec}s) → ${pr_sec}s (±${pr_iqr_sec}s) · ${diff_sec}s (${diff_pct}%)</td></tr>"
           }
 
           BODY="## ⚡ Performance Benchmark
 
-          | | |
-          |---|---|
-          | **Latest commit:** | \`${SHORT_SHA}\` |
-          | **Status:** | ✅ Benchmark complete! |
+          <table><tr><td><strong>Latest commit:</strong></td><td><code>${SHORT_SHA}</code></td></tr>
+          <tr><td><strong>Status:</strong></td><td>✅ Benchmark complete!</td></tr>
           $(generate_row "ubuntu-latest" "Ubuntu")
           $(generate_row "macos-latest" "macOS")
           $(generate_row "windows-latest" "Windows")
+          </table>
 
           <details>
           <summary>Details</summary>
