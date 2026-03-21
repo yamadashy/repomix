@@ -79,8 +79,7 @@ repomix/
 
 ### Commit Body Guidelines
 
-- When writing commit body, the assistant shall include context about what led to this commit.
-- When writing commit body, the assistant shall describe the conversation or problem that motivated the change.
+- When writing commit body, the assistant shall follow the `contextual-commit` skill (`.claude/skills/contextual-commit/SKILL.md`).
 
 ## Pull Request Guidelines
 
