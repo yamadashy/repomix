@@ -25,7 +25,7 @@ RUN pnpm install --frozen-lockfile
 
 # Build repomix (workspace dependency of server)
 COPY src/ ./src/
-COPY tsconfig.build.json ./
+COPY tsconfig.build.json tsconfig.json ./
 COPY bin/ ./bin/
 RUN pnpm run build
 

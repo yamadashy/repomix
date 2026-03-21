@@ -23,7 +23,7 @@ RUN pnpm install --frozen-lockfile --filter repomix
 
 # Copy source and build
 COPY src/ ./src/
-COPY tsconfig.build.json ./
+COPY tsconfig.build.json tsconfig.json ./
 COPY bin/ ./bin/
 RUN pnpm run build \
     && npm link \
