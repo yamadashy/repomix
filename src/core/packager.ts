@@ -105,17 +105,27 @@ export const pack = async (
   const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
   const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-  // Run security check and get filtered safe files
-  const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-    await withMemoryLogging('Security Check', () =>
+  // Run security check and file processing in parallel since they are independent.
+  // Processing all files (including potentially suspicious ones) is safe because
+  // file processing only performs text transformations (comment removal, formatting).
+  // Suspicious files are filtered out after both operations complete.
+  progressCallback('Running security check and processing files...');
+  const [securityResult, allProcessedFiles] = await Promise.all([
+    withMemoryLogging('Security Check', () =>
       deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
-    );
+    ),
+    withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)),
+  ]);
 
-  // Process files (remove comments, etc.)
-  progressCallback('Processing files...');
-  const processedFiles = await withMemoryLogging('Process Files', () =>
-    deps.processFiles(safeRawFiles, config, progressCallback),
-  );
+  const { suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = securityResult;
+
+  // Filter out suspicious files from processed results
+  const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
+  const processedFiles =
+    suspiciousPathSet.size > 0
+      ? allProcessedFiles.filter((file) => !suspiciousPathSet.has(file.path))
+      : allProcessedFiles;
+  const safeFilePaths = processedFiles.map((file) => file.path);
 
   progressCallback('Generating output...');
 
