@@ -17,8 +17,8 @@ services:
 
   server:
     build:
-      context: ./client
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: website/client/Dockerfile
     ports:
       - "8080:8080"
     volumes:

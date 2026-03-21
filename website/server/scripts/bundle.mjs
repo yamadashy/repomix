@@ -36,7 +36,7 @@ function cleanDistBundled() {
  */
 function buildTypeScript() {
   console.log('Building TypeScript...');
-  execSync('npm run build', { cwd: rootDir, stdio: 'inherit' });
+  execSync('pnpm run build', { cwd: rootDir, stdio: 'inherit' });
 }
 
 /**
@@ -103,7 +103,9 @@ function collectWasmFiles() {
 
   // Copy web-tree-sitter.wasm to dist-bundled root
   // (web-tree-sitter looks for WASM file in the same directory as the JS file)
-  const webTreeSitterWasm = join(rootDir, 'node_modules/web-tree-sitter/web-tree-sitter.wasm');
+  // Use import.meta.resolve to follow pnpm's symlink-based node_modules layout
+  const webTreeSitterDir = dirname(fileURLToPath(import.meta.resolve('web-tree-sitter/package.json')));
+  const webTreeSitterWasm = join(webTreeSitterDir, 'web-tree-sitter.wasm');
   if (existsSync(webTreeSitterWasm)) {
     cpSync(webTreeSitterWasm, join(distBundledDir, 'web-tree-sitter.wasm'));
     console.log('Copied web-tree-sitter.wasm to dist-bundled/');
@@ -112,7 +114,10 @@ function collectWasmFiles() {
   }
 
   // Find and copy tree-sitter language WASM files
-  const treeSitterWasmsDir = join(rootDir, 'node_modules/@repomix/tree-sitter-wasms/out');
+  const treeSitterWasmsDir = join(
+    dirname(fileURLToPath(import.meta.resolve('@repomix/tree-sitter-wasms/package.json'))),
+    'out',
+  );
 
   if (existsSync(treeSitterWasmsDir)) {
     const wasmFiles = readdirSync(treeSitterWasmsDir).filter((f) => f.endsWith('.wasm'));

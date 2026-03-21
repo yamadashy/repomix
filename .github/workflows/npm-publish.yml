@@ -52,9 +52,6 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      - name: Verify npm audit signatures
-        run: npm audit signatures
-
       - name: Publish (dry-run)
         if: ${{ inputs.dry-run }}
         run: pnpm publish --provenance --access public --dry-run --no-git-checks

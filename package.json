@@ -19,7 +19,7 @@
   },
   "bin": "./bin/repomix.cjs",
   "scripts": {
-    "prepack": "node --run build",
+    "prepack": "pnpm run build",
     "build": "rimraf lib && tsc -p tsconfig.build.json",
     "build-bun": "bun run build",
     "lint": "node --run lint-biome && node --run lint-oxlint && node --run lint-ts && node --run lint-secretlint",
