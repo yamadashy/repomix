@@ -12,6 +12,7 @@ export type TokenEncoding = 'o200k_base' | 'cl100k_base' | 'p50k_base' | 'r50k_b
 export interface GptTokenizerEncoding {
   encode(text: string, options?: { allowedSpecial?: Set<string>; disallowedSpecial?: Set<string> }): number[];
   decode(tokens: number[]): string;
+  countTokens(text: string, options?: { allowedSpecial?: Set<string>; disallowedSpecial?: Set<string> }): number;
 }
 
 // Cache loaded encodings to avoid redundant loads
