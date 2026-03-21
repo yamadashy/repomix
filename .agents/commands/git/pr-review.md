@@ -7,16 +7,15 @@ $ARGUMENTS
 
 If REPO and PR_NUMBER are not provided above, use `gh pr view` to detect the current PR.
 
-Please review this pull request and provide feedback on:
-- Code quality and best practices
-- Potential bugs or issues
-- Performance considerations
-- Security concerns
-- Test coverage
+Spawn 6 agents in parallel, each reviewing the PR diff from a different angle:
+- **Agent 1 — Code quality**: Bugs, logic errors, edge cases, code smells
+- **Agent 2 — Security**: Vulnerabilities, injection risks, secret exposure, unsafe patterns
+- **Agent 3 — Performance**: Inefficiencies, resource leaks, unnecessary allocations
+- **Agent 4 — Test coverage**: Missing tests, untested edge cases, test quality
+- **Agent 5 — Conventions**: Project conventions (.agents/rules/base.md), naming, structure
+- **Agent 6 — Holistic review**: Overall design concerns, side effects of changes, integration risks that individual agents may miss
 
-Perform a premortem analysis: identify potential failure scenarios (e.g., edge cases, integration issues, deployment risks) and suggest mitigations.
-
-Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+Each agent should only report noteworthy findings. After all agents report back, review their findings and keep only what you also deem noteworthy. Be constructive and helpful in your feedback.
 
 ## AI Bot Inline Comment Evaluation
 
