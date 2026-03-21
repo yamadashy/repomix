@@ -81,37 +81,29 @@ export const pack = async (
   // Sort file paths
   progressCallback('Sorting files...');
   const allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
 
-  // Regroup sorted file paths by rootDir
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+  // Sort each root's file paths independently (avoids O(N²) flatten-sort-regroup)
+  const sortedFilePathsByDir = filePathsByDir.map(({ rootDir, filePaths }) => ({
     rootDir,
-    filePaths: sortedFilePaths.filter((filePath: string) =>
-      filePathsByDir.find((item) => item.rootDir === rootDir)?.filePaths.includes(filePath),
-    ),
+    filePaths: deps.sortPaths(filePaths),
   }));
 
-  progressCallback('Collecting files...');
-  const collectResults = await withMemoryLogging(
-    'Collect Files',
-    async () =>
-      await Promise.all(
+  // Run file collection and git operations in parallel since they are independent
+  progressCallback('Collecting files and git information...');
+  const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
+    withMemoryLogging('Collect Files', () =>
+      Promise.all(
         sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
           deps.collectFiles(filePaths, rootDir, config, progressCallback),
         ),
       ),
-  );
+    ),
+    deps.getGitDiffs(rootDirs, config),
+    deps.getGitLogs(rootDirs, config),
+  ]);
 
   const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
   const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
-
-  // Get git diffs if enabled - run this before security check
-  progressCallback('Getting git diffs...');
-  const gitDiffResult = await deps.getGitDiffs(rootDirs, config);
-
-  // Get git logs if enabled - run this before security check
-  progressCallback('Getting git logs...');
-  const gitLogResult = await deps.getGitLogs(rootDirs, config);
 
   // Run security check and get filtered safe files
   const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
