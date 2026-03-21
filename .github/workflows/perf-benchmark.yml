@@ -10,8 +10,37 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
+  post-pending:
+    name: Post Pending Comment
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.head.repo.fork == false }}
+    steps:
+      - name: Post or update pending comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
+          BODY="${COMMENT_MARKER}
+          ## ⚡ Performance Benchmark
+
+          ベンチマーク取得中...
+
+          [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+
+          # Find existing comment by marker
+          COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id" | head -1)
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" -X PATCH -f body="$BODY"
+          else
+            gh pr comment "$PR_NUMBER" --body "$BODY"
+          fi
+
   benchmark:
     name: Benchmark (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -114,8 +143,6 @@ jobs:
     needs: benchmark
     runs-on: ubuntu-latest
     if: ${{ !cancelled() }}
-    permissions:
-      pull-requests: write
     steps:
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
