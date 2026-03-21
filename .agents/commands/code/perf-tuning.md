@@ -1,5 +1,5 @@
 # Goal
-Improve performance or memory usage of `src` and related code (tests, configs, dependencies) without causing regressions.
+Improve performance or memory usage of `src`, `website/server`, and related code (tests, configs, dependencies) without causing regressions.
 
 Think broadly — algorithm changes, architectural restructuring, parallelization, caching strategies, library replacements, dependency upgrades, and I/O reduction are all fair game. Small logic tweaks that only shave a few milliseconds on a 1000-file run are not worth pursuing. Aim for changes with meaningful, measurable impact.
 
@@ -7,7 +7,7 @@ Think broadly — algorithm changes, architectural restructuring, parallelizatio
 
 ## Investigation & Planning
 
-Spawn an agent team to investigate efficiently and thoroughly, then form an improvement plan.
+Spawn 10 agents in parallel to investigate efficiently and thoroughly, then form an improvement plan.
 Even if multiple improvements are identified, scope the work to what fits in a single PR — focus on the highest-impact change only.
 
 ## Implementation
