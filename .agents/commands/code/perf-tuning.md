@@ -1,13 +1,13 @@
 # Goal
-Improve performance or memory usage of `src`, `website/server`, and related code (tests, configs, dependencies) without causing regressions.
+Improve performance or reduce memory consumption of `src`, `website/server`, and related code (tests, configs, dependencies) without causing regressions.
 
-Think broadly — algorithm changes, architectural restructuring, parallelization, caching strategies, library replacements, dependency upgrades, and I/O reduction are all fair game. Small logic tweaks that only shave a few milliseconds on a 1000-file run are not worth pursuing. Aim for changes with meaningful, measurable impact.
+Think broadly — algorithm changes, architectural restructuring, parallelization, caching strategies, library replacements, dependency upgrades, I/O reduction, peak memory reduction, memory leak fixes, and startup time reduction are all fair game. Small logic tweaks that only shave a few milliseconds on a 1000-file run are not worth pursuing. Aim for changes with meaningful, measurable impact.
 
 # Steps
 
 ## Investigation & Planning
 
-Spawn 10 agents in parallel to investigate efficiently and thoroughly, then form an improvement plan.
+First, define 5 non-overlapping investigation scopes — partition by directory boundaries, cross-cutting concerns (I/O, memory, parallelism, algorithmic complexity, dependency weight), or pipeline stages. Then spawn 5 agents in parallel, assigning each agent exactly one scope with an explicit description of what it covers. After all agents report back, synthesize findings and form an improvement plan.
 Even if multiple improvements are identified, scope the work to what fits in a single PR — focus on the highest-impact change only.
 
 ## Implementation
