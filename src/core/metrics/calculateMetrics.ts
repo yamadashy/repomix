@@ -45,6 +45,7 @@ export const calculateMetrics = async (
   gitLogResult: GitLogResult | undefined,
   options?: {
     precomputedFileMetrics?: FileMetrics[] | Promise<FileMetrics[]>;
+    precomputedOutputTokens?: number | Promise<number>;
   },
   deps = {
     calculateSelectiveFileMetrics,
@@ -69,20 +70,26 @@ export const calculateMetrics = async (
       );
 
   // Count output tokens, git diff tokens, and git log tokens in parallel
-  // since they are independent of each other
-  const outputTokenCountPromises = outputParts.map((part, index) => {
-    const partPath =
-      outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, index + 1) : config.output.filePath;
-    return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath);
-  });
+  // since they are independent of each other.
+  // Use precomputed output tokens if available (from speculative counting during security check).
+  const outputTokensPromise =
+    options?.precomputedOutputTokens !== undefined
+      ? Promise.resolve(options.precomputedOutputTokens)
+      : Promise.all(
+          outputParts.map((part, index) => {
+            const partPath =
+              outputParts.length > 1
+                ? buildSplitOutputFilePath(config.output.filePath, index + 1)
+                : config.output.filePath;
+            return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath);
+          }),
+        ).then((counts) => counts.reduce((sum, count) => sum + count, 0));
 
-  const [outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
-    Promise.all(outputTokenCountPromises),
+  const [totalTokens, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+    outputTokensPromise,
     deps.calculateGitDiffMetrics(config, gitDiffResult),
     deps.calculateGitLogMetrics(config, gitLogResult),
   ]);
-
-  const totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
   const totalFiles = processedFiles.length;
   const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
 

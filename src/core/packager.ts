@@ -12,7 +12,9 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, getMetricsTargetPaths } from './metrics/calculateMetrics.js';
+import { calculateOutputMetrics } from './metrics/calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
+import { generateOutput } from './output/outputGenerate.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -44,6 +46,8 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   calculateSelectiveFileMetrics,
+  calculateOutputMetrics,
+  generateOutput,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -126,6 +130,18 @@ export const pack = async (
   const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
   const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
+  // Build filePathsByRoot early so speculative output generation can use it
+  const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
+    rootLabel: path.basename(rootDir) || rootDir,
+    files: filePaths,
+  }));
+
+  // Determine if speculative output generation is possible.
+  // Skill generation and split output require special handling that can't be speculated.
+  const isSkillGeneration = config.skillGenerate !== undefined && options.skillDir;
+  const isSplitOutput = config.output.splitOutput !== undefined;
+  const canSpeculate = !isSkillGeneration && !isSplitOutput;
+
   // Run security check and file processing in parallel since they are independent.
   // Processing all files (including potentially suspicious ones) is safe because
   // file processing only performs text transformations (comment removal, formatting).
@@ -133,12 +149,16 @@ export const pack = async (
   //
   // Additionally, once file processing completes (typically faster than security check),
   // start file metrics calculation immediately to utilize the otherwise-idle main thread
-  // while security workers continue running. This overlaps CPU-bound token counting
-  // with the worker-bound security check.
+  // while security workers continue running. After file metrics complete, speculatively
+  // generate output and count its tokens — this converts idle main-thread time
+  // (between file metrics completion and security check completion) into useful work,
+  // eliminating output token counting from the critical path.
   progressCallback('Running security check and processing files...');
   let securityResult: Awaited<ReturnType<typeof deps.validateFileSafety>>;
   let allProcessedFiles: ProcessedFile[];
   let fileMetricsPromise: Promise<Awaited<ReturnType<typeof deps.calculateSelectiveFileMetrics>>> | undefined;
+  let speculativeOutputPromise: Promise<string> | undefined;
+  let speculativeOutputTokensPromise: Promise<number> | undefined;
   try {
     [securityResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
@@ -159,6 +179,34 @@ export const pack = async (
             progressCallback,
           );
           fileMetricsPromise.catch(() => {});
+
+          // Speculative output generation: after file metrics complete (which runs
+          // synchronously on the main thread), generate output and count its tokens.
+          // This utilizes the main thread during remaining security check time,
+          // converting otherwise-idle CPU cycles into useful work.
+          // Uses unfiltered processedFiles; if security check finds suspicious files
+          // (rare), the output will be regenerated with filtered files.
+          if (canSpeculate) {
+            speculativeOutputPromise = fileMetricsPromise.then(() =>
+              deps.generateOutput(
+                rootDirs,
+                config,
+                processed,
+                allFilePaths,
+                gitDiffResult,
+                gitLogResult,
+                filePathsByRoot,
+                allEmptyDirPaths,
+              ),
+            );
+            speculativeOutputPromise.catch(() => {});
+
+            speculativeOutputTokensPromise = speculativeOutputPromise.then((output) =>
+              deps.calculateOutputMetrics(output, config.tokenCount.encoding, config.output.filePath),
+            );
+            speculativeOutputTokensPromise.catch(() => {});
+          }
+
           return processed;
         }),
       ),
@@ -183,7 +231,7 @@ export const pack = async (
   progressCallback('Generating output...');
 
   // Check if skill generation is requested
-  if (config.skillGenerate !== undefined && options.skillDir) {
+  if (isSkillGeneration) {
     const result = await deps.packSkill({
       rootDirs,
       config,
@@ -204,32 +252,56 @@ export const pack = async (
     return result;
   }
 
-  // Build filePathsByRoot for multi-root tree generation
-  // Use directory basename as the label for each root
-  // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
-  const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
-    rootLabel: path.basename(rootDir) || rootDir,
-    files: filePaths,
-  }));
+  // Determine if speculative output can be reused:
+  // - No suspicious files were found (speculative output used unfiltered files)
+  // - Not split output mode (handled separately)
+  // - Speculative output was actually started
+  const useSpeculativeOutput = speculativeOutputPromise && suspiciousPathSet.size === 0;
 
-  // Generate and write output (handles both single and split output)
-  const { outputFiles, outputForMetrics } = await deps.produceOutput(
-    rootDirs,
-    config,
-    processedFiles,
-    allFilePaths,
-    gitDiffResult,
-    gitLogResult,
-    progressCallback,
-    filePathsByRoot,
-    allEmptyDirPaths,
-  );
+  let outputFiles: string[] | undefined;
+  let outputForMetrics: string | string[];
+
+  if (useSpeculativeOutput && speculativeOutputPromise) {
+    // Reuse speculative output — it was generated with all processedFiles,
+    // and security check confirmed no files need filtering.
+    const output = await speculativeOutputPromise;
+    await deps.produceOutput(
+      rootDirs,
+      config,
+      processedFiles,
+      allFilePaths,
+      gitDiffResult,
+      gitLogResult,
+      progressCallback,
+      filePathsByRoot,
+      allEmptyDirPaths,
+      {},
+      { precomputedOutput: output },
+    );
+    outputForMetrics = output;
+  } else {
+    // Normal flow: generate output from scratch (suspicious files filtered, or split mode)
+    const result = await deps.produceOutput(
+      rootDirs,
+      config,
+      processedFiles,
+      allFilePaths,
+      gitDiffResult,
+      gitLogResult,
+      progressCallback,
+      filePathsByRoot,
+      allEmptyDirPaths,
+    );
+    outputFiles = result.outputFiles;
+    outputForMetrics = result.outputForMetrics;
+  }
 
   // Calculate remaining metrics on main thread, reusing precomputed file metrics
-  // that started during the security check phase.
+  // and speculative output tokens from the security check phase.
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
     deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
       precomputedFileMetrics: fileMetricsPromise,
+      precomputedOutputTokens: useSpeculativeOutput ? speculativeOutputTokensPromise : undefined,
     }),
   );
 

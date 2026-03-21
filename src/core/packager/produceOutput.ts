@@ -21,6 +21,10 @@ const defaultDeps = {
   copyToClipboardIfEnabled: copyToClipboardIfEnabledDefault,
 };
 
+export interface ProduceOutputOptions {
+  precomputedOutput?: string;
+}
+
 export const produceOutput = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
@@ -32,6 +36,7 @@ export const produceOutput = async (
   filePathsByRoot?: FilesByRoot[],
   emptyDirPaths?: string[],
   overrideDeps: Partial<typeof defaultDeps> = {},
+  options?: ProduceOutputOptions,
 ): Promise<ProduceOutputResult> => {
   const deps = { ...defaultDeps, ...overrideDeps };
 
@@ -51,6 +56,15 @@ export const produceOutput = async (
       emptyDirPaths,
       deps,
     );
+  }
+
+  // If precomputed output is available, skip generation and just write to disk
+  if (options?.precomputedOutput !== undefined) {
+    const output = options.precomputedOutput;
+    progressCallback('Writing output file...');
+    await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+    await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+    return { outputForMetrics: output };
   }
 
   return await generateAndWriteSingleOutput(

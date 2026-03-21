@@ -64,6 +64,8 @@ describe('packager', () => {
         { path: 'file1.txt', charCount: 19, tokenCount: 10 },
         { path: file2Path, charCount: 19, tokenCount: 10 },
       ]),
+      calculateOutputMetrics: vi.fn().mockResolvedValue(10),
+      generateOutput: vi.fn().mockResolvedValue(mockOutput),
       initTaskRunner: vi.fn().mockReturnValue(mockTaskRunner),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
@@ -106,6 +108,8 @@ describe('packager', () => {
     // security check and file processing run in parallel for performance.
     // Suspicious files are filtered out after both operations complete.
     expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);
+    // With speculative output enabled (no suspicious files, no split output),
+    // produceOutput receives the precomputed output to skip regeneration
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
       ['root'],
       mockConfig,
@@ -116,6 +120,8 @@ describe('packager', () => {
       progressCallback,
       [{ rootLabel: 'root', files: mockFilePaths }],
       [],
+      {},
+      { precomputedOutput: mockOutput },
     );
     expect(mockDeps.calculateMetrics).toHaveBeenCalledWith(
       mockProcessedFiles,
@@ -126,6 +132,7 @@ describe('packager', () => {
       undefined,
       {
         precomputedFileMetrics: expect.any(Promise),
+        precomputedOutputTokens: expect.any(Promise),
       },
     );
 
