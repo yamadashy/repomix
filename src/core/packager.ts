@@ -208,14 +208,13 @@ export const pack = async (
       allEmptyDirPaths,
     );
 
-    // Await file metrics (may already be done if output generation was slower)
-    const precomputedFileMetrics = await fileMetricsPromise;
-
-    // Calculate remaining metrics (output tokens, git tokens) - file metrics are passed in to avoid recomputation
+    // Pass file metrics promise directly to calculateMetrics so output token counting
+    // can start immediately without waiting for file metrics to finish first.
+    // Both run in parallel via Promise.all inside calculateMetrics.
     const metrics = await withMemoryLogging('Calculate Metrics', () =>
       deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
         taskRunner: metricsTaskRunner,
-        precomputedFileMetrics,
+        precomputedFileMetrics: fileMetricsPromise,
       }),
     );
 

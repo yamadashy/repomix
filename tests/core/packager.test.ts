@@ -125,7 +125,7 @@ describe('packager', () => {
       undefined,
       expect.objectContaining({
         taskRunner: expect.any(Object),
-        precomputedFileMetrics: expect.any(Array),
+        precomputedFileMetrics: expect.any(Promise),
       }),
     );
 

@@ -47,7 +47,7 @@ export const calculateMetrics = async (
   gitLogResult: GitLogResult | undefined,
   options?: {
     taskRunner?: TaskRunner<TokenCountTask, number>;
-    precomputedFileMetrics?: FileMetrics[];
+    precomputedFileMetrics?: FileMetrics[] | Promise<FileMetrics[]>;
   },
   deps = {
     calculateSelectiveFileMetrics,
