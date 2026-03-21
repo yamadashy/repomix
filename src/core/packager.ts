@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
-import { initTaskRunner } from '../shared/processConcurrency.js';
+import { initTaskRunner, type TaskRunner } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -48,6 +48,7 @@ const defaultDeps = {
   getGitDiffs,
   getGitLogs,
   packSkill,
+  initTaskRunner: initTaskRunner as <T, R>(options: Parameters<typeof initTaskRunner>[0]) => TaskRunner<T, R>,
 };
 
 export interface PackOptions {
@@ -163,7 +164,7 @@ export const pack = async (
   // Pre-initialize metrics worker pool so the first worker thread starts loading
   // tiktoken WASM in the background while output generation runs.
   // Created after the skill check to avoid spawning unused workers in the skill path.
-  const metricsTaskRunner = initTaskRunner<TokenCountTask, number>({
+  const metricsTaskRunner = deps.initTaskRunner<TokenCountTask, number>({
     numOfTasks: allFilePaths.length,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',

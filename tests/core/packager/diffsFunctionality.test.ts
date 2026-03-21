@@ -86,6 +86,7 @@ index 123..456 100644
       calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
       calculateMetrics: mockCalculateMetrics,
       sortPaths: mockSortPaths,
+      initTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), runNamed: vi.fn(), cleanup: vi.fn() }),
     });
 
     // Should not call getWorkTreeDiff
@@ -137,6 +138,7 @@ index 123..456 100644
       calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
       calculateMetrics: mockCalculateMetrics,
       sortPaths: mockSortPaths,
+      initTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), runNamed: vi.fn(), cleanup: vi.fn() }),
     });
 
     // Check gitDiffTokenCount in the result

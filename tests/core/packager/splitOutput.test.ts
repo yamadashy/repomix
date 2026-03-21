@@ -56,6 +56,7 @@ describe('packager split output', () => {
       produceOutput,
       calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
       calculateMetrics,
+      initTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), runNamed: vi.fn(), cleanup: vi.fn() }),
     });
 
     expect(produceOutput).toHaveBeenCalledWith(

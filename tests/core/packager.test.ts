@@ -36,6 +36,12 @@ describe('packager', () => {
     const mockOutput = 'mock output';
     const mockFilePaths = ['file1.txt', file2Path];
 
+    const mockTaskRunner = {
+      run: vi.fn(),
+      runNamed: vi.fn(),
+      cleanup: vi.fn().mockResolvedValue(undefined),
+    };
+
     const mockDeps = {
       searchFiles: vi.fn().mockResolvedValue({
         filePaths: mockFilePaths,
@@ -58,6 +64,7 @@ describe('packager', () => {
         { path: 'file1.txt', charCount: 19, tokenCount: 10 },
         { path: file2Path, charCount: 19, tokenCount: 10 },
       ]),
+      initTaskRunner: vi.fn().mockReturnValue(mockTaskRunner),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,

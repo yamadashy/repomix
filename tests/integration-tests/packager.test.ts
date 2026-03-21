@@ -116,6 +116,11 @@ describe.runIf(!isWindows)('packager integration', () => {
         },
         produceOutput,
         calculateSelectiveFileMetrics: async () => [],
+        initTaskRunner: (() => ({
+          run: async () => 0,
+          runNamed: async () => [],
+          cleanup: async () => {},
+        })) as typeof import('../../src/shared/processConcurrency.js').initTaskRunner,
         calculateMetrics: async (
           processedFiles,
           _output,
