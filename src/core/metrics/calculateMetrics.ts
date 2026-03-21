@@ -92,10 +92,13 @@ export const calculateMetrics = async (
     fileCharCounts[file.path] = file.content.length;
   }
 
-  // Build token counts only for top files
+  // Build token counts only for top files, filtering to files in processedFiles
+  // (precomputed metrics may include suspicious files that were later excluded)
   const fileTokenCounts: Record<string, number> = {};
   for (const file of selectiveFileMetrics) {
-    fileTokenCounts[file.path] = file.tokenCount;
+    if (file.path in fileCharCounts) {
+      fileTokenCounts[file.path] = file.tokenCount;
+    }
   }
 
   return {

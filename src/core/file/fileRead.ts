@@ -28,18 +28,17 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
 
     logger.trace(`Reading file: ${filePath}`);
 
-    // Read file directly — eliminates a separate fs.stat() syscall per file.
-    // Size check happens on the buffer instead. Since maxFileSize defaults to 50MB
-    // and most source files are far smaller, this avoids an extra kernel round-trip
-    // for the vast majority of files.
-    const buffer = await fs.readFile(filePath);
-
-    if (buffer.length > maxFileSize) {
-      const sizeKB = (buffer.length / 1024).toFixed(1);
+    // Check file size with fs.stat() before reading to avoid loading very large files
+    // (e.g., multi-GB database dumps) into memory just to discard them.
+    const stats = await fs.stat(filePath);
+    if (stats.size > maxFileSize) {
+      const sizeKB = (stats.size / 1024).toFixed(1);
       const maxSizeKB = (maxFileSize / 1024).toFixed(1);
       logger.trace(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
       return { content: null, skippedReason: 'size-limit' };
     }
+
+    const buffer = await fs.readFile(filePath);
 
     // Use sync version — the check is already synchronous on a buffer,
     // the async wrapper only adds unnecessary Promise overhead per file.
