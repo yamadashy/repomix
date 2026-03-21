@@ -1,7 +1,7 @@
 # Goal
 Improve performance or reduce memory consumption of `src`, `website/server`, and related code (tests, configs, dependencies) without causing regressions.
 
-Think broadly — algorithm changes, architectural restructuring, parallelization, caching strategies, library replacements, dependency upgrades, I/O reduction, peak memory reduction, and memory leak fixes are all fair game. Small logic tweaks that only shave a few milliseconds on a 1000-file run are not worth pursuing. Aim for changes with meaningful, measurable impact.
+Think broadly — algorithm changes, architectural restructuring, parallelization, caching strategies, library replacements, dependency upgrades, I/O reduction, peak memory reduction, memory leak fixes, and startup time reduction are all fair game. Small logic tweaks that only shave a few milliseconds on a 1000-file run are not worth pursuing. Aim for changes with meaningful, measurable impact.
 
 # Steps
 
