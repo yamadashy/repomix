@@ -23,12 +23,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
+          SHORT_SHA="${COMMIT_SHA:0:7}"
           COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
           BODY="${COMMENT_MARKER}
           ## ⚡ Performance Benchmark
 
-          ベンチマーク取得中...
+          | | |
+          |---|---|
+          | **Latest commit:** | \`${SHORT_SHA}\` |
+          | **Status:** | ⚡ Benchmark in progress... |
 
           [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
 
@@ -151,14 +156,18 @@ jobs:
 
       - name: Generate benchmark report
         id: report
+        env:
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+
           generate_row() {
             local os=$1
             local label=$2
             local file="results/bench-result-${os}/bench-result.json"
 
             if [ ! -f "$file" ]; then
-              echo "| ${label} | - | - |"
+              echo "| **${label}:** | - |"
               return
             fi
 
@@ -185,15 +194,15 @@ jobs:
               diff_pct="N/A"
             fi
 
-            echo "| ${label} | ${main_sec}s (±${main_iqr_sec}s) → ${pr_sec}s (±${pr_iqr_sec}s) | ${diff_sec}s (${diff_pct}%) |"
+            echo "| **${label}:** | ${main_sec}s (±${main_iqr_sec}s) → ${pr_sec}s (±${pr_iqr_sec}s) · ${diff_sec}s (${diff_pct}%) |"
           }
 
           BODY="## ⚡ Performance Benchmark
 
-          Packing the repomix repository with \`node bin/repomix.cjs\`
-
-          | Runner | main → PR | Diff |
-          |---|---:|---:|
+          | | |
+          |---|---|
+          | **Latest commit:** | \`${SHORT_SHA}\` |
+          | **Status:** | ✅ Benchmark complete! |
           $(generate_row "ubuntu-latest" "Ubuntu")
           $(generate_row "macos-latest" "macOS")
           $(generate_row "windows-latest" "Windows")
@@ -201,9 +210,9 @@ jobs:
           <details>
           <summary>Details</summary>
 
+          - Packing the repomix repository with \`node bin/repomix.cjs\`
           - Warmup: 2 runs (discarded)
-          - Measurement: 10 runs (median)
-          - ±: IQR (Interquartile Range) — middle 50% of measurements spread
+          - Measurement: 10 runs (median ± IQR)
           - [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
 
           </details>"
