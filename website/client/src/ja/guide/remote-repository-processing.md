@@ -55,6 +55,22 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
+## セキュリティ
+
+セキュリティ上の理由から、リモートリポジトリ内の設定ファイル（`repomix.config.*`）はデフォルトでは読み込まれません。これにより、信頼できないリポジトリが `repomix.config.ts` などの設定ファイルを通じてコードを実行することを防ぎます。
+
+グローバル設定とCLIオプションは通常通り適用されます。
+
+リモートリポジトリの設定を信頼する場合：
+
+```bash
+# CLIフラグを使用
+repomix --remote user/repo --remote-trust-config
+
+# 環境変数を使用
+REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
+```
+
 ## 一般的な問題
 
 ### アクセスの問題

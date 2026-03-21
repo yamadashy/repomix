@@ -55,6 +55,22 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
+## Security
+
+For security, config files (`repomix.config.*`) in remote repositories are not loaded by default. This prevents untrusted repositories from executing code via config files such as `repomix.config.ts`.
+
+Your global config and CLI options are still applied.
+
+To trust a remote repository's config:
+
+```bash
+# Using CLI flag
+repomix --remote user/repo --remote-trust-config
+
+# Using environment variable
+REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
+```
+
 ## Common Issues
 
 ### Access Issues
