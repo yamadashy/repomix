@@ -12,7 +12,7 @@ RUN corepack enable
 WORKDIR /app
 
 # Copy workspace configuration and lockfile
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Copy all workspace package.json files (required for lockfile validation)
 COPY browser/package.json ./browser/
