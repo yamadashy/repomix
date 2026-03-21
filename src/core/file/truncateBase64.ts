@@ -5,6 +5,13 @@ const TRUNCATION_LENGTH = 32;
 const MIN_CHAR_DIVERSITY = 10;
 const MIN_CHAR_TYPE_COUNT = 3;
 
+// Pre-compiled regex patterns to avoid re-creation on every call
+const dataUriPattern = new RegExp(
+  `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
+  'g',
+);
+const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
+
 /**
  * Truncates base64 encoded data in content to reduce file size
  * Detects common base64 patterns like data URIs and standalone base64 strings
@@ -13,16 +20,6 @@ const MIN_CHAR_TYPE_COUNT = 3;
  * @returns Content with base64 data truncated
  */
 export const truncateBase64Content = (content: string): string => {
-  // Pattern to match data URIs (e.g., data:image/png;base64,...)
-  const dataUriPattern = new RegExp(
-    `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
-    'g',
-  );
-
-  // Pattern to match standalone base64 strings
-  // This matches base64 strings that are likely encoded binary data
-  const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
-
   let processedContent = content;
 
   // Replace data URIs
