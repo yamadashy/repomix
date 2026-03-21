@@ -12,7 +12,7 @@ Spawn 6 agents in parallel, each reviewing the PR diff from a different angle:
 - **Agent 2 — Security**: Vulnerabilities, injection risks, secret exposure, unsafe patterns
 - **Agent 3 — Performance**: Inefficiencies, resource leaks, unnecessary allocations
 - **Agent 4 — Test coverage**: Missing tests, untested edge cases, test quality
-- **Agent 5 — Conventions**: Project conventions (CLAUDE.md, .agents/rules/base.md), naming, structure
+- **Agent 5 — Conventions**: Project conventions (.agents/rules/base.md), naming, structure
 - **Agent 6 — Holistic review**: Overall design concerns, side effects, integration risks, and premortem analysis (potential failure scenarios, deployment risks)
 
 Each agent should only report noteworthy findings. After all agents report back, review their findings and keep only what you also deem noteworthy. Be constructive and helpful in your feedback.
