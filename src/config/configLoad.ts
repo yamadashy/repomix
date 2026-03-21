@@ -69,11 +69,12 @@ const defaultJitiImport = async (fileUrl: string): Promise<unknown> => {
 export const loadFileConfig = async (
   rootDir: string,
   argConfigPath: string | null,
+  options: { skipLocalConfig?: boolean } = {},
   deps = {
     jitiImport: defaultJitiImport,
   },
 ): Promise<RepomixConfigFile> => {
-  if (argConfigPath) {
+  if (argConfigPath && !options.skipLocalConfig) {
     // If a specific config path is provided, use it directly
     const fullPath = path.resolve(rootDir, argConfigPath);
     logger.trace('Loading local config from:', fullPath);
@@ -86,12 +87,14 @@ export const loadFileConfig = async (
     throw new RepomixError(`Config file not found at ${argConfigPath}`);
   }
 
-  // Try to find a local config file using the priority order
-  const localConfigPaths = defaultConfigPaths.map((configPath) => path.resolve(rootDir, configPath));
-  const localConfigPath = await findConfigFile(localConfigPaths, 'local');
+  if (!options.skipLocalConfig) {
+    // Try to find a local config file using the priority order
+    const localConfigPaths = defaultConfigPaths.map((configPath) => path.resolve(rootDir, configPath));
+    const localConfigPath = await findConfigFile(localConfigPaths, 'local');
 
-  if (localConfigPath) {
-    return await loadAndValidateConfig(localConfigPath, deps);
+    if (localConfigPath) {
+      return await loadAndValidateConfig(localConfigPath, deps);
+    }
   }
 
   // Try to find a global config file using the priority order
@@ -102,11 +105,13 @@ export const loadFileConfig = async (
     return await loadAndValidateConfig(globalConfigPath, deps);
   }
 
-  logger.log(
-    pc.dim(
-      `No custom config found at ${defaultConfigPaths.join(', ')} or global config at ${globalConfigPaths.join(', ')}.\nYou can add a config file for additional settings. Please check https://github.com/yamadashy/repomix for more information.`,
-    ),
-  );
+  if (!options.skipLocalConfig) {
+    logger.log(
+      pc.dim(
+        `No custom config found at ${defaultConfigPaths.join(', ')} or global config at ${globalConfigPaths.join(', ')}.\nYou can add a config file for additional settings. Please check https://github.com/yamadashy/repomix for more information.`,
+      ),
+    );
+  }
   return {};
 };
 

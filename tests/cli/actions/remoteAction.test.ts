@@ -28,6 +28,26 @@ describe('remoteAction functions', () => {
       const execGitShallowCloneMock = vi.fn(async (_url: string, directory: string) => {
         await fs.writeFile(path.join(directory, 'README.md'), 'Hello, world!');
       });
+      const runDefaultActionMock = vi.fn(async () => {
+        return {
+          packResult: {
+            totalFiles: 1,
+            totalCharacters: 1,
+            totalTokens: 1,
+            fileCharCounts: {},
+            fileTokenCounts: {},
+            suspiciousFilesResults: [],
+            suspiciousGitDiffResults: [],
+            suspiciousGitLogResults: [],
+            processedFiles: [],
+            safeFilePaths: [],
+            gitDiffTokenCount: 0,
+            gitLogTokenCount: 0,
+            skippedFiles: [],
+          },
+          config: createMockConfig(),
+        } satisfies DefaultActionRunnerResult;
+      });
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
       await runRemoteAction(
@@ -37,26 +57,7 @@ describe('remoteAction functions', () => {
           isGitInstalled: async () => Promise.resolve(true),
           execGitShallowClone: execGitShallowCloneMock,
           getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: async () => {
-            return {
-              packResult: {
-                totalFiles: 1,
-                totalCharacters: 1,
-                totalTokens: 1,
-                fileCharCounts: {},
-                fileTokenCounts: {},
-                suspiciousFilesResults: [],
-                suspiciousGitDiffResults: [],
-                suspiciousGitLogResults: [],
-                processedFiles: [],
-                safeFilePaths: [],
-                gitDiffTokenCount: 0,
-                gitLogTokenCount: 0,
-                skippedFiles: [],
-              },
-              config: createMockConfig(),
-            } satisfies DefaultActionRunnerResult;
-          },
+          runDefaultAction: runDefaultActionMock,
           downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
           isGitHubRepository: vi.fn().mockReturnValue(false),
           parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
@@ -65,6 +66,12 @@ describe('remoteAction functions', () => {
       );
 
       expect(execGitShallowCloneMock).toHaveBeenCalledTimes(1);
+      // Verify isRemote flag is passed to prevent loading untrusted config from cloned repos
+      expect(runDefaultActionMock).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(String),
+        expect.objectContaining({ isRemote: true }),
+      );
     });
 
     test('should download GitHub archive successfully without git installed', async () => {
