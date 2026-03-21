@@ -1,12 +1,12 @@
-import type { TiktokenEncoding } from 'tiktoken';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
 import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
+import type { TokenEncoding } from '../tokenEncoding.js';
 
 /**
  * Simple token counting worker for metrics calculation.
  *
  * This worker provides a focused interface for counting tokens from text content,
- * using the Tiktoken encoding. All complex metric calculation logic is handled
+ * using gpt-tokenizer (pure JS). All complex metric calculation logic is handled
  * by the calling side to maintain separation of concerns.
  */
 
@@ -16,13 +16,13 @@ setLogLevelByWorkerData();
 
 export interface TokenCountTask {
   content: string;
-  encoding: TiktokenEncoding;
+  encoding: TokenEncoding;
   path?: string;
 }
 
 export interface TokenCountBatchTask {
   items: { content: string; path?: string }[];
-  encoding: TiktokenEncoding;
+  encoding: TokenEncoding;
 }
 
 export const countTokens = async (task: TokenCountTask): Promise<number> => {

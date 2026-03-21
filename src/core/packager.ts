@@ -162,7 +162,7 @@ export const pack = async (
   }
 
   // Pre-initialize metrics worker pool so the first worker thread starts loading
-  // tiktoken WASM in the background while output generation runs.
+  // the token encoding in the background while output generation runs.
   // Created after the skill check to avoid spawning unused workers in the skill path.
   const metricsTaskRunner = deps.initTaskRunner<TokenCountTask, number>({
     numOfTasks: allFilePaths.length,
@@ -194,6 +194,9 @@ export const pack = async (
         },
       ),
     );
+    // Prevent unhandled rejection if fileMetricsPromise rejects while produceOutput is running.
+    // The actual error will be surfaced when calculateMetrics awaits the promise via precomputedFileMetrics.
+    fileMetricsPromise.catch(() => {});
 
     // Generate and write output (handles both single and split output)
     const { outputFiles, outputForMetrics } = await deps.produceOutput(

@@ -1,13 +1,13 @@
-import type { TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
 import { getProcessConcurrency, type TaskRunner } from '../../shared/processConcurrency.js';
+import type { TokenEncoding } from './tokenEncoding.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
 const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1MB
 
 export const calculateOutputMetrics = async (
   content: string,
-  encoding: TiktokenEncoding,
+  encoding: TokenEncoding,
   path: string | undefined,
   deps: { taskRunner: TaskRunner<TokenCountTask, number> },
 ): Promise<number> => {

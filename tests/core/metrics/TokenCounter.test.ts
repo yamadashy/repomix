@@ -1,30 +1,23 @@
-import { get_encoding, type Tiktoken } from 'tiktoken';
-import { afterEach, beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 import { logger } from '../../../src/shared/logger.js';
 
-vi.mock('tiktoken', () => ({
-  get_encoding: vi.fn(),
+const mockEncode = vi.fn();
+
+vi.mock('../../../src/core/metrics/tokenEncoding', () => ({
+  loadTokenEncoding: vi.fn(() => ({
+    encode: mockEncode,
+  })),
 }));
 
 vi.mock('../../../src/shared/logger');
 
 describe('TokenCounter', () => {
   let tokenCounter: TokenCounter;
-  let mockEncoder: {
-    encode: Mock;
-    free: Mock;
-  };
 
   beforeEach(() => {
-    // Initialize mock encoder
-    mockEncoder = {
-      encode: vi.fn(),
-      free: vi.fn(),
-    };
-
     // Setup mock encoder behavior
-    vi.mocked(get_encoding).mockReturnValue(mockEncoder as unknown as Tiktoken);
+    mockEncode.mockReturnValue([]);
 
     // Create new TokenCounter instance
     tokenCounter = new TokenCounter('o200k_base');
@@ -35,61 +28,62 @@ describe('TokenCounter', () => {
     vi.resetAllMocks();
   });
 
-  test('should initialize with o200k_base encoding', () => {
-    expect(get_encoding).toHaveBeenCalledWith('o200k_base');
+  test('should initialize with o200k_base encoding', async () => {
+    const { loadTokenEncoding } = await import('../../../src/core/metrics/tokenEncoding.js');
+    expect(loadTokenEncoding).toHaveBeenCalledWith('o200k_base');
   });
 
   test('should correctly count tokens for simple text', () => {
     const text = 'Hello, world!';
     const mockTokens = [123, 456, 789]; // Example token IDs
-    mockEncoder.encode.mockReturnValue(mockTokens);
+    mockEncode.mockReturnValue(mockTokens);
 
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(3); // Length of mockTokens
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncode).toHaveBeenCalledWith(text, { allowedSpecial: new Set(), disallowedSpecial: new Set() });
   });
 
   test('should handle empty string', () => {
-    mockEncoder.encode.mockReturnValue([]);
+    mockEncode.mockReturnValue([]);
 
     const count = tokenCounter.countTokens('');
 
     expect(count).toBe(0);
-    expect(mockEncoder.encode).toHaveBeenCalledWith('', [], []);
+    expect(mockEncode).toHaveBeenCalledWith('', { allowedSpecial: new Set(), disallowedSpecial: new Set() });
   });
 
   test('should handle multi-line text', () => {
     const text = 'Line 1\nLine 2\nLine 3';
     const mockTokens = [1, 2, 3, 4, 5, 6];
-    mockEncoder.encode.mockReturnValue(mockTokens);
+    mockEncode.mockReturnValue(mockTokens);
 
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(6);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncode).toHaveBeenCalledWith(text, { allowedSpecial: new Set(), disallowedSpecial: new Set() });
   });
 
   test('should handle special characters', () => {
     const text = '!@#$%^&*()_+';
     const mockTokens = [1, 2, 3];
-    mockEncoder.encode.mockReturnValue(mockTokens);
+    mockEncode.mockReturnValue(mockTokens);
 
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(3);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncode).toHaveBeenCalledWith(text, { allowedSpecial: new Set(), disallowedSpecial: new Set() });
   });
 
   test('should handle unicode characters', () => {
     const text = '你好，世界！🌍';
     const mockTokens = [1, 2, 3, 4];
-    mockEncoder.encode.mockReturnValue(mockTokens);
+    mockEncode.mockReturnValue(mockTokens);
 
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(4);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncode).toHaveBeenCalledWith(text, { allowedSpecial: new Set(), disallowedSpecial: new Set() });
   });
 
   test('should handle code snippets', () => {
@@ -99,12 +93,12 @@ describe('TokenCounter', () => {
       }
     `;
     const mockTokens = Array(10).fill(1); // 10 tokens
-    mockEncoder.encode.mockReturnValue(mockTokens);
+    mockEncode.mockReturnValue(mockTokens);
 
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(10);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncode).toHaveBeenCalledWith(text, { allowedSpecial: new Set(), disallowedSpecial: new Set() });
   });
 
   test('should handle markdown text', () => {
@@ -117,28 +111,28 @@ describe('TokenCounter', () => {
       **Bold text** and _italic text_
     `;
     const mockTokens = Array(15).fill(1); // 15 tokens
-    mockEncoder.encode.mockReturnValue(mockTokens);
+    mockEncode.mockReturnValue(mockTokens);
 
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(15);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncode).toHaveBeenCalledWith(text, { allowedSpecial: new Set(), disallowedSpecial: new Set() });
   });
 
   test('should handle very long text', () => {
     const text = 'a'.repeat(10000);
     const mockTokens = Array(100).fill(1); // 100 tokens
-    mockEncoder.encode.mockReturnValue(mockTokens);
+    mockEncode.mockReturnValue(mockTokens);
 
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(100);
-    expect(mockEncoder.encode).toHaveBeenCalledWith(text, [], []);
+    expect(mockEncode).toHaveBeenCalledWith(text, { allowedSpecial: new Set(), disallowedSpecial: new Set() });
   });
 
   test('should properly handle encoding errors without file path', () => {
     const error = new Error('Encoding error');
-    mockEncoder.encode.mockImplementation(() => {
+    mockEncode.mockImplementation(() => {
       throw error;
     });
 
@@ -150,7 +144,7 @@ describe('TokenCounter', () => {
 
   test('should properly handle encoding errors with file path', () => {
     const error = new Error('Encoding error');
-    mockEncoder.encode.mockImplementation(() => {
+    mockEncode.mockImplementation(() => {
       throw error;
     });
 
@@ -161,7 +155,7 @@ describe('TokenCounter', () => {
   });
 
   test('should free encoder resources on cleanup', () => {
-    tokenCounter.free();
-    expect(mockEncoder.free).toHaveBeenCalled();
+    // free() is a no-op for gpt-tokenizer but should not throw
+    expect(() => tokenCounter.free()).not.toThrow();
   });
 });
