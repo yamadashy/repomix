@@ -3,7 +3,10 @@ import { rateLimiter } from '../domains/pack/utils/sharedInstance.js';
 import { getClientInfo } from '../utils/clientInfo.js';
 import { dailyRateLimiter } from '../utils/dailyRateLimit.js';
 import { createErrorResponse } from '../utils/http.js';
-import { logInfo } from '../utils/logger.js';
+import { logWarning } from '../utils/logger.js';
+
+let lastDailyRateLimitErrorLogAt = 0;
+const ERROR_LOG_INTERVAL_MS = 60_000;
 
 export function rateLimitMiddleware() {
   return async function rateLimitMiddleware(c: Context, next: Next) {
@@ -29,7 +32,14 @@ export function rateLimitMiddleware() {
         }
       } catch (error) {
         // Fail open: if Upstash is unavailable, allow the request
-        logInfo('Daily rate limit check failed, allowing request', { error: String(error) });
+        // Throttle logging to avoid log storms during outages
+        const now = Date.now();
+        if (now - lastDailyRateLimitErrorLogAt >= ERROR_LOG_INTERVAL_MS) {
+          lastDailyRateLimitErrorLogAt = now;
+          logWarning('Daily rate limit check failed, allowing request', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     }
 
