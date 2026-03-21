@@ -95,8 +95,8 @@ const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
     return 'fileProcess';
   }
 
-  // calculateMetrics: has content, encoding (must check before securityCheck)
-  if ('content' in taskObj && 'encoding' in taskObj) {
+  // calculateMetrics: has content+encoding or items+encoding (batch) (must check before securityCheck)
+  if (('content' in taskObj || 'items' in taskObj) && 'encoding' in taskObj) {
     return 'calculateMetrics';
   }
 
@@ -163,6 +163,16 @@ export default async (task: unknown): Promise<unknown> => {
   // Load handler (cached)
   const { handler } = await loadWorkerHandler(workerType);
   return handler(task);
+};
+
+/**
+ * Named export for batch token counting.
+ * Tinypool calls this via pool.run(task, { name: 'countTokensBatch' }).
+ * Routes to the calculateMetrics worker's countTokensBatch function.
+ */
+export const countTokensBatch = async (task: unknown): Promise<unknown> => {
+  const module = await import('../core/metrics/workers/calculateMetricsWorker.js');
+  return module.countTokensBatch(task as Parameters<typeof module.countTokensBatch>[0]);
 };
 
 /**
