@@ -10,6 +10,7 @@
     "lint-tsc": "tsgo --noEmit"
   },
   "dependencies": {
+    "ace-builds": "^1.43.6",
     "fflate": "^0.8.2",
     "lucide-vue-next": "^0.577.0",
     "vue3-ace-editor": "^2.2.4"

@@ -184,6 +184,9 @@ importers:
 
   website/client:
     dependencies:
+      ace-builds:
+        specifier: ^1.43.6
+        version: 1.43.6
       fflate:
         specifier: ^0.8.2
         version: 0.8.2
