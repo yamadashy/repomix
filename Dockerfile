@@ -12,9 +12,8 @@ WORKDIR /repomix
 # To reduce the size of the layer, all steps are executed in the same RUN command
 COPY . .
 RUN npm ci \
-    && npm run build \
     && npm link \
-    && npm ci --omit=dev \
+    && npm prune --omit=dev \
     && npm cache clean --force
 
 WORKDIR /app
