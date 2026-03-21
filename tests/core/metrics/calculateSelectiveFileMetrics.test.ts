@@ -1,37 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { calculateSelectiveFileMetrics } from '../../../src/core/metrics/calculateSelectiveFileMetrics.js';
-import {
-  countTokensBatch,
-  type TokenCountBatchTask,
-  type TokenCountTask,
-} from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
-import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
-
-vi.mock('../../../src/shared/processConcurrency', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../../../src/shared/processConcurrency.js')>();
-  return {
-    ...original,
-    getProcessConcurrency: () => 4,
-  };
-});
-
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
-  return {
-    run: async (task: T) => {
-      const t = task as TokenCountTask;
-      const { countTokens } = await import('../../../src/core/metrics/workers/calculateMetricsWorker.js');
-      return (await countTokens(t)) as R;
-    },
-    runNamed: async <TN, RN>(task: TN, _name: string) => {
-      return (await countTokensBatch(task as TokenCountBatchTask)) as RN;
-    },
-    cleanup: async () => {
-      // Mock cleanup - no-op for tests
-    },
-  };
-};
 
 describe('calculateSelectiveFileMetrics', () => {
   it('should calculate metrics for selective files only', async () => {
@@ -43,15 +13,7 @@ describe('calculateSelectiveFileMetrics', () => {
     const targetFilePaths = ['file1.txt', 'file3.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    const result = await calculateSelectiveFileMetrics(
-      processedFiles,
-      targetFilePaths,
-      'o200k_base',
-      progressCallback,
-      {
-        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
-      },
-    );
+    const result = await calculateSelectiveFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback);
 
     expect(result).toEqual([
       { path: 'file1.txt', charCount: 100, tokenCount: 13 },
@@ -64,15 +26,7 @@ describe('calculateSelectiveFileMetrics', () => {
     const targetFilePaths = ['nonexistent.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    const result = await calculateSelectiveFileMetrics(
-      processedFiles,
-      targetFilePaths,
-      'o200k_base',
-      progressCallback,
-      {
-        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
-      },
-    );
+    const result = await calculateSelectiveFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback);
 
     expect(result).toEqual([]);
   });

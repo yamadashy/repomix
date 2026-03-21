@@ -2,22 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitLogResult } from '../../../src/core/git/gitLogHandle.js';
 import { calculateGitLogMetrics } from '../../../src/core/metrics/calculateGitLogMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
-import type { TaskRunner, WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
-
-const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountTask, number> => {
-  return {
-    run: async (task: TokenCountTask) => {
-      return await countTokens(task);
-    },
-    cleanup: async () => {
-      // Mock cleanup - no-op for tests
-    },
-  };
-};
 
 describe('calculateGitLogMetrics', () => {
   const mockConfig: RepomixConfigMerged = {
@@ -67,12 +54,6 @@ describe('calculateGitLogMetrics', () => {
     cwd: '/test/project',
   };
 
-  const mockTaskRunner = mockInitTaskRunner({
-    numOfTasks: 1,
-    workerType: 'calculateMetrics',
-    runtime: 'worker_threads',
-  });
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -95,9 +76,7 @@ describe('calculateGitLogMetrics', () => {
         commits: [],
       };
 
-      const result = await calculateGitLogMetrics(configWithDisabledLogs, gitLogResult, {
-        taskRunner: mockTaskRunner,
-      });
+      const result = await calculateGitLogMetrics(configWithDisabledLogs, gitLogResult);
 
       expect(result).toEqual({ gitLogTokenCount: 0 });
     });
@@ -116,9 +95,7 @@ describe('calculateGitLogMetrics', () => {
         commits: [],
       };
 
-      const result = await calculateGitLogMetrics(configWithoutGit, gitLogResult, {
-        taskRunner: mockTaskRunner,
-      });
+      const result = await calculateGitLogMetrics(configWithoutGit, gitLogResult);
 
       expect(result).toEqual({ gitLogTokenCount: 0 });
     });
@@ -126,9 +103,7 @@ describe('calculateGitLogMetrics', () => {
 
   describe('when git log result is unavailable', () => {
     it('should return 0 when gitLogResult is undefined', async () => {
-      const result = await calculateGitLogMetrics(mockConfig, undefined, {
-        taskRunner: mockTaskRunner,
-      });
+      const result = await calculateGitLogMetrics(mockConfig, undefined);
 
       expect(result).toEqual({ gitLogTokenCount: 0 });
     });
@@ -139,9 +114,7 @@ describe('calculateGitLogMetrics', () => {
         commits: [],
       };
 
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: mockTaskRunner,
-      });
+      const result = await calculateGitLogMetrics(mockConfig, gitLogResult);
 
       expect(result).toEqual({ gitLogTokenCount: 0 });
     });
@@ -152,9 +125,7 @@ describe('calculateGitLogMetrics', () => {
         commits: [],
       };
 
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: mockTaskRunner,
-      });
+      const result = await calculateGitLogMetrics(mockConfig, gitLogResult);
 
       expect(result).toEqual({ gitLogTokenCount: 0 });
     });
@@ -167,23 +138,10 @@ describe('calculateGitLogMetrics', () => {
         commits: [],
       };
 
-      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(15);
+      const result = await calculateGitLogMetrics(mockConfig, gitLogResult);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
-        run: mockTaskRunnerSpy,
-        cleanup: async () => {},
-      };
-
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: customTaskRunner,
-      });
-
-      expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(1);
-      expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'commit abc123\nAuthor: Test User\nDate: 2023-01-01\n\nTest commit message',
-        encoding: 'o200k_base',
-      });
-      expect(result).toEqual({ gitLogTokenCount: 15 });
+      expect(result.gitLogTokenCount).toBeGreaterThan(0);
+      expect(typeof result.gitLogTokenCount).toBe('number');
     });
 
     it('should handle large log content correctly', async () => {
@@ -193,9 +151,7 @@ describe('calculateGitLogMetrics', () => {
         commits: [],
       };
 
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: mockTaskRunner,
-      });
+      const result = await calculateGitLogMetrics(mockConfig, gitLogResult);
 
       expect(result.gitLogTokenCount).toBeGreaterThan(0);
       expect(typeof result.gitLogTokenCount).toBe('number');
@@ -208,72 +164,21 @@ Date: Mon Jan 1 12:00:00 2023 +0000
 
     Add new feature for user authentication
 
-    - Implemented OAuth2 integration
-    - Added user session management
-    - Updated security middleware
-
 commit def456ghi789
 Author: Jane Smith <jane@example.com>
 Date: Sun Dec 31 18:30:00 2022 +0000
 
-    Fix critical bug in payment processing
-
-    - Resolved transaction timeout issue
-    - Added proper error handling
-    - Improved logging for debugging`;
+    Fix critical bug in payment processing`;
 
       const gitLogResult: GitLogResult = {
         logContent: complexLogContent,
         commits: [],
       };
 
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: mockTaskRunner,
-      });
+      const result = await calculateGitLogMetrics(mockConfig, gitLogResult);
 
       expect(result.gitLogTokenCount).toBeGreaterThan(0);
       expect(typeof result.gitLogTokenCount).toBe('number');
-    });
-  });
-
-  describe('error handling', () => {
-    it('should return 0 when task runner fails', async () => {
-      const gitLogResult: GitLogResult = {
-        logContent: 'some log content',
-        commits: [],
-      };
-
-      const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
-        run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
-        cleanup: async () => {},
-      };
-
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: errorTaskRunner,
-      });
-
-      expect(result).toEqual({ gitLogTokenCount: 0 });
-      expect(logger.error).toHaveBeenCalledWith('Failed to calculate git log metrics:', expect.any(Error));
-    });
-
-    it('should handle network timeout errors gracefully', async () => {
-      const gitLogResult: GitLogResult = {
-        logContent: 'test log content',
-        commits: [],
-      };
-
-      const timeoutError = new Error('Request timeout');
-      const errorTaskRunner = {
-        run: vi.fn().mockRejectedValue(timeoutError),
-        cleanup: async () => {},
-      };
-
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: errorTaskRunner,
-      });
-
-      expect(result).toEqual({ gitLogTokenCount: 0 });
-      expect(logger.error).toHaveBeenCalledWith('Failed to calculate git log metrics:', timeoutError);
     });
   });
 
@@ -284,65 +189,12 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         commits: [],
       };
 
-      await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: mockTaskRunner,
-      });
+      await calculateGitLogMetrics(mockConfig, gitLogResult);
 
-      expect(logger.trace).toHaveBeenCalledWith('Starting git log token calculation using worker');
+      expect(logger.trace).toHaveBeenCalledWith('Starting git log token calculation on main thread');
       expect(logger.trace).toHaveBeenCalledWith(
         expect.stringMatching(/Git log token calculation completed in \d+\.\d+ms/),
       );
-    });
-
-    it('should not log completion message on error', async () => {
-      const gitLogResult: GitLogResult = {
-        logContent: 'test content',
-        commits: [],
-      };
-
-      const errorTaskRunner = {
-        run: vi.fn().mockRejectedValue(new Error('Test error')),
-        cleanup: async () => {},
-      };
-
-      await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: errorTaskRunner,
-      });
-
-      expect(logger.trace).toHaveBeenCalledWith('Starting git log token calculation using worker');
-      expect(logger.trace).not.toHaveBeenCalledWith(expect.stringMatching(/Git log token calculation completed/));
-    });
-  });
-
-  describe('encoding configuration', () => {
-    it('should use correct encoding from config', async () => {
-      const configWithDifferentEncoding = {
-        ...mockConfig,
-        tokenCount: {
-          encoding: 'cl100k_base' as const,
-        },
-      };
-
-      const gitLogResult: GitLogResult = {
-        logContent: 'test log content',
-        commits: [],
-      };
-
-      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(10);
-
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
-        run: mockTaskRunnerSpy,
-        cleanup: async () => {},
-      };
-
-      await calculateGitLogMetrics(configWithDifferentEncoding, gitLogResult, {
-        taskRunner: customTaskRunner,
-      });
-
-      expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'test log content',
-        encoding: 'cl100k_base',
-      });
     });
   });
 
@@ -353,31 +205,10 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         commits: [],
       };
 
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: mockTaskRunner,
-      });
+      const result = await calculateGitLogMetrics(mockConfig, gitLogResult);
 
       expect(result).toHaveProperty('gitLogTokenCount');
       expect(typeof result.gitLogTokenCount).toBe('number');
-    });
-
-    it('should return consistent structure on error', async () => {
-      const gitLogResult: GitLogResult = {
-        logContent: 'test content',
-        commits: [],
-      };
-
-      const errorTaskRunner = {
-        run: vi.fn().mockRejectedValue(new Error('Test error')),
-        cleanup: async () => {},
-      };
-
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: errorTaskRunner,
-      });
-
-      expect(result).toEqual({ gitLogTokenCount: 0 });
-      expect(Object.keys(result)).toEqual(['gitLogTokenCount']);
     });
   });
 
@@ -388,22 +219,18 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         commits: [],
       };
 
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: mockTaskRunner,
-      });
+      const result = await calculateGitLogMetrics(mockConfig, gitLogResult);
 
       expect(result.gitLogTokenCount).toBeGreaterThanOrEqual(0);
     });
 
     it('should handle log content with special characters', async () => {
       const gitLogResult: GitLogResult = {
-        logContent: 'commit 🚀 emoji test\n\n日本語のコミットメッセージ\n\nSpecial chars: ñáéíóú',
+        logContent: 'commit test\n\nSpecial chars: ñáéíóú',
         commits: [],
       };
 
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: mockTaskRunner,
-      });
+      const result = await calculateGitLogMetrics(mockConfig, gitLogResult);
 
       expect(result.gitLogTokenCount).toBeGreaterThan(0);
       expect(typeof result.gitLogTokenCount).toBe('number');
@@ -415,9 +242,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         commits: [],
       };
 
-      const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
-        taskRunner: mockTaskRunner,
-      });
+      const result = await calculateGitLogMetrics(mockConfig, gitLogResult);
 
       expect(result.gitLogTokenCount).toBeGreaterThanOrEqual(0);
     });

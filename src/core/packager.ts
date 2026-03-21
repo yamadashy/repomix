@@ -11,9 +11,8 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics, getMetricsTargetPaths } from './metrics/calculateMetrics.js';
+import { calculateMetrics } from './metrics/calculateMetrics.js';
 import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
-import type { TokenCountTask } from './metrics/workers/calculateMetricsWorker.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -180,82 +179,47 @@ export const pack = async (
     return result;
   }
 
-  // Pre-initialize metrics worker pool so the first worker thread starts loading
-  // the token encoding in the background while output generation runs.
-  // Created after the skill check to avoid spawning unused workers in the skill path.
-  const metricsTaskRunner = deps.initTaskRunner<TokenCountTask, number>({
-    numOfTasks: allFilePaths.length,
-    workerType: 'calculateMetrics',
-    runtime: 'worker_threads',
-  });
+  // Build filePathsByRoot for multi-root tree generation
+  // Use directory basename as the label for each root
+  // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
+  const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
+    rootLabel: path.basename(rootDir) || rootDir,
+    files: filePaths,
+  }));
 
-  try {
-    // Build filePathsByRoot for multi-root tree generation
-    // Use directory basename as the label for each root
-    // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
-    const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
-      rootLabel: path.basename(rootDir) || rootDir,
-      files: filePaths,
-    }));
+  // Generate and write output (handles both single and split output)
+  const { outputFiles, outputForMetrics } = await deps.produceOutput(
+    rootDirs,
+    config,
+    processedFiles,
+    allFilePaths,
+    gitDiffResult,
+    gitLogResult,
+    progressCallback,
+    filePathsByRoot,
+    allEmptyDirPaths,
+  );
 
-    // Start file token counting in parallel with output generation.
-    // File metrics only depend on processedFiles, not the output, so they can run concurrently.
-    // This overlaps CPU-bound token counting (worker threads) with I/O-bound output generation.
-    const metricsTargetPaths = getMetricsTargetPaths(processedFiles, config);
-    const fileMetricsPromise = withMemoryLogging('File Metrics', () =>
-      deps.calculateSelectiveFileMetrics(
-        processedFiles,
-        metricsTargetPaths,
-        config.tokenCount.encoding,
-        progressCallback,
-        {
-          taskRunner: metricsTaskRunner,
-        },
-      ),
-    );
-    // Prevent unhandled rejection if fileMetricsPromise rejects while produceOutput is running.
-    // The actual error will be surfaced when calculateMetrics awaits the promise via precomputedFileMetrics.
-    fileMetricsPromise.catch(() => {});
+  // Calculate all metrics on main thread — gpt-tokenizer (pure JS) is fast enough that
+  // worker thread overhead (pool init, structured clone serialization, message passing)
+  // exceeds the computation cost. Benchmarked at ~20% faster than worker-based approach.
+  const metrics = await withMemoryLogging('Calculate Metrics', () =>
+    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),
+  );
 
-    // Generate and write output (handles both single and split output)
-    const { outputFiles, outputForMetrics } = await deps.produceOutput(
-      rootDirs,
-      config,
-      processedFiles,
-      allFilePaths,
-      gitDiffResult,
-      gitLogResult,
-      progressCallback,
-      filePathsByRoot,
-      allEmptyDirPaths,
-    );
+  // Create a result object that includes metrics and security results
+  const result = {
+    ...metrics,
+    ...(outputFiles && { outputFiles }),
+    suspiciousFilesResults,
+    suspiciousGitDiffResults,
+    suspiciousGitLogResults,
+    processedFiles,
+    safeFilePaths,
+    skippedFiles: allSkippedFiles,
+  };
 
-    // Pass file metrics promise directly to calculateMetrics so output token counting
-    // can start immediately without waiting for file metrics to finish first.
-    // Both run in parallel via Promise.all inside calculateMetrics.
-    const metrics = await withMemoryLogging('Calculate Metrics', () =>
-      deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
-        taskRunner: metricsTaskRunner,
-        precomputedFileMetrics: fileMetricsPromise,
-      }),
-    );
+  logMemoryUsage('Pack - End');
 
-    // Create a result object that includes metrics and security results
-    const result = {
-      ...metrics,
-      ...(outputFiles && { outputFiles }),
-      suspiciousFilesResults,
-      suspiciousGitDiffResults,
-      suspiciousGitLogResults,
-      processedFiles,
-      safeFilePaths,
-      skippedFiles: allSkippedFiles,
-    };
-
-    logMemoryUsage('Pack - End');
-
-    return result;
-  } finally {
-    await metricsTaskRunner.cleanup();
-  }
+  return result;
 };

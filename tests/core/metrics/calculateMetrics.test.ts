@@ -54,11 +54,6 @@ describe('calculateMetrics', () => {
 
     const gitDiffResult: GitDiffResult | undefined = undefined;
 
-    const mockTaskRunner = {
-      run: vi.fn(),
-      cleanup: vi.fn(),
-    };
-
     const result = await calculateMetrics(
       processedFiles,
       output,
@@ -66,7 +61,7 @@ describe('calculateMetrics', () => {
       config,
       gitDiffResult,
       undefined,
-      { taskRunner: mockTaskRunner },
+      undefined,
       {
         calculateSelectiveFileMetrics,
         calculateOutputMetrics: async () => 30,
@@ -81,9 +76,6 @@ describe('calculateMetrics', () => {
       ['file2.txt', 'file1.txt'], // sorted by character count desc
       'o200k_base',
       progressCallback,
-      expect.objectContaining({
-        taskRunner: expect.any(Object),
-      }),
     );
     expect(result).toEqual(aggregatedResult);
   });

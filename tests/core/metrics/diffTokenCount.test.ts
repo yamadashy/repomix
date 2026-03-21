@@ -28,17 +28,6 @@ describe('Diff Token Count Calculation', () => {
   });
 
   test('should calculate diff token count when diffs are included', async () => {
-    // Sample diffs
-    const sampleDiff = `diff --git a/file1.js b/file1.js
-index 123..456 100644
---- a/file1.js
-+++ b/file1.js
-@@ -1,5 +1,5 @@
--old line of code
-+new line of code
-`;
-
-    // Sample processed files
     const processedFiles: ProcessedFile[] = [
       {
         path: 'test.js',
@@ -46,10 +35,8 @@ index 123..456 100644
       },
     ];
 
-    // Sample output
     const output = 'Generated output with sample content';
 
-    // Sample config with diffs enabled
     const config: RepomixConfigMerged = createMockConfig({
       cwd: '/test',
       input: { maxFileSize: 1000000 },
@@ -86,42 +73,30 @@ index 123..456 100644
       },
     });
 
-    // Mock dependency functions
-    const mockTaskRunner = {
-      run: vi.fn(),
-      cleanup: vi.fn(),
-    };
-
-    const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(15);
-
     const result = await calculateMetrics(
       processedFiles,
       output,
-      vi.fn(), // Progress callback
+      vi.fn(),
       config,
       {
-        workTreeDiffContent: sampleDiff,
+        workTreeDiffContent: 'diff --git a/file1.js b/file1.js',
         stagedDiffContent: '',
       },
       undefined,
-      { taskRunner: mockTaskRunner },
+      undefined,
       {
         calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
-        calculateOutputMetrics: mockCalculateOutputMetrics,
+        calculateOutputMetrics: vi.fn().mockResolvedValue(15),
         calculateGitDiffMetrics: vi.fn().mockResolvedValue(25),
         calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
       },
     );
 
-    // Check token counting was called with the diff content
     expect(result).toHaveProperty('gitDiffTokenCount');
-
-    // Mock returns 25 tokens for git diff content
     expect(result.gitDiffTokenCount).toBe(25);
   });
 
   test('should not calculate diff token count when diffs are disabled', async () => {
-    // Sample processed files
     const processedFiles: ProcessedFile[] = [
       {
         path: 'test.js',
@@ -129,10 +104,8 @@ index 123..456 100644
       },
     ];
 
-    // Sample output
     const output = 'Generated output without diffs';
 
-    // Sample config with diffs disabled
     const config: RepomixConfigMerged = createMockConfig({
       cwd: '/test',
       input: { maxFileSize: 1000000 },
@@ -169,36 +142,17 @@ index 123..456 100644
       },
     });
 
-    // Mock dependency functions
-    const mockTaskRunner = {
-      run: vi.fn(),
-      cleanup: vi.fn(),
-    };
+    const result = await calculateMetrics(processedFiles, output, vi.fn(), config, undefined, undefined, undefined, {
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
+      calculateOutputMetrics: vi.fn().mockResolvedValue(15),
+      calculateGitDiffMetrics: vi.fn().mockResolvedValue(0),
+      calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
+    });
 
-    const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(15);
-
-    const result = await calculateMetrics(
-      processedFiles,
-      output,
-      vi.fn(), // Progress callback
-      config,
-      undefined, // No diff content
-      undefined,
-      { taskRunner: mockTaskRunner },
-      {
-        calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
-        calculateOutputMetrics: mockCalculateOutputMetrics,
-        calculateGitDiffMetrics: vi.fn().mockResolvedValue(0),
-        calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
-      },
-    );
-
-    // Git diff should return 0 when disabled
     expect(result.gitDiffTokenCount).toBe(0);
   });
 
   test('should handle undefined diffContent gracefully', async () => {
-    // Sample processed files
     const processedFiles: ProcessedFile[] = [
       {
         path: 'test.js',
@@ -206,10 +160,8 @@ index 123..456 100644
       },
     ];
 
-    // Sample output
     const output = 'Generated output with diffs enabled but no content';
 
-    // Sample config with diffs enabled but no content
     const config: RepomixConfigMerged = createMockConfig({
       cwd: '/test',
       input: { maxFileSize: 1000000 },
@@ -230,7 +182,6 @@ index 123..456 100644
           sortByChanges: true,
           sortByChangesMaxCommits: 100,
           includeDiffs: true,
-          // No diffContent property
         },
       },
       include: [],
@@ -247,31 +198,13 @@ index 123..456 100644
       },
     });
 
-    // Mock dependency functions
-    const mockTaskRunner = {
-      run: vi.fn(),
-      cleanup: vi.fn(),
-    };
+    const result = await calculateMetrics(processedFiles, output, vi.fn(), config, undefined, undefined, undefined, {
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
+      calculateOutputMetrics: vi.fn().mockResolvedValue(15),
+      calculateGitDiffMetrics: vi.fn().mockResolvedValue(0),
+      calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
+    });
 
-    const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(15);
-
-    const result = await calculateMetrics(
-      processedFiles,
-      output,
-      vi.fn(), // Progress callback
-      config,
-      undefined, // No diff content
-      undefined,
-      { taskRunner: mockTaskRunner },
-      {
-        calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
-        calculateOutputMetrics: mockCalculateOutputMetrics,
-        calculateGitDiffMetrics: vi.fn().mockResolvedValue(0),
-        calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
-      },
-    );
-
-    // Git diff should return 0 when content is undefined
     expect(result.gitDiffTokenCount).toBe(0);
   });
 });

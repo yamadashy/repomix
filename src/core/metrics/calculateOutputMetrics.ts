@@ -1,59 +1,21 @@
 import { logger } from '../../shared/logger.js';
-import { getProcessConcurrency, type TaskRunner } from '../../shared/processConcurrency.js';
+import { TokenCounter } from './TokenCounter.js';
 import type { TokenEncoding } from './tokenEncoding.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
-
-const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1MB
 
 export const calculateOutputMetrics = async (
   content: string,
   encoding: TokenEncoding,
   path: string | undefined,
-  deps: { taskRunner: TaskRunner<TokenCountTask, number> },
 ): Promise<number> => {
-  const shouldRunInParallel = content.length > MIN_CONTENT_LENGTH_FOR_PARALLEL;
-
   try {
     logger.trace(`Starting output token count for ${path || 'output'}`);
     const startTime = process.hrtime.bigint();
 
-    let result: number;
-
-    if (shouldRunInParallel) {
-      // Split content into chunks based on available parallelism.
-      // Using thread count ensures we create just enough chunks to saturate all workers,
-      // avoiding the overhead of thousands of tiny tasks.
-      const numChunks = getProcessConcurrency();
-      const chunkSize = Math.ceil(content.length / numChunks);
-      const chunks: string[] = [];
-
-      for (let i = 0; i < content.length; i += chunkSize) {
-        chunks.push(content.slice(i, i + chunkSize));
-      }
-
-      logger.trace(`Split output into ${chunks.length} chunks of ~${chunkSize} chars for parallel token counting`);
-
-      // Process chunks in parallel
-      const chunkResults = await Promise.all(
-        chunks.map(async (chunk, index) => {
-          return deps.taskRunner.run({
-            content: chunk,
-            encoding,
-            path: path ? `${path}-chunk-${index}` : undefined,
-          });
-        }),
-      );
-
-      // Sum up the results
-      result = chunkResults.reduce((sum, count) => sum + count, 0);
-    } else {
-      // Process small content directly
-      result = await deps.taskRunner.run({
-        content,
-        encoding,
-        path,
-      });
-    }
+    // Count tokens on main thread — gpt-tokenizer (pure JS) is fast enough that
+    // worker thread overhead (pool init, structured clone serialization, message passing)
+    // exceeds the computation cost.
+    const counter = new TokenCounter(encoding);
+    const result = counter.countTokens(content, path);
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;

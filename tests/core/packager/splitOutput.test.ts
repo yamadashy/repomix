@@ -78,10 +78,6 @@ describe('packager split output', () => {
       mockConfig,
       undefined,
       undefined,
-      expect.objectContaining({
-        taskRunner: expect.any(Object),
-        precomputedFileMetrics: expect.any(Promise),
-      }),
     );
 
     expect(result.outputFiles).toEqual(['repomix-output.1.xml', 'repomix-output.2.xml']);

@@ -117,7 +117,6 @@ describe('packager', () => {
       [{ rootLabel: 'root', files: mockFilePaths }],
       [],
     );
-    expect(mockDeps.calculateSelectiveFileMetrics).toHaveBeenCalled();
     expect(mockDeps.calculateMetrics).toHaveBeenCalledWith(
       mockProcessedFiles,
       mockOutput,
@@ -125,10 +124,6 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
-      expect.objectContaining({
-        taskRunner: expect.any(Object),
-        precomputedFileMetrics: expect.any(Promise),
-      }),
     );
 
     // Check the result of pack function
