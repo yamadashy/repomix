@@ -21,7 +21,8 @@
       "!**/website/client/.vitepress/cache",
       "!**/website/server/dist",
       "!**/browser/dist",
-      "!**/browser/packages"
+      "!**/browser/packages",
+      "!.claude/worktrees"
     ]
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
