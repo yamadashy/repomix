@@ -51,7 +51,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            runs: 10
+          - os: macos-latest
+            runs: 20
+          - os: windows-latest
+            runs: 10
     steps:
       # Checkout PR branch and main branch into separate directories for isolation
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -83,6 +89,8 @@ jobs:
 
       - name: Run benchmark
         shell: bash
+        env:
+          BENCH_RUNS: ${{ matrix.runs }}
         run: |
           cat > "$RUNNER_TEMP/benchmark.mjs" << 'BENCHSCRIPT'
           import { execFileSync } from 'node:child_process';
@@ -92,6 +100,7 @@ jobs:
 
           const [prDir, mainDir] = process.argv.slice(2);
           const output = join(tmpdir(), 'repomix-bench-output.txt');
+          const runs = Number(process.env.BENCH_RUNS) || 10;
 
           function benchmark(dir) {
             const bin = join(dir, 'bin', 'repomix.cjs');
@@ -105,7 +114,7 @@ jobs:
 
             // Measurement runs
             const times = [];
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < runs; i++) {
               const start = Date.now();
               execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
               times.push(Date.now() - start);
