@@ -10,13 +10,14 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   post-pending:
     name: Post Pending Comment
     runs-on: ubuntu-latest
     if: ${{ github.event.pull_request.head.repo.fork == false }}
+    permissions:
+      pull-requests: write
     steps:
       - name: Post or update pending comment
         env:
@@ -154,7 +155,9 @@ jobs:
     name: Comment Results
     needs: benchmark
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
+    if: ${{ always() && !cancelled() }}
+    permissions:
+      pull-requests: write
     steps:
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
@@ -218,7 +221,7 @@ jobs:
 
           - Packing the repomix repository with \`node bin/repomix.cjs\`
           - Warmup: 2 runs (discarded)
-          - Measurement: 10 runs (median ± IQR)
+          - Measurement: 10 runs / 20 on macOS (median ± IQR)
           - [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
 
           </details>"
