@@ -2,7 +2,7 @@ import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
-import { TokenCounter } from './TokenCounter.js';
+import { getTokenCounter } from './tokenCounterFactory.js';
 import type { TokenEncoding } from './tokenEncoding.js';
 import type { FileMetrics } from './workers/types.js';
 
@@ -26,7 +26,7 @@ export const calculateSelectiveFileMetrics = async (
     // Count tokens on main thread — gpt-tokenizer (pure JS) is fast enough that
     // worker thread overhead (pool init, structured clone serialization, message passing)
     // exceeds the computation cost.
-    const counter = new TokenCounter(tokenCounterEncoding);
+    const counter = getTokenCounter(tokenCounterEncoding);
     const results: FileMetrics[] = [];
 
     for (let i = 0; i < filesToProcess.length; i++) {

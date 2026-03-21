@@ -1,7 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import { TokenCounter } from './TokenCounter.js';
+import { getTokenCounter } from './tokenCounterFactory.js';
 
 /**
  * Calculate token count for git diffs if included
@@ -23,7 +23,7 @@ export const calculateGitDiffMetrics = async (
     const startTime = process.hrtime.bigint();
     logger.trace('Starting git diff token calculation on main thread');
 
-    const counter = new TokenCounter(config.tokenCount.encoding);
+    const counter = getTokenCounter(config.tokenCount.encoding);
     let totalTokens = 0;
 
     if (gitDiffResult.workTreeDiffContent) {

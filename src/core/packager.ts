@@ -11,7 +11,7 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics } from './metrics/calculateMetrics.js';
+import { calculateMetrics, getMetricsTargetPaths } from './metrics/calculateMetrics.js';
 import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
@@ -130,9 +130,15 @@ export const pack = async (
   // Processing all files (including potentially suspicious ones) is safe because
   // file processing only performs text transformations (comment removal, formatting).
   // Suspicious files are filtered out after both operations complete.
+  //
+  // Additionally, once file processing completes (typically faster than security check),
+  // start file metrics calculation immediately to utilize the otherwise-idle main thread
+  // while security workers continue running. This overlaps CPU-bound token counting
+  // with the worker-bound security check.
   progressCallback('Running security check and processing files...');
   let securityResult: Awaited<ReturnType<typeof deps.validateFileSafety>>;
   let allProcessedFiles: ProcessedFile[];
+  let fileMetricsPromise: Promise<Awaited<ReturnType<typeof deps.calculateSelectiveFileMetrics>>> | undefined;
   try {
     [securityResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
@@ -140,7 +146,22 @@ export const pack = async (
           taskRunner: securityTaskRunner,
         }),
       ),
-      withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)),
+      withMemoryLogging('Process Files', () =>
+        deps.processFiles(rawFiles, config, progressCallback).then((processed) => {
+          // File processing finished — start file metrics while security workers are still running.
+          // This counts tokens on ALL processed files (including potentially suspicious ones).
+          // Suspicious files are rare (typically 0), so the extra work is negligible.
+          const metricsTargetPaths = getMetricsTargetPaths(processed, config);
+          fileMetricsPromise = deps.calculateSelectiveFileMetrics(
+            processed,
+            metricsTargetPaths,
+            config.tokenCount.encoding,
+            progressCallback,
+          );
+          fileMetricsPromise.catch(() => {});
+          return processed;
+        }),
+      ),
     ]);
   } finally {
     // Clean up security worker pool now that security check is complete
@@ -204,11 +225,12 @@ export const pack = async (
     allEmptyDirPaths,
   );
 
-  // Calculate all metrics on main thread — gpt-tokenizer (pure JS) is fast enough that
-  // worker thread overhead (pool init, structured clone serialization, message passing)
-  // exceeds the computation cost. Benchmarked at ~20% faster than worker-based approach.
+  // Calculate remaining metrics on main thread, reusing precomputed file metrics
+  // that started during the security check phase.
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),
+    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
+      precomputedFileMetrics: fileMetricsPromise,
+    }),
   );
 
   // Create a result object that includes metrics and security results

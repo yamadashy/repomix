@@ -49,7 +49,7 @@ describe('packager', () => {
       }),
       sortPaths: vi.fn().mockImplementation((paths) => paths),
       collectFiles: vi.fn().mockResolvedValue({ rawFiles: mockRawFiles, skippedFiles: [] }),
-      processFiles: vi.fn().mockReturnValue(mockProcessedFiles),
+      processFiles: vi.fn().mockResolvedValue(mockProcessedFiles),
       validateFileSafety: vi.fn().mockResolvedValue({
         safeFilePaths: mockFilePaths,
         safeRawFiles: mockSafeRawFiles,
@@ -124,6 +124,9 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      {
+        precomputedFileMetrics: expect.any(Promise),
+      },
     );
 
     // Check the result of pack function

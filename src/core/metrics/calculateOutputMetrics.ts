@@ -1,5 +1,5 @@
 import { logger } from '../../shared/logger.js';
-import { TokenCounter } from './TokenCounter.js';
+import { getTokenCounter } from './tokenCounterFactory.js';
 import type { TokenEncoding } from './tokenEncoding.js';
 
 export const calculateOutputMetrics = async (
@@ -14,7 +14,7 @@ export const calculateOutputMetrics = async (
     // Count tokens on main thread — gpt-tokenizer (pure JS) is fast enough that
     // worker thread overhead (pool init, structured clone serialization, message passing)
     // exceeds the computation cost.
-    const counter = new TokenCounter(encoding);
+    const counter = getTokenCounter(encoding);
     const result = counter.countTokens(content, path);
 
     const endTime = process.hrtime.bigint();

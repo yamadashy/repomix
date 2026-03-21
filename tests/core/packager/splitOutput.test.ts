@@ -43,7 +43,7 @@ describe('packager split output', () => {
       searchFiles: vi.fn().mockResolvedValue({ filePaths: allFilePaths, emptyDirPaths: [] }),
       sortPaths: vi.fn().mockImplementation((paths) => paths),
       collectFiles: vi.fn().mockResolvedValue({ rawFiles: processedFiles, skippedFiles: [] }),
-      processFiles: vi.fn().mockReturnValue(processedFiles),
+      processFiles: vi.fn().mockResolvedValue(processedFiles),
       validateFileSafety: vi.fn().mockResolvedValue({
         safeFilePaths: allFilePaths,
         safeRawFiles: processedFiles,
@@ -78,6 +78,9 @@ describe('packager split output', () => {
       mockConfig,
       undefined,
       undefined,
+      {
+        precomputedFileMetrics: expect.any(Promise),
+      },
     );
 
     expect(result.outputFiles).toEqual(['repomix-output.1.xml', 'repomix-output.2.xml']);

@@ -1,7 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import { TokenCounter } from './TokenCounter.js';
+import { getTokenCounter } from './tokenCounterFactory.js';
 
 /**
  * Calculate token count for git logs if included
@@ -28,7 +28,7 @@ export const calculateGitLogMetrics = async (
     const startTime = process.hrtime.bigint();
     logger.trace('Starting git log token calculation on main thread');
 
-    const counter = new TokenCounter(config.tokenCount.encoding);
+    const counter = getTokenCounter(config.tokenCount.encoding);
     const result = counter.countTokens(gitLogResult.logContent);
 
     const endTime = process.hrtime.bigint();

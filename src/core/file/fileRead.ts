@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import iconv from 'iconv-lite';
 import isBinaryPath from 'is-binary-path';
-import { isBinaryFile } from 'isbinaryfile';
+import { isBinaryFileSync } from 'isbinaryfile';
 import jschardet from 'jschardet';
 import { logger } from '../../shared/logger.js';
 
@@ -20,15 +20,7 @@ export interface FileReadResult {
  */
 export const readRawFile = async (filePath: string, maxFileSize: number): Promise<FileReadResult> => {
   try {
-    const stats = await fs.stat(filePath);
-
-    if (stats.size > maxFileSize) {
-      const sizeKB = (stats.size / 1024).toFixed(1);
-      const maxSizeKB = (maxFileSize / 1024).toFixed(1);
-      logger.trace(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
-      return { content: null, skippedReason: 'size-limit' };
-    }
-
+    // Check binary extension first (sync, no I/O) before any filesystem calls
     if (isBinaryPath(filePath)) {
       logger.debug(`Skipping binary file: ${filePath}`);
       return { content: null, skippedReason: 'binary-extension' };
@@ -36,9 +28,22 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
 
     logger.trace(`Reading file: ${filePath}`);
 
+    // Read file directly — eliminates a separate fs.stat() syscall per file.
+    // Size check happens on the buffer instead. Since maxFileSize defaults to 50MB
+    // and most source files are far smaller, this avoids an extra kernel round-trip
+    // for the vast majority of files.
     const buffer = await fs.readFile(filePath);
 
-    if (await isBinaryFile(buffer)) {
+    if (buffer.length > maxFileSize) {
+      const sizeKB = (buffer.length / 1024).toFixed(1);
+      const maxSizeKB = (maxFileSize / 1024).toFixed(1);
+      logger.trace(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
+      return { content: null, skippedReason: 'size-limit' };
+    }
+
+    // Use sync version — the check is already synchronous on a buffer,
+    // the async wrapper only adds unnecessary Promise overhead per file.
+    if (isBinaryFileSync(buffer)) {
       logger.debug(`Skipping binary file (content check): ${filePath}`);
       return { content: null, skippedReason: 'binary-content' };
     }

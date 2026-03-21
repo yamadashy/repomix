@@ -68,17 +68,19 @@ export const calculateMetrics = async (
         progressCallback,
       );
 
-  // Count output tokens (main thread — gpt-tokenizer is fast enough)
-  const outputTokenCounts = [];
-  for (let index = 0; index < outputParts.length; index++) {
-    const part = outputParts[index];
+  // Count output tokens, git diff tokens, and git log tokens in parallel
+  // since they are independent of each other
+  const outputTokenCountPromises = outputParts.map((part, index) => {
     const partPath =
       outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, index + 1) : config.output.filePath;
-    outputTokenCounts.push(await deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath));
-  }
+    return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath);
+  });
 
-  const gitDiffTokenCount = await deps.calculateGitDiffMetrics(config, gitDiffResult);
-  const gitLogTokenCount = await deps.calculateGitLogMetrics(config, gitLogResult);
+  const [outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+    Promise.all(outputTokenCountPromises),
+    deps.calculateGitDiffMetrics(config, gitDiffResult),
+    deps.calculateGitLogMetrics(config, gitLogResult),
+  ]);
 
   const totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
   const totalFiles = processedFiles.length;
