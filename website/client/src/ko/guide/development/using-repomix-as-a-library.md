@@ -57,6 +57,9 @@ async function processRemoteRepo(repoUrl) {
 }
 ```
 
+> [!NOTE]
+> 보안상의 이유로, 원격 저장소의 설정 파일은 기본적으로 로드되지 않습니다. 원격 저장소의 설정을 신뢰하려면 옵션에 `remoteTrustConfig: true`를 추가하세요.
+
 ## 핵심 컴포넌트 사용
 
 더 많은 제어를 위해 Repomix의 저수준 API를 직접 사용할 수 있습니다:

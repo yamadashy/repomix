@@ -57,6 +57,9 @@ async function processRemoteRepo(repoUrl) {
 }
 ```
 
+> [!NOTE]
+> Por questões de segurança, os arquivos de configuração de repositórios remotos não são carregados por padrão. Para confiar na configuração de um repositório remoto, adicione `remoteTrustConfig: true` nas opções.
+
 ## Usando Componentes Principais
 
 Para maior controle, você pode usar as APIs de baixo nível do Repomix diretamente:

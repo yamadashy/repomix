@@ -57,6 +57,9 @@ async function processRemoteRepo(repoUrl) {
 }
 ```
 
+> [!NOTE]
+> Per motivi di sicurezza, i file di configurazione nei repository remoti non vengono caricati per impostazione predefinita. Per considerare attendibile la configurazione di un repository remoto, aggiungere `remoteTrustConfig: true` alle opzioni, oppure impostare la variabile d'ambiente `REPOMIX_REMOTE_TRUST_CONFIG=true`.
+
 ## Uso dei Componenti Core
 
 Per un controllo più preciso, puoi usare direttamente le API di basso livello di Repomix:

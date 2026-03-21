@@ -55,6 +55,22 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote usuario/repositorio
 ```
 
+## Seguridad
+
+Por seguridad, los archivos de configuración (`repomix.config.*`) de los repositorios remotos no se cargan de forma predeterminada. Esto evita que repositorios no confiables ejecuten código a través de archivos de configuración como `repomix.config.ts`.
+
+Tu configuración global y las opciones de CLI se siguen aplicando.
+
+Para confiar en la configuración de un repositorio remoto:
+
+```bash
+# Usando el flag de CLI
+repomix --remote usuario/repositorio --remote-trust-config
+
+# Usando una variable de entorno
+REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote usuario/repositorio
+```
+
 ## Problemas comunes
 
 ### Problemas de acceso

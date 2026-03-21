@@ -179,6 +179,9 @@ async function packRemoteRepo() {
 packRemoteRepo();
 ```
 
+> [!NOTE]
+> Để đảm bảo an toàn, các tệp cấu hình trong kho lưu trữ từ xa sẽ không được tải theo mặc định. Để tin tưởng cấu hình của kho lưu trữ từ xa, thêm `remoteTrustConfig: true` vào các tùy chọn, hoặc đặt biến môi trường `REPOMIX_REMOTE_TRUST_CONFIG=true`.
+
 ### Tùy chọn đầu ra tùy chỉnh
 
 ```typescript

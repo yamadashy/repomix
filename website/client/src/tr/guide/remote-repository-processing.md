@@ -55,6 +55,22 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
+## Güvenlik
+
+Güvenlik nedeniyle, uzak depolardaki yapılandırma dosyaları (`repomix.config.*`) varsayılan olarak yüklenmez. Bu sayede güvenilmeyen depoların `repomix.config.ts` gibi yapılandırma dosyaları aracılığıyla kod çalıştırması engellenir.
+
+Global yapılandırmanız ve CLI seçenekleriniz yine de uygulanır.
+
+Uzak bir deponun yapılandırmasına güvenmek için:
+
+```bash
+# CLI bayrağı kullanarak
+repomix --remote user/repo --remote-trust-config
+
+# Ortam değişkeni kullanarak
+REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
+```
+
 ## Sık Karşılaşılan Sorunlar
 
 ### Erişim Sorunları

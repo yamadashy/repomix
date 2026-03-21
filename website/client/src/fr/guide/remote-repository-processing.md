@@ -49,6 +49,22 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
+## Sécurité
+
+Par mesure de sécurité, les fichiers de configuration (`repomix.config.*`) des dépôts distants ne sont pas chargés par défaut. Cela empêche les dépôts non fiables d'exécuter du code via des fichiers de configuration tels que `repomix.config.ts`.
+
+Votre configuration globale et vos options CLI restent appliquées.
+
+Pour faire confiance à la configuration d'un dépôt distant :
+
+```bash
+# Via le flag CLI
+repomix --remote user/repo --remote-trust-config
+
+# Via une variable d'environnement
+REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
+```
+
 ## Problèmes courants
 
 ### Problèmes d'accès
