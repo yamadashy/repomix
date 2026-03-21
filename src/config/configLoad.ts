@@ -74,8 +74,8 @@ export const loadFileConfig = async (
     jitiImport: defaultJitiImport,
   },
 ): Promise<RepomixConfigFile> => {
-  if (argConfigPath && !options.skipLocalConfig) {
-    // If a specific config path is provided, use it directly
+  if (argConfigPath) {
+    // Explicit --config flag is always respected (user's intentional choice)
     const fullPath = path.resolve(rootDir, argConfigPath);
     logger.trace('Loading local config from:', fullPath);
 
@@ -94,6 +94,16 @@ export const loadFileConfig = async (
 
     if (localConfigPath) {
       return await loadAndValidateConfig(localConfigPath, deps);
+    }
+  } else {
+    // Log when config files are skipped for security (remote mode)
+    const localConfigPaths = defaultConfigPaths.map((configPath) => path.resolve(rootDir, configPath));
+    const localConfigPath = await findConfigFile(localConfigPaths, 'local');
+    if (localConfigPath) {
+      logger.note(
+        `Skipping config file found in remote repository for security: ${path.basename(localConfigPath)}\n` +
+          'Use --remote-trust-config to trust and load it.',
+      );
     }
   }
 
