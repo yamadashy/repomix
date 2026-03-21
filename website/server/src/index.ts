@@ -5,6 +5,7 @@ import { compress } from 'hono/compress';
 import { timeout } from 'hono/timeout';
 import { packAction } from './actions/packAction.js';
 import { bodyLimitMiddleware } from './middlewares/bodyLimit.js';
+import { cloudflareGuardMiddleware } from './middlewares/cloudflareGuard.js';
 import { cloudLoggerMiddleware } from './middlewares/cloudLogger.js';
 import { corsMiddleware } from './middlewares/cors.js';
 import { rateLimitMiddleware } from './middlewares/rateLimit.js';
@@ -37,6 +38,9 @@ if (!isWarmupMode()) {
 
   // Configure CORS
   app.use('/*', corsMiddleware);
+
+  // Block direct access bypassing Cloudflare (API routes only, health check excluded)
+  app.use('/api/*', cloudflareGuardMiddleware());
 
   // Enable compression
   app.use(compress());
