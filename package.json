@@ -97,7 +97,6 @@
     "log-update": "^7.2.0",
     "minimatch": "^10.2.4",
     "picocolors": "^1.1.1",
-    "gpt-tokenizer": "^2.9.0",
     "tar": "^7.5.11",
     "tinypool": "^2.1.0",
     "web-tree-sitter": "^0.26.6",
