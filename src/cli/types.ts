@@ -40,6 +40,7 @@ export interface CliOptions extends OptionValues {
   // Remote Repository Options
   remote?: string;
   remoteBranch?: string;
+  remoteTrustConfig?: boolean;
   isRemote?: boolean; // Internal flag set by remoteAction to skip untrusted config loading
 
   // Configuration Options

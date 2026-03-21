@@ -159,6 +159,10 @@ export const run = async () => {
       .optionsGroup('Remote Repository Options')
       .option('--remote <url>', 'Clone and pack a remote repository (GitHub URL or user/repo format)')
       .option('--remote-branch <name>', "Specific branch, tag, or commit to use (default: repository's default branch)")
+      .option(
+        '--remote-trust-config',
+        'Trust and load config files from remote repositories (disabled by default for security)',
+      )
       // Configuration Options
       .optionsGroup('Configuration Options')
       .option('-c, --config <path>', 'Use custom config file instead of repomix.config.json')

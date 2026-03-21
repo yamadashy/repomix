@@ -120,7 +120,15 @@ export const runRemoteAction = async (
     // Run the default action on the downloaded/cloned repository
     // Pass the pre-computed skill name, directory, project name, and source URL
     const skillSourceUrl = cliOptions.skillGenerate !== undefined ? repoUrl : undefined;
-    const optionsWithSkill = { ...cliOptions, skillName, skillDir, skillProjectName, skillSourceUrl, isRemote: true };
+    const trustRemoteConfig = cliOptions.remoteTrustConfig || process.env.REPOMIX_REMOTE_TRUST_CONFIG === 'true';
+    const optionsWithSkill = {
+      ...cliOptions,
+      skillName,
+      skillDir,
+      skillProjectName,
+      skillSourceUrl,
+      isRemote: !trustRemoteConfig,
+    };
     result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithSkill);
 
     // Copy output to current directory (only for non-skill generation)
