@@ -11,12 +11,22 @@ RUN corepack enable
 RUN mkdir /repomix
 WORKDIR /repomix
 
-# Install dependencies and build repomix, then link the package to the global scope
-# To reduce the size of the layer, all steps are executed in the same RUN command
-COPY . .
-RUN pnpm install --frozen-lockfile \
-    && pnpm run build \
-    && pnpm link --global \
+# Copy workspace configuration for lockfile validation
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY browser/package.json ./browser/
+COPY scripts/memory/package.json ./scripts/memory/
+COPY website/client/package.json ./website/client/
+COPY website/server/package.json ./website/server/
+
+# Install only root package dependencies
+RUN pnpm install --frozen-lockfile --filter repomix
+
+# Copy source and build
+COPY src/ ./src/
+COPY tsconfig.build.json ./
+COPY bin/ ./bin/
+RUN pnpm run build \
+    && npm link \
     && pnpm prune --prod \
     && pnpm store prune
 

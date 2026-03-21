@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+lib/
+dist/
+dist-bundled/
+coverage/
+.compile-cache/
+
+# Development and IDE
+.git/
+.github/
+.vscode/
+.idea/
+.devcontainer/
+.claude/
+.agents/
+.private/
+.memo/
+.kiro/
+.cursor/
+
+# Tests (not needed for server build)
+tests/
+
+# Documentation
+*.md
+
+# Misc
+.env
+.env.*
+.DS_Store
+*.log
+*.tmp
+*.temp
+repomix-output.*
