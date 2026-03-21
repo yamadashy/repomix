@@ -5,8 +5,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install pnpm
-RUN npm install -g pnpm@10.32.1
+# Enable pnpm via corepack (version from packageManager field in package.json)
+RUN corepack enable
 
 RUN mkdir /repomix
 WORKDIR /repomix
@@ -16,7 +16,7 @@ WORKDIR /repomix
 COPY . .
 RUN pnpm install --frozen-lockfile \
     && pnpm run build \
-    && npm link \
+    && pnpm link --global \
     && pnpm prune --prod \
     && pnpm store prune
 

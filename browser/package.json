@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "repomix",
+  "name": "repomix-browser",
   "description": "A browser extension that adds a Repomix button to GitHub repositories",
   "scripts": {
     "prepare": "wxt prepare",
@@ -10,13 +10,13 @@
     "build:chrome": "wxt build -b chrome",
     "build:firefox": "wxt build -b firefox",
     "build:edge": "wxt build -b edge",
-    "build-all": "npm run build:chrome && npm run build:firefox && npm run build:edge",
+    "build-all": "pnpm run build:chrome && pnpm run build:firefox && pnpm run build:edge",
     "zip": "wxt zip",
     "zip:chrome": "wxt zip -b chrome",
     "zip:firefox": "wxt zip -b firefox",
     "zip:edge": "wxt zip -b edge",
     "generate-icons": "tsx scripts/generate-icons.ts",
-    "lint": "npm run lint-tsc",
+    "lint": "pnpm run lint-tsc",
     "lint-tsc": "tsgo --noEmit",
     "test": "vitest",
     "archive": "git archive HEAD -o ./storage/source.zip"

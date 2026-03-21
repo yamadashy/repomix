@@ -6,12 +6,12 @@
     "dev": "PORT=8080 tsx watch src/index.ts",
     "build": "tsc",
     "bundle": "node scripts/bundle.mjs",
-    "lint": "npm run lint-tsc",
+    "lint": "pnpm run lint-tsc",
     "lint-tsc": "tsgo --noEmit",
     "start": "node dist/index.js",
     "start:bundle": "node dist-bundled/server.mjs",
     "clean": "rimraf dist dist-bundled",
-    "cloud-deploy": "gcloud builds submit --config=cloudbuild.yaml ."
+    "cloud-deploy": "gcloud builds submit --config=cloudbuild.yaml ../.."
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",

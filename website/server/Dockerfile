@@ -6,8 +6,8 @@ FROM node:24-alpine AS builder
 # Install git (required by repomix for remote repository processing)
 RUN apk add --no-cache git
 
-# Install pnpm
-RUN npm install -g pnpm@10.32.1
+# Enable pnpm via corepack (version from packageManager field in package.json)
+RUN corepack enable
 
 WORKDIR /app
 
