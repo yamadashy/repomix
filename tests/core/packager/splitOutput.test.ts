@@ -54,6 +54,7 @@ describe('packager split output', () => {
       getGitDiffs: vi.fn().mockResolvedValue(undefined),
       getGitLogs: vi.fn().mockResolvedValue(undefined),
       produceOutput,
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
       calculateMetrics,
     });
 
@@ -66,6 +67,7 @@ describe('packager split output', () => {
       undefined,
       expect.any(Function),
       [{ rootLabel: 'root', files: allFilePaths }],
+      [],
     );
 
     expect(calculateMetrics).toHaveBeenCalledWith(
@@ -77,6 +79,7 @@ describe('packager split output', () => {
       undefined,
       expect.objectContaining({
         taskRunner: expect.any(Object),
+        precomputedFileMetrics: expect.any(Array),
       }),
     );
 

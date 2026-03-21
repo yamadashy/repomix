@@ -58,6 +58,7 @@ describe('outputGenerate', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       mockDeps,
     );
 
@@ -67,6 +68,7 @@ describe('outputGenerate', () => {
       mockConfig,
       [],
       sortedFiles,
+      undefined,
       undefined,
       undefined,
       undefined,

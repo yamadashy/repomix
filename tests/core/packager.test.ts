@@ -54,6 +54,10 @@ describe('packager', () => {
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
       }),
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([
+        { path: 'file1.txt', charCount: 19, tokenCount: 10 },
+        { path: file2Path, charCount: 19, tokenCount: 10 },
+      ]),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -102,7 +106,9 @@ describe('packager', () => {
       undefined,
       progressCallback,
       [{ rootLabel: 'root', files: mockFilePaths }],
+      [],
     );
+    expect(mockDeps.calculateSelectiveFileMetrics).toHaveBeenCalled();
     expect(mockDeps.calculateMetrics).toHaveBeenCalledWith(
       mockProcessedFiles,
       mockOutput,
@@ -112,6 +118,7 @@ describe('packager', () => {
       undefined,
       expect.objectContaining({
         taskRunner: expect.any(Object),
+        precomputedFileMetrics: expect.any(Array),
       }),
     );
 

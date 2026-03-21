@@ -115,6 +115,7 @@ describe.runIf(!isWindows)('packager integration', () => {
           });
         },
         produceOutput,
+        calculateSelectiveFileMetrics: async () => [],
         calculateMetrics: async (
           processedFiles,
           _output,

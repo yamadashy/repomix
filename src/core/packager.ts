@@ -11,7 +11,8 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics } from './metrics/calculateMetrics.js';
+import { calculateMetrics, getMetricsTargetPaths } from './metrics/calculateMetrics.js';
+import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
 import type { TokenCountTask } from './metrics/workers/calculateMetricsWorker.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
@@ -42,6 +43,7 @@ const defaultDeps = {
   validateFileSafety,
   produceOutput,
   calculateMetrics,
+  calculateSelectiveFileMetrics,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -73,16 +75,21 @@ export const pack = async (
   progressCallback('Searching for files...');
   const filePathsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
-      rootDirs.map(async (rootDir) => ({
-        rootDir,
-        filePaths: (await deps.searchFiles(rootDir, config, explicitFiles)).filePaths,
-      })),
+      rootDirs.map(async (rootDir) => {
+        const result = await deps.searchFiles(rootDir, config, explicitFiles);
+        return {
+          rootDir,
+          filePaths: result.filePaths,
+          emptyDirPaths: result.emptyDirPaths,
+        };
+      }),
     ),
   );
 
   // Sort file paths
   progressCallback('Sorting files...');
   const allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
+  const allEmptyDirPaths = filePathsByDir.flatMap(({ emptyDirPaths }) => emptyDirPaths);
 
   // Sort each root's file paths independently (avoids O(N²) flatten-sort-regroup)
   const sortedFilePathsByDir = filePathsByDir.map(({ rootDir, filePaths }) => ({
@@ -171,6 +178,22 @@ export const pack = async (
       files: filePaths,
     }));
 
+    // Start file token counting in parallel with output generation.
+    // File metrics only depend on processedFiles, not the output, so they can run concurrently.
+    // This overlaps CPU-bound token counting (worker threads) with I/O-bound output generation.
+    const metricsTargetPaths = getMetricsTargetPaths(processedFiles, config);
+    const fileMetricsPromise = withMemoryLogging('File Metrics', () =>
+      deps.calculateSelectiveFileMetrics(
+        processedFiles,
+        metricsTargetPaths,
+        config.tokenCount.encoding,
+        progressCallback,
+        {
+          taskRunner: metricsTaskRunner,
+        },
+      ),
+    );
+
     // Generate and write output (handles both single and split output)
     const { outputFiles, outputForMetrics } = await deps.produceOutput(
       rootDirs,
@@ -181,11 +204,17 @@ export const pack = async (
       gitLogResult,
       progressCallback,
       filePathsByRoot,
+      allEmptyDirPaths,
     );
 
+    // Await file metrics (may already be done if output generation was slower)
+    const precomputedFileMetrics = await fileMetricsPromise;
+
+    // Calculate remaining metrics (output tokens, git tokens) - file metrics are passed in to avoid recomputation
     const metrics = await withMemoryLogging('Calculate Metrics', () =>
       deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
         taskRunner: metricsTaskRunner,
+        precomputedFileMetrics,
       }),
     );
 

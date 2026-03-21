@@ -258,6 +258,7 @@ export const generateOutput = async (
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
   filePathsByRoot?: FilesByRoot[],
+  emptyDirPaths?: string[],
   deps = {
     buildOutputGeneratorContext,
     generateHandlebarOutput,
@@ -277,6 +278,7 @@ export const generateOutput = async (
     gitDiffResult,
     gitLogResult,
     filePathsByRoot,
+    emptyDirPaths,
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
@@ -303,6 +305,7 @@ export const buildOutputGeneratorContext = async (
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
   filePathsByRoot?: FilesByRoot[],
+  emptyDirPaths?: string[],
   deps = {
     listDirectories,
     listFiles,
@@ -356,21 +359,27 @@ export const buildOutputGeneratorContext = async (
     }
   } else if (config.output.directoryStructure && config.output.includeEmptyDirectories) {
     // Default behavior: include empty directories only
-    try {
-      const merged = (await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)))).reduce(
-        (acc: FileSearchResult, curr: FileSearchResult) =>
-          ({
-            filePaths: [...acc.filePaths, ...curr.filePaths],
-            emptyDirPaths: [...acc.emptyDirPaths, ...curr.emptyDirPaths],
-          }) as FileSearchResult,
-        { filePaths: [], emptyDirPaths: [] },
-      ).emptyDirPaths;
-      directoryPathsForTree = [...new Set(merged)].sort();
-    } catch (error) {
-      throw new RepomixError(
-        `Failed to search for empty directories: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? { cause: error } : undefined,
-      );
+    if (emptyDirPaths && emptyDirPaths.length > 0) {
+      // Use pre-computed empty dir paths from initial file search (avoids redundant globby scan)
+      directoryPathsForTree = [...new Set(emptyDirPaths)].sort();
+    } else if (!emptyDirPaths) {
+      // Fallback: search for empty directories (when called without pre-computed paths)
+      try {
+        const merged = (await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)))).reduce(
+          (acc: FileSearchResult, curr: FileSearchResult) =>
+            ({
+              filePaths: [...acc.filePaths, ...curr.filePaths],
+              emptyDirPaths: [...acc.emptyDirPaths, ...curr.emptyDirPaths],
+            }) as FileSearchResult,
+          { filePaths: [], emptyDirPaths: [] },
+        ).emptyDirPaths;
+        directoryPathsForTree = [...new Set(merged)].sort();
+      } catch (error) {
+        throw new RepomixError(
+          `Failed to search for empty directories: ${error instanceof Error ? error.message : String(error)}`,
+          error instanceof Error ? { cause: error } : undefined,
+        );
+      }
     }
   }
 

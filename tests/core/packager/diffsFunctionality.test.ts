@@ -83,6 +83,7 @@ index 123..456 100644
       processFiles: mockProcessFiles,
       validateFileSafety: mockValidateFileSafety,
       produceOutput: mockProduceOutput,
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
       calculateMetrics: mockCalculateMetrics,
       sortPaths: mockSortPaths,
     });
@@ -133,6 +134,7 @@ index 123..456 100644
       processFiles: mockProcessFiles,
       validateFileSafety: mockValidateFileSafety,
       produceOutput: mockProduceOutput,
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
       calculateMetrics: mockCalculateMetrics,
       sortPaths: mockSortPaths,
     });
