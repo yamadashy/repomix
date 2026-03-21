@@ -133,6 +133,7 @@ export const cleanupWorkerPool = async (pool: Tinypool): Promise<void> => {
 
 export interface TaskRunner<T, R> {
   run: (task: T) => Promise<R>;
+  runNamed?: <TN, RN>(task: TN, name: string) => Promise<RN>;
   cleanup: () => Promise<void>;
 }
 
@@ -140,6 +141,7 @@ export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> =
   const pool = createWorkerPool(options);
   return {
     run: (task: T) => pool.run(task),
+    runNamed: <TN, RN>(task: TN, name: string) => pool.run(task, { name }) as Promise<RN>,
     cleanup: () => cleanupWorkerPool(pool),
   };
 };

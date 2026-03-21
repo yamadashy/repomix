@@ -1,10 +1,9 @@
 import type { TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
-const CHUNK_SIZE = 1000;
-const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1000KB
+const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1MB
 
 export const calculateOutputMetrics = async (
   content: string,
@@ -21,13 +20,18 @@ export const calculateOutputMetrics = async (
     let result: number;
 
     if (shouldRunInParallel) {
-      // Split content into chunks for parallel processing
-      const chunkSize = Math.ceil(content.length / CHUNK_SIZE);
+      // Split content into chunks based on available parallelism.
+      // Using thread count ensures we create just enough chunks to saturate all workers,
+      // avoiding the overhead of thousands of tiny tasks.
+      const numChunks = getProcessConcurrency();
+      const chunkSize = Math.ceil(content.length / numChunks);
       const chunks: string[] = [];
 
       for (let i = 0; i < content.length; i += chunkSize) {
         chunks.push(content.slice(i, i + chunkSize));
       }
+
+      logger.trace(`Split output into ${chunks.length} chunks of ~${chunkSize} chars for parallel token counting`);
 
       // Process chunks in parallel
       const chunkResults = await Promise.all(

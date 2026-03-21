@@ -6,10 +6,22 @@ import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
+// Mock getProcessConcurrency to return a stable value for tests
+vi.mock('../../../src/shared/processConcurrency', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../../src/shared/processConcurrency.js')>();
+  return {
+    ...original,
+    getProcessConcurrency: () => 4,
+  };
+});
+
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
       return (await countTokens(task as TokenCountTask)) as R;
+    },
+    runNamed: async <TN, _RN>(_task: TN, _name: string) => {
+      return [] as _RN;
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
@@ -51,9 +63,10 @@ describe('calculateOutputMetrics', () => {
         run: async (_task: T) => {
           throw mockError;
         },
-        cleanup: async () => {
-          // Mock cleanup - no-op for tests
+        runNamed: async <TN, _RN>(_task: TN, _name: string) => {
+          throw mockError;
         },
+        cleanup: async () => {},
       };
     };
 
@@ -103,9 +116,10 @@ describe('calculateOutputMetrics', () => {
           // Return a fixed token count for each chunk
           return 100 as R;
         },
-        cleanup: async () => {
-          // Mock cleanup - no-op for tests
+        runNamed: async <TN, _RN>(_task: TN, _name: string) => {
+          return [] as _RN;
         },
+        cleanup: async () => {},
       };
     };
 
@@ -113,8 +127,9 @@ describe('calculateOutputMetrics', () => {
       taskRunner: mockParallelTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
-    expect(chunksProcessed).toBeGreaterThan(1); // Should have processed multiple chunks
-    expect(result).toBe(100_000); // 1000 chunks * 100 tokens per chunk
+    // Number of chunks = getProcessConcurrency() = 4 (mocked)
+    expect(chunksProcessed).toBe(4);
+    expect(result).toBe(400); // 4 chunks * 100 tokens per chunk
   });
 
   it('should handle errors in parallel processing', async () => {
@@ -127,9 +142,10 @@ describe('calculateOutputMetrics', () => {
         run: async (_task: T) => {
           throw mockError;
         },
-        cleanup: async () => {
-          // Mock cleanup - no-op for tests
+        runNamed: async <TN, _RN>(_task: TN, _name: string) => {
+          throw mockError;
         },
+        cleanup: async () => {},
       };
     };
 
@@ -154,9 +170,10 @@ describe('calculateOutputMetrics', () => {
           processedChunks.push(outputTask.content);
           return outputTask.content.length as R;
         },
-        cleanup: async () => {
-          // Mock cleanup - no-op for tests
+        runNamed: async <TN, _RN>(_task: TN, _name: string) => {
+          return [] as _RN;
         },
+        cleanup: async () => {},
       };
     };
 
@@ -168,11 +185,10 @@ describe('calculateOutputMetrics', () => {
       }),
     });
 
-    // Check that chunks are roughly equal in size
-    const _expectedChunkSize = Math.ceil(content.length / 1000); // CHUNK_SIZE is 1000
+    // Number of chunks = getProcessConcurrency() = 4 (mocked)
     const chunkSizes = processedChunks.map((chunk) => chunk.length);
 
-    expect(processedChunks.length).toBe(1000); // Should have 1000 chunks
+    expect(processedChunks.length).toBe(4);
     expect(Math.max(...chunkSizes) - Math.min(...chunkSizes)).toBeLessThanOrEqual(1); // Chunks should be almost equal in size
     expect(processedChunks.join('')).toBe(content); // All content should be processed
   });
