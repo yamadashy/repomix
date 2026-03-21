@@ -3,7 +3,7 @@ rules:
     ignore:
       # git-auto-commit-action requires persist-credentials for pushing
       - schema-update.yml
-  secrets-inherit:
+  secrets-outside-env:
     ignore:
       # These workflows use repository-level secrets without dedicated environments,
       # which is acceptable for this project's threat model
