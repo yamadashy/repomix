@@ -3,3 +3,13 @@ rules:
     ignore:
       # git-auto-commit-action requires persist-credentials for pushing
       - schema-update.yml
+  secrets-inherit:
+    ignore:
+      # These workflows use repository-level secrets without dedicated environments,
+      # which is acceptable for this project's threat model
+      - ci.yml
+      - claude-code-review.yml
+      - claude-issue-similar.yml
+      - claude-issue-triage.yml
+      - claude.yml
+      - homebrew.yml
