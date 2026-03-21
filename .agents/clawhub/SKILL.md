@@ -51,7 +51,7 @@ Pack entire codebases into a single, AI-friendly file for analysis. Repomix inte
 npx repomix@latest --remote <owner/repo> --output /tmp/<repo-name>-analysis.xml
 ```
 
-Always output to `/tmp` for remote repositories to avoid polluting the user's working directory.
+Always output to a temporary directory (`/tmp` on Unix, `%TEMP%` on Windows) for remote repositories to avoid polluting the user's working directory.
 
 ### Pack a Local Directory
 
@@ -84,10 +84,10 @@ npx repomix@latest --remote yamadashy/repomix --output /tmp/repomix-analysis.xml
 npx repomix@latest --remote facebook/react --compress --output /tmp/react-analysis.xml
 
 # Local directory
-npx repomix@latest ./src
+npx repomix@latest ./src --output /tmp/src-analysis.xml
 
 # Specific file types only
-npx repomix@latest --include "**/*.{ts,tsx,js,jsx}"
+npx repomix@latest --include "**/*.{ts,tsx,js,jsx}" --output /tmp/filtered-analysis.xml
 ```
 
 ### Step 2: Check Command Output
@@ -106,19 +106,19 @@ Note the output file location for subsequent analysis.
 1. Search for the file tree section (near the beginning of the output)
 2. Check the metrics summary for overall statistics
 
-**Search for patterns:**
+**Search for patterns** (use the output file path from Step 2):
 ```bash
 # Find exports and main entry points
-grep -iE "export.*function|export.*class" /tmp/analysis.xml
+grep -iE "export.*function|export.*class" <output-file>
 
 # Search with context
-grep -iE -A 5 -B 5 "authentication|auth" /tmp/analysis.xml
+grep -iE -A 5 -B 5 "authentication|auth" <output-file>
 
 # Find API endpoints
-grep -iE "router|route|endpoint|api" /tmp/analysis.xml
+grep -iE "router|route|endpoint|api" <output-file>
 
 # Find database models
-grep -iE "model|schema|database|query" /tmp/analysis.xml
+grep -iE "model|schema|database|query" <output-file>
 ```
 
 **Read specific sections** using offset/limit for large outputs.
@@ -134,7 +134,7 @@ grep -iE "model|schema|database|query" /tmp/analysis.xml
 
 1. **Use `--compress` for large repos** (>100k lines) to reduce token usage by ~70%
 2. **Use pattern search first** before reading entire output files
-3. **Use `/tmp` for output** to keep the user's workspace clean
+3. **Use a temporary directory for output** (`/tmp` on Unix, `%TEMP%` on Windows) to keep the user's workspace clean
 4. **Use `--include` to focus** on specific parts of a codebase
 5. **XML is the default and recommended format** — it has clear file boundaries for structured analysis
 
