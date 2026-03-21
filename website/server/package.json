@@ -16,19 +16,19 @@
   "dependencies": {
     "@hono/node-server": "^1.19.11",
     "fflate": "^0.8.2",
-    "hono": "^4.12.5",
+    "hono": "^4.12.7",
     "repomix": "github:yamadashy/repomix#main",
     "winston": "^3.19.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@swc/core": "^1.15.17",
-    "@types/node": "^24.11.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260228.1",
+    "@swc/core": "^1.15.18",
+    "@types/node": "^24.12.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260313.1",
     "rimraf": "^6.1.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "rolldown": "^1.0.0-rc.6",
+    "rolldown": "^1.0.0-rc.9",
     "rollup-plugin-swc3": "^0.12.1"
   }
 }
