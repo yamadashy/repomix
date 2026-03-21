@@ -28,19 +28,20 @@ export const calculateMetrics = async (
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
+  options?: { taskRunner?: TaskRunner<TokenCountTask, number> },
   deps = {
     calculateSelectiveFileMetrics,
     calculateOutputMetrics,
     calculateGitDiffMetrics,
     calculateGitLogMetrics,
-    taskRunner: undefined as TaskRunner<TokenCountTask, number> | undefined,
   },
 ): Promise<CalculateMetricsResult> => {
   progressCallback('Calculating metrics...');
 
-  // Initialize a single task runner for all metrics calculations
+  // Use pre-initialized task runner if provided, otherwise create one
+  const externalTaskRunner = options?.taskRunner;
   const taskRunner =
-    deps.taskRunner ??
+    externalTaskRunner ??
     initTaskRunner<TokenCountTask, number>({
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
@@ -112,7 +113,7 @@ export const calculateMetrics = async (
     };
   } finally {
     // Cleanup the task runner after all calculations are complete (only if we created it)
-    if (!deps.taskRunner) {
+    if (!externalTaskRunner) {
       await taskRunner.cleanup();
     }
   }

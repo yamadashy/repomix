@@ -104,12 +104,12 @@ index 123..456 100644
         stagedDiffContent: '',
       },
       undefined,
+      { taskRunner: mockTaskRunner },
       {
         calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
         calculateOutputMetrics: mockCalculateOutputMetrics,
         calculateGitDiffMetrics: vi.fn().mockResolvedValue(25),
         calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
-        taskRunner: mockTaskRunner,
       },
     );
 
@@ -184,12 +184,12 @@ index 123..456 100644
       config,
       undefined, // No diff content
       undefined,
+      { taskRunner: mockTaskRunner },
       {
         calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
         calculateOutputMetrics: mockCalculateOutputMetrics,
         calculateGitDiffMetrics: vi.fn().mockResolvedValue(0),
         calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
-        taskRunner: mockTaskRunner,
       },
     );
 
@@ -262,12 +262,12 @@ index 123..456 100644
       config,
       undefined, // No diff content
       undefined,
+      { taskRunner: mockTaskRunner },
       {
         calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
         calculateOutputMetrics: mockCalculateOutputMetrics,
         calculateGitDiffMetrics: vi.fn().mockResolvedValue(0),
         calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
-        taskRunner: mockTaskRunner,
       },
     );
 

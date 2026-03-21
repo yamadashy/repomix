@@ -110,6 +110,9 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      expect.objectContaining({
+        taskRunner: expect.any(Object),
+      }),
     );
 
     // Check the result of pack function
