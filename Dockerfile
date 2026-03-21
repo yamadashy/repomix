@@ -5,17 +5,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Install pnpm
+RUN npm install -g pnpm@10.32.1
+
 RUN mkdir /repomix
 WORKDIR /repomix
 
 # Install dependencies and build repomix, then link the package to the global scope
 # To reduce the size of the layer, all steps are executed in the same RUN command
 COPY . .
-RUN npm ci \
-    && npm run build \
+RUN pnpm install --frozen-lockfile \
+    && pnpm run build \
     && npm link \
-    && npm ci --omit=dev \
-    && npm cache clean --force
+    && pnpm prune --prod \
+    && pnpm store prune
 
 WORKDIR /app
 

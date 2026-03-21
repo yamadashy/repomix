@@ -12,7 +12,7 @@ steps:
       - 'NODE_ENV=production'
       - '-f'
       - 'website/server/Dockerfile'
-      - 'website/server'
+      - '.'
 
   # Push the container image
   - name: 'gcr.io/cloud-builders/docker'

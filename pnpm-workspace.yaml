@@ -1,0 +1,5 @@
+packages:
+  - "browser"
+  - "scripts/memory"
+  - "website/client"
+  - "website/server"

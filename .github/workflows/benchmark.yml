@@ -24,41 +24,28 @@ jobs:
     name: Memory Test
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: scripts/memory
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            scripts/memory/package-lock.json
+          cache: pnpm
 
-      # Install root dependencies (for repomix)
-      - name: Install root dependencies
-        working-directory: .
-        run: npm ci
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      # Build repomix
       - name: Build repomix
-        working-directory: .
-        run: npm run build
+        run: pnpm run build
 
-      # Install benchmark dependencies
-      - name: Install benchmark dependencies
-        run: npm ci
-
-      # Build benchmark
       - name: Build benchmark
-        run: npm run build
+        run: pnpm --filter @repomix/memory-benchmarks run build
 
       # Run memory test
       - name: Run memory test
+        working-directory: scripts/memory
         run: node --expose-gc dist/memory-test.js "$ITERATIONS" "$DELAY"
         env:
           CI: true
@@ -80,41 +67,28 @@ jobs:
     timeout-minutes: 30
     # Only run full analysis on manual dispatch
     if: github.event_name == 'workflow_dispatch'
-    defaults:
-      run:
-        working-directory: scripts/memory
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            scripts/memory/package-lock.json
+          cache: pnpm
 
-      # Install root dependencies (for repomix)
-      - name: Install root dependencies
-        working-directory: .
-        run: npm ci
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      # Build repomix
       - name: Build repomix
-        working-directory: .
-        run: npm run build
+        run: pnpm run build
 
-      # Install benchmark dependencies
-      - name: Install benchmark dependencies
-        run: npm ci
-
-      # Build benchmark
       - name: Build benchmark
-        run: npm run build
+        run: pnpm --filter @repomix/memory-benchmarks run build
 
       # Run comprehensive memory test
       - name: Run comprehensive memory test
+        working-directory: scripts/memory
         run: node --expose-gc dist/memory-test.js --full --save
         env:
           CI: true

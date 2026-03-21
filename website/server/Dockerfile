@@ -1,20 +1,37 @@
 # ==============================================================================
-# Build stage
+# Build stage (context = repository root)
 # ==============================================================================
 FROM node:24-alpine AS builder
 
-# Install git (required for GitHub-based npm dependencies)
+# Install git (required by repomix for remote repository processing)
 RUN apk add --no-cache git
 
+# Install pnpm
+RUN npm install -g pnpm@10.32.1
+
 WORKDIR /app
-COPY package*.json ./
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci
+# Copy workspace configuration and lockfile
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 
-# Copy source code and bundle
-COPY . .
-RUN npm run bundle
+# Copy all workspace package.json files (required for lockfile validation)
+COPY browser/package.json ./browser/
+COPY scripts/memory/package.json ./scripts/memory/
+COPY website/client/package.json ./website/client/
+COPY website/server/package.json ./website/server/
+
+# Install all dependencies
+RUN pnpm install --frozen-lockfile
+
+# Build repomix (workspace dependency of server)
+COPY src/ ./src/
+COPY tsconfig.build.json ./
+COPY bin/ ./bin/
+RUN pnpm run build
+
+# Copy server source and bundle
+COPY website/server/ ./website/server/
+RUN pnpm --filter repomix-website-server run bundle
 
 
 # ==============================================================================
@@ -28,7 +45,7 @@ RUN apk add --no-cache git ca-certificates
 WORKDIR /app
 
 # Copy bundled server and WASM files
-COPY --from=builder /app/dist-bundled ./dist-bundled
+COPY --from=builder /app/website/server/dist-bundled ./dist-bundled
 
 # Copy external dependencies (cannot be bundled due to runtime requirements)
 # - tinypool: spawns worker threads using file paths
@@ -37,7 +54,7 @@ COPY --from=builder /app/node_modules/tinypool ./node_modules/tinypool
 COPY --from=builder /app/node_modules/tiktoken ./node_modules/tiktoken
 
 # Copy warmup script for compile cache generation
-COPY --from=builder /app/warmup.mjs ./warmup.mjs
+COPY --from=builder /app/website/server/warmup.mjs ./warmup.mjs
 
 # Set environment variables for bundled mode
 # NODE_COMPILE_CACHE enables V8 compile cache to reduce cold start latency

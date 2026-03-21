@@ -13,15 +13,16 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./client:/app
+      - ..:/workspace
+    working_dir: /workspace/website/client
     environment:
       - NODE_ENV=development
-    command: sh -c "npm i && npm run docs:dev -- --port 5173 --host"
+    command: sh -c "pnpm install && pnpm run docs:dev -- --port 5173 --host"
 
   server:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: website/server/Dockerfile
     ports:
       - "8080:8080"
     environment:

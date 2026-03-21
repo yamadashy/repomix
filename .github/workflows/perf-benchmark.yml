@@ -72,21 +72,26 @@ jobs:
           path: main-branch
           persist-credentials: false
 
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          package_json_file: pr-branch/package.json
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: pr-branch/.tool-versions
-          cache: npm
-          cache-dependency-path: |
-            pr-branch/package-lock.json
-            main-branch/package-lock.json
 
       - name: Install and build (PR branch)
         working-directory: pr-branch
-        run: npm ci && npm run build
+        run: pnpm install --frozen-lockfile && pnpm run build
 
       - name: Install and build (main branch)
         working-directory: main-branch
-        run: npm ci && npm run build
+        shell: bash
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile && pnpm run build
+          else
+            npm ci && npm run build
+          fi
 
       - name: Run benchmark
         shell: bash

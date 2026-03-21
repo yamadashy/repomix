@@ -35,8 +35,8 @@ repomix-output.*
 # ESLint cache
 .eslintcache
 
-# yarn
-.yarn/
+# pnpm
+.pnpm-store/
 
 # biome
 .biome/

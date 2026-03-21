@@ -18,12 +18,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-      - run: npm ci
-      - run: npm run website-generate-schema
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run website-generate-schema
       - uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
         with:
           commit_message: 'chore(schema): auto generate schema'

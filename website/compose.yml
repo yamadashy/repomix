@@ -9,30 +9,30 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./client:/app
+      - ..:/workspace
+    working_dir: /workspace/website/client
     environment:
       - NODE_ENV=development
-    # override default command
-    command: sh -c "npm i && npm run docs:dev -- --port 5173 --host"
+    command: sh -c "pnpm install && pnpm run docs:dev -- --port 5173 --host"
 
   server:
     build:
-      context: ./server
+      context: ./client
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
     volumes:
-      - ./server:/app
+      - ..:/workspace
+    working_dir: /workspace
     environment:
       - NODE_ENV=development
       - PORT=8080
       # Unset bundled mode for local development (volume mount overwrites bundled files)
       - REPOMIX_WORKER_PATH=
       - REPOMIX_WASM_DIR=
-    # override default command
-    command: sh -c "npm i && npm run dev"
+    command: sh -c "pnpm install && pnpm run build && cd website/server && pnpm run dev"
     develop:
       watch:
         - action: sync+restart
           path: ./server
-          target: /app
+          target: /workspace/website/server

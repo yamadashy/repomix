@@ -16,7 +16,7 @@
   "dependencies": {
     "@types/asciichart": "^1.5.8",
     "asciichart": "^1.5.25",
-    "repomix": "file:../.."
+    "repomix": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.12.0",

@@ -22,17 +22,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Update npm to latest version
-        run: npm install -g npm@latest
-
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Check if version already published
         run: |
@@ -44,21 +44,21 @@ jobs:
           echo "Version ${PACKAGE_VERSION} is not yet published"
 
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Test
-        run: npm run test-coverage
+        run: pnpm run test-coverage
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Verify npm audit signatures
         run: npm audit signatures
 
       - name: Publish (dry-run)
         if: ${{ inputs.dry-run }}
-        run: npm publish --provenance --access public --dry-run
+        run: pnpm publish --provenance --access public --dry-run --no-git-checks
 
       - name: Publish
         if: ${{ !inputs.dry-run }}
-        run: npm publish --provenance --access public
+        run: pnpm publish --provenance --access public --no-git-checks

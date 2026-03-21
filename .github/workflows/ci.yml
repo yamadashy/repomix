@@ -19,12 +19,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-      - run: npm ci
-      - run: npm run lint-biome && git diff --exit-code
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint-biome && git diff --exit-code
 
   lint-oxlint:
     name: Lint oxlint
@@ -34,12 +35,14 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-      - run: npm ci
-      - run: npm run lint-oxlint && git diff --exit-code
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint-oxlint && git diff --exit-code
+
   lint-ts:
     name: Lint TypeScript
     runs-on: ubuntu-latest
@@ -48,12 +51,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-      - run: npm ci
-      - run: npm run lint-ts
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint-ts
 
   lint-secretlint:
     name: Lint Secretlint
@@ -63,12 +67,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-      - run: npm ci
-      - run: npm run lint-secretlint
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint-secretlint
 
   lint-website-client:
     name: Lint Website Client
@@ -78,16 +83,14 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-      - name: Install website client dependencies
-        working-directory: website/client
-        run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Lint website client
-        working-directory: website/client
-        run: npm run lint
+        run: pnpm --filter repomix-website-client run lint
 
   lint-website-server:
     name: Lint Website Server
@@ -97,23 +100,16 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-      - name: Build and link local repomix
-        run: |
-          npm ci
-          npm run build
-          npm link
-      - name: Install website server dependencies
-        working-directory: website/server
-        run: |
-          npm ci
-          npm link repomix
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build repomix
+        run: pnpm run build
       - name: Lint website server
-        working-directory: website/server
-        run: npm run lint
+        run: pnpm --filter repomix-website-server run lint
 
   bundle-website-server:
     name: Bundle Website Server
@@ -123,23 +119,16 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-      - name: Build and link local repomix
-        run: |
-          npm ci
-          npm run build
-          npm link
-      - name: Install website server dependencies
-        working-directory: website/server
-        run: |
-          npm ci
-          npm link repomix
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build repomix
+        run: pnpm run build
       - name: Bundle website server
-        working-directory: website/server
-        run: npm run bundle
+        run: pnpm --filter repomix-website-server run bundle
 
   lint-browser:
     name: Lint Browser Extension
@@ -149,19 +138,18 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-      - name: Install browser extension dependencies
-        working-directory: browser
-        run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Prepare WXT
         working-directory: browser
-        run: npm run prepare
+        run: pnpm run prepare
       - name: Lint browser extension
         working-directory: browser
-        run: npm run lint
+        run: pnpm run lint
 
   lint-actionlint:
     name: Lint GitHub Actions (actionlint)
@@ -209,11 +197,12 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
       # Run tests directly instead of using npm scripts with node --run which is not supported in older Node versions
       - run: ./node_modules/.bin/vitest --reporter=verbose
         env:
@@ -246,12 +235,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-      - run: npm ci
-      - run: npm run test-coverage -- --reporter=verbose
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test-coverage -- --reporter=verbose
         env:
           CI_OS: ${{ runner.os }}
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -273,19 +263,18 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: .tool-versions
-          cache: npm
-      - name: Install browser extension dependencies
-        working-directory: browser
-        run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Prepare WXT
         working-directory: browser
-        run: npm run prepare
+        run: pnpm run prepare
       - name: Test browser extension
         working-directory: browser
-        run: npm run test
+        run: pnpm run test
 
   build-and-run:
     name: Build and run
@@ -298,15 +287,16 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
       # Run build directly instead of using npm scripts with node --run which is not supported in older Node versions
       - run: ./node_modules/.bin/rimraf lib && ./node_modules/.bin/tsc -p tsconfig.build.json --sourceMap --declaration
       - name: Install only production dependencies
-        run: npm ci --omit=dev
+        run: pnpm prune --prod
       - run: node bin/repomix.cjs
       - run: node bin/repomix.cjs --version
       - run: node bin/repomix.cjs --help
@@ -343,4 +333,3 @@ jobs:
         with:
           name: repomix-output-bun-${{ matrix.os }}-${{ matrix.bun-version }}.txt
           path: repomix-output.txt
-

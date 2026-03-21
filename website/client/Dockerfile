@@ -3,30 +3,16 @@
 # ==============================================================================
 FROM node:24-alpine AS base
 
-# Install Git (required for VitePress)
-RUN apk add --no-cache git
+# Install Git (required for VitePress) and enable pnpm via corepack
+RUN apk add --no-cache git && corepack enable
 
 WORKDIR /app
 
 # ==============================================================================
-# Dependencies installation stage
+# Development stage (used by docker compose)
 # ==============================================================================
-FROM base AS deps
-
-# Copy package.json and package-lock.json
-COPY package*.json ./
-
-# Install all dependencies (with npm cache optimization)
-RUN npm ci && npm cache clean --force
-
-# ==============================================================================
-# Development stage
-# ==============================================================================
-FROM deps AS development
-
-# Copy source code
-COPY . .
+FROM base AS development
 
 EXPOSE 5173
 
-CMD ["npm", "run", "docs:dev"]
+CMD ["pnpm", "run", "docs:dev"]
