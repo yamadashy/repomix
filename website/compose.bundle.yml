@@ -27,4 +27,25 @@ services:
     environment:
       # Use development mode to avoid Google Cloud Logging authentication errors
       - NODE_ENV=development
+      # Upstash-compatible local Redis for daily rate limiting
+      - UPSTASH_REDIS_REST_URL=http://serverless-redis:8079
+      - UPSTASH_REDIS_REST_TOKEN=local-token
+    depends_on:
+      - serverless-redis
     # No volume mounts - use the bundled files from Docker image
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  serverless-redis:
+    image: hiett/serverless-redis-http:latest
+    ports:
+      - "8079:8079"
+    environment:
+      - SRH_MODE=env
+      - SRH_TOKEN=local-token
+      - SRH_CONNECTION_STRING=redis://redis:6379
+    depends_on:
+      - redis
