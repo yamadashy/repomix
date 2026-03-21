@@ -24,8 +24,8 @@ RUN npm ci && npm cache clean --force
 # ==============================================================================
 FROM deps AS development
 
-# Copy source code
-COPY . .
+# Copy source code (exclude node_modules to avoid conflict with deps stage)
+COPY --exclude=node_modules . .
 
 EXPOSE 5173
 
