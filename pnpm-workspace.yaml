@@ -7,3 +7,5 @@ packages:
 # Minimum age (in minutes) a package version must have before it can be installed.
 # 7 days = 10080 minutes. Reduces risk of installing compromised packages.
 minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  - "@repomix/*"
