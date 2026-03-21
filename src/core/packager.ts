@@ -131,18 +131,22 @@ export const pack = async (
   // file processing only performs text transformations (comment removal, formatting).
   // Suspicious files are filtered out after both operations complete.
   progressCallback('Running security check and processing files...');
-  const [securityResult, allProcessedFiles] = await Promise.all([
-    withMemoryLogging('Security Check', () =>
-      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, undefined, {
-        taskRunner: securityTaskRunner,
-      }),
-    ),
-    withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)),
-  ]);
-
-  // Clean up security worker pool now that security check is complete
-  if (securityTaskRunner) {
-    await securityTaskRunner.cleanup();
+  let securityResult: Awaited<ReturnType<typeof deps.validateFileSafety>>;
+  let allProcessedFiles: ProcessedFile[];
+  try {
+    [securityResult, allProcessedFiles] = await Promise.all([
+      withMemoryLogging('Security Check', () =>
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, undefined, {
+          taskRunner: securityTaskRunner,
+        }),
+      ),
+      withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)),
+    ]);
+  } finally {
+    // Clean up security worker pool now that security check is complete
+    if (securityTaskRunner) {
+      await securityTaskRunner.cleanup();
+    }
   }
 
   const { suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = securityResult;
