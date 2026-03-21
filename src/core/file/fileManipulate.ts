@@ -6,11 +6,7 @@ export interface FileManipulator {
   removeEmptyLines(content: string): string;
 }
 
-const rtrimLines = (content: string): string =>
-  content
-    .split('\n')
-    .map((line) => line.trimEnd())
-    .join('\n');
+const rtrimLines = (content: string): string => content.replace(/[ \t]+$/gm, '');
 
 class BaseManipulator implements FileManipulator {
   removeComments(content: string): string {
@@ -18,10 +14,7 @@ class BaseManipulator implements FileManipulator {
   }
 
   removeEmptyLines(content: string): string {
-    return content
-      .split('\n')
-      .filter((line) => line.trim() !== '')
-      .join('\n');
+    return content.replace(/^\s*\n/gm, '');
   }
 }
 

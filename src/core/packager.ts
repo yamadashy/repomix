@@ -17,6 +17,7 @@ import type { TokenCountTask } from './metrics/workers/calculateMetricsWorker.js
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
+import type { SecurityCheckTask } from './security/workers/securityCheckWorker.js';
 import { packSkill } from './skill/packSkill.js';
 
 export interface PackResult {
@@ -98,6 +99,17 @@ export const pack = async (
     filePaths: deps.sortPaths(filePaths),
   }));
 
+  // Pre-initialize security worker pool so worker threads start loading @secretlint modules
+  // in the background while file collection runs. Created before the skill check since
+  // security checks always run (when enabled) regardless of skill generation.
+  const securityTaskRunner = config.security.enableSecurityCheck
+    ? deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
+        numOfTasks: allFilePaths.length,
+        workerType: 'securityCheck',
+        runtime: 'worker_threads',
+      })
+    : undefined;
+
   // Run file collection and git operations in parallel since they are independent
   progressCallback('Collecting files and git information...');
   const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
@@ -122,10 +134,17 @@ export const pack = async (
   progressCallback('Running security check and processing files...');
   const [securityResult, allProcessedFiles] = await Promise.all([
     withMemoryLogging('Security Check', () =>
-      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, undefined, {
+        taskRunner: securityTaskRunner,
+      }),
     ),
     withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)),
   ]);
+
+  // Clean up security worker pool now that security check is complete
+  if (securityTaskRunner) {
+    await securityTaskRunner.cleanup();
+  }
 
   const { suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = securityResult;
 

@@ -5,8 +5,11 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
-import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
-import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
+import type {
+  SecurityCheckBatchTask,
+  SecurityCheckTask,
+} from '../../../src/core/security/workers/securityCheckWorker.js';
+import securityCheckWorker, { runSecurityCheckBatch } from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
@@ -18,9 +21,13 @@ vi.mock('../../../src/shared/processConcurrency', () => ({
     }),
   })),
   cleanupWorkerPool: vi.fn(),
+  getProcessConcurrency: vi.fn(() => 4),
   initTaskRunner: vi.fn(() => ({
     run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
       return await securityCheckWorker(task);
+    }),
+    runNamed: vi.fn().mockImplementation(async (task: SecurityCheckBatchTask) => {
+      return await runSecurityCheckBatch(task);
     }),
     cleanup: vi.fn(),
   })),
@@ -43,6 +50,9 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
       return (await securityCheckWorker(task as SecurityCheckTask)) as R;
+    },
+    runNamed: async <TN, RN>(task: TN) => {
+      return (await runSecurityCheckBatch(task as SecurityCheckBatchTask)) as RN;
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
@@ -81,6 +91,9 @@ describe('runSecurityCheck', () => {
     const mockErrorTaskRunner = (_options?: WorkerOptions) => {
       return {
         run: async () => {
+          throw mockError;
+        },
+        runNamed: async () => {
           throw mockError;
         },
         cleanup: async () => {

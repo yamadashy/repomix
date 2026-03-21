@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import clipboard from 'clipboardy';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
@@ -31,7 +30,8 @@ export const copyToClipboardIfEnabled = async (
 
   try {
     logger.trace('Using clipboardy.');
-    await clipboard.write(output);
+    const clipboard = await import('clipboardy');
+    await clipboard.default.write(output);
     logger.trace('Copied using clipboardy.');
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'unknown error';

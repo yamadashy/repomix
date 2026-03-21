@@ -99,6 +99,8 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      undefined,
+      expect.objectContaining({ taskRunner: expect.any(Object) }),
     );
     // processFiles now receives all rawFiles (not just safe ones) because
     // security check and file processing run in parallel for performance.

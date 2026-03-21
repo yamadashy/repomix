@@ -22,6 +22,10 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
+export interface SecurityCheckBatchTask {
+  items: SecurityCheckTask[];
+}
+
 export default async ({ filePath, content, type }: SecurityCheckTask) => {
   const config = getCachedConfig();
 
@@ -39,6 +43,29 @@ export default async ({ filePath, content, type }: SecurityCheckTask) => {
     logger.error(`Error checking security on ${filePath}:`, error);
     throw error;
   }
+};
+
+export const runSecurityCheckBatch = async (task: SecurityCheckBatchTask): Promise<(SuspiciousFileResult | null)[]> => {
+  const config = getCachedConfig();
+  const processStartAt = process.hrtime.bigint();
+
+  const results: (SuspiciousFileResult | null)[] = [];
+  for (const item of task.items) {
+    try {
+      const result = await runSecretLint(item.filePath, item.content, item.type, config);
+      results.push(result);
+    } catch (error) {
+      logger.error(`Error checking security on ${item.filePath}:`, error);
+      throw error;
+    }
+  }
+
+  const processEndAt = process.hrtime.bigint();
+  logger.trace(
+    `Batch checked ${task.items.length} items. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
+  );
+
+  return results;
 };
 
 export const runSecretLint = async (

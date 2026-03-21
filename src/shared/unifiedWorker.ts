@@ -100,8 +100,11 @@ const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
     return 'calculateMetrics';
   }
 
-  // securityCheck: has filePath, content, type
+  // securityCheck: has filePath, content, type (single) or items array (batch)
   if ('filePath' in taskObj && 'content' in taskObj && 'type' in taskObj) {
+    return 'securityCheck';
+  }
+  if ('items' in taskObj && Array.isArray(taskObj.items) && !('encoding' in taskObj)) {
     return 'securityCheck';
   }
 
@@ -173,6 +176,16 @@ export default async (task: unknown): Promise<unknown> => {
 export const countTokensBatch = async (task: unknown): Promise<unknown> => {
   const module = await import('../core/metrics/workers/calculateMetricsWorker.js');
   return module.countTokensBatch(task as Parameters<typeof module.countTokensBatch>[0]);
+};
+
+/**
+ * Named export for batch security checking.
+ * Tinypool calls this via pool.run(task, { name: 'runSecurityCheckBatch' }).
+ * Routes to the securityCheck worker's runSecurityCheckBatch function.
+ */
+export const runSecurityCheckBatch = async (task: unknown): Promise<unknown> => {
+  const module = await import('../core/security/workers/securityCheckWorker.js');
+  return module.runSecurityCheckBatch(task as Parameters<typeof module.runSecurityCheckBatch>[0]);
 };
 
 /**
