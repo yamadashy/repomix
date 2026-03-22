@@ -35,3 +35,12 @@ export const loadTokenEncoding = (encoding: TokenEncoding): GptTokenizerEncoding
   encodingCache.set(encoding, mod);
   return mod;
 };
+
+/**
+ * Preload a token encoding module so it's cached by the time token counting starts.
+ * Call this early in the pipeline (e.g., before file search) to overlap the synchronous
+ * module load with async I/O operations.
+ */
+export const preloadTokenEncoding = (encoding: TokenEncoding): void => {
+  loadTokenEncoding(encoding);
+};

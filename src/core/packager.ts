@@ -14,6 +14,7 @@ import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, getMetricsTargetPaths } from './metrics/calculateMetrics.js';
 import { calculateOutputMetrics } from './metrics/calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics, type SelectiveMetricsResult } from './metrics/calculateSelectiveFileMetrics.js';
+import { preloadTokenEncoding } from './metrics/tokenEncoding.js';
 import { generateOutput } from './output/outputGenerate.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
@@ -77,6 +78,35 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
+  // Pre-initialize security worker pool BEFORE file search so worker threads start loading
+  // @secretlint modules while file search (globby) runs (~170ms of I/O). This overlaps
+  // module loading with search I/O, giving workers ~300ms total to initialize
+  // (search + collection time) instead of just ~130ms (collection time only).
+  //
+  // Uses an estimated task count since the actual file count is unknown before search.
+  // For repos with >100 files (the common case), thread count equals maxConcurrency
+  // regardless of exact file count. For tiny repos, the extra idle thread is negligible.
+  //
+  // Cap worker threads at (cpus - 2) to reduce CPU contention with main-thread token
+  // counting that runs in parallel. On a 4-core machine, this prevents 5 threads (4 workers
+  // + main) from competing for 4 cores. Reserving cores for the main thread and OS/GC
+  // improves overall throughput despite fewer security workers.
+  const securityMaxConcurrency = Math.max(1, getProcessConcurrency() - 2);
+  const estimatedTaskCount = securityMaxConcurrency * 100;
+  const securityTaskRunner = config.security.enableSecurityCheck
+    ? deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
+        numOfTasks: estimatedTaskCount,
+        workerType: 'securityCheck',
+        runtime: 'worker_threads',
+        maxConcurrency: securityMaxConcurrency,
+      })
+    : undefined;
+
+  // Preload gpt-tokenizer encoding module during file search so it's cached by the time
+  // token counting starts. The module load is synchronous (require), so we trigger it
+  // here to overlap with the async file search I/O below.
+  preloadTokenEncoding(config.tokenCount.encoding);
+
   progressCallback('Searching for files...');
   const filePathsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
@@ -101,24 +131,6 @@ export const pack = async (
     rootDir,
     filePaths: deps.sortPaths(filePaths),
   }));
-
-  // Pre-initialize security worker pool so worker threads start loading @secretlint modules
-  // in the background while file collection runs. Created before the skill check since
-  // security checks always run (when enabled) regardless of skill generation.
-  //
-  // Cap worker threads at (cpus - 2) to reduce CPU contention with main-thread token
-  // counting that runs in parallel. On a 4-core machine, this prevents 5 threads (4 workers
-  // + main) from competing for 4 cores. Reserving cores for the main thread and OS/GC
-  // improves overall throughput despite fewer security workers.
-  const securityMaxConcurrency = Math.max(1, getProcessConcurrency() - 2);
-  const securityTaskRunner = config.security.enableSecurityCheck
-    ? deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
-        numOfTasks: allFilePaths.length,
-        workerType: 'securityCheck',
-        runtime: 'worker_threads',
-        maxConcurrency: securityMaxConcurrency,
-      })
-    : undefined;
 
   // Run file collection and git operations in parallel since they are independent
   progressCallback('Collecting files and git information...');

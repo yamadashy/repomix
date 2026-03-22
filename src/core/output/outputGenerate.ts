@@ -52,36 +52,51 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
   return compiled;
 };
 
-// Single-pass content analysis: counts newlines and finds max consecutive backticks simultaneously,
-// avoiding a second full scan of all file contents.
+// Content analysis: counts newlines per file and (for markdown only) finds max consecutive backticks.
+// Uses charCodeAt for faster numeric comparison in the hot loop.
+// Skips backtick scanning entirely for non-markdown styles since the delimiter is unused.
 const analyzeFileContents = (
   files: ReadonlyArray<ProcessedFile>,
+  needsBacktickScan: boolean,
 ): { lineCounts: Record<string, number>; markdownDelimiter: string } => {
   const lineCounts: Record<string, number> = {};
   let maxBackticks = 0;
   for (const file of files) {
     const content = file.content;
-    if (content.length === 0) {
+    const len = content.length;
+    if (len === 0) {
       lineCounts[file.path] = 0;
       continue;
     }
     let newlineCount = 0;
-    let consecutive = 0;
-    for (let i = 0; i < content.length; i++) {
-      const ch = content[i];
-      if (ch === '\n') {
-        newlineCount++;
-      }
-      if (ch === '`') {
-        consecutive++;
-        if (consecutive > maxBackticks) {
-          maxBackticks = consecutive;
+    if (needsBacktickScan) {
+      // Markdown: single-pass scan for both newlines and backtick runs
+      let consecutive = 0;
+      for (let i = 0; i < len; i++) {
+        const code = content.charCodeAt(i);
+        if (code === 10) {
+          // '\n'
+          newlineCount++;
         }
-      } else {
-        consecutive = 0;
+        if (code === 96) {
+          // '`'
+          consecutive++;
+          if (consecutive > maxBackticks) {
+            maxBackticks = consecutive;
+          }
+        } else {
+          consecutive = 0;
+        }
+      }
+    } else {
+      // Non-markdown: only count newlines (skip backtick scanning)
+      for (let i = 0; i < len; i++) {
+        if (content.charCodeAt(i) === 10) {
+          newlineCount++;
+        }
       }
     }
-    lineCounts[file.path] = content[content.length - 1] === '\n' ? newlineCount : newlineCount + 1;
+    lineCounts[file.path] = content.charCodeAt(len - 1) === 10 ? newlineCount : newlineCount + 1;
   }
   return { lineCounts, markdownDelimiter: '`'.repeat(Math.max(3, maxBackticks + 1)) };
 };
@@ -101,7 +116,11 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
     ...(() => {
-      const { lineCounts, markdownDelimiter } = analyzeFileContents(outputGeneratorContext.processedFiles);
+      const needsBacktickScan = outputGeneratorContext.config.output.style === 'markdown';
+      const { lineCounts, markdownDelimiter } = analyzeFileContents(
+        outputGeneratorContext.processedFiles,
+        needsBacktickScan,
+      );
       return { fileLineCounts: lineCounts, markdownCodeBlockDelimiter: markdownDelimiter };
     })(),
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
