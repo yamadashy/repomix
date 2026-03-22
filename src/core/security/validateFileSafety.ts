@@ -21,18 +21,24 @@ export const validateFileSafety = async (
     filterOutUntrustedFiles,
   },
 ) => {
-  let suspiciousFilesResults: SuspiciousFileResult[] = [];
-  let suspiciousGitDiffResults: SuspiciousFileResult[] = [];
-  let suspiciousGitLogResults: SuspiciousFileResult[] = [];
+  const suspiciousFilesResults: SuspiciousFileResult[] = [];
+  const suspiciousGitDiffResults: SuspiciousFileResult[] = [];
+  const suspiciousGitLogResults: SuspiciousFileResult[] = [];
 
   if (config.security.enableSecurityCheck) {
     progressCallback('Running security check...');
     const allResults = await deps.runSecurityCheck(rawFiles, progressCallback, gitDiffResult, gitLogResult);
 
-    // Separate Git diff and Git log results from regular file results
-    suspiciousFilesResults = allResults.filter((result) => result.type === 'file');
-    suspiciousGitDiffResults = allResults.filter((result) => result.type === 'gitDiff');
-    suspiciousGitLogResults = allResults.filter((result) => result.type === 'gitLog');
+    // Separate results by type in a single pass
+    for (const result of allResults) {
+      if (result.type === 'file') {
+        suspiciousFilesResults.push(result);
+      } else if (result.type === 'gitDiff') {
+        suspiciousGitDiffResults.push(result);
+      } else if (result.type === 'gitLog') {
+        suspiciousGitLogResults.push(result);
+      }
+    }
 
     logSuspiciousContentWarning('Git diffs', suspiciousGitDiffResults);
     logSuspiciousContentWarning('Git logs', suspiciousGitLogResults);

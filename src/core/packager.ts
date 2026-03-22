@@ -91,7 +91,10 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath: string) => filePathSetsByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
+  // Start git operations in parallel with file collection — they only need rootDirs and config
   progressCallback('Collecting files...');
+  const gitPromise = Promise.all([deps.getGitDiffs(rootDirs, config), deps.getGitLogs(rootDirs, config)]);
+
   const collectResults = await withMemoryLogging(
     'Collect Files',
     async () =>
@@ -105,12 +108,8 @@ export const pack = async (
   const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
   const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-  // Get git diffs and logs in parallel - both are independent git operations
-  progressCallback('Getting git diffs and logs...');
-  const [gitDiffResult, gitLogResult] = await Promise.all([
-    deps.getGitDiffs(rootDirs, config),
-    deps.getGitLogs(rootDirs, config),
-  ]);
+  // Await git results (likely already resolved while files were being collected)
+  const [gitDiffResult, gitLogResult] = await gitPromise;
 
   // Run security check and get filtered safe files
   const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =

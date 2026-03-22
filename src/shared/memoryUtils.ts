@@ -2,7 +2,9 @@
  * Memory utility functions for monitoring memory usage across the application
  */
 
-import { logger } from './logger.js';
+import { logger, repomixLogLevels } from './logger.js';
+
+const isTraceEnabled = (): boolean => logger.getLogLevel() >= repomixLogLevels.DEBUG;
 
 export interface MemoryStats {
   heapUsed: number;
@@ -44,6 +46,7 @@ export function getMemoryStats(): MemoryStats {
  * Log memory usage at trace level with a context message
  */
 export function logMemoryUsage(context: string): void {
+  if (!isTraceEnabled()) return;
   const stats = getMemoryStats();
   logger.trace(
     `Memory [${context}] | Heap: ${stats.heapUsed}/${stats.heapTotal}MB (${stats.heapUsagePercent}%) | RSS: ${stats.rss}MB | Ext: ${stats.external}MB`,
@@ -69,6 +72,10 @@ export function logMemoryDifference(context: string, before: MemoryStats, after:
  * Execute a function and log memory usage before and after
  */
 export async function withMemoryLogging<T>(context: string, fn: () => Promise<T>): Promise<T> {
+  if (!isTraceEnabled()) {
+    return fn();
+  }
+
   const before = getMemoryStats();
   logMemoryUsage(`${context} - Before`);
 

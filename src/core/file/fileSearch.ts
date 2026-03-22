@@ -197,8 +197,10 @@ export const searchFiles = async (
     logger.debug('[globby] Starting file search...');
     const globbyStartTime = Date.now();
 
-    const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+
+    const fileGlobbyPromise = globby(includePatterns, {
+      ...baseGlobbyOptions,
       onlyFiles: true,
     }).catch((error: unknown) => {
       // Handle EPERM errors specifically
@@ -212,26 +214,23 @@ export const searchFiles = async (
       throw error;
     });
 
+    // Start directory search in parallel with file search when empty directories are needed
+    const dirGlobbyPromise = config.output.includeEmptyDirectories
+      ? globby(includePatterns, { ...baseGlobbyOptions, onlyDirectories: true })
+      : undefined;
+
+    const filePaths = await fileGlobbyPromise;
+
     const globbyElapsedTime = Date.now() - globbyStartTime;
     logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
 
     let emptyDirPaths: string[] = [];
-    if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories...');
-      const emptyDirStartTime = Date.now();
+    if (dirGlobbyPromise) {
+      const directories = await dirGlobbyPromise;
+      logger.debug(`[empty dirs] Found ${directories.length} directories`);
 
-      const directories = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyDirectories: true,
-      });
-
-      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
-
-      const filterStartTime = Date.now();
       emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
-      const filterTime = Date.now() - filterStartTime;
-      logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
+      logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories`);
     }
 
     logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);

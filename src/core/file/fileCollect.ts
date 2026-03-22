@@ -1,7 +1,7 @@
 import path from 'node:path';
 import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import { logger } from '../../shared/logger.js';
+import { logger, repomixLogLevels } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { readRawFile as defaultReadRawFile, type FileSkipReason } from './fileRead.js';
 import type { RawFile } from './fileTypes.js';
@@ -45,8 +45,11 @@ export const collectFiles = async (
     readRawFile: defaultReadRawFile,
   },
 ): Promise<FileCollectResults> => {
-  const startTime = process.hrtime.bigint();
-  logger.trace(`Starting file collection for ${filePaths.length} files`);
+  const isTracing = logger.getLogLevel() >= repomixLogLevels.DEBUG;
+  const startTime = isTracing ? process.hrtime.bigint() : 0n;
+  if (isTracing) {
+    logger.trace(`Starting file collection for ${filePaths.length} files`);
+  }
 
   let completedTasks = 0;
   const totalTasks = filePaths.length;
@@ -58,7 +61,9 @@ export const collectFiles = async (
 
     completedTasks++;
     progressCallback(`Collect file... (${completedTasks}/${totalTasks}) ${pc.dim(filePath)}`);
-    logger.trace(`Collect files... (${completedTasks}/${totalTasks}) ${filePath}`);
+    if (isTracing) {
+      logger.trace(`Collect files... (${completedTasks}/${totalTasks}) ${filePath}`);
+    }
 
     return { filePath, result };
   });
@@ -74,9 +79,11 @@ export const collectFiles = async (
     }
   }
 
-  const endTime = process.hrtime.bigint();
-  const duration = Number(endTime - startTime) / 1e6;
-  logger.trace(`File collection completed in ${duration.toFixed(2)}ms`);
+  if (isTracing) {
+    const endTime = process.hrtime.bigint();
+    const duration = Number(endTime - startTime) / 1e6;
+    logger.trace(`File collection completed in ${duration.toFixed(2)}ms`);
+  }
 
   return { rawFiles, skippedFiles };
 };
