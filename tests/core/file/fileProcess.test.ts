@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { FileManipulator } from '../../../src/core/file/fileManipulate.js';
 import { processFiles } from '../../../src/core/file/fileProcess.js';
 import { processContent } from '../../../src/core/file/fileProcessContent.js';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
@@ -7,18 +6,6 @@ import type { FileProcessTask } from '../../../src/core/file/workers/fileProcess
 import fileProcessWorker from '../../../src/core/file/workers/fileProcessWorker.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 import { createMockConfig } from '../../testing/testUtils.js';
-
-const createMockFileManipulator = (): FileManipulator => ({
-  removeComments: (content: string) => content.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ''),
-  removeEmptyLines: (content: string) => content.replace(/^\s*[\r\n]/gm, ''),
-});
-
-const mockGetFileManipulator = (filePath: string): FileManipulator | null => {
-  if (filePath.endsWith('.js')) {
-    return createMockFileManipulator();
-  }
-  return null;
-};
 
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
@@ -47,7 +34,6 @@ describe('fileProcess', () => {
 
       const result = await processFiles(mockRawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
-        getFileManipulator: mockGetFileManipulator,
       });
 
       expect(result).toEqual([

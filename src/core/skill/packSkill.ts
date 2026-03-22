@@ -6,7 +6,7 @@ import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import { calculateMetrics } from '../metrics/calculateMetrics.js';
-import { buildOutputGeneratorContext, createRenderContext } from '../output/outputGenerate.js';
+import { buildOutputGeneratorContext, calculateFileLineCounts, createRenderContext } from '../output/outputGenerate.js';
 import { sortOutputFiles } from '../output/outputSort.js';
 import type { PackOptions, PackResult } from '../packager.js';
 import type { SuspiciousFileResult } from '../security/securityCheck.js';
@@ -113,8 +113,12 @@ export const generateSkillReferences = async (
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
+  // Compute file line counts only for skill output (skipped in normal pack for performance)
+  const fileLineCounts = calculateFileLineCounts(sortedProcessedFiles);
+  const renderContextWithLineCounts = { ...renderContext, fileLineCounts };
+
   // Calculate statistics
-  const statistics = calculateStatistics(sortedProcessedFiles, renderContext.fileLineCounts);
+  const statistics = calculateStatistics(sortedProcessedFiles, fileLineCounts);
   const statisticsSection = generateStatisticsSection(statistics);
 
   // Detect tech stack
@@ -123,9 +127,9 @@ export const generateSkillReferences = async (
 
   // Generate each section separately
   const references: SkillReferences = {
-    summary: generateSummarySection(renderContext, statisticsSection),
-    structure: generateStructureSection(renderContext),
-    files: generateFilesSection(renderContext),
+    summary: generateSummarySection(renderContextWithLineCounts, statisticsSection),
+    structure: generateStructureSection(renderContextWithLineCounts),
+    files: generateFilesSection(renderContextWithLineCounts),
     techStack: techStackMd,
   };
 

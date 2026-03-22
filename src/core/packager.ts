@@ -4,7 +4,7 @@ import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
-import { processFiles } from './file/fileProcess.js';
+import { createFileProcessTaskRunner, processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
@@ -41,6 +41,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createFileProcessTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -111,17 +112,25 @@ export const pack = async (
   // Await git results (likely already resolved while files were being collected)
   const [gitDiffResult, gitLogResult] = await gitPromise;
 
-  // Run security check and get filtered safe files
+  // Pre-warm file process worker pool so threads load modules during security check
+  const fileProcessTaskRunner = deps.createFileProcessTaskRunner(rawFiles.length);
+
+  // Run security check and get filtered safe files (process workers warming in background)
   const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
     await withMemoryLogging('Security Check', () =>
       deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
     );
 
-  // Process files (remove comments, etc.)
+  // Process files (remove comments, etc.) — workers are now warm, no init delay
   progressCallback('Processing files...');
-  const processedFiles = await withMemoryLogging('Process Files', () =>
-    deps.processFiles(safeRawFiles, config, progressCallback),
-  );
+  let processedFiles: ProcessedFile[];
+  try {
+    processedFiles = await withMemoryLogging('Process Files', () =>
+      deps.processFiles(safeRawFiles, config, progressCallback, { taskRunner: fileProcessTaskRunner }),
+    );
+  } finally {
+    await fileProcessTaskRunner.cleanup();
+  }
 
   progressCallback('Generating output...');
 

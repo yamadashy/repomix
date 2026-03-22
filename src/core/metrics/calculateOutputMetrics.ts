@@ -1,10 +1,9 @@
-import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
+import { logger, repomixLogLevels } from '../../shared/logger.js';
+import { getProcessConcurrency, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { TokenCountEncoding } from './TokenCounter.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
-const CHUNK_SIZE = 1000;
-const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1000KB
+const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1MB
 
 export const calculateOutputMetrics = async (
   content: string,
@@ -13,16 +12,22 @@ export const calculateOutputMetrics = async (
   deps: { taskRunner: TaskRunner<TokenCountTask, number> },
 ): Promise<number> => {
   const shouldRunInParallel = content.length > MIN_CONTENT_LENGTH_FOR_PARALLEL;
+  const isTracing = logger.getLogLevel() >= repomixLogLevels.DEBUG;
 
   try {
-    logger.trace(`Starting output token count for ${path || 'output'}`);
-    const startTime = process.hrtime.bigint();
+    if (isTracing) {
+      logger.trace(`Starting output token count for ${path || 'output'}`);
+    }
+    const startTime = isTracing ? process.hrtime.bigint() : 0n;
 
     let result: number;
 
     if (shouldRunInParallel) {
-      // Split content into chunks for parallel processing
-      const chunkSize = Math.ceil(content.length / CHUNK_SIZE);
+      // Use CPU-proportional chunk count to avoid excessive task dispatch overhead.
+      // Previously used 1000 fixed chunks, which created massive serialization overhead
+      // (1000 tasks through ~4 workers). Now uses numCPUs * 2 chunks for optimal parallelism.
+      const numChunks = getProcessConcurrency() * 2;
+      const chunkSize = Math.ceil(content.length / numChunks);
       const chunks: string[] = [];
 
       for (let i = 0; i < content.length; i += chunkSize) {
@@ -51,9 +56,11 @@ export const calculateOutputMetrics = async (
       });
     }
 
-    const endTime = process.hrtime.bigint();
-    const duration = Number(endTime - startTime) / 1e6;
-    logger.trace(`Output token count completed in ${duration.toFixed(2)}ms`);
+    if (isTracing) {
+      const endTime = process.hrtime.bigint();
+      const duration = Number(endTime - startTime) / 1e6;
+      logger.trace(`Output token count completed in ${duration.toFixed(2)}ms`);
+    }
 
     return result;
   } catch (error) {

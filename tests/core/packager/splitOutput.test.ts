@@ -59,6 +59,10 @@ describe('packager split output', () => {
         run: vi.fn(),
         cleanup: vi.fn(),
       }),
+      createFileProcessTaskRunner: vi.fn().mockReturnValue({
+        run: vi.fn(),
+        cleanup: vi.fn(),
+      }),
     });
 
     expect(produceOutput).toHaveBeenCalledWith(
