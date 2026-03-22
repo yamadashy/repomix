@@ -27,6 +27,7 @@ jobs:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           SHORT_SHA="${COMMIT_SHA:0:7}"
+          COMMIT_MSG=$(gh api "repos/${GH_REPO}/commits/${COMMIT_SHA}" --jq '.commit.message | split("\n") | .[0]' 2>/dev/null || echo "")
           COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
 
           # Find existing comment by marker
@@ -42,12 +43,14 @@ jobs:
                 const historyMatch = body.match(/<!-- history-start -->([\s\S]*?)<!-- history-end -->/);
                 let history = historyMatch ? historyMatch[1] : "";
                 if (body.includes("\u2705 Benchmark complete!")) {
-                  const shaMatch = body.match(/Latest commit:<\/strong><\/td><td><code>([a-f0-9]+)<\/code>/);
-                  const sha = shaMatch ? shaMatch[1] : "";
+                  const commitMatch = body.match(/Latest commit:<\/strong><\/td><td><code>([a-f0-9]+)<\/code>\s*(.*?)<\/td>/);
+                  const sha = commitMatch ? commitMatch[1] : "";
+                  const msg = commitMatch ? commitMatch[2] : "";
                   const rowRe = /<tr><td><strong>(?:Ubuntu|macOS|Windows):<\/strong><\/td><td>.*?<\/td><\/tr>/g;
                   const rows = body.match(rowRe) || [];
                   if (sha && rows.length > 0) {
-                    const entry = "\n<code>" + sha + "</code>\n<table>\n" + rows.join("\n") + "\n</table>\n";
+                    const label = "<code>" + sha + "</code>" + (msg ? " " + msg : "");
+                    const entry = "\n" + label + "\n<table>\n" + rows.join("\n") + "\n</table>\n";
                     history = entry + history;
                   }
                 }
@@ -60,7 +63,7 @@ jobs:
           BODY="${COMMENT_MARKER}
           ## ⚡ Performance Benchmark
 
-          <table><tr><td><strong>Latest commit:</strong></td><td><code>${SHORT_SHA}</code></td></tr>
+          <table><tr><td><strong>Latest commit:</strong></td><td><code>${SHORT_SHA}</code> ${COMMIT_MSG}</td></tr>
           <tr><td><strong>Status:</strong></td><td>⚡ Benchmark in progress...</td></tr></table>
 
           [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
@@ -203,9 +206,12 @@ jobs:
       - name: Generate benchmark report
         id: report
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           SHORT_SHA="${COMMIT_SHA:0:7}"
+          COMMIT_MSG=$(gh api "repos/${GH_REPO}/commits/${COMMIT_SHA}" --jq '.commit.message | split("\n") | .[0]' 2>/dev/null || echo "")
 
           generate_row() {
             local os=$1
@@ -245,7 +251,7 @@ jobs:
 
           BODY="## ⚡ Performance Benchmark
 
-          <table><tr><td><strong>Latest commit:</strong></td><td><code>${SHORT_SHA}</code></td></tr>
+          <table><tr><td><strong>Latest commit:</strong></td><td><code>${SHORT_SHA}</code> ${COMMIT_MSG}</td></tr>
           <tr><td><strong>Status:</strong></td><td>✅ Benchmark complete!</td></tr>
           $(generate_row "ubuntu-latest" "Ubuntu")
           $(generate_row "macos-latest" "macOS")
