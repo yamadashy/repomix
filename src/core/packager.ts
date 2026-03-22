@@ -159,8 +159,8 @@ export const pack = async (
   // Pre-warm metrics worker pool so tiktoken WASM loads during output generation
   const metricsTaskRunner = deps.createMetricsTaskRunner(processedFiles.length);
 
-  // Start output generation - metrics will overlap via the Promise
-  const outputPromise = deps.produceOutput(
+  // Generate and write output (workers loading WASM in background)
+  const { outputFiles, outputForMetrics } = await deps.produceOutput(
     rootDirs,
     config,
     processedFiles,
@@ -171,25 +171,12 @@ export const pack = async (
     filePathsByRoot,
   );
 
-  // Pass output as a Promise so calculateMetrics can start file/git token counting
-  // immediately while output generation is still running. Output token counting
-  // starts once the Promise resolves.
-  const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
+  // Workers are now warm — token counting starts without WASM init delay
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(
-      processedFiles,
-      outputForMetricsPromise,
-      progressCallback,
-      config,
-      gitDiffResult,
-      gitLogResult,
-      {
-        taskRunner: metricsTaskRunner,
-      },
-    ),
+    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
+      taskRunner: metricsTaskRunner,
+    }),
   );
-
-  const { outputFiles } = await outputPromise;
 
   // Create a result object that includes metrics and security results
   const result = {
