@@ -115,7 +115,7 @@ describe.runIf(!isWindows)('packager integration', () => {
           });
         },
         produceOutput,
-        calculateSelectiveFileMetrics: async () => [],
+        calculateSelectiveFileMetrics: async () => ({ fileMetrics: [], totalFileTokens: 0 }),
         initTaskRunner: (() => ({
           run: async () => 0,
           runNamed: async () => [],

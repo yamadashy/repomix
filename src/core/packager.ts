@@ -13,7 +13,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, getMetricsTargetPaths } from './metrics/calculateMetrics.js';
 import { calculateOutputMetrics } from './metrics/calculateOutputMetrics.js';
-import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
+import { calculateSelectiveFileMetrics, type SelectiveMetricsResult } from './metrics/calculateSelectiveFileMetrics.js';
 import { generateOutput } from './output/outputGenerate.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
@@ -156,7 +156,7 @@ export const pack = async (
   progressCallback('Running security check and processing files...');
   let securityResult: Awaited<ReturnType<typeof deps.validateFileSafety>>;
   let allProcessedFiles: ProcessedFile[];
-  let fileMetricsPromise: Promise<Awaited<ReturnType<typeof deps.calculateSelectiveFileMetrics>>> | undefined;
+  let fileMetricsPromise: Promise<SelectiveMetricsResult> | undefined;
   let speculativeOutputPromise: Promise<string> | undefined;
   let speculativeOutputTokensPromise: Promise<number> | undefined;
   try {
@@ -169,8 +169,8 @@ export const pack = async (
       withMemoryLogging('Process Files', () =>
         deps.processFiles(rawFiles, config, progressCallback).then((processed) => {
           // File processing finished — start file metrics while security workers are still running.
-          // This counts tokens on ALL processed files (including potentially suspicious ones).
-          // Suspicious files are rare (typically 0), so the extra work is negligible.
+          // Counts tokens for ALL files to get totalFileTokens (used to derive output token
+          // count via skeleton approach) while tracking per-file metrics for target files only.
           const metricsTargetPaths = getMetricsTargetPaths(processed, config);
           fileMetricsPromise = deps.calculateSelectiveFileMetrics(
             processed,
@@ -181,11 +181,11 @@ export const pack = async (
           fileMetricsPromise.catch(() => {});
 
           // Speculative output generation: after file metrics complete (which runs
-          // synchronously on the main thread), generate output and count its tokens.
-          // This utilizes the main thread during remaining security check time,
-          // converting otherwise-idle CPU cycles into useful work.
-          // Uses unfiltered processedFiles; if security check finds suspicious files
-          // (rare), the output will be regenerated with filtered files.
+          // synchronously on the main thread), generate output and derive its token count.
+          // Instead of re-tokenizing the full output string (~370ms), derive the count from
+          // totalFileTokens + skeleton formatting tokens (~10ms). The skeleton output is
+          // generated with empty file contents to isolate formatting tokens (headers, tags,
+          // file tree). Measured accuracy: 0.02% error (~237 tokens out of ~980K).
           if (canSpeculate) {
             speculativeOutputPromise = fileMetricsPromise.then(() =>
               deps.generateOutput(
@@ -201,9 +201,28 @@ export const pack = async (
             );
             speculativeOutputPromise.catch(() => {});
 
-            speculativeOutputTokensPromise = speculativeOutputPromise.then((output) =>
-              deps.calculateOutputMetrics(output, config.tokenCount.encoding, config.output.filePath),
-            );
+            // Derive output token count: totalFileTokens + skeleton formatting tokens
+            const metricsForTokens = fileMetricsPromise;
+            speculativeOutputTokensPromise = speculativeOutputPromise.then(async () => {
+              const metricsResult = await metricsForTokens;
+              const skeletonFiles = processed.map((f) => ({ ...f, content: '' }));
+              const skeletonOutput = await deps.generateOutput(
+                rootDirs,
+                config,
+                skeletonFiles,
+                allFilePaths,
+                gitDiffResult,
+                gitLogResult,
+                filePathsByRoot,
+                allEmptyDirPaths,
+              );
+              const skeletonTokens = await deps.calculateOutputMetrics(
+                skeletonOutput,
+                config.tokenCount.encoding,
+                config.output.filePath,
+              );
+              return metricsResult.totalFileTokens + skeletonTokens;
+            });
             speculativeOutputTokensPromise.catch(() => {});
           }
 

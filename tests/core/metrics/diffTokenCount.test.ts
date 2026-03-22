@@ -85,7 +85,7 @@ describe('Diff Token Count Calculation', () => {
       undefined,
       undefined,
       {
-        calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
+        calculateSelectiveFileMetrics: vi.fn().mockResolvedValue({ fileMetrics: [], totalFileTokens: 0 }),
         calculateOutputMetrics: vi.fn().mockResolvedValue(15),
         calculateGitDiffMetrics: vi.fn().mockResolvedValue(25),
         calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
@@ -143,7 +143,7 @@ describe('Diff Token Count Calculation', () => {
     });
 
     const result = await calculateMetrics(processedFiles, output, vi.fn(), config, undefined, undefined, undefined, {
-      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue({ fileMetrics: [], totalFileTokens: 0 }),
       calculateOutputMetrics: vi.fn().mockResolvedValue(15),
       calculateGitDiffMetrics: vi.fn().mockResolvedValue(0),
       calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
@@ -199,7 +199,7 @@ describe('Diff Token Count Calculation', () => {
     });
 
     const result = await calculateMetrics(processedFiles, output, vi.fn(), config, undefined, undefined, undefined, {
-      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue({ fileMetrics: [], totalFileTokens: 0 }),
       calculateOutputMetrics: vi.fn().mockResolvedValue(15),
       calculateGitDiffMetrics: vi.fn().mockResolvedValue(0),
       calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),

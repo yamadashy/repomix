@@ -32,7 +32,7 @@ describe('calculateMetrics', () => {
       { path: 'file1.txt', charCount: 100, tokenCount: 10 },
       { path: 'file2.txt', charCount: 200, tokenCount: 20 },
     ];
-    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue({ fileMetrics, totalFileTokens: 30 });
 
     const aggregatedResult = {
       totalFiles: 2,

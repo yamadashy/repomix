@@ -7,8 +7,8 @@ import { buildSplitOutputFilePath } from '../output/outputSplit.js';
 import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
+import type { SelectiveMetricsResult } from './calculateSelectiveFileMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
-import type { FileMetrics } from './workers/types.js';
 
 export interface CalculateMetricsResult {
   totalFiles: number;
@@ -44,7 +44,7 @@ export const calculateMetrics = async (
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
   options?: {
-    precomputedFileMetrics?: FileMetrics[] | Promise<FileMetrics[]>;
+    precomputedFileMetrics?: SelectiveMetricsResult | Promise<SelectiveMetricsResult>;
     precomputedOutputTokens?: number | Promise<number>;
   },
   deps = {
@@ -60,7 +60,7 @@ export const calculateMetrics = async (
 
   // Use precomputed file metrics if available (when file metrics ran in parallel with output generation),
   // otherwise calculate them now
-  const selectiveFileMetrics = options?.precomputedFileMetrics
+  const metricsResult = options?.precomputedFileMetrics
     ? await Promise.resolve(options.precomputedFileMetrics)
     : await deps.calculateSelectiveFileMetrics(
         processedFiles,
@@ -102,7 +102,7 @@ export const calculateMetrics = async (
   // Build token counts only for top files, filtering to files in processedFiles
   // (precomputed metrics may include suspicious files that were later excluded)
   const fileTokenCounts: Record<string, number> = {};
-  for (const file of selectiveFileMetrics) {
+  for (const file of metricsResult.fileMetrics) {
     if (file.path in fileCharCounts) {
       fileTokenCounts[file.path] = file.tokenCount;
     }

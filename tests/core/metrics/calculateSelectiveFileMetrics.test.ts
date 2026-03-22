@@ -15,10 +15,13 @@ describe('calculateSelectiveFileMetrics', () => {
 
     const result = await calculateSelectiveFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback);
 
-    expect(result).toEqual([
-      { path: 'file1.txt', charCount: 100, tokenCount: 13 },
-      { path: 'file3.txt', charCount: 300, tokenCount: 75 },
-    ]);
+    expect(result).toEqual({
+      fileMetrics: [
+        { path: 'file1.txt', charCount: 100, tokenCount: 13 },
+        { path: 'file3.txt', charCount: 300, tokenCount: 75 },
+      ],
+      totalFileTokens: 138,
+    });
   });
 
   it('should return empty array when no target files match', async () => {
@@ -28,6 +31,6 @@ describe('calculateSelectiveFileMetrics', () => {
 
     const result = await calculateSelectiveFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback);
 
-    expect(result).toEqual([]);
+    expect(result).toEqual({ fileMetrics: [], totalFileTokens: 13 });
   });
 });
