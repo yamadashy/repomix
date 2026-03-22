@@ -380,10 +380,7 @@ describe('remoteAction functions', () => {
 
       await copyOutputToCurrentDirectory(sourceDir, targetDir, fileName);
 
-      expect(fs.copyFile).toHaveBeenCalledWith(
-        path.resolve(sourceDir, fileName),
-        path.resolve(targetDir, fileName),
-      );
+      expect(fs.copyFile).toHaveBeenCalledWith(path.resolve(sourceDir, fileName), path.resolve(targetDir, fileName));
     });
 
     test('should skip copy when source and target are the same (absolute path)', async () => {
