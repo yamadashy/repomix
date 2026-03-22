@@ -69,12 +69,13 @@ const defaultJitiImport = async (fileUrl: string): Promise<unknown> => {
 export const loadFileConfig = async (
   rootDir: string,
   argConfigPath: string | null,
+  options: { skipLocalConfig?: boolean } = {},
   deps = {
     jitiImport: defaultJitiImport,
   },
 ): Promise<RepomixConfigFile> => {
   if (argConfigPath) {
-    // If a specific config path is provided, use it directly
+    // Explicit --config flag is always respected (user's intentional choice)
     const fullPath = path.resolve(rootDir, argConfigPath);
     logger.trace('Loading local config from:', fullPath);
 
@@ -91,7 +92,14 @@ export const loadFileConfig = async (
   const localConfigPath = await findConfigFile(localConfigPaths, 'local');
 
   if (localConfigPath) {
-    return await loadAndValidateConfig(localConfigPath, deps);
+    if (!options.skipLocalConfig) {
+      return await loadAndValidateConfig(localConfigPath, deps);
+    }
+    // Log when config files are skipped for security (remote mode)
+    logger.note(
+      `Skipping config file found in remote repository for security: ${path.basename(localConfigPath)}\n` +
+        'Use --remote-trust-config to trust and load it.',
+    );
   }
 
   // Try to find a global config file using the priority order
@@ -102,11 +110,13 @@ export const loadFileConfig = async (
     return await loadAndValidateConfig(globalConfigPath, deps);
   }
 
-  logger.log(
-    pc.dim(
-      `No custom config found at ${defaultConfigPaths.join(', ')} or global config at ${globalConfigPaths.join(', ')}.\nYou can add a config file for additional settings. Please check https://github.com/yamadashy/repomix for more information.`,
-    ),
-  );
+  if (!options.skipLocalConfig) {
+    logger.log(
+      pc.dim(
+        `No custom config found at ${defaultConfigPaths.join(', ')} or global config at ${globalConfigPaths.join(', ')}.\nYou can add a config file for additional settings. Please check https://github.com/yamadashy/repomix for more information.`,
+      ),
+    );
+  }
   return {};
 };
 

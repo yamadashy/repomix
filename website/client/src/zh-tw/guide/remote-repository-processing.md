@@ -55,6 +55,28 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
+## 安全性
+
+基於安全考量，遠端倉庫中的設定檔（`repomix.config.*`）預設不會被載入。這可以防止不受信任的倉庫透過 `repomix.config.ts` 等設定檔執行程式碼。
+
+您的全域設定和 CLI 選項仍然會正常生效。
+
+如需信任遠端倉庫的設定：
+
+```bash
+# 使用 CLI 旗標
+repomix --remote user/repo --remote-trust-config
+
+# 使用環境變數
+REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
+```
+
+在 `--remote` 模式下使用 `--config` 時，必須指定絕對路徑：
+
+```bash
+repomix --remote user/repo --config /home/user/repomix.config.json
+```
+
 ## 常見問題
 
 ### 訪問問題

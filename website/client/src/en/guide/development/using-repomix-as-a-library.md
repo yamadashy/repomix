@@ -52,10 +52,13 @@ async function processRemoteRepo(repoUrl) {
     output: 'output.xml',
     compress: true
   } as CliOptions;
-  
+
   return await runCli(['.'], process.cwd(), options);
 }
 ```
+
+> [!NOTE]
+> For security, config files in remote repositories are not loaded by default. To trust a remote repository's config, add `remoteTrustConfig: true` to the options, or set the `REPOMIX_REMOTE_TRUST_CONFIG=true` environment variable.
 
 ## Using Core Components
 

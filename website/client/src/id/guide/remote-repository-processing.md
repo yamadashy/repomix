@@ -72,6 +72,28 @@ Saat memproses repositori remote, perhatikan batasan berikut:
 - Ukuran repositori yang sangat besar mungkin memerlukan waktu lebih lama untuk diproses
 - Beberapa fitur seperti penghormatan terhadap `.gitignore` mungkin berperilaku berbeda dibandingkan dengan repositori lokal
 
+## Keamanan
+
+Demi keamanan, file konfigurasi (`repomix.config.*`) di dalam repositori remote tidak dimuat secara default. Ini mencegah repositori yang tidak dipercaya mengeksekusi kode melalui file konfigurasi seperti `repomix.config.ts`.
+
+Konfigurasi global dan opsi CLI Anda tetap diterapkan seperti biasa.
+
+Untuk memercayai konfigurasi repositori remote:
+
+```bash
+# Menggunakan flag CLI
+repomix --remote user/repo --remote-trust-config
+
+# Menggunakan variabel lingkungan
+REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
+```
+
+Saat menggunakan `--config` dengan `--remote`, path absolut diperlukan:
+
+```bash
+repomix --remote user/repo --config /home/user/repomix.config.json
+```
+
 ## Kasus Penggunaan
 
 Pemrosesan repositori remote sangat berguna untuk:

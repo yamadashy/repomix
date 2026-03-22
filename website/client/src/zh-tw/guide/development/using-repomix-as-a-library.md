@@ -57,6 +57,9 @@ async function processRemoteRepo(repoUrl) {
 }
 ```
 
+> [!NOTE]
+> 基於安全考量，遠端倉庫中的設定檔預設不會被載入。如需信任遠端倉庫的設定，請在選項中加入 `remoteTrustConfig: true`，或設定環境變數 `REPOMIX_REMOTE_TRUST_CONFIG=true`。
+
 ## 使用核心組件
 
 要獲得更多控制，您可以直接使用 Repomix 的低級 API：

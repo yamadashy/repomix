@@ -54,23 +54,28 @@ describe('configLoad Integration Tests', () => {
       // Mock jiti to avoid coverage instability caused by dynamic module loading
       // This ensures deterministic test results while verifying config validation
       // We don't actually load the fixture file to prevent jiti from transforming src/ files
-      const config = await loadFileConfig(tsFixturesDir, 'repomix-dynamic.config.ts', {
-        jitiImport: async (fileUrl) => {
-          // Verify we're loading the correct file
-          expect(fileUrl).toContain('repomix-dynamic.config.ts');
+      const config = await loadFileConfig(
+        tsFixturesDir,
+        'repomix-dynamic.config.ts',
+        {},
+        {
+          jitiImport: async (fileUrl: string) => {
+            // Verify we're loading the correct file
+            expect(fileUrl).toContain('repomix-dynamic.config.ts');
 
-          // Return mock config simulating dynamic values
-          return {
-            output: {
-              filePath: 'output-test-2024-01-01T00-00-00.xml',
-              style: 'xml',
-            },
-            ignore: {
-              customPatterns: ['**/node_modules/**'],
-            },
-          };
+            // Return mock config simulating dynamic values
+            return {
+              output: {
+                filePath: 'output-test-2024-01-01T00-00-00.xml',
+                style: 'xml',
+              },
+              ignore: {
+                customPatterns: ['**/node_modules/**'],
+              },
+            };
+          },
         },
-      });
+      );
 
       expect(config.output?.filePath).toBe('output-test-2024-01-01T00-00-00.xml');
       expect(config.output?.style).toBe('xml');
@@ -126,23 +131,28 @@ describe('configLoad Integration Tests', () => {
       // Mock jiti to avoid coverage instability caused by dynamic module loading
       // This ensures deterministic test results while verifying config validation
       // We don't actually load the fixture file to prevent jiti from transforming src/ files
-      const config = await loadFileConfig(jsFixturesDir, 'repomix-dynamic.config.js', {
-        jitiImport: async (fileUrl) => {
-          // Verify we're loading the correct file
-          expect(fileUrl).toContain('repomix-dynamic.config.js');
+      const config = await loadFileConfig(
+        jsFixturesDir,
+        'repomix-dynamic.config.js',
+        {},
+        {
+          jitiImport: async (fileUrl: string) => {
+            // Verify we're loading the correct file
+            expect(fileUrl).toContain('repomix-dynamic.config.js');
 
-          // Return mock config simulating dynamic values
-          return {
-            output: {
-              filePath: 'output-2024-01-01T00-00-00.xml',
-              style: 'xml',
-            },
-            ignore: {
-              customPatterns: ['**/node_modules/**'],
-            },
-          };
+            // Return mock config simulating dynamic values
+            return {
+              output: {
+                filePath: 'output-2024-01-01T00-00-00.xml',
+                style: 'xml',
+              },
+              ignore: {
+                customPatterns: ['**/node_modules/**'],
+              },
+            };
+          },
         },
-      });
+      );
 
       expect(config.output?.filePath).toBe('output-2024-01-01T00-00-00.xml');
       expect(config.output?.style).toBe('xml');

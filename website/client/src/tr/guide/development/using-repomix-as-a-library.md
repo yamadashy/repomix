@@ -57,6 +57,9 @@ async function processRemoteRepo(repoUrl) {
 }
 ```
 
+> [!NOTE]
+> Güvenlik nedeniyle, uzak depolardaki yapılandırma dosyaları varsayılan olarak yüklenmez. Uzak bir deponun yapılandırmasına güvenmek için seçeneklere `remoteTrustConfig: true` ekleyin veya `REPOMIX_REMOTE_TRUST_CONFIG=true` ortam değişkenini ayarlayın.
+
 ## Temel Bileşenleri Kullanma
 
 Daha fazla kontrol için Repomix'in alt düzey API'lerini doğrudan kullanabilirsiniz:

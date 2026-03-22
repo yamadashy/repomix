@@ -102,6 +102,28 @@ repomix --remote user/repo --remote-branch commit2 --output-file output2.xml
 # फिर आप दोनों आउटपुट फाइलों को AI मॉडल के साथ उपयोग कर सकते हैं
 ```
 
+## सुरक्षा
+
+सुरक्षा के लिए, रिमोट रिपॉजिटरी में मौजूद कॉन्फिग फाइलें (`repomix.config.*`) डिफॉल्ट रूप से लोड नहीं की जाती हैं। इससे अविश्वसनीय रिपॉजिटरी `repomix.config.ts` जैसी कॉन्फिग फाइलों के ज़रिए कोड एक्ज़ीक्यूट नहीं कर पाती हैं।
+
+आपकी ग्लोबल कॉन्फिग और CLI विकल्प पहले की तरह लागू होते रहेंगे।
+
+किसी रिमोट रिपॉजिटरी की कॉन्फिग पर भरोसा करने के लिए:
+
+```bash
+# CLI फ्लैग का उपयोग करके
+repomix --remote user/repo --remote-trust-config
+
+# एनवायरनमेंट वेरिएबल का उपयोग करके
+REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
+```
+
+`--remote` के साथ `--config` का उपयोग करते समय, एक पूर्ण (absolute) पथ आवश्यक है:
+
+```bash
+repomix --remote user/repo --config /home/user/repomix.config.json
+```
+
 ## अगला क्या है?
 
 - [कमांड लाइन विकल्पों](command-line-options.md) के बारे में अधिक जानें

@@ -55,6 +55,28 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
   --remote user/repo
 ```
 
+## 安全性
+
+出于安全考虑，远程仓库中的配置文件（`repomix.config.*`）默认不会被加载。这可以防止不受信任的仓库通过 `repomix.config.ts` 等配置文件执行代码。
+
+你的全局配置和 CLI 选项仍然会正常生效。
+
+如需信任远程仓库的配置：
+
+```bash
+# 使用 CLI 标志
+repomix --remote user/repo --remote-trust-config
+
+# 使用环境变量
+REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
+```
+
+在 `--remote` 模式下使用 `--config` 时，必须指定绝对路径：
+
+```bash
+repomix --remote user/repo --config /home/user/repomix.config.json
+```
+
 ## 常见问题
 
 ### 访问问题

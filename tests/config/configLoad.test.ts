@@ -15,6 +15,7 @@ vi.mock('../../src/shared/logger', () => ({
     trace: vi.fn(),
     note: vi.fn(),
     log: vi.fn(),
+    warn: vi.fn(),
   },
 }));
 vi.mock('../../src/config/globalDirectory', () => ({
@@ -231,6 +232,77 @@ describe('configLoad', () => {
       vi.mocked(fs.readFile).mockRejectedValue('String error');
 
       await expect(loadFileConfig(process.cwd(), 'test-config.json')).rejects.toThrow('Error loading config');
+    });
+
+    test('should skip local config auto-detection when skipLocalConfig is true', async () => {
+      vi.mocked(getGlobalDirectory).mockReturnValue('/global/repomix');
+      // All local and global config files not found
+      vi.mocked(fs.stat).mockRejectedValue(new Error('File not found'));
+
+      const result = await loadFileConfig('/project/repo', null, { skipLocalConfig: true });
+      expect(result).toEqual({});
+    });
+
+    test('should still load global config when skipLocalConfig is true', async () => {
+      const mockGlobalConfig = { output: { style: 'markdown' } };
+      vi.mocked(getGlobalDirectory).mockReturnValue('/global/repomix');
+      vi.mocked(fs.stat)
+        // Local config search (for skip-log detection) — all not found
+        .mockRejectedValueOnce(new Error('File not found')) // Local repomix.config.ts
+        .mockRejectedValueOnce(new Error('File not found')) // Local repomix.config.mts
+        .mockRejectedValueOnce(new Error('File not found')) // Local repomix.config.cts
+        .mockRejectedValueOnce(new Error('File not found')) // Local repomix.config.js
+        .mockRejectedValueOnce(new Error('File not found')) // Local repomix.config.mjs
+        .mockRejectedValueOnce(new Error('File not found')) // Local repomix.config.cjs
+        .mockRejectedValueOnce(new Error('File not found')) // Local repomix.config.json5
+        .mockRejectedValueOnce(new Error('File not found')) // Local repomix.config.jsonc
+        .mockRejectedValueOnce(new Error('File not found')) // Local repomix.config.json
+        // Global config search
+        .mockRejectedValueOnce(new Error('File not found')) // Global repomix.config.ts
+        .mockRejectedValueOnce(new Error('File not found')) // Global repomix.config.mts
+        .mockRejectedValueOnce(new Error('File not found')) // Global repomix.config.cts
+        .mockRejectedValueOnce(new Error('File not found')) // Global repomix.config.js
+        .mockRejectedValueOnce(new Error('File not found')) // Global repomix.config.mjs
+        .mockRejectedValueOnce(new Error('File not found')) // Global repomix.config.cjs
+        .mockRejectedValueOnce(new Error('File not found')) // Global repomix.config.json5
+        .mockRejectedValueOnce(new Error('File not found')) // Global repomix.config.jsonc
+        .mockResolvedValueOnce({ isFile: () => true } as Stats); // Global repomix.config.json
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockGlobalConfig));
+
+      const result = await loadFileConfig('/project/repo', null, { skipLocalConfig: true });
+      expect(result).toEqual(mockGlobalConfig);
+    });
+
+    test('should log a message when skipping config in remote mode', async () => {
+      vi.mocked(getGlobalDirectory).mockReturnValue('/global/repomix');
+      // Local config exists but should be skipped
+      vi.mocked(fs.stat)
+        .mockRejectedValueOnce(new Error('File not found')) // repomix.config.ts
+        .mockRejectedValueOnce(new Error('File not found')) // repomix.config.mts
+        .mockRejectedValueOnce(new Error('File not found')) // repomix.config.cts
+        .mockRejectedValueOnce(new Error('File not found')) // repomix.config.js
+        .mockRejectedValueOnce(new Error('File not found')) // repomix.config.mjs
+        .mockRejectedValueOnce(new Error('File not found')) // repomix.config.cjs
+        .mockRejectedValueOnce(new Error('File not found')) // repomix.config.json5
+        .mockRejectedValueOnce(new Error('File not found')) // repomix.config.jsonc
+        .mockResolvedValueOnce({ isFile: () => true } as Stats) // repomix.config.json — found
+        .mockRejectedValue(new Error('File not found')); // global configs
+
+      await loadFileConfig('/tmp/repomix-clone', null, { skipLocalConfig: true });
+
+      expect(logger.note).toHaveBeenCalledWith(expect.stringContaining('Skipping config file'));
+      expect(logger.note).toHaveBeenCalledWith(expect.stringContaining('--remote-trust-config'));
+    });
+
+    test('should still respect --config flag even when skipLocalConfig is true', async () => {
+      const mockConfig = { output: { filePath: 'custom-output.xml' } };
+      vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as Stats);
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockConfig));
+
+      const result = await loadFileConfig('/tmp/repomix-clone', '/home/user/my-config.json', {
+        skipLocalConfig: true,
+      });
+      expect(result).toEqual(mockConfig);
     });
   });
 

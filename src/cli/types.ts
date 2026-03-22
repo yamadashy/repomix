@@ -40,6 +40,8 @@ export interface CliOptions extends OptionValues {
   // Remote Repository Options
   remote?: string;
   remoteBranch?: string;
+  remoteTrustConfig?: boolean;
+  skipLocalConfig?: boolean; // Internal flag: skip loading config files from the working directory (e.g., untrusted remote repos)
 
   // Configuration Options
   config?: string;

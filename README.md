@@ -644,6 +644,7 @@ Instruction
 #### Remote Repository Options
 - `--remote <url>`: Clone and pack a remote repository (GitHub URL or user/repo format)
 - `--remote-branch <name>`: Specific branch, tag, or commit to use (default: repository's default branch)
+- `--remote-trust-config`: Trust and load config files from remote repositories (disabled by default for security)
 
 #### Configuration Options
 - `-c, --config <path>`: Use custom config file instead of repomix.config.json
@@ -751,6 +752,11 @@ repomix --remote https://github.com/yamadashy/repomix --remote-branch 935b695
 # Using commit's URL
 repomix --remote https://github.com/yamadashy/repomix/commit/836abcd7335137228ad77feb28655d85712680f1
 ```
+
+> [!NOTE]
+> For security, config files (`repomix.config.*`) in remote repositories are not loaded by default. This prevents untrusted repositories from executing code via config files. Your global config and CLI options are still applied. To trust a remote repository's config, use `--remote-trust-config` or set `REPOMIX_REMOTE_TRUST_CONFIG=true`.
+>
+> When using `--config` with `--remote`, an absolute path is required (e.g., `--config /home/user/repomix.config.json`).
 
 ### Code Compression
 

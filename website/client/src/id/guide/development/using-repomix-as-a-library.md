@@ -111,6 +111,30 @@ async function main() {
 main().catch(console.error);
 ```
 
+## Pemrosesan Repositori Remote
+
+Anda dapat mengkloning dan memproses repositori remote:
+
+```typescript
+import { Repomix } from 'repomix';
+
+async function processRemoteRepo(repoUrl: string) {
+  const repomix = new Repomix();
+  const result = await repomix.pack({
+    remote: repoUrl,
+    output: {
+      style: 'xml',
+      filePath: 'output.xml',
+    },
+  });
+
+  return result;
+}
+```
+
+> [!NOTE]
+> Demi keamanan, file konfigurasi di dalam repositori remote tidak dimuat secara default. Untuk memercayai konfigurasi repositori remote, tambahkan `remoteTrustConfig: true` ke opsi, atau atur variabel lingkungan `REPOMIX_REMOTE_TRUST_CONFIG=true`.
+
 ## Kasus Penggunaan
 
 Menggunakan Repomix sebagai library sangat berguna untuk:

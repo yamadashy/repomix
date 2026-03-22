@@ -29,6 +29,16 @@ export const runRemoteAction = async (
     isArchiveDownloadSupported,
   },
 ): Promise<DefaultActionRunnerResult> => {
+  // Validate --config path before any expensive operations (download/clone):
+  // only absolute paths are allowed to prevent loading config from the cloned repository
+  if (cliOptions.config && !path.isAbsolute(cliOptions.config)) {
+    throw new RepomixError(
+      `In remote mode, --config must be an absolute path to avoid loading config from the cloned repository.\n` +
+        `  Provided: ${cliOptions.config}\n` +
+        `  Example:  repomix --remote <url> --config /home/user/repomix.config.json`,
+    );
+  }
+
   let tempDirPath = await createTempDirectory();
   let result: DefaultActionRunnerResult;
   let downloadMethod: 'archive' | 'git' = 'git';
@@ -120,7 +130,15 @@ export const runRemoteAction = async (
     // Run the default action on the downloaded/cloned repository
     // Pass the pre-computed skill name, directory, project name, and source URL
     const skillSourceUrl = cliOptions.skillGenerate !== undefined ? repoUrl : undefined;
-    const optionsWithSkill = { ...cliOptions, skillName, skillDir, skillProjectName, skillSourceUrl };
+    const trustRemoteConfig = cliOptions.remoteTrustConfig || process.env.REPOMIX_REMOTE_TRUST_CONFIG === 'true';
+    const optionsWithSkill = {
+      ...cliOptions,
+      skillName,
+      skillDir,
+      skillProjectName,
+      skillSourceUrl,
+      skipLocalConfig: !trustRemoteConfig,
+    };
     result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithSkill);
 
     // Copy output to current directory (only for non-skill generation)

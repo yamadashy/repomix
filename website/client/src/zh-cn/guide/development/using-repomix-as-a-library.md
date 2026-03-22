@@ -57,6 +57,9 @@ async function processRemoteRepo(repoUrl) {
 }
 ```
 
+> [!NOTE]
+> 出于安全考虑，远程仓库中的配置文件默认不会被加载。如需信任远程仓库的配置，请在选项中添加 `remoteTrustConfig: true`，或设置环境变量 `REPOMIX_REMOTE_TRUST_CONFIG=true`。
+
 ## 使用核心组件
 
 要获得更多控制，你可以直接使用 Repomix 的低级 API：
