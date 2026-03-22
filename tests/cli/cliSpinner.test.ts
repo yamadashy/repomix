@@ -41,61 +41,61 @@ describe('cliSpinner', () => {
     describe('when quiet mode is disabled', () => {
       it('should start spinner and update frames', async () => {
         const spinner = new Spinner('Processing...', {} as CliOptions);
-        spinner.start();
+        await spinner.start();
 
         // Advance time to trigger frame updates
         vi.advanceTimersByTime(80);
         expect(mockLogUpdateFn).toHaveBeenCalled();
 
-        spinner.stop('Done');
+        await spinner.stop('Done');
         expect(mockLogUpdateDone).toHaveBeenCalled();
       });
 
-      it('should update spinner message', () => {
+      it('should update spinner message', async () => {
         const spinner = new Spinner('Initial message', {} as CliOptions);
-        spinner.start();
+        await spinner.start();
 
         spinner.update('Updated message');
 
         vi.advanceTimersByTime(80);
         expect(mockLogUpdateFn).toHaveBeenCalled();
 
-        spinner.stop('Done');
+        await spinner.stop('Done');
       });
 
-      it('should stop spinner with final message', () => {
+      it('should stop spinner with final message', async () => {
         const spinner = new Spinner('Processing...', {} as CliOptions);
-        spinner.start();
+        await spinner.start();
 
-        spinner.stop('Final message');
+        await spinner.stop('Final message');
 
         expect(mockLogUpdateFn).toHaveBeenCalledWith('Final message');
         expect(mockLogUpdateDone).toHaveBeenCalled();
       });
 
-      it('should succeed with success message', () => {
+      it('should succeed with success message', async () => {
         const spinner = new Spinner('Processing...', {} as CliOptions);
-        spinner.start();
+        await spinner.start();
 
-        spinner.succeed('Success!');
+        await spinner.succeed('Success!');
 
         expect(mockLogUpdateFn).toHaveBeenCalledWith('green(✔) Success!');
         expect(mockLogUpdateDone).toHaveBeenCalled();
       });
 
-      it('should fail with error message', () => {
+      it('should fail with error message', async () => {
         const spinner = new Spinner('Processing...', {} as CliOptions);
-        spinner.start();
+        await spinner.start();
 
-        spinner.fail('Failed!');
+        await spinner.fail('Failed!');
 
         expect(mockLogUpdateFn).toHaveBeenCalledWith('red(✖) Failed!');
         expect(mockLogUpdateDone).toHaveBeenCalled();
       });
 
-      it('should cycle through animation frames', () => {
+      it('should cycle through animation frames', async () => {
         const spinner = new Spinner('Loading...', {} as CliOptions);
-        spinner.start();
+        await spinner.start();
 
         // Advance through multiple frames
         for (let i = 0; i < 10; i++) {
@@ -105,74 +105,74 @@ describe('cliSpinner', () => {
         expect(mockLogUpdateFn).toHaveBeenCalled();
         expect(mockLogUpdateFn.mock.calls.length).toBeGreaterThan(1);
 
-        spinner.stop('Complete');
+        await spinner.stop('Complete');
       });
     });
 
     describe('when quiet mode is enabled', () => {
-      it('should not start spinner when quiet flag is true', () => {
+      it('should not start spinner when quiet flag is true', async () => {
         const spinner = new Spinner('Processing...', { quiet: true } as CliOptions);
-        spinner.start();
+        await spinner.start();
 
         vi.advanceTimersByTime(80);
         expect(mockLogUpdateFn).not.toHaveBeenCalled();
 
-        spinner.stop('Done');
+        await spinner.stop('Done');
       });
 
-      it('should not start spinner when verbose flag is true', () => {
+      it('should not start spinner when verbose flag is true', async () => {
         const spinner = new Spinner('Processing...', { verbose: true } as CliOptions);
-        spinner.start();
+        await spinner.start();
 
         vi.advanceTimersByTime(80);
         expect(mockLogUpdateFn).not.toHaveBeenCalled();
 
-        spinner.stop('Done');
+        await spinner.stop('Done');
       });
 
-      it('should not start spinner when stdout flag is true', () => {
+      it('should not start spinner when stdout flag is true', async () => {
         const spinner = new Spinner('Processing...', { stdout: true } as CliOptions);
-        spinner.start();
+        await spinner.start();
 
         vi.advanceTimersByTime(80);
         expect(mockLogUpdateFn).not.toHaveBeenCalled();
 
-        spinner.stop('Done');
+        await spinner.stop('Done');
       });
 
-      it('should not update spinner message in quiet mode', () => {
+      it('should not update spinner message in quiet mode', async () => {
         const spinner = new Spinner('Initial', { quiet: true } as CliOptions);
-        spinner.start();
+        await spinner.start();
         spinner.update('Updated');
 
         vi.advanceTimersByTime(80);
         expect(mockLogUpdateFn).not.toHaveBeenCalled();
 
-        spinner.stop('Done');
+        await spinner.stop('Done');
       });
 
-      it('should not show stop message in quiet mode', () => {
+      it('should not show stop message in quiet mode', async () => {
         const spinner = new Spinner('Processing...', { quiet: true } as CliOptions);
-        spinner.start();
-        spinner.stop('Done');
+        await spinner.start();
+        await spinner.stop('Done');
 
         expect(mockLogUpdateFn).not.toHaveBeenCalled();
         expect(mockLogUpdateDone).not.toHaveBeenCalled();
       });
 
-      it('should not show succeed message in quiet mode', () => {
+      it('should not show succeed message in quiet mode', async () => {
         const spinner = new Spinner('Processing...', { quiet: true } as CliOptions);
-        spinner.start();
-        spinner.succeed('Success!');
+        await spinner.start();
+        await spinner.succeed('Success!');
 
         expect(mockLogUpdateFn).not.toHaveBeenCalled();
         expect(mockLogUpdateDone).not.toHaveBeenCalled();
       });
 
-      it('should not show fail message in quiet mode', () => {
+      it('should not show fail message in quiet mode', async () => {
         const spinner = new Spinner('Processing...', { quiet: true } as CliOptions);
-        spinner.start();
-        spinner.fail('Failed!');
+        await spinner.start();
+        await spinner.fail('Failed!');
 
         expect(mockLogUpdateFn).not.toHaveBeenCalled();
         expect(mockLogUpdateDone).not.toHaveBeenCalled();
@@ -180,24 +180,22 @@ describe('cliSpinner', () => {
     });
 
     describe('interval management', () => {
-      it('should clear interval when stop is called', () => {
+      it('should clear interval when stop is called', async () => {
         const spinner = new Spinner('Processing...', {} as CliOptions);
-        spinner.start();
+        await spinner.start();
 
         const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
-        spinner.stop('Done');
+        await spinner.stop('Done');
 
         expect(clearIntervalSpy).toHaveBeenCalled();
       });
 
-      it('should not throw error when stop is called multiple times', () => {
+      it('should not throw error when stop is called multiple times', async () => {
         const spinner = new Spinner('Processing...', {} as CliOptions);
-        spinner.start();
+        await spinner.start();
 
-        expect(() => {
-          spinner.stop('Done');
-          spinner.stop('Done again');
-        }).not.toThrow();
+        await spinner.stop('Done');
+        await spinner.stop('Done again');
       });
     });
   });

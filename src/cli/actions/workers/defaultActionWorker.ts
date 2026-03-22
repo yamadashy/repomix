@@ -61,7 +61,7 @@ async function defaultActionWorker(
   logger.trace('Worker: Using pre-loaded config:', config);
 
   const spinner = new Spinner('Initializing...', safeCliOptions);
-  spinner.start();
+  await spinner.start();
 
   let packResult: PackResult;
 
@@ -101,14 +101,14 @@ async function defaultActionWorker(
       );
     }
 
-    spinner.succeed('Packing completed successfully!');
+    await spinner.succeed('Packing completed successfully!');
 
     return {
       packResult,
       config,
     };
   } catch (error) {
-    spinner.fail('Error during packing');
+    await spinner.fail('Error during packing');
     throw error;
   }
 }

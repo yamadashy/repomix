@@ -11,7 +11,6 @@ import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
-import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { type DefaultActionRunnerResult, runDefaultAction } from './defaultAction.js';
 
@@ -53,7 +52,7 @@ export const runRemoteAction = async (
       const spinner = new Spinner('Downloading repository archive...', cliOptions);
 
       try {
-        spinner.start();
+        await spinner.start();
 
         // Override ref with CLI option if provided
         const repoInfoWithBranch = {
@@ -80,10 +79,10 @@ export const runRemoteAction = async (
         );
 
         downloadMethod = 'archive';
-        spinner.succeed('Repository archive downloaded successfully!');
+        await spinner.succeed('Repository archive downloaded successfully!');
         logger.log('');
       } catch (archiveError) {
-        spinner.fail('Archive download failed, trying git clone...');
+        await spinner.fail('Archive download failed, trying git clone...');
         logger.trace('Archive download error:', (archiveError as Error).message);
 
         // Clear the temp directory for git clone attempt
@@ -105,6 +104,9 @@ export const runRemoteAction = async (
     let skillDir: string | undefined;
     let skillProjectName: string | undefined;
     if (cliOptions.skillGenerate !== undefined) {
+      // Lazy-load @clack/prompts chain only when skill generation is used
+      const { promptSkillLocation, resolveAndPrepareSkillDir } = await import('../prompts/skillPrompts.js');
+
       skillName =
         typeof cliOptions.skillGenerate === 'string'
           ? cliOptions.skillGenerate
@@ -190,17 +192,17 @@ const performGitClone = async (
   const spinner = new Spinner('Cloning repository...', cliOptions);
 
   try {
-    spinner.start();
+    await spinner.start();
 
     // Clone the repository
     await cloneRepository(parsedFields.repoUrl, tempDirPath, cliOptions.remoteBranch || parsedFields.remoteBranch, {
       execGitShallowClone: deps.execGitShallowClone,
     });
 
-    spinner.succeed('Repository cloned successfully!');
+    await spinner.succeed('Repository cloned successfully!');
     logger.log('');
   } catch (error) {
-    spinner.fail('Error during repository cloning. cleanup...');
+    await spinner.fail('Error during repository cloning. cleanup...');
     throw error;
   }
 };

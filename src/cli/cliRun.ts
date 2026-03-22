@@ -2,7 +2,6 @@ import process from 'node:process';
 import { Option, program } from 'commander';
 import pc from 'picocolors';
 import { getVersion } from '../core/file/packageJsonParse.js';
-import { isExplicitRemoteUrl } from '../core/git/gitRemoteParse.js';
 import { handleError, RepomixError } from '../shared/errorHandle.js';
 import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
@@ -275,8 +274,9 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   }
 
   // Determine remote URL from explicit option or auto-detected positional argument
+  // Inline check to avoid importing git-url-parse (26KB) at startup
   let remoteUrl: string | undefined = options.remote;
-  if (!remoteUrl && directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
+  if (!remoteUrl && directories.length === 1 && /^(?:https?:\/\/|git@|ssh:\/\/|git:\/\/)/.test(directories[0])) {
     logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
     remoteUrl = directories[0];
   }

@@ -4,7 +4,7 @@ import XMLBuilder from 'fast-xml-builder';
 import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
-import { type FileSearchResult, listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
+import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
 import { type FilesByRoot, generateTreeString, generateTreeStringWithRoots } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';

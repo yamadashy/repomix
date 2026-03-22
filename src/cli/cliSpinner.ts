@@ -1,6 +1,12 @@
-import logUpdate from 'log-update';
 import pc from 'picocolors';
 import type { CliOptions } from './types.js';
+
+// Lazy-loaded log-update module
+let logUpdateModule: typeof import('log-update').default | null = null;
+const getLogUpdate = async () => {
+  logUpdateModule ??= (await import('log-update')).default;
+  return logUpdateModule;
+};
 
 // Replicate cli-spinners dots animation
 const dotsFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -19,11 +25,12 @@ export class Spinner {
     this.isQuiet = cliOptions?.quiet || cliOptions?.verbose || cliOptions?.stdout || false;
   }
 
-  start(): void {
+  async start(): Promise<void> {
     if (this.isQuiet) {
       return;
     }
 
+    const logUpdate = await getLogUpdate();
     const framesLength = dotsFrames.length;
     this.interval = setInterval(() => {
       this.currentFrame++;
@@ -40,7 +47,7 @@ export class Spinner {
     this.message = message;
   }
 
-  stop(finalMessage: string): void {
+  async stop(finalMessage: string): Promise<void> {
     if (this.isQuiet) {
       return;
     }
@@ -49,23 +56,24 @@ export class Spinner {
       clearInterval(this.interval);
       this.interval = null;
     }
+    const logUpdate = await getLogUpdate();
     logUpdate(finalMessage);
     logUpdate.done();
   }
 
-  succeed(message: string): void {
+  async succeed(message: string): Promise<void> {
     if (this.isQuiet) {
       return;
     }
 
-    this.stop(`${pc.green('✔')} ${message}`);
+    await this.stop(`${pc.green('✔')} ${message}`);
   }
 
-  fail(message: string): void {
+  async fail(message: string): Promise<void> {
     if (this.isQuiet) {
       return;
     }
 
-    this.stop(`${pc.red('✖')} ${message}`);
+    await this.stop(`${pc.red('✖')} ${message}`);
   }
 }
