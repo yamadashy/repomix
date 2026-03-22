@@ -60,7 +60,6 @@ jobs:
           - os: windows-latest
             runs: 10
     steps:
-      # Checkout PR branch and main branch into separate directories for isolation
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           path: pr-branch
@@ -80,6 +79,18 @@ jobs:
             pr-branch/package-lock.json
             main-branch/package-lock.json
 
+      - name: Install hyperfine
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux)  sudo apt-get update && sudo apt-get install -y hyperfine ;;
+            macOS)  brew install hyperfine ;;
+            Windows)
+              curl -fsSL -o hyperfine.zip "https://github.com/sharkdp/hyperfine/releases/download/v1.19.0/hyperfine-v1.19.0-x86_64-pc-windows-msvc.zip"
+              unzip -q hyperfine.zip && mv hyperfine-v1.19.0-x86_64-pc-windows-msvc/hyperfine.exe /usr/bin/
+              ;;
+          esac
+
       - name: Install and build (PR branch)
         working-directory: pr-branch
         run: npm ci && npm run build
@@ -93,56 +104,35 @@ jobs:
         env:
           BENCH_RUNS: ${{ matrix.runs }}
         run: |
-          cat > "$RUNNER_TEMP/benchmark.mjs" << 'BENCHSCRIPT'
-          import { execFileSync } from 'node:child_process';
-          import { tmpdir } from 'node:os';
-          import { join } from 'node:path';
-          import { writeFileSync } from 'node:fs';
+          OUTPUT_FILE=$(mktemp)
 
-          const [prDir, mainDir] = process.argv.slice(2);
-          const output = join(tmpdir(), 'repomix-bench-output.txt');
-          const runs = Number(process.env.BENCH_RUNS) || 10;
+          # Benchmark PR branch
+          hyperfine \
+            --warmup 2 \
+            --runs "$BENCH_RUNS" \
+            --export-json "$RUNNER_TEMP/pr-bench.json" \
+            "node pr-branch/bin/repomix.cjs pr-branch --output $OUTPUT_FILE"
 
-          function benchmark(dir) {
-            const bin = join(dir, 'bin', 'repomix.cjs');
+          # Benchmark main branch
+          hyperfine \
+            --warmup 2 \
+            --runs "$BENCH_RUNS" \
+            --export-json "$RUNNER_TEMP/main-bench.json" \
+            "node main-branch/bin/repomix.cjs main-branch --output $OUTPUT_FILE"
 
-            // Warmup runs to stabilize OS page cache and JIT
-            for (let i = 0; i < 2; i++) {
-              try {
-                execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
-              } catch {}
-            }
-
-            // Measurement runs
-            const times = [];
-            for (let i = 0; i < runs; i++) {
-              const start = Date.now();
-              execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
-              times.push(Date.now() - start);
-            }
-
-            times.sort((a, b) => a - b);
-            const median = times[Math.floor(times.length / 2)];
-            // IQR: Q3 - Q1 (interquartile range)
-            const q1 = times[Math.floor(times.length * 0.25)];
-            const q3 = times[Math.floor(times.length * 0.75)];
-            const iqr = q3 - q1;
-            return { median, iqr };
-          }
-
-          console.error('Benchmarking PR branch...');
-          const pr = benchmark(prDir);
-          console.error(`PR median: ${pr.median}ms (±${pr.iqr}ms)`);
-
-          console.error('Benchmarking main branch...');
-          const main = benchmark(mainDir);
-          console.error(`main median: ${main.median}ms (±${main.iqr}ms)`);
-
-          const result = { pr: pr.median, prIqr: pr.iqr, main: main.median, mainIqr: main.iqr };
-          writeFileSync(join(process.env.RUNNER_TEMP, 'bench-result.json'), JSON.stringify(result));
-          BENCHSCRIPT
-
-          node "$RUNNER_TEMP/benchmark.mjs" "$GITHUB_WORKSPACE/pr-branch" "$GITHUB_WORKSPACE/main-branch"
+          # Convert hyperfine output to our format (median in ms, stddev as variation)
+          node -e "
+            const fs = require('fs');
+            const pr = JSON.parse(fs.readFileSync('$RUNNER_TEMP/pr-bench.json')).results[0];
+            const main = JSON.parse(fs.readFileSync('$RUNNER_TEMP/main-bench.json')).results[0];
+            const result = {
+              pr: Math.round(pr.median * 1000),
+              prIqr: Math.round(pr.stddev * 1000),
+              main: Math.round(main.median * 1000),
+              mainIqr: Math.round(main.stddev * 1000)
+            };
+            fs.writeFileSync('$RUNNER_TEMP/bench-result.json', JSON.stringify(result));
+          "
 
       - name: Upload benchmark result
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -221,7 +211,7 @@ jobs:
 
           - Packing the repomix repository with \`node bin/repomix.cjs\`
           - Warmup: 2 runs (discarded)
-          - Measurement: 10 runs / 20 on macOS (median ± IQR)
+          - Measurement: 10 runs / 20 on macOS (median ± stddev, via hyperfine)
           - [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
 
           </details>"
