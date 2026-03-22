@@ -228,7 +228,7 @@ jobs:
 
   comment:
     name: Comment Results
-    needs: benchmark
+    needs: [benchmark, post-pending]
     runs-on: ubuntu-latest
     if: ${{ always() && !cancelled() }}
     permissions:
