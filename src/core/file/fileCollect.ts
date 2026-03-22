@@ -2,6 +2,7 @@ import path from 'node:path';
 import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
+import { promisePool } from '../../shared/promisePool.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { readRawFile as defaultReadRawFile, type FileSkipReason } from './fileRead.js';
 import type { RawFile } from './fileTypes.js';
@@ -19,22 +20,6 @@ export interface FileCollectResults {
   rawFiles: RawFile[];
   skippedFiles: SkippedFileInfo[];
 }
-
-const promisePool = async <T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> => {
-  const results: R[] = Array.from({ length: items.length });
-  let nextIndex = 0;
-
-  const worker = async () => {
-    while (nextIndex < items.length) {
-      const i = nextIndex++;
-      results[i] = await fn(items[i]);
-    }
-  };
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
-
-  return results;
-};
 
 export const collectFiles = async (
   filePaths: string[],

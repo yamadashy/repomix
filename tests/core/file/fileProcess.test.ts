@@ -48,6 +48,7 @@ describe('fileProcess', () => {
       const result = await processFiles(mockRawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
+        processContent,
       });
 
       expect(result).toEqual([
