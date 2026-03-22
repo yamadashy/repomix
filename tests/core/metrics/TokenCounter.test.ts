@@ -40,10 +40,8 @@ describe('TokenCounter', () => {
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(3);
-    expect(mockCountTokens).toHaveBeenCalledWith(text, {
-      allowedSpecial: TokenCounter['emptySpecialTokens'],
-      disallowedSpecial: TokenCounter['emptySpecialTokens'],
-    });
+    // Called without options first for performance (skips processSpecialTokens overhead)
+    expect(mockCountTokens).toHaveBeenCalledWith(text);
   });
 
   test('should handle empty string', () => {
@@ -52,7 +50,7 @@ describe('TokenCounter', () => {
     const count = tokenCounter.countTokens('');
 
     expect(count).toBe(0);
-    expect(mockCountTokens).toHaveBeenCalledWith('', expect.objectContaining({}));
+    expect(mockCountTokens).toHaveBeenCalledWith('');
   });
 
   test('should handle multi-line text', () => {
@@ -118,6 +116,24 @@ describe('TokenCounter', () => {
     const count = tokenCounter.countTokens(text);
 
     expect(count).toBe(100);
+  });
+
+  test('should fall back to options-based counting when special token throws', () => {
+    // First call (no options) throws "Disallowed special token"
+    // Second call (with options) succeeds
+    let callCount = 0;
+    mockCountTokens.mockImplementation((_content: string, options?: unknown) => {
+      callCount++;
+      if (!options) {
+        throw new Error('Disallowed special token found: <|endoftext|>');
+      }
+      return 7; // Fallback count
+    });
+
+    const count = tokenCounter.countTokens('<|endoftext|>');
+
+    expect(count).toBe(7);
+    expect(callCount).toBe(2);
   });
 
   test('should properly handle encoding errors without file path', () => {
