@@ -1,8 +1,6 @@
 import * as fs from 'node:fs/promises';
-import iconv from 'iconv-lite';
 import isBinaryPath from 'is-binary-path';
 import { isBinaryFile } from 'isbinaryfile';
-import jschardet from 'jschardet';
 import { logger } from '../../shared/logger.js';
 
 export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
@@ -20,6 +18,12 @@ export interface FileReadResult {
  */
 export const readRawFile = async (filePath: string, maxFileSize: number): Promise<FileReadResult> => {
   try {
+    // Check binary extension before any I/O to skip stat+read for obvious binary files
+    if (isBinaryPath(filePath)) {
+      logger.debug(`Skipping binary file: ${filePath}`);
+      return { content: null, skippedReason: 'binary-extension' };
+    }
+
     const stats = await fs.stat(filePath);
 
     if (stats.size > maxFileSize) {
@@ -27,11 +31,6 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
       const maxSizeKB = (maxFileSize / 1024).toFixed(1);
       logger.trace(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
       return { content: null, skippedReason: 'size-limit' };
-    }
-
-    if (isBinaryPath(filePath)) {
-      logger.debug(`Skipping binary file: ${filePath}`);
-      return { content: null, skippedReason: 'binary-extension' };
     }
 
     logger.trace(`Reading file: ${filePath}`);
@@ -57,6 +56,11 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     }
 
     // Slow path: Detect encoding with jschardet for non-UTF-8 files (e.g., Shift-JIS, EUC-KR)
+    // Lazy-load jschardet (~25ms) and iconv-lite (~14ms) since they're only needed for ~1% of files
+    const [jschardet, iconv] = await Promise.all([
+      import('jschardet').then((m) => m.default),
+      import('iconv-lite').then((m) => m.default),
+    ]);
     const { encoding: detectedEncoding } = jschardet.detect(buffer) ?? {};
     const encoding = detectedEncoding && iconv.encodingExists(detectedEncoding) ? detectedEncoding : 'utf-8';
     const content = iconv.decode(buffer, encoding, { stripBOM: true });

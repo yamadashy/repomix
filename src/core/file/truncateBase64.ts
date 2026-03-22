@@ -13,36 +13,63 @@ const MIN_CHAR_TYPE_COUNT = 3;
  * @returns Content with base64 data truncated
  */
 export const truncateBase64Content = (content: string): string => {
-  // Pattern to match data URIs (e.g., data:image/png;base64,...)
-  const dataUriPattern = new RegExp(
-    `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
-    'g',
-  );
+  // Fast pre-check: skip expensive regex for files without base64 content (~95% of source files)
+  const hasDataUri = content.includes('base64,');
+  const hasStandaloneBase64 = !hasDataUri && hasLongBase64Run(content);
 
-  // Pattern to match standalone base64 strings
-  // This matches base64 strings that are likely encoded binary data
-  const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
+  if (!hasDataUri && !hasStandaloneBase64) {
+    return content;
+  }
 
   let processedContent = content;
 
   // Replace data URIs
-  processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
-    const preview = base64Data.substring(0, TRUNCATION_LENGTH);
-    return `data:${mimeType}${params || ''};base64,${preview}...`;
-  });
+  if (hasDataUri) {
+    const dataUriPattern = new RegExp(
+      `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
+      'g',
+    );
+    processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
+      const preview = base64Data.substring(0, TRUNCATION_LENGTH);
+      return `data:${mimeType}${params || ''};base64,${preview}...`;
+    });
+  }
 
-  // Replace standalone base64 strings
-  processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
-    // Check if this looks like actual base64 (not just a long string)
-    if (isLikelyBase64(base64String)) {
-      const preview = base64String.substring(0, TRUNCATION_LENGTH);
-      return `${preview}...`;
-    }
-    return match;
-  });
+  // Replace standalone base64 strings (only if no data URI was found, or check independently)
+  if (hasLongBase64Run(processedContent)) {
+    const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
+    processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
+      if (isLikelyBase64(base64String)) {
+        const preview = base64String.substring(0, TRUNCATION_LENGTH);
+        return `${preview}...`;
+      }
+      return match;
+    });
+  }
 
   return processedContent;
 };
+
+/**
+ * Fast O(N) scan for long runs of base64 alphabet characters.
+ * Returns true if any run of 60+ consecutive base64 chars is found.
+ */
+function hasLongBase64Run(content: string): boolean {
+  let runLength = 0;
+  for (let i = 0; i < content.length; i++) {
+    const c = content.charCodeAt(i);
+    // A-Z (65-90), a-z (97-122), 0-9 (48-57), + (43), / (47)
+    if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47) {
+      runLength++;
+      if (runLength >= MIN_BASE64_LENGTH_STANDALONE) {
+        return true;
+      }
+    } else {
+      runLength = 0;
+    }
+  }
+  return false;
+}
 
 /**
  * Checks if a string is likely to be base64 encoded data

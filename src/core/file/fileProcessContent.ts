@@ -1,5 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import { logger } from '../../shared/logger.js';
+import { logger, repomixLogLevels } from '../../shared/logger.js';
 import { parseFile } from '../treeSitter/parseFile.js';
 import { getFileManipulator } from './fileManipulate.js';
 import type { RawFile } from './fileTypes.js';
@@ -19,11 +19,14 @@ import { truncateBase64Content } from './truncateBase64.js';
  * @returns Processed content string
  */
 export const processContent = async (rawFile: RawFile, config: RepomixConfigMerged): Promise<string> => {
-  const processStartAt = process.hrtime.bigint();
+  const isTracing = logger.getLogLevel() >= repomixLogLevels.DEBUG;
+  const processStartAt = isTracing ? process.hrtime.bigint() : 0n;
   let processedContent = rawFile.content;
   const manipulator = getFileManipulator(rawFile.path);
 
-  logger.trace(`Processing file: ${rawFile.path}`);
+  if (isTracing) {
+    logger.trace(`Processing file: ${rawFile.path}`);
+  }
 
   if (config.output.truncateBase64) {
     processedContent = truncateBase64Content(processedContent);
@@ -59,8 +62,12 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
     processedContent = numberedLines.join('\n');
   }
 
-  const processEndAt = process.hrtime.bigint();
-  logger.trace(`Processed file: ${rawFile.path}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`);
+  if (isTracing) {
+    const processEndAt = process.hrtime.bigint();
+    logger.trace(
+      `Processed file: ${rawFile.path}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
+    );
+  }
 
   return processedContent;
 };

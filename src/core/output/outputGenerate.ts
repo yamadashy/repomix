@@ -96,6 +96,13 @@ const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  const style = outputGeneratorContext.config.output.style;
+
+  // Only scan file contents for backtick sequences when using markdown style,
+  // since the delimiter is only used in the markdown template's code blocks.
+  // For XML, plain, and JSON styles, use the default "```" to avoid scanning ~3.5MB of content.
+  const needsMarkdownDelimiter = style === 'markdown';
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -114,7 +121,9 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    markdownCodeBlockDelimiter: needsMarkdownDelimiter
+      ? calculateMarkdownDelimiter(outputGeneratorContext.processedFiles)
+      : '```',
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
