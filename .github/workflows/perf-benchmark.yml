@@ -43,6 +43,7 @@ jobs:
           COMMIT_MSG=$(gh api "repos/${GH_REPO}/commits/${COMMIT_SHA}" --jq '.commit.message | split("\n") | .[0]' 2>/dev/null || echo "")
 
           # Generate comment with Node (handles JSON history + rendering)
+          # shellcheck disable=SC2016
           COMMIT_MSG="$COMMIT_MSG" node -e '
             const fs = require("fs");
             const shortSha = process.env.COMMIT_SHA.slice(0, 7);
@@ -262,6 +263,7 @@ jobs:
           COMMIT_MSG=$(gh api "repos/${GH_REPO}/commits/${COMMIT_SHA}" --jq '.commit.message | split("\n") | .[0]' 2>/dev/null || echo "")
 
           # Generate complete comment with Node
+          # shellcheck disable=SC2016
           COMMIT_MSG="$COMMIT_MSG" node -e '
             const fs = require("fs");
             const path = require("path");
