@@ -87,24 +87,19 @@ export const loadFileConfig = async (
     throw new RepomixError(`Config file not found at ${argConfigPath}`);
   }
 
-  if (!options.skipLocalConfig) {
-    // Try to find a local config file using the priority order
-    const localConfigPaths = defaultConfigPaths.map((configPath) => path.resolve(rootDir, configPath));
-    const localConfigPath = await findConfigFile(localConfigPaths, 'local');
+  // Try to find a local config file using the priority order
+  const localConfigPaths = defaultConfigPaths.map((configPath) => path.resolve(rootDir, configPath));
+  const localConfigPath = await findConfigFile(localConfigPaths, 'local');
 
-    if (localConfigPath) {
+  if (localConfigPath) {
+    if (!options.skipLocalConfig) {
       return await loadAndValidateConfig(localConfigPath, deps);
     }
-  } else {
     // Log when config files are skipped for security (remote mode)
-    const localConfigPaths = defaultConfigPaths.map((configPath) => path.resolve(rootDir, configPath));
-    const localConfigPath = await findConfigFile(localConfigPaths, 'local');
-    if (localConfigPath) {
-      logger.note(
-        `Skipping config file found in remote repository for security: ${path.basename(localConfigPath)}\n` +
-          'Use --remote-trust-config to trust and load it.',
-      );
-    }
+    logger.note(
+      `Skipping config file found in remote repository for security: ${path.basename(localConfigPath)}\n` +
+        'Use --remote-trust-config to trust and load it.',
+    );
   }
 
   // Try to find a global config file using the priority order

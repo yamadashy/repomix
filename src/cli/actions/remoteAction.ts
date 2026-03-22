@@ -29,6 +29,16 @@ export const runRemoteAction = async (
     isArchiveDownloadSupported,
   },
 ): Promise<DefaultActionRunnerResult> => {
+  // Validate --config path before any expensive operations (download/clone):
+  // only absolute paths are allowed to prevent loading config from the cloned repository
+  if (cliOptions.config && !path.isAbsolute(cliOptions.config)) {
+    throw new RepomixError(
+      `In remote mode, --config must be an absolute path to avoid loading config from the cloned repository.\n` +
+        `  Provided: ${cliOptions.config}\n` +
+        `  Example:  repomix --remote <url> --config /home/user/repomix.config.json`,
+    );
+  }
+
   let tempDirPath = await createTempDirectory();
   let result: DefaultActionRunnerResult;
   let downloadMethod: 'archive' | 'git' = 'git';
@@ -115,16 +125,6 @@ export const runRemoteAction = async (
         const promptResult = await promptSkillLocation(skillName, process.cwd());
         skillDir = promptResult.skillDir;
       }
-    }
-
-    // Validate --config path in remote mode: only absolute paths are allowed
-    // to prevent accidentally loading config files from the cloned repository
-    if (cliOptions.config && !path.isAbsolute(cliOptions.config)) {
-      throw new RepomixError(
-        `In remote mode, --config must be an absolute path to avoid loading config from the cloned repository.\n` +
-          `  Provided: ${cliOptions.config}\n` +
-          `  Example:  repomix --remote <url> --config /home/user/repomix.config.json`,
-      );
     }
 
     // Run the default action on the downloaded/cloned repository

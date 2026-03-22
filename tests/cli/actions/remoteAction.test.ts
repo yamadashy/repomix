@@ -500,6 +500,25 @@ describe('remoteAction functions', () => {
 
       expect(runDefaultActionMock).toHaveBeenCalled();
     });
+
+    test('should reject relative --config path even when --remote-trust-config is passed', async () => {
+      await expect(
+        runRemoteAction(
+          'yamadashy/repomix',
+          { config: 'repomix.config.json', remoteTrustConfig: true },
+          {
+            isGitInstalled: vi.fn().mockResolvedValue(true),
+            execGitShallowClone: vi.fn(),
+            getRemoteRefs: async () => Promise.resolve(['main']),
+            runDefaultAction: vi.fn(),
+            downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
+            isGitHubRepository: vi.fn().mockReturnValue(true),
+            parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+            isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          },
+        ),
+      ).rejects.toThrow('--config must be an absolute path');
+    });
   });
 
   describe('copyOutputToCurrentDirectory', () => {
