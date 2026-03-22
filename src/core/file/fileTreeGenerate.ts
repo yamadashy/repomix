@@ -57,10 +57,11 @@ const addPathToTree = (root: TreeNode, path: string, isDirectory: boolean): void
 
 const sortTreeNodes = (node: TreeNode) => {
   node.children.sort((a, b) => {
-    if (a.isDirectory === b.isDirectory) {
-      return a.name.localeCompare(b.name);
+    if (a.isDirectory !== b.isDirectory) {
+      return a.isDirectory ? -1 : 1;
     }
-    return a.isDirectory ? -1 : 1;
+    // Simple string comparison is faster than localeCompare for ASCII file paths
+    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
   });
 
   for (const child of node.children) {
@@ -72,16 +73,18 @@ export const treeToString = (node: TreeNode, prefix = '', _isRoot = true): strin
   if (_isRoot) {
     sortTreeNodes(node);
   }
-  let result = '';
+  const parts: string[] = [];
+  treeToStringAccum(node, prefix, parts);
+  return parts.join('');
+};
 
+const treeToStringAccum = (node: TreeNode, prefix: string, parts: string[]): void => {
   for (const child of node.children) {
-    result += `${prefix}${child.name}${child.isDirectory ? '/' : ''}\n`;
+    parts.push(prefix, child.name, child.isDirectory ? '/\n' : '\n');
     if (child.isDirectory) {
-      result += treeToString(child, `${prefix}  `, false);
+      treeToStringAccum(child, `${prefix}  `, parts);
     }
   }
-
-  return result;
 };
 
 /**
@@ -101,22 +104,33 @@ export const treeToStringWithLineCounts = (
   if (_isRoot) {
     sortTreeNodes(node);
   }
-  let result = '';
+  const parts: string[] = [];
+  treeToStringWithLineCountsAccum(node, lineCounts, prefix, currentPath, parts);
+  return parts.join('');
+};
 
+const treeToStringWithLineCountsAccum = (
+  node: TreeNode,
+  lineCounts: Record<string, number>,
+  prefix: string,
+  currentPath: string,
+  parts: string[],
+): void => {
   for (const child of node.children) {
     const childPath = currentPath ? `${currentPath}/${child.name}` : child.name;
 
     if (child.isDirectory) {
-      result += `${prefix}${child.name}/\n`;
-      result += treeToStringWithLineCounts(child, lineCounts, `${prefix}  `, childPath, false);
+      parts.push(prefix, child.name, '/\n');
+      treeToStringWithLineCountsAccum(child, lineCounts, `${prefix}  `, childPath, parts);
     } else {
       const lineCount = lineCounts[childPath];
-      const lineCountSuffix = lineCount !== undefined ? ` (${lineCount} lines)` : '';
-      result += `${prefix}${child.name}${lineCountSuffix}\n`;
+      if (lineCount !== undefined) {
+        parts.push(prefix, child.name, ` (${lineCount} lines)\n`);
+      } else {
+        parts.push(prefix, child.name, '\n');
+      }
     }
   }
-
-  return result;
 };
 
 export const generateTreeString = (files: string[], emptyDirPaths: string[] = []): string => {

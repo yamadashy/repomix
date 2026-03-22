@@ -5,6 +5,18 @@ const TRUNCATION_LENGTH = 32;
 const MIN_CHAR_DIVERSITY = 10;
 const MIN_CHAR_TYPE_COUNT = 3;
 
+// Pre-compiled regex patterns (avoid recompilation per call)
+const BASE64_CHARS_ONLY_RE = /^[A-Za-z0-9+/]+=*$/;
+const HAS_NUMBERS_RE = /[0-9]/;
+const HAS_UPPERCASE_RE = /[A-Z]/;
+const HAS_LOWERCASE_RE = /[a-z]/;
+const HAS_SPECIAL_RE = /[+/]/;
+const DATA_URI_RE = new RegExp(
+  `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
+  'g',
+);
+const STANDALONE_BASE64_RE = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
+
 /**
  * Truncates base64 encoded data in content to reduce file size
  * Detects common base64 patterns like data URIs and standalone base64 strings
@@ -25,11 +37,9 @@ export const truncateBase64Content = (content: string): string => {
 
   // Replace data URIs
   if (hasDataUri) {
-    const dataUriPattern = new RegExp(
-      `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
-      'g',
-    );
-    processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
+    // Reset lastIndex for global regex reuse
+    DATA_URI_RE.lastIndex = 0;
+    processedContent = processedContent.replace(DATA_URI_RE, (_match, mimeType, params, base64Data) => {
       const preview = base64Data.substring(0, TRUNCATION_LENGTH);
       return `data:${mimeType}${params || ''};base64,${preview}...`;
     });
@@ -37,8 +47,8 @@ export const truncateBase64Content = (content: string): string => {
 
   // Replace standalone base64 strings (only if no data URI was found, or check independently)
   if (hasLongBase64Run(processedContent)) {
-    const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
-    processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
+    STANDALONE_BASE64_RE.lastIndex = 0;
+    processedContent = processedContent.replace(STANDALONE_BASE64_RE, (match, base64String) => {
       if (isLikelyBase64(base64String)) {
         const preview = base64String.substring(0, TRUNCATION_LENGTH);
         return `${preview}...`;
@@ -79,7 +89,7 @@ function hasLongBase64Run(content: string): boolean {
  */
 function isLikelyBase64(str: string): boolean {
   // Check for valid base64 characters only
-  if (!/^[A-Za-z0-9+/]+=*$/.test(str)) {
+  if (!BASE64_CHARS_ONLY_RE.test(str)) {
     return false;
   }
 
@@ -91,10 +101,10 @@ function isLikelyBase64(str: string): boolean {
 
   // Additional check: base64 encoded binary data typically has good character distribution
   // Must have at least MIN_CHAR_TYPE_COUNT of the 4 character types (numbers, uppercase, lowercase, special)
-  const hasNumbers = /[0-9]/.test(str);
-  const hasUpperCase = /[A-Z]/.test(str);
-  const hasLowerCase = /[a-z]/.test(str);
-  const hasSpecialChars = /[+/]/.test(str);
+  const hasNumbers = HAS_NUMBERS_RE.test(str);
+  const hasUpperCase = HAS_UPPERCASE_RE.test(str);
+  const hasLowerCase = HAS_LOWERCASE_RE.test(str);
+  const hasSpecialChars = HAS_SPECIAL_RE.test(str);
 
   const charTypeCount = [hasNumbers, hasUpperCase, hasLowerCase, hasSpecialChars].filter(Boolean).length;
 

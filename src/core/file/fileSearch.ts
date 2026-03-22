@@ -23,6 +23,9 @@ const findEmptyDirectories = async (
 ): Promise<string[]> => {
   const emptyDirs: string[] = [];
 
+  // Pre-compile minimatch patterns to avoid recompilation per directory
+  const compiledPatterns = ignorePatterns.map((pattern) => minimatch.makeRe(pattern)).filter(Boolean) as RegExp[];
+
   for (const dir of directories) {
     const fullPath = path.join(rootDir, dir);
     try {
@@ -31,7 +34,8 @@ const findEmptyDirectories = async (
 
       if (!hasVisibleContents) {
         // This checks if the directory itself matches any ignore patterns
-        const shouldIgnore = ignorePatterns.some((pattern) => minimatch(dir, pattern) || minimatch(`${dir}/`, pattern));
+        const dirWithSlash = `${dir}/`;
+        const shouldIgnore = compiledPatterns.some((re) => re.test(dir) || re.test(dirWithSlash));
 
         if (!shouldIgnore) {
           emptyDirs.push(dir);
@@ -60,15 +64,19 @@ const isGitWorktreeRef = async (gitPath: string): Promise<boolean> => {
   }
 };
 
+// Pre-compiled regex patterns for glob escaping
+const BACKSLASH_RE = /\\/g;
+const SPECIAL_CHARS_RE = /[()[\]]/g;
+
 /**
  * Escapes special characters in glob patterns to handle paths with parentheses.
  * Example: "src/(categories)" -> "src/\\(categories\\)"
  */
 export const escapeGlobPattern = (pattern: string): string => {
   // First escape backslashes
-  const escapedBackslashes = pattern.replace(/\\/g, '\\\\');
+  const escapedBackslashes = pattern.replace(BACKSLASH_RE, '\\\\');
   // Then escape special characters () and [], but NOT {}
-  return escapedBackslashes.replace(/[()[\]]/g, '\\$&');
+  return escapedBackslashes.replace(SPECIAL_CHARS_RE, '\\$&');
 };
 
 /**

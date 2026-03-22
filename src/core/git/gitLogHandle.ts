@@ -23,6 +23,9 @@ export interface GitLogResult {
   commits: GitLogCommit[];
 }
 
+// Pre-compiled regex for platform newline splitting
+const PLATFORM_NEWLINE_RE = /\r?\n/;
+
 const parseGitLog = (rawLogOutput: string, recordSeparator = GIT_LOG_RECORD_SEPARATOR): GitLogCommit[] => {
   if (!rawLogOutput.trim()) {
     return [];
@@ -35,7 +38,7 @@ const parseGitLog = (rawLogOutput: string, recordSeparator = GIT_LOG_RECORD_SEPA
 
   for (const entry of logEntries) {
     // Split on both \n and \r\n to handle different line ending formats across platforms
-    const lines = entry.split(/\r?\n/).filter((line) => line.trim() !== '');
+    const lines = entry.split(PLATFORM_NEWLINE_RE).filter((line) => line.trim() !== '');
     if (lines.length === 0) continue;
 
     // First line contains date and message separated by |

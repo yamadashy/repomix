@@ -385,15 +385,9 @@ export const buildOutputGeneratorContext = async (
   } else if (config.output.directoryStructure && config.output.includeEmptyDirectories) {
     // Default behavior: include empty directories only
     try {
-      const merged = (await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)))).reduce(
-        (acc: FileSearchResult, curr: FileSearchResult) =>
-          ({
-            filePaths: [...acc.filePaths, ...curr.filePaths],
-            emptyDirPaths: [...acc.emptyDirPaths, ...curr.emptyDirPaths],
-          }) as FileSearchResult,
-        { filePaths: [], emptyDirPaths: [] },
-      ).emptyDirPaths;
-      directoryPathsForTree = [...new Set(merged)].sort();
+      const searchResults = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
+      const allEmptyDirPaths = searchResults.flatMap((result) => result.emptyDirPaths);
+      directoryPathsForTree = [...new Set(allEmptyDirPaths)].sort();
     } catch (error) {
       throw new RepomixError(
         `Failed to search for empty directories: ${error instanceof Error ? error.message : String(error)}`,
