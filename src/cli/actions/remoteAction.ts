@@ -117,6 +117,16 @@ export const runRemoteAction = async (
       }
     }
 
+    // Validate --config path in remote mode: only absolute paths are allowed
+    // to prevent accidentally loading config files from the cloned repository
+    if (cliOptions.config && !path.isAbsolute(cliOptions.config)) {
+      throw new RepomixError(
+        `In remote mode, --config must be an absolute path to avoid loading config from the cloned repository.\n` +
+          `  Provided: ${cliOptions.config}\n` +
+          `  Example:  repomix --remote <url> --config /home/user/repomix.config.json`,
+      );
+    }
+
     // Run the default action on the downloaded/cloned repository
     // Pass the pre-computed skill name, directory, project name, and source URL
     const skillSourceUrl = cliOptions.skillGenerate !== undefined ? repoUrl : undefined;

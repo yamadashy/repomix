@@ -421,6 +421,87 @@ describe('remoteAction functions', () => {
     });
   });
 
+  describe('--config path validation in remote mode', () => {
+    test('should reject relative --config path in remote mode', async () => {
+      await expect(
+        runRemoteAction(
+          'yamadashy/repomix',
+          { config: 'repomix.config.json' },
+          {
+            isGitInstalled: vi.fn().mockResolvedValue(true),
+            execGitShallowClone: vi.fn(),
+            getRemoteRefs: async () => Promise.resolve(['main']),
+            runDefaultAction: vi.fn(),
+            downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
+            isGitHubRepository: vi.fn().mockReturnValue(true),
+            parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+            isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          },
+        ),
+      ).rejects.toThrow('--config must be an absolute path');
+    });
+
+    test('should reject dot-relative --config path in remote mode', async () => {
+      await expect(
+        runRemoteAction(
+          'yamadashy/repomix',
+          { config: './my-config.json' },
+          {
+            isGitInstalled: vi.fn().mockResolvedValue(true),
+            execGitShallowClone: vi.fn(),
+            getRemoteRefs: async () => Promise.resolve(['main']),
+            runDefaultAction: vi.fn(),
+            downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
+            isGitHubRepository: vi.fn().mockReturnValue(true),
+            parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+            isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          },
+        ),
+      ).rejects.toThrow('--config must be an absolute path');
+    });
+
+    test('should allow absolute --config path in remote mode', async () => {
+      const runDefaultActionMock = vi.fn(async () => {
+        return {
+          packResult: {
+            totalFiles: 1,
+            totalCharacters: 1,
+            totalTokens: 1,
+            fileCharCounts: {},
+            fileTokenCounts: {},
+            suspiciousFilesResults: [],
+            suspiciousGitDiffResults: [],
+            suspiciousGitLogResults: [],
+            processedFiles: [],
+            safeFilePaths: [],
+            gitDiffTokenCount: 0,
+            gitLogTokenCount: 0,
+            skippedFiles: [],
+          },
+          config: createMockConfig(),
+        } satisfies DefaultActionRunnerResult;
+      });
+
+      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+      await runRemoteAction(
+        'yamadashy/repomix',
+        { config: '/home/user/repomix.config.json' },
+        {
+          isGitInstalled: vi.fn().mockResolvedValue(true),
+          execGitShallowClone: vi.fn(),
+          getRemoteRefs: async () => Promise.resolve(['main']),
+          runDefaultAction: runDefaultActionMock,
+          downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
+          isGitHubRepository: vi.fn().mockReturnValue(true),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+        },
+      );
+
+      expect(runDefaultActionMock).toHaveBeenCalled();
+    });
+  });
+
   describe('copyOutputToCurrentDirectory', () => {
     test('should copy output file when source and target are different', async () => {
       const sourceDir = '/source/dir';
