@@ -172,11 +172,16 @@ export const pack = async (
   );
 
   // Workers are now warm — token counting starts without WASM init delay
-  const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
-      taskRunner: metricsTaskRunner,
-    }),
-  );
+  let metrics: Awaited<ReturnType<typeof deps.calculateMetrics>>;
+  try {
+    metrics = await withMemoryLogging('Calculate Metrics', () =>
+      deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
+        taskRunner: metricsTaskRunner,
+      }),
+    );
+  } finally {
+    await metricsTaskRunner.cleanup();
+  }
 
   // Create a result object that includes metrics and security results
   const result = {
