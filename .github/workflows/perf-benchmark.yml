@@ -120,16 +120,16 @@ jobs:
             --export-json "$RUNNER_TEMP/main-bench.json" \
             "node main-branch/bin/repomix.cjs main-branch --output $OUTPUT_FILE"
 
-          # Convert hyperfine output to our format (median in ms, stddev as variation)
+          # Convert hyperfine output to our format (mean in ms, stddev for variation)
           node -e "
             const fs = require('fs');
             const pr = JSON.parse(fs.readFileSync('$RUNNER_TEMP/pr-bench.json')).results[0];
             const main = JSON.parse(fs.readFileSync('$RUNNER_TEMP/main-bench.json')).results[0];
             const result = {
-              pr: Math.round(pr.median * 1000),
-              prIqr: Math.round(pr.stddev * 1000),
-              main: Math.round(main.median * 1000),
-              mainIqr: Math.round(main.stddev * 1000)
+              pr: Math.round(pr.mean * 1000),
+              prStddev: Math.round(pr.stddev * 1000),
+              main: Math.round(main.mean * 1000),
+              mainStddev: Math.round(main.stddev * 1000)
             };
             fs.writeFileSync('$RUNNER_TEMP/bench-result.json', JSON.stringify(result));
           "
@@ -174,27 +174,41 @@ jobs:
             local data
             data=$(node -e "console.log(JSON.stringify(JSON.parse(require('fs').readFileSync('$file','utf8'))))")
 
-            local pr_ms main_ms pr_iqr main_iqr
+            local pr_ms main_ms pr_stddev main_stddev
             pr_ms=$(node -e "console.log(JSON.parse('$data').pr)")
             main_ms=$(node -e "console.log(JSON.parse('$data').main)")
-            pr_iqr=$(node -e "console.log(JSON.parse('$data').prIqr)")
-            main_iqr=$(node -e "console.log(JSON.parse('$data').mainIqr)")
+            pr_stddev=$(node -e "console.log(JSON.parse('$data').prStddev)")
+            main_stddev=$(node -e "console.log(JSON.parse('$data').mainStddev)")
 
-            local diff=$((pr_ms - main_ms))
-            local pr_sec main_sec pr_iqr_sec main_iqr_sec diff_sec diff_pct
+            local pr_sec main_sec pr_stddev_sec main_stddev_sec
             pr_sec=$(awk "BEGIN {printf \"%.2f\", $pr_ms / 1000}")
             main_sec=$(awk "BEGIN {printf \"%.2f\", $main_ms / 1000}")
-            pr_iqr_sec=$(awk "BEGIN {printf \"%.2f\", $pr_iqr / 1000}")
-            main_iqr_sec=$(awk "BEGIN {printf \"%.2f\", $main_iqr / 1000}")
-            diff_sec=$(awk "BEGIN {printf \"%+.2f\", $diff / 1000}")
+            pr_stddev_sec=$(awk "BEGIN {printf \"%.2f\", $pr_stddev / 1000}")
+            main_stddev_sec=$(awk "BEGIN {printf \"%.2f\", $main_stddev / 1000}")
 
-            if [ "$main_ms" -gt 0 ]; then
-              diff_pct=$(awk "BEGIN {printf \"%+.1f\", ($diff / $main_ms) * 100}")
+            # Calculate ratio and its uncertainty (hyperfine style)
+            local ratio ratio_stddev comparison
+            if [ "$pr_ms" -gt 0 ] && [ "$main_ms" -gt 0 ]; then
+              ratio=$(awk "BEGIN {printf \"%.2f\", $main_ms / $pr_ms}")
+              # Error propagation for ratio: σ_ratio ≈ ratio * sqrt((σ_pr/pr)² + (σ_main/main)²)
+              ratio_stddev=$(awk "BEGIN {
+                r = $main_ms / $pr_ms;
+                rel_err = sqrt(($pr_stddev/$pr_ms)^2 + ($main_stddev/$main_ms)^2);
+                printf \"%.2f\", r * rel_err
+              }")
+              if (( $(awk "BEGIN {print ($ratio >= 1.0)}") )); then
+                comparison="**${ratio} ± ${ratio_stddev} times faster**"
+              else
+                local inv_ratio inv_stddev
+                inv_ratio=$(awk "BEGIN {printf \"%.2f\", 1/$ratio}")
+                inv_stddev=$(awk "BEGIN {printf \"%.2f\", $ratio_stddev/($ratio^2)}")
+                comparison="${inv_ratio} ± ${inv_stddev} times slower"
+              fi
             else
-              diff_pct="N/A"
+              comparison="N/A"
             fi
 
-            echo "<tr><td><strong>${label}:</strong></td><td>${main_sec}s (±${main_iqr_sec}s) → ${pr_sec}s (±${pr_iqr_sec}s) · ${diff_sec}s (${diff_pct}%)</td></tr>"
+            echo "<tr><td><strong>${label}:</strong></td><td>${pr_sec}s ± ${pr_stddev_sec}s vs ${main_sec}s ± ${main_stddev_sec}s · ${comparison}</td></tr>"
           }
 
           BODY="## ⚡ Performance Benchmark
@@ -211,7 +225,7 @@ jobs:
 
           - Packing the repomix repository with \`node bin/repomix.cjs\`
           - Warmup: 2 runs (discarded)
-          - Measurement: 10 runs / 20 on macOS (median ± stddev, via hyperfine)
+          - Measurement: 10 runs / 20 on macOS (mean ± σ, via hyperfine)
           - [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
 
           </details>"
