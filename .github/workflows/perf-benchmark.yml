@@ -71,7 +71,7 @@ jobs:
                 while ((m = rowRe.exec(mainSection)) !== null) {
                   entry[m[1].toLowerCase()] = m[2];
                 }
-                if (!history.some(h => h.sha === prevSha)) {
+                if (prevSha !== shortSha && !history.some(h => h.sha === prevSha)) {
                   history.unshift(entry);
                 }
               }
