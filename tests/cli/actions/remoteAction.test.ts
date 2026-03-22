@@ -66,11 +66,11 @@ describe('remoteAction functions', () => {
       );
 
       expect(execGitShallowCloneMock).toHaveBeenCalledTimes(1);
-      // Verify isRemote flag is passed to prevent loading untrusted config from cloned repos
+      // Verify skipLocalConfig flag is passed to prevent loading untrusted config from cloned repos
       expect(runDefaultActionMock).toHaveBeenCalledWith(
         expect.any(Array),
         expect.any(String),
-        expect.objectContaining({ isRemote: true }),
+        expect.objectContaining({ skipLocalConfig: true }),
       );
     });
 
@@ -212,7 +212,7 @@ describe('remoteAction functions', () => {
       expect(execGitShallowCloneMock).not.toHaveBeenCalled();
     });
 
-    test('should pass isRemote: true via archive download path', async () => {
+    test('should pass skipLocalConfig: true via archive download path', async () => {
       const runDefaultActionMock = vi.fn(async () => {
         return {
           packResult: {
@@ -253,11 +253,11 @@ describe('remoteAction functions', () => {
       expect(runDefaultActionMock).toHaveBeenCalledWith(
         expect.any(Array),
         expect.any(String),
-        expect.objectContaining({ isRemote: true }),
+        expect.objectContaining({ skipLocalConfig: true }),
       );
     });
 
-    test('should set isRemote to false when --remote-trust-config is passed', async () => {
+    test('should set skipLocalConfig to false when --remote-trust-config is passed', async () => {
       const runDefaultActionMock = vi.fn(async () => {
         return {
           packResult: {
@@ -300,11 +300,11 @@ describe('remoteAction functions', () => {
       expect(runDefaultActionMock).toHaveBeenCalledWith(
         expect.any(Array),
         expect.any(String),
-        expect.objectContaining({ isRemote: false }),
+        expect.objectContaining({ skipLocalConfig: false }),
       );
     });
 
-    test('should set isRemote to false when REPOMIX_REMOTE_TRUST_CONFIG env var is true', async () => {
+    test('should set skipLocalConfig to false when REPOMIX_REMOTE_TRUST_CONFIG env var is true', async () => {
       const originalEnv = process.env.REPOMIX_REMOTE_TRUST_CONFIG;
       process.env.REPOMIX_REMOTE_TRUST_CONFIG = 'true';
 
@@ -351,7 +351,7 @@ describe('remoteAction functions', () => {
         expect(runDefaultActionMock).toHaveBeenCalledWith(
           expect.any(Array),
           expect.any(String),
-          expect.objectContaining({ isRemote: false }),
+          expect.objectContaining({ skipLocalConfig: false }),
         );
       } finally {
         if (originalEnv === undefined) {
@@ -362,7 +362,7 @@ describe('remoteAction functions', () => {
       }
     });
 
-    test('should keep isRemote true when REPOMIX_REMOTE_TRUST_CONFIG is not "true"', async () => {
+    test('should keep skipLocalConfig true when REPOMIX_REMOTE_TRUST_CONFIG is not "true"', async () => {
       const originalEnv = process.env.REPOMIX_REMOTE_TRUST_CONFIG;
       process.env.REPOMIX_REMOTE_TRUST_CONFIG = 'yes';
 
@@ -409,7 +409,7 @@ describe('remoteAction functions', () => {
         expect(runDefaultActionMock).toHaveBeenCalledWith(
           expect.any(Array),
           expect.any(String),
-          expect.objectContaining({ isRemote: true }),
+          expect.objectContaining({ skipLocalConfig: true }),
         );
       } finally {
         if (originalEnv === undefined) {

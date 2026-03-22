@@ -41,7 +41,7 @@ export interface CliOptions extends OptionValues {
   remote?: string;
   remoteBranch?: string;
   remoteTrustConfig?: boolean;
-  isRemote?: boolean; // Internal flag set by remoteAction to skip untrusted config loading
+  skipLocalConfig?: boolean; // Internal flag: skip loading config files from the working directory (e.g., untrusted remote repos)
 
   // Configuration Options
   config?: string;

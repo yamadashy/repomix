@@ -137,7 +137,7 @@ export const runRemoteAction = async (
       skillDir,
       skillProjectName,
       skillSourceUrl,
-      isRemote: !trustRemoteConfig,
+      skipLocalConfig: !trustRemoteConfig,
     };
     result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithSkill);
 

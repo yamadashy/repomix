@@ -42,7 +42,7 @@ export const runDefaultAction = async (
 
   // Load the config file in main process
   const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, {
-    skipLocalConfig: cliOptions.isRemote,
+    skipLocalConfig: cliOptions.skipLocalConfig,
   });
   logger.trace('Loaded file config:', fileConfig);
 
