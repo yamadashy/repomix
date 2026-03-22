@@ -156,10 +156,10 @@ export const pack = async (
     files: filePaths,
   }));
 
-  // Pre-warm metrics worker pool so tiktoken WASM loads during output generation
+  // Pre-warm metrics worker pool so gpt-tokenizer encoding loads during output generation
   const metricsTaskRunner = deps.createMetricsTaskRunner(processedFiles.length);
 
-  // Generate and write output (workers loading WASM in background)
+  // Generate and write output (workers loading encoding in background)
   const { outputFiles, outputForMetrics } = await deps.produceOutput(
     rootDirs,
     config,
@@ -171,7 +171,7 @@ export const pack = async (
     filePathsByRoot,
   );
 
-  // Workers are now warm — token counting starts without WASM init delay
+  // Workers are now warm — token counting starts without encoding init delay
   let metrics: Awaited<ReturnType<typeof deps.calculateMetrics>>;
   try {
     metrics = await withMemoryLogging('Calculate Metrics', () =>

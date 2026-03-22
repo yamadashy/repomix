@@ -5,14 +5,14 @@ import { createMockConfig } from '../testing/testUtils.js';
 
 vi.mock('node:fs/promises');
 vi.mock('fs/promises');
-vi.mock('../../src/core/metrics/TokenCounter.js', () => {
-  return {
-    TokenCounter: vi.fn().mockImplementation(() => ({
+vi.mock('../../src/core/metrics/TokenCounter.js', () => ({
+  TokenCounter: {
+    create: vi.fn().mockResolvedValue({
       countTokens: vi.fn().mockReturnValue(10),
       free: vi.fn(),
-    })),
-  };
-});
+    }),
+  },
+}));
 
 describe('packager', () => {
   beforeEach(() => {

@@ -13,7 +13,7 @@ import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
 /**
  * Pre-create a metrics task runner so worker threads can start loading
- * tiktoken WASM while other stages (e.g., output generation) are running.
+ * gpt-tokenizer encoding modules while other stages (e.g., output generation) are running.
  */
 export const createMetricsTaskRunner = (numOfTasks: number): TaskRunner<TokenCountTask, number> =>
   initTaskRunner<TokenCountTask, number>({

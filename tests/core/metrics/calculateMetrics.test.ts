@@ -6,14 +6,14 @@ import { calculateSelectiveFileMetrics } from '../../../src/core/metrics/calcula
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
-vi.mock('../../../src/core/metrics/TokenCounter.js', () => {
-  return {
-    TokenCounter: vi.fn().mockImplementation(() => ({
+vi.mock('../../../src/core/metrics/TokenCounter.js', () => ({
+  TokenCounter: {
+    create: vi.fn().mockResolvedValue({
       countTokens: vi.fn().mockReturnValue(10),
       free: vi.fn(),
-    })),
-  };
-});
+    }),
+  },
+}));
 vi.mock('../../../src/core/metrics/aggregateMetrics.js');
 vi.mock('../../../src/core/metrics/calculateSelectiveFileMetrics.js', () => ({
   calculateSelectiveFileMetrics: vi.fn(),

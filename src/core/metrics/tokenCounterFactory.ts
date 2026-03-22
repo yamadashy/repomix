@@ -1,18 +1,17 @@
-import type { TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
-import { TokenCounter } from './TokenCounter.js';
+import { type TokenCountEncoding, TokenCounter } from './TokenCounter.js';
 
-// Worker-level cache for TokenCounter instances by encoding
-const tokenCounters = new Map<TiktokenEncoding, TokenCounter>();
+// Cache for TokenCounter instances by encoding
+const tokenCounters = new Map<TokenCountEncoding, TokenCounter>();
 
 /**
  * Get or create a TokenCounter instance for the given encoding.
- * This ensures only one TokenCounter exists per encoding per worker thread to optimize memory usage.
+ * This ensures only one TokenCounter exists per encoding to optimize memory usage.
  */
-export const getTokenCounter = (encoding: TiktokenEncoding): TokenCounter => {
+export const getTokenCounter = async (encoding: TokenCountEncoding): Promise<TokenCounter> => {
   let tokenCounter = tokenCounters.get(encoding);
   if (!tokenCounter) {
-    tokenCounter = new TokenCounter(encoding);
+    tokenCounter = await TokenCounter.create(encoding);
     tokenCounters.set(encoding, tokenCounter);
   }
   return tokenCounter;
@@ -20,7 +19,6 @@ export const getTokenCounter = (encoding: TiktokenEncoding): TokenCounter => {
 
 /**
  * Free all TokenCounter resources and clear the cache.
- * This should be called when the worker is terminating.
  */
 export const freeTokenCounters = (): void => {
   for (const [encoding, tokenCounter] of tokenCounters.entries()) {
