@@ -58,7 +58,7 @@ async function processRemoteRepo(repoUrl) {
 ```
 
 > [!NOTE]
-> Por questões de segurança, os arquivos de configuração de repositórios remotos não são carregados por padrão. Para confiar na configuração de um repositório remoto, adicione `remoteTrustConfig: true` nas opções.
+> Por questões de segurança, os arquivos de configuração de repositórios remotos não são carregados por padrão. Para confiar na configuração de um repositório remoto, adicione `remoteTrustConfig: true` nas opções, ou defina a variável de ambiente `REPOMIX_REMOTE_TRUST_CONFIG=true`.
 
 ## Usando Componentes Principais
 

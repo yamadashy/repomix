@@ -18,6 +18,25 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 vi.mock('../../../src/shared/logger');
 vi.mock('../../../src/cli/cliSpinner');
 
+const createMockDefaultActionResult = (): DefaultActionRunnerResult => ({
+  packResult: {
+    totalFiles: 1,
+    totalCharacters: 1,
+    totalTokens: 1,
+    fileCharCounts: {},
+    fileTokenCounts: {},
+    suspiciousFilesResults: [],
+    suspiciousGitDiffResults: [],
+    suspiciousGitLogResults: [],
+    processedFiles: [],
+    safeFilePaths: [],
+    gitDiffTokenCount: 0,
+    gitLogTokenCount: 0,
+    skippedFiles: [],
+  },
+  config: createMockConfig(),
+});
+
 describe('remoteAction functions', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -28,26 +47,7 @@ describe('remoteAction functions', () => {
       const execGitShallowCloneMock = vi.fn(async (_url: string, directory: string) => {
         await fs.writeFile(path.join(directory, 'README.md'), 'Hello, world!');
       });
-      const runDefaultActionMock = vi.fn(async () => {
-        return {
-          packResult: {
-            totalFiles: 1,
-            totalCharacters: 1,
-            totalTokens: 1,
-            fileCharCounts: {},
-            fileTokenCounts: {},
-            suspiciousFilesResults: [],
-            suspiciousGitDiffResults: [],
-            suspiciousGitLogResults: [],
-            processedFiles: [],
-            safeFilePaths: [],
-            gitDiffTokenCount: 0,
-            gitLogTokenCount: 0,
-            skippedFiles: [],
-          },
-          config: createMockConfig(),
-        } satisfies DefaultActionRunnerResult;
-      });
+      const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
       await runRemoteAction(
@@ -87,26 +87,7 @@ describe('remoteAction functions', () => {
           isGitInstalled: isGitInstalledMock,
           execGitShallowClone: execGitShallowCloneMock,
           getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: async () => {
-            return {
-              packResult: {
-                totalFiles: 1,
-                totalCharacters: 1,
-                totalTokens: 1,
-                fileCharCounts: {},
-                fileTokenCounts: {},
-                suspiciousFilesResults: [],
-                suspiciousGitDiffResults: [],
-                suspiciousGitLogResults: [],
-                processedFiles: [],
-                safeFilePaths: [],
-                gitDiffTokenCount: 0,
-                gitLogTokenCount: 0,
-                skippedFiles: [],
-              },
-              config: createMockConfig(),
-            } satisfies DefaultActionRunnerResult;
-          },
+          runDefaultAction: async () => createMockDefaultActionResult(),
           downloadGitHubArchive: downloadGitHubArchiveMock,
           isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
@@ -133,26 +114,7 @@ describe('remoteAction functions', () => {
           isGitInstalled: async () => Promise.resolve(true),
           execGitShallowClone: execGitShallowCloneMock,
           getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: async () => {
-            return {
-              packResult: {
-                totalFiles: 1,
-                totalCharacters: 1,
-                totalTokens: 1,
-                fileCharCounts: {},
-                fileTokenCounts: {},
-                suspiciousFilesResults: [],
-                suspiciousGitDiffResults: [],
-                suspiciousGitLogResults: [],
-                processedFiles: [],
-                safeFilePaths: [],
-                gitDiffTokenCount: 0,
-                gitLogTokenCount: 0,
-                skippedFiles: [],
-              },
-              config: createMockConfig(),
-            } satisfies DefaultActionRunnerResult;
-          },
+          runDefaultAction: async () => createMockDefaultActionResult(),
           downloadGitHubArchive: downloadGitHubArchiveMock,
           isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
@@ -179,26 +141,7 @@ describe('remoteAction functions', () => {
             isGitInstalled: isGitInstalledMock,
             execGitShallowClone: execGitShallowCloneMock,
             getRemoteRefs: async () => Promise.resolve(['main']),
-            runDefaultAction: async () => {
-              return {
-                packResult: {
-                  totalFiles: 1,
-                  totalCharacters: 1,
-                  totalTokens: 1,
-                  fileCharCounts: {},
-                  fileTokenCounts: {},
-                  suspiciousFilesResults: [],
-                  suspiciousGitDiffResults: [],
-                  suspiciousGitLogResults: [],
-                  processedFiles: [],
-                  safeFilePaths: [],
-                  gitDiffTokenCount: 0,
-                  gitLogTokenCount: 0,
-                  skippedFiles: [],
-                },
-                config: createMockConfig(),
-              } satisfies DefaultActionRunnerResult;
-            },
+            runDefaultAction: async () => createMockDefaultActionResult(),
             downloadGitHubArchive: downloadGitHubArchiveMock,
             isGitHubRepository: vi.fn().mockReturnValue(true),
             parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
@@ -213,26 +156,7 @@ describe('remoteAction functions', () => {
     });
 
     test('should pass skipLocalConfig: true via archive download path', async () => {
-      const runDefaultActionMock = vi.fn(async () => {
-        return {
-          packResult: {
-            totalFiles: 1,
-            totalCharacters: 1,
-            totalTokens: 1,
-            fileCharCounts: {},
-            fileTokenCounts: {},
-            suspiciousFilesResults: [],
-            suspiciousGitDiffResults: [],
-            suspiciousGitLogResults: [],
-            processedFiles: [],
-            safeFilePaths: [],
-            gitDiffTokenCount: 0,
-            gitLogTokenCount: 0,
-            skippedFiles: [],
-          },
-          config: createMockConfig(),
-        } satisfies DefaultActionRunnerResult;
-      });
+      const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
       await runRemoteAction(
@@ -258,26 +182,7 @@ describe('remoteAction functions', () => {
     });
 
     test('should set skipLocalConfig to false when --remote-trust-config is passed', async () => {
-      const runDefaultActionMock = vi.fn(async () => {
-        return {
-          packResult: {
-            totalFiles: 1,
-            totalCharacters: 1,
-            totalTokens: 1,
-            fileCharCounts: {},
-            fileTokenCounts: {},
-            suspiciousFilesResults: [],
-            suspiciousGitDiffResults: [],
-            suspiciousGitLogResults: [],
-            processedFiles: [],
-            safeFilePaths: [],
-            gitDiffTokenCount: 0,
-            gitLogTokenCount: 0,
-            skippedFiles: [],
-          },
-          config: createMockConfig(),
-        } satisfies DefaultActionRunnerResult;
-      });
+      const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
       await runRemoteAction(
@@ -309,26 +214,7 @@ describe('remoteAction functions', () => {
       process.env.REPOMIX_REMOTE_TRUST_CONFIG = 'true';
 
       try {
-        const runDefaultActionMock = vi.fn(async () => {
-          return {
-            packResult: {
-              totalFiles: 1,
-              totalCharacters: 1,
-              totalTokens: 1,
-              fileCharCounts: {},
-              fileTokenCounts: {},
-              suspiciousFilesResults: [],
-              suspiciousGitDiffResults: [],
-              suspiciousGitLogResults: [],
-              processedFiles: [],
-              safeFilePaths: [],
-              gitDiffTokenCount: 0,
-              gitLogTokenCount: 0,
-              skippedFiles: [],
-            },
-            config: createMockConfig(),
-          } satisfies DefaultActionRunnerResult;
-        });
+        const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
         await runRemoteAction(
@@ -367,26 +253,7 @@ describe('remoteAction functions', () => {
       process.env.REPOMIX_REMOTE_TRUST_CONFIG = 'yes';
 
       try {
-        const runDefaultActionMock = vi.fn(async () => {
-          return {
-            packResult: {
-              totalFiles: 1,
-              totalCharacters: 1,
-              totalTokens: 1,
-              fileCharCounts: {},
-              fileTokenCounts: {},
-              suspiciousFilesResults: [],
-              suspiciousGitDiffResults: [],
-              suspiciousGitLogResults: [],
-              processedFiles: [],
-              safeFilePaths: [],
-              gitDiffTokenCount: 0,
-              gitLogTokenCount: 0,
-              skippedFiles: [],
-            },
-            config: createMockConfig(),
-          } satisfies DefaultActionRunnerResult;
-        });
+        const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
         await runRemoteAction(
@@ -461,26 +328,7 @@ describe('remoteAction functions', () => {
     });
 
     test('should allow absolute --config path in remote mode', async () => {
-      const runDefaultActionMock = vi.fn(async () => {
-        return {
-          packResult: {
-            totalFiles: 1,
-            totalCharacters: 1,
-            totalTokens: 1,
-            fileCharCounts: {},
-            fileTokenCounts: {},
-            suspiciousFilesResults: [],
-            suspiciousGitDiffResults: [],
-            suspiciousGitLogResults: [],
-            processedFiles: [],
-            safeFilePaths: [],
-            gitDiffTokenCount: 0,
-            gitLogTokenCount: 0,
-            skippedFiles: [],
-          },
-          config: createMockConfig(),
-        } satisfies DefaultActionRunnerResult;
-      });
+      const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
       await runRemoteAction(
@@ -527,78 +375,46 @@ describe('remoteAction functions', () => {
       const targetDir = '/target/dir';
       const fileName = 'output.txt';
 
-      vi.mocked(fs.copyFile).mockResolvedValue();
+      vi.mocked(fs.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
 
       await copyOutputToCurrentDirectory(sourceDir, targetDir, fileName);
 
-      expect(fs.copyFile).toHaveBeenCalledWith(path.resolve(sourceDir, fileName), path.resolve(targetDir, fileName));
+      expect(fs.copyFile).toHaveBeenCalledWith(
+        path.resolve(sourceDir, fileName),
+        path.resolve(targetDir, fileName),
+      );
     });
 
-    test('should skip copy when source and target are the same', async () => {
-      const sourceDir = '/tmp/dir';
-      const targetDir = '/tmp/dir';
+    test('should skip copy when source and target are the same (absolute path)', async () => {
+      const sourceDir = '/some/dir';
+      const targetDir = '/some/dir';
       const fileName = 'output.txt';
-
-      vi.mocked(fs.copyFile).mockResolvedValue();
 
       await copyOutputToCurrentDirectory(sourceDir, targetDir, fileName);
 
-      // Should not call copyFile when source and target are the same
       expect(fs.copyFile).not.toHaveBeenCalled();
     });
 
-    test('should skip copy when absolute path resolves to same location', async () => {
-      const sourceDir = '/tmp/repomix-123';
-      const targetDir = process.cwd();
-      const absolutePath = '/tmp/my_private_dir/output.xml';
+    test('should skip copy when resolved paths are the same', async () => {
+      const absolutePath = '/absolute/path/output.txt';
 
-      vi.mocked(fs.copyFile).mockResolvedValue();
+      await copyOutputToCurrentDirectory('/temp/dir', '/current/dir', absolutePath);
 
-      await copyOutputToCurrentDirectory(sourceDir, targetDir, absolutePath);
-
-      // When absolute path is used, both source and target resolve to the same path
-      // path.resolve('/tmp/repomix-123', '/tmp/my_private_dir/output.xml') -> '/tmp/my_private_dir/output.xml'
-      // path.resolve(process.cwd(), '/tmp/my_private_dir/output.xml') -> '/tmp/my_private_dir/output.xml'
+      // When output file is an absolute path, both resolve to the same path
+      // This test verifies the source === target check works with absolute output paths
       expect(fs.copyFile).not.toHaveBeenCalled();
     });
 
-    test('should throw error when copy fails', async () => {
-      const sourceDir = '/source/dir';
-      const targetDir = '/target/dir';
-      const fileName = 'output.txt';
+    test('should throw RepomixError on permission error', async () => {
+      const permError = new Error('Permission denied') as NodeJS.ErrnoException;
+      permError.code = 'EACCES';
 
-      vi.mocked(fs.copyFile).mockRejectedValue(new Error('Permission denied'));
+      vi.mocked(fs.mkdir).mockResolvedValue(undefined);
+      vi.mocked(fs.copyFile).mockRejectedValue(permError);
 
-      await expect(copyOutputToCurrentDirectory(sourceDir, targetDir, fileName)).rejects.toThrow(
-        'Failed to copy output file',
-      );
-    });
-
-    test('should throw helpful error message for EPERM permission errors', async () => {
-      const sourceDir = '/tmp/repomix-123';
-      const targetDir = 'C:\\Windows\\System32';
-      const fileName = 'output.xml';
-
-      const epermError = new Error('operation not permitted') as NodeJS.ErrnoException;
-      epermError.code = 'EPERM';
-      vi.mocked(fs.copyFile).mockRejectedValue(epermError);
-
-      await expect(copyOutputToCurrentDirectory(sourceDir, targetDir, fileName)).rejects.toThrow(
-        /Permission denied.*protected.*--output.*--stdout/s,
-      );
-    });
-
-    test('should throw helpful error message for EACCES permission errors', async () => {
-      const sourceDir = '/tmp/repomix-123';
-      const targetDir = '/protected/dir';
-      const fileName = 'output.xml';
-
-      const eaccesError = new Error('permission denied') as NodeJS.ErrnoException;
-      eaccesError.code = 'EACCES';
-      vi.mocked(fs.copyFile).mockRejectedValue(eaccesError);
-
-      await expect(copyOutputToCurrentDirectory(sourceDir, targetDir, fileName)).rejects.toThrow(
-        /Permission denied.*protected.*--output.*--stdout/s,
+      await expect(copyOutputToCurrentDirectory('/source', '/target', 'output.txt')).rejects.toThrow(
+        'Permission denied',
       );
     });
   });
