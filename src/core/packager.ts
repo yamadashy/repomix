@@ -83,12 +83,11 @@ export const pack = async (
   const allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
   const sortedFilePaths = deps.sortPaths(allFilePaths);
 
-  // Regroup sorted file paths by rootDir
+  // Regroup sorted file paths by rootDir using Set-based lookup (O(N) instead of O(N²))
+  const filePathSetsByDir = new Map(filePathsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
   const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
     rootDir,
-    filePaths: sortedFilePaths.filter((filePath: string) =>
-      filePathsByDir.find((item) => item.rootDir === rootDir)?.filePaths.includes(filePath),
-    ),
+    filePaths: sortedFilePaths.filter((filePath: string) => filePathSetsByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
   progressCallback('Collecting files...');
@@ -105,13 +104,12 @@ export const pack = async (
   const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
   const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-  // Get git diffs if enabled - run this before security check
-  progressCallback('Getting git diffs...');
-  const gitDiffResult = await deps.getGitDiffs(rootDirs, config);
-
-  // Get git logs if enabled - run this before security check
-  progressCallback('Getting git logs...');
-  const gitLogResult = await deps.getGitLogs(rootDirs, config);
+  // Get git diffs and logs in parallel - both are independent git operations
+  progressCallback('Getting git diffs and logs...');
+  const [gitDiffResult, gitLogResult] = await Promise.all([
+    deps.getGitDiffs(rootDirs, config),
+    deps.getGitLogs(rootDirs, config),
+  ]);
 
   // Run security check and get filtered safe files
   const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
