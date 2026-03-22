@@ -71,6 +71,12 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+在 `--remote` 模式下使用 `--config` 時，必須指定絕對路徑：
+
+```bash
+repomix --remote user/repo --config /home/user/repomix.config.json
+```
+
 ## 常見問題
 
 ### 訪問問題

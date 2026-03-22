@@ -755,6 +755,8 @@ repomix --remote https://github.com/yamadashy/repomix/commit/836abcd7335137228ad
 
 > [!NOTE]
 > For security, config files (`repomix.config.*`) in remote repositories are not loaded by default. This prevents untrusted repositories from executing code via config files. Your global config and CLI options are still applied. To trust a remote repository's config, use `--remote-trust-config` or set `REPOMIX_REMOTE_TRUST_CONFIG=true`.
+>
+> When using `--config` with `--remote`, an absolute path is required (e.g., `--config /home/user/repomix.config.json`).
 
 ### Code Compression
 

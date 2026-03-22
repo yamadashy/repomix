@@ -152,6 +152,12 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+Khi sử dụng `--config` với `--remote`, cần chỉ định đường dẫn tuyệt đối:
+
+```bash
+repomix --remote user/repo --config /home/user/repomix.config.json
+```
+
 ## Tiếp theo là gì?
 
 - [Tùy chọn dòng lệnh](command-line-options.md): Xem tất cả các tùy chọn dòng lệnh có sẵn

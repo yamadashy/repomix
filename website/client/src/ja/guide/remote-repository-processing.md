@@ -71,6 +71,12 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+`--remote` と `--config` を併用する場合は、絶対パスを指定する必要があります：
+
+```bash
+repomix --remote user/repo --config /home/user/repomix.config.json
+```
+
 ## 一般的な問題
 
 ### アクセスの問題

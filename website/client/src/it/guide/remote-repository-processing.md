@@ -65,6 +65,12 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+Quando si usa `--config` con `--remote`, è richiesto un percorso assoluto:
+
+```bash
+repomix --remote user/repo --config /home/user/repomix.config.json
+```
+
 ## Problemi Comuni
 
 ### Problemi di Accesso

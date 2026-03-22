@@ -88,6 +88,12 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+Saat menggunakan `--config` dengan `--remote`, path absolut diperlukan:
+
+```bash
+repomix --remote user/repo --config /home/user/repomix.config.json
+```
+
 ## Kasus Penggunaan
 
 Pemrosesan repositori remote sangat berguna untuk:

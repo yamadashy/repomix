@@ -71,6 +71,12 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+`--remote`와 `--config`를 함께 사용할 때는 절대 경로를 지정해야 합니다:
+
+```bash
+repomix --remote user/repo --config /home/user/repomix.config.json
+```
+
 ## 일반적인 문제
 
 ### 접근 문제

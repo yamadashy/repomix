@@ -118,6 +118,12 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+`--remote` के साथ `--config` का उपयोग करते समय, एक पूर्ण (absolute) पथ आवश्यक है:
+
+```bash
+repomix --remote user/repo --config /home/user/repomix.config.json
+```
+
 ## अगला क्या है?
 
 - [कमांड लाइन विकल्पों](command-line-options.md) के बारे में अधिक जानें
