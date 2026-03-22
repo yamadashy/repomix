@@ -54,6 +54,10 @@ describe('packager', () => {
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
       }),
+      createMetricsTaskRunner: vi.fn().mockReturnValue({
+        run: vi.fn(),
+        cleanup: vi.fn(),
+      }),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -100,14 +104,14 @@ describe('packager', () => {
       progressCallback,
       [{ rootLabel: 'root', files: mockFilePaths }],
     );
-    expect(mockDeps.calculateMetrics).toHaveBeenCalledWith(
-      mockProcessedFiles,
-      mockOutput,
-      progressCallback,
-      mockConfig,
-      undefined,
-      undefined,
-    );
+    // calculateMetrics is now called with a Promise (for output overlap)
+    const calcMetricsCall = mockDeps.calculateMetrics.mock.calls[0];
+    expect(calcMetricsCall[0]).toEqual(mockProcessedFiles);
+    // The second arg is a Promise that resolves to mockOutput
+    expect(await calcMetricsCall[1]).toBe(mockOutput);
+    expect(calcMetricsCall[2]).toBe(progressCallback);
+    expect(calcMetricsCall[3]).toBe(mockConfig);
+    expect(calcMetricsCall[6]).toEqual({ taskRunner: expect.any(Object) });
 
     // Check the result of pack function
     expect(result.totalFiles).toBe(2);

@@ -55,6 +55,10 @@ describe('packager split output', () => {
       getGitLogs: vi.fn().mockResolvedValue(undefined),
       produceOutput,
       calculateMetrics,
+      createMetricsTaskRunner: vi.fn().mockReturnValue({
+        run: vi.fn(),
+        cleanup: vi.fn(),
+      }),
     });
 
     expect(produceOutput).toHaveBeenCalledWith(
@@ -68,14 +72,11 @@ describe('packager split output', () => {
       [{ rootLabel: 'root', files: allFilePaths }],
     );
 
-    expect(calculateMetrics).toHaveBeenCalledWith(
-      processedFiles,
-      ['x'.repeat(10), 'x'.repeat(10)],
-      expect.anything(),
-      mockConfig,
-      undefined,
-      undefined,
-    );
+    // calculateMetrics is called with a Promise for the output (for overlap)
+    const calcCall = calculateMetrics.mock.calls[0];
+    expect(calcCall[0]).toEqual(processedFiles);
+    expect(await calcCall[1]).toEqual(['x'.repeat(10), 'x'.repeat(10)]);
+    expect(calcCall[6]).toEqual({ taskRunner: expect.any(Object) });
 
     expect(result.outputFiles).toEqual(['repomix-output.1.xml', 'repomix-output.2.xml']);
   });

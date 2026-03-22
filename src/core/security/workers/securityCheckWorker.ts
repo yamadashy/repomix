@@ -22,8 +22,14 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
+// Cache config at module level — it's identical for every file
+let cachedConfig: SecretLintCoreConfig | undefined;
+
 export default async ({ filePath, content, type }: SecurityCheckTask) => {
-  const config = createSecretLintConfig();
+  if (!cachedConfig) {
+    cachedConfig = createSecretLintConfig();
+  }
+  const config = cachedConfig;
 
   try {
     const processStartAt = process.hrtime.bigint();

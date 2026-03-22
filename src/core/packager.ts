@@ -10,7 +10,7 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics } from './metrics/calculateMetrics.js';
+import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -40,6 +40,7 @@ const defaultDeps = {
   validateFileSafety,
   produceOutput,
   calculateMetrics,
+  createMetricsTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -155,8 +156,11 @@ export const pack = async (
     files: filePaths,
   }));
 
-  // Generate and write output (handles both single and split output)
-  const { outputFiles, outputForMetrics } = await deps.produceOutput(
+  // Pre-warm metrics worker pool so tiktoken WASM loads during output generation
+  const metricsTaskRunner = deps.createMetricsTaskRunner(processedFiles.length);
+
+  // Start output generation - metrics will overlap via the Promise
+  const outputPromise = deps.produceOutput(
     rootDirs,
     config,
     processedFiles,
@@ -167,9 +171,25 @@ export const pack = async (
     filePathsByRoot,
   );
 
+  // Pass output as a Promise so calculateMetrics can start file/git token counting
+  // immediately while output generation is still running. Output token counting
+  // starts once the Promise resolves.
+  const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),
+    deps.calculateMetrics(
+      processedFiles,
+      outputForMetricsPromise,
+      progressCallback,
+      config,
+      gitDiffResult,
+      gitLogResult,
+      {
+        taskRunner: metricsTaskRunner,
+      },
+    ),
   );
+
+  const { outputFiles } = await outputPromise;
 
   // Create a result object that includes metrics and security results
   const result = {
