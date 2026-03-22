@@ -274,16 +274,16 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     return;
   }
 
-  if (options.remote) {
-    const { runRemoteAction } = await import('./actions/remoteAction.js');
-    return await runRemoteAction(options.remote, options);
+  // Determine remote URL from explicit option or auto-detected positional argument
+  let remoteUrl: string | undefined = options.remote;
+  if (!remoteUrl && directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
+    logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
+    remoteUrl = directories[0];
   }
 
-  // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
-  if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
-    logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
+  if (remoteUrl) {
     const { runRemoteAction } = await import('./actions/remoteAction.js');
-    return await runRemoteAction(directories[0], options);
+    return await runRemoteAction(remoteUrl, options);
   }
 
   const { runDefaultAction } = await import('./actions/defaultAction.js');
