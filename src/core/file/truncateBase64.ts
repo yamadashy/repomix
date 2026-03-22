@@ -12,16 +12,17 @@ const MIN_CHAR_TYPE_COUNT = 3;
  * @param content The content to process
  * @returns Content with base64 data truncated
  */
-export const truncateBase64Content = (content: string): string => {
-  // Pattern to match data URIs (e.g., data:image/png;base64,...)
-  const dataUriPattern = new RegExp(
-    `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
-    'g',
-  );
+// Pre-compiled regex patterns (avoid recompilation per file)
+const dataUriPattern = new RegExp(
+  `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
+  'g',
+);
+const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
 
-  // Pattern to match standalone base64 strings
-  // This matches base64 strings that are likely encoded binary data
-  const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
+export const truncateBase64Content = (content: string): string => {
+  // Reset lastIndex since regexes are reused across calls
+  dataUriPattern.lastIndex = 0;
+  standaloneBase64Pattern.lastIndex = 0;
 
   let processedContent = content;
 

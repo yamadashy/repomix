@@ -4,5 +4,7 @@ import type { SuspiciousFileResult } from './securityCheck.js';
 export const filterOutUntrustedFiles = (
   rawFiles: RawFile[],
   suspiciousFilesResults: SuspiciousFileResult[],
-): RawFile[] =>
-  rawFiles.filter((rawFile) => !suspiciousFilesResults.some((result) => result.filePath === rawFile.path));
+): RawFile[] => {
+  const suspiciousSet = new Set(suspiciousFilesResults.map((result) => result.filePath));
+  return rawFiles.filter((rawFile) => !suspiciousSet.has(rawFile.path));
+};
