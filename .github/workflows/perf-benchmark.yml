@@ -28,6 +28,35 @@ jobs:
         run: |
           SHORT_SHA="${COMMIT_SHA:0:7}"
           COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
+
+          # Find existing comment by marker
+          COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id" | head -1)
+
+          # Extract and preserve history from existing comment
+          HISTORY=""
+          if [ -n "$COMMENT_ID" ]; then
+            HISTORY=$(
+              gh api "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" --jq '.body' > "$RUNNER_TEMP/old-comment.txt" && \
+              COMMENT_FILE="$RUNNER_TEMP/old-comment.txt" node -e '
+                const body = require("fs").readFileSync(process.env.COMMENT_FILE, "utf8");
+                const historyMatch = body.match(/<!-- history-start -->([\s\S]*?)<!-- history-end -->/);
+                let history = historyMatch ? historyMatch[1] : "";
+                if (body.includes("\u2705 Benchmark complete!")) {
+                  const shaMatch = body.match(/Latest commit:<\/strong><\/td><td><code>([a-f0-9]+)<\/code>/);
+                  const sha = shaMatch ? shaMatch[1] : "";
+                  const rowRe = /<tr><td><strong>(?:Ubuntu|macOS|Windows):<\/strong><\/td><td>.*?<\/td><\/tr>/g;
+                  const rows = body.match(rowRe) || [];
+                  if (sha && rows.length > 0) {
+                    const entry = "\n<code>" + sha + "</code>\n<table>\n" + rows.join("\n") + "\n</table>\n";
+                    history = entry + history;
+                  }
+                }
+                const entries = history.split(/(?=\n<code>[a-f0-9]{7}<\/code>)/).filter(Boolean);
+                process.stdout.write(entries.slice(0, 5).join(""));
+              '
+            ) || true
+          fi
+
           BODY="${COMMENT_MARKER}
           ## ⚡ Performance Benchmark
 
@@ -36,8 +65,15 @@ jobs:
 
           [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
 
-          # Find existing comment by marker
-          COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id" | head -1)
+          if [ -n "$HISTORY" ]; then
+            BODY="${BODY}
+
+          <details>
+          <summary>History</summary>
+          <!-- history-start -->${HISTORY}
+          <!-- history-end -->
+          </details>"
+          fi
 
           if [ -n "$COMMENT_ID" ]; then
             gh api "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" -X PATCH -f body="$BODY"
@@ -239,11 +275,34 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
+
+          # Find existing comment and extract history
+          COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id" | head -1)
+
+          HISTORY=""
+          if [ -n "$COMMENT_ID" ]; then
+            HISTORY=$(
+              gh api "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" --jq '.body' > "$RUNNER_TEMP/old-comment.txt" && \
+              COMMENT_FILE="$RUNNER_TEMP/old-comment.txt" node -e '
+                const body = require("fs").readFileSync(process.env.COMMENT_FILE, "utf8");
+                const m = body.match(/<!-- history-start -->([\s\S]*?)<!-- history-end -->/);
+                if (m) process.stdout.write(m[1]);
+              '
+            ) || true
+          fi
+
           BODY="${COMMENT_MARKER}
           $(cat "$RUNNER_TEMP/benchmark-report.md")"
 
-          # Find existing comment by marker
-          COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id" | head -1)
+          if [ -n "$HISTORY" ]; then
+            BODY="${BODY}
+
+          <details>
+          <summary>History</summary>
+          <!-- history-start -->${HISTORY}
+          <!-- history-end -->
+          </details>"
+          fi
 
           if [ -n "$COMMENT_ID" ]; then
             gh api "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" -X PATCH -f body="$BODY"
