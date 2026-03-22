@@ -25,19 +25,88 @@ jobs:
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          SHORT_SHA="${COMMIT_SHA:0:7}"
           COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
-          BODY="${COMMENT_MARKER}
-          ## ⚡ Performance Benchmark
-
-          <table><tr><td><strong>Latest commit:</strong></td><td><code>${SHORT_SHA}</code></td></tr>
-          <tr><td><strong>Status:</strong></td><td>⚡ Benchmark in progress...</td></tr></table>
-
-          [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
 
           # Find existing comment by marker
           COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id" | head -1)
+
+          # Save existing comment body to file for safe parsing
+          if [ -n "$COMMENT_ID" ]; then
+            gh api "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" --jq '.body' > "$RUNNER_TEMP/old-comment.txt"
+          else
+            echo "" > "$RUNNER_TEMP/old-comment.txt"
+          fi
+
+          # Fetch commit message in shell (avoids escaping issues in Node)
+          COMMIT_MSG=$(gh api "repos/${GH_REPO}/commits/${COMMIT_SHA}" --jq '.commit.message | split("\n") | .[0]' 2>/dev/null || echo "")
+
+          # Generate comment with Node (handles JSON history + rendering)
+          COMMIT_MSG="$COMMIT_MSG" node -e '
+            const fs = require("fs");
+            const shortSha = process.env.COMMIT_SHA.slice(0, 7);
+            const commitMsg = process.env.COMMIT_MSG;
+            const runUrl = process.env.WORKFLOW_RUN_URL;
+            const oldBody = fs.readFileSync(process.env.RUNNER_TEMP + "/old-comment.txt", "utf8");
+
+            // Extract history JSON from existing comment
+            const jsonMatch = oldBody.match(/<!-- bench-history-json (.*?) -->/);
+            let history = jsonMatch ? JSON.parse(jsonMatch[1]) : [];
+
+            // If previous comment had completed results, archive them into history
+            if (oldBody.includes("\u2705 Benchmark complete!")) {
+              const commitMatch = oldBody.match(/Latest commit:<\/strong><\/td><td><code>([a-f0-9]+)<\/code>\s*(.*?)<\/td>/);
+              const prevSha = commitMatch ? commitMatch[1] : "";
+              const prevMsg = commitMatch ? commitMatch[2] : "";
+              if (prevSha) {
+                const rowRe = /<tr><td><strong>(Ubuntu|macOS|Windows):<\/strong><\/td><td>(.*?)<\/td><\/tr>/g;
+                const entry = { sha: prevSha, msg: prevMsg };
+                let m;
+                while ((m = rowRe.exec(oldBody)) !== null) {
+                  entry[m[1].toLowerCase()] = m[2];
+                }
+                if (!history.some(h => h.sha === prevSha)) {
+                  history.unshift(entry);
+                }
+              }
+            }
+
+            // Keep max 5 entries
+            history = history.slice(0, 5);
+
+            // Render history section
+            function renderHistory(hist) {
+              if (hist.length === 0) return "";
+              return hist.map(h => {
+                const label = "<code>" + h.sha + "</code>" + (h.msg ? " " + h.msg : "");
+                const osRows = ["ubuntu", "macos", "windows"]
+                  .filter(os => h[os] && h[os] !== "-")
+                  .map(os => {
+                    const osLabel = os === "ubuntu" ? "Ubuntu" : os === "macos" ? "macOS" : "Windows";
+                    return "<tr><td><strong>" + osLabel + ":</strong></td><td>" + h[os] + "</td></tr>";
+                  })
+                  .join("\n");
+                return label + "\n<table>\n" + osRows + "\n</table>";
+              }).join("\n\n");
+            }
+
+            const jsonComment = "<!-- bench-history-json " + JSON.stringify(history) + " -->";
+            let body = "<!-- repomix-perf-benchmark -->\n" + jsonComment + "\n";
+            body += "## \u26a1 Performance Benchmark\n\n";
+            body += "<table><tr><td><strong>Latest commit:</strong></td><td><code>" + shortSha + "</code> " + commitMsg + "</td></tr>\n";
+            body += "<tr><td><strong>Status:</strong></td><td>\u26a1 Benchmark in progress...</td></tr></table>\n\n";
+            body += "[Workflow run](" + runUrl + ")";
+
+            const historyHtml = renderHistory(history);
+            if (historyHtml) {
+              body += "\n\n<details>\n<summary>History</summary>\n\n" + historyHtml + "\n\n</details>";
+            }
+
+            fs.writeFileSync(process.env.RUNNER_TEMP + "/new-comment.md", body);
+          '
+
+          BODY=$(cat "$RUNNER_TEMP/new-comment.md")
 
           if [ -n "$COMMENT_ID" ]; then
             gh api "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" -X PATCH -f body="$BODY"
@@ -164,86 +233,119 @@ jobs:
           path: results
           pattern: bench-result-*
 
-      - name: Generate benchmark report
-        id: report
-        env:
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          SHORT_SHA="${COMMIT_SHA:0:7}"
-
-          generate_row() {
-            local os=$1
-            local label=$2
-            local file="results/bench-result-${os}/bench-result.json"
-
-            if [ ! -f "$file" ]; then
-              echo "<tr><td><strong>${label}:</strong></td><td>-</td></tr>"
-              return
-            fi
-
-            local data
-            data=$(node -e "console.log(JSON.stringify(JSON.parse(require('fs').readFileSync('$file','utf8'))))")
-
-            local pr_ms main_ms pr_iqr main_iqr
-            pr_ms=$(node -e "console.log(JSON.parse('$data').pr)")
-            main_ms=$(node -e "console.log(JSON.parse('$data').main)")
-            pr_iqr=$(node -e "console.log(JSON.parse('$data').prIqr)")
-            main_iqr=$(node -e "console.log(JSON.parse('$data').mainIqr)")
-
-            local diff=$((pr_ms - main_ms))
-            local pr_sec main_sec pr_iqr_sec main_iqr_sec diff_sec diff_pct
-            pr_sec=$(awk "BEGIN {printf \"%.2f\", $pr_ms / 1000}")
-            main_sec=$(awk "BEGIN {printf \"%.2f\", $main_ms / 1000}")
-            pr_iqr_sec=$(awk "BEGIN {printf \"%.2f\", $pr_iqr / 1000}")
-            main_iqr_sec=$(awk "BEGIN {printf \"%.2f\", $main_iqr / 1000}")
-            diff_sec=$(awk "BEGIN {printf \"%+.2f\", $diff / 1000}")
-
-            if [ "$main_ms" -gt 0 ]; then
-              diff_pct=$(awk "BEGIN {printf \"%+.1f\", ($diff / $main_ms) * 100}")
-            else
-              diff_pct="N/A"
-            fi
-
-            echo "<tr><td><strong>${label}:</strong></td><td>${main_sec}s (±${main_iqr_sec}s) → ${pr_sec}s (±${pr_iqr_sec}s) · ${diff_sec}s (${diff_pct}%)</td></tr>"
-          }
-
-          BODY="## ⚡ Performance Benchmark
-
-          <table><tr><td><strong>Latest commit:</strong></td><td><code>${SHORT_SHA}</code></td></tr>
-          <tr><td><strong>Status:</strong></td><td>✅ Benchmark complete!</td></tr>
-          $(generate_row "ubuntu-latest" "Ubuntu")
-          $(generate_row "macos-latest" "macOS")
-          $(generate_row "windows-latest" "Windows")
-          </table>
-
-          <details>
-          <summary>Details</summary>
-
-          - Packing the repomix repository with \`node bin/repomix.cjs\`
-          - Warmup: 2 runs (discarded)
-          - Measurement: 10 runs / 20 on macOS (median ± IQR)
-          - [Workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
-
-          </details>"
-
-          echo "$BODY" >> "$GITHUB_STEP_SUMMARY"
-
-          # Save report for comment step
-          echo "$BODY" > "$RUNNER_TEMP/benchmark-report.md"
-
       - name: Comment on PR
         if: ${{ github.event.pull_request.head.repo.fork == false }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           COMMENT_MARKER="<!-- repomix-perf-benchmark -->"
-          BODY="${COMMENT_MARKER}
-          $(cat "$RUNNER_TEMP/benchmark-report.md")"
 
-          # Find existing comment by marker
+          # Find existing comment and save old body to file
           COMMENT_ID=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id" | head -1)
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" --jq '.body' > "$RUNNER_TEMP/old-comment.txt"
+          else
+            echo "" > "$RUNNER_TEMP/old-comment.txt"
+          fi
+
+          # Fetch commit message in shell
+          COMMIT_MSG=$(gh api "repos/${GH_REPO}/commits/${COMMIT_SHA}" --jq '.commit.message | split("\n") | .[0]' 2>/dev/null || echo "")
+
+          # Generate complete comment with Node
+          COMMIT_MSG="$COMMIT_MSG" node -e '
+            const fs = require("fs");
+            const path = require("path");
+
+            const shortSha = process.env.COMMIT_SHA.slice(0, 7);
+            const commitMsg = process.env.COMMIT_MSG;
+            const runUrl = process.env.WORKFLOW_RUN_URL;
+            const oldBody = fs.readFileSync(process.env.RUNNER_TEMP + "/old-comment.txt", "utf8");
+
+            // Extract history JSON from existing comment (set by post-pending)
+            const jsonMatch = oldBody.match(/<!-- bench-history-json (.*?) -->/);
+            const history = jsonMatch ? JSON.parse(jsonMatch[1]) : [];
+
+            // Read benchmark results from artifacts
+            function readResult(os) {
+              const file = path.join("results", "bench-result-" + os, "bench-result.json");
+              try {
+                return JSON.parse(fs.readFileSync(file, "utf8"));
+              } catch {
+                return null;
+              }
+            }
+
+            function formatResult(data) {
+              if (!data) return "-";
+              const prSec = (data.pr / 1000).toFixed(2);
+              const mainSec = (data.main / 1000).toFixed(2);
+              const prIqr = (data.prIqr / 1000).toFixed(2);
+              const mainIqr = (data.mainIqr / 1000).toFixed(2);
+              const diff = data.pr - data.main;
+              const diffSec = (diff >= 0 ? "+" : "") + (diff / 1000).toFixed(2);
+              const diffPct = data.main > 0
+                ? (diff >= 0 ? "+" : "") + ((diff / data.main) * 100).toFixed(1)
+                : "N/A";
+              return mainSec + "s (\u00b1" + mainIqr + "s) \u2192 " + prSec + "s (\u00b1" + prIqr + "s) \u00b7 " + diffSec + "s (" + diffPct + "%)";
+            }
+
+            const ubuntuStr = formatResult(readResult("ubuntu-latest"));
+            const macosStr = formatResult(readResult("macos-latest"));
+            const windowsStr = formatResult(readResult("windows-latest"));
+
+            // Render history section
+            function renderHistory(hist) {
+              if (hist.length === 0) return "";
+              return hist.map(h => {
+                const label = "<code>" + h.sha + "</code>" + (h.msg ? " " + h.msg : "");
+                const osRows = ["ubuntu", "macos", "windows"]
+                  .filter(os => h[os] && h[os] !== "-")
+                  .map(os => {
+                    const osLabel = os === "ubuntu" ? "Ubuntu" : os === "macos" ? "macOS" : "Windows";
+                    return "<tr><td><strong>" + osLabel + ":</strong></td><td>" + h[os] + "</td></tr>";
+                  })
+                  .join("\n");
+                return label + "\n<table>\n" + osRows + "\n</table>";
+              }).join("\n\n");
+            }
+
+            const jsonComment = "<!-- bench-history-json " + JSON.stringify(history) + " -->";
+            let body = "<!-- repomix-perf-benchmark -->\n" + jsonComment + "\n";
+            body += "## \u26a1 Performance Benchmark\n\n";
+            body += "<table><tr><td><strong>Latest commit:</strong></td><td><code>" + shortSha + "</code> " + commitMsg + "</td></tr>\n";
+            body += "<tr><td><strong>Status:</strong></td><td>\u2705 Benchmark complete!</td></tr>\n";
+            body += "<tr><td><strong>Ubuntu:</strong></td><td>" + ubuntuStr + "</td></tr>\n";
+            body += "<tr><td><strong>macOS:</strong></td><td>" + macosStr + "</td></tr>\n";
+            body += "<tr><td><strong>Windows:</strong></td><td>" + windowsStr + "</td></tr>\n";
+            body += "</table>\n\n";
+            body += "<details>\n<summary>Details</summary>\n\n";
+            body += "- Packing the repomix repository with `node bin/repomix.cjs`\n";
+            body += "- Warmup: 2 runs (discarded)\n";
+            body += "- Measurement: 10 runs / 20 on macOS (median \u00b1 IQR)\n";
+            body += "- [Workflow run](" + runUrl + ")\n\n";
+            body += "</details>";
+
+            const historyHtml = renderHistory(history);
+            if (historyHtml) {
+              body += "\n\n<details>\n<summary>History</summary>\n\n" + historyHtml + "\n\n</details>";
+            }
+
+            // Write to step summary (without HTML comments)
+            const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+            if (summaryFile) {
+              const summaryBody = body.split("\n").filter(l => !l.startsWith("<!-- ")).join("\n");
+              fs.appendFileSync(summaryFile, summaryBody + "\n");
+            }
+
+            fs.writeFileSync(process.env.RUNNER_TEMP + "/new-comment.md", body);
+          '
+
+          BODY=$(cat "$RUNNER_TEMP/new-comment.md")
 
           if [ -n "$COMMENT_ID" ]; then
             gh api "repos/${GH_REPO}/issues/comments/${COMMENT_ID}" -X PATCH -f body="$BODY"
