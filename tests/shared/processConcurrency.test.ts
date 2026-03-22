@@ -77,6 +77,17 @@ describe('processConcurrency', () => {
       expect(minThreads).toBe(1);
       expect(maxThreads).toBe(1);
     });
+
+    it('should respect maxConcurrency override', () => {
+      // With 8 CPUs but maxConcurrency=3
+      const { maxThreads } = getWorkerThreadCount(1000, 3);
+      expect(maxThreads).toBe(3); // Capped by maxConcurrency instead of CPU count
+    });
+
+    it('should use CPU count when maxConcurrency is not specified', () => {
+      const { maxThreads } = getWorkerThreadCount(1000);
+      expect(maxThreads).toBe(8); // Uses CPU count (8)
+    });
   });
 
   describe('initWorker', () => {
@@ -129,6 +140,16 @@ describe('processConcurrency', () => {
         },
       });
       expect(tinypool).toBeDefined();
+    });
+
+    it('should respect maxConcurrency option to limit thread count', () => {
+      createWorkerPool({ numOfTasks: 500, workerType: 'securityCheck', runtime: 'worker_threads', maxConcurrency: 2 });
+
+      expect(Tinypool).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxThreads: 2, // Capped by maxConcurrency instead of CPU count (4)
+        }),
+      );
     });
   });
 

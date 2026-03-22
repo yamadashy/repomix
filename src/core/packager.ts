@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
-import { initTaskRunner, type TaskRunner } from '../shared/processConcurrency.js';
+import { getProcessConcurrency, initTaskRunner, type TaskRunner } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -105,11 +105,18 @@ export const pack = async (
   // Pre-initialize security worker pool so worker threads start loading @secretlint modules
   // in the background while file collection runs. Created before the skill check since
   // security checks always run (when enabled) regardless of skill generation.
+  //
+  // Cap worker threads at (cpus - 2) to reduce CPU contention with main-thread token
+  // counting that runs in parallel. On a 4-core machine, this prevents 5 threads (4 workers
+  // + main) from competing for 4 cores. Reserving cores for the main thread and OS/GC
+  // improves overall throughput despite fewer security workers.
+  const securityMaxConcurrency = Math.max(1, getProcessConcurrency() - 2);
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
         numOfTasks: allFilePaths.length,
         workerType: 'securityCheck',
         runtime: 'worker_threads',
+        maxConcurrency: securityMaxConcurrency,
       })
     : undefined;
 

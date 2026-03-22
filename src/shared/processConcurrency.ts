@@ -12,6 +12,9 @@ export interface WorkerOptions {
   numOfTasks: number;
   workerType: WorkerType;
   runtime: WorkerRuntime;
+  // Optional cap on max threads to reduce CPU contention when workers run
+  // in parallel with main-thread CPU work (e.g., token counting).
+  maxConcurrency?: number;
 }
 
 /**
@@ -47,8 +50,11 @@ export const getProcessConcurrency = (): number => {
   return typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length;
 };
 
-export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; maxThreads: number } => {
-  const processConcurrency = getProcessConcurrency();
+export const getWorkerThreadCount = (
+  numOfTasks: number,
+  maxConcurrency?: number,
+): { minThreads: number; maxThreads: number } => {
+  const processConcurrency = maxConcurrency ?? getProcessConcurrency();
 
   const minThreads = 1;
 
@@ -62,8 +68,8 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
-  const { numOfTasks, workerType, runtime = 'child_process' } = options;
-  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { numOfTasks, workerType, runtime = 'child_process', maxConcurrency } = options;
+  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxConcurrency);
 
   // Get worker path - uses unified worker in bundled env, individual files otherwise
   const workerPath = getWorkerPath(workerType);
