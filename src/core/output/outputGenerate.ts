@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import XMLBuilder from 'fast-xml-builder';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -19,38 +18,9 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
-import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { getXmlTemplate } from './outputStyles/xmlStyle.js';
-
-// Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
-
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
-  const cached = compiledTemplateCache.get(style);
-  if (cached) {
-    return cached;
-  }
-
-  let template: string;
-  switch (style) {
-    case 'xml':
-      template = getXmlTemplate();
-      break;
-    case 'markdown':
-      template = getMarkdownTemplate();
-      break;
-    case 'plain':
-      template = getPlainTemplate();
-      break;
-    default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
-  }
-
-  const compiled = Handlebars.compile(template);
-  compiledTemplateCache.set(style, compiled);
-  return compiled;
-};
+import { renderMarkdown } from './outputStyles/markdownStyle.js';
+import { renderPlain } from './outputStyles/plainStyle.js';
+import { renderXml } from './outputStyles/xmlStyle.js';
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
   let maxBackticks = 0;
@@ -73,10 +43,8 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
 
 const countNewlines = (str: string): number => {
   let count = 0;
-  let pos = str.indexOf('\n');
-  while (pos !== -1) {
-    count++;
-    pos = str.indexOf('\n', pos + 1);
+  for (let i = 0; i < str.length; i++) {
+    if (str.charCodeAt(i) === 10) count++;
   }
   return count;
 };
@@ -242,14 +210,27 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
   }
 };
 
-const generateHandlebarOutput = async (
+const generateTemplateOutput = async (
   config: RepomixConfigMerged,
   renderContext: RenderContext,
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
   try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
-    return `${compiledTemplate(renderContext).trim()}\n`;
+    let rendered: string;
+    switch (config.output.style) {
+      case 'xml':
+        rendered = renderXml(renderContext);
+        break;
+      case 'markdown':
+        rendered = renderMarkdown(renderContext);
+        break;
+      case 'plain':
+        rendered = renderPlain(renderContext);
+        break;
+      default:
+        throw new RepomixError(`Unsupported output style for template: ${config.output.style}`);
+    }
+    return `${rendered.trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
       let largeFilesInfo = '';
@@ -272,7 +253,7 @@ Please try:
       );
     }
     throw new RepomixError(
-      `Failed to compile template: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      `Failed to generate output: ${error instanceof Error ? error.message : 'Unknown error'}`,
       error instanceof Error ? { cause: error } : undefined,
     );
   }
@@ -288,7 +269,7 @@ export const generateOutput = async (
   filePathsByRoot?: FilesByRoot[],
   deps = {
     buildOutputGeneratorContext,
-    generateHandlebarOutput,
+    generateTemplateOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
     sortOutputFiles,
@@ -312,12 +293,12 @@ export const generateOutput = async (
     case 'xml':
       return config.output.parsableStyle
         ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+        : deps.generateTemplateOutput(config, renderContext, sortedProcessedFiles);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':
     case 'plain':
-      return deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+      return deps.generateTemplateOutput(config, renderContext, sortedProcessedFiles);
     default:
       throw new RepomixError(`Unsupported output style: ${config.output.style}`);
   }

@@ -1,43 +1,54 @@
 import { describe, expect, test } from 'vitest';
-import { generateSkillMd, getSkillTemplate } from '../../../src/core/skill/skillStyle.js';
+import { generateSkillMd } from '../../../src/core/skill/skillStyle.js';
 
 describe('skillStyle', () => {
-  describe('getSkillTemplate', () => {
-    test('should return valid SKILL.md template', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('---');
-      expect(template).toContain('name:');
-      expect(template).toContain('description:');
-      expect(template).toContain('# ');
-      expect(template).toContain('references/');
+  describe('generateSkillMd output structure', () => {
+    const createTestContext = (overrides = {}) => ({
+      skillName: 'test-skill',
+      skillDescription: 'Test description',
+      projectName: 'Test Project',
+      totalFiles: 1,
+      totalLines: 100,
+      totalTokens: 100,
+      hasTechStack: false,
+      ...overrides,
+    });
+
+    test('should return valid SKILL.md output', () => {
+      const result = generateSkillMd(createTestContext());
+      expect(result).toContain('---');
+      expect(result).toContain('name:');
+      expect(result).toContain('description:');
+      expect(result).toContain('# ');
+      expect(result).toContain('references/');
     });
 
     test('should include files table with contents column', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('## Files');
-      expect(template).toContain('| File | Contents |');
+      const result = generateSkillMd(createTestContext());
+      expect(result).toContain('## Files');
+      expect(result).toContain('| File | Contents |');
     });
 
     test('should include how to use section with numbered steps', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('## How to Use');
-      expect(template).toContain('### 1. Find file locations');
-      expect(template).toContain('### 2. Read file contents');
-      expect(template).toContain('### 3. Search for code');
+      const result = generateSkillMd(createTestContext());
+      expect(result).toContain('## How to Use');
+      expect(result).toContain('### 1. Find file locations');
+      expect(result).toContain('### 2. Read file contents');
+      expect(result).toContain('### 3. Search for code');
     });
 
     test('should include overview and common use cases', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('## Overview');
-      expect(template).toContain('## Common Use Cases');
-      expect(template).toContain('## Tips');
+      const result = generateSkillMd(createTestContext());
+      expect(result).toContain('## Overview');
+      expect(result).toContain('## Common Use Cases');
+      expect(result).toContain('## Tips');
     });
 
     test('should reference multiple files', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('references/summary.md');
-      expect(template).toContain('references/project-structure.md');
-      expect(template).toContain('references/files.md');
+      const result = generateSkillMd(createTestContext());
+      expect(result).toContain('references/summary.md');
+      expect(result).toContain('references/project-structure.md');
+      expect(result).toContain('references/files.md');
     });
   });
 
@@ -112,6 +123,13 @@ describe('skillStyle', () => {
     test('should include total lines in header', () => {
       const result = generateSkillMd(createTestContext({ totalLines: 5000 }));
       expect(result).toContain('5000 lines');
+    });
+
+    test('should include source URL when provided', () => {
+      const result = generateSkillMd(
+        createTestContext({ sourceUrl: 'https://github.com/test/project', projectName: 'My Project' }),
+      );
+      expect(result).toContain('[My Project](https://github.com/test/project)');
     });
   });
 });

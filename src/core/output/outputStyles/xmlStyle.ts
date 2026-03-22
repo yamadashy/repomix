@@ -1,89 +1,76 @@
-export const getXmlTemplate = () => {
-  return /* xml */ `
-{{#if fileSummaryEnabled}}
-{{{generationHeader}}}
+import type { RenderContext } from '../outputGeneratorTypes.js';
 
-<file_summary>
-This section contains a summary of this file.
+export const renderXml = (ctx: Partial<RenderContext>): string => {
+  const parts: string[] = [];
 
-<purpose>
-{{{summaryPurpose}}}
-</purpose>
-
-<file_format>
-{{{summaryFileFormat}}}
-5. Multiple file entries, each consisting of:
+  if (ctx.fileSummaryEnabled) {
+    parts.push(
+      ctx.generationHeader ?? '',
+      '\n\n<file_summary>\nThis section contains a summary of this file.\n\n<purpose>\n',
+      ctx.summaryPurpose ?? '',
+      '\n</purpose>\n\n<file_format>\n',
+      ctx.summaryFileFormat ?? '',
+      `\n5. Multiple file entries, each consisting of:
   - File path as an attribute
   - Full contents of the file
 </file_format>
 
 <usage_guidelines>
-{{{summaryUsageGuidelines}}}
-</usage_guidelines>
+`,
+      ctx.summaryUsageGuidelines ?? '',
+      '\n</usage_guidelines>\n\n<notes>\n',
+      ctx.summaryNotes ?? '',
+      '\n</notes>\n\n</file_summary>\n',
+    );
+  }
 
-<notes>
-{{{summaryNotes}}}
-</notes>
+  if (ctx.headerText) {
+    parts.push('\n<user_provided_header>\n', ctx.headerText, '\n</user_provided_header>\n');
+  }
 
-</file_summary>
+  if (ctx.directoryStructureEnabled) {
+    parts.push('\n<directory_structure>\n', ctx.treeString ?? '', '\n</directory_structure>\n');
+  }
 
-{{/if}}
-{{#if headerText}}
-<user_provided_header>
-{{{headerText}}}
-</user_provided_header>
+  if (ctx.filesEnabled) {
+    parts.push("\n<files>\nThis section contains the contents of the repository's files.\n");
+    for (const file of ctx.processedFiles ?? []) {
+      parts.push('\n<file path="', file.path, '">\n', file.content, '\n</file>\n');
+    }
+    parts.push('\n</files>');
+  }
 
-{{/if}}
-{{#if directoryStructureEnabled}}
-<directory_structure>
-{{{treeString}}}
-</directory_structure>
+  if (ctx.gitDiffEnabled) {
+    parts.push(
+      '\n\n<git_diffs>\n<git_diff_work_tree>\n',
+      ctx.gitDiffWorkTree ?? '',
+      '\n</git_diff_work_tree>\n<git_diff_staged>\n',
+      ctx.gitDiffStaged ?? '',
+      '\n</git_diff_staged>\n</git_diffs>',
+    );
+  }
 
-{{/if}}
-{{#if filesEnabled}}
-<files>
-This section contains the contents of the repository's files.
+  if (ctx.gitLogEnabled && ctx.gitLogCommits) {
+    parts.push('\n\n<git_logs>\n');
+    for (const commit of ctx.gitLogCommits) {
+      parts.push(
+        '<git_log_commit>\n<date>',
+        commit.date,
+        '</date>\n<message>',
+        commit.message,
+        '</message>\n<files>\n',
+      );
+      for (const file of commit.files) {
+        parts.push(file, '\n');
+      }
+      parts.push('</files>\n</git_log_commit>\n');
+    }
+    parts.push('</git_logs>');
+  }
 
-{{#each processedFiles}}
-<file path="{{{this.path}}}">
-{{{this.content}}}
-</file>
+  if (ctx.instruction) {
+    parts.push('\n\n<instruction>\n', ctx.instruction, '\n</instruction>');
+  }
 
-{{/each}}
-</files>
-{{/if}}
-
-{{#if gitDiffEnabled}}
-<git_diffs>
-<git_diff_work_tree>
-{{{gitDiffWorkTree}}}
-</git_diff_work_tree>
-<git_diff_staged>
-{{{gitDiffStaged}}}
-</git_diff_staged>
-</git_diffs>
-{{/if}}
-
-{{#if gitLogEnabled}}
-<git_logs>
-{{#each gitLogCommits}}
-<git_log_commit>
-<date>{{{this.date}}}</date>
-<message>{{{this.message}}}</message>
-<files>
-{{#each this.files}}
-{{{this}}}
-{{/each}}
-</files>
-</git_log_commit>
-{{/each}}
-</git_logs>
-{{/if}}
-
-{{#if instruction}}
-<instruction>
-{{{instruction}}}
-</instruction>
-{{/if}}
-`;
+  return parts.join('');
 };

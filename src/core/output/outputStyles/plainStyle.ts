@@ -1,23 +1,19 @@
+import type { RenderContext } from '../outputGeneratorTypes.js';
+
 const PLAIN_SEPARATOR = '='.repeat(16);
 const PLAIN_LONG_SEPARATOR = '='.repeat(64);
 
-export const getPlainTemplate = () => {
-  return `
-{{#if fileSummaryEnabled}}
-{{{generationHeader}}}
+export const renderPlain = (ctx: Partial<RenderContext>): string => {
+  const parts: string[] = [];
 
-${PLAIN_LONG_SEPARATOR}
-File Summary
-${PLAIN_LONG_SEPARATOR}
-
-Purpose:
---------
-{{{summaryPurpose}}}
-
-File Format:
-------------
-{{{summaryFileFormat}}}
-5. Multiple file entries, each consisting of:
+  if (ctx.fileSummaryEnabled) {
+    parts.push(
+      ctx.generationHeader ?? '',
+      `\n\n${PLAIN_LONG_SEPARATOR}\nFile Summary\n${PLAIN_LONG_SEPARATOR}\n\nPurpose:\n--------\n`,
+      ctx.summaryPurpose ?? '',
+      `\n\nFile Format:\n------------\n`,
+      ctx.summaryFileFormat ?? '',
+      `\n5. Multiple file entries, each consisting of:
   a. A separator line (================)
   b. The file path (File: path/to/file)
   c. Another separator line
@@ -26,84 +22,55 @@ File Format:
 
 Usage Guidelines:
 -----------------
-{{{summaryUsageGuidelines}}}
+`,
+      ctx.summaryUsageGuidelines ?? '',
+      `\n\nNotes:\n------\n`,
+      ctx.summaryNotes ?? '',
+      '\n',
+    );
+  }
 
-Notes:
-------
-{{{summaryNotes}}}
+  if (ctx.headerText) {
+    parts.push(`\n\n${PLAIN_LONG_SEPARATOR}\nUser Provided Header\n${PLAIN_LONG_SEPARATOR}\n`, ctx.headerText, '\n');
+  }
 
-{{/if}}
+  if (ctx.directoryStructureEnabled) {
+    parts.push(`\n${PLAIN_LONG_SEPARATOR}\nDirectory Structure\n${PLAIN_LONG_SEPARATOR}\n`, ctx.treeString ?? '', '\n');
+  }
 
-{{#if headerText}}
-${PLAIN_LONG_SEPARATOR}
-User Provided Header
-${PLAIN_LONG_SEPARATOR}
-{{{headerText}}}
+  if (ctx.filesEnabled) {
+    parts.push(`\n${PLAIN_LONG_SEPARATOR}\nFiles\n${PLAIN_LONG_SEPARATOR}\n`);
+    for (const file of ctx.processedFiles ?? []) {
+      parts.push(`\n${PLAIN_SEPARATOR}\nFile: `, file.path, `\n${PLAIN_SEPARATOR}\n`, file.content, '\n');
+    }
+  }
 
-{{/if}}
-{{#if directoryStructureEnabled}}
-${PLAIN_LONG_SEPARATOR}
-Directory Structure
-${PLAIN_LONG_SEPARATOR}
-{{{treeString}}}
+  if (ctx.gitDiffEnabled) {
+    parts.push(
+      `\n${PLAIN_LONG_SEPARATOR}\nGit Diffs\n${PLAIN_LONG_SEPARATOR}\n${PLAIN_SEPARATOR}\n`,
+      ctx.gitDiffWorkTree ?? '',
+      `\n${PLAIN_SEPARATOR}\n\n${PLAIN_SEPARATOR}\nGit Diffs Staged\n${PLAIN_SEPARATOR}\n`,
+      ctx.gitDiffStaged ?? '',
+      '\n',
+    );
+  }
 
-{{/if}}
-{{#if filesEnabled}}
-${PLAIN_LONG_SEPARATOR}
-Files
-${PLAIN_LONG_SEPARATOR}
+  if (ctx.gitLogEnabled && ctx.gitLogCommits) {
+    parts.push(`\n${PLAIN_LONG_SEPARATOR}\nGit Logs\n${PLAIN_LONG_SEPARATOR}\n`);
+    for (const commit of ctx.gitLogCommits) {
+      parts.push(`${PLAIN_SEPARATOR}\nDate: `, commit.date, '\nMessage: ', commit.message, '\nFiles:\n');
+      for (const file of commit.files) {
+        parts.push('  - ', file, '\n');
+      }
+      parts.push(`${PLAIN_SEPARATOR}\n\n`);
+    }
+  }
 
-{{#each processedFiles}}
-${PLAIN_SEPARATOR}
-File: {{{this.path}}}
-${PLAIN_SEPARATOR}
-{{{this.content}}}
+  if (ctx.instruction) {
+    parts.push(`\n${PLAIN_LONG_SEPARATOR}\nInstruction\n${PLAIN_LONG_SEPARATOR}\n`, ctx.instruction);
+  }
 
-{{/each}}
-{{/if}}
+  parts.push(`\n\n${PLAIN_LONG_SEPARATOR}\nEnd of Codebase\n${PLAIN_LONG_SEPARATOR}\n`);
 
-{{#if gitDiffEnabled}}
-${PLAIN_LONG_SEPARATOR}
-Git Diffs
-${PLAIN_LONG_SEPARATOR}
-${PLAIN_SEPARATOR}
-{{{gitDiffWorkTree}}}
-${PLAIN_SEPARATOR}
-
-${PLAIN_SEPARATOR}
-Git Diffs Staged
-${PLAIN_SEPARATOR}
-{{{gitDiffStaged}}}
-
-{{/if}}
-
-{{#if gitLogEnabled}}
-${PLAIN_LONG_SEPARATOR}
-Git Logs
-${PLAIN_LONG_SEPARATOR}
-{{#each gitLogCommits}}
-${PLAIN_SEPARATOR}
-Date: {{{this.date}}}
-Message: {{{this.message}}}
-Files:
-{{#each this.files}}
-  - {{{this}}}
-{{/each}}
-${PLAIN_SEPARATOR}
-
-{{/each}}
-
-{{/if}}
-
-{{#if instruction}}
-${PLAIN_LONG_SEPARATOR}
-Instruction
-${PLAIN_LONG_SEPARATOR}
-{{{instruction}}}
-{{/if}}
-
-${PLAIN_LONG_SEPARATOR}
-End of Codebase
-${PLAIN_LONG_SEPARATOR}
-`;
+  return parts.join('');
 };
