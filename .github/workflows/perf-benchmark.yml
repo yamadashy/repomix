@@ -78,8 +78,8 @@ jobs:
               }
             }
 
-            // Keep max 5 entries
-            history = history.slice(0, 5);
+            // Keep max 50 entries
+            history = history.slice(0, 50);
 
             // Render history section
             function renderHistory(hist) {
