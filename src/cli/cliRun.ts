@@ -2,11 +2,9 @@ import process from 'node:process';
 import { Option, program } from 'commander';
 import pc from 'picocolors';
 import { getVersion } from '../core/file/packageJsonParse.js';
-import { isExplicitRemoteUrl } from '../core/git/gitRemoteParse.js';
 import { handleError, RepomixError } from '../shared/errorHandle.js';
 import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
-import { runDefaultAction } from './actions/defaultAction.js';
 import type { CliOptions } from './types.js';
 
 // Semantic mapping for CLI suggestions
@@ -281,11 +279,16 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   }
 
   // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
-  if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
+  // Inline check avoids importing git-url-parse (heavy) just for a prefix test
+  if (
+    directories.length === 1 &&
+    ['https://', 'git@', 'ssh://', 'git://'].some((prefix) => directories[0].startsWith(prefix))
+  ) {
     logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
     const { runRemoteAction } = await import('./actions/remoteAction.js');
     return await runRemoteAction(directories[0], options);
   }
 
+  const { runDefaultAction } = await import('./actions/defaultAction.js');
   return await runDefaultAction(directories, cwd, options);
 };
