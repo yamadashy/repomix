@@ -1,5 +1,5 @@
 import process from 'node:process';
-import { afterEach, beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCliConfig, runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
 import { Spinner } from '../../../src/cli/cliSpinner.js';
 import type { CliOptions } from '../../../src/cli/types.js';
@@ -8,7 +8,6 @@ import * as fileStdin from '../../../src/core/file/fileStdin.js';
 import * as packageJsonParser from '../../../src/core/file/packageJsonParse.js';
 import * as packager from '../../../src/core/packager.js';
 
-import * as processConcurrency from '../../../src/shared/processConcurrency.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 vi.mock('../../../src/core/packager');
@@ -16,22 +15,26 @@ vi.mock('../../../src/config/configLoad');
 vi.mock('../../../src/core/file/packageJsonParse');
 vi.mock('../../../src/core/file/fileStdin');
 vi.mock('../../../src/shared/logger');
-vi.mock('../../../src/shared/processConcurrency');
 
-const mockSpinner = {
-  start: vi.fn() as MockedFunction<() => void>,
-  update: vi.fn() as MockedFunction<(message: string) => void>,
-  succeed: vi.fn() as MockedFunction<(message: string) => void>,
-  fail: vi.fn() as MockedFunction<(message: string) => void>,
-  stop: vi.fn() as MockedFunction<() => void>,
-  message: 'test',
-  currentFrame: 0,
-  interval: null,
-  isQuiet: false,
-} as unknown as Spinner;
+const { mockSpinner } = vi.hoisted(() => {
+  const mockSpinner = {
+    start: vi.fn(),
+    update: vi.fn(),
+    succeed: vi.fn(),
+    fail: vi.fn(),
+    stop: vi.fn(),
+    message: 'test',
+    currentFrame: 0,
+    interval: null,
+    isQuiet: false,
+  };
+  return { mockSpinner };
+});
 
 vi.mock('../../../src/cli/cliSpinner', () => ({
-  Spinner: vi.fn().mockImplementation(() => mockSpinner),
+  Spinner: vi.fn().mockImplementation(function MockSpinner() {
+    return mockSpinner;
+  }),
 }));
 vi.mock('../../../src/cli/cliReport');
 
@@ -42,8 +45,13 @@ describe('defaultAction', () => {
     // Reset mockSpinner functions
     vi.clearAllMocks();
 
-    // Ensure Spinner constructor returns mockSpinner
-    vi.mocked(Spinner).mockImplementation(() => mockSpinner);
+    // Ensure Spinner constructor returns mockSpinner (use regular function for `new` compatibility)
+    vi.mocked(Spinner).mockImplementation(function MockSpinner() {
+      return mockSpinner as unknown as Spinner;
+    });
+    mockSpinner.start.mockResolvedValue(undefined);
+    mockSpinner.succeed.mockResolvedValue(undefined);
+    mockSpinner.fail.mockResolvedValue(undefined);
 
     vi.mocked(packageJsonParser.getVersion).mockResolvedValue('1.0.0');
     vi.mocked(configLoader.loadFileConfig).mockResolvedValue({});
@@ -106,33 +114,6 @@ describe('defaultAction', () => {
       gitLogTokenCount: 0,
       skippedFiles: [],
     });
-
-    // Mock initTaskRunner to return a simple task runner
-    const mockTaskRunner = {
-      run: vi.fn().mockResolvedValue({
-        packResult: {
-          totalFiles: 10,
-          totalCharacters: 1000,
-          totalTokens: 200,
-          fileCharCounts: {},
-          fileTokenCounts: {},
-          suspiciousFilesResults: [],
-          suspiciousGitDiffResults: [],
-          suspiciousGitLogResults: [],
-          processedFiles: [],
-          safeFilePaths: [],
-          gitDiffTokenCount: 0,
-          gitLogTokenCount: 0,
-          skippedFiles: [],
-        },
-        config: createMockConfig({
-          cwd: process.cwd(),
-        }),
-      }),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    };
-
-    vi.mocked(processConcurrency.initTaskRunner).mockReturnValue(mockTaskRunner);
   });
 
   afterEach(() => {
@@ -147,15 +128,9 @@ describe('defaultAction', () => {
 
     await runDefaultAction(['.'], process.cwd(), options);
 
-    expect(processConcurrency.initTaskRunner).toHaveBeenCalledWith({
-      numOfTasks: 1,
-      workerType: 'defaultAction',
-      runtime: 'child_process',
-    });
-
-    const taskRunner = vi.mocked(processConcurrency.initTaskRunner).mock.results[0].value;
-    expect(taskRunner.run).toHaveBeenCalled();
-    expect(taskRunner.cleanup).toHaveBeenCalled();
+    // pack() is called directly on the main process
+    expect(packager.pack).toHaveBeenCalled();
+    expect(mockSpinner.succeed).toHaveBeenCalled();
   });
 
   it('should handle custom include patterns', async () => {
@@ -165,16 +140,8 @@ describe('defaultAction', () => {
 
     await runDefaultAction(['.'], process.cwd(), options);
 
-    const taskRunner = vi.mocked(processConcurrency.initTaskRunner).mock.results[0].value;
-    const task = taskRunner.run.mock.calls[0][0];
-
-    expect(task).toMatchObject({
-      directories: ['.'],
-      cwd: process.cwd(),
-      cliOptions: expect.objectContaining({
-        include: '*.js,*.ts',
-      }),
-    });
+    // Verify pack was called (config is passed via mergeConfigs)
+    expect(packager.pack).toHaveBeenCalled();
   });
 
   it('should handle stdin mode', async () => {
@@ -184,32 +151,19 @@ describe('defaultAction', () => {
 
     await runDefaultAction(['.'], process.cwd(), options);
 
-    const taskRunner = vi.mocked(processConcurrency.initTaskRunner).mock.results[0].value;
-    const task = taskRunner.run.mock.calls[0][0];
-
-    expect(task).toMatchObject({
-      directories: ['.'],
-      cwd: process.cwd(),
-      cliOptions: expect.objectContaining({
-        stdin: true,
-      }),
-      stdinFilePaths: expect.any(Array),
-    });
+    expect(fileStdin.readFilePathsFromStdin).toHaveBeenCalledWith(process.cwd());
+    // pack() receives stdinFilePaths as the 5th argument
+    const packCall = vi.mocked(packager.pack).mock.calls[0];
+    expect(packCall[4]).toEqual(['test1.txt', 'test2.txt']);
   });
 
   it('should handle errors gracefully', async () => {
-    // Create a fresh mock task runner that will fail
-    const failingTaskRunner = {
-      run: vi.fn().mockRejectedValue(new Error('Test error')),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    };
-
-    vi.mocked(processConcurrency.initTaskRunner).mockReturnValue(failingTaskRunner);
+    vi.mocked(packager.pack).mockRejectedValue(new Error('Test error'));
 
     const options: CliOptions = {};
 
     await expect(runDefaultAction(['.'], process.cwd(), options)).rejects.toThrow('Test error');
-    expect(failingTaskRunner.cleanup).toHaveBeenCalled();
+    expect(mockSpinner.fail).toHaveBeenCalled();
   });
 
   describe('buildCliConfig', () => {
