@@ -19,6 +19,11 @@ export interface SecurityCheckTask {
   type: SecurityCheckType;
 }
 
+// Batched task: multiple files in a single worker message to reduce structured clone overhead
+export interface SecurityCheckBatchTask {
+  batch: SecurityCheckTask[];
+}
+
 export interface SuspiciousFileResult {
   filePath: string;
   messages: string[];
@@ -28,26 +33,41 @@ export interface SuspiciousFileResult {
 // Cache config at module level — it's identical for every file
 let cachedConfig: SecretLintCoreConfig | undefined;
 
-export default async ({ filePath, content, type }: SecurityCheckTask) => {
+export default async (task: SecurityCheckTask | SecurityCheckBatchTask) => {
   if (!cachedConfig) {
     cachedConfig = createSecretLintConfig();
   }
   const config = cachedConfig;
 
+  // Batch mode: process multiple files in one worker call
+  if ('batch' in task) {
+    const results: (SuspiciousFileResult | null)[] = [];
+    for (const item of task.batch) {
+      try {
+        results.push(await runSecretLint(item.filePath, item.content, item.type, config));
+      } catch (error) {
+        logger.error(`Error checking security on ${item.filePath}:`, error);
+        throw error;
+      }
+    }
+    return results;
+  }
+
+  // Single task mode (backwards compatible)
   try {
     const processStartAt = isTracing ? process.hrtime.bigint() : 0n;
-    const secretLintResult = await runSecretLint(filePath, content, type, config);
+    const secretLintResult = await runSecretLint(task.filePath, task.content, task.type, config);
 
     if (isTracing) {
       const processEndAt = process.hrtime.bigint();
       logger.trace(
-        `Checked security on ${filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
+        `Checked security on ${task.filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
       );
     }
 
     return secretLintResult;
   } catch (error) {
-    logger.error(`Error checking security on ${filePath}:`, error);
+    logger.error(`Error checking security on ${task.filePath}:`, error);
     throw error;
   }
 };

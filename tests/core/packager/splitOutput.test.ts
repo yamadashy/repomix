@@ -2,6 +2,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { pack } from '../../../src/core/packager.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
+vi.mock('../../../src/core/metrics/TokenCounter.js', () => ({
+  TokenCounter: {
+    create: vi.fn().mockResolvedValue({
+      countTokens: vi.fn().mockReturnValue(10),
+      free: vi.fn(),
+    }),
+  },
+}));
+
 describe('packager split output', () => {
   it('passes split output results correctly through the packager', async () => {
     const processedFiles = [
@@ -84,6 +93,7 @@ describe('packager split output', () => {
       mockConfig,
       undefined,
       undefined,
+      { tokenCounter: expect.any(Object) },
     );
 
     expect(result.outputFiles).toEqual(['repomix-output.1.xml', 'repomix-output.2.xml']);

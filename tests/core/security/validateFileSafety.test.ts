@@ -32,9 +32,6 @@ describe('validateFileSafety', () => {
       progressCallback,
       undefined,
       undefined,
-      expect.objectContaining({
-        taskRunner: undefined,
-      }),
     );
     expect(deps.filterOutUntrustedFiles).toHaveBeenCalledWith(rawFiles, suspiciousFilesResults);
     expect(result).toEqual({

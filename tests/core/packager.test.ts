@@ -7,16 +7,18 @@ vi.mock('node:fs/promises');
 vi.mock('fs/promises');
 vi.mock('../../src/core/metrics/TokenCounter.js', () => ({
   TokenCounter: {
-    create: vi.fn().mockResolvedValue({
-      countTokens: vi.fn().mockReturnValue(10),
-      free: vi.fn(),
-    }),
+    create: vi.fn(),
   },
 }));
 
 describe('packager', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetAllMocks();
+    const { TokenCounter } = await import('../../src/core/metrics/TokenCounter.js');
+    vi.mocked(TokenCounter.create).mockResolvedValue({
+      countTokens: vi.fn().mockReturnValue(10),
+      free: vi.fn(),
+    } as any);
   });
 
   test('pack should orchestrate packing files and generating output', async () => {
@@ -96,7 +98,7 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
-      { taskRunner: expect.any(Object) },
+      { runSecurityCheck: expect.any(Function) },
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(mockSafeRawFiles, mockConfig, progressCallback, {
       taskRunner: expect.any(Object),
@@ -119,6 +121,7 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      { tokenCounter: expect.any(Object) },
     );
 
     // Check the result of pack function

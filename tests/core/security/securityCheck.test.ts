@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
-import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
+import type { SecurityCheckBatchTask, SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
@@ -13,13 +13,13 @@ import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 vi.mock('../../../src/shared/logger');
 vi.mock('../../../src/shared/processConcurrency', () => ({
   initWorker: vi.fn(() => ({
-    run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
+    run: vi.fn().mockImplementation(async (task: SecurityCheckBatchTask) => {
       return await securityCheckWorker(task);
     }),
   })),
   cleanupWorkerPool: vi.fn(),
   initTaskRunner: vi.fn(() => ({
-    run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
+    run: vi.fn().mockImplementation(async (task: SecurityCheckBatchTask) => {
       return await securityCheckWorker(task);
     }),
     cleanup: vi.fn(),
@@ -42,7 +42,7 @@ const mockFiles: RawFile[] = [
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
-      return (await securityCheckWorker(task as SecurityCheckTask)) as R;
+      return (await securityCheckWorker(task as SecurityCheckBatchTask)) as R;
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
@@ -107,6 +107,8 @@ describe('runSecurityCheck', () => {
   });
 
   it('should log performance metrics in trace mode', async () => {
+    vi.mocked(logger.getLogLevel).mockReturnValue(repomixLogLevels.DEBUG);
+
     await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
     });
@@ -162,8 +164,8 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process 2 files + 2 git diff contents = 4 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(4);
+    // Should process 2 files + 2 git diff contents = 4 total tasks, plus initial (0/N) call
+    expect(progressCallback).toHaveBeenCalledTimes(5);
 
     // Check that Git diff tasks were processed
     expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
@@ -184,8 +186,8 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process 2 files + 1 git diff content = 3 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(3);
+    // Should process 2 files + 1 git diff content = 3 total tasks, plus initial (0/N) call
+    expect(progressCallback).toHaveBeenCalledTimes(4);
 
     // Check that only working tree diff was processed
     expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
@@ -204,8 +206,8 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process 2 files + 1 git diff content = 3 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(3);
+    // Should process 2 files + 1 git diff content = 3 total tasks, plus initial (0/N) call
+    expect(progressCallback).toHaveBeenCalledTimes(4);
 
     // Check that only staged diff was processed
     expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
@@ -224,8 +226,8 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process only 2 files, no git diff content because both are empty strings (falsy)
-    expect(progressCallback).toHaveBeenCalledTimes(2);
+    // Should process only 2 files, no git diff content because both are empty strings (falsy), plus initial (0/N) call
+    expect(progressCallback).toHaveBeenCalledTimes(3);
 
     // Check that no git diff tasks were processed
     expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));

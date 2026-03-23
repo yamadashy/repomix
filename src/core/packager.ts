@@ -11,8 +11,9 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics } from './metrics/calculateMetrics.js';
+import { TokenCounter } from './metrics/TokenCounter.js';
 import { produceOutput } from './packager/produceOutput.js';
-import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityTaskRunner, runSecurityCheck, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import { packSkill } from './skill/packSkill.js';
 
@@ -102,6 +103,10 @@ export const pack = async (
     : undefined;
   const fileProcessTaskRunner = deps.createFileProcessTaskRunner(allFilePaths.length);
 
+  // Pre-warm TokenCounter: start loading gpt-tokenizer encoding module (~158ms) in background.
+  // By the time calculateMetrics runs (after collect + security + process + output), it's ready.
+  const tokenCounterPromise = TokenCounter.create(config.tokenCount.encoding);
+
   // Start git operations in parallel with file collection — they only need rootDirs and config
   progressCallback('Collecting files...');
   const gitPromise = Promise.all([deps.getGitDiffs(rootDirs, config), deps.getGitLogs(rootDirs, config)]);
@@ -122,12 +127,14 @@ export const pack = async (
   // Await git results (likely already resolved while files were being collected)
   const [gitDiffResult, gitLogResult] = await gitPromise;
 
-  // Run security check — workers are already warm from pre-warming above
+  // Run security check — workers are already warm from pre-warming above.
+  // Batched tasks reduce structured clone + message passing overhead by ~120ms.
   let securityResult: Awaited<ReturnType<typeof deps.validateFileSafety>>;
   try {
     securityResult = await withMemoryLogging('Security Check', () =>
       deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
-        taskRunner: securityTaskRunner,
+        runSecurityCheck: (files, cb, diff, log) =>
+          runSecurityCheck(files, cb, diff, log, { taskRunner: securityTaskRunner }),
       }),
     );
   } finally {
@@ -200,8 +207,12 @@ export const pack = async (
 
   // Token counting runs on the main thread — gpt-tokenizer is pure JS,
   // so direct counting is ~2x faster than worker threads (no structured clone overhead).
+  // TokenCounter was pre-warmed during earlier stages so encoding module is already loaded.
+  const tokenCounter = await tokenCounterPromise;
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),
+    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
+      tokenCounter,
+    }),
   );
 
   // Create a result object that includes metrics and security results
