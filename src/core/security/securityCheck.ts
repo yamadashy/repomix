@@ -25,6 +25,9 @@ export const createSecurityTaskRunner = (numOfTasks: number): BatchTaskRunner =>
     numOfTasks,
     workerType: 'securityCheck',
     runtime: 'worker_threads',
+    // Security workers run in parallel with CPU-intensive main thread work (token counting,
+    // file processing). Reserve half the CPU cores for the main thread to avoid contention.
+    reserveForMainThread: true,
   });
 
 const defaultSecurityDeps = {

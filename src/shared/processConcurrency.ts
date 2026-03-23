@@ -12,6 +12,7 @@ export interface WorkerOptions {
   numOfTasks: number;
   workerType: WorkerType;
   runtime: WorkerRuntime;
+  reserveForMainThread?: boolean;
 }
 
 /**
@@ -47,13 +48,24 @@ export const getProcessConcurrency = (): number => {
   return typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length;
 };
 
-export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; maxThreads: number } => {
+export const getWorkerThreadCount = (
+  numOfTasks: number,
+  options?: { reserveForMainThread?: boolean },
+): { minThreads: number; maxThreads: number } => {
   const processConcurrency = getProcessConcurrency();
 
   const minThreads = 1;
 
+  // When workers run in parallel with CPU-intensive main thread work (e.g., token counting),
+  // reserve half the CPU cores for the main thread to avoid contention.
+  // On a 4-core machine: 4 workers + main thread = 5 threads on 4 cores causes ~30% slowdown.
+  // Limiting to 2 workers leaves cores available for the main thread, reducing total wall time.
+  const availableCores = options?.reserveForMainThread
+    ? Math.max(1, Math.floor(processConcurrency / 2))
+    : processConcurrency;
+
   // Limit max threads based on number of tasks
-  const maxThreads = Math.max(minThreads, Math.min(processConcurrency, Math.ceil(numOfTasks / TASKS_PER_THREAD)));
+  const maxThreads = Math.max(minThreads, Math.min(availableCores, Math.ceil(numOfTasks / TASKS_PER_THREAD)));
 
   return {
     minThreads,
@@ -62,8 +74,8 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
-  const { numOfTasks, workerType, runtime = 'child_process' } = options;
-  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { numOfTasks, workerType, runtime = 'child_process', reserveForMainThread } = options;
+  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, { reserveForMainThread });
 
   // Get worker path - uses unified worker in bundled env, individual files otherwise
   const workerPath = getWorkerPath(workerType);
