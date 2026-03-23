@@ -108,5 +108,5 @@ function calculateTotal
 
   parts.push('\n');
 
-  return parts.join('').trim() + '\n';
+  return `${parts.join('').trim()}\n`;
 };

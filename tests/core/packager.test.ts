@@ -18,7 +18,7 @@ describe('packager', () => {
     vi.mocked(TokenCounter.create).mockResolvedValue({
       countTokens: vi.fn().mockReturnValue(10),
       free: vi.fn(),
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof TokenCounter.create>>);
   });
 
   test('pack should orchestrate packing files and generating output', async () => {
