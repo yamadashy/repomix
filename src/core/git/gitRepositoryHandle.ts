@@ -1,6 +1,16 @@
 import { logger } from '../../shared/logger.js';
 import { execGitLogFilenames, execGitRevParse, execGitVersion } from './gitCommand.js';
 
+// Cache isGitRepository results per directory to avoid redundant git rev-parse calls.
+// When diffs and logs are both enabled, isGitRepository is called 3 times for the same
+// directory (getWorkTreeDiff, getStagedDiff, getGitLog). Caching reduces this to 1 call.
+const gitRepoCache = new Map<string, Promise<boolean>>();
+
+/** Clear the isGitRepository cache (for testing only). */
+export const clearGitRepoCache = (): void => {
+  gitRepoCache.clear();
+};
+
 export const getFileChangeCount = async (
   directory: string,
   maxCommits = 100,
@@ -30,12 +40,17 @@ export const isGitRepository = async (
     execGitRevParse,
   },
 ): Promise<boolean> => {
-  try {
-    await deps.execGitRevParse(directory);
-    return true;
-  } catch {
-    return false;
+  const cached = gitRepoCache.get(directory);
+  if (cached !== undefined) {
+    return cached;
   }
+
+  const promise = deps.execGitRevParse(directory).then(
+    () => true,
+    () => false,
+  );
+  gitRepoCache.set(directory, promise);
+  return promise;
 };
 
 export const isGitInstalled = async (

@@ -91,6 +91,29 @@ const checkGitAvailability = async (cwd: string, deps: SortDeps): Promise<boolea
   }
 };
 
+/**
+ * Pre-warm the git file change count cache by starting the git operations early.
+ * Returns a promise that resolves when the cache is populated.
+ * Call this during file collection to overlap git I/O with file I/O.
+ * Errors are silently ignored since this is a non-critical optimization.
+ */
+export const preWarmFileChangeCounts = async (
+  config: RepomixConfigMerged,
+  deps: SortDeps = {
+    getFileChangeCount,
+    isGitInstalled,
+  },
+): Promise<void> => {
+  if (!config.output.git?.sortByChanges) {
+    return;
+  }
+  try {
+    await getFileChangeCounts(config.cwd, config.output.git?.sortByChangesMaxCommits, deps);
+  } catch {
+    // Non-critical: sortOutputFiles will retry if needed
+  }
+};
+
 // Sort files by git change count for output
 export const sortOutputFiles = async (
   files: ProcessedFile[],

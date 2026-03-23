@@ -86,6 +86,7 @@ index 123..456 100644
       createFileProcessTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
       createSecurityTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
       sortPaths: mockSortPaths,
+      preWarmFileChangeCounts: vi.fn().mockResolvedValue(undefined),
     });
 
     // Should not call getWorkTreeDiff
@@ -137,6 +138,7 @@ index 123..456 100644
       createFileProcessTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
       createSecurityTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
       sortPaths: mockSortPaths,
+      preWarmFileChangeCounts: vi.fn().mockResolvedValue(undefined),
     });
 
     // Check gitDiffTokenCount in the result

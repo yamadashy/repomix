@@ -15,6 +15,7 @@ import { calculateGitLogMetrics } from './metrics/calculateGitLogMetrics.js';
 import { calculateMetrics, type PrecomputedMetrics } from './metrics/calculateMetrics.js';
 import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
 import { TokenCounter } from './metrics/TokenCounter.js';
+import { preWarmFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, runSecurityCheck, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -50,6 +51,7 @@ const defaultDeps = {
   getGitDiffs,
   getGitLogs,
   packSkill,
+  preWarmFileChangeCounts,
 };
 
 export interface PackOptions {
@@ -114,9 +116,12 @@ export const pack = async (
   // By the time calculateMetrics runs (after collect + security + process + output), it's ready.
   const tokenCounterPromise = TokenCounter.create(config.tokenCount.encoding);
 
-  // Start git operations in parallel with file collection — they only need rootDirs and config
+  // Start git operations in parallel with file collection — they only need rootDirs and config.
+  // Also pre-warm the git file change count cache used by sortOutputFiles during output generation,
+  // so the git log --name-only call overlaps with file collection disk I/O.
   progressCallback('Collecting files...');
   const gitPromise = Promise.all([deps.getGitDiffs(rootDirs, config), deps.getGitLogs(rootDirs, config)]);
+  const fileChangeCountPromise = deps.preWarmFileChangeCounts(config);
 
   const collectResults = await withMemoryLogging(
     'Collect Files',
@@ -212,6 +217,9 @@ export const pack = async (
       fileMetrics: precomputedMetrics.fileMetrics.filter((m) => safePathSet.has(m.path)),
     };
   }
+
+  // Ensure file change count cache is populated (likely already resolved during file collection)
+  await fileChangeCountPromise;
 
   progressCallback('Generating output...');
 
