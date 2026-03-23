@@ -54,6 +54,9 @@ jobs:
 
       - name: Verify npm audit signatures
         run: npm audit signatures
+        env:
+          # Disable min-release-age during audit to avoid ETARGET errors for recently published dependencies
+          npm_config_min_release_age: 0
 
       - name: Publish (dry-run)
         if: ${{ inputs.dry-run }}
