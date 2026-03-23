@@ -1,11 +1,18 @@
+import process from 'node:process';
 import pc from 'picocolors';
 import type { CliOptions } from './types.js';
 
-// Lazy-loaded log-update module
-let logUpdateModule: typeof import('log-update').default | null = null;
-const getLogUpdate = async () => {
-  logUpdateModule ??= (await import('log-update')).default;
-  return logUpdateModule;
+// Lightweight single-line updater using ANSI escape codes.
+// Replaces log-update (~49ms load: log-update → wrap-ansi → string-width)
+// with direct stdout writes since the spinner only needs single-line overwrite.
+const clearLine = '\x1B[2K\r';
+
+const writeUpdate = (text: string): void => {
+  process.stderr.write(`${clearLine}${text}`);
+};
+
+const writeUpdateDone = (): void => {
+  process.stderr.write('\n');
 };
 
 // Replicate cli-spinners dots animation
@@ -25,17 +32,16 @@ export class Spinner {
     this.isQuiet = cliOptions?.quiet || cliOptions?.verbose || cliOptions?.stdout || false;
   }
 
-  async start(): Promise<void> {
+  start(): void {
     if (this.isQuiet) {
       return;
     }
 
-    const logUpdate = await getLogUpdate();
     const framesLength = dotsFrames.length;
     this.interval = setInterval(() => {
       this.currentFrame++;
       const frame = dotsFrames[this.currentFrame % framesLength];
-      logUpdate(`${pc.cyan(frame)} ${this.message}`);
+      writeUpdate(`${pc.cyan(frame)} ${this.message}`);
     }, dotsInterval);
   }
 
@@ -47,7 +53,7 @@ export class Spinner {
     this.message = message;
   }
 
-  async stop(finalMessage: string): Promise<void> {
+  stop(finalMessage: string): void {
     if (this.isQuiet) {
       return;
     }
@@ -56,24 +62,23 @@ export class Spinner {
       clearInterval(this.interval);
       this.interval = null;
     }
-    const logUpdate = await getLogUpdate();
-    logUpdate(finalMessage);
-    logUpdate.done();
+    writeUpdate(finalMessage);
+    writeUpdateDone();
   }
 
-  async succeed(message: string): Promise<void> {
+  succeed(message: string): void {
     if (this.isQuiet) {
       return;
     }
 
-    await this.stop(`${pc.green('✔')} ${message}`);
+    this.stop(`${pc.green('✔')} ${message}`);
   }
 
-  async fail(message: string): Promise<void> {
+  fail(message: string): void {
     if (this.isQuiet) {
       return;
     }
 
-    await this.stop(`${pc.red('✖')} ${message}`);
+    this.stop(`${pc.red('✖')} ${message}`);
   }
 }

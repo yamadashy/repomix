@@ -2,7 +2,6 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger, repomixLogLevels } from '../../shared/logger.js';
 import { getFileManipulator } from './fileManipulate.js';
 import type { RawFile } from './fileTypes.js';
-import { truncateBase64Content } from './truncateBase64.js';
 
 /**
  * Process the content of a file according to the configuration
@@ -28,6 +27,7 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
   }
 
   if (config.output.truncateBase64) {
+    const { truncateBase64Content } = await import('./truncateBase64.js');
     processedContent = truncateBase64Content(processedContent);
   }
 
