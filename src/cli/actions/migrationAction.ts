@@ -1,6 +1,5 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import * as prompts from '@clack/prompts';
 import pc from 'picocolors';
 import { getGlobalDirectory } from '../../config/globalDirectory.js';
 import { logger } from '../../shared/logger.js';
@@ -108,11 +107,12 @@ const migrateFile = async (
 
   const exists = await fileExists(newPath);
   if (exists) {
-    const shouldOverwrite = await prompts.confirm({
+    const { confirm, isCancel } = await import('@clack/prompts');
+    const shouldOverwrite = await confirm({
       message: `${description} already exists at ${newPath}. Do you want to overwrite it?`,
     });
 
-    if (prompts.isCancel(shouldOverwrite) || !shouldOverwrite) {
+    if (isCancel(shouldOverwrite) || !shouldOverwrite) {
       logger.info(`Skipping migration of ${description}`);
       return false;
     }
@@ -245,11 +245,12 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
     migrationMessage += `${items.join(' and ')}. Would you like to migrate to ${pc.green('Repomix')}?`;
 
     // Confirm migration with user
-    const shouldMigrate = await prompts.confirm({
+    const { confirm, isCancel } = await import('@clack/prompts');
+    const shouldMigrate = await confirm({
       message: migrationMessage,
     });
 
-    if (prompts.isCancel(shouldMigrate) || !shouldMigrate) {
+    if (isCancel(shouldMigrate) || !shouldMigrate) {
       logger.info('Migration cancelled.');
       return result;
     }

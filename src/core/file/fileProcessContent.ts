@@ -32,7 +32,7 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
   }
 
   if (manipulator && config.output.removeComments) {
-    processedContent = manipulator.removeComments(processedContent);
+    processedContent = await manipulator.removeComments(processedContent);
   }
 
   if (config.output.removeEmptyLines && manipulator) {

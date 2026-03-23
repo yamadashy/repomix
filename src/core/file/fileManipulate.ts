@@ -1,8 +1,7 @@
 import path from 'node:path';
-import strip from '@repomix/strip-comments';
 
 export interface FileManipulator {
-  removeComments(content: string): string;
+  removeComments(content: string): string | Promise<string>;
   removeEmptyLines(content: string): string;
 }
 
@@ -12,8 +11,21 @@ const rtrimLines = (content: string): string =>
     .map((line) => line.trimEnd())
     .join('\n');
 
+// Lazy-loaded @repomix/strip-comments module.
+// Only imported when removeComments is actually requested,
+// avoiding module loading in every worker thread / main thread.
+let stripFn: ((content: string, options: { language: string; preserveNewlines: boolean }) => string) | undefined;
+
+const getStrip = async () => {
+  if (!stripFn) {
+    const mod = await import('@repomix/strip-comments');
+    stripFn = mod.default;
+  }
+  return stripFn;
+};
+
 class BaseManipulator implements FileManipulator {
-  removeComments(content: string): string {
+  removeComments(content: string): string | Promise<string> {
     return content;
   }
 
@@ -33,7 +45,8 @@ class StripCommentsManipulator extends BaseManipulator {
     this.language = language;
   }
 
-  removeComments(content: string): string {
+  async removeComments(content: string): Promise<string> {
+    const strip = await getStrip();
     const result = strip(content, {
       language: this.language,
       preserveNewlines: true,
@@ -50,8 +63,12 @@ class CompositeManipulator extends BaseManipulator {
     this.manipulators = manipulators;
   }
 
-  removeComments(content: string): string {
-    return this.manipulators.reduce((acc, manipulator) => manipulator.removeComments(acc), content);
+  async removeComments(content: string): Promise<string> {
+    let result = content;
+    for (const manipulator of this.manipulators) {
+      result = await manipulator.removeComments(result);
+    }
+    return result;
   }
 }
 

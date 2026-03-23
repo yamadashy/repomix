@@ -1027,9 +1027,9 @@ r2 := '\\\\'`,
   ];
 
   for (const { name, ext, input, expected } of testCases) {
-    test(name, () => {
+    test(name, async () => {
       const manipulator = getFileManipulator(`test${ext}`);
-      expect(manipulator?.removeComments(input)).toBe(expected);
+      expect(await manipulator?.removeComments(input)).toBe(expected);
     });
   }
 
