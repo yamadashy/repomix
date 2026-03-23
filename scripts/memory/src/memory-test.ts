@@ -297,23 +297,34 @@ async function runMemoryTest(): Promise<void> {
 
   console.log('\n✅ Memory test completed!');
 
-  // Final analysis
-  const finalUsage = getMemoryUsage();
-  const initialUsage = memoryHistory[0];
+  // Final analysis: compare average of early measurements vs late measurements.
+  // This approach is immune to one-time module initialization overhead since pack()
+  // runs in-process and the first few iterations load heavy modules (gpt-tokenizer,
+  // secretlint, tree-sitter, etc.) that inflate the baseline.
+  // Skip the first entry (iteration 0 baseline) and compare logged iteration data.
+  const iterationEntries = memoryHistory.filter((entry) => entry.iteration > 0);
 
-  if (initialUsage) {
-    const heapGrowth =
-      initialUsage.heapUsed > 0 ? ((finalUsage.heapUsed - initialUsage.heapUsed) / initialUsage.heapUsed) * 100 : 0;
-    const rssGrowth = initialUsage.rss > 0 ? ((finalUsage.rss - initialUsage.rss) / initialUsage.rss) * 100 : 0;
+  if (iterationEntries.length >= 4) {
+    const halfLen = Math.floor(iterationEntries.length / 2);
+    const earlyEntries = iterationEntries.slice(0, halfLen);
+    const lateEntries = iterationEntries.slice(halfLen);
 
-    console.log('\n📊 Final Memory Analysis:');
-    console.log(`Initial: Heap ${initialUsage.heapUsed}MB, RSS ${initialUsage.rss}MB`);
-    console.log(`Final:   Heap ${finalUsage.heapUsed}MB, RSS ${finalUsage.rss}MB`);
-    console.log(`Growth:  Heap ${heapGrowth.toFixed(2)}%, RSS ${rssGrowth.toFixed(2)}%`);
+    const avgEarlyHeap = earlyEntries.reduce((sum, e) => sum + e.heapUsed, 0) / earlyEntries.length;
+    const avgLateHeap = lateEntries.reduce((sum, e) => sum + e.heapUsed, 0) / lateEntries.length;
+    const avgEarlyRSS = earlyEntries.reduce((sum, e) => sum + e.rss, 0) / earlyEntries.length;
+    const avgLateRSS = lateEntries.reduce((sum, e) => sum + e.rss, 0) / lateEntries.length;
+
+    const heapGrowth = avgEarlyHeap > 0 ? ((avgLateHeap - avgEarlyHeap) / avgEarlyHeap) * 100 : 0;
+    const rssGrowth = avgEarlyRSS > 0 ? ((avgLateRSS - avgEarlyRSS) / avgEarlyRSS) * 100 : 0;
+
+    console.log('\n📊 Final Memory Analysis (early vs late average):');
+    console.log(`Early avg:  Heap ${avgEarlyHeap.toFixed(2)}MB, RSS ${avgEarlyRSS.toFixed(2)}MB`);
+    console.log(`Late avg:   Heap ${avgLateHeap.toFixed(2)}MB, RSS ${avgLateRSS.toFixed(2)}MB`);
+    console.log(`Growth:     Heap ${heapGrowth.toFixed(2)}%, RSS ${rssGrowth.toFixed(2)}%`);
 
     // Exit with error code if memory growth exceeds threshold
     if (heapGrowth > WARNING_THRESHOLD || rssGrowth > WARNING_THRESHOLD) {
-      console.log('⚠️  WARNING: Significant memory growth detected!');
+      console.log('⚠️  WARNING: Significant memory growth detected - possible memory leak!');
       process.exitCode = 1;
     } else {
       console.log('✅ Memory usage appears stable');
