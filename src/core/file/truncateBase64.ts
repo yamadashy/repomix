@@ -24,28 +24,64 @@ const hasSpecialCharsPattern = /[+/]/;
  * @param content The content to process
  * @returns Content with base64 data truncated
  */
+/**
+ * Fast pre-check: does content potentially contain base64 data URIs?
+ * Uses V8-optimized string.includes() to skip expensive regex for ~95% of source files.
+ */
+const mayContainDataUri = (content: string): boolean => content.includes('base64,');
+
+/**
+ * Fast pre-check: does content potentially contain standalone base64 strings?
+ * Scans for runs of 60+ consecutive base64-alphabet characters using a char loop.
+ */
+const mayContainStandaloneBase64 = (content: string): boolean => {
+  let runLength = 0;
+  for (let i = 0; i < content.length; i++) {
+    const c = content.charCodeAt(i);
+    // A-Z(65-90), a-z(97-122), 0-9(48-57), +(43), /(47)
+    if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47) {
+      runLength++;
+      if (runLength >= MIN_BASE64_LENGTH_STANDALONE) {
+        return true;
+      }
+    } else {
+      runLength = 0;
+    }
+  }
+  return false;
+};
+
 export const truncateBase64Content = (content: string): string => {
-  // Reset lastIndex for global regexes before each use
-  dataUriPattern.lastIndex = 0;
-  standaloneBase64Pattern.lastIndex = 0;
+  const hasDataUri = mayContainDataUri(content);
+  const hasStandalone = mayContainStandaloneBase64(content);
+
+  // Skip expensive regex if no base64-like content detected
+  if (!hasDataUri && !hasStandalone) {
+    return content;
+  }
 
   let processedContent = content;
 
   // Replace data URIs
-  processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
-    const preview = base64Data.substring(0, TRUNCATION_LENGTH);
-    return `data:${mimeType}${params || ''};base64,${preview}...`;
-  });
+  if (hasDataUri) {
+    dataUriPattern.lastIndex = 0;
+    processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
+      const preview = base64Data.substring(0, TRUNCATION_LENGTH);
+      return `data:${mimeType}${params || ''};base64,${preview}...`;
+    });
+  }
 
   // Replace standalone base64 strings
-  processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
-    // Check if this looks like actual base64 (not just a long string)
-    if (isLikelyBase64(base64String)) {
-      const preview = base64String.substring(0, TRUNCATION_LENGTH);
-      return `${preview}...`;
-    }
-    return match;
-  });
+  if (hasStandalone) {
+    standaloneBase64Pattern.lastIndex = 0;
+    processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
+      if (isLikelyBase64(base64String)) {
+        const preview = base64String.substring(0, TRUNCATION_LENGTH);
+        return `${preview}...`;
+      }
+      return match;
+    });
+  }
 
   return processedContent;
 };

@@ -1,8 +1,6 @@
 import * as fs from 'node:fs/promises';
-import iconv from 'iconv-lite';
 import isBinaryPath from 'is-binary-path';
 import { isBinaryFile } from 'isbinaryfile';
-import jschardet from 'jschardet';
 import { logger } from '../../shared/logger.js';
 
 export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
@@ -58,9 +56,12 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     }
 
     // Slow path: Detect encoding with jschardet for non-UTF-8 files (e.g., Shift-JIS, EUC-KR)
-    const { encoding: detectedEncoding } = jschardet.detect(buffer) ?? {};
-    const encoding = detectedEncoding && iconv.encodingExists(detectedEncoding) ? detectedEncoding : 'utf-8';
-    const content = iconv.decode(buffer, encoding, { stripBOM: true });
+    // Lazy-load jschardet and iconv-lite since only ~1% of source files need encoding detection
+    const jschardet = await import('jschardet');
+    const iconv = await import('iconv-lite');
+    const { encoding: detectedEncoding } = jschardet.default.detect(buffer) ?? {};
+    const encoding = detectedEncoding && iconv.default.encodingExists(detectedEncoding) ? detectedEncoding : 'utf-8';
+    const content = iconv.default.decode(buffer, encoding, { stripBOM: true });
 
     if (content.includes('\uFFFD')) {
       logger.debug(`Skipping file due to encoding errors (detected: ${encoding}): ${filePath}`);
