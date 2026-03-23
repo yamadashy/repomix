@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
+import { getWorkerThreadCount, initTaskRunner, type TaskRunner } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -15,6 +16,7 @@ import { calculateGitLogMetrics } from './metrics/calculateGitLogMetrics.js';
 import { calculateMetrics, type PrecomputedMetrics } from './metrics/calculateMetrics.js';
 import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
 import { TokenCounter } from './metrics/TokenCounter.js';
+import type { FileMetrics } from './metrics/workers/types.js';
 import { preWarmFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, runSecurityCheck, type SuspiciousFileResult } from './security/securityCheck.js';
@@ -100,9 +102,8 @@ export const pack = async (
   }));
 
   // Pre-warm worker pools so threads load modules during file collection disk I/O.
-  // Security workers load secretlint, file process workers load tree-sitter.
-  // Token counting and lightweight file processing use the main thread directly
-  // (structured clone overhead far exceeds computation cost for pure JS operations).
+  // Security workers load secretlint, file process workers load tree-sitter,
+  // metrics workers pre-load gpt-tokenizer for parallel BPE token counting.
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.createSecurityTaskRunner(allFilePaths.length)
     : undefined;
@@ -112,8 +113,31 @@ export const pack = async (
     ? deps.createFileProcessTaskRunner(allFilePaths.length)
     : undefined;
 
-  // Pre-warm TokenCounter: start loading gpt-tokenizer encoding module (~158ms) in background.
-  // By the time calculateMetrics runs (after collect + security + process + output), it's ready.
+  // Pre-warm metrics workers for parallel token counting. BPE tokenization is CPU-heavy
+  // (~750ms for ~1000 files). With 2 worker threads, the work splits to ~380ms each,
+  // AND the main thread is free for output generation — overlapping ~100ms of I/O.
+  // Workers pre-load gpt-tokenizer (~200ms) during file collection to eliminate cold-start.
+  // For small repos (<50 files), worker overhead exceeds benefit; use main thread instead.
+  const WORKER_TOKEN_COUNTING_THRESHOLD = 50;
+  const useWorkerTokenCounting = allFilePaths.length >= WORKER_TOKEN_COUNTING_THRESHOLD;
+  let metricsTaskRunner: TaskRunner<unknown, unknown> | undefined;
+  if (useWorkerTokenCounting) {
+    const { maxThreads } = getWorkerThreadCount(allFilePaths.length, { reserveForMainThread: true });
+    metricsTaskRunner = initTaskRunner({
+      numOfTasks: allFilePaths.length,
+      workerType: 'calculateMetrics',
+      runtime: 'worker_threads',
+      reserveForMainThread: true,
+    });
+    // Fire warmup tasks to pre-load gpt-tokenizer in each worker thread.
+    // Empty batches trigger getTokenCounter() which caches the encoder for real tasks.
+    for (let i = 0; i < maxThreads; i++) {
+      metricsTaskRunner.run({ files: [], encoding: config.tokenCount.encoding, batch: true });
+    }
+  }
+
+  // Pre-warm TokenCounter on main thread for git diff/log token counting (small data).
+  // For large repos, file token counting uses pre-warmed worker threads instead.
   const tokenCounterPromise = TokenCounter.create(config.tokenCount.encoding);
 
   // Start git operations in parallel with file collection — they only need rootDirs and config.
@@ -161,62 +185,69 @@ export const pack = async (
     }
   })();
 
-  // Main thread: process ALL raw files and count tokens while security workers scan.
+  // Process ALL raw files while security workers scan.
   // For lightweight processing (no compress/removeComments), this runs entirely on the main thread.
   // Suspicious files (~0-5 typically) get processed but are filtered before output generation.
   progressCallback('Processing files...');
   let allProcessedFiles: ProcessedFile[];
-  let precomputedMetrics: PrecomputedMetrics | undefined;
   try {
     allProcessedFiles = await withMemoryLogging('Process Files', () =>
       deps.processFiles(rawFiles, config, progressCallback, {
         ...(fileProcessTaskRunner && { taskRunner: fileProcessTaskRunner }),
       }),
     );
-
-    // Count tokens on main thread while security workers are still running.
-    // TokenCounter was pre-warmed during file collection so encoding module is ready.
-    const tokenCounter = await tokenCounterPromise;
-    const processedFilePaths = allProcessedFiles.map((file) => file.path);
-
-    const [fileMetrics, gitDiffTokenCount, gitLogTokenCountResult] = await Promise.all([
-      calculateSelectiveFileMetrics(
-        allProcessedFiles,
-        processedFilePaths,
-        config.tokenCount.encoding,
-        progressCallback,
-        {
-          tokenCounter,
-        },
-      ),
-      calculateGitDiffMetrics(config, gitDiffResult, { tokenCounter }),
-      calculateGitLogMetrics(config, gitLogResult, { tokenCounter }),
-    ]);
-
-    precomputedMetrics = {
-      fileMetrics,
-      gitDiffTokenCount,
-      gitLogTokenCount: gitLogTokenCountResult.gitLogTokenCount,
-    };
   } finally {
     if (fileProcessTaskRunner) {
       await fileProcessTaskRunner.cleanup();
     }
   }
 
-  // Wait for security check to complete, then filter out suspicious files
+  // Start token counting: workers for large repos (parallel BPE), main thread for small repos.
+  // Worker path: files are distributed across pre-warmed threads using stride assignment
+  // (file i → batch i%N) to balance content size evenly across batches.
+  // Main thread path: synchronous counting (fast enough for <50 files).
+  let fileMetricsPromise: Promise<FileMetrics[]>;
+  if (metricsTaskRunner) {
+    const { maxThreads } = getWorkerThreadCount(allProcessedFiles.length, { reserveForMainThread: true });
+    const batchCount = Math.max(1, maxThreads);
+    // Stride assignment: file[0]→batch0, file[1]→batch1, ..., file[N]→batch0, ...
+    // This evenly distributes large/small files across batches regardless of sort order.
+    const batches: Array<Array<{ content: string; path: string }>> = Array.from({ length: batchCount }, () => []);
+    for (let i = 0; i < allProcessedFiles.length; i++) {
+      const f = allProcessedFiles[i];
+      batches[i % batchCount].push({ content: f.content, path: f.path });
+    }
+    fileMetricsPromise = Promise.all(
+      batches.map((files) =>
+        metricsTaskRunner?.run({
+          files,
+          encoding: config.tokenCount.encoding,
+          batch: true,
+        }),
+      ),
+    ).then((results) => (results as FileMetrics[][]).flat());
+  } else {
+    const tokenCounter = await tokenCounterPromise;
+    fileMetricsPromise = calculateSelectiveFileMetrics(
+      allProcessedFiles,
+      allProcessedFiles.map((f) => f.path),
+      config.tokenCount.encoding,
+      progressCallback,
+      { tokenCounter },
+    );
+  }
+
+  // Git diff/log token counting on main thread (small data, <10ms total)
+  const tokenCounter = await tokenCounterPromise;
+  const gitDiffTokenCountPromise = calculateGitDiffMetrics(config, gitDiffResult, { tokenCounter });
+  const gitLogMetricsPromise = calculateGitLogMetrics(config, gitLogResult, { tokenCounter });
+
+  // Wait for security check to complete (likely already done), then filter out suspicious files
   const securityResult = await securityPromise;
   const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = securityResult;
 
-  // Filter processed files and pre-computed metrics to only include safe files
   const safePathSet = new Set(safeFilePaths);
   const processedFiles = allProcessedFiles.filter((file) => safePathSet.has(file.path));
-  if (precomputedMetrics && suspiciousFilesResults.length > 0) {
-    precomputedMetrics = {
-      ...precomputedMetrics,
-      fileMetrics: precomputedMetrics.fileMetrics.filter((m) => safePathSet.has(m.path)),
-    };
-  }
 
   // Ensure file change count cache is populated (likely already resolved during file collection)
   await fileChangeCountPromise;
@@ -225,6 +256,10 @@ export const pack = async (
 
   // Check if skill generation is requested
   if (config.skillGenerate !== undefined && options.skillDir) {
+    // Clean up metrics workers before early return (skill generation has its own metrics)
+    if (metricsTaskRunner) {
+      await metricsTaskRunner.cleanup();
+    }
     const result = await deps.packSkill({
       rootDirs,
       config,
@@ -269,9 +304,34 @@ export const pack = async (
     emptyDirPaths,
   );
 
+  // Await token counting results (workers may still be running if output gen was fast)
+  const [fileMetrics, gitDiffTokenCount, { gitLogTokenCount }] = await Promise.all([
+    fileMetricsPromise,
+    gitDiffTokenCountPromise,
+    gitLogMetricsPromise,
+  ]);
+
+  // Clean up metrics workers
+  if (metricsTaskRunner) {
+    await metricsTaskRunner.cleanup();
+  }
+
+  // Build pre-computed metrics, filtering out suspicious files if any
+  let precomputedMetrics: PrecomputedMetrics = {
+    fileMetrics,
+    gitDiffTokenCount,
+    gitLogTokenCount,
+  };
+  if (suspiciousFilesResults.length > 0) {
+    precomputedMetrics = {
+      ...precomputedMetrics,
+      fileMetrics: fileMetrics.filter((m) => safePathSet.has(m.path)),
+    };
+  }
+
   // Finalize metrics with pre-computed token counts.
-  // File token counting and git token counting already ran on the main thread
-  // in parallel with security workers — only char counting and estimation remain.
+  // File token counting ran on worker threads (or main thread for small repos)
+  // in parallel with output generation — only char counting and estimation remain.
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
     deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
       precomputedMetrics,

@@ -51,16 +51,18 @@ export const countTokens = async (task: TokenCountTask): Promise<number> => {
   }
 };
 
-const countTokensBatch = async (task: BatchTokenCountTask): Promise<Array<{ path: string; tokenCount: number }>> => {
+const countTokensBatch = async (
+  task: BatchTokenCountTask,
+): Promise<Array<{ path: string; charCount: number; tokenCount: number }>> => {
   const processStartAt = isTracing ? process.hrtime.bigint() : 0n;
 
   try {
     const counter = await getTokenCounter(task.encoding);
-    const results: Array<{ path: string; tokenCount: number }> = [];
+    const results: Array<{ path: string; charCount: number; tokenCount: number }> = [];
 
     for (const file of task.files) {
       const tokenCount = counter.countTokens(file.content, file.path);
-      results.push({ path: file.path, tokenCount });
+      results.push({ path: file.path, charCount: file.content.length, tokenCount });
     }
 
     if (isTracing) {
