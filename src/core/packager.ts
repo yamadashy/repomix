@@ -10,7 +10,7 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { calculateMetrics } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -40,7 +40,6 @@ const defaultDeps = {
   validateFileSafety,
   produceOutput,
   calculateMetrics,
-  createMetricsTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -91,12 +90,6 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap tiktoken WASM loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers tiktoken
-  // initialization in the worker thread without blocking the main pipeline.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding });
-
   // Start git diffs/logs in parallel with file collection - they only need rootDirs and config,
   // not file contents, so there's no dependency between them
   progressCallback('Collecting files and git info...');
@@ -133,9 +126,6 @@ export const pack = async (
 
   // Check if skill generation is requested
   if (config.skillGenerate !== undefined && options.skillDir) {
-    await warmupPromise;
-    await metricsTaskRunner.cleanup();
-
     const result = await deps.packSkill({
       rootDirs,
       config,
@@ -176,17 +166,10 @@ export const pack = async (
     filePathsByRoot,
   );
 
-  // Ensure warm-up task completes before metrics calculation
-  await warmupPromise;
-
+  // Token counting runs on main thread with gpt-tokenizer (pure JS) — no worker pool needed
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
-      taskRunner: metricsTaskRunner,
-    }),
+    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),
   );
-
-  // Cleanup the pre-initialized task runner
-  await metricsTaskRunner.cleanup();
 
   // Create a result object that includes metrics and security results
   const result = {

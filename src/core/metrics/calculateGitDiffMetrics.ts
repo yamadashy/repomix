@@ -1,8 +1,11 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
+import { getTokenCounter } from './tokenCounterFactory.js';
+
+const defaultDeps = {
+  getTokenCounter,
+};
 
 /**
  * Calculate token count for git diffs if included
@@ -10,42 +13,31 @@ import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 export const calculateGitDiffMetrics = async (
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
-  deps: { taskRunner: TaskRunner<TokenCountTask, number> },
+  deps: Partial<typeof defaultDeps> = {},
 ): Promise<number> => {
   if (!config.output.git?.includeDiffs || !gitDiffResult) {
     return 0;
   }
 
-  // Check if we have any diff content to process
   if (!gitDiffResult.workTreeDiffContent && !gitDiffResult.stagedDiffContent) {
     return 0;
   }
 
+  const resolvedDeps = { ...defaultDeps, ...deps };
+
   try {
     const startTime = process.hrtime.bigint();
-    logger.trace('Starting git diff token calculation using worker');
+    logger.trace('Starting git diff token calculation on main thread');
 
-    const countPromises: Promise<number>[] = [];
+    const counter = await resolvedDeps.getTokenCounter(config.tokenCount.encoding);
+    let totalTokens = 0;
 
     if (gitDiffResult.workTreeDiffContent) {
-      countPromises.push(
-        deps.taskRunner.run({
-          content: gitDiffResult.workTreeDiffContent,
-          encoding: config.tokenCount.encoding,
-        }),
-      );
+      totalTokens += counter.countTokens(gitDiffResult.workTreeDiffContent);
     }
     if (gitDiffResult.stagedDiffContent) {
-      countPromises.push(
-        deps.taskRunner.run({
-          content: gitDiffResult.stagedDiffContent,
-          encoding: config.tokenCount.encoding,
-        }),
-      );
+      totalTokens += counter.countTokens(gitDiffResult.stagedDiffContent);
     }
-
-    const results = await Promise.all(countPromises);
-    const totalTokens = results.reduce((sum, count) => sum + count, 0);
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;

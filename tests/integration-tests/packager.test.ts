@@ -115,10 +115,6 @@ describe.runIf(!isWindows)('packager integration', () => {
           });
         },
         produceOutput,
-        createMetricsTaskRunner: () => ({
-          run: async () => 0,
-          cleanup: async () => {},
-        }),
         calculateMetrics: async (
           processedFiles,
           _output,
