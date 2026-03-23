@@ -100,8 +100,10 @@ describe('packager', () => {
       undefined,
       { runSecurityCheck: expect.any(Function) },
     );
+    // processFiles receives ALL raw files (not just safe ones) because processing
+    // runs in parallel with security check, then results are filtered after.
     // Default config (no compress/removeComments) uses main-thread processing, no taskRunner
-    expect(mockDeps.processFiles).toHaveBeenCalledWith(mockSafeRawFiles, mockConfig, progressCallback, {});
+    expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback, {});
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
       ['root'],
       mockConfig,
@@ -113,6 +115,8 @@ describe('packager', () => {
       [{ rootLabel: 'root', files: mockFilePaths }],
       [],
     );
+    // calculateMetrics receives pre-computed metrics (file + git token counts computed
+    // on main thread in parallel with security workers)
     expect(mockDeps.calculateMetrics).toHaveBeenCalledWith(
       mockProcessedFiles,
       mockOutput,
@@ -120,7 +124,13 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
-      { tokenCounter: expect.any(Object) },
+      {
+        precomputedMetrics: {
+          fileMetrics: expect.any(Array),
+          gitDiffTokenCount: expect.any(Number),
+          gitLogTokenCount: expect.any(Number),
+        },
+      },
     );
 
     // Check the result of pack function

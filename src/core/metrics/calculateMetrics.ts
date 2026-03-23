@@ -8,6 +8,7 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
 import { TokenCounter } from './TokenCounter.js';
+import type { FileMetrics } from './workers/types.js';
 
 export interface CalculateMetricsResult {
   totalFiles: number;
@@ -19,11 +20,18 @@ export interface CalculateMetricsResult {
   gitLogTokenCount: number;
 }
 
+export interface PrecomputedMetrics {
+  fileMetrics: FileMetrics[];
+  gitDiffTokenCount: number;
+  gitLogTokenCount: number;
+}
+
 const defaultMetricsDeps = {
   calculateSelectiveFileMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
   tokenCounter: undefined as TokenCounter | undefined,
+  precomputedMetrics: undefined as PrecomputedMetrics | undefined,
 };
 
 export const calculateMetrics = async (
@@ -38,34 +46,36 @@ export const calculateMetrics = async (
   const deps = { ...defaultMetricsDeps, ...overrideDeps };
   progressCallback('Calculating metrics...');
 
-  // Use provided TokenCounter or create one on the main thread.
-  // gpt-tokenizer is pure JS — counting on the main thread is ~2x faster
-  // than worker threads due to eliminated structured clone serialization overhead.
-  const tokenCounter = deps.tokenCounter ?? (await TokenCounter.create(config.tokenCount.encoding));
-
   const outputParts = Array.isArray(output) ? output : [output];
 
-  // Count tokens for ALL files individually and estimate total output tokens from
-  // the file token ratio. This eliminates the expensive full-output tokenization
-  // (~540ms for a 3.6MB output) while providing per-file token counts for all files.
-  //
-  // The estimation uses: totalTokens = sum(fileTokens) + overheadTokens
-  // where overheadTokens = overheadChars * (sum(fileTokens) / sum(fileChars))
-  //
-  // This is highly accurate (<0.1% error) because the format overhead (XML tags,
-  // headers, tree structure) tokenizes at a similar ratio to source code content.
-  const allFilePaths = processedFiles.map((file) => file.path);
+  let selectiveFileMetrics: FileMetrics[];
+  let gitDiffTokenCount: number;
+  let gitLogTokenCount: number;
 
-  const selectiveFileMetrics = await deps.calculateSelectiveFileMetrics(
-    processedFiles,
-    allFilePaths,
-    config.tokenCount.encoding,
-    progressCallback,
-    { tokenCounter },
-  );
+  if (deps.precomputedMetrics) {
+    // Use pre-computed metrics from parallel execution with security check.
+    // File token counting and git token counting were already completed on the
+    // main thread while security workers ran in parallel.
+    selectiveFileMetrics = deps.precomputedMetrics.fileMetrics;
+    gitDiffTokenCount = deps.precomputedMetrics.gitDiffTokenCount;
+    gitLogTokenCount = deps.precomputedMetrics.gitLogTokenCount;
+  } else {
+    // Fallback: compute metrics inline (e.g., when called from tests or MCP)
+    const tokenCounter = deps.tokenCounter ?? (await TokenCounter.create(config.tokenCount.encoding));
+    const allFilePaths = processedFiles.map((file) => file.path);
 
-  const gitDiffTokenCount = await deps.calculateGitDiffMetrics(config, gitDiffResult, { tokenCounter });
-  const gitLogTokenCountResult = await deps.calculateGitLogMetrics(config, gitLogResult, { tokenCounter });
+    selectiveFileMetrics = await deps.calculateSelectiveFileMetrics(
+      processedFiles,
+      allFilePaths,
+      config.tokenCount.encoding,
+      progressCallback,
+      { tokenCounter },
+    );
+
+    gitDiffTokenCount = await deps.calculateGitDiffMetrics(config, gitDiffResult, { tokenCounter });
+    const gitLogResult2 = await deps.calculateGitLogMetrics(config, gitLogResult, { tokenCounter });
+    gitLogTokenCount = gitLogResult2.gitLogTokenCount;
+  }
 
   const totalFiles = processedFiles.length;
   const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
@@ -113,7 +123,7 @@ export const calculateMetrics = async (
     totalTokens,
     fileCharCounts,
     fileTokenCounts,
-    gitDiffTokenCount: gitDiffTokenCount,
-    gitLogTokenCount: gitLogTokenCountResult.gitLogTokenCount,
+    gitDiffTokenCount,
+    gitLogTokenCount,
   };
 };

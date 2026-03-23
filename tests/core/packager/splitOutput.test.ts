@@ -93,7 +93,13 @@ describe('packager split output', () => {
       mockConfig,
       undefined,
       undefined,
-      { tokenCounter: expect.any(Object) },
+      {
+        precomputedMetrics: {
+          fileMetrics: expect.any(Array),
+          gitDiffTokenCount: expect.any(Number),
+          gitLogTokenCount: expect.any(Number),
+        },
+      },
     );
 
     expect(result.outputFiles).toEqual(['repomix-output.1.xml', 'repomix-output.2.xml']);

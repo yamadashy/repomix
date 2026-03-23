@@ -10,7 +10,10 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics } from './metrics/calculateMetrics.js';
+import { calculateGitDiffMetrics } from './metrics/calculateGitDiffMetrics.js';
+import { calculateGitLogMetrics } from './metrics/calculateGitLogMetrics.js';
+import { calculateMetrics, type PrecomputedMetrics } from './metrics/calculateMetrics.js';
+import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
 import { TokenCounter } from './metrics/TokenCounter.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, runSecurityCheck, type SuspiciousFileResult } from './security/securityCheck.js';
@@ -131,40 +134,83 @@ export const pack = async (
   // Await git results (likely already resolved while files were being collected)
   const [gitDiffResult, gitLogResult] = await gitPromise;
 
-  // Run security check — workers are already warm from pre-warming above.
-  // Batched tasks reduce structured clone + message passing overhead by ~120ms.
-  let securityResult: Awaited<ReturnType<typeof deps.validateFileSafety>>;
-  try {
-    securityResult = await withMemoryLogging('Security Check', () =>
-      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
-        runSecurityCheck: (files, cb, diff, log) =>
-          runSecurityCheck(files, cb, diff, log, { taskRunner: securityTaskRunner }),
-      }),
-    );
-  } finally {
-    // Cleanup security worker pool after security check completes
-    if (securityTaskRunner) {
-      await securityTaskRunner.cleanup();
-    }
-  }
-  const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-    securityResult;
+  // Run security check (workers) in parallel with file processing + token counting (main thread).
+  // Security check runs on worker threads while the main thread processes files and counts tokens.
+  // This overlaps ~290ms of worker-based security scanning with ~400ms of main-thread computation,
+  // saving the sequential delay of waiting for security before starting processing.
+  // Any files flagged as suspicious are filtered out after both operations complete.
 
-  // Process files (remove comments, etc.)
-  // For lightweight processing (no compress/removeComments), runs on main thread.
-  // For heavy processing, pre-warmed workers are already loaded from above.
+  // Security check promise — workers are already warm from pre-warming above.
+  const securityPromise = (async () => {
+    try {
+      return await withMemoryLogging('Security Check', () =>
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
+          runSecurityCheck: (files, cb, diff, log) =>
+            runSecurityCheck(files, cb, diff, log, { taskRunner: securityTaskRunner }),
+        }),
+      );
+    } finally {
+      if (securityTaskRunner) {
+        await securityTaskRunner.cleanup();
+      }
+    }
+  })();
+
+  // Main thread: process ALL raw files and count tokens while security workers scan.
+  // For lightweight processing (no compress/removeComments), this runs entirely on the main thread.
+  // Suspicious files (~0-5 typically) get processed but are filtered before output generation.
   progressCallback('Processing files...');
-  let processedFiles: ProcessedFile[];
+  let allProcessedFiles: ProcessedFile[];
+  let precomputedMetrics: PrecomputedMetrics | undefined;
   try {
-    processedFiles = await withMemoryLogging('Process Files', () =>
-      deps.processFiles(safeRawFiles, config, progressCallback, {
+    allProcessedFiles = await withMemoryLogging('Process Files', () =>
+      deps.processFiles(rawFiles, config, progressCallback, {
         ...(fileProcessTaskRunner && { taskRunner: fileProcessTaskRunner }),
       }),
     );
+
+    // Count tokens on main thread while security workers are still running.
+    // TokenCounter was pre-warmed during file collection so encoding module is ready.
+    const tokenCounter = await tokenCounterPromise;
+    const processedFilePaths = allProcessedFiles.map((file) => file.path);
+
+    const [fileMetrics, gitDiffTokenCount, gitLogTokenCountResult] = await Promise.all([
+      calculateSelectiveFileMetrics(
+        allProcessedFiles,
+        processedFilePaths,
+        config.tokenCount.encoding,
+        progressCallback,
+        {
+          tokenCounter,
+        },
+      ),
+      calculateGitDiffMetrics(config, gitDiffResult, { tokenCounter }),
+      calculateGitLogMetrics(config, gitLogResult, { tokenCounter }),
+    ]);
+
+    precomputedMetrics = {
+      fileMetrics,
+      gitDiffTokenCount,
+      gitLogTokenCount: gitLogTokenCountResult.gitLogTokenCount,
+    };
   } finally {
     if (fileProcessTaskRunner) {
       await fileProcessTaskRunner.cleanup();
     }
+  }
+
+  // Wait for security check to complete, then filter out suspicious files
+  const securityResult = await securityPromise;
+  const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = securityResult;
+
+  // Filter processed files and pre-computed metrics to only include safe files
+  const safePathSet = new Set(safeFilePaths);
+  const processedFiles = allProcessedFiles.filter((file) => safePathSet.has(file.path));
+  if (precomputedMetrics && suspiciousFilesResults.length > 0) {
+    precomputedMetrics = {
+      ...precomputedMetrics,
+      fileMetrics: precomputedMetrics.fileMetrics.filter((m) => safePathSet.has(m.path)),
+    };
   }
 
   progressCallback('Generating output...');
@@ -202,7 +248,7 @@ export const pack = async (
   // Collect empty dir paths from initial search to avoid duplicate globby traversal in output generation
   const emptyDirPaths = searchResultsByDir.flatMap(({ emptyDirPaths }) => emptyDirPaths);
 
-  // Generate and write output (metrics workers already warm from early pre-warming)
+  // Generate and write output
   const { outputFiles, outputForMetrics } = await deps.produceOutput(
     rootDirs,
     config,
@@ -215,13 +261,12 @@ export const pack = async (
     emptyDirPaths,
   );
 
-  // Token counting runs on the main thread — gpt-tokenizer is pure JS,
-  // so direct counting is ~2x faster than worker threads (no structured clone overhead).
-  // TokenCounter was pre-warmed during earlier stages so encoding module is already loaded.
-  const tokenCounter = await tokenCounterPromise;
+  // Finalize metrics with pre-computed token counts.
+  // File token counting and git token counting already ran on the main thread
+  // in parallel with security workers — only char counting and estimation remain.
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
     deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
-      tokenCounter,
+      precomputedMetrics,
     }),
   );
 
