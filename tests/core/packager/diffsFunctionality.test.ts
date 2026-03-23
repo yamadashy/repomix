@@ -90,6 +90,7 @@ index 123..456 100644
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       createFileProcessTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
+      createSecurityTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
       sortPaths: mockSortPaths,
     });
 
@@ -146,6 +147,7 @@ index 123..456 100644
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       createFileProcessTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
+      createSecurityTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
       sortPaths: mockSortPaths,
     });
 

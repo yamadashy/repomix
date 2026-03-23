@@ -62,6 +62,10 @@ describe('packager', () => {
         run: vi.fn(),
         cleanup: vi.fn(),
       }),
+      createSecurityTaskRunner: vi.fn().mockReturnValue({
+        run: vi.fn(),
+        cleanup: vi.fn(),
+      }),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -96,6 +100,7 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      { taskRunner: expect.any(Object) },
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(mockSafeRawFiles, mockConfig, progressCallback, {
       taskRunner: expect.any(Object),

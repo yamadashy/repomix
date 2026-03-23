@@ -3,10 +3,12 @@ import type { TokenCountEncoding } from '../TokenCounter.js';
 import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 
 /**
- * Simple token counting worker for metrics calculation.
+ * Token counting worker for metrics calculation.
  *
- * This worker provides a focused interface for counting tokens from text content.
- * All complex metric calculation logic is handled by the calling side.
+ * Supports two task types:
+ * - TokenCountTask: count tokens for a single content string
+ * - BatchTokenCountTask: count tokens for multiple files in one call,
+ *   reducing per-task structured clone and message passing overhead
  */
 
 // Initialize logger configuration from workerData at module load time
@@ -19,6 +21,15 @@ export interface TokenCountTask {
   content: string;
   encoding: TokenCountEncoding;
   path?: string;
+}
+
+// Batch task: count tokens for multiple files in a single worker call.
+// Reduces per-task overhead (structured clone, message passing, Promise creation)
+// from O(N) to O(batches) — critical when counting 1000+ files.
+export interface BatchTokenCountTask {
+  files: Array<{ content: string; path: string }>;
+  encoding: TokenCountEncoding;
+  batch: true; // discriminator for task type inference
 }
 
 export const countTokens = async (task: TokenCountTask): Promise<number> => {
@@ -40,8 +51,37 @@ export const countTokens = async (task: TokenCountTask): Promise<number> => {
   }
 };
 
-export default async (task: TokenCountTask): Promise<number> => {
-  return countTokens(task);
+const countTokensBatch = async (task: BatchTokenCountTask): Promise<Array<{ path: string; tokenCount: number }>> => {
+  const processStartAt = isTracing ? process.hrtime.bigint() : 0n;
+
+  try {
+    const counter = await getTokenCounter(task.encoding);
+    const results: Array<{ path: string; tokenCount: number }> = [];
+
+    for (const file of task.files) {
+      const tokenCount = counter.countTokens(file.content, file.path);
+      results.push({ path: file.path, tokenCount });
+    }
+
+    if (isTracing) {
+      const endTime = process.hrtime.bigint();
+      const duration = (Number(endTime - processStartAt) / 1e6).toFixed(2);
+      logger.trace(`Batch counted ${task.files.length} files. Took: ${duration}ms`);
+    }
+    return results;
+  } catch (error) {
+    logger.error('Error in batch token counting worker:', error);
+    throw error;
+  }
+};
+
+export default async (
+  task: TokenCountTask | BatchTokenCountTask,
+): Promise<number | Array<{ path: string; tokenCount: number }>> => {
+  if ('batch' in task && task.batch) {
+    return countTokensBatch(task as BatchTokenCountTask);
+  }
+  return countTokens(task as TokenCountTask);
 };
 
 // Export cleanup function for Tinypool teardown

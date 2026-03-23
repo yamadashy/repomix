@@ -12,7 +12,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import { packSkill } from './skill/packSkill.js';
 
@@ -42,6 +42,7 @@ const defaultDeps = {
   calculateMetrics,
   createMetricsTaskRunner,
   createFileProcessTaskRunner,
+  createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -93,6 +94,18 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath: string) => filePathSetsByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
+  // Pre-warm ALL worker pools so threads load modules during file collection disk I/O.
+  // Security workers load secretlint, file process workers load tree-sitter,
+  // metrics workers load gpt-tokenizer — all happen in background while the
+  // main thread reads files from disk and runs security/processing stages.
+  // This gives metrics workers ~800ms+ of warm-up time (collectFiles + security +
+  // fileProcess + outputGenerate) instead of only ~50ms (outputGenerate alone).
+  const securityTaskRunner = config.security.enableSecurityCheck
+    ? deps.createSecurityTaskRunner(allFilePaths.length)
+    : undefined;
+  const fileProcessTaskRunner = deps.createFileProcessTaskRunner(allFilePaths.length);
+  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
+
   // Start git operations in parallel with file collection — they only need rootDirs and config
   progressCallback('Collecting files...');
   const gitPromise = Promise.all([deps.getGitDiffs(rootDirs, config), deps.getGitLogs(rootDirs, config)]);
@@ -113,16 +126,24 @@ export const pack = async (
   // Await git results (likely already resolved while files were being collected)
   const [gitDiffResult, gitLogResult] = await gitPromise;
 
-  // Pre-warm file process worker pool so threads load modules during security check
-  const fileProcessTaskRunner = deps.createFileProcessTaskRunner(rawFiles.length);
-
-  // Run security check and get filtered safe files (process workers warming in background)
-  const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-    await withMemoryLogging('Security Check', () =>
-      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+  // Run security check — workers are already warm from pre-warming above
+  let securityResult: Awaited<ReturnType<typeof deps.validateFileSafety>>;
+  try {
+    securityResult = await withMemoryLogging('Security Check', () =>
+      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
+        taskRunner: securityTaskRunner,
+      }),
     );
+  } finally {
+    // Cleanup security worker pool after security check completes
+    if (securityTaskRunner) {
+      await securityTaskRunner.cleanup();
+    }
+  }
+  const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+    securityResult;
 
-  // Process files (remove comments, etc.) — workers are now warm, no init delay
+  // Process files (remove comments, etc.) — workers are already warm from pre-warming above
   progressCallback('Processing files...');
   let processedFiles: ProcessedFile[];
   try {
@@ -137,6 +158,9 @@ export const pack = async (
 
   // Check if skill generation is requested
   if (config.skillGenerate !== undefined && options.skillDir) {
+    // Cleanup pre-warmed metrics workers (not needed for skill generation)
+    await metricsTaskRunner.cleanup();
+
     const result = await deps.packSkill({
       rootDirs,
       config,
@@ -165,13 +189,10 @@ export const pack = async (
     files: filePaths,
   }));
 
-  // Pre-warm metrics worker pool so gpt-tokenizer encoding loads during output generation
-  const metricsTaskRunner = deps.createMetricsTaskRunner(processedFiles.length);
-
   // Collect empty dir paths from initial search to avoid duplicate globby traversal in output generation
   const emptyDirPaths = searchResultsByDir.flatMap(({ emptyDirPaths }) => emptyDirPaths);
 
-  // Generate and write output (workers loading encoding in background)
+  // Generate and write output (metrics workers already warm from early pre-warming)
   const { outputFiles, outputForMetrics } = await deps.produceOutput(
     rootDirs,
     config,
@@ -184,7 +205,7 @@ export const pack = async (
     emptyDirPaths,
   );
 
-  // Workers are now warm — token counting starts without encoding init delay
+  // All workers warm from early pre-warming — token counting starts without init delay
   let metrics: Awaited<ReturnType<typeof deps.calculateMetrics>>;
   try {
     metrics = await withMemoryLogging('Calculate Metrics', () =>

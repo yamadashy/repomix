@@ -119,6 +119,10 @@ describe.runIf(!isWindows)('packager integration', () => {
           run: async () => ({ path: '', content: '' }) as ProcessedFile,
           cleanup: async () => {},
         }),
+        createSecurityTaskRunner: () => ({
+          run: async () => null,
+          cleanup: async () => {},
+        }),
         createMetricsTaskRunner: () => ({
           run: async () => 0,
           cleanup: async () => {},
