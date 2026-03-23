@@ -58,7 +58,9 @@ const addPathToTree = (root: TreeNode, path: string, isDirectory: boolean): void
 const sortTreeNodes = (node: TreeNode) => {
   node.children.sort((a, b) => {
     if (a.isDirectory === b.isDirectory) {
-      return a.name.localeCompare(b.name);
+      const aLower = a.name.toLowerCase();
+      const bLower = b.name.toLowerCase();
+      return aLower < bLower ? -1 : aLower > bLower ? 1 : 0;
     }
     return a.isDirectory ? -1 : 1;
   });

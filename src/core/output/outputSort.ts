@@ -50,9 +50,8 @@ const getFileChangeCounts = async (
     const fileChangeCounts = await deps.getFileChangeCount(cwd, maxCommits);
     fileChangeCountsCache.set(cacheKey, fileChangeCounts);
 
-    const sortedFileChangeCounts = Object.entries(fileChangeCounts).sort((a, b) => b[1] - a[1]);
     logger.trace('Git File change counts max commits:', maxCommits);
-    logger.trace('Git File change counts:', sortedFileChangeCounts);
+    logger.trace('Git File change counts:', fileChangeCounts);
 
     return fileChangeCounts;
   } catch {

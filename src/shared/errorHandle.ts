@@ -1,5 +1,4 @@
 import { inspect } from 'node:util';
-import { z } from 'zod';
 import { REPOMIX_DISCORD_URL, REPOMIX_ISSUES_URL } from './constants.js';
 import { logger, repomixLogLevels } from './logger.js';
 
@@ -115,9 +114,19 @@ const isRepomixError = (error: unknown): error is RepomixError => {
   );
 };
 
+/**
+ * Checks if an error is a ZodError using duck typing to avoid eagerly importing Zod.
+ * ZodErrors have a `name` of 'ZodError' and an `issues` array.
+ */
 export const rethrowValidationErrorIfZodError = (error: unknown, message: string): void => {
-  if (error instanceof z.ZodError) {
-    const zodErrorText = error.issues.map((err) => `[${err.path.join('.')}] ${err.message}`).join('\n  ');
+  if (
+    error instanceof Error &&
+    error.name === 'ZodError' &&
+    'issues' in error &&
+    Array.isArray((error as { issues: unknown[] }).issues)
+  ) {
+    const issues = (error as { issues: Array<{ path: string[]; message: string }> }).issues;
+    const zodErrorText = issues.map((err) => `[${err.path.join('.')}] ${err.message}`).join('\n  ');
     throw new RepomixConfigValidationError(
       `${message}\n\n  ${zodErrorText}\n\n  Please check the config file and try again.`,
     );

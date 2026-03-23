@@ -18,7 +18,9 @@ export const sortPaths = (filePaths: string[]): string[] => {
         if (!isLastA && isLastB) return -1; // Directory
         if (isLastA && !isLastB) return 1; // File
 
-        return partsA[i].localeCompare(partsB[i]); // Alphabetical order
+        const aLower = partsA[i].toLowerCase();
+        const bLower = partsB[i].toLowerCase();
+        return aLower < bLower ? -1 : aLower > bLower ? 1 : 0;
       }
     }
 
