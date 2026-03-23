@@ -72,10 +72,19 @@ index 123..456 100644
 
     const sampleDiff = 'diff --git a/file1.js b/file1.js';
 
-    const context = await buildOutputGeneratorContext(rootDirs, mockConfig, allFilePaths, processedFiles, {
-      workTreeDiffContent: sampleDiff,
-      stagedDiffContent: '',
-    });
+    const context = await buildOutputGeneratorContext(
+      rootDirs,
+      mockConfig,
+      allFilePaths,
+      processedFiles,
+      {
+        workTreeDiffContent: sampleDiff,
+        stagedDiffContent: '',
+      },
+      undefined,
+      undefined,
+      undefined,
+    );
 
     // Context should include gitDiffs
     expect(context.gitDiffResult?.workTreeDiffContent).toBe(sampleDiff);
@@ -129,6 +138,7 @@ index 123..456 100644
       processedFiles,
       ['file1.js'],
       gitDiffResult,
+      undefined,
       undefined,
       undefined,
       {
@@ -202,6 +212,7 @@ index 123..456 100644
       processedFiles,
       ['file1.js'],
       gitDiffResult,
+      undefined,
       undefined,
       undefined,
       {

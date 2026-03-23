@@ -1,4 +1,4 @@
-import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
+import { logger, repomixLogLevels, setLogLevelByWorkerData } from '../../../shared/logger.js';
 import type { TokenCountEncoding } from '../TokenCounter.js';
 import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 
@@ -12,6 +12,9 @@ import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 // Initialize logger configuration from workerData at module load time
 setLogLevelByWorkerData();
 
+// Cache log level check to avoid per-task overhead (trace logs use DEBUG level)
+const isTracing = logger.getLogLevel() >= repomixLogLevels.DEBUG;
+
 export interface TokenCountTask {
   content: string;
   encoding: TokenCountEncoding;
@@ -19,23 +22,22 @@ export interface TokenCountTask {
 }
 
 export const countTokens = async (task: TokenCountTask): Promise<number> => {
-  const processStartAt = process.hrtime.bigint();
+  const processStartAt = isTracing ? process.hrtime.bigint() : 0n;
 
   try {
     const counter = await getTokenCounter(task.encoding);
     const tokenCount = counter.countTokens(task.content, task.path);
 
-    logger.trace(`Counted tokens. Count: ${tokenCount}. Took: ${getProcessDuration(processStartAt)}ms`);
+    if (isTracing) {
+      const endTime = process.hrtime.bigint();
+      const duration = (Number(endTime - processStartAt) / 1e6).toFixed(2);
+      logger.trace(`Counted tokens. Count: ${tokenCount}. Took: ${duration}ms`);
+    }
     return tokenCount;
   } catch (error) {
     logger.error('Error in token counting worker:', error);
     throw error;
   }
-};
-
-const getProcessDuration = (startTime: bigint): string => {
-  const endTime = process.hrtime.bigint();
-  return (Number(endTime - startTime) / 1e6).toFixed(2);
 };
 
 export default async (task: TokenCountTask): Promise<number> => {

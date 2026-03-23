@@ -1,11 +1,14 @@
 import { lintSource } from '@secretlint/core';
 import { creator } from '@secretlint/secretlint-rule-preset-recommend';
 import type { SecretLintCoreConfig } from '@secretlint/types';
-import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
+import { logger, repomixLogLevels, setLogLevelByWorkerData } from '../../../shared/logger.js';
 
 // Initialize logger configuration from workerData at module load time
 // This must be called before any logging operations in the worker
 setLogLevelByWorkerData();
+
+// Cache log level check to avoid per-task overhead (trace logs use DEBUG level)
+const isTracing = logger.getLogLevel() >= repomixLogLevels.DEBUG;
 
 // Security check type to distinguish between regular files, git diffs, and git logs
 export type SecurityCheckType = 'file' | 'gitDiff' | 'gitLog';
@@ -32,13 +35,15 @@ export default async ({ filePath, content, type }: SecurityCheckTask) => {
   const config = cachedConfig;
 
   try {
-    const processStartAt = process.hrtime.bigint();
+    const processStartAt = isTracing ? process.hrtime.bigint() : 0n;
     const secretLintResult = await runSecretLint(filePath, content, type, config);
-    const processEndAt = process.hrtime.bigint();
 
-    logger.trace(
-      `Checked security on ${filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
-    );
+    if (isTracing) {
+      const processEndAt = process.hrtime.bigint();
+      logger.trace(
+        `Checked security on ${filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
+      );
+    }
 
     return secretLintResult;
   } catch (error) {

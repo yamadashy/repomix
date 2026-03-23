@@ -267,6 +267,7 @@ export const generateOutput = async (
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
   filePathsByRoot?: FilesByRoot[],
+  emptyDirPaths?: string[],
   deps = {
     buildOutputGeneratorContext,
     generateTemplateOutput,
@@ -286,6 +287,7 @@ export const generateOutput = async (
     gitDiffResult,
     gitLogResult,
     filePathsByRoot,
+    emptyDirPaths,
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
@@ -312,6 +314,7 @@ export const buildOutputGeneratorContext = async (
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
   filePathsByRoot?: FilesByRoot[],
+  emptyDirPaths?: string[],
   deps = {
     listDirectories,
     listFiles,
@@ -365,15 +368,21 @@ export const buildOutputGeneratorContext = async (
     }
   } else if (config.output.directoryStructure && config.output.includeEmptyDirectories) {
     // Default behavior: include empty directories only
-    try {
-      const searchResults = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
-      const allEmptyDirPaths = searchResults.flatMap((result) => result.emptyDirPaths);
-      directoryPathsForTree = [...new Set(allEmptyDirPaths)].sort();
-    } catch (error) {
-      throw new RepomixError(
-        `Failed to search for empty directories: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? { cause: error } : undefined,
-      );
+    if (emptyDirPaths && emptyDirPaths.length > 0) {
+      // Use pre-computed empty dir paths from initial search (avoids duplicate globby traversal)
+      directoryPathsForTree = [...new Set(emptyDirPaths)].sort();
+    } else if (!emptyDirPaths) {
+      // Fallback: search for empty directories (when called without pre-computed paths)
+      try {
+        const searchResults = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
+        const allEmptyDirPaths = searchResults.flatMap((result) => result.emptyDirPaths);
+        directoryPathsForTree = [...new Set(allEmptyDirPaths)].sort();
+      } catch (error) {
+        throw new RepomixError(
+          `Failed to search for empty directories: ${error instanceof Error ? error.message : String(error)}`,
+          error instanceof Error ? { cause: error } : undefined,
+        );
+      }
     }
   }
 

@@ -71,14 +71,15 @@ export const pack = async (
   logMemoryUsage('Pack - Start');
 
   progressCallback('Searching for files...');
-  const filePathsByDir = await withMemoryLogging('Search Files', async () =>
+  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
-      rootDirs.map(async (rootDir) => ({
-        rootDir,
-        filePaths: (await deps.searchFiles(rootDir, config, explicitFiles)).filePaths,
-      })),
+      rootDirs.map(async (rootDir) => {
+        const result = await deps.searchFiles(rootDir, config, explicitFiles);
+        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+      }),
     ),
   );
+  const filePathsByDir = searchResultsByDir;
 
   // Sort file paths
   progressCallback('Sorting files...');
@@ -167,6 +168,9 @@ export const pack = async (
   // Pre-warm metrics worker pool so gpt-tokenizer encoding loads during output generation
   const metricsTaskRunner = deps.createMetricsTaskRunner(processedFiles.length);
 
+  // Collect empty dir paths from initial search to avoid duplicate globby traversal in output generation
+  const emptyDirPaths = searchResultsByDir.flatMap(({ emptyDirPaths }) => emptyDirPaths);
+
   // Generate and write output (workers loading encoding in background)
   const { outputFiles, outputForMetrics } = await deps.produceOutput(
     rootDirs,
@@ -177,6 +181,7 @@ export const pack = async (
     gitLogResult,
     progressCallback,
     filePathsByRoot,
+    emptyDirPaths,
   );
 
   // Workers are now warm — token counting starts without encoding init delay
