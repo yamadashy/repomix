@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import * as clipboard from 'tinyclip';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
@@ -31,6 +30,7 @@ export const copyToClipboardIfEnabled = async (
 
   try {
     logger.trace('Using tinyclip.');
+    const clipboard = await import('tinyclip');
     await clipboard.writeText(output);
     logger.trace('Copied using tinyclip.');
   } catch (err: unknown) {

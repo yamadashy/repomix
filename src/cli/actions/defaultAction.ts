@@ -15,7 +15,6 @@ import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { initTaskRunner } from '../../shared/processConcurrency.js';
 import { reportResults } from '../cliReport.js';
-import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
 import type {
@@ -78,7 +77,8 @@ export const runDefaultAction = async (
         ? config.skillGenerate
         : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
 
-    // Determine skill directory
+    // Determine skill directory (lazy-load prompts to avoid importing @clack/prompts on every run)
+    const { promptSkillLocation, resolveAndPrepareSkillDir } = await import('../prompts/skillPrompts.js');
     if (cliOptions.skillOutput && !cliOptions.skillDir) {
       // Non-interactive mode: use provided path directly
       cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
