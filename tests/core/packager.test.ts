@@ -100,9 +100,8 @@ describe('packager', () => {
       undefined,
       { runSecurityCheck: expect.any(Function) },
     );
-    expect(mockDeps.processFiles).toHaveBeenCalledWith(mockSafeRawFiles, mockConfig, progressCallback, {
-      taskRunner: expect.any(Object),
-    });
+    // Default config (no compress/removeComments) uses main-thread processing, no taskRunner
+    expect(mockDeps.processFiles).toHaveBeenCalledWith(mockSafeRawFiles, mockConfig, progressCallback, {});
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
       ['root'],
       mockConfig,

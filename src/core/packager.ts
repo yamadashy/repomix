@@ -4,7 +4,7 @@ import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
-import { createFileProcessTaskRunner, processFiles } from './file/fileProcess.js';
+import { createFileProcessTaskRunner, needsWorkerThreads, processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
@@ -96,12 +96,16 @@ export const pack = async (
 
   // Pre-warm worker pools so threads load modules during file collection disk I/O.
   // Security workers load secretlint, file process workers load tree-sitter.
-  // Token counting uses the main thread directly (gpt-tokenizer is pure JS,
-  // structured clone overhead far exceeds computation cost).
+  // Token counting and lightweight file processing use the main thread directly
+  // (structured clone overhead far exceeds computation cost for pure JS operations).
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.createSecurityTaskRunner(allFilePaths.length)
     : undefined;
-  const fileProcessTaskRunner = deps.createFileProcessTaskRunner(allFilePaths.length);
+  // Only create file process workers when heavy processing is needed (compress/removeComments).
+  // For lightweight ops (truncateBase64 + trim), main thread is ~4x faster.
+  const fileProcessTaskRunner = needsWorkerThreads(config)
+    ? deps.createFileProcessTaskRunner(allFilePaths.length)
+    : undefined;
 
   // Pre-warm TokenCounter: start loading gpt-tokenizer encoding module (~158ms) in background.
   // By the time calculateMetrics runs (after collect + security + process + output), it's ready.
@@ -146,15 +150,21 @@ export const pack = async (
   const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
     securityResult;
 
-  // Process files (remove comments, etc.) — workers are already warm from pre-warming above
+  // Process files (remove comments, etc.)
+  // For lightweight processing (no compress/removeComments), runs on main thread.
+  // For heavy processing, pre-warmed workers are already loaded from above.
   progressCallback('Processing files...');
   let processedFiles: ProcessedFile[];
   try {
     processedFiles = await withMemoryLogging('Process Files', () =>
-      deps.processFiles(safeRawFiles, config, progressCallback, { taskRunner: fileProcessTaskRunner }),
+      deps.processFiles(safeRawFiles, config, progressCallback, {
+        ...(fileProcessTaskRunner && { taskRunner: fileProcessTaskRunner }),
+      }),
     );
   } finally {
-    await fileProcessTaskRunner.cleanup();
+    if (fileProcessTaskRunner) {
+      await fileProcessTaskRunner.cleanup();
+    }
   }
 
   progressCallback('Generating output...');

@@ -100,7 +100,13 @@ describe.runIf(!isWindows)('packager integration', () => {
         processFiles: async (rawFiles, config, _progressCallback) => {
           const processedFiles: ProcessedFile[] = [];
           for (const rawFile of rawFiles) {
-            processedFiles.push(await fileProcessWorker({ rawFile, config }));
+            const result = await fileProcessWorker({ rawFile, config });
+            // fileProcessWorker returns ProcessedFile | ProcessedFile[] depending on task type
+            if (Array.isArray(result)) {
+              processedFiles.push(...result);
+            } else {
+              processedFiles.push(result);
+            }
           }
           return processedFiles;
         },
@@ -116,7 +122,7 @@ describe.runIf(!isWindows)('packager integration', () => {
         },
         produceOutput,
         createFileProcessTaskRunner: () => ({
-          run: async () => ({ path: '', content: '' }) as ProcessedFile,
+          run: async () => [{ path: '', content: '' }] as ProcessedFile[],
           cleanup: async () => {},
         }),
         createSecurityTaskRunner: () => ({
