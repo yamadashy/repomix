@@ -20,6 +20,12 @@ export interface FileReadResult {
  */
 export const readRawFile = async (filePath: string, maxFileSize: number): Promise<FileReadResult> => {
   try {
+    // Check binary extension first (no I/O needed) to skip stat + read for binary files
+    if (isBinaryPath(filePath)) {
+      logger.debug(`Skipping binary file: ${filePath}`);
+      return { content: null, skippedReason: 'binary-extension' };
+    }
+
     const stats = await fs.stat(filePath);
 
     if (stats.size > maxFileSize) {
@@ -27,11 +33,6 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
       const maxSizeKB = (maxFileSize / 1024).toFixed(1);
       logger.trace(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
       return { content: null, skippedReason: 'size-limit' };
-    }
-
-    if (isBinaryPath(filePath)) {
-      logger.debug(`Skipping binary file: ${filePath}`);
-      return { content: null, skippedReason: 'binary-extension' };
     }
 
     logger.trace(`Reading file: ${filePath}`);

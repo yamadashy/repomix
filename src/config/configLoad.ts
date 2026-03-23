@@ -1,7 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createJiti } from 'jiti';
 import JSON5 from 'json5';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
@@ -58,7 +57,10 @@ const findConfigFile = async (configPaths: string[], logPrefix: string): Promise
 };
 
 // Default jiti import implementation for loading JS/TS config files
+// Lazy-loads jiti to avoid importing its heavy TypeScript toolchain
+// when using JSON/JSON5 config files or default config (the common case)
 const defaultJitiImport = async (fileUrl: string): Promise<unknown> => {
+  const { createJiti } = await import('jiti');
   const jiti = createJiti(import.meta.url, {
     moduleCache: false, // Disable cache to ensure fresh config loads
     interopDefault: true, // Automatically use default export
