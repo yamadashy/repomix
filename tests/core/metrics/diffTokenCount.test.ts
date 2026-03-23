@@ -85,8 +85,6 @@ index 123..456 100644
       },
     });
 
-    const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(15);
-
     const result = await calculateMetrics(
       processedFiles,
       output,
@@ -99,7 +97,6 @@ index 123..456 100644
       undefined,
       {
         calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
-        calculateOutputMetrics: mockCalculateOutputMetrics,
         calculateGitDiffMetrics: vi.fn().mockResolvedValue(25),
         calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
       },
@@ -161,8 +158,6 @@ index 123..456 100644
       },
     });
 
-    const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(15);
-
     const result = await calculateMetrics(
       processedFiles,
       output,
@@ -172,7 +167,6 @@ index 123..456 100644
       undefined,
       {
         calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
-        calculateOutputMetrics: mockCalculateOutputMetrics,
         calculateGitDiffMetrics: vi.fn().mockResolvedValue(0),
         calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
       },
@@ -232,8 +226,6 @@ index 123..456 100644
       },
     });
 
-    const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(15);
-
     const result = await calculateMetrics(
       processedFiles,
       output,
@@ -243,7 +235,6 @@ index 123..456 100644
       undefined,
       {
         calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
-        calculateOutputMetrics: mockCalculateOutputMetrics,
         calculateGitDiffMetrics: vi.fn().mockResolvedValue(0),
         calculateGitLogMetrics: vi.fn().mockResolvedValue({ gitLogTokenCount: 0 }),
       },

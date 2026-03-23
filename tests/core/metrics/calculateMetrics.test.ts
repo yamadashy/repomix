@@ -34,7 +34,32 @@ describe('calculateMetrics', () => {
     ];
     (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
 
-    const aggregatedResult = {
+    const config = createMockConfig();
+
+    const gitDiffResult: GitDiffResult | undefined = undefined;
+
+    const result = await calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, undefined, {
+      calculateSelectiveFileMetrics,
+      calculateGitDiffMetrics: () => Promise.resolve(0),
+      calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+    });
+
+    expect(progressCallback).toHaveBeenCalledWith('Calculating metrics...');
+    // Now counts ALL files (not just top N), so paths are in original order
+    expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
+      processedFiles,
+      ['file1.txt', 'file2.txt'],
+      'o200k_base',
+      progressCallback,
+      expect.objectContaining({
+        tokenCounter: expect.any(Object),
+      }),
+    );
+
+    // totalTokens is estimated from file token ratio:
+    // sum(fileTokens)=30, sum(fileChars)=300, totalChars=300
+    // overheadChars = 300 - 300 = 0, so totalTokens = 30
+    expect(result).toEqual({
       totalFiles: 2,
       totalCharacters: 300,
       totalTokens: 30,
@@ -48,29 +73,6 @@ describe('calculateMetrics', () => {
       },
       gitDiffTokenCount: 0,
       gitLogTokenCount: 0,
-    };
-
-    const config = createMockConfig();
-
-    const gitDiffResult: GitDiffResult | undefined = undefined;
-
-    const result = await calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, undefined, {
-      calculateSelectiveFileMetrics,
-      calculateOutputMetrics: async () => 30,
-      calculateGitDiffMetrics: () => Promise.resolve(0),
-      calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
     });
-
-    expect(progressCallback).toHaveBeenCalledWith('Calculating metrics...');
-    expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
-      processedFiles,
-      ['file2.txt', 'file1.txt'], // sorted by character count desc
-      'o200k_base',
-      progressCallback,
-      expect.objectContaining({
-        tokenCounter: expect.any(Object),
-      }),
-    );
-    expect(result).toEqual(aggregatedResult);
   });
 });
