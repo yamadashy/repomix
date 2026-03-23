@@ -1,7 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import JSON5 from 'json5';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
@@ -12,7 +11,6 @@ import {
   type RepomixConfigFile,
   type RepomixConfigMerged,
   repomixConfigFileSchema,
-  repomixConfigMergedSchema,
 } from './configSchema.js';
 import { getGlobalDirectory } from './globalDirectory.js';
 
@@ -157,7 +155,9 @@ const loadAndValidateConfig = async (
       case 'jsonc':
       case 'json': {
         // Use JSON5 for JSON/JSON5/JSONC files
+        // Lazy-load json5 to avoid importing it when no config file is found
         const fileContent = await fs.readFile(filePath, 'utf-8');
+        const JSON5 = (await import('json5')).default;
         config = JSON5.parse(fileContent);
         break;
       }
@@ -246,10 +246,9 @@ export const mergeConfigs = (
     ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
   };
 
-  try {
-    return repomixConfigMergedSchema.parse(mergedConfig);
-  } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid merged config');
-    throw error;
-  }
+  // All inputs are already validated: defaultConfig is a known-good literal,
+  // fileConfig was validated by repomixConfigFileSchema.parse(), and
+  // cliConfig was validated by repomixConfigCliSchema.parse().
+  // Skip redundant Zod validation of the merged result.
+  return mergedConfig as RepomixConfigMerged;
 };

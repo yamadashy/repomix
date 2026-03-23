@@ -95,8 +95,3 @@ ${ctx.instruction}`);
 
   return parts.join('');
 };
-
-// Keep backward-compatible export name for tests
-export const getMarkdownTemplate = (): string => {
-  throw new Error('Handlebars templates are no longer used. Use renderMarkdown() instead.');
-};

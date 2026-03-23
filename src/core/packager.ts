@@ -14,7 +14,6 @@ import { calculateMetrics } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
-import { packSkill } from './skill/packSkill.js';
 
 export interface PackResult {
   totalFiles: number;
@@ -43,7 +42,12 @@ const defaultDeps = {
   sortPaths,
   getGitDiffs,
   getGitLogs,
-  packSkill,
+  // Lazy-load packSkill — only needed when --skill-generate is used.
+  // Avoids importing skill section generators and their transitive deps on every run.
+  packSkill: async (params: Record<string, unknown>) => {
+    const { packSkill } = await import('./skill/packSkill.js');
+    return packSkill(params as never);
+  },
 };
 
 export interface PackOptions {

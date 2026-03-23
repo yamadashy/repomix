@@ -159,17 +159,50 @@ export type RepomixConfigFile = z.infer<typeof repomixConfigFileSchema>;
 export type RepomixConfigCli = z.infer<typeof repomixConfigCliSchema>;
 export type RepomixConfigMerged = z.infer<typeof repomixConfigMergedSchema>;
 
-// Pass empty objects to let Zod apply all default values
-// Zod v4 requires explicit nested objects since we removed outer .default({})
-export const defaultConfig = repomixConfigDefaultSchema.parse({
-  input: {},
-  output: {
-    git: {},
+// Plain object literal with all default values inlined.
+// Avoids a synchronous Zod .parse() call at module-load time.
+export const defaultConfig: RepomixConfigDefault = {
+  input: {
+    maxFileSize: 50 * 1024 * 1024, // 50MB
   },
-  ignore: {},
-  security: {},
-  tokenCount: {},
-});
+  output: {
+    filePath: defaultFilePathMap.xml,
+    style: 'xml',
+    parsableStyle: false,
+    fileSummary: true,
+    directoryStructure: true,
+    files: true,
+    removeComments: false,
+    removeEmptyLines: false,
+    compress: false,
+    topFilesLength: 5,
+    showLineNumbers: false,
+    truncateBase64: false,
+    copyToClipboard: false,
+    includeFullDirectoryStructure: false,
+    tokenCountTree: false,
+    git: {
+      sortByChanges: true,
+      sortByChangesMaxCommits: 100,
+      includeDiffs: false,
+      includeLogs: false,
+      includeLogsCount: 50,
+    },
+  },
+  include: [],
+  ignore: {
+    useGitignore: true,
+    useDotIgnore: true,
+    useDefaultPatterns: true,
+    customPatterns: [],
+  },
+  security: {
+    enableSecurityCheck: true,
+  },
+  tokenCount: {
+    encoding: 'o200k_base' as TokenEncoding,
+  },
+};
 
 // Helper function for type-safe config definition
 export const defineConfig = (config: RepomixConfigFile): RepomixConfigFile => config;

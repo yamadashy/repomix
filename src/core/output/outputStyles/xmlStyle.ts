@@ -108,9 +108,3 @@ ${ctx.instruction}
 
   return parts.join('');
 };
-
-// Keep backward-compatible export for any code referencing the template
-export const getXmlTemplate = (): string => {
-  // Return empty string - templates are no longer used
-  throw new Error('Handlebars templates are no longer used. Use renderXml() instead.');
-};

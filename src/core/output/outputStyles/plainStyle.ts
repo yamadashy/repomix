@@ -126,7 +126,3 @@ ${PLAIN_LONG_SEPARATOR}`);
 
   return parts.join('');
 };
-
-export const getPlainTemplate = (): string => {
-  throw new Error('Handlebars templates are no longer used. Use renderPlain() instead.');
-};
