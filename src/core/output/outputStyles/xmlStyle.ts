@@ -1,89 +1,116 @@
-export const getXmlTemplate = () => {
-  return /* xml */ `
-{{#if fileSummaryEnabled}}
-{{{generationHeader}}}
+import type { RenderContext } from '../outputGeneratorTypes.js';
+
+export const renderXml = (ctx: RenderContext): string => {
+  const parts: string[] = [];
+
+  if (ctx.fileSummaryEnabled) {
+    parts.push(
+      `${ctx.generationHeader}
 
 <file_summary>
 This section contains a summary of this file.
 
 <purpose>
-{{{summaryPurpose}}}
+${ctx.summaryPurpose}
 </purpose>
 
 <file_format>
-{{{summaryFileFormat}}}
+${ctx.summaryFileFormat}
 5. Multiple file entries, each consisting of:
   - File path as an attribute
   - Full contents of the file
 </file_format>
 
 <usage_guidelines>
-{{{summaryUsageGuidelines}}}
+${ctx.summaryUsageGuidelines}
 </usage_guidelines>
 
 <notes>
-{{{summaryNotes}}}
+${ctx.summaryNotes}
 </notes>
 
 </file_summary>
 
-{{/if}}
-{{#if headerText}}
-<user_provided_header>
-{{{headerText}}}
+`,
+    );
+  }
+
+  if (ctx.headerText) {
+    parts.push(`<user_provided_header>
+${ctx.headerText}
 </user_provided_header>
 
-{{/if}}
-{{#if directoryStructureEnabled}}
-<directory_structure>
-{{{treeString}}}
+`);
+  }
+
+  if (ctx.directoryStructureEnabled) {
+    parts.push(`<directory_structure>
+${ctx.treeString}
 </directory_structure>
 
-{{/if}}
-{{#if filesEnabled}}
-<files>
+`);
+  }
+
+  if (ctx.filesEnabled) {
+    parts.push(`<files>
 This section contains the contents of the repository's files.
 
-{{#each processedFiles}}
-<file path="{{{this.path}}}">
-{{{this.content}}}
+`);
+    for (const file of ctx.processedFiles) {
+      parts.push(`<file path="${file.path}">
+${file.content}
 </file>
 
-{{/each}}
-</files>
-{{/if}}
+`);
+    }
+    parts.push('</files>');
+  }
 
-{{#if gitDiffEnabled}}
+  if (ctx.gitDiffEnabled) {
+    parts.push(`
 <git_diffs>
 <git_diff_work_tree>
-{{{gitDiffWorkTree}}}
+${ctx.gitDiffWorkTree ?? ''}
 </git_diff_work_tree>
 <git_diff_staged>
-{{{gitDiffStaged}}}
+${ctx.gitDiffStaged ?? ''}
 </git_diff_staged>
-</git_diffs>
-{{/if}}
+</git_diffs>`);
+  }
 
-{{#if gitLogEnabled}}
+  if (ctx.gitLogEnabled && ctx.gitLogCommits) {
+    parts.push(`
 <git_logs>
-{{#each gitLogCommits}}
-<git_log_commit>
-<date>{{{this.date}}}</date>
-<message>{{{this.message}}}</message>
+`);
+    for (const commit of ctx.gitLogCommits) {
+      parts.push(`<git_log_commit>
+<date>${commit.date}</date>
+<message>${commit.message}</message>
 <files>
-{{#each this.files}}
-{{{this}}}
-{{/each}}
-</files>
+`);
+      for (const file of commit.files) {
+        parts.push(`${file}
+`);
+      }
+      parts.push(`</files>
 </git_log_commit>
-{{/each}}
-</git_logs>
-{{/if}}
+`);
+    }
+    parts.push('</git_logs>');
+  }
 
-{{#if instruction}}
+  if (ctx.instruction) {
+    parts.push(`
 <instruction>
-{{{instruction}}}
-</instruction>
-{{/if}}
-`;
+${ctx.instruction}
+</instruction>`);
+  }
+
+  return parts.join('');
+};
+
+// Keep backward-compatible export for any code referencing the template
+export const getXmlTemplate = (): string => {
+  // Return empty string - templates are no longer used
+  throw new Error('Handlebars templates are no longer used. Use renderXml() instead.');
 };

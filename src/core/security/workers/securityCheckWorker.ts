@@ -26,13 +26,17 @@ export default async ({ filePath, content, type }: SecurityCheckTask) => {
   const config = getCachedConfig();
 
   try {
-    const processStartAt = process.hrtime.bigint();
-    const secretLintResult = await runSecretLint(filePath, content, type, config);
-    const processEndAt = process.hrtime.bigint();
-
-    logger.trace(
-      `Checked security on ${filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
-    );
+    let secretLintResult: SuspiciousFileResult | null;
+    if (logger.isTraceEnabled()) {
+      const processStartAt = process.hrtime.bigint();
+      secretLintResult = await runSecretLint(filePath, content, type, config);
+      const processEndAt = process.hrtime.bigint();
+      logger.trace(
+        `Checked security on ${filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
+      );
+    } else {
+      secretLintResult = await runSecretLint(filePath, content, type, config);
+    }
 
     return secretLintResult;
   } catch (error) {

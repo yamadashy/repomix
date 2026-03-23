@@ -79,6 +79,10 @@ class RepomixLogger {
     }
   }
 
+  isTraceEnabled(): boolean {
+    return this.level >= repomixLogLevels.DEBUG;
+  }
+
   private formatArgs(args: unknown[]): string {
     return args
       .map((arg) => (typeof arg === 'object' ? util.inspect(arg, { depth: null, colors: true }) : arg))

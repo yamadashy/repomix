@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import XMLBuilder from 'fast-xml-builder';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { type FileSearchResult, listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -19,79 +18,63 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
-import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { getXmlTemplate } from './outputStyles/xmlStyle.js';
-
-// Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
-
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
-  const cached = compiledTemplateCache.get(style);
-  if (cached) {
-    return cached;
-  }
-
-  let template: string;
-  switch (style) {
-    case 'xml':
-      template = getXmlTemplate();
-      break;
-    case 'markdown':
-      template = getMarkdownTemplate();
-      break;
-    case 'plain':
-      template = getPlainTemplate();
-      break;
-    default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
-  }
-
-  const compiled = Handlebars.compile(template);
-  compiledTemplateCache.set(style, compiled);
-  return compiled;
-};
+import { renderMarkdown } from './outputStyles/markdownStyle.js';
+import { renderPlain } from './outputStyles/plainStyle.js';
+import { renderXml } from './outputStyles/xmlStyle.js';
 
 const backtickRunPattern = /`+/g;
 
-const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
+/**
+ * Single-pass analysis over all file contents to compute both line counts and markdown delimiter.
+ * Avoids iterating the files array twice.
+ */
+const analyzeFileContents = (
+  processedFiles: ReadonlyArray<ProcessedFile>,
+  outputStyle: string,
+): { fileLineCounts: Record<string, number>; markdownCodeBlockDelimiter: string } => {
+  const fileLineCounts: Record<string, number> = {};
   let maxBackticks = 0;
-  for (const file of files) {
-    backtickRunPattern.lastIndex = 0;
-    for (
-      let match = backtickRunPattern.exec(file.content);
-      match !== null;
-      match = backtickRunPattern.exec(file.content)
-    ) {
-      if (match[0].length > maxBackticks) {
-        maxBackticks = match[0].length;
-      }
-    }
-  }
-  return '`'.repeat(Math.max(3, maxBackticks + 1));
-};
+  const trackBackticks = outputStyle === 'markdown';
 
-const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
-  const lineCounts: Record<string, number> = {};
   for (const file of processedFiles) {
     const content = file.content;
+
+    // Count lines
     if (content.length === 0) {
-      lineCounts[file.path] = 0;
+      fileLineCounts[file.path] = 0;
     } else {
-      // Count newlines with indexOf loop (avoids regex + intermediate array allocation)
       let newlineCount = 0;
       let pos = content.indexOf('\n');
       while (pos !== -1) {
         newlineCount++;
         pos = content.indexOf('\n', pos + 1);
       }
-      lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
+      fileLineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
+    }
+
+    // Track backtick runs (only for markdown style)
+    if (trackBackticks) {
+      backtickRunPattern.lastIndex = 0;
+      for (let match = backtickRunPattern.exec(content); match !== null; match = backtickRunPattern.exec(content)) {
+        if (match[0].length > maxBackticks) {
+          maxBackticks = match[0].length;
+        }
+      }
     }
   }
-  return lineCounts;
+
+  return {
+    fileLineCounts,
+    markdownCodeBlockDelimiter: '`'.repeat(Math.max(3, maxBackticks + 1)),
+  };
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  const { fileLineCounts, markdownCodeBlockDelimiter } = analyzeFileContents(
+    outputGeneratorContext.processedFiles,
+    outputGeneratorContext.config.output.style,
+  );
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -105,12 +88,12 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    fileLineCounts,
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    markdownCodeBlockDelimiter,
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
@@ -229,14 +212,27 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
   }
 };
 
-const generateHandlebarOutput = async (
+const generateNativeOutput = async (
   config: RepomixConfigMerged,
   renderContext: RenderContext,
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
   try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
-    return `${compiledTemplate(renderContext).trim()}\n`;
+    let rendered: string;
+    switch (config.output.style) {
+      case 'xml':
+        rendered = renderXml(renderContext);
+        break;
+      case 'markdown':
+        rendered = renderMarkdown(renderContext);
+        break;
+      case 'plain':
+        rendered = renderPlain(renderContext);
+        break;
+      default:
+        throw new RepomixError(`Unsupported output style: ${config.output.style}`);
+    }
+    return `${rendered.trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
       let largeFilesInfo = '';
@@ -258,8 +254,11 @@ Please try:
         { cause: error },
       );
     }
+    if (error instanceof RepomixError) {
+      throw error;
+    }
     throw new RepomixError(
-      `Failed to compile template: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      `Failed to render output: ${error instanceof Error ? error.message : 'Unknown error'}`,
       error instanceof Error ? { cause: error } : undefined,
     );
   }
@@ -275,7 +274,7 @@ export const generateOutput = async (
   filePathsByRoot?: FilesByRoot[],
   deps = {
     buildOutputGeneratorContext,
-    generateHandlebarOutput,
+    generateHandlebarOutput: generateNativeOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
     sortOutputFiles,
