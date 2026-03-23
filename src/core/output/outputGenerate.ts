@@ -52,24 +52,39 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
   return compiled;
 };
 
+const backtickRunPattern = /`+/g;
+
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
-  const maxBackticks = files
-    .flatMap((file) => file.content.match(/`+/g) ?? [])
-    .reduce((max, match) => Math.max(max, match.length), 0);
+  let maxBackticks = 0;
+  for (const file of files) {
+    backtickRunPattern.lastIndex = 0;
+    for (
+      let match = backtickRunPattern.exec(file.content);
+      match !== null;
+      match = backtickRunPattern.exec(file.content)
+    ) {
+      if (match[0].length > maxBackticks) {
+        maxBackticks = match[0].length;
+      }
+    }
+  }
   return '`'.repeat(Math.max(3, maxBackticks + 1));
 };
 
 const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
   const lineCounts: Record<string, number> = {};
   for (const file of processedFiles) {
-    // Count lines: empty files have 0 lines, otherwise count newlines + 1
-    // (unless the content ends with a newline, in which case the last "line" is empty)
     const content = file.content;
     if (content.length === 0) {
       lineCounts[file.path] = 0;
     } else {
-      // Count actual lines (text editor style: number of \n + 1, but trailing \n doesn't add extra line)
-      const newlineCount = (content.match(/\n/g) || []).length;
+      // Count newlines with indexOf loop (avoids regex + intermediate array allocation)
+      let newlineCount = 0;
+      let pos = content.indexOf('\n');
+      while (pos !== -1) {
+        newlineCount++;
+        pos = content.indexOf('\n', pos + 1);
+      }
       lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
     }
   }
