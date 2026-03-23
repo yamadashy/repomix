@@ -71,10 +71,6 @@ index 123..456 100644
       fileTokenCounts: {},
     });
     const mockSortPaths = vi.fn().mockImplementation((paths) => paths);
-    const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
-      run: vi.fn().mockResolvedValue(0),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    });
 
     // Config with diffs disabled
     if (mockConfig.output.git) {
@@ -88,7 +84,6 @@ index 123..456 100644
       validateFileSafety: mockValidateFileSafety,
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
-      createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       sortPaths: mockSortPaths,
     });
 
@@ -126,10 +121,6 @@ index 123..456 100644
       gitDiffTokenCount: 15, // Mock diff token count
     });
     const mockSortPaths = vi.fn().mockImplementation((paths) => paths);
-    const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
-      run: vi.fn().mockResolvedValue(0),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    });
 
     // Config with diffs enabled
     if (mockConfig.output.git) {
@@ -143,7 +134,6 @@ index 123..456 100644
       validateFileSafety: mockValidateFileSafety,
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
-      createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       sortPaths: mockSortPaths,
     });
 

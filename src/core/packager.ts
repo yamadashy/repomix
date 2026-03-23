@@ -10,7 +10,7 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { calculateMetrics } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -40,7 +40,6 @@ const defaultDeps = {
   validateFileSafety,
   produceOutput,
   calculateMetrics,
-  createMetricsTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -91,119 +90,100 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap tiktoken WASM loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers tiktoken
-  // initialization in the worker thread without blocking the main pipeline.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0); // Suppress unhandled rejection; errors surface when awaited
+  // Start git diffs/logs in parallel with file collection - they only need rootDirs and config,
+  // not file contents, so there's no dependency between them
+  progressCallback('Collecting files and git info...');
+  const gitPromise = Promise.all([deps.getGitDiffs(rootDirs, config), deps.getGitLogs(rootDirs, config)]);
 
-  try {
-    progressCallback('Collecting files...');
-    const collectResults = await withMemoryLogging(
-      'Collect Files',
-      async () =>
-        await Promise.all(
-          sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-            deps.collectFiles(filePaths, rootDir, config, progressCallback),
-          ),
+  const collectResults = await withMemoryLogging(
+    'Collect Files',
+    async () =>
+      await Promise.all(
+        sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
+          deps.collectFiles(filePaths, rootDir, config, progressCallback),
         ),
+      ),
+  );
+
+  const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
+  const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
+
+  const [gitDiffResult, gitLogResult] = await gitPromise;
+
+  // Run security check and get filtered safe files
+  const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+    await withMemoryLogging('Security Check', () =>
+      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
     );
 
-    const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
-    const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
+  // Process files (remove comments, etc.)
+  progressCallback('Processing files...');
+  const processedFiles = await withMemoryLogging('Process Files', () =>
+    deps.processFiles(safeRawFiles, config, progressCallback),
+  );
 
-    // Get git diffs if enabled - run this before security check
-    progressCallback('Getting git diffs...');
-    const gitDiffResult = await deps.getGitDiffs(rootDirs, config);
+  progressCallback('Generating output...');
 
-    // Get git logs if enabled - run this before security check
-    progressCallback('Getting git logs...');
-    const gitLogResult = await deps.getGitLogs(rootDirs, config);
-
-    // Run security check and get filtered safe files
-    const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-      await withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
-      );
-
-    // Process files (remove comments, etc.)
-    progressCallback('Processing files...');
-    const processedFiles = await withMemoryLogging('Process Files', () =>
-      deps.processFiles(safeRawFiles, config, progressCallback),
-    );
-
-    progressCallback('Generating output...');
-
-    // Check if skill generation is requested
-    if (config.skillGenerate !== undefined && options.skillDir) {
-      // Await warmup to ensure graceful worker shutdown (avoid terminating WASM-loading thread)
-      await warmupPromise;
-
-      const result = await deps.packSkill({
-        rootDirs,
-        config,
-        options,
-        processedFiles,
-        allFilePaths,
-        gitDiffResult,
-        gitLogResult,
-        suspiciousFilesResults,
-        suspiciousGitDiffResults,
-        suspiciousGitLogResults,
-        safeFilePaths,
-        skippedFiles: allSkippedFiles,
-        progressCallback,
-      });
-
-      logMemoryUsage('Pack - End');
-      return result;
-    }
-
-    // Build filePathsByRoot for multi-root tree generation
-    // Use directory basename as the label for each root
-    // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
-    const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
-      rootLabel: path.basename(rootDir) || rootDir,
-      files: filePaths,
-    }));
-
-    // Generate and write output (handles both single and split output)
-    const { outputFiles, outputForMetrics } = await deps.produceOutput(
+  // Check if skill generation is requested
+  if (config.skillGenerate !== undefined && options.skillDir) {
+    const result = await deps.packSkill({
       rootDirs,
       config,
+      options,
       processedFiles,
       allFilePaths,
       gitDiffResult,
       gitLogResult,
-      progressCallback,
-      filePathsByRoot,
-    );
-
-    // Ensure warm-up task completes before metrics calculation
-    await warmupPromise;
-
-    const metrics = await withMemoryLogging('Calculate Metrics', () =>
-      deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
-        taskRunner: metricsTaskRunner,
-      }),
-    );
-
-    // Create a result object that includes metrics and security results
-    const result = {
-      ...metrics,
-      ...(outputFiles && { outputFiles }),
       suspiciousFilesResults,
       suspiciousGitDiffResults,
       suspiciousGitLogResults,
-      processedFiles,
       safeFilePaths,
       skippedFiles: allSkippedFiles,
-    };
+      progressCallback,
+    });
 
     logMemoryUsage('Pack - End');
-
     return result;
-  } finally {
-    await metricsTaskRunner.cleanup();
   }
+
+  // Build filePathsByRoot for multi-root tree generation
+  // Use directory basename as the label for each root
+  // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
+  const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
+    rootLabel: path.basename(rootDir) || rootDir,
+    files: filePaths,
+  }));
+
+  // Generate and write output (handles both single and split output)
+  const { outputFiles, outputForMetrics } = await deps.produceOutput(
+    rootDirs,
+    config,
+    processedFiles,
+    allFilePaths,
+    gitDiffResult,
+    gitLogResult,
+    progressCallback,
+    filePathsByRoot,
+  );
+
+  // Token counting runs on main thread with gpt-tokenizer (pure JS) — no worker pool needed
+  const metrics = await withMemoryLogging('Calculate Metrics', () =>
+    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),
+  );
+
+  // Create a result object that includes metrics and security results
+  const result = {
+    ...metrics,
+    ...(outputFiles && { outputFiles }),
+    suspiciousFilesResults,
+    suspiciousGitDiffResults,
+    suspiciousGitLogResults,
+    processedFiles,
+    safeFilePaths,
+    skippedFiles: allSkippedFiles,
+  };
+
+  logMemoryUsage('Pack - End');
+
+  return result;
 };

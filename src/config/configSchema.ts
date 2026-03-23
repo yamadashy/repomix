@@ -1,5 +1,5 @@
-import type { TiktokenEncoding } from 'tiktoken';
 import { z } from 'zod';
+import type { TokenEncoding } from '../core/metrics/TokenCounter.js';
 
 // Output style enum
 export const repomixOutputStyleSchema = z.enum(['xml', 'markdown', 'json', 'plain']);
@@ -125,7 +125,7 @@ export const repomixConfigDefaultSchema = z.object({
     encoding: z
       .string()
       .default('o200k_base')
-      .transform((val) => val as TiktokenEncoding),
+      .transform((val) => val as TokenEncoding),
   }),
 });
 
