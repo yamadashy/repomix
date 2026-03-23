@@ -54,17 +54,11 @@ describe('calculateMetrics', () => {
 
     const gitDiffResult: GitDiffResult | undefined = undefined;
 
-    const mockTaskRunner = {
-      run: vi.fn(),
-      cleanup: vi.fn(),
-    };
-
     const result = await calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, undefined, {
       calculateSelectiveFileMetrics,
       calculateOutputMetrics: async () => 30,
       calculateGitDiffMetrics: () => Promise.resolve(0),
       calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
-      taskRunner: mockTaskRunner,
     });
 
     expect(progressCallback).toHaveBeenCalledWith('Calculating metrics...');
@@ -74,7 +68,7 @@ describe('calculateMetrics', () => {
       'o200k_base',
       progressCallback,
       expect.objectContaining({
-        taskRunner: expect.any(Object),
+        tokenCounter: expect.any(Object),
       }),
     );
     expect(result).toEqual(aggregatedResult);

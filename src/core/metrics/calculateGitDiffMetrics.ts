@@ -1,8 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { TokenCounter } from './TokenCounter.js';
 
 /**
  * Calculate token count for git diffs if included
@@ -10,7 +9,7 @@ import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 export const calculateGitDiffMetrics = async (
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
-  deps: { taskRunner: TaskRunner<TokenCountTask, number> },
+  deps: { tokenCounter: TokenCounter },
 ): Promise<number> => {
   if (!config.output.git?.includeDiffs || !gitDiffResult) {
     return 0;
@@ -23,29 +22,16 @@ export const calculateGitDiffMetrics = async (
 
   try {
     const startTime = process.hrtime.bigint();
-    logger.trace('Starting git diff token calculation using worker');
+    logger.trace('Starting git diff token calculation on main thread');
 
-    const countPromises: Promise<number>[] = [];
+    let totalTokens = 0;
 
     if (gitDiffResult.workTreeDiffContent) {
-      countPromises.push(
-        deps.taskRunner.run({
-          content: gitDiffResult.workTreeDiffContent,
-          encoding: config.tokenCount.encoding,
-        }),
-      );
+      totalTokens += deps.tokenCounter.countTokens(gitDiffResult.workTreeDiffContent);
     }
     if (gitDiffResult.stagedDiffContent) {
-      countPromises.push(
-        deps.taskRunner.run({
-          content: gitDiffResult.stagedDiffContent,
-          encoding: config.tokenCount.encoding,
-        }),
-      );
+      totalTokens += deps.tokenCounter.countTokens(gitDiffResult.stagedDiffContent);
     }
-
-    const results = await Promise.all(countPromises);
-    const totalTokens = results.reduce((sum, count) => sum + count, 0);
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;

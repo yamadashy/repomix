@@ -71,11 +71,6 @@ index 123..456 100644
       fileTokenCounts: {},
     });
     const mockSortPaths = vi.fn().mockImplementation((paths) => paths);
-    const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
-      run: vi.fn(),
-      cleanup: vi.fn(),
-    });
-
     // Config with diffs disabled
     if (mockConfig.output.git) {
       mockConfig.output.git.includeDiffs = false;
@@ -88,7 +83,6 @@ index 123..456 100644
       validateFileSafety: mockValidateFileSafety,
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
-      createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       createFileProcessTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
       createSecurityTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
       sortPaths: mockSortPaths,
@@ -128,11 +122,6 @@ index 123..456 100644
       gitDiffTokenCount: 15, // Mock diff token count
     });
     const mockSortPaths = vi.fn().mockImplementation((paths) => paths);
-    const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
-      run: vi.fn(),
-      cleanup: vi.fn(),
-    });
-
     // Config with diffs enabled
     if (mockConfig.output.git) {
       mockConfig.output.git.includeDiffs = true;
@@ -145,7 +134,6 @@ index 123..456 100644
       validateFileSafety: mockValidateFileSafety,
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
-      createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       createFileProcessTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
       createSecurityTaskRunner: vi.fn().mockReturnValue({ run: vi.fn(), cleanup: vi.fn() }),
       sortPaths: mockSortPaths,

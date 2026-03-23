@@ -10,7 +10,7 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { calculateMetrics } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -40,7 +40,6 @@ const defaultDeps = {
   validateFileSafety,
   produceOutput,
   calculateMetrics,
-  createMetricsTaskRunner,
   createFileProcessTaskRunner,
   createSecurityTaskRunner,
   sortPaths,
@@ -94,17 +93,14 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath: string) => filePathSetsByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-warm ALL worker pools so threads load modules during file collection disk I/O.
-  // Security workers load secretlint, file process workers load tree-sitter,
-  // metrics workers load gpt-tokenizer — all happen in background while the
-  // main thread reads files from disk and runs security/processing stages.
-  // This gives metrics workers ~800ms+ of warm-up time (collectFiles + security +
-  // fileProcess + outputGenerate) instead of only ~50ms (outputGenerate alone).
+  // Pre-warm worker pools so threads load modules during file collection disk I/O.
+  // Security workers load secretlint, file process workers load tree-sitter.
+  // Token counting uses the main thread directly (gpt-tokenizer is pure JS,
+  // structured clone overhead far exceeds computation cost).
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.createSecurityTaskRunner(allFilePaths.length)
     : undefined;
   const fileProcessTaskRunner = deps.createFileProcessTaskRunner(allFilePaths.length);
-  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
 
   // Start git operations in parallel with file collection — they only need rootDirs and config
   progressCallback('Collecting files...');
@@ -158,9 +154,6 @@ export const pack = async (
 
   // Check if skill generation is requested
   if (config.skillGenerate !== undefined && options.skillDir) {
-    // Cleanup pre-warmed metrics workers (not needed for skill generation)
-    await metricsTaskRunner.cleanup();
-
     const result = await deps.packSkill({
       rootDirs,
       config,
@@ -205,17 +198,11 @@ export const pack = async (
     emptyDirPaths,
   );
 
-  // All workers warm from early pre-warming — token counting starts without init delay
-  let metrics: Awaited<ReturnType<typeof deps.calculateMetrics>>;
-  try {
-    metrics = await withMemoryLogging('Calculate Metrics', () =>
-      deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
-        taskRunner: metricsTaskRunner,
-      }),
-    );
-  } finally {
-    await metricsTaskRunner.cleanup();
-  }
+  // Token counting runs on the main thread — gpt-tokenizer is pure JS,
+  // so direct counting is ~2x faster than worker threads (no structured clone overhead).
+  const metrics = await withMemoryLogging('Calculate Metrics', () =>
+    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),
+  );
 
   // Create a result object that includes metrics and security results
   const result = {

@@ -2,21 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { calculateGitDiffMetrics } from '../../../src/core/metrics/calculateGitDiffMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
+import type { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 import { logger } from '../../../src/shared/logger.js';
-import type { TaskRunner, WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountTask, number> => {
+const createMockTokenCounter = (countFn?: (...args: unknown[]) => number): TokenCounter => {
   return {
-    run: async (task: TokenCountTask) => {
-      return await countTokens(task);
-    },
-    cleanup: async () => {
-      // Mock cleanup - no-op for tests
-    },
-  };
+    countTokens: countFn ?? vi.fn().mockReturnValue(10),
+    free: vi.fn(),
+  } as unknown as TokenCounter;
 };
 
 describe('calculateGitDiffMetrics', () => {
@@ -67,11 +62,7 @@ describe('calculateGitDiffMetrics', () => {
     cwd: '/test/project',
   };
 
-  const mockTaskRunner = mockInitTaskRunner({
-    numOfTasks: 1,
-    workerType: 'calculateMetrics',
-    runtime: 'worker_threads',
-  });
+  const mockTokenCounter = createMockTokenCounter();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -96,7 +87,7 @@ describe('calculateGitDiffMetrics', () => {
       };
 
       const result = await calculateGitDiffMetrics(configWithDisabledDiffs, gitDiffResult, {
-        taskRunner: mockTaskRunner,
+        tokenCounter: mockTokenCounter,
       });
 
       expect(result).toBe(0);
@@ -117,7 +108,7 @@ describe('calculateGitDiffMetrics', () => {
       };
 
       const result = await calculateGitDiffMetrics(configWithoutGit, gitDiffResult, {
-        taskRunner: mockTaskRunner,
+        tokenCounter: mockTokenCounter,
       });
 
       expect(result).toBe(0);
@@ -127,7 +118,7 @@ describe('calculateGitDiffMetrics', () => {
   describe('when git diff result is unavailable', () => {
     it('should return 0 when gitDiffResult is undefined', async () => {
       const result = await calculateGitDiffMetrics(mockConfig, undefined, {
-        taskRunner: mockTaskRunner,
+        tokenCounter: mockTokenCounter,
       });
 
       expect(result).toBe(0);
@@ -140,7 +131,7 @@ describe('calculateGitDiffMetrics', () => {
       };
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
-        taskRunner: mockTaskRunner,
+        tokenCounter: mockTokenCounter,
       });
 
       expect(result).toBe(0);
@@ -153,7 +144,7 @@ describe('calculateGitDiffMetrics', () => {
       };
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
-        taskRunner: mockTaskRunner,
+        tokenCounter: mockTokenCounter,
       });
 
       expect(result).toBe(0);
@@ -167,29 +158,20 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: 'staged changes',
       };
 
-      const mockTaskRunnerSpy = vi
+      const countTokensSpy = vi
         .fn()
-        .mockResolvedValueOnce(5) // workTree tokens
-        .mockResolvedValueOnce(3); // staged tokens
+        .mockReturnValueOnce(5) // workTree tokens
+        .mockReturnValueOnce(3); // staged tokens
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
-        run: mockTaskRunnerSpy,
-        cleanup: async () => {},
-      };
+      const customTokenCounter = createMockTokenCounter(countTokensSpy);
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
-        taskRunner: customTaskRunner,
+        tokenCounter: customTokenCounter,
       });
 
-      expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(2);
-      expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'work tree changes',
-        encoding: 'o200k_base',
-      });
-      expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'staged changes',
-        encoding: 'o200k_base',
-      });
+      expect(countTokensSpy).toHaveBeenCalledTimes(2);
+      expect(countTokensSpy).toHaveBeenCalledWith('work tree changes');
+      expect(countTokensSpy).toHaveBeenCalledWith('staged changes');
       expect(result).toBe(8); // 5 + 3
     });
 
@@ -199,22 +181,15 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: '',
       };
 
-      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(7);
-
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
-        run: mockTaskRunnerSpy,
-        cleanup: async () => {},
-      };
+      const countTokensSpy = vi.fn().mockReturnValueOnce(7);
+      const customTokenCounter = createMockTokenCounter(countTokensSpy);
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
-        taskRunner: customTaskRunner,
+        tokenCounter: customTokenCounter,
       });
 
-      expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(1);
-      expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'work tree changes only',
-        encoding: 'o200k_base',
-      });
+      expect(countTokensSpy).toHaveBeenCalledTimes(1);
+      expect(countTokensSpy).toHaveBeenCalledWith('work tree changes only');
       expect(result).toBe(7);
     });
 
@@ -224,22 +199,15 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: 'staged changes only',
       };
 
-      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(4);
-
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
-        run: mockTaskRunnerSpy,
-        cleanup: async () => {},
-      };
+      const countTokensSpy = vi.fn().mockReturnValueOnce(4);
+      const customTokenCounter = createMockTokenCounter(countTokensSpy);
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
-        taskRunner: customTaskRunner,
+        tokenCounter: customTokenCounter,
       });
 
-      expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(1);
-      expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'staged changes only',
-        encoding: 'o200k_base',
-      });
+      expect(countTokensSpy).toHaveBeenCalledTimes(1);
+      expect(countTokensSpy).toHaveBeenCalledWith('staged changes only');
       expect(result).toBe(4);
     });
 
@@ -250,8 +218,11 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: largeDiffContent,
       };
 
+      const countTokensSpy = vi.fn().mockReturnValue(500);
+      const customTokenCounter = createMockTokenCounter(countTokensSpy);
+
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
-        taskRunner: mockTaskRunner,
+        tokenCounter: customTokenCounter,
       });
 
       expect(result).toBeGreaterThan(0);
@@ -266,14 +237,13 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: 'some staged content',
       };
 
-      const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
-        run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
-        cleanup: async () => {},
-      };
+      const errorTokenCounter = createMockTokenCounter(() => {
+        throw new Error('Task runner failed');
+      });
 
       await expect(
         calculateGitDiffMetrics(mockConfig, gitDiffResult, {
-          taskRunner: errorTaskRunner,
+          tokenCounter: errorTokenCounter,
         }),
       ).rejects.toThrow('Task runner failed');
 
@@ -286,17 +256,16 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: 'staged content',
       };
 
-      const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
-        run: vi
-          .fn()
-          .mockResolvedValueOnce(5) // First call succeeds
-          .mockRejectedValueOnce(new Error('Second call fails')), // Second call fails
-        cleanup: async () => {},
-      };
+      let callCount = 0;
+      const errorTokenCounter = createMockTokenCounter(() => {
+        callCount++;
+        if (callCount === 1) return 5;
+        throw new Error('Second call fails');
+      });
 
       await expect(
         calculateGitDiffMetrics(mockConfig, gitDiffResult, {
-          taskRunner: errorTaskRunner,
+          tokenCounter: errorTokenCounter,
         }),
       ).rejects.toThrow('Second call fails');
 
@@ -311,11 +280,14 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: 'staged content',
       };
 
+      const countTokensSpy = vi.fn().mockReturnValue(10);
+      const customTokenCounter = createMockTokenCounter(countTokensSpy);
+
       await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
-        taskRunner: mockTaskRunner,
+        tokenCounter: customTokenCounter,
       });
 
-      expect(logger.trace).toHaveBeenCalledWith('Starting git diff token calculation using worker');
+      expect(logger.trace).toHaveBeenCalledWith('Starting git diff token calculation on main thread');
       expect(logger.trace).toHaveBeenCalledWith(
         expect.stringMatching(/Git diff token calculation completed in \d+\.\d+ms/),
       );
@@ -336,21 +308,15 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: '',
       };
 
-      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(10);
-
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
-        run: mockTaskRunnerSpy,
-        cleanup: async () => {},
-      };
+      const countTokensSpy = vi.fn().mockReturnValueOnce(10);
+      const customTokenCounter = createMockTokenCounter(countTokensSpy);
 
       await calculateGitDiffMetrics(configWithDifferentEncoding, gitDiffResult, {
-        taskRunner: customTaskRunner,
+        tokenCounter: customTokenCounter,
       });
 
-      expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'test content',
-        encoding: 'cl100k_base',
-      });
+      // The tokenCounter.countTokens is called with just the content (encoding is baked into the counter)
+      expect(countTokensSpy).toHaveBeenCalledWith('test content');
     });
   });
 });

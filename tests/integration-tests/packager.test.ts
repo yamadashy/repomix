@@ -123,10 +123,6 @@ describe.runIf(!isWindows)('packager integration', () => {
           run: async () => null,
           cleanup: async () => {},
         }),
-        createMetricsTaskRunner: () => ({
-          run: async () => 0,
-          cleanup: async () => {},
-        }),
         calculateMetrics: async (
           processedFiles,
           _output,

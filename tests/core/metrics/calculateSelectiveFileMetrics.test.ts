@@ -1,23 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { calculateSelectiveFileMetrics } from '../../../src/core/metrics/calculateSelectiveFileMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
-import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
+import type { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 
-vi.mock('../../shared/processConcurrency', () => ({
-  getProcessConcurrency: () => 1,
-}));
-
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
+const createMockTokenCounter = (countFn?: (...args: unknown[]) => number): TokenCounter => {
   return {
-    run: async (task: T) => {
-      return (await countTokens(task as TokenCountTask)) as R;
-    },
-    cleanup: async () => {
-      // Mock cleanup - no-op for tests
-    },
-  };
+    countTokens: countFn ?? vi.fn().mockReturnValue(10),
+    free: vi.fn(),
+  } as unknown as TokenCounter;
 };
 
 describe('calculateSelectiveFileMetrics', () => {
@@ -30,13 +21,16 @@ describe('calculateSelectiveFileMetrics', () => {
     const targetFilePaths = ['file1.txt', 'file3.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
 
+    const countFn = vi.fn().mockReturnValueOnce(13).mockReturnValueOnce(75);
+    const tokenCounter = createMockTokenCounter(countFn);
+
     const result = await calculateSelectiveFileMetrics(
       processedFiles,
       targetFilePaths,
       'o200k_base',
       progressCallback,
       {
-        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+        tokenCounter,
       },
     );
 
@@ -51,13 +45,15 @@ describe('calculateSelectiveFileMetrics', () => {
     const targetFilePaths = ['nonexistent.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
 
+    const tokenCounter = createMockTokenCounter();
+
     const result = await calculateSelectiveFileMetrics(
       processedFiles,
       targetFilePaths,
       'o200k_base',
       progressCallback,
       {
-        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+        tokenCounter,
       },
     );
 

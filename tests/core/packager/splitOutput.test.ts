@@ -55,10 +55,6 @@ describe('packager split output', () => {
       getGitLogs: vi.fn().mockResolvedValue(undefined),
       produceOutput,
       calculateMetrics,
-      createMetricsTaskRunner: vi.fn().mockReturnValue({
-        run: vi.fn(),
-        cleanup: vi.fn(),
-      }),
       createFileProcessTaskRunner: vi.fn().mockReturnValue({
         run: vi.fn(),
         cleanup: vi.fn(),
@@ -88,7 +84,6 @@ describe('packager split output', () => {
       mockConfig,
       undefined,
       undefined,
-      { taskRunner: expect.any(Object) },
     );
 
     expect(result.outputFiles).toEqual(['repomix-output.1.xml', 'repomix-output.2.xml']);
