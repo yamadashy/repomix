@@ -10,7 +10,7 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics } from './metrics/calculateMetrics.js';
+import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -40,6 +40,7 @@ const defaultDeps = {
   validateFileSafety,
   produceOutput,
   calculateMetrics,
+  createMetricsTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -83,13 +84,18 @@ export const pack = async (
   const allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
   const sortedFilePaths = deps.sortPaths(allFilePaths);
 
-  // Regroup sorted file paths by rootDir
+  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
+  const filePathSetByDir = new Map(filePathsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
   const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
     rootDir,
-    filePaths: sortedFilePaths.filter((filePath: string) =>
-      filePathsByDir.find((item) => item.rootDir === rootDir)?.filePaths.includes(filePath),
-    ),
+    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
+
+  // Pre-initialize metrics worker pool to overlap tiktoken WASM loading with subsequent pipeline stages
+  // (security check, file processing, output generation). The warm-up task triggers tiktoken
+  // initialization in the worker thread without blocking the main pipeline.
+  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
+  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding });
 
   progressCallback('Collecting files...');
   const collectResults = await withMemoryLogging(
@@ -128,6 +134,9 @@ export const pack = async (
 
   // Check if skill generation is requested
   if (config.skillGenerate !== undefined && options.skillDir) {
+    await warmupPromise;
+    await metricsTaskRunner.cleanup();
+
     const result = await deps.packSkill({
       rootDirs,
       config,
@@ -168,9 +177,17 @@ export const pack = async (
     filePathsByRoot,
   );
 
+  // Ensure warm-up task completes before metrics calculation
+  await warmupPromise;
+
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),
+    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
+      taskRunner: metricsTaskRunner,
+    }),
   );
+
+  // Cleanup the pre-initialized task runner
+  await metricsTaskRunner.cleanup();
 
   // Create a result object that includes metrics and security results
   const result = {
