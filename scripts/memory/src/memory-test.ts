@@ -34,6 +34,7 @@ const delay = Number(numericArgs[1]) || (flags.full ? 100 : 50);
 const MEMORY_LOG_INTERVAL = flags.full ? 10 : 5;
 const FORCE_GC_INTERVAL = flags.full ? 50 : 20;
 const WARNING_THRESHOLD = flags.full ? 50 : 100; // Memory growth percentage
+const WARMUP_ITERATIONS = 3; // Warm-up iterations to load modules before measuring baseline
 
 // Graph display constants
 const MIN_POINTS_FOR_GRAPH = 5;
@@ -230,9 +231,23 @@ async function saveMemoryHistory(): Promise<void> {
 async function runMemoryTest(): Promise<void> {
   const totalIterations = flags.continuous ? Number.POSITIVE_INFINITY : iterations;
 
-  // Log initial memory usage
-  console.log('📊 Initial Memory Usage:');
-  logMemoryUsage(0, 'Initial', null);
+  // Warm-up phase: run a few iterations to load all modules (gpt-tokenizer, secretlint, etc.)
+  // before measuring the baseline. Since pack() runs in-process, one-time module initialization
+  // inflates heap/RSS and would cause false "memory leak" alerts if included in the baseline.
+  console.log(`🔥 Running ${WARMUP_ITERATIONS} warm-up iterations to load modules...`);
+  for (let w = 0; w < WARMUP_ITERATIONS; w++) {
+    try {
+      await runCli(TEST_CONFIG.args, TEST_CONFIG.cwd, TEST_CONFIG.options);
+      await cleanupFiles();
+    } catch {
+      // Ignore warm-up errors
+    }
+  }
+  forceGC();
+
+  // Log baseline memory usage (after modules are loaded)
+  console.log('\n📊 Baseline Memory Usage (after warm-up):');
+  logMemoryUsage(0, 'Baseline', null);
 
   console.log(`\n🚀 Starting ${flags.continuous ? 'continuous' : totalIterations} test iterations...`);
   console.log(`🎯 Delay: ${delay}ms\n`);
