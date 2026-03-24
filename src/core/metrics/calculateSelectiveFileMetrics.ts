@@ -6,6 +6,10 @@ import type { TokenEncoding } from './TokenCounter.js';
 import { getTokenCounter } from './tokenCounterFactory.js';
 import type { FileMetrics } from './workers/types.js';
 
+export interface MetricsWorkerPool {
+  run: (task: unknown) => Promise<unknown>;
+}
+
 const defaultDeps = {
   getTokenCounter,
 };
@@ -16,6 +20,7 @@ export const calculateSelectiveFileMetrics = async (
   tokenCounterEncoding: TokenEncoding,
   progressCallback: RepomixProgressCallback,
   deps: Partial<typeof defaultDeps> = {},
+  metricsWorkerPool?: MetricsWorkerPool,
 ): Promise<FileMetrics[]> => {
   const resolvedDeps = { ...defaultDeps, ...deps };
   const targetFileSet = new Set(targetFilePaths);
@@ -27,6 +32,27 @@ export const calculateSelectiveFileMetrics = async (
 
   try {
     const startTime = process.hrtime.bigint();
+
+    // If a pre-warmed worker pool is available, use batch counting on worker thread.
+    // This keeps gpt-tokenizer's BPE initialization and CPU-bound token counting
+    // off the main thread, reducing contention with security workers.
+    if (metricsWorkerPool) {
+      logger.trace(`Starting selective metrics calculation for ${filesToProcess.length} files on worker thread`);
+      progressCallback(`Calculating metrics... (${filesToProcess.length} files)`);
+
+      const results = (await metricsWorkerPool.run({
+        batch: true,
+        files: filesToProcess.map((f) => ({ path: f.path, content: f.content })),
+        encoding: tokenCounterEncoding,
+      })) as FileMetrics[];
+
+      const endTime = process.hrtime.bigint();
+      const duration = Number(endTime - startTime) / 1e6;
+      logger.trace(`Selective metrics calculation (worker) completed in ${duration.toFixed(2)}ms`);
+      return results;
+    }
+
+    // Fallback: count tokens on the main thread
     logger.trace(`Starting selective metrics calculation for ${filesToProcess.length} files on main thread`);
 
     const counter = await resolvedDeps.getTokenCounter(tokenCounterEncoding);

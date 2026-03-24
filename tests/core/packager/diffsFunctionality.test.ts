@@ -85,6 +85,9 @@ index 123..456 100644
       processFiles: mockProcessFiles,
       validateFileSafety: mockValidateFileSafety,
       createSecurityWorkerPool: vi.fn().mockResolvedValue(undefined),
+      createMetricsWorkerPool: vi
+        .fn()
+        .mockResolvedValue({ run: vi.fn().mockResolvedValue([]), cleanup: vi.fn().mockResolvedValue(undefined) }),
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
       sortPaths: mockSortPaths,
@@ -136,6 +139,9 @@ index 123..456 100644
       processFiles: mockProcessFiles,
       validateFileSafety: mockValidateFileSafety,
       createSecurityWorkerPool: vi.fn().mockResolvedValue(undefined),
+      createMetricsWorkerPool: vi
+        .fn()
+        .mockResolvedValue({ run: vi.fn().mockResolvedValue([]), cleanup: vi.fn().mockResolvedValue(undefined) }),
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
       sortPaths: mockSortPaths,

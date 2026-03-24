@@ -97,34 +97,57 @@ export const calculateMetrics = async (
   // by sqrt(charCount) reduces the dominance of large files while still giving
   // larger files proportionally more influence. Measured: 0.13% error vs 4.26%
   // with simple averaging (n=20 sample).
-  const [estimatedOutputTokens, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
-    (async () => {
-      if (selectiveFileMetrics.length === 0) {
-        // No file metrics available — fall back to counting the output directly
-        const partPath =
-          outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, 1) : config.output.filePath;
-        return deps.calculateOutputMetrics(outputParts[0], config.tokenCount.encoding, partPath);
+  // Compute sqrt-weighted char:token ratio from selective file metrics.
+  // This ratio is used for both output token estimation and git diff/log estimation,
+  // avoiding the need to load gpt-tokenizer on the main thread entirely.
+  let weightedRatio = 0;
+  if (selectiveFileMetrics.length > 0) {
+    let weightedRatioSum = 0;
+    let totalWeight = 0;
+    for (const fm of selectiveFileMetrics) {
+      if (fm.charCount > 0) {
+        const weight = Math.sqrt(fm.charCount);
+        weightedRatioSum += (fm.tokenCount / fm.charCount) * weight;
+        totalWeight += weight;
       }
-      // Compute sqrt-weighted char:token ratio from selective file metrics
-      let weightedRatioSum = 0;
-      let totalWeight = 0;
-      for (const fm of selectiveFileMetrics) {
-        if (fm.charCount > 0) {
-          const weight = Math.sqrt(fm.charCount);
-          weightedRatioSum += (fm.tokenCount / fm.charCount) * weight;
-          totalWeight += weight;
-        }
-      }
-      if (totalWeight === 0) {
-        return 0;
-      }
-      const weightedRatio = weightedRatioSum / totalWeight;
-      // Apply the ratio to total output character count
-      return Math.round(totalCharacters * weightedRatio);
-    })(),
-    deps.calculateGitDiffMetrics(config, gitDiffResult),
-    deps.calculateGitLogMetrics(config, gitLogResult),
-  ]);
+    }
+    if (totalWeight > 0) {
+      weightedRatio = weightedRatioSum / totalWeight;
+    }
+  }
+
+  let estimatedOutputTokens: number;
+  if (selectiveFileMetrics.length === 0) {
+    // No file metrics available — fall back to counting the output directly
+    const partPath =
+      outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, 1) : config.output.filePath;
+    estimatedOutputTokens = await deps.calculateOutputMetrics(outputParts[0], config.tokenCount.encoding, partPath);
+  } else {
+    // Apply the ratio to total output character count
+    estimatedOutputTokens = Math.round(totalCharacters * weightedRatio);
+  }
+
+  // Estimate git diff/log tokens using the same ratio instead of loading the tokenizer.
+  // Git content is similar enough in structure (text + code) that the ratio gives
+  // accurate estimates while avoiding ~288ms tokenizer init on the main thread.
+  let gitDiffTokenCount = 0;
+  if (config.output.git?.includeDiffs && gitDiffResult && weightedRatio > 0) {
+    if (gitDiffResult.workTreeDiffContent) {
+      gitDiffTokenCount += Math.round(gitDiffResult.workTreeDiffContent.length * weightedRatio);
+    }
+    if (gitDiffResult.stagedDiffContent) {
+      gitDiffTokenCount += Math.round(gitDiffResult.stagedDiffContent.length * weightedRatio);
+    }
+  } else if (config.output.git?.includeDiffs && gitDiffResult) {
+    gitDiffTokenCount = await deps.calculateGitDiffMetrics(config, gitDiffResult);
+  }
+
+  let gitLogTokenCount: number;
+  if (config.output.git?.includeLogs && gitLogResult?.logContent && weightedRatio > 0) {
+    gitLogTokenCount = Math.round(gitLogResult.logContent.length * weightedRatio);
+  } else {
+    gitLogTokenCount = (await deps.calculateGitLogMetrics(config, gitLogResult)).gitLogTokenCount;
+  }
 
   const totalTokens = estimatedOutputTokens;
 
@@ -141,27 +164,16 @@ export const calculateMetrics = async (
   }
 
   // Estimate token counts for remaining files when tokenCountTree is enabled
+  // Reuses the sqrt-weighted ratio already computed above.
   if (
     config.output.tokenCountTree &&
     selectiveFileMetrics.length > 0 &&
-    selectiveFileMetrics.length < processedFiles.length
+    selectiveFileMetrics.length < processedFiles.length &&
+    weightedRatio > 0
   ) {
-    // Use sqrt-weighted ratio for per-file estimation (same approach as output estimation)
-    let weightedRatioSum = 0;
-    let totalWeight = 0;
-    for (const fm of selectiveFileMetrics) {
-      if (fm.charCount > 0) {
-        const weight = Math.sqrt(fm.charCount);
-        weightedRatioSum += (fm.tokenCount / fm.charCount) * weight;
-        totalWeight += weight;
-      }
-    }
-    if (totalWeight > 0) {
-      const ratio = weightedRatioSum / totalWeight;
-      for (const file of processedFiles) {
-        if (fileTokenCounts[file.path] === undefined) {
-          fileTokenCounts[file.path] = Math.round(file.content.length * ratio);
-        }
+    for (const file of processedFiles) {
+      if (fileTokenCounts[file.path] === undefined) {
+        fileTokenCounts[file.path] = Math.round(file.content.length * weightedRatio);
       }
     }
   }
@@ -172,7 +184,7 @@ export const calculateMetrics = async (
     totalTokens,
     fileCharCounts,
     fileTokenCounts,
-    gitDiffTokenCount: gitDiffTokenCount,
-    gitLogTokenCount: gitLogTokenCount.gitLogTokenCount,
+    gitDiffTokenCount,
+    gitLogTokenCount,
   };
 };

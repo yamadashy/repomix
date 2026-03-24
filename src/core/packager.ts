@@ -61,6 +61,25 @@ const defaultDeps = {
       cleanup: () => cleanupWorkerPool(pool),
     };
   },
+  // Pre-warm metrics worker — spawns a worker thread that loads gpt-tokenizer (~288ms)
+  // in the background. The BPE table initialization happens off the main thread,
+  // so it doesn't block the event loop during file search/collection.
+  createMetricsWorkerPool: async (
+    encoding: string,
+  ): Promise<{ run: (task: unknown) => Promise<unknown>; cleanup: () => Promise<void> }> => {
+    const { createWorkerPool, cleanupWorkerPool } = await import('../shared/processConcurrency.js');
+    const pool = createWorkerPool({
+      numOfTasks: 1,
+      workerType: 'calculateMetrics',
+      runtime: 'worker_threads',
+    });
+    // Warmup: trigger gpt-tokenizer BPE table loading in the worker
+    await pool.run({ batch: true, files: [{ path: '', content: ' ' }], encoding });
+    return {
+      run: (task: unknown) => pool.run(task),
+      cleanup: () => cleanupWorkerPool(pool),
+    };
+  },
   // Lazy-load packSkill — only needed when --skill-generate is used.
   // Avoids importing skill section generators and their transitive deps on every run.
   packSkill: async (params: Record<string, unknown>) => {
@@ -95,6 +114,13 @@ export const pack = async (
   // so they can overlap with file search, sorting, AND file collection
   // instead of just file collection (previously started after search + sort)
   const gitPromise = Promise.all([deps.getGitDiffs(rootDirs, config), deps.getGitLogs(rootDirs, config)]);
+
+  // Pre-warm metrics worker — spawns a worker thread and loads gpt-tokenizer's BPE
+  // encoding table (~288ms) off the main thread. By starting here, the tokenizer
+  // initialization overlaps with searchFiles (~150ms) + collectFiles (~180ms).
+  // Without this, gpt-tokenizer loads on the main thread during selectiveMetrics,
+  // blocking the event loop and causing CPU contention with security workers.
+  const metricsWorkerPromise = deps.createMetricsWorkerPool(config.tokenCount.encoding);
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -178,16 +204,18 @@ export const pack = async (
 
   const [gitDiffResult, gitLogResult] = await gitPromise;
 
-  // Get pre-created security pool (workers likely already loading secretlint by now)
+  // Get pre-created pools (workers likely already loading their modules by now)
   const preCreatedSecurityRunner = securityPoolPromise ? await securityPoolPromise : undefined;
+  const metricsWorkerPool = await metricsWorkerPromise;
 
   // Run security check, file processing, file metrics, and git-based sorting in parallel.
   // Security check uses the pre-warmed worker pool (CPU in worker threads, ~300ms).
   // After lightweight file processing (~1ms main thread), three operations start concurrently:
-  //   1. File metrics (token counting, ~85ms on main thread)
+  //   1. File metrics (token counting on pre-warmed worker thread, ~65ms)
   //   2. Git-based file sorting (git subprocess, ~50-200ms I/O-bound)
   // Both overlap with the security workers, hiding their cost behind security check latency.
-  // Previously, sorting started AFTER the Promise.all completed, adding ~100ms to the critical path.
+  // Token counting on a worker thread (instead of main thread) eliminates CPU contention
+  // with security workers, reducing security check time from ~533ms to ~253ms.
   progressCallback('Running security check...');
   const [securityResult, processedSortedAndMetrics] = await Promise.all([
     withMemoryLogging('Security Check', () =>
@@ -204,7 +232,7 @@ export const pack = async (
     withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)).then(
       async (allProcessedFiles) => {
         // Chain: after processing completes, start metrics AND sorting while security workers run.
-        // Sorting uses a git subprocess (I/O-bound) so it runs truly parallel with main-thread
+        // Sorting uses a git subprocess (I/O-bound) so it runs truly parallel with worker-thread
         // token counting. Both complete well before the ~300ms security check finishes.
         const metricsTargetPaths = deps.getMetricsTargetPaths(allProcessedFiles, config);
         const [sortedFiles, fileMetrics] = await Promise.all([
@@ -214,6 +242,8 @@ export const pack = async (
             metricsTargetPaths,
             config.tokenCount.encoding,
             progressCallback,
+            undefined,
+            metricsWorkerPool,
           ),
         ]);
         return { allProcessedFiles, sortedFiles, fileMetrics };
@@ -296,6 +326,9 @@ export const pack = async (
     ),
     writePromise,
   ]);
+
+  // Fire-and-forget cleanup of metrics worker pool — workers terminate on process exit anyway
+  metricsWorkerPool.cleanup().catch(() => {});
 
   // Create a result object that includes metrics and security results
   const result = {

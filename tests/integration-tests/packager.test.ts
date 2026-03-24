@@ -105,6 +105,7 @@ describe.runIf(!isWindows)('packager integration', () => {
           return processedFiles;
         },
         createSecurityWorkerPool: async () => undefined,
+        createMetricsWorkerPool: async () => ({ run: async () => [], cleanup: async () => {} }),
         validateFileSafety: (rawFiles, progressCallback, config) => {
           const gitDiffMock: GitDiffResult = {
             workTreeDiffContent: '',
