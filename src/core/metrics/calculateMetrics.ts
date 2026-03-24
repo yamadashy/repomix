@@ -37,7 +37,10 @@ export const getMetricsTargetPaths = (processedFiles: ProcessedFile[], config: R
     return processedFiles.map((file) => file.path);
   }
   const topFilesLength = config.output.topFilesLength;
-  return [...processedFiles]
+  // slice() creates a shallow copy more efficiently than spread [...processedFiles]
+  // by pre-allocating the correct array size instead of iterating the spread.
+  return processedFiles
+    .slice()
     .sort((a, b) => b.content.length - a.content.length)
     .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
     .map((file) => file.path);

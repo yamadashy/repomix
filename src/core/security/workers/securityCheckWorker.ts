@@ -45,6 +45,13 @@ export default async ({ filePath, content, type }: SecurityCheckTask) => {
   }
 };
 
+// O(1) extension extraction using lastIndexOf instead of split('.').pop()
+// which allocates an intermediate array for every file
+const getFileExtension = (filePath: string): string => {
+  const lastDot = filePath.lastIndexOf('.');
+  return lastDot > -1 ? filePath.slice(lastDot + 1) : '';
+};
+
 export const runSecretLint = async (
   filePath: string,
   content: string,
@@ -55,7 +62,7 @@ export const runSecretLint = async (
     source: {
       filePath: filePath,
       content: content,
-      ext: filePath.split('.').pop() || '',
+      ext: getFileExtension(filePath),
       contentType: 'text',
     },
     options: {

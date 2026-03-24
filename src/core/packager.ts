@@ -112,28 +112,41 @@ export const pack = async (
 
   // Sort file paths
   progressCallback('Sorting files...');
-  const allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
 
-  // Regroup sorted file paths by rootDir in a single O(n) pass.
-  // Build a path→rootDir lookup, then iterate sortedFilePaths once to bucket them.
-  const pathToRootDir = new Map<string, string>();
-  for (const { rootDir, filePaths } of filePathsByDir) {
-    for (const fp of filePaths) {
-      pathToRootDir.set(fp, rootDir);
+  let allFilePaths: string[];
+  let sortedFilePathsByDir: { rootDir: string; filePaths: string[] }[];
+
+  if (rootDirs.length === 1) {
+    // Single root: files are already sorted by searchFiles, skip redundant re-sort.
+    // This avoids decorate-sort-undecorate overhead (~5-10ms for 1000 files).
+    allFilePaths = filePathsByDir[0].filePaths;
+    sortedFilePathsByDir = [{ rootDir: rootDirs[0], filePaths: allFilePaths }];
+  } else {
+    // Multiple roots: combine and re-sort across all roots
+    allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
+    const sortedFilePaths = deps.sortPaths(allFilePaths);
+
+    // Regroup sorted file paths by rootDir in a single O(n) pass.
+    // Build a path→rootDir lookup, then iterate sortedFilePaths once to bucket them.
+    const pathToRootDir = new Map<string, string>();
+    for (const { rootDir, filePaths } of filePathsByDir) {
+      for (const fp of filePaths) {
+        pathToRootDir.set(fp, rootDir);
+      }
     }
-  }
-  const bucketsByRoot = new Map<string, string[]>(rootDirs.map((rd) => [rd, []]));
-  for (const fp of sortedFilePaths) {
-    const rd = pathToRootDir.get(fp);
-    if (rd) {
-      bucketsByRoot.get(rd)!.push(fp);
+    const bucketsByRoot = new Map<string, string[]>(rootDirs.map((rd) => [rd, []]));
+    for (const fp of sortedFilePaths) {
+      const rd = pathToRootDir.get(fp);
+      if (rd) {
+        bucketsByRoot.get(rd)!.push(fp);
+      }
     }
+    sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+      rootDir,
+      filePaths: bucketsByRoot.get(rootDir) ?? [],
+    }));
+    allFilePaths = sortedFilePaths;
   }
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
-    rootDir,
-    filePaths: bucketsByRoot.get(rootDir) ?? [],
-  }));
 
   progressCallback('Collecting files and git info...');
 
@@ -246,8 +259,9 @@ export const pack = async (
   // Await pre-sorted files (git command likely already complete by now)
   const sortedProcessedFiles = await sortedFilesPromise;
 
-  // Generate and write output (handles both single and split output)
-  const { outputFiles, outputForMetrics } = await deps.produceOutput(
+  // Generate output and start writing to disk (write returned as a promise
+  // so we can overlap metrics computation with I/O)
+  const { outputFiles, outputForMetrics, writePromise } = await deps.produceOutput(
     rootDirs,
     config,
     sortedProcessedFiles,
@@ -263,17 +277,22 @@ export const pack = async (
   // which will skip file token counting and only compute output/git metrics
   const precomputedFileMetrics = await fileMetricsPromise;
 
-  const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(
-      processedFiles,
-      outputForMetrics,
-      progressCallback,
-      config,
-      gitDiffResult,
-      gitLogResult,
-      precomputedFileMetrics,
+  // Overlap output/git token counting with disk write + clipboard copy.
+  // calculateMetrics only needs the output string (already in memory), not the written file.
+  const [metrics] = await Promise.all([
+    withMemoryLogging('Calculate Metrics', () =>
+      deps.calculateMetrics(
+        processedFiles,
+        outputForMetrics,
+        progressCallback,
+        config,
+        gitDiffResult,
+        gitLogResult,
+        precomputedFileMetrics,
+      ),
     ),
-  );
+    writePromise,
+  ]);
 
   // Create a result object that includes metrics and security results
   const result = {

@@ -114,8 +114,10 @@ export const sortOutputFiles = async (
 };
 
 const sortFilesByChangeCounts = (files: ProcessedFile[], fileChangeCounts: Record<string, number>): ProcessedFile[] => {
-  // Sort files by change count (files with more changes go to the bottom)
-  return [...files].sort((a, b) => {
+  // Sort files by change count (files with more changes go to the bottom).
+  // slice() creates a shallow copy more efficiently than spread [...files]
+  // by pre-allocating the correct array size instead of iterating the spread.
+  return files.slice().sort((a, b) => {
     const countA = fileChangeCounts[a.path] || 0;
     const countB = fileChangeCounts[b.path] || 0;
     return countA - countB;

@@ -13,6 +13,9 @@ import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDi
 export interface ProduceOutputResult {
   outputFiles?: string[];
   outputForMetrics: string | string[];
+  // Promise that resolves when disk write + clipboard copy complete.
+  // Returned separately so the caller can overlap metrics computation with I/O.
+  writePromise?: Promise<void>;
 }
 
 const defaultDeps = {
@@ -99,7 +102,9 @@ const generateAndWriteSplitOutput = async (
   });
 
   progressCallback('Writing output files...');
-  await withMemoryLogging('Write Split Output', async () => {
+  // Start writes but don't await — return the promise so the caller
+  // can overlap metrics computation with disk I/O.
+  const writePromise = withMemoryLogging('Write Split Output', async () => {
     await Promise.all(
       parts.map((part) => {
         const partConfig = {
@@ -118,6 +123,7 @@ const generateAndWriteSplitOutput = async (
   return {
     outputFiles: parts.map((p) => p.filePath),
     outputForMetrics: parts.map((p) => p.content),
+    writePromise,
   };
 };
 
@@ -147,12 +153,15 @@ const generateAndWriteSingleOutput = async (
   );
 
   progressCallback('Writing output file...');
-  await Promise.all([
+  // Start write + clipboard but don't await — return the promise so the caller
+  // can overlap metrics computation (output token counting) with disk I/O.
+  const writePromise = Promise.all([
     withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config)),
     deps.copyToClipboardIfEnabled(output, progressCallback, config),
-  ]);
+  ]).then(() => {});
 
   return {
     outputForMetrics: output,
+    writePromise,
   };
 };
