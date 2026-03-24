@@ -54,6 +54,8 @@ describe('packager', () => {
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
       }),
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
+      getMetricsTargetPaths: vi.fn().mockReturnValue([]),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -99,6 +101,7 @@ describe('packager', () => {
       undefined,
       progressCallback,
       [{ rootLabel: 'root', files: mockFilePaths }],
+      [],
     );
     expect(mockDeps.calculateMetrics).toHaveBeenCalledWith(
       mockProcessedFiles,
@@ -107,6 +110,7 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      expect.any(Array),
     );
 
     // Check the result of pack function

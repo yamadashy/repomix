@@ -99,6 +99,7 @@ index 123..456 100644
         stagedDiffContent: '',
       },
       undefined,
+      undefined,
       {
         calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
         calculateOutputMetrics: mockCalculateOutputMetrics,
@@ -173,6 +174,7 @@ index 123..456 100644
       config,
       undefined, // No diff content
       undefined,
+      undefined,
       {
         calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
         calculateOutputMetrics: mockCalculateOutputMetrics,
@@ -244,6 +246,7 @@ index 123..456 100644
       vi.fn(), // Progress callback
       config,
       undefined, // No diff content
+      undefined,
       undefined,
       {
         calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),

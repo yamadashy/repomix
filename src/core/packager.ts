@@ -10,7 +10,8 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics } from './metrics/calculateMetrics.js';
+import { calculateMetrics, getMetricsTargetPaths } from './metrics/calculateMetrics.js';
+import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -39,6 +40,8 @@ const defaultDeps = {
   validateFileSafety,
   produceOutput,
   calculateMetrics,
+  calculateSelectiveFileMetrics,
+  getMetricsTargetPaths,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -73,14 +76,18 @@ export const pack = async (
   logMemoryUsage('Pack - Start');
 
   progressCallback('Searching for files...');
-  const filePathsByDir = await withMemoryLogging('Search Files', async () =>
+  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
-      rootDirs.map(async (rootDir) => ({
-        rootDir,
-        filePaths: (await deps.searchFiles(rootDir, config, explicitFiles)).filePaths,
-      })),
+      rootDirs.map(async (rootDir) => {
+        const result = await deps.searchFiles(rootDir, config, explicitFiles);
+        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+      }),
     ),
   );
+
+  // Collect emptyDirPaths from initial search to avoid redundant filesystem scans later
+  const emptyDirPaths = searchResultsByDir.flatMap(({ emptyDirPaths }) => emptyDirPaths);
+  const filePathsByDir = searchResultsByDir.map(({ rootDir, filePaths }) => ({ rootDir, filePaths }));
 
   // Sort file paths
   progressCallback('Sorting files...');
@@ -158,6 +165,17 @@ export const pack = async (
     files: filePaths,
   }));
 
+  // Start file token counting in parallel with output generation.
+  // File metrics only need processedFiles + encoding, not the output string,
+  // so they can overlap with output generation for a ~50-100ms improvement.
+  const metricsTargetPaths = deps.getMetricsTargetPaths(processedFiles, config);
+  const fileMetricsPromise = deps.calculateSelectiveFileMetrics(
+    processedFiles,
+    metricsTargetPaths,
+    config.tokenCount.encoding,
+    progressCallback,
+  );
+
   // Generate and write output (handles both single and split output)
   const { outputFiles, outputForMetrics } = await deps.produceOutput(
     rootDirs,
@@ -168,11 +186,23 @@ export const pack = async (
     gitLogResult,
     progressCallback,
     filePathsByRoot,
+    emptyDirPaths,
   );
 
-  // Token counting runs on main thread with gpt-tokenizer (pure JS) — no worker pool needed
+  // Await file metrics (likely already complete by now), then pass to calculateMetrics
+  // which will skip file token counting and only compute output/git metrics
+  const precomputedFileMetrics = await fileMetricsPromise;
+
   const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult),
+    deps.calculateMetrics(
+      processedFiles,
+      outputForMetrics,
+      progressCallback,
+      config,
+      gitDiffResult,
+      gitLogResult,
+      precomputedFileMetrics,
+    ),
   );
 
   // Create a result object that includes metrics and security results

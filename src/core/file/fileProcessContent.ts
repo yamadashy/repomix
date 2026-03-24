@@ -1,6 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { parseFile } from '../treeSitter/parseFile.js';
 import { getFileManipulator } from './fileManipulate.js';
 import type { RawFile } from './fileTypes.js';
 import { truncateBase64Content } from './truncateBase64.js';
@@ -41,6 +40,10 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
 
   if (config.output.compress) {
     try {
+      // Lazy-load tree-sitter parsing — web-tree-sitter WASM is heavy (~500KB+) and only needed
+      // when compress mode is enabled (not the default). Deferring this import avoids loading
+      // the entire tree-sitter chain (parseFile → languageParser → web-tree-sitter) on every run.
+      const { parseFile } = await import('../treeSitter/parseFile.js');
       const parsedContent = await parseFile(processedContent, rawFile.path, config);
       if (parsedContent === undefined) {
         logger.trace(`Failed to parse ${rawFile.path} in compressed mode. Using original content.`);

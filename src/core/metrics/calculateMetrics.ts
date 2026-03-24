@@ -8,6 +8,7 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
+import type { FileMetrics } from './workers/types.js';
 
 export interface CalculateMetricsResult {
   totalFiles: number;
@@ -26,6 +27,22 @@ const defaultDeps = {
   calculateGitLogMetrics,
 };
 
+/**
+ * Determine which files to calculate token counts for.
+ * Exported so packager.ts can start file metrics early in parallel with output generation.
+ */
+export const getMetricsTargetPaths = (processedFiles: ProcessedFile[], config: RepomixConfigMerged): string[] => {
+  const shouldCalculateAllFiles = !!config.output.tokenCountTree;
+  if (shouldCalculateAllFiles) {
+    return processedFiles.map((file) => file.path);
+  }
+  const topFilesLength = config.output.topFilesLength;
+  return [...processedFiles]
+    .sort((a, b) => b.content.length - a.content.length)
+    .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
+    .map((file) => file.path);
+};
+
 export const calculateMetrics = async (
   processedFiles: ProcessedFile[],
   output: string | string[],
@@ -33,6 +50,7 @@ export const calculateMetrics = async (
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
+  precomputedFileMetrics?: FileMetrics[],
   overrideDeps: Partial<typeof defaultDeps> = {},
 ): Promise<CalculateMetricsResult> => {
   const deps = { ...defaultDeps, ...overrideDeps };
@@ -40,29 +58,17 @@ export const calculateMetrics = async (
   progressCallback('Calculating metrics...');
 
   const outputParts = Array.isArray(output) ? output : [output];
-  // For top files display optimization: calculate token counts only for top files by character count
-  // However, if tokenCountTree is enabled, calculate for all files to avoid double calculation
-  const topFilesLength = config.output.topFilesLength;
-  const shouldCalculateAllFiles = !!config.output.tokenCountTree;
 
-  // Determine which files to calculate token counts for:
-  // - If tokenCountTree is enabled: calculate for all files to avoid double calculation
-  // - Otherwise: calculate only for top files by character count for optimization
-  const metricsTargetPaths = shouldCalculateAllFiles
-    ? processedFiles.map((file) => file.path)
-    : [...processedFiles]
-        .sort((a, b) => b.content.length - a.content.length)
-        .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
-        .map((file) => file.path);
-
-  // File metrics must run first (synchronous on main thread with gpt-tokenizer),
-  // then output/git metrics can run in parallel since they share the cached TokenCounter
-  const selectiveFileMetrics = await deps.calculateSelectiveFileMetrics(
-    processedFiles,
-    metricsTargetPaths,
-    config.tokenCount.encoding,
-    progressCallback,
-  );
+  // Use pre-computed file metrics if available (from parallel execution with output generation),
+  // otherwise compute them now
+  const selectiveFileMetrics =
+    precomputedFileMetrics ??
+    (await deps.calculateSelectiveFileMetrics(
+      processedFiles,
+      getMetricsTargetPaths(processedFiles, config),
+      config.tokenCount.encoding,
+      progressCallback,
+    ));
 
   const [outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
     Promise.all(

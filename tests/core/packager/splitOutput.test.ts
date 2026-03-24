@@ -55,6 +55,8 @@ describe('packager split output', () => {
       getGitLogs: vi.fn().mockResolvedValue(undefined),
       produceOutput,
       calculateMetrics,
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
+      getMetricsTargetPaths: vi.fn().mockReturnValue([]),
     });
 
     expect(produceOutput).toHaveBeenCalledWith(
@@ -66,6 +68,7 @@ describe('packager split output', () => {
       undefined,
       expect.any(Function),
       [{ rootLabel: 'root', files: allFilePaths }],
+      [],
     );
 
     expect(calculateMetrics).toHaveBeenCalledWith(
@@ -75,6 +78,7 @@ describe('packager split output', () => {
       mockConfig,
       undefined,
       undefined,
+      expect.any(Array),
     );
 
     expect(result.outputFiles).toEqual(['repomix-output.1.xml', 'repomix-output.2.xml']);
