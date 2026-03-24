@@ -60,6 +60,11 @@ describe('includeFullDirectoryStructure flag', () => {
       listDirectories: async () => ['src', 'src/a', 'src/b', 'docs', 'docs/guide'],
       // Files across the repo (subject to ignores)
       listFiles: async () => ['README.md', 'LICENSE.md', 'src/a/index.ts', 'src/b/other.ts', 'docs/guide/intro.md'],
+      // Combined function used by full-tree mode to share prepareIgnoreContext
+      listDirectoriesAndFiles: async () => ({
+        directories: ['src', 'src/a', 'src/b', 'docs', 'docs/guide'],
+        files: ['README.md', 'LICENSE.md', 'src/a/index.ts', 'src/b/other.ts', 'docs/guide/intro.md'],
+      }),
       // Not used in full-tree branch, but included for completeness
       searchFiles: async () => ({ filePaths: allFilePaths, emptyDirPaths: [] }),
     };
@@ -95,6 +100,10 @@ describe('includeFullDirectoryStructure flag', () => {
       // Would return extra directories if called, but should NOT be used in this case
       listDirectories: async () => ['src', 'src/a', 'docs', 'docs/guide'],
       listFiles: async () => ['README.md', 'LICENSE.md'],
+      listDirectoriesAndFiles: async () => ({
+        directories: ['src', 'src/a', 'docs', 'docs/guide'],
+        files: ['README.md', 'LICENSE.md'],
+      }),
       searchFiles: async () => ({ filePaths: allFilePaths, emptyDirPaths: [] }),
     };
 

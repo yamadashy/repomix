@@ -132,12 +132,20 @@ export const runSecurityCheck = async (
     const duration = Number(endTime - startTime) / 1e6;
     logger.trace(`Security check completed in ${duration.toFixed(2)}ms`);
 
-    return batchResults.flat().filter((result): result is SuspiciousFileResult => result !== null);
+    const results = batchResults.flat().filter((result): result is SuspiciousFileResult => result !== null);
+
+    // Fire-and-forget worker pool cleanup — all results are already collected,
+    // so we don't need to block the critical path waiting for thread termination.
+    // The worker threads will be terminated when the process exits anyway (CLI tool).
+    Promise.resolve(taskRunner.cleanup()).catch((error) => {
+      logger.debug('Error during security worker pool cleanup:', error);
+    });
+
+    return results;
   } catch (error) {
     logger.error('Error during security check:', error);
+    // On error, still attempt cleanup but don't block on it
+    Promise.resolve(taskRunner.cleanup()).catch(() => {});
     throw error;
-  } finally {
-    // Always cleanup worker pool
-    await taskRunner.cleanup();
   }
 };

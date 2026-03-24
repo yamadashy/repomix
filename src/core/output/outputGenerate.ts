@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
-import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
+import { listDirectories, listDirectoriesAndFiles, listFiles, searchFiles } from '../file/fileSearch.js';
 import { type FilesByRoot, generateTreeString, generateTreeStringWithRoots } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -72,10 +72,22 @@ const analyzeFileContents = (
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
-  const { fileLineCounts, markdownCodeBlockDelimiter } = analyzeFileContents(
-    outputGeneratorContext.processedFiles,
-    outputGeneratorContext.config.output.style,
-  );
+  const outputStyle = outputGeneratorContext.config.output.style;
+
+  // Only run the full file content analysis when actually needed:
+  // - Markdown style needs backtick tracking for code block delimiters
+  // - fileLineCounts is only consumed by the skill generation path (not by any renderer)
+  // For XML (default), Plain, and JSON styles, skip the O(n) scan over all file content bytes.
+  let fileLineCounts: Record<string, number>;
+  let markdownCodeBlockDelimiter: string;
+  if (outputStyle === 'markdown') {
+    const analysis = analyzeFileContents(outputGeneratorContext.processedFiles, outputStyle);
+    fileLineCounts = analysis.fileLineCounts;
+    markdownCodeBlockDelimiter = analysis.markdownCodeBlockDelimiter;
+  } else {
+    fileLineCounts = {};
+    markdownCodeBlockDelimiter = '```';
+  }
 
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
@@ -326,6 +338,7 @@ export const buildOutputGeneratorContext = async (
   deps = {
     listDirectories,
     listFiles,
+    listDirectoriesAndFiles,
     searchFiles,
   },
 ): Promise<OutputGeneratorContext> => {
@@ -352,15 +365,13 @@ export const buildOutputGeneratorContext = async (
 
   if (shouldUseFullTree) {
     try {
-      // Collect all directories and all files from all roots
-      const [allDirectoriesByRoot, allFilesByRoot] = await Promise.all([
-        Promise.all(rootDirs.map((rootDir) => deps.listDirectories(rootDir, config))),
-        Promise.all(rootDirs.map((rootDir) => deps.listFiles(rootDir, config))),
-      ]);
+      // Collect all directories and all files from all roots using the combined function
+      // to share prepareIgnoreContext (avoids duplicate .git/info/exclude reads + worktree checks).
+      const resultsByRoot = await Promise.all(rootDirs.map((rootDir) => deps.listDirectoriesAndFiles(rootDir, config)));
 
       // Merge, deduplicate, and sort for deterministic output
-      const allDirectories = Array.from(new Set(allDirectoriesByRoot.flat())).sort();
-      const allRepoFiles = Array.from(new Set(allFilesByRoot.flat()));
+      const allDirectories = Array.from(new Set(resultsByRoot.flatMap((r) => r.directories))).sort();
+      const allRepoFiles = Array.from(new Set(resultsByRoot.flatMap((r) => r.files)));
 
       // Merge in any files that weren't part of the included files so they appear in the tree
       const includedSet = new Set(allFilePaths);
