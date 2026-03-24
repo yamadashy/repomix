@@ -1,7 +1,27 @@
 import * as fs from 'node:fs/promises';
-import isBinaryPath from 'is-binary-path';
-import { isBinaryFile } from 'isbinaryfile';
 import { logger } from '../../shared/logger.js';
+
+// Lazy-load is-binary-path (~7ms) and isbinaryfile (~5ms) — these are only needed
+// during file collection, not at worker module startup time. Deferring their import
+// reduces the worker's critical module loading path by ~12ms.
+let _isBinaryPath: ((filePath: string) => boolean) | undefined;
+let _isBinaryFile: ((file: string | Buffer, size?: number) => Promise<boolean>) | undefined;
+
+const getIsBinaryPath = async (): Promise<(filePath: string) => boolean> => {
+  if (!_isBinaryPath) {
+    const mod = await import('is-binary-path');
+    _isBinaryPath = mod.default;
+  }
+  return _isBinaryPath;
+};
+
+const getIsBinaryFile = async (): Promise<(file: string | Buffer, size?: number) => Promise<boolean>> => {
+  if (!_isBinaryFile) {
+    const mod = await import('isbinaryfile');
+    _isBinaryFile = mod.isBinaryFile;
+  }
+  return _isBinaryFile;
+};
 
 export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
 
@@ -19,6 +39,7 @@ export interface FileReadResult {
 export const readRawFile = async (filePath: string, maxFileSize: number): Promise<FileReadResult> => {
   try {
     // Check binary extension first (no I/O needed) to skip stat + read for binary files
+    const isBinaryPath = await getIsBinaryPath();
     if (isBinaryPath(filePath)) {
       logger.debug(`Skipping binary file: ${filePath}`);
       return { content: null, skippedReason: 'binary-extension' };
@@ -37,6 +58,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
 
     const buffer = await fs.readFile(filePath);
 
+    const isBinaryFile = await getIsBinaryFile();
     if (await isBinaryFile(buffer)) {
       logger.debug(`Skipping binary file (content check): ${filePath}`);
       return { content: null, skippedReason: 'binary-content' };

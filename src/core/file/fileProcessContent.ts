@@ -1,6 +1,6 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { getFileManipulator } from './fileManipulate.js';
+import { ensureStripCommentsLoaded, getFileManipulator } from './fileManipulate.js';
 import type { RawFile } from './fileTypes.js';
 import { truncateBase64Content } from './truncateBase64.js';
 
@@ -29,6 +29,7 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
   }
 
   if (manipulator && config.output.removeComments) {
+    await ensureStripCommentsLoaded();
     processedContent = manipulator.removeComments(processedContent);
   }
 
