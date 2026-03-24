@@ -62,7 +62,6 @@ describe('Output Generation with Diffs', () => {
     generateHandlebarOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
-    sortOutputFiles: vi.fn().mockResolvedValue(mockProcessedFiles),
   };
 
   test('XML style output should include diffs section when includeDiffs is enabled', async () => {

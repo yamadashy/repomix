@@ -30,7 +30,6 @@ describe('packSkill', () => {
           processedFiles: mockFiles,
           instruction: '',
         }),
-        sortOutputFiles: vi.fn().mockResolvedValue(mockFiles),
       };
 
       const result = await generateSkillReferences(
@@ -67,7 +66,6 @@ describe('packSkill', () => {
           processedFiles: mockFiles,
           instruction: '',
         }),
-        sortOutputFiles: vi.fn().mockResolvedValue(mockFiles),
       };
 
       const result = await generateSkillReferences(
@@ -98,7 +96,6 @@ describe('packSkill', () => {
           processedFiles: mockFiles,
           instruction: '',
         }),
-        sortOutputFiles: vi.fn().mockResolvedValue(mockFiles),
       };
 
       const result = await generateSkillReferences(
@@ -130,7 +127,6 @@ describe('packSkill', () => {
           processedFiles: mockFiles,
           instruction: '',
         }),
-        sortOutputFiles: vi.fn().mockResolvedValue(mockFiles),
       };
 
       const result = await generateSkillReferences(
@@ -162,7 +158,6 @@ describe('packSkill', () => {
           processedFiles: mockFiles,
           instruction: '',
         }),
-        sortOutputFiles: vi.fn().mockResolvedValue(mockFiles),
       };
 
       const result = await generateSkillReferences(
@@ -308,7 +303,7 @@ describe('packSkill', () => {
           processedFiles: mockFiles,
           instruction: '',
         }),
-        sortOutputFiles: vi.fn().mockResolvedValue(mockFiles),
+
         calculateMetrics: vi.fn().mockResolvedValue({
           totalFiles: 1,
           totalCharacters: 100,
@@ -349,7 +344,7 @@ describe('packSkill', () => {
           processedFiles: mockFiles,
           instruction: '',
         }),
-        sortOutputFiles: vi.fn().mockResolvedValue(mockFiles),
+
         calculateMetrics: vi.fn().mockResolvedValue({
           totalFiles: 3,
           totalCharacters: 500,
@@ -395,7 +390,7 @@ describe('packSkill', () => {
           processedFiles: mockFiles,
           instruction: '',
         }),
-        sortOutputFiles: vi.fn().mockResolvedValue(mockFiles),
+
         calculateMetrics: vi.fn().mockResolvedValue({
           totalFiles: 0,
           totalCharacters: 0,
@@ -439,7 +434,7 @@ describe('packSkill', () => {
           processedFiles: mockFiles,
           instruction: '',
         }),
-        sortOutputFiles: vi.fn().mockResolvedValue(mockFiles),
+
         calculateMetrics: vi.fn().mockResolvedValue({
           totalFiles: 0,
           totalCharacters: 0,

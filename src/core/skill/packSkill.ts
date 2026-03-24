@@ -7,7 +7,6 @@ import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import { calculateMetrics } from '../metrics/calculateMetrics.js';
 import { buildOutputGeneratorContext, createRenderContext } from '../output/outputGenerate.js';
-import { sortOutputFiles } from '../output/outputSort.js';
 import type { PackOptions, PackResult } from '../packager.js';
 import type { SuspiciousFileResult } from '../security/securityCheck.js';
 import { generateFilesSection, generateStructureSection, generateSummarySection } from './skillSectionGenerators.js';
@@ -57,7 +56,6 @@ export interface SkillOutputResult {
 
 const defaultDeps = {
   buildOutputGeneratorContext,
-  sortOutputFiles,
   calculateMetrics,
   writeSkillOutput,
   generateDefaultSkillName,
@@ -79,7 +77,6 @@ export const generateSkillReferences = async (
   skillSourceUrl?: string,
   deps = {
     buildOutputGeneratorContext,
-    sortOutputFiles,
   },
 ): Promise<SkillReferencesResult> => {
   // Validate and normalize skill name
@@ -91,8 +88,8 @@ export const generateSkillReferences = async (
   // Generate skill description
   const skillDescription = generateSkillDescription(normalizedSkillName, projectName);
 
-  // Sort processed files by git change count if enabled
-  const sortedProcessedFiles = await deps.sortOutputFiles(processedFiles, config);
+  // Files are expected to be pre-sorted by the caller (packager.ts)
+  // to overlap the git command with metrics computation.
 
   // Build output generator context with markdown style
   const markdownConfig: RepomixConfigMerged = {
@@ -107,18 +104,18 @@ export const generateSkillReferences = async (
     rootDirs,
     markdownConfig,
     allFilePaths,
-    sortedProcessedFiles,
+    processedFiles,
     gitDiffResult,
     gitLogResult,
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
   // Calculate statistics
-  const statistics = calculateStatistics(sortedProcessedFiles, renderContext.fileLineCounts);
+  const statistics = calculateStatistics(processedFiles, renderContext.fileLineCounts);
   const statisticsSection = generateStatisticsSection(statistics);
 
   // Detect tech stack
-  const techStack = detectTechStack(sortedProcessedFiles);
+  const techStack = detectTechStack(processedFiles);
   const techStackMd = techStack ? generateTechStackMd(techStack) : undefined;
 
   // Generate each section separately
@@ -134,7 +131,7 @@ export const generateSkillReferences = async (
     skillName: normalizedSkillName,
     projectName,
     skillDescription,
-    totalFiles: sortedProcessedFiles.length,
+    totalFiles: processedFiles.length,
     totalLines: statistics.totalLines,
     statisticsSection,
     hasTechStack: techStack !== null,
@@ -229,7 +226,6 @@ export const packSkill = async (params: PackSkillParams, deps = defaultDeps): Pr
       options.skillSourceUrl,
       {
         buildOutputGeneratorContext: deps.buildOutputGeneratorContext,
-        sortOutputFiles: deps.sortOutputFiles,
       },
     ),
   );

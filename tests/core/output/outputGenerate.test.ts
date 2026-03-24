@@ -20,9 +20,8 @@ describe('outputGenerate', () => {
     generateHandlebarOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
-    sortOutputFiles: vi.fn(),
   };
-  test('generateOutput should use sortOutputFiles before generating content', async () => {
+  test('generateOutput should pass pre-sorted files to buildOutputGeneratorContext', async () => {
     const mockConfig = createMockConfig({
       output: {
         filePath: 'output.txt',
@@ -30,18 +29,14 @@ describe('outputGenerate', () => {
         git: { sortByChanges: true },
       },
     });
-    const mockProcessedFiles: ProcessedFile[] = [
-      { path: 'file1.txt', content: 'content1' },
-      { path: 'file2.txt', content: 'content2' },
-    ];
-    const sortedFiles = [
+    // Files are expected to be pre-sorted by the caller (packager.ts)
+    const preSortedFiles: ProcessedFile[] = [
       { path: 'file2.txt', content: 'content2' },
       { path: 'file1.txt', content: 'content1' },
     ];
 
-    mockDeps.sortOutputFiles.mockResolvedValue(sortedFiles);
     mockDeps.buildOutputGeneratorContext.mockResolvedValue({
-      processedFiles: sortedFiles,
+      processedFiles: preSortedFiles,
       config: mockConfig,
       treeString: '',
       generationDate: new Date().toISOString(),
@@ -53,7 +48,7 @@ describe('outputGenerate', () => {
     const output = await generateOutput(
       [process.cwd()],
       mockConfig,
-      mockProcessedFiles,
+      preSortedFiles,
       [],
       undefined,
       undefined,
@@ -62,12 +57,11 @@ describe('outputGenerate', () => {
       mockDeps,
     );
 
-    expect(mockDeps.sortOutputFiles).toHaveBeenCalledWith(mockProcessedFiles, mockConfig);
     expect(mockDeps.buildOutputGeneratorContext).toHaveBeenCalledWith(
       [process.cwd()],
       mockConfig,
       [],
-      sortedFiles,
+      preSortedFiles,
       undefined,
       undefined,
       undefined,

@@ -8,7 +8,6 @@ import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
-import { sortOutputFiles } from './outputSort.js';
 import {
   generateHeader,
   generateSummaryFileFormat,
@@ -20,8 +19,6 @@ import {
 import { renderMarkdown } from './outputStyles/markdownStyle.js';
 import { renderPlain } from './outputStyles/plainStyle.js';
 import { renderXml } from './outputStyles/xmlStyle.js';
-
-const backtickRunPattern = /`+/g;
 
 /**
  * Single-pass analysis over all file contents to compute both line counts and markdown delimiter.
@@ -51,12 +48,18 @@ const analyzeFileContents = (
       fileLineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
     }
 
-    // Track backtick runs (only for markdown style)
+    // Track longest backtick run (only for markdown style).
+    // Uses a simple character loop instead of regex to avoid RegExp engine overhead.
     if (trackBackticks) {
-      backtickRunPattern.lastIndex = 0;
-      for (let match = backtickRunPattern.exec(content); match !== null; match = backtickRunPattern.exec(content)) {
-        if (match[0].length > maxBackticks) {
-          maxBackticks = match[0].length;
+      let currentRun = 0;
+      for (let i = 0; i < content.length; i++) {
+        if (content.charCodeAt(i) === 96) {
+          currentRun++;
+          if (currentRun > maxBackticks) {
+            maxBackticks = currentRun;
+          }
+        } else {
+          currentRun = 0;
         }
       }
     }
@@ -280,17 +283,15 @@ export const generateOutput = async (
     generateHandlebarOutput: generateNativeOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
-    sortOutputFiles,
   },
 ): Promise<string> => {
-  // Sort processed files by git change count if enabled
-  const sortedProcessedFiles = await deps.sortOutputFiles(processedFiles, config);
-
+  // Files are expected to be pre-sorted by the caller (packager.ts)
+  // to overlap the git command with metrics computation.
   const outputGeneratorContext = await deps.buildOutputGeneratorContext(
     rootDirs,
     config,
     allFilePaths,
-    sortedProcessedFiles,
+    processedFiles,
     gitDiffResult,
     gitLogResult,
     filePathsByRoot,
@@ -302,12 +303,12 @@ export const generateOutput = async (
     case 'xml':
       return config.output.parsableStyle
         ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+        : deps.generateHandlebarOutput(config, renderContext, processedFiles);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':
     case 'plain':
-      return deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+      return deps.generateHandlebarOutput(config, renderContext, processedFiles);
     default:
       throw new RepomixError(`Unsupported output style: ${config.output.style}`);
   }

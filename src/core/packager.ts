@@ -12,6 +12,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, getMetricsTargetPaths } from './metrics/calculateMetrics.js';
 import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
+import { sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -43,6 +44,7 @@ const defaultDeps = {
   calculateSelectiveFileMetrics,
   getMetricsTargetPaths,
   sortPaths,
+  sortOutputFiles,
   getGitDiffs,
   getGitLogs,
   // Lazy-load packSkill — only needed when --skill-generate is used.
@@ -133,15 +135,22 @@ export const pack = async (
     deps.processFiles(safeRawFiles, config, progressCallback),
   );
 
+  // Start git-based file sorting immediately after processedFiles are ready.
+  // sortOutputFiles runs a git command (~50-200ms) to get file change counts.
+  // By starting it here, the git command overlaps with metrics computation and
+  // output context building instead of blocking the output generation pipeline.
+  const sortedFilesPromise = deps.sortOutputFiles(processedFiles, config);
+
   progressCallback('Generating output...');
 
   // Check if skill generation is requested
   if (config.skillGenerate !== undefined && options.skillDir) {
+    const sortedProcessedFiles = await sortedFilesPromise;
     const result = await deps.packSkill({
       rootDirs,
       config,
       options,
-      processedFiles,
+      processedFiles: sortedProcessedFiles,
       allFilePaths,
       gitDiffResult,
       gitLogResult,
@@ -176,11 +185,14 @@ export const pack = async (
     progressCallback,
   );
 
+  // Await pre-sorted files (git command likely already complete by now)
+  const sortedProcessedFiles = await sortedFilesPromise;
+
   // Generate and write output (handles both single and split output)
   const { outputFiles, outputForMetrics } = await deps.produceOutput(
     rootDirs,
     config,
-    processedFiles,
+    sortedProcessedFiles,
     allFilePaths,
     gitDiffResult,
     gitLogResult,
