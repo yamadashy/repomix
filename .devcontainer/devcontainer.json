@@ -16,8 +16,7 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "anthropic.claude-code",
-        "eamodio.gitlens"
+        "anthropic.claude-code"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
