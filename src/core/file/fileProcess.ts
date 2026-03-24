@@ -9,6 +9,79 @@ import type { FileProcessTask } from './workers/fileProcessWorker.js';
 
 type GetFileManipulator = (filePath: string) => FileManipulator | null;
 
+/**
+ * Check if file processing requires CPU-intensive operations that benefit from worker threads.
+ * Only `compress` (tree-sitter parsing) and `removeComments` (language-specific AST manipulation)
+ * are heavy enough to justify worker thread overhead (startup, structured clone, teardown).
+ * Lightweight operations (truncateBase64, removeEmptyLines, showLineNumbers, trim) run faster
+ * in the main thread by avoiding ~100-200ms of worker pool overhead.
+ */
+const needsWorkerProcessing = (config: RepomixConfigMerged): boolean => {
+  return config.output.compress || config.output.removeComments;
+};
+
+/**
+ * Process files in the main thread for lightweight operations.
+ * Avoids worker pool startup (~50ms), structured clone overhead for all file contents,
+ * and worker teardown. Used when only truncateBase64, removeEmptyLines, showLineNumbers,
+ * and/or trim are needed.
+ */
+const processFilesMainThread = async (
+  rawFiles: RawFile[],
+  config: RepomixConfigMerged,
+  progressCallback: RepomixProgressCallback,
+): Promise<ProcessedFile[]> => {
+  const startTime = process.hrtime.bigint();
+  logger.trace(`Starting file processing for ${rawFiles.length} files in main thread (lightweight mode)`);
+
+  // Lazy-load truncateBase64 only when needed
+  let truncateBase64Content: ((content: string) => string) | undefined;
+  if (config.output.truncateBase64) {
+    const mod = await import('./truncateBase64.js');
+    truncateBase64Content = mod.truncateBase64Content;
+  }
+
+  const totalFiles = rawFiles.length;
+  const results: ProcessedFile[] = Array.from({ length: totalFiles }) as ProcessedFile[];
+
+  for (let i = 0; i < totalFiles; i++) {
+    const rawFile = rawFiles[i];
+    let content = rawFile.content;
+
+    if (truncateBase64Content) {
+      content = truncateBase64Content(content);
+    }
+
+    if (config.output.removeEmptyLines) {
+      const manipulator = getFileManipulator(rawFile.path);
+      if (manipulator) {
+        content = manipulator.removeEmptyLines(content);
+      }
+    }
+
+    content = content.trim();
+
+    if (config.output.showLineNumbers) {
+      const lines = content.split('\n');
+      const padding = lines.length.toString().length;
+      const numberedLines = lines.map((line, idx) => `${(idx + 1).toString().padStart(padding)}: ${line}`);
+      content = numberedLines.join('\n');
+    }
+
+    results[i] = { path: rawFile.path, content };
+
+    if ((i + 1) % 50 === 0 || i === totalFiles - 1) {
+      progressCallback(`Processing file... (${i + 1}/${totalFiles}) ${pc.dim(rawFile.path)}`);
+    }
+  }
+
+  const endTime = process.hrtime.bigint();
+  const duration = Number(endTime - startTime) / 1e6;
+  logger.trace(`File processing completed in ${duration.toFixed(2)}ms (main thread)`);
+
+  return results;
+};
+
 export const processFiles = async (
   rawFiles: RawFile[],
   config: RepomixConfigMerged,
@@ -16,12 +89,20 @@ export const processFiles = async (
   deps: {
     initTaskRunner: typeof initTaskRunner;
     getFileManipulator: GetFileManipulator;
-  } = {
+  } | null = null,
+): Promise<ProcessedFile[]> => {
+  // For lightweight processing (no compress/removeComments), skip worker pool entirely.
+  // This avoids ~100-200ms of worker startup + structured clone + teardown overhead.
+  if (!needsWorkerProcessing(config) && deps === null) {
+    return processFilesMainThread(rawFiles, config, progressCallback);
+  }
+
+  const resolvedDeps = deps ?? {
     initTaskRunner,
     getFileManipulator,
-  },
-): Promise<ProcessedFile[]> => {
-  const taskRunner = deps.initTaskRunner<FileProcessTask, ProcessedFile>({
+  };
+
+  const taskRunner = resolvedDeps.initTaskRunner<FileProcessTask, ProcessedFile>({
     numOfTasks: rawFiles.length,
     workerType: 'fileProcess',
     // High memory usage and leak risk
