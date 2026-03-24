@@ -119,20 +119,18 @@ describe('copyToClipboardIfEnabled', () => {
     expect(clipboard.writeText).toHaveBeenCalledWith(output);
   });
 
-  it("should handle tinyclip failure", async () => {
-    const output = "test output";
+  it('should handle tinyclip failure', async () => {
+    const output = 'test output';
     const config: RepomixConfigMerged = {
       output: { copyToClipboard: true },
     } as RepomixConfigMerged;
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    vi.mocked(clipboard.writeText).mockRejectedValue(
-      new Error("Clipboard access denied"),
-    );
+    vi.mocked(clipboard.writeText).mockRejectedValue(new Error('Clipboard access denied'));
 
     await copyToClipboardIfEnabled(output, progressCallback, config);
 
-    expect(progressCallback).toHaveBeenCalledWith("Copying to clipboard...");
+    expect(progressCallback).toHaveBeenCalledWith('Copying to clipboard...');
     expect(clipboard.writeText).toHaveBeenCalledWith(output);
   });
 });
