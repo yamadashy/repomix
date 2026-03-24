@@ -328,14 +328,7 @@ describe('grepRepomixOutputTool', () => {
       const result = formatSearchResults(extendedLines, extendedMatches, 2, 1);
 
       // No separator: match 1 context (lines 0-3) overlaps with match 2 context (lines 2-5)
-      expect(result).toEqual([
-        '1-line 0',
-        '2-line 1',
-        '3:pattern match',
-        '4-line 3',
-        '5:another pattern',
-        '6-line 5',
-      ]);
+      expect(result).toEqual(['1-line 0', '2-line 1', '3:pattern match', '4-line 3', '5:another pattern', '6-line 5']);
     });
 
     it('should return empty array for no matches', () => {
