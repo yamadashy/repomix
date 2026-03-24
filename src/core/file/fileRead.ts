@@ -47,6 +47,13 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
 
     const stats = await fs.stat(filePath);
 
+    // Skip non-regular files (directories, symlinks, etc.) — git ls-files can
+    // include entries that are locally replaced by directories or are symlinks.
+    if (!stats.isFile()) {
+      logger.debug(`Skipping non-file entry: ${filePath}`);
+      return { content: null, skippedReason: 'binary-content' };
+    }
+
     if (stats.size > maxFileSize) {
       const sizeKB = (stats.size / 1024).toFixed(1);
       const maxSizeKB = (maxFileSize / 1024).toFixed(1);
