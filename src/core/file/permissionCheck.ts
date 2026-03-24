@@ -1,4 +1,3 @@
-import { constants } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { platform } from 'node:os';
 import { logger } from '../../shared/logger.js';
@@ -26,43 +25,14 @@ export class PermissionError extends Error {
 
 export const checkDirectoryPermissions = async (dirPath: string): Promise<PermissionCheckResult> => {
   try {
-    // First try to read directory contents
+    // readdir succeeds only when the directory is readable and executable.
+    // This single call replaces the previous 4-syscall approach (readdir + 3× fs.access)
+    // since the caller (searchFiles) only needs to verify read permission.
     await fs.readdir(dirPath);
-
-    // Check specific permissions
-    const details = {
-      read: false,
-      write: false,
-      execute: false,
-    };
-
-    try {
-      await fs.access(dirPath, constants.R_OK);
-      details.read = true;
-    } catch {}
-
-    try {
-      await fs.access(dirPath, constants.W_OK);
-      details.write = true;
-    } catch {}
-
-    try {
-      await fs.access(dirPath, constants.X_OK);
-      details.execute = true;
-    } catch {}
-
-    const hasAllPermissions = details.read && details.write && details.execute;
-
-    if (!hasAllPermissions) {
-      return {
-        hasAllPermission: false,
-        details,
-      };
-    }
 
     return {
       hasAllPermission: true,
-      details,
+      details: { read: true, write: true, execute: true },
     };
   } catch (error) {
     if (error instanceof Error && 'code' in error) {

@@ -2,7 +2,6 @@ import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { type Options as GlobbyOptions, globby } from 'globby';
-import { minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -16,12 +15,24 @@ export interface FileSearchResult {
   emptyDirPaths: string[];
 }
 
+// Lazy-load minimatch — only used for empty directory filtering (non-default feature).
+// Avoids loading the module on every pack run.
+let _minimatch: typeof import('minimatch').minimatch | undefined;
+const getMinimatch = async () => {
+  if (!_minimatch) {
+    const mod = await import('minimatch');
+    _minimatch = mod.minimatch;
+  }
+  return _minimatch;
+};
+
 const findEmptyDirectories = async (
   rootDir: string,
   directories: string[],
   ignorePatterns: string[],
 ): Promise<string[]> => {
   const emptyDirs: string[] = [];
+  const minimatchFn = await getMinimatch();
 
   for (const dir of directories) {
     const fullPath = path.join(rootDir, dir);
@@ -31,7 +42,9 @@ const findEmptyDirectories = async (
 
       if (!hasVisibleContents) {
         // This checks if the directory itself matches any ignore patterns
-        const shouldIgnore = ignorePatterns.some((pattern) => minimatch(dir, pattern) || minimatch(`${dir}/`, pattern));
+        const shouldIgnore = ignorePatterns.some(
+          (pattern) => minimatchFn(dir, pattern) || minimatchFn(`${dir}/`, pattern),
+        );
 
         if (!shouldIgnore) {
           emptyDirs.push(dir);
@@ -45,14 +58,11 @@ const findEmptyDirectories = async (
   return emptyDirs;
 };
 
-// Check if a path is a git worktree reference file
+// Check if a path is a git worktree reference file.
+// Reads the file directly — if .git is a directory (normal repo) readFile throws,
+// and if it doesn't exist we also get an error. Both cases return false.
 const isGitWorktreeRef = async (gitPath: string): Promise<boolean> => {
   try {
-    const stats = await fs.stat(gitPath);
-    if (!stats.isFile()) {
-      return false;
-    }
-
     const content = await fs.readFile(gitPath, 'utf8');
     return content.startsWith('gitdir:');
   } catch {
@@ -133,8 +143,13 @@ export const searchFiles = async (
     );
   }
 
-  // Now check directory permissions
-  const permissionCheck = await checkDirectoryPermissions(rootDir);
+  // Run permission check and ignore context preparation in parallel.
+  // Both are independent: permission check does readdir + access calls,
+  // while ignore context reads config patterns + .git/info/exclude.
+  const [permissionCheck, ignoreContext] = await Promise.all([
+    checkDirectoryPermissions(rootDir),
+    prepareIgnoreContext(rootDir, config),
+  ]);
 
   if (permissionCheck.details?.read !== true) {
     if (permissionCheck.error instanceof PermissionError) {
@@ -146,7 +161,7 @@ export const searchFiles = async (
   }
 
   try {
-    const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+    const { adjustedIgnorePatterns, ignoreFilePatterns } = ignoreContext;
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns:', ignoreFilePatterns);
@@ -273,17 +288,16 @@ const prepareIgnoreContext = async (
   rootDir: string,
   config: RepomixConfigMerged,
 ): Promise<{ adjustedIgnorePatterns: string[]; ignoreFilePatterns: string[] }> => {
-  const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
+  // Parallelize all three I/O operations: ignore patterns, file patterns, and worktree check.
+  // isGitWorktreeRef reads .git file — overlaps with getIgnorePatterns reading .git/info/exclude.
+  const [ignorePatterns, ignoreFilePatterns, isWorktree] = await Promise.all([
     getIgnorePatterns(rootDir, config),
     getIgnoreFilePatterns(config),
+    isGitWorktreeRef(path.join(rootDir, '.git')),
   ]);
 
   // Normalize ignore patterns to handle trailing slashes consistently
   const normalizedIgnorePatterns = ignorePatterns.map(normalizeGlobPattern);
-
-  // Check if .git is a worktree reference
-  const gitPath = path.join(rootDir, '.git');
-  const isWorktree = await isGitWorktreeRef(gitPath);
 
   // Modify ignore patterns for git worktree
   const adjustedIgnorePatterns = [...normalizedIgnorePatterns];
