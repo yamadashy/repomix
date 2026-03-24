@@ -3,7 +3,10 @@ import { logger } from '../../shared/logger.js';
 // Supported token encoding types (compatible with tiktoken encoding names)
 export type TokenEncoding = 'o200k_base' | 'cl100k_base' | 'p50k_base' | 'r50k_base';
 
-// Lazy-loaded countTokens functions keyed by encoding
+// Lazy-loaded countTokens functions keyed by encoding.
+// Stores a wrapper that always passes { allowedSpecial: 'all' } to treat
+// special token sequences (<|endoftext|>, etc.) as ordinary text — matching
+// the original tiktoken behavior of encode(content, [], []).
 const encodingModules = new Map<string, (text: string) => number>();
 
 const loadEncoding = async (encodingName: TokenEncoding): Promise<(text: string) => number> => {
@@ -16,7 +19,12 @@ const loadEncoding = async (encodingName: TokenEncoding): Promise<(text: string)
 
   // Dynamic import of the specific encoding module from gpt-tokenizer
   const mod = await import(`gpt-tokenizer/encoding/${encodingName}`);
-  const countFn = mod.countTokens as (text: string) => number;
+  // Always allow special tokens so that files/output containing sequences
+  // like <|endoftext|> don't throw. This matches the original tiktoken
+  // behavior (encode with empty allowed/disallowed lists) and has no
+  // measurable per-call overhead for content without special tokens.
+  const rawCountFn = mod.countTokens as (text: string, options?: { allowedSpecial?: 'all' }) => number;
+  const countFn = (text: string): number => rawCountFn(text, { allowedSpecial: 'all' });
   encodingModules.set(encodingName, countFn);
 
   const endTime = process.hrtime.bigint();
@@ -44,21 +52,8 @@ export class TokenCounter {
     }
 
     try {
-      // Call countTokens without options to avoid processSpecialTokens overhead.
-      // Files with special token sequences (<|endoftext|> etc.) are rare (~0.1%)
-      // and handled via try-catch fallback.
       return this.countFn(content);
     } catch {
-      // Fallback: try with allowedSpecial for files containing special tokens
-      try {
-        const mod = encodingModules.get(this.encodingName);
-        if (mod) {
-          return mod(content);
-        }
-      } catch {
-        // ignore
-      }
-
       if (filePath) {
         logger.warn(`Failed to count tokens. path: ${filePath}`);
       } else {

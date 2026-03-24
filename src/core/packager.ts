@@ -175,12 +175,13 @@ export const pack = async (
   // Get pre-created security pool (workers likely already loading secretlint by now)
   const preCreatedSecurityRunner = securityPoolPromise ? await securityPoolPromise : undefined;
 
-  // Run security check and file processing in parallel.
-  // Security check uses the pre-warmed worker pool, while lightweight file processing
-  // runs on the main thread — so they can truly execute concurrently.
-  // After both complete, filter processed files to exclude any suspicious ones.
+  // Run security check, file processing, and file metrics in parallel.
+  // Security check uses the pre-warmed worker pool (CPU in worker threads).
+  // After lightweight file processing (~1ms main thread), file metrics (token counting)
+  // starts on the main thread, overlapping with the security workers (~300ms).
+  // This hides ~85ms of token counting behind the security check latency.
   progressCallback('Running security check...');
-  const [securityResult, allProcessedFiles] = await Promise.all([
+  const [securityResult, processedAndMetrics] = await Promise.all([
     withMemoryLogging('Security Check', () =>
       deps.validateFileSafety(
         rawFiles,
@@ -192,8 +193,21 @@ export const pack = async (
         preCreatedSecurityRunner,
       ),
     ),
-    withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)),
+    withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)).then(
+      async (allProcessedFiles) => {
+        // Chain: after processing completes, start file metrics while security workers are still running
+        const metricsTargetPaths = deps.getMetricsTargetPaths(allProcessedFiles, config);
+        const fileMetrics = await deps.calculateSelectiveFileMetrics(
+          allProcessedFiles,
+          metricsTargetPaths,
+          config.tokenCount.encoding,
+          progressCallback,
+        );
+        return { allProcessedFiles, fileMetrics };
+      },
+    ),
   ]);
+  const { allProcessedFiles, fileMetrics: precomputedFileMetrics } = processedAndMetrics;
 
   const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = securityResult;
 
@@ -245,17 +259,6 @@ export const pack = async (
     files: filePaths,
   }));
 
-  // Start file token counting in parallel with output generation.
-  // File metrics only need processedFiles + encoding, not the output string,
-  // so they can overlap with output generation for a ~50-100ms improvement.
-  const metricsTargetPaths = deps.getMetricsTargetPaths(processedFiles, config);
-  const fileMetricsPromise = deps.calculateSelectiveFileMetrics(
-    processedFiles,
-    metricsTargetPaths,
-    config.tokenCount.encoding,
-    progressCallback,
-  );
-
   // Await pre-sorted files (git command likely already complete by now)
   const sortedProcessedFiles = await sortedFilesPromise;
 
@@ -273,12 +276,8 @@ export const pack = async (
     emptyDirPaths,
   );
 
-  // Await file metrics (likely already complete by now), then pass to calculateMetrics
-  // which will skip file token counting and only compute output/git metrics
-  const precomputedFileMetrics = await fileMetricsPromise;
-
-  // Overlap output/git token counting with disk write + clipboard copy.
-  // calculateMetrics only needs the output string (already in memory), not the written file.
+  // File metrics were already computed during the security check phase (overlapped).
+  // Now only output/git token counting remains, which overlaps with disk write.
   const [metrics] = await Promise.all([
     withMemoryLogging('Calculate Metrics', () =>
       deps.calculateMetrics(
