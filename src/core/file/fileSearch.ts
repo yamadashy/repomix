@@ -1,13 +1,24 @@
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { type Options as GlobbyOptions, globby } from 'globby';
+import type { Options as GlobbyOptions } from 'globby';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { execGitLsFiles } from '../git/gitCommand.js';
 import { sortPaths } from './filePathSort.js';
+
+// Lazy-load globby (~70ms) — only needed as fallback when git ls-files fast path
+// is not available (non-git repos, gitignore disabled, explicit files).
+// For git repositories (95%+ of use cases), globby is never called.
+// Cache the import promise to avoid concurrent dynamic imports returning different
+// module instances (a Vitest limitation with mocked modules).
+let _globbyPromise: Promise<typeof import('globby')> | undefined;
+const getGlobby = async (): Promise<typeof import('globby').globby> => {
+  _globbyPromise ??= import('globby');
+  return (await _globbyPromise).globby;
+};
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
 
@@ -310,25 +321,33 @@ export const searchFiles = async (
       ? await searchFilesWithGit(rootDir, includePatterns, adjustedIgnorePatterns, ignoreFilePatterns)
       : null;
 
-    const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+    // Defer globby options creation until globby is actually needed.
+    // On the git fast path (95%+ of runs), neither globby nor its options are used.
+    let _baseGlobbyOptions: ReturnType<typeof createBaseGlobbyOptions> | undefined;
+    const getBaseGlobbyOptions = () => {
+      _baseGlobbyOptions ??= createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+      return _baseGlobbyOptions;
+    };
 
     const fileSearchPromise =
       gitResult !== null
         ? Promise.resolve(gitResult)
-        : globby(includePatterns, {
-            ...baseGlobbyOptions,
-            onlyFiles: true,
-          }).catch((error: unknown) => {
-            // Handle EPERM errors specifically
-            const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
-            if (code === 'EPERM' || code === 'EACCES') {
-              throw new PermissionError(
-                `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
-                rootDir,
-              );
-            }
-            throw error;
-          });
+        : getGlobby().then((globbyFn) =>
+            globbyFn(includePatterns, {
+              ...getBaseGlobbyOptions(),
+              onlyFiles: true,
+            }).catch((error: unknown) => {
+              // Handle EPERM errors specifically
+              const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
+              if (code === 'EPERM' || code === 'EACCES') {
+                throw new PermissionError(
+                  `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
+                  rootDir,
+                );
+              }
+              throw error;
+            }),
+          );
 
     // Run file search and empty directory search in parallel when both are needed
     let emptyDirPaths: string[] = [];
@@ -337,8 +356,9 @@ export const searchFiles = async (
           logger.debug('[empty dirs] Searching for empty directories...');
           const emptyDirStartTime = Date.now();
 
-          const directories = await globby(includePatterns, {
-            ...baseGlobbyOptions,
+          const globbyFn = await getGlobby();
+          const directories = await globbyFn(includePatterns, {
+            ...getBaseGlobbyOptions(),
             onlyDirectories: true,
           });
 
@@ -532,7 +552,8 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
-  const directories = await globby(['**/*'], {
+  const globbyFn = await getGlobby();
+  const directories = await globbyFn(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
   });
@@ -551,7 +572,8 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
 export const listFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
-  const files = await globby(['**/*'], {
+  const globbyFn = await getGlobby();
+  const files = await globbyFn(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,
   });
@@ -575,9 +597,10 @@ export const listDirectoriesAndFiles = async (
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
   const baseOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
 
+  const globbyFn = await getGlobby();
   const [directories, files] = await Promise.all([
-    globby(['**/*'], { ...baseOptions, onlyDirectories: true }),
-    globby(['**/*'], { ...baseOptions, onlyFiles: true }),
+    globbyFn(['**/*'], { ...baseOptions, onlyDirectories: true }),
+    globbyFn(['**/*'], { ...baseOptions, onlyFiles: true }),
   ]);
 
   return {
