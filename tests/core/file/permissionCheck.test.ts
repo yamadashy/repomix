@@ -1,4 +1,3 @@
-import { constants } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { platform } from 'node:os';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
@@ -16,12 +15,9 @@ describe('permissionCheck', () => {
   });
 
   describe('successful cases', () => {
-    test('should return success when all permissions are available', async () => {
-      // Mock successful readdir
+    test('should return success when directory is readable', async () => {
+      // Mock successful readdir — confirms read+execute permissions
       vi.mocked(fs.readdir).mockResolvedValue([]);
-
-      // Mock successful access checks
-      vi.mocked(fs.access).mockResolvedValue(undefined);
 
       const result = await checkDirectoryPermissions(testDirPath);
 
@@ -34,34 +30,8 @@ describe('permissionCheck', () => {
         },
       });
 
-      // Verify all permission checks were called
-      expect(fs.access).toHaveBeenCalledWith(testDirPath, constants.R_OK);
-      expect(fs.access).toHaveBeenCalledWith(testDirPath, constants.W_OK);
-      expect(fs.access).toHaveBeenCalledWith(testDirPath, constants.X_OK);
-    });
-
-    test('should pass with only required permissions', async () => {
-      // Mock successful readdir
-      vi.mocked(fs.readdir).mockResolvedValue([]);
-
-      // Mock mixed permission check results
-      vi.mocked(fs.access).mockImplementation(async (_path, mode) => {
-        if (mode === constants.R_OK || mode === constants.X_OK) {
-          return Promise.resolve(undefined);
-        }
-        return Promise.reject(new Error('Permission denied'));
-      });
-
-      const result = await checkDirectoryPermissions(testDirPath);
-
-      expect(result).toEqual({
-        hasAllPermission: false,
-        details: {
-          read: true,
-          write: false,
-          execute: true,
-        },
-      });
+      // readdir is the single permission check (replaces 3× fs.access)
+      expect(fs.readdir).toHaveBeenCalledWith(testDirPath);
     });
   });
 
@@ -232,49 +202,6 @@ describe('permissionCheck', () => {
       expect(result).toEqual({
         hasAllPermission: false,
         error: error,
-      });
-    });
-
-    test('should handle partial permission checks failing', async () => {
-      // Mock successful readdir
-      vi.mocked(fs.readdir).mockResolvedValue([]);
-
-      // Mock access to fail for write permission only
-      vi.mocked(fs.access).mockImplementation(async (_path, mode) => {
-        if (mode === constants.W_OK) {
-          throw new Error('Write permission denied');
-        }
-        return Promise.resolve(undefined);
-      });
-
-      const result = await checkDirectoryPermissions(testDirPath);
-
-      expect(result).toEqual({
-        hasAllPermission: false,
-        details: {
-          read: true,
-          write: false,
-          execute: true,
-        },
-      });
-    });
-
-    test('should handle all permission checks failing', async () => {
-      // Mock successful readdir
-      vi.mocked(fs.readdir).mockResolvedValue([]);
-
-      // Mock all access checks to fail
-      vi.mocked(fs.access).mockRejectedValue(new Error('Permission denied'));
-
-      const result = await checkDirectoryPermissions(testDirPath);
-
-      expect(result).toEqual({
-        hasAllPermission: false,
-        details: {
-          read: false,
-          write: false,
-          execute: false,
-        },
       });
     });
   });
