@@ -103,8 +103,15 @@ async function defaultActionWorker(
 
     spinner.succeed('Packing completed successfully!');
 
+    // Strip file content from processedFiles before IPC transfer to the main process.
+    // The main process only needs file paths (for token count tree reporting), not content.
+    // For 1000 files averaging ~4KB each, this avoids ~4MB of structured clone serialization
+    // across the child_process→main process boundary.
     return {
-      packResult,
+      packResult: {
+        ...packResult,
+        processedFiles: packResult.processedFiles.map((file) => ({ path: file.path, content: '' })),
+      },
       config,
     };
   } catch (error) {
