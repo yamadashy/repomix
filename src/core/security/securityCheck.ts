@@ -13,7 +13,9 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
-export type SecurityTaskRunner = TaskRunner<SecurityCheckTask, SuspiciousFileResult | null>;
+// Batch task runner: sends multiple files per IPC round-trip to reduce
+// structured clone overhead (~20 files/batch vs 1 file/task).
+export type SecurityTaskRunner = TaskRunner<SecurityCheckTask[], (SuspiciousFileResult | null)[]>;
 
 // Lazy-load tinypool — defers ~20ms of module loading until security check actually starts,
 // reducing worker process startup time so the worker is ready to receive tasks sooner.
@@ -90,7 +92,7 @@ export const runSecurityCheck = async (
     const resolvedDeps = deps ?? {
       initTaskRunner: await getInitTaskRunner(),
     };
-    taskRunner = resolvedDeps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
+    taskRunner = resolvedDeps.initTaskRunner<SecurityCheckTask[], (SuspiciousFileResult | null)[]>({
       numOfTasks: tasks.length,
       workerType: 'securityCheck',
       runtime: 'worker_threads',
@@ -101,16 +103,27 @@ export const runSecurityCheck = async (
     logger.trace(`Starting security check for ${tasks.length} files/content`);
     const startTime = process.hrtime.bigint();
 
+    // Batch tasks to reduce IPC overhead. Each pool.run() involves structured clone
+    // serialization of file content across the worker_thread boundary. Batching ~20 files
+    // per round-trip amortizes the per-message overhead (~0.5ms) across multiple files,
+    // reducing total IPC from ~979 round-trips to ~50.
+    const BATCH_SIZE = 20;
+    const batches: SecurityCheckTask[][] = [];
+    for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+      batches.push(tasks.slice(i, i + BATCH_SIZE));
+    }
+
     let completedTasks = 0;
     const totalTasks = tasks.length;
 
-    const results = await Promise.all(
-      tasks.map((task) =>
-        taskRunner.run(task).then((result) => {
-          completedTasks++;
-          progressCallback(`Running security check... (${completedTasks}/${totalTasks}) ${pc.dim(task.filePath)}`);
-          logger.trace(`Running security check... (${completedTasks}/${totalTasks}) ${task.filePath}`);
-          return result;
+    const batchResults = await Promise.all(
+      batches.map((batch) =>
+        taskRunner.run(batch).then((results) => {
+          completedTasks += batch.length;
+          const lastTask = batch[batch.length - 1];
+          progressCallback(`Running security check... (${completedTasks}/${totalTasks}) ${pc.dim(lastTask.filePath)}`);
+          logger.trace(`Running security check... (${completedTasks}/${totalTasks}) ${lastTask.filePath}`);
+          return results;
         }),
       ),
     );
@@ -119,7 +132,7 @@ export const runSecurityCheck = async (
     const duration = Number(endTime - startTime) / 1e6;
     logger.trace(`Security check completed in ${duration.toFixed(2)}ms`);
 
-    return results.filter((result): result is SuspiciousFileResult => result !== null);
+    return batchResults.flat().filter((result): result is SuspiciousFileResult => result !== null);
   } catch (error) {
     logger.error('Error during security check:', error);
     throw error;

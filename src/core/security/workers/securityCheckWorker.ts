@@ -22,27 +22,35 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
-export default async ({ filePath, content, type }: SecurityCheckTask) => {
+// Accept a batch of tasks and return an array of results.
+// Batching reduces IPC overhead by amortizing structured clone costs across
+// multiple files per worker round-trip (~20 files/batch vs 1 file/task).
+export default async (tasks: SecurityCheckTask[]): Promise<(SuspiciousFileResult | null)[]> => {
   const config = getCachedConfig();
+  const results: (SuspiciousFileResult | null)[] = [];
+  const isTracing = logger.isTraceEnabled();
 
-  try {
-    let secretLintResult: SuspiciousFileResult | null;
-    if (logger.isTraceEnabled()) {
-      const processStartAt = process.hrtime.bigint();
-      secretLintResult = await runSecretLint(filePath, content, type, config);
-      const processEndAt = process.hrtime.bigint();
-      logger.trace(
-        `Checked security on ${filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
-      );
-    } else {
-      secretLintResult = await runSecretLint(filePath, content, type, config);
+  for (const { filePath, content, type } of tasks) {
+    try {
+      let secretLintResult: SuspiciousFileResult | null;
+      if (isTracing) {
+        const processStartAt = process.hrtime.bigint();
+        secretLintResult = await runSecretLint(filePath, content, type, config);
+        const processEndAt = process.hrtime.bigint();
+        logger.trace(
+          `Checked security on ${filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
+        );
+      } else {
+        secretLintResult = await runSecretLint(filePath, content, type, config);
+      }
+      results.push(secretLintResult);
+    } catch (error) {
+      logger.error(`Error checking security on ${filePath}:`, error);
+      throw error;
     }
-
-    return secretLintResult;
-  } catch (error) {
-    logger.error(`Error checking security on ${filePath}:`, error);
-    throw error;
   }
+
+  return results;
 };
 
 // O(1) extension extraction using lastIndexOf instead of split('.').pop()

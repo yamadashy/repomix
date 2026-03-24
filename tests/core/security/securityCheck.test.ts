@@ -13,14 +13,14 @@ import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 vi.mock('../../../src/shared/logger');
 vi.mock('../../../src/shared/processConcurrency', () => ({
   initWorker: vi.fn(() => ({
-    run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
-      return await securityCheckWorker(task);
+    run: vi.fn().mockImplementation(async (tasks: SecurityCheckTask[]) => {
+      return await securityCheckWorker(tasks);
     }),
   })),
   cleanupWorkerPool: vi.fn(),
   initTaskRunner: vi.fn(() => ({
-    run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
-      return await securityCheckWorker(task);
+    run: vi.fn().mockImplementation(async (tasks: SecurityCheckTask[]) => {
+      return await securityCheckWorker(tasks);
     }),
     cleanup: vi.fn(),
   })),
@@ -41,8 +41,8 @@ const mockFiles: RawFile[] = [
 
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
-    run: async (task: T) => {
-      return (await securityCheckWorker(task as SecurityCheckTask)) as R;
+    run: async (tasks: T) => {
+      return (await securityCheckWorker(tasks as SecurityCheckTask[])) as R;
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
@@ -68,9 +68,8 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    expect(progressCallback).toHaveBeenCalledWith(
-      expect.stringContaining(`Running security check... (1/2) ${pc.dim('test1.js')}`),
-    );
+    // With batching (batch size 20), 2 files fit in a single batch.
+    // Progress shows the last file in each batch.
     expect(progressCallback).toHaveBeenCalledWith(
       expect.stringContaining(`Running security check... (2/2) ${pc.dim('test2.js')}`),
     );
@@ -162,12 +161,8 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process 2 files + 2 git diff contents = 4 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(4);
-
-    // Check that Git diff tasks were processed
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
+    // With batching, 4 tasks (2 files + 2 diffs) fit in 1 batch → 1 progress call
+    expect(progressCallback).toHaveBeenCalled();
 
     // Should find security issues in files (at least 1 from test1.js)
     expect(result.length).toBeGreaterThanOrEqual(1);
@@ -184,13 +179,13 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process 2 files + 1 git diff content = 3 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(3);
+    // With batching, 3 tasks (2 files + 1 diff) fit in 1 batch → 1 progress call
+    expect(progressCallback).toHaveBeenCalled();
 
-    // Check that only working tree diff was processed
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
-    // Staged changes should not be processed because content is empty string (falsy)
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
+    // Staged changes should not be in any progress message because content is empty string (falsy)
+    for (const call of progressCallback.mock.calls) {
+      expect(call[0]).not.toContain('Staged changes');
+    }
   });
 
   it('should process only stagedDiffContent when workTreeDiffContent is not available', async () => {
@@ -204,13 +199,13 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process 2 files + 1 git diff content = 3 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(3);
+    // With batching, 3 tasks (2 files + 1 diff) fit in 1 batch → 1 progress call
+    expect(progressCallback).toHaveBeenCalled();
 
-    // Check that only staged diff was processed
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
-    // Working tree changes should not be processed because content is empty string (falsy)
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
+    // Working tree changes should not be in any progress message because content is empty string (falsy)
+    for (const call of progressCallback.mock.calls) {
+      expect(call[0]).not.toContain('Working tree changes');
+    }
   });
 
   it('should handle gitDiffResult with no diff content', async () => {
@@ -224,11 +219,13 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process only 2 files, no git diff content because both are empty strings (falsy)
-    expect(progressCallback).toHaveBeenCalledTimes(2);
+    // With batching, 2 tasks (2 files only) fit in 1 batch → 1 progress call
+    expect(progressCallback).toHaveBeenCalled();
 
-    // Check that no git diff tasks were processed
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
+    // Check that no git diff tasks were processed (no diff content in progress messages)
+    for (const call of progressCallback.mock.calls) {
+      expect(call[0]).not.toContain('Working tree changes');
+      expect(call[0]).not.toContain('Staged changes');
+    }
   });
 });

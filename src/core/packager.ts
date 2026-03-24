@@ -57,7 +57,7 @@ const defaultDeps = {
       runtime: 'worker_threads',
     });
     return {
-      run: (task) => pool.run(task) as Promise<SuspiciousFileResult | null>,
+      run: (task) => pool.run(task) as Promise<(SuspiciousFileResult | null)[]>,
       cleanup: () => cleanupWorkerPool(pool),
     };
   },
@@ -230,21 +230,17 @@ export const pack = async (
 
   // Filter sorted files to only include safe ones.
   // Filtering a sorted array preserves the sort order, so no re-sort needed.
-  const processedFiles =
-    suspiciousFilesResults.length > 0
-      ? (() => {
-          const safePathSet = new Set(safeFilePaths);
-          return allProcessedFiles.filter((file) => safePathSet.has(file.path));
-        })()
-      : allProcessedFiles;
-
-  const sortedProcessedFiles =
-    suspiciousFilesResults.length > 0
-      ? (() => {
-          const safePathSet = new Set(safeFilePaths);
-          return sortedAllFiles.filter((file) => safePathSet.has(file.path));
-        })()
-      : sortedAllFiles;
+  // Create the Set once and reuse for both filters (previously created twice).
+  let processedFiles: ProcessedFile[];
+  let sortedProcessedFiles: ProcessedFile[];
+  if (suspiciousFilesResults.length > 0) {
+    const safePathSet = new Set(safeFilePaths);
+    processedFiles = allProcessedFiles.filter((file) => safePathSet.has(file.path));
+    sortedProcessedFiles = sortedAllFiles.filter((file) => safePathSet.has(file.path));
+  } else {
+    processedFiles = allProcessedFiles;
+    sortedProcessedFiles = sortedAllFiles;
+  }
 
   progressCallback('Generating output...');
 
