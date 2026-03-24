@@ -148,6 +148,12 @@ export const pack = async (
     allFilePaths = sortedFilePaths;
   }
 
+  // Build filePathsByRoot for multi-root tree generation
+  const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
+    rootLabel: path.basename(rootDir) || rootDir,
+    files: filePaths,
+  }));
+
   progressCallback('Collecting files and git info...');
 
   // Pre-warm security worker pool — start workers loading @secretlint/core (~150ms)
@@ -250,14 +256,6 @@ export const pack = async (
     logMemoryUsage('Pack - End');
     return result;
   }
-
-  // Build filePathsByRoot for multi-root tree generation
-  // Use directory basename as the label for each root
-  // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
-  const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
-    rootLabel: path.basename(rootDir) || rootDir,
-    files: filePaths,
-  }));
 
   // Await pre-sorted files (git command likely already complete by now)
   const sortedProcessedFiles = await sortedFilesPromise;
