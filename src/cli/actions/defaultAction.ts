@@ -16,7 +16,8 @@ import { splitPatterns } from '../../shared/patternUtils.js';
 import { initTaskRunner } from '../../shared/processConcurrency.js';
 import { reportResults } from '../cliReport.js';
 import type { CliOptions } from '../types.js';
-import { runMigrationAction } from './migrationAction.js';
+// migrationAction is lazy-loaded below to avoid eagerly importing @clack/prompts (~16ms)
+// on every default pack run. Migration is only needed when old Repopack files exist.
 import type {
   DefaultActionTask,
   DefaultActionWorkerResult,
@@ -47,7 +48,8 @@ export const runDefaultAction = async (
   });
 
   try {
-    // Run migration before loading config
+    // Run migration before loading config (lazy-load to avoid importing @clack/prompts on every run)
+    const { runMigrationAction } = await import('./migrationAction.js');
     await runMigrationAction(cwd);
 
     // Load the config file in main process

@@ -41,14 +41,20 @@ const checkFileExists = async (filePath: string): Promise<boolean> => {
 };
 
 const findConfigFile = async (configPaths: string[], logPrefix: string): Promise<string | null> => {
-  for (const configPath of configPaths) {
-    logger.trace(`Checking for ${logPrefix} config at:`, configPath);
+  // Check all paths in parallel instead of sequentially.
+  // For repos with JSON config (last in priority list), this avoids 8 wasted sequential stat calls.
+  const results = await Promise.all(
+    configPaths.map(async (configPath) => {
+      logger.trace(`Checking for ${logPrefix} config at:`, configPath);
+      return { path: configPath, exists: await checkFileExists(configPath) };
+    }),
+  );
 
-    const fileExists = await checkFileExists(configPath);
-
-    if (fileExists) {
-      logger.trace(`Found ${logPrefix} config at:`, configPath);
-      return configPath;
+  // Return the first match in priority order
+  for (const result of results) {
+    if (result.exists) {
+      logger.trace(`Found ${logPrefix} config at:`, result.path);
+      return result.path;
     }
   }
   return null;

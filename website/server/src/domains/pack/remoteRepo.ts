@@ -90,8 +90,8 @@ export async function processRemoteRepo(repoUrl: string, format: string, options
       },
     };
 
-    // Save the result to cache
-    await cache.set(cacheKey, packResultData);
+    // Save the result to cache (fire-and-forget — don't block the response)
+    cache.set(cacheKey, packResultData).catch(() => {});
 
     // Log memory usage after processing
     logMemoryUsage('Remote repository processing completed', {

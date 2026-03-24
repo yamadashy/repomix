@@ -77,6 +77,11 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
+  // Start git diffs/logs immediately — they only need rootDirs and config,
+  // so they can overlap with file search, sorting, AND file collection
+  // instead of just file collection (previously started after search + sort)
+  const gitPromise = Promise.all([deps.getGitDiffs(rootDirs, config), deps.getGitLogs(rootDirs, config)]);
+
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
@@ -116,10 +121,7 @@ export const pack = async (
     filePaths: bucketsByRoot.get(rootDir) ?? [],
   }));
 
-  // Start git diffs/logs in parallel with file collection - they only need rootDirs and config,
-  // not file contents, so there's no dependency between them
   progressCallback('Collecting files and git info...');
-  const gitPromise = Promise.all([deps.getGitDiffs(rootDirs, config), deps.getGitLogs(rootDirs, config)]);
 
   const collectResults = await withMemoryLogging(
     'Collect Files',

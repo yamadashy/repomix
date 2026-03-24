@@ -218,20 +218,18 @@ async function extractZipWithSecurity(file: File, destPath: string): Promise<voi
     }
 
     // If all checks pass, extract the files
-    await fs.mkdir(destPath, { recursive: true });
-
-    for (const [filePath, data] of Object.entries(files)) {
-      if (filePath.endsWith('/')) continue; // Skip directories
-
-      const fullPath = path.join(destPath, filePath);
-      const dirPath = path.dirname(fullPath);
-
-      // Create directory if it doesn't exist
-      await fs.mkdir(dirPath, { recursive: true });
-
-      // Write the file
-      await fs.writeFile(fullPath, data);
+    // Collect all unique parent directories, create them in one batch, then write files in parallel
+    const fileEntries = Object.entries(files).filter(([fp]) => !fp.endsWith('/'));
+    const uniqueDirs = new Set<string>();
+    for (const [filePath] of fileEntries) {
+      uniqueDirs.add(path.dirname(path.join(destPath, filePath)));
     }
+
+    // Create all directories in parallel (fs.mkdir with recursive is idempotent)
+    await Promise.all([...uniqueDirs].map((dir) => fs.mkdir(dir, { recursive: true })));
+
+    // Write all files in parallel
+    await Promise.all(fileEntries.map(([filePath, data]) => fs.writeFile(path.join(destPath, filePath), data)));
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
