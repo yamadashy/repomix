@@ -1,12 +1,11 @@
 import path from 'node:path';
+import type {
+  RepomixConfigCli,
+  RepomixConfigFile,
+  RepomixConfigMerged,
+  RepomixOutputStyle,
+} from '../../config/configDefaults.js';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
-import {
-  type RepomixConfigCli,
-  type RepomixConfigFile,
-  type RepomixConfigMerged,
-  type RepomixOutputStyle,
-  repomixConfigCliSchema,
-} from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import type { PackResult } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
@@ -59,7 +58,7 @@ export const runDefaultAction = async (
     logger.trace('Loaded file config:', fileConfig);
 
     // Parse the CLI options into a config
-    const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);
+    const cliConfig: RepomixConfigCli = await buildCliConfig(cliOptions);
     logger.trace('CLI config:', cliConfig);
 
     // Merge default, file, and CLI configs
@@ -156,7 +155,7 @@ export const runDefaultAction = async (
  * - For --no-* flags, we only apply the setting when it's explicitly false to respect config file values
  * - This allows the config file to maintain control unless explicitly overridden by CLI
  */
-export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
+export const buildCliConfig = async (options: CliOptions): Promise<RepomixConfigCli> => {
   const cliConfig: RepomixConfigCli = {};
 
   if (options.output) {
@@ -345,6 +344,9 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   }
 
   try {
+    // Lazy-load Zod schema to defer ~50ms Zod module initialization
+    // until CLI config validation is actually needed (not at module import time)
+    const { repomixConfigCliSchema } = await import('../../config/configSchema.js');
     return repomixConfigCliSchema.parse(cliConfig);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid cli arguments');

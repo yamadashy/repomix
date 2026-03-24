@@ -1,6 +1,13 @@
 import { logger } from '../../shared/logger.js';
 import { execGitLogFilenames, execGitRevParse, execGitVersion } from './gitCommand.js';
 
+const defaultExecGitRevParse = execGitRevParse;
+
+// Cache for isGitRepository results.
+// Avoids redundant `git rev-parse` process spawns (~5-10ms each) when
+// gitDiffHandle and gitLogHandle both check the same directory concurrently.
+const gitRepoCache = new Map<string, Promise<boolean>>();
+
 export const getFileChangeCount = async (
   directory: string,
   maxCommits = 100,
@@ -30,12 +37,32 @@ export const isGitRepository = async (
     execGitRevParse,
   },
 ): Promise<boolean> => {
-  try {
-    await deps.execGitRevParse(directory);
-    return true;
-  } catch {
-    return false;
+  // Only use cache with default deps (production). When custom deps are injected (tests),
+  // skip caching to allow each call to use its own mock.
+  const useCache = deps.execGitRevParse === defaultExecGitRevParse;
+
+  if (useCache) {
+    // Use Promise cache to deduplicate concurrent checks for the same directory.
+    // gitDiffHandle and gitLogHandle both call this for the same dir via Promise.all.
+    const cached = gitRepoCache.get(directory);
+    if (cached !== undefined) {
+      return cached;
+    }
   }
+
+  const promise = (async () => {
+    try {
+      await deps.execGitRevParse(directory);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  if (useCache) {
+    gitRepoCache.set(directory, promise);
+  }
+  return promise;
 };
 
 export const isGitInstalled = async (

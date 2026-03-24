@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import { defaultFilePathMap } from '../../config/configSchema.js';
+import { defaultFilePathMap } from '../../config/configDefaults.js';
 import type { ProcessedFile } from '../../core/file/fileTypes.js';
 import {
   buildMcpToolErrorResponse,

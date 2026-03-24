@@ -7,7 +7,7 @@ import {
   defaultFilePathMap,
   type RepomixConfigFile,
   type RepomixOutputStyle,
-} from '../../config/configSchema.js';
+} from '../../config/configDefaults.js';
 import { getGlobalDirectory } from '../../config/globalDirectory.js';
 import { logger } from '../../shared/logger.js';
 

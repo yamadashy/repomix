@@ -1,17 +1,14 @@
 import { z } from 'zod';
 import type { TokenEncoding } from '../core/metrics/TokenCounter.js';
+import { defaultFilePathMap } from './configDefaults.js';
 
 // Output style enum
 export const repomixOutputStyleSchema = z.enum(['xml', 'markdown', 'json', 'plain']);
 export type RepomixOutputStyle = z.infer<typeof repomixOutputStyleSchema>;
 
-// Default values map
-export const defaultFilePathMap: Record<RepomixOutputStyle, string> = {
-  xml: 'repomix-output.xml',
-  markdown: 'repomix-output.md',
-  plain: 'repomix-output.txt',
-  json: 'repomix-output.json',
-} as const;
+// Re-export defaultFilePathMap so existing `import { defaultFilePathMap } from './configSchema.js'`
+// continues to work (for backward compatibility with external consumers / index.ts re-exports).
+export { defaultFilePathMap } from './configDefaults.js';
 
 // Base config schema
 export const repomixConfigBaseSchema = z.object({
@@ -159,50 +156,5 @@ export type RepomixConfigFile = z.infer<typeof repomixConfigFileSchema>;
 export type RepomixConfigCli = z.infer<typeof repomixConfigCliSchema>;
 export type RepomixConfigMerged = z.infer<typeof repomixConfigMergedSchema>;
 
-// Plain object literal with all default values inlined.
-// Avoids a synchronous Zod .parse() call at module-load time.
-export const defaultConfig: RepomixConfigDefault = {
-  input: {
-    maxFileSize: 50 * 1024 * 1024, // 50MB
-  },
-  output: {
-    filePath: defaultFilePathMap.xml,
-    style: 'xml',
-    parsableStyle: false,
-    fileSummary: true,
-    directoryStructure: true,
-    files: true,
-    removeComments: false,
-    removeEmptyLines: false,
-    compress: false,
-    topFilesLength: 5,
-    showLineNumbers: false,
-    truncateBase64: false,
-    copyToClipboard: false,
-    includeFullDirectoryStructure: false,
-    tokenCountTree: false,
-    git: {
-      sortByChanges: true,
-      sortByChangesMaxCommits: 100,
-      includeDiffs: false,
-      includeLogs: false,
-      includeLogsCount: 50,
-    },
-  },
-  include: [],
-  ignore: {
-    useGitignore: true,
-    useDotIgnore: true,
-    useDefaultPatterns: true,
-    customPatterns: [],
-  },
-  security: {
-    enableSecurityCheck: true,
-  },
-  tokenCount: {
-    encoding: 'o200k_base' as TokenEncoding,
-  },
-};
-
-// Helper function for type-safe config definition
-export const defineConfig = (config: RepomixConfigFile): RepomixConfigFile => config;
+// Re-export defaultConfig and defineConfig for backward compatibility
+export { defaultConfig, defineConfig } from './configDefaults.js';

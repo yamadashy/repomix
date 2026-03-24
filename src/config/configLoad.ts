@@ -10,8 +10,7 @@ import {
   type RepomixConfigCli,
   type RepomixConfigFile,
   type RepomixConfigMerged,
-  repomixConfigFileSchema,
-} from './configSchema.js';
+} from './configDefaults.js';
 import { getGlobalDirectory } from './globalDirectory.js';
 
 const defaultConfigPaths = [
@@ -172,6 +171,9 @@ const loadAndValidateConfig = async (
         throw new RepomixError(`Unsupported config file format: ${filePath}`);
     }
 
+    // Lazy-load Zod schema to defer ~50ms Zod module initialization
+    // until config validation is actually needed (not at module import time)
+    const { repomixConfigFileSchema } = await import('./configSchema.js');
     return repomixConfigFileSchema.parse(config);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');

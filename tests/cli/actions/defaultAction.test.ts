@@ -213,112 +213,112 @@ describe('defaultAction', () => {
   });
 
   describe('buildCliConfig', () => {
-    it('should handle custom include patterns', () => {
+    it('should handle custom include patterns', async () => {
       const options = {
         include: '*.js,*.ts',
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.include).toEqual(['*.js', '*.ts']);
     });
 
-    it('should handle custom ignore patterns', () => {
+    it('should handle custom ignore patterns', async () => {
       const options = {
         ignore: 'node_modules,*.log',
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.ignore?.customPatterns).toEqual(['node_modules', '*.log']);
     });
 
-    it('should handle custom output style', () => {
+    it('should handle custom output style', async () => {
       const options: CliOptions = {
         style: 'xml' as const,
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.output?.style).toBe('xml');
     });
 
-    it('should properly trim whitespace from comma-separated patterns', () => {
+    it('should properly trim whitespace from comma-separated patterns', async () => {
       const options = {
         include: 'src/**/*,  tests/**/*,   examples/**/*',
         ignore: 'node_modules/**,  dist/**,  coverage/**',
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.include).toEqual(['src/**/*', 'tests/**/*', 'examples/**/*']);
       expect(config.ignore?.customPatterns).toEqual(['node_modules/**', 'dist/**', 'coverage/**']);
     });
 
-    it('should handle --no-security-check flag', () => {
+    it('should handle --no-security-check flag', async () => {
       const options = {
         securityCheck: false,
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.security?.enableSecurityCheck).toBe(false);
     });
 
-    it('should handle --no-file-summary flag', () => {
+    it('should handle --no-file-summary flag', async () => {
       const options = {
         fileSummary: false,
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.output?.fileSummary).toBe(false);
     });
 
-    it('should handle --remove-comments flag', () => {
+    it('should handle --remove-comments flag', async () => {
       const options = {
         removeComments: true,
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.output?.removeComments).toBe(true);
     });
 
-    it('should handle --no-gitignore flag', () => {
+    it('should handle --no-gitignore flag', async () => {
       const options = {
         gitignore: false,
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.ignore?.useGitignore).toBe(false);
     });
 
-    it('should handle --no-dot-ignore flag', () => {
+    it('should handle --no-dot-ignore flag', async () => {
       const options = {
         dotIgnore: false,
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.ignore?.useDotIgnore).toBe(false);
     });
 
-    it('should handle --no-default-patterns flag', () => {
+    it('should handle --no-default-patterns flag', async () => {
       const options = {
         defaultPatterns: false,
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.ignore?.useDefaultPatterns).toBe(false);
     });
 
-    it('should handle --skill-generate with string name', () => {
+    it('should handle --skill-generate with string name', async () => {
       const options: CliOptions = {
         skillGenerate: 'my-skill',
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.skillGenerate).toBe('my-skill');
     });
 
-    it('should handle --skill-generate without name (boolean true)', () => {
+    it('should handle --skill-generate without name (boolean true)', async () => {
       const options: CliOptions = {
         skillGenerate: true,
       };
-      const config = buildCliConfig(options);
+      const config = await buildCliConfig(options);
 
       expect(config.skillGenerate).toBe(true);
     });
