@@ -1,4 +1,4 @@
-import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
+import { setLogLevelByWorkerData } from '../../../shared/logger.js';
 import type { TokenEncoding } from '../TokenCounter.js';
 import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 import type { FileMetrics } from './types.js';

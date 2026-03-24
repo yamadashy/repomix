@@ -168,7 +168,7 @@ export const pack = async (
     for (const fp of sortedFilePaths) {
       const rd = pathToRootDir.get(fp);
       if (rd) {
-        bucketsByRoot.get(rd)!.push(fp);
+        bucketsByRoot.get(rd)?.push(fp);
       }
     }
     sortedFilePathsByDir = rootDirs.map((rootDir) => ({
