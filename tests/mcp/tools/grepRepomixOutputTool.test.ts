@@ -300,19 +300,22 @@ describe('grepRepomixOutputTool', () => {
     it('should format results with equal before and after context lines', () => {
       const result = formatSearchResults(lines, matches, 1, 1);
 
-      expect(result).toEqual(['1-line 1', '2:pattern match', '3-line 3', '--', '4:another pattern', '5-line 5']);
+      // No separator: match 1 context (lines 0-2) and match 2 context (lines 2-4) are contiguous
+      expect(result).toEqual(['1-line 1', '2:pattern match', '3-line 3', '4:another pattern', '5-line 5']);
     });
 
     it('should format results with different before and after context lines', () => {
       const result = formatSearchResults(lines, matches, 1, 0);
 
-      expect(result).toEqual(['1-line 1', '2:pattern match', '--', '3-line 3', '4:another pattern']);
+      // No separator: match 1 ends at line 1, match 2 starts at line 2 (contiguous)
+      expect(result).toEqual(['1-line 1', '2:pattern match', '3-line 3', '4:another pattern']);
     });
 
     it('should format results with only after context lines', () => {
       const result = formatSearchResults(lines, matches, 0, 1);
 
-      expect(result).toEqual(['2:pattern match', '3-line 3', '--', '4:another pattern', '5-line 5']);
+      // No separator: match 1 context (lines 1-2) and match 2 context (lines 3-4) are contiguous
+      expect(result).toEqual(['2:pattern match', '3-line 3', '4:another pattern', '5-line 5']);
     });
 
     it('should format results with more before than after context lines', () => {
@@ -324,12 +327,12 @@ describe('grepRepomixOutputTool', () => {
 
       const result = formatSearchResults(extendedLines, extendedMatches, 2, 1);
 
+      // No separator: match 1 context (lines 0-3) overlaps with match 2 context (lines 2-5)
       expect(result).toEqual([
         '1-line 0',
         '2-line 1',
         '3:pattern match',
         '4-line 3',
-        '--',
         '5:another pattern',
         '6-line 5',
       ]);

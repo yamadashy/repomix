@@ -49,12 +49,16 @@ const defaultDeps = {
   getGitLogs,
   // Pre-warm security worker pool — lazily imports tinypool and creates the pool
   // so workers start loading @secretlint/core while file collection runs.
+  // preWarm: true spawns all threads immediately (minThreads = maxThreads),
+  // ensuring every thread has time to load @secretlint/core (~150ms) during
+  // collectFiles (~180ms), rather than spawning threads on-demand when batches arrive.
   createSecurityWorkerPool: async (numOfTasks: number): Promise<SecurityTaskRunner | undefined> => {
     const { createWorkerPool, cleanupWorkerPool } = await import('../shared/processConcurrency.js');
     const pool = createWorkerPool({
       numOfTasks,
       workerType: 'securityCheck',
       runtime: 'worker_threads',
+      preWarm: true,
     });
     return {
       run: (task) => pool.run(task) as Promise<(SuspiciousFileResult | null)[]>,

@@ -243,13 +243,16 @@ export const formatSearchResults = (
 
   const resultLines: string[] = [];
   const addedLines = new Set<number>();
+  // Track the maximum added line index to detect gaps between context blocks.
+  // Avoids O(N²) Math.min/max(...addedLines) spread on every match.
+  let maxAddedLine = -2;
 
   for (const match of matches) {
     const start = Math.max(0, match.lineNumber - 1 - beforeLines);
     const end = Math.min(lines.length - 1, match.lineNumber - 1 + afterLines);
 
-    // Add separator if there's a gap between previous and current context
-    if (resultLines.length > 0 && start > Math.min(...addedLines) + 1) {
+    // Add separator if there's a gap between previous context block and current
+    if (resultLines.length > 0 && start > maxAddedLine + 1) {
       resultLines.push('--');
     }
 
@@ -259,6 +262,9 @@ export const formatSearchResults = (
         const prefix = i === match.lineNumber - 1 ? `${lineNum}:` : `${lineNum}-`;
         resultLines.push(`${prefix}${lines[i]}`);
         addedLines.add(i);
+        if (i > maxAddedLine) {
+          maxAddedLine = i;
+        }
       }
     }
   }

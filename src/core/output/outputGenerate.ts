@@ -22,7 +22,8 @@ import { renderXml } from './outputStyles/xmlStyle.js';
 
 /**
  * Single-pass analysis over all file contents to compute both line counts and markdown delimiter.
- * Avoids iterating the files array twice.
+ * Combines newline counting and backtick tracking into one character-level loop per file,
+ * avoiding two separate O(n) passes over the same content.
  */
 const analyzeFileContents = (
   processedFiles: ReadonlyArray<ProcessedFile>,
@@ -35,34 +36,42 @@ const analyzeFileContents = (
   for (const file of processedFiles) {
     const content = file.content;
 
-    // Count lines
     if (content.length === 0) {
       fileLineCounts[file.path] = 0;
+      continue;
+    }
+
+    // Single pass: count newlines and track backtick runs simultaneously
+    let newlineCount = 0;
+    let backtickRun = 0;
+
+    if (trackBackticks) {
+      for (let i = 0; i < content.length; i++) {
+        const code = content.charCodeAt(i);
+        if (code === 10) {
+          // newline
+          newlineCount++;
+          backtickRun = 0;
+        } else if (code === 96) {
+          // backtick
+          backtickRun++;
+          if (backtickRun > maxBackticks) {
+            maxBackticks = backtickRun;
+          }
+        } else {
+          backtickRun = 0;
+        }
+      }
     } else {
-      let newlineCount = 0;
+      // Non-markdown: only count newlines via indexOf (faster than charCodeAt loop)
       let pos = content.indexOf('\n');
       while (pos !== -1) {
         newlineCount++;
         pos = content.indexOf('\n', pos + 1);
       }
-      fileLineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
     }
 
-    // Track longest backtick run (only for markdown style).
-    // Uses a simple character loop instead of regex to avoid RegExp engine overhead.
-    if (trackBackticks) {
-      let currentRun = 0;
-      for (let i = 0; i < content.length; i++) {
-        if (content.charCodeAt(i) === 96) {
-          currentRun++;
-          if (currentRun > maxBackticks) {
-            maxBackticks = currentRun;
-          }
-        } else {
-          currentRun = 0;
-        }
-      }
-    }
+    fileLineCounts[file.path] = content.charCodeAt(content.length - 1) === 10 ? newlineCount : newlineCount + 1;
   }
 
   return {
