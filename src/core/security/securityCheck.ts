@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import type { initTaskRunner as InitTaskRunnerType } from '../../shared/processConcurrency.js';
+import type { initTaskRunner as InitTaskRunnerType, TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -12,6 +12,8 @@ export interface SuspiciousFileResult {
   messages: string[];
   type: SecurityCheckType;
 }
+
+export type SecurityTaskRunner = TaskRunner<SecurityCheckTask, SuspiciousFileResult | null>;
 
 // Lazy-load tinypool — defers ~20ms of module loading until security check actually starts,
 // reducing worker process startup time so the worker is ready to receive tasks sooner.
@@ -32,10 +34,8 @@ export const runSecurityCheck = async (
   deps: {
     initTaskRunner: typeof InitTaskRunnerType;
   } | null = null,
+  preCreatedTaskRunner?: SecurityTaskRunner,
 ): Promise<SuspiciousFileResult[]> => {
-  const resolvedDeps = deps ?? {
-    initTaskRunner: await getInitTaskRunner(),
-  };
   const gitDiffTasks: SecurityCheckTask[] = [];
   const gitLogTasks: SecurityCheckTask[] = [];
 
@@ -69,11 +69,6 @@ export const runSecurityCheck = async (
     }
   }
 
-  const taskRunner = resolvedDeps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
-    numOfTasks: rawFiles.length + gitDiffTasks.length + gitLogTasks.length,
-    workerType: 'securityCheck',
-    runtime: 'worker_threads',
-  });
   const fileTasks = rawFiles.map(
     (file) =>
       ({
@@ -85,6 +80,22 @@ export const runSecurityCheck = async (
 
   // Combine file tasks, Git diff tasks, and Git log tasks
   const tasks = [...fileTasks, ...gitDiffTasks, ...gitLogTasks];
+
+  // Use pre-created pool if available (pre-warmed during file collection),
+  // otherwise create a new one on demand
+  let taskRunner: SecurityTaskRunner;
+  if (preCreatedTaskRunner) {
+    taskRunner = preCreatedTaskRunner;
+  } else {
+    const resolvedDeps = deps ?? {
+      initTaskRunner: await getInitTaskRunner(),
+    };
+    taskRunner = resolvedDeps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
+      numOfTasks: tasks.length,
+      workerType: 'securityCheck',
+      runtime: 'worker_threads',
+    });
+  }
 
   try {
     logger.trace(`Starting security check for ${tasks.length} files/content`);

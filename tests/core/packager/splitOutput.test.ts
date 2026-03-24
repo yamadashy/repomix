@@ -51,6 +51,7 @@ describe('packager split output', () => {
         suspiciousGitDiffResults: [],
         suspiciousGitLogResults: [],
       }),
+      createSecurityWorkerPool: vi.fn().mockResolvedValue(undefined),
       getGitDiffs: vi.fn().mockResolvedValue(undefined),
       getGitLogs: vi.fn().mockResolvedValue(undefined),
       produceOutput,

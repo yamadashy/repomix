@@ -51,6 +51,7 @@ describe('packager', () => {
         suspiciousGitDiffResults: [],
         suspiciousGitLogResults: [],
       }),
+      createSecurityWorkerPool: vi.fn().mockResolvedValue(undefined),
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
       }),
@@ -88,6 +89,8 @@ describe('packager', () => {
       mockRawFiles,
       progressCallback,
       mockConfig,
+      undefined,
+      undefined,
       undefined,
       undefined,
     );

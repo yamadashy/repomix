@@ -14,7 +14,7 @@ import { calculateMetrics, getMetricsTargetPaths } from './metrics/calculateMetr
 import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
 import { sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import type { SecurityTaskRunner, SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 
 export interface PackResult {
@@ -47,6 +47,20 @@ const defaultDeps = {
   sortOutputFiles,
   getGitDiffs,
   getGitLogs,
+  // Pre-warm security worker pool — lazily imports tinypool and creates the pool
+  // so workers start loading @secretlint/core while file collection runs.
+  createSecurityWorkerPool: async (numOfTasks: number): Promise<SecurityTaskRunner | undefined> => {
+    const { createWorkerPool, cleanupWorkerPool } = await import('../shared/processConcurrency.js');
+    const pool = createWorkerPool({
+      numOfTasks,
+      workerType: 'securityCheck',
+      runtime: 'worker_threads',
+    });
+    return {
+      run: (task) => pool.run(task) as Promise<SuspiciousFileResult | null>,
+      cleanup: () => cleanupWorkerPool(pool),
+    };
+  },
   // Lazy-load packSkill — only needed when --skill-generate is used.
   // Avoids importing skill section generators and their transitive deps on every run.
   packSkill: async (params: Record<string, unknown>) => {
@@ -123,6 +137,13 @@ export const pack = async (
 
   progressCallback('Collecting files and git info...');
 
+  // Pre-warm security worker pool — start workers loading @secretlint/core (~150ms)
+  // while file collection reads file contents (~50ms), giving workers a head start.
+  // The pool creation triggers tinypool import + worker thread spawn asynchronously.
+  const securityPoolPromise = config.security.enableSecurityCheck
+    ? deps.createSecurityWorkerPool(allFilePaths.length + 2)
+    : undefined;
+
   const collectResults = await withMemoryLogging(
     'Collect Files',
     async () =>
@@ -138,14 +159,25 @@ export const pack = async (
 
   const [gitDiffResult, gitLogResult] = await gitPromise;
 
+  // Get pre-created security pool (workers likely already loading secretlint by now)
+  const preCreatedSecurityRunner = securityPoolPromise ? await securityPoolPromise : undefined;
+
   // Run security check and file processing in parallel.
-  // Security check uses worker threads (secretlint), while lightweight file processing
+  // Security check uses the pre-warmed worker pool, while lightweight file processing
   // runs on the main thread — so they can truly execute concurrently.
   // After both complete, filter processed files to exclude any suspicious ones.
   progressCallback('Running security check...');
   const [securityResult, allProcessedFiles] = await Promise.all([
     withMemoryLogging('Security Check', () =>
-      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+      deps.validateFileSafety(
+        rawFiles,
+        progressCallback,
+        config,
+        gitDiffResult,
+        gitLogResult,
+        undefined,
+        preCreatedSecurityRunner,
+      ),
     ),
     withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)),
   ]);

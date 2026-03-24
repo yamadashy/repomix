@@ -104,6 +104,7 @@ describe.runIf(!isWindows)('packager integration', () => {
           }
           return processedFiles;
         },
+        createSecurityWorkerPool: async () => undefined,
         validateFileSafety: (rawFiles, progressCallback, config) => {
           const gitDiffMock: GitDiffResult = {
             workTreeDiffContent: '',
