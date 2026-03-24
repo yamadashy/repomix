@@ -181,13 +181,15 @@ export const pack = async (
   // Get pre-created security pool (workers likely already loading secretlint by now)
   const preCreatedSecurityRunner = securityPoolPromise ? await securityPoolPromise : undefined;
 
-  // Run security check, file processing, and file metrics in parallel.
-  // Security check uses the pre-warmed worker pool (CPU in worker threads).
-  // After lightweight file processing (~1ms main thread), file metrics (token counting)
-  // starts on the main thread, overlapping with the security workers (~300ms).
-  // This hides ~85ms of token counting behind the security check latency.
+  // Run security check, file processing, file metrics, and git-based sorting in parallel.
+  // Security check uses the pre-warmed worker pool (CPU in worker threads, ~300ms).
+  // After lightweight file processing (~1ms main thread), three operations start concurrently:
+  //   1. File metrics (token counting, ~85ms on main thread)
+  //   2. Git-based file sorting (git subprocess, ~50-200ms I/O-bound)
+  // Both overlap with the security workers, hiding their cost behind security check latency.
+  // Previously, sorting started AFTER the Promise.all completed, adding ~100ms to the critical path.
   progressCallback('Running security check...');
-  const [securityResult, processedAndMetrics] = await Promise.all([
+  const [securityResult, processedSortedAndMetrics] = await Promise.all([
     withMemoryLogging('Security Check', () =>
       deps.validateFileSafety(
         rawFiles,
@@ -201,23 +203,33 @@ export const pack = async (
     ),
     withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)).then(
       async (allProcessedFiles) => {
-        // Chain: after processing completes, start file metrics while security workers are still running
+        // Chain: after processing completes, start metrics AND sorting while security workers run.
+        // Sorting uses a git subprocess (I/O-bound) so it runs truly parallel with main-thread
+        // token counting. Both complete well before the ~300ms security check finishes.
         const metricsTargetPaths = deps.getMetricsTargetPaths(allProcessedFiles, config);
-        const fileMetrics = await deps.calculateSelectiveFileMetrics(
-          allProcessedFiles,
-          metricsTargetPaths,
-          config.tokenCount.encoding,
-          progressCallback,
-        );
-        return { allProcessedFiles, fileMetrics };
+        const [sortedFiles, fileMetrics] = await Promise.all([
+          deps.sortOutputFiles(allProcessedFiles, config),
+          deps.calculateSelectiveFileMetrics(
+            allProcessedFiles,
+            metricsTargetPaths,
+            config.tokenCount.encoding,
+            progressCallback,
+          ),
+        ]);
+        return { allProcessedFiles, sortedFiles, fileMetrics };
       },
     ),
   ]);
-  const { allProcessedFiles, fileMetrics: precomputedFileMetrics } = processedAndMetrics;
+  const {
+    allProcessedFiles,
+    sortedFiles: sortedAllFiles,
+    fileMetrics: precomputedFileMetrics,
+  } = processedSortedAndMetrics;
 
   const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = securityResult;
 
-  // Filter processed files to only include safe ones
+  // Filter sorted files to only include safe ones.
+  // Filtering a sorted array preserves the sort order, so no re-sort needed.
   const processedFiles =
     suspiciousFilesResults.length > 0
       ? (() => {
@@ -226,17 +238,18 @@ export const pack = async (
         })()
       : allProcessedFiles;
 
-  // Start git-based file sorting immediately after processedFiles are ready.
-  // sortOutputFiles runs a git command (~50-200ms) to get file change counts.
-  // By starting it here, the git command overlaps with metrics computation and
-  // output context building instead of blocking the output generation pipeline.
-  const sortedFilesPromise = deps.sortOutputFiles(processedFiles, config);
+  const sortedProcessedFiles =
+    suspiciousFilesResults.length > 0
+      ? (() => {
+          const safePathSet = new Set(safeFilePaths);
+          return sortedAllFiles.filter((file) => safePathSet.has(file.path));
+        })()
+      : sortedAllFiles;
 
   progressCallback('Generating output...');
 
   // Check if skill generation is requested
   if (config.skillGenerate !== undefined && options.skillDir) {
-    const sortedProcessedFiles = await sortedFilesPromise;
     const result = await deps.packSkill({
       rootDirs,
       config,
@@ -256,9 +269,6 @@ export const pack = async (
     logMemoryUsage('Pack - End');
     return result;
   }
-
-  // Await pre-sorted files (git command likely already complete by now)
-  const sortedProcessedFiles = await sortedFilesPromise;
 
   // Generate output and start writing to disk (write returned as a promise
   // so we can overlap metrics computation with I/O)
