@@ -1,7 +1,7 @@
 import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import type { initTaskRunner as InitTaskRunnerType } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { type FileManipulator, getFileManipulator } from './fileManipulate.js';
 import type { ProcessedFile, RawFile } from './fileTypes.js';
@@ -9,19 +9,31 @@ import type { FileProcessTask } from './workers/fileProcessWorker.js';
 
 type GetFileManipulator = (filePath: string) => FileManipulator | null;
 
+// Lazy-load tinypool — defers ~20ms of module loading until file processing actually starts,
+// reducing worker process startup time so the worker is ready to receive tasks sooner.
+let _initTaskRunner: typeof InitTaskRunnerType | undefined;
+const getInitTaskRunner = async (): Promise<typeof InitTaskRunnerType> => {
+  if (!_initTaskRunner) {
+    const mod = await import('../../shared/processConcurrency.js');
+    _initTaskRunner = mod.initTaskRunner;
+  }
+  return _initTaskRunner;
+};
+
 export const processFiles = async (
   rawFiles: RawFile[],
   config: RepomixConfigMerged,
   progressCallback: RepomixProgressCallback,
   deps: {
-    initTaskRunner: typeof initTaskRunner;
+    initTaskRunner: typeof InitTaskRunnerType;
     getFileManipulator: GetFileManipulator;
-  } = {
-    initTaskRunner,
-    getFileManipulator,
-  },
+  } | null = null,
 ): Promise<ProcessedFile[]> => {
-  const taskRunner = deps.initTaskRunner<FileProcessTask, ProcessedFile>({
+  const resolvedDeps = deps ?? {
+    initTaskRunner: await getInitTaskRunner(),
+    getFileManipulator,
+  };
+  const taskRunner = resolvedDeps.initTaskRunner<FileProcessTask, ProcessedFile>({
     numOfTasks: rawFiles.length,
     workerType: 'fileProcess',
     // High memory usage and leak risk

@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import type { initTaskRunner as InitTaskRunnerType } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -13,15 +13,29 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
+// Lazy-load tinypool — defers ~20ms of module loading until security check actually starts,
+// reducing worker process startup time so the worker is ready to receive tasks sooner.
+let _initTaskRunner: typeof InitTaskRunnerType | undefined;
+const getInitTaskRunner = async (): Promise<typeof InitTaskRunnerType> => {
+  if (!_initTaskRunner) {
+    const mod = await import('../../shared/processConcurrency.js');
+    _initTaskRunner = mod.initTaskRunner;
+  }
+  return _initTaskRunner;
+};
+
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
   progressCallback: RepomixProgressCallback = () => {},
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
-  deps = {
-    initTaskRunner,
-  },
+  deps: {
+    initTaskRunner: typeof InitTaskRunnerType;
+  } | null = null,
 ): Promise<SuspiciousFileResult[]> => {
+  const resolvedDeps = deps ?? {
+    initTaskRunner: await getInitTaskRunner(),
+  };
   const gitDiffTasks: SecurityCheckTask[] = [];
   const gitLogTasks: SecurityCheckTask[] = [];
 
@@ -55,7 +69,7 @@ export const runSecurityCheck = async (
     }
   }
 
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
+  const taskRunner = resolvedDeps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
     numOfTasks: rawFiles.length + gitDiffTasks.length + gitLogTasks.length,
     workerType: 'securityCheck',
     runtime: 'worker_threads',

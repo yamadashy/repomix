@@ -36,77 +36,10 @@ export const runDefaultAction = async (
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', cliOptions);
 
-  // Run migration before loading config
-  await runMigrationAction(cwd);
-
-  // Load the config file in main process
-  const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, {
-    skipLocalConfig: cliOptions.skipLocalConfig,
-  });
-  logger.trace('Loaded file config:', fileConfig);
-
-  // Parse the CLI options into a config
-  const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);
-  logger.trace('CLI config:', cliConfig);
-
-  // Merge default, file, and CLI configs
-  const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
-  logger.trace('Merged config:', config);
-
-  // Validate conflicting options
-  validateConflictingOptions(config);
-
-  // Validate --skill-output and --force require --skill-generate
-  if (cliOptions.skillOutput && config.skillGenerate === undefined) {
-    throw new RepomixError('--skill-output can only be used with --skill-generate');
-  }
-  if (cliOptions.force && config.skillGenerate === undefined) {
-    throw new RepomixError('--force can only be used with --skill-generate');
-  }
-
-  // Validate --skill-output is not empty or whitespace only
-  if (cliOptions.skillOutput !== undefined && !cliOptions.skillOutput.trim()) {
-    throw new RepomixError('--skill-output path cannot be empty');
-  }
-
-  // Validate skill generation options and prompt for location
-  if (config.skillGenerate !== undefined) {
-    // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
-    cliOptions.skillName ??=
-      typeof config.skillGenerate === 'string'
-        ? config.skillGenerate
-        : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
-
-    // Determine skill directory (lazy-load prompts to avoid importing @clack/prompts on every run)
-    const { promptSkillLocation, resolveAndPrepareSkillDir } = await import('../prompts/skillPrompts.js');
-    if (cliOptions.skillOutput && !cliOptions.skillDir) {
-      // Non-interactive mode: use provided path directly
-      cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
-    } else if (!cliOptions.skillDir) {
-      // Interactive mode: prompt for skill location
-      const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
-      cliOptions.skillDir = promptResult.skillDir;
-    }
-  }
-
-  // Handle stdin processing in main process (before worker creation)
-  // This is necessary because child_process workers don't inherit stdin
-  let stdinFilePaths: string[] | undefined;
-  if (cliOptions.stdin) {
-    // Validate directory arguments for stdin mode
-    const firstDir = directories[0] ?? '.';
-    if (directories.length > 1 || firstDir !== '.') {
-      throw new RepomixError(
-        'When using --stdin, do not specify directory arguments. File paths will be read from stdin.',
-      );
-    }
-
-    const stdinResult = await readFilePathsFromStdin(cwd);
-    stdinFilePaths = stdinResult.filePaths;
-    logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
-  }
-
-  // Create worker task runner
+  // Start worker pool early so the child process begins loading modules
+  // while the main process loads config, runs migration, and validates options.
+  // initTaskRunner only needs constant parameters (not config), so it can run first.
+  // The child process module loading (~200ms) then overlaps with config loading (~30-50ms).
   const taskRunner = initTaskRunner<DefaultActionTask | PingTask, DefaultActionWorkerResult | PingResult>({
     numOfTasks: 1,
     workerType: 'defaultAction',
@@ -114,6 +47,76 @@ export const runDefaultAction = async (
   });
 
   try {
+    // Run migration before loading config
+    await runMigrationAction(cwd);
+
+    // Load the config file in main process
+    const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, {
+      skipLocalConfig: cliOptions.skipLocalConfig,
+    });
+    logger.trace('Loaded file config:', fileConfig);
+
+    // Parse the CLI options into a config
+    const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);
+    logger.trace('CLI config:', cliConfig);
+
+    // Merge default, file, and CLI configs
+    const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
+    logger.trace('Merged config:', config);
+
+    // Validate conflicting options
+    validateConflictingOptions(config);
+
+    // Validate --skill-output and --force require --skill-generate
+    if (cliOptions.skillOutput && config.skillGenerate === undefined) {
+      throw new RepomixError('--skill-output can only be used with --skill-generate');
+    }
+    if (cliOptions.force && config.skillGenerate === undefined) {
+      throw new RepomixError('--force can only be used with --skill-generate');
+    }
+
+    // Validate --skill-output is not empty or whitespace only
+    if (cliOptions.skillOutput !== undefined && !cliOptions.skillOutput.trim()) {
+      throw new RepomixError('--skill-output path cannot be empty');
+    }
+
+    // Validate skill generation options and prompt for location
+    if (config.skillGenerate !== undefined) {
+      // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
+      cliOptions.skillName ??=
+        typeof config.skillGenerate === 'string'
+          ? config.skillGenerate
+          : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
+
+      // Determine skill directory (lazy-load prompts to avoid importing @clack/prompts on every run)
+      const { promptSkillLocation, resolveAndPrepareSkillDir } = await import('../prompts/skillPrompts.js');
+      if (cliOptions.skillOutput && !cliOptions.skillDir) {
+        // Non-interactive mode: use provided path directly
+        cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
+      } else if (!cliOptions.skillDir) {
+        // Interactive mode: prompt for skill location
+        const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
+        cliOptions.skillDir = promptResult.skillDir;
+      }
+    }
+
+    // Handle stdin processing in main process (before sending task to worker)
+    // This is necessary because child_process workers don't inherit stdin
+    let stdinFilePaths: string[] | undefined;
+    if (cliOptions.stdin) {
+      // Validate directory arguments for stdin mode
+      const firstDir = directories[0] ?? '.';
+      if (directories.length > 1 || firstDir !== '.') {
+        throw new RepomixError(
+          'When using --stdin, do not specify directory arguments. File paths will be read from stdin.',
+        );
+      }
+
+      const stdinResult = await readFilePathsFromStdin(cwd);
+      stdinFilePaths = stdinResult.filePaths;
+      logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
+    }
+
     // Wait for worker to be ready (Bun compatibility)
     await waitForWorkerReady(taskRunner);
 
