@@ -7,8 +7,8 @@ import { readRawFile as defaultReadRawFile, type FileSkipReason } from './fileRe
 import type { RawFile } from './fileTypes.js';
 
 // Concurrency limit for parallel file reads on the main thread.
-// 50 balances I/O throughput with FD/memory safety across different machines.
-const FILE_COLLECT_CONCURRENCY = 50;
+// 100 provides better I/O throughput on modern systems while staying within FD limits.
+const FILE_COLLECT_CONCURRENCY = 100;
 
 export interface SkippedFileInfo {
   path: string;
@@ -57,7 +57,10 @@ export const collectFiles = async (
     const result = await deps.readRawFile(fullPath, maxFileSize);
 
     completedTasks++;
-    progressCallback(`Collect file... (${completedTasks}/${totalTasks}) ${pc.dim(filePath)}`);
+    // Throttle progress callbacks to every 50 files to reduce string allocation overhead
+    if (completedTasks % 50 === 0 || completedTasks === totalTasks) {
+      progressCallback(`Collect file... (${completedTasks}/${totalTasks}) ${pc.dim(filePath)}`);
+    }
     logger.trace(`Collect files... (${completedTasks}/${totalTasks}) ${filePath}`);
 
     return { filePath, result };

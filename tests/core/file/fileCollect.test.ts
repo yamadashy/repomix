@@ -141,6 +141,8 @@ describe('fileCollect', () => {
       readRawFile: mockReadRawFile,
     });
 
-    expect(mockProgress).toHaveBeenCalledTimes(2);
+    // Progress callback is throttled to every 50 files + the last file.
+    // For 2 files, only the last file (completedTasks === totalTasks) fires.
+    expect(mockProgress).toHaveBeenCalledTimes(1);
   });
 });
