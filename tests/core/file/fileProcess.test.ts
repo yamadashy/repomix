@@ -55,6 +55,99 @@ describe('fileProcess', () => {
         { path: 'file2.js', content: 'const b = 2;' },
       ]);
     });
+
+    it('should use main-thread processing when compress and removeComments are both false', async () => {
+      const mockRawFiles: RawFile[] = [
+        { path: 'file1.js', content: '  const a = 1;  ' },
+        { path: 'file2.ts', content: 'const b = 2;\n' },
+      ];
+      const config = createMockConfig({
+        output: {
+          compress: false,
+          removeComments: false,
+          removeEmptyLines: false,
+          truncateBase64: false,
+          showLineNumbers: false,
+        },
+      });
+
+      // Pass null deps to trigger main-thread path
+      const result = await processFiles(mockRawFiles, config, () => {}, null);
+
+      expect(result).toEqual([
+        { path: 'file1.js', content: 'const a = 1;' },
+        { path: 'file2.ts', content: 'const b = 2;' },
+      ]);
+    });
+
+    it('should handle truncateBase64 in main-thread processing', async () => {
+      const mockRawFiles: RawFile[] = [{ path: 'file1.js', content: 'const a = 1;' }];
+      const config = createMockConfig({
+        output: {
+          compress: false,
+          removeComments: false,
+          removeEmptyLines: false,
+          truncateBase64: true,
+          showLineNumbers: false,
+        },
+      });
+
+      const result = await processFiles(mockRawFiles, config, () => {}, null);
+
+      expect(result).toEqual([{ path: 'file1.js', content: 'const a = 1;' }]);
+    });
+
+    it('should handle showLineNumbers in main-thread processing', async () => {
+      const mockRawFiles: RawFile[] = [{ path: 'file1.txt', content: 'Line 1\nLine 2\nLine 3' }];
+      const config = createMockConfig({
+        output: {
+          compress: false,
+          removeComments: false,
+          removeEmptyLines: false,
+          truncateBase64: false,
+          showLineNumbers: true,
+        },
+      });
+
+      const result = await processFiles(mockRawFiles, config, () => {}, null);
+
+      expect(result).toEqual([{ path: 'file1.txt', content: '1: Line 1\n2: Line 2\n3: Line 3' }]);
+    });
+
+    it('should handle removeEmptyLines in main-thread processing', async () => {
+      const mockRawFiles: RawFile[] = [{ path: 'file1.js', content: 'line1\n\nline2\n\nline3' }];
+      const config = createMockConfig({
+        output: {
+          compress: false,
+          removeComments: false,
+          removeEmptyLines: true,
+          truncateBase64: false,
+          showLineNumbers: false,
+        },
+      });
+
+      const result = await processFiles(mockRawFiles, config, () => {}, null);
+
+      expect(result).toEqual([{ path: 'file1.js', content: 'line1\nline2\nline3' }]);
+    });
+
+    it('should use worker pool when removeComments is true', async () => {
+      const mockRawFiles: RawFile[] = [{ path: 'file1.js', content: '// comment\nconst a = 1;' }];
+      const config = createMockConfig({
+        output: {
+          compress: false,
+          removeComments: true,
+          removeEmptyLines: false,
+        },
+      });
+
+      const result = await processFiles(mockRawFiles, config, () => {}, {
+        initTaskRunner: mockInitTaskRunner,
+        getFileManipulator: mockGetFileManipulator,
+      });
+
+      expect(result).toEqual([{ path: 'file1.js', content: 'const a = 1;' }]);
+    });
   });
 
   describe('processContent', () => {
