@@ -91,7 +91,9 @@ describe('packager', () => {
       undefined,
       undefined,
     );
-    expect(mockDeps.processFiles).toHaveBeenCalledWith(mockSafeRawFiles, mockConfig, progressCallback);
+    // processFiles now receives all rawFiles (runs in parallel with security check),
+    // and results are filtered to safe files after both complete.
+    expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
       ['root'],
       mockConfig,

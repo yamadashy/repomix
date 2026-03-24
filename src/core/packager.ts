@@ -96,11 +96,24 @@ export const pack = async (
   const allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
   const sortedFilePaths = deps.sortPaths(allFilePaths);
 
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(filePathsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
+  // Regroup sorted file paths by rootDir in a single O(n) pass.
+  // Build a path→rootDir lookup, then iterate sortedFilePaths once to bucket them.
+  const pathToRootDir = new Map<string, string>();
+  for (const { rootDir, filePaths } of filePathsByDir) {
+    for (const fp of filePaths) {
+      pathToRootDir.set(fp, rootDir);
+    }
+  }
+  const bucketsByRoot = new Map<string, string[]>(rootDirs.map((rd) => [rd, []]));
+  for (const fp of sortedFilePaths) {
+    const rd = pathToRootDir.get(fp);
+    if (rd) {
+      bucketsByRoot.get(rd)!.push(fp);
+    }
+  }
   const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
     rootDir,
-    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+    filePaths: bucketsByRoot.get(rootDir) ?? [],
   }));
 
   // Start git diffs/logs in parallel with file collection - they only need rootDirs and config,
@@ -123,17 +136,28 @@ export const pack = async (
 
   const [gitDiffResult, gitLogResult] = await gitPromise;
 
-  // Run security check and get filtered safe files
-  const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-    await withMemoryLogging('Security Check', () =>
+  // Run security check and file processing in parallel.
+  // Security check uses worker threads (secretlint), while lightweight file processing
+  // runs on the main thread — so they can truly execute concurrently.
+  // After both complete, filter processed files to exclude any suspicious ones.
+  progressCallback('Running security check...');
+  const [securityResult, allProcessedFiles] = await Promise.all([
+    withMemoryLogging('Security Check', () =>
       deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
-    );
+    ),
+    withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)),
+  ]);
 
-  // Process files (remove comments, etc.)
-  progressCallback('Processing files...');
-  const processedFiles = await withMemoryLogging('Process Files', () =>
-    deps.processFiles(safeRawFiles, config, progressCallback),
-  );
+  const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = securityResult;
+
+  // Filter processed files to only include safe ones
+  const processedFiles =
+    suspiciousFilesResults.length > 0
+      ? (() => {
+          const safePathSet = new Set(safeFilePaths);
+          return allProcessedFiles.filter((file) => safePathSet.has(file.path));
+        })()
+      : allProcessedFiles;
 
   // Start git-based file sorting immediately after processedFiles are ready.
   // sortOutputFiles runs a git command (~50-200ms) to get file change counts.
