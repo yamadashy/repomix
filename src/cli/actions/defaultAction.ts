@@ -37,9 +37,11 @@ export const runDefaultAction = async (
   logger.trace('Loaded CLI options:', cliOptions);
 
   // Determine if we need a child process for the spinner.
-  // In stdout/quiet mode, no spinner is displayed, so we can run pack() directly
+  // In stdout mode, no spinner is displayed, so we can run pack() directly
   // in the main process — avoiding child process spawn + module re-loading (~200ms).
-  const needsChildProcess = !cliOptions.stdout && !cliOptions.quiet;
+  // Note: quiet mode still uses the child process to ensure clean memory isolation
+  // when runCli is called repeatedly (e.g., memory benchmarks, MCP server).
+  const needsChildProcess = !cliOptions.stdout;
 
   // Start child process worker early so module loading (~200ms) overlaps
   // with config loading (~30-50ms). Only when the spinner is needed.
