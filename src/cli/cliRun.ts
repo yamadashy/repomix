@@ -265,8 +265,9 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     return;
   }
 
-  // Skip version header in stdin mode to avoid interfering with piped output from interactive tools like fzf
-  if (!options.stdin) {
+  // Skip version header in stdin/stdout/quiet mode to avoid unnecessary I/O
+  // (package.json read) when output would be suppressed anyway.
+  if (!options.stdin && !options.stdout && !options.quiet) {
     const version = await getVersion();
     logger.log(pc.dim(`\n📦 Repomix v${version}\n`));
   }
