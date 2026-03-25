@@ -61,12 +61,12 @@ describe('readRepomixOutputTool', () => {
 
   it('should return an error if the file does not exist', async () => {
     vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-    vi.mocked(fs.access).mockRejectedValue(new Error('File not found'));
+    vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
 
     const result = await toolHandler({ outputId: 'test-id' });
 
     expect(mcpToolRuntime.getOutputFilePath).toHaveBeenCalledWith('test-id');
-    expect(fs.access).toHaveBeenCalledWith('/path/to/file.xml');
+    expect(fs.readFile).toHaveBeenCalledWith('/path/to/file.xml', 'utf8');
     expect(result.isError).toBe(true);
     expect(result.content).toHaveLength(1);
     const parsedResult = JSON.parse(result.content[0].text);
@@ -75,13 +75,11 @@ describe('readRepomixOutputTool', () => {
 
   it('should successfully read the file content', async () => {
     vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-    vi.mocked(fs.access).mockResolvedValue(undefined);
     vi.mocked(fs.readFile).mockResolvedValue('File content here');
 
     const result = await toolHandler({ outputId: 'test-id' });
 
     expect(mcpToolRuntime.getOutputFilePath).toHaveBeenCalledWith('test-id');
-    expect(fs.access).toHaveBeenCalledWith('/path/to/file.xml');
     expect(fs.readFile).toHaveBeenCalledWith('/path/to/file.xml', 'utf8');
     expect(result.isError).toBeUndefined();
     expect(result.content).toHaveLength(1);

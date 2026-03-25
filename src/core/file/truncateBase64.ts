@@ -126,9 +126,21 @@ function isLikelyBase64(str: string): boolean {
     return false;
   }
 
-  // Check for reasonable distribution of characters (not all same char)
-  const charSet = new Set(str);
-  if (charSet.size < MIN_CHAR_DIVERSITY) {
+  // Early-exit char diversity check: count distinct characters using a Uint8Array
+  // lookup indexed by char code. Stops as soon as MIN_CHAR_DIVERSITY (10) distinct
+  // chars are found, avoiding the full Set(str) allocation (which iterates all chars
+  // and creates a heap object per call). For typical 60-200 char base64 matches,
+  // this exits after ~15-20 chars instead of processing the full string.
+  const seen = new Uint8Array(128);
+  let distinctCount = 0;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    if (c < 128 && !seen[c]) {
+      seen[c] = 1;
+      if (++distinctCount >= MIN_CHAR_DIVERSITY) break;
+    }
+  }
+  if (distinctCount < MIN_CHAR_DIVERSITY) {
     return false;
   }
 

@@ -27,6 +27,7 @@ export interface PackResult {
   gitDiffTokenCount: number;
   gitLogTokenCount: number;
   outputFiles?: string[];
+  outputLineCount: number;
   suspiciousFilesResults: SuspiciousFileResult[];
   suspiciousGitDiffResults: SuspiciousFileResult[];
   suspiciousGitLogResults: SuspiciousFileResult[];
@@ -404,10 +405,33 @@ export const pack = async (
   // Fire-and-forget cleanup of metrics worker pool — workers terminate on process exit anyway
   resolvedMetricsWorkerPool?.cleanup().catch(() => {});
 
+  // Count output lines from the in-memory string using indexOf loop (O(1) allocation).
+  // This avoids reading the output file back from disk in MCP tools (~1-10MB I/O + split).
+  let outputLineCount = 1;
+  if (typeof outputForMetrics === 'string') {
+    let pos = outputForMetrics.indexOf('\n');
+    while (pos !== -1) {
+      outputLineCount++;
+      pos = outputForMetrics.indexOf('\n', pos + 1);
+    }
+  } else {
+    // Split output: sum line counts across all parts
+    for (const part of outputForMetrics) {
+      let partLines = 1;
+      let pos = part.indexOf('\n');
+      while (pos !== -1) {
+        partLines++;
+        pos = part.indexOf('\n', pos + 1);
+      }
+      outputLineCount += partLines;
+    }
+  }
+
   // Create a result object that includes metrics and security results
   const result = {
     ...metrics,
     ...(outputFiles && { outputFiles }),
+    outputLineCount,
     suspiciousFilesResults,
     suspiciousGitDiffResults,
     suspiciousGitLogResults,

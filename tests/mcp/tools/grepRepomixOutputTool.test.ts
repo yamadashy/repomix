@@ -547,7 +547,7 @@ describe('grepRepomixOutputTool', () => {
 
     it('should handle file access error', async () => {
       vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockRejectedValue(new Error('File not accessible'));
+      vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'test' });
 

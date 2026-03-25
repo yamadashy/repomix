@@ -25,6 +25,7 @@ export interface McpToolMetrics {
   totalTokens: number;
   fileCharCounts: Record<string, number>;
   fileTokenCounts: Record<string, number>;
+  outputLineCount: number;
   processedFiles: ProcessedFile[];
   safeFilePaths: string[];
 }
@@ -78,9 +79,9 @@ export const formatPackToolResponse = async (
   const outputId = generateOutputId();
   registerOutputFile(outputId, outputFilePath);
 
-  // Calculate total lines from the output file
-  const outputContent = await fs.readFile(outputFilePath, 'utf8');
-  const totalLines = outputContent.split('\n').length;
+  // Use pre-computed line count from pack() — avoids reading the multi-MB output
+  // file back from disk and splitting it into an array just to count lines.
+  const totalLines = metrics.outputLineCount;
 
   // Get top files by character count
   const topFiles = Object.entries(metrics.fileCharCounts)

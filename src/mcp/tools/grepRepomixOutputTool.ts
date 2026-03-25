@@ -115,8 +115,11 @@ export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
           });
         }
 
+        // Read file directly — fs.readFile throws ENOENT if missing, no need
+        // for a separate fs.access check (which is also a TOCTOU pattern).
+        let content: string;
         try {
-          await fs.access(filePath);
+          content = await fs.readFile(filePath, 'utf8');
         } catch {
           return buildMcpToolErrorResponse({
             errorMessage: `Error: Output file does not exist at path: ${filePath}. The temporary file may have been cleaned up.`,
@@ -126,8 +129,6 @@ export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
             },
           });
         }
-
-        const content = await fs.readFile(filePath, 'utf8');
 
         // Determine before and after lines
         const finalBeforeLines = beforeLines !== undefined ? beforeLines : contextLines;

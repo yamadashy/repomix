@@ -250,6 +250,7 @@ export const packSkill = async (params: PackSkillParams, deps = defaultDeps): Pr
 
   return {
     ...skillMetrics,
+    outputLineCount: 0,
     suspiciousFilesResults,
     suspiciousGitDiffResults,
     suspiciousGitLogResults,

@@ -49,25 +49,22 @@ export const registerFileSystemReadFileTool = (mcpServer: McpServer) => {
           });
         }
 
-        // Check if file exists
+        // Check if file exists and get stats in a single syscall (replaces
+        // redundant fs.access + two separate fs.stat calls — saves 2 syscalls per read)
+        let stats: Awaited<ReturnType<typeof fs.stat>>;
         try {
-          await fs.access(filePath);
+          stats = await fs.stat(filePath);
         } catch {
           return buildMcpToolErrorResponse({
             errorMessage: `Error: File not found at path: ${filePath}`,
           });
         }
 
-        // Check if it's a directory
-        const stats = await fs.stat(filePath);
         if (stats.isDirectory()) {
           return buildMcpToolErrorResponse({
             errorMessage: `Error: The specified path is a directory, not a file: ${filePath}. Use file_system_read_directory for directories.`,
           });
         }
-
-        // Get file stats
-        const fileStats = await fs.stat(filePath);
 
         // Read file content
         const fileContent = await fs.readFile(filePath, 'utf8');
@@ -83,9 +80,15 @@ export const registerFileSystemReadFileTool = (mcpServer: McpServer) => {
           });
         }
 
-        // Calculate file metrics
-        const lines = fileContent.split('\n').length;
-        const size = fileStats.size;
+        // Count lines using indexOf loop — O(1) allocation vs split('\n') which
+        // creates an N-element array for a metric that only needs a count.
+        let lines = 1;
+        let pos = fileContent.indexOf('\n');
+        while (pos !== -1) {
+          lines++;
+          pos = fileContent.indexOf('\n', pos + 1);
+        }
+        const size = stats.size;
 
         return buildMcpToolSuccessResponse({
           path: filePath,
