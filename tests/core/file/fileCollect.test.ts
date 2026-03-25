@@ -33,8 +33,8 @@ describe('fileCollect', () => {
       skippedFiles: [],
     });
     expect(mockReadRawFile).toHaveBeenCalledTimes(2);
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/file1.txt'), MAX_FILE_SIZE);
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/file2.txt'), MAX_FILE_SIZE);
+    expect(mockReadRawFile).toHaveBeenCalledWith(path.join('/root', 'file1.txt'), MAX_FILE_SIZE, expect.any(Object));
+    expect(mockReadRawFile).toHaveBeenCalledWith(path.join('/root', 'file2.txt'), MAX_FILE_SIZE, expect.any(Object));
   });
 
   it('should skip binary files', async () => {
@@ -108,8 +108,8 @@ describe('fileCollect', () => {
     });
 
     // Verify readRawFile is called with custom maxFileSize
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/medium.txt'), customMaxFileSize);
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/small.txt'), customMaxFileSize);
+    expect(mockReadRawFile).toHaveBeenCalledWith(path.join('/root', 'medium.txt'), customMaxFileSize, expect.any(Object));
+    expect(mockReadRawFile).toHaveBeenCalledWith(path.join('/root', 'small.txt'), customMaxFileSize, expect.any(Object));
   });
 
   it('should handle file read errors', async () => {

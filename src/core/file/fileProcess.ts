@@ -75,8 +75,12 @@ const processFilesMainThread = async (
     if (config.output.showLineNumbers) {
       const lines = content.split('\n');
       const padding = lines.length.toString().length;
-      const numberedLines = lines.map((line, idx) => `${(idx + 1).toString().padStart(padding)}: ${line}`);
-      content = numberedLines.join('\n');
+      // Mutate in-place instead of creating a new array via .map()
+      // to avoid allocating 2 arrays of N strings for each file.
+      for (let j = 0; j < lines.length; j++) {
+        lines[j] = `${(j + 1).toString().padStart(padding)}: ${lines[j]}`;
+      }
+      content = lines.join('\n');
     }
 
     results[i] = { path: rawFile.path, content };

@@ -46,15 +46,36 @@ export interface FileReadResult {
 }
 
 /**
+ * Resolve binary detection functions once, to avoid per-file async overhead.
+ * Called once in collectFiles before the file read loop starts.
+ * For 1000 files, this eliminates ~2000 microtask yields from repeated
+ * `await getIsBinaryPath()` / `await getIsBinaryFileSync()` calls.
+ */
+export const resolveBinaryDetectors = async (): Promise<{
+  isBinaryPath: (filePath: string) => boolean;
+  isBinaryFileSync: (bytes: Buffer, size?: number) => boolean;
+}> => {
+  const [isBinaryPath, isBinaryFileSync] = await Promise.all([getIsBinaryPath(), getIsBinaryFileSync()]);
+  return { isBinaryPath, isBinaryFileSync };
+};
+
+export type BinaryDetectors = Awaited<ReturnType<typeof resolveBinaryDetectors>>;
+
+/**
  * Read a file and return its text content
  * @param filePath Path to the file
  * @param maxFileSize Maximum file size in bytes
+ * @param binaryDetectors Pre-resolved binary detection functions (optional, resolved per-call if not provided)
  * @returns File content as string and skip reason if file was skipped
  */
-export const readRawFile = async (filePath: string, maxFileSize: number): Promise<FileReadResult> => {
+export const readRawFile = async (
+  filePath: string,
+  maxFileSize: number,
+  binaryDetectors?: BinaryDetectors,
+): Promise<FileReadResult> => {
   try {
     // Check binary extension first (no I/O needed) to skip stat + read for binary files
-    const isBinaryPath = await getIsBinaryPath();
+    const isBinaryPath = binaryDetectors?.isBinaryPath ?? (await getIsBinaryPath());
     if (isBinaryPath(filePath)) {
       logger.debug(`Skipping binary file: ${filePath}`);
       return { content: null, skippedReason: 'binary-extension' };
@@ -85,7 +106,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
       return { content: null, skippedReason: 'size-limit' };
     }
 
-    const isBinaryFileSync = await getIsBinaryFileSync();
+    const isBinaryFileSync = binaryDetectors?.isBinaryFileSync ?? (await getIsBinaryFileSync());
     if (isBinaryFileSync(buffer)) {
       logger.debug(`Skipping binary file (content check): ${filePath}`);
       return { content: null, skippedReason: 'binary-content' };

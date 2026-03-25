@@ -59,8 +59,11 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
   } else if (config.output.showLineNumbers) {
     const lines = processedContent.split('\n');
     const padding = lines.length.toString().length;
-    const numberedLines = lines.map((line, i) => `${(i + 1).toString().padStart(padding)}: ${line}`);
-    processedContent = numberedLines.join('\n');
+    // Mutate in-place instead of creating a new array via .map()
+    for (let i = 0; i < lines.length; i++) {
+      lines[i] = `${(i + 1).toString().padStart(padding)}: ${lines[i]}`;
+    }
+    processedContent = lines.join('\n');
   }
 
   const processEndAt = process.hrtime.bigint();

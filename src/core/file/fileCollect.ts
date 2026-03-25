@@ -3,7 +3,12 @@ import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
-import { readRawFile as defaultReadRawFile, type FileSkipReason } from './fileRead.js';
+import {
+  type BinaryDetectors,
+  readRawFile as defaultReadRawFile,
+  type FileSkipReason,
+  resolveBinaryDetectors,
+} from './fileRead.js';
 import type { RawFile } from './fileTypes.js';
 
 // Concurrency limit for parallel file reads on the main thread.
@@ -48,13 +53,18 @@ export const collectFiles = async (
   const startTime = process.hrtime.bigint();
   logger.trace(`Starting file collection for ${filePaths.length} files`);
 
+  // Pre-resolve binary detection functions once before the file read loop.
+  // Eliminates ~2000 microtask yields from per-file `await getIsBinaryPath()`
+  // and `await getIsBinaryFileSync()` calls when these are already cached.
+  const binaryDetectors: BinaryDetectors = await resolveBinaryDetectors();
+
   let completedTasks = 0;
   const totalTasks = filePaths.length;
   const maxFileSize = config.input.maxFileSize;
 
   const results = await promisePool(filePaths, FILE_COLLECT_CONCURRENCY, async (filePath) => {
-    const fullPath = path.resolve(rootDir, filePath);
-    const result = await deps.readRawFile(fullPath, maxFileSize);
+    const fullPath = path.join(rootDir, filePath);
+    const result = await deps.readRawFile(fullPath, maxFileSize, binaryDetectors);
 
     completedTasks++;
     // Throttle progress callbacks to every 50 files to reduce string allocation overhead
