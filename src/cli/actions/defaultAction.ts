@@ -8,7 +8,7 @@ import type {
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import type { PackResult } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
-import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
+import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { reportResults } from '../cliReport.js';
@@ -21,6 +21,13 @@ import type {
   PingResult,
   PingTask,
 } from './workers/defaultActionWorker.js';
+
+// Pre-warm Zod schema loading as soon as defaultAction module is imported.
+// configSchema.js transitively loads Zod (~50ms). By starting the import here,
+// the module loads in the background during migration check (~5ms) and other
+// setup work. When loadFileConfig or buildCliConfig later calls
+// import('../../config/configSchema.js'), the module is already cached.
+const _configSchemaWarmup = import('../../config/configSchema.js').catch(() => {});
 
 export interface DefaultActionRunnerResult {
   packResult: PackResult;
@@ -382,15 +389,11 @@ export const buildCliConfig = async (options: CliOptions): Promise<RepomixConfig
     cliConfig.skillGenerate = options.skillGenerate;
   }
 
-  try {
-    // Lazy-load Zod schema to defer ~50ms Zod module initialization
-    // until CLI config validation is actually needed (not at module import time)
-    const { repomixConfigCliSchema } = await import('../../config/configSchema.js');
-    return repomixConfigCliSchema.parse(cliConfig);
-  } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid cli arguments');
-    throw error;
-  }
+  // CLI config is built entirely from Commander-parsed options above — each field
+  // is set from a typed CLI option with known values. Zod validation is redundant
+  // here and would require awaiting the ~50ms configSchema.js import. File configs
+  // (user-authored JSON) are still Zod-validated in loadFileConfig.
+  return cliConfig as RepomixConfigCli;
 };
 
 /**

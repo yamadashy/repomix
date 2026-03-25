@@ -156,10 +156,10 @@ const searchFilesWithGit = async (
     const startTime = Date.now();
     logger.debug('[git-ls-files] Starting fast file search...');
 
-    const allFiles = await deps.execGitLsFiles(rootDir);
+    // Start git subprocess and picomatch import in parallel — git subprocess takes
+    // ~5-10ms and picomatch first-load takes ~5ms, so overlapping saves ~5ms.
+    const [allFiles, picomatch] = await Promise.all([deps.execGitLsFiles(rootDir), getPicomatch()]);
     if (allFiles.length === 0) return null;
-
-    const picomatch = await getPicomatch();
 
     // Read additional patterns from .repomixignore and .ignore files found in git output.
     // Collect all matching ignore files across all patterns, then read them in parallel.
