@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import * as prompts from '@clack/prompts';
 import pc from 'picocolors';
 import {
   defaultConfig,
@@ -11,20 +10,32 @@ import {
 import { getGlobalDirectory } from '../../config/globalDirectory.js';
 import { logger } from '../../shared/logger.js';
 
-const onCancelOperation = () => {
-  prompts.cancel('Initialization cancelled.');
-  process.exit(0);
+// Lazy-load @clack/prompts (~16ms) — only needed when --init is used,
+// not on the default pack path.
+let _prompts: typeof import('@clack/prompts') | undefined;
+const getPrompts = async () => {
+  if (!_prompts) {
+    _prompts = await import('@clack/prompts');
+  }
+  return _prompts;
 };
 
 export const runInitAction = async (rootDir: string, isGlobal: boolean): Promise<void> => {
+  const prompts = await getPrompts();
+
+  const onCancel = () => {
+    prompts.cancel('Initialization cancelled.');
+    process.exit(0);
+  };
+
   prompts.intro(pc.bold(`Welcome to Repomix ${isGlobal ? 'Global ' : ''}Configuration!`));
 
   try {
     // Step 1: Ask if user wants to create a config file
-    const isCreatedConfig = await createConfigFile(rootDir, isGlobal);
+    const isCreatedConfig = await createConfigFile(rootDir, isGlobal, prompts, onCancel);
 
     // Step 2: Ask if user wants to create a .repomixignore file
-    const isCreatedIgnoreFile = await createIgnoreFile(rootDir, isGlobal);
+    const isCreatedIgnoreFile = await createIgnoreFile(rootDir, isGlobal, prompts, onCancel);
 
     if (!isCreatedConfig && !isCreatedIgnoreFile) {
       prompts.outro(
@@ -38,18 +49,31 @@ export const runInitAction = async (rootDir: string, isGlobal: boolean): Promise
   }
 };
 
-export const createConfigFile = async (rootDir: string, isGlobal: boolean): Promise<boolean> => {
+export const createConfigFile = async (
+  rootDir: string,
+  isGlobal: boolean,
+  prompts?: typeof import('@clack/prompts'),
+  onCancel?: () => void,
+): Promise<boolean> => {
+  const p = prompts ?? (await getPrompts());
+  const cancel =
+    onCancel ??
+    (() => {
+      p.cancel('Initialization cancelled.');
+      process.exit(0);
+    });
+
   const configPath = path.resolve(isGlobal ? getGlobalDirectory() : rootDir, 'repomix.config.json');
 
-  const isCreateConfig = await prompts.confirm({
+  const isCreateConfig = await p.confirm({
     message: `Do you want to create a ${isGlobal ? 'global ' : ''}${pc.green('repomix.config.json')} file?`,
   });
   if (!isCreateConfig) {
-    prompts.log.info(`Skipping ${pc.green('repomix.config.json')} file creation.`);
+    p.log.info(`Skipping ${pc.green('repomix.config.json')} file creation.`);
     return false;
   }
-  if (prompts.isCancel(isCreateConfig)) {
-    onCancelOperation();
+  if (p.isCancel(isCreateConfig)) {
+    cancel();
     return false;
   }
 
@@ -62,23 +86,23 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
   }
 
   if (isConfigFileExists) {
-    const isOverwrite = await prompts.confirm({
+    const isOverwrite = await p.confirm({
       message: `A ${isGlobal ? 'global ' : ''}${pc.green('repomix.config.json')} file already exists. Do you want to overwrite it?`,
     });
     if (!isOverwrite) {
-      prompts.log.info(`Skipping ${pc.green('repomix.config.json')} file creation.`);
+      p.log.info(`Skipping ${pc.green('repomix.config.json')} file creation.`);
       return false;
     }
-    if (prompts.isCancel(isOverwrite)) {
-      onCancelOperation();
+    if (p.isCancel(isOverwrite)) {
+      cancel();
       return false;
     }
   }
 
-  const options = await prompts.group(
+  const options = await p.group(
     {
       outputStyle: () => {
-        return prompts.select({
+        return p.select({
           message: 'Output style:',
           options: [
             { value: 'xml', label: 'XML', hint: 'Structured XML format' },
@@ -91,7 +115,7 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
       },
       outputFilePath: ({ results }) => {
         const defaultFilePath = defaultFilePathMap[results.outputStyle as RepomixOutputStyle];
-        return prompts.text({
+        return p.text({
           message: 'Output file path:',
           initialValue: defaultFilePath,
           validate: (value) => (value.length === 0 ? 'Output file path is required' : undefined),
@@ -99,7 +123,7 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
       },
     },
     {
-      onCancel: onCancelOperation,
+      onCancel: cancel,
     },
   );
 
@@ -118,29 +142,42 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
 
   const relativeConfigPath = path.relative(rootDir, configPath);
 
-  prompts.log.success(
+  p.log.success(
     pc.green(`${isGlobal ? 'Global config' : 'Config'} file created!\n`) + pc.dim(`Path: ${relativeConfigPath}`),
   );
 
   return true;
 };
 
-export const createIgnoreFile = async (rootDir: string, isGlobal: boolean): Promise<boolean> => {
+export const createIgnoreFile = async (
+  rootDir: string,
+  isGlobal: boolean,
+  prompts?: typeof import('@clack/prompts'),
+  onCancel?: () => void,
+): Promise<boolean> => {
+  const p = prompts ?? (await getPrompts());
+  const cancel =
+    onCancel ??
+    (() => {
+      p.cancel('Initialization cancelled.');
+      process.exit(0);
+    });
+
   if (isGlobal) {
-    prompts.log.info(`Skipping ${pc.green('.repomixignore')} file creation for global configuration.`);
+    p.log.info(`Skipping ${pc.green('.repomixignore')} file creation for global configuration.`);
     return false;
   }
 
   const ignorePath = path.resolve(rootDir, '.repomixignore');
-  const createIgnore = await prompts.confirm({
+  const createIgnore = await p.confirm({
     message: `Do you want to create a ${pc.green('.repomixignore')} file?`,
   });
   if (!createIgnore) {
-    prompts.log.info(`Skipping ${pc.green('.repomixignore')} file creation.`);
+    p.log.info(`Skipping ${pc.green('.repomixignore')} file creation.`);
     return false;
   }
-  if (prompts.isCancel(createIgnore)) {
-    onCancelOperation();
+  if (p.isCancel(createIgnore)) {
+    cancel();
     return false;
   }
 
@@ -153,12 +190,12 @@ export const createIgnoreFile = async (rootDir: string, isGlobal: boolean): Prom
   }
 
   if (isIgnoreFileExists) {
-    const overwrite = await prompts.confirm({
+    const overwrite = await p.confirm({
       message: `A ${pc.green('.repomixignore')} file already exists. Do you want to overwrite it?`,
     });
 
     if (!overwrite) {
-      prompts.log.info(`${pc.green('.repomixignore')} file creation skipped. Existing file will not be modified.`);
+      p.log.info(`${pc.green('.repomixignore')} file creation skipped. Existing file will not be modified.`);
       return false;
     }
   }
@@ -170,9 +207,7 @@ export const createIgnoreFile = async (rootDir: string, isGlobal: boolean): Prom
 `;
 
   await fs.writeFile(ignorePath, defaultIgnoreContent);
-  prompts.log.success(
-    pc.green('Created .repomixignore file!\n') + pc.dim(`Path: ${path.relative(rootDir, ignorePath)}`),
-  );
+  p.log.success(pc.green('Created .repomixignore file!\n') + pc.dim(`Path: ${path.relative(rootDir, ignorePath)}`));
 
   return true;
 };

@@ -58,8 +58,13 @@ const calculateTokenSums = (node: TreeNode): number => {
   }
 
   // Add tokens from subdirectories
-  for (const [key, value] of Object.entries(node)) {
-    if (key.startsWith('_') || !value || typeof value !== 'object' || Array.isArray(value)) {
+  // Use for...in instead of Object.entries() to avoid allocating a [key, value] tuple array
+  // on every recursive call. For a tree with 1000+ files across multiple directory levels,
+  // this eliminates thousands of intermediate array allocations.
+  for (const key in node) {
+    if (key.startsWith('_')) continue;
+    const value = node[key];
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
       continue;
     }
     totalTokens += calculateTokenSums(value as TreeNode);

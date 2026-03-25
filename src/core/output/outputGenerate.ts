@@ -379,9 +379,15 @@ export const buildOutputGeneratorContext = async (
       // to share prepareIgnoreContext (avoids duplicate .git/info/exclude reads + worktree checks).
       const resultsByRoot = await Promise.all(rootDirs.map((rootDir) => deps.listDirectoriesAndFiles(rootDir, config)));
 
-      // Merge, deduplicate, and sort for deterministic output
-      const allDirectories = Array.from(new Set(resultsByRoot.flatMap((r) => r.directories))).sort();
-      const allRepoFiles = Array.from(new Set(resultsByRoot.flatMap((r) => r.files)));
+      // Merge and deduplicate without intermediate flatMap arrays
+      const dirSet = new Set<string>();
+      const fileSet = new Set<string>();
+      for (const result of resultsByRoot) {
+        for (const dir of result.directories) dirSet.add(dir);
+        for (const file of result.files) fileSet.add(file);
+      }
+      const allDirectories = Array.from(dirSet).sort();
+      const allRepoFiles = Array.from(fileSet);
 
       // Merge in any files that weren't part of the included files so they appear in the tree
       const includedSet = new Set(allFilePaths);

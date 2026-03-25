@@ -1,5 +1,4 @@
 import * as path from 'node:path';
-import { Parser, Query } from 'web-tree-sitter';
 
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
@@ -7,10 +6,24 @@ import { getLanguageConfigByExtension, getLanguageConfigByName, type SupportedLa
 import { loadLanguage } from './loadLanguage.js';
 import type { ParseStrategy } from './parseStrategies/BaseParseStrategy.js';
 
+// Lazy-load web-tree-sitter (~50-80ms WASM runtime) — only needed when
+// --compress or --remove-comments is enabled. Avoids loading WASM on every
+// import of repomix's public API (index.ts re-exports parseFile).
+let _Parser: typeof import('web-tree-sitter').Parser | undefined;
+let _Query: typeof import('web-tree-sitter').Query | undefined;
+const getTreeSitter = async () => {
+  if (!_Parser) {
+    const mod = await import('web-tree-sitter');
+    _Parser = mod.Parser;
+    _Query = mod.Query;
+  }
+  return { Parser: _Parser!, Query: _Query! };
+};
+
 interface LanguageResources {
   lang: SupportedLang;
-  parser: Parser;
-  query: Query;
+  parser: InstanceType<typeof import('web-tree-sitter').Parser>;
+  query: InstanceType<typeof import('web-tree-sitter').Query>;
   strategy: ParseStrategy;
 }
 
@@ -29,6 +42,7 @@ export class LanguageParser {
         throw new RepomixError(`Language configuration not found for: ${name}`);
       }
 
+      const { Parser, Query } = await getTreeSitter();
       const lang = await loadLanguage(name);
       const parser = new Parser();
       parser.setLanguage(lang);
@@ -67,12 +81,12 @@ export class LanguageParser {
     return resources;
   }
 
-  public async getParserForLang(name: SupportedLang): Promise<Parser> {
+  public async getParserForLang(name: SupportedLang): Promise<InstanceType<typeof import('web-tree-sitter').Parser>> {
     const resources = await this.getResources(name);
     return resources.parser;
   }
 
-  public async getQueryForLang(name: SupportedLang): Promise<Query> {
+  public async getQueryForLang(name: SupportedLang): Promise<InstanceType<typeof import('web-tree-sitter').Query>> {
     const resources = await this.getResources(name);
     return resources.query;
   }
@@ -97,6 +111,7 @@ export class LanguageParser {
     }
 
     try {
+      const { Parser } = await getTreeSitter();
       await Parser.init();
       this.initialized = true;
     } catch (error) {
