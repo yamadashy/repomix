@@ -5,7 +5,7 @@ import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
 
 // Initialize logger configuration from workerData at module load time
 // This must be called before any logging operations in the worker
-setLogLevelByWorkerData();
+await setLogLevelByWorkerData();
 
 // Security check type to distinguish between regular files, git diffs, and git logs
 export type SecurityCheckType = 'file' | 'gitDiff' | 'gitLog';

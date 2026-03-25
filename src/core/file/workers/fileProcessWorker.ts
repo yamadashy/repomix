@@ -6,7 +6,7 @@ import type { ProcessedFile, RawFile } from '../fileTypes.js';
 
 // Initialize logger configuration from workerData at module load time
 // This must be called before any logging operations in the worker
-setLogLevelByWorkerData();
+await setLogLevelByWorkerData();
 
 export interface FileProcessTask {
   rawFile: RawFile;

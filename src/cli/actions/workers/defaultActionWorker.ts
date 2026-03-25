@@ -7,7 +7,7 @@ import type { CliOptions } from '../../types.js';
 
 // Initialize logger configuration from workerData at module load time
 // This must be called before any logging operations in the worker
-setLogLevelByWorkerData();
+await setLogLevelByWorkerData();
 
 export interface DefaultActionTask {
   directories: string[];

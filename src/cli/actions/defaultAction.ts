@@ -6,13 +6,11 @@ import type {
   RepomixOutputStyle,
 } from '../../config/configDefaults.js';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
-import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import type { PackResult } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
 import { reportResults } from '../cliReport.js';
 import type { CliOptions } from '../types.js';
 // migrationAction is lazy-loaded below to avoid eagerly importing @clack/prompts (~16ms)
@@ -47,12 +45,17 @@ export const runDefaultAction = async (
 
   // Start child process worker early so module loading (~200ms) overlaps
   // with config loading (~30-50ms). Only when the spinner is needed.
-  const taskRunner = needsChildProcess
-    ? initTaskRunner<DefaultActionTask | PingTask, DefaultActionWorkerResult | PingResult>({
-        numOfTasks: 1,
-        workerType: 'defaultAction',
-        runtime: 'child_process',
-      })
+  // Lazy-load processConcurrency (tinypool, ~30ms) to avoid loading it in stdout/non-TTY
+  // mode where no child process is needed. The dynamic import runs in the background,
+  // so the child process still starts early enough to overlap with config loading.
+  const taskRunnerPromise = needsChildProcess
+    ? import('../../shared/processConcurrency.js').then(({ initTaskRunner }) =>
+        initTaskRunner<DefaultActionTask | PingTask, DefaultActionWorkerResult | PingResult>({
+          numOfTasks: 1,
+          workerType: 'defaultAction',
+          runtime: 'child_process',
+        }),
+      )
     : undefined;
 
   // For direct execution, start importing packager module tree in the background
@@ -126,12 +129,18 @@ export const runDefaultAction = async (
         );
       }
 
+      const { readFilePathsFromStdin } = await import('../../core/file/fileStdin.js');
       const stdinResult = await readFilePathsFromStdin(cwd);
       stdinFilePaths = stdinResult.filePaths;
       logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
     }
 
     let packResult: PackResult;
+
+    // Await the task runner promise (resolves to TaskRunner when child process is needed,
+    // undefined otherwise). The child process has been loading modules in the background
+    // since the promise was created above.
+    const taskRunner = taskRunnerPromise ? await taskRunnerPromise : undefined;
 
     if (taskRunner) {
       // Child process path: run pack() in a child process with spinner
@@ -169,6 +178,7 @@ export const runDefaultAction = async (
     };
   } finally {
     // Always cleanup worker pool (if created)
+    const taskRunner = taskRunnerPromise ? await taskRunnerPromise.catch(() => undefined) : undefined;
     if (taskRunner) {
       await taskRunner.cleanup();
     }

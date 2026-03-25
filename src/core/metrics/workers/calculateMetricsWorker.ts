@@ -16,7 +16,7 @@ import type { FileMetrics } from './types.js';
  */
 
 // Initialize logger configuration from workerData at module load time
-setLogLevelByWorkerData();
+await setLogLevelByWorkerData();
 
 export interface TokenCountTask {
   content: string;
