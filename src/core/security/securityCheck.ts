@@ -52,39 +52,20 @@ const getInitTaskRunner = async (): Promise<typeof InitTaskRunnerType> => {
  * For typical source repos, this skips 80-99% of files from the expensive
  * IPC + regex matching in worker threads.
  */
+// Single compiled regex combining all secret trigger patterns.
+// V8's irregexp engine compiles alternation into an automaton that scans the string once,
+// replacing 27 separate .includes() calls (each scanning the full string) with a single pass.
+// For files without secrets (95-99% of files), this reduces total bytes scanned from
+// ~27× content length to ~1× content length.
+const SECRET_TRIGGER_PATTERN =
+  /AKIA|-----BEGIN|xoxb-|xoxp-|xoxa-|ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|npm_|SG\.|shpat_|shpca_|shppa_|shpss_|shpit_|lin_api_|sk-ant-|sk-proj-|mongodb\+srv:\/\/|postgres:\/\/|mysql:\/\/|redis:\/\/|amqp:\/\/|service_account|authorized_user/;
+
 export const contentMayContainSecret = (content: string): boolean => {
   // Short-circuit: files under 8 bytes can't contain any meaningful secret pattern
   if (content.length < 8) return false;
 
   return (
-    content.includes('AKIA') ||
-    content.includes('-----BEGIN') ||
-    content.includes('xoxb-') ||
-    content.includes('xoxp-') ||
-    content.includes('xoxa-') ||
-    content.includes('ghp_') ||
-    content.includes('gho_') ||
-    content.includes('ghu_') ||
-    content.includes('ghs_') ||
-    content.includes('ghr_') ||
-    content.includes('github_pat_') ||
-    content.includes('npm_') ||
-    content.includes('SG.') ||
-    content.includes('shpat_') ||
-    content.includes('shpca_') ||
-    content.includes('shppa_') ||
-    content.includes('shpss_') ||
-    content.includes('shpit_') ||
-    content.includes('lin_api_') ||
-    content.includes('sk-ant-') ||
-    content.includes('sk-proj-') ||
-    content.includes('mongodb+srv://') ||
-    content.includes('postgres://') ||
-    content.includes('mysql://') ||
-    content.includes('redis://') ||
-    content.includes('amqp://') ||
-    content.includes('service_account') ||
-    content.includes('authorized_user') ||
+    SECRET_TRIGGER_PATTERN.test(content) ||
     // BasicAuth: requires both a URL scheme and @ in the same content
     (content.includes('://') && content.includes('@'))
   );

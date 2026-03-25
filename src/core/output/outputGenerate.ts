@@ -399,8 +399,10 @@ export const buildOutputGeneratorContext = async (
   } else if (config.output.directoryStructure && config.output.includeEmptyDirectories) {
     // Use pre-computed emptyDirPaths from the initial searchFiles call if available,
     // avoiding a redundant full filesystem scan just to get empty directory paths.
-    if (emptyDirPaths && emptyDirPaths.length > 0) {
-      directoryPathsForTree = [...new Set(emptyDirPaths)].sort();
+    // Check for !== undefined (not length > 0) so that an empty array from the packager
+    // correctly indicates "no empty dirs" without triggering a redundant searchFiles call.
+    if (emptyDirPaths !== undefined) {
+      directoryPathsForTree = emptyDirPaths.length > 0 ? [...new Set(emptyDirPaths)].sort() : [];
     } else {
       try {
         const results = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));

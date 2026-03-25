@@ -165,19 +165,48 @@ export const generateSplitOutputParts = async ({
   let currentContent = '';
   let currentBytes = 0;
 
-  // Note: This algorithm has O(N²) complexity where N is the number of groups.
-  // For each group, we render all accumulated groups to measure the exact output size.
-  // This approach is intentional because:
-  // 1. The final output size cannot be predicted by simple addition - the output includes
-  //    a file tree structure and template formatting (XML/Markdown) that vary non-linearly.
-  // 2. Headers, footers, and file tree size change based on the combination of groups.
-  // 3. For typical repositories with ~10-20 top-level directories, this is acceptable.
-  // If performance becomes an issue, consider caching individual group content sizes
-  // and estimating combined sizes with a safety margin.
-  for (const group of groups) {
+  // Pre-compute each group's file content byte size in a single pass.
+  // Used for fast size estimation to skip expensive full renders.
+  const groupContentBytes = groups.map((g) =>
+    g.processedFiles.reduce((sum, f) => sum + getUtf8ByteLength(f.content), 0),
+  );
+
+  // Optimized split algorithm: measures the "overhead" (headers, tree, formatting)
+  // from the first full render, then uses overhead + accumulated content bytes as
+  // a fast estimate for subsequent groups. Full renders are only performed when
+  // the estimate approaches the boundary (within 80% of the limit), reducing
+  // total renders from O(N²) to ~O(N) for typical repositories.
+  //
+  // The overhead grows sub-linearly with group count (tree structure adds a few bytes
+  // per file), so we apply a 1.5x safety multiplier on the content portion to account
+  // for tree growth, path entries in file summary, and template formatting.
+  let measuredOverhead = 0;
+  let overheadMeasured = false;
+  let accumulatedContentBytes = 0;
+  let needsRender = false;
+  const CONTENT_INFLATION = 1.5;
+  const ESTIMATE_THRESHOLD = 0.8;
+
+  for (let i = 0; i < groups.length; i++) {
+    const group = groups[i];
     const partIndex = parts.length + 1;
-    const nextGroups = [...currentGroups, group];
+    const groupBytes = groupContentBytes[i];
     progressCallback(`Generating output... (part ${partIndex}) ${pc.dim(`evaluating ${group.rootEntry}`)}`);
+
+    // Fast path: if we've measured overhead and the estimate is clearly under the limit,
+    // skip the expensive full render. We never finalize a part without a full render.
+    if (overheadMeasured) {
+      const estimatedBytes = measuredOverhead + (accumulatedContentBytes + groupBytes) * CONTENT_INFLATION;
+      if (estimatedBytes < maxBytesPerPart * ESTIMATE_THRESHOLD) {
+        currentGroups.push(group);
+        accumulatedContentBytes += groupBytes;
+        needsRender = true;
+        continue;
+      }
+    }
+
+    // Near the boundary (or first iteration): do a full render for accuracy
+    const nextGroups = [...currentGroups, group];
     const nextContent = await renderGroups(
       nextGroups,
       partIndex,
@@ -191,13 +220,23 @@ export const generateSplitOutputParts = async ({
     );
     const nextBytes = getUtf8ByteLength(nextContent);
 
+    // Calibrate overhead from the first render in each part
+    if (!overheadMeasured) {
+      const totalContentBytes = accumulatedContentBytes + groupBytes;
+      measuredOverhead = nextBytes - totalContentBytes;
+      overheadMeasured = true;
+    }
+
     if (nextBytes <= maxBytesPerPart) {
       currentGroups = nextGroups;
       currentContent = nextContent;
       currentBytes = nextBytes;
+      accumulatedContentBytes += groupBytes;
+      needsRender = false;
       continue;
     }
 
+    // Over the limit. Finalize the current part.
     if (currentGroups.length === 0) {
       throw new RepomixError(
         `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
@@ -205,7 +244,23 @@ export const generateSplitOutputParts = async ({
       );
     }
 
-    // Finalize current part and start a new one with the current group.
+    // If we skipped renders, we need to render the current groups (without the new group)
+    // to get the actual content for the finalized part.
+    if (needsRender) {
+      currentContent = await renderGroups(
+        currentGroups,
+        partIndex,
+        rootDirs,
+        baseConfig,
+        gitDiffResult,
+        gitLogResult,
+        filePathsByRoot,
+        emptyDirPaths,
+        deps.generateOutput,
+      );
+      currentBytes = getUtf8ByteLength(currentContent);
+    }
+
     parts.push({
       index: partIndex,
       filePath: buildSplitOutputFilePath(baseConfig.output.filePath, partIndex),
@@ -238,10 +293,32 @@ export const generateSplitOutputParts = async ({
     currentGroups = [group];
     currentContent = singleGroupContent;
     currentBytes = singleGroupBytes;
+    // Reset overhead measurement for new part (different part index = different overhead)
+    accumulatedContentBytes = groupBytes;
+    measuredOverhead = singleGroupBytes - groupBytes;
+    needsRender = false;
   }
 
+  // Finalize the last part
   if (currentGroups.length > 0) {
     const finalIndex = parts.length + 1;
+
+    // If we skipped renders for the last batch, render now to get actual content
+    if (needsRender) {
+      currentContent = await renderGroups(
+        currentGroups,
+        finalIndex,
+        rootDirs,
+        baseConfig,
+        gitDiffResult,
+        gitLogResult,
+        filePathsByRoot,
+        emptyDirPaths,
+        deps.generateOutput,
+      );
+      currentBytes = getUtf8ByteLength(currentContent);
+    }
+
     parts.push({
       index: finalIndex,
       filePath: buildSplitOutputFilePath(baseConfig.output.filePath, finalIndex),
