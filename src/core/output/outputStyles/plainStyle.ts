@@ -60,18 +60,11 @@ ${ctx.treeString}
   }
 
   if (ctx.filesEnabled) {
-    parts.push(`${PLAIN_LONG_SEPARATOR}
-Files
-${PLAIN_LONG_SEPARATOR}
-
-`);
+    parts.push(PLAIN_LONG_SEPARATOR, '\nFiles\n', PLAIN_LONG_SEPARATOR, '\n\n');
+    // Push individual fragments instead of template literals to avoid creating
+    // intermediate strings containing the full file content per file.
     for (const file of ctx.processedFiles) {
-      parts.push(`${PLAIN_SEPARATOR}
-File: ${file.path}
-${PLAIN_SEPARATOR}
-${file.content}
-
-`);
+      parts.push(PLAIN_SEPARATOR, '\nFile: ', file.path, '\n', PLAIN_SEPARATOR, '\n', file.content, '\n\n');
     }
   }
 

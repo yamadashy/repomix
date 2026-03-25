@@ -52,16 +52,12 @@ ${ctx.treeString}
   }
 
   if (ctx.filesEnabled) {
-    parts.push(`<files>
-This section contains the contents of the repository's files.
-
-`);
+    parts.push("<files>\nThis section contains the contents of the repository's files.\n\n");
+    // Push individual fragments instead of template literals to avoid creating
+    // intermediate strings containing the full file content. For 1000 files with
+    // 3-5MB total, this eliminates ~3-5MB of transient string allocations.
     for (const file of ctx.processedFiles) {
-      parts.push(`<file path="${file.path}">
-${file.content}
-</file>
-
-`);
+      parts.push('<file path="', file.path, '">\n', file.content, '\n</file>\n\n');
     }
     parts.push('</files>');
   }

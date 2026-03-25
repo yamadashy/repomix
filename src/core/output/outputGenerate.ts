@@ -16,6 +16,7 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
+
 import { renderMarkdown } from './outputStyles/markdownStyle.js';
 import { renderPlain } from './outputStyles/plainStyle.js';
 import { renderXml } from './outputStyles/xmlStyle.js';

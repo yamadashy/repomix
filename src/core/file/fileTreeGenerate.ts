@@ -2,6 +2,7 @@ import nodepath from 'node:path';
 
 export interface TreeNode {
   name: string;
+  nameLower: string;
   children: TreeNode[];
   isDirectory: boolean;
 }
@@ -9,7 +10,12 @@ export interface TreeNode {
 // WeakMap for O(1) child lookups during tree construction, avoiding O(n) linear scans
 const childLookupCache = new WeakMap<TreeNode, Map<string, TreeNode>>();
 
-const createTreeNode = (name: string, isDirectory: boolean): TreeNode => ({ name, children: [], isDirectory });
+const createTreeNode = (name: string, isDirectory: boolean): TreeNode => ({
+  name,
+  nameLower: name.toLowerCase(),
+  children: [],
+  isDirectory,
+});
 
 const getOrCreateChildMap = (node: TreeNode): Map<string, TreeNode> => {
   let map = childLookupCache.get(node);
@@ -59,12 +65,13 @@ const addPathToTree = (root: TreeNode, path: string, isDirectory: boolean): void
   }
 };
 
+// Pre-computed nameLower on TreeNode eliminates O(n log n) toLowerCase() calls
+// during sort. For a tree with 1500 nodes, sort does ~15,000 comparisons,
+// each previously calling toLowerCase() twice — now uses cached values.
 const sortTreeNodes = (node: TreeNode) => {
   node.children.sort((a, b) => {
     if (a.isDirectory === b.isDirectory) {
-      const aLower = a.name.toLowerCase();
-      const bLower = b.name.toLowerCase();
-      return aLower < bLower ? -1 : aLower > bLower ? 1 : 0;
+      return a.nameLower < b.nameLower ? -1 : a.nameLower > b.nameLower ? 1 : 0;
     }
     return a.isDirectory ? -1 : 1;
   });

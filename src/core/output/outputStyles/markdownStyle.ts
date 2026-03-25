@@ -47,14 +47,22 @@ ${ctx.treeString}
 
   if (ctx.filesEnabled) {
     parts.push('# Files\n\n');
+    // Push individual fragments instead of template literals to avoid creating
+    // intermediate strings containing the full file content per file.
     for (const file of ctx.processedFiles) {
       const lang = getLanguageFromFilePath(file.path);
-      parts.push(`## File: ${file.path}
-${ctx.markdownCodeBlockDelimiter}${lang}
-${file.content}
-${ctx.markdownCodeBlockDelimiter}
-
-`);
+      parts.push(
+        '## File: ',
+        file.path,
+        '\n',
+        ctx.markdownCodeBlockDelimiter,
+        lang,
+        '\n',
+        file.content,
+        '\n',
+        ctx.markdownCodeBlockDelimiter,
+        '\n\n',
+      );
     }
   }
 
