@@ -131,13 +131,18 @@ export const pack = async (
     Promise.all(
       rootDirs.map(async (rootDir) => {
         const result = await deps.searchFiles(rootDir, config, explicitFiles);
-        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+        return { rootDir, filePaths: result.filePaths, pendingEmptyDirPaths: result.pendingEmptyDirPaths };
       }),
     ),
   );
 
-  // Collect emptyDirPaths from initial search to avoid redundant filesystem scans later
-  const emptyDirPaths = searchResultsByDir.flatMap(({ emptyDirPaths }) => emptyDirPaths);
+  // Collect deferred empty dir promises — these run in the background during collectFiles,
+  // overlapping the ~130ms globby directory scan with the ~300ms file collection phase.
+  // On the git-ls-files fast path, filePaths resolve in ~5ms, so collectFiles starts ~125ms
+  // sooner than before (when searchFiles blocked on both file search + empty dir detection).
+  const emptyDirPathsPromise = Promise.all(
+    searchResultsByDir.map((r) => r.pendingEmptyDirPaths).filter((p): p is Promise<string[]> => p !== undefined),
+  ).then((results) => results.flat());
   const filePathsByDir = searchResultsByDir.map(({ rootDir, filePaths }) => ({ rootDir, filePaths }));
 
   // Sort file paths
@@ -277,6 +282,10 @@ export const pack = async (
   }
 
   progressCallback('Generating output...');
+
+  // Await deferred empty dir paths — by now they've been computing in the background
+  // during collectFiles + security check, so this resolves instantly (or near-instantly).
+  const emptyDirPaths = await emptyDirPathsPromise;
 
   // Check if skill generation is requested
   if (config.skillGenerate !== undefined && options.skillDir) {

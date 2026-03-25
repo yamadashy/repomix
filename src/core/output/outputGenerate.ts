@@ -403,7 +403,11 @@ export const buildOutputGeneratorContext = async (
     } else {
       try {
         const results = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
-        const merged = results.flatMap((r) => r.emptyDirPaths);
+        // Await deferred empty dir promises if available, otherwise use synchronous values
+        const emptyDirResults = await Promise.all(
+          results.map((r) => r.pendingEmptyDirPaths ?? Promise.resolve(r.emptyDirPaths)),
+        );
+        const merged = emptyDirResults.flat();
         directoryPathsForTree = [...new Set(merged)].sort();
       } catch (error) {
         throw new RepomixError(

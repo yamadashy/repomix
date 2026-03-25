@@ -36,6 +36,13 @@ const getPicomatch = async () => {
 export interface FileSearchResult {
   filePaths: string[];
   emptyDirPaths: string[];
+  /**
+   * Deferred promise for empty directory paths when includeEmptyDirectories is enabled.
+   * When set, emptyDirPaths is [] — the caller should await this promise instead.
+   * This allows the caller to start file collection immediately after getting filePaths,
+   * overlapping the ~130ms globby directory scan with the ~300ms collectFiles phase.
+   */
+  pendingEmptyDirPaths?: Promise<string[]>;
 }
 
 // Lazy-load minimatch — only used for empty directory filtering (non-default feature).
@@ -362,8 +369,10 @@ export const searchFiles = async (
             }),
           );
 
-    // Run file search and empty directory search in parallel when both are needed
-    let emptyDirPaths: string[] = [];
+    // Start empty directory search as a deferred promise instead of blocking filePaths.
+    // On the git-ls-files fast path, fileSearchPromise resolves in ~5ms, but the empty dir
+    // globby scan takes ~130ms (globby load + directory walk). By deferring it, the caller
+    // can start collectFiles (~300ms) immediately, overlapping the empty dir detection.
     const emptyDirPromise = config.output.includeEmptyDirectories
       ? (async () => {
           logger.debug('[empty dirs] Searching for empty directories...');
@@ -384,20 +393,19 @@ export const searchFiles = async (
           logger.debug(`[empty dirs] Filtered to ${result.length} empty directories in ${filterTime}ms`);
           return result;
         })()
-      : Promise.resolve([]);
+      : undefined;
 
-    const [filePaths, resolvedEmptyDirPaths] = await Promise.all([fileSearchPromise, emptyDirPromise]);
-    emptyDirPaths = resolvedEmptyDirPaths;
+    const filePaths = await fileSearchPromise;
 
     const searchElapsedTime = Date.now() - searchStartTime;
     logger.debug(`[search] Completed in ${searchElapsedTime}ms, found ${filePaths.length} files`);
 
-    logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
     logger.trace(`Filtered ${filePaths.length} files`);
 
     return {
       filePaths: sortPaths(filePaths),
-      emptyDirPaths: sortPaths(emptyDirPaths),
+      emptyDirPaths: [],
+      pendingEmptyDirPaths: emptyDirPromise?.then((paths) => sortPaths(paths)),
     };
   } catch (error: unknown) {
     // Re-throw PermissionError as is
