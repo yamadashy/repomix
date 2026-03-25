@@ -191,7 +191,10 @@ describe('defaultActionWorker', () => {
         {},
       );
       expect(result).toEqual({
-        packResult: mockPackResult,
+        packResult: {
+          ...mockPackResult,
+          processedFiles: mockPackResult.processedFiles.map((f) => ({ ...f, content: '' })),
+        },
         config: mockConfig,
       });
     });
@@ -217,7 +220,10 @@ describe('defaultActionWorker', () => {
         {},
       );
       expect(result).toEqual({
-        packResult: mockPackResult,
+        packResult: {
+          ...mockPackResult,
+          processedFiles: mockPackResult.processedFiles.map((f) => ({ ...f, content: '' })),
+        },
         config: mockConfig,
       });
     });
@@ -261,7 +267,10 @@ describe('defaultActionWorker', () => {
         {},
       );
       expect(result).toEqual({
-        packResult: mockPackResult,
+        packResult: {
+          ...mockPackResult,
+          processedFiles: mockPackResult.processedFiles.map((f) => ({ ...f, content: '' })),
+        },
         config: mockConfig,
       });
     });

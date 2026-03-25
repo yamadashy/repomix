@@ -103,8 +103,14 @@ async function defaultActionWorker(
 
     spinner.succeed('Packing completed successfully!');
 
+    // Strip file content from IPC response to reduce structured clone overhead.
+    // The main process only uses processedFiles[].path (for token count tree),
+    // not the content (~4MB savings for typical repos).
     return {
-      packResult,
+      packResult: {
+        ...packResult,
+        processedFiles: packResult.processedFiles.map((file) => ({ ...file, content: '' })),
+      },
       config,
     };
   } catch (error) {
