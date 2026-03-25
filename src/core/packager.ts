@@ -35,6 +35,20 @@ export interface PackResult {
   skippedFiles: SkippedFileInfo[];
 }
 
+// Module-level worker pool caches for reuse across pack() calls.
+// First call pays the full warmup cost (225ms metrics BPE load, 108ms security @secretlint/core).
+// Subsequent calls in the same process (MCP server, website server) skip warmup entirely,
+// saving ~330ms per call. For CLI single-run, the process exits and threads are cleaned up.
+let _cachedMetricsPool:
+  | {
+      run: (task: unknown) => Promise<unknown>;
+      cleanup: () => Promise<void>;
+      encoding: string;
+      warmupDone: Promise<unknown>;
+    }
+  | undefined;
+let _cachedSecurityPool: SecurityTaskRunner | undefined;
+
 const defaultDeps = {
   searchFiles,
   collectFiles,
@@ -49,12 +63,14 @@ const defaultDeps = {
   prefetchFileChangeCounts,
   getGitDiffs,
   getGitLogs,
-  // Pre-warm security worker pool — lazily imports tinypool and creates the pool
-  // so workers start loading @secretlint/core while file collection runs.
-  // preWarm: true spawns all threads immediately (minThreads = maxThreads),
-  // ensuring every thread has time to load @secretlint/core (~150ms) during
-  // collectFiles (~180ms), rather than spawning threads on-demand when batches arrive.
+  // Get or create security worker pool. Caches the pool across pack() calls so
+  // subsequent calls skip the ~108ms @secretlint/core loading in the worker thread.
+  // preWarm: true spawns all threads immediately (minThreads = maxThreads).
+  // Returns a wrapper with no-op cleanup to prevent callers from destroying the cached pool.
   createSecurityWorkerPool: async (numOfTasks: number): Promise<SecurityTaskRunner | undefined> => {
+    if (_cachedSecurityPool) {
+      return { run: _cachedSecurityPool.run, cleanup: async () => {} };
+    }
     const { createWorkerPool, cleanupWorkerPool } = await import('../shared/processConcurrency.js');
     const pool = createWorkerPool({
       numOfTasks,
@@ -62,29 +78,48 @@ const defaultDeps = {
       runtime: 'worker_threads',
       preWarm: true,
     });
-    return {
+    _cachedSecurityPool = {
       run: (task) => pool.run(task) as Promise<(SuspiciousFileResult | null)[]>,
       cleanup: () => cleanupWorkerPool(pool),
     };
+    return { run: _cachedSecurityPool.run, cleanup: async () => {} };
   },
-  // Pre-warm metrics worker — spawns a worker thread that loads gpt-tokenizer (~288ms)
-  // in the background. The BPE table initialization happens off the main thread,
-  // so it doesn't block the event loop during file search/collection.
+  // Get or create metrics worker pool. Caches the pool across pack() calls so
+  // subsequent calls skip the ~225ms gpt-tokenizer BPE table loading.
+  // Non-blocking warmup: the warmup task fires in the background and the factory
+  // returns immediately. The pool's run() function awaits warmup internally,
+  // so the first real task waits for BPE loading but the factory doesn't block.
+  // Returns a wrapper with no-op cleanup to prevent callers from destroying the cached pool.
   createMetricsWorkerPool: async (
     encoding: string,
   ): Promise<{ run: (task: unknown) => Promise<unknown>; cleanup: () => Promise<void> }> => {
+    if (_cachedMetricsPool?.encoding === encoding) {
+      await _cachedMetricsPool.warmupDone;
+      return { run: _cachedMetricsPool.run, cleanup: async () => {} };
+    }
+    // Destroy old pool if encoding changed
+    _cachedMetricsPool?.cleanup().catch(() => {});
+    _cachedMetricsPool = undefined;
+
     const { createWorkerPool, cleanupWorkerPool } = await import('../shared/processConcurrency.js');
     const pool = createWorkerPool({
       numOfTasks: 1,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
     });
-    // Warmup: trigger gpt-tokenizer BPE table loading in the worker
-    await pool.run({ batch: true, files: [{ path: '', content: ' ' }], encoding });
-    return {
-      run: (task: unknown) => pool.run(task),
-      cleanup: () => cleanupWorkerPool(pool),
+    // Non-blocking warmup: trigger BPE table loading without awaiting
+    const warmupDone = pool.run({ batch: true, files: [{ path: '', content: ' ' }], encoding });
+    const run = async (task: unknown) => {
+      await warmupDone;
+      return pool.run(task);
     };
+    _cachedMetricsPool = {
+      run,
+      cleanup: () => cleanupWorkerPool(pool),
+      encoding,
+      warmupDone,
+    };
+    return { run, cleanup: async () => {} };
   },
   // Lazy-load packSkill — only needed when --skill-generate is used.
   // Avoids importing skill section generators and their transitive deps on every run.
@@ -132,11 +167,16 @@ export const pack = async (
   }
 
   // Pre-warm metrics worker — spawns a worker thread and loads gpt-tokenizer's BPE
-  // encoding table (~288ms) off the main thread. By starting here, the tokenizer
-  // initialization overlaps with searchFiles (~150ms) + collectFiles (~180ms).
-  // Without this, gpt-tokenizer loads on the main thread during selectiveMetrics,
-  // blocking the event loop and causing CPU contention with security workers.
+  // encoding table (~225ms) off the main thread. Non-blocking: the factory returns
+  // immediately, warmup runs in background. On cached calls (MCP server), resolves
+  // instantly with the pre-warmed pool.
   const metricsWorkerPromise = deps.createMetricsWorkerPool(config.tokenCount.encoding);
+
+  // Pre-warm security worker pool — starts @secretlint/core loading (~108ms) in a
+  // worker thread. Moved before searchFiles so warmup overlaps with BOTH search (~43ms)
+  // and collection (~44ms) phases instead of just collection. On cached calls, the pool
+  // is already warm and this resolves instantly.
+  const securityPoolPromise = config.security.enableSecurityCheck ? deps.createSecurityWorkerPool(1) : undefined;
 
   // Pre-warm binary detection modules (is-binary-path + isbinaryfile) during the
   // I/O-bound search phase so they're cached when collectFiles starts reading files.
@@ -207,15 +247,6 @@ export const pack = async (
   }));
 
   progressCallback('Collecting files and git info...');
-
-  // Pre-warm security worker pool with a SINGLE thread only.
-  // The contentMayContainSecret pre-filter (optimization #25) skips 95-99% of files,
-  // so only a handful of files (~5) typically need actual security checking.
-  // Previously we spawned up to N threads (N = CPU cores) all loading @secretlint/core,
-  // causing significant CPU contention with the main thread during collectFiles.
-  // A single pre-warmed thread is sufficient for the typical workload and reduces
-  // contention by (N-1) * ~150ms of unnecessary @secretlint/core loading.
-  const securityPoolPromise = config.security.enableSecurityCheck ? deps.createSecurityWorkerPool(1) : undefined;
 
   const collectResults = await withMemoryLogging(
     'Collect Files',
