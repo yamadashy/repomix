@@ -7,7 +7,7 @@ import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
-import type { ProcessedFile } from './file/fileTypes.js';
+import type { ProcessedFile, RawFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, getMetricsTargetPaths } from './metrics/calculateMetrics.js';
@@ -208,8 +208,13 @@ export const pack = async (
       ),
   );
 
-  const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
-  const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
+  // Single-pass extraction instead of two separate flatMap traversals
+  const rawFiles: RawFile[] = [];
+  const allSkippedFiles: SkippedFileInfo[] = [];
+  for (const curr of collectResults) {
+    for (const rf of curr.rawFiles) rawFiles.push(rf);
+    for (const sf of curr.skippedFiles) allSkippedFiles.push(sf);
+  }
 
   const [gitDiffResult, gitLogResult] = await gitPromise;
 

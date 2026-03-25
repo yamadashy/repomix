@@ -36,11 +36,18 @@ vi.mock('../../../src/cli/cliSpinner', () => ({
 vi.mock('../../../src/cli/cliReport');
 
 describe('defaultAction', () => {
+  let originalIsTTY: boolean | undefined;
+
   beforeEach(() => {
     vi.resetAllMocks();
 
     // Reset mockSpinner functions
     vi.clearAllMocks();
+
+    // Force child process path by simulating a TTY stderr
+    // (defaultAction skips child process when stderr is not a TTY)
+    originalIsTTY = process.stderr.isTTY;
+    Object.defineProperty(process.stderr, 'isTTY', { value: true, writable: true, configurable: true });
 
     // Ensure Spinner constructor returns mockSpinner
     vi.mocked(Spinner).mockImplementation(() => mockSpinner);
@@ -137,6 +144,8 @@ describe('defaultAction', () => {
 
   afterEach(() => {
     vi.resetAllMocks();
+    // Restore original isTTY value
+    Object.defineProperty(process.stderr, 'isTTY', { value: originalIsTTY, writable: true, configurable: true });
   });
 
   it('should run the default command successfully', async () => {
