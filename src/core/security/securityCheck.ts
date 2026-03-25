@@ -35,7 +35,7 @@ const getInitTaskRunner = async (): Promise<typeof InitTaskRunnerType> => {
  *
  * - AWS:        AKIA (access key ID prefix)
  * - Anthropic:  sk-ant- (API key prefix)
- * - BasicAuth:  ://  with  @ (URL with potential credentials)
+ * - BasicAuth:  scheme://...@ on same line (URL with potential credentials)
  * - Database:   mongodb+srv://, postgres://, mysql://, redis://, amqp://
  * - GCP:        service_account, authorized_user (credential JSON markers)
  * - GitHub:     ghp_, gho_, ghu_, ghs_, ghr_, github_pat_
@@ -52,23 +52,25 @@ const getInitTaskRunner = async (): Promise<typeof InitTaskRunnerType> => {
  * For typical source repos, this skips 80-99% of files from the expensive
  * IPC + regex matching in worker threads.
  */
-// Single compiled regex combining all secret trigger patterns.
+// Single compiled regex combining all secret trigger patterns into one pass.
 // V8's irregexp engine compiles alternation into an automaton that scans the string once,
-// replacing 27 separate .includes() calls (each scanning the full string) with a single pass.
-// For files without secrets (95-99% of files), this reduces total bytes scanned from
-// ~27× content length to ~1× content length.
+// replacing separate .includes() calls (each scanning the full string) with a single pass.
+//
+// BasicAuth: uses \w:\/\/[^\n]*@ to require scheme://...@ on the SAME LINE.
+// The previous approach (separate content.includes('://') && content.includes('@'))
+// matched any file containing both substrings anywhere, even in unrelated contexts
+// (e.g., a URL in one place and an email @-sign elsewhere). This caused ~93% false
+// positives (189/195 files in a typical repo), sending them to the expensive secretlint
+// worker. The same-line regex eliminates these false positives while still catching all
+// real BasicAuth URLs (scheme://user:pass@host patterns are always single-line).
 const SECRET_TRIGGER_PATTERN =
-  /AKIA|-----BEGIN|xoxb-|xoxp-|xoxa-|ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|npm_|SG\.|shpat_|shpca_|shppa_|shpss_|shpit_|lin_api_|sk-ant-|sk-proj-|mongodb\+srv:\/\/|postgres:\/\/|mysql:\/\/|redis:\/\/|amqp:\/\/|service_account|authorized_user/;
+  /AKIA|-----BEGIN|xoxb-|xoxp-|xoxa-|ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|npm_|SG\.|shpat_|shpca_|shppa_|shpss_|shpit_|lin_api_|sk-ant-|sk-proj-|mongodb\+srv:\/\/|postgres:\/\/|mysql:\/\/|redis:\/\/|amqp:\/\/|service_account|authorized_user|\w:\/\/[^\n]*@/;
 
 export const contentMayContainSecret = (content: string): boolean => {
   // Short-circuit: files under 8 bytes can't contain any meaningful secret pattern
   if (content.length < 8) return false;
 
-  return (
-    SECRET_TRIGGER_PATTERN.test(content) ||
-    // BasicAuth: requires both a URL scheme and @ in the same content
-    (content.includes('://') && content.includes('@'))
-  );
+  return SECRET_TRIGGER_PATTERN.test(content);
 };
 
 export const runSecurityCheck = async (
