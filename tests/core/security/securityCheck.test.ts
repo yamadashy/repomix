@@ -68,10 +68,10 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // With batching (batch size 20), 2 files fit in a single batch.
-    // Progress shows the last file in each batch.
+    // Pre-filter skips test2.js (no secret triggers), only test1.js is checked.
+    // With batching (batch size 20), 1 file fits in a single batch.
     expect(progressCallback).toHaveBeenCalledWith(
-      expect.stringContaining(`Running security check... (2/2) ${pc.dim('test2.js')}`),
+      expect.stringContaining(`Running security check... (1/1) ${pc.dim('test1.js')}`),
     );
   });
 
