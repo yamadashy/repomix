@@ -36,15 +36,24 @@ export const runDefaultAction = async (
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', cliOptions);
 
-  // Start worker pool early so the child process begins loading modules
-  // while the main process loads config, runs migration, and validates options.
-  // initTaskRunner only needs constant parameters (not config), so it can run first.
-  // The child process module loading (~200ms) then overlaps with config loading (~30-50ms).
-  const taskRunner = initTaskRunner<DefaultActionTask | PingTask, DefaultActionWorkerResult | PingResult>({
-    numOfTasks: 1,
-    workerType: 'defaultAction',
-    runtime: 'child_process',
-  });
+  // Determine if we need a child process for the spinner.
+  // In stdout/quiet mode, no spinner is displayed, so we can run pack() directly
+  // in the main process — avoiding child process spawn + module re-loading (~200ms).
+  const needsChildProcess = !cliOptions.stdout && !cliOptions.quiet;
+
+  // Start child process worker early so module loading (~200ms) overlaps
+  // with config loading (~30-50ms). Only when the spinner is needed.
+  const taskRunner = needsChildProcess
+    ? initTaskRunner<DefaultActionTask | PingTask, DefaultActionWorkerResult | PingResult>({
+        numOfTasks: 1,
+        workerType: 'defaultAction',
+        runtime: 'child_process',
+      })
+    : undefined;
+
+  // For direct execution, start importing packager module tree in the background
+  // while config loads. This overlaps ~100ms of module loading with config I/O.
+  const packagerPromise = !needsChildProcess ? import('../../core/packager.js') : undefined;
 
   try {
     // Run migration before loading config (lazy-load to avoid importing @clack/prompts on every run)
@@ -118,31 +127,47 @@ export const runDefaultAction = async (
       logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
     }
 
-    // Wait for worker to be ready (Bun compatibility)
-    await waitForWorkerReady(taskRunner);
+    let packResult: PackResult;
 
-    // Create task for worker (now with pre-loaded config and stdin file paths)
-    const task: DefaultActionTask = {
-      directories,
-      cwd,
-      config,
-      cliOptions,
-      stdinFilePaths,
-    };
+    if (taskRunner) {
+      // Child process path: run pack() in a child process with spinner
+      await waitForWorkerReady(taskRunner);
 
-    // Run the task in worker (spinner is handled inside worker)
-    const result = (await taskRunner.run(task)) as DefaultActionWorkerResult;
+      const task: DefaultActionTask = {
+        directories,
+        cwd,
+        config,
+        cliOptions,
+        stdinFilePaths,
+      };
+
+      const result = (await taskRunner.run(task)) as DefaultActionWorkerResult;
+      packResult = result.packResult;
+    } else {
+      // Direct execution path: run pack() in the main process.
+      // Skips child process spawn + module re-loading (~200ms) since no spinner is needed.
+      // packagerPromise is always defined when taskRunner is undefined (the else branch)
+      const packagerModule = await (packagerPromise as Promise<typeof import('../../core/packager.js')>);
+      const { pack } = packagerModule;
+      const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
+      const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
+      const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
+
+      packResult = await pack(targetPaths, config, () => {}, {}, stdinFilePaths, packOptions);
+    }
 
     // Report results in main process
-    reportResults(cwd, result.packResult, result.config, cliOptions);
+    reportResults(cwd, packResult, config, cliOptions);
 
     return {
-      packResult: result.packResult,
-      config: result.config,
+      packResult,
+      config,
     };
   } finally {
-    // Always cleanup worker pool
-    await taskRunner.cleanup();
+    // Always cleanup worker pool (if created)
+    if (taskRunner) {
+      await taskRunner.cleanup();
+    }
   }
 };
 
