@@ -162,10 +162,11 @@ const searchFilesWithGit = async (
     if (allFiles.length === 0) return null;
 
     // Read additional patterns from .repomixignore and .ignore files found in git output.
-    // Collect all matching ignore files across all patterns, then read them in parallel.
+    // Compile all ignore file patterns into a single picomatch matcher and iterate files once,
+    // instead of compiling N separate matchers and iterating files N times.
     const ignoreFilesToRead: string[] = [];
-    for (const ignoreFileGlob of ignoreFilePatterns) {
-      const isIgnoreFile = picomatch(ignoreFileGlob, { dot: true });
+    if (ignoreFilePatterns.length > 0) {
+      const isIgnoreFile = picomatch(ignoreFilePatterns, { dot: true });
       for (const f of allFiles) {
         if (isIgnoreFile(f)) {
           ignoreFilesToRead.push(f);
@@ -199,14 +200,18 @@ const searchFilesWithGit = async (
     // Expand bare patterns (no glob chars) to also match directory contents.
     // In .gitignore / .repomixignore semantics, "foo" matches both the file "foo"
     // and all files under the directory "foo/". picomatch requires explicit "foo/**".
+    // Pre-allocate with estimated capacity to avoid array resizing.
+    // Iterate both arrays directly instead of spreading into a new intermediate array.
     const expandedIgnorePatterns: string[] = [];
-    for (const pattern of [...adjustedIgnorePatterns, ...additionalIgnorePatterns]) {
+    const expandPattern = (pattern: string) => {
       expandedIgnorePatterns.push(pattern);
       // If pattern doesn't already contain glob chars or end with /**, add a /** variant
       if (!pattern.includes('*') && !pattern.includes('?') && !pattern.endsWith('/**')) {
         expandedIgnorePatterns.push(`${pattern}/**`);
       }
-    }
+    };
+    for (const pattern of adjustedIgnorePatterns) expandPattern(pattern);
+    for (const pattern of additionalIgnorePatterns) expandPattern(pattern);
 
     // Compile matchers once for all files.
     // Fast-path: when include is the default '**/*' (match everything), skip picomatch

@@ -157,7 +157,11 @@ export const processFiles = async (
     logger.error('Error during file processing:', error);
     throw error;
   } finally {
-    // Always cleanup worker pool
-    await taskRunner.cleanup();
+    // Fire-and-forget worker pool cleanup — all results are already collected,
+    // so we don't need to block the critical path waiting for thread termination.
+    // Matches the pattern used in securityCheck.ts for consistency.
+    Promise.resolve(taskRunner.cleanup()).catch((cleanupError) => {
+      logger.debug('Error during file process worker pool cleanup:', cleanupError);
+    });
   }
 };
