@@ -54,31 +54,33 @@ const findEmptyDirectories = async (
   directories: string[],
   ignorePatterns: string[],
 ): Promise<string[]> => {
-  const emptyDirs: string[] = [];
   const minimatchFn = await getMinimatch();
 
-  for (const dir of directories) {
-    const fullPath = path.join(rootDir, dir);
-    try {
-      const entries = await fs.readdir(fullPath);
-      const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
+  // Parallelize readdir calls — each is independent I/O.
+  // For 100+ directories, this avoids sequential await per directory.
+  const results = await Promise.all(
+    directories.map(async (dir) => {
+      const fullPath = path.join(rootDir, dir);
+      try {
+        const entries = await fs.readdir(fullPath);
+        const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
 
-      if (!hasVisibleContents) {
-        // This checks if the directory itself matches any ignore patterns
-        const shouldIgnore = ignorePatterns.some(
-          (pattern) => minimatchFn(dir, pattern) || minimatchFn(`${dir}/`, pattern),
-        );
-
-        if (!shouldIgnore) {
-          emptyDirs.push(dir);
+        if (!hasVisibleContents) {
+          const shouldIgnore = ignorePatterns.some(
+            (pattern) => minimatchFn(dir, pattern) || minimatchFn(`${dir}/`, pattern),
+          );
+          if (!shouldIgnore) {
+            return dir;
+          }
         }
+      } catch (error) {
+        logger.debug(`Error checking directory ${dir}:`, error);
       }
-    } catch (error) {
-      logger.debug(`Error checking directory ${dir}:`, error);
-    }
-  }
+      return null;
+    }),
+  );
 
-  return emptyDirs;
+  return results.filter((dir): dir is string => dir !== null);
 };
 
 // Check if a path is a git worktree reference file.
@@ -152,26 +154,37 @@ const searchFilesWithGit = async (
 
     const picomatch = await getPicomatch();
 
-    // Read additional patterns from .repomixignore and .ignore files found in git output
-    const additionalIgnorePatterns: string[] = [];
+    // Read additional patterns from .repomixignore and .ignore files found in git output.
+    // Collect all matching ignore files across all patterns, then read them in parallel.
+    const ignoreFilesToRead: string[] = [];
     for (const ignoreFileGlob of ignoreFilePatterns) {
       const isIgnoreFile = picomatch(ignoreFileGlob, { dot: true });
-      const matchingFiles = allFiles.filter((f) => isIgnoreFile(f));
-      for (const ignoreFile of matchingFiles) {
-        try {
-          const content = await fs.readFile(path.join(rootDir, ignoreFile), 'utf8');
-          const patterns = parseIgnoreContent(content);
-          // Scope patterns to the directory containing the ignore file
-          const dir = path.posix.dirname(ignoreFile);
-          for (const pattern of patterns) {
-            if (dir === '.') {
-              additionalIgnorePatterns.push(normalizeGlobPattern(pattern));
-            } else {
-              additionalIgnorePatterns.push(normalizeGlobPattern(`${dir}/${pattern}`));
-            }
+      for (const f of allFiles) {
+        if (isIgnoreFile(f)) {
+          ignoreFilesToRead.push(f);
+        }
+      }
+    }
+
+    const additionalIgnorePatterns: string[] = [];
+    if (ignoreFilesToRead.length > 0) {
+      const ignoreResults = await Promise.all(
+        ignoreFilesToRead.map(async (ignoreFile) => {
+          try {
+            const content = await fs.readFile(path.join(rootDir, ignoreFile), 'utf8');
+            const patterns = parseIgnoreContent(content);
+            const dir = path.posix.dirname(ignoreFile);
+            return patterns.map((pattern) =>
+              dir === '.' ? normalizeGlobPattern(pattern) : normalizeGlobPattern(`${dir}/${pattern}`),
+            );
+          } catch {
+            return [];
           }
-        } catch {
-          // Ignore file might not be readable
+        }),
+      );
+      for (const patterns of ignoreResults) {
+        for (const p of patterns) {
+          additionalIgnorePatterns.push(p);
         }
       }
     }

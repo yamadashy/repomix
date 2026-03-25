@@ -32,21 +32,35 @@ const mayContainDataUri = (content: string): boolean => content.includes('base64
 
 /**
  * Fast pre-check: does content potentially contain standalone base64 strings?
- * Scans for runs of 60+ consecutive base64-alphabet characters using a char loop.
+ * First skips lines shorter than 60 chars using V8-optimized indexOf('\n'),
+ * then only runs the char-by-char base64 alphabet check on long lines.
+ * For typical source code (~40 char avg line length), this skips 80%+ of content.
  */
 const mayContainStandaloneBase64 = (content: string): boolean => {
-  let runLength = 0;
-  for (let i = 0; i < content.length; i++) {
-    const c = content.charCodeAt(i);
-    // A-Z(65-90), a-z(97-122), 0-9(48-57), +(43), /(47)
-    if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47) {
-      runLength++;
-      if (runLength >= MIN_BASE64_LENGTH_STANDALONE) {
-        return true;
+  let pos = 0;
+  while (pos < content.length) {
+    const nlPos = content.indexOf('\n', pos);
+    const lineEnd = nlPos === -1 ? content.length : nlPos;
+
+    // Only scan lines that are long enough to contain a base64 run
+    if (lineEnd - pos >= MIN_BASE64_LENGTH_STANDALONE) {
+      let runLength = 0;
+      for (let i = pos; i < lineEnd; i++) {
+        const c = content.charCodeAt(i);
+        // A-Z(65-90), a-z(97-122), 0-9(48-57), +(43), /(47)
+        if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47) {
+          runLength++;
+          if (runLength >= MIN_BASE64_LENGTH_STANDALONE) {
+            return true;
+          }
+        } else {
+          runLength = 0;
+        }
       }
-    } else {
-      runLength = 0;
     }
+
+    if (nlPos === -1) break;
+    pos = nlPos + 1;
   }
   return false;
 };
