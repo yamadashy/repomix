@@ -3,9 +3,11 @@ import { logger } from '../../shared/logger.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import { getFileChangeCount } from '../git/gitRepositoryHandle.js';
 
-// Cache for git file change counts to avoid repeated git operations
+// Promise-based cache for git file change counts.
+// Stores the in-flight promise so concurrent callers (pre-fetch + sortOutputFiles)
+// share the same git subprocess instead of spawning duplicates.
 // Key format: `${cwd}:${maxCommits}`
-const fileChangeCountsCache = new Map<string, Record<string, number>>();
+const fileChangeCountsCache = new Map<string, Promise<Record<string, number> | null>>();
 
 const buildCacheKey = (cwd: string, maxCommits: number | undefined): string => {
   return `${cwd}:${maxCommits ?? 'default'}`;
@@ -18,43 +20,63 @@ export interface SortDeps {
 /**
  * Get file change counts from cache or git log.
  * Returns null if the command fails (e.g., git not installed or not a git repo).
- * Errors are caught by getFileChangeCount, so no pre-check needed.
+ * Uses a promise cache so concurrent callers share the same git subprocess.
  */
-const getFileChangeCounts = async (
+const getFileChangeCounts = (
   cwd: string,
   maxCommits: number | undefined,
   deps: SortDeps,
 ): Promise<Record<string, number> | null> => {
   const cacheKey = buildCacheKey(cwd, maxCommits);
 
-  // Check cache first
+  // Check cache first — returns the in-flight or resolved promise
   const cached = fileChangeCountsCache.get(cacheKey);
   if (cached) {
-    logger.trace('Using cached git file change counts');
+    logger.trace('Using cached git file change counts (promise)');
     return cached;
   }
 
-  // Fetch from git log directly — getFileChangeCount already catches errors
-  // and returns {} on failure (git not installed, not a repo, etc.).
-  // This eliminates a redundant `git --version` subprocess spawn (~5ms Linux, ~50ms Windows)
-  // and `fs.access('.git')` check that were previously done as a pre-check.
-  try {
-    const fileChangeCounts = await deps.getFileChangeCount(cwd, maxCommits);
+  // Create and cache the promise immediately, before awaiting.
+  // This ensures concurrent callers get the same promise.
+  const promise = (async () => {
+    try {
+      const fileChangeCounts = await deps.getFileChangeCount(cwd, maxCommits);
 
-    // Empty result means git log failed (no git, not a repo, etc.)
-    if (Object.keys(fileChangeCounts).length === 0) {
+      // Empty result means git log failed (no git, not a repo, etc.)
+      if (Object.keys(fileChangeCounts).length === 0) {
+        return null;
+      }
+
+      logger.trace('Git File change counts max commits:', maxCommits);
+      logger.trace('Git File change counts:', fileChangeCounts);
+
+      return fileChangeCounts;
+    } catch {
       return null;
     }
+  })();
 
-    fileChangeCountsCache.set(cacheKey, fileChangeCounts);
+  fileChangeCountsCache.set(cacheKey, promise);
 
-    logger.trace('Git File change counts max commits:', maxCommits);
-    logger.trace('Git File change counts:', fileChangeCounts);
+  return promise;
+};
 
-    return fileChangeCounts;
-  } catch {
-    return null;
-  }
+/**
+ * Pre-fetch git file change counts and populate the module-level promise cache.
+ * Call this early in the pipeline (alongside git diff/log) so the git subprocess
+ * runs in parallel with file search + collection. When sortOutputFiles is called
+ * later, it awaits the same promise instead of spawning a new subprocess.
+ *
+ * Fire-and-forget safe — errors are caught inside getFileChangeCounts.
+ */
+export const prefetchFileChangeCounts = (
+  cwd: string,
+  maxCommits: number | undefined,
+  deps: SortDeps = { getFileChangeCount },
+): void => {
+  // Start the git subprocess and store the promise in the cache.
+  // No await needed — the promise is cached for later consumption.
+  getFileChangeCounts(cwd, maxCommits, deps);
 };
 
 // Sort files by git change count for output

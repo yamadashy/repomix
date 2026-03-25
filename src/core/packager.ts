@@ -12,7 +12,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, getMetricsTargetPaths } from './metrics/calculateMetrics.js';
 import { calculateSelectiveFileMetrics } from './metrics/calculateSelectiveFileMetrics.js';
-import { sortOutputFiles } from './output/outputSort.js';
+import { prefetchFileChangeCounts, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SecurityTaskRunner, SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -45,6 +45,7 @@ const defaultDeps = {
   getMetricsTargetPaths,
   sortPaths,
   sortOutputFiles,
+  prefetchFileChangeCounts,
   getGitDiffs,
   getGitLogs,
   // Pre-warm security worker pool — lazily imports tinypool and creates the pool
@@ -118,6 +119,16 @@ export const pack = async (
   // so they can overlap with file search, sorting, AND file collection
   // instead of just file collection (previously started after search + sort)
   const gitPromise = Promise.all([deps.getGitDiffs(rootDirs, config), deps.getGitLogs(rootDirs, config)]);
+
+  // Pre-fetch git file change counts for output sorting — start the git log subprocess
+  // now so it runs in parallel with file search + collection (~110ms). Without this,
+  // the subprocess starts after file processing in the parallel block, where it can
+  // become the bottleneck when security pre-filter skips most files (~50ms security
+  // vs ~100ms git subprocess). Pre-fetching populates the cache in outputSort.ts,
+  // so sortOutputFiles later gets a cache hit instead of spawning a new subprocess.
+  if (config.output.git?.sortByChanges) {
+    deps.prefetchFileChangeCounts(config.cwd, config.output.git?.sortByChangesMaxCommits);
+  }
 
   // Pre-warm metrics worker — spawns a worker thread and loads gpt-tokenizer's BPE
   // encoding table (~288ms) off the main thread. By starting here, the tokenizer

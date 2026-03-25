@@ -23,6 +23,11 @@ const getIsBinaryFileSync = async (): Promise<(bytes: Buffer, size?: number) => 
   return _isBinaryFileSync;
 };
 
+// Reuse a single TextDecoder instance across all file reads.
+// TextDecoder is stateless in non-streaming mode, so a shared instance is safe.
+// Eliminates ~200+ constructor calls (ICU encoder initialization) during file collection.
+const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+
 export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
 
 export interface FileReadResult {
@@ -80,7 +85,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     // This skips the expensive jschardet.detect() which scans the entire buffer
     // through multiple encoding probers with frequency table lookups
     try {
-      let content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+      let content = utf8Decoder.decode(buffer);
       if (content.charCodeAt(0) === 0xfeff) {
         content = content.slice(1); // strip UTF-8 BOM
       }
