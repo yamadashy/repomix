@@ -12,6 +12,7 @@ import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { reportResults } from '../cliReport.js';
+import { Spinner } from '../cliSpinner.js';
 import type { CliOptions } from '../types.js';
 // migrationAction is lazy-loaded below to avoid eagerly importing @clack/prompts (~16ms)
 // on every default pack run. Migration is only needed when old Repopack files exist.
@@ -41,14 +42,15 @@ export const runDefaultAction = async (
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', cliOptions);
 
-  // Determine if we need a child process for the spinner.
-  // In stdout mode, no spinner is displayed, so we can run pack() directly
-  // in the main process — avoiding child process spawn + module re-loading (~200ms).
-  // When stderr is not a TTY (CI, piped output, stdio: 'ignore'), the spinner is
-  // invisible, so skip the child process — saves ~100-200ms of subprocess overhead.
-  // Quiet mode always uses the child process to ensure clean memory isolation
+  // Determine if we need a child process.
+  // Only quiet mode uses a child process to ensure clean memory isolation
   // when runCli is called repeatedly (e.g., memory benchmarks, MCP server).
-  const needsChildProcess = !cliOptions.stdout && (cliOptions.quiet === true || process.stderr.isTTY === true);
+  // All other modes (TTY, stdout, non-TTY) run pack() directly in the main process.
+  // Previously, TTY mode also used a child process for the spinner, but since
+  // heavy work (token counting, security check) runs on worker threads and file
+  // I/O is async, the main thread stays responsive enough for spinner animation.
+  // Eliminating the child process avoids re-loading all modules (~500ms overhead).
+  const needsChildProcess = !cliOptions.stdout && cliOptions.quiet === true;
 
   // Start child process worker early so module loading (~200ms) overlaps
   // with config loading (~30-50ms). Only when the spinner is needed.
@@ -165,7 +167,7 @@ export const runDefaultAction = async (
       packResult = result.packResult;
     } else {
       // Direct execution path: run pack() in the main process.
-      // Skips child process spawn + module re-loading (~200ms) since no spinner is needed.
+      // Skips child process spawn + module re-loading (~500ms).
       // packagerPromise is always defined when taskRunner is undefined (the else branch)
       const packagerModule = await (packagerPromise as Promise<typeof import('../../core/packager.js')>);
       const { pack } = packagerModule;
@@ -173,7 +175,30 @@ export const runDefaultAction = async (
       const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
       const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
 
-      packResult = await pack(targetPaths, config, () => {}, {}, stdinFilePaths, packOptions);
+      // Show spinner on main thread when running in a TTY.
+      // pack()'s heavy work runs on worker threads (token counting, security check)
+      // and async I/O, so the event loop stays responsive for setInterval animation.
+      // Sync operations (processFiles ~5ms, output generation ~15ms) are too brief
+      // to cause visible stuttering in the 80ms spinner frame interval.
+      const useSpinner =
+        !cliOptions.stdout && !cliOptions.quiet && !cliOptions.verbose && process.stderr.isTTY === true;
+      const spinner = useSpinner ? new Spinner('Initializing...', cliOptions) : undefined;
+      spinner?.start();
+
+      try {
+        packResult = await pack(
+          targetPaths,
+          config,
+          spinner ? (message) => spinner.update(message) : () => {},
+          {},
+          stdinFilePaths,
+          packOptions,
+        );
+        spinner?.succeed('Packing completed successfully!');
+      } catch (error) {
+        spinner?.fail('Error during packing');
+        throw error;
+      }
     }
 
     // Report results in main process
