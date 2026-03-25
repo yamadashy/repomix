@@ -341,7 +341,7 @@ function parseJavaVersion(content: string): RuntimeVersion[] {
 }
 
 // Configuration files to detect
-const CONFIG_FILE_PATTERNS: string[] = [
+const CONFIG_FILE_PATTERNS: ReadonlySet<string> = new Set([
   // Package managers and dependencies
   'package.json',
   'package-lock.json',
@@ -435,7 +435,7 @@ const CONFIG_FILE_PATTERNS: string[] = [
   // Git
   '.gitignore',
   '.gitattributes',
-];
+]);
 
 function parseToolVersions(content: string): RuntimeVersion[] {
   const versions: RuntimeVersion[] = [];
@@ -522,7 +522,7 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
     }
 
     // Check configuration files
-    if (CONFIG_FILE_PATTERNS.includes(fileName)) {
+    if (CONFIG_FILE_PATTERNS.has(fileName)) {
       foundAny = true;
       result.configFiles.push(file.path);
     }

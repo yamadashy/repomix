@@ -39,6 +39,24 @@ const defaultDeps = {
  * while reducing token counting time from ~375ms (50 files) to ~100ms (20 files).
  * For tokenCountTree mode, a larger sample of 50 is used for per-file estimation accuracy.
  */
+/**
+ * Min-heap sift-down by content length. O(log k) per call.
+ */
+const siftDownByContentLength = (heap: ProcessedFile[], i: number, n: number): void => {
+  while (true) {
+    let smallest = i;
+    const left = 2 * i + 1;
+    const right = 2 * i + 2;
+    if (left < n && heap[left].content.length < heap[smallest].content.length) smallest = left;
+    if (right < n && heap[right].content.length < heap[smallest].content.length) smallest = right;
+    if (smallest === i) break;
+    const tmp = heap[i];
+    heap[i] = heap[smallest];
+    heap[smallest] = tmp;
+    i = smallest;
+  }
+};
+
 export const getMetricsTargetPaths = (processedFiles: ProcessedFile[], config: RepomixConfigMerged): string[] => {
   const topFilesLength = config.output.topFilesLength;
   // For tokenCountTree, use a larger sample since per-file estimation accuracy matters.
@@ -54,17 +72,18 @@ export const getMetricsTargetPaths = (processedFiles: ProcessedFile[], config: R
     return processedFiles.map((file) => file.path);
   }
 
-  // Use a min-heap of size sampleSize to find top-k by content length
+  // Use a min-heap of size sampleSize to find top-k by content length.
+  // Proper sift-down gives O(n log k) vs O(n * k log k) with full re-sort.
   const heap: ProcessedFile[] = processedFiles.slice(0, sampleSize);
-  // Build initial heap (min-heap by content length)
-  heap.sort((a, b) => a.content.length - b.content.length);
-  const minLen = () => heap[0].content.length;
+  // Build initial min-heap via heapify (O(k))
+  for (let i = (sampleSize >> 1) - 1; i >= 0; i--) {
+    siftDownByContentLength(heap, i, sampleSize);
+  }
 
   for (let i = sampleSize; i < processedFiles.length; i++) {
-    if (processedFiles[i].content.length > minLen()) {
+    if (processedFiles[i].content.length > heap[0].content.length) {
       heap[0] = processedFiles[i];
-      // Re-sort to maintain min at index 0 (simple for small k)
-      heap.sort((a, b) => a.content.length - b.content.length);
+      siftDownByContentLength(heap, 0, sampleSize);
     }
   }
 

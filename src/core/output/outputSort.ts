@@ -7,6 +7,8 @@ import { getFileChangeCount } from '../git/gitRepositoryHandle.js';
 // Stores the in-flight promise so concurrent callers (pre-fetch + sortOutputFiles)
 // share the same git subprocess instead of spawning duplicates.
 // Key format: `${cwd}:${maxCommits}`
+// Bounded to 16 entries to prevent unbounded memory growth in long-running processes (MCP server).
+const MAX_CACHE_SIZE = 16;
 const fileChangeCountsCache = new Map<string, Promise<Record<string, number> | null>>();
 
 const buildCacheKey = (cwd: string, maxCommits: number | undefined): string => {
@@ -55,6 +57,14 @@ const getFileChangeCounts = (
       return null;
     }
   })();
+
+  // Evict oldest entry if cache is full (simple FIFO — Map preserves insertion order)
+  if (fileChangeCountsCache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = fileChangeCountsCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      fileChangeCountsCache.delete(oldestKey);
+    }
+  }
 
   fileChangeCountsCache.set(cacheKey, promise);
 

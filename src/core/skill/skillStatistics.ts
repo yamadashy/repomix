@@ -108,6 +108,26 @@ const getLanguageFromExtension = (ext: string): string => {
 };
 
 /**
+ * Sift-down operation for a min-heap sorted by `lines`.
+ * O(log k) per call where k is heap size, vs O(k log k) for full re-sort.
+ */
+const siftDown = (heap: Array<{ path: string; lines: number }>, i: number): void => {
+  const n = heap.length;
+  while (true) {
+    let smallest = i;
+    const left = 2 * i + 1;
+    const right = 2 * i + 2;
+    if (left < n && heap[left].lines < heap[smallest].lines) smallest = left;
+    if (right < n && heap[right].lines < heap[smallest].lines) smallest = right;
+    if (smallest === i) break;
+    const tmp = heap[i];
+    heap[i] = heap[smallest];
+    heap[smallest] = tmp;
+    i = smallest;
+  }
+};
+
+/**
  * Calculates statistics from processed files.
  */
 export const calculateStatistics = (
@@ -117,10 +137,13 @@ export const calculateStatistics = (
   const statsByExt: Record<string, { fileCount: number; lineCount: number }> = {};
   let totalLines = 0;
 
-  // Calculate stats by extension
+  // Calculate stats by extension and track line counts in a single pass
+  // to avoid splitting file content twice
+  const fileLinesMap: Record<string, number> = {};
   for (const file of processedFiles) {
     const ext = path.extname(file.path).toLowerCase() || '(no ext)';
     const lines = fileLineCounts[file.path] || file.content.split('\n').length;
+    fileLinesMap[file.path] = lines;
 
     if (!statsByExt[ext]) {
       statsByExt[ext] = { fileCount: 0, lineCount: 0 };
@@ -140,14 +163,28 @@ export const calculateStatistics = (
     }))
     .sort((a, b) => b.fileCount - a.fileCount);
 
-  // Get largest files (top 10)
-  const largestFiles = processedFiles
-    .map((file) => ({
-      path: file.path,
-      lines: fileLineCounts[file.path] || file.content.split('\n').length,
-    }))
-    .sort((a, b) => b.lines - a.lines)
-    .slice(0, 10);
+  // Get largest files (top 10) using partial sort (min-heap) instead of full sort.
+  // For 1000 files, this avoids sorting 990 irrelevant files.
+  const TOP_K = 10;
+  let largestFiles: Array<{ path: string; lines: number }>;
+  if (processedFiles.length <= TOP_K) {
+    largestFiles = processedFiles
+      .map((file) => ({ path: file.path, lines: fileLinesMap[file.path] }))
+      .sort((a, b) => b.lines - a.lines);
+  } else {
+    // Min-heap of size TOP_K
+    const heap = processedFiles.slice(0, TOP_K).map((file) => ({ path: file.path, lines: fileLinesMap[file.path] }));
+    heap.sort((a, b) => a.lines - b.lines);
+    for (let i = TOP_K; i < processedFiles.length; i++) {
+      const lines = fileLinesMap[processedFiles[i].path];
+      if (lines > heap[0].lines) {
+        heap[0] = { path: processedFiles[i].path, lines };
+        // Sift down to restore min-heap property
+        siftDown(heap, 0);
+      }
+    }
+    largestFiles = heap.sort((a, b) => b.lines - a.lines);
+  }
 
   return {
     totalFiles: processedFiles.length,
@@ -177,8 +214,12 @@ export const generateStatisticsSection = (stats: StatisticsInfo): string => {
   }
 
   if (stats.byFileType.length > 10) {
-    const otherFiles = stats.byFileType.slice(10).reduce((sum, t) => sum + t.fileCount, 0);
-    const otherLines = stats.byFileType.slice(10).reduce((sum, t) => sum + t.lineCount, 0);
+    let otherFiles = 0;
+    let otherLines = 0;
+    for (let i = 10; i < stats.byFileType.length; i++) {
+      otherFiles += stats.byFileType[i].fileCount;
+      otherLines += stats.byFileType[i].lineCount;
+    }
     lines.push(`| Other | ${otherFiles} | ${otherLines.toLocaleString()} |`);
   }
 
