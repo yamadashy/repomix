@@ -2,15 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Spinner } from '../../src/cli/cliSpinner.js';
 import type { CliOptions } from '../../src/cli/types.js';
 
-// Mock log-update and picocolors
-vi.mock('log-update', () => {
-  const mockFn = vi.fn() as ReturnType<typeof vi.fn> & {
-    done: ReturnType<typeof vi.fn>;
-  };
-  mockFn.done = vi.fn();
-  return { default: mockFn };
-});
-
 vi.mock('picocolors', () => ({
   default: {
     cyan: (text: string) => `cyan(${text})`,
@@ -20,16 +11,12 @@ vi.mock('picocolors', () => ({
 }));
 
 describe('cliSpinner', () => {
-  let mockLogUpdateFn: ReturnType<typeof vi.fn> & { done: ReturnType<typeof vi.fn> };
-  let mockLogUpdateDone: ReturnType<typeof vi.fn>;
+  let stderrWriteSpy: ReturnType<typeof vi.spyOn>;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    // Get the mocked module
-    const logUpdateModule = await import('log-update');
-    mockLogUpdateFn = logUpdateModule.default as unknown as typeof mockLogUpdateFn;
-    mockLogUpdateDone = mockLogUpdateFn.done;
+    stderrWriteSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
   });
 
   afterEach(() => {
@@ -45,10 +32,9 @@ describe('cliSpinner', () => {
 
         // Advance time to trigger frame updates
         vi.advanceTimersByTime(80);
-        expect(mockLogUpdateFn).toHaveBeenCalled();
+        expect(stderrWriteSpy).toHaveBeenCalled();
 
         spinner.stop('Done');
-        expect(mockLogUpdateDone).toHaveBeenCalled();
       });
 
       it('should update spinner message', () => {
@@ -58,7 +44,7 @@ describe('cliSpinner', () => {
         spinner.update('Updated message');
 
         vi.advanceTimersByTime(80);
-        expect(mockLogUpdateFn).toHaveBeenCalled();
+        expect(stderrWriteSpy).toHaveBeenCalled();
 
         spinner.stop('Done');
       });
@@ -69,8 +55,7 @@ describe('cliSpinner', () => {
 
         spinner.stop('Final message');
 
-        expect(mockLogUpdateFn).toHaveBeenCalledWith('Final message');
-        expect(mockLogUpdateDone).toHaveBeenCalled();
+        expect(stderrWriteSpy).toHaveBeenCalledWith('\x1B[2K\rFinal message\n');
       });
 
       it('should succeed with success message', () => {
@@ -79,8 +64,7 @@ describe('cliSpinner', () => {
 
         spinner.succeed('Success!');
 
-        expect(mockLogUpdateFn).toHaveBeenCalledWith('green(✔) Success!');
-        expect(mockLogUpdateDone).toHaveBeenCalled();
+        expect(stderrWriteSpy).toHaveBeenCalledWith('\x1B[2K\rgreen(✔) Success!\n');
       });
 
       it('should fail with error message', () => {
@@ -89,8 +73,7 @@ describe('cliSpinner', () => {
 
         spinner.fail('Failed!');
 
-        expect(mockLogUpdateFn).toHaveBeenCalledWith('red(✖) Failed!');
-        expect(mockLogUpdateDone).toHaveBeenCalled();
+        expect(stderrWriteSpy).toHaveBeenCalledWith('\x1B[2K\rred(✖) Failed!\n');
       });
 
       it('should cycle through animation frames', () => {
@@ -102,8 +85,8 @@ describe('cliSpinner', () => {
           vi.advanceTimersByTime(80);
         }
 
-        expect(mockLogUpdateFn).toHaveBeenCalled();
-        expect(mockLogUpdateFn.mock.calls.length).toBeGreaterThan(1);
+        expect(stderrWriteSpy).toHaveBeenCalled();
+        expect(stderrWriteSpy.mock.calls.length).toBeGreaterThan(1);
 
         spinner.stop('Complete');
       });
@@ -115,7 +98,7 @@ describe('cliSpinner', () => {
         spinner.start();
 
         vi.advanceTimersByTime(80);
-        expect(mockLogUpdateFn).not.toHaveBeenCalled();
+        expect(stderrWriteSpy).not.toHaveBeenCalled();
 
         spinner.stop('Done');
       });
@@ -125,7 +108,7 @@ describe('cliSpinner', () => {
         spinner.start();
 
         vi.advanceTimersByTime(80);
-        expect(mockLogUpdateFn).not.toHaveBeenCalled();
+        expect(stderrWriteSpy).not.toHaveBeenCalled();
 
         spinner.stop('Done');
       });
@@ -135,7 +118,7 @@ describe('cliSpinner', () => {
         spinner.start();
 
         vi.advanceTimersByTime(80);
-        expect(mockLogUpdateFn).not.toHaveBeenCalled();
+        expect(stderrWriteSpy).not.toHaveBeenCalled();
 
         spinner.stop('Done');
       });
@@ -146,7 +129,7 @@ describe('cliSpinner', () => {
         spinner.update('Updated');
 
         vi.advanceTimersByTime(80);
-        expect(mockLogUpdateFn).not.toHaveBeenCalled();
+        expect(stderrWriteSpy).not.toHaveBeenCalled();
 
         spinner.stop('Done');
       });
@@ -156,8 +139,7 @@ describe('cliSpinner', () => {
         spinner.start();
         spinner.stop('Done');
 
-        expect(mockLogUpdateFn).not.toHaveBeenCalled();
-        expect(mockLogUpdateDone).not.toHaveBeenCalled();
+        expect(stderrWriteSpy).not.toHaveBeenCalled();
       });
 
       it('should not show succeed message in quiet mode', () => {
@@ -165,8 +147,7 @@ describe('cliSpinner', () => {
         spinner.start();
         spinner.succeed('Success!');
 
-        expect(mockLogUpdateFn).not.toHaveBeenCalled();
-        expect(mockLogUpdateDone).not.toHaveBeenCalled();
+        expect(stderrWriteSpy).not.toHaveBeenCalled();
       });
 
       it('should not show fail message in quiet mode', () => {
@@ -174,8 +155,7 @@ describe('cliSpinner', () => {
         spinner.start();
         spinner.fail('Failed!');
 
-        expect(mockLogUpdateFn).not.toHaveBeenCalled();
-        expect(mockLogUpdateDone).not.toHaveBeenCalled();
+        expect(stderrWriteSpy).not.toHaveBeenCalled();
       });
     });
 

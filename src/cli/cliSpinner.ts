@@ -1,10 +1,12 @@
-import logUpdate from 'log-update';
 import pc from 'picocolors';
 import type { CliOptions } from './types.js';
 
 // Replicate cli-spinners dots animation
 const dotsFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 const dotsInterval = 80;
+
+// ANSI escape: erase current line + carriage return (replaces log-update dependency)
+const CLEAR_LINE = '\x1B[2K\r';
 
 export class Spinner {
   private message: string;
@@ -28,7 +30,7 @@ export class Spinner {
     this.interval = setInterval(() => {
       this.currentFrame++;
       const frame = dotsFrames[this.currentFrame % framesLength];
-      logUpdate(`${pc.cyan(frame)} ${this.message}`);
+      process.stderr.write(`${CLEAR_LINE}${pc.cyan(frame)} ${this.message}`);
     }, dotsInterval);
   }
 
@@ -49,8 +51,7 @@ export class Spinner {
       clearInterval(this.interval);
       this.interval = null;
     }
-    logUpdate(finalMessage);
-    logUpdate.done();
+    process.stderr.write(`${CLEAR_LINE}${finalMessage}\n`);
   }
 
   succeed(message: string): void {
