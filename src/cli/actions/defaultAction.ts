@@ -43,14 +43,12 @@ export const runDefaultAction = async (
   logger.trace('Loaded CLI options:', cliOptions);
 
   // Determine if we need a child process.
-  // Only quiet mode uses a child process to ensure clean memory isolation
-  // when runCli is called repeatedly (e.g., memory benchmarks, MCP server).
+  // Quiet mode uses a child process to ensure clean memory isolation
+  // when runCli is called repeatedly from a long-lived process (e.g., website server, MCP server).
+  // CLI one-shot runs (detected via _cliOneShot flag set by the commander entry point) skip the
+  // child process since the process exits immediately — saving ~120ms of spawn + module reload.
   // All other modes (TTY, stdout, non-TTY) run pack() directly in the main process.
-  // Previously, TTY mode also used a child process for the spinner, but since
-  // heavy work (token counting, security check) runs on worker threads and file
-  // I/O is async, the main thread stays responsive enough for spinner animation.
-  // Eliminating the child process avoids re-loading all modules (~500ms overhead).
-  const needsChildProcess = !cliOptions.stdout && cliOptions.quiet === true;
+  const needsChildProcess = !cliOptions.stdout && cliOptions.quiet === true && !cliOptions._cliOneShot;
 
   // Start child process worker early so module loading (~200ms) overlaps
   // with config loading (~30-50ms). Only when the spinner is needed.

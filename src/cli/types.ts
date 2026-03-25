@@ -71,4 +71,8 @@ export interface CliOptions extends OptionValues {
   topFilesLen?: number;
   verbose?: boolean;
   quiet?: boolean;
+
+  // Internal flags (not exposed as CLI arguments)
+  /** Set by CLI entry point to skip child process in quiet mode (one-shot CLI runs don't need memory isolation) */
+  _cliOneShot?: boolean;
 }

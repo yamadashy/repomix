@@ -16,20 +16,23 @@ function generateRequestId(): string {
   return `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
+// Cache GCP project ID at module level — env vars don't change at runtime,
+// so reading them once avoids per-request process.env lookups.
+const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT;
+
 // Extract trace context from Cloud Run's X-Cloud-Trace-Context header
 // Format: TRACE_ID/SPAN_ID;o=TRACE_TRUE
 function extractTraceContext(c: Context): { trace?: string; spanId?: string } {
   const traceHeader = c.req.header('x-cloud-trace-context');
   if (!traceHeader) return {};
 
-  const projectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT;
   const [traceSpan] = traceHeader.split(';');
   const [traceId, spanId] = traceSpan.split('/');
 
   if (!traceId) return {};
 
   return {
-    trace: projectId ? `projects/${projectId}/traces/${traceId}` : traceId,
+    trace: gcpProjectId ? `projects/${gcpProjectId}/traces/${traceId}` : traceId,
     spanId,
   };
 }

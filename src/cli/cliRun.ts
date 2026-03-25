@@ -221,6 +221,10 @@ export const run = async () => {
 };
 
 const commanderActionEndpoint = async (directories: string[], options: CliOptions = {}) => {
+  // CLI one-shot mode: skip child process in quiet mode since the process exits
+  // after this run anyway. Saves ~120ms of child process spawn + module reload.
+  // Library callers (server, MCP) don't set this flag and keep child process isolation.
+  options._cliOneShot = true;
   await runCli(directories, process.cwd(), options);
 };
 
