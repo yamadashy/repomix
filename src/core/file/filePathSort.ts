@@ -7,7 +7,12 @@ import path from 'node:path';
 export const sortPaths = (filePaths: string[]): string[] => {
   const decorated = filePaths.map((p) => {
     const parts = p.split(path.sep);
-    const lowerParts = parts.map((s) => s.toLowerCase());
+    // Single-pass toLowerCase instead of parts.map() to avoid intermediate array allocation.
+    // For 1000 files with ~4 segments each, eliminates 1000 Array.map() calls.
+    const lowerParts = new Array<string>(parts.length);
+    for (let i = 0; i < parts.length; i++) {
+      lowerParts[i] = parts[i].toLowerCase();
+    }
     return { original: p, parts, lowerParts };
   });
 

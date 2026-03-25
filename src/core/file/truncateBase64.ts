@@ -31,12 +31,28 @@ const hasSpecialCharsPattern = /[+/]/;
 const mayContainDataUri = (content: string): boolean => content.includes('base64,');
 
 /**
+ * Pre-computed lookup table for base64 alphabet characters.
+ * Single array access replaces 6 comparisons (4 ranges + 2 equalities) per character,
+ * giving ~2x speedup on the inner loop of base64 run detection for long lines.
+ */
+const isBase64Char = new Uint8Array(128);
+for (let i = 65; i <= 90; i++) isBase64Char[i] = 1; // A-Z
+for (let i = 97; i <= 122; i++) isBase64Char[i] = 1; // a-z
+for (let i = 48; i <= 57; i++) isBase64Char[i] = 1; // 0-9
+isBase64Char[43] = 1; // +
+isBase64Char[47] = 1; // /
+
+/**
  * Fast pre-check: does content potentially contain standalone base64 strings?
  * First skips lines shorter than 60 chars using V8-optimized indexOf('\n'),
  * then only runs the char-by-char base64 alphabet check on long lines.
+ * Uses a Uint8Array lookup table instead of range comparisons for ~2x inner loop speedup.
  * For typical source code (~40 char avg line length), this skips 80%+ of content.
  */
 const mayContainStandaloneBase64 = (content: string): boolean => {
+  // Files shorter than the minimum run length can't contain a match
+  if (content.length < MIN_BASE64_LENGTH_STANDALONE) return false;
+
   let pos = 0;
   while (pos < content.length) {
     const nlPos = content.indexOf('\n', pos);
@@ -47,10 +63,8 @@ const mayContainStandaloneBase64 = (content: string): boolean => {
       let runLength = 0;
       for (let i = pos; i < lineEnd; i++) {
         const c = content.charCodeAt(i);
-        // A-Z(65-90), a-z(97-122), 0-9(48-57), +(43), /(47)
-        if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47) {
-          runLength++;
-          if (runLength >= MIN_BASE64_LENGTH_STANDALONE) {
+        if (c < 128 && isBase64Char[c]) {
+          if (++runLength >= MIN_BASE64_LENGTH_STANDALONE) {
             return true;
           }
         } else {

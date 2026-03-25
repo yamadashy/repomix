@@ -12,8 +12,10 @@ import {
 import type { RawFile } from './fileTypes.js';
 
 // Concurrency limit for parallel file reads on the main thread.
-// 100 provides better I/O throughput on modern systems while staying within FD limits.
-const FILE_COLLECT_CONCURRENCY = 100;
+// 512 saturates the libuv threadpool (4 threads by default) and kernel I/O scheduler
+// with enough pending requests to maximize readahead and SSD parallelism.
+// Node.js uses epoll/kqueue so 512 pending fds is well within OS limits (default 1024+).
+const FILE_COLLECT_CONCURRENCY = 512;
 
 export interface SkippedFileInfo {
   path: string;

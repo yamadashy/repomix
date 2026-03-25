@@ -26,9 +26,13 @@ export interface OutputSplitPart {
 export type GenerateOutputFn = typeof generateOutput;
 
 export const getRootEntry = (relativeFilePath: string): string => {
-  const normalized = relativeFilePath.replaceAll(path.win32.sep, path.posix.sep);
-  const [first] = normalized.split('/');
-  return first || normalized;
+  // Use indexOf to find the first separator instead of replaceAll + split.
+  // Avoids creating intermediate strings for the common case (posix paths).
+  const posixIdx = relativeFilePath.indexOf('/');
+  const win32Idx = relativeFilePath.indexOf('\\');
+  // Pick the earliest separator (or -1 if none)
+  const sepIdx = posixIdx >= 0 && win32Idx >= 0 ? Math.min(posixIdx, win32Idx) : Math.max(posixIdx, win32Idx);
+  return sepIdx > 0 ? relativeFilePath.slice(0, sepIdx) : relativeFilePath;
 };
 
 export const buildOutputSplitGroups = (processedFiles: ProcessedFile[], allFilePaths: string[]): OutputSplitGroup[] => {
