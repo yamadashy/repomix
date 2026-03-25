@@ -108,8 +108,16 @@ describe('fileCollect', () => {
     });
 
     // Verify readRawFile is called with custom maxFileSize
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.join('/root', 'medium.txt'), customMaxFileSize, expect.any(Object));
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.join('/root', 'small.txt'), customMaxFileSize, expect.any(Object));
+    expect(mockReadRawFile).toHaveBeenCalledWith(
+      path.join('/root', 'medium.txt'),
+      customMaxFileSize,
+      expect.any(Object),
+    );
+    expect(mockReadRawFile).toHaveBeenCalledWith(
+      path.join('/root', 'small.txt'),
+      customMaxFileSize,
+      expect.any(Object),
+    );
   });
 
   it('should handle file read errors', async () => {
