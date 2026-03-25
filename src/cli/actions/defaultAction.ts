@@ -41,9 +41,9 @@ export const runDefaultAction = async (
   // in the main process — avoiding child process spawn + module re-loading (~200ms).
   // When stderr is not a TTY (CI, piped output, stdio: 'ignore'), the spinner is
   // invisible, so skip the child process — saves ~100-200ms of subprocess overhead.
-  // Note: quiet mode still uses the child process to ensure clean memory isolation
+  // Quiet mode always uses the child process to ensure clean memory isolation
   // when runCli is called repeatedly (e.g., memory benchmarks, MCP server).
-  const needsChildProcess = !cliOptions.stdout && process.stderr.isTTY === true;
+  const needsChildProcess = !cliOptions.stdout && (cliOptions.quiet === true || process.stderr.isTTY === true);
 
   // Start child process worker early so module loading (~200ms) overlaps
   // with config loading (~30-50ms). Only when the spinner is needed.
