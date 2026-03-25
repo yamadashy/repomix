@@ -56,21 +56,51 @@ const getInitTaskRunner = async (): Promise<typeof InitTaskRunnerType> => {
 // V8's irregexp engine compiles alternation into an automaton that scans the string once,
 // replacing separate .includes() calls (each scanning the full string) with a single pass.
 //
-// BasicAuth: uses \w:\/\/[^\n@]{1,256}@ to require scheme://...@ on the SAME LINE.
-// The previous approach (separate content.includes('://') && content.includes('@'))
-// matched any file containing both substrings anywhere, even in unrelated contexts
-// (e.g., a URL in one place and an email @-sign elsewhere). This caused ~93% false
-// positives (189/195 files in a typical repo), sending them to the expensive secretlint
-// worker. The same-line regex eliminates these false positives while still catching all
-// real BasicAuth URLs (scheme://user:pass@host patterns are always single-line).
+// BasicAuth check is handled separately via indexOf to avoid a polynomial regex pattern
+// flagged by CodeQL (the \w:\/\/[^\n@]{1,256}@ pattern). The string-based approach is
+// equally fast and avoids any backtracking concern.
 const SECRET_TRIGGER_PATTERN =
-  /AKIA|-----BEGIN|xoxb-|xoxp-|xoxa-|ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|npm_|SG\.|shpat_|shpca_|shppa_|shpss_|shpit_|lin_api_|sk-ant-|sk-proj-|mongodb\+srv:\/\/|postgres:\/\/|mysql:\/\/|redis:\/\/|amqp:\/\/|service_account|authorized_user|\w:\/\/[^\n@]{1,256}@/;
+  /AKIA|-----BEGIN|xoxb-|xoxp-|xoxa-|ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|npm_|SG\.|shpat_|shpca_|shppa_|shpss_|shpit_|lin_api_|sk-ant-|sk-proj-|mongodb\+srv:\/\/|postgres:\/\/|mysql:\/\/|redis:\/\/|amqp:\/\/|service_account|authorized_user/;
+
+/**
+ * Check for BasicAuth pattern: scheme://...@ on the same line.
+ * Uses indexOf instead of regex to avoid potential ReDoS with backtracking.
+ * Scans for "://" occurrences and checks if "@" appears on the same line within 256 chars.
+ */
+const containsBasicAuthPattern = (content: string): boolean => {
+  let searchFrom = 0;
+  while (true) {
+    const schemePos = content.indexOf('://', searchFrom);
+    if (schemePos < 0) return false;
+    // Check that a word char precedes "://"
+    if (schemePos > 0) {
+      const charBefore = content.charCodeAt(schemePos - 1);
+      // a-z, A-Z, 0-9, _
+      const isWord =
+        (charBefore >= 97 && charBefore <= 122) ||
+        (charBefore >= 65 && charBefore <= 90) ||
+        (charBefore >= 48 && charBefore <= 57) ||
+        charBefore === 95;
+      if (isWord) {
+        // Look for "@" within 256 chars on the same line after "://"
+        const afterScheme = schemePos + 3;
+        const limit = Math.min(afterScheme + 256, content.length);
+        for (let i = afterScheme; i < limit; i++) {
+          const ch = content.charCodeAt(i);
+          if (ch === 64) return true; // '@'
+          if (ch === 10) break; // '\n' — stop at line boundary
+        }
+      }
+    }
+    searchFrom = schemePos + 3;
+  }
+};
 
 export const contentMayContainSecret = (content: string): boolean => {
   // Short-circuit: files under 8 bytes can't contain any meaningful secret pattern
   if (content.length < 8) return false;
 
-  return SECRET_TRIGGER_PATTERN.test(content);
+  return SECRET_TRIGGER_PATTERN.test(content) || containsBasicAuthPattern(content);
 };
 
 export const runSecurityCheck = async (

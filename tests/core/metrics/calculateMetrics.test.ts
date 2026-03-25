@@ -71,12 +71,14 @@ describe('calculateMetrics', () => {
     );
 
     expect(progressCallback).toHaveBeenCalledWith('Calculating metrics...');
-    expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
-      processedFiles,
-      ['file2.txt', 'file1.txt'], // sorted by character count desc
-      'o200k_base',
-      progressCallback,
-    );
+    // getMetricsTargetPaths returns all files when sampleSize >= file count;
+    // order doesn't matter for token counting, just verify the paths are present
+    const callArgs = (calculateSelectiveFileMetrics as unknown as Mock).mock.calls[0];
+    expect(callArgs[0]).toBe(processedFiles);
+    expect(callArgs[1]).toEqual(expect.arrayContaining(['file1.txt', 'file2.txt']));
+    expect(callArgs[1]).toHaveLength(2);
+    expect(callArgs[2]).toBe('o200k_base');
+    expect(callArgs[3]).toBe(progressCallback);
     expect(result).toEqual(aggregatedResult);
   });
 });

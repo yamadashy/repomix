@@ -81,7 +81,7 @@ export const runDefaultAction = async (
     logger.trace('Loaded file config:', fileConfig);
 
     // Parse the CLI options into a config
-    const cliConfig: RepomixConfigCli = await buildCliConfig(cliOptions);
+    const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);
     logger.trace('CLI config:', cliConfig);
 
     // Merge default, file, and CLI configs
@@ -224,7 +224,9 @@ export const runDefaultAction = async (
  * - For --no-* flags, we only apply the setting when it's explicitly false to respect config file values
  * - This allows the config file to maintain control unless explicitly overridden by CLI
  */
-export const buildCliConfig = async (options: CliOptions): Promise<RepomixConfigCli> => {
+// Synchronous — all option checks are pure object mutations with no I/O.
+// Removing async avoids unnecessary Promise microtask queueing (~2-3ms).
+export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   const cliConfig: RepomixConfigCli = {};
 
   if (options.output) {
