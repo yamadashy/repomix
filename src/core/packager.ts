@@ -105,13 +105,12 @@ export const pack = async (
   const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
   const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-  // Get git diffs if enabled - run this before security check
-  progressCallback('Getting git diffs...');
-  const gitDiffResult = await deps.getGitDiffs(rootDirs, config);
-
-  // Get git logs if enabled - run this before security check
-  progressCallback('Getting git logs...');
-  const gitLogResult = await deps.getGitLogs(rootDirs, config);
+  // Get git diffs and logs in parallel - both are independent subprocess calls
+  progressCallback('Getting git information...');
+  const [gitDiffResult, gitLogResult] = await Promise.all([
+    deps.getGitDiffs(rootDirs, config),
+    deps.getGitLogs(rootDirs, config),
+  ]);
 
   // Run security check and get filtered safe files
   const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
