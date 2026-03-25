@@ -202,12 +202,14 @@ export const pack = async (
 
   progressCallback('Collecting files and git info...');
 
-  // Pre-warm security worker pool — start workers loading @secretlint/core (~150ms)
-  // while file collection reads file contents (~50ms), giving workers a head start.
-  // The pool creation triggers tinypool import + worker thread spawn asynchronously.
-  const securityPoolPromise = config.security.enableSecurityCheck
-    ? deps.createSecurityWorkerPool(allFilePaths.length + 2)
-    : undefined;
+  // Pre-warm security worker pool with a SINGLE thread only.
+  // The contentMayContainSecret pre-filter (optimization #25) skips 95-99% of files,
+  // so only a handful of files (~5) typically need actual security checking.
+  // Previously we spawned up to N threads (N = CPU cores) all loading @secretlint/core,
+  // causing significant CPU contention with the main thread during collectFiles.
+  // A single pre-warmed thread is sufficient for the typical workload and reduces
+  // contention by (N-1) * ~150ms of unnecessary @secretlint/core loading.
+  const securityPoolPromise = config.security.enableSecurityCheck ? deps.createSecurityWorkerPool(1) : undefined;
 
   const collectResults = await withMemoryLogging(
     'Collect Files',

@@ -149,20 +149,32 @@ const mergeAdjacentChunks = (chunks: CapturedChunk[]): CapturedChunk[] => {
     return chunks;
   }
 
-  const merged: CapturedChunk[] = [chunks[0]];
+  const merged: CapturedChunk[] = [];
+  // Use array accumulation instead of string += to avoid O(k²) copying.
+  // Each += creates a new string copying all previous content; accumulating
+  // content parts and joining once is O(k) total.
+  let contentParts: string[] = [chunks[0].content];
+  let startRow = chunks[0].startRow;
+  let endRow = chunks[0].endRow;
 
   for (let i = 1; i < chunks.length; i++) {
     const current = chunks[i];
-    const previous = merged[merged.length - 1];
 
-    // Merge the current chunk with the previous one
-    if (previous.endRow + 1 === current.startRow) {
-      previous.content += `\n${current.content}`;
-      previous.endRow = current.endRow;
+    if (endRow + 1 === current.startRow) {
+      // Adjacent: accumulate content part
+      contentParts.push(current.content);
+      endRow = current.endRow;
     } else {
-      merged.push(current);
+      // Gap: finalize previous merged chunk and start a new one
+      merged.push({ content: contentParts.join('\n'), startRow, endRow });
+      contentParts = [current.content];
+      startRow = current.startRow;
+      endRow = current.endRow;
     }
   }
+
+  // Finalize the last merged chunk
+  merged.push({ content: contentParts.join('\n'), startRow, endRow });
 
   return merged;
 };

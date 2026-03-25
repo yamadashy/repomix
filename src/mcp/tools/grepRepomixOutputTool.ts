@@ -209,7 +209,20 @@ export const searchInContent = (
     createRegexPattern,
   },
 ): SearchMatch[] => {
-  const lines = content.split('\n');
+  return searchInLines(content.split('\n'), options, deps);
+};
+
+/**
+ * Search for pattern matches in pre-split lines.
+ * Avoids redundant content.split('\n') when the caller already has the lines array.
+ */
+export const searchInLines = (
+  lines: string[],
+  options: SearchOptions,
+  deps = {
+    createRegexPattern,
+  },
+): SearchMatch[] => {
   const regex = deps.createRegexPattern(options.pattern, options.ignoreCase);
 
   const matches: SearchMatch[] = [];
@@ -273,18 +286,20 @@ export const formatSearchResults = (
 };
 
 /**
- * Perform grep-like search on content
+ * Perform grep-like search on content.
+ * Splits content into lines once and reuses the array for both search and formatting,
+ * avoiding a redundant O(n) split on large output files (3-5MB).
  */
 export const performGrepSearch = (
   content: string,
   options: SearchOptions,
   deps = {
-    searchInContent,
+    searchInLines,
     formatSearchResults,
   },
 ): SearchResult => {
-  const matches = deps.searchInContent(content, options);
   const lines = content.split('\n');
+  const matches = deps.searchInLines(lines, options);
   const formattedOutput = deps.formatSearchResults(lines, matches, options.beforeLines, options.afterLines);
 
   return {
