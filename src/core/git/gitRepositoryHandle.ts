@@ -24,18 +24,36 @@ export const getFileChangeCount = async (
   }
 };
 
+// Promise-based cache to deduplicate concurrent isGitRepository calls
+// (e.g., when getGitDiffs and getGitLogs run in parallel via Promise.all)
+const isGitRepoCache = new Map<string, Promise<boolean>>();
+
 export const isGitRepository = async (
   directory: string,
   deps = {
     execGitRevParse,
   },
 ): Promise<boolean> => {
-  try {
-    await deps.execGitRevParse(directory);
-    return true;
-  } catch {
-    return false;
+  // Only use cache with default deps (skip for test mocks)
+  const useCache = deps.execGitRevParse === execGitRevParse;
+
+  if (useCache) {
+    const cached = isGitRepoCache.get(directory);
+    if (cached) {
+      return cached;
+    }
   }
+
+  const promise = deps.execGitRevParse(directory).then(
+    () => true,
+    () => false,
+  );
+
+  if (useCache) {
+    isGitRepoCache.set(directory, promise);
+  }
+
+  return promise;
 };
 
 export const isGitInstalled = async (
