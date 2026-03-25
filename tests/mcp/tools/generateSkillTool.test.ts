@@ -38,6 +38,7 @@ describe('GenerateSkillTool', () => {
     processedFiles: [],
     safeFilePaths: [],
     skippedFiles: [],
+    outputLineCount: 0,
   };
 
   beforeEach(() => {

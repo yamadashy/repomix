@@ -127,6 +127,7 @@ describe('defaultAction', () => {
       gitDiffTokenCount: 0,
       gitLogTokenCount: 0,
       skippedFiles: [],
+      outputLineCount: 0,
     });
 
     // Mock initTaskRunner to return a simple task runner
@@ -146,6 +147,7 @@ describe('defaultAction', () => {
           gitDiffTokenCount: 0,
           gitLogTokenCount: 0,
           skippedFiles: [],
+          outputLineCount: 0,
         },
         config: createMockConfig({
           cwd: process.cwd(),

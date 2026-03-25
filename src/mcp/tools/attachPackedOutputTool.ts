@@ -296,6 +296,7 @@ It will return in that case a new output ID and the updated content.`,
           safeFilePaths: filePaths,
           fileCharCounts,
           fileTokenCounts,
+          outputLineCount: content.split('\n').length,
           processedFiles,
         };
 

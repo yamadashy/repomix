@@ -33,6 +33,7 @@ const createMockDefaultActionResult = (): DefaultActionRunnerResult => ({
     gitDiffTokenCount: 0,
     gitLogTokenCount: 0,
     skippedFiles: [],
+    outputLineCount: 0,
   },
   config: createMockConfig(),
 });

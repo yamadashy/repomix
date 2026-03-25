@@ -45,6 +45,7 @@ describe('PackCodebaseTool', () => {
     processedFiles: [],
     safeFilePaths: [],
     skippedFiles: [],
+    outputLineCount: 0,
   };
 
   beforeEach(() => {

@@ -99,6 +99,7 @@ describe('cliRun', () => {
         processedFiles: [],
         safeFilePaths: [],
         skippedFiles: [],
+        outputLineCount: 0,
       } satisfies PackResult,
     });
     vi.mocked(initAction.runInitAction).mockResolvedValue();
@@ -155,6 +156,7 @@ describe('cliRun', () => {
         processedFiles: [],
         safeFilePaths: [],
         skippedFiles: [],
+        outputLineCount: 0,
       } satisfies PackResult,
     });
     vi.mocked(versionAction.runVersionAction).mockResolvedValue();

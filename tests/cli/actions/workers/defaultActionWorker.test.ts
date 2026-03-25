@@ -149,6 +149,7 @@ describe('defaultActionWorker', () => {
     processedFiles: [{ path: 'test.txt', content: 'test content' }],
     safeFilePaths: ['test.txt'],
     skippedFiles: [],
+    outputLineCount: 0,
   };
 
   beforeEach(() => {
