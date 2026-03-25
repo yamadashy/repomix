@@ -61,10 +61,10 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
 
 const countNewlines = (str: string): number => {
   let count = 0;
-  let pos = 0;
-  while ((pos = str.indexOf('\n', pos)) !== -1) {
+  let pos = str.indexOf('\n');
+  while (pos !== -1) {
     count++;
-    pos++;
+    pos = str.indexOf('\n', pos + 1);
   }
   return count;
 };
