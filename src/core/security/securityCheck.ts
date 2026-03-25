@@ -56,7 +56,7 @@ const getInitTaskRunner = async (): Promise<typeof InitTaskRunnerType> => {
 // V8's irregexp engine compiles alternation into an automaton that scans the string once,
 // replacing separate .includes() calls (each scanning the full string) with a single pass.
 //
-// BasicAuth: uses \w:\/\/[^\n]*@ to require scheme://...@ on the SAME LINE.
+// BasicAuth: uses \w:\/\/[^\n@]{1,256}@ to require scheme://...@ on the SAME LINE.
 // The previous approach (separate content.includes('://') && content.includes('@'))
 // matched any file containing both substrings anywhere, even in unrelated contexts
 // (e.g., a URL in one place and an email @-sign elsewhere). This caused ~93% false
@@ -64,7 +64,7 @@ const getInitTaskRunner = async (): Promise<typeof InitTaskRunnerType> => {
 // worker. The same-line regex eliminates these false positives while still catching all
 // real BasicAuth URLs (scheme://user:pass@host patterns are always single-line).
 const SECRET_TRIGGER_PATTERN =
-  /AKIA|-----BEGIN|xoxb-|xoxp-|xoxa-|ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|npm_|SG\.|shpat_|shpca_|shppa_|shpss_|shpit_|lin_api_|sk-ant-|sk-proj-|mongodb\+srv:\/\/|postgres:\/\/|mysql:\/\/|redis:\/\/|amqp:\/\/|service_account|authorized_user|\w:\/\/[^\n]*@/;
+  /AKIA|-----BEGIN|xoxb-|xoxp-|xoxa-|ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|npm_|SG\.|shpat_|shpca_|shppa_|shpss_|shpit_|lin_api_|sk-ant-|sk-proj-|mongodb\+srv:\/\/|postgres:\/\/|mysql:\/\/|redis:\/\/|amqp:\/\/|service_account|authorized_user|\w:\/\/[^\n@]{1,256}@/;
 
 export const contentMayContainSecret = (content: string): boolean => {
   // Short-circuit: files under 8 bytes can't contain any meaningful secret pattern
