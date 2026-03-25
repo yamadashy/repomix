@@ -5,6 +5,7 @@ import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
+import { preWarmBinaryDetection } from './file/fileRead.js';
 import { searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile, RawFile } from './file/fileTypes.js';
@@ -137,6 +138,11 @@ export const pack = async (
   // blocking the event loop and causing CPU contention with security workers.
   const metricsWorkerPromise = deps.createMetricsWorkerPool(config.tokenCount.encoding);
 
+  // Pre-warm binary detection modules (is-binary-path + isbinaryfile) during the
+  // I/O-bound search phase so they're cached when collectFiles starts reading files.
+  // Saves ~10ms of module loading on the first file read.
+  preWarmBinaryDetection();
+
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
@@ -231,39 +237,45 @@ export const pack = async (
 
   const [gitDiffResult, gitLogResult] = await gitPromise;
 
-  // Get pre-created pools (workers likely already loading their modules by now)
-  const preCreatedSecurityRunner = securityPoolPromise ? await securityPoolPromise : undefined;
-  const metricsWorkerPool = await metricsWorkerPromise;
-
   // Run security check, file processing, file metrics, and git-based sorting in parallel.
-  // Security check uses the pre-warmed worker pool (CPU in worker threads, ~300ms).
-  // After lightweight file processing (~1ms main thread), three operations start concurrently:
-  //   1. File metrics (token counting on pre-warmed worker thread, ~65ms)
-  //   2. Git-based file sorting (git subprocess, ~50-200ms I/O-bound)
-  // Both overlap with the security workers, hiding their cost behind security check latency.
-  // Token counting on a worker thread (instead of main thread) eliminates CPU contention
-  // with security workers, reducing security check time from ~533ms to ~253ms.
+  // Pool awaits are deferred INTO the parallel block instead of before it: the security pool
+  // (~200ms warmup) and metrics pool (~290ms warmup) may still be initializing, but their
+  // remaining warmup time overlaps with useful work in the other branch. This eliminates
+  // ~80-180ms of idle time where the main thread previously blocked waiting for pools.
+  //
+  // Security branch: awaits security pool, then runs security check in worker threads.
+  // Main branch: runs processFiles immediately (~5ms), starts sort (I/O-bound git subprocess),
+  //   then awaits metrics pool (warmup hidden behind security check time), starts token counting.
   progressCallback('Running security check...');
+  let resolvedMetricsWorkerPool: { run: (task: unknown) => Promise<unknown>; cleanup: () => Promise<void> } | undefined;
   const [securityResult, processedSortedAndMetrics] = await Promise.all([
-    withMemoryLogging('Security Check', () =>
-      deps.validateFileSafety(
-        rawFiles,
-        progressCallback,
-        config,
-        gitDiffResult,
-        gitLogResult,
-        undefined,
-        preCreatedSecurityRunner,
-      ),
-    ),
+    (async () => {
+      const preCreatedSecurityRunner = securityPoolPromise ? await securityPoolPromise : undefined;
+      return withMemoryLogging('Security Check', () =>
+        deps.validateFileSafety(
+          rawFiles,
+          progressCallback,
+          config,
+          gitDiffResult,
+          gitLogResult,
+          undefined,
+          preCreatedSecurityRunner,
+        ),
+      );
+    })(),
     withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)).then(
       async (allProcessedFiles) => {
-        // Chain: after processing completes, start metrics AND sorting while security workers run.
-        // Sorting uses a git subprocess (I/O-bound) so it runs truly parallel with worker-thread
-        // token counting. Both complete well before the ~300ms security check finishes.
+        // Chain: after processing completes, start sorting immediately (doesn't need metrics pool).
+        // Then await metrics pool (may still be warming up — hidden behind security check time)
+        // and start token counting. Both complete well before the security check finishes.
         const metricsTargetPaths = deps.getMetricsTargetPaths(allProcessedFiles, config);
+        // Start sort immediately — uses git subprocess (I/O-bound), doesn't need metrics pool
+        const sortPromise = deps.sortOutputFiles(allProcessedFiles, config);
+        // Await metrics pool — remaining warmup time overlaps with sort + security check
+        const metricsWorkerPool = await metricsWorkerPromise;
+        resolvedMetricsWorkerPool = metricsWorkerPool;
         const [sortedFiles, fileMetrics] = await Promise.all([
-          deps.sortOutputFiles(allProcessedFiles, config),
+          sortPromise,
           deps.calculateSelectiveFileMetrics(
             allProcessedFiles,
             metricsTargetPaths,
@@ -359,7 +371,7 @@ export const pack = async (
   ]);
 
   // Fire-and-forget cleanup of metrics worker pool — workers terminate on process exit anyway
-  metricsWorkerPool.cleanup().catch(() => {});
+  resolvedMetricsWorkerPool?.cleanup().catch(() => {});
 
   // Create a result object that includes metrics and security results
   const result = {

@@ -23,6 +23,16 @@ const getIsBinaryFileSync = async (): Promise<(bytes: Buffer, size?: number) => 
   return _isBinaryFileSync;
 };
 
+/**
+ * Pre-warm binary detection modules (is-binary-path + isbinaryfile) by starting
+ * their dynamic imports early. Call this during the file search phase so the modules
+ * are cached by the time collectFiles begins reading files (~10ms saved on first file).
+ */
+export const preWarmBinaryDetection = (): void => {
+  void getIsBinaryPath();
+  void getIsBinaryFileSync();
+};
+
 // Reuse a single TextDecoder instance across all file reads.
 // TextDecoder is stateless in non-streaming mode, so a shared instance is safe.
 // Eliminates ~200+ constructor calls (ICU encoder initialization) during file collection.
