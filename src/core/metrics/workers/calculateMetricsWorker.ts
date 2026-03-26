@@ -46,5 +46,5 @@ export default async (task: TokenCountTask): Promise<number> => {
 
 // Export cleanup function for Tinypool teardown
 export const onWorkerTermination = async (): Promise<void> => {
-  await freeTokenCounters();
+  freeTokenCounters();
 };

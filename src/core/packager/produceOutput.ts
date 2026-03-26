@@ -132,10 +132,9 @@ const generateAndWriteSingleOutput = async (
   );
 
   progressCallback('Writing output file...');
-  await Promise.all([
-    withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config)),
-    deps.copyToClipboardIfEnabled(output, progressCallback, config),
-  ]);
+  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+
+  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
 
   return {
     outputForMetrics: output,
