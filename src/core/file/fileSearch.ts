@@ -126,9 +126,16 @@ export const normalizeGlobPattern = (pattern: string): string => {
     return pattern.slice(0, -1);
   }
 
-  // Convert **/folder to **/folder/** for consistent ignore pattern behavior
+  // Convert **/folder to **/folder/** for consistent ignore pattern behavior.
+  // Only expand if the suffix is a bare directory name (no glob chars, no dots).
+  // Patterns like **/package-lock.json or **/*.log are file patterns and must NOT
+  // get /** appended — doing so would match files INSIDE a "package-lock.json/"
+  // directory instead of the file itself.
   if (pattern.startsWith('**/') && !pattern.includes('/**')) {
-    return `${pattern}/**`;
+    const suffix = pattern.substring(3);
+    if (!suffix.includes('*') && !suffix.includes('?') && !suffix.includes('[') && !suffix.includes('.')) {
+      return `${pattern}/**`;
+    }
   }
 
   return pattern;
@@ -219,6 +226,7 @@ const searchFilesWithGit = async (
     // picomatch.test() calls since '**/*' with dot:true matches every file path.
     const isMatchAll = includePatterns.length === 1 && includePatterns[0] === '**/*';
     const isIncluded = isMatchAll ? undefined : picomatch(includePatterns, { dot: true });
+
     const isIgnored = expandedIgnorePatterns.length > 0 ? picomatch(expandedIgnorePatterns, { dot: true }) : undefined;
 
     // Filter files that pass include/ignore checks and are not symlinks.
