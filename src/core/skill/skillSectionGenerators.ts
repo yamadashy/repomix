@@ -76,14 +76,23 @@ export const generateFilesSection = (context: RenderContext): string => {
 
   const parts: string[] = ['# Files\n\n'];
 
+  // Push individual fragments instead of template literals to avoid creating
+  // intermediate strings containing the full file content per file.
+  // For 1000 files × 5KB avg, this eliminates ~5MB of transient string allocations.
   for (const file of context.processedFiles) {
     const lang = getLanguageFromFilePath(file.path);
-    parts.push(`## File: ${file.path}
-${context.markdownCodeBlockDelimiter}${lang}
-${file.content}
-${context.markdownCodeBlockDelimiter}
-
-`);
+    parts.push(
+      '## File: ',
+      file.path,
+      '\n',
+      context.markdownCodeBlockDelimiter,
+      lang,
+      '\n',
+      file.content,
+      '\n',
+      context.markdownCodeBlockDelimiter,
+      '\n\n',
+    );
   }
 
   return parts.join('').trim();

@@ -92,7 +92,6 @@
     "jiti": "^2.6.1",
     "jschardet": "^3.1.4",
     "json5": "^2.2.3",
-    "minimatch": "^10.2.4",
     "picocolors": "^1.1.1",
     "tar": "^7.5.11",
     "tinyclip": "^0.1.12",
