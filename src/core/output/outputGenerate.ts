@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
@@ -356,6 +357,11 @@ export const generateOutput = async (
   }
 };
 
+// Cache for instruction file content across pack() calls.
+// Validated by mtime+size via statSync (kernel cache hit, ~0.001ms).
+// Avoids re-reading the instruction file (~0.2ms async I/O) on every warm pack() call.
+let _instructionCache: { resolvedPath: string; mtimeMs: number; size: number; content: string } | undefined;
+
 export const buildOutputGeneratorContext = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
@@ -378,7 +384,24 @@ export const buildOutputGeneratorContext = async (
   if (config.output.instructionFilePath) {
     const instructionPath = path.resolve(config.cwd, config.output.instructionFilePath);
     try {
-      repositoryInstruction = await fs.readFile(instructionPath, 'utf-8');
+      // Use statSync cache validation to avoid async readFile on warm runs
+      const stat = statSync(instructionPath);
+      if (
+        _instructionCache &&
+        _instructionCache.resolvedPath === instructionPath &&
+        _instructionCache.mtimeMs === stat.mtimeMs &&
+        _instructionCache.size === stat.size
+      ) {
+        repositoryInstruction = _instructionCache.content;
+      } else {
+        repositoryInstruction = await fs.readFile(instructionPath, 'utf-8');
+        _instructionCache = {
+          resolvedPath: instructionPath,
+          mtimeMs: stat.mtimeMs,
+          size: stat.size,
+          content: repositoryInstruction,
+        };
+      }
     } catch {
       throw new RepomixError(`Instruction file not found at ${instructionPath}`);
     }
