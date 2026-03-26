@@ -535,6 +535,7 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
   // Deduplicate
   result.languages = [...new Set(result.languages)];
   result.frameworks = [...new Set(result.frameworks)];
+  result.configFiles = [...new Set(result.configFiles)];
   result.dependencies = deduplicateDependencies(result.dependencies);
   result.devDependencies = deduplicateDependencies(result.devDependencies);
   result.runtimeVersions = deduplicateRuntimeVersions(result.runtimeVersions);
