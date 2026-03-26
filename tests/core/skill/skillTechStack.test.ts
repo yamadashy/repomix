@@ -304,6 +304,19 @@ golang 1.22.0`,
       expect(result?.runtimeVersions).toHaveLength(1);
       expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: '22.0.0' });
     });
+
+    test('should deduplicate runtime versions from subdirectories', () => {
+      const files: ProcessedFile[] = [
+        { path: '.node-version', content: '22.0.0' },
+        { path: 'packages/api/.node-version', content: '22.0.0' },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.runtimeVersions).toHaveLength(1);
+      expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: '22.0.0' });
+    });
   });
 
   describe('detectTechStack with configuration files', () => {

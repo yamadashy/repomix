@@ -537,6 +537,7 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
   result.frameworks = [...new Set(result.frameworks)];
   result.dependencies = deduplicateDependencies(result.dependencies);
   result.devDependencies = deduplicateDependencies(result.devDependencies);
+  result.runtimeVersions = deduplicateRuntimeVersions(result.runtimeVersions);
 
   return result;
 };
@@ -549,6 +550,16 @@ const deduplicateDependencies = (deps: DependencyInfo[]): DependencyInfo[] => {
     }
   }
   return [...seen.values()];
+};
+
+const deduplicateRuntimeVersions = (versions: RuntimeVersion[]): RuntimeVersion[] => {
+  const seen = new Set<string>();
+  return versions.filter((v) => {
+    const key = `${v.runtime}:${v.version}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 };
 
 /**
