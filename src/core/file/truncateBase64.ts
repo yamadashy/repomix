@@ -1,6 +1,6 @@
 // Constants for base64 detection and truncation
 const MIN_BASE64_LENGTH_DATA_URI = 40;
-const MIN_BASE64_LENGTH_STANDALONE = 60;
+const MIN_BASE64_LENGTH_STANDALONE = 256;
 const TRUNCATION_LENGTH = 32;
 const MIN_CHAR_DIVERSITY = 10;
 const MIN_CHAR_TYPE_COUNT = 3;
@@ -68,6 +68,11 @@ function isLikelyBase64(str: string): boolean {
   const hasUpperCase = /[A-Z]/.test(str);
   const hasLowerCase = /[a-z]/.test(str);
   const hasSpecialChars = /[+/]/.test(str);
+
+  // Real base64 encoded binary data virtually always contains digits
+  if (!hasNumbers) {
+    return false;
+  }
 
   const charTypeCount = [hasNumbers, hasUpperCase, hasLowerCase, hasSpecialChars].filter(Boolean).length;
 
