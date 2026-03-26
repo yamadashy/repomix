@@ -113,10 +113,36 @@ export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
             });
           }
 
-          // Only split when a line range is requested — the common "read all" case
-          // now avoids the split entirely.
-          const lines = content.split('\n');
-          processedContent = lines.slice(start, end).join('\n');
+          // Extract the requested line range using indexOf — avoids allocating an
+          // N-element array from split('\n') which is costly for large outputs (10MB+
+          // = 200K+ lines). Instead, scan for the start/end newline positions and slice
+          // a single substring. O(n) scan but O(1) allocation vs O(n) allocation.
+          let lineStart = 0;
+          // Skip to the start line
+          for (let line = 0; line < start && lineStart < content.length; line++) {
+            const nl = content.indexOf('\n', lineStart);
+            if (nl === -1) {
+              lineStart = content.length;
+              break;
+            }
+            lineStart = nl + 1;
+          }
+          // Find the end line position
+          let lineEnd = lineStart;
+          for (let line = start; line < end && lineEnd < content.length; line++) {
+            const nl = content.indexOf('\n', lineEnd);
+            if (nl === -1) {
+              lineEnd = content.length;
+              break;
+            }
+            lineEnd = line < end - 1 ? nl + 1 : nl;
+          }
+          // Handle edge case: if lineEnd didn't advance (start == end or past content)
+          if (lineEnd === lineStart && start < totalLines) {
+            const nl = content.indexOf('\n', lineEnd);
+            lineEnd = nl === -1 ? content.length : nl;
+          }
+          processedContent = content.slice(lineStart, lineEnd);
           actualStartLine = start + 1;
           actualEndLine = end;
           linesRead = end - start;

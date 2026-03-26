@@ -45,23 +45,18 @@ export interface FileSearchResult {
   pendingEmptyDirPaths?: Promise<string[]>;
 }
 
-// Lazy-load minimatch — only used for empty directory filtering (non-default feature).
-// Avoids loading the module on every pack run.
-let _minimatch: typeof import('minimatch').minimatch | undefined;
-const getMinimatch = async () => {
-  if (!_minimatch) {
-    const mod = await import('minimatch');
-    _minimatch = mod.minimatch;
-  }
-  return _minimatch;
-};
-
 const findEmptyDirectories = async (
   rootDir: string,
   directories: string[],
   ignorePatterns: string[],
 ): Promise<string[]> => {
-  const minimatchFn = await getMinimatch();
+  // Pre-compile all ignore patterns into a single picomatch matcher.
+  // Previously, minimatch was called 2× per pattern per directory (with and without trailing '/'),
+  // resulting in O(dirs × patterns) pattern compilations. picomatch compiles the patterns once
+  // into a single automaton, reducing pattern evaluation from ~15,000 calls to ~600 for a
+  // typical repo with 300 directories and 50 patterns.
+  const picomatch = await getPicomatch();
+  const isIgnored = ignorePatterns.length > 0 ? picomatch(ignorePatterns, { dot: true }) : () => false;
 
   // Parallelize readdir calls — each is independent I/O.
   // For 100+ directories, this avoids sequential await per directory.
@@ -73,10 +68,7 @@ const findEmptyDirectories = async (
         const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
 
         if (!hasVisibleContents) {
-          const shouldIgnore = ignorePatterns.some(
-            (pattern) => minimatchFn(dir, pattern) || minimatchFn(`${dir}/`, pattern),
-          );
-          if (!shouldIgnore) {
+          if (!isIgnored(dir) && !isIgnored(`${dir}/`)) {
             return dir;
           }
         }
