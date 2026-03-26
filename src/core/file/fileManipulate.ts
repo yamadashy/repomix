@@ -1,10 +1,20 @@
 import path from 'node:path';
-import strip from '@repomix/strip-comments';
 
 export interface FileManipulator {
   removeComments(content: string): string;
   removeEmptyLines(content: string): string;
 }
+
+// Lazy-load @repomix/strip-comments — only needed when --remove-comments is enabled (non-default).
+// This avoids importing the module (~8ms) on every run. Cached after first load.
+let _strip: ((input: string, options?: { language?: string; preserveNewlines?: boolean }) => string) | undefined;
+
+export const ensureStripCommentsLoaded = async (): Promise<void> => {
+  if (!_strip) {
+    const mod = await import('@repomix/strip-comments');
+    _strip = mod.default;
+  }
+};
 
 const rtrimLines = (content: string): string =>
   content
@@ -34,7 +44,10 @@ class StripCommentsManipulator extends BaseManipulator {
   }
 
   removeComments(content: string): string {
-    const result = strip(content, {
+    if (!_strip) {
+      throw new Error('strip-comments not loaded. Call ensureStripCommentsLoaded() first.');
+    }
+    const result = _strip(content, {
       language: this.language,
       preserveNewlines: true,
     });

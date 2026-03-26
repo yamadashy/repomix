@@ -1,7 +1,11 @@
-import { describe, expect, test } from 'vitest';
-import { getFileManipulator } from '../../../src/core/file/fileManipulate.js';
+import { beforeAll, describe, expect, test } from 'vitest';
+import { ensureStripCommentsLoaded, getFileManipulator } from '../../../src/core/file/fileManipulate.js';
 
 describe('fileManipulate', () => {
+  // Load strip-comments before running tests (lazy-loaded in production)
+  beforeAll(async () => {
+    await ensureStripCommentsLoaded();
+  });
   const testCases = [
     {
       name: 'C comment removal',
