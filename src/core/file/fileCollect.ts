@@ -15,10 +15,14 @@ import {
 import type { RawFile } from './fileTypes.js';
 
 // Concurrency limit for parallel file reads on the main thread.
-// 512 saturates the libuv threadpool (4 threads by default) and kernel I/O scheduler
-// with enough pending requests to maximize readahead and SSD parallelism.
-// Node.js uses epoll/kqueue so 512 pending fds is well within OS limits (default 1024+).
-const FILE_COLLECT_CONCURRENCY = 512;
+// 128 balances SSD parallelism with libuv threadpool contention from worker threads.
+// On cold CLI runs, worker threads (security + metrics) are simultaneously loading heavy
+// modules (@secretlint/core, gpt-tokenizer) via the same libuv threadpool. 512 pending
+// file reads flood the threadpool queue, starving worker module loading and increasing
+// overall latency by ~40ms. 128 provides sufficient read-ahead for modern SSDs (32 pending
+// per libuv thread) while leaving headroom for concurrent worker I/O.
+// On warm runs (MCP/server), workers are cached and don't compete, so 128 vs 512 is neutral.
+const FILE_COLLECT_CONCURRENCY = 128;
 
 export interface SkippedFileInfo {
   path: string;

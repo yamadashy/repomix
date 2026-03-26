@@ -155,12 +155,15 @@ function isLikelyBase64(str: string): boolean {
         charTypeCount++;
       }
 
-      // Early exit: both diversity and char-type thresholds met
-      if (distinctCount >= MIN_CHAR_DIVERSITY && charTypeCount >= MIN_CHAR_TYPE_COUNT) {
+      // Early exit: diversity, char-type, and digits thresholds all met.
+      // Real base64 encoded binary data virtually always contains digits.
+      // Requiring digits prevents false positives on path-like strings
+      // (e.g., "abc/DEF/ghi") that match other criteria but lack numbers.
+      if (hasNumbers && distinctCount >= MIN_CHAR_DIVERSITY && charTypeCount >= MIN_CHAR_TYPE_COUNT) {
         return true;
       }
     }
   }
 
-  return distinctCount >= MIN_CHAR_DIVERSITY && charTypeCount >= MIN_CHAR_TYPE_COUNT;
+  return hasNumbers && distinctCount >= MIN_CHAR_DIVERSITY && charTypeCount >= MIN_CHAR_TYPE_COUNT;
 }
