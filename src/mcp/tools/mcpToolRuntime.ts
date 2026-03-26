@@ -6,11 +6,21 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { generateTreeString } from '../../core/file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../../core/file/fileTypes.js';
 
-// Map to store generated output files
+// Map to store generated output files. Bounded to prevent unbounded memory growth
+// in long-running MCP sessions where pack_codebase is called repeatedly.
+// Each entry is ~100 bytes (16-char hex ID + absolute file path), so 1000 entries ≈ 100KB.
+const MAX_REGISTRY_SIZE = 1000;
 const outputFileRegistry = new Map<string, string>();
 
-// Register an output file
+// Register an output file. Evicts the oldest entry when the registry is full.
 export const registerOutputFile = (id: string, filePath: string): void => {
+  if (outputFileRegistry.size >= MAX_REGISTRY_SIZE) {
+    // Map iterates in insertion order; delete the first (oldest) entry
+    const oldestKey = outputFileRegistry.keys().next().value;
+    if (oldestKey !== undefined) {
+      outputFileRegistry.delete(oldestKey);
+    }
+  }
   outputFileRegistry.set(id, filePath);
 };
 

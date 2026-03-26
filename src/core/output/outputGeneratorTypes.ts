@@ -27,12 +27,10 @@ export interface RenderContext {
   readonly fileSummaryEnabled: boolean;
   readonly directoryStructureEnabled: boolean;
   readonly filesEnabled: boolean;
-  readonly escapeFileContent: boolean;
   readonly markdownCodeBlockDelimiter: string;
   readonly gitDiffEnabled: boolean;
   readonly gitDiffWorkTree: string | undefined;
   readonly gitDiffStaged: string | undefined;
   readonly gitLogEnabled: boolean;
-  readonly gitLogContent: string | undefined;
   readonly gitLogCommits: GitLogCommit[] | undefined;
 }

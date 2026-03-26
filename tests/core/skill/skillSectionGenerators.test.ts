@@ -26,13 +26,11 @@ const createMockContext = (overrides: Partial<RenderContext> = {}): RenderContex
   fileSummaryEnabled: true,
   directoryStructureEnabled: true,
   filesEnabled: true,
-  escapeFileContent: false,
   markdownCodeBlockDelimiter: '```',
   gitDiffEnabled: false,
   gitDiffWorkTree: undefined,
   gitDiffStaged: undefined,
   gitLogEnabled: false,
-  gitLogContent: undefined,
   gitLogCommits: undefined,
   ...overrides,
 });

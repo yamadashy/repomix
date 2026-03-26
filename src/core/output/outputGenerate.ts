@@ -116,13 +116,11 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
-    escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
     markdownCodeBlockDelimiter,
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
     gitLogEnabled: outputGeneratorContext.config.output.git?.includeLogs,
-    gitLogContent: outputGeneratorContext.gitLogResult?.logContent,
     gitLogCommits: outputGeneratorContext.gitLogResult?.commits,
   };
 };

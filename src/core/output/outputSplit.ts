@@ -36,29 +36,27 @@ export const getRootEntry = (relativeFilePath: string): string => {
 };
 
 export const buildOutputSplitGroups = (processedFiles: ProcessedFile[], allFilePaths: string[]): OutputSplitGroup[] => {
+  // Build a path→ProcessedFile lookup so we can populate groups in a single pass
+  // over allFilePaths instead of two separate loops. This eliminates one O(n)
+  // iteration and avoids redundant getRootEntry() calls for processed files.
+  const processedFileMap = new Map<string, ProcessedFile>();
+  for (const pf of processedFiles) {
+    processedFileMap.set(pf.path, pf);
+  }
+
   const groupsByRootEntry = new Map<string, OutputSplitGroup>();
 
   for (const filePath of allFilePaths) {
     const rootEntry = getRootEntry(filePath);
-    const existing = groupsByRootEntry.get(rootEntry);
-    if (existing) {
-      existing.allFilePaths.push(filePath);
-    } else {
-      groupsByRootEntry.set(rootEntry, { rootEntry, processedFiles: [], allFilePaths: [filePath] });
+    let group = groupsByRootEntry.get(rootEntry);
+    if (!group) {
+      group = { rootEntry, processedFiles: [], allFilePaths: [] };
+      groupsByRootEntry.set(rootEntry, group);
     }
-  }
-
-  for (const processedFile of processedFiles) {
-    const rootEntry = getRootEntry(processedFile.path);
-    const existing = groupsByRootEntry.get(rootEntry);
-    if (existing) {
-      existing.processedFiles.push(processedFile);
-    } else {
-      groupsByRootEntry.set(rootEntry, {
-        rootEntry,
-        processedFiles: [processedFile],
-        allFilePaths: [processedFile.path],
-      });
+    group.allFilePaths.push(filePath);
+    const pf = processedFileMap.get(filePath);
+    if (pf) {
+      group.processedFiles.push(pf);
     }
   }
 

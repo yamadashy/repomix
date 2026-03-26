@@ -419,6 +419,18 @@ export const pack = async (
   // Fire-and-forget cleanup of metrics worker pool — workers terminate on process exit anyway
   resolvedMetricsWorkerPool?.cleanup().catch(() => {});
 
+  // Release the raw git log string now that all consumers (security check, metrics) are done.
+  // For repos with 50+ commits the raw log can be 50-200KB; freeing it before the result
+  // object is constructed reduces peak memory during the GC-intensive post-pipeline phase.
+  // The structured `commits` array (used by output renderers) remains intact.
+  if (gitLogResult) {
+    (gitLogResult as { logContent: string }).logContent = '';
+  }
+  if (gitDiffResult) {
+    (gitDiffResult as { workTreeDiffContent: string | undefined }).workTreeDiffContent = undefined;
+    (gitDiffResult as { stagedDiffContent: string | undefined }).stagedDiffContent = undefined;
+  }
+
   // Count output lines from the in-memory string using indexOf loop (O(1) allocation).
   // This avoids reading the output file back from disk in MCP tools (~1-10MB I/O + split).
   let outputLineCount = 1;
