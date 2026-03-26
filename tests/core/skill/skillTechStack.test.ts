@@ -106,7 +106,7 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result).toBeNull();
     });
 
-    test('should ignore dependency files in subdirectories', () => {
+    test('should detect dependency files in subdirectories', () => {
       const files: ProcessedFile[] = [
         {
           path: 'packages/sub/package.json',
@@ -115,7 +115,34 @@ tokio = { version = "1.0", features = ["full"] }`,
       ];
 
       const result = detectTechStack(files);
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.languages).toContain('Node.js');
+      expect(result?.dependencies).toHaveLength(1);
+      expect(result?.dependencies[0].name).toBe('lodash');
+    });
+
+    test('should deduplicate dependencies from multiple package.json files', () => {
+      const files: ProcessedFile[] = [
+        {
+          path: 'package.json',
+          content: JSON.stringify({ dependencies: { lodash: '4.0.0', react: '^18.2.0' } }),
+        },
+        {
+          path: 'packages/sub/package.json',
+          content: JSON.stringify({ dependencies: { lodash: '4.1.0', express: '^4.18.0' } }),
+        },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.languages).toEqual(['Node.js']);
+      // lodash should appear only once (first occurrence wins)
+      const lodashDeps = result?.dependencies.filter((d) => d.name === 'lodash');
+      expect(lodashDeps).toHaveLength(1);
+      expect(lodashDeps?.[0].version).toBe('4.0.0');
+      expect(result?.dependencies.find((d) => d.name === 'react')).toBeDefined();
+      expect(result?.dependencies.find((d) => d.name === 'express')).toBeDefined();
     });
 
     test('should detect package manager from packageManager field', () => {
@@ -299,7 +326,7 @@ golang 1.22.0`,
       expect(result?.configFiles).toContain('biome.json');
     });
 
-    test('should not detect configuration files in subdirectories', () => {
+    test('should detect configuration files in subdirectories', () => {
       const files: ProcessedFile[] = [
         { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
         { path: 'packages/sub/tsconfig.json', content: '{}' },
@@ -309,7 +336,7 @@ golang 1.22.0`,
 
       expect(result).not.toBeNull();
       expect(result?.configFiles).toContain('package.json');
-      expect(result?.configFiles).not.toContain('tsconfig.json');
+      expect(result?.configFiles).toContain('packages/sub/tsconfig.json');
     });
 
     test('should detect docker and CI configuration files', () => {

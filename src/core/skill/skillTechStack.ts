@@ -474,7 +474,8 @@ function parseToolVersions(content: string): RuntimeVersion[] {
 
 /**
  * Detects tech stack from processed files.
- * Only checks root-level dependency files.
+ * Checks all dependency files including those in subdirectories,
+ * so that monorepo setups with --include work correctly.
  */
 export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo | null => {
   const result: TechStackInfo = {
@@ -489,13 +490,7 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
   let foundAny = false;
 
   for (const file of processedFiles) {
-    // Only check root-level files (no directory separator in path)
     const fileName = file.path.split('/').pop() || file.path;
-    if (file.path !== fileName && !file.path.startsWith('./')) {
-      // Skip files in subdirectories
-      const dirDepth = file.path.split('/').length - 1;
-      if (dirDepth > 0) continue;
-    }
 
     // Check dependency files
     const config = DEPENDENCY_FILES[fileName];
@@ -529,7 +524,7 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
     // Check configuration files
     if (CONFIG_FILE_PATTERNS.includes(fileName)) {
       foundAny = true;
-      result.configFiles.push(fileName);
+      result.configFiles.push(file.path);
     }
   }
 
@@ -540,8 +535,20 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
   // Deduplicate
   result.languages = [...new Set(result.languages)];
   result.frameworks = [...new Set(result.frameworks)];
+  result.dependencies = deduplicateDependencies(result.dependencies);
+  result.devDependencies = deduplicateDependencies(result.devDependencies);
 
   return result;
+};
+
+const deduplicateDependencies = (deps: DependencyInfo[]): DependencyInfo[] => {
+  const seen = new Map<string, DependencyInfo>();
+  for (const dep of deps) {
+    if (!seen.has(dep.name)) {
+      seen.set(dep.name, dep);
+    }
+  }
+  return [...seen.values()];
 };
 
 /**
