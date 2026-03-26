@@ -340,7 +340,7 @@ function parseJavaVersion(content: string): RuntimeVersion[] {
   return [];
 }
 
-// Configuration files to detect at root level
+// Configuration files to detect
 const CONFIG_FILE_PATTERNS: string[] = [
   // Package managers and dependencies
   'package.json',
@@ -508,7 +508,7 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
       if (parsed.frameworks) {
         result.frameworks.push(...parsed.frameworks);
       }
-      if (parsed.packageManager) {
+      if (parsed.packageManager && !result.packageManager) {
         result.packageManager = parsed.packageManager;
       }
     }
@@ -545,8 +545,9 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
 const deduplicateDependencies = (deps: DependencyInfo[]): DependencyInfo[] => {
   const seen = new Map<string, DependencyInfo>();
   for (const dep of deps) {
-    if (!seen.has(dep.name)) {
-      seen.set(dep.name, dep);
+    const key = `${dep.name}:${dep.version ?? ''}`;
+    if (!seen.has(key)) {
+      seen.set(key, dep);
     }
   }
   return [...seen.values()];
@@ -555,7 +556,8 @@ const deduplicateDependencies = (deps: DependencyInfo[]): DependencyInfo[] => {
 const deduplicateRuntimeVersions = (versions: RuntimeVersion[]): RuntimeVersion[] => {
   const seen = new Set<string>();
   return versions.filter((v) => {
-    const key = `${v.runtime}:${v.version}`;
+    const normalizedVersion = v.version.replace(/^v/, '');
+    const key = `${v.runtime}:${normalizedVersion}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
