@@ -95,6 +95,7 @@ describe.runIf(!isWindows)('packager integration', () => {
         collectFiles: (filePaths, rootDir, config, progressCallback) => {
           return collectFiles(filePaths, rootDir, config, progressCallback, {
             readRawFile,
+            readRawFileCached: readRawFile,
           });
         },
         processFiles: async (rawFiles, config, _progressCallback) => {

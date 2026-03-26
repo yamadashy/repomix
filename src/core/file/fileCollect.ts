@@ -6,7 +6,10 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import {
   type BinaryDetectors,
   readRawFile as defaultReadRawFile,
+  readRawFileCached as defaultReadRawFileCached,
+  type FileReadResult,
   type FileSkipReason,
+  populateFileContentCache,
   resolveBinaryDetectors,
 } from './fileRead.js';
 import type { RawFile } from './fileTypes.js';
@@ -25,6 +28,13 @@ export interface SkippedFileInfo {
 export interface FileCollectResults {
   rawFiles: RawFile[];
   skippedFiles: SkippedFileInfo[];
+  /**
+   * Lazy cache population callback. Call this AFTER the pack() pipeline completes
+   * to populate the file content cache for subsequent calls. Returns a promise
+   * that resolves when all file stats are collected and cached.
+   * Not called for CLI single-run (no overhead); called for MCP/server.
+   */
+  pendingCachePopulation?: () => Promise<void>;
 }
 
 const promisePool = async <T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> => {
@@ -50,6 +60,7 @@ export const collectFiles = async (
   progressCallback: RepomixProgressCallback = () => {},
   deps = {
     readRawFile: defaultReadRawFile,
+    readRawFileCached: defaultReadRawFileCached,
   },
 ): Promise<FileCollectResults> => {
   const startTime = process.hrtime.bigint();
@@ -66,7 +77,7 @@ export const collectFiles = async (
 
   const results = await promisePool(filePaths, FILE_COLLECT_CONCURRENCY, async (filePath) => {
     const fullPath = path.join(rootDir, filePath);
-    const result = await deps.readRawFile(fullPath, maxFileSize, binaryDetectors);
+    const result = await deps.readRawFileCached(fullPath, maxFileSize, binaryDetectors);
 
     completedTasks++;
     // Throttle progress callbacks to every 50 files to reduce string allocation overhead
@@ -75,23 +86,33 @@ export const collectFiles = async (
     }
     logger.trace(`Collect files... (${completedTasks}/${totalTasks}) ${filePath}`);
 
-    return { filePath, result };
+    return { filePath, fullPath, result };
   });
 
   const rawFiles: RawFile[] = [];
   const skippedFiles: SkippedFileInfo[] = [];
 
-  for (const { filePath, result } of results) {
+  // Collect results and build cache population list in one pass.
+  // Reuse fullPath from the pool to avoid a second path.join per file.
+  const cacheEntries: { fullPath: string; result: FileReadResult }[] = [];
+  for (const { filePath, fullPath, result } of results) {
     if (result.content !== null) {
       rawFiles.push({ path: filePath, content: result.content });
     } else if (result.skippedReason) {
       skippedFiles.push({ path: filePath, reason: result.skippedReason });
     }
+    cacheEntries.push({ fullPath, result });
   }
 
   const endTime = process.hrtime.bigint();
   const duration = Number(endTime - startTime) / 1e6;
   logger.trace(`File collection completed in ${duration.toFixed(2)}ms`);
 
-  return { rawFiles, skippedFiles };
+  // Return cache entries as a lazy population callback. The caller (packager) invokes
+  // this AFTER the pack() pipeline completes, so stat calls don't start during critical I/O.
+  // For CLI single-run, this is never invoked (no overhead, process exits immediately).
+  // For MCP/server, it's invoked after pack() returns to prepare the cache for the next call.
+  const pendingCachePopulation = () => populateFileContentCache(cacheEntries);
+
+  return { rawFiles, skippedFiles, pendingCachePopulation };
 };

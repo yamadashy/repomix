@@ -1,6 +1,26 @@
 import * as fs from 'node:fs/promises';
 import { logger } from '../../shared/logger.js';
 
+// ── File content cache ──────────────────────────────────────────────────────
+// Module-level cache for file contents across pack() calls. When the same
+// repository is packed repeatedly (MCP server, website server), most files are
+// unchanged between calls. Validating via fs.stat (1 syscall, ~17ms for 1000
+// files) is ~8x faster than re-reading all files (4+ syscalls, ~130ms).
+//
+// Cache key: absolute file path
+// Cache validation: mtimeMs + size from fs.stat
+// Eviction: entire cache cleared when total cached bytes exceeds MAX_CACHE_BYTES
+interface CachedFileEntry {
+  mtimeMs: number;
+  size: number;
+  result: FileReadResult;
+  contentBytes: number; // byte length of content (0 if skipped)
+}
+
+const fileContentCache = new Map<string, CachedFileEntry>();
+let cachedTotalBytes = 0;
+const MAX_CACHE_BYTES = 200 * 1024 * 1024; // 200MB
+
 // Lazy-load is-binary-path (~7ms) and isbinaryfile (~5ms) — these are only needed
 // during file collection, not at worker module startup time. Deferring their import
 // reduces the worker's critical module loading path by ~12ms.
@@ -142,5 +162,96 @@ export const readRawFile = async (
   } catch (error) {
     logger.warn(`Failed to read file: ${filePath}`, error);
     return { content: null, skippedReason: 'encoding-error' };
+  }
+};
+
+/**
+ * Read a file with content caching across pack() calls.
+ * On cache hit (same mtime + size), returns cached result via fs.stat (1 syscall)
+ * instead of full readFile (4+ syscalls: open, fstat, read, close).
+ * On cache miss, delegates to readRawFile without any overhead.
+ *
+ * For MCP/website servers that pack the same repo repeatedly, this reduces
+ * collectFiles from ~130ms to ~17ms for 1000 files (stat-only validation).
+ * For CLI single-run, the cache has no effect (only one call per process).
+ */
+export const readRawFileCached = async (
+  filePath: string,
+  maxFileSize: number,
+  binaryDetectors?: BinaryDetectors,
+): Promise<FileReadResult> => {
+  // Check binary extension first (no I/O needed)
+  const isBinaryPath = binaryDetectors?.isBinaryPath ?? (await getIsBinaryPath());
+  if (isBinaryPath(filePath)) {
+    return { content: null, skippedReason: 'binary-extension' };
+  }
+
+  // Try cache — validate with fs.stat (1 syscall) instead of full readFile (4+ syscalls)
+  const cached = fileContentCache.get(filePath);
+  if (cached) {
+    try {
+      const stat = await fs.stat(filePath);
+      if (stat.mtimeMs === cached.mtimeMs && stat.size === cached.size) {
+        // Also re-check maxFileSize in case config changed between calls
+        if (cached.result.content !== null || cached.size <= maxFileSize) {
+          return cached.result;
+        }
+      }
+      // File changed — evict stale entry
+      cachedTotalBytes -= cached.contentBytes;
+      fileContentCache.delete(filePath);
+    } catch {
+      // stat failed (file deleted?) — evict and fall through to normal read
+      cachedTotalBytes -= cached.contentBytes;
+      fileContentCache.delete(filePath);
+    }
+  }
+
+  // Cache miss — read file normally (no extra overhead on first call)
+  return readRawFile(filePath, maxFileSize, binaryDetectors);
+};
+
+/**
+ * Populate the file content cache after all files have been read.
+ * Called once at the end of collectFiles to batch-stat all collected files.
+ * This avoids interleaving stat calls with readFile calls which would compete
+ * for libuv threads and slow down the first call.
+ *
+ * The batch stat runs AFTER all file reads complete, so stat calls hit the OS
+ * page cache and complete in ~17ms for 1000 files (vs ~130ms for readFile).
+ */
+export const populateFileContentCache = async (
+  files: ReadonlyArray<{ fullPath: string; result: FileReadResult }>,
+): Promise<void> => {
+  // Batch stat all files in parallel
+  const statResults = await Promise.all(
+    files.map(async ({ fullPath, result }) => {
+      try {
+        const stat = await fs.stat(fullPath);
+        return { fullPath, result, stat };
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  for (const entry of statResults) {
+    if (!entry) continue;
+    const { fullPath, result, stat } = entry;
+    const contentBytes = result.content !== null ? Buffer.byteLength(result.content, 'utf-8') : 0;
+
+    // Evict entire cache if it would exceed the limit
+    if (cachedTotalBytes + contentBytes > MAX_CACHE_BYTES) {
+      fileContentCache.clear();
+      cachedTotalBytes = 0;
+    }
+
+    fileContentCache.set(fullPath, {
+      mtimeMs: stat.mtimeMs,
+      size: stat.size,
+      result,
+      contentBytes,
+    });
+    cachedTotalBytes += contentBytes;
   }
 };

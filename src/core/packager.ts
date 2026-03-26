@@ -262,9 +262,11 @@ export const pack = async (
   // Single-pass extraction instead of two separate flatMap traversals
   const rawFiles: RawFile[] = [];
   const allSkippedFiles: SkippedFileInfo[] = [];
+  const cachePopulationCallbacks: (() => Promise<void>)[] = [];
   for (const curr of collectResults) {
     for (const rf of curr.rawFiles) rawFiles.push(rf);
     for (const sf of curr.skippedFiles) allSkippedFiles.push(sf);
+    if (curr.pendingCachePopulation) cachePopulationCallbacks.push(curr.pendingCachePopulation);
   }
 
   const [gitDiffResult, gitLogResult] = await gitPromise;
@@ -441,6 +443,14 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - End');
+
+  // Populate file content cache for subsequent pack() calls (MCP/website server).
+  // Runs AFTER the pipeline completes so stat calls don't compete with critical I/O.
+  // Fire-and-forget: for CLI single-run the process exits before stats complete (no overhead).
+  // For long-running servers, the cache is ready well before the next call arrives.
+  for (const populateCache of cachePopulationCallbacks) {
+    populateCache().catch(() => {});
+  }
 
   return result;
 };
