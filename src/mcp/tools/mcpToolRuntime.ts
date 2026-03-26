@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { statSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,12 +13,14 @@ const MAX_REGISTRY_SIZE = 1000;
 const outputFileRegistry = new Map<string, string>();
 
 // Register an output file. Evicts the oldest entry when the registry is full.
+// Also invalidates any cached content for the old entry being evicted.
 export const registerOutputFile = (id: string, filePath: string): void => {
   if (outputFileRegistry.size >= MAX_REGISTRY_SIZE) {
     // Map iterates in insertion order; delete the first (oldest) entry
     const oldestKey = outputFileRegistry.keys().next().value;
     if (oldestKey !== undefined) {
       outputFileRegistry.delete(oldestKey);
+      outputContentCache.delete(oldestKey);
     }
   }
   outputFileRegistry.set(id, filePath);
@@ -26,6 +29,124 @@ export const registerOutputFile = (id: string, filePath: string): void => {
 // Get file path from output ID
 export const getOutputFilePath = (id: string): string | undefined => {
   return outputFileRegistry.get(id);
+};
+
+// ── Output content cache ──────────────────────────────────────────────────
+// Caches file content for MCP read/grep tools. In typical MCP sessions,
+// grep_repomix_output and read_repomix_output are called 5-10+ times on
+// the same output. Each call previously re-read the multi-MB file from disk
+// (~5-10ms) and for grep, re-split it into 200K+ lines (~10ms, ~10MB alloc).
+// This cache validates via mtime+size (statSync) and stores both the raw
+// content and lazily-computed split lines.
+//
+// Memory budget: 50MB max content. Evicts oldest entries when exceeded.
+// Output files are immutable (written once by pack()), so mtime+size validation
+// is a fast no-op in practice — it's there as a safety net for manual edits.
+interface CachedOutputEntry {
+  content: string;
+  mtimeMs: number;
+  size: number;
+  totalLines: number;
+  lines: string[] | undefined; // lazily populated on first grep
+  contentBytes: number;
+}
+
+const outputContentCache = new Map<string, CachedOutputEntry>();
+let outputCacheTotalBytes = 0;
+const MAX_OUTPUT_CACHE_BYTES = 50 * 1024 * 1024;
+
+/**
+ * Get cached output content for an MCP output ID. Reads from disk on cache miss
+ * or when the file has changed (mtime/size mismatch). Returns null if the file
+ * doesn't exist or the ID is not registered.
+ */
+export const getOutputContent = async (outputId: string): Promise<{ content: string; totalLines: number } | null> => {
+  const filePath = getOutputFilePath(outputId);
+  if (!filePath) return null;
+
+  const cached = outputContentCache.get(outputId);
+  if (cached) {
+    // Validate via statSync — output files are in tmpdir and recently written,
+    // so the stat data is always in the kernel buffer cache (~0.01ms).
+    try {
+      const stat = statSync(filePath);
+      if (stat.mtimeMs === cached.mtimeMs && stat.size === cached.size) {
+        return { content: cached.content, totalLines: cached.totalLines };
+      }
+    } catch {
+      // File was deleted — remove stale cache entry
+      outputCacheTotalBytes -= cached.contentBytes;
+      outputContentCache.delete(outputId);
+      return null;
+    }
+    // File changed — remove stale entry before re-reading
+    outputCacheTotalBytes -= cached.contentBytes;
+    outputContentCache.delete(outputId);
+  }
+
+  // Cache miss — read from disk
+  let content: string;
+  let stat: { mtimeMs: number; size: number };
+  try {
+    content = await fs.readFile(filePath, 'utf8');
+    stat = statSync(filePath);
+  } catch {
+    return null;
+  }
+
+  // Count lines using indexOf loop — O(1) allocation
+  let totalLines = 1;
+  let pos = content.indexOf('\n');
+  while (pos !== -1) {
+    totalLines++;
+    pos = content.indexOf('\n', pos + 1);
+  }
+
+  const contentBytes = Buffer.byteLength(content, 'utf8');
+
+  // Evict oldest entries if over budget
+  if (outputCacheTotalBytes + contentBytes > MAX_OUTPUT_CACHE_BYTES) {
+    for (const [oldId, oldEntry] of outputContentCache) {
+      outputCacheTotalBytes -= oldEntry.contentBytes;
+      outputContentCache.delete(oldId);
+      if (outputCacheTotalBytes + contentBytes <= MAX_OUTPUT_CACHE_BYTES) break;
+    }
+  }
+
+  const entry: CachedOutputEntry = {
+    content,
+    mtimeMs: stat.mtimeMs,
+    size: stat.size,
+    totalLines,
+    lines: undefined,
+    contentBytes,
+  };
+  outputContentCache.set(outputId, entry);
+  outputCacheTotalBytes += contentBytes;
+
+  return { content, totalLines };
+};
+
+/**
+ * Get cached split lines for an MCP output ID (for grep).
+ * Lazily computes and caches the split lines on first access.
+ * Returns null if content is not cached.
+ */
+export const getOutputLines = async (
+  outputId: string,
+): Promise<{ lines: string[]; content: string; totalLines: number } | null> => {
+  // Ensure content is cached first
+  const result = await getOutputContent(outputId);
+  if (!result) return null;
+
+  const entry = outputContentCache.get(outputId);
+  if (!entry) return null;
+
+  if (!entry.lines) {
+    entry.lines = entry.content.split('\n');
+  }
+
+  return { lines: entry.lines, content: entry.content, totalLines: entry.totalLines };
 };
 
 export interface McpToolMetrics {
