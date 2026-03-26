@@ -151,26 +151,26 @@ export const normalizeGlobPattern = (pattern: string): string => {
  *
  * After getting the file list, we apply repomix's own patterns (include, ignore,
  * .repomixignore, .ignore) using picomatch to produce the final filtered list.
+ *
+ * Accepts a pre-started promise for git ls-files + picomatch import so the subprocess
+ * and module loading overlap with the permission check and ignore context preparation
+ * in searchFiles (~5-10ms saved).
  */
 const searchFilesWithGit = async (
   rootDir: string,
   includePatterns: string[],
   adjustedIgnorePatterns: string[],
   ignoreFilePatterns: string[],
-  deps = { execGitLsFiles },
+  preStartedPromise: Promise<[string[], typeof import('picomatch').default]>,
 ): Promise<string[] | null> => {
   try {
     const startTime = Date.now();
-    logger.debug('[git-ls-files] Starting fast file search...');
+    logger.debug('[git-ls-files] Starting fast file search (pre-started)...');
 
-    // Start git subprocess and picomatch import in parallel — git subprocess takes
-    // ~5-10ms and picomatch first-load takes ~5ms, so overlapping saves ~5ms.
-    const [allFiles, picomatch] = await Promise.all([deps.execGitLsFiles(rootDir), getPicomatch()]);
+    const [allFiles, picomatch] = await preStartedPromise;
     if (allFiles.length === 0) return null;
 
     // Read additional patterns from .repomixignore and .ignore files found in git output.
-    // Compile all ignore file patterns into a single picomatch matcher and iterate files once,
-    // instead of compiling N separate matchers and iterating files N times.
     const ignoreFilesToRead: string[] = [];
     if (ignoreFilePatterns.length > 0) {
       const isIgnoreFile = picomatch(ignoreFilePatterns, { dot: true });
@@ -204,15 +204,9 @@ const searchFilesWithGit = async (
       }
     }
 
-    // Expand bare patterns (no glob chars) to also match directory contents.
-    // In .gitignore / .repomixignore semantics, "foo" matches both the file "foo"
-    // and all files under the directory "foo/". picomatch requires explicit "foo/**".
-    // Pre-allocate with estimated capacity to avoid array resizing.
-    // Iterate both arrays directly instead of spreading into a new intermediate array.
     const expandedIgnorePatterns: string[] = [];
     const expandPattern = (pattern: string) => {
       expandedIgnorePatterns.push(pattern);
-      // If pattern doesn't already contain glob chars or end with /**, add a /** variant
       if (!pattern.includes('*') && !pattern.includes('?') && !pattern.endsWith('/**')) {
         expandedIgnorePatterns.push(`${pattern}/**`);
       }
@@ -220,20 +214,10 @@ const searchFilesWithGit = async (
     for (const pattern of adjustedIgnorePatterns) expandPattern(pattern);
     for (const pattern of additionalIgnorePatterns) expandPattern(pattern);
 
-    // Compile matchers once for all files.
-    // Fast-path: when include is the default '**/*' (match everything), skip picomatch
-    // compilation and per-file testing entirely. For 1000 files, this saves ~10ms of
-    // picomatch.test() calls since '**/*' with dot:true matches every file path.
     const isMatchAll = includePatterns.length === 1 && includePatterns[0] === '**/*';
     const isIncluded = isMatchAll ? undefined : picomatch(includePatterns, { dot: true });
-
     const isIgnored = expandedIgnorePatterns.length > 0 ? picomatch(expandedIgnorePatterns, { dot: true }) : undefined;
 
-    // Filter files that pass include/ignore checks and are not symlinks.
-    // git ls-files lists symlinks as regular entries, but globby with
-    // followSymbolicLinks: false does not follow directory symlinks.
-    // We keep symlinked files (they're resolved as regular files by globby too)
-    // but filter out symlinks to directories since git lists them as files.
     const filteredFiles =
       isIncluded && isIgnored
         ? allFiles.filter((filePath) => isIncluded(filePath) && !isIgnored(filePath))
@@ -296,9 +280,17 @@ export const searchFiles = async (
     );
   }
 
+  // Determine early if the git fast path is available — this check is pure (no I/O).
+  // When applicable, start git ls-files subprocess + picomatch import immediately
+  // so they overlap with the permission check and ignore context preparation (~10ms),
+  // instead of starting sequentially after those complete.
+  const canUseGitFastPath = config.ignore.useGitignore && !explicitFiles;
+  const earlyGitPromise = canUseGitFastPath ? Promise.all([execGitLsFiles(rootDir), getPicomatch()]) : undefined;
+
   // Run permission check and ignore context preparation in parallel.
   // Both are independent: permission check does readdir + access calls,
   // while ignore context reads config patterns + .git/info/exclude.
+  // When git fast path is enabled, the git subprocess runs concurrently with these.
   const [permissionCheck, ignoreContext] = await Promise.all([
     checkDirectoryPermissions(rootDir),
     prepareIgnoreContext(rootDir, config),
@@ -357,11 +349,12 @@ export const searchFiles = async (
     logger.debug('[search] Starting file search...');
     const searchStartTime = Date.now();
 
-    // Try git ls-files fast path first when gitignore is enabled and no explicit files.
-    // This replaces globby's directory walk with a git index lookup (~5ms vs ~200ms).
-    const canUseGitFastPath = config.ignore.useGitignore && !explicitFiles;
-    const gitResult = canUseGitFastPath
-      ? await searchFilesWithGit(rootDir, includePatterns, adjustedIgnorePatterns, ignoreFilePatterns)
+    // Use pre-started git ls-files result when available. The subprocess and picomatch
+    // import were kicked off before the permission check, so they've been running in
+    // parallel for ~10ms. Pass the pre-resolved values into searchFilesWithGit to
+    // avoid re-starting them.
+    const gitResult = earlyGitPromise
+      ? await searchFilesWithGit(rootDir, includePatterns, adjustedIgnorePatterns, ignoreFilePatterns, earlyGitPromise)
       : null;
 
     // Defer globby options creation until globby is actually needed.

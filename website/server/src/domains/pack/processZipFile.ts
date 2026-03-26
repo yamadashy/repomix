@@ -6,7 +6,7 @@ import { type CliOptions, runDefaultAction, setLogLevel } from 'repomix';
 import type { PackOptions, PackResult } from '../../types.js';
 import { AppError } from '../../utils/errorHandler.js';
 import { logMemoryUsage } from '../../utils/logger.js';
-import { cleanupTempDirectory, copyOutputToCurrentDirectory, createTempDirectory } from './utils/fileUtils.js';
+import { cleanupTempDirectory, createTempDirectory } from './utils/fileUtils.js';
 
 // Enhanced ZIP extraction limits
 const ZIP_SECURITY_LIMITS = {
@@ -62,11 +62,11 @@ export async function processZipFile(file: File, format: string, options: PackOp
 
     // Execute default action on the extracted directory
     const result = await runDefaultAction([tempDirPath], tempDirPath, cliOptions);
-    await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
     const { packResult } = result;
 
-    // Read the generated file
-    const content = await fs.readFile(outputFilePath, 'utf-8');
+    // Read the output directly from the temp directory instead of copying to cwd first.
+    // This eliminates one fs.copyFile (~10-20ms for 3-5MB files) and one fs.unlink.
+    const content = await fs.readFile(path.join(tempDirPath, result.config.output.filePath), 'utf-8');
 
     // Map suspicious files results
     const suspiciousFiles =
@@ -117,14 +117,8 @@ export async function processZipFile(file: File, format: string, options: PackOp
     }
     throw new AppError(`File processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
   } finally {
+    // Temp directory cleanup removes all files including the output file
     cleanupTempDirectory(tempDirPath);
-    // Clean up the output file
-    try {
-      await fs.unlink(outputFilePath);
-    } catch (err) {
-      // Ignore file deletion errors
-      console.warn('Failed to cleanup output file:', err);
-    }
   }
 }
 

@@ -21,6 +21,32 @@ interface TechStackInfo {
   configFiles: string[];
 }
 
+// Map-based framework detection: O(1) lookup per dependency name instead of sequential if-chains.
+// Each map key is the exact dependency name (or lowercased for case-insensitive ecosystems).
+const NODE_FRAMEWORK_MAP = new Map<string, string>([
+  ['react', 'React'],
+  ['react-dom', 'React'],
+  ['vue', 'Vue'],
+  ['next', 'Next.js'],
+  ['nuxt', 'Nuxt'],
+  ['@angular/core', 'Angular'],
+  ['express', 'Express'],
+  ['fastify', 'Fastify'],
+  ['hono', 'Hono'],
+  ['svelte', 'Svelte'],
+  ['typescript', 'TypeScript'],
+]);
+
+// Python package names are case-insensitive (PEP 503), so keys are lowercased.
+const PYTHON_FRAMEWORK_MAP = new Map<string, string>([
+  ['django', 'Django'],
+  ['flask', 'Flask'],
+  ['fastapi', 'FastAPI'],
+  ['pytorch', 'PyTorch'],
+  ['torch', 'PyTorch'],
+  ['tensorflow', 'TensorFlow'],
+]);
+
 // Dependency file patterns and their parsers
 const DEPENDENCY_FILES: Record<string, { language: string; parser: (content: string) => Partial<TechStackInfo> }> = {
   'package.json': { language: 'Node.js', parser: parsePackageJson },
@@ -47,17 +73,8 @@ function parsePackageJson(content: string): Partial<TechStackInfo> {
     if (pkg.dependencies) {
       for (const [name, version] of Object.entries(pkg.dependencies)) {
         dependencies.push({ name, version: String(version) });
-
-        // Detect frameworks
-        if (name === 'react' || name === 'react-dom') frameworks.push('React');
-        if (name === 'vue') frameworks.push('Vue');
-        if (name === 'next') frameworks.push('Next.js');
-        if (name === 'nuxt') frameworks.push('Nuxt');
-        if (name === '@angular/core') frameworks.push('Angular');
-        if (name === 'express') frameworks.push('Express');
-        if (name === 'fastify') frameworks.push('Fastify');
-        if (name === 'hono') frameworks.push('Hono');
-        if (name === 'svelte') frameworks.push('Svelte');
+        const fw = NODE_FRAMEWORK_MAP.get(name);
+        if (fw) frameworks.push(fw);
       }
     }
 
@@ -65,9 +82,8 @@ function parsePackageJson(content: string): Partial<TechStackInfo> {
     if (pkg.devDependencies) {
       for (const [name, version] of Object.entries(pkg.devDependencies)) {
         devDependencies.push({ name, version: String(version), isDev: true });
-
-        // Detect TypeScript
-        if (name === 'typescript') frameworks.push('TypeScript');
+        const fw = NODE_FRAMEWORK_MAP.get(name);
+        if (fw) frameworks.push(fw);
       }
     }
 
@@ -107,12 +123,8 @@ function parseRequirementsTxt(content: string): Partial<TechStackInfo> {
       const version = match[3];
       dependencies.push({ name, version });
 
-      // Detect frameworks
-      if (name.toLowerCase() === 'django') frameworks.push('Django');
-      if (name.toLowerCase() === 'flask') frameworks.push('Flask');
-      if (name.toLowerCase() === 'fastapi') frameworks.push('FastAPI');
-      if (name.toLowerCase() === 'pytorch' || name.toLowerCase() === 'torch') frameworks.push('PyTorch');
-      if (name.toLowerCase() === 'tensorflow') frameworks.push('TensorFlow');
+      const fw = PYTHON_FRAMEWORK_MAP.get(name.toLowerCase());
+      if (fw) frameworks.push(fw);
     }
   }
 
@@ -136,9 +148,8 @@ function parsePyprojectToml(content: string): Partial<TechStackInfo> {
           .trim();
         if (name) {
           dependencies.push({ name });
-          if (name.toLowerCase() === 'django') frameworks.push('Django');
-          if (name.toLowerCase() === 'flask') frameworks.push('Flask');
-          if (name.toLowerCase() === 'fastapi') frameworks.push('FastAPI');
+          const fw = PYTHON_FRAMEWORK_MAP.get(name.toLowerCase());
+          if (fw) frameworks.push(fw);
         }
       }
     }

@@ -5,8 +5,14 @@ import type { PackOptions } from '../../../types.js';
 const inflateAsync = promisify(zlib.inflate);
 const deflateAsync = promisify(zlib.deflate);
 
+// Entries below this threshold are stored as raw JSON strings without zlib compression.
+// For typical pack results (~10-50KB JSON), skipping zlib saves ~5-10ms per cache hit/set.
+// Above the threshold, compression reduces memory usage (~60-80% ratio for JSON text).
+const COMPRESSION_THRESHOLD_BYTES = 100_000; // 100KB
+
 interface CacheEntry {
-  value: Uint8Array; // Compressed data
+  value: Uint8Array | string; // Compressed data (Uint8Array) or raw JSON (string)
+  compressed: boolean;
   timestamp: number;
 }
 
@@ -42,11 +48,13 @@ export class RequestCache<T> {
     }
 
     try {
-      // Decompress and return the data
-      const decompressedData = await inflateAsync(entry.value);
-      return JSON.parse(decompressedData.toString('utf8'));
+      if (entry.compressed) {
+        const decompressedData = await inflateAsync(entry.value as Uint8Array);
+        return JSON.parse(decompressedData.toString('utf8'));
+      }
+      return JSON.parse(entry.value as string);
     } catch (error) {
-      console.error('Error decompressing cache entry:', error);
+      console.error('Error reading cache entry:', error);
       this.cache.delete(key);
       return undefined;
     }
@@ -54,16 +62,27 @@ export class RequestCache<T> {
 
   async set(key: string, value: T): Promise<void> {
     try {
-      // Convert data to JSON string and compress
       const jsonString = JSON.stringify(value);
-      const compressedData = await deflateAsync(Buffer.from(jsonString, 'utf8'));
 
+      // Skip zlib for small entries — compression overhead (~5-10ms) exceeds
+      // the memory savings for typical pack results under 100KB.
+      if (jsonString.length < COMPRESSION_THRESHOLD_BYTES) {
+        this.cache.set(key, {
+          value: jsonString,
+          compressed: false,
+          timestamp: Date.now(),
+        });
+        return;
+      }
+
+      const compressedData = await deflateAsync(Buffer.from(jsonString, 'utf8'));
       this.cache.set(key, {
         value: compressedData,
+        compressed: true,
         timestamp: Date.now(),
       });
     } catch (error) {
-      console.error('Error compressing cache entry:', error);
+      console.error('Error caching entry:', error);
     }
   }
 
