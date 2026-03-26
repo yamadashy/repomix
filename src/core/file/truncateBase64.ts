@@ -12,10 +12,6 @@ const dataUriPattern = new RegExp(
 );
 const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
 const base64ValidCharsPattern = /^[A-Za-z0-9+/]+=*$/;
-const hasNumbersPattern = /[0-9]/;
-const hasUpperCasePattern = /[A-Z]/;
-const hasLowerCasePattern = /[a-z]/;
-const hasSpecialCharsPattern = /[+/]/;
 
 /**
  * Truncates base64 encoded data in content to reduce file size
@@ -126,37 +122,45 @@ function isLikelyBase64(str: string): boolean {
     return false;
   }
 
-  // Early-exit char diversity check: count distinct characters using a Uint8Array
-  // lookup indexed by char code. Stops as soon as MIN_CHAR_DIVERSITY (10) distinct
-  // chars are found, avoiding the full Set(str) allocation (which iterates all chars
-  // and creates a heap object per call). For typical 60-200 char base64 matches,
-  // this exits after ~15-20 chars instead of processing the full string.
+  // Single-pass check: count distinct characters AND detect char types simultaneously.
+  // Replaces the previous two-phase approach (Uint8Array diversity loop + 4 separate
+  // regex .test() calls) with one loop that exits early once both thresholds are met.
+  // For typical 60-200 char base64 matches, exits after ~15-20 chars.
   const seen = new Uint8Array(128);
   let distinctCount = 0;
+  let hasNumbers = false;
+  let hasUpperCase = false;
+  let hasLowerCase = false;
+  let hasSpecialChars = false;
+  let charTypeCount = 0;
+
   for (let i = 0; i < str.length; i++) {
     const c = str.charCodeAt(i);
     if (c < 128 && !seen[c]) {
       seen[c] = 1;
-      if (++distinctCount >= MIN_CHAR_DIVERSITY) break;
+      distinctCount++;
+
+      // Detect char type on first occurrence of each character
+      if (!hasNumbers && c >= 48 && c <= 57) {
+        hasNumbers = true;
+        charTypeCount++;
+      } else if (!hasUpperCase && c >= 65 && c <= 90) {
+        hasUpperCase = true;
+        charTypeCount++;
+      } else if (!hasLowerCase && c >= 97 && c <= 122) {
+        hasLowerCase = true;
+        charTypeCount++;
+      } else if (!hasSpecialChars && (c === 43 || c === 47)) {
+        hasSpecialChars = true;
+        charTypeCount++;
+      }
+
+      // Early exit: both diversity and char-type thresholds met
+      if (distinctCount >= MIN_CHAR_DIVERSITY && charTypeCount >= MIN_CHAR_TYPE_COUNT) {
+        return true;
+      }
     }
   }
-  if (distinctCount < MIN_CHAR_DIVERSITY) {
-    return false;
-  }
 
-  // Additional check: base64 encoded binary data typically has good character distribution
-  // Must have at least MIN_CHAR_TYPE_COUNT of the 4 character types (numbers, uppercase, lowercase, special)
-  const hasNumbers = hasNumbersPattern.test(str);
-  const hasUpperCase = hasUpperCasePattern.test(str);
-  const hasLowerCase = hasLowerCasePattern.test(str);
-  const hasSpecialChars = hasSpecialCharsPattern.test(str);
-
-  // Real base64 encoded binary data virtually always contains digits
-  if (!hasNumbers) {
-    return false;
-  }
-
-  const charTypeCount = [hasNumbers, hasUpperCase, hasLowerCase, hasSpecialChars].filter(Boolean).length;
-
-  return charTypeCount >= MIN_CHAR_TYPE_COUNT;
+  return distinctCount >= MIN_CHAR_DIVERSITY && charTypeCount >= MIN_CHAR_TYPE_COUNT;
 }

@@ -62,6 +62,18 @@ const DEPENDENCY_FILES: Record<string, { language: string; parser: (content: str
   'build.gradle.kts': { language: 'Kotlin', parser: parseBuildGradle },
 };
 
+// Pre-compiled regex patterns shared across parsers (avoid re-creation per function call)
+const REQUIREMENTS_LINE_PATTERN = /^([a-zA-Z0-9_-]+)([=<>!~]+)?(.+)?$/;
+const TOML_DEPS_SECTION_PATTERN = /\[project\.dependencies\]([\s\S]*?)(?=\[|$)/;
+const TOML_QUOTED_DEPS_PATTERN = /"([^"]+)"/g;
+const PIPFILE_PACKAGES_PATTERN = /\[packages\]([\s\S]*?)(?=\[|$)/;
+const PIPFILE_DEP_PATTERN = /^([a-zA-Z0-9_-]+)\s*=/;
+const GO_REQUIRE_BLOCK_PATTERN = /require\s*\(([\s\S]*?)\)/;
+const GO_DEP_LINE_PATTERN = /^([^\s]+)\s+([^\s]+)/;
+const CARGO_DEPS_SECTION_PATTERN = /\[dependencies\]([\s\S]*?)(?=\[|$)/;
+const CARGO_DEP_PATTERN = /^([a-zA-Z0-9_-]+)\s*=/;
+const GRADLE_DEP_PATTERN = /(?:implementation|compile)\s*['"(]([^'"()]+)['"]/g;
+
 function parsePackageJson(content: string): Partial<TechStackInfo> {
   try {
     const pkg = JSON.parse(content);
@@ -100,7 +112,7 @@ function parsePackageJson(content: string): Partial<TechStackInfo> {
     return {
       dependencies,
       devDependencies,
-      frameworks: [...new Set(frameworks)],
+      frameworks,
       packageManager,
     };
   } catch {
@@ -117,7 +129,7 @@ function parseRequirementsTxt(content: string): Partial<TechStackInfo> {
     if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('-')) continue;
 
     // Parse package==version or package>=version format
-    const match = trimmed.match(/^([a-zA-Z0-9_-]+)([=<>!~]+)?(.+)?$/);
+    const match = trimmed.match(REQUIREMENTS_LINE_PATTERN);
     if (match) {
       const name = match[1];
       const version = match[3];
@@ -128,7 +140,8 @@ function parseRequirementsTxt(content: string): Partial<TechStackInfo> {
     }
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  // Skip per-parser dedup — detectTechStack() deduplicates all frameworks at the end
+  return { dependencies, frameworks };
 }
 
 function parsePyprojectToml(content: string): Partial<TechStackInfo> {
@@ -136,10 +149,11 @@ function parsePyprojectToml(content: string): Partial<TechStackInfo> {
   const frameworks: string[] = [];
 
   // Simple TOML parsing for dependencies
-  const depsMatch = content.match(/\[project\.dependencies\]([\s\S]*?)(?=\[|$)/);
+  const depsMatch = content.match(TOML_DEPS_SECTION_PATTERN);
   if (depsMatch) {
     const depsSection = depsMatch[1];
-    const depLines = depsSection.match(/"([^"]+)"/g);
+    TOML_QUOTED_DEPS_PATTERN.lastIndex = 0;
+    const depLines = depsSection.match(TOML_QUOTED_DEPS_PATTERN);
     if (depLines) {
       for (const dep of depLines) {
         const name = dep
@@ -155,18 +169,18 @@ function parsePyprojectToml(content: string): Partial<TechStackInfo> {
     }
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 function parsePipfile(content: string): Partial<TechStackInfo> {
   const dependencies: DependencyInfo[] = [];
 
   // Simple parsing for [packages] section
-  const packagesMatch = content.match(/\[packages\]([\s\S]*?)(?=\[|$)/);
+  const packagesMatch = content.match(PIPFILE_PACKAGES_PATTERN);
   if (packagesMatch) {
     const lines = packagesMatch[1].split('\n');
     for (const line of lines) {
-      const match = line.match(/^([a-zA-Z0-9_-]+)\s*=/);
+      const match = line.match(PIPFILE_DEP_PATTERN);
       if (match) {
         dependencies.push({ name: match[1] });
       }
@@ -181,11 +195,11 @@ function parseGoMod(content: string): Partial<TechStackInfo> {
   const frameworks: string[] = [];
 
   // Parse require block
-  const requireMatch = content.match(/require\s*\(([\s\S]*?)\)/);
+  const requireMatch = content.match(GO_REQUIRE_BLOCK_PATTERN);
   if (requireMatch) {
     const lines = requireMatch[1].split('\n');
     for (const line of lines) {
-      const match = line.trim().match(/^([^\s]+)\s+([^\s]+)/);
+      const match = line.trim().match(GO_DEP_LINE_PATTERN);
       if (match) {
         const name = match[1];
         const version = match[2];
@@ -198,7 +212,7 @@ function parseGoMod(content: string): Partial<TechStackInfo> {
     }
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 function parseCargoToml(content: string): Partial<TechStackInfo> {
@@ -206,11 +220,11 @@ function parseCargoToml(content: string): Partial<TechStackInfo> {
   const frameworks: string[] = [];
 
   // Parse [dependencies] section
-  const depsMatch = content.match(/\[dependencies\]([\s\S]*?)(?=\[|$)/);
+  const depsMatch = content.match(CARGO_DEPS_SECTION_PATTERN);
   if (depsMatch) {
     const lines = depsMatch[1].split('\n');
     for (const line of lines) {
-      const match = line.match(/^([a-zA-Z0-9_-]+)\s*=/);
+      const match = line.match(CARGO_DEP_PATTERN);
       if (match) {
         const name = match[1];
         dependencies.push({ name });
@@ -223,7 +237,7 @@ function parseCargoToml(content: string): Partial<TechStackInfo> {
     }
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 function parseComposerJson(content: string): Partial<TechStackInfo> {
@@ -243,7 +257,7 @@ function parseComposerJson(content: string): Partial<TechStackInfo> {
       }
     }
 
-    return { dependencies, frameworks: [...new Set(frameworks)] };
+    return { dependencies, frameworks };
   } catch {
     return {};
   }
@@ -262,7 +276,7 @@ function parseGemfile(content: string): Partial<TechStackInfo> {
     if (name === 'sinatra') frameworks.push('Sinatra');
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 function parsePomXml(content: string): Partial<TechStackInfo> {
@@ -292,7 +306,7 @@ function parsePomXml(content: string): Partial<TechStackInfo> {
     }
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 function parseBuildGradle(content: string): Partial<TechStackInfo> {
@@ -300,7 +314,8 @@ function parseBuildGradle(content: string): Partial<TechStackInfo> {
   const frameworks: string[] = [];
 
   // Parse implementation/compile dependencies
-  const depMatches = content.matchAll(/(?:implementation|compile)\s*['"(]([^'"()]+)['"]/g);
+  GRADLE_DEP_PATTERN.lastIndex = 0;
+  const depMatches = content.matchAll(GRADLE_DEP_PATTERN);
   for (const match of depMatches) {
     const dep = match[1];
     const parts = dep.split(':');
@@ -311,7 +326,7 @@ function parseBuildGradle(content: string): Partial<TechStackInfo> {
     if (dep.includes('ktor')) frameworks.push('Ktor');
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 // Version manager files and their parsers

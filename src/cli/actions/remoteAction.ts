@@ -11,8 +11,32 @@ import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
-import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
+import type {
+  promptSkillLocation as PromptSkillLocationType,
+  resolveAndPrepareSkillDir as ResolveAndPrepareSkillDirType,
+} from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
+
+// Lazy-load skillPrompts — defers @clack/prompts (~16ms) until skill generation is actually
+// requested. The --remote flag typically does NOT use skill generation, so this avoids
+// eagerly loading @clack/prompts on every remote invocation.
+let _skillPrompts:
+  | {
+      promptSkillLocation: typeof PromptSkillLocationType;
+      resolveAndPrepareSkillDir: typeof ResolveAndPrepareSkillDirType;
+    }
+  | undefined;
+const getSkillPrompts = async () => {
+  if (!_skillPrompts) {
+    const mod = await import('../prompts/skillPrompts.js');
+    _skillPrompts = {
+      promptSkillLocation: mod.promptSkillLocation,
+      resolveAndPrepareSkillDir: mod.resolveAndPrepareSkillDir,
+    };
+  }
+  return _skillPrompts;
+};
+
 import { type DefaultActionRunnerResult, runDefaultAction } from './defaultAction.js';
 
 export const runRemoteAction = async (
@@ -119,9 +143,11 @@ export const runRemoteAction = async (
           throw new RepomixError('--skill-output path cannot be empty');
         }
         // Non-interactive mode: use provided path directly
+        const { resolveAndPrepareSkillDir } = await getSkillPrompts();
         skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, process.cwd(), cliOptions.force ?? false);
       } else {
         // Interactive mode: prompt for skill location
+        const { promptSkillLocation } = await getSkillPrompts();
         const promptResult = await promptSkillLocation(skillName, process.cwd());
         skillDir = promptResult.skillDir;
       }
