@@ -1,19 +1,12 @@
-import logUpdate from 'log-update';
-import pc from 'picocolors';
+import { Spinner as PicoSpinner } from 'picospinner';
 import type { CliOptions } from './types.js';
 
-// Replicate cli-spinners dots animation
-const dotsFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-const dotsInterval = 80;
-
 export class Spinner {
-  private message: string;
-  private currentFrame = 0;
-  private interval: ReturnType<typeof setInterval> | null = null;
+  private spinner: PicoSpinner;
   private readonly isQuiet: boolean;
 
   constructor(message: string, cliOptions?: CliOptions) {
-    this.message = message;
+    this.spinner = new PicoSpinner(message);
     // If the user has specified the verbose flag, don't show the spinner
     // Use optional chaining to handle undefined cliOptions (e.g., in bundled worker environments)
     this.isQuiet = cliOptions?.quiet || cliOptions?.verbose || cliOptions?.stdout || false;
@@ -24,12 +17,7 @@ export class Spinner {
       return;
     }
 
-    const framesLength = dotsFrames.length;
-    this.interval = setInterval(() => {
-      this.currentFrame++;
-      const frame = dotsFrames[this.currentFrame % framesLength];
-      logUpdate(`${pc.cyan(frame)} ${this.message}`);
-    }, dotsInterval);
+    this.spinner.start();
   }
 
   update(message: string): void {
@@ -37,20 +25,7 @@ export class Spinner {
       return;
     }
 
-    this.message = message;
-  }
-
-  stop(finalMessage: string): void {
-    if (this.isQuiet) {
-      return;
-    }
-
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
-    }
-    logUpdate(finalMessage);
-    logUpdate.done();
+    this.spinner.setText(message);
   }
 
   succeed(message: string): void {
@@ -58,7 +33,7 @@ export class Spinner {
       return;
     }
 
-    this.stop(`${pc.green('✔')} ${message}`);
+    this.spinner.succeed(message);
   }
 
   fail(message: string): void {
@@ -66,6 +41,6 @@ export class Spinner {
       return;
     }
 
-    this.stop(`${pc.red('✖')} ${message}`);
+    this.spinner.fail(message);
   }
 }
