@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { logger } from '../../shared/logger.js';
 
@@ -186,11 +187,15 @@ export const readRawFileCached = async (
     return { content: null, skippedReason: 'binary-extension' };
   }
 
-  // Try cache — validate with fs.stat (1 syscall) instead of full readFile (4+ syscalls)
+  // Try cache — validate with statSync (synchronous) instead of async fs.stat.
+  // For ~1000 cached files, statSync takes ~2.5ms vs ~17ms for async fs.stat because
+  // it avoids Promise creation/scheduling overhead and libuv threadpool contention.
+  // The stat data is in the OS page cache (recently read), so the syscall itself is fast.
+  // Blocking the event loop for 2.5ms total is negligible vs the pipeline duration.
   const cached = fileContentCache.get(filePath);
   if (cached) {
     try {
-      const stat = await fs.stat(filePath);
+      const stat = statSync(filePath);
       if (stat.mtimeMs === cached.mtimeMs && stat.size === cached.size) {
         // Also re-check maxFileSize in case config changed between calls
         if (cached.result.content !== null || cached.size <= maxFileSize) {
