@@ -368,17 +368,17 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should use dependency injection for search functions', () => {
-      const mockSearchInContent = vi.fn().mockReturnValue([]);
+      const mockSearchInLines = vi.fn().mockReturnValue([]);
       const mockFormatSearchResults = vi.fn().mockReturnValue(['formatted']);
       const content = 'test content';
       const options = { pattern: 'test', contextLines: 0, beforeLines: 0, afterLines: 0, ignoreCase: false };
 
       const result = performGrepSearch(content, options, {
-        searchInContent: mockSearchInContent,
+        searchInLines: mockSearchInLines,
         formatSearchResults: mockFormatSearchResults,
       });
 
-      expect(mockSearchInContent).toHaveBeenCalledWith(content, options);
+      expect(mockSearchInLines).toHaveBeenCalledWith(['test content'], options);
       expect(mockFormatSearchResults).toHaveBeenCalledWith(['test content'], [], 0, 0);
       expect(result.formattedOutput).toEqual(['formatted']);
     });
