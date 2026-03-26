@@ -269,13 +269,27 @@ function parsePomXml(content: string): Partial<TechStackInfo> {
   const dependencies: DependencyInfo[] = [];
   const frameworks: string[] = [];
 
-  // Simple XML parsing for dependencies
-  const depMatches = content.matchAll(/<dependency>[\s\S]*?<artifactId>([^<]+)<\/artifactId>[\s\S]*?<\/dependency>/g);
-  for (const match of depMatches) {
-    const name = match[1];
-    dependencies.push({ name });
-
-    if (name.includes('spring')) frameworks.push('Spring');
+  // Line-by-line parsing instead of [\s\S]*? regex which has O(n²) backtracking potential
+  // on large pom.xml files. Tracks whether we're inside a <dependency> block and extracts
+  // <artifactId> values without any backtracking risk.
+  let inDependency = false;
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.includes('<dependency>')) {
+      inDependency = true;
+    }
+    if (inDependency && trimmed.includes('<artifactId>')) {
+      const start = trimmed.indexOf('<artifactId>') + 12;
+      const end = trimmed.indexOf('</artifactId>', start);
+      if (end > start) {
+        const name = trimmed.slice(start, end).trim();
+        dependencies.push({ name });
+        if (name.includes('spring')) frameworks.push('Spring');
+      }
+    }
+    if (trimmed.includes('</dependency>')) {
+      inDependency = false;
+    }
   }
 
   return { dependencies, frameworks: [...new Set(frameworks)] };

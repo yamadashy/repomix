@@ -171,8 +171,11 @@ async function extractZipWithSecurity(file: File, destPath: string): Promise<voi
       }
     }
 
-    // 4. Validate all entries for path traversal, file extensions, and nesting level
+    // 4. Validate all entries for path traversal, file extensions, and nesting level.
+    // Also collect unique parent directories in the same pass to avoid a second O(n) iteration.
     const processedPaths = new Set<string>();
+    const uniqueDirs = new Set<string>();
+    const fileEntries: [string, Uint8Array][] = [];
 
     for (const entryPath of filePaths) {
       // Skip directories (fflate doesn't include directory entries, only files)
@@ -209,14 +212,10 @@ async function extractZipWithSecurity(file: File, destPath: string): Promise<voi
         throw new AppError(`Duplicate file path detected: ${entryPath}. This could indicate a malicious archive.`, 400);
       }
       processedPaths.add(normalizedPath);
-    }
 
-    // If all checks pass, extract the files
-    // Collect all unique parent directories, create them in one batch, then write files in parallel
-    const fileEntries = Object.entries(files).filter(([fp]) => !fp.endsWith('/'));
-    const uniqueDirs = new Set<string>();
-    for (const [filePath] of fileEntries) {
-      uniqueDirs.add(path.dirname(path.join(destPath, filePath)));
+      // Collect validated file entries and their parent directories in this same pass
+      fileEntries.push([entryPath, files[entryPath]]);
+      uniqueDirs.add(path.dirname(normalizedPath));
     }
 
     // Create all directories in parallel (fs.mkdir with recursive is idempotent)

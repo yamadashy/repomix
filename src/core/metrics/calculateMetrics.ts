@@ -184,30 +184,25 @@ export const calculateMetrics = async (
 
   const totalTokens = estimatedOutputTokens;
 
-  // Build character counts for all files
-  const fileCharCounts: Record<string, number> = {};
-  for (const file of processedFiles) {
-    fileCharCounts[file.path] = file.content.length;
-  }
-
-  // Build token counts: exact for sampled files, estimated for the rest when tokenCountTree is enabled.
+  // Build exact token counts from the selective metrics sample into a lookup.
   const fileTokenCounts: Record<string, number> = {};
-  for (const file of selectiveFileMetrics) {
-    fileTokenCounts[file.path] = file.tokenCount;
+  for (const fm of selectiveFileMetrics) {
+    fileTokenCounts[fm.path] = fm.tokenCount;
   }
 
-  // Estimate token counts for remaining files when tokenCountTree is enabled
-  // Reuses the sqrt-weighted ratio already computed above.
-  if (
+  // Single pass: build char counts for all files, and estimate token counts for
+  // non-sampled files when tokenCountTree is enabled. Previously used 2-3 separate
+  // loops over processedFiles + selectiveFileMetrics.
+  const fileCharCounts: Record<string, number> = {};
+  const estimateTokens =
     config.output.tokenCountTree &&
     selectiveFileMetrics.length > 0 &&
     selectiveFileMetrics.length < processedFiles.length &&
-    weightedRatio > 0
-  ) {
-    for (const file of processedFiles) {
-      if (fileTokenCounts[file.path] === undefined) {
-        fileTokenCounts[file.path] = Math.round(file.content.length * weightedRatio);
-      }
+    weightedRatio > 0;
+  for (const file of processedFiles) {
+    fileCharCounts[file.path] = file.content.length;
+    if (estimateTokens && fileTokenCounts[file.path] === undefined) {
+      fileTokenCounts[file.path] = Math.round(file.content.length * weightedRatio);
     }
   }
 
