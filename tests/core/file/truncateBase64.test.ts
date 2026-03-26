@@ -26,6 +26,15 @@ describe('truncateBase64Content', () => {
     expect(result).toBe('const data = "DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg...";');
   });
 
+  it('should truncate standalone base64 strings at exactly 256 chars', () => {
+    // 192 bytes encodes to exactly 256 base64 chars with no padding
+    const exact256 =
+      'DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtgharP9Bk+Y4it0vccQWaLsNX6H0RpjrPY/SJHbJG22wAlSm+Uud4DKE1yl7zhBitQdZq/5AkuU3idwucMMVZ7oMXqDzRZfqPI7RI3XIGmy/AVOl+Eqc7zGD1ih6zR9htAZYqv1PkeQ2iNstf8IUZrkLXa/yRJbpO43QInTHGWu+AFKk90mb7jCC1Sd5zB5gswVXqfxOkOM1h9osfsETZbgKXK7xQ5XoOo';
+    const input = `const data = "${exact256}";`;
+    const result = truncateBase64Content(input);
+    expect(result).toBe('const data = "DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg...";');
+  });
+
   it('should preserve short base64 strings', () => {
     const input = 'const shortData = "SGVsbG8gV29ybGQ=";';
     const result = truncateBase64Content(input);
