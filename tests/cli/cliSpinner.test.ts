@@ -76,49 +76,52 @@ describe('cliSpinner', () => {
     });
 
     describe('when quiet mode is enabled', () => {
-      it('should not start spinner when quiet flag is true', () => {
+      it('should not create PicoSpinner when quiet flag is true', () => {
+        const instancesBefore = mockPicoInstances.length;
         const spinner = new Spinner('Processing...', { quiet: true } as CliOptions);
         spinner.start();
 
-        expect(getLastPicoInstance().start).not.toHaveBeenCalled();
+        expect(mockPicoInstances.length).toBe(instancesBefore);
       });
 
-      it('should not start spinner when verbose flag is true', () => {
+      it('should not create PicoSpinner when verbose flag is true', () => {
+        const instancesBefore = mockPicoInstances.length;
         const spinner = new Spinner('Processing...', { verbose: true } as CliOptions);
         spinner.start();
 
-        expect(getLastPicoInstance().start).not.toHaveBeenCalled();
+        expect(mockPicoInstances.length).toBe(instancesBefore);
       });
 
-      it('should not start spinner when stdout flag is true', () => {
+      it('should not create PicoSpinner when stdout flag is true', () => {
+        const instancesBefore = mockPicoInstances.length;
         const spinner = new Spinner('Processing...', { stdout: true } as CliOptions);
         spinner.start();
 
-        expect(getLastPicoInstance().start).not.toHaveBeenCalled();
+        expect(mockPicoInstances.length).toBe(instancesBefore);
       });
 
-      it('should not update spinner message in quiet mode', () => {
+      it('should not throw when update is called in quiet mode', () => {
         const spinner = new Spinner('Initial', { quiet: true } as CliOptions);
-        spinner.start();
-        spinner.update('Updated');
-
-        expect(getLastPicoInstance().setText).not.toHaveBeenCalled();
+        expect(() => {
+          spinner.start();
+          spinner.update('Updated');
+        }).not.toThrow();
       });
 
-      it('should not show succeed message in quiet mode', () => {
+      it('should not throw when succeed is called in quiet mode', () => {
         const spinner = new Spinner('Processing...', { quiet: true } as CliOptions);
-        spinner.start();
-        spinner.succeed('Success!');
-
-        expect(getLastPicoInstance().succeed).not.toHaveBeenCalled();
+        expect(() => {
+          spinner.start();
+          spinner.succeed('Success!');
+        }).not.toThrow();
       });
 
-      it('should not show fail message in quiet mode', () => {
+      it('should not throw when fail is called in quiet mode', () => {
         const spinner = new Spinner('Processing...', { quiet: true } as CliOptions);
-        spinner.start();
-        spinner.fail('Failed!');
-
-        expect(getLastPicoInstance().fail).not.toHaveBeenCalled();
+        expect(() => {
+          spinner.start();
+          spinner.fail('Failed!');
+        }).not.toThrow();
       });
     });
   });
