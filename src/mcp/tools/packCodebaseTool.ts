@@ -97,6 +97,7 @@ export const registerPackCodebaseTool = (mcpServer: McpServer) => {
           securityCheck: true,
           topFilesLen: topFilesLength,
           quiet: true,
+          _inProcess: true,
         } as CliOptions;
 
         const result = await runCli(['.'], directory, cliOptions);

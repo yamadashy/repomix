@@ -95,6 +95,7 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
           securityCheck: true,
           topFilesLen: topFilesLength,
           quiet: true,
+          _inProcess: true,
         } as CliOptions;
 
         const result = await runCli(['.'], process.cwd(), cliOptions);

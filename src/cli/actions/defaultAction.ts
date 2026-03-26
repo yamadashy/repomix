@@ -43,7 +43,8 @@ export const runDefaultAction = async (
   // CLI one-shot runs (detected via _cliOneShot flag set by the commander entry point) skip the
   // child process since the process exits immediately — saving ~120ms of spawn + module reload.
   // All other modes (TTY, stdout, non-TTY) run pack() directly in the main process.
-  const needsChildProcess = !cliOptions.stdout && cliOptions.quiet === true && !cliOptions._cliOneShot;
+  const needsChildProcess =
+    !cliOptions.stdout && cliOptions.quiet === true && !cliOptions._cliOneShot && !cliOptions._inProcess;
 
   // Start child process worker early so module loading (~200ms) overlaps
   // with config loading (~30-50ms). Only when the spinner is needed.

@@ -75,4 +75,9 @@ export interface CliOptions extends OptionValues {
   // Internal flags (not exposed as CLI arguments)
   /** Set by CLI entry point to skip child process in quiet mode (one-shot CLI runs don't need memory isolation) */
   _cliOneShot?: boolean;
+  /** Set by MCP tools to run pack() in-process instead of spawning a child process.
+   * Enables module-level caches (file content, processed files, metrics, worker pools)
+   * across repeated MCP pack calls. Memory is bounded by existing cache limits
+   * (200MB file content, 5000 processed files, 5000 token counts). */
+  _inProcess?: boolean;
 }
