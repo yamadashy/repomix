@@ -306,6 +306,7 @@ export const generateOutput = async (
     generateParsableXmlOutput,
     generateParsableJsonOutput,
   },
+  preComputedTreeString?: string,
 ): Promise<string> => {
   // Files are expected to be pre-sorted by the caller (packager.ts)
   // to overlap the git command with metrics computation.
@@ -318,6 +319,8 @@ export const generateOutput = async (
     gitLogResult,
     filePathsByRoot,
     emptyDirPaths,
+    undefined,
+    preComputedTreeString,
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
@@ -351,6 +354,7 @@ export const buildOutputGeneratorContext = async (
     listDirectoriesAndFiles,
     searchFiles,
   },
+  preComputedTreeString?: string,
 ): Promise<OutputGeneratorContext> => {
   let repositoryInstruction = '';
 
@@ -427,10 +431,13 @@ export const buildOutputGeneratorContext = async (
     }
   }
 
-  // Generate tree string - use multi-root format if filePathsByRoot is provided
-  // generateTreeStringWithRoots handles single root case internally
+  // Use pre-computed tree string if available (computed during the parallel block to
+  // overlap with the security check, saving ~11ms from the sequential output phase).
+  // Falls back to computing here for non-default configs (full tree, empty dirs).
   let treeString: string;
-  if (filePathsByRoot) {
+  if (preComputedTreeString !== undefined) {
+    treeString = preComputedTreeString;
+  } else if (filePathsByRoot) {
     treeString = generateTreeStringWithRoots(filePathsByRoot, directoryPathsForTree);
   } else {
     // Fallback for when root info is not available

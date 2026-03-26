@@ -7,7 +7,7 @@ import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
 import { preWarmBinaryDetection } from './file/fileRead.js';
 import { searchFiles } from './file/fileSearch.js';
-import type { FilesByRoot } from './file/fileTreeGenerate.js';
+import { type FilesByRoot, generateTreeStringWithRoots } from './file/fileTreeGenerate.js';
 import type { ProcessedFile, RawFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
@@ -305,6 +305,15 @@ export const pack = async (
         const metricsTargetPaths = deps.getMetricsTargetPaths(allProcessedFiles, config);
         // Start sort immediately — uses git subprocess (I/O-bound), doesn't need metrics pool
         const sortPromise = deps.sortOutputFiles(allProcessedFiles, config);
+
+        // Pre-compute tree string while security check runs in worker threads (~11ms saved
+        // from the sequential output generation phase). For the default config (no full tree,
+        // no empty dirs), the tree only needs filePathsByRoot + []. For includeEmptyDirectories,
+        // we defer tree generation since emptyDirPaths aren't available yet.
+        const canPreComputeTree =
+          !config.output.includeFullDirectoryStructure && !config.output.includeEmptyDirectories;
+        const treeString = canPreComputeTree ? generateTreeStringWithRoots(filePathsByRoot, []) : undefined;
+
         // Await metrics pool — remaining warmup time overlaps with sort + security check
         const metricsWorkerPool = await metricsWorkerPromise;
         resolvedMetricsWorkerPool = metricsWorkerPool;
@@ -319,7 +328,7 @@ export const pack = async (
             metricsWorkerPool,
           ),
         ]);
-        return { allProcessedFiles, sortedFiles, fileMetrics };
+        return { allProcessedFiles, sortedFiles, fileMetrics, treeString };
       },
     ),
   ]);
@@ -327,6 +336,7 @@ export const pack = async (
     allProcessedFiles,
     sortedFiles: sortedAllFiles,
     fileMetrics: precomputedFileMetrics,
+    treeString: preComputedTreeString,
   } = processedSortedAndMetrics;
 
   const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = securityResult;
@@ -385,6 +395,8 @@ export const pack = async (
     progressCallback,
     filePathsByRoot,
     emptyDirPaths,
+    undefined,
+    preComputedTreeString,
   );
 
   // File metrics were already computed during the security check phase (overlapped).

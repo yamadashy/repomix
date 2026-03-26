@@ -110,6 +110,8 @@ describe('packager', () => {
       progressCallback,
       [{ rootLabel: 'root', files: mockFilePaths }],
       [],
+      undefined,
+      expect.any(String),
     );
     expect(mockDeps.calculateMetrics).toHaveBeenCalledWith(
       mockProcessedFiles,

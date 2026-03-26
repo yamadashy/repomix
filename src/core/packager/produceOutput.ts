@@ -35,6 +35,7 @@ export const produceOutput = async (
   filePathsByRoot?: FilesByRoot[],
   emptyDirPaths?: string[],
   overrideDeps: Partial<typeof defaultDeps> = {},
+  preComputedTreeString?: string,
 ): Promise<ProduceOutputResult> => {
   const deps = { ...defaultDeps, ...overrideDeps };
 
@@ -67,6 +68,7 @@ export const produceOutput = async (
     filePathsByRoot,
     emptyDirPaths,
     deps,
+    preComputedTreeString,
   );
 };
 
@@ -138,6 +140,7 @@ const generateAndWriteSingleOutput = async (
   filePathsByRoot: FilesByRoot[] | undefined,
   emptyDirPaths: string[] | undefined,
   deps: typeof defaultDeps,
+  preComputedTreeString?: string,
 ): Promise<ProduceOutputResult> => {
   const output = await withMemoryLogging('Generate Output', () =>
     deps.generateOutput(
@@ -149,6 +152,8 @@ const generateAndWriteSingleOutput = async (
       gitLogResult,
       filePathsByRoot,
       emptyDirPaths,
+      undefined,
+      preComputedTreeString,
     ),
   );
 

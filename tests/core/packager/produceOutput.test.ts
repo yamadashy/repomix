@@ -39,6 +39,8 @@ describe('produceOutput', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
+        undefined,
       );
       expect(mockDeps.writeOutputToDisk).toHaveBeenCalledWith('generated output', mockConfig);
       expect(mockDeps.copyToClipboardIfEnabled).toHaveBeenCalledWith('generated output', progressCallback, mockConfig);
@@ -75,6 +77,8 @@ describe('produceOutput', () => {
         [],
         gitDiffResult,
         gitLogResult,
+        undefined,
+        undefined,
         undefined,
         undefined,
       );
