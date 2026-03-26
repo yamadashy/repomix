@@ -15,6 +15,7 @@ const getTarExtract = async (): Promise<TarExtract> => {
   }
   return _tarExtract;
 };
+
 import {
   buildGitHubArchiveUrl,
   buildGitHubMasterArchiveUrl,
