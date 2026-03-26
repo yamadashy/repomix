@@ -7,6 +7,12 @@ import { logMemoryUsage } from '../../utils/logger.js';
 import { generateCacheKey } from './utils/cache.js';
 import { cache } from './utils/sharedInstance.js';
 
+// In-flight request coalescing: when multiple identical requests arrive concurrently,
+// only the first one triggers actual processing. Subsequent requests with the same cache key
+// await the same Promise, avoiding duplicate git clones and pack() runs.
+// Entries are removed as soon as the Promise settles (fulfilled or rejected).
+const inFlightRequests = new Map<string, Promise<PackResult>>();
+
 export async function processRemoteRepo(repoUrl: string, format: string, options: PackOptions): Promise<PackResult> {
   if (!repoUrl) {
     throw new AppError('Repository URL is required for remote processing', 400);
@@ -21,6 +27,29 @@ export async function processRemoteRepo(repoUrl: string, format: string, options
     return cachedResult;
   }
 
+  // Coalesce with an in-flight request for the same cache key
+  const inFlight = inFlightRequests.get(cacheKey);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const promise = processRemoteRepoInternal(repoUrl, format, options, cacheKey);
+  inFlightRequests.set(cacheKey, promise);
+
+  // Remove from in-flight map once settled (success or failure)
+  promise.finally(() => {
+    inFlightRequests.delete(cacheKey);
+  });
+
+  return promise;
+}
+
+async function processRemoteRepoInternal(
+  repoUrl: string,
+  format: string,
+  options: PackOptions,
+  cacheKey: string,
+): Promise<PackResult> {
   const outputFilePath = `repomix-output-${randomUUID()}.txt`;
 
   // Create CLI options with correct mapping
@@ -60,6 +89,23 @@ export async function processRemoteRepo(repoUrl: string, format: string, options
     // Read the generated file
     const content = await fs.readFile(outputFilePath, 'utf-8');
 
+    // Build allFiles sorted by tokenCount once — O(n log n) instead of sorting twice.
+    // topFiles is derived from the same sorted order, adding charCount for the top entries only.
+    const allFiles = Object.entries(packResult.fileTokenCounts)
+      .map(([filePath]) => ({
+        path: filePath,
+        tokenCount: packResult.fileTokenCounts[filePath] || 0,
+        selected: true,
+      }))
+      .sort((a, b) => b.tokenCount - a.tokenCount);
+
+    const topFilesLen = cliOptions.topFilesLen ?? 10;
+    const topFiles = allFiles.slice(0, topFilesLen).map((f) => ({
+      path: f.path,
+      charCount: (packResult.fileCharCounts[f.path] as number) || 0,
+      tokenCount: f.tokenCount,
+    }));
+
     // Create pack result
     const packResultData: PackResult = {
       content,
@@ -72,21 +118,8 @@ export async function processRemoteRepo(repoUrl: string, format: string, options
           totalCharacters: packResult.totalCharacters,
           totalTokens: packResult.totalTokens,
         },
-        topFiles: Object.entries(packResult.fileCharCounts)
-          .map(([path, charCount]) => ({
-            path,
-            charCount: charCount as number,
-            tokenCount: packResult.fileTokenCounts[path] || 0,
-          }))
-          .sort((a, b) => b.tokenCount - a.tokenCount)
-          .slice(0, cliOptions.topFilesLen),
-        allFiles: Object.entries(packResult.fileTokenCounts)
-          .map(([path]) => ({
-            path,
-            tokenCount: packResult.fileTokenCounts[path] || 0,
-            selected: true, // Default to selected for initial packing
-          }))
-          .sort((a, b) => b.tokenCount - a.tokenCount),
+        topFiles,
+        allFiles,
       },
     };
 

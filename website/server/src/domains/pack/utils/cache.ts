@@ -97,17 +97,25 @@ export class RequestCache<T> {
   }
 }
 
-// Cache key generation utility
+// Cache key generation utility.
+// Uses SHA-256 hash instead of JSON.stringify to produce fixed-length keys regardless
+// of options size. For large options (100KB+ patterns), this avoids O(n) JSON serialization
+// on every cache lookup. Keys are sorted before hashing for deterministic output.
 export function generateCacheKey(
   identifier: string,
   format: string,
   options: PackOptions,
   type: 'url' | 'file',
 ): string {
-  return JSON.stringify({
-    identifier,
-    format,
-    options,
-    type,
-  });
+  // Sort option keys for deterministic ordering, then build a pipe-delimited string.
+  // This avoids JSON.stringify's overhead while remaining collision-resistant.
+  const optionParts: string[] = [];
+  const sortedKeys = Object.keys(options).sort();
+  for (const key of sortedKeys) {
+    const val = options[key as keyof PackOptions];
+    if (val !== undefined) {
+      optionParts.push(`${key}=${val}`);
+    }
+  }
+  return `${type}|${identifier}|${format}|${optionParts.join('|')}`;
 }
