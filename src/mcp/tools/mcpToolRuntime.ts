@@ -4,7 +4,6 @@ import os from 'node:os';
 import path from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { generateTreeString } from '../../core/file/fileTreeGenerate.js';
-import type { ProcessedFile } from '../../core/file/fileTypes.js';
 
 // Map to store generated output files. Bounded to prevent unbounded memory growth
 // in long-running MCP sessions where pack_codebase is called repeatedly.
@@ -36,7 +35,6 @@ export interface McpToolMetrics {
   fileCharCounts: Record<string, number>;
   fileTokenCounts: Record<string, number>;
   outputLineCount: number;
-  processedFiles: ProcessedFile[];
   safeFilePaths: string[];
 }
 

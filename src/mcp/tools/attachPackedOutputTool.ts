@@ -4,7 +4,6 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { defaultFilePathMap } from '../../config/configDefaults.js';
-import type { ProcessedFile } from '../../core/file/fileTypes.js';
 import {
   buildMcpToolErrorResponse,
   convertErrorToJson,
@@ -148,19 +147,6 @@ function extractFileMetrics(
 }
 
 /**
- * Create processed files from file paths
- * @param filePaths Array of file paths
- * @param charCounts Record of file paths to character counts
- * @returns Array of ProcessedFile objects
- */
-function createProcessedFiles(filePaths: string[], charCounts: Record<string, number>): ProcessedFile[] {
-  return filePaths.map((path) => ({
-    path,
-    content: ''.padEnd(charCounts[path]), // Create a string of the appropriate length
-  }));
-}
-
-/**
  * Extract file metrics from XML format
  */
 function extractFileMetricsXml(content: string): { filePaths: string[]; fileCharCounts: Record<string, number> } {
@@ -285,8 +271,13 @@ It will return in that case a new output ID and the updated content.`,
           fileTokenCounts[filePath] = Math.floor(charCount / 4);
         }
 
-        // Create processed files for the metrics
-        const processedFiles = createProcessedFiles(filePaths, fileCharCounts);
+        // Count lines via indexOf to avoid allocating a huge intermediate array
+        let outputLineCount = 1;
+        let pos = content.indexOf('\n');
+        while (pos !== -1) {
+          outputLineCount++;
+          pos = content.indexOf('\n', pos + 1);
+        }
 
         // Create metrics object similar to what packResult would provide
         const packResult: McpToolMetrics = {
@@ -296,8 +287,7 @@ It will return in that case a new output ID and the updated content.`,
           safeFilePaths: filePaths,
           fileCharCounts,
           fileTokenCounts,
-          outputLineCount: content.split('\n').length,
-          processedFiles,
+          outputLineCount,
         };
 
         // Create context object

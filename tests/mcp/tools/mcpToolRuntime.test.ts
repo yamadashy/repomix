@@ -116,7 +116,6 @@ describe('mcpToolRuntime', () => {
           'file2.js': 60,
           'file3.js': 40,
         },
-        processedFiles: [],
         safeFilePaths: [],
       };
       const outputFilePath = '/path/to/output.xml';
@@ -160,7 +159,6 @@ describe('mcpToolRuntime', () => {
           'file1.js': 60,
           'file2.js': 40,
         },
-        processedFiles: [],
         safeFilePaths: [],
       };
       const outputFilePath = '/path/to/output.xml';
@@ -204,7 +202,6 @@ describe('mcpToolRuntime', () => {
           'file5.js': 10,
           'file6.js': 5,
         },
-        processedFiles: [],
         safeFilePaths: [],
       };
       const outputFilePath = '/path/to/output.xml';
