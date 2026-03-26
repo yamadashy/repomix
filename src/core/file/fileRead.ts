@@ -9,7 +9,7 @@ import { logger } from '../../shared/logger.js';
 //
 // Cache key: absolute file path
 // Cache validation: mtimeMs + size from fs.stat
-// Eviction: entire cache cleared when total cached bytes exceeds MAX_CACHE_BYTES
+// Eviction: stale entries (from previous pack() calls) evicted first when over budget
 interface CachedFileEntry {
   mtimeMs: number;
   size: number;
@@ -235,15 +235,41 @@ export const populateFileContentCache = async (
     }),
   );
 
+  // Build set of paths in the current batch for LRU-like eviction.
+  // Entries from the current pack() call are always kept; stale entries from
+  // previous calls are evicted first when the cache exceeds the size budget.
+  const currentBatchPaths = new Set<string>();
+  for (const entry of statResults) {
+    if (entry) currentBatchPaths.add(entry.fullPath);
+  }
+
+  // Pre-collect stale entries (not in current batch) so eviction is O(n+m)
+  // instead of O(n*m) — avoids scanning the map per eviction.
+  const staleEntries: Array<[string, CachedFileEntry]> = [];
+  for (const [path, cached] of fileContentCache) {
+    if (!currentBatchPaths.has(path)) {
+      staleEntries.push([path, cached]);
+    }
+  }
+  let staleIdx = 0;
+
   for (const entry of statResults) {
     if (!entry) continue;
     const { fullPath, result, stat } = entry;
     const contentBytes = result.content !== null ? Buffer.byteLength(result.content, 'utf-8') : 0;
 
-    // Evict entire cache if it would exceed the limit
+    // Evict stale entries from previous pack() calls until there's room
+    while (cachedTotalBytes + contentBytes > MAX_CACHE_BYTES && staleIdx < staleEntries.length) {
+      const [stalePath, staleCached] = staleEntries[staleIdx++];
+      if (fileContentCache.has(stalePath)) {
+        cachedTotalBytes -= staleCached.contentBytes;
+        fileContentCache.delete(stalePath);
+      }
+    }
+
+    // Skip if still over budget (all stale entries exhausted, single repo > 200MB)
     if (cachedTotalBytes + contentBytes > MAX_CACHE_BYTES) {
-      fileContentCache.clear();
-      cachedTotalBytes = 0;
+      continue;
     }
 
     fileContentCache.set(fullPath, {

@@ -15,98 +15,98 @@ describe('remoteAction functions', () => {
   });
 
   describe('parseRemoteValue', () => {
-    test('should convert GitHub shorthand to full URL', () => {
-      expect(parseRemoteValue('user/repo')).toEqual({
+    test('should convert GitHub shorthand to full URL', async () => {
+      expect(await parseRemoteValue('user/repo')).toEqual({
         repoUrl: 'https://github.com/user/repo.git',
         remoteBranch: undefined,
       });
-      expect(parseRemoteValue('user-name/repo-name')).toEqual({
+      expect(await parseRemoteValue('user-name/repo-name')).toEqual({
         repoUrl: 'https://github.com/user-name/repo-name.git',
         remoteBranch: undefined,
       });
-      expect(parseRemoteValue('user_name/repo_name')).toEqual({
+      expect(await parseRemoteValue('user_name/repo_name')).toEqual({
         repoUrl: 'https://github.com/user_name/repo_name.git',
         remoteBranch: undefined,
       });
-      expect(parseRemoteValue('a.b/a-b_c')).toEqual({
+      expect(await parseRemoteValue('a.b/a-b_c')).toEqual({
         repoUrl: 'https://github.com/a.b/a-b_c.git',
         remoteBranch: undefined,
       });
     });
 
-    test('should handle HTTPS URLs', () => {
-      expect(parseRemoteValue('https://github.com/user/repo')).toEqual({
+    test('should handle HTTPS URLs', async () => {
+      expect(await parseRemoteValue('https://github.com/user/repo')).toEqual({
         repoUrl: 'https://github.com/user/repo.git',
         remoteBranch: undefined,
       });
-      expect(parseRemoteValue('https://github.com/user/repo.git')).toEqual({
+      expect(await parseRemoteValue('https://github.com/user/repo.git')).toEqual({
         repoUrl: 'https://github.com/user/repo.git',
         remoteBranch: undefined,
       });
     });
 
-    test('should not modify SSH URLs', () => {
+    test('should not modify SSH URLs', async () => {
       const sshUrl = 'git@github.com:user/repo.git';
-      const parsed = parseRemoteValue(sshUrl);
+      const parsed = await parseRemoteValue(sshUrl);
       expect(parsed).toEqual({
         repoUrl: sshUrl,
         remoteBranch: undefined,
       });
     });
 
-    test('should handle Azure DevOps SSH URLs', () => {
+    test('should handle Azure DevOps SSH URLs', async () => {
       const azureDevOpsUrl = 'git@ssh.dev.azure.com:v3/organization/project/repo';
-      const parsed = parseRemoteValue(azureDevOpsUrl);
+      const parsed = await parseRemoteValue(azureDevOpsUrl);
       expect(parsed).toEqual({
         repoUrl: azureDevOpsUrl,
         remoteBranch: undefined,
       });
     });
 
-    test('should handle Azure DevOps HTTPS URLs', () => {
+    test('should handle Azure DevOps HTTPS URLs', async () => {
       const azureDevOpsUrl = 'https://dev.azure.com/organization/project/_git/repo';
-      const parsed = parseRemoteValue(azureDevOpsUrl);
+      const parsed = await parseRemoteValue(azureDevOpsUrl);
       expect(parsed).toEqual({
         repoUrl: azureDevOpsUrl,
         remoteBranch: undefined,
       });
     });
 
-    test('should handle legacy Visual Studio Team Services URLs', () => {
+    test('should handle legacy Visual Studio Team Services URLs', async () => {
       const vstsUrl = 'https://myorg.visualstudio.com/myproject/_git/myrepo';
-      const parsed = parseRemoteValue(vstsUrl);
+      const parsed = await parseRemoteValue(vstsUrl);
       expect(parsed).toEqual({
         repoUrl: vstsUrl,
         remoteBranch: undefined,
       });
     });
 
-    test('should not treat URLs with Azure DevOps hostnames in path as Azure DevOps URLs', () => {
+    test('should not treat URLs with Azure DevOps hostnames in path as Azure DevOps URLs', async () => {
       // Security test: Ensure URLs with Azure DevOps keywords in the path are not treated as Azure DevOps
       const maliciousUrl = 'https://evil.com/dev.azure.com/fake/repo';
-      const parsed = parseRemoteValue(maliciousUrl);
+      const parsed = await parseRemoteValue(maliciousUrl);
       // Should be parsed normally (not as Azure DevOps), with .git suffix added
       expect(parsed.repoUrl).toBe('https://evil.com/dev.azure.com/fake/repo.git');
     });
 
-    test('should not treat URLs with visualstudio.com in path as Azure DevOps URLs', () => {
+    test('should not treat URLs with visualstudio.com in path as Azure DevOps URLs', async () => {
       const maliciousUrl = 'https://evil.com/path/visualstudio.com/fake/repo';
-      const parsed = parseRemoteValue(maliciousUrl);
+      const parsed = await parseRemoteValue(maliciousUrl);
       // Should be parsed normally (not as Azure DevOps), with .git suffix added
       expect(parsed.repoUrl).toBe('https://evil.com/path/visualstudio.com/fake/repo.git');
     });
 
-    test('should get correct branch name from url', () => {
-      expect(parseRemoteValue('https://github.com/username/repo/tree/branchname')).toEqual({
+    test('should get correct branch name from url', async () => {
+      expect(await parseRemoteValue('https://github.com/username/repo/tree/branchname')).toEqual({
         repoUrl: 'https://github.com/username/repo.git',
         remoteBranch: 'branchname',
       });
-      expect(parseRemoteValue('https://some.gitlab.domain/some/path/username/repo/-/tree/branchname')).toEqual({
+      expect(await parseRemoteValue('https://some.gitlab.domain/some/path/username/repo/-/tree/branchname')).toEqual({
         repoUrl: 'https://some.gitlab.domain/some/path/username/repo.git',
         remoteBranch: 'branchname',
       });
       expect(
-        parseRemoteValue('https://some.gitlab.domain/some/path/username/repo/-/tree/branchname/withslash', [
+        await parseRemoteValue('https://some.gitlab.domain/some/path/username/repo/-/tree/branchname/withslash', [
           'branchname/withslash',
         ]),
       ).toEqual({
@@ -115,9 +115,9 @@ describe('remoteAction functions', () => {
       });
     });
 
-    test('should get correct commit hash from url', () => {
+    test('should get correct commit hash from url', async () => {
       expect(
-        parseRemoteValue(
+        await parseRemoteValue(
           'https://some.gitlab.domain/some/path/username/repo/commit/c482755296cce46e58f87d50f25f545c5d15be6f',
         ),
       ).toEqual({
@@ -125,14 +125,14 @@ describe('remoteAction functions', () => {
         remoteBranch: 'c482755296cce46e58f87d50f25f545c5d15be6f',
       });
     });
-    test('should throw when the URL is invalid or harmful', () => {
-      expect(() => parseRemoteValue('some random string')).toThrowError();
+    test('should throw when the URL is invalid or harmful', async () => {
+      await expect(parseRemoteValue('some random string')).rejects.toThrowError();
     });
   });
 
   describe('isValidRemoteValue', () => {
     describe('GitHub shorthand format (user/repo)', () => {
-      test('should accept valid repository names', () => {
+      test('should accept valid repository names', async () => {
         // Test cases for valid repository names with various allowed characters
         const validUrls = [
           'user/repo',
@@ -145,11 +145,11 @@ describe('remoteAction functions', () => {
         ];
 
         for (const url of validUrls) {
-          expect(isValidRemoteValue(url), `URL should be valid: ${url}`).toBe(true);
+          expect(await isValidRemoteValue(url), `URL should be valid: ${url}`).toBe(true);
         }
       });
 
-      test('should reject invalid repository names', () => {
+      test('should reject invalid repository names', async () => {
         // Test cases for invalid patterns and disallowed characters
         const invalidUrls = [
           '', // Empty string
@@ -170,13 +170,13 @@ describe('remoteAction functions', () => {
         ];
 
         for (const url of invalidUrls) {
-          expect(isValidRemoteValue(url), `URL should be invalid: ${url}`).toBe(false);
+          expect(await isValidRemoteValue(url), `URL should be invalid: ${url}`).toBe(false);
         }
       });
     });
 
     describe('Full URL format', () => {
-      test('should accept valid URLs', () => {
+      test('should accept valid URLs', async () => {
         // Test cases for standard URL formats
         const validUrls = [
           'https://example.com',
@@ -187,32 +187,32 @@ describe('remoteAction functions', () => {
         ];
 
         for (const url of validUrls) {
-          expect(isValidRemoteValue(url), `URL should be valid: ${url}`).toBe(true);
+          expect(await isValidRemoteValue(url), `URL should be valid: ${url}`).toBe(true);
         }
       });
 
-      test('should reject invalid URLs', () => {
+      test('should reject invalid URLs', async () => {
         // Test cases for malformed URLs
         const invalidUrls = ['not-a-url', 'http://', 'https://', '://no-protocol.com', 'http://[invalid]'];
 
         for (const url of invalidUrls) {
-          expect(isValidRemoteValue(url), `URL should be invalid: ${url}`).toBe(false);
+          expect(await isValidRemoteValue(url), `URL should be invalid: ${url}`).toBe(false);
         }
       });
     });
   });
 
   describe('parseGitHubRepoInfo', () => {
-    test('should parse GitHub shorthand', () => {
-      const result = parseGitHubRepoInfo('yamadashy/repomix');
+    test('should parse GitHub shorthand', async () => {
+      const result = await parseGitHubRepoInfo('yamadashy/repomix');
       expect(result).toEqual({
         owner: 'yamadashy',
         repo: 'repomix',
       });
     });
 
-    test('should parse GitHub URL with branch', () => {
-      const result = parseGitHubRepoInfo('https://github.com/yamadashy/repomix/tree/develop');
+    test('should parse GitHub URL with branch', async () => {
+      const result = await parseGitHubRepoInfo('https://github.com/yamadashy/repomix/tree/develop');
       expect(result).toEqual({
         owner: 'yamadashy',
         repo: 'repomix',
@@ -220,34 +220,34 @@ describe('remoteAction functions', () => {
       });
     });
 
-    test('should parse GitHub git URL', () => {
-      const result = parseGitHubRepoInfo('https://github.com/yamadashy/repomix.git');
+    test('should parse GitHub git URL', async () => {
+      const result = await parseGitHubRepoInfo('https://github.com/yamadashy/repomix.git');
       expect(result).toEqual({
         owner: 'yamadashy',
         repo: 'repomix',
       });
     });
 
-    test('should return null for non-GitHub URLs', () => {
-      const result = parseGitHubRepoInfo('https://gitlab.com/user/repo');
+    test('should return null for non-GitHub URLs', async () => {
+      const result = await parseGitHubRepoInfo('https://gitlab.com/user/repo');
       expect(result).toBeNull();
     });
 
-    test('should return null for invalid URLs', () => {
-      const result = parseGitHubRepoInfo('invalid-url');
+    test('should return null for invalid URLs', async () => {
+      const result = await parseGitHubRepoInfo('invalid-url');
       expect(result).toBeNull();
     });
 
-    test('should handle git@ URLs', () => {
-      const result = parseGitHubRepoInfo('git@github.com:yamadashy/repomix.git');
+    test('should handle git@ URLs', async () => {
+      const result = await parseGitHubRepoInfo('git@github.com:yamadashy/repomix.git');
       expect(result).toEqual({
         owner: 'yamadashy',
         repo: 'repomix',
       });
     });
 
-    test('should merge branch from parsing when URL contains branch info', () => {
-      const result = parseGitHubRepoInfo('https://github.com/yamadashy/repomix/tree/feature/test');
+    test('should merge branch from parsing when URL contains branch info', async () => {
+      const result = await parseGitHubRepoInfo('https://github.com/yamadashy/repomix/tree/feature/test');
       expect(result).toEqual({
         owner: 'yamadashy',
         repo: 'repomix',
@@ -255,17 +255,17 @@ describe('remoteAction functions', () => {
       });
     });
 
-    test('should reject malicious URLs with github.com in path or query', () => {
+    test('should reject malicious URLs with github.com in path or query', async () => {
       // Malicious URLs that should not be treated as GitHub repositories
-      expect(parseGitHubRepoInfo('https://evil.com/github.com/user/repo')).toBeNull();
-      expect(parseGitHubRepoInfo('https://evil.com/?redirect=github.com/user/repo')).toBeNull();
-      expect(parseGitHubRepoInfo('https://evil.com#github.com/user/repo')).toBeNull();
-      expect(parseGitHubRepoInfo('https://github.com.evil.com/user/repo')).toBeNull();
+      expect(await parseGitHubRepoInfo('https://evil.com/github.com/user/repo')).toBeNull();
+      expect(await parseGitHubRepoInfo('https://evil.com/?redirect=github.com/user/repo')).toBeNull();
+      expect(await parseGitHubRepoInfo('https://evil.com#github.com/user/repo')).toBeNull();
+      expect(await parseGitHubRepoInfo('https://github.com.evil.com/user/repo')).toBeNull();
     });
 
-    test('should accept legitimate GitHub URLs', () => {
-      expect(parseGitHubRepoInfo('https://github.com/user/repo')).not.toBeNull();
-      expect(parseGitHubRepoInfo('https://www.github.com/user/repo')).not.toBeNull();
+    test('should accept legitimate GitHub URLs', async () => {
+      expect(await parseGitHubRepoInfo('https://github.com/user/repo')).not.toBeNull();
+      expect(await parseGitHubRepoInfo('https://www.github.com/user/repo')).not.toBeNull();
     });
   });
 
@@ -314,18 +314,18 @@ describe('remoteAction functions', () => {
   });
 
   describe('isGitHubRepository', () => {
-    test('should return true for GitHub repositories', () => {
-      expect(isGitHubRepository('yamadashy/repomix')).toBe(true);
-      expect(isGitHubRepository('https://github.com/yamadashy/repomix')).toBe(true);
-      expect(isGitHubRepository('git@github.com:yamadashy/repomix.git')).toBe(true);
-      expect(isGitHubRepository('https://github.com/yamadashy/repomix/tree/develop')).toBe(true);
+    test('should return true for GitHub repositories', async () => {
+      expect(await isGitHubRepository('yamadashy/repomix')).toBe(true);
+      expect(await isGitHubRepository('https://github.com/yamadashy/repomix')).toBe(true);
+      expect(await isGitHubRepository('git@github.com:yamadashy/repomix.git')).toBe(true);
+      expect(await isGitHubRepository('https://github.com/yamadashy/repomix/tree/develop')).toBe(true);
     });
 
-    test('should return false for non-GitHub repositories', () => {
-      expect(isGitHubRepository('https://gitlab.com/user/repo')).toBe(false);
-      expect(isGitHubRepository('https://bitbucket.org/user/repo')).toBe(false);
-      expect(isGitHubRepository('invalid-url')).toBe(false);
-      expect(isGitHubRepository('')).toBe(false);
+    test('should return false for non-GitHub repositories', async () => {
+      expect(await isGitHubRepository('https://gitlab.com/user/repo')).toBe(false);
+      expect(await isGitHubRepository('https://bitbucket.org/user/repo')).toBe(false);
+      expect(await isGitHubRepository('invalid-url')).toBe(false);
+      expect(await isGitHubRepository('')).toBe(false);
     });
   });
 });

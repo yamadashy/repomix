@@ -110,32 +110,32 @@ describe('GitHub Archive API', () => {
   });
 
   describe('parseGitHubRepoInfo integration', () => {
-    test('should parse shorthand format', () => {
-      const result = parseGitHubRepoInfo('yamadashy/repomix');
+    test('should parse shorthand format', async () => {
+      const result = await parseGitHubRepoInfo('yamadashy/repomix');
       expect(result).toEqual({
         owner: 'yamadashy',
         repo: 'repomix',
       });
     });
 
-    test('should parse HTTPS URL', () => {
-      const result = parseGitHubRepoInfo('https://github.com/yamadashy/repomix.git');
+    test('should parse HTTPS URL', async () => {
+      const result = await parseGitHubRepoInfo('https://github.com/yamadashy/repomix.git');
       expect(result).toEqual({
         owner: 'yamadashy',
         repo: 'repomix',
       });
     });
 
-    test('should parse SSH URL', () => {
-      const result = parseGitHubRepoInfo('git@github.com:yamadashy/repomix.git');
+    test('should parse SSH URL', async () => {
+      const result = await parseGitHubRepoInfo('git@github.com:yamadashy/repomix.git');
       expect(result).toEqual({
         owner: 'yamadashy',
         repo: 'repomix',
       });
     });
 
-    test('should parse URL with branch', () => {
-      const result = parseGitHubRepoInfo('https://github.com/yamadashy/repomix/tree/develop');
+    test('should parse URL with branch', async () => {
+      const result = await parseGitHubRepoInfo('https://github.com/yamadashy/repomix/tree/develop');
       expect(result).toEqual({
         owner: 'yamadashy',
         repo: 'repomix',
@@ -143,13 +143,13 @@ describe('GitHub Archive API', () => {
       });
     });
 
-    test('should return null for non-GitHub URLs', () => {
-      const result = parseGitHubRepoInfo('https://gitlab.com/user/repo.git');
+    test('should return null for non-GitHub URLs', async () => {
+      const result = await parseGitHubRepoInfo('https://gitlab.com/user/repo.git');
       expect(result).toBeNull();
     });
 
-    test('should return null for invalid format', () => {
-      const result = parseGitHubRepoInfo('invalid-format');
+    test('should return null for invalid format', async () => {
+      const result = await parseGitHubRepoInfo('invalid-format');
       expect(result).toBeNull();
     });
   });

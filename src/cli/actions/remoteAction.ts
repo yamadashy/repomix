@@ -45,7 +45,7 @@ export const runRemoteAction = async (
 
   try {
     // Check if this is a GitHub repository and archive download is supported
-    const githubRepoInfo = deps.parseGitHubRepoInfo(repoUrl);
+    const githubRepoInfo = await deps.parseGitHubRepoInfo(repoUrl);
     const shouldTryArchive = githubRepoInfo && deps.isArchiveDownloadSupported(githubRepoInfo);
 
     if (shouldTryArchive) {
@@ -178,14 +178,14 @@ const performGitClone = async (
   // Get remote refs
   let refs: string[] = [];
   try {
-    refs = await deps.getRemoteRefs(parseRemoteValue(repoUrl).repoUrl);
+    refs = await deps.getRemoteRefs((await parseRemoteValue(repoUrl)).repoUrl);
     logger.trace(`Retrieved ${refs.length} refs from remote repository`);
   } catch (error) {
     logger.trace('Failed to get remote refs, proceeding without them:', (error as Error).message);
   }
 
   // Parse the remote URL with the refs information
-  const parsedFields = parseRemoteValue(repoUrl, refs);
+  const parsedFields = await parseRemoteValue(repoUrl, refs);
 
   const spinner = new Spinner('Cloning repository...', cliOptions);
 

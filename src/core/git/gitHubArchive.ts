@@ -1,9 +1,20 @@
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import * as zlib from 'node:zlib';
-import { extract as tarExtract } from 'tar';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+
+// Lazy-load tar (~10-15ms) — only needed when archive download is actually attempted.
+// The git clone path and default pack path never import this module.
+type TarExtract = typeof import('tar').extract;
+let _tarExtract: TarExtract | undefined;
+const getTarExtract = async (): Promise<TarExtract> => {
+  if (!_tarExtract) {
+    const mod = await import('tar');
+    _tarExtract = mod.extract;
+  }
+  return _tarExtract;
+};
 import {
   buildGitHubArchiveUrl,
   buildGitHubMasterArchiveUrl,
@@ -29,17 +40,9 @@ export interface ArchiveDownloadDeps {
   fetch: typeof globalThis.fetch;
   pipeline: typeof pipeline;
   Transform: typeof Transform;
-  tarExtract: typeof tarExtract;
+  tarExtract: TarExtract;
   createGunzip: typeof zlib.createGunzip;
 }
-
-const defaultDeps: ArchiveDownloadDeps = {
-  fetch: globalThis.fetch,
-  pipeline,
-  Transform,
-  tarExtract,
-  createGunzip: zlib.createGunzip,
-};
 
 /**
  * Downloads and extracts a GitHub repository archive using streaming tar.gz extraction
@@ -49,8 +52,15 @@ export const downloadGitHubArchive = async (
   targetDirectory: string,
   options: ArchiveDownloadOptions = {},
   onProgress?: ProgressCallback,
-  deps: ArchiveDownloadDeps = defaultDeps,
+  deps?: ArchiveDownloadDeps,
 ): Promise<void> => {
+  const resolvedDeps = deps ?? {
+    fetch: globalThis.fetch,
+    pipeline,
+    Transform,
+    tarExtract: await getTarExtract(),
+    createGunzip: zlib.createGunzip,
+  };
   const { timeout = 30000, retries = 3 } = options;
 
   let lastError: Error | null = null;
@@ -67,7 +77,7 @@ export const downloadGitHubArchive = async (
       try {
         logger.trace(`Downloading GitHub archive from: ${archiveUrl} (attempt ${attempt}/${retries})`);
 
-        await downloadAndExtractArchive(archiveUrl, targetDirectory, timeout, onProgress, deps);
+        await downloadAndExtractArchive(archiveUrl, targetDirectory, timeout, onProgress, resolvedDeps);
 
         logger.trace('Successfully downloaded and extracted GitHub archive');
         return; // Success - exit early
@@ -108,8 +118,8 @@ const downloadAndExtractArchive = async (
   archiveUrl: string,
   targetDirectory: string,
   timeout: number,
-  onProgress?: ProgressCallback,
-  deps: ArchiveDownloadDeps = defaultDeps,
+  onProgress: ProgressCallback | undefined,
+  deps: ArchiveDownloadDeps,
 ): Promise<void> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(controller.abort.bind(controller), timeout);
