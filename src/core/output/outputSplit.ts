@@ -110,8 +110,15 @@ const renderGroups = async (
   emptyDirPaths: string[] | undefined,
   generateOutput: GenerateOutputFn,
 ): Promise<string> => {
-  const chunkProcessedFiles = groupsToRender.flatMap((g) => g.processedFiles);
-  const chunkAllFilePaths = groupsToRender.flatMap((g) => g.allFilePaths);
+  // Direct loops instead of flatMap to avoid intermediate array allocations.
+  // For split output with many groups, flatMap creates and discards temporary
+  // arrays per group — direct push avoids this overhead entirely.
+  const chunkProcessedFiles: ProcessedFile[] = [];
+  const chunkAllFilePaths: string[] = [];
+  for (const g of groupsToRender) {
+    for (const pf of g.processedFiles) chunkProcessedFiles.push(pf);
+    for (const fp of g.allFilePaths) chunkAllFilePaths.push(fp);
+  }
   const chunkConfig = makeChunkConfig(baseConfig, partIndex);
 
   return await generateOutput(

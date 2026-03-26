@@ -31,6 +31,22 @@ const needsWorkerProcessing = (config: RepomixConfigMerged): boolean => {
   return config.output.compress || config.output.removeComments;
 };
 
+// ── Processed file cache ────────────────────────────────────────────────
+// Caches ProcessedFile results across pack() calls for MCP/website server.
+// On warm runs with unchanged file content, skips the entire processing loop
+// (trim, truncateBase64, removeEmptyLines, showLineNumbers) by returning
+// cached results. Validated by raw content length per file — the file content
+// cache in fileRead.ts already validates by mtime+size, so by the time we
+// reach processing, content is known-fresh.
+const MAX_PROCESSED_CACHE_SIZE = 5000;
+const processedFileCache = new Map<string, { rawLen: number; result: ProcessedFile }>();
+let _processedConfigHash = '';
+
+const buildProcessConfigHash = (config: RepomixConfigMerged): string => {
+  // Encode config options that affect file processing into a short key
+  return `${config.output.truncateBase64 ? 1 : 0}:${config.output.removeEmptyLines ? 1 : 0}:${config.output.showLineNumbers ? 1 : 0}:${config.output.compress ? 1 : 0}:${config.output.removeComments ? 1 : 0}`;
+};
+
 /**
  * Process files in the main thread for lightweight operations.
  * Avoids worker pool startup (~50ms), structured clone overhead for all file contents,
@@ -45,6 +61,13 @@ const processFilesMainThread = async (
   const startTime = process.hrtime.bigint();
   logger.trace(`Starting file processing for ${rawFiles.length} files in main thread (lightweight mode)`);
 
+  // Invalidate cache if config changed (different processing options)
+  const configHash = buildProcessConfigHash(config);
+  if (configHash !== _processedConfigHash) {
+    processedFileCache.clear();
+    _processedConfigHash = configHash;
+  }
+
   // Lazy-load truncateBase64 only when needed
   let truncateBase64Content: ((content: string) => string) | undefined;
   if (config.output.truncateBase64) {
@@ -54,9 +77,21 @@ const processFilesMainThread = async (
 
   const totalFiles = rawFiles.length;
   const results: ProcessedFile[] = new Array(totalFiles);
+  let cacheHits = 0;
 
   for (let i = 0; i < totalFiles; i++) {
     const rawFile = rawFiles[i];
+
+    // Check per-file processing cache — skip trim/processing for unchanged files.
+    // Raw content length acts as change detector (file content cache in fileRead.ts
+    // already validates by mtime+size, so same length ≈ same content here).
+    const cached = processedFileCache.get(rawFile.path);
+    if (cached && cached.rawLen === rawFile.content.length) {
+      results[i] = cached.result;
+      cacheHits++;
+      continue;
+    }
+
     let content = rawFile.content;
 
     if (truncateBase64Content) {
@@ -85,6 +120,15 @@ const processFilesMainThread = async (
 
     results[i] = { path: rawFile.path, content };
 
+    // Populate cache — evict oldest entry if full (FIFO via Map insertion order)
+    if (processedFileCache.size >= MAX_PROCESSED_CACHE_SIZE) {
+      const oldestKey = processedFileCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        processedFileCache.delete(oldestKey);
+      }
+    }
+    processedFileCache.set(rawFile.path, { rawLen: rawFile.content.length, result: results[i] });
+
     if ((i + 1) % 50 === 0 || i === totalFiles - 1) {
       progressCallback(`Processing file... (${i + 1}/${totalFiles}) ${pc.dim(rawFile.path)}`);
     }
@@ -92,7 +136,9 @@ const processFilesMainThread = async (
 
   const endTime = process.hrtime.bigint();
   const duration = Number(endTime - startTime) / 1e6;
-  logger.trace(`File processing completed in ${duration.toFixed(2)}ms (main thread)`);
+  logger.trace(
+    `File processing completed in ${duration.toFixed(2)}ms (main thread, ${cacheHits}/${totalFiles} cache hits)`,
+  );
 
   return results;
 };

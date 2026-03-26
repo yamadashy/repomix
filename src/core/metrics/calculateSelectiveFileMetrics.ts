@@ -133,8 +133,9 @@ export const calculateSelectiveFileMetrics = async (
         fileTokenCountCache.set(cacheKey, result.tokenCount);
       }
 
-      // Merge cached and newly computed results, preserving original file order
-      const allResults = [...cachedResults, ...newResults];
+      // Merge cached and newly computed results — concat avoids spread's
+      // intermediate iterator + copy overhead for the two source arrays.
+      const allResults = cachedResults.concat(newResults);
 
       const endTime = process.hrtime.bigint();
       const duration = Number(endTime - startTime) / 1e6;
