@@ -264,9 +264,28 @@ const generateNativeOutput = async (
     if (error instanceof RangeError && error.message === 'Invalid string length') {
       let largeFilesInfo = '';
       if (processedFiles && processedFiles.length > 0) {
-        const topFiles = processedFiles
-          .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, 5)
+        // O(n) top-5 selection instead of O(n log n) full sort — only need the 5 largest files.
+        // On error paths where memory is already stressed, avoiding a full sort matters.
+        const top5: ProcessedFile[] = [];
+        for (const file of processedFiles) {
+          if (top5.length < 5) {
+            top5.push(file);
+            // Bubble-sort insert to maintain descending order in the small array
+            for (let j = top5.length - 1; j > 0 && top5[j].content.length > top5[j - 1].content.length; j--) {
+              const tmp = top5[j];
+              top5[j] = top5[j - 1];
+              top5[j - 1] = tmp;
+            }
+          } else if (file.content.length > top5[4].content.length) {
+            top5[4] = file;
+            for (let j = 4; j > 0 && top5[j].content.length > top5[j - 1].content.length; j--) {
+              const tmp = top5[j];
+              top5[j] = top5[j - 1];
+              top5[j - 1] = tmp;
+            }
+          }
+        }
+        const topFiles = top5
           .map((f) => `  - ${f.path} (${(f.content.length / 1024 / 1024).toFixed(1)} MB)`)
           .join('\n');
         largeFilesInfo = `\n\nLargest files in this repository:\n${topFiles}`;
@@ -398,8 +417,9 @@ export const buildOutputGeneratorContext = async (
       const additionalFiles = allRepoFiles.filter((p) => !includedSet.has(p));
 
       directoryPathsForTree = allDirectories;
-      // additionalFiles is already disjoint from allFilePaths (filtered above), so no dedup needed
-      filePathsForTree = allFilePaths.concat(additionalFiles);
+      // additionalFiles is already disjoint from allFilePaths (filtered above), so no dedup needed.
+      // Skip allocation when no additional files exist (common case).
+      filePathsForTree = additionalFiles.length > 0 ? allFilePaths.concat(additionalFiles) : allFilePaths;
     } catch (error) {
       throw new RepomixError(
         `Failed to build full directory structure: ${error instanceof Error ? error.message : String(error)}`,

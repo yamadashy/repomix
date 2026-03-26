@@ -184,10 +184,11 @@ export const runSecurityCheck = async (
     const startTime = process.hrtime.bigint();
 
     // Batch tasks to reduce IPC overhead. Each pool.run() involves structured clone
-    // serialization of file content across the worker_thread boundary. Batching ~20 files
-    // per round-trip amortizes the per-message overhead (~0.5ms) across multiple files,
-    // reducing total IPC from ~979 round-trips to ~50.
-    const BATCH_SIZE = 20;
+    // serialization of file content across the worker_thread boundary. Batching ~50 files
+    // per round-trip amortizes the per-message overhead (~0.5ms) across multiple files.
+    // With the pre-filter skipping 95-99% of files, the actual task count is typically
+    // 5-50 files, so larger batches reduce IPC from ~3 round-trips to ~1.
+    const BATCH_SIZE = 50;
     const batches: SecurityCheckTask[][] = [];
     for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
       batches.push(tasks.slice(i, i + BATCH_SIZE));
