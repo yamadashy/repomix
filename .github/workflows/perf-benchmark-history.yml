@@ -1,0 +1,154 @@
+name: Performance Benchmark History
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: perf-benchmark-history
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Benchmark (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            runs: 10
+          - os: macos-latest
+            runs: 20
+          - os: windows-latest
+            runs: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+
+      - name: Install and build
+        run: npm ci && npm run build
+
+      - name: Run benchmark
+        shell: bash
+        env:
+          BENCH_RUNS: ${{ matrix.runs }}
+        run: |
+          cat > "$RUNNER_TEMP/benchmark.mjs" << 'BENCHSCRIPT'
+          import { execFileSync } from 'node:child_process';
+          import { tmpdir } from 'node:os';
+          import { join } from 'node:path';
+          import { writeFileSync } from 'node:fs';
+
+          const dir = process.argv[2];
+          const output = join(tmpdir(), 'repomix-bench-output.txt');
+          const runs = Number(process.env.BENCH_RUNS) || 10;
+          const bin = join(dir, 'bin', 'repomix.cjs');
+
+          // Warmup runs to stabilize OS page cache and JIT
+          for (let i = 0; i < 2; i++) {
+            try {
+              execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
+            } catch {}
+          }
+
+          // Measurement runs
+          const times = [];
+          for (let i = 0; i < runs; i++) {
+            const start = Date.now();
+            execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
+            times.push(Date.now() - start);
+          }
+
+          times.sort((a, b) => a - b);
+          const median = times[Math.floor(times.length / 2)];
+          const q1 = times[Math.floor(times.length * 0.25)];
+          const q3 = times[Math.floor(times.length * 0.75)];
+          const iqr = q3 - q1;
+
+          const osName = process.env.RUNNER_OS;
+
+          // Output in customSmallerIsBetter format for github-action-benchmark
+          const result = [{
+            name: `Repomix Pack (${osName})`,
+            unit: 'ms',
+            value: median,
+            range: '±' + iqr,
+            extra: `Median of ${runs} runs\nQ1: ${q1}ms, Q3: ${q3}ms\nAll times: ${times.join(', ')}ms`
+          }];
+
+          writeFileSync(join(process.env.RUNNER_TEMP, 'bench-result.json'), JSON.stringify(result));
+          console.log(`${osName}: median=${median}ms (±${iqr}ms)`);
+          BENCHSCRIPT
+
+          node "$RUNNER_TEMP/benchmark.mjs" "$GITHUB_WORKSPACE"
+
+      - name: Upload benchmark result
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: bench-history-${{ matrix.os }}
+          path: ${{ runner.temp }}/bench-result.json
+          retention-days: 1
+
+  store:
+    name: Store Results
+    needs: benchmark
+    runs-on: ubuntu-latest
+    if: ${{ always() && !cancelled() }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          path: results
+          pattern: bench-history-*
+
+      - name: Combine results
+        shell: bash
+        run: |
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const combined = [];
+            const resultsDir = "results";
+            if (fs.existsSync(resultsDir)) {
+              for (const dir of fs.readdirSync(resultsDir).sort()) {
+                const file = path.join(resultsDir, dir, "bench-result.json");
+                if (fs.existsSync(file)) {
+                  combined.push(...JSON.parse(fs.readFileSync(file, "utf8")));
+                }
+              }
+            }
+            if (combined.length === 0) {
+              console.error("No benchmark results found");
+              process.exit(1);
+            }
+            fs.writeFileSync("combined-bench-result.json", JSON.stringify(combined, null, 2));
+            console.log(JSON.stringify(combined, null, 2));
+          '
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@a7bc2366eda11037936ea57d811a43b3418d3073 # v1.21.0
+        with:
+          name: Repomix Performance
+          tool: customSmallerIsBetter
+          output-file-path: combined-bench-result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          # Alert on 30% regression
+          alert-threshold: '130%'
+          comment-on-alert: true
+          summary-always: true
+          fail-on-alert: false
