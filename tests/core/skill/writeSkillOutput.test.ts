@@ -76,7 +76,7 @@ describe('writeSkillOutput', () => {
     });
   });
 
-  test('should write tech-stack.md when techStack is provided', async () => {
+  test('should write tech-stacks.md when techStack is provided', async () => {
     const mockMkdir = vi.fn().mockResolvedValue(undefined);
     const mockWriteFile = vi.fn().mockResolvedValue(undefined);
 
@@ -97,9 +97,9 @@ describe('writeSkillOutput', () => {
       writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
     });
 
-    // Check tech-stack.md was written
+    // Check tech-stacks.md was written
     expect(mockWriteFile).toHaveBeenCalledWith(
-      path.join(skillDir, 'references', 'tech-stack.md'),
+      path.join(skillDir, 'references', 'tech-stacks.md'),
       output.references.techStack,
       'utf-8',
     );

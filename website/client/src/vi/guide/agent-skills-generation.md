@@ -73,7 +73,7 @@ Skills được tạo với cấu trúc sau:
     ├── summary.md              # Mục đích, định dạng và thống kê
     ├── project-structure.md    # Cây thư mục với số dòng
     ├── files.md                # Tất cả nội dung file (tương thích grep)
-    └── tech-stack.md           # Ngôn ngữ, framework, dependencies
+    └── tech-stacks.md           # Ngôn ngữ, framework, dependencies
 ```
 
 ### Mô Tả File
@@ -122,7 +122,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stack.md
+#### references/tech-stacks.md
 
 Tech stack được tự động phát hiện từ các file dependency:
 - **Ngôn ngữ**: TypeScript, JavaScript, Python, v.v.

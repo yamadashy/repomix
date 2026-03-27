@@ -73,7 +73,7 @@ Skills dihasilkan dengan struktur berikut:
     ├── summary.md              # Tujuan, format, dan statistik
     ├── project-structure.md    # Pohon direktori dengan jumlah baris
     ├── files.md                # Semua konten file (kompatibel grep)
-    └── tech-stack.md           # Bahasa, framework, dependensi
+    └── tech-stacks.md           # Bahasa, framework, dependensi
 ```
 
 ### Deskripsi File
@@ -122,7 +122,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stack.md
+#### references/tech-stacks.md
 
 Tech stack yang terdeteksi otomatis dari file dependensi:
 - **Bahasa**: TypeScript, JavaScript, Python, dll.

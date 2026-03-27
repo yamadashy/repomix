@@ -28,7 +28,7 @@ This skill contains the following reference files:
 |------|----------|
 | \`project-structure.md\` | Directory tree with line counts per file |
 | \`files.md\` | All file contents (search with \`## File: <path>\`) |
-| \`tech-stack.md\` | Languages, frameworks, and dependencies |
+| \`tech-stacks.md\` | Languages, frameworks, and dependencies per package (search with \`## Tech Stack: <path>\`) |
 | \`summary.md\` | This file - purpose and format explanation |
 
 ## Usage Guidelines

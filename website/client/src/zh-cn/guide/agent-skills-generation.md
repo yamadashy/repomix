@@ -73,7 +73,7 @@ Skills 按以下结构生成：
     ├── summary.md              # 目的、格式和统计信息
     ├── project-structure.md    # 带行数的目录树
     ├── files.md                # 所有文件内容（grep 友好）
-    └── tech-stack.md           # 语言、框架、依赖项
+    └── tech-stacks.md           # 语言、框架、依赖项
 ```
 
 ### 文件说明
@@ -122,7 +122,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stack.md
+#### references/tech-stacks.md
 
 从依赖文件自动检测的技术栈：
 - **语言**：TypeScript、JavaScript、Python 等

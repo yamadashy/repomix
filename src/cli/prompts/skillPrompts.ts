@@ -39,6 +39,7 @@ export const promptSkillLocation = async (
     confirm: prompts.confirm,
     isCancel: prompts.isCancel,
     access: fs.access,
+    rm: fs.rm,
   },
 ): Promise<SkillPromptResult> => {
   // Step 1: Ask for skill location
@@ -83,6 +84,9 @@ export const promptSkillLocation = async (
     if (deps.isCancel(overwrite) || !overwrite) {
       onCancelOperation();
     }
+
+    // Remove existing directory before regeneration
+    await deps.rm(skillDir, { recursive: true, force: true });
   }
 
   return {

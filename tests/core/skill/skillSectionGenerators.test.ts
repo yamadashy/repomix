@@ -50,7 +50,7 @@ describe('skillSectionGenerators', () => {
       expect(result).toContain('## File Structure');
       expect(result).toContain('project-structure.md');
       expect(result).toContain('files.md');
-      expect(result).toContain('tech-stack.md');
+      expect(result).toContain('tech-stacks.md');
       expect(result).toContain('summary.md');
       expect(result).toContain('## Usage Guidelines');
       expect(result).toContain('## Notes');

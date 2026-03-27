@@ -12,6 +12,7 @@ interface RuntimeVersion {
 }
 
 interface TechStackInfo {
+  path: string;
   languages: string[];
   frameworks: string[];
   dependencies: DependencyInfo[];
@@ -472,30 +473,59 @@ function parseToolVersions(content: string): RuntimeVersion[] {
   return versions;
 }
 
+const ROOT_DIR_LABEL = '.';
+
 /**
- * Detects tech stack from processed files.
- * Checks all dependency files including those in subdirectories,
- * so that monorepo setups with --include work correctly.
+ * Gets the directory path from a file path.
+ * Returns ROOT_DIR_LABEL ('.') for root-level files.
  */
-export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo | null => {
-  const result: TechStackInfo = {
-    languages: [],
-    frameworks: [],
-    dependencies: [],
-    devDependencies: [],
-    runtimeVersions: [],
-    configFiles: [],
-  };
+const getDirPath = (filePath: string): string => {
+  const lastSlash = filePath.lastIndexOf('/');
+  return lastSlash === -1 ? ROOT_DIR_LABEL : filePath.substring(0, lastSlash);
+};
 
-  let foundAny = false;
-
+/**
+ * Detects tech stack from processed files, grouped by package directory.
+ * Each directory containing a dependency file produces a separate TechStackInfo entry.
+ */
+export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo[] => {
+  // First pass: find directories that have dependency files
+  const packageDirs = new Set<string>();
   for (const file of processedFiles) {
     const fileName = file.path.split('/').pop() || file.path;
+    if (DEPENDENCY_FILES[fileName]) {
+      packageDirs.add(getDirPath(file.path));
+    }
+  }
+
+  if (packageDirs.size === 0) {
+    return [];
+  }
+
+  // Initialize result per directory
+  const resultMap = new Map<string, TechStackInfo>();
+  for (const dir of packageDirs) {
+    resultMap.set(dir, {
+      path: dir,
+      languages: [],
+      frameworks: [],
+      dependencies: [],
+      devDependencies: [],
+      runtimeVersions: [],
+      configFiles: [],
+    });
+  }
+
+  // Second pass: assign files to their directory's TechStackInfo
+  for (const file of processedFiles) {
+    const fileName = file.path.split('/').pop() || file.path;
+    const dirPath = getDirPath(file.path);
+    const result = resultMap.get(dirPath);
+    if (!result) continue;
 
     // Check dependency files
     const config = DEPENDENCY_FILES[fileName];
     if (config) {
-      foundAny = true;
       result.languages.push(config.language);
 
       const parsed = config.parser(file.content);
@@ -516,42 +546,41 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo 
     // Check version manager files
     const versionParser = VERSION_FILES[fileName];
     if (versionParser) {
-      foundAny = true;
       const versions = versionParser(file.content);
       result.runtimeVersions.push(...versions);
     }
 
     // Check configuration files
     if (CONFIG_FILE_PATTERNS.includes(fileName)) {
-      foundAny = true;
-      result.configFiles.push(file.path);
+      result.configFiles.push(fileName);
     }
   }
 
-  if (!foundAny) {
-    return null;
+  // Deduplicate within each package
+  for (const result of resultMap.values()) {
+    result.languages = [...new Set(result.languages)];
+    result.frameworks = [...new Set(result.frameworks)];
+    result.configFiles = [...new Set(result.configFiles)];
+    result.dependencies = deduplicateByName(result.dependencies);
+    result.devDependencies = deduplicateByName(result.devDependencies);
+    result.runtimeVersions = deduplicateRuntimeVersions(result.runtimeVersions);
   }
 
-  // Deduplicate
-  result.languages = [...new Set(result.languages)];
-  result.frameworks = [...new Set(result.frameworks)];
-  result.configFiles = [...new Set(result.configFiles)];
-  result.dependencies = deduplicateDependencies(result.dependencies);
-  result.devDependencies = deduplicateDependencies(result.devDependencies);
-  result.runtimeVersions = deduplicateRuntimeVersions(result.runtimeVersions);
-
-  return result;
+  // Sort with (root) first, then alphabetically
+  return [...resultMap.values()].sort((a, b) => {
+    if (a.path === ROOT_DIR_LABEL) return -1;
+    if (b.path === ROOT_DIR_LABEL) return 1;
+    return a.path.localeCompare(b.path);
+  });
 };
 
-const deduplicateDependencies = (deps: DependencyInfo[]): DependencyInfo[] => {
-  const seen = new Map<string, DependencyInfo>();
-  for (const dep of deps) {
-    const key = `${dep.name}:${dep.version ?? ''}`;
-    if (!seen.has(key)) {
-      seen.set(key, dep);
-    }
-  }
-  return [...seen.values()];
+const deduplicateByName = (deps: DependencyInfo[]): DependencyInfo[] => {
+  const seen = new Set<string>();
+  return deps.filter((dep) => {
+    if (seen.has(dep.name)) return false;
+    seen.add(dep.name);
+    return true;
+  });
 };
 
 const deduplicateRuntimeVersions = (versions: RuntimeVersion[]): RuntimeVersion[] => {
@@ -566,79 +595,83 @@ const deduplicateRuntimeVersions = (versions: RuntimeVersion[]): RuntimeVersion[
 };
 
 /**
- * Generates tech-stack.md content from detected tech stack.
+ * Generates tech-stacks.md content from detected tech stacks.
  */
-export const generateTechStackMd = (techStack: TechStackInfo): string => {
-  const lines: string[] = ['# Tech Stack', ''];
+export const generateTechStackMd = (techStacks: TechStackInfo[]): string => {
+  const lines: string[] = ['# Tech Stacks', ''];
 
-  // Languages
-  if (techStack.languages.length > 0) {
-    lines.push('## Languages');
-    lines.push('');
-    for (const lang of techStack.languages) {
-      lines.push(`- ${lang}`);
+  for (const techStack of techStacks) {
+    lines.push(`## Tech Stack: ${techStack.path}`, '');
+
+    // Languages
+    if (techStack.languages.length > 0) {
+      lines.push('### Languages');
+      lines.push('');
+      for (const lang of techStack.languages) {
+        lines.push(`- ${lang}`);
+      }
+      lines.push('');
     }
-    lines.push('');
-  }
 
-  // Frameworks
-  if (techStack.frameworks.length > 0) {
-    lines.push('## Frameworks');
-    lines.push('');
-    for (const fw of techStack.frameworks) {
-      lines.push(`- ${fw}`);
+    // Frameworks
+    if (techStack.frameworks.length > 0) {
+      lines.push('### Frameworks');
+      lines.push('');
+      for (const fw of techStack.frameworks) {
+        lines.push(`- ${fw}`);
+      }
+      lines.push('');
     }
-    lines.push('');
-  }
 
-  // Runtime Versions
-  if (techStack.runtimeVersions.length > 0) {
-    lines.push('## Runtime Versions');
-    lines.push('');
-    for (const rv of techStack.runtimeVersions) {
-      lines.push(`- ${rv.runtime}: ${rv.version}`);
+    // Runtime Versions
+    if (techStack.runtimeVersions.length > 0) {
+      lines.push('### Runtime Versions');
+      lines.push('');
+      for (const rv of techStack.runtimeVersions) {
+        lines.push(`- ${rv.runtime}: ${rv.version}`);
+      }
+      lines.push('');
     }
-    lines.push('');
-  }
 
-  // Package Manager
-  if (techStack.packageManager) {
-    lines.push('## Package Manager');
-    lines.push('');
-    lines.push(`- ${techStack.packageManager}`);
-    lines.push('');
-  }
-
-  // Dependencies
-  if (techStack.dependencies.length > 0) {
-    lines.push('## Dependencies');
-    lines.push('');
-    for (const dep of techStack.dependencies) {
-      const version = dep.version ? ` (${dep.version})` : '';
-      lines.push(`- ${dep.name}${version}`);
+    // Package Manager
+    if (techStack.packageManager) {
+      lines.push('### Package Manager');
+      lines.push('');
+      lines.push(`- ${techStack.packageManager}`);
+      lines.push('');
     }
-    lines.push('');
-  }
 
-  // Dev Dependencies
-  if (techStack.devDependencies.length > 0) {
-    lines.push('## Dev Dependencies');
-    lines.push('');
-    for (const dep of techStack.devDependencies) {
-      const version = dep.version ? ` (${dep.version})` : '';
-      lines.push(`- ${dep.name}${version}`);
+    // Dependencies
+    if (techStack.dependencies.length > 0) {
+      lines.push('### Dependencies');
+      lines.push('');
+      for (const dep of techStack.dependencies) {
+        const version = dep.version ? ` (${dep.version})` : '';
+        lines.push(`- ${dep.name}${version}`);
+      }
+      lines.push('');
     }
-    lines.push('');
-  }
 
-  // Configuration Files
-  if (techStack.configFiles.length > 0) {
-    lines.push('## Configuration Files');
-    lines.push('');
-    for (const file of techStack.configFiles) {
-      lines.push(`- ${file}`);
+    // Dev Dependencies
+    if (techStack.devDependencies.length > 0) {
+      lines.push('### Dev Dependencies');
+      lines.push('');
+      for (const dep of techStack.devDependencies) {
+        const version = dep.version ? ` (${dep.version})` : '';
+        lines.push(`- ${dep.name}${version}`);
+      }
+      lines.push('');
     }
-    lines.push('');
+
+    // Configuration Files
+    if (techStack.configFiles.length > 0) {
+      lines.push('### Configuration Files');
+      lines.push('');
+      for (const file of techStack.configFiles) {
+        lines.push(`- ${file}`);
+      }
+      lines.push('');
+    }
   }
 
   return lines.join('\n').trim();
