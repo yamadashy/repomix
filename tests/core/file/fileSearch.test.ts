@@ -1027,7 +1027,7 @@ node_modules
       }
     });
 
-    test('should use case-sensitive matching to prevent false positives on case-insensitive file systems', async () => {
+    test('should pass caseSensitiveMatch: true to all globby calls', async () => {
       // This test verifies that caseSensitiveMatch: true is set to fix issue #980
       // where BUILD files (used by pants build tool) were incorrectly ignored
       // on macOS due to the default 'build/**' pattern matching 'BUILD' files
