@@ -121,6 +121,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if ! git ls-remote --heads origin gh-pages | grep -q gh-pages; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git switch --orphan gh-pages
             git commit --allow-empty -m "Initial gh-pages branch for benchmark data"
             git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
