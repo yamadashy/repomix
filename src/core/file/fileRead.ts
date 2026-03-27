@@ -217,6 +217,44 @@ export const readRawFileCached = async (
 };
 
 /**
+ * Synchronous cache probe: returns cached result or null if cache miss.
+ * For warm MCP/website server runs, 95-100% of files hit the cache.
+ * Using a plain synchronous function avoids the overhead of creating
+ * ~1000 async function frames and Promises when all files are cached.
+ * On cache miss, returns null so the caller can fall back to async I/O.
+ */
+export const probeFileCache = (
+  filePath: string,
+  maxFileSize: number,
+  binaryDetectors: BinaryDetectors,
+): FileReadResult | null => {
+  // Check binary extension first (no I/O needed)
+  if (binaryDetectors.isBinaryPath(filePath)) {
+    return { content: null, skippedReason: 'binary-extension' };
+  }
+
+  const cached = fileContentCache.get(filePath);
+  if (!cached) return null;
+
+  try {
+    const stat = statSync(filePath);
+    if (stat.mtimeMs === cached.mtimeMs && stat.size === cached.size) {
+      if (cached.result.content !== null || cached.size <= maxFileSize) {
+        return cached.result;
+      }
+    }
+    // File changed — evict stale entry
+    cachedTotalBytes -= cached.contentBytes;
+    fileContentCache.delete(filePath);
+  } catch {
+    cachedTotalBytes -= cached.contentBytes;
+    fileContentCache.delete(filePath);
+  }
+
+  return null;
+};
+
+/**
  * Populate the file content cache after all files have been read.
  * Called once at the end of collectFiles to batch-stat all collected files.
  * This avoids interleaving stat calls with readFile calls which would compete

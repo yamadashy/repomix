@@ -409,7 +409,31 @@ export const pack = async (
 
   // File metrics were already computed during the security check phase (overlapped).
   // Now only output/git token counting remains, which overlaps with disk write.
-  const [metrics] = await Promise.all([
+  // Line counting (~3.5ms for 4MB output) also runs in this parallel block so it
+  // overlaps with the disk write I/O instead of running sequentially after it.
+  const countOutputLines = (): number => {
+    let count = 1;
+    if (typeof outputForMetrics === 'string') {
+      let pos = outputForMetrics.indexOf('\n');
+      while (pos !== -1) {
+        count++;
+        pos = outputForMetrics.indexOf('\n', pos + 1);
+      }
+    } else {
+      for (const part of outputForMetrics) {
+        let partLines = 1;
+        let pos = part.indexOf('\n');
+        while (pos !== -1) {
+          partLines++;
+          pos = part.indexOf('\n', pos + 1);
+        }
+        count += partLines;
+      }
+    }
+    return count;
+  };
+
+  const [metrics, , outputLineCount] = await Promise.all([
     withMemoryLogging('Calculate Metrics', () =>
       deps.calculateMetrics(
         processedFiles,
@@ -422,6 +446,7 @@ export const pack = async (
       ),
     ),
     writePromise,
+    Promise.resolve(countOutputLines()),
   ]);
 
   // Fire-and-forget cleanup of metrics worker pool — workers terminate on process exit anyway
@@ -437,28 +462,6 @@ export const pack = async (
   if (gitDiffResult) {
     (gitDiffResult as { workTreeDiffContent: string | undefined }).workTreeDiffContent = undefined;
     (gitDiffResult as { stagedDiffContent: string | undefined }).stagedDiffContent = undefined;
-  }
-
-  // Count output lines from the in-memory string using indexOf loop (O(1) allocation).
-  // This avoids reading the output file back from disk in MCP tools (~1-10MB I/O + split).
-  let outputLineCount = 1;
-  if (typeof outputForMetrics === 'string') {
-    let pos = outputForMetrics.indexOf('\n');
-    while (pos !== -1) {
-      outputLineCount++;
-      pos = outputForMetrics.indexOf('\n', pos + 1);
-    }
-  } else {
-    // Split output: sum line counts across all parts
-    for (const part of outputForMetrics) {
-      let partLines = 1;
-      let pos = part.indexOf('\n');
-      while (pos !== -1) {
-        partLines++;
-        pos = part.indexOf('\n', pos + 1);
-      }
-      outputLineCount += partLines;
-    }
   }
 
   // Create a result object that includes metrics and security results
