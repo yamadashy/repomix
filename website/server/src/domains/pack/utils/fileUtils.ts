@@ -110,23 +110,22 @@ export async function extractZip(file: File, destPath: string): Promise<void> {
       processedPaths.add(normalizedPath);
     }
 
-    await fs.mkdir(destPath, { recursive: true });
+    // Collect validated file entries and unique parent directories in a single pass,
+    // then batch-create directories before writing files. This avoids one redundant
+    // fs.mkdir syscall per file (~900 saved for a typical 1000-file ZIP).
+    const fileEntries: [string, Uint8Array][] = [];
+    const uniqueDirs = new Set<string>();
+    for (const [filePath, data] of Object.entries(files)) {
+      if (filePath.endsWith('/')) continue;
+      fileEntries.push([filePath, data]);
+      uniqueDirs.add(path.dirname(path.join(destPath, filePath)));
+    }
 
-    // Extract files using fflate with parallel writes
-    const writePromises = Object.entries(files)
-      .filter(([filePath]) => !filePath.endsWith('/')) // Skip directories
-      .map(async ([filePath, data]) => {
-        const fullPath = path.join(destPath, filePath);
-        const dirPath = path.dirname(fullPath);
+    // Create all unique directories in parallel (fs.mkdir recursive is idempotent)
+    await Promise.all([...uniqueDirs].map((dir) => fs.mkdir(dir, { recursive: true })));
 
-        // Create directory if it doesn't exist
-        await fs.mkdir(dirPath, { recursive: true });
-
-        // Write the file
-        await fs.writeFile(fullPath, data);
-      });
-
-    await Promise.all(writePromises);
+    // Write all files in parallel (directories already exist)
+    await Promise.all(fileEntries.map(([filePath, data]) => fs.writeFile(path.join(destPath, filePath), data)));
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -169,12 +168,9 @@ export const copyOutputToCurrentDirectory = async (
   const targetPath = path.join(targetDir, sanitizedFileName);
 
   try {
-    // Verify source exists
-    await fs.access(sourcePath);
-
-    // Ensure target directory exists
+    // Ensure target directory exists, then copy.
+    // Skip separate fs.access() — fs.copyFile() fails with a clear error if source is missing.
     await fs.mkdir(targetDir, { recursive: true });
-
     await fs.copyFile(sourcePath, targetPath);
   } catch (error) {
     throw new AppError(

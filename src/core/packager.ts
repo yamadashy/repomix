@@ -494,14 +494,14 @@ export const pack = async (
         pos = outputForMetrics.indexOf('\n', pos + 1);
       }
     } else {
+      // Parts are concatenated directly (no separator), so just count newlines
+      // across all parts. Starting count at 1 accounts for the first line.
       for (const part of outputForMetrics) {
-        let partLines = 1;
         let pos = part.indexOf('\n');
         while (pos !== -1) {
-          partLines++;
+          count++;
           pos = part.indexOf('\n', pos + 1);
         }
-        count += partLines;
       }
     }
     return count;
