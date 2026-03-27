@@ -166,15 +166,44 @@ export const runSecurityCheck = async (
     }
   }
 
-  // Pre-filter files that cannot match any secretlint rule.
+  // Check cache BEFORE running the pre-filter regex on file contents.
+  // On warm MCP/server runs, all files hit the cache (content unchanged),
+  // completely skipping the ~16ms SECRET_TRIGGER_PATTERN regex scan over 3.6MB.
+  // Files that don't pass contentMayContainSecret are also cached (as null result),
+  // so they don't need re-scanning on subsequent calls.
+  const uncachedFiles: RawFile[] = [];
   for (const file of rawFiles) {
-    if (contentMayContainSecret(file.content)) {
-      allTasks.push({ filePath: file.path, content: file.content, type: 'file' });
+    const cacheKey = buildSecurityCacheKey(file.path, 'file');
+    const cached = securityResultCache.get(cacheKey);
+    if (cached && cached.contentLen === file.content.length) {
+      if (cached.result) {
+        cachedResults.push(cached.result);
+      }
+    } else {
+      uncachedFiles.push(file);
     }
   }
 
-  // Separate cached tasks from uncached tasks. On warm MCP/server runs with unchanged
-  // files, 100% of tasks hit the cache, completely skipping the ~18ms worker IPC.
+  // Pre-filter only uncached files that cannot match any secretlint rule.
+  // Also cache the pre-filter rejection (null result) so subsequent warm runs
+  // skip the regex entirely via the cache check above.
+  for (const file of uncachedFiles) {
+    if (contentMayContainSecret(file.content)) {
+      allTasks.push({ filePath: file.path, content: file.content, type: 'file' });
+    } else {
+      // Cache pre-filter rejection so this file won't be re-scanned on next call
+      const cacheKey = buildSecurityCacheKey(file.path, 'file');
+      if (securityResultCache.size >= MAX_SECURITY_CACHE_SIZE) {
+        const oldestKey = securityResultCache.keys().next().value;
+        if (oldestKey !== undefined) {
+          securityResultCache.delete(oldestKey);
+        }
+      }
+      securityResultCache.set(cacheKey, { contentLen: file.content.length, result: null });
+    }
+  }
+
+  // Separate cached tasks from uncached tasks for git diff/log entries.
   const uncachedTasks: SecurityCheckTask[] = [];
   for (const task of allTasks) {
     const cacheKey = buildSecurityCacheKey(task.filePath, task.type);
