@@ -121,13 +121,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if ! git ls-remote --heads origin gh-pages | grep -q gh-pages; then
+            CURRENT_BRANCH=$(git branch --show-current)
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git switch --orphan gh-pages
             git commit --allow-empty -m "Initial gh-pages branch for benchmark data"
             git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
             git push origin gh-pages
-            git switch -
+            git switch "$CURRENT_BRANCH"
           fi
 
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
