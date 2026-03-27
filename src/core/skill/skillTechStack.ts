@@ -562,7 +562,12 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo[
     result.runtimeVersions = deduplicateRuntimeVersions(result.runtimeVersions);
   }
 
-  return [...resultMap.values()];
+  // Sort with (root) first, then alphabetically
+  return [...resultMap.values()].sort((a, b) => {
+    if (a.path === '(root)') return -1;
+    if (b.path === '(root)') return 1;
+    return a.path.localeCompare(b.path);
+  });
 };
 
 const deduplicateRuntimeVersions = (versions: RuntimeVersion[]): RuntimeVersion[] => {
