@@ -7,6 +7,13 @@ import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
 import type { CliOptions } from './types.js';
 
+// Speculatively pre-load tinypool (via processConcurrency) during Commander setup.
+// Worker pools need tinypool (~37ms load). Starting this import at cliRun module load
+// time gives a ~60ms head start vs loading it at pack() entry, reducing idle time waiting
+// for BPE table initialization from ~140ms to ~80ms. For --version/--init/--mcp actions,
+// the import is non-blocking and the process exits before it resolves (no overhead).
+export const _pcPreload = import('../shared/processConcurrency.js').catch(() => undefined);
+
 // Semantic mapping for CLI suggestions
 // This maps conceptually related terms (not typos) to valid options
 const semanticSuggestionMap: Record<string, string[]> = {

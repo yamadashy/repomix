@@ -77,7 +77,7 @@ export const runRemoteAction = async (
       const spinner = new Spinner('Downloading repository archive...', cliOptions);
 
       try {
-        spinner.start();
+        await spinner.start();
 
         // Override ref with CLI option if provided
         const repoInfoWithBranch = {

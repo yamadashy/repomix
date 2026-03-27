@@ -50,6 +50,27 @@ let _cachedMetricsPool:
   | undefined;
 let _cachedSecurityPool: SecurityTaskRunner | undefined;
 
+/**
+ * Pre-warm worker pool caches from outside pack().
+ * Called by defaultAction.ts to start worker warmup during config loading,
+ * overlapping ~40ms of config I/O + Zod validation with the ~300ms BPE table
+ * loading and ~108ms @secretlint/core initialization.
+ *
+ * On the cold CLI benchmark (~540ms), this saves ~40ms by reducing the idle
+ * wait between selectiveMetrics start and BPE warmup completion.
+ */
+export const setPreWarmedMetricsPool = (pool: typeof _cachedMetricsPool): void => {
+  if (!_cachedMetricsPool) {
+    _cachedMetricsPool = pool;
+  }
+};
+
+export const setPreWarmedSecurityPool = (pool: SecurityTaskRunner): void => {
+  if (!_cachedSecurityPool) {
+    _cachedSecurityPool = pool;
+  }
+};
+
 const defaultDeps = {
   searchFiles,
   collectFiles,

@@ -4,11 +4,13 @@ import { promisify } from 'node:util';
 import type { RepomixConfigCli, RepomixConfigMerged, RepomixOutputStyle } from '../../config/configDefaults.js';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import type { PackResult } from '../../core/packager.js';
+import type { SuspiciousFileResult } from '../../core/security/securityCheck.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { reportResults } from '../cliReport.js';
+import { _pcPreload } from '../cliRun.js';
 import { Spinner } from '../cliSpinner.js';
 import type { CliOptions } from '../types.js';
 // migrationAction is lazy-loaded below to avoid eagerly importing @clack/prompts (~16ms)
@@ -66,6 +68,62 @@ export const runDefaultAction = async (
   // For direct execution, start importing packager module tree in the background
   // while config loads. This overlaps ~100ms of module loading with config I/O.
   const packagerPromise = !needsChildProcess ? import('../../core/packager.js') : undefined;
+
+  // Pre-warm worker pools during config loading (~40ms Zod validation + I/O).
+  // The metrics worker loads gpt-tokenizer BPE tables (~300ms) and the security worker
+  // loads @secretlint/core (~108ms). Starting them now instead of at pack() entry
+  // gives ~60ms more overlap, reducing the idle wait for BPE completion.
+  // Uses the pre-loaded processConcurrency module (started at cliRun.ts module load
+  // time) so pool creation doesn't wait for tinypool to load.
+  if (!needsChildProcess && !cliOptions.stdin) {
+    const poolsCreated = _pcPreload
+      .then((pcMod) => {
+        if (!pcMod) return undefined;
+        const { createWorkerPool, cleanupWorkerPool } = pcMod;
+        // Metrics worker — non-blocking BPE warmup
+        const metPool = createWorkerPool({
+          numOfTasks: 1,
+          workerType: 'calculateMetrics',
+          runtime: 'worker_threads',
+        });
+        const encoding = 'o200k_base';
+        const warmupDone = metPool.run({ batch: true, files: [{ path: '', content: ' ' }], encoding });
+
+        // Security worker — pre-warm @secretlint/core
+        const secPool = createWorkerPool({
+          numOfTasks: 1,
+          workerType: 'securityCheck',
+          runtime: 'worker_threads',
+          preWarm: true,
+        });
+
+        return { metPool, warmupDone, encoding, secPool, cleanupWorkerPool };
+      })
+      .catch(() => undefined);
+
+    // Store pre-warmed pools in packager's module-level cache once both are ready.
+    // This must complete before pack() is called (which happens after configLoad).
+    // poolsCreated resolves in ~5-10ms, packagerPromise in ~15ms, both well before
+    // configLoad completes (~40ms), so the cache is populated before pack() runs.
+    Promise.all([poolsCreated, packagerPromise])
+      .then(([pools, packagerMod]) => {
+        if (!pools || !packagerMod) return;
+        packagerMod.setPreWarmedMetricsPool({
+          run: async (task: unknown) => {
+            await pools.warmupDone;
+            return pools.metPool.run(task);
+          },
+          cleanup: () => pools.cleanupWorkerPool(pools.metPool),
+          encoding: pools.encoding,
+          warmupDone: pools.warmupDone,
+        });
+        packagerMod.setPreWarmedSecurityPool({
+          run: (task: unknown) => pools.secPool.run(task) as Promise<(SuspiciousFileResult | null)[]>,
+          cleanup: () => pools.cleanupWorkerPool(pools.secPool),
+        });
+      })
+      .catch(() => {});
+  }
 
   // Speculatively pre-start git ls-files during config loading (~43ms Zod validation).
   // git ls-files (~33ms) only needs the rootDir, not the full config. By starting it
@@ -203,7 +261,7 @@ export const runDefaultAction = async (
       const useSpinner =
         !cliOptions.stdout && !cliOptions.quiet && !cliOptions.verbose && process.stderr.isTTY === true;
       const spinner = useSpinner ? new Spinner('Initializing...', cliOptions) : undefined;
-      spinner?.start();
+      await spinner?.start();
 
       try {
         packResult = await pack(
