@@ -473,13 +473,15 @@ function parseToolVersions(content: string): RuntimeVersion[] {
   return versions;
 }
 
+const ROOT_DIR_LABEL = '(root)';
+
 /**
  * Gets the directory path from a file path.
  * Returns '(root)' for root-level files.
  */
 const getDirPath = (filePath: string): string => {
   const lastSlash = filePath.lastIndexOf('/');
-  return lastSlash === -1 ? '(root)' : filePath.substring(0, lastSlash);
+  return lastSlash === -1 ? ROOT_DIR_LABEL : filePath.substring(0, lastSlash);
 };
 
 /**
@@ -564,8 +566,8 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo[
 
   // Sort with (root) first, then alphabetically
   return [...resultMap.values()].sort((a, b) => {
-    if (a.path === '(root)') return -1;
-    if (b.path === '(root)') return 1;
+    if (a.path === ROOT_DIR_LABEL) return -1;
+    if (b.path === ROOT_DIR_LABEL) return 1;
     return a.path.localeCompare(b.path);
   });
 };
