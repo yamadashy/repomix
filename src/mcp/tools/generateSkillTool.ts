@@ -61,7 +61,7 @@ Output Structure:
       ├── summary.md              # Purpose, format, and statistics
       ├── project-structure.md    # Directory tree with line counts
       ├── files.md                # All file contents
-      └── tech-stack.md           # Languages, frameworks, dependencies (if detected)
+      └── tech-stacks.md          # Languages, frameworks, dependencies (if detected)
 
 Example Path:
   /path/to/project/.claude/skills/repomix-reference-myproject/`,

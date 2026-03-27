@@ -12,7 +12,7 @@ import type { SkillOutputResult } from './packSkill.js';
  *       ├── summary.md
  *       ├── project-structure.md
  *       ├── files.md
- *       └── tech-stack.md (if available)
+ *       └── tech-stacks.md (if available)
  */
 export const writeSkillOutput = async (
   output: SkillOutputResult,
@@ -37,9 +37,9 @@ export const writeSkillOutput = async (
     await deps.writeFile(path.join(referencesDir, 'project-structure.md'), output.references.structure, 'utf-8');
     await deps.writeFile(path.join(referencesDir, 'files.md'), output.references.files, 'utf-8');
 
-    // Write tech-stack.md if available
+    // Write tech-stacks.md if available
     if (output.references.techStack) {
-      await deps.writeFile(path.join(referencesDir, 'tech-stack.md'), output.references.techStack, 'utf-8');
+      await deps.writeFile(path.join(referencesDir, 'tech-stacks.md'), output.references.techStack, 'utf-8');
     }
 
     return skillDir;

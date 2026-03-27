@@ -96,12 +96,12 @@ describe('skillStyle', () => {
 
     test('should include tech-stack reference when hasTechStack is true', () => {
       const result = generateSkillMd(createTestContext({ hasTechStack: true }));
-      expect(result).toContain('`references/tech-stack.md`');
+      expect(result).toContain('`references/tech-stacks.md`');
     });
 
     test('should not include tech-stack reference when hasTechStack is false', () => {
       const result = generateSkillMd(createTestContext({ hasTechStack: false }));
-      expect(result).not.toContain('tech-stack.md');
+      expect(result).not.toContain('tech-stacks.md');
     });
 
     test('should not include statistics section (moved to summary.md)', () => {

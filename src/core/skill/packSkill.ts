@@ -64,7 +64,7 @@ const defaultDeps = {
 };
 
 /**
- * Generates skill reference files (summary, structure, files, tech-stack).
+ * Generates skill reference files (summary, structure, files, tech-stacks).
  * This is the first step - call this, calculate metrics, then call generateSkillMdFromReferences.
  */
 export const generateSkillReferences = async (
@@ -215,7 +215,7 @@ export const packSkill = async (params: PackSkillParams, deps = defaultDeps): Pr
     options.skillName ??
     (typeof config.skillGenerate === 'string' ? config.skillGenerate : deps.generateDefaultSkillName(rootDirs));
 
-  // Step 1: Generate skill references (summary, structure, files, tech-stack)
+  // Step 1: Generate skill references (summary, structure, files, tech-stacks)
   const skillReferencesResult = await withMemoryLogging('Generate Skill References', () =>
     generateSkillReferences(
       skillName,

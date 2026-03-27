@@ -584,17 +584,17 @@ const deduplicateRuntimeVersions = (versions: RuntimeVersion[]): RuntimeVersion[
 };
 
 /**
- * Generates tech-stack.md content from detected tech stacks.
+ * Generates tech-stacks.md content from detected tech stacks.
  */
 export const generateTechStackMd = (techStacks: TechStackInfo[]): string => {
-  const sections: string[] = [];
+  const lines: string[] = ['# Tech Stacks', ''];
 
   for (const techStack of techStacks) {
-    const lines: string[] = ['# Tech Stack', '', `path: ${techStack.path}`, ''];
+    lines.push(`## Tech Stack: ${techStack.path}`, '');
 
     // Languages
     if (techStack.languages.length > 0) {
-      lines.push('## Languages');
+      lines.push('### Languages');
       lines.push('');
       for (const lang of techStack.languages) {
         lines.push(`- ${lang}`);
@@ -604,7 +604,7 @@ export const generateTechStackMd = (techStacks: TechStackInfo[]): string => {
 
     // Frameworks
     if (techStack.frameworks.length > 0) {
-      lines.push('## Frameworks');
+      lines.push('### Frameworks');
       lines.push('');
       for (const fw of techStack.frameworks) {
         lines.push(`- ${fw}`);
@@ -614,7 +614,7 @@ export const generateTechStackMd = (techStacks: TechStackInfo[]): string => {
 
     // Runtime Versions
     if (techStack.runtimeVersions.length > 0) {
-      lines.push('## Runtime Versions');
+      lines.push('### Runtime Versions');
       lines.push('');
       for (const rv of techStack.runtimeVersions) {
         lines.push(`- ${rv.runtime}: ${rv.version}`);
@@ -624,7 +624,7 @@ export const generateTechStackMd = (techStacks: TechStackInfo[]): string => {
 
     // Package Manager
     if (techStack.packageManager) {
-      lines.push('## Package Manager');
+      lines.push('### Package Manager');
       lines.push('');
       lines.push(`- ${techStack.packageManager}`);
       lines.push('');
@@ -632,7 +632,7 @@ export const generateTechStackMd = (techStacks: TechStackInfo[]): string => {
 
     // Dependencies
     if (techStack.dependencies.length > 0) {
-      lines.push('## Dependencies');
+      lines.push('### Dependencies');
       lines.push('');
       for (const dep of techStack.dependencies) {
         const version = dep.version ? ` (${dep.version})` : '';
@@ -643,7 +643,7 @@ export const generateTechStackMd = (techStacks: TechStackInfo[]): string => {
 
     // Dev Dependencies
     if (techStack.devDependencies.length > 0) {
-      lines.push('## Dev Dependencies');
+      lines.push('### Dev Dependencies');
       lines.push('');
       for (const dep of techStack.devDependencies) {
         const version = dep.version ? ` (${dep.version})` : '';
@@ -654,16 +654,14 @@ export const generateTechStackMd = (techStacks: TechStackInfo[]): string => {
 
     // Configuration Files
     if (techStack.configFiles.length > 0) {
-      lines.push('## Configuration Files');
+      lines.push('### Configuration Files');
       lines.push('');
       for (const file of techStack.configFiles) {
         lines.push(`- ${file}`);
       }
       lines.push('');
     }
-
-    sections.push(lines.join('\n').trim());
   }
 
-  return sections.join('\n\n---\n\n');
+  return lines.join('\n').trim();
 };

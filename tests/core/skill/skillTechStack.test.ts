@@ -206,27 +206,27 @@ tokio = { version = "1.0", features = ["full"] }`,
 
       const result = generateTechStackMd(techStacks);
 
-      expect(result).toContain('# Tech Stack');
-      expect(result).toContain('path: .');
-      expect(result).toContain('## Languages');
+      expect(result).toContain('# Tech Stacks');
+      expect(result).toContain('## Tech Stack: .');
+      expect(result).toContain('### Languages');
       expect(result).toContain('- Node.js');
-      expect(result).toContain('## Frameworks');
+      expect(result).toContain('### Frameworks');
       expect(result).toContain('- React');
       expect(result).toContain('- TypeScript');
-      expect(result).toContain('## Runtime Versions');
+      expect(result).toContain('### Runtime Versions');
       expect(result).toContain('- Node.js: 22.0.0');
-      expect(result).toContain('## Package Manager');
+      expect(result).toContain('### Package Manager');
       expect(result).toContain('- npm');
-      expect(result).toContain('## Dependencies');
+      expect(result).toContain('### Dependencies');
       expect(result).toContain('- react (^18.2.0)');
-      expect(result).toContain('## Dev Dependencies');
+      expect(result).toContain('### Dev Dependencies');
       expect(result).toContain('- typescript (^5.0.0)');
-      expect(result).toContain('## Configuration Files');
+      expect(result).toContain('### Configuration Files');
       expect(result).toContain('- package.json');
       expect(result).toContain('- tsconfig.json');
     });
 
-    test('should separate multiple packages with ---', () => {
+    test('should render multiple packages as separate sections', () => {
       const techStacks = [
         {
           path: '.',
@@ -250,9 +250,8 @@ tokio = { version = "1.0", features = ["full"] }`,
 
       const result = generateTechStackMd(techStacks);
 
-      expect(result).toContain('path: .');
-      expect(result).toContain('---');
-      expect(result).toContain('path: packages/api');
+      expect(result).toContain('## Tech Stack: .');
+      expect(result).toContain('## Tech Stack: packages/api');
     });
 
     test('should handle empty sections', () => {
@@ -270,11 +269,11 @@ tokio = { version = "1.0", features = ["full"] }`,
 
       const result = generateTechStackMd(techStacks);
 
-      expect(result).toContain('# Tech Stack');
-      expect(result).toContain('## Languages');
-      expect(result).not.toContain('## Frameworks');
-      expect(result).not.toContain('## Dependencies');
-      expect(result).not.toContain('## Configuration Files');
+      expect(result).toContain('# Tech Stacks');
+      expect(result).toContain('### Languages');
+      expect(result).not.toContain('### Frameworks');
+      expect(result).not.toContain('### Dependencies');
+      expect(result).not.toContain('### Configuration Files');
     });
   });
 
