@@ -73,7 +73,7 @@ Skills는 다음 구조로 생성됩니다:
     ├── summary.md              # 목적, 형식 및 통계
     ├── project-structure.md    # 행 수가 포함된 디렉토리 트리
     ├── files.md                # 모든 파일 내용 (grep 친화적)
-    └── tech-stack.md           # 언어, 프레임워크, 종속성
+    └── tech-stacks.md           # 언어, 프레임워크, 종속성
 ```
 
 ### 파일 설명
@@ -122,7 +122,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stack.md
+#### references/tech-stacks.md
 
 종속성 파일에서 자동 감지된 기술 스택:
 - **언어**: TypeScript, JavaScript, Python 등

@@ -73,7 +73,7 @@ Skillsは以下の構造で生成されます：
     ├── summary.md              # 目的、フォーマット、統計情報
     ├── project-structure.md    # 行数付きディレクトリツリー
     ├── files.md                # すべてのファイル内容（grep検索向け）
-    └── tech-stack.md           # 言語、フレームワーク、依存関係
+    └── tech-stacks.md           # 言語、フレームワーク、依存関係
 ```
 
 ### ファイルの説明
@@ -122,7 +122,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stack.md
+#### references/tech-stacks.md
 
 依存関係ファイルから自動検出される技術スタック：
 - **言語**: TypeScript、JavaScript、Python など

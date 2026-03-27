@@ -73,7 +73,7 @@ The Skills are generated with the following structure:
     ├── summary.md              # Purpose, format, and statistics
     ├── project-structure.md    # Directory tree with line counts
     ├── files.md                # All file contents (grep-friendly)
-    └── tech-stack.md           # Languages, frameworks, dependencies
+    └── tech-stacks.md           # Languages, frameworks, dependencies
 ```
 
 ### File Descriptions
@@ -122,7 +122,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stack.md
+#### references/tech-stacks.md
 
 Auto-detected tech stack from dependency files:
 - **Languages**: TypeScript, JavaScript, Python, etc.

@@ -73,7 +73,7 @@ Beceriler şu yapıyla oluşturulur:
     ├── summary.md              # Amaç, biçim ve istatistikler
     ├── project-structure.md    # Satır sayılarıyla dizin ağacı
     ├── files.md                # Tüm dosya içerikleri (grep'e uygun)
-    └── tech-stack.md           # Diller, çerçeveler, bağımlılıklar
+    └── tech-stacks.md           # Diller, çerçeveler, bağımlılıklar
 ```
 
 ### Dosya Açıklamaları
@@ -122,7 +122,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stack.md
+#### references/tech-stacks.md
 
 Bağımlılık dosyalarından otomatik algılanan teknoloji yığını:
 - **Diller**: TypeScript, JavaScript, Python vb.
