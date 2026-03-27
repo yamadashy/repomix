@@ -106,7 +106,7 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result).toBeNull();
     });
 
-    test('should ignore dependency files in subdirectories', () => {
+    test('should detect dependency files in subdirectories', () => {
       const files: ProcessedFile[] = [
         {
           path: 'packages/sub/package.json',
@@ -115,7 +115,52 @@ tokio = { version = "1.0", features = ["full"] }`,
       ];
 
       const result = detectTechStack(files);
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.languages).toContain('Node.js');
+      expect(result?.dependencies).toHaveLength(1);
+      expect(result?.dependencies[0].name).toBe('lodash');
+    });
+
+    test('should deduplicate dependencies from multiple package.json files', () => {
+      const files: ProcessedFile[] = [
+        {
+          path: 'package.json',
+          content: JSON.stringify({ dependencies: { lodash: '4.0.0', react: '^18.2.0' } }),
+        },
+        {
+          path: 'packages/sub/package.json',
+          content: JSON.stringify({ dependencies: { lodash: '4.0.0', express: '^4.18.0' } }),
+        },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.languages).toEqual(['Node.js']);
+      // Same name+version is deduplicated
+      const lodashDeps = result?.dependencies.filter((d) => d.name === 'lodash');
+      expect(lodashDeps).toHaveLength(1);
+      expect(result?.dependencies.find((d) => d.name === 'react')).toBeDefined();
+      expect(result?.dependencies.find((d) => d.name === 'express')).toBeDefined();
+    });
+
+    test('should keep dependencies with different versions', () => {
+      const files: ProcessedFile[] = [
+        {
+          path: 'package.json',
+          content: JSON.stringify({ dependencies: { lodash: '4.0.0' } }),
+        },
+        {
+          path: 'packages/sub/package.json',
+          content: JSON.stringify({ dependencies: { lodash: '4.1.0' } }),
+        },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      const lodashDeps = result?.dependencies.filter((d) => d.name === 'lodash');
+      expect(lodashDeps).toHaveLength(2);
     });
 
     test('should detect package manager from packageManager field', () => {
@@ -124,6 +169,28 @@ tokio = { version = "1.0", features = ["full"] }`,
           path: 'package.json',
           content: JSON.stringify({
             packageManager: 'pnpm@8.0.0',
+            dependencies: {},
+          }),
+        },
+      ];
+
+      const result = detectTechStack(files);
+      expect(result?.packageManager).toBe('pnpm');
+    });
+
+    test('should use first package manager found (first-wins)', () => {
+      const files: ProcessedFile[] = [
+        {
+          path: 'package.json',
+          content: JSON.stringify({
+            packageManager: 'pnpm@8.0.0',
+            dependencies: {},
+          }),
+        },
+        {
+          path: 'packages/sub/package.json',
+          content: JSON.stringify({
+            packageManager: 'npm@10.0.0',
             dependencies: {},
           }),
         },
@@ -277,6 +344,31 @@ golang 1.22.0`,
       expect(result?.runtimeVersions).toHaveLength(1);
       expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: '22.0.0' });
     });
+
+    test('should deduplicate runtime versions from subdirectories', () => {
+      const files: ProcessedFile[] = [
+        { path: '.node-version', content: '22.0.0' },
+        { path: 'packages/api/.node-version', content: '22.0.0' },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.runtimeVersions).toHaveLength(1);
+      expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: '22.0.0' });
+    });
+
+    test('should deduplicate runtime versions with v prefix normalization', () => {
+      const files: ProcessedFile[] = [
+        { path: '.node-version', content: '20.10.0' },
+        { path: '.nvmrc', content: 'v20.10.0' },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).not.toBeNull();
+      expect(result?.runtimeVersions).toHaveLength(1);
+    });
   });
 
   describe('detectTechStack with configuration files', () => {
@@ -299,7 +391,7 @@ golang 1.22.0`,
       expect(result?.configFiles).toContain('biome.json');
     });
 
-    test('should not detect configuration files in subdirectories', () => {
+    test('should detect configuration files in subdirectories', () => {
       const files: ProcessedFile[] = [
         { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
         { path: 'packages/sub/tsconfig.json', content: '{}' },
@@ -309,7 +401,7 @@ golang 1.22.0`,
 
       expect(result).not.toBeNull();
       expect(result?.configFiles).toContain('package.json');
-      expect(result?.configFiles).not.toContain('tsconfig.json');
+      expect(result?.configFiles).toContain('packages/sub/tsconfig.json');
     });
 
     test('should detect docker and CI configuration files', () => {
