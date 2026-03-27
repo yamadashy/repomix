@@ -118,8 +118,8 @@ export const generateSkillReferences = async (
   const statisticsSection = generateStatisticsSection(statistics);
 
   // Detect tech stack
-  const techStack = detectTechStack(sortedProcessedFiles);
-  const techStackMd = techStack ? generateTechStackMd(techStack) : undefined;
+  const techStacks = detectTechStack(sortedProcessedFiles);
+  const techStackMd = techStacks.length > 0 ? generateTechStackMd(techStacks) : undefined;
 
   // Generate each section separately
   const references: SkillReferences = {
@@ -137,7 +137,7 @@ export const generateSkillReferences = async (
     totalFiles: sortedProcessedFiles.length,
     totalLines: statistics.totalLines,
     statisticsSection,
-    hasTechStack: techStack !== null,
+    hasTechStack: techStacks.length > 0,
     sourceUrl: skillSourceUrl,
   };
 };

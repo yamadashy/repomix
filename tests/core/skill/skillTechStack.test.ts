@@ -22,13 +22,14 @@ describe('skillTechStack', () => {
 
       const result = detectTechStack(files);
 
-      expect(result).not.toBeNull();
-      expect(result?.languages).toContain('Node.js');
-      expect(result?.frameworks).toContain('React');
-      expect(result?.frameworks).toContain('Express');
-      expect(result?.frameworks).toContain('TypeScript');
-      expect(result?.dependencies.length).toBeGreaterThan(0);
-      expect(result?.devDependencies.length).toBeGreaterThan(0);
+      expect(result).toHaveLength(1);
+      expect(result[0].path).toBe('(root)');
+      expect(result[0].languages).toContain('Node.js');
+      expect(result[0].frameworks).toContain('React');
+      expect(result[0].frameworks).toContain('Express');
+      expect(result[0].frameworks).toContain('TypeScript');
+      expect(result[0].dependencies.length).toBeGreaterThan(0);
+      expect(result[0].devDependencies.length).toBeGreaterThan(0);
     });
 
     test('should detect Python from requirements.txt', () => {
@@ -45,11 +46,11 @@ fastapi
 
       const result = detectTechStack(files);
 
-      expect(result).not.toBeNull();
-      expect(result?.languages).toContain('Python');
-      expect(result?.frameworks).toContain('Django');
-      expect(result?.frameworks).toContain('Flask');
-      expect(result?.frameworks).toContain('FastAPI');
+      expect(result).toHaveLength(1);
+      expect(result[0].languages).toContain('Python');
+      expect(result[0].frameworks).toContain('Django');
+      expect(result[0].frameworks).toContain('Flask');
+      expect(result[0].frameworks).toContain('FastAPI');
     });
 
     test('should detect Go from go.mod', () => {
@@ -69,9 +70,9 @@ require (
 
       const result = detectTechStack(files);
 
-      expect(result).not.toBeNull();
-      expect(result?.languages).toContain('Go');
-      expect(result?.frameworks).toContain('Gin');
+      expect(result).toHaveLength(1);
+      expect(result[0].languages).toContain('Go');
+      expect(result[0].frameworks).toContain('Gin');
     });
 
     test('should detect Rust from Cargo.toml', () => {
@@ -90,20 +91,20 @@ tokio = { version = "1.0", features = ["full"] }`,
 
       const result = detectTechStack(files);
 
-      expect(result).not.toBeNull();
-      expect(result?.languages).toContain('Rust');
-      expect(result?.frameworks).toContain('Actix');
-      expect(result?.frameworks).toContain('Tokio');
+      expect(result).toHaveLength(1);
+      expect(result[0].languages).toContain('Rust');
+      expect(result[0].frameworks).toContain('Actix');
+      expect(result[0].frameworks).toContain('Tokio');
     });
 
-    test('should return null when no dependency files found', () => {
+    test('should return empty array when no dependency files found', () => {
       const files: ProcessedFile[] = [
         { path: 'src/index.ts', content: 'console.log("hello")' },
         { path: 'README.md', content: '# My Project' },
       ];
 
       const result = detectTechStack(files);
-      expect(result).toBeNull();
+      expect(result).toHaveLength(0);
     });
 
     test('should detect dependency files in subdirectories', () => {
@@ -115,52 +116,39 @@ tokio = { version = "1.0", features = ["full"] }`,
       ];
 
       const result = detectTechStack(files);
-      expect(result).not.toBeNull();
-      expect(result?.languages).toContain('Node.js');
-      expect(result?.dependencies).toHaveLength(1);
-      expect(result?.dependencies[0].name).toBe('lodash');
+      expect(result).toHaveLength(1);
+      expect(result[0].path).toBe('packages/sub');
+      expect(result[0].languages).toContain('Node.js');
+      expect(result[0].dependencies).toHaveLength(1);
+      expect(result[0].dependencies[0].name).toBe('lodash');
     });
 
-    test('should deduplicate dependencies from multiple package.json files', () => {
+    test('should group dependencies by package directory', () => {
       const files: ProcessedFile[] = [
         {
           path: 'package.json',
           content: JSON.stringify({ dependencies: { lodash: '4.0.0', react: '^18.2.0' } }),
         },
         {
-          path: 'packages/sub/package.json',
-          content: JSON.stringify({ dependencies: { lodash: '4.0.0', express: '^4.18.0' } }),
+          path: 'packages/api/package.json',
+          content: JSON.stringify({ dependencies: { express: '^4.18.0' } }),
         },
       ];
 
       const result = detectTechStack(files);
 
-      expect(result).not.toBeNull();
-      expect(result?.languages).toEqual(['Node.js']);
-      // Same name+version is deduplicated
-      const lodashDeps = result?.dependencies.filter((d) => d.name === 'lodash');
-      expect(lodashDeps).toHaveLength(1);
-      expect(result?.dependencies.find((d) => d.name === 'react')).toBeDefined();
-      expect(result?.dependencies.find((d) => d.name === 'express')).toBeDefined();
-    });
+      expect(result).toHaveLength(2);
 
-    test('should keep dependencies with different versions', () => {
-      const files: ProcessedFile[] = [
-        {
-          path: 'package.json',
-          content: JSON.stringify({ dependencies: { lodash: '4.0.0' } }),
-        },
-        {
-          path: 'packages/sub/package.json',
-          content: JSON.stringify({ dependencies: { lodash: '4.1.0' } }),
-        },
-      ];
+      const root = result.find((r) => r.path === '(root)');
+      expect(root).toBeDefined();
+      expect(root?.dependencies).toHaveLength(2);
+      expect(root?.dependencies.find((d) => d.name === 'lodash')).toBeDefined();
+      expect(root?.dependencies.find((d) => d.name === 'react')).toBeDefined();
 
-      const result = detectTechStack(files);
-
-      expect(result).not.toBeNull();
-      const lodashDeps = result?.dependencies.filter((d) => d.name === 'lodash');
-      expect(lodashDeps).toHaveLength(2);
+      const api = result.find((r) => r.path === 'packages/api');
+      expect(api).toBeDefined();
+      expect(api?.dependencies).toHaveLength(1);
+      expect(api?.dependencies[0].name).toBe('express');
     });
 
     test('should detect package manager from packageManager field', () => {
@@ -175,50 +163,51 @@ tokio = { version = "1.0", features = ["full"] }`,
       ];
 
       const result = detectTechStack(files);
-      expect(result?.packageManager).toBe('pnpm');
+      expect(result[0].packageManager).toBe('pnpm');
     });
 
-    test('should use first package manager found (first-wins)', () => {
+    test('should assign config files to correct package directory', () => {
       const files: ProcessedFile[] = [
-        {
-          path: 'package.json',
-          content: JSON.stringify({
-            packageManager: 'pnpm@8.0.0',
-            dependencies: {},
-          }),
-        },
-        {
-          path: 'packages/sub/package.json',
-          content: JSON.stringify({
-            packageManager: 'npm@10.0.0',
-            dependencies: {},
-          }),
-        },
+        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: 'tsconfig.json', content: '{}' },
+        { path: 'packages/sub/package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: 'packages/sub/tsconfig.json', content: '{}' },
       ];
 
       const result = detectTechStack(files);
-      expect(result?.packageManager).toBe('pnpm');
+
+      const root = result.find((r) => r.path === '(root)');
+      expect(root?.configFiles).toContain('package.json');
+      expect(root?.configFiles).toContain('tsconfig.json');
+
+      const sub = result.find((r) => r.path === 'packages/sub');
+      expect(sub?.configFiles).toContain('package.json');
+      expect(sub?.configFiles).toContain('tsconfig.json');
     });
   });
 
   describe('generateTechStackMd', () => {
     test('should generate markdown with all sections', () => {
-      const techStack = {
-        languages: ['Node.js'],
-        frameworks: ['React', 'TypeScript'],
-        dependencies: [
-          { name: 'react', version: '^18.2.0' },
-          { name: 'react-dom', version: '^18.2.0' },
-        ],
-        devDependencies: [{ name: 'typescript', version: '^5.0.0' }],
-        packageManager: 'npm',
-        runtimeVersions: [{ runtime: 'Node.js', version: '22.0.0' }],
-        configFiles: ['package.json', 'tsconfig.json'],
-      };
+      const techStacks = [
+        {
+          path: '(root)',
+          languages: ['Node.js'],
+          frameworks: ['React', 'TypeScript'],
+          dependencies: [
+            { name: 'react', version: '^18.2.0' },
+            { name: 'react-dom', version: '^18.2.0' },
+          ],
+          devDependencies: [{ name: 'typescript', version: '^5.0.0' }],
+          packageManager: 'npm',
+          runtimeVersions: [{ runtime: 'Node.js', version: '22.0.0' }],
+          configFiles: ['package.json', 'tsconfig.json'],
+        },
+      ];
 
-      const result = generateTechStackMd(techStack);
+      const result = generateTechStackMd(techStacks);
 
       expect(result).toContain('# Tech Stack');
+      expect(result).toContain('path: (root)');
       expect(result).toContain('## Languages');
       expect(result).toContain('- Node.js');
       expect(result).toContain('## Frameworks');
@@ -237,34 +226,49 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result).toContain('- tsconfig.json');
     });
 
-    test('should show all dependencies without truncation', () => {
-      const techStack = {
-        languages: ['Node.js'],
-        frameworks: [],
-        dependencies: Array.from({ length: 25 }, (_, i) => ({ name: `dep-${i}`, version: '1.0.0' })),
-        devDependencies: [],
-        runtimeVersions: [],
-        configFiles: [],
-      };
+    test('should separate multiple packages with ---', () => {
+      const techStacks = [
+        {
+          path: '(root)',
+          languages: ['Node.js'],
+          frameworks: [],
+          dependencies: [{ name: 'lodash', version: '4.0.0' }],
+          devDependencies: [],
+          runtimeVersions: [],
+          configFiles: [],
+        },
+        {
+          path: 'packages/api',
+          languages: ['Node.js'],
+          frameworks: ['Express'],
+          dependencies: [{ name: 'express', version: '^4.18.0' }],
+          devDependencies: [],
+          runtimeVersions: [],
+          configFiles: [],
+        },
+      ];
 
-      const result = generateTechStackMd(techStack);
+      const result = generateTechStackMd(techStacks);
 
-      expect(result).toContain('- dep-0 (1.0.0)');
-      expect(result).toContain('- dep-24 (1.0.0)');
-      expect(result).not.toContain('... and');
+      expect(result).toContain('path: (root)');
+      expect(result).toContain('---');
+      expect(result).toContain('path: packages/api');
     });
 
     test('should handle empty sections', () => {
-      const techStack = {
-        languages: ['Node.js'],
-        frameworks: [],
-        dependencies: [],
-        devDependencies: [],
-        runtimeVersions: [],
-        configFiles: [],
-      };
+      const techStacks = [
+        {
+          path: '(root)',
+          languages: ['Node.js'],
+          frameworks: [],
+          dependencies: [],
+          devDependencies: [],
+          runtimeVersions: [],
+          configFiles: [],
+        },
+      ];
 
-      const result = generateTechStackMd(techStack);
+      const result = generateTechStackMd(techStacks);
 
       expect(result).toContain('# Tech Stack');
       expect(result).toContain('## Languages');
@@ -276,27 +280,34 @@ tokio = { version = "1.0", features = ["full"] }`,
 
   describe('detectTechStack with version files', () => {
     test('should detect Node.js version from .node-version', () => {
-      const files: ProcessedFile[] = [{ path: '.node-version', content: '22.0.0\n' }];
+      const files: ProcessedFile[] = [
+        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: '.node-version', content: '22.0.0\n' },
+      ];
 
       const result = detectTechStack(files);
 
-      expect(result).not.toBeNull();
-      expect(result?.runtimeVersions).toHaveLength(1);
-      expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: '22.0.0' });
+      expect(result).toHaveLength(1);
+      expect(result[0].runtimeVersions).toHaveLength(1);
+      expect(result[0].runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: '22.0.0' });
     });
 
     test('should detect Node.js version from .nvmrc', () => {
-      const files: ProcessedFile[] = [{ path: '.nvmrc', content: 'v20.10.0' }];
+      const files: ProcessedFile[] = [
+        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: '.nvmrc', content: 'v20.10.0' },
+      ];
 
       const result = detectTechStack(files);
 
-      expect(result).not.toBeNull();
-      expect(result?.runtimeVersions).toHaveLength(1);
-      expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: 'v20.10.0' });
+      expect(result).toHaveLength(1);
+      expect(result[0].runtimeVersions).toHaveLength(1);
+      expect(result[0].runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: 'v20.10.0' });
     });
 
     test('should detect multiple runtimes from .tool-versions', () => {
       const files: ProcessedFile[] = [
+        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
         {
           path: '.tool-versions',
           content: `nodejs 22.0.0
@@ -309,65 +320,25 @@ golang 1.22.0`,
 
       const result = detectTechStack(files);
 
-      expect(result).not.toBeNull();
-      expect(result?.runtimeVersions).toHaveLength(4);
-      expect(result?.runtimeVersions).toContainEqual({ runtime: 'Node.js', version: '22.0.0' });
-      expect(result?.runtimeVersions).toContainEqual({ runtime: 'Python', version: '3.12.0' });
-      expect(result?.runtimeVersions).toContainEqual({ runtime: 'Ruby', version: '3.3.0' });
-      expect(result?.runtimeVersions).toContainEqual({ runtime: 'Go', version: '1.22.0' });
-    });
-
-    test('should detect Python version from .python-version', () => {
-      const files: ProcessedFile[] = [{ path: '.python-version', content: '3.11.5' }];
-
-      const result = detectTechStack(files);
-
-      expect(result).not.toBeNull();
-      expect(result?.runtimeVersions).toHaveLength(1);
-      expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Python', version: '3.11.5' });
-    });
-
-    test('should combine dependency files and version files', () => {
-      const files: ProcessedFile[] = [
-        {
-          path: 'package.json',
-          content: JSON.stringify({ dependencies: { express: '^4.18.0' } }),
-        },
-        { path: '.node-version', content: '22.0.0' },
-      ];
-
-      const result = detectTechStack(files);
-
-      expect(result).not.toBeNull();
-      expect(result?.languages).toContain('Node.js');
-      expect(result?.dependencies).toHaveLength(1);
-      expect(result?.runtimeVersions).toHaveLength(1);
-      expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: '22.0.0' });
-    });
-
-    test('should deduplicate runtime versions from subdirectories', () => {
-      const files: ProcessedFile[] = [
-        { path: '.node-version', content: '22.0.0' },
-        { path: 'packages/api/.node-version', content: '22.0.0' },
-      ];
-
-      const result = detectTechStack(files);
-
-      expect(result).not.toBeNull();
-      expect(result?.runtimeVersions).toHaveLength(1);
-      expect(result?.runtimeVersions[0]).toEqual({ runtime: 'Node.js', version: '22.0.0' });
+      expect(result).toHaveLength(1);
+      expect(result[0].runtimeVersions).toHaveLength(4);
+      expect(result[0].runtimeVersions).toContainEqual({ runtime: 'Node.js', version: '22.0.0' });
+      expect(result[0].runtimeVersions).toContainEqual({ runtime: 'Python', version: '3.12.0' });
+      expect(result[0].runtimeVersions).toContainEqual({ runtime: 'Ruby', version: '3.3.0' });
+      expect(result[0].runtimeVersions).toContainEqual({ runtime: 'Go', version: '1.22.0' });
     });
 
     test('should deduplicate runtime versions with v prefix normalization', () => {
       const files: ProcessedFile[] = [
+        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
         { path: '.node-version', content: '20.10.0' },
         { path: '.nvmrc', content: 'v20.10.0' },
       ];
 
       const result = detectTechStack(files);
 
-      expect(result).not.toBeNull();
-      expect(result?.runtimeVersions).toHaveLength(1);
+      expect(result).toHaveLength(1);
+      expect(result[0].runtimeVersions).toHaveLength(1);
     });
   });
 
@@ -383,29 +354,17 @@ golang 1.22.0`,
 
       const result = detectTechStack(files);
 
-      expect(result).not.toBeNull();
-      expect(result?.configFiles).toContain('package.json');
-      expect(result?.configFiles).toContain('tsconfig.json');
-      expect(result?.configFiles).toContain('vitest.config.ts');
-      expect(result?.configFiles).toContain('.eslintrc.json');
-      expect(result?.configFiles).toContain('biome.json');
-    });
-
-    test('should detect configuration files in subdirectories', () => {
-      const files: ProcessedFile[] = [
-        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
-        { path: 'packages/sub/tsconfig.json', content: '{}' },
-      ];
-
-      const result = detectTechStack(files);
-
-      expect(result).not.toBeNull();
-      expect(result?.configFiles).toContain('package.json');
-      expect(result?.configFiles).toContain('packages/sub/tsconfig.json');
+      expect(result).toHaveLength(1);
+      expect(result[0].configFiles).toContain('package.json');
+      expect(result[0].configFiles).toContain('tsconfig.json');
+      expect(result[0].configFiles).toContain('vitest.config.ts');
+      expect(result[0].configFiles).toContain('.eslintrc.json');
+      expect(result[0].configFiles).toContain('biome.json');
     });
 
     test('should detect docker and CI configuration files', () => {
       const files: ProcessedFile[] = [
+        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
         { path: 'Dockerfile', content: 'FROM node:22' },
         { path: 'docker-compose.yml', content: 'version: 3' },
         { path: '.gitignore', content: 'node_modules' },
@@ -413,10 +372,10 @@ golang 1.22.0`,
 
       const result = detectTechStack(files);
 
-      expect(result).not.toBeNull();
-      expect(result?.configFiles).toContain('Dockerfile');
-      expect(result?.configFiles).toContain('docker-compose.yml');
-      expect(result?.configFiles).toContain('.gitignore');
+      expect(result).toHaveLength(1);
+      expect(result[0].configFiles).toContain('Dockerfile');
+      expect(result[0].configFiles).toContain('docker-compose.yml');
+      expect(result[0].configFiles).toContain('.gitignore');
     });
   });
 });
