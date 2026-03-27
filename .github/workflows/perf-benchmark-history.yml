@@ -112,14 +112,18 @@ jobs:
     permissions:
       contents: write
     steps:
-      # persist-credentials is left enabled (default) because auto-push needs it to push to gh-pages
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Ensure gh-pages branch exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if ! git ls-remote --heads origin gh-pages | grep -q gh-pages; then
             git switch --orphan gh-pages
             git commit --allow-empty -m "Initial gh-pages branch for benchmark data"
+            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
             git push origin gh-pages
             git switch -
           fi
