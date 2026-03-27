@@ -3,10 +3,14 @@ name: Performance Benchmark History
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'website/**'
+      - '*.md'
+      - 'LICENSE'
 
 concurrency:
   group: perf-benchmark-history
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -108,7 +112,17 @@ jobs:
     permissions:
       contents: write
     steps:
+      # persist-credentials is left enabled (default) because auto-push needs it to push to gh-pages
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Ensure gh-pages branch exists
+        run: |
+          if ! git ls-remote --heads origin gh-pages | grep -q gh-pages; then
+            git switch --orphan gh-pages
+            git commit --allow-empty -m "Initial gh-pages branch for benchmark data"
+            git push origin gh-pages
+            git switch -
+          fi
 
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
