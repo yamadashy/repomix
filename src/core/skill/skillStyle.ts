@@ -42,7 +42,7 @@ Use this skill when you need to:
 | \`references/project-structure.md\` | Directory tree with line counts per file |
 | \`references/files.md\` | All file contents (search with \`## File: <path>\`) |
 {{#if hasTechStack}}
-| \`references/tech-stack.md\` | Languages, frameworks, and dependencies |
+| \`references/tech-stack.md\` | Languages, frameworks, and dependencies per package (grouped by \`path:\`, separated by \`---\`) |
 {{/if}}
 
 ## How to Use
@@ -94,7 +94,7 @@ function calculateTotal
 - Search \`## File:\` pattern to jump between files
 - Check \`summary.md\` for excluded files, format details, and file statistics
 {{#if hasTechStack}}
-- Check \`tech-stack.md\` for languages, frameworks, and dependencies
+- Check \`tech-stack.md\` for languages, frameworks, and dependencies (each \`path:\` section = one package)
 {{/if}}
 
 ---
