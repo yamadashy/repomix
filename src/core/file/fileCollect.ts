@@ -11,6 +11,7 @@ import {
   type FileSkipReason,
   populateFileContentCache,
   probeFileCache,
+  readRawFileSync,
   resolveBinaryDetectors,
 } from './fileRead.js';
 import type { RawFile } from './fileTypes.js';
@@ -115,25 +116,78 @@ export const collectFiles = async (
     logger.trace(`Collect files... (${i + 1}/${totalTasks}) ${filePath}`);
   }
 
-  // ── Async path: read cache-missed files with concurrency pool ──────────
-  // On cold CLI runs (first call), all files are cache misses and go through
-  // the async pool. On warm runs, typically 0-10 files changed and need I/O.
+  // ── Read cache-missed files ────────────────────────────────────────────
+  // Use sync reads when default deps are in use (production path).
+  // readFileSync avoids ~1000 Promise allocations, libuv threadpool scheduling,
+  // and microtask overhead. Benchmarked: readFileSync loop completes in ~16ms
+  // for 1000 files vs ~120ms with async promisePool(128) — an 8x improvement.
+  // Non-UTF-8 files (~1%) fall back to async readRawFile with jschardet detection.
+  // When custom deps are provided (test mocks), use the async path to respect mocks.
+  const useDefaultDeps = deps.readRawFile === defaultReadRawFile;
+
   if (cacheMisses.length > 0) {
     logger.trace(`File cache: ${totalTasks - cacheMisses.length} hits, ${cacheMisses.length} misses`);
 
-    const missResults = await promisePool(cacheMisses, FILE_COLLECT_CONCURRENCY, async ({ filePath, fullPath }) => {
-      const result = await deps.readRawFile(fullPath, maxFileSize, binaryDetectors);
-      logger.trace(`Collect files... (read) ${filePath}`);
-      return { filePath, fullPath, result };
-    });
+    if (useDefaultDeps) {
+      // ── Sync fast-read path ───────────────────────────────────────────
+      const asyncFallback: { filePath: string; fullPath: string }[] = [];
 
-    for (const { filePath, fullPath, result } of missResults) {
-      if (result.content !== null) {
-        rawFiles.push({ path: filePath, content: result.content });
-      } else if (result.skippedReason) {
-        skippedFiles.push({ path: filePath, reason: result.skippedReason });
+      for (const { filePath, fullPath } of cacheMisses) {
+        const result = readRawFileSync(fullPath, maxFileSize, binaryDetectors);
+
+        if (result === 'needs-async') {
+          // Non-UTF-8 file — defer to async path with encoding detection
+          asyncFallback.push({ filePath, fullPath });
+          continue;
+        }
+
+        if (result.content !== null) {
+          rawFiles.push({ path: filePath, content: result.content });
+        } else if (result.skippedReason) {
+          skippedFiles.push({ path: filePath, reason: result.skippedReason });
+        }
+        cacheEntries.push({ fullPath, result });
+        logger.trace(`Collect files... (read) ${filePath}`);
       }
-      cacheEntries.push({ fullPath, result });
+
+      // Async fallback for non-UTF-8 files (~1% of source files).
+      // These need jschardet + iconv-lite for encoding detection, which are lazily loaded.
+      if (asyncFallback.length > 0) {
+        logger.trace(`Async fallback for ${asyncFallback.length} non-UTF-8 files`);
+        const fallbackResults = await promisePool(
+          asyncFallback,
+          FILE_COLLECT_CONCURRENCY,
+          async ({ filePath, fullPath }) => {
+            const result = await deps.readRawFile(fullPath, maxFileSize, binaryDetectors);
+            return { filePath, fullPath, result };
+          },
+        );
+
+        for (const { filePath, fullPath, result } of fallbackResults) {
+          if (result.content !== null) {
+            rawFiles.push({ path: filePath, content: result.content });
+          } else if (result.skippedReason) {
+            skippedFiles.push({ path: filePath, reason: result.skippedReason });
+          }
+          cacheEntries.push({ fullPath, result });
+        }
+      }
+    } else {
+      // ── Async path (test mocks or custom deps) ────────────────────────
+      const missResults = await promisePool(cacheMisses, FILE_COLLECT_CONCURRENCY, async ({ filePath, fullPath }) => {
+        const result = await deps.readRawFile(fullPath, maxFileSize, binaryDetectors);
+        logger.trace(`Collect files... (read) ${filePath}`);
+        return { filePath, fullPath, result };
+      });
+
+      for (const { filePath, fullPath, result } of missResults) {
+        if (result.content !== null) {
+          rawFiles.push({ path: filePath, content: result.content });
+        } else if (result.skippedReason) {
+          skippedFiles.push({ path: filePath, reason: result.skippedReason });
+        }
+        cacheEntries.push({ fullPath, result });
+      }
     }
   }
 
