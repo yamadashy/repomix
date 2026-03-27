@@ -3,6 +3,8 @@ rules:
     ignore:
       # git-auto-commit-action requires persist-credentials for pushing
       - schema-update.yml
+      # github-action-benchmark auto-push requires persist-credentials for pushing to gh-pages
+      - perf-benchmark-history.yml
   secrets-outside-env:
     ignore:
       # These workflows use repository-level secrets without dedicated environments,
