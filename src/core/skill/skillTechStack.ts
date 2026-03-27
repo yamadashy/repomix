@@ -473,7 +473,7 @@ function parseToolVersions(content: string): RuntimeVersion[] {
   return versions;
 }
 
-const ROOT_DIR_LABEL = '(root)';
+const ROOT_DIR_LABEL = '.';
 
 /**
  * Gets the directory path from a file path.

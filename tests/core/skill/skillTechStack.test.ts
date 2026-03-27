@@ -23,7 +23,7 @@ describe('skillTechStack', () => {
       const result = detectTechStack(files);
 
       expect(result).toHaveLength(1);
-      expect(result[0].path).toBe('(root)');
+      expect(result[0].path).toBe('.');
       expect(result[0].languages).toContain('Node.js');
       expect(result[0].frameworks).toContain('React');
       expect(result[0].frameworks).toContain('Express');
@@ -139,7 +139,7 @@ tokio = { version = "1.0", features = ["full"] }`,
 
       expect(result).toHaveLength(2);
 
-      const root = result.find((r) => r.path === '(root)');
+      const root = result.find((r) => r.path === '.');
       expect(root).toBeDefined();
       expect(root?.dependencies).toHaveLength(2);
       expect(root?.dependencies.find((d) => d.name === 'lodash')).toBeDefined();
@@ -176,7 +176,7 @@ tokio = { version = "1.0", features = ["full"] }`,
 
       const result = detectTechStack(files);
 
-      const root = result.find((r) => r.path === '(root)');
+      const root = result.find((r) => r.path === '.');
       expect(root?.configFiles).toContain('package.json');
       expect(root?.configFiles).toContain('tsconfig.json');
 
@@ -190,7 +190,7 @@ tokio = { version = "1.0", features = ["full"] }`,
     test('should generate markdown with all sections', () => {
       const techStacks = [
         {
-          path: '(root)',
+          path: '.',
           languages: ['Node.js'],
           frameworks: ['React', 'TypeScript'],
           dependencies: [
@@ -207,7 +207,7 @@ tokio = { version = "1.0", features = ["full"] }`,
       const result = generateTechStackMd(techStacks);
 
       expect(result).toContain('# Tech Stack');
-      expect(result).toContain('path: (root)');
+      expect(result).toContain('path: .');
       expect(result).toContain('## Languages');
       expect(result).toContain('- Node.js');
       expect(result).toContain('## Frameworks');
@@ -229,7 +229,7 @@ tokio = { version = "1.0", features = ["full"] }`,
     test('should separate multiple packages with ---', () => {
       const techStacks = [
         {
-          path: '(root)',
+          path: '.',
           languages: ['Node.js'],
           frameworks: [],
           dependencies: [{ name: 'lodash', version: '4.0.0' }],
@@ -250,7 +250,7 @@ tokio = { version = "1.0", features = ["full"] }`,
 
       const result = generateTechStackMd(techStacks);
 
-      expect(result).toContain('path: (root)');
+      expect(result).toContain('path: .');
       expect(result).toContain('---');
       expect(result).toContain('path: packages/api');
     });
@@ -258,7 +258,7 @@ tokio = { version = "1.0", features = ["full"] }`,
     test('should handle empty sections', () => {
       const techStacks = [
         {
-          path: '(root)',
+          path: '.',
           languages: ['Node.js'],
           frameworks: [],
           dependencies: [],
