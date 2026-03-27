@@ -50,7 +50,7 @@ export const registerGenerateSkillTool = (mcpServer: McpServer) => {
     'generate_skill',
     {
       title: 'Generate Claude Agent Skill',
-      description: `Generate a Claude Agent Skill from a local code directory. Creates a skill package containing SKILL.md (entry point with metadata) and references/ folder with summary.md, project-structure.md, files.md, and optionally tech-stack.md.
+      description: `Generate a Claude Agent Skill from a local code directory. Creates a skill package containing SKILL.md (entry point with metadata) and references/ folder with summary.md, project-structure.md, files.md, and optionally tech-stacks.md.
 
 This tool creates Project Skills in <project>/.claude/skills/<name>/, which are shared with the team via version control.
 

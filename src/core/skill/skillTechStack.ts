@@ -477,7 +477,7 @@ const ROOT_DIR_LABEL = '.';
 
 /**
  * Gets the directory path from a file path.
- * Returns '(root)' for root-level files.
+ * Returns ROOT_DIR_LABEL ('.') for root-level files.
  */
 const getDirPath = (filePath: string): string => {
   const lastSlash = filePath.lastIndexOf('/');
@@ -561,6 +561,8 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo[
     result.languages = [...new Set(result.languages)];
     result.frameworks = [...new Set(result.frameworks)];
     result.configFiles = [...new Set(result.configFiles)];
+    result.dependencies = deduplicateByName(result.dependencies);
+    result.devDependencies = deduplicateByName(result.devDependencies);
     result.runtimeVersions = deduplicateRuntimeVersions(result.runtimeVersions);
   }
 
@@ -569,6 +571,15 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo[
     if (a.path === ROOT_DIR_LABEL) return -1;
     if (b.path === ROOT_DIR_LABEL) return 1;
     return a.path.localeCompare(b.path);
+  });
+};
+
+const deduplicateByName = (deps: DependencyInfo[]): DependencyInfo[] => {
+  const seen = new Set<string>();
+  return deps.filter((dep) => {
+    if (seen.has(dep.name)) return false;
+    seen.add(dep.name);
+    return true;
   });
 };
 
