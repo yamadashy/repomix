@@ -43,6 +43,11 @@ export async function processZipFile(file: File, format: string, options: PackOp
     include: options.includePatterns,
     ignore: options.ignorePatterns,
     quiet: true, // Enable quiet mode to suppress output
+    _inProcess: true, // Run pack() in the server process instead of spawning a child process.
+    // Reuses cached worker pools (security + metrics) across requests, saving ~500ms
+    // of child process spawn + module re-loading + worker warmup per subsequent request.
+    // All module-level caches are bounded (200MB file content, 5000 entries for
+    // metrics/security/processing), so memory growth is controlled.
   } as CliOptions;
 
   setLogLevel(-1);
