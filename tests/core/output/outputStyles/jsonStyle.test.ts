@@ -3,6 +3,8 @@ import type { RepomixConfigMerged } from '../../../../src/config/configSchema.js
 import type { ProcessedFile } from '../../../../src/core/file/fileTypes.js';
 import { generateOutput } from '../../../../src/core/output/outputGenerate.js';
 
+const normalizeOutput = (output: string | string[]): string => (Array.isArray(output) ? output.join('') : output);
+
 const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): RepomixConfigMerged => ({
   cwd: '/test',
   input: { maxFileSize: 1024 * 1024 },
@@ -66,7 +68,7 @@ describe('JSON Output Style', () => {
     const processedFiles = createMockProcessedFiles();
     const allFilePaths = processedFiles.map((f) => f.path);
 
-    const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
+    const result = normalizeOutput(await generateOutput(['/test'], config, processedFiles, allFilePaths));
 
     // Should be valid JSON
     expect(() => JSON.parse(result)).not.toThrow();
@@ -85,7 +87,7 @@ describe('JSON Output Style', () => {
     const processedFiles = createMockProcessedFiles();
     const allFilePaths = processedFiles.map((f) => f.path);
 
-    const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
+    const result = normalizeOutput(await generateOutput(['/test'], config, processedFiles, allFilePaths));
     const parsed = JSON.parse(result);
 
     expect(parsed.fileSummary).toBeDefined();
@@ -102,7 +104,7 @@ describe('JSON Output Style', () => {
     const processedFiles = createMockProcessedFiles();
     const allFilePaths = processedFiles.map((f) => f.path);
 
-    const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
+    const result = normalizeOutput(await generateOutput(['/test'], config, processedFiles, allFilePaths));
     const parsed = JSON.parse(result);
 
     expect(parsed.fileSummary).toBeUndefined();
@@ -118,7 +120,7 @@ describe('JSON Output Style', () => {
     const processedFiles = createMockProcessedFiles();
     const allFilePaths = processedFiles.map((f) => f.path);
 
-    const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
+    const result = normalizeOutput(await generateOutput(['/test'], config, processedFiles, allFilePaths));
     const parsed = JSON.parse(result);
 
     expect(parsed.files).toBeDefined();
@@ -136,7 +138,7 @@ describe('JSON Output Style', () => {
     ];
     const allFilePaths = processedFiles.map((f) => f.path);
 
-    const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
+    const result = normalizeOutput(await generateOutput(['/test'], config, processedFiles, allFilePaths));
 
     // Should be valid JSON
     expect(() => JSON.parse(result)).not.toThrow();

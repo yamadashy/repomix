@@ -272,23 +272,32 @@ const generateNativeOutput = async (
   config: RepomixConfigMerged,
   renderContext: RenderContext,
   processedFiles?: ProcessedFile[],
-): Promise<string> => {
+): Promise<string[]> => {
   try {
-    let rendered: string;
+    let renderedParts: string[];
     switch (config.output.style) {
       case 'xml':
-        rendered = renderXml(renderContext);
+        renderedParts = renderXml(renderContext);
         break;
       case 'markdown':
-        rendered = renderMarkdown(renderContext);
+        renderedParts = renderMarkdown(renderContext);
         break;
       case 'plain':
-        rendered = renderPlain(renderContext);
+        renderedParts = renderPlain(renderContext);
         break;
       default:
         throw new RepomixError(`Unsupported output style: ${config.output.style}`);
     }
-    return `${rendered.trim()}\n`;
+    // Trim leading/trailing whitespace by modifying the first and last non-empty parts
+    // instead of joining all parts into a single string. This avoids allocating the
+    // full 3-5MB output string just to trim whitespace at the boundaries.
+    if (renderedParts.length > 0) {
+      renderedParts[0] = renderedParts[0].trimStart();
+      const lastIdx = renderedParts.length - 1;
+      renderedParts[lastIdx] = renderedParts[lastIdx].trimEnd();
+      renderedParts.push('\n');
+    }
+    return renderedParts;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
       let largeFilesInfo = '';
@@ -355,7 +364,7 @@ export const generateOutput = async (
     generateParsableJsonOutput,
   },
   preComputedTreeString?: string,
-): Promise<string> => {
+): Promise<string | string[]> => {
   // Files are expected to be pre-sorted by the caller (packager.ts)
   // to overlap the git command with metrics computation.
   const outputGeneratorContext = await deps.buildOutputGeneratorContext(

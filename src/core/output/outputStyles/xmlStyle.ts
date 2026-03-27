@@ -1,6 +1,6 @@
 import type { RenderContext } from '../outputGeneratorTypes.js';
 
-export const renderXml = (ctx: RenderContext): string => {
+export const renderXml = (ctx: RenderContext): string[] => {
   const parts: string[] = [];
 
   if (ctx.fileSummaryEnabled) {
@@ -102,5 +102,5 @@ ${ctx.instruction}
 </instruction>`);
   }
 
-  return parts.join('');
+  return parts;
 };

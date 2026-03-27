@@ -103,6 +103,26 @@ export const contentMayContainSecret = (content: string): boolean => {
   return SECRET_TRIGGER_PATTERN.test(content) || containsBasicAuthPattern(content);
 };
 
+// ── Security result cache ─────────────────────────────────────────────
+// Caches per-task security check results across pack() calls for MCP/website server.
+// On warm runs with unchanged file content, skips the expensive worker IPC + secretlint
+// regex matching entirely. Validated by content length (the file content cache in
+// fileRead.ts already validates by mtime+size, so same length ≈ same content here).
+// Covers file, gitDiff, and gitLog tasks.
+const MAX_SECURITY_CACHE_SIZE = 5000;
+const securityResultCache = new Map<string, { contentLen: number; result: SuspiciousFileResult | null }>();
+
+const buildSecurityCacheKey = (filePath: string, type: SecurityCheckType): string => {
+  return `${type}\0${filePath}`;
+};
+
+/**
+ * Clear the security result cache. Exported for testing.
+ */
+export const clearSecurityResultCache = (): void => {
+  securityResultCache.clear();
+};
+
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
   progressCallback: RepomixProgressCallback = () => {},
@@ -113,13 +133,13 @@ export const runSecurityCheck = async (
   } | null = null,
   preCreatedTaskRunner?: SecurityTaskRunner,
 ): Promise<SuspiciousFileResult[]> => {
-  const gitDiffTasks: SecurityCheckTask[] = [];
-  const gitLogTasks: SecurityCheckTask[] = [];
+  const allTasks: SecurityCheckTask[] = [];
+  const cachedResults: SuspiciousFileResult[] = [];
 
   // Add Git diff content for security checking if available
   if (gitDiffResult) {
     if (gitDiffResult.workTreeDiffContent) {
-      gitDiffTasks.push({
+      allTasks.push({
         filePath: 'Working tree changes',
         content: gitDiffResult.workTreeDiffContent,
         type: 'gitDiff',
@@ -127,7 +147,7 @@ export const runSecurityCheck = async (
     }
 
     if (gitDiffResult.stagedDiffContent) {
-      gitDiffTasks.push({
+      allTasks.push({
         filePath: 'Staged changes',
         content: gitDiffResult.stagedDiffContent,
         type: 'gitDiff',
@@ -138,7 +158,7 @@ export const runSecurityCheck = async (
   // Add Git log content for security checking if available
   if (gitLogResult) {
     if (gitLogResult.logContent) {
-      gitLogTasks.push({
+      allTasks.push({
         filePath: 'Git log history',
         content: gitLogResult.logContent,
         type: 'gitLog',
@@ -147,21 +167,36 @@ export const runSecurityCheck = async (
   }
 
   // Pre-filter files that cannot match any secretlint rule.
-  // Each trigger substring below corresponds to a required prefix or marker for at least one
-  // rule in @secretlint/secretlint-rule-preset-recommend. Files without ANY trigger are
-  // guaranteed to pass all rules, so they skip the expensive IPC + regex matching in workers.
-  // For typical source code repos, this skips 95-99% of files.
-  const fileTasks: SecurityCheckTask[] = [];
   for (const file of rawFiles) {
     if (contentMayContainSecret(file.content)) {
-      fileTasks.push({ filePath: file.path, content: file.content, type: 'file' });
+      allTasks.push({ filePath: file.path, content: file.content, type: 'file' });
     }
   }
 
-  logger.trace(`Security pre-filter: ${fileTasks.length}/${rawFiles.length} files need checking`);
+  // Separate cached tasks from uncached tasks. On warm MCP/server runs with unchanged
+  // files, 100% of tasks hit the cache, completely skipping the ~18ms worker IPC.
+  const uncachedTasks: SecurityCheckTask[] = [];
+  for (const task of allTasks) {
+    const cacheKey = buildSecurityCacheKey(task.filePath, task.type);
+    const cached = securityResultCache.get(cacheKey);
+    if (cached && cached.contentLen === task.content.length) {
+      if (cached.result) {
+        cachedResults.push(cached.result);
+      }
+    } else {
+      uncachedTasks.push(task);
+    }
+  }
 
-  // Combine file tasks, Git diff tasks, and Git log tasks
-  const tasks = [...fileTasks, ...gitDiffTasks, ...gitLogTasks];
+  logger.trace(
+    `Security pre-filter: ${allTasks.length}/${rawFiles.length} files need checking, ${allTasks.length - uncachedTasks.length} cached`,
+  );
+
+  // If all tasks are cached, return immediately without touching the worker pool
+  if (uncachedTasks.length === 0) {
+    logger.trace('Security check: all results cached, skipping worker');
+    return cachedResults;
+  }
 
   // Use pre-created pool if available (pre-warmed during file collection),
   // otherwise create a new one on demand
@@ -173,29 +208,27 @@ export const runSecurityCheck = async (
       initTaskRunner: await getInitTaskRunner(),
     };
     taskRunner = resolvedDeps.initTaskRunner<SecurityCheckTask[], (SuspiciousFileResult | null)[]>({
-      numOfTasks: tasks.length,
+      numOfTasks: uncachedTasks.length,
       workerType: 'securityCheck',
       runtime: 'worker_threads',
     });
   }
 
   try {
-    logger.trace(`Starting security check for ${tasks.length} files/content`);
+    logger.trace(`Starting security check for ${uncachedTasks.length} files/content`);
     const startTime = process.hrtime.bigint();
 
     // Batch tasks to reduce IPC overhead. Each pool.run() involves structured clone
     // serialization of file content across the worker_thread boundary. Batching ~50 files
     // per round-trip amortizes the per-message overhead (~0.5ms) across multiple files.
-    // With the pre-filter skipping 95-99% of files, the actual task count is typically
-    // 5-50 files, so larger batches reduce IPC from ~3 round-trips to ~1.
     const BATCH_SIZE = 50;
     const batches: SecurityCheckTask[][] = [];
-    for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
-      batches.push(tasks.slice(i, i + BATCH_SIZE));
+    for (let i = 0; i < uncachedTasks.length; i += BATCH_SIZE) {
+      batches.push(uncachedTasks.slice(i, i + BATCH_SIZE));
     }
 
     let completedTasks = 0;
-    const totalTasks = tasks.length;
+    const totalTasks = uncachedTasks.length;
 
     const batchResults = await Promise.all(
       batches.map((batch) =>
@@ -213,7 +246,27 @@ export const runSecurityCheck = async (
     const duration = Number(endTime - startTime) / 1e6;
     logger.trace(`Security check completed in ${duration.toFixed(2)}ms`);
 
-    const results = batchResults.flat().filter((result): result is SuspiciousFileResult => result !== null);
+    // Populate cache with new results and collect non-null results
+    const workerResults: SuspiciousFileResult[] = [];
+    const flatResults = batchResults.flat();
+    for (let i = 0; i < uncachedTasks.length; i++) {
+      const task = uncachedTasks[i];
+      const result = flatResults[i];
+      const cacheKey = buildSecurityCacheKey(task.filePath, task.type);
+
+      // Evict oldest entry if cache is full (FIFO via Map insertion order)
+      if (securityResultCache.size >= MAX_SECURITY_CACHE_SIZE) {
+        const oldestKey = securityResultCache.keys().next().value;
+        if (oldestKey !== undefined) {
+          securityResultCache.delete(oldestKey);
+        }
+      }
+      securityResultCache.set(cacheKey, { contentLen: task.content.length, result });
+
+      if (result) {
+        workerResults.push(result);
+      }
+    }
 
     // Fire-and-forget worker pool cleanup — all results are already collected,
     // so we don't need to block the critical path waiting for thread termination.
@@ -222,7 +275,7 @@ export const runSecurityCheck = async (
       logger.debug('Error during security worker pool cleanup:', error);
     });
 
-    return results;
+    return [...cachedResults, ...workerResults];
   } catch (error) {
     logger.error('Error during security check:', error);
     // On error, still attempt cleanup but don't block on it

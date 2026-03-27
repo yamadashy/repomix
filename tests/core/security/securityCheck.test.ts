@@ -1,10 +1,10 @@
 // src/core/security/securityCheck.test.ts
 
 import pc from 'picocolors';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
-import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
+import { clearSecurityResultCache, runSecurityCheck } from '../../../src/core/security/securityCheck.js';
 import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
@@ -51,6 +51,12 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
 };
 
 describe('runSecurityCheck', () => {
+  beforeEach(() => {
+    // Clear module-level security result cache between tests to ensure
+    // each test runs the worker instead of returning cached results.
+    clearSecurityResultCache();
+  });
+
   it('should identify files with security issues', async () => {
     const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,

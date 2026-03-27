@@ -7,7 +7,7 @@ import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import type { generateOutput } from './outputGenerate.js';
+import type { generateOutput as generateOutputType } from './outputGenerate.js';
 
 export interface OutputSplitGroup {
   rootEntry: string;
@@ -23,7 +23,7 @@ export interface OutputSplitPart {
   groups: OutputSplitGroup[];
 }
 
-export type GenerateOutputFn = typeof generateOutput;
+export type GenerateOutputFn = typeof generateOutputType;
 
 export const getRootEntry = (relativeFilePath: string): string => {
   // Use indexOf to find the first separator instead of replaceAll + split.
@@ -121,7 +121,7 @@ const renderGroups = async (
   }
   const chunkConfig = makeChunkConfig(baseConfig, partIndex);
 
-  return await generateOutput(
+  const result = await generateOutput(
     rootDirs,
     chunkConfig,
     chunkProcessedFiles,
@@ -131,6 +131,9 @@ const renderGroups = async (
     filePathsByRoot,
     emptyDirPaths,
   );
+  // Split output needs a single string for byte length measurement and storage.
+  // Join parts here; the split path typically produces smaller chunks (< maxBytesPerPart).
+  return Array.isArray(result) ? result.join('') : result;
 };
 
 export const generateSplitOutputParts = async ({

@@ -142,6 +142,9 @@ const generateAndWriteSingleOutput = async (
   deps: typeof defaultDeps,
   preComputedTreeString?: string,
 ): Promise<ProduceOutputResult> => {
+  // generateOutput returns string[] for native styles (xml, markdown, plain) to avoid
+  // allocating a single 3-5MB contiguous string. Parsable styles (parsable-xml, json)
+  // still return string since they use library serializers that produce strings.
   const output = await withMemoryLogging('Generate Output', () =>
     deps.generateOutput(
       rootDirs,
@@ -160,11 +163,14 @@ const generateAndWriteSingleOutput = async (
   progressCallback('Writing output file...');
   // Start write + clipboard but don't await — return the promise so the caller
   // can overlap metrics computation (output token counting) with disk I/O.
+  // writeOutputToDisk and copyToClipboardIfEnabled both accept string | string[].
   const writePromise = Promise.all([
     withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config)),
     deps.copyToClipboardIfEnabled(output, progressCallback, config),
   ]).then(() => {});
 
+  // For metrics, pass through as-is (string | string[]). The caller (packager.ts)
+  // and calculateMetrics already handle both types via outputParts normalization.
   return {
     outputForMetrics: output,
     writePromise,

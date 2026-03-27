@@ -3,7 +3,7 @@ import type { RenderContext } from '../outputGeneratorTypes.js';
 const PLAIN_SEPARATOR = '='.repeat(16);
 const PLAIN_LONG_SEPARATOR = '='.repeat(64);
 
-export const renderPlain = (ctx: RenderContext): string => {
+export const renderPlain = (ctx: RenderContext): string[] => {
   const parts: string[] = [];
 
   if (ctx.fileSummaryEnabled) {
@@ -117,5 +117,5 @@ ${PLAIN_LONG_SEPARATOR}
 End of Codebase
 ${PLAIN_LONG_SEPARATOR}`);
 
-  return parts.join('');
+  return parts;
 };

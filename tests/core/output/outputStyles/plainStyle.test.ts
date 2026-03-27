@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { generateOutput } from '../../../../src/core/output/outputGenerate.js';
 import { createMockConfig } from '../../../testing/testUtils.js';
 
+const normalizeOutput = (output: string | string[]): string => (Array.isArray(output) ? output.join('') : output);
+
 vi.mock('fs/promises');
 
 describe('plainStyle', () => {
@@ -23,7 +25,7 @@ describe('plainStyle', () => {
       },
     });
 
-    const output = await generateOutput([process.cwd()], mockConfig, [], []);
+    const output = normalizeOutput(await generateOutput([process.cwd()], mockConfig, [], []));
 
     expect(output).toContain('File Summary');
     expect(output).toContain('Directory Structure');
@@ -40,7 +42,7 @@ describe('plainStyle', () => {
         headerText: 'PLAIN HEADER',
       },
     });
-    const output = await generateOutput([process.cwd()], mockConfig, [], []);
+    const output = normalizeOutput(await generateOutput([process.cwd()], mockConfig, [], []));
     expect(output).not.toContain('This file is a merged representation');
     expect(output).toContain('PLAIN HEADER');
   });

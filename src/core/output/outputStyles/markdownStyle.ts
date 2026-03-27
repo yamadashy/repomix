@@ -1,7 +1,7 @@
 import type { RenderContext } from '../outputGeneratorTypes.js';
 import { getLanguageFromFilePath } from '../outputStyleUtils.js';
 
-export const renderMarkdown = (ctx: RenderContext): string => {
+export const renderMarkdown = (ctx: RenderContext): string[] => {
   const parts: string[] = [];
 
   if (ctx.fileSummaryEnabled) {
@@ -101,5 +101,5 @@ ${ctx.gitDiffStaged ?? ''}
 ${ctx.instruction}`);
   }
 
-  return parts.join('');
+  return parts;
 };

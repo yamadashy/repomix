@@ -29,7 +29,7 @@ const createTestContext = (overrides: Partial<RenderContext> = {}): RenderContex
 describe('markdownStyle', () => {
   describe('renderMarkdown', () => {
     test('should return valid markdown output', () => {
-      const result = renderMarkdown(createTestContext());
+      const result = renderMarkdown(createTestContext()).join('');
       expect(result).toContain('# File Summary');
       expect(result).toContain('# Directory Structure');
       expect(result).toContain('# Files');
@@ -51,7 +51,7 @@ describe('markdownStyle', () => {
         ],
       });
 
-      const result = renderMarkdown(ctx);
+      const result = renderMarkdown(ctx).join('');
 
       expect(result).toContain('Generated Test Header');
       expect(result).toContain('Test Purpose');
@@ -68,7 +68,7 @@ describe('markdownStyle', () => {
         headerText: 'Custom Header Text',
       });
 
-      const result = renderMarkdown(ctx);
+      const result = renderMarkdown(ctx).join('');
 
       expect(result).toContain('# User Provided Header');
       expect(result).toContain('Custom Header Text');
@@ -79,7 +79,7 @@ describe('markdownStyle', () => {
         headerText: undefined,
       });
 
-      const result = renderMarkdown(ctx);
+      const result = renderMarkdown(ctx).join('');
 
       expect(result).not.toContain('# User Provided Header');
     });
@@ -89,7 +89,7 @@ describe('markdownStyle', () => {
         instruction: 'Custom Instruction Text',
       });
 
-      const result = renderMarkdown(ctx);
+      const result = renderMarkdown(ctx).join('');
 
       expect(result).toContain('# Instruction');
       expect(result).toContain('Custom Instruction Text');
@@ -101,7 +101,7 @@ describe('markdownStyle', () => {
         fileSummaryEnabled: false,
       });
 
-      const result = renderMarkdown(ctx);
+      const result = renderMarkdown(ctx).join('');
       expect(result).not.toContain('This file is a merged representation');
       expect(result).toContain('MARKDOWN HEADER');
     });
@@ -112,7 +112,7 @@ describe('markdownStyle', () => {
         fileSummaryEnabled: false,
       });
 
-      const result = renderMarkdown(ctx);
+      const result = renderMarkdown(ctx).join('');
       expect(result).not.toContain('This file is a merged representation');
       expect(result).not.toContain('Generated Test Header');
       expect(result).toContain('# Directory Structure');
