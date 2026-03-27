@@ -135,6 +135,51 @@ This adds valuable context about:
 - **Commit history**: Recent commit messages provide insight into development focus
 - **File relationships**: Understanding which files are modified in the same commits
 
+### Commit History Analysis
+
+For comprehensive commit history analysis with orthogonal flags matching git log:
+
+```bash
+# Simple commit log (default name-only format)
+repomix --include-logs
+
+# With line-by-line diffs (git log --patch)
+repomix --include-logs --git-patch
+
+# With commit graph visualization (git log --graph --all)
+repomix --include-logs --git-graph
+
+# Full analysis: patches + graph + file operations summary
+repomix --include-logs --git-patch --git-graph --git-summary
+
+# Analyze specific commit range (supports both .. and ... syntax)
+repomix --include-logs --commit-range "v1.0..HEAD"
+repomix --include-logs --commit-range "main...feature-branch"
+```
+
+**Diff Format Flags** (mutually exclusive - choose one):
+- `--git-patch`: Line-by-line diffs (git log --patch)
+- `--git-stat`: Per-file change counts (git log --stat)
+- `--git-numstat`: Numeric additions/deletions (git log --numstat)
+- `--git-shortstat`: One-line summary (git log --shortstat)
+- `--git-dirstat`: Directory distribution (git log --dirstat)
+- `--git-name-only`: Filenames only (git log --name-only) - default
+- `--git-name-status`: Filenames with A/M/D/R status (git log --name-status)
+- `--git-raw`: Low-level format (git log --raw)
+
+**Output Verbosity & Graph Options** (combinable with any diff format):
+- `--git-graph`: Include ASCII and Mermaid commit graph visualization
+- `--git-summary`: Show file operations (creates, renames, mode changes)
+
+This provides:
+- **Commit metadata**: Hash, author, committer, date, message, body, and list of files changed
+- **Visual graph** (with `--git-graph`): ASCII and Mermaid visualizations of branch structure
+- **Patch content**: Configurable detail levels via diff format flags
+- **Git tags**: Tag names mapped to commit hashes
+- **File operations** (with `--git-summary`): Creates, renames, mode changes
+
+See [Git Commit History Tips](/guide/tips/git-commit-history) for detailed usage patterns.
+
 ### Token Count Optimization
 
 Understanding your codebase's token distribution is crucial for optimizing AI interactions. Use the `--token-count-tree` option to visualize token usage across your project:

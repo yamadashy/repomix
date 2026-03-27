@@ -327,6 +327,68 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     };
   }
 
+  // Configure git log orthogonal flags (diff formats and enhancements)
+  // This handles the new unified git log system with separate flags
+
+  // Validate mutually exclusive diff format flags
+  const diffFormatFlags = [
+    options.gitStat,
+    options.gitPatch,
+    options.gitNumstat,
+    options.gitShortstat,
+    options.gitDirstat,
+    options.gitNameOnly,
+    options.gitNameStatus,
+    options.gitRaw,
+  ].filter(Boolean);
+
+  if (diffFormatFlags.length > 1) {
+    throw new RepomixError(
+      'Only one git log diff format flag can be used at a time: --git-stat, --git-patch, --git-numstat, --git-shortstat, --git-dirstat, --git-name-only, --git-name-status, or --git-raw',
+    );
+  }
+
+  // Determine commit patch detail level from flags
+  let commitPatchDetail:
+    | 'stat'
+    | 'patch'
+    | 'numstat'
+    | 'shortstat'
+    | 'dirstat'
+    | 'name-only'
+    | 'name-status'
+    | 'raw'
+    | undefined;
+  if (options.gitStat) commitPatchDetail = 'stat';
+  else if (options.gitPatch) commitPatchDetail = 'patch';
+  else if (options.gitNumstat) commitPatchDetail = 'numstat';
+  else if (options.gitShortstat) commitPatchDetail = 'shortstat';
+  else if (options.gitDirstat) commitPatchDetail = 'dirstat';
+  else if (options.gitNameOnly) commitPatchDetail = 'name-only';
+  else if (options.gitNameStatus) commitPatchDetail = 'name-status';
+  else if (options.gitRaw) commitPatchDetail = 'raw';
+
+  // Apply git log configuration if any git log flags are set
+  if (commitPatchDetail || options.gitGraph || options.gitSummary || options.commitRange) {
+    const gitLogEnhancementConfig = {
+      ...cliConfig.output?.git,
+      // Enable logs if any diff format or enhancement flag is used
+      includeLogs: true,
+      ...(commitPatchDetail && {
+        commitPatchDetail,
+        includeCommitPatches: true,
+      }),
+      ...(options.gitGraph && { includeCommitGraph: true }),
+      ...(options.gitSummary && { includeSummary: true }),
+      ...(options.commitRange && { commitRange: options.commitRange }),
+    };
+
+    cliConfig.output = {
+      ...cliConfig.output,
+      git: gitLogEnhancementConfig,
+    };
+  }
+
   if (options.tokenCountTree !== undefined) {
     cliConfig.output = {
       ...cliConfig.output,

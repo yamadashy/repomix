@@ -201,7 +201,7 @@ describe('outputSplit', () => {
       const allFilePaths = ['src/a.ts', 'tests/test.ts'];
 
       const gitDiffResult = { workTreeDiffContent: 'diff content', stagedDiffContent: '' };
-      const gitLogResult = { logContent: 'log content', commits: [] };
+      const gitLogResult = { logCommits: [] };
 
       // Track what gitDiffResult/gitLogResult were passed for each call
       const callArgs: Array<{

@@ -8,6 +8,7 @@ import { logger } from '../../shared/logger.js';
 const execFileAsync = promisify(execFile);
 
 const GIT_REMOTE_TIMEOUT = 30000;
+const GIT_LOG_MAX_BUFFER = 50 * 1024 * 1024; // 50MB — git log --patch on large repos
 const gitRemoteEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
 const gitRemoteOpts = { timeout: GIT_REMOTE_TIMEOUT, env: gitRemoteEnv };
 
@@ -182,6 +183,98 @@ export const execGitLog = async (
   } catch (error) {
     logger.trace('Failed to execute git log:', (error as Error).message);
     throw error;
+  }
+};
+
+// ===== Two-Pass Git Log =====
+//
+// Two-pass architecture for robust git log parsing:
+// - Pass 1 (execGitLogStructured): Metadata + NUL-terminated file entries via -z --raw
+// - Pass 2 (execGitLogTextBlob): Patch/stat text content, only when requested
+// - Pass 3 (execGitGraph): Separate graph call avoids prefix interleaving complexity
+//
+// Format separators - NUL (\x00) is used for ALL delimiters because:
+// - Git REJECTS commits containing NUL bytes ("a NUL byte in commit log message not allowed")
+// - This makes NUL 100% safe as a delimiter - it cannot appear in messages, names, or emails
+// - ASCII control characters like \x1E and \x1F CAN appear in commit messages (rare but possible)
+// - With -z --raw, git uses double-NUL (\x00\x00) between commits - we leverage this pattern
+export const NUL = '%x00'; // NUL byte - between ALL fields (git prevents NUL in commit content)
+
+// Metadata format string for --pretty=format:
+// All fields NUL-separated for robust parsing (git prevents NUL in commit content)
+// Fields: hash, abbrevHash, parents, authorName, authorEmail, authorDate,
+//         committerName, committerEmail, committerDate, subject, body
+// With -z --raw, git adds NUL after each raw file entry and double-NUL between commits
+const METADATA_FORMAT = `%H${NUL}%h${NUL}%P${NUL}%an${NUL}%ae${NUL}%aI${NUL}%cn${NUL}%ce${NUL}%cI${NUL}%s${NUL}%b${NUL}`;
+
+export interface GitLogStructuredOptions {
+  directory: string;
+  range?: string;
+  maxCommits?: number;
+}
+
+export interface GitLogTextBlobOptions extends GitLogStructuredOptions {
+  patchDetail: 'patch' | 'stat' | 'shortstat' | 'dirstat' | 'numstat' | 'name-only' | 'name-status' | 'raw';
+}
+
+/** Pass 1: Structured metadata + files with -z --raw */
+export const execGitLogStructured = async (
+  options: GitLogStructuredOptions,
+  deps = { execFileAsync },
+): Promise<string> => {
+  if (options.range) validateCommitRange(options.range);
+  const args = ['-C', options.directory, 'log', '-z', '--raw', `--pretty=format:${METADATA_FORMAT}`];
+  if (options.maxCommits) args.push('-n', options.maxCommits.toString());
+  if (options.range) args.push(options.range);
+
+  try {
+    return (await deps.execFileAsync('git', args, { maxBuffer: GIT_LOG_MAX_BUFFER })).stdout || '';
+  } catch (error) {
+    logger.trace('Failed to execute git log structured:', (error as Error).message);
+    throw error;
+  }
+};
+
+/** Pass 2: Patch/stat text blob - uses double-NUL as record separator for consistency */
+export const execGitLogTextBlob = async (options: GitLogTextBlobOptions, deps = { execFileAsync }): Promise<string> => {
+  if (options.range) validateCommitRange(options.range);
+  // Use double-NUL as separator - matches structured output format, 100% safe since git rejects NUL in content
+  const args = ['-C', options.directory, 'log', `--pretty=format:${NUL}${NUL}`, `--${options.patchDetail}`];
+  if (options.maxCommits) args.push('-n', options.maxCommits.toString());
+  if (options.range) args.push(options.range);
+
+  try {
+    return (await deps.execFileAsync('git', args, { maxBuffer: GIT_LOG_MAX_BUFFER })).stdout || '';
+  } catch (error) {
+    logger.trace('Failed to execute git log text blob:', (error as Error).message);
+    throw error;
+  }
+};
+
+/** Graph visualization (separate call to avoid prefix interleaving) */
+export const execGitGraph = async (options: GitLogStructuredOptions, deps = { execFileAsync }): Promise<string> => {
+  if (options.range) validateCommitRange(options.range);
+  const args = ['-C', options.directory, 'log', '--graph', '--oneline', '--all'];
+  if (options.maxCommits) args.push('-n', options.maxCommits.toString());
+  if (options.range) args.push(options.range);
+
+  try {
+    return (await deps.execFileAsync('git', args, { maxBuffer: GIT_LOG_MAX_BUFFER })).stdout || '';
+  } catch (error) {
+    logger.trace('Failed to execute git graph:', (error as Error).message);
+    throw error;
+  }
+};
+
+/**
+ * Validates a commit range string to prevent git flag injection.
+ * execFile prevents shell injection, but git interprets leading '--' as flags,
+ * allowing e.g. '--output=<file>' to write files or '--pretty=...' to corrupt output.
+ * @throws {RepomixError} If the range starts with '-'
+ */
+export const validateCommitRange = (range: string): void => {
+  if (range.startsWith('-')) {
+    throw new RepomixError(`Invalid commit range: '${range}'. Range must not start with '-'.`);
   }
 };
 
