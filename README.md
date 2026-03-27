@@ -1180,7 +1180,7 @@ The Skills are generated with the following structure:
     ├── summary.md           # Purpose, format, and statistics
     ├── project-structure.md # Directory tree with line counts
     ├── files.md             # All file contents (grep-friendly)
-    └── tech-stack.md        # Languages, frameworks, dependencies
+    └── tech-stacks.md       # Languages, frameworks, dependencies
 ```
 
 #### What's Included
@@ -1189,7 +1189,7 @@ The Skills are generated with the following structure:
 - **summary.md**: Explains the Skills' purpose, usage guidelines, and provides statistics breakdown by file type and language
 - **project-structure.md**: Directory tree with line counts per file for easy file discovery
 - **files.md**: All file contents with syntax highlighting headers, optimized for grep-friendly searching
-- **tech-stack.md**: Auto-detected tech stack from dependency files (`package.json`, `requirements.txt`, `Cargo.toml`, etc.)
+- **tech-stacks.md**: Auto-detected tech stack per package from dependency files (`package.json`, `requirements.txt`, `Cargo.toml`, etc.)
 
 #### Auto-Generated Skills Names
 
