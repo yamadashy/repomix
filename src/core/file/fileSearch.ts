@@ -317,6 +317,7 @@ export const searchFiles = async (
   rootDir: string,
   config: RepomixConfigMerged,
   explicitFiles?: string[],
+  preStartedGitLsFilesPromise?: Promise<string[]>,
 ): Promise<FileSearchResult> => {
   // ── Cache check ──────────────────────────────────────────────────────────
   // For MCP/website servers calling pack() repeatedly on the same repo,
@@ -409,8 +410,12 @@ export const searchFiles = async (
   // When applicable, start git ls-files subprocess + picomatch import immediately
   // so they overlap with the permission check and ignore context preparation (~10ms),
   // instead of starting sequentially after those complete.
+  // If a pre-started git ls-files promise is available (started during config loading
+  // to overlap with ~43ms Zod validation), reuse it instead of spawning a new subprocess.
   const canUseGitFastPath = config.ignore.useGitignore && !explicitFiles;
-  const earlyGitPromise = canUseGitFastPath ? Promise.all([execGitLsFiles(rootDir), getPicomatch()]) : undefined;
+  const earlyGitPromise = canUseGitFastPath
+    ? Promise.all([preStartedGitLsFilesPromise ?? execGitLsFiles(rootDir), getPicomatch()])
+    : undefined;
 
   // Run permission check and ignore context preparation in parallel.
   // Both are independent: permission check does readdir + access calls,

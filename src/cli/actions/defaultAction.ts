@@ -1,4 +1,6 @@
+import { execFile } from 'node:child_process';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import type { RepomixConfigCli, RepomixConfigMerged, RepomixOutputStyle } from '../../config/configDefaults.js';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import type { PackResult } from '../../core/packager.js';
@@ -64,6 +66,30 @@ export const runDefaultAction = async (
   // For direct execution, start importing packager module tree in the background
   // while config loads. This overlaps ~100ms of module loading with config I/O.
   const packagerPromise = !needsChildProcess ? import('../../core/packager.js') : undefined;
+
+  // Speculatively pre-start git ls-files during config loading (~43ms Zod validation).
+  // git ls-files (~33ms) only needs the rootDir, not the full config. By starting it
+  // now, the subprocess overlaps with config loading, saving ~20-30ms on the critical
+  // path. The result is passed to pack() → searchFiles() which reuses it instead of
+  // spawning a new subprocess. Safe to start speculatively:
+  // - Read-only git operation, no side effects
+  // - If config disables useGitignore, the result is simply ignored
+  // - For non-git repos, the promise rejects and searchFiles falls back to globby
+  // Only pre-start for single directory (common case) to keep the logic simple.
+  // Uses execFile directly (static import) instead of importing gitCommand.js to avoid
+  // dynamic import overhead contending with config loading on the module resolution thread.
+  const targetPaths = directories.map((d) => path.resolve(cwd, d));
+  let preStartedGitLsFilesPromise: Promise<string[]> | undefined;
+  if (!needsChildProcess && !cliOptions.stdin && targetPaths.length === 1) {
+    const execFileAsync = promisify(execFile);
+    preStartedGitLsFilesPromise = execFileAsync(
+      'git',
+      ['-C', targetPaths[0], 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+      { maxBuffer: 50 * 1024 * 1024 },
+    )
+      .then((result) => (result.stdout ? result.stdout.split('\0').filter(Boolean) : []))
+      .catch(() => [] as string[]);
+  }
 
   try {
     // Run migration and load config in parallel — they are independent I/O operations.
@@ -168,7 +194,6 @@ export const runDefaultAction = async (
       const { pack } = packagerModule;
       const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
       const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
-      const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
 
       // Show spinner on main thread when running in a TTY.
       // pack()'s heavy work runs on worker threads (token counting, security check)
@@ -188,6 +213,7 @@ export const runDefaultAction = async (
           {},
           stdinFilePaths,
           packOptions,
+          preStartedGitLsFilesPromise,
         );
         spinner?.succeed('Packing completed successfully!');
       } catch (error) {

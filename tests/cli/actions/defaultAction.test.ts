@@ -232,6 +232,7 @@ describe('defaultAction', () => {
     await runDefaultAction(['.'], process.cwd(), options);
 
     // Direct execution path: pack() receives explicit file paths from stdin
+    // preStartedGitLsFilesPromise is undefined for stdin mode (no speculative pre-start)
     expect(packager.pack).toHaveBeenCalledWith(
       expect.any(Array),
       expect.any(Object),
@@ -239,6 +240,7 @@ describe('defaultAction', () => {
       expect.any(Object),
       expect.arrayContaining(['test1.txt', 'test2.txt']),
       expect.any(Object),
+      undefined,
     );
   });
 

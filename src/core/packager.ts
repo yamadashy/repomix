@@ -144,6 +144,7 @@ export const pack = async (
   overrideDeps: Partial<typeof defaultDeps> = {},
   explicitFiles?: string[],
   options: PackOptions = {},
+  preStartedGitLsFilesPromise?: Promise<string[]>,
 ): Promise<PackResult> => {
   const deps = {
     ...defaultDeps,
@@ -187,8 +188,15 @@ export const pack = async (
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
-      rootDirs.map(async (rootDir) => {
-        const result = await deps.searchFiles(rootDir, config, explicitFiles);
+      rootDirs.map(async (rootDir, i) => {
+        // Pass pre-started git ls-files promise to the first root directory only.
+        // For multi-root, only the first root benefits from the pre-start.
+        const result = await deps.searchFiles(
+          rootDir,
+          config,
+          explicitFiles,
+          i === 0 ? preStartedGitLsFilesPromise : undefined,
+        );
         return { rootDir, filePaths: result.filePaths, pendingEmptyDirPaths: result.pendingEmptyDirPaths };
       }),
     ),
