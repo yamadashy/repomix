@@ -35,6 +35,12 @@ export interface FileCollectResults {
   rawFiles: RawFile[];
   skippedFiles: SkippedFileInfo[];
   /**
+   * Number of files that were NOT served from the content cache (required disk read).
+   * When 0 on warm runs, all file content is unchanged since the last pack() call.
+   * Used by packager.ts to detect "nothing changed" and skip the full pipeline.
+   */
+  cacheMissCount: number;
+  /**
    * Lazy cache population callback. Call this AFTER the pack() pipeline completes
    * to populate the file content cache for subsequent calls. Returns a promise
    * that resolves when all file stats are collected and cached.
@@ -201,5 +207,5 @@ export const collectFiles = async (
   // For MCP/server, it's invoked after pack() returns to prepare the cache for the next call.
   const pendingCachePopulation = () => populateFileContentCache(cacheEntries);
 
-  return { rawFiles, skippedFiles, pendingCachePopulation };
+  return { rawFiles, skippedFiles, cacheMissCount: cacheMisses.length, pendingCachePopulation };
 };
