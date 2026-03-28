@@ -54,6 +54,10 @@ describe('packager', () => {
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
       }),
+      createMetricsTaskRunner: vi.fn().mockReturnValue({
+        run: vi.fn().mockResolvedValue(0),
+        cleanup: vi.fn().mockResolvedValue(undefined),
+      }),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -107,6 +111,7 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      expect.objectContaining({ taskRunner: expect.anything() }),
     );
 
     // Check the result of pack function

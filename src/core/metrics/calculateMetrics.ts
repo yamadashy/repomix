@@ -21,6 +21,26 @@ export interface CalculateMetricsResult {
   gitLogTokenCount: number;
 }
 
+/**
+ * Create a metrics task runner that can be pre-initialized to overlap
+ * tiktoken WASM loading with other pipeline stages.
+ */
+export const createMetricsTaskRunner = (numOfTasks: number): TaskRunner<TokenCountTask, number> => {
+  return initTaskRunner<TokenCountTask, number>({
+    numOfTasks,
+    workerType: 'calculateMetrics',
+    runtime: 'worker_threads',
+  });
+};
+
+const defaultDeps = {
+  calculateSelectiveFileMetrics,
+  calculateOutputMetrics,
+  calculateGitDiffMetrics,
+  calculateGitLogMetrics,
+  taskRunner: undefined as TaskRunner<TokenCountTask, number> | undefined,
+};
+
 export const calculateMetrics = async (
   processedFiles: ProcessedFile[],
   output: string | string[],
@@ -28,14 +48,10 @@ export const calculateMetrics = async (
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
-  deps = {
-    calculateSelectiveFileMetrics,
-    calculateOutputMetrics,
-    calculateGitDiffMetrics,
-    calculateGitLogMetrics,
-    taskRunner: undefined as TaskRunner<TokenCountTask, number> | undefined,
-  },
+  overrideDeps: Partial<typeof defaultDeps> = {},
 ): Promise<CalculateMetricsResult> => {
+  const deps = { ...defaultDeps, ...overrideDeps };
+
   progressCallback('Calculating metrics...');
 
   // Initialize a single task runner for all metrics calculations
