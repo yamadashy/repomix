@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
+import { getProcessConcurrency } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -73,6 +74,15 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
+  // Pre-initialize metrics worker pool immediately to maximize tiktoken WASM warmup overlap.
+  // Tiktoken initialization takes ~240ms in the worker thread. By starting it here (before
+  // file search), the WASM loading overlaps with search (~140ms) + collection (~40ms) +
+  // processing + output generation, eliminating the warmup gap from the critical path.
+  // Use processConcurrency as the initial thread estimate; Tinypool handles the sizing.
+  const metricsTaskRunner = deps.createMetricsTaskRunner(getProcessConcurrency() * 100);
+
+  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0);
+
   // Preload heavy output dependencies (handlebars, fast-xml-builder) in background.
   // These load during file search (~175ms) and are cached before output generation.
   preloadOutputDeps();
@@ -103,13 +113,6 @@ export const pack = async (
     rootDir,
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
-
-  // Pre-initialize worker pools to overlap module loading with subsequent pipeline stages.
-  // Metrics pool: tiktoken WASM loading overlaps with file collection + security check.
-  // Security pool: secretlint module loading overlaps with file collection.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-
-  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0);
 
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.createSecurityTaskRunner(allFilePaths.length)
