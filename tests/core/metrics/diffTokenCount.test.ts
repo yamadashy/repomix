@@ -7,7 +7,7 @@ import { createMockConfig } from '../../testing/testUtils.js';
 
 // Mock the TokenCounter
 vi.mock('../../../src/core/metrics/TokenCounter.js', () => ({
-  TOKEN_ENCODINGS: ['o200k_base', 'cl100k_base', 'p50k_base', 'r50k_base'],
+  TOKEN_ENCODINGS: ['o200k_base', 'cl100k_base', 'p50k_base', 'p50k_edit', 'r50k_base'],
   TokenCounter: vi.fn(),
 }));
 

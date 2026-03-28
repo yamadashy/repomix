@@ -34,7 +34,10 @@ export const calculateSelectiveFileMetrics = async (
     const results: FileMetrics[] = [];
     for (let i = 0; i < filesToProcess.length; i++) {
       const file = filesToProcess[i];
-      const tokenCount = counter.countTokens(file.content, file.path);
+      let tokenCount = counter.countTokens(file.content, file.path);
+      if (tokenCount === 0 && file.content.length > 0) {
+        tokenCount = counter.countTokensPlainText(file.content, file.path);
+      }
 
       results.push({
         path: file.path,

@@ -7,7 +7,7 @@ vi.mock('node:fs/promises');
 vi.mock('fs/promises');
 vi.mock('../../src/core/metrics/TokenCounter.js', () => {
   return {
-    TOKEN_ENCODINGS: ['o200k_base', 'cl100k_base', 'p50k_base', 'r50k_base'],
+    TOKEN_ENCODINGS: ['o200k_base', 'cl100k_base', 'p50k_base', 'p50k_edit', 'r50k_base'],
     TokenCounter: vi.fn().mockImplementation(() => ({
       countTokens: vi.fn().mockReturnValue(10),
       free: vi.fn(),

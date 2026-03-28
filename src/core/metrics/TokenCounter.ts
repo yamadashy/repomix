@@ -1,7 +1,7 @@
 import { logger } from '../../shared/logger.js';
 
 // Supported token encoding types (compatible with tiktoken encoding names)
-export const TOKEN_ENCODINGS = ['o200k_base', 'cl100k_base', 'p50k_base', 'r50k_base'] as const;
+export const TOKEN_ENCODINGS = ['o200k_base', 'cl100k_base', 'p50k_base', 'p50k_edit', 'r50k_base'] as const;
 export type TokenEncoding = (typeof TOKEN_ENCODINGS)[number];
 
 interface CountTokensOptions {
@@ -10,11 +10,12 @@ interface CountTokensOptions {
 
 type CountTokensFn = (text: string, options?: CountTokensOptions) => number;
 
-// Fallback options: treat all text as regular content by disallowing nothing.
+// Treat all text as regular content by disallowing nothing.
 // This matches the old tiktoken behavior: encode(content, [], []).length
 // where special tokens like <|endoftext|> are tokenized as ordinary text.
-// Only used for the rare files (~0.1%) that contain special token sequences.
-const FALLBACK_OPTIONS: CountTokensOptions = { disallowedSpecial: new Set() };
+// Also faster than the default (disallowedSpecial='all') because it skips
+// the regex scan for special token patterns entirely.
+const PLAIN_TEXT_OPTIONS: CountTokensOptions = { disallowedSpecial: new Set() };
 
 // Lazy-loaded countTokens functions keyed by encoding
 const encodingModules = new Map<string, CountTokensFn>();
@@ -51,6 +52,11 @@ export class TokenCounter {
     this.countFn = await loadEncoding(this.encodingName);
   }
 
+  /**
+   * Count tokens using gpt-tokenizer's default config (fast path).
+   * Files containing special token sequences like <|endoftext|> will return 0.
+   * Use countTokensPlainText() to handle such files correctly.
+   */
   public countTokens(content: string, filePath?: string): number {
     if (!this.countFn) {
       throw new Error('TokenCounter not initialized. Call init() first.');
@@ -71,8 +77,8 @@ export class TokenCounter {
 
   /**
    * Count tokens treating all content as plain text (no special token checking).
-   * Use this for content known to contain special token sequences like <|endoftext|>.
-   * Matches tiktoken's encode(content, [], []) behavior.
+   * Matches tiktoken's encode(content, [], []) behavior where special tokens
+   * like <|endoftext|> are tokenized as ordinary text.
    */
   public countTokensPlainText(content: string, filePath?: string): number {
     if (!this.countFn) {
@@ -80,7 +86,7 @@ export class TokenCounter {
     }
 
     try {
-      return this.countFn(content, FALLBACK_OPTIONS);
+      return this.countFn(content, PLAIN_TEXT_OPTIONS);
     } catch {
       if (filePath) {
         logger.warn(`Failed to count tokens. path: ${filePath}`);
