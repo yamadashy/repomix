@@ -114,7 +114,8 @@ describe('calculateGitDiffMetrics', () => {
         },
         { getTokenCounter: mockGetTokenCounter },
       );
-      expect(result).toBeGreaterThan(0);
+      // 'work tree changes' = 3 tokens, 'staged changes' = 3 tokens
+      expect(result).toBe(6);
     });
 
     it('should calculate tokens for workTree diff only', async () => {
@@ -126,7 +127,7 @@ describe('calculateGitDiffMetrics', () => {
         },
         { getTokenCounter: mockGetTokenCounter },
       );
-      expect(result).toBeGreaterThan(0);
+      expect(result).toBe(4);
     });
 
     it('should calculate tokens for staged diff only', async () => {
@@ -138,7 +139,7 @@ describe('calculateGitDiffMetrics', () => {
         },
         { getTokenCounter: mockGetTokenCounter },
       );
-      expect(result).toBeGreaterThan(0);
+      expect(result).toBe(4);
     });
 
     it('should handle large diff content correctly', async () => {
@@ -151,8 +152,7 @@ describe('calculateGitDiffMetrics', () => {
         },
         { getTokenCounter: mockGetTokenCounter },
       );
-      expect(result).toBeGreaterThan(0);
-      expect(typeof result).toBe('number');
+      expect(result).toBe(2500);
     });
   });
 

@@ -18,7 +18,7 @@ describe('TokenCounter', () => {
 
   test('should correctly count tokens for simple text', () => {
     const count = tokenCounter.countTokens('Hello, world!');
-    expect(count).toBeGreaterThan(0);
+    expect(count).toBe(4);
   });
 
   test('should handle empty string', () => {
@@ -28,17 +28,17 @@ describe('TokenCounter', () => {
 
   test('should handle multi-line text', () => {
     const count = tokenCounter.countTokens('Line 1\nLine 2\nLine 3');
-    expect(count).toBeGreaterThan(0);
+    expect(count).toBe(11);
   });
 
   test('should handle special characters', () => {
     const count = tokenCounter.countTokens('!@#$%^&*()_+');
-    expect(count).toBeGreaterThan(0);
+    expect(count).toBe(9);
   });
 
   test('should handle unicode characters', () => {
     const count = tokenCounter.countTokens('你好，世界！🌍');
-    expect(count).toBeGreaterThan(0);
+    expect(count).toBe(6);
   });
 
   test('should handle code snippets', () => {
@@ -48,7 +48,7 @@ describe('TokenCounter', () => {
       }
     `;
     const count = tokenCounter.countTokens(text);
-    expect(count).toBeGreaterThan(0);
+    expect(count).toBe(17);
   });
 
   test('should handle markdown text', () => {
@@ -61,13 +61,13 @@ describe('TokenCounter', () => {
       **Bold text** and _italic text_
     `;
     const count = tokenCounter.countTokens(text);
-    expect(count).toBeGreaterThan(0);
+    expect(count).toBe(35);
   });
 
   test('should handle very long text', () => {
     const text = 'a'.repeat(10000);
     const count = tokenCounter.countTokens(text);
-    expect(count).toBeGreaterThan(0);
+    expect(count).toBe(1250);
   });
 
   test('should return 0 for errors when not initialized', () => {

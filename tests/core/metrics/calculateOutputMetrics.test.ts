@@ -72,7 +72,6 @@ describe('calculateOutputMetrics', () => {
       getTokenCounter: mockGetTokenCounter,
     });
 
-    expect(result).toBeGreaterThan(0);
-    expect(typeof result).toBe('number');
+    expect(result).toBe(15);
   });
 });

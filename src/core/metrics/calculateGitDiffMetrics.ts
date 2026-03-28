@@ -33,10 +33,10 @@ export const calculateGitDiffMetrics = async (
     let totalTokens = 0;
 
     if (gitDiffResult.workTreeDiffContent) {
-      totalTokens += counter.countTokens(gitDiffResult.workTreeDiffContent);
+      totalTokens += counter.countTokensPlainText(gitDiffResult.workTreeDiffContent);
     }
     if (gitDiffResult.stagedDiffContent) {
-      totalTokens += counter.countTokens(gitDiffResult.stagedDiffContent);
+      totalTokens += counter.countTokensPlainText(gitDiffResult.stagedDiffContent);
     }
 
     const endTime = process.hrtime.bigint();

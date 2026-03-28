@@ -106,7 +106,7 @@ describe('calculateGitLogMetrics', () => {
         },
         { getTokenCounter: mockGetTokenCounter },
       );
-      expect(result.gitLogTokenCount).toBeGreaterThan(0);
+      expect(result.gitLogTokenCount).toBe(22);
     });
 
     it('should handle large log content correctly', async () => {
@@ -118,8 +118,7 @@ describe('calculateGitLogMetrics', () => {
         },
         { getTokenCounter: mockGetTokenCounter },
       );
-      expect(result.gitLogTokenCount).toBeGreaterThan(0);
-      expect(typeof result.gitLogTokenCount).toBe('number');
+      expect(result.gitLogTokenCount).toBe(1003);
     });
   });
 

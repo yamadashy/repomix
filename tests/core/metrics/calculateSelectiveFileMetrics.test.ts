@@ -33,10 +33,10 @@ describe('calculateSelectiveFileMetrics', () => {
     expect(result.length).toBe(2);
     expect(result[0].path).toBe('file1.txt');
     expect(result[0].charCount).toBe(100);
-    expect(result[0].tokenCount).toBeGreaterThan(0);
+    expect(result[0].tokenCount).toBe(13);
     expect(result[1].path).toBe('file3.txt');
     expect(result[1].charCount).toBe(300);
-    expect(result[1].tokenCount).toBeGreaterThan(0);
+    expect(result[1].tokenCount).toBe(75);
   });
 
   it('should return empty array when no target files match', async () => {
