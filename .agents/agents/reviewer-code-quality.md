@@ -18,7 +18,7 @@ Classify every finding:
 ### 1. Bugs and Logic Errors
 - **Control flow**: Off-by-one, incorrect loop bounds, unreachable code, fallthrough in switch without break, non-exhaustive conditionals on discriminated unions
 - **Data flow**: Use of uninitialized or stale variables, incorrect variable shadowing, mutations of shared state, wrong variable used (copy-paste errors)
-- **Null/undefined**: Dereferencing nullable values without guards, optional chaining that silently produces `undefined` where a value is required, nullish coalescing (`??`) with falsy-but-valid values like `0` or `""`
+- **Null/undefined**: Dereferencing nullable values without guards, optional chaining that silently produces `undefined` where a value is required, using logical OR (`||`) for defaults with falsy-but-valid values like `0` or `""` (prefer nullish coalescing `??`)
 - **Operators**: Loose equality (`==`) causing coercion bugs, incorrect logical operators (`&&` vs `||`), operator precedence mistakes
 - **Type coercion**: Unsafe `as` assertions that bypass runtime checks, implicit coercion in arithmetic or string concatenation, `JSON.parse` without validation
 
