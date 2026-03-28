@@ -22,8 +22,20 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
+export const createSecretLintConfig = (): SecretLintCoreConfig => ({
+  rules: [
+    {
+      id: '@secretlint/secretlint-rule-preset-recommend',
+      rule: creator,
+    },
+  ],
+});
+
+// Cache config at module level - created once per worker, reused for all tasks
+const cachedConfig = createSecretLintConfig();
+
 export default async ({ filePath, content, type }: SecurityCheckTask) => {
-  const config = createSecretLintConfig();
+  const config = cachedConfig;
 
   try {
     const processStartAt = process.hrtime.bigint();
@@ -74,15 +86,6 @@ export const runSecretLint = async (
 
   return null;
 };
-
-export const createSecretLintConfig = (): SecretLintCoreConfig => ({
-  rules: [
-    {
-      id: '@secretlint/secretlint-rule-preset-recommend',
-      rule: creator,
-    },
-  ],
-});
 
 // Export cleanup function for Tinypool teardown (no cleanup needed for this worker)
 export const onWorkerTermination = async (): Promise<void> => {

@@ -98,8 +98,10 @@ export const pack = async (
   const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0); // Suppress unhandled rejection; errors surface when awaited
 
   try {
-    // Run file collection, git diffs, and git logs in parallel
-    // (git operations don't depend on collected files, so they can overlap)
+    // Run file collection and git operations in parallel since they are independent:
+    // - collectFiles reads file contents from disk
+    // - getGitDiffs/getGitLogs spawn git subprocesses
+    // Neither depends on the other's results.
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
       withMemoryLogging(
