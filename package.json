@@ -107,7 +107,7 @@
     "@secretlint/types": "^11.4.0",
     "@types/node": "^24.12.0",
     "@types/strip-comments": "^2.0.4",
-    "@typescript/native-preview": "^7.0.0-dev.20260320.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260321.1",
     "@vitest/coverage-v8": "^4.1.0",
     "@xmldom/xmldom": "^0.8.11",
     "git-up": "^8.1.1",
