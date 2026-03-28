@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774709328895,
+  "lastUpdate": 1774710223215,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -855,6 +855,51 @@ window.BENCHMARK_DATA = {
             "range": "±208",
             "unit": "ms",
             "extra": "Median of 10 runs\nQ1: 3899ms, Q3: 4107ms\nAll times: 3882, 3885, 3899, 3904, 3969, 4059, 4086, 4107, 4112, 4133ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd9f343453da6fe6a194c7e9d96d9b2f55c83619",
+          "message": "Merge pull request #1348 from yamadashy/perf/benchmark-interleave-extract-scripts\n\nperf(ci): Improve benchmark stability with interleaved execution",
+          "timestamp": "2026-03-29T00:01:24+09:00",
+          "tree_id": "34f04cc92b4f617dcf428850a28301983c221997",
+          "url": "https://github.com/yamadashy/repomix/commit/bd9f343453da6fe6a194c7e9d96d9b2f55c83619"
+        },
+        "date": 1774710222870,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1478,
+            "range": "±42",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1453ms, Q3: 1495ms\nAll times: 1428, 1431, 1437, 1443, 1447, 1447, 1451, 1453, 1454, 1458, 1459, 1462, 1466, 1466, 1476, 1478, 1478, 1486, 1487, 1490, 1494, 1495, 1495, 1517, 1521, 1568, 1616, 1682, 1746, 1805ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2735,
+            "range": "±41",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2718ms, Q3: 2759ms\nAll times: 2689, 2703, 2708, 2713, 2717, 2718, 2719, 2719, 2722, 2730, 2735, 2743, 2749, 2757, 2758, 2759, 2759, 2764, 3188, 3193ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 3172,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 3160ms, Q3: 3184ms\nAll times: 3142, 3143, 3147, 3152, 3156, 3160, 3160, 3161, 3162, 3170, 3172, 3175, 3179, 3182, 3182, 3184, 3192, 3196, 3227, 3235ms"
           }
         ]
       }
