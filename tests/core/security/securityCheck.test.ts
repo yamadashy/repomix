@@ -23,6 +23,7 @@ vi.mock('../../../src/shared/processConcurrency', () => ({
       return await securityCheckWorker(task);
     }),
     cleanup: vi.fn(),
+    unref: vi.fn(),
   })),
 }));
 
@@ -47,6 +48,7 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
     cleanup: async () => {
       // Mock cleanup - no-op for tests
     },
+    unref: () => {},
   };
 };
 
@@ -171,6 +173,7 @@ describe('runSecurityCheck', () => {
         cleanup: async () => {
           // Mock cleanup - no-op for tests
         },
+        unref: () => {},
       };
     };
 

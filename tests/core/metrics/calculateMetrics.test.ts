@@ -57,6 +57,7 @@ describe('calculateMetrics', () => {
     const mockTaskRunner = {
       run: vi.fn(),
       cleanup: vi.fn(),
+      unref: vi.fn(),
     };
 
     const result = await calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, undefined, {

@@ -19,6 +19,7 @@ const mockInitTaskRunner = (_options: WorkerOptions) => {
     cleanup: async () => {
       // Mock cleanup - no-op for tests
     },
+    unref: () => {},
   };
 };
 
@@ -59,6 +60,7 @@ describe('calculateOutputMetrics', () => {
         cleanup: async () => {
           // Mock cleanup - no-op for tests
         },
+        unref: () => {},
       };
     };
 
@@ -111,6 +113,7 @@ describe('calculateOutputMetrics', () => {
         cleanup: async () => {
           // Mock cleanup - no-op for tests
         },
+        unref: () => {},
       };
     };
 
@@ -136,6 +139,7 @@ describe('calculateOutputMetrics', () => {
         cleanup: async () => {
           // Mock cleanup - no-op for tests
         },
+        unref: () => {},
       };
     };
 
@@ -163,6 +167,7 @@ describe('calculateOutputMetrics', () => {
         cleanup: async () => {
           // Mock cleanup - no-op for tests
         },
+        unref: () => {},
       };
     };
 

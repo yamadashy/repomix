@@ -90,6 +90,7 @@ index 123..456 100644
     const mockTaskRunner = {
       run: vi.fn(),
       cleanup: vi.fn(),
+      unref: vi.fn(),
     };
 
     const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(15);
@@ -173,6 +174,7 @@ index 123..456 100644
     const mockTaskRunner = {
       run: vi.fn(),
       cleanup: vi.fn(),
+      unref: vi.fn(),
     };
 
     const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(15);
@@ -251,6 +253,7 @@ index 123..456 100644
     const mockTaskRunner = {
       run: vi.fn(),
       cleanup: vi.fn(),
+      unref: vi.fn(),
     };
 
     const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(15);

@@ -74,6 +74,7 @@ index 123..456 100644
     const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
       run: vi.fn().mockResolvedValue(0),
       cleanup: vi.fn().mockResolvedValue(undefined),
+      unref: vi.fn(),
     });
 
     // Config with diffs disabled
@@ -89,7 +90,9 @@ index 123..456 100644
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
-      createSecurityTaskRunner: vi.fn().mockReturnValue({ run: vi.fn().mockResolvedValue(null), cleanup: vi.fn() }),
+      createSecurityTaskRunner: vi
+        .fn()
+        .mockReturnValue({ run: vi.fn().mockResolvedValue(null), cleanup: vi.fn(), unref: vi.fn() }),
       sortPaths: mockSortPaths,
     });
 
@@ -130,6 +133,7 @@ index 123..456 100644
     const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
       run: vi.fn().mockResolvedValue(0),
       cleanup: vi.fn().mockResolvedValue(undefined),
+      unref: vi.fn(),
     });
 
     // Config with diffs enabled
@@ -145,7 +149,9 @@ index 123..456 100644
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
-      createSecurityTaskRunner: vi.fn().mockReturnValue({ run: vi.fn().mockResolvedValue(null), cleanup: vi.fn() }),
+      createSecurityTaskRunner: vi
+        .fn()
+        .mockReturnValue({ run: vi.fn().mockResolvedValue(null), cleanup: vi.fn(), unref: vi.fn() }),
       sortPaths: mockSortPaths,
     });
 

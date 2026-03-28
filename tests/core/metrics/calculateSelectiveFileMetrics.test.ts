@@ -27,6 +27,7 @@ const mockInitTaskRunner = (_options: WorkerOptions) => {
     cleanup: async () => {
       // Mock cleanup - no-op for tests
     },
+    unref: () => {},
   };
 };
 

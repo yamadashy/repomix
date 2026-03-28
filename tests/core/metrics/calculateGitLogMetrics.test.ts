@@ -21,6 +21,7 @@ const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountWorke
     cleanup: async () => {
       // Mock cleanup - no-op for tests
     },
+    unref: () => {},
   };
 };
 
@@ -177,6 +178,7 @@ describe('calculateGitLogMetrics', () => {
       const customTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -251,6 +253,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const errorTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -271,6 +274,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const errorTaskRunner = {
         run: vi.fn().mockRejectedValue(timeoutError),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -308,6 +312,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const errorTaskRunner = {
         run: vi.fn().mockRejectedValue(new Error('Test error')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -338,6 +343,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const customTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await calculateGitLogMetrics(configWithDifferentEncoding, gitLogResult, {
@@ -375,6 +381,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const errorTaskRunner = {
         run: vi.fn().mockRejectedValue(new Error('Test error')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {

@@ -58,10 +58,12 @@ describe('packager split output', () => {
       createMetricsTaskRunner: vi.fn().mockReturnValue({
         run: vi.fn().mockResolvedValue(0),
         cleanup: vi.fn().mockResolvedValue(undefined),
+        unref: vi.fn(),
       }),
       createSecurityTaskRunner: vi.fn().mockReturnValue({
         run: vi.fn().mockResolvedValue(null),
         cleanup: vi.fn().mockResolvedValue(undefined),
+        unref: vi.fn(),
       }),
     });
 
