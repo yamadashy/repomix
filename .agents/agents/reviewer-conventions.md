@@ -33,6 +33,17 @@ Before flagging deviations, establish the baseline:
 - Does file size stay within project limits?
 - Is the dependency injection pattern followed for new dependencies?
 
+**Documentation accuracy**:
+- Do JSDoc comments, function descriptions, or inline comments still match the code after the change?
+- Are `@param`, `@returns`, `@throws` annotations accurate for changed signatures?
+- Do README sections or help text reference behavior that has changed?
+- Flag stale comments that describe what the code *used to do*, not what it does now
+
+**Export and public API consistency**:
+- Do new exports follow the same naming and grouping patterns as existing ones?
+- Are barrel files (`index.ts`) updated consistently when new modules are added?
+- Is the visibility level appropriate? (Don't export what should be internal)
+
 ### 3. Evaluate the Consistency vs Improvement Tension
 
 Not every deviation is a defect. When a change introduces a pattern that is arguably **better** than the existing convention:
@@ -54,6 +65,7 @@ For each finding:
 
 - **Only flag what linters miss**. Formatting, import ordering, semicolons, indentation -- these are linter territory.
 - **Conventions must have evidence**. Don't invent conventions that aren't established in the project. Reference where the convention comes from.
-- **Consistency within the change matters most**. If the change is internally consistent but uses a different pattern than the rest of the codebase, that's worth one note -- not one note per occurrence.
-- **Weight by impact**: Inconsistent error handling > inconsistent naming > inconsistent file organization > inconsistent comment style.
+- **One note per deviation, not per occurrence**. If the change uses a different pattern than the rest of the codebase, that's worth one note -- not one note per file or line.
+- **Weight by impact**: Inconsistent error handling > inconsistent public API > inconsistent naming > inconsistent file organization > inconsistent comment style.
+- **Commit and PR conventions**: If the project has explicit commit message or PR conventions (e.g., Conventional Commits, required scopes), check adherence when the diff includes commits.
 - If the change is well-aligned with project conventions, say so briefly. Don't invent deviations.

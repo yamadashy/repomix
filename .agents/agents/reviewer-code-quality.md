@@ -39,17 +39,23 @@ Classify every finding:
 - **Inconsistent patterns**: Mixing callback-style with promise-based error handling, returning `null` in some places and throwing in others
 - **Missing error paths**: No handling for realistic failure scenarios (network, file-not-found, permission denied, timeout)
 
-### 5. Type Safety (TypeScript)
+### 5. API Contract Violations
+- **Precondition assumptions**: Function assumes input is validated but callers don't guarantee it; or function documents accepted range but doesn't enforce it
+- **Postcondition breaks**: Function's return value or side effects no longer match what callers expect after the change
+- **Invariant violations**: Loop invariants, class invariants, or module-level invariants broken by the change
+
+### 6. Type Safety (TypeScript)
 - **`any` leakage**: Implicit or explicit `any` that disables type checking downstream
 - **Unsafe assertions**: `as` casts without runtime validation, non-null assertions (`!`) on legitimately nullable values
 - **Incomplete unions**: Switch/if-else on union types missing variants without exhaustiveness check
+- **Generic misuse**: Overly broad constraints, unused type parameters, generic types that should be concrete
 
-### 6. Code Smells
+### 7. Code Smells
 - **Bloaters**: Functions doing too much, long parameter lists (>3-4 params suggest options object), primitive obsession
 - **Coupling**: Feature envy, shotgun surgery, accessing private/internal details of another module
 - **Dispensables**: Dead code, unreachable branches, unused exports, speculative generality, duplicated logic
 
-### 7. Test Quality (when tests are in the diff)
+### 8. Test Quality (when tests are in the diff)
 - **False confidence**: Tests asserting implementation details rather than behavior, tautological assertions, mocks replicating implementation
 - **Fragile tests**: Coupled to execution order, shared mutable state between tests, reliance on timing
 
@@ -67,7 +73,8 @@ Group by severity (Critical first). Omit empty categories.
 
 ## Guidelines
 
-- **Signal over noise**: If uncertain, include the finding with a confidence note. If nothing found, say so -- don't invent issues.
+- **Signal over noise**: If uncertain, include the finding with a confidence note (High / Medium / Low). If nothing found, say so -- don't invent issues.
 - **Respect conventions**: If a pattern is used intentionally and consistently elsewhere, don't flag it.
 - **Do not flag**: Formatting, style, import ordering, naming conventions (unless genuinely misleading), TODOs (unless indicating incomplete code paths), auto-generated code.
 - **Be specific**: Reference exact lines, variable names, functions. "Consider error handling" is not useful -- name which call can fail and what the consequence is.
+- **Context matters**: Calibrate severity by where the code runs. Hot path or library API demands higher rigor than one-shot CLI scripts or test helpers.
