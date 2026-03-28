@@ -20,32 +20,13 @@ const needsWorkerProcessing = (config: RepomixConfigMerged): boolean => {
 };
 
 /**
- * Apply transforms that must run before compress/tree-sitter parsing.
- * Runs on the main thread to avoid duplication in workers.
- * Handles: truncateBase64 (reduces input size for tree-sitter).
+ * Apply lightweight transforms on the main thread after worker processing.
+ * All lightweight transforms are centralized here to avoid duplication with workers.
+ *
+ * Transform order: [removeComments → compress] (worker) → truncateBase64 → removeEmptyLines → trim → showLineNumbers
+ * - removeEmptyLines runs after removeComments so that empty lines created by comment removal are cleaned up.
  */
-export const applyPreCompressTransforms = (files: ProcessedFile[], config: RepomixConfigMerged): ProcessedFile[] => {
-  if (!config.output.truncateBase64) {
-    return files;
-  }
-
-  const totalFiles = files.length;
-  const results: ProcessedFile[] = Array.from({ length: totalFiles }) as ProcessedFile[];
-
-  for (let i = 0; i < totalFiles; i++) {
-    const file = files[i];
-    results[i] = { path: file.path, content: truncateBase64Content(file.content) };
-  }
-
-  return results;
-};
-
-/**
- * Apply transforms that run after compress/worker processing.
- * removeEmptyLines runs here (after removeComments) so that empty lines created by comment removal are cleaned up.
- * Handles: removeEmptyLines, trim, showLineNumbers.
- */
-export const applyPostCompressTransforms = (
+export const applyLightweightTransforms = (
   files: ProcessedFile[],
   config: RepomixConfigMerged,
   progressCallback: RepomixProgressCallback,
@@ -57,6 +38,10 @@ export const applyPostCompressTransforms = (
   for (let i = 0; i < totalFiles; i++) {
     const file = files[i];
     let content = file.content;
+
+    if (config.output.truncateBase64) {
+      content = truncateBase64Content(content);
+    }
 
     if (config.output.removeEmptyLines) {
       const manipulator = deps.getFileManipulator(file.path);
@@ -84,6 +69,18 @@ export const applyPostCompressTransforms = (
   return results;
 };
 
+/**
+ * Process files through a two-phase pipeline:
+ *
+ * 1. Heavy transforms (worker threads, skipped when not needed):
+ *    removeComments → compress
+ *
+ * 2. Lightweight transforms (main thread, always applied):
+ *    truncateBase64 → removeEmptyLines → trim → showLineNumbers
+ *
+ * removeEmptyLines intentionally runs after removeComments so that
+ * empty lines created by comment removal are cleaned up.
+ */
 export const processFiles = async (
   rawFiles: RawFile[],
   config: RepomixConfigMerged,
@@ -99,17 +96,10 @@ export const processFiles = async (
   };
 
   const startTime = process.hrtime.bigint();
-  const inputFiles = rawFiles.map((rawFile) => ({ path: rawFile.path, content: rawFile.content }));
-
-  // Transform order: truncateBase64 (pre) → [removeComments → compress] (worker) → removeEmptyLines → trim → showLineNumbers (post)
-  // truncateBase64 must run before tree-sitter to avoid parsing multi-MB base64 strings.
-  // removeEmptyLines runs after removeComments so that empty lines created by comment removal are cleaned up.
-  const preProcessed = applyPreCompressTransforms(inputFiles, config);
-
   let files: ProcessedFile[];
 
   if (needsWorkerProcessing(config)) {
-    // Phase 2: Heavy processing via workers (removeComments, compress)
+    // Phase 1: Heavy processing via workers (removeComments, compress)
     logger.trace(`Starting file processing for ${rawFiles.length} files using worker pool`);
 
     const taskRunner = resolvedDeps.initTaskRunner<FileProcessTask, ProcessedFile>({
@@ -118,7 +108,7 @@ export const processFiles = async (
       runtime: 'worker_threads',
     });
 
-    const tasks = preProcessed.map(
+    const tasks = rawFiles.map(
       (rawFile) =>
         ({
           rawFile,
@@ -147,12 +137,13 @@ export const processFiles = async (
       await taskRunner.cleanup();
     }
 
-    // Phase 3: Post-compress transforms (no progress - already reported by workers)
-    files = applyPostCompressTransforms(files, config, () => {}, resolvedDeps);
+    // Phase 2: Lightweight transforms (no progress - already reported by workers)
+    files = applyLightweightTransforms(files, config, () => {}, resolvedDeps);
   } else {
-    // No heavy processing needed - apply post-compress transforms directly
+    // No heavy processing needed - apply lightweight transforms directly
     logger.trace(`Starting file processing for ${rawFiles.length} files in main thread (lightweight mode)`);
-    files = applyPostCompressTransforms(preProcessed, config, progressCallback, resolvedDeps);
+    const inputFiles = rawFiles.map((rawFile) => ({ path: rawFile.path, content: rawFile.content }));
+    files = applyLightweightTransforms(inputFiles, config, progressCallback, resolvedDeps);
   }
 
   const endTime = process.hrtime.bigint();

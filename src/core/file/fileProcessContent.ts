@@ -24,8 +24,6 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
     processedContent = manipulator.removeComments(processedContent);
   }
 
-  processedContent = processedContent.trim();
-
   if (config.output.compress) {
     try {
       const parsedContent = await parseFile(processedContent, rawFile.path, config);
