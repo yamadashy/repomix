@@ -33,10 +33,18 @@ export const calculateGitDiffMetrics = async (
     let totalTokens = 0;
 
     if (gitDiffResult.workTreeDiffContent) {
-      totalTokens += counter.countTokensPlainText(gitDiffResult.workTreeDiffContent);
+      let count = counter.countTokens(gitDiffResult.workTreeDiffContent);
+      if (count === 0 && gitDiffResult.workTreeDiffContent.length > 0) {
+        count = counter.countTokensPlainText(gitDiffResult.workTreeDiffContent);
+      }
+      totalTokens += count;
     }
     if (gitDiffResult.stagedDiffContent) {
-      totalTokens += counter.countTokensPlainText(gitDiffResult.stagedDiffContent);
+      let count = counter.countTokens(gitDiffResult.stagedDiffContent);
+      if (count === 0 && gitDiffResult.stagedDiffContent.length > 0) {
+        count = counter.countTokensPlainText(gitDiffResult.stagedDiffContent);
+      }
+      totalTokens += count;
     }
 
     const endTime = process.hrtime.bigint();

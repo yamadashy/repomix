@@ -30,7 +30,10 @@ export const calculateGitLogMetrics = async (
     logger.trace('Starting git log token calculation on main thread');
 
     const counter = await resolvedDeps.getTokenCounter(config.tokenCount.encoding);
-    const result = counter.countTokensPlainText(gitLogResult.logContent);
+    let result = counter.countTokens(gitLogResult.logContent);
+    if (result === 0 && gitLogResult.logContent.length > 0) {
+      result = counter.countTokensPlainText(gitLogResult.logContent);
+    }
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;
