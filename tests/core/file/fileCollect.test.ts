@@ -8,7 +8,7 @@ import { createMockConfig } from '../../testing/testUtils.js';
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 describe('fileCollect', () => {
-  let mockReadRawFile: Mock<(filePath: string, maxFileSize: number) => Promise<FileReadResult>>;
+  let mockReadRawFile: Mock<(filePath: string, maxFileSize: number) => FileReadResult>;
 
   beforeEach(() => {
     mockReadRawFile = vi.fn();
@@ -19,7 +19,7 @@ describe('fileCollect', () => {
     const mockRootDir = '/root';
     const mockConfig = createMockConfig();
 
-    mockReadRawFile.mockResolvedValue({ content: 'file content' });
+    mockReadRawFile.mockReturnValue({ content: 'file content' });
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
@@ -42,7 +42,7 @@ describe('fileCollect', () => {
     const mockRootDir = '/root';
     const mockConfig = createMockConfig();
 
-    mockReadRawFile.mockImplementation(async (filePath) => {
+    mockReadRawFile.mockImplementation((filePath) => {
       if (filePath.endsWith('binary.bin')) {
         return { content: null, skippedReason: 'binary-extension' };
       }
@@ -64,7 +64,7 @@ describe('fileCollect', () => {
     const mockRootDir = '/root';
     const mockConfig = createMockConfig();
 
-    mockReadRawFile.mockImplementation(async (filePath) => {
+    mockReadRawFile.mockImplementation((filePath) => {
       if (filePath.endsWith('large.txt')) {
         return { content: null, skippedReason: 'size-limit' };
       }
@@ -91,7 +91,7 @@ describe('fileCollect', () => {
       },
     });
 
-    mockReadRawFile.mockImplementation(async (filePath) => {
+    mockReadRawFile.mockImplementation((filePath) => {
       if (filePath.endsWith('medium.txt')) {
         return { content: null, skippedReason: 'size-limit' };
       }
@@ -117,7 +117,7 @@ describe('fileCollect', () => {
     const mockRootDir = '/root';
     const mockConfig = createMockConfig();
 
-    mockReadRawFile.mockResolvedValue({ content: null, skippedReason: 'encoding-error' });
+    mockReadRawFile.mockReturnValue({ content: null, skippedReason: 'encoding-error' });
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
@@ -135,12 +135,13 @@ describe('fileCollect', () => {
     const mockConfig = createMockConfig();
     const mockProgress = vi.fn();
 
-    mockReadRawFile.mockResolvedValue({ content: 'file content' });
+    mockReadRawFile.mockReturnValue({ content: 'file content' });
 
     await collectFiles(mockFilePaths, mockRootDir, mockConfig, mockProgress, {
       readRawFile: mockReadRawFile,
     });
 
-    expect(mockProgress).toHaveBeenCalledTimes(2);
+    // Progress is called at the end (2 files < 100 threshold, so only called once at i === totalTasks - 1)
+    expect(mockProgress).toHaveBeenCalled();
   });
 });

@@ -1,10 +1,9 @@
 import type { TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
-const CHUNK_SIZE = 1000;
-const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1000KB
+const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1MB
 
 export const calculateOutputMetrics = async (
   content: string,
@@ -21,8 +20,11 @@ export const calculateOutputMetrics = async (
     let result: number;
 
     if (shouldRunInParallel) {
-      // Split content into chunks for parallel processing
-      const chunkSize = Math.ceil(content.length / CHUNK_SIZE);
+      // Split content into chunks matching available CPU cores to minimize IPC overhead.
+      // Previously used 1000 fixed chunks, which created excessive IPC round-trips
+      // (~0.3ms overhead per task × 1000 = ~300ms of pure serialization overhead).
+      const numChunks = Math.max(1, getProcessConcurrency());
+      const chunkSize = Math.ceil(content.length / numChunks);
       const chunks: string[] = [];
 
       for (let i = 0; i < content.length; i += chunkSize) {
