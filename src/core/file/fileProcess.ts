@@ -76,15 +76,11 @@ export const processFiles = async (
   rawFiles: RawFile[],
   config: RepomixConfigMerged,
   progressCallback: RepomixProgressCallback,
-  deps: {
-    initTaskRunner: typeof initTaskRunner;
-    getFileManipulator: GetFileManipulator;
-  } | null = null,
-): Promise<ProcessedFile[]> => {
-  const resolvedDeps = deps ?? {
+  deps = {
     initTaskRunner,
     getFileManipulator,
-  };
+  },
+): Promise<ProcessedFile[]> => {
 
   const startTime = process.hrtime.bigint();
   let files: ProcessedFile[];
@@ -96,7 +92,7 @@ export const processFiles = async (
     // Phase 1: Heavy processing via workers (removeComments, compress)
     logger.trace(`Starting file processing for ${rawFiles.length} files using worker pool`);
 
-    const taskRunner = resolvedDeps.initTaskRunner<FileProcessTask, ProcessedFile>({
+    const taskRunner = deps.initTaskRunner<FileProcessTask, ProcessedFile>({
       numOfTasks: rawFiles.length,
       workerType: 'fileProcess',
       runtime: 'worker_threads',
@@ -132,12 +128,12 @@ export const processFiles = async (
     }
 
     // Phase 2: Lightweight transforms (no progress - already reported by workers)
-    files = applyLightweightTransforms(files, config, () => {}, resolvedDeps);
+    files = applyLightweightTransforms(files, config, () => {}, deps);
   } else {
     // No heavy processing needed - apply lightweight transforms directly
     logger.trace(`Starting file processing for ${rawFiles.length} files in main thread (lightweight mode)`);
     const inputFiles = rawFiles.map((rawFile) => ({ path: rawFile.path, content: rawFile.content }));
-    files = applyLightweightTransforms(inputFiles, config, progressCallback, resolvedDeps);
+    files = applyLightweightTransforms(inputFiles, config, progressCallback, deps);
   }
 
   const endTime = process.hrtime.bigint();
