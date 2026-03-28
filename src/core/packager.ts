@@ -78,26 +78,23 @@ export const pack = async (
   preloadOutputDeps();
 
   progressCallback('Searching for files...');
-  const filePathsByDir = await withMemoryLogging('Search Files', async () =>
+  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
       rootDirs.map(async (rootDir) => {
         const result = await deps.searchFiles(rootDir, config, explicitFiles);
-        return {
-          rootDir,
-          filePaths: result.filePaths,
-          emptyDirPaths: result.emptyDirPaths,
-        };
+        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
       }),
     ),
   );
 
+  const filePathsByDir = searchResultsByDir.map(({ rootDir, filePaths }) => ({ rootDir, filePaths }));
+  // Deduplicate and sort empty directory paths for reuse during output generation,
+  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
+  const emptyDirPaths = [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort();
+
   // Sort file paths
   progressCallback('Sorting files...');
   const allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
-
-  // Collect empty directory paths from the initial search to avoid a redundant
-  // second globby search during output generation
-  const emptyDirPaths = filePathsByDir.flatMap(({ emptyDirPaths }) => emptyDirPaths);
   const sortedFilePaths = deps.sortPaths(allFilePaths);
 
   // Regroup sorted file paths by rootDir using Set for O(1) membership checks

@@ -94,6 +94,7 @@ const generateAndWriteSplitOutput = async (
       gitLogResult,
       progressCallback,
       filePathsByRoot,
+      emptyDirPaths,
       deps: {
         generateOutput: deps.generateOutput,
       },
