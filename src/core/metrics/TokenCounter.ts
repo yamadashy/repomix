@@ -14,9 +14,6 @@ type CountTokensFn = (text: string, options?: CountTokensOptions) => number;
 // This matches the old tiktoken behavior: encode(content, [], []).length
 // where special tokens like <|endoftext|> are tokenized as ordinary text.
 // Only used for the rare files (~0.1%) that contain special token sequences.
-// NOTE: Not used as default because passing options forces gpt-tokenizer to
-// call processSpecialTokens() on every invocation instead of using its
-// pre-cached defaultSpecialTokenConfig, which adds significant overhead.
 const FALLBACK_OPTIONS: CountTokensOptions = { disallowedSpecial: new Set() };
 
 // Lazy-loaded countTokens functions keyed by encoding
@@ -60,24 +57,38 @@ export class TokenCounter {
     }
 
     try {
-      // Fast path: use gpt-tokenizer's cached defaultSpecialTokenConfig (no options).
-      // Default disallowedSpecial='all' throws on special tokens like <|endoftext|>,
-      // but these are rare (~0.1% of files) and handled by the fallback below.
       return this.countFn(content);
     } catch {
-      // Fallback: disable special token checking for files containing
-      // special token sequences. Treats them as ordinary text.
-      try {
-        return this.countFn(content, FALLBACK_OPTIONS);
-      } catch {
-        if (filePath) {
-          logger.warn(`Failed to count tokens. path: ${filePath}`);
-        } else {
-          logger.warn('Failed to count tokens.');
-        }
-
-        return 0;
+      if (filePath) {
+        logger.warn(`Failed to count tokens. path: ${filePath}`);
+      } else {
+        logger.warn('Failed to count tokens.');
       }
+
+      return 0;
+    }
+  }
+
+  /**
+   * Count tokens treating all content as plain text (no special token checking).
+   * Use this for content known to contain special token sequences like <|endoftext|>.
+   * Matches tiktoken's encode(content, [], []) behavior.
+   */
+  public countTokensPlainText(content: string, filePath?: string): number {
+    if (!this.countFn) {
+      throw new Error('TokenCounter not initialized. Call init() first.');
+    }
+
+    try {
+      return this.countFn(content, FALLBACK_OPTIONS);
+    } catch {
+      if (filePath) {
+        logger.warn(`Failed to count tokens. path: ${filePath}`);
+      } else {
+        logger.warn('Failed to count tokens.');
+      }
+
+      return 0;
     }
   }
 
