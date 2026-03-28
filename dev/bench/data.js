@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774690385864,
+  "lastUpdate": 1774698360334,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -765,6 +765,51 @@ window.BENCHMARK_DATA = {
             "range": "±326",
             "unit": "ms",
             "extra": "Median of 10 runs\nQ1: 3456ms, Q3: 3782ms\nAll times: 3407, 3419, 3456, 3512, 3623, 3659, 3717, 3782, 3978, 4624ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fe6da909573d27eb0d0634ef858fe8731a620404",
+          "message": "Merge pull request #1346 from yamadashy/perf/lazy-load-parallelize-cache\n\nperf(core): Lazy-load CLI actions, parallelize pipeline, and cache security config",
+          "timestamp": "2026-03-28T20:44:04+09:00",
+          "tree_id": "d3c2c70dc6c21dbe55688e76fc340078ec287807",
+          "url": "https://github.com/yamadashy/repomix/commit/fe6da909573d27eb0d0634ef858fe8731a620404"
+        },
+        "date": 1774698359963,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1500,
+            "range": "±162",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1484ms, Q3: 1646ms\nAll times: 1456, 1457, 1466, 1480, 1481, 1484, 1484, 1484, 1486, 1491, 1500, 1507, 1520, 1550, 1598, 1646, 1698, 1796, 1840, 2195ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2734,
+            "range": "±34",
+            "unit": "ms",
+            "extra": "Median of 10 runs\nQ1: 2709ms, Q3: 2743ms\nAll times: 2703, 2709, 2709, 2710, 2715, 2734, 2738, 2743, 2748, 2762ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 3266,
+            "range": "±44",
+            "unit": "ms",
+            "extra": "Median of 10 runs\nQ1: 3229ms, Q3: 3273ms\nAll times: 3213, 3222, 3229, 3234, 3246, 3266, 3272, 3273, 3280, 3296ms"
           }
         ]
       }
