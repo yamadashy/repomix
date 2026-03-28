@@ -58,7 +58,11 @@ export const buildOutputSplitGroups = (processedFiles: ProcessedFile[], allFileP
     }
   }
 
-  return [...groupsByRootEntry.values()].sort((a, b) => a.rootEntry.localeCompare(b.rootEntry));
+  return [...groupsByRootEntry.values()].sort((a, b) => {
+    const aLower = a.rootEntry.toLowerCase();
+    const bLower = b.rootEntry.toLowerCase();
+    return aLower < bLower ? -1 : aLower > bLower ? 1 : 0;
+  });
 };
 
 export const buildSplitOutputFilePath = (baseFilePath: string, partIndex: number): string => {
