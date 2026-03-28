@@ -186,6 +186,24 @@ describe('fileProcess', () => {
       expect(result).toEqual([{ path: 'test.txt', content: 'Line 1\nLine 2' }]);
     });
 
+    it('should truncate base64 when configured', () => {
+      const base64 =
+        'DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtgharP9Bk+Y4it0vccQWaLsNX6H0RpjrPY/SJHbJG22wAlSm+Uud4DKE1yl7zhBitQdZq/5AkuU3idwucMMVZ7oMXqDzRZfqPI7RI3XIGmy/AVOl+Eqc7zGD1ih6zR9htAZYqv1PkeQ2iNstf8IUZrkLXa/yRJbpO43QInTHGWu+AFKk90mb7jCC1Sd5zB5gswVXqfxOkOM1h9osfsETZbgKXK7xQ5XoOozfIXPGGGq9D1Gj9kia7T+B1CZ4yx1vsgRWqPtNn+I0htkrfcASZLcJW63wQpTnOYveIHLFF2m8DlCi9UeZ7D6A==';
+      const files: ProcessedFile[] = [{ path: 'test.js', content: `const img = "${base64}";` }];
+      const config = createMockConfig({
+        output: {
+          truncateBase64: true,
+        },
+      });
+
+      const result = applyLightweightTransforms(files, config, () => {}, {
+        getFileManipulator: mockGetFileManipulator,
+      });
+
+      expect(result[0].content).toContain('...');
+      expect(result[0].content.length).toBeLessThan(files[0].content.length);
+    });
+
     it('should not remove empty lines for files without a manipulator', () => {
       const files: ProcessedFile[] = [{ path: 'test.unknown', content: 'line1\n\nline2' }];
       const config = createMockConfig({
