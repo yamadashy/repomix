@@ -49,6 +49,7 @@ export const promptSkillLocation = async (
     confirm: typeof import('@clack/prompts').confirm;
     isCancel: typeof import('@clack/prompts').isCancel;
     access: typeof fs.access;
+    rm: typeof fs.rm;
   },
 ): Promise<SkillPromptResult> => {
   // Load prompts lazily if deps not provided
@@ -58,6 +59,7 @@ export const promptSkillLocation = async (
     confirm: p!.confirm,
     isCancel: p!.isCancel,
     access: fs.access,
+    rm: fs.rm,
   };
 
   // Step 1: Ask for skill location
@@ -102,6 +104,9 @@ export const promptSkillLocation = async (
     if (d.isCancel(overwrite) || !overwrite) {
       onCancelOperation();
     }
+
+    // Remove existing directory before regeneration
+    await d.rm(skillDir, { recursive: true, force: true });
   }
 
   return {

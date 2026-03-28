@@ -73,7 +73,7 @@ Skills 按以下結構生成：
     ├── summary.md              # 目的、格式和統計資訊
     ├── project-structure.md    # 帶行數的目錄樹
     ├── files.md                # 所有檔案內容（grep 友善）
-    └── tech-stack.md           # 語言、框架、相依性
+    └── tech-stacks.md           # 語言、框架、相依性
 ```
 
 ### 檔案說明
@@ -122,7 +122,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stack.md
+#### references/tech-stacks.md
 
 從相依性檔案自動偵測的技術堆疊：
 - **語言**：TypeScript、JavaScript、Python 等

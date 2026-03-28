@@ -23,6 +23,7 @@ const createMockDeps = (overrides: {
   access: overrides.accessRejects
     ? vi.fn().mockRejectedValue(new Error('ENOENT'))
     : vi.fn().mockResolvedValue(undefined),
+  rm: vi.fn().mockResolvedValue(undefined),
 });
 
 describe('skillPrompts', () => {
@@ -78,6 +79,7 @@ describe('skillPrompts', () => {
       const result = await promptSkillLocation('test-skill', '/test/project', mockDeps);
 
       expect(mockDeps.confirm).toHaveBeenCalledOnce();
+      expect(mockDeps.rm).toHaveBeenCalledOnce();
       expect(result.location).toBe('personal');
     });
 

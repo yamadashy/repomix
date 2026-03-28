@@ -23,6 +23,7 @@ describe('packSkill', () => {
       const mockFiles = createMockProcessedFiles();
 
       const mockDeps = {
+        sortOutputFiles: vi.fn().mockImplementation((files) => Promise.resolve(files)),
         buildOutputGeneratorContext: vi.fn().mockResolvedValue({
           config: mockConfig,
           generationDate: new Date().toISOString(),
@@ -59,6 +60,7 @@ describe('packSkill', () => {
       const mockFiles = createMockProcessedFiles();
 
       const mockDeps = {
+        sortOutputFiles: vi.fn().mockImplementation((files) => Promise.resolve(files)),
         buildOutputGeneratorContext: vi.fn().mockResolvedValue({
           config: mockConfig,
           generationDate: new Date().toISOString(),
@@ -89,6 +91,7 @@ describe('packSkill', () => {
       const mockFiles = createMockProcessedFiles();
 
       const mockDeps = {
+        sortOutputFiles: vi.fn().mockImplementation((files) => Promise.resolve(files)),
         buildOutputGeneratorContext: vi.fn().mockResolvedValue({
           config: mockConfig,
           generationDate: new Date().toISOString(),
@@ -120,6 +123,7 @@ describe('packSkill', () => {
       const mockFiles: ProcessedFile[] = [{ path: 'package.json', content: '{"dependencies": {"react": "^18.0.0"}}' }];
 
       const mockDeps = {
+        sortOutputFiles: vi.fn().mockImplementation((files) => Promise.resolve(files)),
         buildOutputGeneratorContext: vi.fn().mockResolvedValue({
           config: mockConfig,
           generationDate: new Date().toISOString(),
@@ -151,6 +155,7 @@ describe('packSkill', () => {
       const mockFiles: ProcessedFile[] = [];
 
       const mockDeps = {
+        sortOutputFiles: vi.fn().mockImplementation((files) => Promise.resolve(files)),
         buildOutputGeneratorContext: vi.fn().mockResolvedValue({
           config: mockConfig,
           generationDate: new Date().toISOString(),
@@ -296,6 +301,7 @@ describe('packSkill', () => {
       };
 
       const mockDeps = {
+        sortOutputFiles: vi.fn().mockImplementation((files) => Promise.resolve(files)),
         buildOutputGeneratorContext: vi.fn().mockResolvedValue({
           config: mockConfig,
           generationDate: new Date().toISOString(),
@@ -337,6 +343,7 @@ describe('packSkill', () => {
       };
 
       const mockDeps = {
+        sortOutputFiles: vi.fn().mockImplementation((files) => Promise.resolve(files)),
         buildOutputGeneratorContext: vi.fn().mockResolvedValue({
           config: mockConfig,
           generationDate: new Date().toISOString(),
@@ -383,6 +390,7 @@ describe('packSkill', () => {
       };
 
       const mockDeps = {
+        sortOutputFiles: vi.fn().mockImplementation((files) => Promise.resolve(files)),
         buildOutputGeneratorContext: vi.fn().mockResolvedValue({
           config: mockConfig,
           generationDate: new Date().toISOString(),
@@ -427,6 +435,7 @@ describe('packSkill', () => {
       };
 
       const mockDeps = {
+        sortOutputFiles: vi.fn().mockImplementation((files) => Promise.resolve(files)),
         buildOutputGeneratorContext: vi.fn().mockResolvedValue({
           config: mockConfig,
           generationDate: new Date().toISOString(),

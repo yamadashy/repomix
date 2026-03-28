@@ -437,8 +437,6 @@ export const pack = async (
     sortedProcessedFiles = sortedAllFiles;
   }
 
-  progressCallback('Generating output...');
-
   // Await deferred empty dir paths — by now they've been computing in the background
   // during collectFiles + security check, so this resolves instantly (or near-instantly).
   const emptyDirPaths = await emptyDirPathsPromise;

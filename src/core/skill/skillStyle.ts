@@ -52,7 +52,9 @@ Use this skill when you need to:
 `);
 
   if (context.hasTechStack) {
-    parts.push('| `references/tech-stack.md` | Languages, frameworks, and dependencies |\n');
+    parts.push(
+      '| `references/tech-stacks.md` | Languages, frameworks, and dependencies per package (search with `## Tech Stack: <path>`) |\n',
+    );
   }
 
   parts.push(`
@@ -107,7 +109,9 @@ function calculateTotal
 `);
 
   if (context.hasTechStack) {
-    parts.push('- Check `tech-stack.md` for languages, frameworks, and dependencies\n');
+    parts.push(
+      '- Check `tech-stacks.md` for languages, frameworks, and dependencies (search `## Tech Stack:` to list packages)\n',
+    );
   }
 
   parts.push('\n---\n\n');
