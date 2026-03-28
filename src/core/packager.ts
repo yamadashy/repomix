@@ -136,6 +136,7 @@ export const pack = async (
 
     // Check if skill generation is requested
     if (config.skillGenerate !== undefined && options.skillDir) {
+      // Await warmup to ensure graceful worker shutdown (avoid terminating WASM-loading thread)
       await warmupPromise;
 
       const result = await deps.packSkill({
