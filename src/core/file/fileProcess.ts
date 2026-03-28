@@ -81,7 +81,6 @@ export const processFiles = async (
     getFileManipulator,
   },
 ): Promise<ProcessedFile[]> => {
-
   const startTime = process.hrtime.bigint();
   let files: ProcessedFile[];
 
