@@ -72,6 +72,7 @@ describe('includeFullDirectoryStructure flag', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       deps,
     );
 
@@ -102,6 +103,7 @@ describe('includeFullDirectoryStructure flag', () => {
       config,
       allFilePaths,
       processedFiles,
+      undefined,
       undefined,
       undefined,
       undefined,
