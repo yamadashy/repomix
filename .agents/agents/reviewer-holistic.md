@@ -84,7 +84,17 @@ Identify impacts that span multiple modules or subsystems:
 - **Concurrency and ordering**: Could the change introduce race conditions, deadlocks, or ordering dependencies that affect other parts of the system?
 - **Platform and environment sensitivity**: Does the change introduce behavior that could differ across operating systems (Windows/macOS/Linux), Node.js versions, CI environments, or repository sizes?
 
-## Output Guidelines
+## Output Format
+
+For each finding, provide:
+
+1. **Severity**: **Critical** / **High** / **Medium** / **Low**
+2. **Area**: Which of the 6 sections above (Design Coherence, Change Impact, etc.)
+3. **Finding**: What the concern is
+4. **Evidence**: Specific modules, functions, or workflows affected
+5. **Recommendation**: What to do about it
+
+## Guidelines
 
 - **Prioritize findings** by impact. Lead with the most important concern.
 - **Be specific**. Name the affected modules, functions, or user workflows. Vague warnings are not actionable.

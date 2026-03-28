@@ -97,12 +97,12 @@ Structure findings by severity. For each finding:
 - [file:line] `processPayment()` has no test for the case where amount is 0 or negative.
   A negative amount could credit instead of debit. Add: `test('processPayment given negative amount throws ValidationError')`
 
-### Improvement
+### High
 - [file:line] `parseConfig()` tests only the happy path. The error path when the file
   is malformed has no coverage. If the try/catch were removed, no test would fail.
   Add: `test('parseConfig given malformed JSON throws ConfigError with file path in message')`
 
-### Observation
+### Medium
 - [file:line] Test uses magic number `42` as expected output. Consider extracting to
   a named constant or adding a comment explaining why 42 is the correct expected value.
 ```

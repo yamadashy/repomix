@@ -54,16 +54,20 @@ Report only when **at least one** is true:
 - Creates a resource leak (file handle, listener, timer, connection)
 - Known V8 deoptimization trigger in a provably hot path
 
-**Do not flag**: Loop style preferences on small collections, micro-allocation in cold paths, patterns V8 optimizes well in modern versions (Node 20+).
-
 ## Output Format
 
 For each finding:
 
-1. **Severity**: `high` (measurable impact), `medium` (compounds at scale), `low` (improvement opportunity)
+1. **Severity**: **Critical** (will cause outage/OOM), **High** (measurable impact), **Medium** (compounds at scale), **Low** (improvement opportunity)
 2. **Location**: File and line reference
 3. **Issue**: What the problem is
 4. **Impact**: Why it matters, quantified when possible (e.g., "O(n*m) per request" or "blocks event loop ~50ms per 1MB")
 5. **Fix**: Concrete suggested change
 
 If no noteworthy issues found, say so briefly. Do not invent issues.
+
+## Guidelines
+
+- Only report issues with measurable impact at realistic scale. Skip micro-optimizations.
+- If a pattern is used intentionally for readability or simplicity, don't flag it unless the impact is significant.
+- Do not flag: Loop style preferences on small collections, micro-allocation in cold paths, patterns V8 optimizes well in modern versions (Node 20+).
