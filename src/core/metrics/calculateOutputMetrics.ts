@@ -19,7 +19,7 @@ export const calculateOutputMetrics = async (
     const startTime = process.hrtime.bigint();
 
     const counter = await resolvedDeps.getTokenCounter(encoding);
-    const result = counter.countTokens(content, path);
+    const result = counter.countTokensPlainText(content, path);
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;
