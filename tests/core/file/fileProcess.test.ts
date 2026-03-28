@@ -55,6 +55,38 @@ describe('fileProcess', () => {
       ]);
     });
 
+    it('should apply all transforms in combined worker + lightweight pipeline', async () => {
+      const base64 =
+        'DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtgharP9Bk+Y4it0vccQWaLsNX6H0RpjrPY/SJHbJG22wAlSm+Uud4DKE1yl7zhBitQdZq/5AkuU3idwucMMVZ7oMXqDzRZfqPI7RI3XIGmy/AVOl+Eqc7zGD1ih6zR9htAZYqv1PkeQ2iNstf8IUZrkLXa/yRJbpO43QInTHGWu+AFKk90mb7jCC1Sd5zB5gswVXqfxOkOM1h9osfsETZbgKXK7xQ5XoOozfIXPGGGq9D1Gj9kia7T+B1CZ4yx1vsgRWqPtNn+I0htkrfcASZLcJW63wQpTnOYveIHLFF2m8DlCi9UeZ7D6A==';
+      const mockRawFiles: RawFile[] = [
+        {
+          path: 'file1.js',
+          content: `// comment\nconst a = 1;\n\nconst img = "${base64}";`,
+        },
+      ];
+      const config = createMockConfig({
+        output: {
+          removeComments: true,
+          removeEmptyLines: true,
+          truncateBase64: true,
+          showLineNumbers: true,
+        },
+      });
+
+      const result = await processFiles(mockRawFiles, config, () => {}, {
+        initTaskRunner: mockInitTaskRunner,
+        getFileManipulator: mockGetFileManipulator,
+      });
+
+      // removeComments removes comment, removeEmptyLines cleans up, truncateBase64 truncates, showLineNumbers adds numbers
+      expect(result.length).toBe(1);
+      expect(result[0].content).toContain('1:');
+      expect(result[0].content).toContain('2:');
+      expect(result[0].content).toContain('...');
+      expect(result[0].content).not.toContain('// comment');
+      expect(result[0].content).not.toContain(base64);
+    });
+
     it('should process files with lightweight-only config', async () => {
       const mockRawFiles: RawFile[] = [
         { path: 'file1.js', content: '  const a = 1;  \n\n' },
