@@ -40,11 +40,11 @@ describe('produceOutput', () => {
         undefined,
         undefined,
       );
+      expect(result.outputForMetrics).toBe('generated output');
+      expect(result.writeComplete).toBeInstanceOf(Promise);
+      await result.writeComplete;
       expect(mockDeps.writeOutputToDisk).toHaveBeenCalledWith('generated output', mockConfig);
       expect(mockDeps.copyToClipboardIfEnabled).toHaveBeenCalledWith('generated output', progressCallback, mockConfig);
-      expect(result).toEqual({
-        outputForMetrics: 'generated output',
-      });
       expect(result.outputFiles).toBeUndefined();
     });
 

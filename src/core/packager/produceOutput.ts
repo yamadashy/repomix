@@ -13,6 +13,9 @@ import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDi
 export interface ProduceOutputResult {
   outputFiles?: string[];
   outputForMetrics: string | string[];
+  /** Promise that resolves when disk write and clipboard copy complete.
+   * Returned for single output mode to allow overlapping I/O with metrics. */
+  writeComplete?: Promise<void>;
 }
 
 const defaultDeps = {
@@ -145,12 +148,16 @@ const generateAndWriteSingleOutput = async (
     ),
   );
 
+  // Start disk write and clipboard copy without awaiting, so the caller can
+  // overlap these I/O operations with metrics calculation.
   progressCallback('Writing output file...');
-  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
-
-  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  const writeComplete = (async () => {
+    await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+    await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  })();
 
   return {
     outputForMetrics: output,
+    writeComplete,
   };
 };

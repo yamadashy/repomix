@@ -190,7 +190,7 @@ export const pack = async (
     }));
 
     // Generate and write output (handles both single and split output)
-    const { outputFiles, outputForMetrics } = await deps.produceOutput(
+    const { outputFiles, outputForMetrics, writeComplete } = await deps.produceOutput(
       rootDirs,
       config,
       processedFiles,
@@ -205,11 +205,15 @@ export const pack = async (
     // Ensure warm-up task completes before metrics calculation
     await warmupPromise;
 
-    const metrics = await withMemoryLogging('Calculate Metrics', () =>
-      deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
-        taskRunner: metricsTaskRunner,
-      }),
-    );
+    // Run metrics calculation in parallel with disk write / clipboard copy
+    const [metrics] = await Promise.all([
+      withMemoryLogging('Calculate Metrics', () =>
+        deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
+          taskRunner: metricsTaskRunner,
+        }),
+      ),
+      writeComplete,
+    ]);
 
     // Create a result object that includes metrics and security results
     const result = {
