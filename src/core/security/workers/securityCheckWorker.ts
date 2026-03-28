@@ -22,8 +22,20 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
+const createSecretLintConfigCached = (): SecretLintCoreConfig => ({
+  rules: [
+    {
+      id: '@secretlint/secretlint-rule-preset-recommend',
+      rule: creator,
+    },
+  ],
+});
+
+// Cache config at module level - created once per worker, reused for all tasks
+const cachedConfig = createSecretLintConfigCached();
+
 export default async ({ filePath, content, type }: SecurityCheckTask) => {
-  const config = createSecretLintConfig();
+  const config = cachedConfig;
 
   try {
     const processStartAt = process.hrtime.bigint();
