@@ -1,22 +1,42 @@
 import { logger } from '../../shared/logger.js';
 import { TokenCounter, type TokenEncoding } from './TokenCounter.js';
 
-// Cache for TokenCounter instances by encoding
+// Cache for initialized TokenCounter instances by encoding
 const tokenCounters = new Map<TokenEncoding, TokenCounter>();
+
+// In-flight initialization promises to prevent duplicate initialization
+const pendingInits = new Map<TokenEncoding, Promise<TokenCounter>>();
 
 /**
  * Get or create a TokenCounter instance for the given encoding.
  * This ensures only one TokenCounter exists per encoding to optimize memory usage.
- * The counter must be initialized with init() before use.
+ * Concurrent calls for the same encoding share a single initialization promise.
  */
 export const getTokenCounter = async (encoding: TokenEncoding): Promise<TokenCounter> => {
-  let tokenCounter = tokenCounters.get(encoding);
-  if (!tokenCounter) {
-    tokenCounter = new TokenCounter(encoding);
+  const cached = tokenCounters.get(encoding);
+  if (cached) {
+    return cached;
+  }
+
+  const pending = pendingInits.get(encoding);
+  if (pending) {
+    return pending;
+  }
+
+  const initPromise = (async () => {
+    const tokenCounter = new TokenCounter(encoding);
     await tokenCounter.init();
     tokenCounters.set(encoding, tokenCounter);
-  }
-  return tokenCounter;
+    pendingInits.delete(encoding);
+    return tokenCounter;
+  })();
+
+  initPromise.catch(() => {
+    pendingInits.delete(encoding);
+  });
+
+  pendingInits.set(encoding, initPromise);
+  return initPromise;
 };
 
 /**
@@ -24,6 +44,7 @@ export const getTokenCounter = async (encoding: TokenEncoding): Promise<TokenCou
  * No-op for gpt-tokenizer (pure JS), but kept for API compatibility.
  */
 export const freeTokenCounters = (): void => {
+  pendingInits.clear();
   for (const [encoding, tokenCounter] of tokenCounters.entries()) {
     tokenCounter.free();
     logger.debug(`Freed TokenCounter resources for encoding: ${encoding}`);

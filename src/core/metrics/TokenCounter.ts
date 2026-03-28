@@ -4,10 +4,16 @@ import { logger } from '../../shared/logger.js';
 export const TOKEN_ENCODINGS = ['o200k_base', 'cl100k_base', 'p50k_base', 'r50k_base'] as const;
 export type TokenEncoding = (typeof TOKEN_ENCODINGS)[number];
 
-// Lazy-loaded countTokens functions keyed by encoding
-const encodingModules = new Map<string, (text: string) => number>();
+interface CountTokensOptions {
+  allowedSpecial?: 'all' | Set<string>;
+}
 
-const loadEncoding = async (encodingName: TokenEncoding): Promise<(text: string) => number> => {
+type CountTokensFn = (text: string, options?: CountTokensOptions) => number;
+
+// Lazy-loaded countTokens functions keyed by encoding
+const encodingModules = new Map<string, CountTokensFn>();
+
+const loadEncoding = async (encodingName: TokenEncoding): Promise<CountTokensFn> => {
   const cached = encodingModules.get(encodingName);
   if (cached) {
     return cached;
@@ -17,7 +23,7 @@ const loadEncoding = async (encodingName: TokenEncoding): Promise<(text: string)
 
   // Dynamic import of the specific encoding module from gpt-tokenizer
   const mod = await import(`gpt-tokenizer/encoding/${encodingName}`);
-  const countFn = mod.countTokens as (text: string) => number;
+  const countFn = mod.countTokens as CountTokensFn;
   encodingModules.set(encodingName, countFn);
 
   const endTime = process.hrtime.bigint();
@@ -28,7 +34,7 @@ const loadEncoding = async (encodingName: TokenEncoding): Promise<(text: string)
 };
 
 export class TokenCounter {
-  private countFn: ((text: string) => number) | null = null;
+  private countFn: CountTokensFn | null = null;
   private readonly encodingName: TokenEncoding;
 
   constructor(encodingName: TokenEncoding) {
@@ -45,15 +51,21 @@ export class TokenCounter {
     }
 
     try {
+      // Fast path: count without special token processing
       return this.countFn(content);
     } catch {
-      if (filePath) {
-        logger.warn(`Failed to count tokens. path: ${filePath}`);
-      } else {
-        logger.warn('Failed to count tokens.');
-      }
+      // Fallback: allow all special tokens for files containing sequences like <|endoftext|>
+      try {
+        return this.countFn(content, { allowedSpecial: 'all' });
+      } catch {
+        if (filePath) {
+          logger.warn(`Failed to count tokens. path: ${filePath}`);
+        } else {
+          logger.warn('Failed to count tokens.');
+        }
 
-      return 0;
+        return 0;
+      }
     }
   }
 
