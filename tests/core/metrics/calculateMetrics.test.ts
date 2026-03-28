@@ -119,7 +119,7 @@ describe('calculateMetrics', () => {
     expect(progressCallback).toHaveBeenCalledWith('Calculating metrics...');
     expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
       processedFiles,
-      ['file2.txt', 'file1.txt'], // sorted by character count desc
+      expect.arrayContaining(['file1.txt', 'file2.txt']),
       'o200k_base',
       progressCallback,
       expect.objectContaining({

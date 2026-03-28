@@ -79,9 +79,21 @@ export const pack = async (
   // file search), the WASM loading overlaps with search (~140ms) + collection (~40ms) +
   // processing + output generation, eliminating the warmup gap from the critical path.
   // Use processConcurrency as the initial thread estimate; Tinypool handles the sizing.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(getProcessConcurrency() * 100);
+  const concurrency = getProcessConcurrency();
+  const metricsTaskRunner = deps.createMetricsTaskRunner(concurrency * 100);
 
-  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0);
+  // Send concurrent warmup tasks to pre-initialize ALL worker threads with tiktoken WASM.
+  // Tinypool spawns workers lazily, so a single warmup task only warms 1 of N threads.
+  // Sending N tasks forces all N workers to spawn and load tiktoken (~240ms each) in
+  // parallel during file search + collection + security + processing (~300ms total),
+  // so all workers are ready when metrics calculation begins.
+  // The 5s idle timeout (see processConcurrency.ts) ensures warm threads survive the
+  // pipeline stages between warmup and metrics.
+  const warmupPromise = Promise.all(
+    Array.from({ length: concurrency }, () =>
+      metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0),
+    ),
+  );
 
   // Preload heavy output dependencies (handlebars, fast-xml-builder) in background.
   // These load during file search (~175ms) and are cached before output generation.

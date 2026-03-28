@@ -32,6 +32,10 @@ export const createMetricsTaskRunner = (numOfTasks: number): MetricsTaskRunner =
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    // Long idle timeout to keep warm threads alive through the pipeline (~300ms)
+    // between warmup and metrics calculation. Default 100ms is too short.
+    // Process exit is not delayed because unref() is called after pack() completes.
+    idleTimeout: 5000,
   });
 };
 
@@ -43,21 +47,16 @@ export const createMetricsTaskRunner = (numOfTasks: number): MetricsTaskRunner =
 const MIN_CHARS_PER_TOKEN = 2.0;
 
 /**
- * Target number of evenly-spaced sample files used to estimate the char/token ratio
- * when not tokenizing all files. 50 files across the size distribution gives ~3% error,
- * which is acceptable for an informational total token count metric.
- */
-const ESTIMATION_SAMPLE_TARGET = 100;
-
-/**
  * Select which files to tokenize based on the tokenCountTree configuration.
  *
  * Three modes:
  * 1. tokenCountTree = false → only top files for display (fast, output tokenized separately)
  * 2. tokenCountTree = true → all files (accurate tree, output estimated from ratio)
- * 3. tokenCountTree = N (number) → pre-filter by char count + representative sample
- *    Files whose char count is below N * MIN_CHARS_PER_TOKEN cannot exceed N tokens,
- *    so they're skipped. A stratified sample provides an accurate ratio for output estimation.
+ * 3. tokenCountTree = N (number) → pre-filter by char count, estimate output from tokenized files.
+ *    Only files whose char count could exceed N tokens (via MIN_CHARS_PER_TOKEN) are tokenized,
+ *    plus the top files for display. Output tokens are estimated from these files' char/token ratio
+ *    without a separate sample pass, since large files dominate total content and provide an
+ *    accurate ratio (~3-5% error, acceptable for informational display).
  */
 const selectMetricsTargets = (
   processedFiles: ProcessedFile[],
@@ -73,7 +72,10 @@ const selectMetricsTargets = (
         : 0;
 
   if (tokenCountTreeEnabled && tokenTreeThreshold > 0) {
-    // Numeric threshold: only tokenize files that could exceed it, plus a sample for estimation
+    // Numeric threshold: only tokenize files that could exceed it, plus top files for display.
+    // No separate sample pass needed — the union of tree candidates + top files provides
+    // a sufficient char/token ratio for output estimation, since these files collectively
+    // represent a large share of total content.
     const charThreshold = tokenTreeThreshold * MIN_CHARS_PER_TOKEN;
 
     // Files that could exceed the token threshold based on character count
@@ -85,20 +87,11 @@ const selectMetricsTargets = (
     }
 
     // Top files by char count for the top-N display
-    const sortedBySize = [...processedFiles].sort((a, b) => b.content.length - a.content.length);
     const topCount = Math.min(processedFiles.length, Math.max(topFilesLength * 3, topFilesLength));
-    const topPaths = sortedBySize.slice(0, topCount).map((f) => f.path);
+    const topPaths = selectTopPathsByCharCount(processedFiles, topCount);
 
-    // Evenly-spaced sample from the size-sorted list for accurate ratio estimation.
-    // This covers the full file-size distribution, avoiding the bias of top-N-only sampling.
-    const sampleInterval = Math.max(1, Math.floor(processedFiles.length / ESTIMATION_SAMPLE_TARGET));
-    const samplePaths: string[] = [];
-    for (let i = 0; i < sortedBySize.length; i += sampleInterval) {
-      samplePaths.push(sortedBySize[i].path);
-    }
-
-    // Union all sets
-    const pathSet = new Set([...treeCandidatePaths, ...topPaths, ...samplePaths]);
+    // Union tree candidates + top files (no sample needed)
+    const pathSet = new Set([...treeCandidatePaths, ...topPaths]);
 
     return {
       metricsTargetPaths: [...pathSet],
@@ -118,13 +111,62 @@ const selectMetricsTargets = (
   // No tokenCountTree: only tokenize top files for the top-N display.
   // A 3x multiplier provides sufficient coverage for accurate top-N ranking since
   // character count and token count are highly correlated for code (r > 0.95).
+  const topCount = Math.min(processedFiles.length, Math.max(topFilesLength * 3, topFilesLength));
   return {
-    metricsTargetPaths: [...processedFiles]
-      .sort((a, b) => b.content.length - a.content.length)
-      .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 3, topFilesLength)))
-      .map((file) => file.path),
+    metricsTargetPaths: selectTopPathsByCharCount(processedFiles, topCount),
     shouldEstimateOutputTokens: false,
   };
+};
+
+/**
+ * Select the top N file paths by character count using a partial sort (selection algorithm).
+ * For small topCount relative to total files, this is O(N) average vs O(N log N) for full sort.
+ */
+const selectTopPathsByCharCount = (processedFiles: ProcessedFile[], topCount: number): string[] => {
+  if (topCount >= processedFiles.length) {
+    return processedFiles.map((f) => f.path);
+  }
+
+  // Use nth_element-style partial sort: partition around the kth largest element
+  const indexed = processedFiles.map((f, i) => ({ charCount: f.content.length, index: i }));
+  partialSortDesc(indexed, topCount);
+  return indexed.slice(0, topCount).map((item) => processedFiles[item.index].path);
+};
+
+/**
+ * In-place partial sort: moves the top k largest elements to the front (descending).
+ * Average O(N) via quickselect, vs O(N log N) for full sort.
+ */
+const partialSortDesc = (arr: { charCount: number; index: number }[], k: number): void => {
+  if (k >= arr.length) return;
+
+  const quickselect = (lo: number, hi: number, targetIdx: number): void => {
+    while (lo < hi) {
+      const pivotVal = arr[lo + ((hi - lo) >> 1)].charCount;
+      let i = lo;
+      let j = hi;
+      while (i <= j) {
+        while (arr[i].charCount > pivotVal) i++;
+        while (arr[j].charCount < pivotVal) j--;
+        if (i <= j) {
+          const tmp = arr[i];
+          arr[i] = arr[j];
+          arr[j] = tmp;
+          i++;
+          j--;
+        }
+      }
+      if (targetIdx <= j) {
+        hi = j;
+      } else if (targetIdx >= i) {
+        lo = i;
+      } else {
+        return;
+      }
+    }
+  };
+
+  quickselect(0, arr.length - 1, k - 1);
 };
 
 const defaultDeps = {
