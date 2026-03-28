@@ -64,6 +64,7 @@ describe('packager', () => {
         cleanup: vi.fn().mockResolvedValue(undefined),
         unref: vi.fn(),
       }),
+      getFileChangeCount: vi.fn().mockResolvedValue(undefined),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -111,6 +112,8 @@ describe('packager', () => {
       progressCallback,
       [{ rootLabel: 'root', files: mockFilePaths }],
       [],
+      {},
+      undefined,
     );
     expect(mockDeps.calculateMetrics).toHaveBeenCalledWith(
       mockProcessedFiles,

@@ -15,6 +15,7 @@ vi.mock('../../../src/core/git/gitDiffHandle.js', () => ({
 
 vi.mock('../../../src/core/git/gitRepositoryHandle.js', () => ({
   isGitRepository: vi.fn(),
+  getFileChangeCount: vi.fn(),
 }));
 
 describe('Git Diffs Functionality', () => {
@@ -94,6 +95,7 @@ index 123..456 100644
         .fn()
         .mockReturnValue({ run: vi.fn().mockResolvedValue(null), cleanup: vi.fn(), unref: vi.fn() }),
       sortPaths: mockSortPaths,
+      getFileChangeCount: vi.fn().mockResolvedValue(undefined),
     });
 
     // Should not call getWorkTreeDiff
@@ -153,6 +155,7 @@ index 123..456 100644
         .fn()
         .mockReturnValue({ run: vi.fn().mockResolvedValue(null), cleanup: vi.fn(), unref: vi.fn() }),
       sortPaths: mockSortPaths,
+      getFileChangeCount: vi.fn().mockResolvedValue(undefined),
     });
 
     // Check gitDiffTokenCount in the result

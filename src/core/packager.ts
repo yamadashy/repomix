@@ -10,12 +10,29 @@ import { searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
+import type { GitLogCommit } from './git/gitLogHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
+import { getFileChangeCount } from './git/gitRepositoryHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { preloadOutputDeps } from './output/outputGenerate.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
+
+/**
+ * Derive file change counts from already-fetched git log commits.
+ * This avoids spawning a separate `git log --name-only` subprocess during output generation
+ * by reusing the commit data from getGitLogs which already includes file lists.
+ */
+const deriveFileChangeCounts = (commits: GitLogCommit[]): Record<string, number> => {
+  const counts: Record<string, number> = {};
+  for (const commit of commits) {
+    for (const file of commit.files) {
+      counts[file] = (counts[file] || 0) + 1;
+    }
+  }
+  return counts;
+};
 
 export interface PackResult {
   totalFiles: number;
@@ -46,6 +63,7 @@ const defaultDeps = {
   sortPaths,
   getGitDiffs,
   getGitLogs,
+  getFileChangeCount,
   packSkill: async (...args: Parameters<typeof import('./skill/packSkill.js').packSkill>) => {
     const { packSkill } = await import('./skill/packSkill.js');
     return packSkill(...args);
@@ -141,12 +159,23 @@ export const pack = async (
   }));
 
   try {
+    // Pre-compute file change counts in parallel when we can't derive from git log commits.
+    // Derivation requires includeLogsCount >= sortByChangesMaxCommits (defaults: 50 vs 100),
+    // so the parallel fetch is needed in most default configurations.
+    const sortByChanges = config.output.git?.sortByChanges;
+    const logsEnabled = config.output.git?.includeLogs;
+    const logsHaveEnoughCommits =
+      logsEnabled && (config.output.git?.includeLogsCount ?? 50) >= (config.output.git?.sortByChangesMaxCommits ?? 100);
+    const needsParallelChangeCount = sortByChanges && !logsHaveEnoughCommits;
+    const gitRoot = rootDirs[0] || config.cwd;
+
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
+    // - getFileChangeCount spawns git log --name-only (only when logs are disabled)
     // Neither depends on the other's results.
     progressCallback('Collecting files...');
-    const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
+    const [collectResults, gitDiffResult, gitLogResult, parallelFileChangeCounts] = await Promise.all([
       withMemoryLogging(
         'Collect Files',
         async () =>
@@ -158,6 +187,9 @@ export const pack = async (
       ),
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
+      needsParallelChangeCount
+        ? deps.getFileChangeCount(gitRoot, config.output.git?.sortByChangesMaxCommits).catch(() => undefined)
+        : Promise.resolve(undefined),
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
@@ -215,6 +247,20 @@ export const pack = async (
       files: filePaths,
     }));
 
+    // Derive file change counts from git log commits to avoid spawning a separate
+    // git subprocess during output generation. The git log data already includes
+    // per-commit file lists, so we can count changes without an additional process.
+    // Only derive when includeLogsCount >= sortByChangesMaxCommits, otherwise the
+    // log data contains fewer commits than the sort needs (defaults: 50 vs 100).
+    // Falls back to parallelFileChangeCounts when git logs are disabled or insufficient.
+    const sortMaxCommits = config.output.git?.sortByChangesMaxCommits ?? 100;
+    const logCommitCount = config.output.git?.includeLogsCount ?? 50;
+    const canDeriveFromLogs =
+      config.output.git?.sortByChanges && gitLogResult?.commits && logCommitCount >= sortMaxCommits;
+    const preComputedFileChangeCounts = canDeriveFromLogs
+      ? deriveFileChangeCounts(gitLogResult.commits)
+      : parallelFileChangeCounts;
+
     // Generate and write output (handles both single and split output)
     const { outputFiles, outputForMetrics, writeComplete } = await deps.produceOutput(
       rootDirs,
@@ -226,6 +272,8 @@ export const pack = async (
       progressCallback,
       filePathsByRoot,
       emptyDirPaths,
+      {},
+      preComputedFileChangeCounts,
     );
 
     // Ensure warm-up task completes before metrics calculation

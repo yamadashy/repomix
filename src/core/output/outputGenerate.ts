@@ -312,6 +312,7 @@ export const generateOutput = async (
   gitLogResult: GitLogResult | undefined = undefined,
   filePathsByRoot?: FilesByRoot[],
   emptyDirPaths?: string[],
+  preComputedFileChangeCounts?: Record<string, number>,
   deps = {
     buildOutputGeneratorContext,
     generateHandlebarOutput,
@@ -321,7 +322,12 @@ export const generateOutput = async (
   },
 ): Promise<string> => {
   // Sort processed files by git change count if enabled
-  const sortedProcessedFiles = await deps.sortOutputFiles(processedFiles, config);
+  const sortedProcessedFiles = await deps.sortOutputFiles(
+    processedFiles,
+    config,
+    undefined,
+    preComputedFileChangeCounts,
+  );
 
   const outputGeneratorContext = await deps.buildOutputGeneratorContext(
     rootDirs,

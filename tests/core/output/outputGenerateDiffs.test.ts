@@ -89,6 +89,7 @@ describe('Output Generation with Diffs', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       mockDeps,
     );
 
@@ -121,6 +122,7 @@ describe('Output Generation with Diffs', () => {
       mockConfig,
       mockProcessedFiles,
       allFilePaths,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -161,6 +163,7 @@ describe('Output Generation with Diffs', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       mockDeps,
     );
 
@@ -193,6 +196,7 @@ describe('Output Generation with Diffs', () => {
       mockConfig,
       mockProcessedFiles,
       allFilePaths,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -239,6 +243,7 @@ describe('Output Generation with Diffs', () => {
       mockConfig,
       mockProcessedFiles,
       allFilePaths,
+      undefined,
       undefined,
       undefined,
       undefined,

@@ -39,6 +39,7 @@ describe('produceOutput', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
       );
       expect(result.outputForMetrics).toBe('generated output');
       expect(result.writeComplete).toBeInstanceOf(Promise);
@@ -74,6 +75,7 @@ describe('produceOutput', () => {
         [],
         gitDiffResult,
         gitLogResult,
+        undefined,
         undefined,
         undefined,
       );

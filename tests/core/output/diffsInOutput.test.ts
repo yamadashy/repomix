@@ -15,6 +15,7 @@ vi.mock('../../../src/core/git/gitDiffHandle.js', () => ({
 
 vi.mock('../../../src/core/git/gitRepositoryHandle.js', () => ({
   isGitRepository: vi.fn(),
+  getFileChangeCount: vi.fn(),
 }));
 
 describe('Git Diffs in Output', () => {
@@ -132,6 +133,7 @@ index 123..456 100644
       undefined,
       undefined,
       undefined,
+      undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
         generateHandlebarOutput: mockGenerateHandlebarOutput,
@@ -203,6 +205,7 @@ index 123..456 100644
       processedFiles,
       ['file1.js'],
       gitDiffResult,
+      undefined,
       undefined,
       undefined,
       undefined,

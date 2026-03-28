@@ -35,6 +35,7 @@ export const produceOutput = async (
   filePathsByRoot?: FilesByRoot[],
   emptyDirPaths?: string[],
   overrideDeps: Partial<typeof defaultDeps> = {},
+  preComputedFileChangeCounts?: Record<string, number>,
 ): Promise<ProduceOutputResult> => {
   const deps = { ...defaultDeps, ...overrideDeps };
 
@@ -53,6 +54,7 @@ export const produceOutput = async (
       filePathsByRoot,
       emptyDirPaths,
       deps,
+      preComputedFileChangeCounts,
     );
   }
 
@@ -67,6 +69,7 @@ export const produceOutput = async (
     filePathsByRoot,
     emptyDirPaths,
     deps,
+    preComputedFileChangeCounts,
   );
 };
 
@@ -82,6 +85,7 @@ const generateAndWriteSplitOutput = async (
   filePathsByRoot: FilesByRoot[] | undefined,
   emptyDirPaths: string[] | undefined,
   deps: typeof defaultDeps,
+  preComputedFileChangeCounts?: Record<string, number>,
 ): Promise<ProduceOutputResult> => {
   const parts = await withMemoryLogging('Generate Split Output', async () => {
     return await generateSplitOutputParts({
@@ -95,6 +99,7 @@ const generateAndWriteSplitOutput = async (
       progressCallback,
       filePathsByRoot,
       emptyDirPaths,
+      preComputedFileChangeCounts,
       deps: {
         generateOutput: deps.generateOutput,
       },
@@ -135,6 +140,7 @@ const generateAndWriteSingleOutput = async (
   filePathsByRoot: FilesByRoot[] | undefined,
   emptyDirPaths: string[] | undefined,
   deps: typeof defaultDeps,
+  preComputedFileChangeCounts?: Record<string, number>,
 ): Promise<ProduceOutputResult> => {
   const output = await withMemoryLogging('Generate Output', () =>
     deps.generateOutput(
@@ -146,6 +152,7 @@ const generateAndWriteSingleOutput = async (
       gitLogResult,
       filePathsByRoot,
       emptyDirPaths,
+      preComputedFileChangeCounts,
     ),
   );
 

@@ -59,10 +59,11 @@ describe('outputGenerate', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
       mockDeps,
     );
 
-    expect(mockDeps.sortOutputFiles).toHaveBeenCalledWith(mockProcessedFiles, mockConfig);
+    expect(mockDeps.sortOutputFiles).toHaveBeenCalledWith(mockProcessedFiles, mockConfig, undefined, undefined);
     expect(mockDeps.buildOutputGeneratorContext).toHaveBeenCalledWith(
       [process.cwd()],
       mockConfig,
