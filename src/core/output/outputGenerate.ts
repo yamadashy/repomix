@@ -53,23 +53,31 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
 };
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
-  const maxBackticks = files
-    .flatMap((file) => file.content.match(/`+/g) ?? [])
-    .reduce((max, match) => Math.max(max, match.length), 0);
+  let maxBackticks = 0;
+  for (const file of files) {
+    for (const match of file.content.matchAll(/`+/g)) {
+      if (match[0].length > maxBackticks) {
+        maxBackticks = match[0].length;
+      }
+    }
+  }
   return '`'.repeat(Math.max(3, maxBackticks + 1));
 };
 
 const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
   const lineCounts: Record<string, number> = {};
   for (const file of processedFiles) {
-    // Count lines: empty files have 0 lines, otherwise count newlines + 1
-    // (unless the content ends with a newline, in which case the last "line" is empty)
     const content = file.content;
     if (content.length === 0) {
       lineCounts[file.path] = 0;
     } else {
-      // Count actual lines (text editor style: number of \n + 1, but trailing \n doesn't add extra line)
-      const newlineCount = (content.match(/\n/g) || []).length;
+      // Count newlines by scanning the string directly (avoids creating temporary regex match arrays)
+      let newlineCount = 0;
+      let idx = content.indexOf('\n');
+      while (idx !== -1) {
+        newlineCount++;
+        idx = content.indexOf('\n', idx + 1);
+      }
       lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
     }
   }

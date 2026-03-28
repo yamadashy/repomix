@@ -98,27 +98,25 @@ export const pack = async (
   const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0); // Suppress unhandled rejection; errors surface when awaited
 
   try {
+    // Run file collection, git diffs, and git logs in parallel
+    // (git operations don't depend on collected files, so they can overlap)
     progressCallback('Collecting files...');
-    const collectResults = await withMemoryLogging(
-      'Collect Files',
-      async () =>
-        await Promise.all(
-          sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-            deps.collectFiles(filePaths, rootDir, config, progressCallback),
+    const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
+      withMemoryLogging(
+        'Collect Files',
+        async () =>
+          await Promise.all(
+            sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
+              deps.collectFiles(filePaths, rootDir, config, progressCallback),
+            ),
           ),
-        ),
-    );
+      ),
+      deps.getGitDiffs(rootDirs, config),
+      deps.getGitLogs(rootDirs, config),
+    ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
-
-    // Get git diffs if enabled - run this before security check
-    progressCallback('Getting git diffs...');
-    const gitDiffResult = await deps.getGitDiffs(rootDirs, config);
-
-    // Get git logs if enabled - run this before security check
-    progressCallback('Getting git logs...');
-    const gitLogResult = await deps.getGitLogs(rootDirs, config);
 
     // Run security check and get filtered safe files
     const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
