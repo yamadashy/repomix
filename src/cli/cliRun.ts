@@ -7,6 +7,9 @@ import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
 import type { CliOptions } from './types.js';
 
+// Inline prefix check to avoid eagerly importing git-url-parse via gitRemoteParse module
+const REMOTE_URL_PREFIXES = ['https://', 'git@', 'ssh://', 'git://'];
+
 // Semantic mapping for CLI suggestions
 // This maps conceptually related terms (not typos) to valid options
 const semanticSuggestionMap: Record<string, string[]> = {
@@ -273,18 +276,19 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     return;
   }
 
-  if (options.remote) {
-    const { runRemoteAction } = await import('./actions/remoteAction.js');
-    return await runRemoteAction(options.remote, options);
-  }
-
   // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
-  // Inline prefix check to avoid eagerly importing git-url-parse via gitRemoteParse module
-  const remoteUrlPrefixes = ['https://', 'git@', 'ssh://', 'git://'];
-  if (directories.length === 1 && remoteUrlPrefixes.some((prefix) => directories[0].startsWith(prefix))) {
-    logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
+  const detectedRemoteUrl =
+    directories.length === 1 && REMOTE_URL_PREFIXES.some((prefix) => directories[0].startsWith(prefix))
+      ? directories[0]
+      : undefined;
+  const remoteUrl = options.remote ?? detectedRemoteUrl;
+
+  if (remoteUrl) {
+    if (detectedRemoteUrl && !options.remote) {
+      logger.trace(`Auto-detected remote URL from positional argument: ${remoteUrl}`);
+    }
     const { runRemoteAction } = await import('./actions/remoteAction.js');
-    return await runRemoteAction(directories[0], options);
+    return await runRemoteAction(remoteUrl, options);
   }
 
   const { runDefaultAction } = await import('./actions/defaultAction.js');
