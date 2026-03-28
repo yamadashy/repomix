@@ -2,13 +2,11 @@ import process from 'node:process';
 import { Option, program } from 'commander';
 import pc from 'picocolors';
 import { getVersion } from '../core/file/packageJsonParse.js';
+import { isExplicitRemoteUrl } from '../core/git/gitRemoteUrl.js';
 import { handleError, RepomixError } from '../shared/errorHandle.js';
 import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
 import type { CliOptions } from './types.js';
-
-// Inline prefix check to avoid eagerly importing git-url-parse via gitRemoteParse module
-const REMOTE_URL_PREFIXES = ['https://', 'git@', 'ssh://', 'git://'];
 
 // Semantic mapping for CLI suggestions
 // This maps conceptually related terms (not typos) to valid options
@@ -276,19 +274,16 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     return;
   }
 
-  // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
-  const detectedRemoteUrl =
-    directories.length === 1 && REMOTE_URL_PREFIXES.some((prefix) => directories[0].startsWith(prefix))
-      ? directories[0]
-      : undefined;
-  const remoteUrl = options.remote ?? detectedRemoteUrl;
-
-  if (remoteUrl) {
-    if (detectedRemoteUrl && !options.remote) {
-      logger.trace(`Auto-detected remote URL from positional argument: ${remoteUrl}`);
-    }
+  if (options.remote) {
     const { runRemoteAction } = await import('./actions/remoteAction.js');
-    return await runRemoteAction(remoteUrl, options);
+    return await runRemoteAction(options.remote, options);
+  }
+
+  // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
+  if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
+    logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
+    const { runRemoteAction } = await import('./actions/remoteAction.js');
+    return await runRemoteAction(directories[0], options);
   }
 
   const { runDefaultAction } = await import('./actions/defaultAction.js');

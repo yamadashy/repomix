@@ -136,9 +136,6 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Ensure security worker pool is warmed up before starting security check
-    await securityWarmupPromise;
-
     // Run security check and get filtered safe files
     const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       await withMemoryLogging('Security Check', () =>
