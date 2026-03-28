@@ -94,14 +94,23 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyPreCompressTransforms(files, config, {
-        getFileManipulator: mockGetFileManipulator,
-      });
+      const result = applyPreCompressTransforms(files, config);
 
       expect(result[0].content).toContain('...');
       expect(result[0].content.length).toBeLessThan(files[0].content.length);
     });
 
+    it('should return files as-is when truncateBase64 is disabled', () => {
+      const files: ProcessedFile[] = [{ path: 'test.js', content: 'hello' }];
+      const config = createMockConfig();
+
+      const result = applyPreCompressTransforms(files, config);
+
+      expect(result).toBe(files);
+    });
+  });
+
+  describe('applyPostCompressTransforms', () => {
     it('should remove empty lines when configured', () => {
       const files: ProcessedFile[] = [{ path: 'test.js', content: 'line1\n\nline2\n\nline3' }];
       const config = createMockConfig({
@@ -110,7 +119,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyPreCompressTransforms(files, config, {
+      const result = applyPostCompressTransforms(files, config, () => {}, {
         getFileManipulator: mockGetFileManipulator,
       });
 
@@ -125,20 +134,20 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyPreCompressTransforms(files, config, {
+      const result = applyPostCompressTransforms(files, config, () => {}, {
         getFileManipulator: mockGetFileManipulator,
       });
 
       expect(result).toEqual([{ path: 'test.unknown', content: 'line1\n\nline2' }]);
     });
-  });
 
-  describe('applyPostCompressTransforms', () => {
     it('should trim content', () => {
       const files: ProcessedFile[] = [{ path: 'test.js', content: '  hello  \n' }];
       const config = createMockConfig();
 
-      const result = applyPostCompressTransforms(files, config, () => {});
+      const result = applyPostCompressTransforms(files, config, () => {}, {
+        getFileManipulator: mockGetFileManipulator,
+      });
 
       expect(result).toEqual([{ path: 'test.js', content: 'hello' }]);
     });
@@ -151,7 +160,9 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyPostCompressTransforms(files, config, () => {});
+      const result = applyPostCompressTransforms(files, config, () => {}, {
+        getFileManipulator: mockGetFileManipulator,
+      });
 
       expect(result).toEqual([{ path: 'test.txt', content: '1: Line 1\n2: Line 2\n3: Line 3' }]);
     });
@@ -164,7 +175,9 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyPostCompressTransforms(files, config, () => {});
+      const result = applyPostCompressTransforms(files, config, () => {}, {
+        getFileManipulator: mockGetFileManipulator,
+      });
 
       expect(result).toEqual([{ path: 'test.txt', content: 'Line 1\nLine 2\nLine 3' }]);
     });
@@ -177,7 +190,9 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyPostCompressTransforms(files, config, () => {});
+      const result = applyPostCompressTransforms(files, config, () => {}, {
+        getFileManipulator: mockGetFileManipulator,
+      });
 
       expect(result).toEqual([{ path: 'empty.txt', content: '1: ' }]);
     });
@@ -191,7 +206,9 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyPostCompressTransforms(files, config, () => {});
+      const result = applyPostCompressTransforms(files, config, () => {}, {
+        getFileManipulator: mockGetFileManipulator,
+      });
 
       const lines = result[0].content.split('\n');
       expect(lines[0]).toBe('  1: Line');
@@ -208,7 +225,9 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyPostCompressTransforms(files, config, () => {});
+      const result = applyPostCompressTransforms(files, config, () => {}, {
+        getFileManipulator: mockGetFileManipulator,
+      });
 
       expect(result).toEqual([{ path: 'test.txt', content: 'Line 1\nLine 2' }]);
     });
