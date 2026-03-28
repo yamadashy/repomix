@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774710223215,
+  "lastUpdate": 1774712343562,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -900,6 +900,51 @@ window.BENCHMARK_DATA = {
             "range": "±24",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 3160ms, Q3: 3184ms\nAll times: 3142, 3143, 3147, 3152, 3156, 3160, 3160, 3161, 3162, 3170, 3172, 3175, 3179, 3182, 3182, 3184, 3192, 3196, 3227, 3235ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e1fc1a4951a3c18780c94802159137797a61343",
+          "message": "Merge pull request #1349 from yamadashy/fix/perf-benchmark-no-cancel\n\nfix(ci): Disable cancel-in-progress for perf benchmark",
+          "timestamp": "2026-03-29T00:36:26+09:00",
+          "tree_id": "d16f9e864be9c3f932098d3248103a25b820c5cf",
+          "url": "https://github.com/yamadashy/repomix/commit/3e1fc1a4951a3c18780c94802159137797a61343"
+        },
+        "date": 1774712342673,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1494,
+            "range": "±111",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1463ms, Q3: 1574ms\nAll times: 1436, 1444, 1448, 1450, 1461, 1462, 1463, 1463, 1467, 1471, 1473, 1473, 1478, 1485, 1493, 1494, 1507, 1512, 1539, 1550, 1551, 1551, 1574, 1612, 1684, 1690, 1710, 1731, 1815, 1887ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2684,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2680ms, Q3: 2699ms\nAll times: 2664, 2668, 2669, 2675, 2678, 2680, 2680, 2681, 2682, 2683, 2684, 2687, 2688, 2690, 2696, 2699, 2699, 2700, 2707, 2709ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 3294,
+            "range": "±184",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 3252ms, Q3: 3436ms\nAll times: 3217, 3246, 3247, 3249, 3251, 3252, 3263, 3274, 3277, 3291, 3294, 3321, 3394, 3417, 3419, 3436, 3438, 3448, 3450, 3470ms"
           }
         ]
       }
