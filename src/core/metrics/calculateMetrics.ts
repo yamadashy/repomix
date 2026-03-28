@@ -35,6 +35,98 @@ export const createMetricsTaskRunner = (numOfTasks: number): MetricsTaskRunner =
   });
 };
 
+/**
+ * Conservative lower bound for chars-per-token ratio. Real code is typically 3.5-4.5,
+ * but CJK-heavy or binary-like content can go as low as ~2.0. Using 2.0 ensures we
+ * never miss a file that could exceed the token threshold.
+ */
+const MIN_CHARS_PER_TOKEN = 2.0;
+
+/**
+ * Target number of evenly-spaced sample files used to estimate the char/token ratio
+ * when not tokenizing all files. 50 files across the size distribution gives ~3% error,
+ * which is acceptable for an informational total token count metric.
+ */
+const ESTIMATION_SAMPLE_TARGET = 100;
+
+/**
+ * Select which files to tokenize based on the tokenCountTree configuration.
+ *
+ * Three modes:
+ * 1. tokenCountTree = false → only top files for display (fast, output tokenized separately)
+ * 2. tokenCountTree = true → all files (accurate tree, output estimated from ratio)
+ * 3. tokenCountTree = N (number) → pre-filter by char count + representative sample
+ *    Files whose char count is below N * MIN_CHARS_PER_TOKEN cannot exceed N tokens,
+ *    so they're skipped. A stratified sample provides an accurate ratio for output estimation.
+ */
+const selectMetricsTargets = (
+  processedFiles: ProcessedFile[],
+  topFilesLength: number,
+  tokenCountTree: boolean | number | string | undefined,
+): { metricsTargetPaths: string[]; shouldEstimateOutputTokens: boolean } => {
+  const tokenCountTreeEnabled = !!tokenCountTree;
+  const tokenTreeThreshold =
+    typeof tokenCountTree === 'number'
+      ? tokenCountTree
+      : typeof tokenCountTree === 'string'
+        ? Number(tokenCountTree) || 0
+        : 0;
+
+  if (tokenCountTreeEnabled && tokenTreeThreshold > 0) {
+    // Numeric threshold: only tokenize files that could exceed it, plus a sample for estimation
+    const charThreshold = tokenTreeThreshold * MIN_CHARS_PER_TOKEN;
+
+    // Files that could exceed the token threshold based on character count
+    const treeCandidatePaths: string[] = [];
+    for (const file of processedFiles) {
+      if (file.content.length >= charThreshold) {
+        treeCandidatePaths.push(file.path);
+      }
+    }
+
+    // Top files by char count for the top-N display
+    const sortedBySize = [...processedFiles].sort((a, b) => b.content.length - a.content.length);
+    const topCount = Math.min(processedFiles.length, Math.max(topFilesLength * 3, topFilesLength));
+    const topPaths = sortedBySize.slice(0, topCount).map((f) => f.path);
+
+    // Evenly-spaced sample from the size-sorted list for accurate ratio estimation.
+    // This covers the full file-size distribution, avoiding the bias of top-N-only sampling.
+    const sampleInterval = Math.max(1, Math.floor(processedFiles.length / ESTIMATION_SAMPLE_TARGET));
+    const samplePaths: string[] = [];
+    for (let i = 0; i < sortedBySize.length; i += sampleInterval) {
+      samplePaths.push(sortedBySize[i].path);
+    }
+
+    // Union all sets
+    const pathSet = new Set([...treeCandidatePaths, ...topPaths, ...samplePaths]);
+
+    return {
+      metricsTargetPaths: [...pathSet],
+      shouldEstimateOutputTokens: pathSet.size > 0,
+    };
+  }
+
+  if (tokenCountTreeEnabled) {
+    // Boolean true (or string truthy): tokenize all files for accurate tree display.
+    // Output tokens are estimated from the per-file char/token ratio (<0.1% error).
+    return {
+      metricsTargetPaths: processedFiles.map((file) => file.path),
+      shouldEstimateOutputTokens: processedFiles.length > 0,
+    };
+  }
+
+  // No tokenCountTree: only tokenize top files for the top-N display.
+  // A 3x multiplier provides sufficient coverage for accurate top-N ranking since
+  // character count and token count are highly correlated for code (r > 0.95).
+  return {
+    metricsTargetPaths: [...processedFiles]
+      .sort((a, b) => b.content.length - a.content.length)
+      .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 3, topFilesLength)))
+      .map((file) => file.path),
+    shouldEstimateOutputTokens: false,
+  };
+};
+
 const defaultDeps = {
   calculateSelectiveFileMetrics,
   calculateOutputMetrics,
@@ -67,29 +159,15 @@ export const calculateMetrics = async (
 
   try {
     const outputParts = Array.isArray(output) ? output : [output];
-    // For top files display optimization: calculate token counts only for top files by character count
-    // However, if tokenCountTree is enabled, calculate for all files to avoid double calculation
     const topFilesLength = config.output.topFilesLength;
-    const shouldCalculateAllFiles = !!config.output.tokenCountTree;
 
-    // Determine which files to calculate token counts for:
-    // - If tokenCountTree is enabled: calculate for all files to avoid double calculation
-    // - Otherwise: calculate only for top files by character count for optimization
-    // A 3x multiplier provides sufficient coverage for accurate top-N ranking since
-    // character count and token count are highly correlated for code (r > 0.95).
-    const metricsTargetPaths = shouldCalculateAllFiles
-      ? processedFiles.map((file) => file.path)
-      : [...processedFiles]
-          .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 3, topFilesLength)))
-          .map((file) => file.path);
-
-    // When all file tokens are available (tokenCountTree enabled), skip the expensive
-    // full-output tokenization and derive total tokens from per-file counts.
-    // The output is ~97.5% file content; using the per-file char/token ratio to estimate
-    // the remaining ~2.5% overhead (headers, tree, XML tags) yields <0.1% error.
-    // This eliminates ~3.6MB of redundant tokenization through the worker pool.
-    const shouldEstimateOutputTokens = shouldCalculateAllFiles && processedFiles.length > 0;
+    // Determine which files to calculate token counts for, balancing accuracy vs speed.
+    // Three modes depending on tokenCountTree configuration:
+    const { metricsTargetPaths, shouldEstimateOutputTokens } = selectMetricsTargets(
+      processedFiles,
+      topFilesLength,
+      config.output.tokenCountTree,
+    );
 
     const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
       deps.calculateSelectiveFileMetrics(

@@ -22,14 +22,19 @@ const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_S
 export const truncateBase64Content = (content: string): string => {
   let processedContent = content;
 
-  // Reset lastIndex for global regexes (they are stateful)
-  dataUriPattern.lastIndex = 0;
+  // Fast path: skip the data URI regex for files that don't contain ";base64,".
+  // Only 0.5% of typical source files contain data URIs, so this indexOf check
+  // avoids scanning ~99.5% of file content with the expensive regex pattern.
+  if (content.includes(';base64,')) {
+    // Reset lastIndex for global regexes (they are stateful)
+    dataUriPattern.lastIndex = 0;
 
-  // Replace data URIs
-  processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
-    const preview = base64Data.substring(0, TRUNCATION_LENGTH);
-    return `data:${mimeType}${params || ''};base64,${preview}...`;
-  });
+    // Replace data URIs
+    processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
+      const preview = base64Data.substring(0, TRUNCATION_LENGTH);
+      return `data:${mimeType}${params || ''};base64,${preview}...`;
+    });
+  }
 
   // Standalone base64 requires MIN_BASE64_LENGTH_STANDALONE (256) consecutive base64 chars,
   // which can only appear on lines at least that long. Skip the expensive global regex
