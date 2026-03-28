@@ -9,7 +9,7 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { TokenCountWorkerResult, TokenCountWorkerTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
   totalFiles: number;
@@ -21,12 +21,14 @@ export interface CalculateMetricsResult {
   gitLogTokenCount: number;
 }
 
+export type MetricsTaskRunner = TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult>;
+
 /**
  * Create a metrics task runner that can be pre-initialized to overlap
  * tiktoken WASM loading with other pipeline stages.
  */
-export const createMetricsTaskRunner = (numOfTasks: number): TaskRunner<TokenCountTask, number> => {
-  return initTaskRunner<TokenCountTask, number>({
+export const createMetricsTaskRunner = (numOfTasks: number): MetricsTaskRunner => {
+  return initTaskRunner<TokenCountWorkerTask, TokenCountWorkerResult>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
@@ -38,7 +40,7 @@ const defaultDeps = {
   calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
-  taskRunner: undefined as TaskRunner<TokenCountTask, number> | undefined,
+  taskRunner: undefined as MetricsTaskRunner | undefined,
 };
 
 export const calculateMetrics = async (
@@ -57,7 +59,7 @@ export const calculateMetrics = async (
   // Initialize a single task runner for all metrics calculations
   const taskRunner =
     deps.taskRunner ??
-    initTaskRunner<TokenCountTask, number>({
+    initTaskRunner<TokenCountWorkerTask, TokenCountWorkerResult>({
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
@@ -73,11 +75,13 @@ export const calculateMetrics = async (
     // Determine which files to calculate token counts for:
     // - If tokenCountTree is enabled: calculate for all files to avoid double calculation
     // - Otherwise: calculate only for top files by character count for optimization
+    // A 3x multiplier provides sufficient coverage for accurate top-N ranking since
+    // character count and token count are highly correlated for code (r > 0.95).
     const metricsTargetPaths = shouldCalculateAllFiles
       ? processedFiles.map((file) => file.path)
       : [...processedFiles]
           .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
+          .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 3, topFilesLength)))
           .map((file) => file.path);
 
     const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([

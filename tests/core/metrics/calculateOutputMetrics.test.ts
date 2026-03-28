@@ -1,15 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import { calculateOutputMetrics } from '../../../src/core/metrics/calculateOutputMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
+import {
+  countTokens,
+  type TokenCountTask,
+  type TokenCountWorkerResult,
+  type TokenCountWorkerTask,
+} from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
 import { getProcessConcurrency, type WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
+const mockInitTaskRunner = (_options: WorkerOptions) => {
   return {
-    run: async (task: T) => {
-      return (await countTokens(task as TokenCountTask)) as R;
+    run: async (task: TokenCountWorkerTask): Promise<TokenCountWorkerResult> => {
+      return countTokens(task as TokenCountTask);
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
