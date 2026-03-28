@@ -1,19 +1,23 @@
 import pc from 'picocolors';
-import type { TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { TokenEncoding } from './TokenCounter.js';
+import { getTokenCounter } from './tokenCounterFactory.js';
 import type { FileMetrics } from './workers/types.js';
+
+const defaultDeps = {
+  getTokenCounter,
+};
 
 export const calculateSelectiveFileMetrics = async (
   processedFiles: ProcessedFile[],
   targetFilePaths: string[],
-  tokenCounterEncoding: TiktokenEncoding,
+  tokenCounterEncoding: TokenEncoding,
   progressCallback: RepomixProgressCallback,
-  deps: { taskRunner: TaskRunner<TokenCountTask, number> },
+  deps: Partial<typeof defaultDeps> = {},
 ): Promise<FileMetrics[]> => {
+  const resolvedDeps = { ...defaultDeps, ...deps };
   const targetFileSet = new Set(targetFilePaths);
   const filesToProcess = processedFiles.filter((file) => targetFileSet.has(file.path));
 
@@ -23,29 +27,24 @@ export const calculateSelectiveFileMetrics = async (
 
   try {
     const startTime = process.hrtime.bigint();
-    logger.trace(`Starting selective metrics calculation for ${filesToProcess.length} files using worker pool`);
+    logger.trace(`Starting selective metrics calculation for ${filesToProcess.length} files on main thread`);
 
-    let completedTasks = 0;
-    const results = await Promise.all(
-      filesToProcess.map(async (file) => {
-        const tokenCount = await deps.taskRunner.run({
-          content: file.content,
-          encoding: tokenCounterEncoding,
-          path: file.path,
-        });
+    const counter = await resolvedDeps.getTokenCounter(tokenCounterEncoding);
 
-        const result: FileMetrics = {
-          path: file.path,
-          charCount: file.content.length,
-          tokenCount,
-        };
+    const results: FileMetrics[] = [];
+    for (let i = 0; i < filesToProcess.length; i++) {
+      const file = filesToProcess[i];
+      const tokenCount = counter.countTokens(file.content, file.path);
 
-        completedTasks++;
-        progressCallback(`Calculating metrics... (${completedTasks}/${filesToProcess.length}) ${pc.dim(file.path)}`);
-        logger.trace(`Calculating metrics... (${completedTasks}/${filesToProcess.length}) ${file.path}`);
-        return result;
-      }),
-    );
+      results.push({
+        path: file.path,
+        charCount: file.content.length,
+        tokenCount,
+      });
+
+      progressCallback(`Calculating metrics... (${i + 1}/${filesToProcess.length}) ${pc.dim(file.path)}`);
+      logger.trace(`Calculating metrics... (${i + 1}/${filesToProcess.length}) ${file.path}`);
+    }
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;
