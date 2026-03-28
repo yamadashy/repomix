@@ -112,13 +112,8 @@ export const parseRemoteValue = (
   }
 };
 
-/**
- * Checks if a string is an explicit remote URL (e.g., https://, git@, ssh://, git://).
- * This intentionally does NOT match shorthand (owner/repo) to avoid ambiguity with local directory paths.
- */
-export const isExplicitRemoteUrl = (value: string): boolean => {
-  return ['https://', 'git@', 'ssh://', 'git://'].some((prefix) => value.startsWith(prefix));
-};
+// Re-export from lightweight module to preserve public API
+export { isExplicitRemoteUrl } from './gitRemoteUrl.js';
 
 export const isValidRemoteValue = (remoteValue: string, refs: string[] = []): boolean => {
   try {
