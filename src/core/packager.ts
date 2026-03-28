@@ -11,10 +11,10 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { preloadOutputDeps } from './output/outputGenerate.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
-import { packSkill } from './skill/packSkill.js';
 
 export interface PackResult {
   totalFiles: number;
@@ -45,7 +45,10 @@ const defaultDeps = {
   sortPaths,
   getGitDiffs,
   getGitLogs,
-  packSkill,
+  packSkill: async (...args: Parameters<typeof import('./skill/packSkill.js').packSkill>) => {
+    const { packSkill } = await import('./skill/packSkill.js');
+    return packSkill(...args);
+  },
 };
 
 export interface PackOptions {
@@ -69,6 +72,10 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Preload heavy output dependencies (handlebars, fast-xml-builder) in background.
+  // These load during file search (~175ms) and are cached before output generation.
+  preloadOutputDeps();
 
   progressCallback('Searching for files...');
   const filePathsByDir = await withMemoryLogging('Search Files', async () =>
@@ -104,11 +111,13 @@ export const pack = async (
   // Metrics pool: tiktoken WASM loading overlaps with file collection + security check.
   // Security pool: secretlint module loading overlaps with file collection.
   const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
+
   const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0);
 
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.createSecurityTaskRunner(allFilePaths.length)
     : undefined;
+
   const securityWarmupPromise = securityTaskRunner
     ?.run({ filePath: 'warmup.txt', content: '', type: 'file' })
     .catch(() => null);

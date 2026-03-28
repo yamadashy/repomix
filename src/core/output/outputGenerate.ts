@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import XMLBuilder from 'fast-xml-builder';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -23,10 +22,55 @@ import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
 
-// Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
+// Lazy-load handlebars and fast-xml-builder to save ~22ms from the startup critical path.
+// These modules are loaded on first use during output generation, which runs after
+// file search (~175ms) + collection (~56ms) + security (~369ms) + processing (~56ms).
+// A preload mechanism (preloadOutputDeps) allows loading them during file search for zero cost.
+const esmRequire = createRequire(import.meta.url);
+// biome-ignore lint/suspicious/noExplicitAny: CJS interop - module shape varies between ESM default and CJS exports
+let _Handlebars: any;
+// biome-ignore lint/suspicious/noExplicitAny: CJS interop - fast-xml-builder exports vary by environment
+let _XMLBuilder: any;
+const getHandlebars = () => {
+  if (!_Handlebars) {
+    const mod = esmRequire('handlebars');
+    _Handlebars = mod.default || mod;
+  }
+  return _Handlebars;
+};
+const getXMLBuilder = () => {
+  if (!_XMLBuilder) {
+    const mod = esmRequire('fast-xml-builder');
+    _XMLBuilder = mod.default || mod;
+  }
+  return _XMLBuilder;
+};
 
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
+/**
+ * Preload heavy dependencies (handlebars, fast-xml-builder) during an idle event loop tick.
+ * Call this at the start of the pipeline so modules are loaded during file search I/O
+ * rather than during output generation's critical path.
+ */
+export const preloadOutputDeps = (): void => {
+  // Schedule sync require for the next idle tick. During file search,
+  // the main thread is mostly idle (waiting for globby I/O), giving us
+  // free time to load these modules without affecting the critical path.
+  setImmediate(() => {
+    try {
+      getHandlebars();
+      getXMLBuilder();
+    } catch {
+      // Intentionally ignored - will fail with proper context at use site
+    }
+  });
+};
+
+// Cache for compiled Handlebars templates to avoid recompilation on every call
+const compiledTemplateCache = new Map<string, HandlebarsTemplateDelegate>();
+
+type HandlebarsTemplateDelegate = (context: unknown, options?: unknown) => string;
+
+const getCompiledTemplate = (style: string): HandlebarsTemplateDelegate => {
   const cached = compiledTemplateCache.get(style);
   if (cached) {
     return cached;
@@ -47,7 +91,7 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
       throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
   }
 
-  const compiled = Handlebars.compile(template);
+  const compiled = getHandlebars().compile(template);
   compiledTemplateCache.set(style, compiled);
   return compiled;
 };
@@ -114,7 +158,8 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
 };
 
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
-  const xmlBuilder = new XMLBuilder({ ignoreAttributes: false });
+  const XmlBuilderModule = getXMLBuilder();
+  const xmlBuilder = new XmlBuilderModule({ ignoreAttributes: false });
   const xmlDocument = {
     repomix: {
       file_summary: renderContext.fileSummaryEnabled
