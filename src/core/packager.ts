@@ -95,114 +95,114 @@ export const pack = async (
   // (security check, file processing, output generation). The warm-up task triggers tiktoken
   // initialization in the worker thread without blocking the main pipeline.
   const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding });
+  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0); // Suppress unhandled rejection; errors surface when awaited
 
-  progressCallback('Collecting files...');
-  const collectResults = await withMemoryLogging(
-    'Collect Files',
-    async () =>
-      await Promise.all(
-        sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-          deps.collectFiles(filePaths, rootDir, config, progressCallback),
+  try {
+    progressCallback('Collecting files...');
+    const collectResults = await withMemoryLogging(
+      'Collect Files',
+      async () =>
+        await Promise.all(
+          sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
+            deps.collectFiles(filePaths, rootDir, config, progressCallback),
+          ),
         ),
-      ),
-  );
-
-  const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
-  const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
-
-  // Get git diffs if enabled - run this before security check
-  progressCallback('Getting git diffs...');
-  const gitDiffResult = await deps.getGitDiffs(rootDirs, config);
-
-  // Get git logs if enabled - run this before security check
-  progressCallback('Getting git logs...');
-  const gitLogResult = await deps.getGitLogs(rootDirs, config);
-
-  // Run security check and get filtered safe files
-  const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-    await withMemoryLogging('Security Check', () =>
-      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
     );
 
-  // Process files (remove comments, etc.)
-  progressCallback('Processing files...');
-  const processedFiles = await withMemoryLogging('Process Files', () =>
-    deps.processFiles(safeRawFiles, config, progressCallback),
-  );
+    const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
+    const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-  progressCallback('Generating output...');
+    // Get git diffs if enabled - run this before security check
+    progressCallback('Getting git diffs...');
+    const gitDiffResult = await deps.getGitDiffs(rootDirs, config);
 
-  // Check if skill generation is requested
-  if (config.skillGenerate !== undefined && options.skillDir) {
-    await warmupPromise;
-    await metricsTaskRunner.cleanup();
+    // Get git logs if enabled - run this before security check
+    progressCallback('Getting git logs...');
+    const gitLogResult = await deps.getGitLogs(rootDirs, config);
 
-    const result = await deps.packSkill({
+    // Run security check and get filtered safe files
+    const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+      await withMemoryLogging('Security Check', () =>
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+      );
+
+    // Process files (remove comments, etc.)
+    progressCallback('Processing files...');
+    const processedFiles = await withMemoryLogging('Process Files', () =>
+      deps.processFiles(safeRawFiles, config, progressCallback),
+    );
+
+    progressCallback('Generating output...');
+
+    // Check if skill generation is requested
+    if (config.skillGenerate !== undefined && options.skillDir) {
+      await warmupPromise;
+
+      const result = await deps.packSkill({
+        rootDirs,
+        config,
+        options,
+        processedFiles,
+        allFilePaths,
+        gitDiffResult,
+        gitLogResult,
+        suspiciousFilesResults,
+        suspiciousGitDiffResults,
+        suspiciousGitLogResults,
+        safeFilePaths,
+        skippedFiles: allSkippedFiles,
+        progressCallback,
+      });
+
+      logMemoryUsage('Pack - End');
+      return result;
+    }
+
+    // Build filePathsByRoot for multi-root tree generation
+    // Use directory basename as the label for each root
+    // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
+    const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
+      rootLabel: path.basename(rootDir) || rootDir,
+      files: filePaths,
+    }));
+
+    // Generate and write output (handles both single and split output)
+    const { outputFiles, outputForMetrics } = await deps.produceOutput(
       rootDirs,
       config,
-      options,
       processedFiles,
       allFilePaths,
       gitDiffResult,
       gitLogResult,
+      progressCallback,
+      filePathsByRoot,
+    );
+
+    // Ensure warm-up task completes before metrics calculation
+    await warmupPromise;
+
+    const metrics = await withMemoryLogging('Calculate Metrics', () =>
+      deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
+        taskRunner: metricsTaskRunner,
+      }),
+    );
+
+    // Create a result object that includes metrics and security results
+    const result = {
+      ...metrics,
+      ...(outputFiles && { outputFiles }),
       suspiciousFilesResults,
       suspiciousGitDiffResults,
       suspiciousGitLogResults,
+      processedFiles,
       safeFilePaths,
       skippedFiles: allSkippedFiles,
-      progressCallback,
-    });
+    };
 
     logMemoryUsage('Pack - End');
+
     return result;
+  } finally {
+    await metricsTaskRunner.cleanup();
   }
-
-  // Build filePathsByRoot for multi-root tree generation
-  // Use directory basename as the label for each root
-  // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
-  const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
-    rootLabel: path.basename(rootDir) || rootDir,
-    files: filePaths,
-  }));
-
-  // Generate and write output (handles both single and split output)
-  const { outputFiles, outputForMetrics } = await deps.produceOutput(
-    rootDirs,
-    config,
-    processedFiles,
-    allFilePaths,
-    gitDiffResult,
-    gitLogResult,
-    progressCallback,
-    filePathsByRoot,
-  );
-
-  // Ensure warm-up task completes before metrics calculation
-  await warmupPromise;
-
-  const metrics = await withMemoryLogging('Calculate Metrics', () =>
-    deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
-      taskRunner: metricsTaskRunner,
-    }),
-  );
-
-  // Cleanup the pre-initialized task runner
-  await metricsTaskRunner.cleanup();
-
-  // Create a result object that includes metrics and security results
-  const result = {
-    ...metrics,
-    ...(outputFiles && { outputFiles }),
-    suspiciousFilesResults,
-    suspiciousGitDiffResults,
-    suspiciousGitLogResults,
-    processedFiles,
-    safeFilePaths,
-    skippedFiles: allSkippedFiles,
-  };
-
-  logMemoryUsage('Pack - End');
-
-  return result;
 };
