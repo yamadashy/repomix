@@ -11,15 +11,6 @@ import type { FileProcessTask } from './workers/fileProcessWorker.js';
 type GetFileManipulator = (filePath: string) => FileManipulator | null;
 
 /**
- * Check if file processing requires CPU-intensive operations that benefit from worker threads.
- * Only `compress` (tree-sitter parsing) and `removeComments` (language-specific AST manipulation)
- * are heavy enough to justify worker thread overhead.
- */
-const needsWorkerProcessing = (config: RepomixConfigMerged): boolean => {
-  return config.output.compress || config.output.removeComments;
-};
-
-/**
  * Apply lightweight transforms on the main thread after worker processing.
  * All lightweight transforms are centralized here to avoid duplication with workers.
  *
@@ -98,7 +89,10 @@ export const processFiles = async (
   const startTime = process.hrtime.bigint();
   let files: ProcessedFile[];
 
-  if (needsWorkerProcessing(config)) {
+  // Only compress (tree-sitter) and removeComments (AST manipulation) justify worker thread overhead
+  const useWorkers = config.output.compress || config.output.removeComments;
+
+  if (useWorkers) {
     // Phase 1: Heavy processing via workers (removeComments, compress)
     logger.trace(`Starting file processing for ${rawFiles.length} files using worker pool`);
 
