@@ -24,7 +24,6 @@ export const truncateBase64Content = (content: string): string => {
 
   // Reset lastIndex for global regexes (they are stateful)
   dataUriPattern.lastIndex = 0;
-  standaloneBase64Pattern.lastIndex = 0;
 
   // Replace data URIs
   processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
@@ -32,18 +31,43 @@ export const truncateBase64Content = (content: string): string => {
     return `data:${mimeType}${params || ''};base64,${preview}...`;
   });
 
-  // Replace standalone base64 strings
-  processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
-    // Check if this looks like actual base64 (not just a long string)
-    if (isLikelyBase64(base64String)) {
-      const preview = base64String.substring(0, TRUNCATION_LENGTH);
-      return `${preview}...`;
-    }
-    return match;
-  });
+  // Standalone base64 requires MIN_BASE64_LENGTH_STANDALONE (256) consecutive base64 chars,
+  // which can only appear on lines at least that long. Skip the expensive global regex
+  // for files where every line is shorter. This avoids ~80ms of regex scanning for typical
+  // codebases where ~80% of files have no lines >= 256 chars.
+  if (hasLineWithMinLength(processedContent, MIN_BASE64_LENGTH_STANDALONE)) {
+    standaloneBase64Pattern.lastIndex = 0;
+
+    // Replace standalone base64 strings
+    processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
+      // Check if this looks like actual base64 (not just a long string)
+      if (isLikelyBase64(base64String)) {
+        const preview = base64String.substring(0, TRUNCATION_LENGTH);
+        return `${preview}...`;
+      }
+      return match;
+    });
+  }
 
   return processedContent;
 };
+
+/**
+ * Fast check for whether any line in the content is at least `minLen` characters long.
+ * Uses indexOf to scan for newlines, returning early on the first long line found.
+ */
+function hasLineWithMinLength(content: string, minLen: number): boolean {
+  let lineStart = 0;
+  let pos = content.indexOf('\n');
+  while (pos !== -1) {
+    if (pos - lineStart >= minLen) {
+      return true;
+    }
+    lineStart = pos + 1;
+    pos = content.indexOf('\n', lineStart);
+  }
+  return content.length - lineStart >= minLen;
+}
 
 /**
  * Checks if a string is likely to be base64 encoded data
