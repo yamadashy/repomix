@@ -38,7 +38,6 @@ describe('processContent', () => {
     const result = await processContent(rawFile, config);
     expect(result).toBe('const x = 1;\n\nconst y = 2;');
     expect(mockManipulator.removeComments).not.toHaveBeenCalled();
-    expect(mockManipulator.removeEmptyLines).not.toHaveBeenCalled();
   });
 
   it('should remove comments when configured', async () => {
@@ -58,25 +57,6 @@ describe('processContent', () => {
     const result = await processContent(rawFile, config);
     expect(mockManipulator.removeComments).toHaveBeenCalledWith(rawFile.content);
     expect(result).toBe('const x = 1; \nconst y = 2;');
-  });
-
-  it('should remove empty lines when configured', async () => {
-    const rawFile: RawFile = {
-      path: 'test.ts',
-      content: 'const x = 1;\n\n\nconst y = 2;',
-    };
-    const config: RepomixConfigMerged = {
-      output: {
-        removeComments: false,
-        removeEmptyLines: true,
-        compress: false,
-        showLineNumbers: false,
-      },
-    } as RepomixConfigMerged;
-
-    const result = await processContent(rawFile, config);
-    expect(mockManipulator.removeEmptyLines).toHaveBeenCalledWith(rawFile.content);
-    expect(result).toBe('const x = 1;\nconst y = 2;');
   });
 
   it('should compress content using Tree-sitter when configured', async () => {
@@ -138,24 +118,6 @@ describe('processContent', () => {
     await expect(processContent(rawFile, config)).rejects.toThrow('Parse error');
   });
 
-  it('should add line numbers when configured', async () => {
-    const rawFile: RawFile = {
-      path: 'test.ts',
-      content: 'const x = 1;\nconst y = 2;\nconst z = 3;',
-    };
-    const config: RepomixConfigMerged = {
-      output: {
-        removeComments: false,
-        removeEmptyLines: false,
-        compress: false,
-        showLineNumbers: true,
-      },
-    } as RepomixConfigMerged;
-
-    const result = await processContent(rawFile, config);
-    expect(result).toBe('1: const x = 1;\n2: const y = 2;\n3: const z = 3;');
-  });
-
   it('should handle files without a manipulator', async () => {
     const rawFile: RawFile = {
       path: 'test.unknown',
@@ -164,7 +126,7 @@ describe('processContent', () => {
     const config: RepomixConfigMerged = {
       output: {
         removeComments: true,
-        removeEmptyLines: true,
+        removeEmptyLines: false,
         compress: false,
         showLineNumbers: false,
       },

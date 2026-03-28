@@ -89,6 +89,13 @@ describe('truncateBase64Content', () => {
     expect(result).toBe('const paddedData = "DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg...";');
   });
 
+  it('should produce consistent results on consecutive calls (regex lastIndex safety)', () => {
+    const input = `const img = "data:image/png;base64,${longBase64}";`;
+    const result1 = truncateBase64Content(input);
+    const result2 = truncateBase64Content(input);
+    expect(result1).toBe(result2);
+  });
+
   it('should preserve medium-length base64-like strings under 256 chars', () => {
     // 60-char string that previously would have been truncated
     const mediumString = 'VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZy4=';
