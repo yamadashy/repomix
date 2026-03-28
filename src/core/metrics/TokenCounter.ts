@@ -1,7 +1,8 @@
 import { logger } from '../../shared/logger.js';
 
 // Supported token encoding types (compatible with tiktoken encoding names)
-export type TokenEncoding = 'o200k_base' | 'cl100k_base' | 'p50k_base' | 'r50k_base';
+export const TOKEN_ENCODINGS = ['o200k_base', 'cl100k_base', 'p50k_base', 'r50k_base'] as const;
+export type TokenEncoding = (typeof TOKEN_ENCODINGS)[number];
 
 // Lazy-loaded countTokens functions keyed by encoding
 const encodingModules = new Map<string, (text: string) => number>();
@@ -44,21 +45,8 @@ export class TokenCounter {
     }
 
     try {
-      // Call countTokens without options to avoid processSpecialTokens overhead.
-      // Files with special token sequences (<|endoftext|> etc.) are rare (~0.1%)
-      // and handled via try-catch fallback.
       return this.countFn(content);
     } catch {
-      // Fallback: try with allowedSpecial for files containing special tokens
-      try {
-        const mod = encodingModules.get(this.encodingName);
-        if (mod) {
-          return mod(content);
-        }
-      } catch {
-        // ignore
-      }
-
       if (filePath) {
         logger.warn(`Failed to count tokens. path: ${filePath}`);
       } else {
