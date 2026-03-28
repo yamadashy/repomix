@@ -7,13 +7,13 @@ $ARGUMENTS
 
 If REPO and PR_NUMBER are not provided above, use `gh pr view` to detect the current PR.
 
-Spawn 6 agents in parallel, each reviewing the PR diff from a different angle:
-- **Agent 1 — Code quality**: Bugs, logic errors, edge cases, code smells
-- **Agent 2 — Security**: Vulnerabilities, injection risks, secret exposure, unsafe patterns
-- **Agent 3 — Performance**: Inefficiencies, resource leaks, unnecessary allocations
-- **Agent 4 — Test coverage**: Missing tests, untested edge cases, test quality
-- **Agent 5 — Conventions**: Project conventions (.agents/rules/base.md), naming, structure
-- **Agent 6 — Holistic review**: Overall design concerns, side effects, integration risks, and premortem analysis (potential failure scenarios, deployment risks)
+Spawn 6 review agents in parallel, each using the corresponding agent definition from `.agents/agents/`:
+- **review-code-quality**: Bugs, logic errors, edge cases, code smells
+- **review-security**: Vulnerabilities, injection risks, secret exposure, unsafe patterns
+- **review-performance**: Inefficiencies, resource leaks, unnecessary allocations
+- **review-test-coverage**: Missing tests, untested edge cases, test quality
+- **review-conventions**: Project conventions, naming, structure
+- **review-holistic**: Overall design concerns, side effects, integration risks, and premortem analysis
 
 Each agent should only report noteworthy findings. After all agents report back, review their findings and keep only what you also deem noteworthy. Be constructive and helpful in your feedback.
 
