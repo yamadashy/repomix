@@ -99,6 +99,20 @@ export const pack = async (
   // These load during file search (~175ms) and are cached before output generation.
   preloadOutputDeps();
 
+  // Pre-initialize security worker pool before file search to maximize warmup overlap.
+  // Secretlint module loading takes ~150ms in the worker thread. By starting it here,
+  // the module loading overlaps with file search (~300ms), so the worker is fully
+  // initialized by the time security check tasks arrive after file collection.
+  // Previously this was created after search, giving only ~50ms of overlap (collection time).
+  // Use a conservative task estimate; Tinypool creates workers lazily based on actual demand.
+  const securityTaskRunner = config.security.enableSecurityCheck
+    ? deps.createSecurityTaskRunner(concurrency * 100)
+    : undefined;
+
+  const _securityWarmupPromise = securityTaskRunner
+    ?.run({ filePath: 'warmup.txt', content: '', type: 'file' })
+    .catch(() => null);
+
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
@@ -125,14 +139,6 @@ export const pack = async (
     rootDir,
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
-
-  const securityTaskRunner = config.security.enableSecurityCheck
-    ? deps.createSecurityTaskRunner(allFilePaths.length)
-    : undefined;
-
-  const _securityWarmupPromise = securityTaskRunner
-    ?.run({ filePath: 'warmup.txt', content: '', type: 'file' })
-    .catch(() => null);
 
   try {
     // Run file collection and git operations in parallel since they are independent:
@@ -163,8 +169,10 @@ export const pack = async (
         deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, securityTaskRunner),
       );
 
-    // Clean up security workers immediately to free resources for subsequent stages
-    await securityTaskRunner?.cleanup();
+    // Unref security workers so they don't block process exit, but avoid awaiting
+    // pool.destroy() which blocks the pipeline for ~100-200ms while terminating threads.
+    // Workers will terminate on their own via idle timeout (100ms).
+    securityTaskRunner?.unref();
 
     // Process files (remove comments, etc.)
     progressCallback('Processing files...');

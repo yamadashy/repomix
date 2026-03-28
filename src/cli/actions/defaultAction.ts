@@ -9,13 +9,11 @@ import {
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
-import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { reportResults } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
-import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
 
@@ -66,6 +64,10 @@ export const runDefaultAction = async (
 
   // Validate skill generation options and prompt for location
   if (config.skillGenerate !== undefined) {
+    // Lazy-load skill modules (~26ms skillUtils + ~55ms skillPrompts via @clack/prompts)
+    // since --skill-generate is used in <5% of runs.
+    const { generateDefaultSkillName } = await import('../../core/skill/skillUtils.js');
+
     // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
     cliOptions.skillName ??=
       typeof config.skillGenerate === 'string'
@@ -73,13 +75,16 @@ export const runDefaultAction = async (
         : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
 
     // Determine skill directory
-    if (cliOptions.skillOutput && !cliOptions.skillDir) {
-      // Non-interactive mode: use provided path directly
-      cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
-    } else if (!cliOptions.skillDir) {
-      // Interactive mode: prompt for skill location
-      const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
-      cliOptions.skillDir = promptResult.skillDir;
+    if (!cliOptions.skillDir) {
+      const { promptSkillLocation, resolveAndPrepareSkillDir } = await import('../prompts/skillPrompts.js');
+      if (cliOptions.skillOutput) {
+        // Non-interactive mode: use provided path directly
+        cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
+      } else {
+        // Interactive mode: prompt for skill location
+        const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
+        cliOptions.skillDir = promptResult.skillDir;
+      }
     }
   }
 
