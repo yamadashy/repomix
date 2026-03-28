@@ -59,10 +59,12 @@ for (let i = 0; i < runs; i++) {
   }
 }
 
+if (prTimes.length === 0 || mainTimes.length === 0) {
+  console.error('All benchmark runs failed');
+  process.exit(1);
+}
+
 function stats(times) {
-  if (times.length === 0) {
-    return { median: 0, iqr: 0 };
-  }
   times.sort((a, b) => a - b);
   const median = times[Math.floor(times.length / 2)];
   const q1 = times[Math.floor(times.length * 0.25)];
