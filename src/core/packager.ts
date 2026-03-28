@@ -12,7 +12,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import { packSkill } from './skill/packSkill.js';
 
@@ -41,6 +41,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -91,11 +92,18 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap tiktoken WASM loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers tiktoken
-  // initialization in the worker thread without blocking the main pipeline.
+  // Pre-initialize worker pools to overlap module loading with subsequent pipeline stages.
+  // Metrics pool: tiktoken WASM loading overlaps with file collection + security check.
+  // Security pool: secretlint module loading overlaps with file collection.
   const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0); // Suppress unhandled rejection; errors surface when awaited
+  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0);
+
+  const securityTaskRunner = config.security.enableSecurityCheck
+    ? deps.createSecurityTaskRunner(allFilePaths.length)
+    : undefined;
+  const securityWarmupPromise = securityTaskRunner
+    ?.run({ filePath: 'warmup.txt', content: '', type: 'file' })
+    .catch(() => null);
 
   try {
     progressCallback('Collecting files...');
@@ -112,19 +120,24 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Get git diffs if enabled - run this before security check
-    progressCallback('Getting git diffs...');
-    const gitDiffResult = await deps.getGitDiffs(rootDirs, config);
+    // Get git diffs and logs in parallel - both are independent git operations
+    progressCallback('Getting git metadata...');
+    const [gitDiffResult, gitLogResult] = await Promise.all([
+      deps.getGitDiffs(rootDirs, config),
+      deps.getGitLogs(rootDirs, config),
+    ]);
 
-    // Get git logs if enabled - run this before security check
-    progressCallback('Getting git logs...');
-    const gitLogResult = await deps.getGitLogs(rootDirs, config);
+    // Ensure security worker pool is warmed up before starting security check
+    await securityWarmupPromise;
 
     // Run security check and get filtered safe files
     const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       await withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, securityTaskRunner),
       );
+
+    // Clean up security workers immediately to free resources for subsequent stages
+    await securityTaskRunner?.cleanup();
 
     // Process files (remove comments, etc.)
     progressCallback('Processing files...');

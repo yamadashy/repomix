@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import { initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -13,14 +13,26 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
+export const createSecurityTaskRunner = (
+  numOfTasks: number,
+  deps = { initTaskRunner },
+): TaskRunner<SecurityCheckTask, SuspiciousFileResult | null> => {
+  return deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
+    numOfTasks,
+    workerType: 'securityCheck',
+    runtime: 'worker_threads',
+  });
+};
+
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
   progressCallback: RepomixProgressCallback = () => {},
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
-  deps = {
-    initTaskRunner,
-  },
+  deps: {
+    initTaskRunner?: typeof initTaskRunner;
+    taskRunner?: TaskRunner<SecurityCheckTask, SuspiciousFileResult | null>;
+  } = {},
 ): Promise<SuspiciousFileResult[]> => {
   const gitDiffTasks: SecurityCheckTask[] = [];
   const gitLogTasks: SecurityCheckTask[] = [];
@@ -55,11 +67,15 @@ export const runSecurityCheck = async (
     }
   }
 
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
-    numOfTasks: rawFiles.length + gitDiffTasks.length + gitLogTasks.length,
-    workerType: 'securityCheck',
-    runtime: 'worker_threads',
-  });
+  const ownTaskRunner = !deps.taskRunner;
+  const createRunner = deps.initTaskRunner ?? initTaskRunner;
+  const taskRunner =
+    deps.taskRunner ??
+    createRunner<SecurityCheckTask, SuspiciousFileResult | null>({
+      numOfTasks: rawFiles.length + gitDiffTasks.length + gitLogTasks.length,
+      workerType: 'securityCheck',
+      runtime: 'worker_threads',
+    });
   const fileTasks = rawFiles.map(
     (file) =>
       ({
@@ -99,7 +115,9 @@ export const runSecurityCheck = async (
     logger.error('Error during security check:', error);
     throw error;
   } finally {
-    // Always cleanup worker pool
-    await taskRunner.cleanup();
+    // Only cleanup worker pool if we created it (not pre-created)
+    if (ownTaskRunner) {
+      await taskRunner.cleanup();
+    }
   }
 };
