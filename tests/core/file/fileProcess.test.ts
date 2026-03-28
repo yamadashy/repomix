@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { FileManipulator } from '../../../src/core/file/fileManipulate.js';
-import { applyLightweightTransforms, processFiles } from '../../../src/core/file/fileProcess.js';
+import {
+  applyPostCompressTransforms,
+  applyPreCompressTransforms,
+  processFiles,
+} from '../../../src/core/file/fileProcess.js';
 import type { ProcessedFile, RawFile } from '../../../src/core/file/fileTypes.js';
 import type { FileProcessTask } from '../../../src/core/file/workers/fileProcessWorker.js';
 import fileProcessWorker from '../../../src/core/file/workers/fileProcessWorker.js';
@@ -79,7 +83,25 @@ describe('fileProcess', () => {
     });
   });
 
-  describe('applyLightweightTransforms', () => {
+  describe('applyPreCompressTransforms', () => {
+    it('should truncate base64 when configured', () => {
+      const base64 =
+        'DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtgharP9Bk+Y4it0vccQWaLsNX6H0RpjrPY/SJHbJG22wAlSm+Uud4DKE1yl7zhBitQdZq/5AkuU3idwucMMVZ7oMXqDzRZfqPI7RI3XIGmy/AVOl+Eqc7zGD1ih6zR9htAZYqv1PkeQ2iNstf8IUZrkLXa/yRJbpO43QInTHGWu+AFKk90mb7jCC1Sd5zB5gswVXqfxOkOM1h9osfsETZbgKXK7xQ5XoOozfIXPGGGq9D1Gj9kia7T+B1CZ4yx1vsgRWqPtNn+I0htkrfcASZLcJW63wQpTnOYveIHLFF2m8DlCi9UeZ7D6A==';
+      const files: ProcessedFile[] = [{ path: 'test.js', content: `const img = "${base64}";` }];
+      const config = createMockConfig({
+        output: {
+          truncateBase64: true,
+        },
+      });
+
+      const result = applyPreCompressTransforms(files, config, {
+        getFileManipulator: mockGetFileManipulator,
+      });
+
+      expect(result[0].content).toContain('...');
+      expect(result[0].content.length).toBeLessThan(files[0].content.length);
+    });
+
     it('should remove empty lines when configured', () => {
       const files: ProcessedFile[] = [{ path: 'test.js', content: 'line1\n\nline2\n\nline3' }];
       const config = createMockConfig({
@@ -88,20 +110,35 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyLightweightTransforms(files, config, () => {}, {
+      const result = applyPreCompressTransforms(files, config, {
         getFileManipulator: mockGetFileManipulator,
       });
 
       expect(result).toEqual([{ path: 'test.js', content: 'line1\nline2\nline3' }]);
     });
 
+    it('should not remove empty lines for files without a manipulator', () => {
+      const files: ProcessedFile[] = [{ path: 'test.unknown', content: 'line1\n\nline2' }];
+      const config = createMockConfig({
+        output: {
+          removeEmptyLines: true,
+        },
+      });
+
+      const result = applyPreCompressTransforms(files, config, {
+        getFileManipulator: mockGetFileManipulator,
+      });
+
+      expect(result).toEqual([{ path: 'test.unknown', content: 'line1\n\nline2' }]);
+    });
+  });
+
+  describe('applyPostCompressTransforms', () => {
     it('should trim content', () => {
       const files: ProcessedFile[] = [{ path: 'test.js', content: '  hello  \n' }];
       const config = createMockConfig();
 
-      const result = applyLightweightTransforms(files, config, () => {}, {
-        getFileManipulator: mockGetFileManipulator,
-      });
+      const result = applyPostCompressTransforms(files, config, () => {});
 
       expect(result).toEqual([{ path: 'test.js', content: 'hello' }]);
     });
@@ -114,9 +151,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyLightweightTransforms(files, config, () => {}, {
-        getFileManipulator: mockGetFileManipulator,
-      });
+      const result = applyPostCompressTransforms(files, config, () => {});
 
       expect(result).toEqual([{ path: 'test.txt', content: '1: Line 1\n2: Line 2\n3: Line 3' }]);
     });
@@ -129,9 +164,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyLightweightTransforms(files, config, () => {}, {
-        getFileManipulator: mockGetFileManipulator,
-      });
+      const result = applyPostCompressTransforms(files, config, () => {});
 
       expect(result).toEqual([{ path: 'test.txt', content: 'Line 1\nLine 2\nLine 3' }]);
     });
@@ -144,9 +177,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyLightweightTransforms(files, config, () => {}, {
-        getFileManipulator: mockGetFileManipulator,
-      });
+      const result = applyPostCompressTransforms(files, config, () => {});
 
       expect(result).toEqual([{ path: 'empty.txt', content: '1: ' }]);
     });
@@ -160,9 +191,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyLightweightTransforms(files, config, () => {}, {
-        getFileManipulator: mockGetFileManipulator,
-      });
+      const result = applyPostCompressTransforms(files, config, () => {});
 
       const lines = result[0].content.split('\n');
       expect(lines[0]).toBe('  1: Line');
@@ -179,44 +208,9 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = applyLightweightTransforms(files, config, () => {}, {
-        getFileManipulator: mockGetFileManipulator,
-      });
+      const result = applyPostCompressTransforms(files, config, () => {});
 
       expect(result).toEqual([{ path: 'test.txt', content: 'Line 1\nLine 2' }]);
-    });
-
-    it('should truncate base64 when configured', () => {
-      const base64 =
-        'DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtgharP9Bk+Y4it0vccQWaLsNX6H0RpjrPY/SJHbJG22wAlSm+Uud4DKE1yl7zhBitQdZq/5AkuU3idwucMMVZ7oMXqDzRZfqPI7RI3XIGmy/AVOl+Eqc7zGD1ih6zR9htAZYqv1PkeQ2iNstf8IUZrkLXa/yRJbpO43QInTHGWu+AFKk90mb7jCC1Sd5zB5gswVXqfxOkOM1h9osfsETZbgKXK7xQ5XoOozfIXPGGGq9D1Gj9kia7T+B1CZ4yx1vsgRWqPtNn+I0htkrfcASZLcJW63wQpTnOYveIHLFF2m8DlCi9UeZ7D6A==';
-      const files: ProcessedFile[] = [{ path: 'test.js', content: `const img = "${base64}";` }];
-      const config = createMockConfig({
-        output: {
-          truncateBase64: true,
-        },
-      });
-
-      const result = applyLightweightTransforms(files, config, () => {}, {
-        getFileManipulator: mockGetFileManipulator,
-      });
-
-      expect(result[0].content).toContain('...');
-      expect(result[0].content.length).toBeLessThan(files[0].content.length);
-    });
-
-    it('should not remove empty lines for files without a manipulator', () => {
-      const files: ProcessedFile[] = [{ path: 'test.unknown', content: 'line1\n\nline2' }];
-      const config = createMockConfig({
-        output: {
-          removeEmptyLines: true,
-        },
-      });
-
-      const result = applyLightweightTransforms(files, config, () => {}, {
-        getFileManipulator: mockGetFileManipulator,
-      });
-
-      expect(result).toEqual([{ path: 'test.unknown', content: 'line1\n\nline2' }]);
     });
   });
 });
