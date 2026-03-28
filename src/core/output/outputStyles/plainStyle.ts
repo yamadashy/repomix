@@ -1,10 +1,14 @@
+import type { RenderContext } from '../outputGeneratorTypes.js';
+
 const PLAIN_SEPARATOR = '='.repeat(16);
 const PLAIN_LONG_SEPARATOR = '='.repeat(64);
 
-export const getPlainTemplate = () => {
-  return `
-{{#if fileSummaryEnabled}}
-{{{generationHeader}}}
+export const renderPlain = (ctx: RenderContext): string[] => {
+  const parts: string[] = [];
+
+  if (ctx.fileSummaryEnabled) {
+    parts.push(
+      `${ctx.generationHeader}
 
 ${PLAIN_LONG_SEPARATOR}
 File Summary
@@ -12,11 +16,11 @@ ${PLAIN_LONG_SEPARATOR}
 
 Purpose:
 --------
-{{{summaryPurpose}}}
+${ctx.summaryPurpose}
 
 File Format:
 ------------
-{{{summaryFileFormat}}}
+${ctx.summaryFileFormat}
 5. Multiple file entries, each consisting of:
   a. A separator line (================)
   b. The file path (File: path/to/file)
@@ -26,84 +30,92 @@ File Format:
 
 Usage Guidelines:
 -----------------
-{{{summaryUsageGuidelines}}}
+${ctx.summaryUsageGuidelines}
 
 Notes:
 ------
-{{{summaryNotes}}}
+${ctx.summaryNotes}
 
-{{/if}}
+`,
+    );
+  }
 
-{{#if headerText}}
+  if (ctx.headerText) {
+    parts.push(`
 ${PLAIN_LONG_SEPARATOR}
 User Provided Header
 ${PLAIN_LONG_SEPARATOR}
-{{{headerText}}}
+${ctx.headerText}
 
-{{/if}}
-{{#if directoryStructureEnabled}}
-${PLAIN_LONG_SEPARATOR}
+`);
+  }
+
+  if (ctx.directoryStructureEnabled) {
+    parts.push(`${PLAIN_LONG_SEPARATOR}
 Directory Structure
 ${PLAIN_LONG_SEPARATOR}
-{{{treeString}}}
+${ctx.treeString}
 
-{{/if}}
-{{#if filesEnabled}}
-${PLAIN_LONG_SEPARATOR}
-Files
-${PLAIN_LONG_SEPARATOR}
+`);
+  }
 
-{{#each processedFiles}}
-${PLAIN_SEPARATOR}
-File: {{{this.path}}}
-${PLAIN_SEPARATOR}
-{{{this.content}}}
+  if (ctx.filesEnabled) {
+    parts.push(PLAIN_LONG_SEPARATOR, '\nFiles\n', PLAIN_LONG_SEPARATOR, '\n\n');
+    // Push individual fragments instead of template literals to avoid creating
+    // intermediate strings containing the full file content per file.
+    for (const file of ctx.processedFiles) {
+      parts.push(PLAIN_SEPARATOR, '\nFile: ', file.path, '\n', PLAIN_SEPARATOR, '\n', file.content, '\n\n');
+    }
+  }
 
-{{/each}}
-{{/if}}
-
-{{#if gitDiffEnabled}}
-${PLAIN_LONG_SEPARATOR}
+  if (ctx.gitDiffEnabled) {
+    parts.push(`${PLAIN_LONG_SEPARATOR}
 Git Diffs
 ${PLAIN_LONG_SEPARATOR}
 ${PLAIN_SEPARATOR}
-{{{gitDiffWorkTree}}}
+${ctx.gitDiffWorkTree ?? ''}
 ${PLAIN_SEPARATOR}
 
 ${PLAIN_SEPARATOR}
 Git Diffs Staged
 ${PLAIN_SEPARATOR}
-{{{gitDiffStaged}}}
+${ctx.gitDiffStaged ?? ''}
 
-{{/if}}
+`);
+  }
 
-{{#if gitLogEnabled}}
-${PLAIN_LONG_SEPARATOR}
+  if (ctx.gitLogEnabled && ctx.gitLogCommits) {
+    parts.push(`${PLAIN_LONG_SEPARATOR}
 Git Logs
 ${PLAIN_LONG_SEPARATOR}
-{{#each gitLogCommits}}
-${PLAIN_SEPARATOR}
-Date: {{{this.date}}}
-Message: {{{this.message}}}
+`);
+    for (const commit of ctx.gitLogCommits) {
+      parts.push(`${PLAIN_SEPARATOR}
+Date: ${commit.date}
+Message: ${commit.message}
 Files:
-{{#each this.files}}
-  - {{{this}}}
-{{/each}}
-${PLAIN_SEPARATOR}
+`);
+      for (const file of commit.files) {
+        parts.push(`  - ${file}\n`);
+      }
+      parts.push(`${PLAIN_SEPARATOR}
 
-{{/each}}
+`);
+    }
+    parts.push('\n');
+  }
 
-{{/if}}
-
-{{#if instruction}}
-${PLAIN_LONG_SEPARATOR}
+  if (ctx.instruction) {
+    parts.push(`${PLAIN_LONG_SEPARATOR}
 Instruction
 ${PLAIN_LONG_SEPARATOR}
-{{{instruction}}}
-{{/if}}
+${ctx.instruction}`);
+  }
 
+  parts.push(`
 ${PLAIN_LONG_SEPARATOR}
 End of Codebase
-${PLAIN_LONG_SEPARATOR}
-`;
+${PLAIN_LONG_SEPARATOR}`);
+
+  return parts;
 };

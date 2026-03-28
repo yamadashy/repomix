@@ -22,6 +22,32 @@ interface TechStackInfo {
   configFiles: string[];
 }
 
+// Map-based framework detection: O(1) lookup per dependency name instead of sequential if-chains.
+// Each map key is the exact dependency name (or lowercased for case-insensitive ecosystems).
+const NODE_FRAMEWORK_MAP = new Map<string, string>([
+  ['react', 'React'],
+  ['react-dom', 'React'],
+  ['vue', 'Vue'],
+  ['next', 'Next.js'],
+  ['nuxt', 'Nuxt'],
+  ['@angular/core', 'Angular'],
+  ['express', 'Express'],
+  ['fastify', 'Fastify'],
+  ['hono', 'Hono'],
+  ['svelte', 'Svelte'],
+  ['typescript', 'TypeScript'],
+]);
+
+// Python package names are case-insensitive (PEP 503), so keys are lowercased.
+const PYTHON_FRAMEWORK_MAP = new Map<string, string>([
+  ['django', 'Django'],
+  ['flask', 'Flask'],
+  ['fastapi', 'FastAPI'],
+  ['pytorch', 'PyTorch'],
+  ['torch', 'PyTorch'],
+  ['tensorflow', 'TensorFlow'],
+]);
+
 // Dependency file patterns and their parsers
 const DEPENDENCY_FILES: Record<string, { language: string; parser: (content: string) => Partial<TechStackInfo> }> = {
   'package.json': { language: 'Node.js', parser: parsePackageJson },
@@ -37,6 +63,18 @@ const DEPENDENCY_FILES: Record<string, { language: string; parser: (content: str
   'build.gradle.kts': { language: 'Kotlin', parser: parseBuildGradle },
 };
 
+// Pre-compiled regex patterns shared across parsers (avoid re-creation per function call)
+const REQUIREMENTS_LINE_PATTERN = /^([a-zA-Z0-9_-]+)([=<>!~]+)?(.+)?$/;
+const TOML_DEPS_SECTION_PATTERN = /\[project\.dependencies\]([\s\S]*?)(?=\[|$)/;
+const TOML_QUOTED_DEPS_PATTERN = /"([^"]+)"/g;
+const PIPFILE_PACKAGES_PATTERN = /\[packages\]([\s\S]*?)(?=\[|$)/;
+const PIPFILE_DEP_PATTERN = /^([a-zA-Z0-9_-]+)\s*=/;
+const GO_REQUIRE_BLOCK_PATTERN = /require\s*\(([\s\S]*?)\)/;
+const GO_DEP_LINE_PATTERN = /^([^\s]+)\s+([^\s]+)/;
+const CARGO_DEPS_SECTION_PATTERN = /\[dependencies\]([\s\S]*?)(?=\[|$)/;
+const CARGO_DEP_PATTERN = /^([a-zA-Z0-9_-]+)\s*=/;
+const GRADLE_DEP_PATTERN = /(?:implementation|compile)\s*['"(]([^'"()]+)['"]/g;
+
 function parsePackageJson(content: string): Partial<TechStackInfo> {
   try {
     const pkg = JSON.parse(content);
@@ -48,17 +86,8 @@ function parsePackageJson(content: string): Partial<TechStackInfo> {
     if (pkg.dependencies) {
       for (const [name, version] of Object.entries(pkg.dependencies)) {
         dependencies.push({ name, version: String(version) });
-
-        // Detect frameworks
-        if (name === 'react' || name === 'react-dom') frameworks.push('React');
-        if (name === 'vue') frameworks.push('Vue');
-        if (name === 'next') frameworks.push('Next.js');
-        if (name === 'nuxt') frameworks.push('Nuxt');
-        if (name === '@angular/core') frameworks.push('Angular');
-        if (name === 'express') frameworks.push('Express');
-        if (name === 'fastify') frameworks.push('Fastify');
-        if (name === 'hono') frameworks.push('Hono');
-        if (name === 'svelte') frameworks.push('Svelte');
+        const fw = NODE_FRAMEWORK_MAP.get(name);
+        if (fw) frameworks.push(fw);
       }
     }
 
@@ -66,9 +95,8 @@ function parsePackageJson(content: string): Partial<TechStackInfo> {
     if (pkg.devDependencies) {
       for (const [name, version] of Object.entries(pkg.devDependencies)) {
         devDependencies.push({ name, version: String(version), isDev: true });
-
-        // Detect TypeScript
-        if (name === 'typescript') frameworks.push('TypeScript');
+        const fw = NODE_FRAMEWORK_MAP.get(name);
+        if (fw) frameworks.push(fw);
       }
     }
 
@@ -85,7 +113,7 @@ function parsePackageJson(content: string): Partial<TechStackInfo> {
     return {
       dependencies,
       devDependencies,
-      frameworks: [...new Set(frameworks)],
+      frameworks,
       packageManager,
     };
   } catch {
@@ -102,22 +130,19 @@ function parseRequirementsTxt(content: string): Partial<TechStackInfo> {
     if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('-')) continue;
 
     // Parse package==version or package>=version format
-    const match = trimmed.match(/^([a-zA-Z0-9_-]+)([=<>!~]+)?(.+)?$/);
+    const match = trimmed.match(REQUIREMENTS_LINE_PATTERN);
     if (match) {
       const name = match[1];
       const version = match[3];
       dependencies.push({ name, version });
 
-      // Detect frameworks
-      if (name.toLowerCase() === 'django') frameworks.push('Django');
-      if (name.toLowerCase() === 'flask') frameworks.push('Flask');
-      if (name.toLowerCase() === 'fastapi') frameworks.push('FastAPI');
-      if (name.toLowerCase() === 'pytorch' || name.toLowerCase() === 'torch') frameworks.push('PyTorch');
-      if (name.toLowerCase() === 'tensorflow') frameworks.push('TensorFlow');
+      const fw = PYTHON_FRAMEWORK_MAP.get(name.toLowerCase());
+      if (fw) frameworks.push(fw);
     }
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  // Skip per-parser dedup — detectTechStack() deduplicates all frameworks at the end
+  return { dependencies, frameworks };
 }
 
 function parsePyprojectToml(content: string): Partial<TechStackInfo> {
@@ -125,10 +150,11 @@ function parsePyprojectToml(content: string): Partial<TechStackInfo> {
   const frameworks: string[] = [];
 
   // Simple TOML parsing for dependencies
-  const depsMatch = content.match(/\[project\.dependencies\]([\s\S]*?)(?=\[|$)/);
+  const depsMatch = content.match(TOML_DEPS_SECTION_PATTERN);
   if (depsMatch) {
     const depsSection = depsMatch[1];
-    const depLines = depsSection.match(/"([^"]+)"/g);
+    TOML_QUOTED_DEPS_PATTERN.lastIndex = 0;
+    const depLines = depsSection.match(TOML_QUOTED_DEPS_PATTERN);
     if (depLines) {
       for (const dep of depLines) {
         const name = dep
@@ -137,26 +163,25 @@ function parsePyprojectToml(content: string): Partial<TechStackInfo> {
           .trim();
         if (name) {
           dependencies.push({ name });
-          if (name.toLowerCase() === 'django') frameworks.push('Django');
-          if (name.toLowerCase() === 'flask') frameworks.push('Flask');
-          if (name.toLowerCase() === 'fastapi') frameworks.push('FastAPI');
+          const fw = PYTHON_FRAMEWORK_MAP.get(name.toLowerCase());
+          if (fw) frameworks.push(fw);
         }
       }
     }
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 function parsePipfile(content: string): Partial<TechStackInfo> {
   const dependencies: DependencyInfo[] = [];
 
   // Simple parsing for [packages] section
-  const packagesMatch = content.match(/\[packages\]([\s\S]*?)(?=\[|$)/);
+  const packagesMatch = content.match(PIPFILE_PACKAGES_PATTERN);
   if (packagesMatch) {
     const lines = packagesMatch[1].split('\n');
     for (const line of lines) {
-      const match = line.match(/^([a-zA-Z0-9_-]+)\s*=/);
+      const match = line.match(PIPFILE_DEP_PATTERN);
       if (match) {
         dependencies.push({ name: match[1] });
       }
@@ -171,11 +196,11 @@ function parseGoMod(content: string): Partial<TechStackInfo> {
   const frameworks: string[] = [];
 
   // Parse require block
-  const requireMatch = content.match(/require\s*\(([\s\S]*?)\)/);
+  const requireMatch = content.match(GO_REQUIRE_BLOCK_PATTERN);
   if (requireMatch) {
     const lines = requireMatch[1].split('\n');
     for (const line of lines) {
-      const match = line.trim().match(/^([^\s]+)\s+([^\s]+)/);
+      const match = line.trim().match(GO_DEP_LINE_PATTERN);
       if (match) {
         const name = match[1];
         const version = match[2];
@@ -188,7 +213,7 @@ function parseGoMod(content: string): Partial<TechStackInfo> {
     }
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 function parseCargoToml(content: string): Partial<TechStackInfo> {
@@ -196,11 +221,11 @@ function parseCargoToml(content: string): Partial<TechStackInfo> {
   const frameworks: string[] = [];
 
   // Parse [dependencies] section
-  const depsMatch = content.match(/\[dependencies\]([\s\S]*?)(?=\[|$)/);
+  const depsMatch = content.match(CARGO_DEPS_SECTION_PATTERN);
   if (depsMatch) {
     const lines = depsMatch[1].split('\n');
     for (const line of lines) {
-      const match = line.match(/^([a-zA-Z0-9_-]+)\s*=/);
+      const match = line.match(CARGO_DEP_PATTERN);
       if (match) {
         const name = match[1];
         dependencies.push({ name });
@@ -213,7 +238,7 @@ function parseCargoToml(content: string): Partial<TechStackInfo> {
     }
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 function parseComposerJson(content: string): Partial<TechStackInfo> {
@@ -233,7 +258,7 @@ function parseComposerJson(content: string): Partial<TechStackInfo> {
       }
     }
 
-    return { dependencies, frameworks: [...new Set(frameworks)] };
+    return { dependencies, frameworks };
   } catch {
     return {};
   }
@@ -252,23 +277,37 @@ function parseGemfile(content: string): Partial<TechStackInfo> {
     if (name === 'sinatra') frameworks.push('Sinatra');
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 function parsePomXml(content: string): Partial<TechStackInfo> {
   const dependencies: DependencyInfo[] = [];
   const frameworks: string[] = [];
 
-  // Simple XML parsing for dependencies
-  const depMatches = content.matchAll(/<dependency>[\s\S]*?<artifactId>([^<]+)<\/artifactId>[\s\S]*?<\/dependency>/g);
-  for (const match of depMatches) {
-    const name = match[1];
-    dependencies.push({ name });
-
-    if (name.includes('spring')) frameworks.push('Spring');
+  // Line-by-line parsing instead of [\s\S]*? regex which has O(n²) backtracking potential
+  // on large pom.xml files. Tracks whether we're inside a <dependency> block and extracts
+  // <artifactId> values without any backtracking risk.
+  let inDependency = false;
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.includes('<dependency>')) {
+      inDependency = true;
+    }
+    if (inDependency && trimmed.includes('<artifactId>')) {
+      const start = trimmed.indexOf('<artifactId>') + 12;
+      const end = trimmed.indexOf('</artifactId>', start);
+      if (end > start) {
+        const name = trimmed.slice(start, end).trim();
+        dependencies.push({ name });
+        if (name.includes('spring')) frameworks.push('Spring');
+      }
+    }
+    if (trimmed.includes('</dependency>')) {
+      inDependency = false;
+    }
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 function parseBuildGradle(content: string): Partial<TechStackInfo> {
@@ -276,7 +315,8 @@ function parseBuildGradle(content: string): Partial<TechStackInfo> {
   const frameworks: string[] = [];
 
   // Parse implementation/compile dependencies
-  const depMatches = content.matchAll(/(?:implementation|compile)\s*['"(]([^'"()]+)['"]/g);
+  GRADLE_DEP_PATTERN.lastIndex = 0;
+  const depMatches = content.matchAll(GRADLE_DEP_PATTERN);
   for (const match of depMatches) {
     const dep = match[1];
     const parts = dep.split(':');
@@ -287,7 +327,7 @@ function parseBuildGradle(content: string): Partial<TechStackInfo> {
     if (dep.includes('ktor')) frameworks.push('Ktor');
   }
 
-  return { dependencies, frameworks: [...new Set(frameworks)] };
+  return { dependencies, frameworks };
 }
 
 // Version manager files and their parsers
@@ -342,7 +382,7 @@ function parseJavaVersion(content: string): RuntimeVersion[] {
 }
 
 // Configuration files to detect
-const CONFIG_FILE_PATTERNS: string[] = [
+const CONFIG_FILE_PATTERNS: ReadonlySet<string> = new Set([
   // Package managers and dependencies
   'package.json',
   'package-lock.json',
@@ -436,7 +476,7 @@ const CONFIG_FILE_PATTERNS: string[] = [
   // Git
   '.gitignore',
   '.gitattributes',
-];
+]);
 
 function parseToolVersions(content: string): RuntimeVersion[] {
   const versions: RuntimeVersion[] = [];
@@ -551,7 +591,7 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo[
     }
 
     // Check configuration files
-    if (CONFIG_FILE_PATTERNS.includes(fileName)) {
+    if (CONFIG_FILE_PATTERNS.has(fileName)) {
       result.configFiles.push(fileName);
     }
   }

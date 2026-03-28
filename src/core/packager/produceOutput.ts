@@ -13,6 +13,9 @@ import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDi
 export interface ProduceOutputResult {
   outputFiles?: string[];
   outputForMetrics: string | string[];
+  // Promise that resolves when disk write + clipboard copy complete.
+  // Returned separately so the caller can overlap metrics computation with I/O.
+  writePromise?: Promise<void>;
 }
 
 const defaultDeps = {
@@ -30,7 +33,9 @@ export const produceOutput = async (
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
   filePathsByRoot?: FilesByRoot[],
+  emptyDirPaths?: string[],
   overrideDeps: Partial<typeof defaultDeps> = {},
+  preComputedTreeString?: string,
 ): Promise<ProduceOutputResult> => {
   const deps = { ...defaultDeps, ...overrideDeps };
 
@@ -47,6 +52,7 @@ export const produceOutput = async (
       gitLogResult,
       progressCallback,
       filePathsByRoot,
+      emptyDirPaths,
       deps,
     );
   }
@@ -60,7 +66,9 @@ export const produceOutput = async (
     gitLogResult,
     progressCallback,
     filePathsByRoot,
+    emptyDirPaths,
     deps,
+    preComputedTreeString,
   );
 };
 
@@ -74,6 +82,7 @@ const generateAndWriteSplitOutput = async (
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
   filePathsByRoot: FilesByRoot[] | undefined,
+  emptyDirPaths: string[] | undefined,
   deps: typeof defaultDeps,
 ): Promise<ProduceOutputResult> => {
   const parts = await withMemoryLogging('Generate Split Output', async () => {
@@ -87,6 +96,7 @@ const generateAndWriteSplitOutput = async (
       gitLogResult,
       progressCallback,
       filePathsByRoot,
+      emptyDirPaths,
       deps: {
         generateOutput: deps.generateOutput,
       },
@@ -94,7 +104,9 @@ const generateAndWriteSplitOutput = async (
   });
 
   progressCallback('Writing output files...');
-  await withMemoryLogging('Write Split Output', async () => {
+  // Start writes but don't await — return the promise so the caller
+  // can overlap metrics computation with disk I/O.
+  const writePromise = withMemoryLogging('Write Split Output', async () => {
     await Promise.all(
       parts.map((part) => {
         const partConfig = {
@@ -113,6 +125,7 @@ const generateAndWriteSplitOutput = async (
   return {
     outputFiles: parts.map((p) => p.filePath),
     outputForMetrics: parts.map((p) => p.content),
+    writePromise,
   };
 };
 
@@ -125,18 +138,41 @@ const generateAndWriteSingleOutput = async (
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
   filePathsByRoot: FilesByRoot[] | undefined,
+  emptyDirPaths: string[] | undefined,
   deps: typeof defaultDeps,
+  preComputedTreeString?: string,
 ): Promise<ProduceOutputResult> => {
+  // generateOutput returns string[] for native styles (xml, markdown, plain) to avoid
+  // allocating a single 3-5MB contiguous string. Parsable styles (parsable-xml, json)
+  // still return string since they use library serializers that produce strings.
   const output = await withMemoryLogging('Generate Output', () =>
-    deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult, filePathsByRoot),
+    deps.generateOutput(
+      rootDirs,
+      config,
+      processedFiles,
+      allFilePaths,
+      gitDiffResult,
+      gitLogResult,
+      filePathsByRoot,
+      emptyDirPaths,
+      undefined,
+      preComputedTreeString,
+    ),
   );
 
   progressCallback('Writing output file...');
-  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+  // Start write + clipboard but don't await — return the promise so the caller
+  // can overlap metrics computation (output token counting) with disk I/O.
+  // writeOutputToDisk and copyToClipboardIfEnabled both accept string | string[].
+  const writePromise = Promise.all([
+    withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config)),
+    deps.copyToClipboardIfEnabled(output, progressCallback, config),
+  ]).then(() => {});
 
-  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
-
+  // For metrics, pass through as-is (string | string[]). The caller (packager.ts)
+  // and calculateMetrics already handle both types via outputParts normalization.
   return {
     outputForMetrics: output,
+    writePromise,
   };
 };

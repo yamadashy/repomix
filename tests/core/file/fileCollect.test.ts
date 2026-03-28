@@ -23,9 +23,10 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
+      readRawFileCached: mockReadRawFile,
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       rawFiles: [
         { path: 'file1.txt', content: 'file content' },
         { path: 'file2.txt', content: 'file content' },
@@ -33,8 +34,8 @@ describe('fileCollect', () => {
       skippedFiles: [],
     });
     expect(mockReadRawFile).toHaveBeenCalledTimes(2);
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/file1.txt'), MAX_FILE_SIZE);
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/file2.txt'), MAX_FILE_SIZE);
+    expect(mockReadRawFile).toHaveBeenCalledWith(path.join('/root', 'file1.txt'), MAX_FILE_SIZE, expect.any(Object));
+    expect(mockReadRawFile).toHaveBeenCalledWith(path.join('/root', 'file2.txt'), MAX_FILE_SIZE, expect.any(Object));
   });
 
   it('should skip binary files', async () => {
@@ -51,9 +52,10 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
+      readRawFileCached: mockReadRawFile,
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       rawFiles: [{ path: 'text.txt', content: 'file content' }],
       skippedFiles: [{ path: 'binary.bin', reason: 'binary-extension' }],
     });
@@ -73,9 +75,10 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
+      readRawFileCached: mockReadRawFile,
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       rawFiles: [{ path: 'normal.txt', content: 'file content' }],
       skippedFiles: [{ path: 'large.txt', reason: 'size-limit' }],
     });
@@ -100,16 +103,25 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
+      readRawFileCached: mockReadRawFile,
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       rawFiles: [{ path: 'small.txt', content: 'file content' }],
       skippedFiles: [{ path: 'medium.txt', reason: 'size-limit' }],
     });
 
     // Verify readRawFile is called with custom maxFileSize
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/medium.txt'), customMaxFileSize);
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/small.txt'), customMaxFileSize);
+    expect(mockReadRawFile).toHaveBeenCalledWith(
+      path.join('/root', 'medium.txt'),
+      customMaxFileSize,
+      expect.any(Object),
+    );
+    expect(mockReadRawFile).toHaveBeenCalledWith(
+      path.join('/root', 'small.txt'),
+      customMaxFileSize,
+      expect.any(Object),
+    );
   });
 
   it('should handle file read errors', async () => {
@@ -121,9 +133,10 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
+      readRawFileCached: mockReadRawFile,
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       rawFiles: [],
       skippedFiles: [{ path: 'error.txt', reason: 'encoding-error' }],
     });
@@ -139,8 +152,11 @@ describe('fileCollect', () => {
 
     await collectFiles(mockFilePaths, mockRootDir, mockConfig, mockProgress, {
       readRawFile: mockReadRawFile,
+      readRawFileCached: mockReadRawFile,
     });
 
-    expect(mockProgress).toHaveBeenCalledTimes(2);
+    // Progress callback is throttled to every 50 files + the last file.
+    // For 2 files, only the last file (completedTasks === totalTasks) fires.
+    expect(mockProgress).toHaveBeenCalledTimes(1);
   });
 });

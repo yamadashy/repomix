@@ -95,6 +95,7 @@ describe.runIf(!isWindows)('packager integration', () => {
         collectFiles: (filePaths, rootDir, config, progressCallback) => {
           return collectFiles(filePaths, rootDir, config, progressCallback, {
             readRawFile,
+            readRawFileCached: readRawFile,
           });
         },
         processFiles: async (rawFiles, config, _progressCallback) => {
@@ -104,6 +105,8 @@ describe.runIf(!isWindows)('packager integration', () => {
           }
           return processedFiles;
         },
+        createSecurityWorkerPool: async () => undefined,
+        createMetricsWorkerPool: async () => ({ run: async () => [], cleanup: async () => {} }),
         validateFileSafety: (rawFiles, progressCallback, config) => {
           const gitDiffMock: GitDiffResult = {
             workTreeDiffContent: '',
@@ -115,10 +118,6 @@ describe.runIf(!isWindows)('packager integration', () => {
           });
         },
         produceOutput,
-        createMetricsTaskRunner: () => ({
-          run: async () => 0,
-          cleanup: async () => {},
-        }),
         calculateMetrics: async (
           processedFiles,
           _output,

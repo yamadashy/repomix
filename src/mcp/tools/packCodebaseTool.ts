@@ -4,7 +4,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { runCli } from '../../cli/cliRun.js';
 import type { CliOptions } from '../../cli/types.js';
-import { defaultFilePathMap } from '../../config/configSchema.js';
+import { defaultFilePathMap } from '../../config/configDefaults.js';
 import {
   buildMcpToolErrorResponse,
   convertErrorToJson,
@@ -97,6 +97,7 @@ export const registerPackCodebaseTool = (mcpServer: McpServer) => {
           securityCheck: true,
           topFilesLen: topFilesLength,
           quiet: true,
+          _inProcess: true,
         } as CliOptions;
 
         const result = await runCli(['.'], directory, cliOptions);

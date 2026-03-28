@@ -1,16 +1,14 @@
+import { statSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import XMLBuilder from 'fast-xml-builder';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
-import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
+import { listDirectories, listDirectoriesAndFiles, listFiles, searchFiles } from '../file/fileSearch.js';
 import { type FilesByRoot, generateTreeString, generateTreeStringWithRoots } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
-import { sortOutputFiles } from './outputSort.js';
 import {
   generateHeader,
   generateSummaryFileFormat,
@@ -19,93 +17,149 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
-import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { getXmlTemplate } from './outputStyles/xmlStyle.js';
 
-// Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
+import { renderMarkdown } from './outputStyles/markdownStyle.js';
+import { renderPlain } from './outputStyles/plainStyle.js';
+import { renderXml } from './outputStyles/xmlStyle.js';
 
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
-  const cached = compiledTemplateCache.get(style);
-  if (cached) {
-    return cached;
-  }
+/**
+ * Single-pass analysis over all file contents to compute both line counts and markdown delimiter.
+ * Combines newline counting and backtick tracking into one character-level loop per file,
+ * avoiding two separate O(n) passes over the same content.
+ */
+const analyzeFileContents = (
+  processedFiles: ReadonlyArray<ProcessedFile>,
+  outputStyle: string,
+): { fileLineCounts: Record<string, number>; markdownCodeBlockDelimiter: string } => {
+  const fileLineCounts: Record<string, number> = {};
+  let maxBackticks = 0;
+  const trackBackticks = outputStyle === 'markdown';
 
-  let template: string;
-  switch (style) {
-    case 'xml':
-      template = getXmlTemplate();
-      break;
-    case 'markdown':
-      template = getMarkdownTemplate();
-      break;
-    case 'plain':
-      template = getPlainTemplate();
-      break;
-    default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
-  }
-
-  const compiled = Handlebars.compile(template);
-  compiledTemplateCache.set(style, compiled);
-  return compiled;
-};
-
-const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
-  const maxBackticks = files
-    .flatMap((file) => file.content.match(/`+/g) ?? [])
-    .reduce((max, match) => Math.max(max, match.length), 0);
-  return '`'.repeat(Math.max(3, maxBackticks + 1));
-};
-
-const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
-  const lineCounts: Record<string, number> = {};
   for (const file of processedFiles) {
-    // Count lines: empty files have 0 lines, otherwise count newlines + 1
-    // (unless the content ends with a newline, in which case the last "line" is empty)
     const content = file.content;
+
     if (content.length === 0) {
-      lineCounts[file.path] = 0;
-    } else {
-      // Count actual lines (text editor style: number of \n + 1, but trailing \n doesn't add extra line)
-      const newlineCount = (content.match(/\n/g) || []).length;
-      lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
+      fileLineCounts[file.path] = 0;
+      continue;
     }
+
+    // Single pass: count newlines and track backtick runs simultaneously
+    let newlineCount = 0;
+    let backtickRun = 0;
+
+    if (trackBackticks) {
+      for (let i = 0; i < content.length; i++) {
+        const code = content.charCodeAt(i);
+        if (code === 10) {
+          // newline
+          newlineCount++;
+          backtickRun = 0;
+        } else if (code === 96) {
+          // backtick
+          backtickRun++;
+          if (backtickRun > maxBackticks) {
+            maxBackticks = backtickRun;
+          }
+        } else {
+          backtickRun = 0;
+        }
+      }
+    } else {
+      // Non-markdown: only count newlines via indexOf (faster than charCodeAt loop)
+      let pos = content.indexOf('\n');
+      while (pos !== -1) {
+        newlineCount++;
+        pos = content.indexOf('\n', pos + 1);
+      }
+    }
+
+    fileLineCounts[file.path] = content.charCodeAt(content.length - 1) === 10 ? newlineCount : newlineCount + 1;
   }
-  return lineCounts;
+
+  return {
+    fileLineCounts,
+    markdownCodeBlockDelimiter: '`'.repeat(Math.max(3, maxBackticks + 1)),
+  };
 };
+
+// ── Summary string cache ───────────────────────────────────────────────
+// Caches config-derived summary strings across pack() calls. These strings
+// (header, purpose, guidelines, notes) depend only on the config, not on
+// file content. On warm MCP runs with the same config, this skips ~0.5ms
+// of string formatting per call.
+let _summaryCache:
+  | {
+      configRef: RepomixConfigMerged;
+      instruction: string;
+      header: string;
+      purpose: string;
+      fileFormat: string;
+      guidelines: string;
+      notes: string;
+    }
+  | undefined;
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  const outputStyle = outputGeneratorContext.config.output.style;
+
+  // Only run the full file content analysis when actually needed:
+  // - Markdown style needs backtick tracking for code block delimiters
+  // - fileLineCounts is only consumed by the skill generation path (not by any renderer)
+  // For XML (default), Plain, and JSON styles, skip the O(n) scan over all file content bytes.
+  let fileLineCounts: Record<string, number>;
+  let markdownCodeBlockDelimiter: string;
+  if (outputStyle === 'markdown') {
+    const analysis = analyzeFileContents(outputGeneratorContext.processedFiles, outputStyle);
+    fileLineCounts = analysis.fileLineCounts;
+    markdownCodeBlockDelimiter = analysis.markdownCodeBlockDelimiter;
+  } else {
+    fileLineCounts = {};
+    markdownCodeBlockDelimiter = '```';
+  }
+
+  // Cache summary strings — they only depend on config + instruction, not file content.
+  // On warm MCP runs, config reference is the same object, so identity check is sufficient.
+  const config = outputGeneratorContext.config;
+  const instruction = outputGeneratorContext.instruction;
+  if (!_summaryCache || _summaryCache.configRef !== config || _summaryCache.instruction !== instruction) {
+    _summaryCache = {
+      configRef: config,
+      instruction,
+      header: generateHeader(config, outputGeneratorContext.generationDate),
+      purpose: generateSummaryPurpose(config),
+      fileFormat: generateSummaryFileFormat(),
+      guidelines: generateSummaryUsageGuidelines(config, instruction),
+      notes: generateSummaryNotes(config),
+    };
+  }
+
   return {
-    generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
-    summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
-    summaryFileFormat: generateSummaryFileFormat(),
-    summaryUsageGuidelines: generateSummaryUsageGuidelines(
-      outputGeneratorContext.config,
-      outputGeneratorContext.instruction,
-    ),
-    summaryNotes: generateSummaryNotes(outputGeneratorContext.config),
-    headerText: outputGeneratorContext.config.output.headerText,
-    instruction: outputGeneratorContext.instruction,
+    generationHeader: _summaryCache.header,
+    summaryPurpose: _summaryCache.purpose,
+    summaryFileFormat: _summaryCache.fileFormat,
+    summaryUsageGuidelines: _summaryCache.guidelines,
+    summaryNotes: _summaryCache.notes,
+    headerText: config.output.headerText,
+    instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
-    fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
-    directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
-    filesEnabled: outputGeneratorContext.config.output.files,
-    escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
-    gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
+    fileLineCounts,
+    fileSummaryEnabled: config.output.fileSummary,
+    directoryStructureEnabled: config.output.directoryStructure,
+    filesEnabled: config.output.files,
+    markdownCodeBlockDelimiter,
+    gitDiffEnabled: config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
-    gitLogEnabled: outputGeneratorContext.config.output.git?.includeLogs,
-    gitLogContent: outputGeneratorContext.gitLogResult?.logContent,
+    gitLogEnabled: config.output.git?.includeLogs,
     gitLogCommits: outputGeneratorContext.gitLogResult?.commits,
   };
 };
 
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
+  // Lazy-load fast-xml-builder — only needed for parsable XML output,
+  // which is not the default style. Avoids ~50KB module load on every run.
+  const { default: XMLBuilder } = await import('fast-xml-builder');
   const xmlBuilder = new XMLBuilder({ ignoreAttributes: false });
   const xmlDocument = {
     repomix: {
@@ -214,21 +268,62 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
   }
 };
 
-const generateHandlebarOutput = async (
+const generateNativeOutput = async (
   config: RepomixConfigMerged,
   renderContext: RenderContext,
   processedFiles?: ProcessedFile[],
-): Promise<string> => {
+): Promise<string[]> => {
   try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
-    return `${compiledTemplate(renderContext).trim()}\n`;
+    let renderedParts: string[];
+    switch (config.output.style) {
+      case 'xml':
+        renderedParts = renderXml(renderContext);
+        break;
+      case 'markdown':
+        renderedParts = renderMarkdown(renderContext);
+        break;
+      case 'plain':
+        renderedParts = renderPlain(renderContext);
+        break;
+      default:
+        throw new RepomixError(`Unsupported output style: ${config.output.style}`);
+    }
+    // Trim leading/trailing whitespace by modifying the first and last non-empty parts
+    // instead of joining all parts into a single string. This avoids allocating the
+    // full 3-5MB output string just to trim whitespace at the boundaries.
+    if (renderedParts.length > 0) {
+      renderedParts[0] = renderedParts[0].trimStart();
+      const lastIdx = renderedParts.length - 1;
+      renderedParts[lastIdx] = renderedParts[lastIdx].trimEnd();
+      renderedParts.push('\n');
+    }
+    return renderedParts;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
       let largeFilesInfo = '';
       if (processedFiles && processedFiles.length > 0) {
-        const topFiles = processedFiles
-          .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, 5)
+        // O(n) top-5 selection instead of O(n log n) full sort — only need the 5 largest files.
+        // On error paths where memory is already stressed, avoiding a full sort matters.
+        const top5: ProcessedFile[] = [];
+        for (const file of processedFiles) {
+          if (top5.length < 5) {
+            top5.push(file);
+            // Bubble-sort insert to maintain descending order in the small array
+            for (let j = top5.length - 1; j > 0 && top5[j].content.length > top5[j - 1].content.length; j--) {
+              const tmp = top5[j];
+              top5[j] = top5[j - 1];
+              top5[j - 1] = tmp;
+            }
+          } else if (file.content.length > top5[4].content.length) {
+            top5[4] = file;
+            for (let j = 4; j > 0 && top5[j].content.length > top5[j - 1].content.length; j--) {
+              const tmp = top5[j];
+              top5[j] = top5[j - 1];
+              top5[j - 1] = tmp;
+            }
+          }
+        }
+        const topFiles = top5
           .map((f) => `  - ${f.path} (${(f.content.length / 1024 / 1024).toFixed(1)} MB)`)
           .join('\n');
         largeFilesInfo = `\n\nLargest files in this repository:\n${topFiles}`;
@@ -243,8 +338,11 @@ Please try:
         { cause: error },
       );
     }
+    if (error instanceof RepomixError) {
+      throw error;
+    }
     throw new RepomixError(
-      `Failed to compile template: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      `Failed to render output: ${error instanceof Error ? error.message : 'Unknown error'}`,
       error instanceof Error ? { cause: error } : undefined,
     );
   }
@@ -258,25 +356,28 @@ export const generateOutput = async (
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
   filePathsByRoot?: FilesByRoot[],
+  emptyDirPaths?: string[],
   deps = {
     buildOutputGeneratorContext,
-    generateHandlebarOutput,
+    generateHandlebarOutput: generateNativeOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
-    sortOutputFiles,
   },
-): Promise<string> => {
-  // Sort processed files by git change count if enabled
-  const sortedProcessedFiles = await deps.sortOutputFiles(processedFiles, config);
-
+  preComputedTreeString?: string,
+): Promise<string | string[]> => {
+  // Files are expected to be pre-sorted by the caller (packager.ts)
+  // to overlap the git command with metrics computation.
   const outputGeneratorContext = await deps.buildOutputGeneratorContext(
     rootDirs,
     config,
     allFilePaths,
-    sortedProcessedFiles,
+    processedFiles,
     gitDiffResult,
     gitLogResult,
     filePathsByRoot,
+    emptyDirPaths,
+    undefined,
+    preComputedTreeString,
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
@@ -284,16 +385,21 @@ export const generateOutput = async (
     case 'xml':
       return config.output.parsableStyle
         ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+        : deps.generateHandlebarOutput(config, renderContext, processedFiles);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':
     case 'plain':
-      return deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+      return deps.generateHandlebarOutput(config, renderContext, processedFiles);
     default:
       throw new RepomixError(`Unsupported output style: ${config.output.style}`);
   }
 };
+
+// Cache for instruction file content across pack() calls.
+// Validated by mtime+size via statSync (kernel cache hit, ~0.001ms).
+// Avoids re-reading the instruction file (~0.2ms async I/O) on every warm pack() call.
+let _instructionCache: { resolvedPath: string; mtimeMs: number; size: number; content: string } | undefined;
 
 export const buildOutputGeneratorContext = async (
   rootDirs: string[],
@@ -303,18 +409,38 @@ export const buildOutputGeneratorContext = async (
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
   filePathsByRoot?: FilesByRoot[],
+  emptyDirPaths?: string[],
   deps = {
     listDirectories,
     listFiles,
+    listDirectoriesAndFiles,
     searchFiles,
   },
+  preComputedTreeString?: string,
 ): Promise<OutputGeneratorContext> => {
   let repositoryInstruction = '';
 
   if (config.output.instructionFilePath) {
     const instructionPath = path.resolve(config.cwd, config.output.instructionFilePath);
     try {
-      repositoryInstruction = await fs.readFile(instructionPath, 'utf-8');
+      // Use statSync cache validation to avoid async readFile on warm runs
+      const stat = statSync(instructionPath);
+      if (
+        _instructionCache &&
+        _instructionCache.resolvedPath === instructionPath &&
+        _instructionCache.mtimeMs === stat.mtimeMs &&
+        _instructionCache.size === stat.size
+      ) {
+        repositoryInstruction = _instructionCache.content;
+      } else {
+        repositoryInstruction = await fs.readFile(instructionPath, 'utf-8');
+        _instructionCache = {
+          resolvedPath: instructionPath,
+          mtimeMs: stat.mtimeMs,
+          size: stat.size,
+          content: repositoryInstruction,
+        };
+      }
     } catch {
       throw new RepomixError(`Instruction file not found at ${instructionPath}`);
     }
@@ -332,23 +458,28 @@ export const buildOutputGeneratorContext = async (
 
   if (shouldUseFullTree) {
     try {
-      // Collect all directories and all files from all roots
-      const [allDirectoriesByRoot, allFilesByRoot] = await Promise.all([
-        Promise.all(rootDirs.map((rootDir) => deps.listDirectories(rootDir, config))),
-        Promise.all(rootDirs.map((rootDir) => deps.listFiles(rootDir, config))),
-      ]);
+      // Collect all directories and all files from all roots using the combined function
+      // to share prepareIgnoreContext (avoids duplicate .git/info/exclude reads + worktree checks).
+      const resultsByRoot = await Promise.all(rootDirs.map((rootDir) => deps.listDirectoriesAndFiles(rootDir, config)));
 
-      // Merge, deduplicate, and sort for deterministic output
-      const allDirectories = Array.from(new Set(allDirectoriesByRoot.flat())).sort();
-      const allRepoFiles = Array.from(new Set(allFilesByRoot.flat()));
+      // Merge and deduplicate without intermediate flatMap arrays
+      const dirSet = new Set<string>();
+      const fileSet = new Set<string>();
+      for (const result of resultsByRoot) {
+        for (const dir of result.directories) dirSet.add(dir);
+        for (const file of result.files) fileSet.add(file);
+      }
+      const allDirectories = Array.from(dirSet).sort();
+      const allRepoFiles = Array.from(fileSet);
 
       // Merge in any files that weren't part of the included files so they appear in the tree
       const includedSet = new Set(allFilePaths);
       const additionalFiles = allRepoFiles.filter((p) => !includedSet.has(p));
 
       directoryPathsForTree = allDirectories;
-      // additionalFiles is already disjoint from allFilePaths (filtered above), so no dedup needed
-      filePathsForTree = allFilePaths.concat(additionalFiles);
+      // additionalFiles is already disjoint from allFilePaths (filtered above), so no dedup needed.
+      // Skip allocation when no additional files exist (common case).
+      filePathsForTree = additionalFiles.length > 0 ? allFilePaths.concat(additionalFiles) : allFilePaths;
     } catch (error) {
       throw new RepomixError(
         `Failed to build full directory structure: ${error instanceof Error ? error.message : String(error)}`,
@@ -356,23 +487,37 @@ export const buildOutputGeneratorContext = async (
       );
     }
   } else if (config.output.directoryStructure && config.output.includeEmptyDirectories) {
-    // Default behavior: include empty directories only
-    try {
-      const results = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
-      const merged = results.flatMap((r) => r.emptyDirPaths);
-      directoryPathsForTree = [...new Set(merged)].sort();
-    } catch (error) {
-      throw new RepomixError(
-        `Failed to search for empty directories: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? { cause: error } : undefined,
-      );
+    // Use pre-computed emptyDirPaths from the initial searchFiles call if available,
+    // avoiding a redundant full filesystem scan just to get empty directory paths.
+    // Check for !== undefined (not length > 0) so that an empty array from the packager
+    // correctly indicates "no empty dirs" without triggering a redundant searchFiles call.
+    if (emptyDirPaths !== undefined) {
+      directoryPathsForTree = emptyDirPaths.length > 0 ? [...new Set(emptyDirPaths)].sort() : [];
+    } else {
+      try {
+        const results = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
+        // Await deferred empty dir promises if available, otherwise use synchronous values
+        const emptyDirResults = await Promise.all(
+          results.map((r) => r.pendingEmptyDirPaths ?? Promise.resolve(r.emptyDirPaths)),
+        );
+        const merged = emptyDirResults.flat();
+        directoryPathsForTree = [...new Set(merged)].sort();
+      } catch (error) {
+        throw new RepomixError(
+          `Failed to search for empty directories: ${error instanceof Error ? error.message : String(error)}`,
+          error instanceof Error ? { cause: error } : undefined,
+        );
+      }
     }
   }
 
-  // Generate tree string - use multi-root format if filePathsByRoot is provided
-  // generateTreeStringWithRoots handles single root case internally
+  // Use pre-computed tree string if available (computed during the parallel block to
+  // overlap with the security check, saving ~11ms from the sequential output phase).
+  // Falls back to computing here for non-default configs (full tree, empty dirs).
   let treeString: string;
-  if (filePathsByRoot) {
+  if (preComputedTreeString !== undefined) {
+    treeString = preComputedTreeString;
+  } else if (filePathsByRoot) {
     treeString = generateTreeStringWithRoots(filePathsByRoot, directoryPathsForTree);
   } else {
     // Fallback for when root info is not available

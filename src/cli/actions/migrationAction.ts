@@ -1,9 +1,18 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import * as prompts from '@clack/prompts';
 import pc from 'picocolors';
 import { getGlobalDirectory } from '../../config/globalDirectory.js';
 import { logger } from '../../shared/logger.js';
+
+// Lazy-load @clack/prompts — only needed when old Repopack files exist (extremely rare).
+// Avoids loading ~16ms of module overhead on every default pack run.
+let _prompts: typeof import('@clack/prompts') | undefined;
+const loadPrompts = async () => {
+  if (!_prompts) {
+    _prompts = await import('@clack/prompts');
+  }
+  return _prompts;
+};
 
 interface MigrationPaths {
   oldConfigPath: string;
@@ -108,6 +117,7 @@ const migrateFile = async (
 
   const exists = await fileExists(newPath);
   if (exists) {
+    const prompts = await loadPrompts();
     const shouldOverwrite = await prompts.confirm({
       message: `${description} already exists at ${newPath}. Do you want to overwrite it?`,
     });
@@ -223,14 +233,14 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
   try {
     const paths = getMigrationPaths(rootDir);
 
-    // Check if migration is needed
-    const hasOldConfig = await fileExists(paths.oldConfigPath);
-    const hasOldIgnore = await fileExists(paths.oldIgnorePath);
-    const hasOldInstruction = await fileExists(paths.oldInstructionPath);
-    const hasOldGlobalConfig = await fileExists(paths.oldGlobalConfigPath);
-    const hasOldOutput = await Promise.all(paths.oldOutputPaths.map(fileExists)).then((results) =>
-      results.some((exists) => exists),
-    );
+    // Check if migration is needed — all checks run in parallel
+    const [hasOldConfig, hasOldIgnore, hasOldInstruction, hasOldGlobalConfig, hasOldOutput] = await Promise.all([
+      fileExists(paths.oldConfigPath),
+      fileExists(paths.oldIgnorePath),
+      fileExists(paths.oldInstructionPath),
+      fileExists(paths.oldGlobalConfigPath),
+      Promise.all(paths.oldOutputPaths.map(fileExists)).then((results) => results.some((exists) => exists)),
+    ]);
 
     if (!hasOldConfig && !hasOldIgnore && !hasOldInstruction && !hasOldOutput && !hasOldGlobalConfig) {
       logger.debug('No Repopack files found to migrate.');
@@ -244,7 +254,8 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
     if (hasOldGlobalConfig) items.push('global configuration');
     migrationMessage += `${items.join(' and ')}. Would you like to migrate to ${pc.green('Repomix')}?`;
 
-    // Confirm migration with user
+    // Confirm migration with user (lazy-load prompts only when migration is actually needed)
+    const prompts = await loadPrompts();
     const shouldMigrate = await prompts.confirm({
       message: migrationMessage,
     });

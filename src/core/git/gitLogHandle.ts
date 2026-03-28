@@ -34,8 +34,23 @@ const parseGitLog = (rawLogOutput: string, recordSeparator = GIT_LOG_RECORD_SEPA
   const logEntries = rawLogOutput.split(recordSeparator).filter(Boolean);
 
   for (const entry of logEntries) {
-    // Split on both \n and \r\n to handle different line ending formats across platforms
-    const lines = entry.split(/\r?\n/).filter((line) => line.trim() !== '');
+    // Single-pass split+filter: merge split(\r?\n) + filter(trim !== '') into one loop
+    // to avoid allocating an intermediate array and a second filtered array.
+    const lines: string[] = [];
+    let pos = 0;
+    while (pos < entry.length) {
+      let nlPos = entry.indexOf('\n', pos);
+      if (nlPos === -1) nlPos = entry.length;
+      // Handle \r\n
+      const lineEnd = nlPos > pos && entry.charCodeAt(nlPos - 1) === 13 ? nlPos - 1 : nlPos;
+      if (lineEnd > pos) {
+        const line = entry.substring(pos, lineEnd);
+        if (line.trim() !== '') {
+          lines.push(line);
+        }
+      }
+      pos = nlPos + 1;
+    }
     if (lines.length === 0) continue;
 
     // First line contains date and message separated by |
@@ -46,8 +61,8 @@ const parseGitLog = (rawLogOutput: string, recordSeparator = GIT_LOG_RECORD_SEPA
     const date = firstLine.substring(0, separatorIndex);
     const message = firstLine.substring(separatorIndex + 1);
 
-    // Remaining lines are file paths
-    const files = lines.slice(1).filter((line) => line.trim() !== '');
+    // Remaining lines are file paths (already filtered for non-empty)
+    const files = lines.slice(1);
 
     commits.push({
       date,

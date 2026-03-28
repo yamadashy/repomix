@@ -27,7 +27,14 @@ describe('validateFileSafety', () => {
 
     const result = await validateFileSafety(rawFiles, progressCallback, config, undefined, undefined, deps);
 
-    expect(deps.runSecurityCheck).toHaveBeenCalledWith(rawFiles, progressCallback, undefined, undefined);
+    expect(deps.runSecurityCheck).toHaveBeenCalledWith(
+      rawFiles,
+      progressCallback,
+      undefined,
+      undefined,
+      null,
+      undefined,
+    );
     expect(deps.filterOutUntrustedFiles).toHaveBeenCalledWith(rawFiles, suspiciousFilesResults);
     expect(result).toEqual({
       safeRawFiles,

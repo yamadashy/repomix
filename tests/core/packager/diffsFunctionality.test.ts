@@ -15,6 +15,8 @@ vi.mock('../../../src/core/git/gitDiffHandle.js', () => ({
 
 vi.mock('../../../src/core/git/gitRepositoryHandle.js', () => ({
   isGitRepository: vi.fn(),
+  isGitInstalled: vi.fn().mockResolvedValue(false),
+  getFileChangeCount: vi.fn().mockResolvedValue({}),
 }));
 
 describe('Git Diffs Functionality', () => {
@@ -86,9 +88,12 @@ index 123..456 100644
       collectFiles: mockCollectFiles,
       processFiles: mockProcessFiles,
       validateFileSafety: mockValidateFileSafety,
+      createSecurityWorkerPool: vi.fn().mockResolvedValue(undefined),
+      createMetricsWorkerPool: vi
+        .fn()
+        .mockResolvedValue({ run: vi.fn().mockResolvedValue([]), cleanup: vi.fn().mockResolvedValue(undefined) }),
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
-      createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       sortPaths: mockSortPaths,
     });
 
@@ -141,9 +146,12 @@ index 123..456 100644
       collectFiles: mockCollectFiles,
       processFiles: mockProcessFiles,
       validateFileSafety: mockValidateFileSafety,
+      createSecurityWorkerPool: vi.fn().mockResolvedValue(undefined),
+      createMetricsWorkerPool: vi
+        .fn()
+        .mockResolvedValue({ run: vi.fn().mockResolvedValue([]), cleanup: vi.fn().mockResolvedValue(undefined) }),
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
-      createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       sortPaths: mockSortPaths,
     });
 

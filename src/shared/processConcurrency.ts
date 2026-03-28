@@ -12,6 +12,9 @@ export interface WorkerOptions {
   numOfTasks: number;
   workerType: WorkerType;
   runtime: WorkerRuntime;
+  // When true, set minThreads = maxThreads so all worker threads spawn immediately.
+  // Useful for pre-warming pools where workers load heavy modules at startup.
+  preWarm?: boolean;
 }
 
 /**
@@ -62,8 +65,12 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
-  const { numOfTasks, workerType, runtime = 'child_process' } = options;
-  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { numOfTasks, workerType, runtime = 'child_process', preWarm } = options;
+  const threadConfig = getWorkerThreadCount(numOfTasks);
+  const maxThreads = threadConfig.maxThreads;
+  // Pre-warm: spawn all threads immediately so they start loading heavy modules
+  // (e.g. @secretlint/core) before any tasks are submitted.
+  const minThreads = preWarm ? maxThreads : threadConfig.minThreads;
 
   // Get worker path - uses unified worker in bundled env, individual files otherwise
   const workerPath = getWorkerPath(workerType);

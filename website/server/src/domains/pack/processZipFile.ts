@@ -6,7 +6,7 @@ import { type CliOptions, runDefaultAction, setLogLevel } from 'repomix';
 import type { PackOptions, PackResult } from '../../types.js';
 import { AppError } from '../../utils/errorHandler.js';
 import { logMemoryUsage } from '../../utils/logger.js';
-import { cleanupTempDirectory, copyOutputToCurrentDirectory, createTempDirectory } from './utils/fileUtils.js';
+import { cleanupTempDirectory, createTempDirectory } from './utils/fileUtils.js';
 
 // Enhanced ZIP extraction limits
 const ZIP_SECURITY_LIMITS = {
@@ -43,6 +43,11 @@ export async function processZipFile(file: File, format: string, options: PackOp
     include: options.includePatterns,
     ignore: options.ignorePatterns,
     quiet: true, // Enable quiet mode to suppress output
+    _inProcess: true, // Run pack() in the server process instead of spawning a child process.
+    // Reuses cached worker pools (security + metrics) across requests, saving ~500ms
+    // of child process spawn + module re-loading + worker warmup per subsequent request.
+    // All module-level caches are bounded (200MB file content, 5000 entries for
+    // metrics/security/processing), so memory growth is controlled.
   } as CliOptions;
 
   setLogLevel(-1);
@@ -62,11 +67,11 @@ export async function processZipFile(file: File, format: string, options: PackOp
 
     // Execute default action on the extracted directory
     const result = await runDefaultAction([tempDirPath], tempDirPath, cliOptions);
-    await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
     const { packResult } = result;
 
-    // Read the generated file
-    const content = await fs.readFile(outputFilePath, 'utf-8');
+    // Read the output directly from the temp directory instead of copying to cwd first.
+    // This eliminates one fs.copyFile (~10-20ms for 3-5MB files) and one fs.unlink.
+    const content = await fs.readFile(path.join(tempDirPath, result.config.output.filePath), 'utf-8');
 
     // Map suspicious files results
     const suspiciousFiles =
@@ -117,14 +122,8 @@ export async function processZipFile(file: File, format: string, options: PackOp
     }
     throw new AppError(`File processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
   } finally {
+    // Temp directory cleanup removes all files including the output file
     cleanupTempDirectory(tempDirPath);
-    // Clean up the output file
-    try {
-      await fs.unlink(outputFilePath);
-    } catch (err) {
-      // Ignore file deletion errors
-      console.warn('Failed to cleanup output file:', err);
-    }
   }
 }
 
@@ -177,8 +176,11 @@ async function extractZipWithSecurity(file: File, destPath: string): Promise<voi
       }
     }
 
-    // 4. Validate all entries for path traversal, file extensions, and nesting level
+    // 4. Validate all entries for path traversal, file extensions, and nesting level.
+    // Also collect unique parent directories in the same pass to avoid a second O(n) iteration.
     const processedPaths = new Set<string>();
+    const uniqueDirs = new Set<string>();
+    const fileEntries: [string, Uint8Array][] = [];
 
     for (const entryPath of filePaths) {
       // Skip directories (fflate doesn't include directory entries, only files)
@@ -215,23 +217,17 @@ async function extractZipWithSecurity(file: File, destPath: string): Promise<voi
         throw new AppError(`Duplicate file path detected: ${entryPath}. This could indicate a malicious archive.`, 400);
       }
       processedPaths.add(normalizedPath);
+
+      // Collect validated file entries and their parent directories in this same pass
+      fileEntries.push([entryPath, files[entryPath]]);
+      uniqueDirs.add(path.dirname(normalizedPath));
     }
 
-    // If all checks pass, extract the files
-    await fs.mkdir(destPath, { recursive: true });
+    // Create all directories in parallel (fs.mkdir with recursive is idempotent)
+    await Promise.all([...uniqueDirs].map((dir) => fs.mkdir(dir, { recursive: true })));
 
-    for (const [filePath, data] of Object.entries(files)) {
-      if (filePath.endsWith('/')) continue; // Skip directories
-
-      const fullPath = path.join(destPath, filePath);
-      const dirPath = path.dirname(fullPath);
-
-      // Create directory if it doesn't exist
-      await fs.mkdir(dirPath, { recursive: true });
-
-      // Write the file
-      await fs.writeFile(fullPath, data);
-    }
+    // Write all files in parallel
+    await Promise.all(fileEntries.map(([filePath, data]) => fs.writeFile(path.join(destPath, filePath), data)));
   } catch (error) {
     if (error instanceof AppError) {
       throw error;

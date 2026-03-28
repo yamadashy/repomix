@@ -1,9 +1,25 @@
-import gitUrlParse, { type GitUrl } from 'git-url-parse';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 
-interface IGitUrl extends GitUrl {
+// Lazy-load git-url-parse (~15-20ms) — only needed for non-shorthand, non-Azure remote URLs.
+// The default pack path never imports this module.
+let _gitUrlParse: ((url: string, refs?: string[]) => IGitUrl) | undefined;
+const getGitUrlParse = async () => {
+  if (!_gitUrlParse) {
+    const mod = await import('git-url-parse');
+    _gitUrlParse = mod.default as unknown as (url: string, refs?: string[]) => IGitUrl;
+  }
+  return _gitUrlParse;
+};
+
+interface IGitUrl {
   commit: string | undefined;
+  full_name: string;
+  git_suffix: boolean;
+  protocol: string;
+  ref: string;
+  source: string;
+  toString: (protocol?: string) => string;
 }
 
 export interface GitHubRepoInfo {
@@ -51,10 +67,10 @@ const isAzureDevOpsUrl = (remoteValue: string): boolean => {
   }
 };
 
-export const parseRemoteValue = (
+export const parseRemoteValue = async (
   remoteValue: string,
   refs: string[] = [],
-): { repoUrl: string; remoteBranch: string | undefined } => {
+): Promise<{ repoUrl: string; remoteBranch: string | undefined }> => {
   if (isValidShorthand(remoteValue)) {
     logger.trace(`Formatting GitHub shorthand: ${remoteValue}`);
     return {
@@ -75,7 +91,8 @@ export const parseRemoteValue = (
   }
 
   try {
-    const parsedFields = gitUrlParse(remoteValue, refs) as IGitUrl;
+    const gitUrlParse = await getGitUrlParse();
+    const parsedFields = gitUrlParse(remoteValue, refs);
 
     // This will make parsedFields.toString() automatically append '.git' to the returned url
     parsedFields.git_suffix = true;
@@ -120,9 +137,9 @@ export const isExplicitRemoteUrl = (value: string): boolean => {
   return ['https://', 'git@', 'ssh://', 'git://'].some((prefix) => value.startsWith(prefix));
 };
 
-export const isValidRemoteValue = (remoteValue: string, refs: string[] = []): boolean => {
+export const isValidRemoteValue = async (remoteValue: string, refs: string[] = []): Promise<boolean> => {
   try {
-    parseRemoteValue(remoteValue, refs);
+    await parseRemoteValue(remoteValue, refs);
     return true;
   } catch {
     return false;
@@ -133,7 +150,7 @@ export const isValidRemoteValue = (remoteValue: string, refs: string[] = []): bo
  * Parses remote value and extracts GitHub repository information if it's a GitHub repo
  * Returns null if the remote value is not a GitHub repository
  */
-export const parseGitHubRepoInfo = (remoteValue: string): GitHubRepoInfo | null => {
+export const parseGitHubRepoInfo = async (remoteValue: string): Promise<GitHubRepoInfo | null> => {
   try {
     // Handle shorthand format: owner/repo
     if (isValidShorthand(remoteValue)) {
@@ -169,7 +186,8 @@ export const parseGitHubRepoInfo = (remoteValue: string): GitHubRepoInfo | null 
     }
 
     // Parse using git-url-parse for other cases
-    const parsed = gitUrlParse(remoteValue) as IGitUrl;
+    const gitUrlParse = await getGitUrlParse();
+    const parsed = gitUrlParse(remoteValue);
 
     // Only proceed if it's a GitHub repository
     if (parsed.source !== 'github.com') {
@@ -204,6 +222,6 @@ export const parseGitHubRepoInfo = (remoteValue: string): GitHubRepoInfo | null 
 /**
  * Checks if a remote value represents a GitHub repository
  */
-export const isGitHubRepository = (remoteValue: string): boolean => {
-  return parseGitHubRepoInfo(remoteValue) !== null;
+export const isGitHubRepository = async (remoteValue: string): Promise<boolean> => {
+  return (await parseGitHubRepoInfo(remoteValue)) !== null;
 };

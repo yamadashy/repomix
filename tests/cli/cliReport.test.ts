@@ -46,6 +46,7 @@ describe('cliReport', () => {
         gitDiffTokenCount: 0,
         gitLogTokenCount: 0,
         skippedFiles: [],
+        outputLineCount: 0,
       };
 
       reportSummary('/test/project', packResult, config);
@@ -73,6 +74,7 @@ describe('cliReport', () => {
         gitDiffTokenCount: 50,
         gitLogTokenCount: 0,
         skippedFiles: [],
+        outputLineCount: 0,
       };
 
       reportSummary('/test/project', packResult, config);
@@ -101,6 +103,7 @@ describe('cliReport', () => {
         gitDiffTokenCount: 0,
         gitLogTokenCount: 0,
         skippedFiles: [],
+        outputLineCount: 0,
       };
 
       reportSummary('/test/project', packResult, config);
@@ -128,6 +131,7 @@ describe('cliReport', () => {
         gitDiffTokenCount: 0,
         gitLogTokenCount: 30,
         skippedFiles: [],
+        outputLineCount: 0,
       };
 
       reportSummary('/test/project', packResult, config);
@@ -156,6 +160,7 @@ describe('cliReport', () => {
         gitDiffTokenCount: 0,
         gitLogTokenCount: 0,
         skippedFiles: [],
+        outputLineCount: 0,
       };
 
       reportSummary('/test/project', packResult, config);
@@ -182,6 +187,7 @@ describe('cliReport', () => {
         gitDiffTokenCount: 0,
         gitLogTokenCount: 0,
         skippedFiles: [],
+        outputLineCount: 0,
       };
 
       reportSummary('/test/project', packResult, config);

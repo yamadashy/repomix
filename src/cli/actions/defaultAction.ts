@@ -1,29 +1,33 @@
+import { execFile } from 'node:child_process';
 import path from 'node:path';
+import { promisify } from 'node:util';
+import type { RepomixConfigCli, RepomixConfigMerged, RepomixOutputStyle } from '../../config/configDefaults.js';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
-import {
-  type RepomixConfigCli,
-  type RepomixConfigFile,
-  type RepomixConfigMerged,
-  type RepomixOutputStyle,
-  repomixConfigCliSchema,
-} from '../../config/configSchema.js';
-import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import type { PackResult } from '../../core/packager.js';
+import type { SuspiciousFileResult } from '../../core/security/securityCheck.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
-import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
+import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
 import { reportResults } from '../cliReport.js';
-import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
+import { _pcPreload } from '../cliRun.js';
+import { Spinner } from '../cliSpinner.js';
 import type { CliOptions } from '../types.js';
-import { runMigrationAction } from './migrationAction.js';
+// migrationAction is lazy-loaded below to avoid eagerly importing @clack/prompts (~16ms)
+// on every default pack run. Migration is only needed when old Repopack files exist.
 import type {
   DefaultActionTask,
   DefaultActionWorkerResult,
   PingResult,
   PingTask,
 } from './workers/defaultActionWorker.js';
+
+// Pre-warm Zod schema loading as soon as defaultAction module is imported.
+// configSchema.js transitively loads Zod (~50ms). By starting the import here,
+// the module loads in the background during migration check (~5ms) and other
+// setup work. When loadFileConfig or buildCliConfig later calls
+// import('../../config/configSchema.js'), the module is already cached.
+const _configSchemaWarmup = import('../../config/configSchema.js').catch(() => {});
 
 export interface DefaultActionRunnerResult {
   packResult: PackResult;
@@ -37,108 +41,258 @@ export const runDefaultAction = async (
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', cliOptions);
 
-  // Run migration before loading config
-  await runMigrationAction(cwd);
+  // Determine if we need a child process.
+  // Quiet mode uses a child process to ensure clean memory isolation
+  // when runCli is called repeatedly from a long-lived process (e.g., website server, MCP server).
+  // CLI one-shot runs (detected via _cliOneShot flag set by the commander entry point) skip the
+  // child process since the process exits immediately — saving ~120ms of spawn + module reload.
+  // All other modes (TTY, stdout, non-TTY) run pack() directly in the main process.
+  const needsChildProcess =
+    !cliOptions.stdout && cliOptions.quiet === true && !cliOptions._cliOneShot && !cliOptions._inProcess;
 
-  // Load the config file in main process
-  const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, {
-    skipLocalConfig: cliOptions.skipLocalConfig,
-  });
-  logger.trace('Loaded file config:', fileConfig);
+  // Start child process worker early so module loading (~200ms) overlaps
+  // with config loading (~30-50ms). Only when the spinner is needed.
+  // Lazy-load processConcurrency (tinypool, ~30ms) to avoid loading it in stdout/non-TTY
+  // mode where no child process is needed. The dynamic import runs in the background,
+  // so the child process still starts early enough to overlap with config loading.
+  const taskRunnerPromise = needsChildProcess
+    ? import('../../shared/processConcurrency.js').then(({ initTaskRunner }) =>
+        initTaskRunner<DefaultActionTask | PingTask, DefaultActionWorkerResult | PingResult>({
+          numOfTasks: 1,
+          workerType: 'defaultAction',
+          runtime: 'child_process',
+        }),
+      )
+    : undefined;
 
-  // Parse the CLI options into a config
-  const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);
-  logger.trace('CLI config:', cliConfig);
+  // For direct execution, start importing packager module tree in the background
+  // while config loads. This overlaps ~100ms of module loading with config I/O.
+  const packagerPromise = !needsChildProcess ? import('../../core/packager.js') : undefined;
 
-  // Merge default, file, and CLI configs
-  const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
-  logger.trace('Merged config:', config);
+  // Pre-warm worker pools during config loading (~40ms Zod validation + I/O).
+  // The metrics worker loads gpt-tokenizer BPE tables (~300ms) and the security worker
+  // loads @secretlint/core (~108ms). Starting them now instead of at pack() entry
+  // gives ~60ms more overlap, reducing the idle wait for BPE completion.
+  // Uses the pre-loaded processConcurrency module (started at cliRun.ts module load
+  // time) so pool creation doesn't wait for tinypool to load.
+  if (!needsChildProcess && !cliOptions.stdin) {
+    const poolsCreated = _pcPreload
+      .then((pcMod) => {
+        if (!pcMod) return undefined;
+        const { createWorkerPool, cleanupWorkerPool } = pcMod;
+        // Metrics worker — non-blocking BPE warmup
+        const metPool = createWorkerPool({
+          numOfTasks: 1,
+          workerType: 'calculateMetrics',
+          runtime: 'worker_threads',
+        });
+        const encoding = 'o200k_base';
+        const warmupDone = metPool.run({ batch: true, files: [{ path: '', content: ' ' }], encoding });
 
-  // Validate conflicting options
-  validateConflictingOptions(config);
+        // Security worker — pre-warm @secretlint/core
+        const secPool = createWorkerPool({
+          numOfTasks: 1,
+          workerType: 'securityCheck',
+          runtime: 'worker_threads',
+          preWarm: true,
+        });
 
-  // Validate --skill-output and --force require --skill-generate
-  if (cliOptions.skillOutput && config.skillGenerate === undefined) {
-    throw new RepomixError('--skill-output can only be used with --skill-generate');
+        return { metPool, warmupDone, encoding, secPool, cleanupWorkerPool };
+      })
+      .catch(() => undefined);
+
+    // Store pre-warmed pools in packager's module-level cache once both are ready.
+    // This must complete before pack() is called (which happens after configLoad).
+    // poolsCreated resolves in ~5-10ms, packagerPromise in ~15ms, both well before
+    // configLoad completes (~40ms), so the cache is populated before pack() runs.
+    Promise.all([poolsCreated, packagerPromise])
+      .then(([pools, packagerMod]) => {
+        if (!pools || !packagerMod) return;
+        packagerMod.setPreWarmedMetricsPool({
+          run: async (task: unknown) => {
+            await pools.warmupDone;
+            return pools.metPool.run(task);
+          },
+          cleanup: () => pools.cleanupWorkerPool(pools.metPool),
+          encoding: pools.encoding,
+          warmupDone: pools.warmupDone,
+        });
+        packagerMod.setPreWarmedSecurityPool({
+          run: (task: unknown) => pools.secPool.run(task) as Promise<(SuspiciousFileResult | null)[]>,
+          cleanup: () => pools.cleanupWorkerPool(pools.secPool),
+        });
+      })
+      .catch(() => {});
   }
-  if (cliOptions.force && config.skillGenerate === undefined) {
-    throw new RepomixError('--force can only be used with --skill-generate');
+
+  // Speculatively pre-start git ls-files during config loading (~43ms Zod validation).
+  // git ls-files (~33ms) only needs the rootDir, not the full config. By starting it
+  // now, the subprocess overlaps with config loading, saving ~20-30ms on the critical
+  // path. The result is passed to pack() → searchFiles() which reuses it instead of
+  // spawning a new subprocess. Safe to start speculatively:
+  // - Read-only git operation, no side effects
+  // - If config disables useGitignore, the result is simply ignored
+  // - For non-git repos, the promise rejects and searchFiles falls back to globby
+  // Only pre-start for single directory (common case) to keep the logic simple.
+  // Uses execFile directly (static import) instead of importing gitCommand.js to avoid
+  // dynamic import overhead contending with config loading on the module resolution thread.
+  const targetPaths = directories.map((d) => path.resolve(cwd, d));
+  let preStartedGitLsFilesPromise: Promise<string[]> | undefined;
+  if (!needsChildProcess && !cliOptions.stdin && targetPaths.length === 1) {
+    const execFileAsync = promisify(execFile);
+    preStartedGitLsFilesPromise = execFileAsync(
+      'git',
+      ['-C', targetPaths[0], 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+      { maxBuffer: 50 * 1024 * 1024 },
+    )
+      .then((result) => (result.stdout ? result.stdout.split('\0').filter(Boolean) : []))
+      .catch(() => [] as string[]);
   }
-
-  // Validate --skill-output is not empty or whitespace only
-  if (cliOptions.skillOutput !== undefined && !cliOptions.skillOutput.trim()) {
-    throw new RepomixError('--skill-output path cannot be empty');
-  }
-
-  // Validate skill generation options and prompt for location
-  if (config.skillGenerate !== undefined) {
-    // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
-    cliOptions.skillName ??=
-      typeof config.skillGenerate === 'string'
-        ? config.skillGenerate
-        : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
-
-    // Determine skill directory
-    if (cliOptions.skillOutput && !cliOptions.skillDir) {
-      // Non-interactive mode: use provided path directly
-      cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
-    } else if (!cliOptions.skillDir) {
-      // Interactive mode: prompt for skill location
-      const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
-      cliOptions.skillDir = promptResult.skillDir;
-    }
-  }
-
-  // Handle stdin processing in main process (before worker creation)
-  // This is necessary because child_process workers don't inherit stdin
-  let stdinFilePaths: string[] | undefined;
-  if (cliOptions.stdin) {
-    // Validate directory arguments for stdin mode
-    const firstDir = directories[0] ?? '.';
-    if (directories.length > 1 || firstDir !== '.') {
-      throw new RepomixError(
-        'When using --stdin, do not specify directory arguments. File paths will be read from stdin.',
-      );
-    }
-
-    const stdinResult = await readFilePathsFromStdin(cwd);
-    stdinFilePaths = stdinResult.filePaths;
-    logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
-  }
-
-  // Create worker task runner
-  const taskRunner = initTaskRunner<DefaultActionTask | PingTask, DefaultActionWorkerResult | PingResult>({
-    numOfTasks: 1,
-    workerType: 'defaultAction',
-    runtime: 'child_process',
-  });
 
   try {
-    // Wait for worker to be ready (Bun compatibility)
-    await waitForWorkerReady(taskRunner);
+    // Run migration and load config in parallel — they are independent I/O operations.
+    // Migration checks for old Repopack files (~5ms), config loads and validates (~30-50ms).
+    // Previously sequential (~35-55ms total), now overlapped (~30-50ms).
+    const [, fileConfig] = await Promise.all([
+      import('./migrationAction.js').then(({ runMigrationAction }) => runMigrationAction(cwd)),
+      loadFileConfig(cwd, cliOptions.config ?? null, {
+        skipLocalConfig: cliOptions.skipLocalConfig,
+      }),
+    ]);
+    logger.trace('Loaded file config:', fileConfig);
 
-    // Create task for worker (now with pre-loaded config and stdin file paths)
-    const task: DefaultActionTask = {
-      directories,
-      cwd,
-      config,
-      cliOptions,
-      stdinFilePaths,
-    };
+    // Parse the CLI options into a config
+    const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);
+    logger.trace('CLI config:', cliConfig);
 
-    // Run the task in worker (spinner is handled inside worker)
-    const result = (await taskRunner.run(task)) as DefaultActionWorkerResult;
+    // Merge default, file, and CLI configs
+    const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
+    logger.trace('Merged config:', config);
+
+    // Validate conflicting options
+    validateConflictingOptions(config);
+
+    // Validate --skill-output and --force require --skill-generate
+    if (cliOptions.skillOutput && config.skillGenerate === undefined) {
+      throw new RepomixError('--skill-output can only be used with --skill-generate');
+    }
+    if (cliOptions.force && config.skillGenerate === undefined) {
+      throw new RepomixError('--force can only be used with --skill-generate');
+    }
+
+    // Validate --skill-output is not empty or whitespace only
+    if (cliOptions.skillOutput !== undefined && !cliOptions.skillOutput.trim()) {
+      throw new RepomixError('--skill-output path cannot be empty');
+    }
+
+    // Validate skill generation options and prompt for location
+    if (config.skillGenerate !== undefined) {
+      // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
+      cliOptions.skillName ??=
+        typeof config.skillGenerate === 'string'
+          ? config.skillGenerate
+          : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
+
+      // Determine skill directory (lazy-load prompts to avoid importing @clack/prompts on every run)
+      const { promptSkillLocation, resolveAndPrepareSkillDir } = await import('../prompts/skillPrompts.js');
+      if (cliOptions.skillOutput && !cliOptions.skillDir) {
+        // Non-interactive mode: use provided path directly
+        cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
+      } else if (!cliOptions.skillDir) {
+        // Interactive mode: prompt for skill location
+        const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
+        cliOptions.skillDir = promptResult.skillDir;
+      }
+    }
+
+    // Handle stdin processing in main process (before sending task to worker)
+    // This is necessary because child_process workers don't inherit stdin
+    let stdinFilePaths: string[] | undefined;
+    if (cliOptions.stdin) {
+      // Validate directory arguments for stdin mode
+      const firstDir = directories[0] ?? '.';
+      if (directories.length > 1 || firstDir !== '.') {
+        throw new RepomixError(
+          'When using --stdin, do not specify directory arguments. File paths will be read from stdin.',
+        );
+      }
+
+      const { readFilePathsFromStdin } = await import('../../core/file/fileStdin.js');
+      const stdinResult = await readFilePathsFromStdin(cwd);
+      stdinFilePaths = stdinResult.filePaths;
+      logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
+    }
+
+    let packResult: PackResult;
+
+    // Await the task runner promise (resolves to TaskRunner when child process is needed,
+    // undefined otherwise). The child process has been loading modules in the background
+    // since the promise was created above.
+    const taskRunner = taskRunnerPromise ? await taskRunnerPromise : undefined;
+
+    if (taskRunner) {
+      // Child process path: run pack() in a child process with spinner
+      await waitForWorkerReady(taskRunner);
+
+      const task: DefaultActionTask = {
+        directories,
+        cwd,
+        config,
+        cliOptions,
+        stdinFilePaths,
+      };
+
+      const result = (await taskRunner.run(task)) as DefaultActionWorkerResult;
+      packResult = result.packResult;
+    } else {
+      // Direct execution path: run pack() in the main process.
+      // Skips child process spawn + module re-loading (~500ms).
+      // packagerPromise is always defined when taskRunner is undefined (the else branch)
+      const packagerModule = await (packagerPromise as Promise<typeof import('../../core/packager.js')>);
+      const { pack } = packagerModule;
+      const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
+      const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
+
+      // Show spinner on main thread when running in a TTY.
+      // pack()'s heavy work runs on worker threads (token counting, security check)
+      // and async I/O, so the event loop stays responsive for setInterval animation.
+      // Sync operations (processFiles ~5ms, output generation ~15ms) are too brief
+      // to cause visible stuttering in the 80ms spinner frame interval.
+      const useSpinner =
+        !cliOptions.stdout && !cliOptions.quiet && !cliOptions.verbose && process.stderr.isTTY === true;
+      const spinner = useSpinner ? new Spinner('Initializing...', cliOptions) : undefined;
+      await spinner?.start();
+
+      try {
+        packResult = await pack(
+          targetPaths,
+          config,
+          spinner ? (message) => spinner.update(message) : () => {},
+          {},
+          stdinFilePaths,
+          packOptions,
+          preStartedGitLsFilesPromise,
+        );
+        spinner?.succeed('Packing completed successfully!');
+      } catch (error) {
+        spinner?.fail('Error during packing');
+        throw error;
+      }
+    }
 
     // Report results in main process
-    reportResults(cwd, result.packResult, result.config, cliOptions);
+    reportResults(cwd, packResult, config, cliOptions);
 
     return {
-      packResult: result.packResult,
-      config: result.config,
+      packResult,
+      config,
     };
   } finally {
-    // Always cleanup worker pool
-    await taskRunner.cleanup();
+    // Always cleanup worker pool (if created)
+    const taskRunner = taskRunnerPromise ? await taskRunnerPromise.catch(() => undefined) : undefined;
+    if (taskRunner) {
+      await taskRunner.cleanup();
+    }
   }
 };
 
@@ -151,6 +305,8 @@ export const runDefaultAction = async (
  * - For --no-* flags, we only apply the setting when it's explicitly false to respect config file values
  * - This allows the config file to maintain control unless explicitly overridden by CLI
  */
+// Synchronous — all option checks are pure object mutations with no I/O.
+// Removing async avoids unnecessary Promise microtask queueing (~2-3ms).
 export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   const cliConfig: RepomixConfigCli = {};
 
@@ -339,12 +495,11 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.skillGenerate = options.skillGenerate;
   }
 
-  try {
-    return repomixConfigCliSchema.parse(cliConfig);
-  } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid cli arguments');
-    throw error;
-  }
+  // CLI config is built entirely from Commander-parsed options above — each field
+  // is set from a typed CLI option with known values. Zod validation is redundant
+  // here and would require awaiting the ~50ms configSchema.js import. File configs
+  // (user-authored JSON) are still Zod-validated in loadFileConfig.
+  return cliConfig as RepomixConfigCli;
 };
 
 /**

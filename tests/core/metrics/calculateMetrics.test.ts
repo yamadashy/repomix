@@ -54,29 +54,31 @@ describe('calculateMetrics', () => {
 
     const gitDiffResult: GitDiffResult | undefined = undefined;
 
-    const mockTaskRunner = {
-      run: vi.fn(),
-      cleanup: vi.fn(),
-    };
-
-    const result = await calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, undefined, {
-      calculateSelectiveFileMetrics,
-      calculateOutputMetrics: async () => 30,
-      calculateGitDiffMetrics: () => Promise.resolve(0),
-      calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
-      taskRunner: mockTaskRunner,
-    });
+    const result = await calculateMetrics(
+      processedFiles,
+      output,
+      progressCallback,
+      config,
+      gitDiffResult,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateOutputMetrics: async () => 30,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+      },
+    );
 
     expect(progressCallback).toHaveBeenCalledWith('Calculating metrics...');
-    expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
-      processedFiles,
-      ['file2.txt', 'file1.txt'], // sorted by character count desc
-      'o200k_base',
-      progressCallback,
-      expect.objectContaining({
-        taskRunner: expect.any(Object),
-      }),
-    );
+    // getMetricsTargetPaths returns all files when sampleSize >= file count;
+    // order doesn't matter for token counting, just verify the paths are present
+    const callArgs = (calculateSelectiveFileMetrics as unknown as Mock).mock.calls[0];
+    expect(callArgs[0]).toBe(processedFiles);
+    expect(callArgs[1]).toEqual(expect.arrayContaining(['file1.txt', 'file2.txt']));
+    expect(callArgs[1]).toHaveLength(2);
+    expect(callArgs[2]).toBe('o200k_base');
+    expect(callArgs[3]).toBe(progressCallback);
     expect(result).toEqual(aggregatedResult);
   });
 });

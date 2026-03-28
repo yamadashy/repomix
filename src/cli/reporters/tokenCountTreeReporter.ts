@@ -54,9 +54,19 @@ const displayNode = (node: TreeNode, prefix: string, isRoot: boolean, minTokenCo
   const allFiles = node._files || [];
   const files = allFiles.filter((file) => file.tokens >= minTokenCount);
 
-  // Sort entries alphabetically
-  entries.sort(([a], [b]) => a.localeCompare(b));
-  files.sort((a, b) => a.name.localeCompare(b.name));
+  // Sort entries alphabetically using case-insensitive comparison (consistent with
+  // filePathSort, fileTreeGenerate, and outputSort which all use the same pattern).
+  // localeCompare is ~10x slower due to Unicode normalization and locale-aware collation.
+  entries.sort(([a], [b]) => {
+    const aLower = a.toLowerCase();
+    const bLower = b.toLowerCase();
+    return aLower < bLower ? -1 : aLower > bLower ? 1 : 0;
+  });
+  files.sort((a, b) => {
+    const aLower = a.name.toLowerCase();
+    const bLower = b.name.toLowerCase();
+    return aLower < bLower ? -1 : aLower > bLower ? 1 : 0;
+  });
 
   // Display files first
   files.forEach((file, index) => {

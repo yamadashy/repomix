@@ -128,26 +128,20 @@ export const cleanupLanguageParser = async (): Promise<void> => {
 };
 
 const filterDuplicatedChunks = (chunks: CapturedChunk[]): CapturedChunk[] => {
-  // Group chunks by their start row
-  const chunksByStartRow = new Map<number, CapturedChunk[]>();
+  // Group chunks by their start row, keeping only the longest content per row.
+  // Uses a single O(n) pass with a Map instead of grouping + sorting per group.
+  const bestByStartRow = new Map<number, CapturedChunk>();
 
   for (const chunk of chunks) {
-    const startRow = chunk.startRow;
-    if (!chunksByStartRow.has(startRow)) {
-      chunksByStartRow.set(startRow, []);
+    const existing = bestByStartRow.get(chunk.startRow);
+    if (!existing || chunk.content.length > existing.content.length) {
+      bestByStartRow.set(chunk.startRow, chunk);
     }
-    chunksByStartRow.get(startRow)?.push(chunk);
   }
 
-  // For each start row, keep the chunk with the most content
-  const filteredChunks: CapturedChunk[] = [];
-  for (const [_, rowChunks] of chunksByStartRow) {
-    rowChunks.sort((a, b) => b.content.length - a.content.length);
-    filteredChunks.push(rowChunks[0]);
-  }
-
-  // Sort filtered chunks by start row
-  return filteredChunks.sort((a, b) => a.startRow - b.startRow);
+  // Map preserves insertion order of keys, but chunks may not arrive sorted by startRow.
+  // Sort the deduplicated chunks by start row for deterministic output.
+  return Array.from(bestByStartRow.values()).sort((a, b) => a.startRow - b.startRow);
 };
 
 const mergeAdjacentChunks = (chunks: CapturedChunk[]): CapturedChunk[] => {

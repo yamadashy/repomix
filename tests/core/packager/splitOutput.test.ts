@@ -51,14 +51,16 @@ describe('packager split output', () => {
         suspiciousGitDiffResults: [],
         suspiciousGitLogResults: [],
       }),
+      createSecurityWorkerPool: vi.fn().mockResolvedValue(undefined),
+      createMetricsWorkerPool: vi
+        .fn()
+        .mockResolvedValue({ run: vi.fn().mockResolvedValue([]), cleanup: vi.fn().mockResolvedValue(undefined) }),
       getGitDiffs: vi.fn().mockResolvedValue(undefined),
       getGitLogs: vi.fn().mockResolvedValue(undefined),
       produceOutput,
       calculateMetrics,
-      createMetricsTaskRunner: vi.fn().mockReturnValue({
-        run: vi.fn().mockResolvedValue(0),
-        cleanup: vi.fn().mockResolvedValue(undefined),
-      }),
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
+      getMetricsTargetPaths: vi.fn().mockReturnValue([]),
     });
 
     expect(produceOutput).toHaveBeenCalledWith(
@@ -70,6 +72,9 @@ describe('packager split output', () => {
       undefined,
       expect.any(Function),
       [{ rootLabel: 'root', files: allFilePaths }],
+      [],
+      undefined,
+      expect.any(String),
     );
 
     expect(calculateMetrics).toHaveBeenCalledWith(
@@ -79,7 +84,7 @@ describe('packager split output', () => {
       mockConfig,
       undefined,
       undefined,
-      expect.objectContaining({ taskRunner: expect.anything() }),
+      expect.any(Array),
     );
 
     expect(result.outputFiles).toEqual(['repomix-output.1.xml', 'repomix-output.2.xml']);

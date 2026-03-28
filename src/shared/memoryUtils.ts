@@ -41,9 +41,12 @@ export function getMemoryStats(): MemoryStats {
 }
 
 /**
- * Log memory usage at trace level with a context message
+ * Log memory usage at trace level with a context message.
+ * Skips the expensive process.memoryUsage() syscall when trace logging is disabled.
  */
 export function logMemoryUsage(context: string): void {
+  if (!logger.isTraceEnabled()) return;
+
   const stats = getMemoryStats();
   logger.trace(
     `Memory [${context}] | Heap: ${stats.heapUsed}/${stats.heapTotal}MB (${stats.heapUsagePercent}%) | RSS: ${stats.rss}MB | Ext: ${stats.external}MB`,
@@ -66,9 +69,16 @@ export function logMemoryDifference(context: string, before: MemoryStats, after:
 }
 
 /**
- * Execute a function and log memory usage before and after
+ * Execute a function and log memory usage before and after.
+ * When trace logging is disabled, this is a zero-overhead passthrough — it skips
+ * the process.memoryUsage() syscalls (~0.3ms each) that would otherwise add up
+ * to ~4-8ms across the 10-14 withMemoryLogging calls in a typical pack() run.
  */
 export async function withMemoryLogging<T>(context: string, fn: () => Promise<T>): Promise<T> {
+  if (!logger.isTraceEnabled()) {
+    return fn();
+  }
+
   const before = getMemoryStats();
   logMemoryUsage(`${context} - Before`);
 

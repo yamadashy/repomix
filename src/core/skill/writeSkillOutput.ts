@@ -28,19 +28,19 @@ export const writeSkillOutput = async (
     // Create directories
     await deps.mkdir(referencesDir, { recursive: true });
 
-    // Write SKILL.md
+    // Write all output files in parallel — each write is independent after mkdir.
+    // Collapses 4-5 sequential kernel round-trips into 1 wall-clock wait.
     const skillMdPath = path.join(skillDir, 'SKILL.md');
-    await deps.writeFile(skillMdPath, output.skillMd, 'utf-8');
-
-    // Write reference files
-    await deps.writeFile(path.join(referencesDir, 'summary.md'), output.references.summary, 'utf-8');
-    await deps.writeFile(path.join(referencesDir, 'project-structure.md'), output.references.structure, 'utf-8');
-    await deps.writeFile(path.join(referencesDir, 'files.md'), output.references.files, 'utf-8');
-
-    // Write tech-stacks.md if available
+    const writes: Promise<void>[] = [
+      deps.writeFile(skillMdPath, output.skillMd, 'utf-8'),
+      deps.writeFile(path.join(referencesDir, 'summary.md'), output.references.summary, 'utf-8'),
+      deps.writeFile(path.join(referencesDir, 'project-structure.md'), output.references.structure, 'utf-8'),
+      deps.writeFile(path.join(referencesDir, 'files.md'), output.references.files, 'utf-8'),
+    ];
     if (output.references.techStack) {
-      await deps.writeFile(path.join(referencesDir, 'tech-stacks.md'), output.references.techStack, 'utf-8');
+      writes.push(deps.writeFile(path.join(referencesDir, 'tech-stacks.md'), output.references.techStack, 'utf-8'));
     }
+    await Promise.all(writes);
 
     return skillDir;
   } catch (error) {

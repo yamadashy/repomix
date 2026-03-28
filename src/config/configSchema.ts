@@ -1,17 +1,14 @@
-import type { TiktokenEncoding } from 'tiktoken';
 import { z } from 'zod';
+import type { TokenEncoding } from '../core/metrics/TokenCounter.js';
+import { defaultFilePathMap } from './configDefaults.js';
 
 // Output style enum
 export const repomixOutputStyleSchema = z.enum(['xml', 'markdown', 'json', 'plain']);
 export type RepomixOutputStyle = z.infer<typeof repomixOutputStyleSchema>;
 
-// Default values map
-export const defaultFilePathMap: Record<RepomixOutputStyle, string> = {
-  xml: 'repomix-output.xml',
-  markdown: 'repomix-output.md',
-  plain: 'repomix-output.txt',
-  json: 'repomix-output.json',
-} as const;
+// Re-export defaultFilePathMap so existing `import { defaultFilePathMap } from './configSchema.js'`
+// continues to work (for backward compatibility with external consumers / index.ts re-exports).
+export { defaultFilePathMap } from './configDefaults.js';
 
 // Base config schema
 export const repomixConfigBaseSchema = z.object({
@@ -125,7 +122,7 @@ export const repomixConfigDefaultSchema = z.object({
     encoding: z
       .string()
       .default('o200k_base')
-      .transform((val) => val as TiktokenEncoding),
+      .transform((val) => val as TokenEncoding),
   }),
 });
 
@@ -159,17 +156,5 @@ export type RepomixConfigFile = z.infer<typeof repomixConfigFileSchema>;
 export type RepomixConfigCli = z.infer<typeof repomixConfigCliSchema>;
 export type RepomixConfigMerged = z.infer<typeof repomixConfigMergedSchema>;
 
-// Pass empty objects to let Zod apply all default values
-// Zod v4 requires explicit nested objects since we removed outer .default({})
-export const defaultConfig = repomixConfigDefaultSchema.parse({
-  input: {},
-  output: {
-    git: {},
-  },
-  ignore: {},
-  security: {},
-  tokenCount: {},
-});
-
-// Helper function for type-safe config definition
-export const defineConfig = (config: RepomixConfigFile): RepomixConfigFile => config;
+// Re-export defaultConfig and defineConfig for backward compatibility
+export { defaultConfig, defineConfig } from './configDefaults.js';

@@ -1,48 +1,69 @@
-import { get_encoding, type Tiktoken, type TiktokenEncoding } from 'tiktoken';
 import { logger } from '../../shared/logger.js';
 
+// Supported token encoding types (compatible with tiktoken encoding names)
+export type TokenEncoding = 'o200k_base' | 'cl100k_base' | 'p50k_base' | 'r50k_base';
+
+// Lazy-loaded countTokens functions keyed by encoding.
+// Stores a wrapper that always passes { allowedSpecial: 'all' } to treat
+// special token sequences (<|endoftext|>, etc.) as ordinary text — matching
+// the original tiktoken behavior of encode(content, [], []).
+const encodingModules = new Map<string, (text: string) => number>();
+
+const loadEncoding = async (encodingName: TokenEncoding): Promise<(text: string) => number> => {
+  const cached = encodingModules.get(encodingName);
+  if (cached) {
+    return cached;
+  }
+
+  const startTime = process.hrtime.bigint();
+
+  // Dynamic import of the specific encoding module from gpt-tokenizer
+  const mod = await import(`gpt-tokenizer/encoding/${encodingName}`);
+  // Always allow special tokens so that files/output containing sequences
+  // like <|endoftext|> don't throw. This matches the original tiktoken
+  // behavior (encode with empty allowed/disallowed lists) and has no
+  // measurable per-call overhead for content without special tokens.
+  const rawCountFn = mod.countTokens as (text: string, options?: { allowedSpecial?: 'all' }) => number;
+  const countFn = (text: string): number => rawCountFn(text, { allowedSpecial: 'all' });
+  encodingModules.set(encodingName, countFn);
+
+  const endTime = process.hrtime.bigint();
+  const initTime = Number(endTime - startTime) / 1e6;
+  logger.debug(`TokenCounter initialization for ${encodingName} took ${initTime.toFixed(2)}ms`);
+
+  return countFn;
+};
+
 export class TokenCounter {
-  private encoding: Tiktoken;
+  private countFn: ((text: string) => number) | null = null;
+  private readonly encodingName: TokenEncoding;
 
-  constructor(encodingName: TiktokenEncoding) {
-    const startTime = process.hrtime.bigint();
+  constructor(encodingName: TokenEncoding) {
+    this.encodingName = encodingName;
+  }
 
-    // Setup encoding with the specified model
-    this.encoding = get_encoding(encodingName);
-
-    const endTime = process.hrtime.bigint();
-    const initTime = Number(endTime - startTime) / 1e6; // Convert to milliseconds
-
-    logger.debug(`TokenCounter initialization took ${initTime.toFixed(2)}ms`);
+  async init(): Promise<void> {
+    this.countFn = await loadEncoding(this.encodingName);
   }
 
   public countTokens(content: string, filePath?: string): number {
-    try {
-      // Disable special token validation to handle files that may contain
-      // special token sequences (e.g., tokenizer configs with <|endoftext|>).
-      // This treats special tokens as ordinary text rather than control tokens,
-      // which is appropriate for general code/text analysis where we're not
-      // actually sending the content to an LLM API.
-      return this.encoding.encode(content, [], []).length;
-    } catch (error) {
-      let message = '';
-      if (error instanceof Error) {
-        message = error.message;
-      } else {
-        message = String(error);
-      }
+    if (!this.countFn) {
+      throw new Error('TokenCounter not initialized. Call init() first.');
+    }
 
+    try {
+      return this.countFn(content);
+    } catch {
       if (filePath) {
-        logger.warn(`Failed to count tokens. path: ${filePath}, error: ${message}`);
+        logger.warn(`Failed to count tokens. path: ${filePath}`);
       } else {
-        logger.warn(`Failed to count tokens. error: ${message}`);
+        logger.warn('Failed to count tokens.');
       }
 
       return 0;
     }
   }
 
-  public free(): void {
-    this.encoding.free();
-  }
+  // No-op: gpt-tokenizer is pure JS, no WASM resources to free
+  public free(): void {}
 }

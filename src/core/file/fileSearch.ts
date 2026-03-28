@@ -1,58 +1,121 @@
 import type { Stats } from 'node:fs';
+import { statSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { type Options as GlobbyOptions, globby } from 'globby';
-import { minimatch } from 'minimatch';
+import type { Options as GlobbyOptions } from 'globby';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { execGitLsFiles } from '../git/gitCommand.js';
 import { sortPaths } from './filePathSort.js';
 
+// Lazy-load globby (~70ms) — only needed as fallback when git ls-files fast path
+// is not available (non-git repos, gitignore disabled, explicit files).
+// For git repositories (95%+ of use cases), globby is never called.
+// Cache the import promise to avoid concurrent dynamic imports returning different
+// module instances (a Vitest limitation with mocked modules).
+let _globbyPromise: Promise<typeof import('globby')> | undefined;
+const getGlobby = async (): Promise<typeof import('globby').globby> => {
+  _globbyPromise ??= import('globby');
+  return (await _globbyPromise).globby;
+};
+
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
+
+// Lazy-load picomatch for git fast path pattern matching.
+// picomatch is a transitive dependency (via globby → fast-glob → picomatch) so always available.
+let _picomatch: typeof import('picomatch').default | undefined;
+const getPicomatch = async () => {
+  if (!_picomatch) {
+    const mod = await import('picomatch');
+    _picomatch = mod.default;
+  }
+  return _picomatch;
+};
 
 export interface FileSearchResult {
   filePaths: string[];
   emptyDirPaths: string[];
+  /**
+   * Deferred promise for empty directory paths when includeEmptyDirectories is enabled.
+   * When set, emptyDirPaths is [] — the caller should await this promise instead.
+   * This allows the caller to start file collection immediately after getting filePaths,
+   * overlapping the ~130ms globby directory scan with the ~300ms collectFiles phase.
+   */
+  pendingEmptyDirPaths?: Promise<string[]>;
 }
+
+// ── Search result cache ───────────────────────────────────────────────────
+// Caches the searchFiles result across pack() calls for MCP/website server.
+// Validation: stat .git/index — its mtime changes on any git add/rm/checkout.
+// For non-git repos (globby path), the cache is not used.
+// Cache key: rootDir + serialized config patterns (include, ignore, useGitignore, etc.)
+// Bounded to 16 entries to prevent unbounded growth in long-running processes.
+interface SearchCacheEntry {
+  gitIndexMtimeMs: number;
+  gitIndexSize: number;
+  filePaths: string[];
+  emptyDirPaths?: string[];
+}
+
+const MAX_SEARCH_CACHE_SIZE = 16;
+const searchResultCache = new Map<string, SearchCacheEntry>();
+
+const buildSearchCacheKey = (rootDir: string, config: RepomixConfigMerged): string => {
+  // Include all config fields that affect which files are returned.
+  // JSON.stringify is called once per pack() call (~0.01ms) — negligible overhead.
+  return `${rootDir}\0${JSON.stringify({
+    include: config.include,
+    ignore: config.ignore,
+    cwd: config.cwd,
+    filePath: config.output.filePath,
+    includeEmptyDirectories: config.output.includeEmptyDirectories,
+  })}`;
+};
 
 const findEmptyDirectories = async (
   rootDir: string,
   directories: string[],
   ignorePatterns: string[],
 ): Promise<string[]> => {
-  const emptyDirs: string[] = [];
+  // Pre-compile all ignore patterns into a single picomatch matcher.
+  // Previously, minimatch was called 2× per pattern per directory (with and without trailing '/'),
+  // resulting in O(dirs × patterns) pattern compilations. picomatch compiles the patterns once
+  // into a single automaton, reducing pattern evaluation from ~15,000 calls to ~600 for a
+  // typical repo with 300 directories and 50 patterns.
+  const picomatch = await getPicomatch();
+  const isIgnored = ignorePatterns.length > 0 ? picomatch(ignorePatterns, { dot: true }) : () => false;
 
-  for (const dir of directories) {
-    const fullPath = path.join(rootDir, dir);
-    try {
-      const entries = await fs.readdir(fullPath);
-      const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
+  // Parallelize readdir calls — each is independent I/O.
+  // For 100+ directories, this avoids sequential await per directory.
+  const results = await Promise.all(
+    directories.map(async (dir) => {
+      const fullPath = path.join(rootDir, dir);
+      try {
+        const entries = await fs.readdir(fullPath);
+        const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
 
-      if (!hasVisibleContents) {
-        // This checks if the directory itself matches any ignore patterns
-        const shouldIgnore = ignorePatterns.some((pattern) => minimatch(dir, pattern) || minimatch(`${dir}/`, pattern));
-
-        if (!shouldIgnore) {
-          emptyDirs.push(dir);
+        if (!hasVisibleContents) {
+          if (!isIgnored(dir) && !isIgnored(`${dir}/`)) {
+            return dir;
+          }
         }
+      } catch (error) {
+        logger.debug(`Error checking directory ${dir}:`, error);
       }
-    } catch (error) {
-      logger.debug(`Error checking directory ${dir}:`, error);
-    }
-  }
+      return null;
+    }),
+  );
 
-  return emptyDirs;
+  return results.filter((dir): dir is string => dir !== null);
 };
 
-// Check if a path is a git worktree reference file
+// Check if a path is a git worktree reference file.
+// Reads the file directly — if .git is a directory (normal repo) readFile throws,
+// and if it doesn't exist we also get an error. Both cases return false.
 const isGitWorktreeRef = async (gitPath: string): Promise<boolean> => {
   try {
-    const stats = await fs.stat(gitPath);
-    if (!stats.isFile()) {
-      return false;
-    }
-
     const content = await fs.readFile(gitPath, 'utf8');
     return content.startsWith('gitdir:');
   } catch {
@@ -84,12 +147,169 @@ export const normalizeGlobPattern = (pattern: string): string => {
     return pattern.slice(0, -1);
   }
 
-  // Convert **/folder to **/folder/** for consistent ignore pattern behavior
+  // Convert **/folder to **/folder/** for consistent ignore pattern behavior.
+  // Only expand if the suffix is a bare directory name (no glob chars, no dots).
+  // Patterns like **/package-lock.json or **/*.log are file patterns and must NOT
+  // get /** appended — doing so would match files INSIDE a "package-lock.json/"
+  // directory instead of the file itself.
   if (pattern.startsWith('**/') && !pattern.includes('/**')) {
-    return `${pattern}/**`;
+    const suffix = pattern.substring(3);
+    if (!suffix.includes('*') && !suffix.includes('?') && !suffix.includes('[') && !suffix.includes('.')) {
+      return `${pattern}/**`;
+    }
   }
 
   return pattern;
+};
+
+/**
+ * Fast file search using `git ls-files` instead of directory walking.
+ * Returns null if the fast path is not applicable (fall back to globby).
+ *
+ * `git ls-files --cached --others --exclude-standard` returns all tracked and
+ * untracked-but-not-ignored files, which is equivalent to globby with gitignore: true
+ * but ~20-50x faster because git reads from its index instead of walking the filesystem.
+ *
+ * After getting the file list, we apply repomix's own patterns (include, ignore,
+ * .repomixignore, .ignore) using picomatch to produce the final filtered list.
+ *
+ * Accepts a pre-started promise for git ls-files + picomatch import so the subprocess
+ * and module loading overlap with the permission check and ignore context preparation
+ * in searchFiles (~5-10ms saved).
+ */
+const searchFilesWithGit = async (
+  rootDir: string,
+  includePatterns: string[],
+  adjustedIgnorePatterns: string[],
+  ignoreFilePatterns: string[],
+  preStartedPromise: Promise<[string[], typeof import('picomatch').default]>,
+): Promise<string[] | null> => {
+  try {
+    const startTime = Date.now();
+    logger.debug('[git-ls-files] Starting fast file search (pre-started)...');
+
+    const [allFiles, picomatch] = await preStartedPromise;
+    if (allFiles.length === 0) return null;
+
+    // Read additional patterns from .repomixignore and .ignore files found in git output.
+    const ignoreFilesToRead: string[] = [];
+    if (ignoreFilePatterns.length > 0) {
+      const isIgnoreFile = picomatch(ignoreFilePatterns, { dot: true });
+      for (const f of allFiles) {
+        if (isIgnoreFile(f)) {
+          ignoreFilesToRead.push(f);
+        }
+      }
+    }
+
+    const additionalIgnorePatterns: string[] = [];
+    if (ignoreFilesToRead.length > 0) {
+      const ignoreResults = await Promise.all(
+        ignoreFilesToRead.map(async (ignoreFile) => {
+          try {
+            const content = await fs.readFile(path.join(rootDir, ignoreFile), 'utf8');
+            const patterns = parseIgnoreContent(content);
+            const dir = path.posix.dirname(ignoreFile);
+            return patterns.map((pattern) =>
+              dir === '.' ? normalizeGlobPattern(pattern) : normalizeGlobPattern(`${dir}/${pattern}`),
+            );
+          } catch {
+            return [];
+          }
+        }),
+      );
+      for (const patterns of ignoreResults) {
+        for (const p of patterns) {
+          additionalIgnorePatterns.push(p);
+        }
+      }
+    }
+
+    const expandedIgnorePatterns: string[] = [];
+    const expandPattern = (pattern: string) => {
+      expandedIgnorePatterns.push(pattern);
+      if (!pattern.includes('*') && !pattern.includes('?') && !pattern.endsWith('/**')) {
+        expandedIgnorePatterns.push(`${pattern}/**`);
+      }
+    };
+    for (const pattern of adjustedIgnorePatterns) expandPattern(pattern);
+    for (const pattern of additionalIgnorePatterns) expandPattern(pattern);
+
+    const isMatchAll = includePatterns.length === 1 && includePatterns[0] === '**/*';
+    const isIncluded = isMatchAll ? undefined : picomatch(includePatterns, { dot: true });
+    const isIgnored = expandedIgnorePatterns.length > 0 ? picomatch(expandedIgnorePatterns, { dot: true }) : undefined;
+
+    const filteredFiles =
+      isIncluded && isIgnored
+        ? allFiles.filter((filePath) => isIncluded(filePath) && !isIgnored(filePath))
+        : isIncluded
+          ? allFiles.filter((filePath) => isIncluded(filePath))
+          : isIgnored
+            ? allFiles.filter((filePath) => !isIgnored(filePath))
+            : allFiles;
+
+    const elapsed = Date.now() - startTime;
+    logger.debug(
+      `[git-ls-files] Completed in ${elapsed}ms, found ${filteredFiles.length} files (from ${allFiles.length} candidates)`,
+    );
+
+    return filteredFiles;
+  } catch (error) {
+    logger.debug('[git-ls-files] Fast path failed, falling back to globby:', (error as Error).message);
+    return null;
+  }
+};
+
+/**
+ * Populate the search result cache after a successful searchFiles call.
+ * Fire-and-forget: stat failure just means no cache entry is created.
+ */
+const populateSearchCache = (rootDir: string, config: RepomixConfigMerged, filePaths: string[]): void => {
+  const cacheKey = buildSearchCacheKey(rootDir, config);
+  const gitIndexPath = path.join(rootDir, '.git', 'index');
+
+  fs.stat(gitIndexPath)
+    .then((stat) => {
+      // Only cache when stat returns real numeric values (not test mocks without mtimeMs)
+      if (typeof stat.mtimeMs !== 'number') return;
+
+      // Evict oldest entry if cache is full
+      if (searchResultCache.size >= MAX_SEARCH_CACHE_SIZE) {
+        const oldestKey = searchResultCache.keys().next().value;
+        if (oldestKey !== undefined) {
+          searchResultCache.delete(oldestKey);
+        }
+      }
+      searchResultCache.set(cacheKey, {
+        gitIndexMtimeMs: stat.mtimeMs,
+        gitIndexSize: stat.size,
+        filePaths,
+      });
+      logger.debug(`[search] Cached search result (${filePaths.length} files)`);
+    })
+    .catch(() => {
+      // Not a git repo or .git/index doesn't exist — skip caching
+    });
+};
+
+/**
+ * Find empty directories for cache hit path. Reuses prepareIgnoreContext
+ * to compute ignore patterns, then runs the globby + findEmptyDirectories flow.
+ */
+const findEmptyDirectoriesForCache = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
+  const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+  const baseOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+
+  const includePatterns = config.include.length > 0 ? config.include.map(escapeGlobPattern) : ['**/*'];
+
+  const globbyFn = await getGlobby();
+  const directories = await globbyFn(includePatterns, {
+    ...baseOptions,
+    onlyDirectories: true,
+  });
+
+  const emptyDirs = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+  return sortPaths(emptyDirs);
 };
 
 // Get all file paths considering the config
@@ -97,7 +317,60 @@ export const searchFiles = async (
   rootDir: string,
   config: RepomixConfigMerged,
   explicitFiles?: string[],
+  preStartedGitLsFilesPromise?: Promise<string[]>,
 ): Promise<FileSearchResult> => {
+  // ── Cache check ──────────────────────────────────────────────────────────
+  // For MCP/website servers calling pack() repeatedly on the same repo,
+  // skip the entire search (git ls-files subprocess, picomatch filtering,
+  // permission check, ignore context I/O) when the git index hasn't changed.
+  // Saves ~30-60ms per cached call (~30% of total pack time).
+  // Explicit files (stdin mode) bypass the cache since the file list is external.
+  if (!explicitFiles) {
+    const cacheKey = buildSearchCacheKey(rootDir, config);
+    const cached = searchResultCache.get(cacheKey);
+    if (cached) {
+      try {
+        // Use statSync instead of async fs.stat — the .git/index inode is always in the
+        // kernel buffer cache (recently accessed), so the syscall is fast (~0.001ms).
+        // Async stat incurs ~2-5ms of Promise scheduling + libuv threadpool overhead
+        // that dominates the cache validation cost on warm runs.
+        const gitIndexPath = path.join(rootDir, '.git', 'index');
+        const indexStat = statSync(gitIndexPath);
+        if (indexStat.mtimeMs === cached.gitIndexMtimeMs && indexStat.size === cached.gitIndexSize) {
+          logger.debug('[search] Cache hit — returning cached file list');
+
+          // Return cached empty dirs if available, otherwise compute them.
+          // On first cache hit after population, emptyDirPaths may not be cached yet
+          // (populated asynchronously after the first findEmptyDirectories completes).
+          let pendingEmptyDirPaths: Promise<string[]> | undefined;
+          if (config.output.includeEmptyDirectories) {
+            if (cached.emptyDirPaths !== undefined) {
+              // Empty dirs cached — no I/O needed
+              pendingEmptyDirPaths = undefined;
+            } else {
+              // Not yet cached — compute and backfill the cache entry
+              pendingEmptyDirPaths = findEmptyDirectoriesForCache(rootDir, config).then((dirs) => {
+                cached.emptyDirPaths = dirs;
+                return dirs;
+              });
+            }
+          }
+
+          return {
+            filePaths: cached.filePaths,
+            emptyDirPaths: cached.emptyDirPaths ?? [],
+            pendingEmptyDirPaths,
+          };
+        }
+        // Index changed — evict stale entry
+        searchResultCache.delete(cacheKey);
+      } catch {
+        // .git/index doesn't exist (not a git repo) — skip cache
+        searchResultCache.delete(cacheKey);
+      }
+    }
+  }
+
   // Check if the path exists and get its type
   let pathStats: Stats;
   try {
@@ -133,8 +406,25 @@ export const searchFiles = async (
     );
   }
 
-  // Now check directory permissions
-  const permissionCheck = await checkDirectoryPermissions(rootDir);
+  // Determine early if the git fast path is available — this check is pure (no I/O).
+  // When applicable, start git ls-files subprocess + picomatch import immediately
+  // so they overlap with the permission check and ignore context preparation (~10ms),
+  // instead of starting sequentially after those complete.
+  // If a pre-started git ls-files promise is available (started during config loading
+  // to overlap with ~43ms Zod validation), reuse it instead of spawning a new subprocess.
+  const canUseGitFastPath = config.ignore.useGitignore && !explicitFiles;
+  const earlyGitPromise = canUseGitFastPath
+    ? Promise.all([preStartedGitLsFilesPromise ?? execGitLsFiles(rootDir), getPicomatch()])
+    : undefined;
+
+  // Run permission check and ignore context preparation in parallel.
+  // Both are independent: permission check does readdir + access calls,
+  // while ignore context reads config patterns + .git/info/exclude.
+  // When git fast path is enabled, the git subprocess runs concurrently with these.
+  const [permissionCheck, ignoreContext] = await Promise.all([
+    checkDirectoryPermissions(rootDir),
+    prepareIgnoreContext(rootDir, config),
+  ]);
 
   if (permissionCheck.details?.read !== true) {
     if (permissionCheck.error instanceof PermissionError) {
@@ -146,7 +436,7 @@ export const searchFiles = async (
   }
 
   try {
-    const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+    const { adjustedIgnorePatterns, ignoreFilePatterns } = ignoreContext;
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns:', ignoreFilePatterns);
@@ -186,52 +476,104 @@ export const searchFiles = async (
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns (for globby):', ignoreFilePatterns);
 
-    logger.debug('[globby] Starting file search...');
-    const globbyStartTime = Date.now();
+    logger.debug('[search] Starting file search...');
+    const searchStartTime = Date.now();
 
-    const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-      onlyFiles: true,
-    }).catch((error: unknown) => {
-      // Handle EPERM errors specifically
-      const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
-      if (code === 'EPERM' || code === 'EACCES') {
-        throw new PermissionError(
-          `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
-          rootDir,
-        );
-      }
-      throw error;
-    });
+    // Use pre-started git ls-files result when available. The subprocess and picomatch
+    // import were kicked off before the permission check, so they've been running in
+    // parallel for ~10ms. Pass the pre-resolved values into searchFilesWithGit to
+    // avoid re-starting them.
+    const gitResult = earlyGitPromise
+      ? await searchFilesWithGit(rootDir, includePatterns, adjustedIgnorePatterns, ignoreFilePatterns, earlyGitPromise)
+      : null;
 
-    const globbyElapsedTime = Date.now() - globbyStartTime;
-    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+    // Defer globby options creation until globby is actually needed.
+    // On the git fast path (95%+ of runs), neither globby nor its options are used.
+    let _baseGlobbyOptions: ReturnType<typeof createBaseGlobbyOptions> | undefined;
+    const getBaseGlobbyOptions = () => {
+      _baseGlobbyOptions ??= createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+      return _baseGlobbyOptions;
+    };
 
-    let emptyDirPaths: string[] = [];
-    if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories...');
-      const emptyDirStartTime = Date.now();
+    const fileSearchPromise =
+      gitResult !== null
+        ? Promise.resolve(gitResult)
+        : getGlobby().then((globbyFn) =>
+            globbyFn(includePatterns, {
+              ...getBaseGlobbyOptions(),
+              onlyFiles: true,
+            }).catch((error: unknown) => {
+              // Handle EPERM errors specifically
+              const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
+              if (code === 'EPERM' || code === 'EACCES') {
+                throw new PermissionError(
+                  `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
+                  rootDir,
+                );
+              }
+              throw error;
+            }),
+          );
 
-      const directories = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyDirectories: true,
-      });
+    // Start empty directory search as a deferred promise instead of blocking filePaths.
+    // On the git-ls-files fast path, fileSearchPromise resolves in ~5ms, but the empty dir
+    // globby scan takes ~130ms (globby load + directory walk). By deferring it, the caller
+    // can start collectFiles (~300ms) immediately, overlapping the empty dir detection.
+    const emptyDirPromise = config.output.includeEmptyDirectories
+      ? (async () => {
+          logger.debug('[empty dirs] Searching for empty directories...');
+          const emptyDirStartTime = Date.now();
 
-      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
+          const globbyFn = await getGlobby();
+          const directories = await globbyFn(includePatterns, {
+            ...getBaseGlobbyOptions(),
+            onlyDirectories: true,
+          });
 
-      const filterStartTime = Date.now();
-      emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
-      const filterTime = Date.now() - filterStartTime;
-      logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
-    }
+          const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
+          logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
 
-    logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
+          const filterStartTime = Date.now();
+          const result = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+          const filterTime = Date.now() - filterStartTime;
+          logger.debug(`[empty dirs] Filtered to ${result.length} empty directories in ${filterTime}ms`);
+          return result;
+        })()
+      : undefined;
+
+    const filePaths = await fileSearchPromise;
+
+    const searchElapsedTime = Date.now() - searchStartTime;
+    logger.debug(`[search] Completed in ${searchElapsedTime}ms, found ${filePaths.length} files`);
+
     logger.trace(`Filtered ${filePaths.length} files`);
 
+    const sortedFilePaths = sortPaths(filePaths);
+
+    // Populate search result cache for subsequent pack() calls (MCP/server).
+    // Uses .git/index mtime to detect file list changes. stat is ~0.07ms.
+    if (!explicitFiles) {
+      populateSearchCache(rootDir, config, sortedFilePaths);
+    }
+
+    // When empty dirs resolve, backfill them into the cache entry so subsequent
+    // cache hits return them directly without re-running the globby directory scan
+    // (~15-30ms saved per cache hit when includeEmptyDirectories is enabled).
+    const pendingEmptyDirPaths = emptyDirPromise?.then((paths) => {
+      const sorted = sortPaths(paths);
+      // Backfill cache entry if it exists
+      const cacheKey = buildSearchCacheKey(rootDir, config);
+      const entry = searchResultCache.get(cacheKey);
+      if (entry) {
+        entry.emptyDirPaths = sorted;
+      }
+      return sorted;
+    });
+
     return {
-      filePaths: sortPaths(filePaths),
-      emptyDirPaths: sortPaths(emptyDirPaths),
+      filePaths: sortedFilePaths,
+      emptyDirPaths: [],
+      pendingEmptyDirPaths,
     };
   } catch (error: unknown) {
     // Re-throw PermissionError as is
@@ -273,17 +615,16 @@ const prepareIgnoreContext = async (
   rootDir: string,
   config: RepomixConfigMerged,
 ): Promise<{ adjustedIgnorePatterns: string[]; ignoreFilePatterns: string[] }> => {
-  const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
+  // Parallelize all three I/O operations: ignore patterns, file patterns, and worktree check.
+  // isGitWorktreeRef reads .git file — overlaps with getIgnorePatterns reading .git/info/exclude.
+  const [ignorePatterns, ignoreFilePatterns, isWorktree] = await Promise.all([
     getIgnorePatterns(rootDir, config),
     getIgnoreFilePatterns(config),
+    isGitWorktreeRef(path.join(rootDir, '.git')),
   ]);
 
   // Normalize ignore patterns to handle trailing slashes consistently
   const normalizedIgnorePatterns = ignorePatterns.map(normalizeGlobPattern);
-
-  // Check if .git is a worktree reference
-  const gitPath = path.join(rootDir, '.git');
-  const isWorktree = await isGitWorktreeRef(gitPath);
 
   // Modify ignore patterns for git worktree
   const adjustedIgnorePatterns = [...normalizedIgnorePatterns];
@@ -400,7 +741,8 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
-  const directories = await globby(['**/*'], {
+  const globbyFn = await getGlobby();
+  const directories = await globbyFn(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
   });
@@ -419,10 +761,39 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
 export const listFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
-  const files = await globby(['**/*'], {
+  const globbyFn = await getGlobby();
+  const files = await globbyFn(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,
   });
 
   return sortPaths(files);
+};
+
+/**
+ * Lists both directories and files in a single call, sharing the prepareIgnoreContext result
+ * to avoid duplicate I/O (.git/info/exclude reads, worktree checks) and pattern computation.
+ * Used by full directory structure mode which needs both directories and files.
+ *
+ * @param rootDir The root directory to scan
+ * @param config The merged configuration
+ * @returns Object with sorted directory paths and file paths
+ */
+export const listDirectoriesAndFiles = async (
+  rootDir: string,
+  config: RepomixConfigMerged,
+): Promise<{ directories: string[]; files: string[] }> => {
+  const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+  const baseOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+
+  const globbyFn = await getGlobby();
+  const [directories, files] = await Promise.all([
+    globbyFn(['**/*'], { ...baseOptions, onlyDirectories: true }),
+    globbyFn(['**/*'], { ...baseOptions, onlyFiles: true }),
+  ]);
+
+  return {
+    directories: sortPaths(directories),
+    files: sortPaths(files),
+  };
 };

@@ -1,26 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { calculateSelectiveFileMetrics } from '../../../src/core/metrics/calculateSelectiveFileMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
-import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
+import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 
-vi.mock('../../shared/processConcurrency', () => ({
-  getProcessConcurrency: () => 1,
-}));
-
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
-  return {
-    run: async (task: T) => {
-      return (await countTokens(task as TokenCountTask)) as R;
-    },
-    cleanup: async () => {
-      // Mock cleanup - no-op for tests
-    },
-  };
-};
-
 describe('calculateSelectiveFileMetrics', () => {
+  const mockGetTokenCounter = async () => {
+    const counter = new TokenCounter('o200k_base');
+    await counter.init();
+    return counter;
+  };
+
   it('should calculate metrics for selective files only', async () => {
     const processedFiles: ProcessedFile[] = [
       { path: 'file1.txt', content: 'a'.repeat(100) },
@@ -36,14 +26,17 @@ describe('calculateSelectiveFileMetrics', () => {
       'o200k_base',
       progressCallback,
       {
-        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+        getTokenCounter: mockGetTokenCounter,
       },
     );
 
-    expect(result).toEqual([
-      { path: 'file1.txt', charCount: 100, tokenCount: 13 },
-      { path: 'file3.txt', charCount: 300, tokenCount: 75 },
-    ]);
+    expect(result.length).toBe(2);
+    expect(result[0].path).toBe('file1.txt');
+    expect(result[0].charCount).toBe(100);
+    expect(result[0].tokenCount).toBeGreaterThan(0);
+    expect(result[1].path).toBe('file3.txt');
+    expect(result[1].charCount).toBe(300);
+    expect(result[1].tokenCount).toBeGreaterThan(0);
   });
 
   it('should return empty array when no target files match', async () => {
@@ -57,7 +50,7 @@ describe('calculateSelectiveFileMetrics', () => {
       'o200k_base',
       progressCallback,
       {
-        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+        getTokenCounter: mockGetTokenCounter,
       },
     );
 

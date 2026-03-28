@@ -1,27 +1,72 @@
 import path from 'node:path';
-import strip from '@repomix/strip-comments';
 
 export interface FileManipulator {
   removeComments(content: string): string;
   removeEmptyLines(content: string): string;
 }
 
-const rtrimLines = (content: string): string =>
-  content
-    .split('\n')
-    .map((line) => line.trimEnd())
-    .join('\n');
+// Lazy-load @repomix/strip-comments — only needed when --remove-comments is enabled (non-default).
+// This avoids importing the module (~8ms) on every run. Cached after first load.
+let _strip: ((input: string, options?: { language?: string; preserveNewlines?: boolean }) => string) | undefined;
+
+export const ensureStripCommentsLoaded = async (): Promise<void> => {
+  if (!_strip) {
+    const mod = await import('@repomix/strip-comments');
+    _strip = mod.default;
+  }
+};
+
+// Single-pass rtrimLines: scans for trailing whitespace before each newline
+// without creating intermediate arrays. Avoids split/map/join overhead
+// which creates 2 arrays + N strings for an N-line file.
+const rtrimLines = (content: string): string => {
+  const parts: string[] = [];
+  let pos = 0;
+  while (pos <= content.length) {
+    const nlPos = content.indexOf('\n', pos);
+    const lineEnd = nlPos === -1 ? content.length : nlPos;
+    // Find end of non-whitespace content in this line
+    let trimEnd = lineEnd;
+    while (trimEnd > pos && (content.charCodeAt(trimEnd - 1) === 32 || content.charCodeAt(trimEnd - 1) === 9)) {
+      trimEnd--;
+    }
+    parts.push(content.slice(pos, trimEnd));
+    if (nlPos === -1) break;
+    pos = nlPos + 1;
+  }
+  return parts.join('\n');
+};
 
 class BaseManipulator implements FileManipulator {
   removeComments(content: string): string {
     return content;
   }
 
+  // Single-pass removeEmptyLines: scans for non-empty lines using indexOf
+  // without creating intermediate split + filter arrays. For a 10,000-line file,
+  // this avoids allocating ~40KB+ of temporary arrays on the heap.
   removeEmptyLines(content: string): string {
-    return content
-      .split('\n')
-      .filter((line) => line.trim() !== '')
-      .join('\n');
+    const parts: string[] = [];
+    let pos = 0;
+    while (pos < content.length) {
+      const nlPos = content.indexOf('\n', pos);
+      const lineEnd = nlPos === -1 ? content.length : nlPos;
+      // Check if line has any non-whitespace content
+      let hasContent = false;
+      for (let i = pos; i < lineEnd; i++) {
+        const c = content.charCodeAt(i);
+        if (c !== 32 && c !== 9 && c !== 13) {
+          hasContent = true;
+          break;
+        }
+      }
+      if (hasContent) {
+        parts.push(content.slice(pos, lineEnd));
+      }
+      if (nlPos === -1) break;
+      pos = nlPos + 1;
+    }
+    return parts.join('\n');
   }
 }
 
@@ -34,7 +79,10 @@ class StripCommentsManipulator extends BaseManipulator {
   }
 
   removeComments(content: string): string {
-    const result = strip(content, {
+    if (!_strip) {
+      throw new Error('strip-comments not loaded. Call ensureStripCommentsLoaded() first.');
+    }
+    const result = _strip(content, {
       language: this.language,
       preserveNewlines: true,
     });

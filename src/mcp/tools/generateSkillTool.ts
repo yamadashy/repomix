@@ -125,6 +125,7 @@ Example Path:
           ignore: ignorePatterns,
           securityCheck: true,
           quiet: true,
+          _inProcess: true,
         } as CliOptions;
 
         const result = await runCli(['.'], directory, cliOptions);

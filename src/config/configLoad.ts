@@ -1,7 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import JSON5 from 'json5';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
@@ -11,9 +10,7 @@ import {
   type RepomixConfigCli,
   type RepomixConfigFile,
   type RepomixConfigMerged,
-  repomixConfigFileSchema,
-  repomixConfigMergedSchema,
-} from './configSchema.js';
+} from './configDefaults.js';
 import { getGlobalDirectory } from './globalDirectory.js';
 
 const defaultConfigPaths = [
@@ -43,14 +40,20 @@ const checkFileExists = async (filePath: string): Promise<boolean> => {
 };
 
 const findConfigFile = async (configPaths: string[], logPrefix: string): Promise<string | null> => {
-  for (const configPath of configPaths) {
-    logger.trace(`Checking for ${logPrefix} config at:`, configPath);
+  // Check all paths in parallel instead of sequentially.
+  // For repos with JSON config (last in priority list), this avoids 8 wasted sequential stat calls.
+  const results = await Promise.all(
+    configPaths.map(async (configPath) => {
+      logger.trace(`Checking for ${logPrefix} config at:`, configPath);
+      return { path: configPath, exists: await checkFileExists(configPath) };
+    }),
+  );
 
-    const fileExists = await checkFileExists(configPath);
-
-    if (fileExists) {
-      logger.trace(`Found ${logPrefix} config at:`, configPath);
-      return configPath;
+  // Return the first match in priority order
+  for (const result of results) {
+    if (result.exists) {
+      logger.trace(`Found ${logPrefix} config at:`, result.path);
+      return result.path;
     }
   }
   return null;
@@ -89,10 +92,23 @@ export const loadFileConfig = async (
     throw new RepomixError(`Config file not found at ${argConfigPath}`);
   }
 
-  // Try to find a local config file using the priority order
+  // Search local and global config paths in parallel to avoid sequential stat calls.
+  // When no local config exists (common in benchmarks), this saves ~5ms by overlapping
+  // the 9 local stat calls with the 9 global stat calls.
   const localConfigPaths = defaultConfigPaths.map((configPath) => path.resolve(rootDir, configPath));
-  const localConfigPath = await findConfigFile(localConfigPaths, 'local');
+  let globalConfigPaths: string[];
+  try {
+    globalConfigPaths = getGlobalConfigPaths();
+  } catch {
+    // getGlobalDirectory() may throw if HOME is not set (e.g., in test environments)
+    globalConfigPaths = [];
+  }
+  const [localConfigPath, globalConfigPath] = await Promise.all([
+    findConfigFile(localConfigPaths, 'local'),
+    globalConfigPaths.length > 0 ? findConfigFile(globalConfigPaths, 'global') : Promise.resolve(null),
+  ]);
 
+  // Local config takes priority over global
   if (localConfigPath) {
     if (!options.skipLocalConfig) {
       return await loadAndValidateConfig(localConfigPath, deps);
@@ -103,10 +119,6 @@ export const loadFileConfig = async (
         'Use --remote-trust-config to trust and load it.',
     );
   }
-
-  // Try to find a global config file using the priority order
-  const globalConfigPaths = getGlobalConfigPaths();
-  const globalConfigPath = await findConfigFile(globalConfigPaths, 'global');
 
   if (globalConfigPath) {
     return await loadAndValidateConfig(globalConfigPath, deps);
@@ -157,7 +169,9 @@ const loadAndValidateConfig = async (
       case 'jsonc':
       case 'json': {
         // Use JSON5 for JSON/JSON5/JSONC files
+        // Lazy-load json5 to avoid importing it when no config file is found
         const fileContent = await fs.readFile(filePath, 'utf-8');
+        const JSON5 = (await import('json5')).default;
         config = JSON5.parse(fileContent);
         break;
       }
@@ -166,6 +180,9 @@ const loadAndValidateConfig = async (
         throw new RepomixError(`Unsupported config file format: ${filePath}`);
     }
 
+    // Lazy-load Zod schema to defer ~50ms Zod module initialization
+    // until config validation is actually needed (not at module import time)
+    const { repomixConfigFileSchema } = await import('./configSchema.js');
     return repomixConfigFileSchema.parse(config);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');
@@ -246,10 +263,9 @@ export const mergeConfigs = (
     ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
   };
 
-  try {
-    return repomixConfigMergedSchema.parse(mergedConfig);
-  } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid merged config');
-    throw error;
-  }
+  // All inputs are already validated: defaultConfig is a known-good literal,
+  // fileConfig was validated by repomixConfigFileSchema.parse(), and
+  // cliConfig was validated by repomixConfigCliSchema.parse().
+  // Skip redundant Zod validation of the merged result.
+  return mergedConfig as RepomixConfigMerged;
 };

@@ -149,6 +149,7 @@ describe('defaultActionWorker', () => {
     processedFiles: [{ path: 'test.txt', content: 'test content' }],
     safeFilePaths: ['test.txt'],
     skippedFiles: [],
+    outputLineCount: 0,
   };
 
   beforeEach(() => {
@@ -190,8 +191,13 @@ describe('defaultActionWorker', () => {
         undefined,
         {},
       );
+      // processedFiles content is stripped for IPC transfer (only paths needed in main process)
+      const expectedPackResult = {
+        ...mockPackResult,
+        processedFiles: mockPackResult.processedFiles.map((f) => ({ path: f.path, content: '' })),
+      };
       expect(result).toEqual({
-        packResult: mockPackResult,
+        packResult: expectedPackResult,
         config: mockConfig,
       });
     });
@@ -216,8 +222,12 @@ describe('defaultActionWorker', () => {
         undefined,
         {},
       );
+      const expectedPackResult = {
+        ...mockPackResult,
+        processedFiles: mockPackResult.processedFiles.map((f) => ({ path: f.path, content: '' })),
+      };
       expect(result).toEqual({
-        packResult: mockPackResult,
+        packResult: expectedPackResult,
         config: mockConfig,
       });
     });
@@ -260,8 +270,12 @@ describe('defaultActionWorker', () => {
         ['file1.txt', 'file2.txt'],
         {},
       );
+      const expectedPackResult = {
+        ...mockPackResult,
+        processedFiles: mockPackResult.processedFiles.map((f) => ({ path: f.path, content: '' })),
+      };
       expect(result).toEqual({
-        packResult: mockPackResult,
+        packResult: expectedPackResult,
         config: mockConfig,
       });
     });

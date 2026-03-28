@@ -11,8 +11,32 @@ import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
-import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
+import type {
+  promptSkillLocation as PromptSkillLocationType,
+  resolveAndPrepareSkillDir as ResolveAndPrepareSkillDirType,
+} from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
+
+// Lazy-load skillPrompts — defers @clack/prompts (~16ms) until skill generation is actually
+// requested. The --remote flag typically does NOT use skill generation, so this avoids
+// eagerly loading @clack/prompts on every remote invocation.
+let _skillPrompts:
+  | {
+      promptSkillLocation: typeof PromptSkillLocationType;
+      resolveAndPrepareSkillDir: typeof ResolveAndPrepareSkillDirType;
+    }
+  | undefined;
+const getSkillPrompts = async () => {
+  if (!_skillPrompts) {
+    const mod = await import('../prompts/skillPrompts.js');
+    _skillPrompts = {
+      promptSkillLocation: mod.promptSkillLocation,
+      resolveAndPrepareSkillDir: mod.resolveAndPrepareSkillDir,
+    };
+  }
+  return _skillPrompts;
+};
+
 import { type DefaultActionRunnerResult, runDefaultAction } from './defaultAction.js';
 
 export const runRemoteAction = async (
@@ -45,7 +69,7 @@ export const runRemoteAction = async (
 
   try {
     // Check if this is a GitHub repository and archive download is supported
-    const githubRepoInfo = deps.parseGitHubRepoInfo(repoUrl);
+    const githubRepoInfo = await deps.parseGitHubRepoInfo(repoUrl);
     const shouldTryArchive = githubRepoInfo && deps.isArchiveDownloadSupported(githubRepoInfo);
 
     if (shouldTryArchive) {
@@ -53,7 +77,7 @@ export const runRemoteAction = async (
       const spinner = new Spinner('Downloading repository archive...', cliOptions);
 
       try {
-        spinner.start();
+        await spinner.start();
 
         // Override ref with CLI option if provided
         const repoInfoWithBranch = {
@@ -119,9 +143,11 @@ export const runRemoteAction = async (
           throw new RepomixError('--skill-output path cannot be empty');
         }
         // Non-interactive mode: use provided path directly
+        const { resolveAndPrepareSkillDir } = await getSkillPrompts();
         skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, process.cwd(), cliOptions.force ?? false);
       } else {
         // Interactive mode: prompt for skill location
+        const { promptSkillLocation } = await getSkillPrompts();
         const promptResult = await promptSkillLocation(skillName, process.cwd());
         skillDir = promptResult.skillDir;
       }
@@ -178,14 +204,14 @@ const performGitClone = async (
   // Get remote refs
   let refs: string[] = [];
   try {
-    refs = await deps.getRemoteRefs(parseRemoteValue(repoUrl).repoUrl);
+    refs = await deps.getRemoteRefs((await parseRemoteValue(repoUrl)).repoUrl);
     logger.trace(`Retrieved ${refs.length} refs from remote repository`);
   } catch (error) {
     logger.trace('Failed to get remote refs, proceeding without them:', (error as Error).message);
   }
 
   // Parse the remote URL with the refs information
-  const parsedFields = parseRemoteValue(repoUrl, refs);
+  const parsedFields = await parseRemoteValue(repoUrl, refs);
 
   const spinner = new Spinner('Cloning repository...', cliOptions);
 

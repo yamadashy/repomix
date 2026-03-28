@@ -5,6 +5,8 @@ import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { generateOutput } from '../../../src/core/output/outputGenerate.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
+const normalizeOutput = (output: string | string[]): string => (Array.isArray(output) ? output.join('') : output);
+
 const createStrictXmlParser = () => {
   const throwOnError = (msg: string) => {
     throw new Error(msg);
@@ -20,9 +22,8 @@ describe('outputGenerate', () => {
     generateHandlebarOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
-    sortOutputFiles: vi.fn(),
   };
-  test('generateOutput should use sortOutputFiles before generating content', async () => {
+  test('generateOutput should pass pre-sorted files to buildOutputGeneratorContext', async () => {
     const mockConfig = createMockConfig({
       output: {
         filePath: 'output.txt',
@@ -30,18 +31,14 @@ describe('outputGenerate', () => {
         git: { sortByChanges: true },
       },
     });
-    const mockProcessedFiles: ProcessedFile[] = [
-      { path: 'file1.txt', content: 'content1' },
-      { path: 'file2.txt', content: 'content2' },
-    ];
-    const sortedFiles = [
+    // Files are expected to be pre-sorted by the caller (packager.ts)
+    const preSortedFiles: ProcessedFile[] = [
       { path: 'file2.txt', content: 'content2' },
       { path: 'file1.txt', content: 'content1' },
     ];
 
-    mockDeps.sortOutputFiles.mockResolvedValue(sortedFiles);
     mockDeps.buildOutputGeneratorContext.mockResolvedValue({
-      processedFiles: sortedFiles,
+      processedFiles: preSortedFiles,
       config: mockConfig,
       treeString: '',
       generationDate: new Date().toISOString(),
@@ -53,20 +50,23 @@ describe('outputGenerate', () => {
     const output = await generateOutput(
       [process.cwd()],
       mockConfig,
-      mockProcessedFiles,
+      preSortedFiles,
       [],
+      undefined,
       undefined,
       undefined,
       undefined,
       mockDeps,
     );
 
-    expect(mockDeps.sortOutputFiles).toHaveBeenCalledWith(mockProcessedFiles, mockConfig);
     expect(mockDeps.buildOutputGeneratorContext).toHaveBeenCalledWith(
       [process.cwd()],
       mockConfig,
       [],
-      sortedFiles,
+      preSortedFiles,
+      undefined,
+      undefined,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -90,7 +90,7 @@ describe('outputGenerate', () => {
       { path: 'dir/file2.txt', content: 'content2' },
     ];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const output = normalizeOutput(await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []));
 
     expect(output).toContain('File Summary');
     expect(output).toContain('File: file1.txt');
@@ -116,7 +116,7 @@ describe('outputGenerate', () => {
       { path: 'dir/file2.txt', content: 'if (a && b)' },
     ];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const output = normalizeOutput(await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []));
 
     const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
     const repomix = doc.documentElement;
@@ -148,7 +148,7 @@ describe('outputGenerate', () => {
       { path: 'dir/file2.txt', content: '```\ncontent2\n```' },
     ];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const output = normalizeOutput(await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []));
 
     expect(output).toContain('# File Summary');
     expect(output).toContain('## File: file1.txt');
@@ -167,7 +167,7 @@ describe('outputGenerate', () => {
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const output = normalizeOutput(await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []));
     expect(output).not.toContain('This file is a merged representation'); // generationHeader
     expect(output).toContain('ALWAYS SHOW THIS HEADER');
   });
@@ -183,7 +183,7 @@ describe('outputGenerate', () => {
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: '<div>foo</div>' }];
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const output = normalizeOutput(await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []));
     const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
     const repomix = doc.documentElement;
     expect(repomix.getElementsByTagName('file_summary').length).toBe(0);
@@ -202,7 +202,7 @@ describe('outputGenerate', () => {
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const output = normalizeOutput(await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []));
     expect(output).not.toContain('This file is a merged representation');
     expect(output).toContain('MARKDOWN HEADER');
   });
@@ -221,7 +221,9 @@ describe('outputGenerate', () => {
       stagedDiffContent: 'diff --git b/staged.txt',
     };
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, [], mockGitDiffResult);
+    const output = normalizeOutput(
+      await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, [], mockGitDiffResult),
+    );
 
     expect(output).toContain('Git Diffs');
     expect(output).toContain('diff --git a/file.txt');
@@ -248,13 +250,8 @@ describe('outputGenerate', () => {
       ],
     };
 
-    const output = await generateOutput(
-      [process.cwd()],
-      mockConfig,
-      mockProcessedFiles,
-      [],
-      undefined,
-      mockGitLogResult,
+    const output = normalizeOutput(
+      await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, [], undefined, mockGitLogResult),
     );
 
     expect(output).toContain('Git Logs');
@@ -274,7 +271,7 @@ describe('outputGenerate', () => {
       { path: 'file2.txt', content: 'content2' },
     ];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const output = normalizeOutput(await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []));
 
     const parsed = JSON.parse(output);
     expect(parsed).toHaveProperty('files');
@@ -294,7 +291,7 @@ describe('outputGenerate', () => {
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const output = normalizeOutput(await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []));
 
     expect(output).not.toContain('File: file1.txt');
     expect(output).not.toContain('content1');
@@ -310,7 +307,9 @@ describe('outputGenerate', () => {
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, ['file1.txt']);
+    const output = normalizeOutput(
+      await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, ['file1.txt']),
+    );
 
     expect(output).not.toContain('Directory Structure');
   });

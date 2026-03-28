@@ -1,7 +1,17 @@
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { Language } from 'web-tree-sitter';
+
+// Lazy-load web-tree-sitter Language class — defers WASM runtime loading
+// until a language actually needs to be loaded.
+let _Language: typeof import('web-tree-sitter').Language | undefined;
+const getLanguage = async () => {
+  if (!_Language) {
+    const mod = await import('web-tree-sitter');
+    _Language = mod.Language;
+  }
+  return _Language;
+};
 
 const require = createRequire(import.meta.url);
 
@@ -27,12 +37,13 @@ function getWasmBasePath(): string | null {
   return customWasmBasePath ?? process.env.REPOMIX_WASM_DIR ?? null;
 }
 
-export async function loadLanguage(langName: string): Promise<Language> {
+export async function loadLanguage(langName: string): Promise<InstanceType<typeof import('web-tree-sitter').Language>> {
   if (!langName) {
     throw new Error('Invalid language name');
   }
 
   try {
+    const Language = await getLanguage();
     const wasmPath = await getWasmPath(langName);
     return await Language.load(wasmPath);
   } catch (error: unknown) {

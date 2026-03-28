@@ -2,16 +2,17 @@ import process from 'node:process';
 import { Option, program } from 'commander';
 import pc from 'picocolors';
 import { getVersion } from '../core/file/packageJsonParse.js';
-import { isExplicitRemoteUrl } from '../core/git/gitRemoteParse.js';
 import { handleError, RepomixError } from '../shared/errorHandle.js';
 import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
-import { runDefaultAction } from './actions/defaultAction.js';
-import { runInitAction } from './actions/initAction.js';
-import { runMcpAction } from './actions/mcpAction.js';
-import { runRemoteAction } from './actions/remoteAction.js';
-import { runVersionAction } from './actions/versionAction.js';
 import type { CliOptions } from './types.js';
+
+// Speculatively pre-load tinypool (via processConcurrency) during Commander setup.
+// Worker pools need tinypool (~37ms load). Starting this import at cliRun module load
+// time gives a ~60ms head start vs loading it at pack() entry, reducing idle time waiting
+// for BPE table initialization from ~140ms to ~80ms. For --version/--init/--mcp actions,
+// the import is non-blocking and the process exits before it resolves (no overhead).
+export const _pcPreload = import('../shared/processConcurrency.js').catch(() => undefined);
 
 // Semantic mapping for CLI suggestions
 // This maps conceptually related terms (not typos) to valid options
@@ -227,6 +228,10 @@ export const run = async () => {
 };
 
 const commanderActionEndpoint = async (directories: string[], options: CliOptions = {}) => {
+  // CLI one-shot mode: skip child process in quiet mode since the process exits
+  // after this run anyway. Saves ~120ms of child process spawn + module reload.
+  // Library callers (server, MCP) don't set this flag and keep child process isolation.
+  options._cliOneShot = true;
   await runCli(directories, process.cwd(), options);
 };
 
@@ -257,34 +262,45 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   logger.trace('options:', options);
 
   if (options.mcp) {
+    const { runMcpAction } = await import('./actions/mcpAction.js');
     return await runMcpAction();
   }
 
   if (options.version) {
+    const { runVersionAction } = await import('./actions/versionAction.js');
     await runVersionAction();
     return;
   }
 
-  // Skip version header in stdin mode to avoid interfering with piped output from interactive tools like fzf
-  if (!options.stdin) {
+  // Skip version header in stdin/stdout/quiet mode to avoid unnecessary I/O
+  // (package.json read) when output would be suppressed anyway.
+  if (!options.stdin && !options.stdout && !options.quiet) {
     const version = await getVersion();
     logger.log(pc.dim(`\n📦 Repomix v${version}\n`));
   }
 
   if (options.init) {
+    const { runInitAction } = await import('./actions/initAction.js');
     await runInitAction(cwd, options.global || false);
     return;
   }
 
   if (options.remote) {
+    const { runRemoteAction } = await import('./actions/remoteAction.js');
     return await runRemoteAction(options.remote, options);
   }
 
   // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
-  if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
+  // Inline check avoids importing git-url-parse (heavy) just for a prefix test
+  if (
+    directories.length === 1 &&
+    ['https://', 'git@', 'ssh://', 'git://'].some((prefix) => directories[0].startsWith(prefix))
+  ) {
     logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
+    const { runRemoteAction } = await import('./actions/remoteAction.js');
     return await runRemoteAction(directories[0], options);
   }
 
+  const { runDefaultAction } = await import('./actions/defaultAction.js');
   return await runDefaultAction(directories, cwd, options);
 };

@@ -1,4 +1,3 @@
-import fs from 'node:fs/promises';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -10,13 +9,12 @@ import {
 } from '../../../src/mcp/tools/grepRepomixOutputTool.js';
 import * as mcpToolRuntime from '../../../src/mcp/tools/mcpToolRuntime.js';
 
-vi.mock('node:fs/promises');
 vi.mock('../../../src/shared/logger.js');
 vi.mock('../../../src/mcp/tools/mcpToolRuntime.js', async () => {
   const actual = await vi.importActual('../../../src/mcp/tools/mcpToolRuntime.js');
   return {
     ...actual,
-    getOutputFilePath: vi.fn(),
+    getOutputLines: vi.fn(),
   };
 });
 
@@ -300,19 +298,22 @@ describe('grepRepomixOutputTool', () => {
     it('should format results with equal before and after context lines', () => {
       const result = formatSearchResults(lines, matches, 1, 1);
 
-      expect(result).toEqual(['1-line 1', '2:pattern match', '3-line 3', '--', '4:another pattern', '5-line 5']);
+      // No separator: match 1 context (lines 0-2) and match 2 context (lines 2-4) are contiguous
+      expect(result).toEqual(['1-line 1', '2:pattern match', '3-line 3', '4:another pattern', '5-line 5']);
     });
 
     it('should format results with different before and after context lines', () => {
       const result = formatSearchResults(lines, matches, 1, 0);
 
-      expect(result).toEqual(['1-line 1', '2:pattern match', '--', '3-line 3', '4:another pattern']);
+      // No separator: match 1 ends at line 1, match 2 starts at line 2 (contiguous)
+      expect(result).toEqual(['1-line 1', '2:pattern match', '3-line 3', '4:another pattern']);
     });
 
     it('should format results with only after context lines', () => {
       const result = formatSearchResults(lines, matches, 0, 1);
 
-      expect(result).toEqual(['2:pattern match', '3-line 3', '--', '4:another pattern', '5-line 5']);
+      // No separator: match 1 context (lines 1-2) and match 2 context (lines 3-4) are contiguous
+      expect(result).toEqual(['2:pattern match', '3-line 3', '4:another pattern', '5-line 5']);
     });
 
     it('should format results with more before than after context lines', () => {
@@ -324,15 +325,8 @@ describe('grepRepomixOutputTool', () => {
 
       const result = formatSearchResults(extendedLines, extendedMatches, 2, 1);
 
-      expect(result).toEqual([
-        '1-line 0',
-        '2-line 1',
-        '3:pattern match',
-        '4-line 3',
-        '--',
-        '5:another pattern',
-        '6-line 5',
-      ]);
+      // No separator: match 1 context (lines 0-3) overlaps with match 2 context (lines 2-5)
+      expect(result).toEqual(['1-line 0', '2-line 1', '3:pattern match', '4-line 3', '5:another pattern', '6-line 5']);
     });
 
     it('should return empty array for no matches', () => {
@@ -433,10 +427,18 @@ describe('grepRepomixOutputTool', () => {
       );
     });
 
+    // Helper to create a mock return for getOutputLines
+    const mockOutputLines = (content: string) => {
+      const lines = content.split('\n');
+      vi.mocked(mcpToolRuntime.getOutputLines).mockResolvedValue({
+        lines,
+        content,
+        totalLines: lines.length,
+      });
+    };
+
     it('should find matches and return them with line numbers', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('line 1\npattern match\nline 3\nanother pattern\nline 5');
+      mockOutputLines('line 1\npattern match\nline 3\nanother pattern\nline 5');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'pattern' });
 
@@ -449,9 +451,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle separate before and after context lines', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('line 1\nline 2\npattern match\nline 4\nline 5\nline 6');
+      mockOutputLines('line 1\nline 2\npattern match\nline 4\nline 5\nline 6');
 
       const result = await toolHandler({
         outputId: 'test-id',
@@ -470,9 +470,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should prioritize beforeLines and afterLines over contextLines', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('line 1\nline 2\npattern match\nline 4\nline 5');
+      mockOutputLines('line 1\nline 2\npattern match\nline 4\nline 5');
 
       const result = await toolHandler({
         outputId: 'test-id',
@@ -491,9 +489,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should use contextLines when beforeLines and afterLines are not specified', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('line 1\nline 2\npattern match\nline 4\nline 5');
+      mockOutputLines('line 1\nline 2\npattern match\nline 4\nline 5');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'pattern', contextLines: 1 });
 
@@ -505,9 +501,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle case insensitive search', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('Line 1\nPATTERN match\nline 3');
+      mockOutputLines('Line 1\nPATTERN match\nline 3');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'pattern', ignoreCase: true });
 
@@ -517,9 +511,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should return no matches message when pattern not found', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('line 1\nline 2\nline 3');
+      mockOutputLines('line 1\nline 2\nline 3');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'notfound' });
 
@@ -528,9 +520,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle invalid regex patterns', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('some content');
+      mockOutputLines('some content');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '[invalid' });
 
@@ -540,7 +530,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle file not found error', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue(undefined);
+      vi.mocked(mcpToolRuntime.getOutputLines).mockResolvedValue(null);
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'test' });
 
@@ -550,21 +540,18 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle file access error', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockRejectedValue(new Error('File not accessible'));
+      vi.mocked(mcpToolRuntime.getOutputLines).mockResolvedValue(null);
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'test' });
 
       expect(result.isError).toBe(true);
       const parsedResult = JSON.parse(result.content[0].text);
-      expect(parsedResult.errorMessage).toContain('Output file does not exist');
+      expect(parsedResult.errorMessage).toContain('Output file with ID test-id not found');
     });
 
     // Multilingual and Unicode content integration tests
     it('should handle Japanese text in file content', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('最初の行\n日本語のパターン\n3行目\n別の日本語\n最後の行');
+      mockOutputLines('最初の行\n日本語のパターン\n3行目\n別の日本語\n最後の行');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '日本語' });
 
@@ -577,9 +564,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle Chinese text in file content', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('第一行\n中文搜索\n第三行\n更多中文\n最后一行');
+      mockOutputLines('第一行\n中文搜索\n第三行\n更多中文\n最后一行');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '中文' });
 
@@ -592,9 +577,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle Korean text in file content', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('첫 번째 줄\n한국어 검색\n세 번째 줄\n다른 한국어\n마지막 줄');
+      mockOutputLines('첫 번째 줄\n한국어 검색\n세 번째 줄\n다른 한국어\n마지막 줄');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '한국어' });
 
@@ -607,9 +590,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle emoji content in file', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('line 1\n🎉 celebration\nline 3\n🚀 rocket emoji\nline 5');
+      mockOutputLines('line 1\n🎉 celebration\nline 3\n🚀 rocket emoji\nline 5');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '🎉|🚀' });
 
@@ -622,11 +603,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle mixed multilingual content in file', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue(
-        'English line\n日本語とEnglish混在\n中文和English混合\n🌟 mixed content\nनमस्ते English',
-      );
+      mockOutputLines('English line\n日本語とEnglish混在\n中文和English混合\n🌟 mixed content\nनमस्ते English');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'English', contextLines: 1 });
 
@@ -642,11 +619,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle complex Unicode regex patterns in file content', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue(
-        'user@example.com\nユーザー@例.jp\ntest@テスト.org\n管理者@サンプル.co.jp\nnormal text',
-      );
+      mockOutputLines('user@example.com\nユーザー@例.jp\ntest@テスト.org\n管理者@サンプル.co.jp\nnormal text');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '.+@.+\\.(com|jp|org)' });
 
@@ -662,11 +635,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle special characters with escaping in file content', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue(
-        'normal line\n$special chars #symbols\nline 3\n&more $special items\nend line',
-      );
+      mockOutputLines('normal line\n$special chars #symbols\nline 3\n&more $special items\nend line');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: '\\$special', contextLines: 1 });
 
@@ -680,9 +649,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle case-insensitive search with multibyte characters in file', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('日本語テスト\nNIPPON語test\n中文测试\nTEST中文\nnormal');
+      mockOutputLines('日本語テスト\nNIPPON語test\n中文测试\nTEST中文\nnormal');
 
       const result = await toolHandler({ outputId: 'test-id', pattern: 'test', ignoreCase: true });
 
@@ -696,9 +663,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle string parameters by coercing them to numbers', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('line 1\npattern match\nline 3\nanother pattern\nline 5');
+      mockOutputLines('line 1\npattern match\nline 3\nanother pattern\nline 5');
 
       // Simulate Cursor AI sending strings instead of numbers
       const result = await toolHandler({
@@ -717,9 +682,7 @@ describe('grepRepomixOutputTool', () => {
     });
 
     it('should handle mixed string and number parameters', async () => {
-      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readFile).mockResolvedValue('line 1\npattern match\nline 3\nanother pattern\nline 5');
+      mockOutputLines('line 1\npattern match\nline 3\nanother pattern\nline 5');
 
       // Test with some parameters as strings and others as numbers
       const result = await toolHandler({

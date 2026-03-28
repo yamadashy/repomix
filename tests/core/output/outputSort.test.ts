@@ -3,8 +3,6 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
-vi.mock('node:fs/promises');
-
 describe('outputSort', () => {
   const sep = path.sep;
 
@@ -38,8 +36,6 @@ describe('outputSort', () => {
         [`src${sep}utils${sep}file3.ts`]: 2,
       });
 
-      const mockIsGitInstalled = vi.fn().mockResolvedValue(true);
-
       const expected = [
         { path: `src${sep}utils${sep}file3.ts`, content: 'content3' }, // 2 changes
         { path: `src${sep}utils${sep}file1.ts`, content: 'content1' }, // 5 changes
@@ -49,31 +45,27 @@ describe('outputSort', () => {
       expect(
         await sortOutputFiles(input, mockConfig, {
           getFileChangeCount: mockGetFileChangeCount,
-          isGitInstalled: mockIsGitInstalled,
         }),
       ).toEqual(expected);
 
       expect(mockGetFileChangeCount).toHaveBeenCalledWith(expect.any(String), 150);
-      expect(mockIsGitInstalled).toHaveBeenCalled();
     });
 
-    test('should return original order when git is not installed', async () => {
+    test('should return original order when git log returns empty (not a git repo)', async () => {
       const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input: ProcessedFile[] = [
         { path: `src${sep}utils${sep}file1.ts`, content: 'content1' },
         { path: `src${sep}utils${sep}file2.ts`, content: 'content2' },
       ];
 
-      const mockGetFileChangeCount = vi.fn();
-      const mockIsGitInstalled = vi.fn().mockResolvedValue(false);
+      // getFileChangeCount returns {} when git is not available
+      const mockGetFileChangeCount = vi.fn().mockResolvedValue({});
 
       const result = await sortOutputFiles(input, mockConfig, {
         getFileChangeCount: mockGetFileChangeCount,
-        isGitInstalled: mockIsGitInstalled,
       });
 
       expect(result).toEqual(input);
-      expect(mockGetFileChangeCount).not.toHaveBeenCalled();
     });
 
     test('should return original order when git command fails', async () => {
@@ -84,11 +76,9 @@ describe('outputSort', () => {
       ];
 
       const mockGetFileChangeCount = vi.fn().mockRejectedValue(new Error('git command failed'));
-      const mockIsGitInstalled = vi.fn().mockResolvedValue(true);
 
       const result = await sortOutputFiles(input, mockConfig, {
         getFileChangeCount: mockGetFileChangeCount,
-        isGitInstalled: mockIsGitInstalled,
       });
 
       expect(result).toEqual(input);
@@ -111,16 +101,13 @@ describe('outputSort', () => {
       });
 
       const mockGetFileChangeCount = vi.fn();
-      const mockIsGitInstalled = vi.fn();
 
       const result = await sortOutputFiles(input, config, {
         getFileChangeCount: mockGetFileChangeCount,
-        isGitInstalled: mockIsGitInstalled,
       });
 
       expect(result).toEqual(input);
       expect(mockGetFileChangeCount).not.toHaveBeenCalled();
-      expect(mockIsGitInstalled).not.toHaveBeenCalled();
     });
 
     test('should cache git file change counts for repeated calls', async () => {
@@ -136,27 +123,21 @@ describe('outputSort', () => {
         [`src${sep}file2.ts`]: 10,
         [`src${sep}file3.ts`]: 2,
       });
-      const mockIsGitInstalled = vi.fn().mockResolvedValue(true);
 
       // First call - should call getFileChangeCount
       await sortOutputFiles(input1, mockConfig, {
         getFileChangeCount: mockGetFileChangeCount,
-        isGitInstalled: mockIsGitInstalled,
       });
 
       expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
-      expect(mockIsGitInstalled).toHaveBeenCalledTimes(1);
 
       // Second call with same config - should use cache
       await sortOutputFiles(input2, mockConfig, {
         getFileChangeCount: mockGetFileChangeCount,
-        isGitInstalled: mockIsGitInstalled,
       });
 
       // getFileChangeCount should NOT be called again (cached)
       expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
-      // isGitInstalled should also be cached
-      expect(mockIsGitInstalled).toHaveBeenCalledTimes(1);
     });
   });
 });

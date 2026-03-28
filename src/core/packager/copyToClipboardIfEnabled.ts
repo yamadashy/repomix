@@ -1,16 +1,18 @@
 import { spawn } from 'node:child_process';
-import * as clipboard from 'tinyclip';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 
 export const copyToClipboardIfEnabled = async (
-  output: string,
+  output: string | string[],
   progressCallback: RepomixProgressCallback,
   config: RepomixConfigMerged,
 ): Promise<void> => {
   if (!config.output.copyToClipboard) return;
   progressCallback('Copying to clipboard...');
+
+  // Clipboard APIs require a single string. Join parts lazily only when clipboard is enabled.
+  const outputStr = Array.isArray(output) ? output.join('') : output;
 
   if (process.env.NODE_ENV !== 'test' && process.env.WAYLAND_DISPLAY) {
     logger.trace('Wayland detected; attempting wl-copy.');
@@ -19,7 +21,7 @@ export const copyToClipboardIfEnabled = async (
         const proc = spawn('wl-copy', [], { stdio: ['pipe', 'ignore', 'ignore'] });
         proc.on('error', (err) => reject(new Error(`Failed to execute wl-copy: ${err.message}`)));
         proc.on('close', (code) => (code ? reject(new Error(`wl-copy exited with code ${code}`)) : resolve()));
-        proc.stdin.end(output);
+        proc.stdin.end(outputStr);
       });
       logger.trace('Copied using wl-copy.');
       return;
@@ -31,7 +33,8 @@ export const copyToClipboardIfEnabled = async (
 
   try {
     logger.trace('Using tinyclip.');
-    await clipboard.writeText(output);
+    const clipboard = await import('tinyclip');
+    await clipboard.writeText(outputStr);
     logger.trace('Copied using tinyclip.');
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'unknown error';

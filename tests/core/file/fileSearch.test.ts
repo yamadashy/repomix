@@ -121,7 +121,11 @@ describe('fileSearch', () => {
       const result = await searchFiles('/mock/root', mockConfig);
 
       expect(result.filePaths).toEqual(mockFilePaths);
-      expect(result.emptyDirPaths.sort()).toEqual(mockEmptyDirs.sort());
+      // emptyDirPaths is deferred via pendingEmptyDirPaths for pipeline overlap
+      expect(result.emptyDirPaths).toEqual([]);
+      expect(result.pendingEmptyDirPaths).toBeDefined();
+      const resolvedEmptyDirs = await result.pendingEmptyDirPaths!;
+      expect(resolvedEmptyDirs.sort()).toEqual(mockEmptyDirs.sort());
     });
 
     test('should not collect empty directories when disabled', async () => {

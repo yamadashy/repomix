@@ -97,7 +97,6 @@ describe('mcpToolRuntime', () => {
       vi.mocked(crypto.randomBytes).mockImplementation(() => ({
         toString: () => 'abcdef1234567890',
       }));
-      vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
     });
 
     it('should format a tool response with directory context', async () => {
@@ -106,7 +105,7 @@ describe('mcpToolRuntime', () => {
         totalFiles: 10,
         totalCharacters: 1000,
         totalTokens: 200,
-        totalLines: 0, // Will be calculated in formatToolResponse
+        outputLineCount: 5,
         fileCharCounts: {
           'file1.js': 500,
           'file2.js': 300,
@@ -117,7 +116,6 @@ describe('mcpToolRuntime', () => {
           'file2.js': 60,
           'file3.js': 40,
         },
-        processedFiles: [],
         safeFilePaths: [],
       };
       const outputFilePath = '/path/to/output.xml';
@@ -152,7 +150,7 @@ describe('mcpToolRuntime', () => {
         totalFiles: 5,
         totalCharacters: 500,
         totalTokens: 100,
-        totalLines: 0, // Will be calculated in formatToolResponse
+        outputLineCount: 5,
         fileCharCounts: {
           'file1.js': 300,
           'file2.js': 200,
@@ -161,7 +159,6 @@ describe('mcpToolRuntime', () => {
           'file1.js': 60,
           'file2.js': 40,
         },
-        processedFiles: [],
         safeFilePaths: [],
       };
       const outputFilePath = '/path/to/output.xml';
@@ -188,7 +185,7 @@ describe('mcpToolRuntime', () => {
         totalFiles: 10,
         totalCharacters: 1000,
         totalTokens: 200,
-        totalLines: 0, // Will be calculated in formatToolResponse
+        outputLineCount: 5,
         fileCharCounts: {
           'file1.js': 500,
           'file2.js': 300,
@@ -205,7 +202,6 @@ describe('mcpToolRuntime', () => {
           'file5.js': 10,
           'file6.js': 5,
         },
-        processedFiles: [],
         safeFilePaths: [],
       };
       const outputFilePath = '/path/to/output.xml';

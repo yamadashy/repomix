@@ -5,7 +5,7 @@ import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import { filterOutUntrustedFiles } from './filterOutUntrustedFiles.js';
-import { runSecurityCheck, type SuspiciousFileResult } from './securityCheck.js';
+import { runSecurityCheck, type SecurityTaskRunner, type SuspiciousFileResult } from './securityCheck.js';
 
 // Marks which files are suspicious and which are safe
 // Returns Git diff results separately so they can be included in the output
@@ -20,25 +20,46 @@ export const validateFileSafety = async (
     runSecurityCheck,
     filterOutUntrustedFiles,
   },
+  preCreatedSecurityRunner?: SecurityTaskRunner,
 ) => {
-  let suspiciousFilesResults: SuspiciousFileResult[] = [];
-  let suspiciousGitDiffResults: SuspiciousFileResult[] = [];
-  let suspiciousGitLogResults: SuspiciousFileResult[] = [];
+  const suspiciousFilesResults: SuspiciousFileResult[] = [];
+  const suspiciousGitDiffResults: SuspiciousFileResult[] = [];
+  const suspiciousGitLogResults: SuspiciousFileResult[] = [];
 
   if (config.security.enableSecurityCheck) {
     progressCallback('Running security check...');
-    const allResults = await deps.runSecurityCheck(rawFiles, progressCallback, gitDiffResult, gitLogResult);
+    const allResults = await deps.runSecurityCheck(
+      rawFiles,
+      progressCallback,
+      gitDiffResult,
+      gitLogResult,
+      null,
+      preCreatedSecurityRunner,
+    );
 
-    // Separate Git diff and Git log results from regular file results
-    suspiciousFilesResults = allResults.filter((result) => result.type === 'file');
-    suspiciousGitDiffResults = allResults.filter((result) => result.type === 'gitDiff');
-    suspiciousGitLogResults = allResults.filter((result) => result.type === 'gitLog');
+    // Single-pass partitioning of results by type instead of three separate filter passes
+    for (const result of allResults) {
+      switch (result.type) {
+        case 'file':
+          suspiciousFilesResults.push(result);
+          break;
+        case 'gitDiff':
+          suspiciousGitDiffResults.push(result);
+          break;
+        case 'gitLog':
+          suspiciousGitLogResults.push(result);
+          break;
+      }
+    }
 
     logSuspiciousContentWarning('Git diffs', suspiciousGitDiffResults);
     logSuspiciousContentWarning('Git logs', suspiciousGitLogResults);
   }
 
-  const safeRawFiles = deps.filterOutUntrustedFiles(rawFiles, suspiciousFilesResults);
+  // Skip filter + map when no suspicious files (the common case: 99% of runs).
+  // Avoids creating a Set + filtering 1000 files + mapping 1000 paths.
+  const safeRawFiles =
+    suspiciousFilesResults.length > 0 ? deps.filterOutUntrustedFiles(rawFiles, suspiciousFilesResults) : rawFiles;
   const safeFilePaths = safeRawFiles.map((file) => file.path);
   logger.trace('Safe files count:', safeRawFiles.length);
 

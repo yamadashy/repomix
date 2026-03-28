@@ -64,7 +64,7 @@ describe('FileSystemReadFileTool', () => {
   test('should handle non-existent file', async () => {
     const testPath = '/non/existent/file.txt';
     vi.mocked(path.isAbsolute).mockReturnValue(true);
-    vi.mocked(fs.access).mockRejectedValue(new Error('ENOENT'));
+    vi.mocked(fs.stat).mockRejectedValue(new Error('ENOENT'));
 
     const result = await toolHandler({ path: testPath });
 
@@ -82,7 +82,6 @@ describe('FileSystemReadFileTool', () => {
   test('should handle directory path error', async () => {
     const testPath = '/some/directory';
     vi.mocked(path.isAbsolute).mockReturnValue(true);
-    vi.mocked(fs.access).mockResolvedValueOnce(undefined);
     vi.mocked(fs.stat).mockResolvedValueOnce({
       isDirectory: () => true,
     } as unknown as Awaited<ReturnType<typeof fs.stat>>);
@@ -110,14 +109,10 @@ describe('FileSystemReadFileTool', () => {
     const testPath = '/test/file.txt';
     const fileContent = 'Line 1\nLine 2\nLine 3';
     vi.mocked(path.isAbsolute).mockReturnValue(true);
-    vi.mocked(fs.access).mockResolvedValueOnce(undefined);
-    vi.mocked(fs.stat)
-      .mockResolvedValueOnce({
-        isDirectory: () => false,
-      } as unknown as Awaited<ReturnType<typeof fs.stat>>)
-      .mockResolvedValueOnce({
-        size: 21,
-      } as unknown as Awaited<ReturnType<typeof fs.stat>>);
+    vi.mocked(fs.stat).mockResolvedValueOnce({
+      isDirectory: () => false,
+      size: 21,
+    } as unknown as Awaited<ReturnType<typeof fs.stat>>);
     vi.mocked(fs.readFile).mockResolvedValueOnce(fileContent);
     vi.mocked(runSecretLint).mockResolvedValueOnce(null);
 
@@ -145,14 +140,10 @@ describe('FileSystemReadFileTool', () => {
     const testPath = '/test/secrets.txt';
     const fileContent = 'API_KEY=secret123';
     vi.mocked(path.isAbsolute).mockReturnValue(true);
-    vi.mocked(fs.access).mockResolvedValueOnce(undefined);
-    vi.mocked(fs.stat)
-      .mockResolvedValueOnce({
-        isDirectory: () => false,
-      } as unknown as Awaited<ReturnType<typeof fs.stat>>)
-      .mockResolvedValueOnce({
-        size: 17,
-      } as unknown as Awaited<ReturnType<typeof fs.stat>>);
+    vi.mocked(fs.stat).mockResolvedValueOnce({
+      isDirectory: () => false,
+      size: 17,
+    } as unknown as Awaited<ReturnType<typeof fs.stat>>);
     vi.mocked(fs.readFile).mockResolvedValueOnce(fileContent);
     vi.mocked(runSecretLint).mockResolvedValueOnce({
       filePath: testPath,
@@ -182,8 +173,11 @@ describe('FileSystemReadFileTool', () => {
   test('should handle general errors during file reading', async () => {
     const testPath = '/test/file.txt';
     vi.mocked(path.isAbsolute).mockReturnValue(true);
-    vi.mocked(fs.access).mockResolvedValueOnce(undefined);
-    vi.mocked(fs.stat).mockRejectedValueOnce(new Error('Disk I/O error'));
+    vi.mocked(fs.stat).mockResolvedValueOnce({
+      isDirectory: () => false,
+      size: 0,
+    } as unknown as Awaited<ReturnType<typeof fs.stat>>);
+    vi.mocked(fs.readFile).mockRejectedValueOnce(new Error('Disk I/O error'));
 
     const result = await toolHandler({ path: testPath });
 
@@ -201,8 +195,11 @@ describe('FileSystemReadFileTool', () => {
   test('should handle non-Error objects in catch block', async () => {
     const testPath = '/test/file.txt';
     vi.mocked(path.isAbsolute).mockReturnValue(true);
-    vi.mocked(fs.access).mockResolvedValueOnce(undefined);
-    vi.mocked(fs.stat).mockRejectedValueOnce('string error');
+    vi.mocked(fs.stat).mockResolvedValueOnce({
+      isDirectory: () => false,
+      size: 0,
+    } as unknown as Awaited<ReturnType<typeof fs.stat>>);
+    vi.mocked(fs.readFile).mockRejectedValueOnce('string error');
 
     const result = await toolHandler({ path: testPath });
 

@@ -51,13 +51,15 @@ describe('packager', () => {
         suspiciousGitDiffResults: [],
         suspiciousGitLogResults: [],
       }),
+      createSecurityWorkerPool: vi.fn().mockResolvedValue(undefined),
+      createMetricsWorkerPool: vi
+        .fn()
+        .mockResolvedValue({ run: vi.fn().mockResolvedValue([]), cleanup: vi.fn().mockResolvedValue(undefined) }),
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
       }),
-      createMetricsTaskRunner: vi.fn().mockReturnValue({
-        run: vi.fn().mockResolvedValue(0),
-        cleanup: vi.fn().mockResolvedValue(undefined),
-      }),
+      calculateSelectiveFileMetrics: vi.fn().mockResolvedValue([]),
+      getMetricsTargetPaths: vi.fn().mockReturnValue([]),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -79,7 +81,7 @@ describe('packager', () => {
     const progressCallback = vi.fn();
     const result = await pack(['root'], mockConfig, progressCallback, mockDeps);
 
-    expect(mockDeps.searchFiles).toHaveBeenCalledWith('root', mockConfig, undefined);
+    expect(mockDeps.searchFiles).toHaveBeenCalledWith('root', mockConfig, undefined, undefined);
     expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback);
     expect(mockDeps.validateFileSafety).toHaveBeenCalled();
     expect(mockDeps.processFiles).toHaveBeenCalled();
@@ -92,8 +94,12 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      undefined,
+      undefined,
     );
-    expect(mockDeps.processFiles).toHaveBeenCalledWith(mockSafeRawFiles, mockConfig, progressCallback);
+    // processFiles now receives all rawFiles (runs in parallel with security check),
+    // and results are filtered to safe files after both complete.
+    expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
       ['root'],
       mockConfig,
@@ -103,6 +109,9 @@ describe('packager', () => {
       undefined,
       progressCallback,
       [{ rootLabel: 'root', files: mockFilePaths }],
+      [],
+      undefined,
+      expect.any(String),
     );
     expect(mockDeps.calculateMetrics).toHaveBeenCalledWith(
       mockProcessedFiles,
@@ -111,7 +120,7 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
-      expect.objectContaining({ taskRunner: expect.anything() }),
+      expect.any(Array),
     );
 
     // Check the result of pack function

@@ -1,5 +1,4 @@
 import util from 'node:util';
-import { workerData } from 'node:worker_threads';
 import pc from 'picocolors';
 
 export const repomixLogLevels = {
@@ -79,6 +78,10 @@ class RepomixLogger {
     }
   }
 
+  isTraceEnabled(): boolean {
+    return this.level >= repomixLogLevels.DEBUG;
+  }
+
   private formatArgs(args: unknown[]): string {
     return args
       .map((arg) => (typeof arg === 'object' ? util.inspect(arg, { depth: null, colors: true }) : arg))
@@ -106,7 +109,7 @@ const isValidLogLevel = (level: number): level is RepomixLogLevel => {
   );
 };
 
-export const setLogLevelByWorkerData = () => {
+export const setLogLevelByWorkerData = async () => {
   // Try to get log level from environment variable first (for child_process workers)
   const envLogLevel = process.env.REPOMIX_LOG_LEVEL;
   if (envLogLevel !== undefined) {
@@ -117,7 +120,11 @@ export const setLogLevelByWorkerData = () => {
     }
   }
 
-  // Fallback to workerData for worker_threads
+  // Fallback to workerData for worker_threads.
+  // Lazy-load node:worker_threads to avoid ~8ms of module loading on the main thread,
+  // where workerData is never used. In worker threads, the module is already loaded
+  // (part of the worker runtime), so this dynamic import resolves from the module cache.
+  const { workerData } = await import('node:worker_threads');
   if (Array.isArray(workerData) && workerData.length > 1 && workerData[1]?.logLevel !== undefined) {
     const logLevel = workerData[1].logLevel;
     if (isValidLogLevel(logLevel)) {

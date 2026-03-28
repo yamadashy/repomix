@@ -1,22 +1,42 @@
-import Handlebars from 'handlebars';
 import { describe, expect, test } from 'vitest';
-import { getMarkdownTemplate } from '../../../../src/core/output/outputStyles/markdownStyle.js';
+import type { RenderContext } from '../../../../src/core/output/outputGeneratorTypes.js';
+import { renderMarkdown } from '../../../../src/core/output/outputStyles/markdownStyle.js';
+import { getLanguageFromFilePath } from '../../../../src/core/output/outputStyleUtils.js';
+
+const createTestContext = (overrides: Partial<RenderContext> = {}): RenderContext => ({
+  generationHeader: '',
+  summaryPurpose: '',
+  summaryFileFormat: '',
+  summaryUsageGuidelines: '',
+  summaryNotes: '',
+  headerText: undefined,
+  instruction: '',
+  treeString: '',
+  processedFiles: [],
+  fileLineCounts: {},
+  fileSummaryEnabled: true,
+  directoryStructureEnabled: true,
+  filesEnabled: true,
+  markdownCodeBlockDelimiter: '```',
+  gitDiffEnabled: false,
+  gitDiffWorkTree: undefined,
+  gitDiffStaged: undefined,
+  gitLogEnabled: false,
+  gitLogCommits: undefined,
+  ...overrides,
+});
 
 describe('markdownStyle', () => {
-  describe('getMarkdownTemplate', () => {
-    test('should return valid markdown template', () => {
-      const template = getMarkdownTemplate();
-      expect(template).toContain('# File Summary');
-      expect(template).toContain('# Directory Structure');
-      expect(template).toContain('# Files');
-      expect(template).toContain('{{#if instruction}}');
-      expect(template).toContain('# Instruction');
+  describe('renderMarkdown', () => {
+    test('should return valid markdown output', () => {
+      const result = renderMarkdown(createTestContext()).join('');
+      expect(result).toContain('# File Summary');
+      expect(result).toContain('# Directory Structure');
+      expect(result).toContain('# Files');
     });
 
-    test('should correctly render template with basic data', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
+    test('should correctly render with basic data', () => {
+      const ctx = createTestContext({
         generationHeader: 'Generated Test Header',
         summaryPurpose: 'Test Purpose',
         summaryFileFormat: 'Test Format',
@@ -29,13 +49,9 @@ describe('markdownStyle', () => {
             content: 'console.log("Hello");',
           },
         ],
-        fileSummaryEnabled: true,
-        directoryStructureEnabled: true,
-        filesEnabled: true,
-        markdownCodeBlockDelimiter: '```',
-      };
+      });
 
-      const result = compiledTemplate(data);
+      const result = renderMarkdown(ctx).join('');
 
       expect(result).toContain('Generated Test Header');
       expect(result).toContain('Test Purpose');
@@ -48,192 +64,166 @@ describe('markdownStyle', () => {
     });
 
     test('should render optional header text when provided', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
+      const ctx = createTestContext({
         headerText: 'Custom Header Text',
-        processedFiles: [],
-        fileSummaryEnabled: true,
-        directoryStructureEnabled: true,
-      };
+      });
 
-      const result = compiledTemplate(data);
+      const result = renderMarkdown(ctx).join('');
 
       expect(result).toContain('# User Provided Header');
       expect(result).toContain('Custom Header Text');
     });
 
     test('should not render header section when headerText is not provided', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
-        processedFiles: [],
-        fileSummaryEnabled: true,
-        directoryStructureEnabled: true,
-      };
+      const ctx = createTestContext({
+        headerText: undefined,
+      });
 
-      const result = compiledTemplate(data);
+      const result = renderMarkdown(ctx).join('');
 
       expect(result).not.toContain('# User Provided Header');
     });
 
     test('should render instruction section when provided', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
+      const ctx = createTestContext({
         instruction: 'Custom Instruction Text',
-        processedFiles: [],
-        fileSummaryEnabled: true,
-        directoryStructureEnabled: true,
-      };
+      });
 
-      const result = compiledTemplate(data);
+      const result = renderMarkdown(ctx).join('');
 
       expect(result).toContain('# Instruction');
       expect(result).toContain('Custom Instruction Text');
     });
 
     test('should display headerText if specified even if fileSummary is disabled', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
+      const ctx = createTestContext({
         headerText: 'MARKDOWN HEADER',
         fileSummaryEnabled: false,
-        directoryStructureEnabled: true,
-        processedFiles: [],
-      };
-      const result = compiledTemplate(data);
+      });
+
+      const result = renderMarkdown(ctx).join('');
       expect(result).not.toContain('This file is a merged representation');
       expect(result).toContain('MARKDOWN HEADER');
     });
 
     test('should not display generationHeader if fileSummary is disabled', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
+      const ctx = createTestContext({
         generationHeader: 'Generated Test Header',
         fileSummaryEnabled: false,
-        directoryStructureEnabled: true,
-        processedFiles: [],
-      };
-      const result = compiledTemplate(data);
+      });
+
+      const result = renderMarkdown(ctx).join('');
       expect(result).not.toContain('This file is a merged representation');
       expect(result).not.toContain('Generated Test Header');
       expect(result).toContain('# Directory Structure');
     });
   });
 
-  describe('getFileExtension helper', () => {
-    // Helper to get extension mapping result
-    const getExtension = (filePath: string): string => {
-      const helper = Handlebars.helpers.getFileExtension as Handlebars.HelperDelegate;
-      return helper(filePath) as string;
-    };
-
+  describe('getLanguageFromFilePath', () => {
     // JavaScript variants
     test('should handle JavaScript related extensions', () => {
-      expect(getExtension('file.js')).toBe('javascript');
-      expect(getExtension('file.jsx')).toBe('javascript');
-      expect(getExtension('file.ts')).toBe('typescript');
-      expect(getExtension('file.tsx')).toBe('typescript');
+      expect(getLanguageFromFilePath('file.js')).toBe('javascript');
+      expect(getLanguageFromFilePath('file.jsx')).toBe('javascript');
+      expect(getLanguageFromFilePath('file.ts')).toBe('typescript');
+      expect(getLanguageFromFilePath('file.tsx')).toBe('typescript');
     });
 
     // Web technologies
     test('should handle web technology extensions', () => {
-      expect(getExtension('file.html')).toBe('html');
-      expect(getExtension('file.css')).toBe('css');
-      expect(getExtension('file.scss')).toBe('scss');
-      expect(getExtension('file.sass')).toBe('sass');
-      expect(getExtension('file.vue')).toBe('vue');
+      expect(getLanguageFromFilePath('file.html')).toBe('html');
+      expect(getLanguageFromFilePath('file.css')).toBe('css');
+      expect(getLanguageFromFilePath('file.scss')).toBe('scss');
+      expect(getLanguageFromFilePath('file.sass')).toBe('sass');
+      expect(getLanguageFromFilePath('file.vue')).toBe('vue');
     });
 
     // Backend languages
     test('should handle backend language extensions', () => {
-      expect(getExtension('file.py')).toBe('python');
-      expect(getExtension('file.rb')).toBe('ruby');
-      expect(getExtension('file.php')).toBe('php');
-      expect(getExtension('file.java')).toBe('java');
-      expect(getExtension('file.go')).toBe('go');
+      expect(getLanguageFromFilePath('file.py')).toBe('python');
+      expect(getLanguageFromFilePath('file.rb')).toBe('ruby');
+      expect(getLanguageFromFilePath('file.php')).toBe('php');
+      expect(getLanguageFromFilePath('file.java')).toBe('java');
+      expect(getLanguageFromFilePath('file.go')).toBe('go');
     });
 
     // System programming languages
     test('should handle system programming language extensions', () => {
-      expect(getExtension('file.c')).toBe('c');
-      expect(getExtension('file.cpp')).toBe('cpp');
-      expect(getExtension('file.rs')).toBe('rust');
-      expect(getExtension('file.swift')).toBe('swift');
-      expect(getExtension('file.kt')).toBe('kotlin');
+      expect(getLanguageFromFilePath('file.c')).toBe('c');
+      expect(getLanguageFromFilePath('file.cpp')).toBe('cpp');
+      expect(getLanguageFromFilePath('file.rs')).toBe('rust');
+      expect(getLanguageFromFilePath('file.swift')).toBe('swift');
+      expect(getLanguageFromFilePath('file.kt')).toBe('kotlin');
     });
 
     // Configuration and data format files
     test('should handle configuration and data format extensions', () => {
-      expect(getExtension('file.json')).toBe('json');
-      expect(getExtension('file.json5')).toBe('json5');
-      expect(getExtension('file.xml')).toBe('xml');
-      expect(getExtension('file.yaml')).toBe('yaml');
-      expect(getExtension('file.yml')).toBe('yaml');
-      expect(getExtension('file.toml')).toBe('toml');
+      expect(getLanguageFromFilePath('file.json')).toBe('json');
+      expect(getLanguageFromFilePath('file.json5')).toBe('json5');
+      expect(getLanguageFromFilePath('file.xml')).toBe('xml');
+      expect(getLanguageFromFilePath('file.yaml')).toBe('yaml');
+      expect(getLanguageFromFilePath('file.yml')).toBe('yaml');
+      expect(getLanguageFromFilePath('file.toml')).toBe('toml');
     });
 
     // Shell and scripting
     test('should handle shell and scripting extensions', () => {
-      expect(getExtension('file.sh')).toBe('bash');
-      expect(getExtension('file.bash')).toBe('bash');
-      expect(getExtension('file.ps1')).toBe('powershell');
+      expect(getLanguageFromFilePath('file.sh')).toBe('bash');
+      expect(getLanguageFromFilePath('file.bash')).toBe('bash');
+      expect(getLanguageFromFilePath('file.ps1')).toBe('powershell');
     });
 
     // Database and query languages
     test('should handle database related extensions', () => {
-      expect(getExtension('file.sql')).toBe('sql');
-      expect(getExtension('file.graphql')).toBe('graphql');
-      expect(getExtension('file.gql')).toBe('graphql');
+      expect(getLanguageFromFilePath('file.sql')).toBe('sql');
+      expect(getLanguageFromFilePath('file.graphql')).toBe('graphql');
+      expect(getLanguageFromFilePath('file.gql')).toBe('graphql');
     });
 
     // Functional programming languages
     test('should handle functional programming language extensions', () => {
-      expect(getExtension('file.fs')).toBe('fsharp');
-      expect(getExtension('file.fsx')).toBe('fsharp');
-      expect(getExtension('file.hs')).toBe('haskell');
-      expect(getExtension('file.clj')).toBe('clojure');
-      expect(getExtension('file.cljs')).toBe('clojure');
+      expect(getLanguageFromFilePath('file.fs')).toBe('fsharp');
+      expect(getLanguageFromFilePath('file.fsx')).toBe('fsharp');
+      expect(getLanguageFromFilePath('file.hs')).toBe('haskell');
+      expect(getLanguageFromFilePath('file.clj')).toBe('clojure');
+      expect(getLanguageFromFilePath('file.cljs')).toBe('clojure');
     });
 
     // Other languages and tools
     test('should handle other programming language extensions', () => {
-      expect(getExtension('file.scala')).toBe('scala');
-      expect(getExtension('file.dart')).toBe('dart');
-      expect(getExtension('file.ex')).toBe('elixir');
-      expect(getExtension('file.exs')).toBe('elixir');
-      expect(getExtension('file.erl')).toBe('erlang');
-      expect(getExtension('file.coffee')).toBe('coffeescript');
+      expect(getLanguageFromFilePath('file.scala')).toBe('scala');
+      expect(getLanguageFromFilePath('file.dart')).toBe('dart');
+      expect(getLanguageFromFilePath('file.ex')).toBe('elixir');
+      expect(getLanguageFromFilePath('file.exs')).toBe('elixir');
+      expect(getLanguageFromFilePath('file.erl')).toBe('erlang');
+      expect(getLanguageFromFilePath('file.coffee')).toBe('coffeescript');
     });
 
     // Infrastructure and templating
     test('should handle infrastructure and templating extensions', () => {
-      expect(getExtension('file.tf')).toBe('hcl');
-      expect(getExtension('file.tfvars')).toBe('hcl');
-      expect(getExtension('file.dockerfile')).toBe('dockerfile');
-      expect(getExtension('file.pug')).toBe('pug');
-      expect(getExtension('file.proto')).toBe('protobuf');
+      expect(getLanguageFromFilePath('file.tf')).toBe('hcl');
+      expect(getLanguageFromFilePath('file.tfvars')).toBe('hcl');
+      expect(getLanguageFromFilePath('file.dockerfile')).toBe('dockerfile');
+      expect(getLanguageFromFilePath('file.pug')).toBe('pug');
+      expect(getLanguageFromFilePath('file.proto')).toBe('protobuf');
     });
 
     // Miscellaneous
     test('should handle miscellaneous file extensions', () => {
-      expect(getExtension('file.md')).toBe('markdown');
-      expect(getExtension('file.r')).toBe('r');
-      expect(getExtension('file.pl')).toBe('perl');
-      expect(getExtension('file.pm')).toBe('perl');
-      expect(getExtension('file.lua')).toBe('lua');
-      expect(getExtension('file.groovy')).toBe('groovy');
-      expect(getExtension('file.vb')).toBe('vb');
+      expect(getLanguageFromFilePath('file.md')).toBe('markdown');
+      expect(getLanguageFromFilePath('file.r')).toBe('r');
+      expect(getLanguageFromFilePath('file.pl')).toBe('perl');
+      expect(getLanguageFromFilePath('file.pm')).toBe('perl');
+      expect(getLanguageFromFilePath('file.lua')).toBe('lua');
+      expect(getLanguageFromFilePath('file.groovy')).toBe('groovy');
+      expect(getLanguageFromFilePath('file.vb')).toBe('vb');
     });
 
     // Edge cases
     test('should handle edge cases', () => {
-      expect(getExtension('file')).toBe(''); // No extension
-      expect(getExtension('.gitignore')).toBe(''); // Dotfile
-      expect(getExtension('file.unknown')).toBe(''); // Unknown extension
-      expect(getExtension('path/to/file.js')).toBe('javascript'); // Path with directory
+      expect(getLanguageFromFilePath('file')).toBe(''); // No extension
+      expect(getLanguageFromFilePath('.gitignore')).toBe(''); // Dotfile
+      expect(getLanguageFromFilePath('file.unknown')).toBe(''); // Unknown extension
+      expect(getLanguageFromFilePath('path/to/file.js')).toBe('javascript'); // Path with directory
     });
   });
 });

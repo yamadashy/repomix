@@ -26,6 +26,7 @@ describe('produceOutput', () => {
         undefined,
         progressCallback,
         undefined,
+        undefined,
         mockDeps,
       );
 
@@ -37,12 +38,15 @@ describe('produceOutput', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
+        undefined,
+        undefined,
       );
       expect(mockDeps.writeOutputToDisk).toHaveBeenCalledWith('generated output', mockConfig);
       expect(mockDeps.copyToClipboardIfEnabled).toHaveBeenCalledWith('generated output', progressCallback, mockConfig);
-      expect(result).toEqual({
-        outputForMetrics: 'generated output',
-      });
+      expect(result.outputForMetrics).toBe('generated output');
+      expect(result.writePromise).toBeInstanceOf(Promise);
+      await result.writePromise;
       expect(result.outputFiles).toBeUndefined();
     });
 
@@ -52,7 +56,7 @@ describe('produceOutput', () => {
       const gitDiffResult = { workTreeDiffContent: 'diff', stagedDiffContent: '' };
       const gitLogResult = { logContent: 'logs', commits: [] };
 
-      await produceOutput(
+      const result = await produceOutput(
         ['/root'],
         mockConfig,
         [],
@@ -61,8 +65,10 @@ describe('produceOutput', () => {
         gitLogResult as Parameters<typeof produceOutput>[5],
         vi.fn(),
         undefined,
+        undefined,
         mockDeps,
       );
+      await result.writePromise;
 
       expect(mockDeps.generateOutput).toHaveBeenCalledWith(
         ['/root'],
@@ -72,6 +78,9 @@ describe('produceOutput', () => {
         gitDiffResult,
         gitLogResult,
         undefined,
+        undefined,
+        undefined,
+        undefined,
       );
     });
 
@@ -80,7 +89,19 @@ describe('produceOutput', () => {
       const mockConfig = createMockConfig();
       const progressCallback = vi.fn();
 
-      await produceOutput(['/root'], mockConfig, [], [], undefined, undefined, progressCallback, undefined, mockDeps);
+      const result = await produceOutput(
+        ['/root'],
+        mockConfig,
+        [],
+        [],
+        undefined,
+        undefined,
+        progressCallback,
+        undefined,
+        undefined,
+        mockDeps,
+      );
+      await result.writePromise;
 
       expect(progressCallback).toHaveBeenCalledWith('Writing output file...');
     });
@@ -116,9 +137,11 @@ describe('produceOutput', () => {
         undefined,
         progressCallback,
         undefined,
+        undefined,
         mockDeps,
       );
 
+      await result.writePromise;
       expect(mockDeps.writeOutputToDisk).toHaveBeenCalled();
       expect(result.outputFiles).toBeDefined();
       expect(Array.isArray(result.outputForMetrics)).toBe(true);
@@ -134,7 +157,19 @@ describe('produceOutput', () => {
       });
       const progressCallback = vi.fn();
 
-      await produceOutput(['/root'], mockConfig, [], [], undefined, undefined, progressCallback, undefined, mockDeps);
+      const result = await produceOutput(
+        ['/root'],
+        mockConfig,
+        [],
+        [],
+        undefined,
+        undefined,
+        progressCallback,
+        undefined,
+        undefined,
+        mockDeps,
+      );
+      await result.writePromise;
 
       expect(progressCallback).toHaveBeenCalledWith('Writing output files...');
     });
@@ -148,7 +183,19 @@ describe('produceOutput', () => {
         },
       });
 
-      await produceOutput(['/root'], mockConfig, [], [], undefined, undefined, vi.fn(), undefined, mockDeps);
+      const result = await produceOutput(
+        ['/root'],
+        mockConfig,
+        [],
+        [],
+        undefined,
+        undefined,
+        vi.fn(),
+        undefined,
+        undefined,
+        mockDeps,
+      );
+      await result.writePromise;
 
       expect(mockDeps.copyToClipboardIfEnabled).not.toHaveBeenCalled();
     });

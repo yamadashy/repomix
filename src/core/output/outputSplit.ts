@@ -7,7 +7,7 @@ import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import type { generateOutput } from './outputGenerate.js';
+import type { generateOutput as generateOutputType } from './outputGenerate.js';
 
 export interface OutputSplitGroup {
   rootEntry: string;
@@ -23,42 +23,48 @@ export interface OutputSplitPart {
   groups: OutputSplitGroup[];
 }
 
-export type GenerateOutputFn = typeof generateOutput;
+export type GenerateOutputFn = typeof generateOutputType;
 
 export const getRootEntry = (relativeFilePath: string): string => {
-  const normalized = relativeFilePath.replaceAll(path.win32.sep, path.posix.sep);
-  const [first] = normalized.split('/');
-  return first || normalized;
+  // Use indexOf to find the first separator instead of replaceAll + split.
+  // Avoids creating intermediate strings for the common case (posix paths).
+  const posixIdx = relativeFilePath.indexOf('/');
+  const win32Idx = relativeFilePath.indexOf('\\');
+  // Pick the earliest separator (or -1 if none)
+  const sepIdx = posixIdx >= 0 && win32Idx >= 0 ? Math.min(posixIdx, win32Idx) : Math.max(posixIdx, win32Idx);
+  return sepIdx > 0 ? relativeFilePath.slice(0, sepIdx) : relativeFilePath;
 };
 
 export const buildOutputSplitGroups = (processedFiles: ProcessedFile[], allFilePaths: string[]): OutputSplitGroup[] => {
+  // Build a path→ProcessedFile lookup so we can populate groups in a single pass
+  // over allFilePaths instead of two separate loops. This eliminates one O(n)
+  // iteration and avoids redundant getRootEntry() calls for processed files.
+  const processedFileMap = new Map<string, ProcessedFile>();
+  for (const pf of processedFiles) {
+    processedFileMap.set(pf.path, pf);
+  }
+
   const groupsByRootEntry = new Map<string, OutputSplitGroup>();
 
   for (const filePath of allFilePaths) {
     const rootEntry = getRootEntry(filePath);
-    const existing = groupsByRootEntry.get(rootEntry);
-    if (existing) {
-      existing.allFilePaths.push(filePath);
-    } else {
-      groupsByRootEntry.set(rootEntry, { rootEntry, processedFiles: [], allFilePaths: [filePath] });
+    let group = groupsByRootEntry.get(rootEntry);
+    if (!group) {
+      group = { rootEntry, processedFiles: [], allFilePaths: [] };
+      groupsByRootEntry.set(rootEntry, group);
+    }
+    group.allFilePaths.push(filePath);
+    const pf = processedFileMap.get(filePath);
+    if (pf) {
+      group.processedFiles.push(pf);
     }
   }
 
-  for (const processedFile of processedFiles) {
-    const rootEntry = getRootEntry(processedFile.path);
-    const existing = groupsByRootEntry.get(rootEntry);
-    if (existing) {
-      existing.processedFiles.push(processedFile);
-    } else {
-      groupsByRootEntry.set(rootEntry, {
-        rootEntry,
-        processedFiles: [processedFile],
-        allFilePaths: [processedFile.path],
-      });
-    }
-  }
-
-  return [...groupsByRootEntry.values()].sort((a, b) => a.rootEntry.localeCompare(b.rootEntry));
+  return Array.from(groupsByRootEntry.values()).sort((a, b) => {
+    const aLower = a.rootEntry.toLowerCase();
+    const bLower = b.rootEntry.toLowerCase();
+    return aLower < bLower ? -1 : aLower > bLower ? 1 : 0;
+  });
 };
 
 export const buildSplitOutputFilePath = (baseFilePath: string, partIndex: number): string => {
@@ -101,13 +107,21 @@ const renderGroups = async (
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
   filePathsByRoot: FilesByRoot[] | undefined,
+  emptyDirPaths: string[] | undefined,
   generateOutput: GenerateOutputFn,
 ): Promise<string> => {
-  const chunkProcessedFiles = groupsToRender.flatMap((g) => g.processedFiles);
-  const chunkAllFilePaths = groupsToRender.flatMap((g) => g.allFilePaths);
+  // Direct loops instead of flatMap to avoid intermediate array allocations.
+  // For split output with many groups, flatMap creates and discards temporary
+  // arrays per group — direct push avoids this overhead entirely.
+  const chunkProcessedFiles: ProcessedFile[] = [];
+  const chunkAllFilePaths: string[] = [];
+  for (const g of groupsToRender) {
+    for (const pf of g.processedFiles) chunkProcessedFiles.push(pf);
+    for (const fp of g.allFilePaths) chunkAllFilePaths.push(fp);
+  }
   const chunkConfig = makeChunkConfig(baseConfig, partIndex);
 
-  return await generateOutput(
+  const result = await generateOutput(
     rootDirs,
     chunkConfig,
     chunkProcessedFiles,
@@ -115,7 +129,11 @@ const renderGroups = async (
     partIndex === 1 ? gitDiffResult : undefined,
     partIndex === 1 ? gitLogResult : undefined,
     filePathsByRoot,
+    emptyDirPaths,
   );
+  // Split output needs a single string for byte length measurement and storage.
+  // Join parts here; the split path typically produces smaller chunks (< maxBytesPerPart).
+  return Array.isArray(result) ? result.join('') : result;
 };
 
 export const generateSplitOutputParts = async ({
@@ -128,6 +146,7 @@ export const generateSplitOutputParts = async ({
   gitLogResult,
   progressCallback,
   filePathsByRoot,
+  emptyDirPaths,
   deps,
 }: {
   rootDirs: string[];
@@ -139,6 +158,7 @@ export const generateSplitOutputParts = async ({
   gitLogResult: GitLogResult | undefined;
   progressCallback: RepomixProgressCallback;
   filePathsByRoot?: FilesByRoot[];
+  emptyDirPaths?: string[];
   deps: {
     generateOutput: GenerateOutputFn;
   };
@@ -157,19 +177,48 @@ export const generateSplitOutputParts = async ({
   let currentContent = '';
   let currentBytes = 0;
 
-  // Note: This algorithm has O(N²) complexity where N is the number of groups.
-  // For each group, we render all accumulated groups to measure the exact output size.
-  // This approach is intentional because:
-  // 1. The final output size cannot be predicted by simple addition - the output includes
-  //    a file tree structure and template formatting (XML/Markdown) that vary non-linearly.
-  // 2. Headers, footers, and file tree size change based on the combination of groups.
-  // 3. For typical repositories with ~10-20 top-level directories, this is acceptable.
-  // If performance becomes an issue, consider caching individual group content sizes
-  // and estimating combined sizes with a safety margin.
-  for (const group of groups) {
+  // Pre-compute each group's file content byte size in a single pass.
+  // Used for fast size estimation to skip expensive full renders.
+  const groupContentBytes = groups.map((g) =>
+    g.processedFiles.reduce((sum, f) => sum + getUtf8ByteLength(f.content), 0),
+  );
+
+  // Optimized split algorithm: measures the "overhead" (headers, tree, formatting)
+  // from the first full render, then uses overhead + accumulated content bytes as
+  // a fast estimate for subsequent groups. Full renders are only performed when
+  // the estimate approaches the boundary (within 80% of the limit), reducing
+  // total renders from O(N²) to ~O(N) for typical repositories.
+  //
+  // The overhead grows sub-linearly with group count (tree structure adds a few bytes
+  // per file), so we apply a 1.5x safety multiplier on the content portion to account
+  // for tree growth, path entries in file summary, and template formatting.
+  let measuredOverhead = 0;
+  let overheadMeasured = false;
+  let accumulatedContentBytes = 0;
+  let needsRender = false;
+  const CONTENT_INFLATION = 1.5;
+  const ESTIMATE_THRESHOLD = 0.8;
+
+  for (let i = 0; i < groups.length; i++) {
+    const group = groups[i];
     const partIndex = parts.length + 1;
-    const nextGroups = [...currentGroups, group];
+    const groupBytes = groupContentBytes[i];
     progressCallback(`Generating output... (part ${partIndex}) ${pc.dim(`evaluating ${group.rootEntry}`)}`);
+
+    // Fast path: if we've measured overhead and the estimate is clearly under the limit,
+    // skip the expensive full render. We never finalize a part without a full render.
+    if (overheadMeasured) {
+      const estimatedBytes = measuredOverhead + (accumulatedContentBytes + groupBytes) * CONTENT_INFLATION;
+      if (estimatedBytes < maxBytesPerPart * ESTIMATE_THRESHOLD) {
+        currentGroups.push(group);
+        accumulatedContentBytes += groupBytes;
+        needsRender = true;
+        continue;
+      }
+    }
+
+    // Near the boundary (or first iteration): do a full render for accuracy
+    const nextGroups = [...currentGroups, group];
     const nextContent = await renderGroups(
       nextGroups,
       partIndex,
@@ -178,17 +227,28 @@ export const generateSplitOutputParts = async ({
       gitDiffResult,
       gitLogResult,
       filePathsByRoot,
+      emptyDirPaths,
       deps.generateOutput,
     );
     const nextBytes = getUtf8ByteLength(nextContent);
+
+    // Calibrate overhead from the first render in each part
+    if (!overheadMeasured) {
+      const totalContentBytes = accumulatedContentBytes + groupBytes;
+      measuredOverhead = nextBytes - totalContentBytes;
+      overheadMeasured = true;
+    }
 
     if (nextBytes <= maxBytesPerPart) {
       currentGroups = nextGroups;
       currentContent = nextContent;
       currentBytes = nextBytes;
+      accumulatedContentBytes += groupBytes;
+      needsRender = false;
       continue;
     }
 
+    // Over the limit. Finalize the current part.
     if (currentGroups.length === 0) {
       throw new RepomixError(
         `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
@@ -196,7 +256,23 @@ export const generateSplitOutputParts = async ({
       );
     }
 
-    // Finalize current part and start a new one with the current group.
+    // If we skipped renders, we need to render the current groups (without the new group)
+    // to get the actual content for the finalized part.
+    if (needsRender) {
+      currentContent = await renderGroups(
+        currentGroups,
+        partIndex,
+        rootDirs,
+        baseConfig,
+        gitDiffResult,
+        gitLogResult,
+        filePathsByRoot,
+        emptyDirPaths,
+        deps.generateOutput,
+      );
+      currentBytes = getUtf8ByteLength(currentContent);
+    }
+
     parts.push({
       index: partIndex,
       filePath: buildSplitOutputFilePath(baseConfig.output.filePath, partIndex),
@@ -215,6 +291,7 @@ export const generateSplitOutputParts = async ({
       gitDiffResult,
       gitLogResult,
       filePathsByRoot,
+      emptyDirPaths,
       deps.generateOutput,
     );
     const singleGroupBytes = getUtf8ByteLength(singleGroupContent);
@@ -228,10 +305,32 @@ export const generateSplitOutputParts = async ({
     currentGroups = [group];
     currentContent = singleGroupContent;
     currentBytes = singleGroupBytes;
+    // Reset overhead measurement for new part (different part index = different overhead)
+    accumulatedContentBytes = groupBytes;
+    measuredOverhead = singleGroupBytes - groupBytes;
+    needsRender = false;
   }
 
+  // Finalize the last part
   if (currentGroups.length > 0) {
     const finalIndex = parts.length + 1;
+
+    // If we skipped renders for the last batch, render now to get actual content
+    if (needsRender) {
+      currentContent = await renderGroups(
+        currentGroups,
+        finalIndex,
+        rootDirs,
+        baseConfig,
+        gitDiffResult,
+        gitLogResult,
+        filePathsByRoot,
+        emptyDirPaths,
+        deps.generateOutput,
+      );
+      currentBytes = getUtf8ByteLength(currentContent);
+    }
+
     parts.push({
       index: finalIndex,
       filePath: buildSplitOutputFilePath(baseConfig.output.filePath, finalIndex),

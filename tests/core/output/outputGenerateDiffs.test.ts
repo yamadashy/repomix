@@ -5,6 +5,8 @@ import { generateOutput } from '../../../src/core/output/outputGenerate.js';
 import type { RenderContext } from '../../../src/core/output/outputGeneratorTypes.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
+const normalizeOutput = (output: string | string[]): string => (Array.isArray(output) ? output.join('') : output);
+
 describe('Output Generation with Diffs', () => {
   const mockProcessedFiles = [
     {
@@ -62,7 +64,6 @@ describe('Output Generation with Diffs', () => {
     generateHandlebarOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
-    sortOutputFiles: vi.fn().mockResolvedValue(mockProcessedFiles),
   };
 
   test('XML style output should include diffs section when includeDiffs is enabled', async () => {
@@ -80,15 +81,18 @@ describe('Output Generation with Diffs', () => {
     });
 
     // Generate the output
-    const output = await generateOutput(
-      rootDirs,
-      mockConfig,
-      mockProcessedFiles,
-      allFilePaths,
-      gitDiffResult,
-      undefined,
-      undefined,
-      mockDeps,
+    const output = normalizeOutput(
+      await generateOutput(
+        rootDirs,
+        mockConfig,
+        mockProcessedFiles,
+        allFilePaths,
+        gitDiffResult,
+        undefined,
+        undefined,
+        undefined,
+        mockDeps,
+      ),
     );
 
     // Verify the diffs are included in the output
@@ -115,15 +119,18 @@ describe('Output Generation with Diffs', () => {
     });
 
     // Generate the output
-    const output = await generateOutput(
-      rootDirs,
-      mockConfig,
-      mockProcessedFiles,
-      allFilePaths,
-      undefined,
-      undefined,
-      undefined,
-      mockDeps,
+    const output = normalizeOutput(
+      await generateOutput(
+        rootDirs,
+        mockConfig,
+        mockProcessedFiles,
+        allFilePaths,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        mockDeps,
+      ),
     );
 
     // Verify the diffs are included in the output
@@ -150,15 +157,18 @@ describe('Output Generation with Diffs', () => {
     });
 
     // Generate the output
-    const output = await generateOutput(
-      rootDirs,
-      mockConfig,
-      mockProcessedFiles,
-      allFilePaths,
-      undefined,
-      undefined,
-      undefined,
-      mockDeps,
+    const output = normalizeOutput(
+      await generateOutput(
+        rootDirs,
+        mockConfig,
+        mockProcessedFiles,
+        allFilePaths,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        mockDeps,
+      ),
     );
 
     // Verify the diffs are included in the output
@@ -185,15 +195,18 @@ describe('Output Generation with Diffs', () => {
     });
 
     // Generate the output
-    const output = await generateOutput(
-      rootDirs,
-      mockConfig,
-      mockProcessedFiles,
-      allFilePaths,
-      undefined,
-      undefined,
-      undefined,
-      mockDeps,
+    const output = normalizeOutput(
+      await generateOutput(
+        rootDirs,
+        mockConfig,
+        mockProcessedFiles,
+        allFilePaths,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        mockDeps,
+      ),
     );
 
     // Verify the diffs are included in the output
@@ -230,15 +243,18 @@ describe('Output Generation with Diffs', () => {
     });
 
     // Generate the output
-    const output = await generateOutput(
-      rootDirs,
-      mockConfig,
-      mockProcessedFiles,
-      allFilePaths,
-      undefined,
-      undefined,
-      undefined,
-      mockDeps,
+    const output = normalizeOutput(
+      await generateOutput(
+        rootDirs,
+        mockConfig,
+        mockProcessedFiles,
+        allFilePaths,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        mockDeps,
+      ),
     );
 
     // Verify the diffs are not included in the output
