@@ -19,6 +19,11 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/perf-benchmark
+          persist-credentials: false
+
       - name: Post or update pending comment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -42,75 +47,7 @@ jobs:
           # Fetch commit message in shell (avoids escaping issues in Node)
           COMMIT_MSG=$(gh api "repos/${GH_REPO}/commits/${COMMIT_SHA}" --jq '.commit.message | split("\n") | .[0]' 2>/dev/null || echo "")
 
-          # Generate comment with Node (handles JSON history + rendering)
-          # shellcheck disable=SC2016
-          COMMIT_MSG="$COMMIT_MSG" node -e '
-            const fs = require("fs");
-            const shortSha = process.env.COMMIT_SHA.slice(0, 7);
-            const commitMsg = process.env.COMMIT_MSG;
-            const runUrl = process.env.WORKFLOW_RUN_URL;
-            const oldBody = fs.readFileSync(process.env.RUNNER_TEMP + "/old-comment.txt", "utf8");
-
-            const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-            // Extract history JSON from existing comment
-            const jsonMatch = oldBody.match(/<!-- bench-history-json-start ([\s\S]*?) bench-history-json-end -->/);
-            let history = [];
-            if (jsonMatch) { try { history = JSON.parse(jsonMatch[1]); } catch {} }
-
-            // If previous comment had completed results, archive them into history
-            if (oldBody.includes("\u2705 Benchmark complete!")) {
-              // Extract only the main result table (before any <details> block)
-              const mainSection = oldBody.split("<details>")[0] || "";
-              const commitMatch = mainSection.match(/Latest commit:<\/strong><\/td><td><code>([a-f0-9]+)<\/code>\s*(.*?)<\/td>/);
-              const prevSha = commitMatch ? commitMatch[1] : "";
-              const prevMsg = commitMatch ? commitMatch[2] : "";
-              if (prevSha) {
-                const rowRe = /<tr><td><strong>(Ubuntu|macOS|Windows):<\/strong><\/td><td>(.*?)<\/td><\/tr>/g;
-                const entry = { sha: prevSha, msg: prevMsg };
-                let m;
-                while ((m = rowRe.exec(mainSection)) !== null) {
-                  entry[m[1].toLowerCase()] = m[2];
-                }
-                if (prevSha !== shortSha && !history.some(h => h.sha === prevSha)) {
-                  history.unshift(entry);
-                }
-              }
-            }
-
-            // Keep max 50 entries
-            history = history.slice(0, 50);
-
-            // Render history section
-            function renderHistory(hist) {
-              if (hist.length === 0) return "";
-              return hist.map(h => {
-                const label = "<code>" + h.sha + "</code>" + (h.msg ? " " + h.msg : "");
-                const osRows = ["ubuntu", "macos", "windows"]
-                  .filter(os => h[os] && h[os] !== "-")
-                  .map(os => {
-                    const osLabel = os === "ubuntu" ? "Ubuntu" : os === "macos" ? "macOS" : "Windows";
-                    return "<tr><td><strong>" + osLabel + ":</strong></td><td>" + h[os] + "</td></tr>";
-                  })
-                  .join("\n");
-                return label + "\n<table>\n" + osRows + "\n</table>";
-              }).join("\n\n");
-            }
-
-            const jsonComment = "<!-- bench-history-json-start " + JSON.stringify(history) + " bench-history-json-end -->";
-            let body = "<!-- repomix-perf-benchmark -->\n" + jsonComment + "\n";
-            body += "## \u26a1 Performance Benchmark\n\n";
-            body += "<table><tr><td><strong>Latest commit:</strong></td><td><code>" + shortSha + "</code> " + esc(commitMsg) + "</td></tr>\n";
-            body += "<tr><td><strong>Status:</strong></td><td>\u26a1 Benchmark in progress...</td></tr></table>\n\n";
-            body += "[Workflow run](" + runUrl + ")";
-
-            const historyHtml = renderHistory(history);
-            if (historyHtml) {
-              body += "\n\n<details>\n<summary>History</summary>\n\n" + historyHtml + "\n\n</details>";
-            }
-
-            fs.writeFileSync(process.env.RUNNER_TEMP + "/new-comment.md", body);
-          '
+          COMMIT_MSG="$COMMIT_MSG" node .github/scripts/perf-benchmark/bench-pending.mjs
 
           BODY=$(cat "$RUNNER_TEMP/new-comment.md")
 
@@ -129,11 +66,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            runs: 10
-          - os: macos-latest
             runs: 20
+          - os: macos-latest
+            runs: 30
           - os: windows-latest
-            runs: 10
+            runs: 20
     steps:
       # Checkout PR branch and main branch into separate directories for isolation
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -167,57 +104,7 @@ jobs:
         shell: bash
         env:
           BENCH_RUNS: ${{ matrix.runs }}
-        run: |
-          cat > "$RUNNER_TEMP/benchmark.mjs" << 'BENCHSCRIPT'
-          import { execFileSync } from 'node:child_process';
-          import { tmpdir } from 'node:os';
-          import { join } from 'node:path';
-          import { writeFileSync } from 'node:fs';
-
-          const [prDir, mainDir] = process.argv.slice(2);
-          const output = join(tmpdir(), 'repomix-bench-output.txt');
-          const runs = Number(process.env.BENCH_RUNS) || 10;
-
-          function benchmark(dir) {
-            const bin = join(dir, 'bin', 'repomix.cjs');
-
-            // Warmup runs to stabilize OS page cache and JIT
-            for (let i = 0; i < 2; i++) {
-              try {
-                execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
-              } catch {}
-            }
-
-            // Measurement runs
-            const times = [];
-            for (let i = 0; i < runs; i++) {
-              const start = Date.now();
-              execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
-              times.push(Date.now() - start);
-            }
-
-            times.sort((a, b) => a - b);
-            const median = times[Math.floor(times.length / 2)];
-            // IQR: Q3 - Q1 (interquartile range)
-            const q1 = times[Math.floor(times.length * 0.25)];
-            const q3 = times[Math.floor(times.length * 0.75)];
-            const iqr = q3 - q1;
-            return { median, iqr };
-          }
-
-          console.error('Benchmarking PR branch...');
-          const pr = benchmark(prDir);
-          console.error(`PR median: ${pr.median}ms (±${pr.iqr}ms)`);
-
-          console.error('Benchmarking main branch...');
-          const main = benchmark(mainDir);
-          console.error(`main median: ${main.median}ms (±${main.iqr}ms)`);
-
-          const result = { pr: pr.median, prIqr: pr.iqr, main: main.median, mainIqr: main.iqr };
-          writeFileSync(join(process.env.RUNNER_TEMP, 'bench-result.json'), JSON.stringify(result));
-          BENCHSCRIPT
-
-          node "$RUNNER_TEMP/benchmark.mjs" "$GITHUB_WORKSPACE/pr-branch" "$GITHUB_WORKSPACE/main-branch"
+        run: node pr-branch/.github/scripts/perf-benchmark/bench-run.mjs "$GITHUB_WORKSPACE/pr-branch" "$GITHUB_WORKSPACE/main-branch"
 
       - name: Upload benchmark result
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -234,6 +121,11 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/perf-benchmark
+          persist-credentials: false
+
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: results
@@ -262,98 +154,7 @@ jobs:
           # Fetch commit message in shell
           COMMIT_MSG=$(gh api "repos/${GH_REPO}/commits/${COMMIT_SHA}" --jq '.commit.message | split("\n") | .[0]' 2>/dev/null || echo "")
 
-          # Generate complete comment with Node
-          # shellcheck disable=SC2016
-          COMMIT_MSG="$COMMIT_MSG" node -e '
-            const fs = require("fs");
-            const path = require("path");
-
-            const shortSha = process.env.COMMIT_SHA.slice(0, 7);
-            const commitMsg = process.env.COMMIT_MSG;
-            const runUrl = process.env.WORKFLOW_RUN_URL;
-            const oldBody = fs.readFileSync(process.env.RUNNER_TEMP + "/old-comment.txt", "utf8");
-
-            const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-            // Extract history JSON from existing comment (set by post-pending)
-            const jsonMatch = oldBody.match(/<!-- bench-history-json-start ([\s\S]*?) bench-history-json-end -->/);
-            let history = [];
-            if (jsonMatch) { try { history = JSON.parse(jsonMatch[1]); } catch {} }
-
-            // Read benchmark results from artifacts
-            function readResult(os) {
-              const file = path.join("results", "bench-result-" + os, "bench-result.json");
-              try {
-                return JSON.parse(fs.readFileSync(file, "utf8"));
-              } catch {
-                return null;
-              }
-            }
-
-            function formatResult(data) {
-              if (!data) return "-";
-              const prSec = (data.pr / 1000).toFixed(2);
-              const mainSec = (data.main / 1000).toFixed(2);
-              const prIqr = (data.prIqr / 1000).toFixed(2);
-              const mainIqr = (data.mainIqr / 1000).toFixed(2);
-              const diff = data.pr - data.main;
-              const diffSec = (diff >= 0 ? "+" : "") + (diff / 1000).toFixed(2);
-              const diffPct = data.main > 0
-                ? (diff >= 0 ? "+" : "") + ((diff / data.main) * 100).toFixed(1)
-                : "N/A";
-              return mainSec + "s (\u00b1" + mainIqr + "s) \u2192 " + prSec + "s (\u00b1" + prIqr + "s) \u00b7 " + diffSec + "s (" + diffPct + "%)";
-            }
-
-            const ubuntuStr = formatResult(readResult("ubuntu-latest"));
-            const macosStr = formatResult(readResult("macos-latest"));
-            const windowsStr = formatResult(readResult("windows-latest"));
-
-            // Render history section
-            function renderHistory(hist) {
-              if (hist.length === 0) return "";
-              return hist.map(h => {
-                const label = "<code>" + h.sha + "</code>" + (h.msg ? " " + h.msg : "");
-                const osRows = ["ubuntu", "macos", "windows"]
-                  .filter(os => h[os] && h[os] !== "-")
-                  .map(os => {
-                    const osLabel = os === "ubuntu" ? "Ubuntu" : os === "macos" ? "macOS" : "Windows";
-                    return "<tr><td><strong>" + osLabel + ":</strong></td><td>" + h[os] + "</td></tr>";
-                  })
-                  .join("\n");
-                return label + "\n<table>\n" + osRows + "\n</table>";
-              }).join("\n\n");
-            }
-
-            const jsonComment = "<!-- bench-history-json-start " + JSON.stringify(history) + " bench-history-json-end -->";
-            let body = "<!-- repomix-perf-benchmark -->\n" + jsonComment + "\n";
-            body += "## \u26a1 Performance Benchmark\n\n";
-            body += "<table><tr><td><strong>Latest commit:</strong></td><td><code>" + shortSha + "</code> " + esc(commitMsg) + "</td></tr>\n";
-            body += "<tr><td><strong>Status:</strong></td><td>\u2705 Benchmark complete!</td></tr>\n";
-            body += "<tr><td><strong>Ubuntu:</strong></td><td>" + ubuntuStr + "</td></tr>\n";
-            body += "<tr><td><strong>macOS:</strong></td><td>" + macosStr + "</td></tr>\n";
-            body += "<tr><td><strong>Windows:</strong></td><td>" + windowsStr + "</td></tr>\n";
-            body += "</table>\n\n";
-            body += "<details>\n<summary>Details</summary>\n\n";
-            body += "- Packing the repomix repository with `node bin/repomix.cjs`\n";
-            body += "- Warmup: 2 runs (discarded)\n";
-            body += "- Measurement: 10 runs / 20 on macOS (median \u00b1 IQR)\n";
-            body += "- [Workflow run](" + runUrl + ")\n\n";
-            body += "</details>";
-
-            const historyHtml = renderHistory(history);
-            if (historyHtml) {
-              body += "\n\n<details>\n<summary>History</summary>\n\n" + historyHtml + "\n\n</details>";
-            }
-
-            // Write to step summary (without HTML comments)
-            const summaryFile = process.env.GITHUB_STEP_SUMMARY;
-            if (summaryFile) {
-              const summaryBody = body.split("\n").filter(l => !l.startsWith("<!-- ")).join("\n");
-              fs.appendFileSync(summaryFile, summaryBody + "\n");
-            }
-
-            fs.writeFileSync(process.env.RUNNER_TEMP + "/new-comment.md", body);
-          '
+          COMMIT_MSG="$COMMIT_MSG" node .github/scripts/perf-benchmark/bench-comment.mjs
 
           BODY=$(cat "$RUNNER_TEMP/new-comment.md")
 
