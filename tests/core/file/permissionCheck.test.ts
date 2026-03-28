@@ -16,21 +16,11 @@ describe('permissionCheck', () => {
 
   describe('successful cases', () => {
     test('should return success when directory is readable', async () => {
-      // Mock successful readdir — confirms read+execute permissions
       vi.mocked(fs.readdir).mockResolvedValue([]);
 
       const result = await checkDirectoryPermissions(testDirPath);
 
-      expect(result).toEqual({
-        hasAllPermission: true,
-        details: {
-          read: true,
-          write: true,
-          execute: true,
-        },
-      });
-
-      // readdir is the single permission check (replaces 3× fs.access)
+      expect(result).toEqual({ readable: true });
       expect(fs.readdir).toHaveBeenCalledWith(testDirPath);
     });
   });
@@ -43,10 +33,7 @@ describe('permissionCheck', () => {
 
       const result = await checkDirectoryPermissions(testDirPath);
 
-      expect(result).toEqual({
-        hasAllPermission: false,
-        error: expect.any(PermissionError),
-      });
+      expect(result.readable).toBe(false);
       expect(result.error).toBeInstanceOf(PermissionError);
       expect(result.error?.message).toContain('Permission denied');
     });
@@ -58,10 +45,7 @@ describe('permissionCheck', () => {
 
       const result = await checkDirectoryPermissions(testDirPath);
 
-      expect(result).toEqual({
-        hasAllPermission: false,
-        error: expect.any(PermissionError),
-      });
+      expect(result.readable).toBe(false);
       expect(result.error).toBeInstanceOf(PermissionError);
       expect(result.error?.message).toContain('Permission denied');
     });
@@ -73,10 +57,8 @@ describe('permissionCheck', () => {
 
       const result = await checkDirectoryPermissions(testDirPath);
 
-      expect(result).toEqual({
-        hasAllPermission: false,
-        error: expect.any(PermissionError),
-      });
+      expect(result.readable).toBe(false);
+      expect(result.error).toBeInstanceOf(PermissionError);
     });
 
     test('should handle non-Error objects', async () => {
@@ -85,7 +67,7 @@ describe('permissionCheck', () => {
       const result = await checkDirectoryPermissions(testDirPath);
 
       expect(result).toEqual({
-        hasAllPermission: false,
+        readable: false,
         error: new Error('String error'),
       });
     });
@@ -93,7 +75,6 @@ describe('permissionCheck', () => {
 
   describe('platform specific behavior', () => {
     test('should return macOS specific error message', async () => {
-      // Mock platform as macOS
       vi.mocked(platform).mockReturnValue('darwin');
 
       const error = new Error('Permission denied');
@@ -109,7 +90,6 @@ describe('permissionCheck', () => {
     });
 
     test('should return standard error message for non-macOS platforms', async () => {
-      // Mock platform as Windows
       vi.mocked(platform).mockReturnValue('win32');
 
       const error = new Error('Permission denied');
@@ -188,7 +168,7 @@ describe('permissionCheck', () => {
       const result = await checkDirectoryPermissions(testDirPath);
 
       expect(result).toEqual({
-        hasAllPermission: false,
+        readable: false,
         error: error,
       });
     });
@@ -200,7 +180,7 @@ describe('permissionCheck', () => {
       const result = await checkDirectoryPermissions(testDirPath);
 
       expect(result).toEqual({
-        hasAllPermission: false,
+        readable: false,
         error: error,
       });
     });

@@ -144,14 +144,14 @@ export const searchFiles = async (
   }
 
   // Run permission check and ignore context preparation in parallel.
-  // Both are independent: permission check does readdir + access calls,
+  // Both are independent: permission check does a readdir probe,
   // while ignore context reads config patterns + .git/info/exclude.
   const [permissionCheck, ignoreContext] = await Promise.all([
     checkDirectoryPermissions(rootDir),
     prepareIgnoreContext(rootDir, config),
   ]);
 
-  if (permissionCheck.details?.read !== true) {
+  if (!permissionCheck.readable) {
     if (permissionCheck.error instanceof PermissionError) {
       throw permissionCheck.error;
     }

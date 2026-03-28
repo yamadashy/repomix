@@ -47,8 +47,7 @@ describe('fileSearch', () => {
     } as Stats);
     // Default mock for checkDirectoryPermissions
     vi.mocked(checkDirectoryPermissions).mockResolvedValue({
-      hasAllPermission: true,
-      details: { read: true, write: true, execute: true },
+      readable: true,
     });
     // Default mock for globby
     vi.mocked(globby).mockResolvedValue([]);
@@ -259,8 +258,7 @@ node_modules
         isFile: () => false,
       } as Stats);
       vi.mocked(checkDirectoryPermissions).mockResolvedValue({
-        hasAllPermission: true,
-        details: { read: true, write: true, execute: true },
+        readable: true,
       });
     });
 
@@ -557,22 +555,17 @@ node_modules
       // Mock .git file content for worktree
       const gitWorktreeContent = 'gitdir: /path/to/main/repo/.git/worktrees/feature-branch';
 
-      // Mock fs.stat - first call for rootDir, subsequent calls for .git file
-      vi.mocked(fs.stat)
-        .mockResolvedValueOnce({
-          isDirectory: () => true,
-          isFile: () => false,
-        } as Stats)
-        .mockResolvedValue({
-          isFile: () => true,
-          isDirectory: () => false,
-        } as Stats);
+      // Mock fs.stat for rootDir (searchFiles checks it's a directory)
+      vi.mocked(fs.stat).mockResolvedValueOnce({
+        isDirectory: () => true,
+        isFile: () => false,
+      } as Stats);
+      // isGitWorktreeRef now reads .git directly via readFile (no stat call)
       vi.mocked(fs.readFile).mockResolvedValue(gitWorktreeContent);
 
       // Override checkDirectoryPermissions mock for this test
       vi.mocked(checkDirectoryPermissions).mockResolvedValue({
-        hasAllPermission: true,
-        details: { read: true, write: true, execute: true },
+        readable: true,
       });
 
       // Mock globby to return some test files
@@ -608,21 +601,15 @@ node_modules
       // Mock .git file content for worktree
       const gitWorktreeContent = 'gitdir: /path/to/main/repo/.git/worktrees/feature-branch';
 
-      // Mock fs.stat - first call for rootDir, subsequent calls for .git file
-      vi.mocked(fs.stat)
-        .mockResolvedValueOnce({
-          isDirectory: () => true,
-          isFile: () => false,
-        } as Stats)
-        .mockResolvedValue({
-          isFile: () => true,
-          isDirectory: () => false,
-        } as Stats);
+      // Mock fs.stat for rootDir (searchFiles checks it's a directory)
+      vi.mocked(fs.stat).mockResolvedValueOnce({
+        isDirectory: () => true,
+        isFile: () => false,
+      } as Stats);
 
       // Override checkDirectoryPermissions mock for this test
       vi.mocked(checkDirectoryPermissions).mockResolvedValue({
-        hasAllPermission: true,
-        details: { read: true, write: true, execute: true },
+        readable: true,
       });
 
       // Simulate parent .gitignore pattern in worktree environment
@@ -704,8 +691,7 @@ node_modules
 
       // Override checkDirectoryPermissions mock for this test
       vi.mocked(checkDirectoryPermissions).mockResolvedValue({
-        hasAllPermission: true,
-        details: { read: true, write: true, execute: true },
+        readable: true,
       });
 
       // Mock globby to return some test files

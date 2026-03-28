@@ -3,13 +3,8 @@ import { platform } from 'node:os';
 import { logger } from '../../shared/logger.js';
 
 export interface PermissionCheckResult {
-  hasAllPermission: boolean;
+  readable: boolean;
   error?: Error;
-  details?: {
-    read?: boolean;
-    write?: boolean;
-    execute?: boolean;
-  };
 }
 
 export class PermissionError extends Error {
@@ -25,15 +20,9 @@ export class PermissionError extends Error {
 
 export const checkDirectoryPermissions = async (dirPath: string): Promise<PermissionCheckResult> => {
   try {
-    // readdir succeeds only when the directory is readable and executable.
-    // This single call replaces the previous 4-syscall approach (readdir + 3× fs.access)
-    // since the caller (searchFiles) only needs to verify read permission.
     await fs.readdir(dirPath);
 
-    return {
-      hasAllPermission: true,
-      details: { read: true, write: true, execute: true },
-    };
+    return { readable: true };
   } catch (error) {
     if (error instanceof Error && 'code' in error) {
       switch (error.code) {
@@ -41,19 +30,19 @@ export const checkDirectoryPermissions = async (dirPath: string): Promise<Permis
         case 'EACCES':
         case 'EISDIR':
           return {
-            hasAllPermission: false,
+            readable: false,
             error: new PermissionError(getMacOSPermissionMessage(dirPath, error.code), dirPath, error.code),
           };
         default:
           logger.debug('Directory permission check error:', error);
           return {
-            hasAllPermission: false,
+            readable: false,
             error: error as Error,
           };
       }
     }
     return {
-      hasAllPermission: false,
+      readable: false,
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
