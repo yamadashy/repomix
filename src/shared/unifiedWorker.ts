@@ -12,7 +12,7 @@
 import { workerData } from 'node:worker_threads';
 
 // Worker type definitions
-export type WorkerType = 'fileProcess' | 'securityCheck' | 'calculateMetrics' | 'defaultAction';
+export type WorkerType = 'fileProcess' | 'securityCheck' | 'defaultAction';
 
 // Worker handler type - uses 'any' to accommodate different worker signatures
 // biome-ignore lint/suspicious/noExplicitAny: Worker handlers have varying signatures
@@ -46,11 +46,6 @@ const loadWorkerHandler = async (
     }
     case 'securityCheck': {
       const module = await import('../core/security/workers/securityCheckWorker.js');
-      result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
-      break;
-    }
-    case 'calculateMetrics': {
-      const module = await import('../core/metrics/workers/calculateMetricsWorker.js');
       result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
       break;
     }
@@ -93,11 +88,6 @@ const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
   // fileProcess: has rawFile (nested object) and config
   if ('rawFile' in taskObj && 'config' in taskObj) {
     return 'fileProcess';
-  }
-
-  // calculateMetrics: has content, encoding (must check before securityCheck)
-  if ('content' in taskObj && 'encoding' in taskObj) {
-    return 'calculateMetrics';
   }
 
   // securityCheck: has filePath, content, type

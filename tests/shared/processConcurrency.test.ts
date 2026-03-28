@@ -153,13 +153,13 @@ describe('processConcurrency', () => {
     });
 
     it('should pass runtime parameter to createWorkerPool', () => {
-      const taskRunner = initTaskRunner({ numOfTasks: 100, workerType: 'calculateMetrics', runtime: 'worker_threads' });
+      const taskRunner = initTaskRunner({ numOfTasks: 100, workerType: 'securityCheck', runtime: 'worker_threads' });
 
       expect(Tinypool).toHaveBeenCalledWith(
         expect.objectContaining({
           runtime: 'worker_threads',
           workerData: expect.objectContaining({
-            workerType: 'calculateMetrics',
+            workerType: 'securityCheck',
           }),
         }),
       );

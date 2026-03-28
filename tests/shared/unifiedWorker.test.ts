@@ -10,10 +10,6 @@ vi.mock('../../src/core/security/workers/securityCheckWorker.js', () => ({
   default: vi.fn().mockResolvedValue(null),
   onWorkerTermination: vi.fn(),
 }));
-vi.mock('../../src/core/metrics/workers/calculateMetricsWorker.js', () => ({
-  default: vi.fn().mockResolvedValue(100),
-  onWorkerTermination: vi.fn(),
-}));
 vi.mock('../../src/cli/actions/workers/defaultActionWorker.js', () => ({
   default: vi.fn().mockResolvedValue({ packResult: {}, config: {} }),
   onWorkerTermination: vi.fn(),
@@ -68,19 +64,6 @@ describe('unifiedWorker', () => {
 
       const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
       expect(fileProcessWorker.default).toHaveBeenCalledWith(task);
-    });
-
-    it('should infer calculateMetrics from task with content and encoding', async () => {
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
-      const task = {
-        content: 'test content',
-        encoding: 'cl100k_base',
-      };
-
-      await handler(task);
-
-      const calculateMetricsWorker = await import('../../src/core/metrics/workers/calculateMetricsWorker.js');
-      expect(calculateMetricsWorker.default).toHaveBeenCalledWith(task);
     });
 
     it('should infer securityCheck from task with filePath, content, type', async () => {
