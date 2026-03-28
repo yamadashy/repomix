@@ -5,10 +5,15 @@ export const TOKEN_ENCODINGS = ['o200k_base', 'cl100k_base', 'p50k_base', 'r50k_
 export type TokenEncoding = (typeof TOKEN_ENCODINGS)[number];
 
 interface CountTokensOptions {
-  allowedSpecial?: 'all' | Set<string>;
+  disallowedSpecial?: Set<string>;
 }
 
 type CountTokensFn = (text: string, options?: CountTokensOptions) => number;
+
+// Treat all text as regular content — don't disallow any special tokens.
+// This matches the old tiktoken behavior: encode(content, [], []).length
+// where special tokens like <|endoftext|> are tokenized as ordinary text.
+const PLAIN_TEXT_OPTIONS: CountTokensOptions = { disallowedSpecial: new Set() };
 
 // Lazy-loaded countTokens functions keyed by encoding
 const encodingModules = new Map<string, CountTokensFn>();
@@ -51,21 +56,15 @@ export class TokenCounter {
     }
 
     try {
-      // Fast path: count without special token processing
-      return this.countFn(content);
+      return this.countFn(content, PLAIN_TEXT_OPTIONS);
     } catch {
-      // Fallback: allow all special tokens for files containing sequences like <|endoftext|>
-      try {
-        return this.countFn(content, { allowedSpecial: 'all' });
-      } catch {
-        if (filePath) {
-          logger.warn(`Failed to count tokens. path: ${filePath}`);
-        } else {
-          logger.warn('Failed to count tokens.');
-        }
-
-        return 0;
+      if (filePath) {
+        logger.warn(`Failed to count tokens. path: ${filePath}`);
+      } else {
+        logger.warn('Failed to count tokens.');
       }
+
+      return 0;
     }
   }
 
