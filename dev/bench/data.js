@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774686616622,
+  "lastUpdate": 1774690385864,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -720,6 +720,51 @@ window.BENCHMARK_DATA = {
             "range": "±41",
             "unit": "ms",
             "extra": "Median of 10 runs\nQ1: 3395ms, Q3: 3436ms\nAll times: 3373, 3377, 3395, 3409, 3427, 3430, 3433, 3436, 3438, 3704ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "28f93e9357f73bb174a180ee9b634a0f18273eb0",
+          "message": "Merge pull request #1338 from yamadashy/perf/skip-worker-pool-lightweight-v2\n\nperf(core): Skip worker pool for lightweight file processing",
+          "timestamp": "2026-03-28T18:31:23+09:00",
+          "tree_id": "ecada18b88b4e34671a8adf11133c157b8ac4302",
+          "url": "https://github.com/yamadashy/repomix/commit/28f93e9357f73bb174a180ee9b634a0f18273eb0"
+        },
+        "date": 1774690385350,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1513,
+            "range": "±65",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1502ms, Q3: 1567ms\nAll times: 1474, 1482, 1496, 1496, 1501, 1502, 1505, 1511, 1511, 1512, 1513, 1513, 1518, 1552, 1562, 1567, 1575, 1575, 1601, 1611ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2937,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 10 runs\nQ1: 2929ms, Q3: 2948ms\nAll times: 2911, 2912, 2929, 2932, 2933, 2937, 2938, 2948, 2949, 2970ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 3659,
+            "range": "±326",
+            "unit": "ms",
+            "extra": "Median of 10 runs\nQ1: 3456ms, Q3: 3782ms\nAll times: 3407, 3419, 3456, 3512, 3623, 3659, 3717, 3782, 3978, 4624ms"
           }
         ]
       }
