@@ -5,7 +5,7 @@ const TRUNCATION_LENGTH = 32;
 const MIN_CHAR_DIVERSITY = 10;
 const MIN_CHAR_TYPE_COUNT = 3;
 
-// Pre-compiled regex patterns (avoid re-creation per file)
+// Pre-compiled regex patterns (avoids recompilation per file)
 const dataUriPattern = new RegExp(
   `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
   'g',
@@ -20,11 +20,11 @@ const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_S
  * @returns Content with base64 data truncated
  */
 export const truncateBase64Content = (content: string): string => {
-  // Reset lastIndex since patterns are global and reused across calls
+  let processedContent = content;
+
+  // Reset lastIndex for global regexes (they are stateful)
   dataUriPattern.lastIndex = 0;
   standaloneBase64Pattern.lastIndex = 0;
-
-  let processedContent = content;
 
   // Replace data URIs
   processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {

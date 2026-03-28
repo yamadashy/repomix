@@ -106,26 +106,27 @@ export const pack = async (
     .catch(() => null);
 
   try {
+    // Run file collection and git operations in parallel since they are independent:
+    // - collectFiles reads file contents from disk
+    // - getGitDiffs/getGitLogs spawn git subprocesses
+    // Neither depends on the other's results.
     progressCallback('Collecting files...');
-    const collectResults = await withMemoryLogging(
-      'Collect Files',
-      async () =>
-        await Promise.all(
-          sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-            deps.collectFiles(filePaths, rootDir, config, progressCallback),
+    const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
+      withMemoryLogging(
+        'Collect Files',
+        async () =>
+          await Promise.all(
+            sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
+              deps.collectFiles(filePaths, rootDir, config, progressCallback),
+            ),
           ),
-        ),
-    );
-
-    const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
-    const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
-
-    // Get git diffs and logs in parallel - both are independent git operations
-    progressCallback('Getting git metadata...');
-    const [gitDiffResult, gitLogResult] = await Promise.all([
+      ),
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
     ]);
+
+    const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
+    const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
     // Ensure security worker pool is warmed up before starting security check
     await securityWarmupPromise;
