@@ -10,10 +10,14 @@ interface CountTokensOptions {
 
 type CountTokensFn = (text: string, options?: CountTokensOptions) => number;
 
-// Treat all text as regular content — don't disallow any special tokens.
+// Fallback options: treat all text as regular content by disallowing nothing.
 // This matches the old tiktoken behavior: encode(content, [], []).length
 // where special tokens like <|endoftext|> are tokenized as ordinary text.
-const PLAIN_TEXT_OPTIONS: CountTokensOptions = { disallowedSpecial: new Set() };
+// Only used for the rare files (~0.1%) that contain special token sequences.
+// NOTE: Not used as default because passing options forces gpt-tokenizer to
+// call processSpecialTokens() on every invocation instead of using its
+// pre-cached defaultSpecialTokenConfig, which adds significant overhead.
+const FALLBACK_OPTIONS: CountTokensOptions = { disallowedSpecial: new Set() };
 
 // Lazy-loaded countTokens functions keyed by encoding
 const encodingModules = new Map<string, CountTokensFn>();
@@ -56,15 +60,24 @@ export class TokenCounter {
     }
 
     try {
-      return this.countFn(content, PLAIN_TEXT_OPTIONS);
+      // Fast path: use gpt-tokenizer's cached defaultSpecialTokenConfig (no options).
+      // Default disallowedSpecial='all' throws on special tokens like <|endoftext|>,
+      // but these are rare (~0.1% of files) and handled by the fallback below.
+      return this.countFn(content);
     } catch {
-      if (filePath) {
-        logger.warn(`Failed to count tokens. path: ${filePath}`);
-      } else {
-        logger.warn('Failed to count tokens.');
-      }
+      // Fallback: disable special token checking for files containing
+      // special token sequences. Treats them as ordinary text.
+      try {
+        return this.countFn(content, FALLBACK_OPTIONS);
+      } catch {
+        if (filePath) {
+          logger.warn(`Failed to count tokens. path: ${filePath}`);
+        } else {
+          logger.warn('Failed to count tokens.');
+        }
 
-      return 0;
+        return 0;
+      }
     }
   }
 
