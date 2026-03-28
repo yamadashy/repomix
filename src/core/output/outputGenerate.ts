@@ -412,10 +412,10 @@ export const buildOutputGeneratorContext = async (
       );
     }
   } else if (config.output.directoryStructure && config.output.includeEmptyDirectories) {
-    // Use pre-computed empty dir paths from initial search when available,
-    // avoiding a redundant full globby search (~60ms saved)
+    // Reuse pre-computed emptyDirPaths from the initial searchFiles call when available,
+    // avoiding a redundant full directory scan.
     if (emptyDirPaths) {
-      directoryPathsForTree = [...new Set(emptyDirPaths)].sort();
+      directoryPathsForTree = emptyDirPaths;
     } else {
       try {
         const results = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
