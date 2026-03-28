@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { writeFileSync } from 'node:fs';
 
 const [prDir, mainDir] = process.argv.slice(2);
 const output = join(tmpdir(), 'repomix-bench-output.txt');
@@ -19,21 +19,50 @@ function run(bin, dir) {
 // Warmup both branches to stabilize OS page cache and JIT
 console.error('Warming up...');
 for (let i = 0; i < 2; i++) {
-  try { run(prBin, prDir); } catch {}
-  try { run(mainBin, mainDir); } catch {}
+  try {
+    run(prBin, prDir);
+  } catch {}
+  try {
+    run(mainBin, mainDir);
+  } catch {}
 }
 
 // Interleaved measurement: alternate PR and main each iteration
-// so both branches experience similar runner load conditions
+// so both branches experience similar runner load conditions.
+// Even/odd alternation neutralizes ordering bias from CPU/filesystem cache warming.
 const prTimes = [];
 const mainTimes = [];
 for (let i = 0; i < runs; i++) {
   console.error(`Run ${i + 1}/${runs}`);
-  prTimes.push(run(prBin, prDir));
-  mainTimes.push(run(mainBin, mainDir));
+  if (i % 2 === 0) {
+    try {
+      prTimes.push(run(prBin, prDir));
+    } catch (e) {
+      console.error(`PR run ${i + 1} failed: ${e.message}`);
+    }
+    try {
+      mainTimes.push(run(mainBin, mainDir));
+    } catch (e) {
+      console.error(`main run ${i + 1} failed: ${e.message}`);
+    }
+  } else {
+    try {
+      mainTimes.push(run(mainBin, mainDir));
+    } catch (e) {
+      console.error(`main run ${i + 1} failed: ${e.message}`);
+    }
+    try {
+      prTimes.push(run(prBin, prDir));
+    } catch (e) {
+      console.error(`PR run ${i + 1} failed: ${e.message}`);
+    }
+  }
 }
 
 function stats(times) {
+  if (times.length === 0) {
+    return { median: 0, iqr: 0 };
+  }
   times.sort((a, b) => a - b);
   const median = times[Math.floor(times.length / 2)];
   const q1 = times[Math.floor(times.length * 0.25)];

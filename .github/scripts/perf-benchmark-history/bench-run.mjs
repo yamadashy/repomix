@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { writeFileSync } from 'node:fs';
 
 const dir = process.argv[2];
 const output = join(tmpdir(), 'repomix-bench-output.txt');
@@ -18,9 +18,18 @@ for (let i = 0; i < 2; i++) {
 // Measurement runs
 const times = [];
 for (let i = 0; i < runs; i++) {
-  const start = Date.now();
-  execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
-  times.push(Date.now() - start);
+  try {
+    const start = Date.now();
+    execFileSync(process.execPath, [bin, dir, '--output', output], { stdio: 'ignore' });
+    times.push(Date.now() - start);
+  } catch (e) {
+    console.error(`Run ${i + 1}/${runs} failed: ${e.message}`);
+  }
+}
+
+if (times.length === 0) {
+  console.error('All benchmark runs failed');
+  process.exit(1);
 }
 
 times.sort((a, b) => a - b);
@@ -32,13 +41,15 @@ const iqr = q3 - q1;
 const osName = process.env.RUNNER_OS;
 
 // Output in customSmallerIsBetter format for github-action-benchmark
-const result = [{
-  name: `Repomix Pack (${osName})`,
-  unit: 'ms',
-  value: median,
-  range: '±' + iqr,
-  extra: `Median of ${runs} runs\nQ1: ${q1}ms, Q3: ${q3}ms\nAll times: ${times.join(', ')}ms`,
-}];
+const result = [
+  {
+    name: `Repomix Pack (${osName})`,
+    unit: 'ms',
+    value: median,
+    range: `±${iqr}`,
+    extra: `Median of ${times.length} runs\nQ1: ${q1}ms, Q3: ${q3}ms\nAll times: ${times.join(', ')}ms`,
+  },
+];
 
 writeFileSync(join(process.env.RUNNER_TEMP, 'bench-result.json'), JSON.stringify(result));
 console.log(`${osName}: median=${median}ms (±${iqr}ms)`);
