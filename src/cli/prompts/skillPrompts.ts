@@ -1,10 +1,16 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import * as prompts from '@clack/prompts';
 import pc from 'picocolors';
 import { OperationCancelledError, RepomixError } from '../../shared/errorHandle.js';
 import { getDisplayPath } from '../cliReport.js';
+
+// Lazy-load @clack/prompts (~55ms import cost) since skill prompts are used in <5% of runs.
+let _prompts: typeof import('@clack/prompts') | undefined;
+const getPrompts = async () => {
+  _prompts ??= await import('@clack/prompts');
+  return _prompts;
+};
 
 export type SkillLocation = 'personal' | 'project';
 
@@ -14,7 +20,8 @@ export interface SkillPromptResult {
 }
 
 const onCancelOperation = (): never => {
-  prompts.cancel('Skill generation cancelled.');
+  // _prompts is guaranteed to be loaded by the caller (promptSkillLocation) before this is called
+  _prompts?.cancel('Skill generation cancelled.');
   throw new OperationCancelledError('Skill generation cancelled');
 };
 
@@ -34,16 +41,25 @@ export const getSkillBaseDir = (cwd: string, location: SkillLocation): string =>
 export const promptSkillLocation = async (
   skillName: string,
   cwd: string,
-  deps = {
+  deps?: Partial<{
+    select: typeof import('@clack/prompts').select;
+    confirm: typeof import('@clack/prompts').confirm;
+    isCancel: typeof import('@clack/prompts').isCancel;
+    access: typeof fs.access;
+    rm: typeof fs.rm;
+  }>,
+): Promise<SkillPromptResult> => {
+  const prompts = await getPrompts();
+  const { select, confirm, isCancel, access, rm } = {
     select: prompts.select,
     confirm: prompts.confirm,
     isCancel: prompts.isCancel,
     access: fs.access,
     rm: fs.rm,
-  },
-): Promise<SkillPromptResult> => {
+    ...deps,
+  };
   // Step 1: Ask for skill location
-  const location = await deps.select({
+  const location = await select({
     message: 'Where would you like to save the skill?',
     options: [
       {
@@ -60,7 +76,7 @@ export const promptSkillLocation = async (
     initialValue: 'personal' as SkillLocation,
   });
 
-  if (deps.isCancel(location)) {
+  if (isCancel(location)) {
     onCancelOperation();
   }
 
@@ -69,7 +85,7 @@ export const promptSkillLocation = async (
   // Step 2: Check if directory exists and ask for overwrite
   let dirExists = false;
   try {
-    await deps.access(skillDir);
+    await access(skillDir);
     dirExists = true;
   } catch {
     // Directory doesn't exist
@@ -77,16 +93,16 @@ export const promptSkillLocation = async (
 
   if (dirExists) {
     const displayPath = getDisplayPath(skillDir, cwd);
-    const overwrite = await deps.confirm({
+    const overwrite = await confirm({
       message: `Skill directory already exists. Do you want to overwrite it?\n${pc.dim(`path: ${displayPath}`)}`,
     });
 
-    if (deps.isCancel(overwrite) || !overwrite) {
+    if (isCancel(overwrite) || !overwrite) {
       onCancelOperation();
     }
 
     // Remove existing directory before regeneration
-    await deps.rm(skillDir, { recursive: true, force: true });
+    await rm(skillDir, { recursive: true, force: true });
   }
 
   return {
