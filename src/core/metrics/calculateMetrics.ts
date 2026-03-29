@@ -1,4 +1,6 @@
+import type { TiktokenEncoding } from 'tiktoken';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
+import { logger } from '../../shared/logger.js';
 import { initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
@@ -9,6 +11,7 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
+import { TokenCounter } from './TokenCounter.js';
 import type { TokenCountWorkerResult, TokenCountWorkerTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
@@ -37,6 +40,51 @@ export const createMetricsTaskRunner = (numOfTasks: number): MetricsTaskRunner =
     // Process exit is not delayed because unref() is called after pack() completes.
     idleTimeout: 5000,
   });
+};
+
+/**
+ * Create a main-thread metrics task runner that avoids worker thread overhead.
+ *
+ * When tokenCountTree is enabled, output tokenization is skipped (estimated from file
+ * char/token ratios), leaving only ~20 light file metrics tasks + 2 git tasks.
+ * Worker thread overhead (~170ms for spawning + tiktoken WASM loading + CPU contention)
+ * vastly exceeds the actual work (~26ms). This runner loads tiktoken lazily on the main
+ * thread (~60ms on first use) and processes tasks synchronously, saving ~100ms+ by
+ * eliminating thread spawning, IPC serialization, and CPU contention during pipeline stages.
+ *
+ * For the default config (tokenCountTree=false), the full output must be tokenized (~3.7MB),
+ * making worker parallelism essential — use createMetricsTaskRunner instead.
+ */
+export const createMainThreadMetricsRunner = (encoding: TiktokenEncoding): MetricsTaskRunner => {
+  let counter: TokenCounter | null = null;
+
+  const getCounter = (): TokenCounter => {
+    if (!counter) {
+      const startTime = performance.now();
+      counter = new TokenCounter(encoding);
+      logger.debug(`Main-thread tiktoken initialization took ${(performance.now() - startTime).toFixed(2)}ms`);
+    }
+    return counter;
+  };
+
+  return {
+    run: async (task: TokenCountWorkerTask): Promise<TokenCountWorkerResult> => {
+      const tc = getCounter();
+      if ('batch' in task) {
+        return task.batch.map((item) => tc.countTokens(item.content, item.path));
+      }
+      return tc.countTokens(task.content, task.path);
+    },
+    cleanup: async () => {
+      try {
+        counter?.free();
+      } finally {
+        counter = null;
+      }
+    },
+    // No-op: main-thread runner has no worker threads to unref
+    unref: () => {},
+  };
 };
 
 /**

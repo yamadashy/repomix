@@ -13,7 +13,11 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import type { GitLogCommit } from './git/gitLogHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { getFileChangeCount } from './git/gitRepositoryHandle.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import {
+  calculateMetrics,
+  createMainThreadMetricsRunner,
+  createMetricsTaskRunner,
+} from './metrics/calculateMetrics.js';
 import { preloadOutputDeps } from './output/outputGenerate.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
@@ -59,6 +63,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createMainThreadMetricsRunner,
   createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
@@ -92,32 +97,36 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Three-phase worker warmup to minimize CPU contention on the critical path.
+  // Metrics runner strategy: choose between worker threads and main-thread based on workload.
   //
-  // Worker thread spawning + module loading (tiktoken WASM ~240ms, secretlint ~150ms)
-  // is CPU-intensive. Spawning all workers too early creates contention with the main
-  // thread's I/O work (file search, readFileSync, git subprocesses), inflating
-  // wall-clock times on resource-constrained CI runners (2 vCPU).
+  // When tokenCountTree is enabled, output tokenization is skipped (estimated from file
+  // char/token ratios), leaving only ~20 light file tasks. Worker thread overhead (~170ms
+  // for spawning + tiktoken WASM loading + CPU contention) vastly exceeds actual work (~26ms).
+  // A main-thread runner eliminates all thread overhead at the cost of ~60ms lazy tiktoken
+  // load, saving ~100ms+ and reducing CPU contention during pipeline stages.
   //
-  // Strategy:
-  //   Phase 1 (before search): 1 metrics + 1 security worker → 3 threads total.
-  //   Phase 2 (after collect+git): remaining N-1 metrics workers. Deferred past the
-  //     I/O-heavy collect+git stage to avoid contention during readFileSync + git
-  //     subprocesses. Security gets no extra workers — the pre-filter reduces ~1000
-  //     files to ~6, which 1 warm worker handles in ~30ms.
-  //   Phase 3 (metrics): tasks submitted immediately without awaiting warmup.
-  //     Tinypool queues tasks; warm workers start at once, others join as they load.
+  // When tokenCountTree is disabled (default), the full ~3.7MB output must be tokenized.
+  // Worker parallelism is essential: 4 workers encode in ~220ms vs ~880ms sequentially.
+  // Three-phase warmup minimizes contention: Phase 1 (1 worker before search), Phase 2
+  // (N-1 workers after collect+git), Phase 3 (tasks submitted without awaiting warmup).
+  const useMainThreadMetrics = !!config.output.tokenCountTree;
   const concurrency = getProcessConcurrency();
-  const metricsTaskRunner = deps.createMetricsTaskRunner(concurrency * 100);
+  const metricsTaskRunner = useMainThreadMetrics
+    ? deps.createMainThreadMetricsRunner(config.tokenCount.encoding)
+    : deps.createMetricsTaskRunner(concurrency * 100);
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.createSecurityTaskRunner(concurrency * 100)
     : undefined;
 
+  // Worker warmup (only when using worker threads for metrics).
   // Phase 1: Spawn 1 worker per pool before search (low contention).
   // Tinypool lazily creates workers on first task submission, so 1 task = 1 worker.
-  const firstMetricsWarmup = metricsTaskRunner
-    .run({ content: '', encoding: config.tokenCount.encoding })
-    .catch(() => 0);
+  let firstMetricsWarmup: Promise<number> | undefined;
+  if (!useMainThreadMetrics) {
+    firstMetricsWarmup = metricsTaskRunner
+      .run({ content: '', encoding: config.tokenCount.encoding })
+      .catch(() => 0) as Promise<number>;
+  }
   // Security warmup is fire-and-forget: 1 worker suffices for ~6 pre-filtered files.
   securityTaskRunner?.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null);
 
@@ -188,20 +197,23 @@ export const pack = async (
         : Promise.resolve(undefined),
     ]);
 
-    // Phase 2: Spawn remaining N-1 metrics workers after collect+git.
+    // Phase 2: Spawn remaining N-1 metrics workers after collect+git (worker mode only).
     // Deferred here so readFileSync + git subprocesses run with only 3 threads
     // (main + Phase 1 workers), avoiding the CPU contention that occurs when all
     // workers spawn during I/O-heavy stages. Workers warm up during
     // security+processing+output (~160ms). The 5s idle timeout ensures threads
     // survive until metrics calculation.
-    const warmupPromise = Promise.all([
-      firstMetricsWarmup,
-      ...(concurrency > 1
-        ? Array.from({ length: concurrency - 1 }, () =>
-            metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0),
-          )
-        : []),
-    ]);
+    // When using main-thread metrics, no warmup is needed — tiktoken loads lazily on first use.
+    const warmupPromise = useMainThreadMetrics
+      ? Promise.resolve([0])
+      : Promise.all([
+          firstMetricsWarmup,
+          ...(concurrency > 1
+            ? Array.from({ length: concurrency - 1 }, () =>
+                metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0),
+              )
+            : []),
+        ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
