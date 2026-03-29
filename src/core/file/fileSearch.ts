@@ -41,14 +41,28 @@ export interface FileSearchResult {
   emptyDirPaths: string[];
 }
 
+interface WalkResult {
+  allDirs: string[];
+  emptyDirs: string[];
+}
+
 /**
  * Recursively walk directories, skipping those matching the isIgnored predicate.
  * Uses synchronous readdirSync for maximum throughput (avoids Promise overhead per directory).
  * Only visits non-ignored directories, so node_modules and other heavy ignored trees are skipped
  * entirely (~37ms for ~300 dirs vs ~74ms for readdir recursive scanning ~1500 dirs).
+ *
+ * When detectEmptyDirs is true, also identifies directories with no visible (non-hidden) entries
+ * during the same walk pass. This eliminates the need for a separate findEmptyDirectories call
+ * which would re-read each directory via async fs.readdir + load minimatch for pattern matching.
  */
-const walkDirectoriesFiltered = (rootDir: string, isIgnored: (path: string) => boolean): string[] => {
-  const result: string[] = [];
+const walkDirectoriesFiltered = (
+  rootDir: string,
+  isIgnored: (path: string) => boolean,
+  detectEmptyDirs = false,
+): WalkResult => {
+  const allDirs: string[] = [];
+  const emptyDirs: string[] = [];
 
   const walk = (relDir: string): void => {
     const fullDir = relDir ? path.join(rootDir, relDir) : rootDir;
@@ -60,20 +74,32 @@ const walkDirectoriesFiltered = (rootDir: string, isIgnored: (path: string) => b
       return;
     }
 
+    // Track whether this directory has any visible (non-hidden) entries.
+    // A directory is "empty" for display purposes if all its entries start with '.'.
+    let hasVisibleContent = false;
+
     for (const entry of entries) {
+      if (detectEmptyDirs && !hasVisibleContent && !entry.name.startsWith('.')) {
+        hasVisibleContent = true;
+      }
+
       if (!entry.isDirectory()) continue;
       const relPath = relDir ? `${relDir}/${entry.name}` : entry.name;
 
       // Skip ignored directories to avoid traversing heavy trees like node_modules
       if (isIgnored(relPath) || isIgnored(`${relPath}/`)) continue;
 
-      result.push(relPath);
+      allDirs.push(relPath);
       walk(relPath);
+    }
+
+    if (detectEmptyDirs && relDir && !hasVisibleContent) {
+      emptyDirs.push(relDir);
     }
   };
 
   walk('');
-  return result;
+  return { allDirs, emptyDirs };
 };
 
 const findEmptyDirectories = async (
@@ -338,26 +364,24 @@ export const searchFiles = async (
     if (gitLsFilesResult !== null) {
       filePaths = gitLsFilesResult.filePaths;
 
-      // For empty directory search in git repos, use a filtered recursive walk + picomatch
-      // instead of globby. This reuses the compiled picomatch matchers from git ls-files search,
-      // avoiding the ~55ms globby module load + ~114ms globby directory scan entirely.
-      // Filtered walk (~37ms) skips ignored directories (node_modules, .git, etc.) during
-      // traversal, making it faster than both globby (~169ms) and unfiltered readdir (~74ms).
+      // For empty directory search in git repos, use a single-pass filtered recursive walk
+      // that detects empty directories during traversal. This replaces the previous two-pass
+      // approach (walkDirectoriesFiltered + findEmptyDirectories) which re-read every directory
+      // via async fs.readdir and loaded minimatch for pattern matching.
+      // Single pass: ~15ms vs two passes: ~50-90ms (eliminating 275 async readdir calls,
+      // minimatch module load, and per-pattern matching).
       if (config.output.includeEmptyDirectories) {
-        logger.debug('[empty dirs] Using filtered walk + picomatch for empty directory search...');
+        logger.debug('[empty dirs] Using single-pass filtered walk for empty directory detection...');
         const emptyDirStartTime = Date.now();
 
-        const allDirs = walkDirectoriesFiltered(rootDir, gitLsFilesResult.isIgnored);
+        const { allDirs, emptyDirs } = walkDirectoriesFiltered(rootDir, gitLsFilesResult.isIgnored, true);
         // Apply include patterns to match globby behavior (e.g., only dirs under src/**)
-        const matchedDirs = allDirs.filter((d) => gitLsFilesResult.isIncluded(d));
+        emptyDirPaths = emptyDirs.filter((d) => gitLsFilesResult.isIncluded(d));
 
         const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-        logger.debug(`[empty dirs] Found ${matchedDirs.length} directories in ${emptyDirElapsedTime}ms`);
-
-        const filterStartTime = Date.now();
-        emptyDirPaths = await findEmptyDirectories(rootDir, matchedDirs, adjustedIgnorePatterns);
-        const filterTime = Date.now() - filterStartTime;
-        logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
+        logger.debug(
+          `[empty dirs] Found ${allDirs.length} directories, ${emptyDirPaths.length} empty in ${emptyDirElapsedTime}ms`,
+        );
       }
     } else {
       logger.debug('[globby] Starting file search...');
