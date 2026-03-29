@@ -92,54 +92,35 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Pre-initialize metrics worker pool immediately to maximize tiktoken WASM warmup overlap.
-  // Tiktoken initialization takes ~240ms in the worker thread. By starting it here (before
-  // file search), the WASM loading overlaps with search (~140ms) + collection (~40ms) +
-  // processing + output generation, eliminating the warmup gap from the critical path.
-  // Use processConcurrency as the initial thread estimate; Tinypool handles the sizing.
+  // Staged worker warmup: minimize CPU contention during file search.
+  //
+  // Worker thread spawning creates severe CPU contention with the search phase.
+  // On a 2-vCPU CI runner, spawning N metrics + N security workers causes
+  // (2N+1) threads competing for 2 CPUs, slowing search by ~2.5x.
+  //
+  // Strategy: spawn only 1 worker per pool before search, then spawn remaining
+  // N-1 workers after search. This reduces contention from (2N+1)/CPUs to
+  // 3/CPUs during search. The remaining workers warm up during the
+  // collect+git+security+processing+output pipeline (~330ms), providing ample
+  // overlap for tiktoken WASM (~240ms) and secretlint (~150ms) loading.
   const concurrency = getProcessConcurrency();
   const metricsTaskRunner = deps.createMetricsTaskRunner(concurrency * 100);
-
-  // Send concurrent warmup tasks to pre-initialize ALL worker threads with tiktoken WASM.
-  // Tinypool spawns workers lazily, so a single warmup task only warms 1 of N threads.
-  // Sending N tasks forces all N workers to spawn and load tiktoken (~240ms each) in
-  // parallel during file search + collection + security + processing (~300ms total),
-  // so all workers are ready when metrics calculation begins.
-  // The 5s idle timeout (see processConcurrency.ts) ensures warm threads survive the
-  // pipeline stages between warmup and metrics.
-  const warmupPromise = Promise.all(
-    Array.from({ length: concurrency }, () =>
-      metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0),
-    ),
-  );
-
-  // Preload heavy output dependencies (handlebars, fast-xml-builder) in background.
-  // These load during file search (~175ms) and are cached before output generation.
-  preloadOutputDeps();
-
-  // Pre-initialize security worker pool before file search to maximize warmup overlap.
-  // Secretlint module loading takes ~150ms in the worker thread. By starting it here,
-  // the module loading overlaps with file search (~300ms), so the worker is fully
-  // initialized by the time security check tasks arrive after file collection.
-  // Previously this was created after search, giving only ~50ms of overlap (collection time).
-  // Use a conservative task estimate; Tinypool creates workers lazily based on actual demand.
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.createSecurityTaskRunner(concurrency * 100)
     : undefined;
 
-  // Send concurrent warmup tasks to pre-initialize ALL security worker threads.
-  // Previously only 1 warmup task was sent, meaning only 1 of N workers loaded secretlint
-  // during the search phase. When real security tasks arrived, the remaining N-1 workers
-  // would lazily initialize, adding ~150ms of module loading to the critical path.
-  // By warming all N workers (same pattern as metrics warmup), secretlint is loaded in all
-  // threads during search, so all workers are ready when security check tasks arrive.
-  const _securityWarmupPromise = securityTaskRunner
-    ? Promise.all(
-        Array.from({ length: concurrency }, () =>
-          securityTaskRunner.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null),
-        ),
-      )
+  // Phase 1: Spawn 1 worker per pool before search (low contention).
+  // Tinypool lazily creates workers on first task submission, so 1 task = 1 worker.
+  // On 2 CPUs: 1 metrics + 1 security + main = 3 threads (vs 2N+1 with full warmup).
+  const firstMetricsWarmup = metricsTaskRunner
+    .run({ content: '', encoding: config.tokenCount.encoding })
+    .catch(() => 0);
+  const firstSecurityWarmup = securityTaskRunner
+    ? securityTaskRunner.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null)
     : undefined;
+
+  // Preload heavy output dependencies (handlebars, fast-xml-builder) in background.
+  preloadOutputDeps();
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -150,6 +131,28 @@ export const pack = async (
       }),
     ),
   );
+
+  // Phase 2: Spawn remaining N-1 workers after search completes.
+  // These warm up during collect+git+security+processing+output (~330ms).
+  // The 5s idle timeout ensures warm threads survive until metrics calculation.
+  const warmupPromise = Promise.all([
+    firstMetricsWarmup,
+    ...(concurrency > 1
+      ? Array.from({ length: concurrency - 1 }, () =>
+          metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0),
+        )
+      : []),
+  ]);
+  const _securityWarmupPromise = securityTaskRunner
+    ? Promise.all([
+        firstSecurityWarmup,
+        ...(concurrency > 1
+          ? Array.from({ length: concurrency - 1 }, () =>
+              securityTaskRunner.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null),
+            )
+          : []),
+      ])
+    : undefined;
 
   const filePathsByDir = searchResultsByDir.map(({ rootDir, filePaths }) => ({ rootDir, filePaths }));
   // Deduplicate and sort empty directory paths for reuse during output generation,
