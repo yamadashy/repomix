@@ -76,9 +76,18 @@ describe('TokenCounter', () => {
     expect(count).toBeGreaterThan(0);
   });
 
-  test('should return 0 for errors when not initialized', () => {
+  test('should work with cl100k_base encoding', async () => {
+    const cl100kCounter = new TokenCounter('cl100k_base');
+    await cl100kCounter.init();
+
+    const count = cl100kCounter.countTokens('Hello, world!');
+    expect(count).toBe(4);
+
+    cl100kCounter.free();
+  });
+
+  test('should throw when countTokens is called before init', () => {
     const uninitCounter = new TokenCounter('o200k_base');
-    // Not calling init() - should throw
     expect(() => uninitCounter.countTokens('test')).toThrow('TokenCounter not initialized');
   });
 
