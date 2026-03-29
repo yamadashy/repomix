@@ -69,19 +69,28 @@ A bot comment is **outdated** if any of the following apply:
 
 Skip comments that are still the latest/only comment from that bot, or contain still-relevant information.
 
-### 4. Present plan and confirm with user
+### 4. Reply and resolve review threads
 
-Before executing any mutations, present a summary table:
+For each review thread classified as **addressed**, reply with a brief explanation of why it is no longer applicable, then resolve and minimize it. Proceed directly without asking for confirmation.
 
-| Action | Target | Reason |
-|--------|--------|--------|
-| resolve + minimize | Thread PRRT_xxx (author) | fix confirmed in code |
-| minimize (OUTDATED) | Comment IC_xxx (author) | superseded by newer review |
-| skip | Comment IC_xxx (author) | still relevant |
+**Reply to the thread** explaining why it is being resolved:
 
-Wait for user confirmation before proceeding.
+```bash
+# Reply to the review thread with the reason
+gh api graphql -f query='
+mutation {
+  addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: "PRRT_xxx", body: "REASON"}) {
+    comment { id }
+  }
+}'
+```
 
-### 5. Execute mutations
+The reply should be concise (1-2 sentences) and specific. Examples:
+- "This has been addressed — the variable was renamed in commit abc1234."
+- "No longer applicable — the function was removed in a later refactor."
+- "Superseded — a newer review covers this concern."
+
+**Then resolve and minimize:**
 
 ```bash
 # Resolve addressed review threads
@@ -105,7 +114,9 @@ mutation {
 
 Available classifiers: `SPAM`, `ABUSE`, `OFF_TOPIC`, `OUTDATED`, `DUPLICATE`, `RESOLVED`
 
-### 6. Report results
+Log the plan as a summary table in the output for transparency.
+
+### 5. Report results
 
 Summarize what was done:
 - How many threads resolved
