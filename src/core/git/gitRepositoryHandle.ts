@@ -24,18 +24,39 @@ export const getFileChangeCount = async (
   }
 };
 
+// Deduplicate concurrent isGitRepository calls for the same directory.
+// During the pack pipeline, getGitDiffs and getGitLogs both call isGitRepository
+// in parallel for the same gitRoot. Without deduplication, this spawns 3 separate
+// `git rev-parse` subprocesses. With deduplication, only 1 subprocess is spawned
+// and all concurrent callers share the same Promise. The inflight entry is removed
+// after the promise resolves so that subsequent (non-concurrent) calls re-check,
+// which is necessary for testability with different mocks.
+const isGitRepositoryInflight = new Map<string, Promise<boolean>>();
+
 export const isGitRepository = async (
   directory: string,
   deps = {
     execGitRevParse,
   },
 ): Promise<boolean> => {
-  try {
-    await deps.execGitRevParse(directory);
-    return true;
-  } catch {
-    return false;
+  const inflight = isGitRepositoryInflight.get(directory);
+  if (inflight) {
+    return inflight;
   }
+
+  const promise = (async () => {
+    try {
+      await deps.execGitRevParse(directory);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      isGitRepositoryInflight.delete(directory);
+    }
+  })();
+
+  isGitRepositoryInflight.set(directory, promise);
+  return promise;
 };
 
 export const isGitInstalled = async (

@@ -127,9 +127,19 @@ export const pack = async (
     ? deps.createSecurityTaskRunner(concurrency * 100)
     : undefined;
 
+  // Send concurrent warmup tasks to pre-initialize ALL security worker threads.
+  // Previously only 1 warmup task was sent, meaning only 1 of N workers loaded secretlint
+  // during the search phase. When real security tasks arrived, the remaining N-1 workers
+  // would lazily initialize, adding ~150ms of module loading to the critical path.
+  // By warming all N workers (same pattern as metrics warmup), secretlint is loaded in all
+  // threads during search, so all workers are ready when security check tasks arrive.
   const _securityWarmupPromise = securityTaskRunner
-    ?.run({ filePath: 'warmup.txt', content: '', type: 'file' })
-    .catch(() => null);
+    ? Promise.all(
+        Array.from({ length: concurrency }, () =>
+          securityTaskRunner.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null),
+        ),
+      )
+    : undefined;
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -159,21 +169,23 @@ export const pack = async (
   }));
 
   try {
-    // Pre-compute file change counts in parallel when we can't derive from git log commits.
-    // Derivation requires includeLogsCount >= sortByChangesMaxCommits (defaults: 50 vs 100),
-    // so the parallel fetch is needed in most default configurations.
+    // Determine if we need extra commits for sortByChanges beyond the display count.
+    // When git logs are enabled, getGitLogs fetches max(displayCount, sortMaxCommits) commits
+    // in a single subprocess, eliminating the need for a separate getFileChangeCount call.
+    // When git logs are disabled, getFileChangeCount is still needed as a separate subprocess.
     const sortByChanges = config.output.git?.sortByChanges;
+    const sortMaxCommits = config.output.git?.sortByChangesMaxCommits ?? 100;
     const logsEnabled = config.output.git?.includeLogs;
-    const logsHaveEnoughCommits =
-      logsEnabled && (config.output.git?.includeLogsCount ?? 50) >= (config.output.git?.sortByChangesMaxCommits ?? 100);
-    const needsParallelChangeCount = sortByChanges && !logsHaveEnoughCommits;
+    const needsSeparateChangeCount = sortByChanges && !logsEnabled;
     const gitRoot = rootDirs[0] || config.cwd;
 
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
     // - getFileChangeCount spawns git log --name-only (only when logs are disabled)
-    // Neither depends on the other's results.
+    // When logs are enabled, getGitLogs consolidates both display and sort needs into
+    // a single git subprocess, reducing subprocess count from 7 to 4 (with isGitRepository
+    // deduplication). This lowers CPU contention during the parallel stage.
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult, parallelFileChangeCounts] = await Promise.all([
       withMemoryLogging(
@@ -186,9 +198,9 @@ export const pack = async (
           ),
       ),
       deps.getGitDiffs(rootDirs, config),
-      deps.getGitLogs(rootDirs, config),
-      needsParallelChangeCount
-        ? deps.getFileChangeCount(gitRoot, config.output.git?.sortByChangesMaxCommits).catch(() => undefined)
+      deps.getGitLogs(rootDirs, config, sortByChanges ? sortMaxCommits : undefined),
+      needsSeparateChangeCount
+        ? deps.getFileChangeCount(gitRoot, sortMaxCommits).catch(() => undefined)
         : Promise.resolve(undefined),
     ]);
 
@@ -255,16 +267,11 @@ export const pack = async (
       files: filePaths,
     }));
 
-    // Derive file change counts from git log commits to avoid spawning a separate
-    // git subprocess during output generation. The git log data already includes
-    // per-commit file lists, so we can count changes without an additional process.
-    // Only derive when includeLogsCount >= sortByChangesMaxCommits, otherwise the
-    // log data contains fewer commits than the sort needs (defaults: 50 vs 100).
-    // Falls back to parallelFileChangeCounts when git logs are disabled or insufficient.
-    const sortMaxCommits = config.output.git?.sortByChangesMaxCommits ?? 100;
-    const logCommitCount = config.output.git?.includeLogsCount ?? 50;
-    const canDeriveFromLogs =
-      config.output.git?.sortByChanges && gitLogResult?.commits && logCommitCount >= sortMaxCommits;
+    // Derive file change counts from git log commits when available.
+    // When logs are enabled, getGitLogs already fetched max(displayCount, sortMaxCommits)
+    // commits, so we can always derive file change counts from the parsed commits.
+    // Falls back to parallelFileChangeCounts when git logs are disabled.
+    const canDeriveFromLogs = config.output.git?.sortByChanges && gitLogResult?.commits;
     const preComputedFileChangeCounts = canDeriveFromLogs
       ? deriveFileChangeCounts(gitLogResult.commits)
       : parallelFileChangeCounts;

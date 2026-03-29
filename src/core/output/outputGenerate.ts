@@ -203,7 +203,13 @@ export const createRenderContext = (
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
     gitLogEnabled: outputGeneratorContext.config.output.git?.includeLogs,
     gitLogContent: outputGeneratorContext.gitLogResult?.logContent,
-    gitLogCommits: outputGeneratorContext.gitLogResult?.commits,
+    // Truncate commits to the configured display count. When sortByChanges is enabled,
+    // gitLogResult.commits may contain more commits than includeLogsCount (fetched for
+    // sorting purposes). Only the configured display count should appear in the output.
+    gitLogCommits: outputGeneratorContext.gitLogResult?.commits?.slice(
+      0,
+      outputGeneratorContext.config.output.git?.includeLogsCount ?? 50,
+    ),
   };
 };
 
