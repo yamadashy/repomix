@@ -92,31 +92,25 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Metrics runner strategy: always use worker threads, but vary pool size based on workload.
+  // Metrics runner strategy: single worker thread with output token estimation.
   //
-  // When tokenCountTree is enabled, output tokenization is skipped (estimated from file
-  // char/token ratios), leaving only ~20 light file tasks. A single worker thread loads
-  // tiktoken WASM in the background during pipeline stages (search + collect + security +
-  // output ~256ms), overlapping the ~250ms synchronous WASM initialization that would
-  // otherwise block the main thread during metrics calculation.
+  // Output tokenization is always estimated from per-file char/token ratios (<5% error),
+  // leaving only ~15 file + 2 git tasks. A single worker thread loads tiktoken WASM
+  // (~250ms) in the background during pipeline stages, overlapping initialization with
+  // search + collect + security + processing (~225ms). This eliminates the need for
+  // multiple workers (each incurring ~250ms WASM loading + CPU contention) and removes
+  // the expensive IPC serialization of the 3.7MB output content.
   //
-  // When tokenCountTree is disabled (default), the full ~3.7MB output must be tokenized.
-  // Worker parallelism is essential: 4 workers encode in ~220ms vs ~880ms sequentially.
-  // Three-phase warmup minimizes contention: Phase 1 (1 worker before search), Phase 2
-  // (N-1 workers after collect+git), Phase 3 (tasks submitted without awaiting warmup).
-  const tokenCountTreeEnabled = !!config.output.tokenCountTree;
-  const concurrency = getProcessConcurrency();
-  // numOfTasks=1 → maxThreads=1 (single worker for tokenCountTree);
-  // numOfTasks=concurrency*100 → full pool for default config.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(tokenCountTreeEnabled ? 1 : concurrency * 100);
+  // On 2-vCPU CI runners, this reduces contention from (2N+1)/2 to 3/2 threads per CPU,
+  // improving pipeline throughput during file search and collection.
+  const metricsTaskRunner = deps.createMetricsTaskRunner(1);
   const securityTaskRunner = config.security.enableSecurityCheck
-    ? deps.createSecurityTaskRunner(concurrency * 100)
+    ? deps.createSecurityTaskRunner(getProcessConcurrency() * 100)
     : undefined;
 
-  // Phase 1: Spawn 1 worker per pool before search (low contention).
-  // Tinypool lazily creates workers on first task submission, so 1 task = 1 worker.
-  // Always runs to ensure tiktoken WASM loading starts early and overlaps with pipeline.
-  const firstMetricsWarmup = metricsTaskRunner
+  // Spawn the single metrics worker before search to overlap tiktoken WASM loading
+  // (~250ms) with pipeline stages. Tinypool creates workers lazily on first task.
+  const metricsWarmup = metricsTaskRunner
     .run({ content: '', encoding: config.tokenCount.encoding })
     .catch(() => 0) as Promise<number>;
   // Security warmup is fire-and-forget: 1 worker suffices for ~6 pre-filtered files.
@@ -189,24 +183,6 @@ export const pack = async (
         : Promise.resolve(undefined),
     ]);
 
-    // Phase 2: Spawn remaining N-1 metrics workers after collect+git (worker mode only).
-    // Deferred here so readFileSync + git subprocesses run with only 3 threads
-    // (main + Phase 1 workers), avoiding the CPU contention that occurs when all
-    // workers spawn during I/O-heavy stages. Workers warm up during
-    // security+processing+output (~160ms). The 5s idle timeout ensures threads
-    // survive until metrics calculation.
-    // When tokenCountTree is enabled, only 1 worker exists (Phase 1), no Phase 2 needed.
-    const warmupPromise = tokenCountTreeEnabled
-      ? firstMetricsWarmup.then((v) => [v])
-      : Promise.all([
-          firstMetricsWarmup,
-          ...(concurrency > 1
-            ? Array.from({ length: concurrency - 1 }, () =>
-                metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0),
-              )
-            : []),
-        ]);
-
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
@@ -239,9 +215,7 @@ export const pack = async (
 
     // Check if skill generation is requested
     if (config.skillGenerate !== undefined && options.skillDir) {
-      // Await warmup to ensure graceful worker shutdown (avoid terminating WASM-loading thread)
-      await warmupPromise;
-
+      await metricsWarmup;
       const result = await deps.packSkill({
         rootDirs,
         config,
@@ -294,13 +268,10 @@ export const pack = async (
       preComputedFileChangeCounts,
     );
 
-    // Phase 3: Submit metrics tasks immediately without awaiting warmup completion.
-    // The Phase 1 worker has been warm for ~400ms and starts processing at once.
-    // Phase 2 workers pick up queued tasks as they finish loading tiktoken WASM.
-    // This eliminates the idle wait (~85-100ms) that occurred when all workers
-    // had to be warm before any metrics task could start. The warmup promise is
-    // included in Promise.all so warmup tasks complete naturally (they must finish
-    // before their workers can process real tasks anyway).
+    // Submit metrics tasks to the single warm worker while disk write completes.
+    // Output tokens are estimated from file char/token ratios, leaving only ~15 file
+    // + 2 git tasks. The metricsWarmup promise ensures the worker's tiktoken WASM
+    // has loaded before it processes real tasks.
     const [metrics] = await Promise.all([
       withMemoryLogging('Calculate Metrics', () =>
         deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
@@ -308,7 +279,7 @@ export const pack = async (
         }),
       ),
       writeComplete,
-      warmupPromise,
+      metricsWarmup,
     ]);
 
     // Create a result object that includes metrics and security results
