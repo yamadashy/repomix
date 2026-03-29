@@ -88,6 +88,25 @@ export const execGitRevParse = async (
   }
 };
 
+export const execGitLsFiles = async (
+  directory: string,
+  deps = {
+    execFileAsync,
+  },
+): Promise<string[]> => {
+  try {
+    const result = await deps.execFileAsync(
+      'git',
+      ['-C', directory, 'ls-files', '--cached', '--others', '--exclude-standard'],
+      { maxBuffer: 50 * 1024 * 1024 },
+    );
+    return result.stdout.split('\n').filter(Boolean);
+  } catch (error) {
+    logger.trace('Failed to execute git ls-files:', (error as Error).message);
+    throw error;
+  }
+};
+
 export const execLsRemote = async (
   url: string,
   deps = {
