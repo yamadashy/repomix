@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774712343562,
+  "lastUpdate": 1774752491751,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -945,6 +945,51 @@ window.BENCHMARK_DATA = {
             "range": "±184",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 3252ms, Q3: 3436ms\nAll times: 3217, 3246, 3247, 3249, 3251, 3252, 3263, 3274, 3277, 3291, 3294, 3321, 3394, 3417, 3419, 3436, 3438, 3448, 3450, 3470ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b21a85f69810745c34f2e88ff8e58b6dc86936b6",
+          "message": "Merge pull request #1351 from yamadashy/chore/allow-deepwiki-mcp-firewall\n\nchore(devcontainer): Add mcp.deepwiki.com to firewall allowed domains",
+          "timestamp": "2026-03-29T11:44:16+09:00",
+          "tree_id": "09a10512938d41bd05d34215b06602419b3a9dad",
+          "url": "https://github.com/yamadashy/repomix/commit/b21a85f69810745c34f2e88ff8e58b6dc86936b6"
+        },
+        "date": 1774752491316,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1534,
+            "range": "±51",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1505ms, Q3: 1556ms\nAll times: 1450, 1489, 1490, 1491, 1494, 1500, 1504, 1505, 1510, 1512, 1514, 1515, 1516, 1518, 1520, 1534, 1535, 1540, 1540, 1543, 1543, 1545, 1556, 1557, 1582, 1603, 1605, 1673, 1678, 1729ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2760,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2748ms, Q3: 2766ms\nAll times: 2727, 2730, 2737, 2747, 2748, 2748, 2748, 2753, 2753, 2755, 2760, 2762, 2764, 2764, 2766, 2766, 2773, 2775, 2782, 2790ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 3184,
+            "range": "±36",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 3169ms, Q3: 3205ms\nAll times: 3142, 3158, 3163, 3164, 3168, 3169, 3172, 3172, 3174, 3182, 3184, 3185, 3185, 3186, 3198, 3205, 3211, 3214, 3266, 3345ms"
           }
         ]
       }
