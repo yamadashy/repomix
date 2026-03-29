@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
+import { getProcessConcurrency } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -12,7 +13,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import { packSkill } from './skill/packSkill.js';
 
@@ -41,6 +42,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -68,6 +70,17 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Pre-initialize security worker pool before file search to overlap secretlint module
+  // loading (~150ms) with file search (~300ms). Same pattern as metrics worker pre-init.
+  // Tinypool creates workers lazily, so a generous task estimate only raises maxThreads.
+  const securityTaskRunner = config.security.enableSecurityCheck
+    ? deps.createSecurityTaskRunner(getProcessConcurrency() * 100)
+    : undefined;
+  // Trigger secretlint module loading in worker thread
+  const _securityWarmupPromise = securityTaskRunner
+    ?.run({ filePath: 'warmup.txt', content: '', type: 'file' })
+    .catch(() => null);
 
   progressCallback('Searching for files...');
   const filePathsByDir = await withMemoryLogging('Search Files', async () =>
@@ -123,7 +136,9 @@ export const pack = async (
     // Run security check and get filtered safe files
     const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       await withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
+          securityTaskRunner,
+        }),
       );
 
     // Process files (remove comments, etc.)
@@ -204,6 +219,6 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsTaskRunner.cleanup();
+    await Promise.all([metricsTaskRunner.cleanup(), securityTaskRunner?.cleanup()]);
   }
 };

@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import { initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -13,15 +13,33 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
+/**
+ * Create a security task runner that can be pre-initialized to overlap
+ * secretlint module loading with other pipeline stages.
+ */
+export const createSecurityTaskRunner = (
+  numOfTasks: number,
+): TaskRunner<SecurityCheckTask, SuspiciousFileResult | null> => {
+  return initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
+    numOfTasks,
+    workerType: 'securityCheck',
+    runtime: 'worker_threads',
+  });
+};
+
+const defaultDeps = {
+  initTaskRunner,
+  taskRunner: undefined as TaskRunner<SecurityCheckTask, SuspiciousFileResult | null> | undefined,
+};
+
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
   progressCallback: RepomixProgressCallback = () => {},
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
-  deps = {
-    initTaskRunner,
-  },
+  overrideDeps: Partial<typeof defaultDeps> = {},
 ): Promise<SuspiciousFileResult[]> => {
+  const deps = { ...defaultDeps, ...overrideDeps };
   const gitDiffTasks: SecurityCheckTask[] = [];
   const gitLogTasks: SecurityCheckTask[] = [];
 
@@ -55,11 +73,15 @@ export const runSecurityCheck = async (
     }
   }
 
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
-    numOfTasks: rawFiles.length + gitDiffTasks.length + gitLogTasks.length,
-    workerType: 'securityCheck',
-    runtime: 'worker_threads',
-  });
+  // Use externally provided task runner if available (for pipeline pre-initialization),
+  // otherwise create one internally.
+  const taskRunner =
+    deps.taskRunner ??
+    deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
+      numOfTasks: rawFiles.length + gitDiffTasks.length + gitLogTasks.length,
+      workerType: 'securityCheck',
+      runtime: 'worker_threads',
+    });
   const fileTasks = rawFiles.map(
     (file) =>
       ({
@@ -99,7 +121,9 @@ export const runSecurityCheck = async (
     logger.error('Error during security check:', error);
     throw error;
   } finally {
-    // Always cleanup worker pool
-    await taskRunner.cleanup();
+    // Only cleanup if we created the task runner internally
+    if (!deps.taskRunner) {
+      await taskRunner.cleanup();
+    }
   }
 };
