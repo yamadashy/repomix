@@ -8,6 +8,15 @@ import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
 import type { CliOptions } from './types.js';
 
+// Pre-warm heavy transitive dependencies by adding them to this module's import graph.
+// ESM resolves all static imports of a module in parallel. By declaring zod (~44ms) and
+// json5 (~15ms) here, they load concurrently with commander (~32ms) during cliRun.ts
+// resolution, adding zero extra latency to this module's import time.
+// When defaultAction later imports configLoad → configSchema → zod, the modules are
+// already cached, reducing the defaultAction import from ~170ms to ~100ms.
+import 'zod';
+import 'json5';
+
 // Semantic mapping for CLI suggestions
 // This maps conceptually related terms (not typos) to valid options
 const semanticSuggestionMap: Record<string, string[]> = {

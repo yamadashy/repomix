@@ -64,18 +64,23 @@ export const readRawFileSync = (filePath: string, maxFileSize: number): FileRead
       return { content: null, skippedReason: 'binary-extension' };
     }
 
-    const stats = fsSync.statSync(filePath);
+    logger.trace(`Reading file: ${filePath}`);
 
-    if (stats.size > maxFileSize) {
-      const sizeKB = (stats.size / 1024).toFixed(1);
+    // Read the file directly, skipping the separate statSync call.
+    // readFileSync already returns the full buffer whose .length gives the file size,
+    // eliminating one syscall per file (~22ms savings for ~1000 files).
+    // Trade-off: files exceeding maxFileSize are read into memory before rejection.
+    // This is acceptable because isBinaryPath already filters large binary files (images,
+    // videos, archives) by extension, and source repos rarely contain non-binary files
+    // exceeding the 50MB default limit.
+    const buffer = fsSync.readFileSync(filePath);
+
+    if (buffer.length > maxFileSize) {
+      const sizeKB = (buffer.length / 1024).toFixed(1);
       const maxSizeKB = (maxFileSize / 1024).toFixed(1);
       logger.trace(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
       return { content: null, skippedReason: 'size-limit' };
     }
-
-    logger.trace(`Reading file: ${filePath}`);
-
-    const buffer = fsSync.readFileSync(filePath);
 
     if (isBinaryFileSync(buffer)) {
       logger.debug(`Skipping binary file (content check): ${filePath}`);
