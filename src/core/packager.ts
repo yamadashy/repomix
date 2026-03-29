@@ -195,22 +195,30 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Run security check and get filtered safe files
-    const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-      await withMemoryLogging('Security Check', () =>
+    // Run security check and file processing in parallel.
+    // Processing (truncateBase64, removeEmptyLines, trim, showLineNumbers) is independent
+    // per file and doesn't depend on security results. By running both concurrently,
+    // the shorter stage (process ~28ms) overlaps with the longer stage (security ~40ms),
+    // saving ~28ms from the critical path. Suspicious files (~0-5 out of ~1000) are
+    // filtered from the processed results after both complete.
+    progressCallback('Running security check...');
+    const [securityResult, allProcessedFiles] = await Promise.all([
+      withMemoryLogging('Security Check', () =>
         deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, securityTaskRunner),
-      );
+      ),
+      withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)),
+    ]);
+
+    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = securityResult;
 
     // Unref security workers so they don't block process exit, but avoid awaiting
     // pool.destroy() which blocks the pipeline for ~100-200ms while terminating threads.
     // Workers will terminate on their own via idle timeout (100ms).
     securityTaskRunner?.unref();
 
-    // Process files (remove comments, etc.)
-    progressCallback('Processing files...');
-    const processedFiles = await withMemoryLogging('Process Files', () =>
-      deps.processFiles(safeRawFiles, config, progressCallback),
-    );
+    // Filter out suspicious files from processed results
+    const safePathSet = new Set(safeFilePaths);
+    const processedFiles = allProcessedFiles.filter((file) => safePathSet.has(file.path));
 
     progressCallback('Generating output...');
 
