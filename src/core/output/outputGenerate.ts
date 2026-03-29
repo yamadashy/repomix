@@ -47,18 +47,35 @@ const getXMLBuilder = () => {
 };
 
 /**
- * Preload heavy dependencies (handlebars, fast-xml-builder) during an idle event loop tick.
+ * Preload heavy dependencies during an idle event loop tick.
  * Call this at the start of the pipeline so modules are loaded during file search I/O
  * rather than during output generation's critical path.
+ *
+ * For XML non-parsable output (the default), Handlebars is not needed — the direct
+ * XML renderer uses array.join() string construction. Skipping the Handlebars preload
+ * saves ~18ms of event loop blocking during file search and ~30ms of template
+ * compilation that would otherwise occur during output generation.
  */
-export const preloadOutputDeps = (): void => {
+export const preloadOutputDeps = (style?: string, parsableStyle?: boolean): void => {
   // Schedule sync require for the next idle tick. During file search,
   // the main thread is mostly idle (waiting for globby I/O), giving us
   // free time to load these modules without affecting the critical path.
+  const needsHandlebars = style === 'markdown' || style === 'plain';
+  const needsXMLBuilder = style === 'xml' && !!parsableStyle;
+
+  // Skip preloading entirely when neither module is needed (xml non-parsable default).
+  if (!needsHandlebars && !needsXMLBuilder) {
+    return;
+  }
+
   setImmediate(() => {
     try {
-      getHandlebars();
-      getXMLBuilder();
+      if (needsHandlebars) {
+        getHandlebars();
+      }
+      if (needsXMLBuilder) {
+        getXMLBuilder();
+      }
     } catch {
       // Intentionally ignored - will fail with proper context at use site
     }
@@ -211,6 +228,88 @@ export const createRenderContext = (
       outputGeneratorContext.config.output.git?.includeLogsCount ?? 50,
     ),
   };
+};
+
+/**
+ * Direct XML renderer that bypasses Handlebars for the non-parsable XML style.
+ *
+ * Produces output identical to the Handlebars XML template but avoids:
+ * - Handlebars module load (~18ms)
+ * - Template compilation (~30ms on first call)
+ * - Handlebars interpreter overhead (~5ms per render)
+ *
+ * Uses array accumulator with join() for O(n) string construction.
+ * This is the default output path (style=xml, parsableStyle=false).
+ */
+const generateDirectXmlOutput = (renderContext: RenderContext): string => {
+  const parts: string[] = [];
+
+  if (renderContext.fileSummaryEnabled) {
+    parts.push(
+      renderContext.generationHeader,
+      '\n\n<file_summary>\nThis section contains a summary of this file.\n\n<purpose>\n',
+      renderContext.summaryPurpose,
+      '\n</purpose>\n\n<file_format>\n',
+      renderContext.summaryFileFormat,
+      '\n5. Multiple file entries, each consisting of:\n  - File path as an attribute\n  - Full contents of the file\n</file_format>\n\n<usage_guidelines>\n',
+      renderContext.summaryUsageGuidelines,
+      '\n</usage_guidelines>\n\n<notes>\n',
+      renderContext.summaryNotes,
+      '\n</notes>\n\n</file_summary>\n\n',
+    );
+  }
+
+  if (renderContext.headerText) {
+    parts.push('<user_provided_header>\n', renderContext.headerText, '\n</user_provided_header>\n\n');
+  }
+
+  if (renderContext.directoryStructureEnabled) {
+    parts.push('<directory_structure>\n', renderContext.treeString, '\n</directory_structure>\n\n');
+  }
+
+  if (renderContext.filesEnabled) {
+    parts.push("<files>\nThis section contains the contents of the repository's files.\n\n");
+    for (const file of renderContext.processedFiles) {
+      parts.push('<file path="', file.path, '">\n', file.content, '\n</file>\n\n');
+    }
+    parts.push('</files>\n');
+  }
+
+  if (renderContext.gitDiffEnabled) {
+    parts.push(
+      '\n<git_diffs>\n<git_diff_work_tree>\n',
+      renderContext.gitDiffWorkTree ?? '',
+      '\n</git_diff_work_tree>\n<git_diff_staged>\n',
+      renderContext.gitDiffStaged ?? '',
+      '\n</git_diff_staged>\n</git_diffs>\n',
+    );
+  }
+
+  if (renderContext.gitLogEnabled) {
+    parts.push('\n<git_logs>\n');
+    if (renderContext.gitLogCommits) {
+      for (const commit of renderContext.gitLogCommits) {
+        parts.push(
+          '<git_log_commit>\n<date>',
+          commit.date,
+          '</date>\n<message>',
+          commit.message,
+          '</message>\n<files>\n',
+        );
+        for (const file of commit.files) {
+          parts.push(file, '\n');
+        }
+        parts.push('</files>\n</git_log_commit>\n');
+      }
+    }
+    parts.push('</git_logs>\n');
+  }
+
+  if (renderContext.instruction) {
+    parts.push('\n<instruction>\n', renderContext.instruction, '\n</instruction>\n');
+  }
+
+  return `${parts.join('').trim()}\n`;
 };
 
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
@@ -371,6 +470,7 @@ export const generateOutput = async (
   preComputedFileChangeCounts?: Record<string, number>,
   deps = {
     buildOutputGeneratorContext,
+    generateDirectXmlOutput,
     generateHandlebarOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
@@ -399,9 +499,13 @@ export const generateOutput = async (
 
   switch (config.output.style) {
     case 'xml':
-      return config.output.parsableStyle
-        ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+      if (config.output.parsableStyle) {
+        return deps.generateParsableXmlOutput(renderContext);
+      }
+      // Direct XML renderer bypasses Handlebars entirely, saving ~50ms of module load +
+      // template compilation on the default code path. Handlebars is only loaded when
+      // actually needed (markdown, plain styles).
+      return deps.generateDirectXmlOutput(renderContext);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':

@@ -121,8 +121,9 @@ export const pack = async (
   // Security warmup is fire-and-forget: 1 worker suffices for ~6 pre-filtered files.
   securityTaskRunner?.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null);
 
-  // Preload heavy output dependencies (handlebars, fast-xml-builder) in background.
-  preloadOutputDeps();
+  // Preload heavy output dependencies in background. For XML non-parsable (default),
+  // no preloading is needed — the direct XML renderer avoids Handlebars entirely.
+  preloadOutputDeps(config.output.style, config.output.parsableStyle);
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
