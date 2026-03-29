@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774752491751,
+  "lastUpdate": 1774787396835,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -990,6 +990,51 @@ window.BENCHMARK_DATA = {
             "range": "±36",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 3169ms, Q3: 3205ms\nAll times: 3142, 3158, 3163, 3164, 3168, 3169, 3172, 3172, 3174, 3182, 3184, 3185, 3185, 3186, 3198, 3205, 3211, 3214, 3266, 3345ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dbc7aeed9bbe6137eadf520bf322b3f12e30e2a7",
+          "message": "Merge pull request #1353 from yamadashy/ci/bench-comment-autolink-commit-sha\n\nci(perf-benchmark): Enable GitHub autolink for commit SHAs in benchmark comments",
+          "timestamp": "2026-03-29T21:27:06+09:00",
+          "tree_id": "290818e6a5c5d291dce29cd57a7b78926782cd96",
+          "url": "https://github.com/yamadashy/repomix/commit/dbc7aeed9bbe6137eadf520bf322b3f12e30e2a7"
+        },
+        "date": 1774787396383,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 2752,
+            "range": "±287",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 2619ms, Q3: 2906ms\nAll times: 2430, 2447, 2496, 2512, 2550, 2577, 2594, 2619, 2620, 2620, 2629, 2652, 2678, 2681, 2688, 2752, 2763, 2782, 2787, 2787, 2880, 2893, 2906, 2924, 2939, 3005, 3182, 3228, 3323, 3733ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2571,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2562ms, Q3: 2588ms\nAll times: 2540, 2546, 2549, 2555, 2562, 2562, 2566, 2566, 2568, 2570, 2571, 2572, 2575, 2577, 2579, 2588, 2594, 2599, 2607, 2633ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 3178,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 3163ms, Q3: 3189ms\nAll times: 3137, 3147, 3155, 3159, 3162, 3163, 3164, 3167, 3174, 3176, 3178, 3180, 3183, 3185, 3186, 3189, 3201, 3222, 3340, 3525ms"
           }
         ]
       }
