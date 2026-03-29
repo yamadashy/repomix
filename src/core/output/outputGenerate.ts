@@ -96,39 +96,61 @@ const getCompiledTemplate = (style: string): HandlebarsTemplateDelegate => {
   return compiled;
 };
 
-const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
-  let maxBackticks = 0;
-  for (const file of files) {
-    for (const match of file.content.matchAll(/`+/g)) {
-      if (match[0].length > maxBackticks) {
-        maxBackticks = match[0].length;
-      }
-    }
-  }
-  return '`'.repeat(Math.max(3, maxBackticks + 1));
-};
-
-const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
+// Single-pass scan: counts newlines and tracks max consecutive backticks simultaneously.
+// Avoids two separate iterations over all file content. Each character is visited exactly once
+// to compute both line counts (for file summary) and markdown delimiter length.
+const calculateFileLineCountsAndDelimiter = (
+  processedFiles: ReadonlyArray<ProcessedFile>,
+): { lineCounts: Record<string, number>; markdownDelimiter: string } => {
   const lineCounts: Record<string, number> = {};
+  let globalMaxBackticks = 0;
+
   for (const file of processedFiles) {
     const content = file.content;
     if (content.length === 0) {
       lineCounts[file.path] = 0;
-    } else {
-      // Count newlines by scanning the string directly (avoids creating temporary regex match arrays)
-      let newlineCount = 0;
-      let idx = content.indexOf('\n');
-      while (idx !== -1) {
+      continue;
+    }
+
+    let newlineCount = 0;
+    let currentBackticks = 0;
+    let maxBackticks = 0;
+
+    for (let i = 0; i < content.length; i++) {
+      const ch = content.charCodeAt(i);
+      if (ch === 10) {
+        // newline
         newlineCount++;
-        idx = content.indexOf('\n', idx + 1);
+        currentBackticks = 0;
+      } else if (ch === 96) {
+        // backtick
+        currentBackticks++;
+        if (currentBackticks > maxBackticks) {
+          maxBackticks = currentBackticks;
+        }
+      } else {
+        currentBackticks = 0;
       }
-      lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
+    }
+
+    lineCounts[file.path] = content.charCodeAt(content.length - 1) === 10 ? newlineCount : newlineCount + 1;
+
+    if (maxBackticks > globalMaxBackticks) {
+      globalMaxBackticks = maxBackticks;
     }
   }
-  return lineCounts;
+
+  return {
+    lineCounts,
+    markdownDelimiter: '`'.repeat(Math.max(3, globalMaxBackticks + 1)),
+  };
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  const { lineCounts, markdownDelimiter } = calculateFileLineCountsAndDelimiter(
+    outputGeneratorContext.processedFiles,
+  );
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -142,12 +164,12 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    fileLineCounts: lineCounts,
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    markdownCodeBlockDelimiter: markdownDelimiter,
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,

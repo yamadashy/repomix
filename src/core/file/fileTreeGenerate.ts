@@ -77,16 +77,18 @@ export const treeToString = (node: TreeNode, prefix = '', _isRoot = true): strin
   if (_isRoot) {
     sortTreeNodes(node);
   }
-  let result = '';
+  const parts: string[] = [];
+  treeToStringAccumulate(node, prefix, parts);
+  return parts.join('');
+};
 
+const treeToStringAccumulate = (node: TreeNode, prefix: string, parts: string[]): void => {
   for (const child of node.children) {
-    result += `${prefix}${child.name}${child.isDirectory ? '/' : ''}\n`;
+    parts.push(`${prefix}${child.name}${child.isDirectory ? '/' : ''}\n`);
     if (child.isDirectory) {
-      result += treeToString(child, `${prefix}  `, false);
+      treeToStringAccumulate(child, `${prefix}  `, parts);
     }
   }
-
-  return result;
 };
 
 /**
@@ -106,22 +108,30 @@ export const treeToStringWithLineCounts = (
   if (_isRoot) {
     sortTreeNodes(node);
   }
-  let result = '';
+  const parts: string[] = [];
+  treeToStringWithLineCountsAccumulate(node, lineCounts, prefix, currentPath, parts);
+  return parts.join('');
+};
 
+const treeToStringWithLineCountsAccumulate = (
+  node: TreeNode,
+  lineCounts: Record<string, number>,
+  prefix: string,
+  currentPath: string,
+  parts: string[],
+): void => {
   for (const child of node.children) {
     const childPath = currentPath ? `${currentPath}/${child.name}` : child.name;
 
     if (child.isDirectory) {
-      result += `${prefix}${child.name}/\n`;
-      result += treeToStringWithLineCounts(child, lineCounts, `${prefix}  `, childPath, false);
+      parts.push(`${prefix}${child.name}/\n`);
+      treeToStringWithLineCountsAccumulate(child, lineCounts, `${prefix}  `, childPath, parts);
     } else {
       const lineCount = lineCounts[childPath];
       const lineCountSuffix = lineCount !== undefined ? ` (${lineCount} lines)` : '';
-      result += `${prefix}${child.name}${lineCountSuffix}\n`;
+      parts.push(`${prefix}${child.name}${lineCountSuffix}\n`);
     }
   }
-
-  return result;
 };
 
 export const generateTreeString = (files: string[], emptyDirPaths: string[] = []): string => {
