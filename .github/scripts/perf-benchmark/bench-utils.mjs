@@ -24,7 +24,7 @@ export function renderHistory(hist) {
   if (hist.length === 0) return '';
   return hist
     .map((h) => {
-      const label = `<code>${h.sha}</code>${h.msg ? ` ${h.msg}` : ''}`;
+      const label = `${h.sha}${h.msg ? ` ${h.msg}` : ''}`;
       const osRows = ['ubuntu', 'macos', 'windows']
         .filter((os) => h[os] && h[os] !== '-')
         .map((os) => {
