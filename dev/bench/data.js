@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774787396835,
+  "lastUpdate": 1774791388309,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -1035,6 +1035,51 @@ window.BENCHMARK_DATA = {
             "range": "±26",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 3163ms, Q3: 3189ms\nAll times: 3137, 3147, 3155, 3159, 3162, 3163, 3164, 3167, 3174, 3176, 3178, 3180, 3183, 3185, 3186, 3189, 3201, 3222, 3340, 3525ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "371920b2f2d6252d66e25ea841d7b9a797f570d6",
+          "message": "Merge pull request #1350 from yamadashy/perf/swap-tiktoken-to-gpt-tokenizer\n\nperf(core): Replace tiktoken WASM with gpt-tokenizer",
+          "timestamp": "2026-03-29T22:33:44+09:00",
+          "tree_id": "2e34d5e069224d359b4a4b6c5ed748b17fe58f17",
+          "url": "https://github.com/yamadashy/repomix/commit/371920b2f2d6252d66e25ea841d7b9a797f570d6"
+        },
+        "date": 1774791387973,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1551,
+            "range": "±191",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1488ms, Q3: 1679ms\nAll times: 1433, 1434, 1453, 1453, 1474, 1481, 1487, 1488, 1498, 1503, 1506, 1507, 1521, 1547, 1550, 1551, 1589, 1591, 1594, 1619, 1658, 1664, 1679, 1702, 1720, 1835, 1835, 1851, 1857, 1912ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2421,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2412ms, Q3: 2434ms\nAll times: 2400, 2405, 2408, 2410, 2412, 2412, 2417, 2418, 2420, 2421, 2421, 2424, 2425, 2432, 2434, 2434, 2436, 2436, 2437, 2439ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 3100,
+            "range": "±692",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 3003ms, Q3: 3695ms\nAll times: 2975, 2975, 2976, 2982, 2985, 3003, 3006, 3009, 3018, 3031, 3100, 3138, 3403, 3480, 3671, 3695, 3722, 3726, 3797, 3894ms"
           }
         ]
       }
