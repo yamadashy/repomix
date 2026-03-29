@@ -1,12 +1,12 @@
-import type { TiktokenEncoding } from 'tiktoken';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
+import type { TokenEncoding } from '../TokenCounter.js';
 import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 
 /**
  * Simple token counting worker for metrics calculation.
  *
  * This worker provides a focused interface for counting tokens from text content,
- * using the Tiktoken encoding. All complex metric calculation logic is handled
+ * using gpt-tokenizer. All complex metric calculation logic is handled
  * by the calling side to maintain separation of concerns.
  */
 
@@ -16,13 +16,13 @@ setLogLevelByWorkerData();
 
 export interface TokenCountTask {
   content: string;
-  encoding: TiktokenEncoding;
+  encoding: TokenEncoding;
   path?: string;
 }
 
 export interface TokenCountBatchTask {
   batch: { content: string; path?: string }[];
-  encoding: TiktokenEncoding;
+  encoding: TokenEncoding;
 }
 
 export type TokenCountWorkerTask = TokenCountTask | TokenCountBatchTask;
@@ -36,7 +36,7 @@ export const countTokens = async (task: TokenCountTask): Promise<number> => {
   const processStartAt = process.hrtime.bigint();
 
   try {
-    const counter = getTokenCounter(task.encoding);
+    const counter = await getTokenCounter(task.encoding);
     const tokenCount = counter.countTokens(task.content, task.path);
 
     logger.trace(`Counted tokens. Count: ${tokenCount}. Took: ${getProcessDuration(processStartAt)}ms`);
@@ -51,7 +51,7 @@ export const countTokensBatch = async (task: TokenCountBatchTask): Promise<numbe
   const processStartAt = process.hrtime.bigint();
 
   try {
-    const counter = getTokenCounter(task.encoding);
+    const counter = await getTokenCounter(task.encoding);
     const results: number[] = [];
 
     for (const item of task.batch) {

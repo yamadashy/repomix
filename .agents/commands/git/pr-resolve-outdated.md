@@ -22,15 +22,15 @@ Do **NOT** touch comments from human reviewers.
 
 ### 2. Fetch all PR comments
 
-Fetch both review threads and regular issue comments in a single query where possible.
+Fetch both review threads and regular issue comments in a single GraphQL query. Use two independent cursor variables for pagination.
 
 ```bash
-# Review threads with resolution status
 gh api graphql -f query='
-query {
+query($threadCursor: String, $commentCursor: String) {
   repository(owner: "OWNER", name: "REPO") {
     pullRequest(number: NUM) {
-      reviewThreads(first: 100) {
+      reviewThreads(first: 100, after: $threadCursor) {
+        pageInfo { hasNextPage endCursor }
         nodes {
           id
           isResolved
@@ -40,20 +40,30 @@ query {
           }
         }
       }
+      comments(first: 100, after: $commentCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          body
+          author { login }
+          isMinimized
+        }
+      }
     }
   }
 }'
-
-# Regular issue comments (non-review)
-gh api --paginate repos/OWNER/REPO/issues/NUM/comments \
-  --jq '.[] | {id: .node_id, author: .user.login, body: .body}'
 ```
+
+Each connection (`reviewThreads`, `comments`) paginates independently. If either `pageInfo.hasNextPage` is `true`, pass its `endCursor` as the corresponding cursor variable (`$threadCursor` or `$commentCursor`) in subsequent requests. Repeat until both connections are fully fetched.
 
 ### 3. Classify each comment
 
-For each bot comment that is **not already minimized**, determine its status.
+First, filter out threads/comments that need no processing:
+- **Already resolved** (`isResolved: true`) → skip entirely
+- **Already minimized** (`isMinimized: true`) → skip entirely
+- **Human authors** (login does NOT contain `[bot]` or `-integration`) → skip entirely
 
-Note: Review threads expose `isMinimized` in the GraphQL response. For regular issue comments fetched via REST, minimized comments are hidden by default, so returned comments are not yet minimized.
+For each remaining bot comment, determine its status.
 
 **Review threads (unresolved):**
 - If `isOutdated: true` (GitHub sets this when the referenced code has been updated) → likely **addressed**
@@ -69,19 +79,38 @@ A bot comment is **outdated** if any of the following apply:
 
 Skip comments that are still the latest/only comment from that bot, or contain still-relevant information.
 
-### 4. Present plan and confirm with user
+### 4. Execute mutations
 
-Before executing any mutations, present a summary table:
+Proceed directly without asking for confirmation. Before executing, log the planned actions as a summary table for transparency:
 
 | Action | Target | Reason |
 |--------|--------|--------|
-| resolve + minimize | Thread PRRT_xxx (author) | fix confirmed in code |
+| reply + resolve + minimize | Thread PRRT_xxx (author) | fix confirmed in code |
 | minimize (OUTDATED) | Comment IC_xxx (author) | superseded by newer review |
-| skip | Comment IC_xxx (author) | still relevant |
+| skip | Thread PRRT_xxx (author) | concern still valid |
 
-Wait for user confirmation before proceeding.
+#### 4a. Reply and resolve review threads
 
-### 5. Execute mutations
+For each review thread classified as **addressed**, reply with a brief explanation of why it is no longer applicable, then resolve and minimize it.
+
+**Reply to the thread** explaining why it is being resolved:
+
+```bash
+# Reply to the review thread with the reason
+gh api graphql -f query='
+mutation {
+  addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: "PRRT_xxx", body: "REASON"}) {
+    comment { id }
+  }
+}'
+```
+
+The reply should be concise (1-2 sentences) and specific. Always end with a `🤖` marker so it is clearly identifiable as an automated reply. Examples:
+- "This has been addressed — the variable was renamed in commit abc1234. 🤖"
+- "No longer applicable — the function was removed in a later refactor. 🤖"
+- "Superseded — a newer review covers this concern. 🤖"
+
+**Then resolve and minimize:**
 
 ```bash
 # Resolve addressed review threads
@@ -105,7 +134,20 @@ mutation {
 
 Available classifiers: `SPAM`, `ABUSE`, `OFF_TOPIC`, `OUTDATED`, `DUPLICATE`, `RESOLVED`
 
-### 6. Report results
+#### 4b. Minimize outdated regular issue comments
+
+For each regular issue comment classified as **outdated**, minimize it with the `OUTDATED` classifier. These comments do not have threads to resolve or reply to.
+
+```bash
+gh api graphql -f query='
+mutation {
+  minimizeComment(input: {subjectId: "IC_xxx", classifier: OUTDATED}) {
+    minimizedComment { isMinimized }
+  }
+}'
+```
+
+### 5. Report results
 
 Summarize what was done:
 - How many threads resolved
@@ -115,7 +157,6 @@ Summarize what was done:
 ## Important
 
 - Never hide human comments
-- Skip comments that are already minimized
 - Keep the **latest** bot review if it contains still-relevant information
 - Use `RESOLVED` for addressed review threads, `OUTDATED` for superseded comments
 - When unsure if a comment is still relevant, leave it untouched and include it in the "skip" list for the user to decide

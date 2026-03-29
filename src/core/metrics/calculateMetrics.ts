@@ -1,4 +1,4 @@
-import type { TiktokenEncoding } from 'tiktoken';
+import type { TokenEncoding } from './TokenCounter.js';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import { initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
@@ -57,7 +57,7 @@ export const createMetricsTaskRunner = (numOfTasks: number): MetricsTaskRunner =
  * For the default config (tokenCountTree=false), the full output must be tokenized (~3.7MB),
  * making worker parallelism essential — use createMetricsTaskRunner instead.
  */
-export const createMainThreadMetricsRunner = (encoding: TiktokenEncoding): MetricsTaskRunner => {
+export const createMainThreadMetricsRunner = (encoding: TokenEncoding): MetricsTaskRunner => {
   let counter: TokenCounter | null = null;
 
   const getCounter = (): TokenCounter => {
