@@ -1,4 +1,3 @@
-import type { TokenEncoding } from './TokenCounter.js';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import { initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
@@ -11,6 +10,7 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
+import type { TokenEncoding } from './TokenCounter.js';
 import { TokenCounter } from './TokenCounter.js';
 import type { TokenCountWorkerResult, TokenCountWorkerTask } from './workers/calculateMetricsWorker.js';
 
@@ -27,8 +27,9 @@ export interface CalculateMetricsResult {
 export type MetricsTaskRunner = TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult>;
 
 /**
- * Create a metrics task runner that can be pre-initialized to overlap
- * tiktoken WASM loading with other pipeline stages.
+ * Create a worker-thread metrics task runner. Retained for external callers
+ * (e.g. MCP server mode) that need a persistent pool. For CLI usage,
+ * prefer createMainThreadMetricsRunner which avoids worker overhead.
  */
 export const createMetricsTaskRunner = (numOfTasks: number): MetricsTaskRunner => {
   return initTaskRunner<TokenCountWorkerTask, TokenCountWorkerResult>({
@@ -47,46 +48,47 @@ export const createMetricsTaskRunner = (numOfTasks: number): MetricsTaskRunner =
 /**
  * Create a main-thread metrics task runner that avoids worker thread overhead.
  *
- * When tokenCountTree is enabled, output tokenization is skipped (estimated from file
- * char/token ratios), leaving only ~20 light file metrics tasks + 2 git tasks.
- * Worker thread overhead (~170ms for spawning + tiktoken WASM loading + CPU contention)
- * vastly exceeds the actual work (~26ms). This runner loads tiktoken lazily on the main
- * thread (~60ms on first use) and processes tasks synchronously, saving ~100ms+ by
- * eliminating thread spawning, IPC serialization, and CPU contention during pipeline stages.
+ * With gpt-tokenizer (pure JS, ~145ms load), the worker thread overhead (spawn ~50ms +
+ * IPC ~20ms per batch + CPU contention on 2-vCPU runners) exceeds the benefit for the
+ * ~20 file + 2 git tasks that remain after output token estimation. This runner starts
+ * loading gpt-tokenizer immediately via a background dynamic import, which makes progress
+ * during the pipeline's async stages (git subprocess waits, security worker waits). By
+ * metrics time, the module is typically already loaded.
  *
- * For the default config (tokenCountTree=false), the full output must be tokenized (~3.7MB),
- * making worker parallelism essential — use createMetricsTaskRunner instead.
+ * Compared to the worker approach, this eliminates:
+ * - Worker thread spawn overhead (~50ms on CI)
+ * - IPC serialization per task batch (~20-30ms on critical path)
+ * - CPU contention from an extra thread during search+collect+process stages
+ * - Worker idle memory during the pipeline
  */
 export const createMainThreadMetricsRunner = (encoding: TokenEncoding): MetricsTaskRunner => {
-  let counter: TokenCounter | null = null;
-
-  const getCounter = (): TokenCounter => {
-    if (!counter) {
-      const startTime = performance.now();
-      counter = new TokenCounter(encoding);
-      logger.debug(`Main-thread tiktoken initialization took ${(performance.now() - startTime).toFixed(2)}ms`);
-    }
-    return counter;
-  };
+  // Start loading gpt-tokenizer immediately. The dynamic import progresses during
+  // the pipeline's async I/O waits (git subprocesses, security workers, file reads).
+  const counterPromise = initMainThreadCounter(encoding);
 
   return {
     run: async (task: TokenCountWorkerTask): Promise<TokenCountWorkerResult> => {
-      const tc = getCounter();
+      const tc = await counterPromise;
       if ('batch' in task) {
         return task.batch.map((item) => tc.countTokens(item.content, item.path));
       }
       return tc.countTokens(task.content, task.path);
     },
     cleanup: async () => {
-      try {
-        counter?.free();
-      } finally {
-        counter = null;
-      }
+      // TokenCounter cached in module-level Map; no-op for gpt-tokenizer (pure JS)
     },
     // No-op: main-thread runner has no worker threads to unref
     unref: () => {},
   };
+};
+
+const initMainThreadCounter = async (encoding: TokenEncoding): Promise<TokenCounter> => {
+  const startTime = performance.now();
+  const counter = new TokenCounter(encoding);
+  await counter.init();
+  const duration = performance.now() - startTime;
+  logger.debug(`Main-thread gpt-tokenizer initialization took ${duration.toFixed(2)}ms`);
+  return counter;
 };
 
 /**
@@ -162,10 +164,10 @@ const selectMetricsTargets = (
   // A 3x multiplier provides sufficient coverage for accurate top-N ranking since
   // character count and token count are highly correlated for code (r > 0.95).
   // Output tokens are estimated from the per-file char/token ratio rather than
-  // tokenizing the full output (~3.7MB). This avoids spawning multiple worker threads
-  // that each load tiktoken WASM (~250ms), saving ~150-180ms on the critical path.
-  // The estimation error is <5% (acceptable for an informational display metric)
-  // and the technique is proven by the tokenCountTree code path.
+  // tokenizing the full output (~3.7MB), avoiding the cost of loading gpt-tokenizer
+  // and processing the entire output string. The estimation error is <5%
+  // (acceptable for an informational display metric) and the technique is proven
+  // by the tokenCountTree code path.
   const topCount = Math.min(processedFiles.length, Math.max(topFilesLength * 3, topFilesLength));
   return {
     metricsTargetPaths: selectTopPathsByCharCount(processedFiles, topCount),

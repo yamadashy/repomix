@@ -13,7 +13,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import type { GitLogCommit } from './git/gitLogHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { getFileChangeCount } from './git/gitRepositoryHandle.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { calculateMetrics, createMainThreadMetricsRunner } from './metrics/calculateMetrics.js';
 import { preloadOutputDeps } from './output/outputGenerate.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
@@ -58,7 +58,7 @@ const defaultDeps = {
   validateFileSafety,
   produceOutput,
   calculateMetrics,
-  createMetricsTaskRunner,
+  createMainThreadMetricsRunner,
   createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
@@ -92,27 +92,19 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Metrics runner strategy: single worker thread with output token estimation.
+  // Metrics runner strategy: main-thread gpt-tokenizer with background preload.
   //
-  // Output tokenization is always estimated from per-file char/token ratios (<5% error),
-  // leaving only ~15 file + 2 git tasks. A single worker thread loads tiktoken WASM
-  // (~250ms) in the background during pipeline stages, overlapping initialization with
-  // search + collect + security + processing (~225ms). This eliminates the need for
-  // multiple workers (each incurring ~250ms WASM loading + CPU contention) and removes
-  // the expensive IPC serialization of the 3.7MB output content.
-  //
-  // On 2-vCPU CI runners, this reduces contention from (2N+1)/2 to 3/2 threads per CPU,
-  // improving pipeline throughput during file search and collection.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(1);
+  // With gpt-tokenizer (pure JS, ~145ms load), worker thread overhead (spawn ~50ms +
+  // IPC ~20-30ms + CPU contention on 2-vCPU CI) exceeds the benefit for the ~20 file
+  // + 2 git tasks that remain after output token estimation. The main-thread runner
+  // starts loading gpt-tokenizer immediately via dynamic import, which progresses
+  // during the pipeline's async I/O waits (git subprocesses, security workers).
+  // By metrics time, the module is typically already loaded.
+  const metricsTaskRunner = deps.createMainThreadMetricsRunner(config.tokenCount.encoding);
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.createSecurityTaskRunner(getProcessConcurrency() * 100)
     : undefined;
 
-  // Spawn the single metrics worker before search to overlap tiktoken WASM loading
-  // (~250ms) with pipeline stages. Tinypool creates workers lazily on first task.
-  const metricsWarmup = metricsTaskRunner
-    .run({ content: '', encoding: config.tokenCount.encoding })
-    .catch(() => 0) as Promise<number>;
   // Security warmup is fire-and-forget: 1 worker suffices for ~6 pre-filtered files.
   securityTaskRunner?.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null);
 
@@ -215,7 +207,6 @@ export const pack = async (
 
     // Check if skill generation is requested
     if (config.skillGenerate !== undefined && options.skillDir) {
-      await metricsWarmup;
       const result = await deps.packSkill({
         rootDirs,
         config,
@@ -268,10 +259,10 @@ export const pack = async (
       preComputedFileChangeCounts,
     );
 
-    // Submit metrics tasks to the single warm worker while disk write completes.
+    // Run metrics calculation on main thread while disk write completes.
+    // gpt-tokenizer was pre-loaded via dynamic import during pipeline async stages.
     // Output tokens are estimated from file char/token ratios, leaving only ~15 file
-    // + 2 git tasks. The metricsWarmup promise ensures the worker's tiktoken WASM
-    // has loaded before it processes real tasks.
+    // + 2 git tasks — lightweight enough for main-thread execution without IPC overhead.
     const [metrics] = await Promise.all([
       withMemoryLogging('Calculate Metrics', () =>
         deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
@@ -279,7 +270,6 @@ export const pack = async (
         }),
       ),
       writeComplete,
-      metricsWarmup,
     ]);
 
     // Create a result object that includes metrics and security results
@@ -298,11 +288,7 @@ export const pack = async (
 
     return result;
   } finally {
-    // Unref worker threads so they don't prevent process exit.
-    // This saves ~89ms by allowing the CLI process to terminate immediately
-    // after reporting results, without waiting for worker thread destruction.
-    // For MCP/server mode, the pool is pre-created externally (deps.taskRunner)
-    // and cleaned up by the caller, so this path is not reached.
+    // Main-thread runner has no worker threads to unref, but call for API compatibility.
     metricsTaskRunner.unref();
   }
 };

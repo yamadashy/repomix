@@ -120,7 +120,7 @@ describe.runIf(!isWindows)('packager integration', () => {
           unref: () => {},
         }),
         produceOutput,
-        createMetricsTaskRunner: () => ({
+        createMainThreadMetricsRunner: () => ({
           run: async () => 0,
           cleanup: async () => {},
           unref: () => {},

@@ -90,7 +90,7 @@ index 123..456 100644
       validateFileSafety: mockValidateFileSafety,
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
-      createMetricsTaskRunner: mockCreateMetricsTaskRunner,
+      createMainThreadMetricsRunner: mockCreateMetricsTaskRunner,
       createSecurityTaskRunner: vi
         .fn()
         .mockReturnValue({ run: vi.fn().mockResolvedValue(null), cleanup: vi.fn(), unref: vi.fn() }),
@@ -150,7 +150,7 @@ index 123..456 100644
       validateFileSafety: mockValidateFileSafety,
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
-      createMetricsTaskRunner: mockCreateMetricsTaskRunner,
+      createMainThreadMetricsRunner: mockCreateMetricsTaskRunner,
       createSecurityTaskRunner: vi
         .fn()
         .mockReturnValue({ run: vi.fn().mockResolvedValue(null), cleanup: vi.fn(), unref: vi.fn() }),

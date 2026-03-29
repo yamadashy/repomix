@@ -55,7 +55,7 @@ describe('packager', () => {
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
       }),
-      createMetricsTaskRunner: vi.fn().mockReturnValue({
+      createMainThreadMetricsRunner: vi.fn().mockReturnValue({
         run: vi.fn().mockResolvedValue(0),
         cleanup: vi.fn().mockResolvedValue(undefined),
         unref: vi.fn(),
