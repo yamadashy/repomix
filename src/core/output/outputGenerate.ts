@@ -147,9 +147,7 @@ const calculateFileLineCountsAndDelimiter = (
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
-  const { lineCounts, markdownDelimiter } = calculateFileLineCountsAndDelimiter(
-    outputGeneratorContext.processedFiles,
-  );
+  const { lineCounts, markdownDelimiter } = calculateFileLineCountsAndDelimiter(outputGeneratorContext.processedFiles);
 
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
