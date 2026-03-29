@@ -12,7 +12,9 @@ let history = extractHistory(oldBody);
 if (oldBody.includes('\u2705 Benchmark complete!')) {
   // Extract only the main result table (before any <details> block)
   const mainSection = oldBody.split('<details>')[0] || '';
-  const commitMatch = mainSection.match(/Latest commit:<\/strong><\/td><td>(?:<code>)?([a-f0-9]+)(?:<\/code>)?\s*(.*?)<\/td>/);
+  const commitMatch = mainSection.match(
+    /Latest commit:<\/strong><\/td><td>(?:<code>)?([a-f0-9]+)(?:<\/code>)?\s*(.*?)<\/td>/,
+  );
   const prevSha = commitMatch ? commitMatch[1] : '';
   const prevMsg = commitMatch ? commitMatch[2] : '';
   if (prevSha) {
