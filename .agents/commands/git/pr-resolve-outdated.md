@@ -22,15 +22,15 @@ Do **NOT** touch comments from human reviewers.
 
 ### 2. Fetch all PR comments
 
-Fetch both review threads and regular issue comments in a single query where possible.
+Fetch both review threads and regular issue comments in a single GraphQL query.
 
 ```bash
-# Review threads with resolution status
 gh api graphql -f query='
-query {
+query($cursor: String) {
   repository(owner: "OWNER", name: "REPO") {
     pullRequest(number: NUM) {
-      reviewThreads(first: 100) {
+      reviewThreads(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
         nodes {
           id
           isResolved
@@ -40,20 +40,30 @@ query {
           }
         }
       }
+      comments(first: 100) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          body
+          author { login }
+          isMinimized
+        }
+      }
     }
   }
 }'
-
-# Regular issue comments (non-review)
-gh api --paginate repos/OWNER/REPO/issues/NUM/comments \
-  --jq '.[] | {id: .node_id, author: .user.login, body: .body}'
 ```
+
+If `pageInfo.hasNextPage` is `true`, paginate by passing the `endCursor` as the `$cursor` variable in subsequent requests. Repeat until all pages are fetched.
 
 ### 3. Classify each comment
 
-For each bot comment that is **not already minimized**, determine its status.
+First, filter out threads/comments that need no processing:
+- **Already resolved** (`isResolved: true`) → skip entirely
+- **Already minimized** (`isMinimized: true`) → skip entirely
+- **Human authors** (login does NOT contain `[bot]` or `-integration`) → skip entirely
 
-Note: Review threads expose `isMinimized` in the GraphQL response. For regular issue comments fetched via REST, minimized comments are hidden by default, so returned comments are not yet minimized.
+For each remaining bot comment, determine its status.
 
 **Review threads (unresolved):**
 - If `isOutdated: true` (GitHub sets this when the referenced code has been updated) → likely **addressed**
@@ -85,10 +95,10 @@ mutation {
 }'
 ```
 
-The reply should be concise (1-2 sentences) and specific. Examples:
-- "This has been addressed — the variable was renamed in commit abc1234."
-- "No longer applicable — the function was removed in a later refactor."
-- "Superseded — a newer review covers this concern."
+The reply should be concise (1-2 sentences) and specific. Always end with a `🤖` marker so it is clearly identifiable as an automated reply. Examples:
+- "This has been addressed — the variable was renamed in commit abc1234. 🤖"
+- "No longer applicable — the function was removed in a later refactor. 🤖"
+- "Superseded — a newer review covers this concern. 🤖"
 
 **Then resolve and minimize:**
 
@@ -126,7 +136,6 @@ Summarize what was done:
 ## Important
 
 - Never hide human comments
-- Skip comments that are already minimized
 - Keep the **latest** bot review if it contains still-relevant information
 - Use `RESOLVED` for addressed review threads, `OUTDATED` for superseded comments
 - When unsure if a comment is still relevant, leave it untouched and include it in the "skip" list for the user to decide
