@@ -79,9 +79,19 @@ A bot comment is **outdated** if any of the following apply:
 
 Skip comments that are still the latest/only comment from that bot, or contain still-relevant information.
 
-### 4. Reply and resolve review threads
+### 4. Execute mutations
 
-For each review thread classified as **addressed**, reply with a brief explanation of why it is no longer applicable, then resolve and minimize it. Proceed directly without asking for confirmation.
+Proceed directly without asking for confirmation. Before executing, log the planned actions as a summary table for transparency:
+
+| Action | Target | Reason |
+|--------|--------|--------|
+| reply + resolve + minimize | Thread PRRT_xxx (author) | fix confirmed in code |
+| minimize (OUTDATED) | Comment IC_xxx (author) | superseded by newer review |
+| skip | Thread PRRT_xxx (author) | concern still valid |
+
+#### 4a. Reply and resolve review threads
+
+For each review thread classified as **addressed**, reply with a brief explanation of why it is no longer applicable, then resolve and minimize it.
 
 **Reply to the thread** explaining why it is being resolved:
 
@@ -124,7 +134,18 @@ mutation {
 
 Available classifiers: `SPAM`, `ABUSE`, `OFF_TOPIC`, `OUTDATED`, `DUPLICATE`, `RESOLVED`
 
-Log the plan as a summary table in the output for transparency.
+#### 4b. Minimize outdated regular issue comments
+
+For each regular issue comment classified as **outdated**, minimize it with the `OUTDATED` classifier. These comments do not have threads to resolve or reply to.
+
+```bash
+gh api graphql -f query='
+mutation {
+  minimizeComment(input: {subjectId: "IC_xxx", classifier: OUTDATED}) {
+    minimizedComment { isMinimized }
+  }
+}'
+```
 
 ### 5. Report results
 
