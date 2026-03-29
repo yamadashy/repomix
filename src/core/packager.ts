@@ -13,11 +13,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import type { GitLogCommit } from './git/gitLogHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { getFileChangeCount } from './git/gitRepositoryHandle.js';
-import {
-  calculateMetrics,
-  createMainThreadMetricsRunner,
-  createMetricsTaskRunner,
-} from './metrics/calculateMetrics.js';
+import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { preloadOutputDeps } from './output/outputGenerate.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
@@ -63,7 +59,6 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
-  createMainThreadMetricsRunner,
   createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
@@ -97,36 +92,33 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Metrics runner strategy: choose between worker threads and main-thread based on workload.
+  // Metrics runner strategy: always use worker threads, but vary pool size based on workload.
   //
   // When tokenCountTree is enabled, output tokenization is skipped (estimated from file
-  // char/token ratios), leaving only ~20 light file tasks. Worker thread overhead (~170ms
-  // for spawning + tiktoken WASM loading + CPU contention) vastly exceeds actual work (~26ms).
-  // A main-thread runner eliminates all thread overhead at the cost of ~60ms lazy tiktoken
-  // load, saving ~100ms+ and reducing CPU contention during pipeline stages.
+  // char/token ratios), leaving only ~20 light file tasks. A single worker thread loads
+  // tiktoken WASM in the background during pipeline stages (search + collect + security +
+  // output ~256ms), overlapping the ~250ms synchronous WASM initialization that would
+  // otherwise block the main thread during metrics calculation.
   //
   // When tokenCountTree is disabled (default), the full ~3.7MB output must be tokenized.
   // Worker parallelism is essential: 4 workers encode in ~220ms vs ~880ms sequentially.
   // Three-phase warmup minimizes contention: Phase 1 (1 worker before search), Phase 2
   // (N-1 workers after collect+git), Phase 3 (tasks submitted without awaiting warmup).
-  const useMainThreadMetrics = !!config.output.tokenCountTree;
+  const tokenCountTreeEnabled = !!config.output.tokenCountTree;
   const concurrency = getProcessConcurrency();
-  const metricsTaskRunner = useMainThreadMetrics
-    ? deps.createMainThreadMetricsRunner(config.tokenCount.encoding)
-    : deps.createMetricsTaskRunner(concurrency * 100);
+  // numOfTasks=1 → maxThreads=1 (single worker for tokenCountTree);
+  // numOfTasks=concurrency*100 → full pool for default config.
+  const metricsTaskRunner = deps.createMetricsTaskRunner(tokenCountTreeEnabled ? 1 : concurrency * 100);
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.createSecurityTaskRunner(concurrency * 100)
     : undefined;
 
-  // Worker warmup (only when using worker threads for metrics).
   // Phase 1: Spawn 1 worker per pool before search (low contention).
   // Tinypool lazily creates workers on first task submission, so 1 task = 1 worker.
-  let firstMetricsWarmup: Promise<number> | undefined;
-  if (!useMainThreadMetrics) {
-    firstMetricsWarmup = metricsTaskRunner
-      .run({ content: '', encoding: config.tokenCount.encoding })
-      .catch(() => 0) as Promise<number>;
-  }
+  // Always runs to ensure tiktoken WASM loading starts early and overlaps with pipeline.
+  const firstMetricsWarmup = metricsTaskRunner
+    .run({ content: '', encoding: config.tokenCount.encoding })
+    .catch(() => 0) as Promise<number>;
   // Security warmup is fire-and-forget: 1 worker suffices for ~6 pre-filtered files.
   securityTaskRunner?.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null);
 
@@ -203,9 +195,9 @@ export const pack = async (
     // workers spawn during I/O-heavy stages. Workers warm up during
     // security+processing+output (~160ms). The 5s idle timeout ensures threads
     // survive until metrics calculation.
-    // When using main-thread metrics, no warmup is needed — tiktoken loads lazily on first use.
-    const warmupPromise = useMainThreadMetrics
-      ? Promise.resolve([0])
+    // When tokenCountTree is enabled, only 1 worker exists (Phase 1), no Phase 2 needed.
+    const warmupPromise = tokenCountTreeEnabled
+      ? firstMetricsWarmup.then((v) => [v])
       : Promise.all([
           firstMetricsWarmup,
           ...(concurrency > 1
