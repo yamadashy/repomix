@@ -92,17 +92,21 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Staged worker warmup: minimize CPU contention during file search.
+  // Three-phase worker warmup to minimize CPU contention on the critical path.
   //
-  // Worker thread spawning creates severe CPU contention with the search phase.
-  // On a 2-vCPU CI runner, spawning N metrics + N security workers causes
-  // (2N+1) threads competing for 2 CPUs, slowing search by ~2.5x.
+  // Worker thread spawning + module loading (tiktoken WASM ~240ms, secretlint ~150ms)
+  // is CPU-intensive. Spawning all workers too early creates contention with the main
+  // thread's I/O work (file search, readFileSync, git subprocesses), inflating
+  // wall-clock times on resource-constrained CI runners (2 vCPU).
   //
-  // Strategy: spawn only 1 worker per pool before search, then spawn remaining
-  // N-1 workers after search. This reduces contention from (2N+1)/CPUs to
-  // 3/CPUs during search. The remaining workers warm up during the
-  // collect+git+security+processing+output pipeline (~330ms), providing ample
-  // overlap for tiktoken WASM (~240ms) and secretlint (~150ms) loading.
+  // Strategy:
+  //   Phase 1 (before search): 1 metrics + 1 security worker → 3 threads total.
+  //   Phase 2 (after collect+git): remaining N-1 metrics workers. Deferred past the
+  //     I/O-heavy collect+git stage to avoid contention during readFileSync + git
+  //     subprocesses. Security gets no extra workers — the pre-filter reduces ~1000
+  //     files to ~6, which 1 warm worker handles in ~30ms.
+  //   Phase 3 (metrics): tasks submitted immediately without awaiting warmup.
+  //     Tinypool queues tasks; warm workers start at once, others join as they load.
   const concurrency = getProcessConcurrency();
   const metricsTaskRunner = deps.createMetricsTaskRunner(concurrency * 100);
   const securityTaskRunner = config.security.enableSecurityCheck
@@ -111,13 +115,11 @@ export const pack = async (
 
   // Phase 1: Spawn 1 worker per pool before search (low contention).
   // Tinypool lazily creates workers on first task submission, so 1 task = 1 worker.
-  // On 2 CPUs: 1 metrics + 1 security + main = 3 threads (vs 2N+1 with full warmup).
   const firstMetricsWarmup = metricsTaskRunner
     .run({ content: '', encoding: config.tokenCount.encoding })
     .catch(() => 0);
-  const firstSecurityWarmup = securityTaskRunner
-    ? securityTaskRunner.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null)
-    : undefined;
+  // Security warmup is fire-and-forget: 1 worker suffices for ~6 pre-filtered files.
+  securityTaskRunner?.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null);
 
   // Preload heavy output dependencies (handlebars, fast-xml-builder) in background.
   preloadOutputDeps();
@@ -131,28 +133,6 @@ export const pack = async (
       }),
     ),
   );
-
-  // Phase 2: Spawn remaining N-1 workers after search completes.
-  // These warm up during collect+git+security+processing+output (~330ms).
-  // The 5s idle timeout ensures warm threads survive until metrics calculation.
-  const warmupPromise = Promise.all([
-    firstMetricsWarmup,
-    ...(concurrency > 1
-      ? Array.from({ length: concurrency - 1 }, () =>
-          metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0),
-        )
-      : []),
-  ]);
-  const _securityWarmupPromise = securityTaskRunner
-    ? Promise.all([
-        firstSecurityWarmup,
-        ...(concurrency > 1
-          ? Array.from({ length: concurrency - 1 }, () =>
-              securityTaskRunner.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null),
-            )
-          : []),
-      ])
-    : undefined;
 
   const filePathsByDir = searchResultsByDir.map(({ rootDir, filePaths }) => ({ rootDir, filePaths }));
   // Deduplicate and sort empty directory paths for reuse during output generation,
@@ -205,6 +185,21 @@ export const pack = async (
       needsSeparateChangeCount
         ? deps.getFileChangeCount(gitRoot, sortMaxCommits).catch(() => undefined)
         : Promise.resolve(undefined),
+    ]);
+
+    // Phase 2: Spawn remaining N-1 metrics workers after collect+git.
+    // Deferred here so readFileSync + git subprocesses run with only 3 threads
+    // (main + Phase 1 workers), avoiding the CPU contention that occurs when all
+    // workers spawn during I/O-heavy stages. Workers warm up during
+    // security+processing+output (~160ms). The 5s idle timeout ensures threads
+    // survive until metrics calculation.
+    const warmupPromise = Promise.all([
+      firstMetricsWarmup,
+      ...(concurrency > 1
+        ? Array.from({ length: concurrency - 1 }, () =>
+            metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0),
+          )
+        : []),
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
@@ -294,10 +289,13 @@ export const pack = async (
       preComputedFileChangeCounts,
     );
 
-    // Ensure warm-up task completes before metrics calculation
-    await warmupPromise;
-
-    // Run metrics calculation in parallel with disk write / clipboard copy
+    // Phase 3: Submit metrics tasks immediately without awaiting warmup completion.
+    // The Phase 1 worker has been warm for ~400ms and starts processing at once.
+    // Phase 2 workers pick up queued tasks as they finish loading tiktoken WASM.
+    // This eliminates the idle wait (~85-100ms) that occurred when all workers
+    // had to be warm before any metrics task could start. The warmup promise is
+    // included in Promise.all so warmup tasks complete naturally (they must finish
+    // before their workers can process real tasks anyway).
     const [metrics] = await Promise.all([
       withMemoryLogging('Calculate Metrics', () =>
         deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
@@ -305,6 +303,7 @@ export const pack = async (
         }),
       ),
       writeComplete,
+      warmupPromise,
     ]);
 
     // Create a result object that includes metrics and security results
