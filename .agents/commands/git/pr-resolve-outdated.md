@@ -22,14 +22,14 @@ Do **NOT** touch comments from human reviewers.
 
 ### 2. Fetch all PR comments
 
-Fetch both review threads and regular issue comments in a single GraphQL query.
+Fetch both review threads and regular issue comments in a single GraphQL query. Use two independent cursor variables for pagination.
 
 ```bash
 gh api graphql -f query='
-query($cursor: String) {
+query($threadCursor: String, $commentCursor: String) {
   repository(owner: "OWNER", name: "REPO") {
     pullRequest(number: NUM) {
-      reviewThreads(first: 100, after: $cursor) {
+      reviewThreads(first: 100, after: $threadCursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
           id
@@ -40,7 +40,7 @@ query($cursor: String) {
           }
         }
       }
-      comments(first: 100) {
+      comments(first: 100, after: $commentCursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
           id
@@ -54,7 +54,7 @@ query($cursor: String) {
 }'
 ```
 
-If `pageInfo.hasNextPage` is `true`, paginate by passing the `endCursor` as the `$cursor` variable in subsequent requests. Repeat until all pages are fetched.
+Each connection (`reviewThreads`, `comments`) paginates independently. If either `pageInfo.hasNextPage` is `true`, pass its `endCursor` as the corresponding cursor variable (`$threadCursor` or `$commentCursor`) in subsequent requests. Repeat until both connections are fully fetched.
 
 ### 3. Classify each comment
 
