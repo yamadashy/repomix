@@ -12,7 +12,9 @@ let history = extractHistory(oldBody);
 if (oldBody.includes('\u2705 Benchmark complete!')) {
   // Extract only the main result table (before any <details> block)
   const mainSection = oldBody.split('<details>')[0] || '';
-  const commitMatch = mainSection.match(/Latest commit:<\/strong><\/td><td><code>([a-f0-9]+)<\/code>\s*(.*?)<\/td>/);
+  const commitMatch = mainSection.match(
+    /Latest commit:<\/strong><\/td><td>(?:<code>)?([a-f0-9]+)(?:<\/code>)?\s*(.*?)<\/td>/,
+  );
   const prevSha = commitMatch ? commitMatch[1] : '';
   const prevMsg = commitMatch ? commitMatch[2] : '';
   if (prevSha) {
@@ -33,7 +35,7 @@ history = history.slice(0, 50);
 const jsonComment = `<!-- bench-history-json-start ${JSON.stringify(history)} bench-history-json-end -->`;
 let body = `<!-- repomix-perf-benchmark -->\n${jsonComment}\n`;
 body += '## \u26a1 Performance Benchmark\n\n';
-body += `<table><tr><td><strong>Latest commit:</strong></td><td><code>${shortSha}</code> ${esc(commitMsg)}</td></tr>\n`;
+body += `<table><tr><td><strong>Latest commit:</strong></td><td>${shortSha} ${esc(commitMsg)}</td></tr>\n`;
 body += '<tr><td><strong>Status:</strong></td><td>\u26a1 Benchmark in progress...</td></tr></table>\n\n';
 body += `[Workflow run](${runUrl})`;
 
