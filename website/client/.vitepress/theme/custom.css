@@ -13,6 +13,15 @@
   --vp-home-hero-image-filter: blur(96px);
 }
 
+/* Place GitHub star button after nav menu (Join Discord) and before translations/social links */
+.VPNavBar .content-body > .translations,
+.VPNavBar .content-body > .appearance,
+.VPNavBar .content-body > .social-links,
+.VPNavBar .content-body > .extra,
+.VPNavBar .content-body > .hamburger {
+  order: 1;
+}
+
 .hero-description__accent {
   color: var(--vp-c-brand-1);
 }
