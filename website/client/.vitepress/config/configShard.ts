@@ -148,7 +148,6 @@ export const configShard = defineConfig({
     socialLinks: [
       { icon: 'x', link: 'https://x.com/repomix_ai' },
       { icon: 'discord', link: 'https://discord.gg/wNYzTwZFku' },
-      { icon: 'github', link: githubUrl },
     ],
     footer: {
       message: 'Released under the MIT License.',
