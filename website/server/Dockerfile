@@ -6,6 +6,9 @@ FROM node:24-alpine AS builder
 # Install git (required for GitHub-based npm dependencies)
 RUN apk add --no-cache git
 
+# Downgrade npm to avoid --min-release-age conflict with --before for git deps
+RUN npm install -g npm@11.4.0
+
 WORKDIR /app
 COPY package*.json ./
 
@@ -24,6 +27,9 @@ FROM node:24-alpine
 
 # Install git and ca-certificates (required by repomix for remote repository processing)
 RUN apk add --no-cache git ca-certificates
+
+# Downgrade npm to avoid --min-release-age conflict with --before for git deps (used by compose dev command)
+RUN npm install -g npm@11.4.0
 
 WORKDIR /app
 
