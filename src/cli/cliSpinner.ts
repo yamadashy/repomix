@@ -16,7 +16,10 @@ export class Spinner {
   }
 
   update(message: string): void {
-    this.spinner?.setText(message);
+    // Use render=false to avoid immediate re-rendering on every progress callback.
+    // The spinner's internal tick interval will pick up the latest text on the next frame,
+    // similar to how the previous log-update implementation worked.
+    this.spinner?.setText(message, false);
   }
 
   succeed(message: string): void {
