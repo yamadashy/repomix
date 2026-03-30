@@ -417,6 +417,17 @@ describe('cliRun', () => {
     });
   });
 
+  describe('no-color mode', () => {
+    test('should accept --no-color flag without error', async () => {
+      const options: CliOptions = {
+        color: false,
+      };
+
+      await expect(runCli(['.'], process.cwd(), options)).resolves.not.toThrow();
+      expect(defaultAction.runDefaultAction).toHaveBeenCalled();
+    });
+  });
+
   describe('stdout mode', () => {
     const originalIsTTY = process.stdout.isTTY;
 

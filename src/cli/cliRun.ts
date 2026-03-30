@@ -39,6 +39,8 @@ const semanticSuggestionMap: Record<string, string[]> = {
   print: ['--stdout'],
   console: ['--stdout'],
   terminal: ['--stdout'],
+  plain: ['--no-color'],
+  monochrome: ['--no-color'],
   pipe: ['--stdin'],
 };
 
@@ -69,6 +71,7 @@ export const run = async () => {
       )
       .option('--stdin', 'Read file paths from stdin, one per line (specified files are processed directly)')
       .option('--copy', 'Copy the generated output to system clipboard after processing')
+      .option('--no-color', 'Disable colored output (also respects NO_COLOR env variable, see https://no-color.org)')
       .option(
         '--token-count-tree [threshold]',
         'Show file tree with token counts; optional threshold to show only files with ≥N tokens (e.g., --token-count-tree 100)',
