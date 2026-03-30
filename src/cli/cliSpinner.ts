@@ -1,4 +1,4 @@
-import { Spinner as PicoSpinner } from 'picospinner';
+import { Spinner as PicoSpinner, renderer } from 'picospinner';
 import type { CliOptions } from './types.js';
 
 export class Spinner {
@@ -12,6 +12,13 @@ export class Spinner {
   }
 
   start(): void {
+    // In child processes (Tinypool, stdio: "pipe"), process.stdout is not a TTY,
+    // so PicoSpinner cannot detect terminal width via getWindowSize().
+    // Fall back to COLUMNS env var passed from the main process.
+    if (!process.stdout.getWindowSize && process.env.COLUMNS) {
+      // biome-ignore lint: accessing private property to work around child process limitation
+      (renderer as unknown as { terminalWidth: number }).terminalWidth = Number(process.env.COLUMNS);
+    }
     this.spinner?.start();
   }
 
