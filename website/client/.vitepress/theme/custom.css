@@ -13,17 +13,6 @@
   --vp-home-hero-image-filter: blur(96px);
 }
 
-/* Hide GitHub star button in navbar on small screens (shown in hamburger menu instead) */
-.VPNavBar .nav-github-star {
-  display: none;
-}
-
-@media (min-width: 960px) {
-  .VPNavBar .nav-github-star {
-    display: flex;
-  }
-}
-
 .hero-description__accent {
   color: var(--vp-c-brand-1);
 }

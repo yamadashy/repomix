@@ -13,7 +13,6 @@ export default {
       'home-hero-after': () => h(Home),
       'home-features-after': () => h(HomeBadges),
       'nav-bar-content-after': () => h(NavBarGitHubStar),
-      'nav-screen-content-after': () => h(NavBarGitHubStar),
     });
   },
 } satisfies Theme;
