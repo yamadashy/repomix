@@ -24,7 +24,7 @@ onUnmounted(() => {
     <iframe
       title="Star yamadashy/repomix on GitHub"
       src="https://unpkg.com/github-buttons@2.29.1/dist/buttons.html#href=https%3A%2F%2Fgithub.com%2Fyamadashy%2Frepomix&data-text=Star&data-size=large&data-show-count=true&data-color-scheme=no-preference%3A+light%3B+light%3A+light%3B+dark%3A+dark%3B"
-      sandbox="allow-scripts allow-popups"
+      sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
       scrolling="no"
       class="github-star-button"
     />
