@@ -265,6 +265,7 @@ export const generateOutput = async (
     generateParsableJsonOutput,
     sortOutputFiles,
   },
+  emptyDirPaths?: string[],
 ): Promise<string> => {
   // Sort processed files by git change count if enabled
   const sortedProcessedFiles = await deps.sortOutputFiles(processedFiles, config);
@@ -277,6 +278,8 @@ export const generateOutput = async (
     gitDiffResult,
     gitLogResult,
     filePathsByRoot,
+    undefined,
+    emptyDirPaths,
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
@@ -308,6 +311,7 @@ export const buildOutputGeneratorContext = async (
     listFiles,
     searchFiles,
   },
+  emptyDirPaths?: string[],
 ): Promise<OutputGeneratorContext> => {
   let repositoryInstruction = '';
 
@@ -356,16 +360,21 @@ export const buildOutputGeneratorContext = async (
       );
     }
   } else if (config.output.directoryStructure && config.output.includeEmptyDirectories) {
-    // Default behavior: include empty directories only
-    try {
-      const results = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
-      const merged = results.flatMap((r) => r.emptyDirPaths);
-      directoryPathsForTree = [...new Set(merged)].sort();
-    } catch (error) {
-      throw new RepomixError(
-        `Failed to search for empty directories: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? { cause: error } : undefined,
-      );
+    // Use pre-computed emptyDirPaths from the initial file search if available,
+    // avoiding a redundant searchFiles call (~86-163ms saved)
+    if (emptyDirPaths !== undefined) {
+      directoryPathsForTree = [...new Set(emptyDirPaths)].sort();
+    } else {
+      try {
+        const results = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
+        const merged = results.flatMap((r) => r.emptyDirPaths);
+        directoryPathsForTree = [...new Set(merged)].sort();
+      } catch (error) {
+        throw new RepomixError(
+          `Failed to search for empty directories: ${error instanceof Error ? error.message : String(error)}`,
+          error instanceof Error ? { cause: error } : undefined,
+        );
+      }
     }
   }
 

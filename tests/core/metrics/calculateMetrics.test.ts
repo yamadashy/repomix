@@ -115,13 +115,21 @@ describe('calculateMetrics', () => {
 
     const calculateOutputMetrics = vi.fn().mockResolvedValue(999);
 
-    const result = await calculateMetrics(processedFiles, output, progressCallback, config, undefined, undefined, {
-      calculateSelectiveFileMetrics,
-      calculateOutputMetrics,
-      calculateGitDiffMetrics: () => Promise.resolve(0),
-      calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
-      taskRunner: mockTaskRunner,
-    });
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      progressCallback,
+      config,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateOutputMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
 
     // calculateOutputMetrics should NOT be called when tokenCountTree is enabled
     expect(calculateOutputMetrics).not.toHaveBeenCalled();

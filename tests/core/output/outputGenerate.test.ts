@@ -70,6 +70,8 @@ describe('outputGenerate', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
+      undefined,
     );
     expect(output).toBe('mock output');
   });

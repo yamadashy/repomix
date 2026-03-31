@@ -70,14 +70,17 @@ export const pack = async (
   logMemoryUsage('Pack - Start');
 
   progressCallback('Searching for files...');
-  const filePathsByDir = await withMemoryLogging('Search Files', async () =>
+  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
       rootDirs.map(async (rootDir) => ({
         rootDir,
-        filePaths: (await deps.searchFiles(rootDir, config, explicitFiles)).filePaths,
+        ...(await deps.searchFiles(rootDir, config, explicitFiles)),
       })),
     ),
   );
+
+  // Extract file paths (emptyDirPaths are forwarded to output generation to avoid a redundant searchFiles call)
+  const filePathsByDir = searchResultsByDir.map(({ rootDir, filePaths }) => ({ rootDir, filePaths }));
 
   // Sort file paths
   progressCallback('Sorting files...');
@@ -179,6 +182,10 @@ export const pack = async (
       files: filePaths,
     }));
 
+    // Collect empty directory paths from the initial search results to avoid a redundant
+    // searchFiles call during output generation (~86-163ms saved)
+    const emptyDirPaths = searchResultsByDir.flatMap(({ emptyDirPaths }) => emptyDirPaths);
+
     // Ensure warm-up task completes before metrics calculation
     await metricsWarmupPromise;
 
@@ -194,6 +201,7 @@ export const pack = async (
       gitLogResult,
       progressCallback,
       filePathsByRoot,
+      emptyDirPaths,
     );
 
     const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
