@@ -11,6 +11,7 @@ import {
   type RepomixOutputStyle,
 } from '../../config/configSchema.js';
 import { getGlobalDirectory } from '../../config/globalDirectory.js';
+import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 
 type ConfigFormat = 'json' | 'yaml' | 'toml' | 'ts' | 'js';
@@ -34,12 +35,7 @@ const serializeConfig = (config: RepomixConfigFile, format: ConfigFormat): strin
       return stringifyTOML(config as Record<string, unknown>);
     case 'ts': {
       const { $schema: _schema, ...configWithoutSchema } = config;
-      return [
-        "import { defineConfig } from 'repomix';",
-        '',
-        `export default defineConfig(${JSON.stringify(configWithoutSchema, null, 2)});`,
-        '',
-      ].join('\n');
+      return [`export default ${JSON.stringify(configWithoutSchema, null, 2)};`, ''].join('\n');
     }
     case 'js': {
       const { $schema: _schema, ...configWithoutSchema } = config;
@@ -51,6 +47,21 @@ const serializeConfig = (config: RepomixConfigFile, format: ConfigFormat): strin
 const onCancelOperation = () => {
   prompts.cancel('Initialization cancelled.');
   process.exit(0);
+};
+
+const assertSafeInitWriteTarget = async (targetPath: string, extraPathsToCheck: string[] = []): Promise<void> => {
+  for (const candidatePath of [...extraPathsToCheck, targetPath]) {
+    try {
+      const stats = await fs.lstat(candidatePath);
+      if (stats?.isSymbolicLink?.()) {
+        throw new RepomixError(`Refusing to write through symbolic link: ${candidatePath}`);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
 };
 
 export const runInitAction = async (rootDir: string, isGlobal: boolean): Promise<void> => {
@@ -120,7 +131,7 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
       { value: 'json', label: 'JSON', hint: 'Simple and widely supported' },
       { value: 'yaml', label: 'YAML', hint: 'Human-friendly with comments support' },
       { value: 'toml', label: 'TOML', hint: 'Clean syntax, popular for config files' },
-      { value: 'ts', label: 'TypeScript', hint: 'Type-safe with IDE autocomplete (requires repomix as dev dep)' },
+      { value: 'ts', label: 'TypeScript', hint: 'TypeScript syntax with a plain default export' },
       { value: 'js', label: 'JavaScript', hint: 'Dynamic values, no type checking needed' },
     ],
     initialValue: 'json' as ConfigFormat,
@@ -197,6 +208,8 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
     },
   };
 
+  const extraPathsToCheck = configLocation === 'root' ? [] : [path.dirname(configPath)];
+  await assertSafeInitWriteTarget(configPath, extraPathsToCheck);
   await fs.mkdir(path.dirname(configPath), { recursive: true });
   await fs.writeFile(configPath, serializeConfig(config, configFormat));
 
@@ -241,6 +254,11 @@ export const createIgnoreFile = async (rootDir: string, isGlobal: boolean): Prom
       message: `A ${pc.green('.repomixignore')} file already exists. Do you want to overwrite it?`,
     });
 
+    if (prompts.isCancel(overwrite)) {
+      onCancelOperation();
+      return false;
+    }
+
     if (!overwrite) {
       prompts.log.info(`${pc.green('.repomixignore')} file creation skipped. Existing file will not be modified.`);
       return false;
@@ -253,6 +271,7 @@ export const createIgnoreFile = async (rootDir: string, isGlobal: boolean): Prom
 # tmp/
 `;
 
+  await assertSafeInitWriteTarget(ignorePath);
   await fs.writeFile(ignorePath, defaultIgnoreContent);
   prompts.log.success(
     pc.green('Created .repomixignore file!\n') + pc.dim(`Path: ${path.relative(rootDir, ignorePath)}`),
