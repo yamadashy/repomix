@@ -156,7 +156,7 @@ describe('configLoad', () => {
       });
 
       await expect(loadFileConfig(process.cwd(), 'test-config.json', {}, { c12Load: mockC12Load })).rejects.toThrow(
-        'Error loading config',
+        'Invalid syntax in config file test-config.json',
       );
     });
 
@@ -189,6 +189,20 @@ describe('configLoad', () => {
       expect(result).toEqual(mockConfig);
     });
 
+    test('should discover config in .config/ directory with the full filename', async () => {
+      const mockConfig = {
+        output: { filePath: 'dotconfig-full-output.txt' },
+      };
+      vi.mocked(getGlobalDirectory).mockReturnValue('/global/repomix');
+      const mockC12Load = createMockC12Load({
+        localConfig: mockConfig,
+        localConfigFile: path.resolve(process.cwd(), '.config/repomix.config.json'),
+      });
+
+      const result = await loadFileConfig(process.cwd(), null, {}, { c12Load: mockC12Load });
+      expect(result).toEqual(mockConfig);
+    });
+
     test('should throw RepomixError when specific config file does not exist', async () => {
       const nonExistentConfigPath = 'non-existent-config.json';
       const mockC12Load = createMockC12Load({
@@ -200,6 +214,17 @@ describe('configLoad', () => {
       );
     });
 
+    test('should reject discovered fallback files for explicit --config paths', async () => {
+      const mockC12Load = createMockC12Load({
+        explicitConfig: { output: { filePath: 'fallback-output.txt' } },
+        explicitConfigFile: path.resolve(process.cwd(), '.config/repomix.json'),
+      });
+
+      await expect(loadFileConfig(process.cwd(), 'missing-config.json', {}, { c12Load: mockC12Load })).rejects.toThrow(
+        'Config file not found at missing-config.json',
+      );
+    });
+
     test('should handle general errors when loading config', async () => {
       const mockC12Load = vi.fn().mockImplementation(() => {
         throw new Error('Permission denied');
@@ -207,6 +232,16 @@ describe('configLoad', () => {
 
       await expect(loadFileConfig(process.cwd(), 'test-config.json', {}, { c12Load: mockC12Load })).rejects.toThrow(
         'Error loading config',
+      );
+    });
+
+    test('should handle non-Error values when loading explicit config', async () => {
+      const mockC12Load = vi.fn().mockImplementation(() => {
+        throw 'string error';
+      });
+
+      await expect(loadFileConfig(process.cwd(), 'test-config.json', {}, { c12Load: mockC12Load })).rejects.toThrow(
+        'Error loading config from test-config.json: string error',
       );
     });
 
