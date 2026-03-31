@@ -74,13 +74,17 @@ describe('packager split output', () => {
 
     expect(calculateMetrics).toHaveBeenCalledWith(
       processedFiles,
-      ['x'.repeat(10), 'x'.repeat(10)],
+      expect.anything(),
       expect.anything(),
       mockConfig,
       undefined,
       undefined,
       expect.objectContaining({ taskRunner: expect.anything() }),
     );
+
+    // Verify that calculateMetrics received a promise that resolves to the expected split output
+    const outputArg = calculateMetrics.mock.calls[0][1];
+    await expect(outputArg).resolves.toEqual(['x'.repeat(10), 'x'.repeat(10)]);
 
     expect(result.outputFiles).toEqual(['repomix-output.1.xml', 'repomix-output.2.xml']);
   });

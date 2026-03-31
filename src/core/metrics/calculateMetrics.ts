@@ -23,7 +23,7 @@ export interface CalculateMetricsResult {
 
 /**
  * Create a metrics task runner that can be pre-initialized to overlap
- * tiktoken WASM loading with other pipeline stages.
+ * gpt-tokenizer loading with other pipeline stages.
  */
 export const createMetricsTaskRunner = (numOfTasks: number): TaskRunner<TokenCountTask, number> => {
   return initTaskRunner<TokenCountTask, number>({
@@ -99,7 +99,7 @@ const getGitLogChars = (gitLogResult: GitLogResult | undefined): number => {
 
 export const calculateMetrics = async (
   processedFiles: ProcessedFile[],
-  output: string | string[],
+  outputPromise: Promise<string | string[]>,
   progressCallback: RepomixProgressCallback,
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
@@ -120,7 +120,6 @@ export const calculateMetrics = async (
     });
 
   try {
-    const outputParts = Array.isArray(output) ? output : [output];
     // For top files display optimization: calculate token counts only for top files by character count
     // However, if tokenCountTree is enabled, calculate for all files to avoid double calculation
     const topFilesLength = config.output.topFilesLength;
@@ -136,26 +135,40 @@ export const calculateMetrics = async (
           .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
           .map((file) => file.path);
 
+    // Start output-independent metrics immediately so they can overlap with output generation
+    // when output is passed as a promise
+    const selectiveFileMetricsPromise = deps.calculateSelectiveFileMetrics(
+      processedFiles,
+      metricsTargetPaths,
+      config.tokenCount.encoding,
+      progressCallback,
+      { taskRunner },
+    );
+    const gitDiffMetricsPromise = deps.calculateGitDiffMetrics(config, gitDiffResult, { taskRunner });
+    const gitLogMetricsPromise = deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner });
+
+    // Prevent unhandled rejections if `await outputPromise` throws before Promise.all
+    selectiveFileMetricsPromise.catch(() => {});
+    gitDiffMetricsPromise.catch(() => {});
+    gitLogMetricsPromise.catch(() => {});
+
+    // Await the output (waits for output generation to complete)
+    const resolvedOutput = await outputPromise;
+    const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
+
+    const totalFiles = processedFiles.length;
+    const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
+
     // When all files are individually counted (tokenCountTree enabled), skip the expensive
     // output token counting (~3.8MB re-tokenization) and estimate total output tokens from
     // per-file counts + overhead estimation. This eliminates ~50% of tokenization work.
     if (shouldCalculateAllFiles) {
       const [selectiveFileMetrics, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
-        deps.calculateSelectiveFileMetrics(
-          processedFiles,
-          metricsTargetPaths,
-          config.tokenCount.encoding,
-          progressCallback,
-          { taskRunner },
-        ),
-        deps.calculateGitDiffMetrics(config, gitDiffResult, { taskRunner }),
-        deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner }),
+        selectiveFileMetricsPromise,
+        gitDiffMetricsPromise,
+        gitLogMetricsPromise,
       ]);
 
-      const totalFiles = processedFiles.length;
-      const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
-
-      // Build file metrics maps
       const fileCharCounts: Record<string, number> = {};
       const fileTokenCounts: Record<string, number> = {};
       for (const file of processedFiles) {
@@ -186,30 +199,23 @@ export const calculateMetrics = async (
       };
     }
 
+    // Start output metrics after output is available
+    const outputMetricsPromise = Promise.all(
+      outputParts.map((part, index) => {
+        const partPath =
+          outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, index + 1) : config.output.filePath;
+        return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
+      }),
+    );
+
     const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
-      deps.calculateSelectiveFileMetrics(
-        processedFiles,
-        metricsTargetPaths,
-        config.tokenCount.encoding,
-        progressCallback,
-        { taskRunner },
-      ),
-      Promise.all(
-        outputParts.map(async (part, index) => {
-          const partPath =
-            outputParts.length > 1
-              ? buildSplitOutputFilePath(config.output.filePath, index + 1)
-              : config.output.filePath;
-          return await deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
-        }),
-      ),
-      deps.calculateGitDiffMetrics(config, gitDiffResult, { taskRunner }),
-      deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner }),
+      selectiveFileMetricsPromise,
+      outputMetricsPromise,
+      gitDiffMetricsPromise,
+      gitLogMetricsPromise,
     ]);
 
     const totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
-    const totalFiles = processedFiles.length;
-    const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
 
     // Build character counts for all files
     const fileCharCounts: Record<string, number> = {};
