@@ -238,7 +238,7 @@ export const packSkill = async (params: PackSkillParams, deps = defaultDeps): Pr
   const skillMetrics = await withMemoryLogging('Calculate Skill Metrics', () =>
     deps.calculateMetrics(
       processedFiles,
-      skillReferencesResult.references.files,
+      Promise.resolve(skillReferencesResult.references.files),
       progressCallback,
       config,
       gitDiffResult,

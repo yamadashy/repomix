@@ -91,11 +91,13 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap tiktoken WASM loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers tiktoken
-  // initialization in the worker thread without blocking the main pipeline.
+  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
+  // (security check, file processing, output generation). The warm-up task triggers
+  // gpt-tokenizer initialization in the worker thread without blocking the main pipeline.
   const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0); // Suppress unhandled rejection; errors surface when awaited
+  const metricsWarmupPromise = metricsTaskRunner
+    .run({ content: '', encoding: config.tokenCount.encoding })
+    .catch(() => 0);
 
   try {
     // Run file collection and git operations in parallel since they are independent:
@@ -120,24 +122,34 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Run security check and get filtered safe files
-    const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-      await withMemoryLogging('Security Check', () =>
+    // Run security check and file processing concurrently.
+    // Security check uses worker threads while file processing runs on the main thread
+    // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
+    // After both complete, filter out any suspicious files from the processed results.
+    const [validationResult, allProcessedFiles] = await Promise.all([
+      withMemoryLogging('Security Check', () =>
         deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
-      );
+      ),
+      withMemoryLogging('Process Files', () => {
+        progressCallback('Processing files...');
+        return deps.processFiles(rawFiles, config, progressCallback);
+      }),
+    ]);
 
-    // Process files (remove comments, etc.)
-    progressCallback('Processing files...');
-    const processedFiles = await withMemoryLogging('Process Files', () =>
-      deps.processFiles(safeRawFiles, config, progressCallback),
-    );
+    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+      validationResult;
+
+    // Filter processed files to exclude suspicious ones
+    const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
+    const processedFiles =
+      suspiciousPathSet.size > 0 ? allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path)) : allProcessedFiles;
 
     progressCallback('Generating output...');
 
     // Check if skill generation is requested
     if (config.skillGenerate !== undefined && options.skillDir) {
       // Await warmup to ensure graceful worker shutdown (avoid terminating WASM-loading thread)
-      await warmupPromise;
+      await metricsWarmupPromise;
 
       const result = await deps.packSkill({
         rootDirs,
@@ -167,8 +179,13 @@ export const pack = async (
       files: filePaths,
     }));
 
-    // Generate and write output (handles both single and split output)
-    const { outputFiles, outputForMetrics } = await deps.produceOutput(
+    // Ensure warm-up task completes before metrics calculation
+    await metricsWarmupPromise;
+
+    // Generate and write output, overlapping with metrics calculation.
+    // File and git metrics don't depend on the output, so they start immediately
+    // while output generation runs concurrently.
+    const outputPromise = deps.produceOutput(
       rootDirs,
       config,
       processedFiles,
@@ -179,14 +196,24 @@ export const pack = async (
       filePathsByRoot,
     );
 
-    // Ensure warm-up task completes before metrics calculation
-    await warmupPromise;
+    const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
 
-    const metrics = await withMemoryLogging('Calculate Metrics', () =>
-      deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
-        taskRunner: metricsTaskRunner,
-      }),
-    );
+    const [{ outputFiles }, metrics] = await Promise.all([
+      outputPromise,
+      withMemoryLogging('Calculate Metrics', () =>
+        deps.calculateMetrics(
+          processedFiles,
+          outputForMetricsPromise,
+          progressCallback,
+          config,
+          gitDiffResult,
+          gitLogResult,
+          {
+            taskRunner: metricsTaskRunner,
+          },
+        ),
+      ),
+    ]);
 
     // Create a result object that includes metrics and security results
     const result = {

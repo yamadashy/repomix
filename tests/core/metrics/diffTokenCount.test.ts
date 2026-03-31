@@ -97,7 +97,7 @@ index 123..456 100644
 
     const result = await calculateMetrics(
       processedFiles,
-      output,
+      Promise.resolve(output),
       vi.fn(), // Progress callback
       config,
       {
@@ -180,7 +180,7 @@ index 123..456 100644
 
     const result = await calculateMetrics(
       processedFiles,
-      output,
+      Promise.resolve(output),
       vi.fn(), // Progress callback
       config,
       undefined, // No diff content
@@ -258,7 +258,7 @@ index 123..456 100644
 
     const result = await calculateMetrics(
       processedFiles,
-      output,
+      Promise.resolve(output),
       vi.fn(), // Progress callback
       config,
       undefined, // No diff content
