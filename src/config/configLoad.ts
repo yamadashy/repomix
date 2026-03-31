@@ -102,6 +102,9 @@ export const loadFileConfig = async (
       if (error instanceof RepomixError) {
         throw error;
       }
+      if (error instanceof SyntaxError) {
+        throw new RepomixError(`Invalid syntax in config file ${argConfigPath}: ${error.message}`);
+      }
       if (error instanceof Error) {
         throw new RepomixError(`Error loading config from ${argConfigPath}: ${error.message}`);
       }
@@ -112,27 +115,29 @@ export const loadFileConfig = async (
 
   // Try to find a local config file using c12's discovery
   // c12 searches: repomix.config.{ext} in root, .config/repomix.{ext}, .config/repomix.config.{ext}
-  try {
-    const localResult = await loadConfigFromC12(rootDir, undefined, { c12Load: deps.c12Load });
+  // SECURITY: Skip entirely when skipLocalConfig is true (remote mode) because c12
+  // executes JS/TS config files during loading, which could run arbitrary code from
+  // untrusted repositories.
+  if (options.skipLocalConfig) {
+    logger.note(
+      'Skipping local config file discovery for security (remote repository).\n' +
+        'Use --remote-trust-config to trust and load local config files.',
+    );
+  } else {
+    try {
+      const localResult = await loadConfigFromC12(rootDir, undefined, { c12Load: deps.c12Load });
 
-    if (localResult.config != null && localResult.configFile) {
-      if (!options.skipLocalConfig) {
+      if (localResult.config != null && localResult.configFile) {
         logger.trace('Found local config at:', localResult.configFile);
         return validateConfig(localResult.config, localResult.configFile);
       }
-      // Log when config files are skipped for security (remote mode)
-      logger.note(
-        `Skipping config file found in remote repository for security: ${path.basename(localResult.configFile)}\n` +
-          'Use --remote-trust-config to trust and load it.',
-      );
-    }
-  } catch (error) {
-    // If local config loading fails (e.g., syntax error), propagate the error
-    // unless we're skipping local config anyway
-    if (!options.skipLocalConfig) {
+    } catch (error) {
       rethrowValidationErrorIfZodError(error, 'Invalid config schema');
       if (error instanceof RepomixError) {
         throw error;
+      }
+      if (error instanceof SyntaxError) {
+        throw new RepomixError(`Invalid syntax in local config: ${error.message}`);
       }
       if (error instanceof Error) {
         throw new RepomixError(`Error loading local config: ${error.message}`);
@@ -153,6 +158,9 @@ export const loadFileConfig = async (
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');
     if (error instanceof RepomixError) {
       throw error;
+    }
+    if (error instanceof SyntaxError) {
+      throw new RepomixError(`Invalid syntax in global config: ${error.message}`);
     }
     if (error instanceof Error) {
       throw new RepomixError(`Error loading global config: ${error.message}`);
