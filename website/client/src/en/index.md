@@ -147,11 +147,13 @@ npx repomix --remote https://github.com/yamadashy/repomix/tree/main
 npx repomix --remote https://github.com/yamadashy/repomix/commit/836abcd7335137228ad77feb28655d85712680f1
 ```
 
-To initialize a new configuration file (`repomix.config.json`):
+To initialize a new configuration file:
 
 ```bash
 repomix --init
 ```
+
+This will guide you through creating a config file. You can place it in the project root or in the `.config/` directory.
 
 Once you have generated the packed file, you can use it with Generative AI tools like Claude, ChatGPT, and Gemini.
 
@@ -197,7 +199,7 @@ repomix --style plain
 
 ### Customization
 
-Create a `repomix.config.json` for persistent settings:
+Create a config file (JSON, YAML, TOML, TypeScript, or JavaScript) for persistent settings:
 
 ```json
 {

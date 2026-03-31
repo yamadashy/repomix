@@ -46,8 +46,8 @@
 - `--remote-branch <name>`: Specific branch, tag, or commit to use (default: repository's default branch)
 
 ## Configuration Options
-- `-c, --config <path>`: Use custom config file instead of repomix.config.json
-- `--init`: Create a new repomix.config.json file with defaults
+- `-c, --config <path>`: Use custom config file (supports .json, .ts, .js, .yaml, .toml, etc.)
+- `--init`: Create a new Repomix config file (choose location and format interactively)
 - `--global`: With --init, create config in home directory instead of current directory
 
 ## Security Options
