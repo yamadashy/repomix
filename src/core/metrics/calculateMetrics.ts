@@ -43,7 +43,7 @@ const defaultDeps = {
 
 export const calculateMetrics = async (
   processedFiles: ProcessedFile[],
-  output: Promise<string | string[]>,
+  outputPromise: Promise<string | string[]>,
   progressCallback: RepomixProgressCallback,
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
@@ -91,13 +91,13 @@ export const calculateMetrics = async (
     const gitDiffMetricsPromise = deps.calculateGitDiffMetrics(config, gitDiffResult, { taskRunner });
     const gitLogMetricsPromise = deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner });
 
-    // Prevent unhandled rejections if `await output` throws before Promise.all
+    // Prevent unhandled rejections if `await outputPromise` throws before Promise.all
     selectiveFileMetricsPromise.catch(() => {});
     gitDiffMetricsPromise.catch(() => {});
     gitLogMetricsPromise.catch(() => {});
 
-    // Await the output (resolves immediately if already a string, otherwise waits for generation)
-    const resolvedOutput = await output;
+    // Await the output (waits for output generation to complete)
+    const resolvedOutput = await outputPromise;
     const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
 
     // Start output metrics after output is available
