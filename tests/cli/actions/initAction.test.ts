@@ -27,6 +27,7 @@ describe('initAction', () => {
         outputStyle: 'xml',
       });
       vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValue('root');
 
       await createConfigFile('/test/dir', false);
 
@@ -57,6 +58,7 @@ describe('initAction', () => {
     it('should prompt to overwrite when config file already exists', async () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValue('root');
       vi.mocked(prompts.group).mockResolvedValue({
         outputFilePath: 'new-output.txt',
         outputStyle: 'xml',
@@ -70,7 +72,8 @@ describe('initAction', () => {
 
     it('should not overwrite when user chooses not to', async () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(prompts.confirm).mockResolvedValue(false);
+      vi.mocked(prompts.confirm).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+      vi.mocked(prompts.select).mockResolvedValue('root');
 
       await createConfigFile('/test/dir', false);
 
@@ -80,11 +83,13 @@ describe('initAction', () => {
 
     it('should handle user cancellation', async () => {
       vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValue('root');
       vi.mocked(prompts.group).mockImplementation(() => {
         throw new Error('User cancelled');
       });
 
-      await createConfigFile('/test/dir', false);
+      await expect(createConfigFile('/test/dir', false)).rejects.toThrow('User cancelled');
 
       expect(fs.writeFile).not.toHaveBeenCalled();
     });
@@ -96,6 +101,52 @@ describe('initAction', () => {
 
       expect(result).toBe(false);
       expect(fs.writeFile).not.toHaveBeenCalled();
+    });
+
+    it('should return false when user cancels config location selection', async () => {
+      const mockCancelSymbol = Symbol('cancel');
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValue(mockCancelSymbol as symbol);
+      vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
+
+      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+      await createConfigFile('/test/dir', false);
+
+      expect(mockExit).toHaveBeenCalledWith(0);
+      expect(fs.writeFile).not.toHaveBeenCalled();
+
+      mockExit.mockRestore();
+    });
+
+    it('should create config in .config/ directory with short name', async () => {
+      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValue('dotconfig');
+      vi.mocked(prompts.group).mockResolvedValue({
+        outputFilePath: 'output.txt',
+        outputStyle: 'xml',
+      });
+
+      await createConfigFile('/test/dir', false);
+
+      const configPath = path.resolve('/test/dir/.config/repomix.json');
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('"filePath": "output.txt"'));
+    });
+
+    it('should create config in .config/ directory with full name', async () => {
+      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValue('dotconfig-full');
+      vi.mocked(prompts.group).mockResolvedValue({
+        outputFilePath: 'output.txt',
+        outputStyle: 'xml',
+      });
+
+      await createConfigFile('/test/dir', false);
+
+      const configPath = path.resolve('/test/dir/.config/repomix.config.json');
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('"filePath": "output.txt"'));
     });
 
     it('should return false when user cancels via isCancel on initial confirmation', async () => {
@@ -116,6 +167,7 @@ describe('initAction', () => {
     it('should return false when user cancels via isCancel on overwrite confirmation', async () => {
       vi.mocked(fs.access).mockResolvedValue(undefined); // File exists
       vi.mocked(prompts.confirm).mockResolvedValueOnce(true); // Initial confirmation
+      vi.mocked(prompts.select).mockResolvedValue('root'); // Config location
       const mockCancelSymbol = Symbol('cancel');
       vi.mocked(prompts.confirm).mockResolvedValueOnce(mockCancelSymbol as symbol); // Overwrite cancel
       vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
@@ -133,6 +185,7 @@ describe('initAction', () => {
     it('should return true when config file is successfully created', async () => {
       vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
       vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValue('root');
       vi.mocked(prompts.group).mockResolvedValue({
         outputFilePath: 'output.txt',
         outputStyle: 'xml',
