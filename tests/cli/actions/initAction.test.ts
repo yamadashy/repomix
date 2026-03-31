@@ -259,8 +259,30 @@ describe('initAction', () => {
       await createConfigFile('/test/dir', false);
 
       const configPath = path.resolve('/test/dir/repomix.config.ts');
-      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('defineConfig'));
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('export default'));
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.not.stringContaining("from 'repomix'"));
       expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.not.stringContaining('$schema'));
+    });
+
+    it('should reject writing config into a symlinked .config directory', async () => {
+      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValueOnce('dotconfig').mockResolvedValueOnce('json');
+      vi.mocked(prompts.group).mockResolvedValue({
+        outputFilePath: 'output.txt',
+        outputStyle: 'xml',
+      });
+      vi.mocked(fs.lstat).mockImplementation(async (candidatePath) => {
+        if (candidatePath === path.resolve('/test/dir/.config')) {
+          return { isSymbolicLink: () => true } as Awaited<ReturnType<typeof fs.lstat>>;
+        }
+        const error = new Error('File does not exist') as NodeJS.ErrnoException;
+        error.code = 'ENOENT';
+        throw error;
+      });
+
+      await expect(createConfigFile('/test/dir', false)).rejects.toThrow('Refusing to write through symbolic link');
+      expect(fs.writeFile).not.toHaveBeenCalled();
     });
 
     it('should create JavaScript config file', async () => {
@@ -341,12 +363,48 @@ describe('initAction', () => {
       expect(fs.writeFile).not.toHaveBeenCalled();
     });
 
+    it('should return false when user cancels overwrite confirmation for .repomixignore', async () => {
+      const mockCancelSymbol = Symbol('cancel');
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(prompts.confirm)
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(mockCancelSymbol as symbol);
+      vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
+
+      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+      const result = await createIgnoreFile('/test/dir', false);
+
+      expect(mockExit).toHaveBeenCalledWith(0);
+      expect(result).toBe(false);
+      expect(fs.writeFile).not.toHaveBeenCalled();
+
+      mockExit.mockRestore();
+    });
+
     it('should return false when user chooses not to create .repomixignore', async () => {
       vi.mocked(prompts.confirm).mockResolvedValue(false);
 
       const result = await createIgnoreFile('/test/dir', false);
 
       expect(result).toBe(false);
+      expect(fs.writeFile).not.toHaveBeenCalled();
+    });
+
+    it('should reject writing .repomixignore through a symbolic link', async () => {
+      const ignorePath = path.resolve('/test/dir/.repomixignore');
+      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(fs.lstat).mockImplementation(async (candidatePath) => {
+        if (candidatePath === ignorePath) {
+          return { isSymbolicLink: () => true } as Awaited<ReturnType<typeof fs.lstat>>;
+        }
+        const error = new Error('File does not exist') as NodeJS.ErrnoException;
+        error.code = 'ENOENT';
+        throw error;
+      });
+
+      await expect(createIgnoreFile('/test/dir', false)).rejects.toThrow('Refusing to write through symbolic link');
       expect(fs.writeFile).not.toHaveBeenCalled();
     });
 
