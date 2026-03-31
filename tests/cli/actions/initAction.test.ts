@@ -27,7 +27,7 @@ describe('initAction', () => {
         outputStyle: 'xml',
       });
       vi.mocked(prompts.confirm).mockResolvedValue(true);
-      vi.mocked(prompts.select).mockResolvedValue('root');
+      vi.mocked(prompts.select).mockResolvedValueOnce('root').mockResolvedValueOnce('json');
 
       await createConfigFile('/test/dir', false);
 
@@ -44,6 +44,7 @@ describe('initAction', () => {
         outputStyle: 'plain',
       });
       vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValueOnce('json');
       vi.mocked(getGlobalDirectory).mockImplementation(() => '/global/repomix');
 
       await createConfigFile('/test/dir', true);
@@ -58,7 +59,7 @@ describe('initAction', () => {
     it('should prompt to overwrite when config file already exists', async () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(prompts.confirm).mockResolvedValue(true);
-      vi.mocked(prompts.select).mockResolvedValue('root');
+      vi.mocked(prompts.select).mockResolvedValueOnce('root').mockResolvedValueOnce('json');
       vi.mocked(prompts.group).mockResolvedValue({
         outputFilePath: 'new-output.txt',
         outputStyle: 'xml',
@@ -73,7 +74,7 @@ describe('initAction', () => {
     it('should not overwrite when user chooses not to', async () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(prompts.confirm).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
-      vi.mocked(prompts.select).mockResolvedValue('root');
+      vi.mocked(prompts.select).mockResolvedValueOnce('root').mockResolvedValueOnce('json');
 
       await createConfigFile('/test/dir', false);
 
@@ -84,7 +85,7 @@ describe('initAction', () => {
     it('should handle user cancellation', async () => {
       vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
       vi.mocked(prompts.confirm).mockResolvedValue(true);
-      vi.mocked(prompts.select).mockResolvedValue('root');
+      vi.mocked(prompts.select).mockResolvedValueOnce('root').mockResolvedValueOnce('json');
       vi.mocked(prompts.group).mockImplementation(() => {
         throw new Error('User cancelled');
       });
@@ -122,7 +123,7 @@ describe('initAction', () => {
     it('should create config in .config/ directory with short name', async () => {
       vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
       vi.mocked(prompts.confirm).mockResolvedValue(true);
-      vi.mocked(prompts.select).mockResolvedValue('dotconfig');
+      vi.mocked(prompts.select).mockResolvedValueOnce('dotconfig').mockResolvedValueOnce('json');
       vi.mocked(prompts.group).mockResolvedValue({
         outputFilePath: 'output.txt',
         outputStyle: 'xml',
@@ -137,7 +138,7 @@ describe('initAction', () => {
     it('should create config in .config/ directory with full name', async () => {
       vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
       vi.mocked(prompts.confirm).mockResolvedValue(true);
-      vi.mocked(prompts.select).mockResolvedValue('dotconfig-full');
+      vi.mocked(prompts.select).mockResolvedValueOnce('dotconfig-full').mockResolvedValueOnce('json');
       vi.mocked(prompts.group).mockResolvedValue({
         outputFilePath: 'output.txt',
         outputStyle: 'xml',
@@ -167,7 +168,7 @@ describe('initAction', () => {
     it('should return false when user cancels via isCancel on overwrite confirmation', async () => {
       vi.mocked(fs.access).mockResolvedValue(undefined); // File exists
       vi.mocked(prompts.confirm).mockResolvedValueOnce(true); // Initial confirmation
-      vi.mocked(prompts.select).mockResolvedValue('root'); // Config location
+      vi.mocked(prompts.select).mockResolvedValueOnce('root').mockResolvedValueOnce('json'); // Config location + format
       const mockCancelSymbol = Symbol('cancel');
       vi.mocked(prompts.confirm).mockResolvedValueOnce(mockCancelSymbol as symbol); // Overwrite cancel
       vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
@@ -185,7 +186,7 @@ describe('initAction', () => {
     it('should return true when config file is successfully created', async () => {
       vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
       vi.mocked(prompts.confirm).mockResolvedValue(true);
-      vi.mocked(prompts.select).mockResolvedValue('root');
+      vi.mocked(prompts.select).mockResolvedValueOnce('root').mockResolvedValueOnce('json');
       vi.mocked(prompts.group).mockResolvedValue({
         outputFilePath: 'output.txt',
         outputStyle: 'xml',
@@ -195,6 +196,102 @@ describe('initAction', () => {
 
       expect(result).toBe(true);
       expect(fs.writeFile).toHaveBeenCalled();
+    });
+
+    it('should return false when user cancels format selection', async () => {
+      const mockCancelSymbol = Symbol('cancel');
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select)
+        .mockResolvedValueOnce('root')
+        .mockResolvedValueOnce(mockCancelSymbol as symbol);
+      vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
+
+      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+      await createConfigFile('/test/dir', false);
+
+      expect(mockExit).toHaveBeenCalledWith(0);
+      expect(fs.writeFile).not.toHaveBeenCalled();
+
+      mockExit.mockRestore();
+    });
+
+    it('should create YAML config file', async () => {
+      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValueOnce('root').mockResolvedValueOnce('yaml');
+      vi.mocked(prompts.group).mockResolvedValue({
+        outputFilePath: 'output.txt',
+        outputStyle: 'xml',
+      });
+
+      await createConfigFile('/test/dir', false);
+
+      const configPath = path.resolve('/test/dir/repomix.config.yaml');
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.not.stringContaining('{'));
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('filePath: output.txt'));
+    });
+
+    it('should create TOML config file', async () => {
+      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValueOnce('root').mockResolvedValueOnce('toml');
+      vi.mocked(prompts.group).mockResolvedValue({
+        outputFilePath: 'output.txt',
+        outputStyle: 'xml',
+      });
+
+      await createConfigFile('/test/dir', false);
+
+      const configPath = path.resolve('/test/dir/repomix.config.toml');
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('[output]'));
+    });
+
+    it('should create TypeScript config file with defineConfig', async () => {
+      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValueOnce('root').mockResolvedValueOnce('ts');
+      vi.mocked(prompts.group).mockResolvedValue({
+        outputFilePath: 'output.txt',
+        outputStyle: 'xml',
+      });
+
+      await createConfigFile('/test/dir', false);
+
+      const configPath = path.resolve('/test/dir/repomix.config.ts');
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('defineConfig'));
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.not.stringContaining('$schema'));
+    });
+
+    it('should create JavaScript config file', async () => {
+      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValueOnce('root').mockResolvedValueOnce('js');
+      vi.mocked(prompts.group).mockResolvedValue({
+        outputFilePath: 'output.txt',
+        outputStyle: 'xml',
+      });
+
+      await createConfigFile('/test/dir', false);
+
+      const configPath = path.resolve('/test/dir/repomix.config.js');
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('export default'));
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.not.stringContaining('$schema'));
+    });
+
+    it('should use short filename for dotconfig with non-JSON format', async () => {
+      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
+      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      vi.mocked(prompts.select).mockResolvedValueOnce('dotconfig').mockResolvedValueOnce('yaml');
+      vi.mocked(prompts.group).mockResolvedValue({
+        outputFilePath: 'output.txt',
+        outputStyle: 'xml',
+      });
+
+      await createConfigFile('/test/dir', false);
+
+      const configPath = path.resolve('/test/dir/.config/repomix.yaml');
+      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('filePath: output.txt'));
     });
   });
 
