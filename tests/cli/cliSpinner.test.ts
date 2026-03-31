@@ -23,6 +23,9 @@ vi.mock('picospinner', () => {
         mockPicoInstances.push(this);
       }
     },
+    renderer: {
+      terminalWidth: 80,
+    },
   };
 });
 
@@ -53,7 +56,7 @@ describe('cliSpinner', () => {
 
         spinner.update('Updated message');
 
-        expect(getLastPicoInstance().setText).toHaveBeenCalledWith('Updated message');
+        expect(getLastPicoInstance().setText).toHaveBeenCalledWith('Updated message', false);
       });
 
       it('should succeed with success message', () => {

@@ -98,6 +98,8 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
         FORCE_COLOR: process.env.FORCE_COLOR || (process.stdout.isTTY ? '1' : '0'),
         // Pass terminal capabilities
         TERM: process.env.TERM || 'xterm-256color',
+        // Pass terminal width for spinner line-clearing accuracy in child processes
+        COLUMNS: process.env.COLUMNS || process.stdout.columns?.toString() || '',
       },
     }),
   });
