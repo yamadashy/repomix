@@ -39,19 +39,51 @@ export const runInitAction = async (rootDir: string, isGlobal: boolean): Promise
 };
 
 export const createConfigFile = async (rootDir: string, isGlobal: boolean): Promise<boolean> => {
-  const configPath = path.resolve(isGlobal ? getGlobalDirectory() : rootDir, 'repomix.config.json');
-
   const isCreateConfig = await prompts.confirm({
-    message: `Do you want to create a ${isGlobal ? 'global ' : ''}${pc.green('repomix.config.json')} file?`,
+    message: `Do you want to create a ${isGlobal ? 'global ' : ''}Repomix config file?`,
   });
   if (!isCreateConfig) {
-    prompts.log.info(`Skipping ${pc.green('repomix.config.json')} file creation.`);
+    prompts.log.info('Skipping config file creation.');
     return false;
   }
   if (prompts.isCancel(isCreateConfig)) {
     onCancelOperation();
     return false;
   }
+
+  // Ask where to place the config file (skip for global — always uses global dir)
+  let configDir: string;
+  let configFileName: string;
+  if (isGlobal) {
+    configDir = getGlobalDirectory();
+    configFileName = 'repomix.config.json';
+  } else {
+    const configLocation = await prompts.select({
+      message: 'Where should the config file be placed?',
+      options: [
+        { value: 'root', label: 'Project root', hint: 'repomix.config.json' },
+        { value: 'dotconfig', label: '.config/ directory (short)', hint: '.config/repomix.json' },
+        { value: 'dotconfig-full', label: '.config/ directory (full)', hint: '.config/repomix.config.json' },
+      ],
+      initialValue: 'root',
+    });
+    if (prompts.isCancel(configLocation)) {
+      onCancelOperation();
+      return false;
+    }
+    if (configLocation === 'dotconfig') {
+      configDir = path.resolve(rootDir, '.config');
+      configFileName = 'repomix.json';
+    } else if (configLocation === 'dotconfig-full') {
+      configDir = path.resolve(rootDir, '.config');
+      configFileName = 'repomix.config.json';
+    } else {
+      configDir = rootDir;
+      configFileName = 'repomix.config.json';
+    }
+  }
+
+  const configPath = path.resolve(configDir, configFileName);
 
   let isConfigFileExists = false;
   try {
@@ -63,10 +95,10 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
 
   if (isConfigFileExists) {
     const isOverwrite = await prompts.confirm({
-      message: `A ${isGlobal ? 'global ' : ''}${pc.green('repomix.config.json')} file already exists. Do you want to overwrite it?`,
+      message: `A ${isGlobal ? 'global ' : ''}${pc.green(configFileName)} file already exists. Do you want to overwrite it?`,
     });
     if (!isOverwrite) {
-      prompts.log.info(`Skipping ${pc.green('repomix.config.json')} file creation.`);
+      prompts.log.info(`Skipping ${pc.green(configFileName)} file creation.`);
       return false;
     }
     if (prompts.isCancel(isOverwrite)) {
