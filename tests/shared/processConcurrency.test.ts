@@ -98,7 +98,7 @@ describe('processConcurrency', () => {
         runtime: 'child_process',
         minThreads: 1,
         maxThreads: 4, // Math.min(4, 500/100) = 4
-        idleTimeout: 5000,
+        idleTimeout: 100,
         teardown: 'onWorkerTermination',
         workerData: {
           workerType: 'fileProcess',
@@ -121,7 +121,7 @@ describe('processConcurrency', () => {
         runtime: 'worker_threads',
         minThreads: 1,
         maxThreads: 4, // Math.min(4, 500/100) = 4
-        idleTimeout: 5000,
+        idleTimeout: 100,
         teardown: 'onWorkerTermination',
         workerData: {
           workerType: 'securityCheck',

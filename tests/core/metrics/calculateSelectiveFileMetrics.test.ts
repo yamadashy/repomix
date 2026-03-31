@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { calculateSelectiveFileMetrics } from '../../../src/core/metrics/calculateSelectiveFileMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
+import {
+  countTokens,
+  countTokensBatch,
+  type TokenCountBatchTask,
+  type TokenCountTask,
+  type TokenCountWorkerResult,
+  type TokenCountWorkerTask,
+} from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 
@@ -9,14 +16,18 @@ vi.mock('../../shared/processConcurrency', () => ({
   getProcessConcurrency: () => 1,
 }));
 
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
+const mockInitTaskRunner = (_options: WorkerOptions) => {
   return {
-    run: async (task: T) => {
-      return (await countTokens(task as TokenCountTask)) as R;
+    run: async (task: TokenCountWorkerTask): Promise<TokenCountWorkerResult> => {
+      if ('batch' in task) {
+        return countTokensBatch(task as TokenCountBatchTask);
+      }
+      return countTokens(task as TokenCountTask);
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
     },
+    unref: () => {},
   };
 };
 

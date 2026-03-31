@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import XMLBuilder from 'fast-xml-builder';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -23,10 +22,72 @@ import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
 
-// Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
+// Lazy-load handlebars and fast-xml-builder to save ~22ms from the startup critical path.
+// These modules are loaded on first use during output generation, which runs after
+// file search (~175ms) + collection (~56ms) + security (~369ms) + processing (~56ms).
+// A preload mechanism (preloadOutputDeps) allows loading them during file search for zero cost.
+const esmRequire = createRequire(import.meta.url);
+// biome-ignore lint/suspicious/noExplicitAny: CJS interop - module shape varies between ESM default and CJS exports
+let _Handlebars: any;
+// biome-ignore lint/suspicious/noExplicitAny: CJS interop - fast-xml-builder exports vary by environment
+let _XMLBuilder: any;
+const getHandlebars = () => {
+  if (!_Handlebars) {
+    const mod = esmRequire('handlebars');
+    _Handlebars = mod.default || mod;
+  }
+  return _Handlebars;
+};
+const getXMLBuilder = () => {
+  if (!_XMLBuilder) {
+    const mod = esmRequire('fast-xml-builder');
+    _XMLBuilder = mod.default || mod;
+  }
+  return _XMLBuilder;
+};
 
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
+/**
+ * Preload heavy dependencies during an idle event loop tick.
+ * Call this at the start of the pipeline so modules are loaded during file search I/O
+ * rather than during output generation's critical path.
+ *
+ * For XML non-parsable output (the default), Handlebars is not needed — the direct
+ * XML renderer uses array.join() string construction. Skipping the Handlebars preload
+ * saves ~18ms of event loop blocking during file search and ~30ms of template
+ * compilation that would otherwise occur during output generation.
+ */
+export const preloadOutputDeps = (style?: string, parsableStyle?: boolean): void => {
+  // Schedule sync require for the next idle tick. During file search,
+  // the main thread is mostly idle (waiting for globby I/O), giving us
+  // free time to load these modules without affecting the critical path.
+  const needsHandlebars = style === 'markdown' || style === 'plain';
+  const needsXMLBuilder = style === 'xml' && !!parsableStyle;
+
+  // Skip preloading entirely when neither module is needed (xml non-parsable default).
+  if (!needsHandlebars && !needsXMLBuilder) {
+    return;
+  }
+
+  setImmediate(() => {
+    try {
+      if (needsHandlebars) {
+        getHandlebars();
+      }
+      if (needsXMLBuilder) {
+        getXMLBuilder();
+      }
+    } catch {
+      // Intentionally ignored - will fail with proper context at use site
+    }
+  });
+};
+
+// Cache for compiled Handlebars templates to avoid recompilation on every call
+const compiledTemplateCache = new Map<string, HandlebarsTemplateDelegate>();
+
+type HandlebarsTemplateDelegate = (context: unknown, options?: unknown) => string;
+
+const getCompiledTemplate = (style: string): HandlebarsTemplateDelegate => {
   const cached = compiledTemplateCache.get(style);
   if (cached) {
     return cached;
@@ -47,36 +108,94 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
       throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
   }
 
-  const compiled = Handlebars.compile(template);
+  const compiled = getHandlebars().compile(template);
   compiledTemplateCache.set(style, compiled);
   return compiled;
 };
 
-const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
-  const maxBackticks = files
-    .flatMap((file) => file.content.match(/`+/g) ?? [])
-    .reduce((max, match) => Math.max(max, match.length), 0);
-  return '`'.repeat(Math.max(3, maxBackticks + 1));
-};
+// Single-pass scan: counts newlines and tracks max consecutive backticks simultaneously.
+// Avoids two separate iterations over all file content. Each character is visited exactly once
+// to compute both line counts (for file summary) and markdown delimiter length.
+const calculateFileLineCountsAndDelimiter = (
+  processedFiles: ReadonlyArray<ProcessedFile>,
+  options: { needsLineCounts: boolean; needsDelimiter: boolean } = { needsLineCounts: true, needsDelimiter: true },
+): { lineCounts: Record<string, number>; markdownDelimiter: string } => {
+  // Skip the expensive content scan entirely when neither line counts nor delimiter are needed.
+  // For XML/JSON output (the default), this saves ~10ms by avoiding a full scan of ~3.6MB of content.
+  // Line counts are only used by skill generation (packSkill.ts), and the markdown delimiter
+  // is only used by markdown/plain style templates.
+  if (!options.needsLineCounts && !options.needsDelimiter) {
+    return { lineCounts: {}, markdownDelimiter: '```' };
+  }
 
-const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
   const lineCounts: Record<string, number> = {};
+  let globalMaxBackticks = 0;
+
   for (const file of processedFiles) {
-    // Count lines: empty files have 0 lines, otherwise count newlines + 1
-    // (unless the content ends with a newline, in which case the last "line" is empty)
     const content = file.content;
     if (content.length === 0) {
-      lineCounts[file.path] = 0;
-    } else {
-      // Count actual lines (text editor style: number of \n + 1, but trailing \n doesn't add extra line)
-      const newlineCount = (content.match(/\n/g) || []).length;
-      lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
+      if (options.needsLineCounts) {
+        lineCounts[file.path] = 0;
+      }
+      continue;
+    }
+
+    let newlineCount = 0;
+    let currentBackticks = 0;
+    let maxBackticks = 0;
+
+    for (let i = 0; i < content.length; i++) {
+      const ch = content.charCodeAt(i);
+      if (ch === 10) {
+        // newline
+        newlineCount++;
+        currentBackticks = 0;
+      } else if (ch === 96) {
+        // backtick
+        currentBackticks++;
+        if (currentBackticks > maxBackticks) {
+          maxBackticks = currentBackticks;
+        }
+      } else {
+        currentBackticks = 0;
+      }
+    }
+
+    if (options.needsLineCounts) {
+      lineCounts[file.path] = content.charCodeAt(content.length - 1) === 10 ? newlineCount : newlineCount + 1;
+    }
+
+    if (maxBackticks > globalMaxBackticks) {
+      globalMaxBackticks = maxBackticks;
     }
   }
-  return lineCounts;
+
+  return {
+    lineCounts,
+    markdownDelimiter: '`'.repeat(Math.max(3, globalMaxBackticks + 1)),
+  };
 };
 
-export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+/**
+ * Create a render context from the output generator context.
+ *
+ * @param options.needsLineCounts - Whether to compute per-file line counts.
+ *   Only needed by skill generation (packSkill → calculateStatistics).
+ *   Normal output templates (xml, markdown, plain, json) never reference fileLineCounts.
+ *   When false AND output style is xml/json, the entire ~3.6MB content scan is skipped (~10ms savings).
+ */
+export const createRenderContext = (
+  outputGeneratorContext: OutputGeneratorContext,
+  options: { needsLineCounts?: boolean } = {},
+): RenderContext => {
+  const style = outputGeneratorContext.config.output.style;
+  const needsDelimiter = style === 'markdown' || style === 'plain';
+  const needsLineCounts = options.needsLineCounts ?? false;
+  const { lineCounts, markdownDelimiter } = calculateFileLineCountsAndDelimiter(outputGeneratorContext.processedFiles, {
+    needsLineCounts,
+    needsDelimiter,
+  });
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -90,23 +209,112 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    fileLineCounts: lineCounts,
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    markdownCodeBlockDelimiter: markdownDelimiter,
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
     gitLogEnabled: outputGeneratorContext.config.output.git?.includeLogs,
     gitLogContent: outputGeneratorContext.gitLogResult?.logContent,
-    gitLogCommits: outputGeneratorContext.gitLogResult?.commits,
+    // Truncate commits to the configured display count. When sortByChanges is enabled,
+    // gitLogResult.commits may contain more commits than includeLogsCount (fetched for
+    // sorting purposes). Only the configured display count should appear in the output.
+    gitLogCommits: outputGeneratorContext.gitLogResult?.commits?.slice(
+      0,
+      outputGeneratorContext.config.output.git?.includeLogsCount ?? 50,
+    ),
   };
 };
 
+/**
+ * Direct XML renderer that bypasses Handlebars for the non-parsable XML style.
+ *
+ * Produces output identical to the Handlebars XML template but avoids:
+ * - Handlebars module load (~18ms)
+ * - Template compilation (~30ms on first call)
+ * - Handlebars interpreter overhead (~5ms per render)
+ *
+ * Uses array accumulator with join() for O(n) string construction.
+ * This is the default output path (style=xml, parsableStyle=false).
+ */
+const generateDirectXmlOutput = (renderContext: RenderContext): string => {
+  const parts: string[] = [];
+
+  if (renderContext.fileSummaryEnabled) {
+    parts.push(
+      renderContext.generationHeader,
+      '\n\n<file_summary>\nThis section contains a summary of this file.\n\n<purpose>\n',
+      renderContext.summaryPurpose,
+      '\n</purpose>\n\n<file_format>\n',
+      renderContext.summaryFileFormat,
+      '\n5. Multiple file entries, each consisting of:\n  - File path as an attribute\n  - Full contents of the file\n</file_format>\n\n<usage_guidelines>\n',
+      renderContext.summaryUsageGuidelines,
+      '\n</usage_guidelines>\n\n<notes>\n',
+      renderContext.summaryNotes,
+      '\n</notes>\n\n</file_summary>\n\n',
+    );
+  }
+
+  if (renderContext.headerText) {
+    parts.push('<user_provided_header>\n', renderContext.headerText, '\n</user_provided_header>\n\n');
+  }
+
+  if (renderContext.directoryStructureEnabled) {
+    parts.push('<directory_structure>\n', renderContext.treeString, '\n</directory_structure>\n\n');
+  }
+
+  if (renderContext.filesEnabled) {
+    parts.push("<files>\nThis section contains the contents of the repository's files.\n\n");
+    for (const file of renderContext.processedFiles) {
+      parts.push('<file path="', file.path, '">\n', file.content, '\n</file>\n\n');
+    }
+    parts.push('</files>\n');
+  }
+
+  if (renderContext.gitDiffEnabled) {
+    parts.push(
+      '\n<git_diffs>\n<git_diff_work_tree>\n',
+      renderContext.gitDiffWorkTree ?? '',
+      '\n</git_diff_work_tree>\n<git_diff_staged>\n',
+      renderContext.gitDiffStaged ?? '',
+      '\n</git_diff_staged>\n</git_diffs>\n',
+    );
+  }
+
+  if (renderContext.gitLogEnabled) {
+    parts.push('\n<git_logs>\n');
+    if (renderContext.gitLogCommits) {
+      for (const commit of renderContext.gitLogCommits) {
+        parts.push(
+          '<git_log_commit>\n<date>',
+          commit.date,
+          '</date>\n<message>',
+          commit.message,
+          '</message>\n<files>\n',
+        );
+        for (const file of commit.files) {
+          parts.push(file, '\n');
+        }
+        parts.push('</files>\n</git_log_commit>\n');
+      }
+    }
+    parts.push('</git_logs>\n');
+  }
+
+  if (renderContext.instruction) {
+    parts.push('\n<instruction>\n', renderContext.instruction, '\n</instruction>\n');
+  }
+
+  return `${parts.join('').trim()}\n`;
+};
+
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
-  const xmlBuilder = new XMLBuilder({ ignoreAttributes: false });
+  const XmlBuilderModule = getXMLBuilder();
+  const xmlBuilder = new XmlBuilderModule({ ignoreAttributes: false });
   const xmlDocument = {
     repomix: {
       file_summary: renderContext.fileSummaryEnabled
@@ -258,8 +466,11 @@ export const generateOutput = async (
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
   filePathsByRoot?: FilesByRoot[],
+  emptyDirPaths?: string[],
+  preComputedFileChangeCounts?: Record<string, number>,
   deps = {
     buildOutputGeneratorContext,
+    generateDirectXmlOutput,
     generateHandlebarOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
@@ -267,7 +478,12 @@ export const generateOutput = async (
   },
 ): Promise<string> => {
   // Sort processed files by git change count if enabled
-  const sortedProcessedFiles = await deps.sortOutputFiles(processedFiles, config);
+  const sortedProcessedFiles = await deps.sortOutputFiles(
+    processedFiles,
+    config,
+    undefined,
+    preComputedFileChangeCounts,
+  );
 
   const outputGeneratorContext = await deps.buildOutputGeneratorContext(
     rootDirs,
@@ -277,14 +493,19 @@ export const generateOutput = async (
     gitDiffResult,
     gitLogResult,
     filePathsByRoot,
+    emptyDirPaths,
   );
   const renderContext = createRenderContext(outputGeneratorContext);
 
   switch (config.output.style) {
     case 'xml':
-      return config.output.parsableStyle
-        ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+      if (config.output.parsableStyle) {
+        return deps.generateParsableXmlOutput(renderContext);
+      }
+      // Direct XML renderer bypasses Handlebars entirely, saving ~50ms of module load +
+      // template compilation on the default code path. Handlebars is only loaded when
+      // actually needed (markdown, plain styles).
+      return deps.generateDirectXmlOutput(renderContext);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':
@@ -303,6 +524,7 @@ export const buildOutputGeneratorContext = async (
   gitDiffResult: GitDiffResult | undefined = undefined,
   gitLogResult: GitLogResult | undefined = undefined,
   filePathsByRoot?: FilesByRoot[],
+  emptyDirPaths?: string[],
   deps = {
     listDirectories,
     listFiles,
@@ -356,16 +578,21 @@ export const buildOutputGeneratorContext = async (
       );
     }
   } else if (config.output.directoryStructure && config.output.includeEmptyDirectories) {
-    // Default behavior: include empty directories only
-    try {
-      const results = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
-      const merged = results.flatMap((r) => r.emptyDirPaths);
-      directoryPathsForTree = [...new Set(merged)].sort();
-    } catch (error) {
-      throw new RepomixError(
-        `Failed to search for empty directories: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? { cause: error } : undefined,
-      );
+    // Reuse pre-computed emptyDirPaths from the initial searchFiles call when available,
+    // avoiding a redundant full directory scan.
+    if (emptyDirPaths) {
+      directoryPathsForTree = emptyDirPaths;
+    } else {
+      try {
+        const results = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
+        const merged = results.flatMap((r) => r.emptyDirPaths);
+        directoryPathsForTree = [...new Set(merged)].sort();
+      } catch (error) {
+        throw new RepomixError(
+          `Failed to search for empty directories: ${error instanceof Error ? error.message : String(error)}`,
+          error instanceof Error ? { cause: error } : undefined,
+        );
+      }
     }
   }
 

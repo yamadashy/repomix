@@ -15,6 +15,7 @@ vi.mock('../../../src/core/git/gitDiffHandle.js', () => ({
 
 vi.mock('../../../src/core/git/gitRepositoryHandle.js', () => ({
   isGitRepository: vi.fn(),
+  getFileChangeCount: vi.fn(),
 }));
 
 describe('Git Diffs Functionality', () => {
@@ -74,6 +75,7 @@ index 123..456 100644
     const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
       run: vi.fn().mockResolvedValue(0),
       cleanup: vi.fn().mockResolvedValue(undefined),
+      unref: vi.fn(),
     });
 
     // Config with diffs disabled
@@ -88,8 +90,12 @@ index 123..456 100644
       validateFileSafety: mockValidateFileSafety,
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
-      createMetricsTaskRunner: mockCreateMetricsTaskRunner,
+      createMainThreadMetricsRunner: mockCreateMetricsTaskRunner,
+      createSecurityTaskRunner: vi
+        .fn()
+        .mockReturnValue({ run: vi.fn().mockResolvedValue(null), cleanup: vi.fn(), unref: vi.fn() }),
       sortPaths: mockSortPaths,
+      getFileChangeCount: vi.fn().mockResolvedValue(undefined),
     });
 
     // Should not call getWorkTreeDiff
@@ -129,6 +135,7 @@ index 123..456 100644
     const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
       run: vi.fn().mockResolvedValue(0),
       cleanup: vi.fn().mockResolvedValue(undefined),
+      unref: vi.fn(),
     });
 
     // Config with diffs enabled
@@ -143,8 +150,12 @@ index 123..456 100644
       validateFileSafety: mockValidateFileSafety,
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
-      createMetricsTaskRunner: mockCreateMetricsTaskRunner,
+      createMainThreadMetricsRunner: mockCreateMetricsTaskRunner,
+      createSecurityTaskRunner: vi
+        .fn()
+        .mockReturnValue({ run: vi.fn().mockResolvedValue(null), cleanup: vi.fn(), unref: vi.fn() }),
       sortPaths: mockSortPaths,
+      getFileChangeCount: vi.fn().mockResolvedValue(undefined),
     });
 
     // Check gitDiffTokenCount in the result

@@ -73,6 +73,7 @@ describe('defaultAction with tokenCountTree', () => {
         config: mockMergeConfigs.mock.results[mockMergeConfigs.mock.results.length - 1]?.value || {},
       })),
       cleanup: vi.fn().mockResolvedValue(undefined),
+      unref: vi.fn(),
     }));
   });
 

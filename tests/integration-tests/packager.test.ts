@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
 import type { RepomixConfigFile, RepomixConfigMerged, RepomixOutputStyle } from '../../src/config/configSchema.js';
 import { collectFiles } from '../../src/core/file/fileCollect.js';
-import { readRawFile } from '../../src/core/file/fileRead.js';
+import { readRawFileSync } from '../../src/core/file/fileRead.js';
 import { searchFiles } from '../../src/core/file/fileSearch.js';
 import type { ProcessedFile } from '../../src/core/file/fileTypes.js';
 import fileProcessWorker from '../../src/core/file/workers/fileProcessWorker.js';
@@ -94,7 +94,7 @@ describe.runIf(!isWindows)('packager integration', () => {
         sortPaths: (filePaths) => filePaths,
         collectFiles: (filePaths, rootDir, config, progressCallback) => {
           return collectFiles(filePaths, rootDir, config, progressCallback, {
-            readRawFile,
+            readRawFile: readRawFileSync,
           });
         },
         processFiles: async (rawFiles, config, _progressCallback) => {
@@ -109,15 +109,21 @@ describe.runIf(!isWindows)('packager integration', () => {
             workTreeDiffContent: '',
             stagedDiffContent: '',
           };
-          return validateFileSafety(rawFiles, progressCallback, config, gitDiffMock, undefined, {
+          return validateFileSafety(rawFiles, progressCallback, config, gitDiffMock, undefined, undefined, {
             runSecurityCheck: async () => [],
             filterOutUntrustedFiles,
           });
         },
+        createSecurityTaskRunner: () => ({
+          run: async () => null,
+          cleanup: async () => {},
+          unref: () => {},
+        }),
         produceOutput,
-        createMetricsTaskRunner: () => ({
+        createMainThreadMetricsRunner: () => ({
           run: async () => 0,
           cleanup: async () => {},
+          unref: () => {},
         }),
         calculateMetrics: async (
           processedFiles,

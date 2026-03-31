@@ -55,10 +55,17 @@ describe('packager', () => {
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
       }),
-      createMetricsTaskRunner: vi.fn().mockReturnValue({
+      createMainThreadMetricsRunner: vi.fn().mockReturnValue({
         run: vi.fn().mockResolvedValue(0),
         cleanup: vi.fn().mockResolvedValue(undefined),
+        unref: vi.fn(),
       }),
+      createSecurityTaskRunner: vi.fn().mockReturnValue({
+        run: vi.fn().mockResolvedValue(null),
+        cleanup: vi.fn().mockResolvedValue(undefined),
+        unref: vi.fn(),
+      }),
+      getFileChangeCount: vi.fn().mockResolvedValue(undefined),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -93,8 +100,9 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      expect.anything(),
     );
-    expect(mockDeps.processFiles).toHaveBeenCalledWith(mockSafeRawFiles, mockConfig, progressCallback);
+    expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
       ['root'],
       mockConfig,
@@ -104,6 +112,9 @@ describe('packager', () => {
       undefined,
       progressCallback,
       [{ rootLabel: 'root', files: mockFilePaths }],
+      [],
+      {},
+      undefined,
     );
     expect(mockDeps.calculateMetrics).toHaveBeenCalledWith(
       mockProcessedFiles,

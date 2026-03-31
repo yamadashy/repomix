@@ -17,6 +17,7 @@ const createStrictXmlParser = () => {
 describe('outputGenerate', () => {
   const mockDeps = {
     buildOutputGeneratorContext: vi.fn(),
+    generateDirectXmlOutput: vi.fn(),
     generateHandlebarOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
@@ -58,15 +59,18 @@ describe('outputGenerate', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
+      undefined,
       mockDeps,
     );
 
-    expect(mockDeps.sortOutputFiles).toHaveBeenCalledWith(mockProcessedFiles, mockConfig);
+    expect(mockDeps.sortOutputFiles).toHaveBeenCalledWith(mockProcessedFiles, mockConfig, undefined, undefined);
     expect(mockDeps.buildOutputGeneratorContext).toHaveBeenCalledWith(
       [process.cwd()],
       mockConfig,
       [],
       sortedFiles,
+      undefined,
       undefined,
       undefined,
       undefined,

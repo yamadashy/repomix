@@ -2,20 +2,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitLogResult } from '../../../src/core/git/gitLogHandle.js';
 import { calculateGitLogMetrics } from '../../../src/core/metrics/calculateGitLogMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
+import {
+  countTokens,
+  type TokenCountTask,
+  type TokenCountWorkerResult,
+  type TokenCountWorkerTask,
+} from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
 import type { TaskRunner, WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountTask, number> => {
+const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> => {
   return {
-    run: async (task: TokenCountTask) => {
-      return await countTokens(task);
+    run: async (task: TokenCountWorkerTask) => {
+      return await countTokens(task as TokenCountTask);
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
     },
+    unref: () => {},
   };
 };
 
@@ -169,9 +175,10 @@ describe('calculateGitLogMetrics', () => {
 
       const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(15);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -243,9 +250,10 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         commits: [],
       };
 
-      const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const errorTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -266,6 +274,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const errorTaskRunner = {
         run: vi.fn().mockRejectedValue(timeoutError),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -303,6 +312,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const errorTaskRunner = {
         run: vi.fn().mockRejectedValue(new Error('Test error')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -330,9 +340,10 @@ Date: Sun Dec 31 18:30:00 2022 +0000
 
       const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(10);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await calculateGitLogMetrics(configWithDifferentEncoding, gitLogResult, {
@@ -370,6 +381,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const errorTaskRunner = {
         run: vi.fn().mockRejectedValue(new Error('Test error')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {

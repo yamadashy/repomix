@@ -53,11 +53,18 @@ describe('packager split output', () => {
       }),
       getGitDiffs: vi.fn().mockResolvedValue(undefined),
       getGitLogs: vi.fn().mockResolvedValue(undefined),
+      getFileChangeCount: vi.fn().mockResolvedValue({}),
       produceOutput,
       calculateMetrics,
-      createMetricsTaskRunner: vi.fn().mockReturnValue({
+      createMainThreadMetricsRunner: vi.fn().mockReturnValue({
         run: vi.fn().mockResolvedValue(0),
         cleanup: vi.fn().mockResolvedValue(undefined),
+        unref: vi.fn(),
+      }),
+      createSecurityTaskRunner: vi.fn().mockReturnValue({
+        run: vi.fn().mockResolvedValue(null),
+        cleanup: vi.fn().mockResolvedValue(undefined),
+        unref: vi.fn(),
       }),
     });
 
@@ -70,6 +77,9 @@ describe('packager split output', () => {
       undefined,
       expect.any(Function),
       [{ rootLabel: 'root', files: allFilePaths }],
+      [],
+      {},
+      {},
     );
 
     expect(calculateMetrics).toHaveBeenCalledWith(

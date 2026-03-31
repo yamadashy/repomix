@@ -81,7 +81,7 @@ src/feature.ts`;
         },
       } as RepomixConfigMerged;
 
-      const result = await getGitLogs(['/project/src'], config, {
+      const result = await getGitLogs(['/project/src'], config, undefined, {
         getGitLog: mockGetGitLog,
       });
 
@@ -130,7 +130,7 @@ test.txt`);
         },
       } as RepomixConfigMerged;
 
-      await getGitLogs(['/project/src'], config, {
+      await getGitLogs(['/project/src'], config, undefined, {
         getGitLog: mockGetGitLog,
       });
 
@@ -148,7 +148,7 @@ test.txt`);
         },
       } as RepomixConfigMerged;
 
-      await getGitLogs(['/first/dir', '/second/dir'], config, {
+      await getGitLogs(['/first/dir', '/second/dir'], config, undefined, {
         getGitLog: mockGetGitLog,
       });
 
@@ -166,7 +166,7 @@ test.txt`);
         },
       } as RepomixConfigMerged;
 
-      await getGitLogs([], config, {
+      await getGitLogs([], config, undefined, {
         getGitLog: mockGetGitLog,
       });
 
@@ -186,12 +186,12 @@ test.txt`);
       } as RepomixConfigMerged;
 
       await expect(
-        getGitLogs(['/project'], config, {
+        getGitLogs(['/project'], config, undefined, {
           getGitLog: mockGetGitLog,
         }),
       ).rejects.toThrow(RepomixError);
       await expect(
-        getGitLogs(['/project'], config, {
+        getGitLogs(['/project'], config, undefined, {
           getGitLog: mockGetGitLog,
         }),
       ).rejects.toThrow('Failed to get git logs: git failed');
@@ -208,7 +208,7 @@ test.txt`);
         },
       } as RepomixConfigMerged;
 
-      const result = await getGitLogs(['/project'], config, {
+      const result = await getGitLogs(['/project'], config, undefined, {
         getGitLog: mockGetGitLog,
       });
 
@@ -232,7 +232,7 @@ test.txt`);
         },
       } as RepomixConfigMerged;
 
-      const result = await getGitLogs(['/project'], config, {
+      const result = await getGitLogs(['/project'], config, undefined, {
         getGitLog: mockGetGitLog,
       });
 
@@ -255,7 +255,7 @@ test.txt`);
         },
       } as RepomixConfigMerged;
 
-      const result = await getGitLogs(['/project'], config, {
+      const result = await getGitLogs(['/project'], config, undefined, {
         getGitLog: mockGetGitLog,
       });
 
@@ -282,7 +282,7 @@ test.txt`);
         },
       } as RepomixConfigMerged;
 
-      const result = await getGitLogs(['/project'], config, {
+      const result = await getGitLogs(['/project'], config, undefined, {
         getGitLog: mockGetGitLog,
       });
 

@@ -2,20 +2,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { calculateGitDiffMetrics } from '../../../src/core/metrics/calculateGitDiffMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
+import {
+  countTokens,
+  type TokenCountTask,
+  type TokenCountWorkerResult,
+  type TokenCountWorkerTask,
+} from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
 import type { TaskRunner, WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountTask, number> => {
+const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> => {
   return {
-    run: async (task: TokenCountTask) => {
-      return await countTokens(task);
+    run: async (task: TokenCountWorkerTask) => {
+      return await countTokens(task as TokenCountTask);
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
     },
+    unref: () => {},
   };
 };
 
@@ -172,9 +178,10 @@ describe('calculateGitDiffMetrics', () => {
         .mockResolvedValueOnce(5) // workTree tokens
         .mockResolvedValueOnce(3); // staged tokens
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
@@ -201,9 +208,10 @@ describe('calculateGitDiffMetrics', () => {
 
       const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(7);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
@@ -226,9 +234,10 @@ describe('calculateGitDiffMetrics', () => {
 
       const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(4);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
@@ -266,9 +275,10 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: 'some staged content',
       };
 
-      const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const errorTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await expect(
@@ -286,12 +296,13 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: 'staged content',
       };
 
-      const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const errorTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: vi
           .fn()
           .mockResolvedValueOnce(5) // First call succeeds
           .mockRejectedValueOnce(new Error('Second call fails')), // Second call fails
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await expect(
@@ -338,9 +349,10 @@ describe('calculateGitDiffMetrics', () => {
 
       const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(10);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountWorkerTask, TokenCountWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await calculateGitDiffMetrics(configWithDifferentEncoding, gitDiffResult, {

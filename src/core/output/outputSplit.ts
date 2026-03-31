@@ -58,7 +58,13 @@ export const buildOutputSplitGroups = (processedFiles: ProcessedFile[], allFileP
     }
   }
 
-  return [...groupsByRootEntry.values()].sort((a, b) => a.rootEntry.localeCompare(b.rootEntry));
+  return [...groupsByRootEntry.values()].sort((a, b) => {
+    const lowerA = a.rootEntry.toLowerCase();
+    const lowerB = b.rootEntry.toLowerCase();
+    if (lowerA < lowerB) return -1;
+    if (lowerA > lowerB) return 1;
+    return 0;
+  });
 };
 
 export const buildSplitOutputFilePath = (baseFilePath: string, partIndex: number): string => {
@@ -101,6 +107,8 @@ const renderGroups = async (
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
   filePathsByRoot: FilesByRoot[] | undefined,
+  emptyDirPaths: string[] | undefined,
+  preComputedFileChangeCounts: Record<string, number> | undefined,
   generateOutput: GenerateOutputFn,
 ): Promise<string> => {
   const chunkProcessedFiles = groupsToRender.flatMap((g) => g.processedFiles);
@@ -115,6 +123,8 @@ const renderGroups = async (
     partIndex === 1 ? gitDiffResult : undefined,
     partIndex === 1 ? gitLogResult : undefined,
     filePathsByRoot,
+    emptyDirPaths,
+    preComputedFileChangeCounts,
   );
 };
 
@@ -128,6 +138,8 @@ export const generateSplitOutputParts = async ({
   gitLogResult,
   progressCallback,
   filePathsByRoot,
+  emptyDirPaths,
+  preComputedFileChangeCounts,
   deps,
 }: {
   rootDirs: string[];
@@ -139,6 +151,8 @@ export const generateSplitOutputParts = async ({
   gitLogResult: GitLogResult | undefined;
   progressCallback: RepomixProgressCallback;
   filePathsByRoot?: FilesByRoot[];
+  emptyDirPaths?: string[];
+  preComputedFileChangeCounts?: Record<string, number>;
   deps: {
     generateOutput: GenerateOutputFn;
   };
@@ -178,6 +192,8 @@ export const generateSplitOutputParts = async ({
       gitDiffResult,
       gitLogResult,
       filePathsByRoot,
+      emptyDirPaths,
+      preComputedFileChangeCounts,
       deps.generateOutput,
     );
     const nextBytes = getUtf8ByteLength(nextContent);
@@ -215,6 +231,8 @@ export const generateSplitOutputParts = async ({
       gitDiffResult,
       gitLogResult,
       filePathsByRoot,
+      emptyDirPaths,
+      preComputedFileChangeCounts,
       deps.generateOutput,
     );
     const singleGroupBytes = getUtf8ByteLength(singleGroupContent);

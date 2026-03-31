@@ -83,6 +83,7 @@ export const getGitLog = async (
 export const getGitLogs = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
+  sortMaxCommits?: number,
   deps = {
     getGitLog,
   },
@@ -95,15 +96,28 @@ export const getGitLogs = async (
       // Use the first directory as the git repository root
       // Usually this would be the root of the project
       const gitRoot = rootDirs[0] || config.cwd;
-      const maxCommits = config.output.git?.includeLogsCount || 50;
-      const logContent = await deps.getGitLog(gitRoot, maxCommits);
+      const displayCount = config.output.git?.includeLogsCount || 50;
+      // Fetch enough commits for both display and sorting in a single subprocess.
+      // When sortByChanges needs more commits than display (e.g., 100 vs 50),
+      // this eliminates a separate getFileChangeCount subprocess (~80ms).
+      const fetchCount = sortMaxCommits ? Math.max(displayCount, sortMaxCommits) : displayCount;
+      const rawLogContent = await deps.getGitLog(gitRoot, fetchCount);
 
       // Parse the raw log content into structured commits
-      const commits = parseGitLog(logContent);
+      const allCommits = parseGitLog(rawLogContent);
+
+      // Truncate logContent and display commits to the configured display count
+      // so that output is unchanged (only displayCount commits appear in the output).
+      // Extra commits beyond displayCount are only used for sortByChanges derivation.
+      let logContent = rawLogContent;
+      if (allCommits.length > displayCount) {
+        const entries = rawLogContent.split(GIT_LOG_RECORD_SEPARATOR).filter(Boolean);
+        logContent = entries.slice(0, displayCount).join(GIT_LOG_RECORD_SEPARATOR);
+      }
 
       gitLogResult = {
         logContent,
-        commits,
+        commits: allCommits,
       };
     } catch (error) {
       throw new RepomixError(`Failed to get git logs: ${(error as Error).message}`, { cause: error });

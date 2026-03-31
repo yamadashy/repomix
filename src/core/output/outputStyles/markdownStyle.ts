@@ -1,9 +1,9 @@
 import { registerHandlebarsHelpers } from '../outputStyleUtils.js';
 
-// Register Handlebars helpers (idempotent)
-registerHandlebarsHelpers();
-
 export const getMarkdownTemplate = () => {
+  // Register Handlebars helpers on first use (deferred from module level
+  // to avoid loading handlebars during startup import chain)
+  registerHandlebarsHelpers();
   return /* md */ `
 {{#if fileSummaryEnabled}}
 {{{generationHeader}}}

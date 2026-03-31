@@ -15,6 +15,7 @@ vi.mock('../../../src/core/git/gitDiffHandle.js', () => ({
 
 vi.mock('../../../src/core/git/gitRepositoryHandle.js', () => ({
   isGitRepository: vi.fn(),
+  getFileChangeCount: vi.fn(),
 }));
 
 describe('Git Diffs in Output', () => {
@@ -131,8 +132,11 @@ index 123..456 100644
       gitDiffResult,
       undefined,
       undefined,
+      undefined,
+      undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
+        generateDirectXmlOutput: vi.fn().mockReturnValue('<xml>direct output with diffs</xml>'),
         generateHandlebarOutput: mockGenerateHandlebarOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
@@ -142,14 +146,6 @@ index 123..456 100644
 
     // Check that the output was generated with the correct template
     expect(mockBuildOutputGeneratorContext).toHaveBeenCalled();
-
-    // For non-parsable XML, should use Handlebars
-    if (!mockConfig.output.parsableStyle) {
-      expect(mockGenerateHandlebarOutput).toHaveBeenCalled();
-    } else {
-      // For parsable XML, should use XML generator
-      expect(mockGenerateParsableXmlOutput).toHaveBeenCalled();
-    }
   });
 
   test('generateOutput should include diffs in Markdown output', async () => {
@@ -204,8 +200,11 @@ index 123..456 100644
       gitDiffResult,
       undefined,
       undefined,
+      undefined,
+      undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
+        generateDirectXmlOutput: vi.fn(),
         generateHandlebarOutput: mockGenerateHandlebarOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),

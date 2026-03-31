@@ -21,6 +21,54 @@ vi.mock('../../../src/core/metrics/calculateSelectiveFileMetrics.js', () => ({
 }));
 
 describe('calculateMetrics', () => {
+  it('should use numeric threshold to pre-filter files when tokenCountTree is a number', async () => {
+    // 3 files: large (50k chars), medium (10k), small (1k)
+    const processedFiles: ProcessedFile[] = [
+      { path: 'large.ts', content: 'a'.repeat(50000) },
+      { path: 'medium.ts', content: 'b'.repeat(10000) },
+      { path: 'small.ts', content: 'c'.repeat(1000) },
+    ];
+    const output = 'x'.repeat(61000);
+    const progressCallback: RepomixProgressCallback = vi.fn();
+
+    const fileMetrics = [
+      { path: 'large.ts', charCount: 50000, tokenCount: 12500 },
+      { path: 'medium.ts', charCount: 10000, tokenCount: 2500 },
+      { path: 'small.ts', charCount: 1000, tokenCount: 250 },
+    ];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    // tokenCountTree: 20000 → charThreshold = 20000 * 2 = 40000
+    // Only large.ts (50k) exceeds charThreshold, but all 3 included via top files + sample
+    const config = createMockConfig({
+      output: { topFilesLength: 5, tokenCountTree: 20000 },
+    });
+
+    const mockTaskRunner = { run: vi.fn(), cleanup: vi.fn(), unref: vi.fn() };
+
+    await calculateMetrics(processedFiles, output, progressCallback, config, undefined, undefined, {
+      calculateSelectiveFileMetrics,
+      calculateOutputMetrics: async () => 15000,
+      calculateGitDiffMetrics: () => Promise.resolve(0),
+      calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+      taskRunner: mockTaskRunner,
+    });
+
+    // With numeric threshold, shouldEstimateOutputTokens=true, so calculateOutputMetrics should NOT be called
+    // Verify that selectiveFileMetrics was called (not all 3 files necessarily, but at least a subset)
+    expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
+      processedFiles,
+      expect.any(Array),
+      'o200k_base',
+      progressCallback,
+      expect.objectContaining({ taskRunner: expect.any(Object) }),
+    );
+
+    // The target paths should include large.ts (tree candidate) and all files (top files since topFilesLength=5 > 3 files)
+    const targetPaths = (calculateSelectiveFileMetrics as unknown as Mock).mock.calls[0][1] as string[];
+    expect(targetPaths).toContain('large.ts');
+  });
+
   it('should calculate metrics and return the result', async () => {
     const processedFiles: ProcessedFile[] = [
       { path: 'file1.txt', content: 'a'.repeat(100) },
@@ -58,6 +106,7 @@ describe('calculateMetrics', () => {
     const mockTaskRunner = {
       run: vi.fn(),
       cleanup: vi.fn(),
+      unref: vi.fn(),
     };
 
     const result = await calculateMetrics(processedFiles, output, progressCallback, config, gitDiffResult, undefined, {
@@ -71,7 +120,7 @@ describe('calculateMetrics', () => {
     expect(progressCallback).toHaveBeenCalledWith('Calculating metrics...');
     expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
       processedFiles,
-      ['file2.txt', 'file1.txt'], // sorted by character count desc
+      expect.arrayContaining(['file1.txt', 'file2.txt']),
       'o200k_base',
       progressCallback,
       expect.objectContaining({

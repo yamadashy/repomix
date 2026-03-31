@@ -1,7 +1,20 @@
 /**
  * Shared utilities for output style generation.
  */
-import Handlebars from 'handlebars';
+import { createRequire } from 'node:module';
+
+// Lazy-load handlebars to avoid ~18ms import cost at startup.
+// Handlebars is only needed when registerHandlebarsHelpers is called.
+const esmRequire = createRequire(import.meta.url);
+// biome-ignore lint/suspicious/noExplicitAny: CJS interop
+let _Handlebars: any;
+const getHandlebars = () => {
+  if (!_Handlebars) {
+    const mod = esmRequire('handlebars');
+    _Handlebars = mod.default || mod;
+  }
+  return _Handlebars;
+};
 
 /**
  * Map of file extensions to syntax highlighting language names.
@@ -235,7 +248,7 @@ export const registerHandlebarsHelpers = (): void => {
     return;
   }
 
-  Handlebars.registerHelper('getFileExtension', (filePath: string) => {
+  getHandlebars().registerHelper('getFileExtension', (filePath: string) => {
     return getLanguageFromFilePath(filePath);
   });
 

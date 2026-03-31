@@ -98,13 +98,19 @@ export const sortOutputFiles = async (
     getFileChangeCount,
     isGitInstalled,
   },
+  preComputedFileChangeCounts?: Record<string, number>,
 ): Promise<ProcessedFile[]> => {
   if (!config.output.git?.sortByChanges) {
     logger.trace('Git sort is not enabled');
     return files;
   }
 
-  const fileChangeCounts = await getFileChangeCounts(config.cwd, config.output.git?.sortByChangesMaxCommits, deps);
+  // Use pre-computed file change counts when available, avoiding extra git subprocess spawns.
+  // Pre-computed counts are derived from gitLogResult.commits in the packager pipeline,
+  // or pre-fetched in parallel with file collection.
+  const fileChangeCounts =
+    preComputedFileChangeCounts ??
+    (await getFileChangeCounts(config.cwd, config.output.git?.sortByChangesMaxCommits, deps));
 
   if (!fileChangeCounts) {
     return files;

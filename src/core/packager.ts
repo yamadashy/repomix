@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
+import { getProcessConcurrency } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -9,12 +10,29 @@ import { searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
+import type { GitLogCommit } from './git/gitLogHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { getFileChangeCount } from './git/gitRepositoryHandle.js';
+import { calculateMetrics, createMainThreadMetricsRunner } from './metrics/calculateMetrics.js';
+import { preloadOutputDeps } from './output/outputGenerate.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
-import { packSkill } from './skill/packSkill.js';
+
+/**
+ * Derive file change counts from already-fetched git log commits.
+ * This avoids spawning a separate `git log --name-only` subprocess during output generation
+ * by reusing the commit data from getGitLogs which already includes file lists.
+ */
+const deriveFileChangeCounts = (commits: GitLogCommit[]): Record<string, number> => {
+  const counts: Record<string, number> = {};
+  for (const commit of commits) {
+    for (const file of commit.files) {
+      counts[file] = (counts[file] || 0) + 1;
+    }
+  }
+  return counts;
+};
 
 export interface PackResult {
   totalFiles: number;
@@ -40,11 +58,16 @@ const defaultDeps = {
   validateFileSafety,
   produceOutput,
   calculateMetrics,
-  createMetricsTaskRunner,
+  createMainThreadMetricsRunner,
+  createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
-  packSkill,
+  getFileChangeCount,
+  packSkill: async (...args: Parameters<typeof import('./skill/packSkill.js').packSkill>) => {
+    const { packSkill } = await import('./skill/packSkill.js');
+    return packSkill(...args);
+  },
 };
 
 export interface PackOptions {
@@ -69,15 +92,40 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
+  // Metrics runner strategy: main-thread gpt-tokenizer with background preload.
+  //
+  // With gpt-tokenizer (pure JS, ~145ms load), worker thread overhead (spawn ~50ms +
+  // IPC ~20-30ms + CPU contention on 2-vCPU CI) exceeds the benefit for the ~20 file
+  // + 2 git tasks that remain after output token estimation. The main-thread runner
+  // starts loading gpt-tokenizer immediately via dynamic import, which progresses
+  // during the pipeline's async I/O waits (git subprocesses, security workers).
+  // By metrics time, the module is typically already loaded.
+  const metricsTaskRunner = deps.createMainThreadMetricsRunner(config.tokenCount.encoding);
+  const securityTaskRunner = config.security.enableSecurityCheck
+    ? deps.createSecurityTaskRunner(getProcessConcurrency() * 100)
+    : undefined;
+
+  // Security warmup is fire-and-forget: 1 worker suffices for ~6 pre-filtered files.
+  securityTaskRunner?.run({ filePath: 'warmup.txt', content: '', type: 'file' }).catch(() => null);
+
+  // Preload heavy output dependencies in background. For XML non-parsable (default),
+  // no preloading is needed — the direct XML renderer avoids Handlebars entirely.
+  preloadOutputDeps(config.output.style, config.output.parsableStyle);
+
   progressCallback('Searching for files...');
-  const filePathsByDir = await withMemoryLogging('Search Files', async () =>
+  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
-      rootDirs.map(async (rootDir) => ({
-        rootDir,
-        filePaths: (await deps.searchFiles(rootDir, config, explicitFiles)).filePaths,
-      })),
+      rootDirs.map(async (rootDir) => {
+        const result = await deps.searchFiles(rootDir, config, explicitFiles);
+        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+      }),
     ),
   );
+
+  const filePathsByDir = searchResultsByDir.map(({ rootDir, filePaths }) => ({ rootDir, filePaths }));
+  // Deduplicate and sort empty directory paths for reuse during output generation,
+  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
+  const emptyDirPaths = [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort();
 
   // Sort file paths
   progressCallback('Sorting files...');
@@ -91,19 +139,26 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap tiktoken WASM loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers tiktoken
-  // initialization in the worker thread without blocking the main pipeline.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const warmupPromise = metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0); // Suppress unhandled rejection; errors surface when awaited
-
   try {
+    // Determine if we need extra commits for sortByChanges beyond the display count.
+    // When git logs are enabled, getGitLogs fetches max(displayCount, sortMaxCommits) commits
+    // in a single subprocess, eliminating the need for a separate getFileChangeCount call.
+    // When git logs are disabled, getFileChangeCount is still needed as a separate subprocess.
+    const sortByChanges = config.output.git?.sortByChanges;
+    const sortMaxCommits = config.output.git?.sortByChangesMaxCommits ?? 100;
+    const logsEnabled = config.output.git?.includeLogs;
+    const needsSeparateChangeCount = sortByChanges && !logsEnabled;
+    const gitRoot = rootDirs[0] || config.cwd;
+
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
-    // Neither depends on the other's results.
+    // - getFileChangeCount spawns git log --name-only (only when logs are disabled)
+    // When logs are enabled, getGitLogs consolidates both display and sort needs into
+    // a single git subprocess, reducing subprocess count from 7 to 4 (with isGitRepository
+    // deduplication). This lowers CPU contention during the parallel stage.
     progressCallback('Collecting files...');
-    const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
+    const [collectResults, gitDiffResult, gitLogResult, parallelFileChangeCounts] = await Promise.all([
       withMemoryLogging(
         'Collect Files',
         async () =>
@@ -114,31 +169,44 @@ export const pack = async (
           ),
       ),
       deps.getGitDiffs(rootDirs, config),
-      deps.getGitLogs(rootDirs, config),
+      deps.getGitLogs(rootDirs, config, sortByChanges ? sortMaxCommits : undefined),
+      needsSeparateChangeCount
+        ? deps.getFileChangeCount(gitRoot, sortMaxCommits).catch(() => undefined)
+        : Promise.resolve(undefined),
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Run security check and get filtered safe files
-    const { safeFilePaths, safeRawFiles, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-      await withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
-      );
+    // Run security check and file processing in parallel.
+    // Processing (truncateBase64, removeEmptyLines, trim, showLineNumbers) is independent
+    // per file and doesn't depend on security results. By running both concurrently,
+    // the shorter stage (process ~28ms) overlaps with the longer stage (security ~40ms),
+    // saving ~28ms from the critical path. Suspicious files (~0-5 out of ~1000) are
+    // filtered from the processed results after both complete.
+    progressCallback('Running security check...');
+    const [securityResult, allProcessedFiles] = await Promise.all([
+      withMemoryLogging('Security Check', () =>
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, securityTaskRunner),
+      ),
+      withMemoryLogging('Process Files', () => deps.processFiles(rawFiles, config, progressCallback)),
+    ]);
 
-    // Process files (remove comments, etc.)
-    progressCallback('Processing files...');
-    const processedFiles = await withMemoryLogging('Process Files', () =>
-      deps.processFiles(safeRawFiles, config, progressCallback),
-    );
+    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = securityResult;
+
+    // Unref security workers so they don't block process exit, but avoid awaiting
+    // pool.destroy() which blocks the pipeline for ~100-200ms while terminating threads.
+    // Workers will terminate on their own via idle timeout (100ms).
+    securityTaskRunner?.unref();
+
+    // Filter out suspicious files from processed results
+    const safePathSet = new Set(safeFilePaths);
+    const processedFiles = allProcessedFiles.filter((file) => safePathSet.has(file.path));
 
     progressCallback('Generating output...');
 
     // Check if skill generation is requested
     if (config.skillGenerate !== undefined && options.skillDir) {
-      // Await warmup to ensure graceful worker shutdown (avoid terminating WASM-loading thread)
-      await warmupPromise;
-
       const result = await deps.packSkill({
         rootDirs,
         config,
@@ -167,8 +235,17 @@ export const pack = async (
       files: filePaths,
     }));
 
+    // Derive file change counts from git log commits when available.
+    // When logs are enabled, getGitLogs already fetched max(displayCount, sortMaxCommits)
+    // commits, so we can always derive file change counts from the parsed commits.
+    // Falls back to parallelFileChangeCounts when git logs are disabled.
+    const canDeriveFromLogs = config.output.git?.sortByChanges && gitLogResult?.commits;
+    const preComputedFileChangeCounts = canDeriveFromLogs
+      ? deriveFileChangeCounts(gitLogResult.commits)
+      : parallelFileChangeCounts;
+
     // Generate and write output (handles both single and split output)
-    const { outputFiles, outputForMetrics } = await deps.produceOutput(
+    const { outputFiles, outputForMetrics, writeComplete } = await deps.produceOutput(
       rootDirs,
       config,
       processedFiles,
@@ -177,16 +254,23 @@ export const pack = async (
       gitLogResult,
       progressCallback,
       filePathsByRoot,
+      emptyDirPaths,
+      {},
+      preComputedFileChangeCounts,
     );
 
-    // Ensure warm-up task completes before metrics calculation
-    await warmupPromise;
-
-    const metrics = await withMemoryLogging('Calculate Metrics', () =>
-      deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
-        taskRunner: metricsTaskRunner,
-      }),
-    );
+    // Run metrics calculation on main thread while disk write completes.
+    // gpt-tokenizer was pre-loaded via dynamic import during pipeline async stages.
+    // Output tokens are estimated from file char/token ratios, leaving only ~15 file
+    // + 2 git tasks — lightweight enough for main-thread execution without IPC overhead.
+    const [metrics] = await Promise.all([
+      withMemoryLogging('Calculate Metrics', () =>
+        deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
+          taskRunner: metricsTaskRunner,
+        }),
+      ),
+      writeComplete,
+    ]);
 
     // Create a result object that includes metrics and security results
     const result = {
@@ -204,6 +288,7 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsTaskRunner.cleanup();
+    // Main-thread runner has no worker threads to unref, but call for API compatibility.
+    metricsTaskRunner.unref();
   }
 };

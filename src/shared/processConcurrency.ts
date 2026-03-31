@@ -12,6 +12,7 @@ export interface WorkerOptions {
   numOfTasks: number;
   workerType: WorkerType;
   runtime: WorkerRuntime;
+  idleTimeout?: number;
 }
 
 /**
@@ -62,7 +63,7 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
-  const { numOfTasks, workerType, runtime = 'child_process' } = options;
+  const { numOfTasks, workerType, runtime = 'child_process', idleTimeout = 100 } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
 
   // Get worker path - uses unified worker in bundled env, individual files otherwise
@@ -79,7 +80,7 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
     runtime,
     minThreads,
     maxThreads,
-    idleTimeout: 5000,
+    idleTimeout,
     teardown: 'onWorkerTermination',
     workerData: {
       workerType,
@@ -136,6 +137,12 @@ export const cleanupWorkerPool = async (pool: Tinypool): Promise<void> => {
 export interface TaskRunner<T, R> {
   run: (task: T) => Promise<R>;
   cleanup: () => Promise<void>;
+  /**
+   * Unref all worker threads so they don't prevent process exit.
+   * Call this when the pool's work is complete and the process may exit soon.
+   * Workers will continue running until idle timeout but won't block process termination.
+   */
+  unref: () => void;
 }
 
 export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> => {
@@ -143,5 +150,12 @@ export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> =
   return {
     run: (task: T) => pool.run(task),
     cleanup: () => cleanupWorkerPool(pool),
+    unref: () => {
+      for (const thread of pool.threads) {
+        if (thread && typeof (thread as { unref?: () => void }).unref === 'function') {
+          (thread as { unref: () => void }).unref();
+        }
+      }
+    },
   };
 };

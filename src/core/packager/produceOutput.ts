@@ -13,6 +13,9 @@ import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDi
 export interface ProduceOutputResult {
   outputFiles?: string[];
   outputForMetrics: string | string[];
+  /** Promise that resolves when disk write and clipboard copy complete.
+   * Returned for single output mode to allow overlapping I/O with metrics. */
+  writeComplete?: Promise<void>;
 }
 
 const defaultDeps = {
@@ -30,7 +33,9 @@ export const produceOutput = async (
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
   filePathsByRoot?: FilesByRoot[],
+  emptyDirPaths?: string[],
   overrideDeps: Partial<typeof defaultDeps> = {},
+  preComputedFileChangeCounts?: Record<string, number>,
 ): Promise<ProduceOutputResult> => {
   const deps = { ...defaultDeps, ...overrideDeps };
 
@@ -47,7 +52,9 @@ export const produceOutput = async (
       gitLogResult,
       progressCallback,
       filePathsByRoot,
+      emptyDirPaths,
       deps,
+      preComputedFileChangeCounts,
     );
   }
 
@@ -60,7 +67,9 @@ export const produceOutput = async (
     gitLogResult,
     progressCallback,
     filePathsByRoot,
+    emptyDirPaths,
     deps,
+    preComputedFileChangeCounts,
   );
 };
 
@@ -74,7 +83,9 @@ const generateAndWriteSplitOutput = async (
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
   filePathsByRoot: FilesByRoot[] | undefined,
+  emptyDirPaths: string[] | undefined,
   deps: typeof defaultDeps,
+  preComputedFileChangeCounts?: Record<string, number>,
 ): Promise<ProduceOutputResult> => {
   const parts = await withMemoryLogging('Generate Split Output', async () => {
     return await generateSplitOutputParts({
@@ -87,6 +98,8 @@ const generateAndWriteSplitOutput = async (
       gitLogResult,
       progressCallback,
       filePathsByRoot,
+      emptyDirPaths,
+      preComputedFileChangeCounts,
       deps: {
         generateOutput: deps.generateOutput,
       },
@@ -125,18 +138,34 @@ const generateAndWriteSingleOutput = async (
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
   filePathsByRoot: FilesByRoot[] | undefined,
+  emptyDirPaths: string[] | undefined,
   deps: typeof defaultDeps,
+  preComputedFileChangeCounts?: Record<string, number>,
 ): Promise<ProduceOutputResult> => {
   const output = await withMemoryLogging('Generate Output', () =>
-    deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult, filePathsByRoot),
+    deps.generateOutput(
+      rootDirs,
+      config,
+      processedFiles,
+      allFilePaths,
+      gitDiffResult,
+      gitLogResult,
+      filePathsByRoot,
+      emptyDirPaths,
+      preComputedFileChangeCounts,
+    ),
   );
 
+  // Start disk write and clipboard copy without awaiting, so the caller can
+  // overlap these I/O operations with metrics calculation.
   progressCallback('Writing output file...');
-  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
-
-  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  const writeComplete = (async () => {
+    await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+    await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  })();
 
   return {
     outputForMetrics: output,
+    writeComplete,
   };
 };
