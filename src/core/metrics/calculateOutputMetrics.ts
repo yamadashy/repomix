@@ -3,8 +3,10 @@ import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
-const CHUNK_SIZE = 1000;
-const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1000KB
+// Target size per chunk in characters for parallel token counting.
+// 100KB balances tokenizer efficiency with parallelism across worker threads.
+const TARGET_CHARS_PER_CHUNK = 100_000;
+const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1MB
 
 export const calculateOutputMetrics = async (
   content: string,
@@ -21,12 +23,13 @@ export const calculateOutputMetrics = async (
     let result: number;
 
     if (shouldRunInParallel) {
-      // Split content into chunks for parallel processing
-      const chunkSize = Math.ceil(content.length / CHUNK_SIZE);
+      // Split content into chunks for parallel processing.
+      // Previous code created ~1000 tiny chunks (~1-2KB each), causing worker thread
+      // communication overhead to dominate. Now we create ~10-40 chunks of ~100KB each.
       const chunks: string[] = [];
 
-      for (let i = 0; i < content.length; i += chunkSize) {
-        chunks.push(content.slice(i, i + chunkSize));
+      for (let i = 0; i < content.length; i += TARGET_CHARS_PER_CHUNK) {
+        chunks.push(content.slice(i, i + TARGET_CHARS_PER_CHUNK));
       }
 
       // Process chunks in parallel

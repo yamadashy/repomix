@@ -113,8 +113,9 @@ describe('calculateOutputMetrics', () => {
       taskRunner: mockParallelTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
-    expect(chunksProcessed).toBeGreaterThan(1); // Should have processed multiple chunks
-    expect(result).toBe(100_000); // 1000 chunks * 100 tokens per chunk
+    // 1.1MB / 100KB per chunk = 11 chunks
+    expect(chunksProcessed).toBe(11);
+    expect(result).toBe(11 * 100); // 11 chunks * 100 tokens per chunk
   });
 
   it('should handle errors in parallel processing', async () => {
@@ -168,12 +169,16 @@ describe('calculateOutputMetrics', () => {
       }),
     });
 
-    // Check that chunks are roughly equal in size
-    const _expectedChunkSize = Math.ceil(content.length / 1000); // CHUNK_SIZE is 1000
+    // 1.1MB / 100KB per chunk = 11 chunks
     const chunkSizes = processedChunks.map((chunk) => chunk.length);
 
-    expect(processedChunks.length).toBe(1000); // Should have 1000 chunks
-    expect(Math.max(...chunkSizes) - Math.min(...chunkSizes)).toBeLessThanOrEqual(1); // Chunks should be almost equal in size
+    expect(processedChunks.length).toBe(11);
+    // All chunks except the last should be exactly TARGET_CHARS_PER_CHUNK (100,000)
+    for (let i = 0; i < chunkSizes.length - 1; i++) {
+      expect(chunkSizes[i]).toBe(100_000);
+    }
+    // 1,100,000 divides evenly into 11 chunks of 100,000 each
+    expect(chunkSizes[chunkSizes.length - 1]).toBe(100_000);
     expect(processedChunks.join('')).toBe(content); // All content should be processed
   });
 });
