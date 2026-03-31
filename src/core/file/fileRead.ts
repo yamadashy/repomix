@@ -1,9 +1,7 @@
 import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
-import iconv from 'iconv-lite';
 import isBinaryPath from 'is-binary-path';
 import { isBinaryFile } from 'isbinaryfile';
-import jschardet from 'jschardet';
 import { logger } from '../../shared/logger.js';
 
 export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
@@ -105,6 +103,8 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     }
 
     // Slow path: Detect encoding with jschardet for non-UTF-8 files (e.g., Shift-JIS, EUC-KR)
+    // Lazy-loaded to avoid ~27ms startup cost since <1% of files reach this path
+    const [{ default: jschardet }, { default: iconv }] = await Promise.all([import('jschardet'), import('iconv-lite')]);
     const { encoding: detectedEncoding } = jschardet.detect(buffer) ?? {};
     const encoding = detectedEncoding && iconv.encodingExists(detectedEncoding) ? detectedEncoding : 'utf-8';
     const content = iconv.decode(buffer, encoding, { stripBOM: true });

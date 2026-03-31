@@ -14,7 +14,12 @@ import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMe
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
-import { packSkill } from './skill/packSkill.js';
+
+// Lazy-loaded to avoid pulling in Handlebars (used by skill templates) during normal pack operations
+const lazyPackSkill = async (...args: Parameters<typeof import('./skill/packSkill.js').packSkill>) => {
+  const { packSkill } = await import('./skill/packSkill.js');
+  return packSkill(...args);
+};
 
 export interface PackResult {
   totalFiles: number;
@@ -44,7 +49,7 @@ const defaultDeps = {
   sortPaths,
   getGitDiffs,
   getGitLogs,
-  packSkill,
+  packSkill: lazyPackSkill,
 };
 
 export interface PackOptions {
@@ -68,6 +73,16 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Pre-initialize metrics worker pool BEFORE search to overlap gpt-tokenizer loading
+  // with the I/O-bound globby file search (~268ms). Uses an estimated task count since
+  // the actual file count isn't known yet; for typical repos (100-2000 files) the thread
+  // count calculation yields the same result.
+  const ESTIMATED_FILE_COUNT = 1000;
+  const metricsTaskRunner = deps.createMetricsTaskRunner(ESTIMATED_FILE_COUNT);
+  const metricsWarmupPromise = metricsTaskRunner
+    .run({ content: '', encoding: config.tokenCount.encoding })
+    .catch(() => 0);
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -93,14 +108,6 @@ export const pack = async (
     rootDir,
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers
-  // gpt-tokenizer initialization in the worker thread without blocking the main pipeline.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const metricsWarmupPromise = metricsTaskRunner
-    .run({ content: '', encoding: config.tokenCount.encoding })
-    .catch(() => 0);
 
   try {
     // Run file collection and git operations in parallel since they are independent:
