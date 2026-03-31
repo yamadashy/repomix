@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as prompts from '@clack/prompts';
+import { stringifyTOML } from 'confbox/toml';
+import { stringifyYAML } from 'confbox/yaml';
 import pc from 'picocolors';
 import {
   defaultConfig,
@@ -10,6 +12,41 @@ import {
 } from '../../config/configSchema.js';
 import { getGlobalDirectory } from '../../config/globalDirectory.js';
 import { logger } from '../../shared/logger.js';
+
+type ConfigFormat = 'json' | 'yaml' | 'toml' | 'ts' | 'js';
+type ConfigLocation = 'root' | 'dotconfig' | 'dotconfig-full';
+
+const CONFIG_FORMAT_EXTENSIONS: Record<ConfigFormat, string> = {
+  json: '.json',
+  yaml: '.yaml',
+  toml: '.toml',
+  ts: '.ts',
+  js: '.js',
+};
+
+const serializeConfig = (config: RepomixConfigFile, format: ConfigFormat): string => {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(config, null, 2);
+    case 'yaml':
+      return stringifyYAML(config);
+    case 'toml':
+      return stringifyTOML(config as Record<string, unknown>);
+    case 'ts': {
+      const { $schema: _schema, ...configWithoutSchema } = config;
+      return [
+        "import { defineConfig } from 'repomix';",
+        '',
+        `export default defineConfig(${JSON.stringify(configWithoutSchema, null, 2)});`,
+        '',
+      ].join('\n');
+    }
+    case 'js': {
+      const { $schema: _schema, ...configWithoutSchema } = config;
+      return [`export default ${JSON.stringify(configWithoutSchema, null, 2)};`, ''].join('\n');
+    }
+  }
+};
 
 const onCancelOperation = () => {
   prompts.cancel('Initialization cancelled.');
@@ -53,35 +90,50 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
 
   // Ask where to place the config file (skip for global — always uses global dir)
   let configDir: string;
-  let configFileName: string;
+  let configLocation: ConfigLocation;
+
   if (isGlobal) {
     configDir = getGlobalDirectory();
-    configFileName = 'repomix.config.json';
+    configLocation = 'root';
   } else {
-    const configLocation = await prompts.select({
+    const locationResult = await prompts.select({
       message: 'Where should the config file be placed?',
       options: [
-        { value: 'root', label: 'Project root', hint: 'repomix.config.json' },
-        { value: 'dotconfig', label: '.config/ directory (short)', hint: '.config/repomix.json' },
-        { value: 'dotconfig-full', label: '.config/ directory (full)', hint: '.config/repomix.config.json' },
+        { value: 'root', label: 'Project root', hint: 'repomix.config.*' },
+        { value: 'dotconfig', label: '.config/ directory (short)', hint: '.config/repomix.*' },
+        { value: 'dotconfig-full', label: '.config/ directory (full)', hint: '.config/repomix.config.*' },
       ],
-      initialValue: 'root',
+      initialValue: 'root' as ConfigLocation,
     });
-    if (prompts.isCancel(configLocation)) {
+    if (prompts.isCancel(locationResult)) {
       onCancelOperation();
       return false;
     }
-    if (configLocation === 'dotconfig') {
-      configDir = path.resolve(rootDir, '.config');
-      configFileName = 'repomix.json';
-    } else if (configLocation === 'dotconfig-full') {
-      configDir = path.resolve(rootDir, '.config');
-      configFileName = 'repomix.config.json';
-    } else {
-      configDir = rootDir;
-      configFileName = 'repomix.config.json';
-    }
+    configLocation = locationResult;
+    configDir = configLocation === 'root' ? rootDir : path.resolve(rootDir, '.config');
   }
+
+  // Ask which format to use
+  const formatResult = await prompts.select({
+    message: 'Config file format:',
+    options: [
+      { value: 'json', label: 'JSON', hint: 'Simple and widely supported' },
+      { value: 'yaml', label: 'YAML', hint: 'Human-friendly with comments support' },
+      { value: 'toml', label: 'TOML', hint: 'Clean syntax, popular for config files' },
+      { value: 'ts', label: 'TypeScript', hint: 'Type-safe with IDE autocomplete (requires repomix as dev dep)' },
+      { value: 'js', label: 'JavaScript', hint: 'Dynamic values, no type checking needed' },
+    ],
+    initialValue: 'json' as ConfigFormat,
+  });
+  if (prompts.isCancel(formatResult)) {
+    onCancelOperation();
+    return false;
+  }
+  const configFormat = formatResult;
+
+  // Build filename based on location and format
+  const ext = CONFIG_FORMAT_EXTENSIONS[configFormat];
+  const configFileName = configLocation === 'dotconfig' ? `repomix${ext}` : `repomix.config${ext}`;
 
   const configPath = path.resolve(configDir, configFileName);
 
@@ -146,7 +198,7 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
   };
 
   await fs.mkdir(path.dirname(configPath), { recursive: true });
-  await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  await fs.writeFile(configPath, serializeConfig(config, configFormat));
 
   const relativeConfigPath = path.relative(rootDir, configPath);
 
