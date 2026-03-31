@@ -1,3 +1,4 @@
+import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
 import iconv from 'iconv-lite';
 import isBinaryPath from 'is-binary-path';
@@ -13,11 +14,57 @@ export interface FileReadResult {
 }
 
 /**
- * Read a file and return its text content
- * @param filePath Path to the file
- * @param maxFileSize Maximum file size in bytes
- * @returns File content as string and skip reason if file was skipped
+ * Synchronous file read using direct UTF-8 string decoding.
+ * Bypasses Buffer allocation, isBinaryFile async check, and TextDecoder overhead.
+ * Returns null when async fallback is needed (non-UTF-8 files with U+FFFD, or errors).
  */
+export const readRawFileSync = (filePath: string, maxFileSize: number): FileReadResult | null => {
+  try {
+    if (isBinaryPath(filePath)) {
+      logger.debug(`Skipping binary file: ${filePath}`);
+      return { content: null, skippedReason: 'binary-extension' };
+    }
+
+    const stats = fsSync.statSync(filePath);
+    if (stats.size > maxFileSize) {
+      const sizeKB = (stats.size / 1024).toFixed(1);
+      const maxSizeKB = (maxFileSize / 1024).toFixed(1);
+      logger.trace(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
+      return { content: null, skippedReason: 'size-limit' };
+    }
+
+    logger.trace(`Reading file (sync): ${filePath}`);
+
+    // readFileSync with 'utf-8' encoding goes directly from raw bytes to V8 String
+    // in Node's C++ layer, bypassing Buffer JS object allocation and GC tracking.
+    // Node's lenient UTF-8 decoder replaces invalid bytes with U+FFFD instead of throwing.
+    const content = fsSync.readFileSync(filePath, 'utf-8');
+
+    // Binary content detection: null bytes indicate binary content
+    if (content.indexOf('\0') !== -1) {
+      logger.debug(`Skipping binary file (content check): ${filePath}`);
+      return { content: null, skippedReason: 'binary-content' };
+    }
+
+    // U+FFFD may be a lenient decoder replacement for invalid UTF-8 bytes,
+    // or a legitimate character in the source. Fall back to async path with
+    // strict TextDecoder to distinguish the two cases.
+    if (content.indexOf('\uFFFD') !== -1) {
+      return null;
+    }
+
+    // Strip UTF-8 BOM if present
+    if (content.charCodeAt(0) === 0xfeff) {
+      return { content: content.slice(1) };
+    }
+
+    return { content };
+  } catch {
+    // Fall back to async path for permission errors, etc.
+    return null;
+  }
+};
+
 export const readRawFile = async (filePath: string, maxFileSize: number): Promise<FileReadResult> => {
   try {
     // Check binary extension first (no I/O needed) to skip stat + read for binary files
