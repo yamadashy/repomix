@@ -8,10 +8,21 @@
 #   npm run bench:cores -- 2 4 -- --runs 20 # Custom cores + hyperfine flags
 #
 # Arguments before '--' are core counts, arguments after are passed to hyperfine.
+# All core counts are run in a single hyperfine invocation for comparison.
 #
-# Requirements: hyperfine, taskset (util-linux)
+# Requirements: hyperfine, taskset (util-linux), nproc (coreutils)
+# Note: taskset pins to logical CPUs. On SMT/HT systems, N logical cores
+# may not correspond to N physical cores.
 
 set -euo pipefail
+
+# Preflight checks
+for cmd in taskset hyperfine nproc; do
+  if ! command -v "$cmd" &>/dev/null; then
+    echo "Error: $cmd not found. This script requires Linux with util-linux and hyperfine." >&2
+    exit 1
+  fi
+done
 
 TOTAL_CORES=$(nproc)
 CORE_COUNTS=()
@@ -26,6 +37,10 @@ for arg in "$@"; do
   fi
 
   if $parsing_cores; then
+    if [[ ! "$arg" =~ ^[1-9][0-9]*$ ]]; then
+      echo "Error: Core count must be a positive integer: $arg" >&2
+      exit 1
+    fi
     CORE_COUNTS+=("$arg")
   else
     HYPERFINE_ARGS+=("$arg")
@@ -35,7 +50,7 @@ done
 # Default core counts if none specified
 if [ ${#CORE_COUNTS[@]} -eq 0 ]; then
   for c in 2 4 8; do
-    if [ "$c" -le "$TOTAL_CORES" ]; then
+    if [ "$c" -lt "$TOTAL_CORES" ]; then
       CORE_COUNTS+=("$c")
     fi
   done
@@ -52,6 +67,8 @@ echo "Benchmarking with core counts: ${CORE_COUNTS[*]}"
 echo "Hyperfine args: ${HYPERFINE_ARGS[*]}"
 echo ""
 
+# Build a single hyperfine invocation with --command-name for comparison
+HYPERFINE_COMMANDS=()
 for cores in "${CORE_COUNTS[@]}"; do
   if [ "$cores" -gt "$TOTAL_CORES" ]; then
     echo "Skipping $cores cores (only $TOTAL_CORES available)"
@@ -59,7 +76,9 @@ for cores in "${CORE_COUNTS[@]}"; do
   fi
 
   core_range="0-$((cores - 1))"
-  echo "=== $cores cores (taskset -c $core_range) ==="
-  hyperfine "${HYPERFINE_ARGS[@]}" "taskset -c $core_range node bin/repomix.cjs"
-  echo ""
+  HYPERFINE_COMMANDS+=("--command-name" "$cores cores" "taskset -c $core_range node bin/repomix.cjs")
 done
+
+if [ ${#HYPERFINE_COMMANDS[@]} -gt 0 ]; then
+  hyperfine "${HYPERFINE_ARGS[@]}" "${HYPERFINE_COMMANDS[@]}"
+fi
