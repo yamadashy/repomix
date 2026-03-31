@@ -40,16 +40,16 @@ const loadConfigFromC12 = async (
   configFile?: string,
   deps: { c12Load: typeof loadC12Config } = { c12Load: loadC12Config },
 ): Promise<{ config: Record<string, unknown> | null; configFile?: string }> => {
-  const { config, configFile: resolvedConfigFile } = await deps.c12Load({
+  const { config, configFile: resolvedConfigFile, _configFile } = await deps.c12Load({
     name: CONFIG_NAME,
     cwd,
     configFile: configFile ?? CONFIG_FILE_PATTERN,
     ...c12BaseOptions,
   });
 
-  // c12 returns an empty object when no config file is found,
-  // but configFile will be undefined if nothing was actually loaded
-  if (!resolvedConfigFile) {
+  // c12 always returns a truthy `configFile` (the resolved pattern path),
+  // but `_configFile` is only set when an actual file was loaded from disk.
+  if (!_configFile) {
     return { config: null };
   }
 
