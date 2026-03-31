@@ -19,14 +19,14 @@ Repomix will automatically search for configuration files in the following locat
 4. **YAML** (`.yaml`, `.yml`)
 5. **TOML** (`.toml`)
 
-### JSON Configuration
+### Interactive Configuration
 
 Create a configuration file interactively:
 ```bash
 repomix --init
 ```
 
-This will guide you through creating a config file. You can place it in the project root (`repomix.config.json`) or in the `.config/` directory (`.config/repomix.json` or `.config/repomix.config.json`). You can also create a global configuration file that will be used as a fallback when no local configuration is found:
+This will guide you through choosing a config location and format. It can create `repomix.config.{json,yaml,toml,ts,js}` in the project root, or `.config/repomix.{json,yaml,toml,ts,js}` and `.config/repomix.config.{json,yaml,toml,ts,js}` in the `.config/` directory. You can also create a global configuration file that will be used as a fallback when no local configuration is found:
 
 ```bash
 repomix --init --global
@@ -43,6 +43,8 @@ To use TypeScript or JavaScript configuration with `defineConfig`, you need to i
 ```bash
 npm install -D repomix
 ```
+
+`repomix --init` generates plain `export default { ... }` files for TypeScript and JavaScript so the generated config works without requiring a local `repomix` dependency. If you want editor type checking and autocomplete, switch the generated file to `defineConfig(...)` after installing Repomix locally.
 
 **Example:**
 
