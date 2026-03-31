@@ -54,7 +54,7 @@ describe('configLoad Integration Tests', () => {
       // Mock c12Load to avoid coverage instability caused by dynamic module loading.
       // This ensures deterministic test results while verifying config validation.
       const config = await loadFileConfig(tsFixturesDir, 'repomix-dynamic.config.ts', {}, {
-        c12Load: async (options: { cwd: string; configFile: string }) => ({
+        c12Load: async (options) => ({
           config: {
             output: {
               filePath: 'output-test-2024-01-01T00-00-00.xml',
@@ -64,11 +64,11 @@ describe('configLoad Integration Tests', () => {
               customPatterns: ['**/node_modules/**'],
             },
           },
-          configFile: path.resolve(options.cwd, options.configFile),
+          configFile: path.resolve(options.cwd!, options.configFile!),
           layers: [],
           cwd: options.cwd,
         }),
-      } as any);
+      } as Parameters<typeof loadFileConfig>[3]);
 
       expect(config.output?.filePath).toBe('output-test-2024-01-01T00-00-00.xml');
       expect(config.output?.style).toBe('xml');
@@ -138,7 +138,7 @@ describe('configLoad Integration Tests', () => {
           layers: [],
           cwd: options.cwd,
         }),
-      } as any);
+      } as Parameters<typeof loadFileConfig>[3]);
 
       expect(config.output?.filePath).toBe('output-2024-01-01T00-00-00.xml');
       expect(config.output?.style).toBe('xml');
