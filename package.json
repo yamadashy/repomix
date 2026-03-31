@@ -34,6 +34,7 @@
     "repomix-website": "node --run repomix -- --include 'website'",
     "time-node": "node --run build && time node bin/repomix.cjs",
     "time-bun": "bun run build && time bun bin/repomix.cjs",
+    "bench": "node --run build && hyperfine --warmup 2 --runs 10 'node bin/repomix.cjs'",
     "memory-check": "node --run repomix -- --verbose | grep Memory",
     "memory-check-one-file": "node --run repomix -- --verbose --include 'package.json' | grep Memory",
     "website": "docker compose -f website/compose.yml build --no-cache && docker compose -f website/compose.yml up",
