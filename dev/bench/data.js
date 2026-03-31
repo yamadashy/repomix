@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774964579018,
+  "lastUpdate": 1774967999765,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -1215,6 +1215,51 @@ window.BENCHMARK_DATA = {
             "range": "±103",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 3004ms, Q3: 3107ms\nAll times: 2957, 2959, 2977, 2984, 2986, 3004, 3004, 3018, 3022, 3024, 3025, 3026, 3034, 3040, 3073, 3107, 3119, 3128, 3161, 3175ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8f24b75550514c8c95d60fd2932a92b142f3bd3",
+          "message": "Merge pull request #1359 from yamadashy/perf/overlap-security-processing-metrics\n\nperf(core): Overlap security check, file processing, and metrics with output generation",
+          "timestamp": "2026-03-31T23:37:19+09:00",
+          "tree_id": "d51c32ae3bb051cbab5da166b1ed2753ca9b7f8c",
+          "url": "https://github.com/yamadashy/repomix/commit/c8f24b75550514c8c95d60fd2932a92b142f3bd3"
+        },
+        "date": 1774967998787,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 2184,
+            "range": "±264",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 2052ms, Q3: 2316ms\nAll times: 1761, 1802, 1822, 1852, 1906, 1960, 2010, 2052, 2078, 2090, 2097, 2116, 2156, 2159, 2161, 2184, 2230, 2260, 2264, 2278, 2282, 2288, 2316, 2329, 2337, 2346, 2423, 2501, 2630, 3034ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2361,
+            "range": "±41",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2339ms, Q3: 2380ms\nAll times: 2314, 2320, 2326, 2327, 2338, 2339, 2342, 2345, 2347, 2352, 2361, 2363, 2364, 2364, 2378, 2380, 2381, 2390, 2398, 2414ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2769,
+            "range": "±42",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2759ms, Q3: 2801ms\nAll times: 2711, 2739, 2742, 2754, 2757, 2759, 2760, 2761, 2764, 2766, 2769, 2771, 2772, 2782, 2785, 2801, 3361, 3488, 3493, 3637ms"
           }
         ]
       }
