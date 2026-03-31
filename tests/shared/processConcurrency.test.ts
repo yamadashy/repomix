@@ -130,6 +130,26 @@ describe('processConcurrency', () => {
       });
       expect(tinypool).toBeDefined();
     });
+
+    it('should respect maxThreads override when provided', () => {
+      createWorkerPool({ numOfTasks: 500, workerType: 'securityCheck', runtime: 'worker_threads', maxThreads: 1 });
+
+      expect(Tinypool).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxThreads: 1,
+        }),
+      );
+    });
+
+    it('should clamp maxThreads override to minimum of 1', () => {
+      createWorkerPool({ numOfTasks: 500, workerType: 'securityCheck', runtime: 'worker_threads', maxThreads: 0 });
+
+      expect(Tinypool).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxThreads: 1,
+        }),
+      );
+    });
   });
 
   describe('initTaskRunner', () => {

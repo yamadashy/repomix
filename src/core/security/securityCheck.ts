@@ -55,10 +55,14 @@ export const runSecurityCheck = async (
     }
   }
 
+  // Cap security worker pool to 1 thread to minimize CPU contention with the metrics
+  // worker pool. Security runs concurrently with file processing and completes well before
+  // metrics calculation, so extra threads only compete for CPU without improving throughput.
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
     numOfTasks: rawFiles.length + gitDiffTasks.length + gitLogTasks.length,
     workerType: 'securityCheck',
     runtime: 'worker_threads',
+    maxThreads: 1,
   });
   const fileTasks = rawFiles.map(
     (file) =>
