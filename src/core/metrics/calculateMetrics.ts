@@ -43,7 +43,7 @@ const defaultDeps = {
 
 export const calculateMetrics = async (
   processedFiles: ProcessedFile[],
-  output: string | string[] | Promise<string | string[]>,
+  output: Promise<string | string[]>,
   progressCallback: RepomixProgressCallback,
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
