@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774793408155,
+  "lastUpdate": 1774958235739,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -1125,6 +1125,51 @@ window.BENCHMARK_DATA = {
             "range": "±37",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2974ms, Q3: 3011ms\nAll times: 2965, 2967, 2970, 2971, 2972, 2974, 2977, 2978, 2980, 2986, 2987, 2994, 2995, 3002, 3011, 3011, 3017, 3017, 3022, 3041ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e3b365232a25c8d8b33e5895107f9a990b632fbc",
+          "message": "Merge pull request #1363 from yamadashy/claude/fix-bun-tests-Oj7mE",
+          "timestamp": "2026-03-31T20:55:03+09:00",
+          "tree_id": "bd3bfbb5764d6326f5c653410fe0df1c5dccfd6f",
+          "url": "https://github.com/yamadashy/repomix/commit/e3b365232a25c8d8b33e5895107f9a990b632fbc"
+        },
+        "date": 1774958235148,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1413,
+            "range": "±125",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1364ms, Q3: 1489ms\nAll times: 1319, 1321, 1345, 1348, 1353, 1355, 1363, 1364, 1367, 1371, 1374, 1376, 1376, 1402, 1412, 1413, 1417, 1450, 1457, 1466, 1474, 1479, 1489, 1532, 1536, 1581, 1593, 1613, 1716, 1744ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2370,
+            "range": "±9",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2368ms, Q3: 2377ms\nAll times: 2338, 2349, 2357, 2358, 2361, 2368, 2369, 2369, 2370, 2370, 2370, 2373, 2374, 2377, 2377, 2377, 2379, 2384, 2445, 2533ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2902,
+            "range": "±36",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2887ms, Q3: 2923ms\nAll times: 2859, 2879, 2880, 2881, 2882, 2887, 2893, 2894, 2896, 2897, 2902, 2902, 2903, 2907, 2913, 2923, 2924, 2926, 2927, 2933ms"
           }
         ]
       }
