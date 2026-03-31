@@ -40,7 +40,11 @@ const loadConfigFromC12 = async (
   configFile?: string,
   deps: { c12Load: typeof loadC12Config } = { c12Load: loadC12Config },
 ): Promise<{ config: Record<string, unknown> | null; configFile?: string }> => {
-  const { config, configFile: resolvedConfigFile, _configFile } = await deps.c12Load({
+  const {
+    config,
+    configFile: resolvedConfigFile,
+    _configFile,
+  } = await deps.c12Load({
     name: CONFIG_NAME,
     cwd,
     configFile: configFile ?? CONFIG_FILE_PATTERN,
@@ -84,6 +88,7 @@ export const loadFileConfig = async (
   if (argConfigPath) {
     // Explicit --config flag is always respected (user's intentional choice)
     const fullPath = path.resolve(rootDir, argConfigPath);
+    const normalizedFullPath = path.normalize(fullPath);
     logger.trace('Loading config from explicit path:', fullPath);
 
     try {
@@ -94,7 +99,14 @@ export const loadFileConfig = async (
         c12Load: deps.c12Load,
       });
 
-      if (result.config != null) {
+      if (result.config != null && result.configFile) {
+        const resolvedConfigPath = path.normalize(path.resolve(result.configFile));
+
+        // Explicit --config must load the exact file the user requested.
+        if (resolvedConfigPath !== normalizedFullPath) {
+          throw new RepomixError(`Config file not found at ${argConfigPath}`);
+        }
+
         return validateConfig(result.config, fullPath);
       }
     } catch (error) {
@@ -108,6 +120,7 @@ export const loadFileConfig = async (
       if (error instanceof Error) {
         throw new RepomixError(`Error loading config from ${argConfigPath}: ${error.message}`);
       }
+      throw new RepomixError(`Error loading config from ${argConfigPath}: ${String(error)}`);
     }
 
     throw new RepomixError(`Config file not found at ${argConfigPath}`);
@@ -142,6 +155,7 @@ export const loadFileConfig = async (
       if (error instanceof Error) {
         throw new RepomixError(`Error loading local config: ${error.message}`);
       }
+      throw new RepomixError(`Error loading local config: ${String(error)}`);
     }
   }
 
@@ -165,6 +179,7 @@ export const loadFileConfig = async (
     if (error instanceof Error) {
       throw new RepomixError(`Error loading global config: ${error.message}`);
     }
+    throw new RepomixError(`Error loading global config: ${String(error)}`);
   }
 
   if (!options.skipLocalConfig) {
