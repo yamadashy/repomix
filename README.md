@@ -301,7 +301,7 @@ To initialize a new configuration file:
 repomix --init
 ```
 
-This will guide you through creating a config file. You can place it in your project root (`repomix.config.json`) or in the `.config/` directory (`.config/repomix.json`).
+This will guide you through choosing a config location and format. It can create `repomix.config.{json,yaml,toml,ts,js}` in your project root, or `.config/repomix.{json,yaml,toml,ts,js}` and `.config/repomix.config.{json,yaml,toml,ts,js}` in the `.config/` directory.
 
 Once you have generated the packed file, you can use it with Generative AI tools like ChatGPT, DeepSeek, Perplexity, Gemini, Gemma, Llama, Grok, and more.
 
@@ -1277,7 +1277,7 @@ Create a configuration file interactively:
 repomix --init
 ```
 
-This will guide you through creating a config file. You can place it in the project root (`repomix.config.json`) or in the `.config/` directory (`.config/repomix.json` or `.config/repomix.config.json`).
+This will guide you through choosing a config location and format. It can create `repomix.config.{json,yaml,toml,ts,js}` in the project root, or `.config/repomix.{json,yaml,toml,ts,js}` and `.config/repomix.config.{json,yaml,toml,ts,js}` in the `.config/` directory.
 
 #### TypeScript Configuration
 
@@ -1290,6 +1290,8 @@ To use TypeScript or JavaScript configuration with `defineConfig`, you need to i
 ```bash
 npm install -D repomix
 ```
+
+`repomix --init` generates plain `export default { ... }` files for TypeScript and JavaScript so the generated config works without requiring a local `repomix` dependency. If you want editor type checking and autocomplete, switch the generated file to `defineConfig(...)` after installing Repomix locally.
 
 **Example:**
 
@@ -1461,8 +1463,8 @@ repomix --init --global
 
 The global configuration file will be created in:
 
-- Windows: `%LOCALAPPDATA%\Repomix\repomix.config.json`
-- macOS/Linux: `$XDG_CONFIG_HOME/repomix/repomix.config.json` or `~/.config/repomix/repomix.config.json`
+- Windows: `%LOCALAPPDATA%\Repomix\repomix.config.{json,yaml,toml,ts,js}`
+- macOS/Linux: `$XDG_CONFIG_HOME/repomix/repomix.config.{json,yaml,toml,ts,js}` or `~/.config/repomix/repomix.config.{json,yaml,toml,ts,js}`
 
 Repomix searches for configuration files in this order:
 1. Explicit `--config` path (if provided)
