@@ -16,8 +16,11 @@ export class Spinner {
     // so PicoSpinner cannot detect terminal width via getWindowSize().
     // Fall back to COLUMNS env var passed from the main process.
     if (!process.stdout.getWindowSize && process.env.COLUMNS) {
-      // biome-ignore lint: accessing private property to work around child process limitation
-      (renderer as unknown as { terminalWidth: number }).terminalWidth = Number(process.env.COLUMNS);
+      const columns = Number(process.env.COLUMNS);
+      if (columns > 0) {
+        // biome-ignore lint: accessing private property to work around child process limitation
+        (renderer as unknown as { terminalWidth: number }).terminalWidth = columns;
+      }
     }
     this.spinner?.start();
   }
