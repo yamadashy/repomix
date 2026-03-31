@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   vim \
   fd-find \
   ripgrep \
+  hyperfine \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Create symlink for fd (Debian/Ubuntu names it fdfind)
