@@ -1,7 +1,5 @@
-import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import JSON5 from 'json5';
+import { loadConfig as loadC12Config } from 'c12';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
@@ -16,156 +14,54 @@ import {
 } from './configSchema.js';
 import { getGlobalDirectory } from './globalDirectory.js';
 
-const defaultConfigPaths = [
-  'repomix.config.ts',
-  'repomix.config.mts',
-  'repomix.config.cts',
-  'repomix.config.js',
-  'repomix.config.mjs',
-  'repomix.config.cjs',
-  'repomix.config.json5',
-  'repomix.config.jsonc',
-  'repomix.config.json',
-];
+// Config file name pattern: repomix.config.{ext}
+// c12 searches: {cwd}/repomix.config.{ext}, {cwd}/.config/repomix.{ext}, {cwd}/.config/repomix.config.{ext}
+const CONFIG_NAME = 'repomix';
+const CONFIG_FILE_PATTERN = 'repomix.config';
 
-const getGlobalConfigPaths = () => {
-  const globalDir = getGlobalDirectory();
-  return defaultConfigPaths.map((configPath) => path.join(globalDir, configPath));
+// c12 base options that disable features we don't use yet.
+// RC files, package.json, extends, env-specific config, and dotenv
+// can be implemented in follow-up PRs.
+const c12BaseOptions: Parameters<typeof loadC12Config>[0] = {
+  rcFile: false as const,
+  globalRc: false,
+  packageJson: false,
+  envName: false as const,
+  dotenv: false,
+  extend: false as const,
+  omit$Keys: true,
 };
 
-const checkFileExists = async (filePath: string): Promise<boolean> => {
-  try {
-    const stats = await fs.stat(filePath);
-    return stats.isFile();
-  } catch {
-    return false;
-  }
-};
-
-const findConfigFile = async (configPaths: string[], logPrefix: string): Promise<string | null> => {
-  for (const configPath of configPaths) {
-    logger.trace(`Checking for ${logPrefix} config at:`, configPath);
-
-    const fileExists = await checkFileExists(configPath);
-
-    if (fileExists) {
-      logger.trace(`Found ${logPrefix} config at:`, configPath);
-      return configPath;
-    }
-  }
-  return null;
-};
-
-// Default jiti import implementation for loading JS/TS config files
-// Lazy-loads jiti to avoid importing its heavy TypeScript toolchain
-// when using JSON/JSON5 config files or default config (the common case)
-const defaultJitiImport = async (fileUrl: string): Promise<unknown> => {
-  const { createJiti } = await import('jiti');
-  const jiti = createJiti(import.meta.url, {
-    moduleCache: false, // Disable cache to ensure fresh config loads
-    interopDefault: true, // Automatically use default export
+// Loads a config from a directory using c12's file discovery.
+// c12 automatically searches for repomix.config.{js,ts,mjs,cjs,mts,cts,json,jsonc,json5,yaml,yml,toml}
+// in both the directory root and the .config/ subdirectory.
+const loadConfigFromC12 = async (
+  cwd: string,
+  configFile?: string,
+  deps: { c12Load: typeof loadC12Config } = { c12Load: loadC12Config },
+): Promise<{ config: Record<string, unknown> | null; configFile?: string }> => {
+  const { config, configFile: resolvedConfigFile } = await deps.c12Load({
+    name: CONFIG_NAME,
+    cwd,
+    configFile: configFile ?? CONFIG_FILE_PATTERN,
+    ...c12BaseOptions,
   });
-  return await jiti.import(fileUrl);
+
+  // c12 returns an empty object when no config file is found,
+  // but configFile will be undefined if nothing was actually loaded
+  if (!resolvedConfigFile) {
+    return { config: null };
+  }
+
+  return {
+    config: config as Record<string, unknown>,
+    configFile: resolvedConfigFile,
+  };
 };
 
-export const loadFileConfig = async (
-  rootDir: string,
-  argConfigPath: string | null,
-  options: { skipLocalConfig?: boolean } = {},
-  deps = {
-    jitiImport: defaultJitiImport,
-  },
-): Promise<RepomixConfigFile> => {
-  if (argConfigPath) {
-    // Explicit --config flag is always respected (user's intentional choice)
-    const fullPath = path.resolve(rootDir, argConfigPath);
-    logger.trace('Loading local config from:', fullPath);
-
-    const isLocalFileExists = await checkFileExists(fullPath);
-
-    if (isLocalFileExists) {
-      return await loadAndValidateConfig(fullPath, deps);
-    }
-    throw new RepomixError(`Config file not found at ${argConfigPath}`);
-  }
-
-  // Try to find a local config file using the priority order
-  const localConfigPaths = defaultConfigPaths.map((configPath) => path.resolve(rootDir, configPath));
-  const localConfigPath = await findConfigFile(localConfigPaths, 'local');
-
-  if (localConfigPath) {
-    if (!options.skipLocalConfig) {
-      return await loadAndValidateConfig(localConfigPath, deps);
-    }
-    // Log when config files are skipped for security (remote mode)
-    logger.note(
-      `Skipping config file found in remote repository for security: ${path.basename(localConfigPath)}\n` +
-        'Use --remote-trust-config to trust and load it.',
-    );
-  }
-
-  // Try to find a global config file using the priority order
-  const globalConfigPaths = getGlobalConfigPaths();
-  const globalConfigPath = await findConfigFile(globalConfigPaths, 'global');
-
-  if (globalConfigPath) {
-    return await loadAndValidateConfig(globalConfigPath, deps);
-  }
-
-  if (!options.skipLocalConfig) {
-    logger.log(
-      pc.dim(
-        `No custom config found at ${defaultConfigPaths.join(', ')} or global config at ${globalConfigPaths.join(', ')}.\nYou can add a config file for additional settings. Please check https://github.com/yamadashy/repomix for more information.`,
-      ),
-    );
-  }
-  return {};
-};
-
-const getFileExtension = (filePath: string): string => {
-  const match = filePath.match(/\.(ts|mts|cts|js|mjs|cjs|json5|jsonc|json)$/);
-  return match ? match[1] : '';
-};
-
-// Dependency injection allows mocking jiti in tests to prevent double instrumentation.
-// Without this, jiti transforms src/ files that are already instrumented by Vitest,
-// causing coverage instability (results varied by ~2% on each test run).
-const loadAndValidateConfig = async (
-  filePath: string,
-  deps = {
-    jitiImport: defaultJitiImport,
-  },
-): Promise<RepomixConfigFile> => {
+// Validates raw config from c12 against the Repomix file schema
+const validateConfig = (config: unknown, filePath: string): RepomixConfigFile => {
   try {
-    let config: unknown;
-    const ext = getFileExtension(filePath);
-
-    switch (ext) {
-      case 'ts':
-      case 'mts':
-      case 'cts':
-      case 'js':
-      case 'mjs':
-      case 'cjs': {
-        // Use jiti for TypeScript and JavaScript files
-        // This provides consistent behavior and avoids Node.js module cache issues
-        config = await deps.jitiImport(pathToFileURL(filePath).href);
-        break;
-      }
-
-      case 'json5':
-      case 'jsonc':
-      case 'json': {
-        // Use JSON5 for JSON/JSON5/JSONC files
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        config = JSON5.parse(fileContent);
-        break;
-      }
-
-      default:
-        throw new RepomixError(`Unsupported config file format: ${filePath}`);
-    }
-
     return repomixConfigFileSchema.parse(config);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');
@@ -177,6 +73,102 @@ const loadAndValidateConfig = async (
     }
     throw new RepomixError(`Error loading config from ${filePath}`);
   }
+};
+
+export const loadFileConfig = async (
+  rootDir: string,
+  argConfigPath: string | null,
+  options: { skipLocalConfig?: boolean } = {},
+  deps: { c12Load: typeof loadC12Config } = { c12Load: loadC12Config },
+): Promise<RepomixConfigFile> => {
+  if (argConfigPath) {
+    // Explicit --config flag is always respected (user's intentional choice)
+    const fullPath = path.resolve(rootDir, argConfigPath);
+    logger.trace('Loading config from explicit path:', fullPath);
+
+    try {
+      // Use c12 to load the specific config file.
+      // Pass the full basename (with extension) so c12's tryResolve matches the exact file
+      // via exsolve's resolveModulePath, which tries the exact path before appending extensions.
+      const result = await loadConfigFromC12(path.dirname(fullPath), path.basename(fullPath), {
+        c12Load: deps.c12Load,
+      });
+
+      if (result.config != null) {
+        return validateConfig(result.config, fullPath);
+      }
+    } catch (error) {
+      rethrowValidationErrorIfZodError(error, 'Invalid config schema');
+      if (error instanceof RepomixError) {
+        throw error;
+      }
+      if (error instanceof Error) {
+        throw new RepomixError(`Error loading config from ${argConfigPath}: ${error.message}`);
+      }
+    }
+
+    throw new RepomixError(`Config file not found at ${argConfigPath}`);
+  }
+
+  // Try to find a local config file using c12's discovery
+  // c12 searches: repomix.config.{ext} in root, .config/repomix.{ext}, .config/repomix.config.{ext}
+  try {
+    const localResult = await loadConfigFromC12(rootDir, undefined, { c12Load: deps.c12Load });
+
+    if (localResult.config != null && localResult.configFile) {
+      if (!options.skipLocalConfig) {
+        logger.trace('Found local config at:', localResult.configFile);
+        return validateConfig(localResult.config, localResult.configFile);
+      }
+      // Log when config files are skipped for security (remote mode)
+      logger.note(
+        `Skipping config file found in remote repository for security: ${path.basename(localResult.configFile)}\n` +
+          'Use --remote-trust-config to trust and load it.',
+      );
+    }
+  } catch (error) {
+    // If local config loading fails (e.g., syntax error), propagate the error
+    // unless we're skipping local config anyway
+    if (!options.skipLocalConfig) {
+      rethrowValidationErrorIfZodError(error, 'Invalid config schema');
+      if (error instanceof RepomixError) {
+        throw error;
+      }
+      if (error instanceof Error) {
+        throw new RepomixError(`Error loading local config: ${error.message}`);
+      }
+    }
+  }
+
+  // Try to find a global config file using c12's discovery
+  const globalDir = getGlobalDirectory();
+  try {
+    const globalResult = await loadConfigFromC12(globalDir, undefined, { c12Load: deps.c12Load });
+
+    if (globalResult.config != null && globalResult.configFile) {
+      logger.trace('Found global config at:', globalResult.configFile);
+      return validateConfig(globalResult.config, globalResult.configFile);
+    }
+  } catch (error) {
+    rethrowValidationErrorIfZodError(error, 'Invalid config schema');
+    if (error instanceof RepomixError) {
+      throw error;
+    }
+    if (error instanceof Error) {
+      throw new RepomixError(`Error loading global config: ${error.message}`);
+    }
+  }
+
+  if (!options.skipLocalConfig) {
+    logger.log(
+      pc.dim(
+        `No custom config found. Searched for ${CONFIG_FILE_PATTERN}.{js,ts,json,...} and .config/${CONFIG_NAME}.{js,ts,json,...}\n` +
+          `Also checked global config at ${globalDir}.\n` +
+          'You can add a config file for additional settings. Please check https://github.com/yamadashy/repomix for more information.',
+      ),
+    );
+  }
+  return {};
 };
 
 export const mergeConfigs = (
