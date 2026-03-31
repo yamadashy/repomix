@@ -20,6 +20,8 @@ vi.mock('../../src/config/globalDirectory', () => ({
 }));
 
 // Helper to create a mock c12 loadConfig function
+// Mirrors real c12 behavior: `configFile` is always a truthy resolved path,
+// `_configFile` is only set when an actual file was loaded from disk.
 const createMockC12Load = (behavior: {
   localConfig?: Record<string, unknown> | null;
   localConfigFile?: string;
@@ -35,43 +37,50 @@ const createMockC12Load = (behavior: {
     }
 
     const globalDir = vi.mocked(getGlobalDirectory).getMockImplementation()?.() ?? '/global/repomix';
+    const defaultConfigFile = path.resolve(options.cwd, options.configFile);
 
     // Check if this is an explicit config file load (configFile is not the default pattern)
     if (options.configFile !== 'repomix.config') {
       if (behavior.explicitConfig != null) {
+        const resolvedFile = behavior.explicitConfigFile ?? path.resolve(options.cwd, options.configFile);
         return {
           config: behavior.explicitConfig,
-          configFile: behavior.explicitConfigFile ?? path.resolve(options.cwd, options.configFile),
+          configFile: resolvedFile,
+          _configFile: resolvedFile,
           layers: [],
           cwd: options.cwd,
         };
       }
-      return { config: {}, configFile: undefined, layers: [], cwd: options.cwd };
+      return { config: {}, configFile: defaultConfigFile, _configFile: undefined, layers: [], cwd: options.cwd };
     }
 
     // For auto-discovery, check if this is a global or local call based on cwd
     if (options.cwd === globalDir) {
       if (behavior.globalConfig != null) {
+        const resolvedFile = behavior.globalConfigFile ?? path.join(globalDir, 'repomix.config.json');
         return {
           config: behavior.globalConfig,
-          configFile: behavior.globalConfigFile ?? path.join(globalDir, 'repomix.config.json'),
+          configFile: resolvedFile,
+          _configFile: resolvedFile,
           layers: [],
           cwd: options.cwd,
         };
       }
-      return { config: {}, configFile: undefined, layers: [], cwd: options.cwd };
+      return { config: {}, configFile: defaultConfigFile, _configFile: undefined, layers: [], cwd: options.cwd };
     }
 
     // Local config
     if (behavior.localConfig != null) {
+      const resolvedFile = behavior.localConfigFile ?? path.resolve(options.cwd, 'repomix.config.json');
       return {
         config: behavior.localConfig,
-        configFile: behavior.localConfigFile ?? path.resolve(options.cwd, 'repomix.config.json'),
+        configFile: resolvedFile,
+        _configFile: resolvedFile,
         layers: [],
         cwd: options.cwd,
       };
     }
-    return { config: {}, configFile: undefined, layers: [], cwd: options.cwd };
+    return { config: {}, configFile: defaultConfigFile, _configFile: undefined, layers: [], cwd: options.cwd };
   });
 };
 
@@ -225,17 +234,22 @@ describe('configLoad', () => {
       expect(result).toEqual(mockGlobalConfig);
     });
 
-    test('should log a message when skipping config in remote mode', async () => {
+    test('should not call c12Load for local config when skipLocalConfig is true', async () => {
       vi.mocked(getGlobalDirectory).mockReturnValue('/global/repomix');
       const mockC12Load = createMockC12Load({
-        localConfig: { output: { filePath: 'remote-config.txt' } },
-        localConfigFile: '/tmp/repomix-clone/repomix.config.json',
         globalConfig: null,
       });
 
       await loadFileConfig('/tmp/repomix-clone', null, { skipLocalConfig: true }, { c12Load: mockC12Load });
 
-      expect(logger.note).toHaveBeenCalledWith(expect.stringContaining('Skipping config file'));
+      // c12Load should only be called for global, not for the local cwd
+      for (const call of mockC12Load.mock.calls) {
+        const opts = call[0] as Record<string, unknown>;
+        expect(opts.cwd).not.toBe('/tmp/repomix-clone');
+      }
+
+      // Should log a security note about skipping
+      expect(logger.note).toHaveBeenCalledWith(expect.stringContaining('Skipping local config'));
       expect(logger.note).toHaveBeenCalledWith(expect.stringContaining('--remote-trust-config'));
     });
 
