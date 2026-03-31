@@ -23,7 +23,7 @@ export interface CalculateMetricsResult {
 
 /**
  * Create a metrics task runner that can be pre-initialized to overlap
- * tiktoken WASM loading with other pipeline stages.
+ * gpt-tokenizer loading with other pipeline stages.
  */
 export const createMetricsTaskRunner = (numOfTasks: number): TaskRunner<TokenCountTask, number> => {
   return initTaskRunner<TokenCountTask, number>({
@@ -91,16 +91,21 @@ export const calculateMetrics = async (
     const gitDiffMetricsPromise = deps.calculateGitDiffMetrics(config, gitDiffResult, { taskRunner });
     const gitLogMetricsPromise = deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner });
 
+    // Prevent unhandled rejections if `await output` throws before Promise.all
+    selectiveFileMetricsPromise.catch(() => {});
+    gitDiffMetricsPromise.catch(() => {});
+    gitLogMetricsPromise.catch(() => {});
+
     // Await the output (resolves immediately if already a string, otherwise waits for generation)
     const resolvedOutput = await output;
     const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
 
     // Start output metrics after output is available
     const outputMetricsPromise = Promise.all(
-      outputParts.map(async (part, index) => {
+      outputParts.map((part, index) => {
         const partPath =
           outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, index + 1) : config.output.filePath;
-        return await deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
+        return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
       }),
     );
 
