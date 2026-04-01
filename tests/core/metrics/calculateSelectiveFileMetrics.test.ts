@@ -23,7 +23,8 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
       }
       return (await countTokens(task as TokenCountTask)) as R;
     },
-    cleanup: async () => {
+    cleanup: async () => {},
+    unref: () => {
       // Mock cleanup - no-op for tests
     },
   };

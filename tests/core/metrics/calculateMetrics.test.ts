@@ -61,6 +61,7 @@ describe('calculateMetrics', () => {
     const mockTaskRunner = {
       run: vi.fn(),
       cleanup: vi.fn(),
+      unref: vi.fn(),
     };
 
     const result = await calculateMetrics(
@@ -113,6 +114,7 @@ describe('calculateMetrics', () => {
     const mockTaskRunner = {
       run: vi.fn(),
       cleanup: vi.fn(),
+      unref: vi.fn(),
     };
 
     const result = await calculateMetrics(

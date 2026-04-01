@@ -11,7 +11,8 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
     run: async (task: T) => {
       return (await countTokens(task as TokenCountTask)) as R;
     },
-    cleanup: async () => {
+    cleanup: async () => {},
+    unref: () => {
       // Mock cleanup - no-op for tests
     },
   };
@@ -51,7 +52,8 @@ describe('calculateOutputMetrics', () => {
         run: async (_task: T) => {
           throw mockError;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -104,7 +106,8 @@ describe('calculateOutputMetrics', () => {
           // Return a fixed token count for each chunk
           return 100 as R;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -129,7 +132,8 @@ describe('calculateOutputMetrics', () => {
         run: async (_task: T) => {
           throw mockError;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -156,7 +160,8 @@ describe('calculateOutputMetrics', () => {
           processedChunks.push(outputTask.content);
           return outputTask.content.length as R;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };

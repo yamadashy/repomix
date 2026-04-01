@@ -251,6 +251,13 @@ export const pack = async (
 
     return result;
   } finally {
-    await Promise.all([metricsTaskRunner.cleanup(), securityTaskRunner?.cleanup()]);
+    // Unref worker threads so they don't prevent the Node.js event loop from draining,
+    // then schedule pool cleanup in the background. This avoids ~80ms of synchronous
+    // thread termination overhead on the critical path. The cleanup promise still
+    // runs but doesn't block the caller. All worker onWorkerTermination hooks are
+    // no-ops (gpt-tokenizer is pure JS, secretlint needs no teardown).
+    metricsTaskRunner.unref();
+    securityTaskRunner?.unref();
+    Promise.all([metricsTaskRunner.cleanup(), securityTaskRunner?.cleanup()]).catch(() => {});
   }
 };
