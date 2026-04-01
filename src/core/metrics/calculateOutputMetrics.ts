@@ -3,11 +3,15 @@ import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
-// Number of chunks for parallel output token counting.
-// Each worker task has ~1ms of message-passing overhead, so fewer larger chunks
-// reduces overhead while maintaining parallelism across available CPU cores.
-const CHUNK_COUNT = 50;
-const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1000KB
+// Target size per chunk in characters for parallel token counting.
+// 100KB balances tokenizer efficiency with parallelism across worker threads.
+const TARGET_CHARS_PER_CHUNK = 100_000;
+
+// Parallelise output token counting when the content exceeds this threshold.
+// BPE tokenisation is CPU-bound; distributing chunks across worker threads
+// reduces wall-clock time roughly proportionally to available workers.
+// Lowered from 1 MB to 50 KB so that typical outputs (~200-500 KB) also benefit.
+const MIN_CONTENT_LENGTH_FOR_PARALLEL = 50_000; // 50 KB
 
 export const calculateOutputMetrics = async (
   content: string,
@@ -24,12 +28,13 @@ export const calculateOutputMetrics = async (
     let result: number;
 
     if (shouldRunInParallel) {
-      // Split content into chunks for parallel processing
-      const chunkSize = Math.ceil(content.length / CHUNK_COUNT);
+      // Split content into chunks for parallel processing.
+      // Previous code created ~1000 tiny chunks (~1-2KB each), causing worker thread
+      // communication overhead to dominate. Now we create ~10-40 chunks of ~100KB each.
       const chunks: string[] = [];
 
-      for (let i = 0; i < content.length; i += chunkSize) {
-        chunks.push(content.slice(i, i + chunkSize));
+      for (let i = 0; i < content.length; i += TARGET_CHARS_PER_CHUNK) {
+        chunks.push(content.slice(i, i + TARGET_CHARS_PER_CHUNK));
       }
 
       // Process chunks in parallel

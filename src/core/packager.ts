@@ -12,7 +12,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import { packSkill } from './skill/packSkill.js';
 
@@ -41,6 +41,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -68,6 +69,18 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Pre-initialize security worker pool as early as possible to overlap @secretlint/core module
+  // loading (~103ms cold start per thread) with the file search + sort + collection pipeline
+  // (~136ms). Without pre-warming, security module loading happens when the security check
+  // stage begins, adding ~103ms to the critical path. Tinypool spawns minThreads=1 at pool
+  // creation, which immediately begins loading the worker module in the background.
+  // numOfTasks=200 yields maxThreads=2, optimal for balancing module loading cost against
+  // scanning throughput.
+  const SECURITY_PREWARM_TASKS = 200;
+  const securityTaskRunner = config.security.enableSecurityCheck
+    ? deps.createSecurityTaskRunner(SECURITY_PREWARM_TASKS)
+    : undefined;
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -97,13 +110,22 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers
-  // gpt-tokenizer initialization in the worker thread without blocking the main pipeline.
+  // Pre-initialize metrics worker pool and warm 2 threads to overlap gpt-tokenizer loading
+  // (~242ms per thread) with the security check phase (2 security + 2 metrics = 4 threads
+  // on available cores, avoiding CPU contention).
+  // Without this, only minThreads=1 thread loads gpt-tokenizer during warmup. The second
+  // thread created on-demand during metrics calculation pays ~242ms gpt-tokenizer loading
+  // on the critical path, nearly doubling the metrics phase duration.
+  // By warming 2 threads, both are ready when tokenization batches arrive, and the 4 batches
+  // (for default top-50-files metrics) complete in 2 rounds of 2 instead of being bottlenecked
+  // by a cold thread loading the tokenizer mid-computation.
   const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const metricsWarmupPromise = metricsTaskRunner
-    .run({ content: '', encoding: config.tokenCount.encoding })
-    .catch(() => 0);
+  const METRICS_WARMUP_THREADS = 2;
+  const metricsWarmupPromise = Promise.all(
+    Array.from({ length: METRICS_WARMUP_THREADS }, () =>
+      metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0),
+    ),
+  );
 
   try {
     // Run file collection and git operations in parallel since they are independent:
@@ -134,7 +156,7 @@ export const pack = async (
     // After both complete, filter out any suspicious files from the processed results.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, securityTaskRunner),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
@@ -203,9 +225,14 @@ export const pack = async (
       emptyDirPaths,
     );
 
+    // outputForMetrics resolves as soon as the output string is generated,
+    // BEFORE the disk write completes, so metrics calculation can overlap with I/O.
     const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
+    // Prevent unhandled rejection if metrics fail before write completes
+    const writeCompletePromise = outputPromise.then((r) => r.writeComplete);
+    writeCompletePromise.catch(() => {});
 
-    const [{ outputFiles }, metrics] = await Promise.all([
+    const [, metrics] = await Promise.all([
       outputPromise,
       withMemoryLogging('Calculate Metrics', () =>
         deps.calculateMetrics(
@@ -221,6 +248,10 @@ export const pack = async (
         ),
       ),
     ]);
+
+    // Ensure disk write completes before returning (re-throws if write failed)
+    const { outputFiles } = await outputPromise;
+    await writeCompletePromise;
 
     // Create a result object that includes metrics and security results
     const result = {
@@ -238,6 +269,13 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsTaskRunner.cleanup();
+    // Unref worker threads so they don't prevent the Node.js event loop from draining,
+    // then schedule pool cleanup in the background. This avoids ~80ms of synchronous
+    // thread termination overhead on the critical path. The cleanup promise still
+    // runs but doesn't block the caller. All worker onWorkerTermination hooks are
+    // no-ops (gpt-tokenizer is pure JS, secretlint needs no teardown).
+    metricsTaskRunner.unref();
+    securityTaskRunner?.unref();
+    Promise.all([metricsTaskRunner.cleanup(), securityTaskRunner?.cleanup()]).catch(() => {});
   }
 };

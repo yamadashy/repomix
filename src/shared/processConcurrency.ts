@@ -136,6 +136,11 @@ export const cleanupWorkerPool = async (pool: Tinypool): Promise<void> => {
 export interface TaskRunner<T, R> {
   run: (task: T) => Promise<R>;
   cleanup: () => Promise<void>;
+  /**
+   * Unref all worker threads so they don't prevent the process from exiting.
+   * Call this after all tasks are complete to allow fast process shutdown.
+   */
+  unref: () => void;
 }
 
 export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> => {
@@ -143,5 +148,12 @@ export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> =
   return {
     run: (task: T) => pool.run(task),
     cleanup: () => cleanupWorkerPool(pool),
+    unref: () => {
+      for (const thread of pool.threads) {
+        if (thread) {
+          (thread as { unref?: () => void }).unref?.();
+        }
+      }
+    },
   };
 };

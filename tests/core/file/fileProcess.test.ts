@@ -24,7 +24,8 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
     run: async (task: T) => {
       return (await fileProcessWorker(task as FileProcessTask)) as R;
     },
-    cleanup: async () => {
+    cleanup: async () => {},
+    unref: () => {
       // Mock cleanup - no-op for tests
     },
   };
