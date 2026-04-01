@@ -137,35 +137,36 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Run security check and file processing concurrently.
+    // Start security check and file processing concurrently.
     // Security check uses worker threads while file processing runs on the main thread
     // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
-    // After both complete, filter out any suspicious files from the processed results.
-    const [validationResult, allProcessedFiles] = await Promise.all([
-      withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
-      ),
-      withMemoryLogging('Process Files', () => {
-        progressCallback('Processing files...');
-        return deps.processFiles(rawFiles, config, progressCallback);
-      }),
-    ]);
+    const validationPromise = withMemoryLogging('Security Check', () =>
+      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+    );
+    const allProcessedFiles = await withMemoryLogging('Process Files', () => {
+      progressCallback('Processing files...');
+      return deps.processFiles(rawFiles, config, progressCallback);
+    });
 
-    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-      validationResult;
+    // Build filePathsByRoot and emptyDirPaths early (needed for output generation)
+    const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
+      rootLabel: path.basename(rootDir) || rootDir,
+      files: filePaths,
+    }));
+    const emptyDirPaths = searchResultsByDir.flatMap(({ emptyDirPaths }) => emptyDirPaths);
 
-    // Filter processed files to exclude suspicious ones
-    const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
-    const processedFiles =
-      suspiciousPathSet.size > 0 ? allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path)) : allProcessedFiles;
-
-    progressCallback('Generating output...');
-
-    // Check if skill generation is requested
+    // Check if skill generation is requested (needs security result, can't speculate)
     if (config.skillGenerate !== undefined && options.skillDir) {
-      // Await warmup to ensure graceful worker shutdown (avoid terminating WASM-loading thread)
-      await metricsWarmupPromise;
+      const validationResult = await validationPromise;
+      const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+        validationResult;
+      const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
+      const processedFiles =
+        suspiciousPathSet.size > 0
+          ? allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path))
+          : allProcessedFiles;
 
+      await metricsWarmupPromise;
       const result = await deps.packSkill({
         rootDirs,
         config,
@@ -186,28 +187,21 @@ export const pack = async (
       return result;
     }
 
-    // Build filePathsByRoot for multi-root tree generation
-    // Use directory basename as the label for each root
-    // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
-    const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
-      rootLabel: path.basename(rootDir) || rootDir,
-      files: filePaths,
-    }));
-
-    // Collect empty directory paths from the initial search results to avoid a redundant
-    // searchFiles call during output generation (~86-163ms saved)
-    const emptyDirPaths = searchResultsByDir.flatMap(({ emptyDirPaths }) => emptyDirPaths);
-
-    // Ensure warm-up task completes before metrics calculation
+    // Speculative execution: start output generation and metrics with ALL processed files
+    // while the security check is still running. The security check uses ~2 worker threads
+    // on a separate pool, leaving spare CPU cores for metrics workers.
+    //
+    // In the common case (no suspicious files detected), the speculative results are
+    // identical to what we'd compute after filtering, so no work is wasted.
+    // In the rare case where suspicious files are found, we discard the speculative
+    // results and regenerate with the filtered file set.
     await metricsWarmupPromise;
 
-    // Generate and write output, overlapping with metrics calculation.
-    // File and git metrics don't depend on the output, so they start immediately
-    // while output generation runs concurrently.
-    const outputPromise = deps.produceOutput(
+    progressCallback('Generating output...');
+    const speculativeOutputPromise = deps.produceOutput(
       rootDirs,
       config,
-      processedFiles,
+      allProcessedFiles,
       allFilePaths,
       gitDiffResult,
       gitLogResult,
@@ -215,25 +209,71 @@ export const pack = async (
       filePathsByRoot,
       emptyDirPaths,
     );
-
-    const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
-
-    const [{ outputFiles }, metrics] = await Promise.all([
-      outputPromise,
-      withMemoryLogging('Calculate Metrics', () =>
-        deps.calculateMetrics(
-          processedFiles,
-          outputForMetricsPromise,
-          progressCallback,
-          config,
-          gitDiffResult,
-          gitLogResult,
-          {
-            taskRunner: metricsTaskRunner,
-          },
-        ),
+    const speculativeOutputForMetrics = speculativeOutputPromise.then((r) => r.outputForMetrics);
+    const speculativeMetricsPromise = withMemoryLogging('Calculate Metrics', () =>
+      deps.calculateMetrics(
+        allProcessedFiles,
+        speculativeOutputForMetrics,
+        progressCallback,
+        config,
+        gitDiffResult,
+        gitLogResult,
+        {
+          taskRunner: metricsTaskRunner,
+        },
       ),
-    ]);
+    );
+
+    // Prevent unhandled rejection if security check throws before we await these
+    speculativeOutputPromise.catch(() => {});
+    speculativeMetricsPromise.catch(() => {});
+
+    // Wait for security check to complete
+    const validationResult = await validationPromise;
+    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+      validationResult;
+
+    let outputFiles: string[] | undefined;
+    let metrics: Awaited<ReturnType<typeof deps.calculateMetrics>>;
+    let processedFiles: ProcessedFile[];
+
+    if (suspiciousFilesResults.length === 0) {
+      // Common case: no suspicious files, speculative results are correct
+      processedFiles = allProcessedFiles;
+      const [speculativeOutput, speculativeMetrics] = await Promise.all([
+        speculativeOutputPromise,
+        speculativeMetricsPromise,
+      ]);
+      outputFiles = speculativeOutput.outputFiles;
+      metrics = speculativeMetrics;
+    } else {
+      // Rare case: suspicious files detected, discard speculative results and regenerate
+      await Promise.allSettled([speculativeOutputPromise, speculativeMetricsPromise]);
+
+      const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
+      processedFiles = allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path));
+
+      const outputPromise = deps.produceOutput(
+        rootDirs,
+        config,
+        processedFiles,
+        allFilePaths,
+        gitDiffResult,
+        gitLogResult,
+        progressCallback,
+        filePathsByRoot,
+        emptyDirPaths,
+      );
+      const outputForMetrics = outputPromise.then((r) => r.outputForMetrics);
+      const [correctedOutput, correctedMetrics] = await Promise.all([
+        outputPromise,
+        deps.calculateMetrics(processedFiles, outputForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
+          taskRunner: metricsTaskRunner,
+        }),
+      ]);
+      outputFiles = correctedOutput.outputFiles;
+      metrics = correctedMetrics;
+    }
 
     // Create a result object that includes metrics and security results
     const result = {
