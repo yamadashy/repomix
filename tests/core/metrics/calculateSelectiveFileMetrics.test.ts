@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { calculateSelectiveFileMetrics } from '../../../src/core/metrics/calculateSelectiveFileMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
+import {
+  countTokens,
+  countTokensBatch,
+  type TokenCountBatchTask,
+  type TokenCountTask,
+} from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 
@@ -12,6 +17,10 @@ vi.mock('../../shared/processConcurrency', () => ({
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
+      // Handle both single and batch tasks, mirroring the real worker's dispatch
+      if (task && typeof task === 'object' && 'batch' in task) {
+        return (await countTokensBatch(task as TokenCountBatchTask)) as R;
+      }
       return (await countTokens(task as TokenCountTask)) as R;
     },
     cleanup: async () => {

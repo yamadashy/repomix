@@ -41,6 +41,62 @@ const defaultDeps = {
   taskRunner: undefined as TaskRunner<TokenCountTask, number> | undefined,
 };
 
+/**
+ * Estimate total output tokens from per-file token counts when all files have been individually counted.
+ *
+ * When tokenCountTree is enabled, every file's tokens are already counted individually.
+ * The output is ~93% file content, so we can avoid re-tokenizing the entire output (~3.8MB)
+ * by summing per-file counts and estimating the template overhead (~7%) using the
+ * chars-to-tokens ratio derived from the actual file tokenization data.
+ */
+const estimateOutputTokens = (
+  processedFiles: ProcessedFile[],
+  fileTokenCounts: Record<string, number>,
+  totalOutputChars: number,
+  gitDiffTokenCount: number,
+  gitLogTokenCount: number,
+  gitDiffChars: number,
+  gitLogChars: number,
+): number => {
+  let totalFileTokens = 0;
+  let totalFileChars = 0;
+  for (const file of processedFiles) {
+    const tokens = fileTokenCounts[file.path];
+    if (tokens !== undefined) {
+      totalFileTokens += tokens;
+      totalFileChars += file.content.length;
+    }
+  }
+
+  // Overhead = output chars minus file content and git content
+  const overheadChars = totalOutputChars - totalFileChars - gitDiffChars - gitLogChars;
+
+  // Estimate overhead tokens using the chars-per-token ratio from file data.
+  // Typical ratio: ~3.5-4.5 chars/token for mixed code+text.
+  // Fallback to 4.0 if no file data is available or ratio is degenerate.
+  const rawRatio = totalFileTokens > 0 ? totalFileChars / totalFileTokens : 0;
+  const charsPerToken = rawRatio > 0 ? rawRatio : 4.0;
+  const overheadTokens = overheadChars > 0 ? Math.round(overheadChars / charsPerToken) : 0;
+
+  return totalFileTokens + gitDiffTokenCount + gitLogTokenCount + overheadTokens;
+};
+
+/**
+ * Get the total character count of git diff content.
+ */
+const getGitDiffChars = (gitDiffResult: GitDiffResult | undefined): number => {
+  if (!gitDiffResult) return 0;
+  return (gitDiffResult.workTreeDiffContent?.length ?? 0) + (gitDiffResult.stagedDiffContent?.length ?? 0);
+};
+
+/**
+ * Get the total character count of git log content.
+ */
+const getGitLogChars = (gitLogResult: GitLogResult | undefined): number => {
+  if (!gitLogResult) return 0;
+  return gitLogResult.logContent?.length ?? 0;
+};
+
 export const calculateMetrics = async (
   processedFiles: ProcessedFile[],
   outputPromise: Promise<string | string[]>,
@@ -100,6 +156,49 @@ export const calculateMetrics = async (
     const resolvedOutput = await outputPromise;
     const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
 
+    const totalFiles = processedFiles.length;
+    const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
+
+    // When all files are individually counted (tokenCountTree enabled), skip the expensive
+    // output token counting (~3.8MB re-tokenization) and estimate total output tokens from
+    // per-file counts + overhead estimation. This eliminates ~50% of tokenization work.
+    if (shouldCalculateAllFiles) {
+      const [selectiveFileMetrics, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+        selectiveFileMetricsPromise,
+        gitDiffMetricsPromise,
+        gitLogMetricsPromise,
+      ]);
+
+      const fileCharCounts: Record<string, number> = {};
+      const fileTokenCounts: Record<string, number> = {};
+      for (const file of processedFiles) {
+        fileCharCounts[file.path] = file.content.length;
+      }
+      for (const file of selectiveFileMetrics) {
+        fileTokenCounts[file.path] = file.tokenCount;
+      }
+
+      const totalTokens = estimateOutputTokens(
+        processedFiles,
+        fileTokenCounts,
+        totalCharacters,
+        gitDiffTokenCount,
+        gitLogTokenCount.gitLogTokenCount,
+        getGitDiffChars(gitDiffResult),
+        getGitLogChars(gitLogResult),
+      );
+
+      return {
+        totalFiles,
+        totalCharacters,
+        totalTokens,
+        fileCharCounts,
+        fileTokenCounts,
+        gitDiffTokenCount: gitDiffTokenCount,
+        gitLogTokenCount: gitLogTokenCount.gitLogTokenCount,
+      };
+    }
+
     // Start output metrics after output is available
     const outputMetricsPromise = Promise.all(
       outputParts.map((part, index) => {
@@ -117,8 +216,6 @@ export const calculateMetrics = async (
     ]);
 
     const totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
-    const totalFiles = processedFiles.length;
-    const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
 
     // Build character counts for all files
     const fileCharCounts: Record<string, number> = {};
