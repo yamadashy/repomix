@@ -134,7 +134,7 @@ index 123..456 100644
       undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
-        generateDirectOutput: mockGenerateDirectOutput,
+        generateHandlebarOutput: mockGenerateDirectOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
         sortOutputFiles: mockSortOutputFiles,
@@ -208,7 +208,7 @@ index 123..456 100644
       undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
-        generateDirectOutput: mockGenerateDirectOutput,
+        generateHandlebarOutput: mockGenerateDirectOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
         sortOutputFiles: mockSortOutputFiles,

@@ -12,7 +12,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import { packSkill } from './skill/packSkill.js';
 
@@ -41,6 +41,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -68,6 +69,18 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Pre-initialize security worker pool as early as possible to overlap @secretlint/core module
+  // loading (~103ms cold start per thread) with the file search + sort + collection pipeline
+  // (~136ms). Without pre-warming, security module loading happens when the security check
+  // stage begins, adding ~103ms to the critical path. Tinypool spawns minThreads=1 at pool
+  // creation, which immediately begins loading the worker module in the background.
+  // numOfTasks=200 yields maxThreads=2, optimal for balancing module loading cost against
+  // scanning throughput.
+  const SECURITY_PREWARM_TASKS = 200;
+  const securityTaskRunner = config.security.enableSecurityCheck
+    ? deps.createSecurityTaskRunner(SECURITY_PREWARM_TASKS)
+    : undefined;
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -134,7 +147,7 @@ export const pack = async (
     // After both complete, filter out any suspicious files from the processed results.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, securityTaskRunner),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
@@ -238,6 +251,6 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsTaskRunner.cleanup();
+    await Promise.all([metricsTaskRunner.cleanup(), securityTaskRunner?.cleanup()]);
   }
 };
