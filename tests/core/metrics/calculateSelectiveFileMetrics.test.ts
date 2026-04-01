@@ -19,7 +19,7 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
     run: async (task: T) => {
       // Handle both single and batch tasks, mirroring the real worker's dispatch
       if (task && typeof task === 'object' && 'batch' in task) {
-        return (await countTokensBatch(task as TokenCountBatchTask)) as R;
+        return (await countTokensBatch(task as unknown as TokenCountBatchTask)) as R;
       }
       return (await countTokens(task as TokenCountTask)) as R;
     },
