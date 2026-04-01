@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import { initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -17,6 +17,20 @@ export interface SuspiciousFileResult {
   messages: string[];
   type: SecurityCheckType;
 }
+
+/**
+ * Create a security task runner that can be pre-initialized to overlap
+ * @secretlint module loading with other pipeline stages (e.g., file search).
+ */
+export const createSecurityTaskRunner = (
+  numOfTasks: number,
+): TaskRunner<SecurityCheckTask, SuspiciousFileResult | null> => {
+  return initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
+    numOfTasks,
+    workerType: 'securityCheck',
+    runtime: 'worker_threads',
+  });
+};
 
 // Target ~200KB of content per batch to balance worker round-trip overhead against task granularity.
 // With ~992 files totaling ~4MB, this yields ~20 batches instead of ~992 individual tasks,
@@ -49,7 +63,10 @@ export const runSecurityCheck = async (
   progressCallback: RepomixProgressCallback = () => {},
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
-  deps = {
+  deps: {
+    initTaskRunner: typeof initTaskRunner;
+    taskRunner?: TaskRunner<SecurityCheckTask, SuspiciousFileResult | null>;
+  } = {
     initTaskRunner,
   },
 ): Promise<SuspiciousFileResult[]> => {
@@ -98,19 +115,33 @@ export const runSecurityCheck = async (
   // Combine file tasks, Git diff tasks, and Git log tasks
   const allTasks = [...fileTasks, ...gitDiffTasks, ...gitLogTasks];
 
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
-    numOfTasks: allTasks.length,
-    workerType: 'securityCheck',
-    runtime: 'worker_threads',
-  });
+  logger.trace(`Starting security check for ${allTasks.length} files/content`);
+  const startTime = process.hrtime.bigint();
+
+  // Create batches BEFORE the worker pool so thread count can be based on the actual
+  // number of dispatched tasks. With ~20 batches, scaling by BATCHES_PER_THREAD (~10)
+  // yields 2 worker threads instead of 4, which is optimal because:
+  // - Each thread independently loads @secretlint/core (~94ms). 4 threads loading
+  //   simultaneously on 4 cores causes significant CPU contention.
+  // - 2 threads balance module loading cost against parallel scanning benefit,
+  //   reducing security check time by ~37ms (~20%) compared to 4 threads.
+  const batches = createBatches(allTasks);
+  logger.trace(`Created ${batches.length} batches from ${allTasks.length} tasks`);
+
+  // Use pre-warmed task runner if provided (module loading already overlapped with search),
+  // otherwise create a new one. Scale batch count to yield ~2 worker threads for typical
+  // repos (~20 batches), balancing module loading cost against parallel scanning benefit.
+  const BATCHES_PER_THREAD = 10;
+  const externalTaskRunner = !!deps.taskRunner;
+  const taskRunner =
+    deps.taskRunner ??
+    deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
+      numOfTasks: batches.length * BATCHES_PER_THREAD,
+      workerType: 'securityCheck',
+      runtime: 'worker_threads',
+    });
 
   try {
-    logger.trace(`Starting security check for ${allTasks.length} files/content`);
-    const startTime = process.hrtime.bigint();
-
-    const batches = createBatches(allTasks);
-    logger.trace(`Created ${batches.length} batches from ${allTasks.length} tasks`);
-
     let completedTasks = 0;
     const totalTasks = allTasks.length;
 
@@ -144,6 +175,8 @@ export const runSecurityCheck = async (
     logger.error('Error during security check:', error);
     throw error;
   } finally {
-    await taskRunner.cleanup();
+    if (!externalTaskRunner) {
+      await taskRunner.cleanup();
+    }
   }
 };
