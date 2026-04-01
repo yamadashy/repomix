@@ -93,7 +93,6 @@ index 123..456 100644
       cleanup: vi.fn(),
     };
 
-
     const result = await calculateMetrics(
       processedFiles,
       Promise.resolve(output),
@@ -175,7 +174,6 @@ index 123..456 100644
       cleanup: vi.fn(),
     };
 
-
     const result = await calculateMetrics(
       processedFiles,
       Promise.resolve(output),
@@ -251,7 +249,6 @@ index 123..456 100644
       run: vi.fn(),
       cleanup: vi.fn(),
     };
-
 
     const result = await calculateMetrics(
       processedFiles,
