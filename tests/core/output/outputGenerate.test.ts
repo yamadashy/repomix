@@ -317,3 +317,81 @@ describe('outputGenerate', () => {
     expect(output).not.toContain('Directory Structure');
   });
 });
+
+describe('buildOutputGeneratorContext', () => {
+  test('should use cached emptyDirPaths without calling searchFiles', async () => {
+    const { buildOutputGeneratorContext } = await import('../../../src/core/output/outputGenerate.js');
+
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        directoryStructure: true,
+        includeEmptyDirectories: true,
+      },
+    });
+    const processedFiles: ProcessedFile[] = [{ path: 'src/index.ts', content: 'export const a = 1;\n' }];
+    const allFilePaths = processedFiles.map((f) => f.path);
+
+    const mockSearchFiles = vi.fn();
+    const deps = {
+      listDirectories: vi.fn(),
+      listFiles: vi.fn(),
+      searchFiles: mockSearchFiles,
+    };
+
+    const cachedEmptyDirPaths = ['empty-dir'];
+
+    await buildOutputGeneratorContext(
+      [process.cwd()],
+      mockConfig,
+      allFilePaths,
+      processedFiles,
+      undefined,
+      undefined,
+      undefined,
+      deps,
+      cachedEmptyDirPaths,
+    );
+
+    // searchFiles should NOT be called when cached emptyDirPaths are provided
+    expect(mockSearchFiles).not.toHaveBeenCalled();
+  });
+
+  test('should fall back to searchFiles when emptyDirPaths is not cached', async () => {
+    const { buildOutputGeneratorContext } = await import('../../../src/core/output/outputGenerate.js');
+
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        directoryStructure: true,
+        includeEmptyDirectories: true,
+      },
+    });
+    const processedFiles: ProcessedFile[] = [{ path: 'src/index.ts', content: 'export const a = 1;\n' }];
+    const allFilePaths = processedFiles.map((f) => f.path);
+
+    const mockSearchFiles = vi.fn().mockResolvedValue({ filePaths: allFilePaths, emptyDirPaths: [] });
+    const deps = {
+      listDirectories: vi.fn(),
+      listFiles: vi.fn(),
+      searchFiles: mockSearchFiles,
+    };
+
+    await buildOutputGeneratorContext(
+      [process.cwd()],
+      mockConfig,
+      allFilePaths,
+      processedFiles,
+      undefined,
+      undefined,
+      undefined,
+      deps,
+      undefined,
+    );
+
+    // searchFiles should be called as fallback when no cached paths provided
+    expect(mockSearchFiles).toHaveBeenCalled();
+  });
+});
