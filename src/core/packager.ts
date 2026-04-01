@@ -1,6 +1,8 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
+import { logger } from '../shared/logger.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
+import { getWorkerThreadCount } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -41,6 +43,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  getWorkerThreadCount,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -91,13 +94,21 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers
-  // gpt-tokenizer initialization in the worker thread without blocking the main pipeline.
+  // Pre-initialize metrics worker pool and warm ALL threads to overlap gpt-tokenizer
+  // loading with subsequent pipeline stages (security check, file processing, output
+  // generation). Each warm-up task triggers gpt-tokenizer initialisation in its worker
+  // thread. By warming every thread, the expensive per-thread module load (~200 ms)
+  // is fully hidden behind the concurrent pipeline work.
   const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const metricsWarmupPromise = metricsTaskRunner
-    .run({ content: '', encoding: config.tokenCount.encoding })
-    .catch(() => 0);
+  const { maxThreads: metricsMaxThreads } = deps.getWorkerThreadCount(allFilePaths.length);
+  const metricsWarmupPromise = Promise.all(
+    Array.from({ length: metricsMaxThreads }, () =>
+      metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch((error) => {
+        logger.trace('Metrics warmup task failed (non-fatal):', error);
+        return 0;
+      }),
+    ),
+  );
 
   try {
     // Run file collection and git operations in parallel since they are independent:

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { calculateOutputMetrics } from '../../../src/core/metrics/calculateOutputMetrics.js';
 import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
-import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
+import { getProcessConcurrency, type WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
@@ -90,8 +90,8 @@ describe('calculateOutputMetrics', () => {
   });
 
   it('should process large content in parallel', async () => {
-    // Generate a large content that exceeds MIN_CONTENT_LENGTH_FOR_PARALLEL
-    const content = 'a'.repeat(1_100_000); // 1.1MB of content
+    // Generate a large content that exceeds MIN_CONTENT_LENGTH_FOR_PARALLEL (50 KB)
+    const content = 'a'.repeat(100_000); // 100 KB of content
     const encoding = 'o200k_base';
     const path = 'large-file.txt';
 
@@ -113,12 +113,13 @@ describe('calculateOutputMetrics', () => {
       taskRunner: mockParallelTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
-    expect(chunksProcessed).toBeGreaterThan(1); // Should have processed multiple chunks
-    expect(result).toBe(100_000); // 1000 chunks * 100 tokens per chunk
+    const expectedChunks = Math.max(2, getProcessConcurrency());
+    expect(chunksProcessed).toBe(expectedChunks);
+    expect(result).toBe(expectedChunks * 100);
   });
 
   it('should handle errors in parallel processing', async () => {
-    const content = 'a'.repeat(1_100_000); // 1.1MB of content
+    const content = 'a'.repeat(100_000); // 100 KB of content (exceeds 50 KB threshold)
     const encoding = 'o200k_base';
     const mockError = new Error('Parallel processing error');
 
@@ -143,7 +144,7 @@ describe('calculateOutputMetrics', () => {
   });
 
   it('should correctly split content into chunks for parallel processing', async () => {
-    const content = 'a'.repeat(1_100_000); // 1.1MB of content
+    const content = 'a'.repeat(100_000); // 100 KB of content (exceeds 50 KB threshold)
     const encoding = 'o200k_base';
     const processedChunks: string[] = [];
 
@@ -168,11 +169,10 @@ describe('calculateOutputMetrics', () => {
       }),
     });
 
-    // Check that chunks are roughly equal in size
-    const _expectedChunkSize = Math.ceil(content.length / 1000); // CHUNK_SIZE is 1000
+    const expectedChunks = Math.max(2, getProcessConcurrency());
     const chunkSizes = processedChunks.map((chunk) => chunk.length);
 
-    expect(processedChunks.length).toBe(1000); // Should have 1000 chunks
+    expect(processedChunks.length).toBe(expectedChunks);
     expect(Math.max(...chunkSizes) - Math.min(...chunkSizes)).toBeLessThanOrEqual(1); // Chunks should be almost equal in size
     expect(processedChunks.join('')).toBe(content); // All content should be processed
   });
