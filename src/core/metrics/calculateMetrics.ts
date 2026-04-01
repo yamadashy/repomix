@@ -4,10 +4,8 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import { buildSplitOutputFilePath } from '../output/outputSplit.js';
 import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
-import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
@@ -35,19 +33,19 @@ export const createMetricsTaskRunner = (numOfTasks: number): TaskRunner<TokenCou
 
 const defaultDeps = {
   calculateSelectiveFileMetrics,
-  calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
   taskRunner: undefined as TaskRunner<TokenCountTask, number> | undefined,
 };
 
 /**
- * Estimate total output tokens from per-file token counts when all files have been individually counted.
+ * Estimate total output tokens from per-file token counts and a chars-to-tokens ratio.
  *
- * When tokenCountTree is enabled, every file's tokens are already counted individually.
- * The output is ~93% file content, so we can avoid re-tokenizing the entire output (~3.8MB)
- * by summing per-file counts and estimating the template overhead (~7%) using the
- * chars-to-tokens ratio derived from the actual file tokenization data.
+ * The output is ~93% file content. For files that have been individually tokenized,
+ * their exact counts are used. For uncounted files and template overhead, the
+ * chars-to-tokens ratio derived from the counted files is applied.
+ * This avoids re-tokenizing the entire output (~4MB), which would otherwise
+ * require waiting for output generation to complete before tokenization can start.
  */
 const estimateOutputTokens = (
   processedFiles: ProcessedFile[],
@@ -58,27 +56,35 @@ const estimateOutputTokens = (
   gitDiffChars: number,
   gitLogChars: number,
 ): number => {
-  let totalFileTokens = 0;
-  let totalFileChars = 0;
+  let countedFileTokens = 0;
+  let countedFileChars = 0;
+  let uncountedFileChars = 0;
+
   for (const file of processedFiles) {
     const tokens = fileTokenCounts[file.path];
     if (tokens !== undefined) {
-      totalFileTokens += tokens;
-      totalFileChars += file.content.length;
+      countedFileTokens += tokens;
+      countedFileChars += file.content.length;
+    } else {
+      uncountedFileChars += file.content.length;
     }
   }
 
-  // Overhead = output chars minus file content and git content
-  const overheadChars = totalOutputChars - totalFileChars - gitDiffChars - gitLogChars;
-
-  // Estimate overhead tokens using the chars-per-token ratio from file data.
+  // Derive chars-per-token ratio from the counted files.
   // Typical ratio: ~3.5-4.5 chars/token for mixed code+text.
-  // Fallback to 4.0 if no file data is available or ratio is degenerate.
-  const rawRatio = totalFileTokens > 0 ? totalFileChars / totalFileTokens : 0;
+  // Fallback to 4.0 if no counted file data is available.
+  const rawRatio = countedFileTokens > 0 ? countedFileChars / countedFileTokens : 0;
   const charsPerToken = rawRatio > 0 ? rawRatio : 4.0;
+
+  // Estimate tokens for uncounted files using the derived ratio
+  const uncountedFileTokens = uncountedFileChars > 0 ? Math.round(uncountedFileChars / charsPerToken) : 0;
+
+  // Overhead = output chars minus all file content and git content
+  const totalFileChars = countedFileChars + uncountedFileChars;
+  const overheadChars = totalOutputChars - totalFileChars - gitDiffChars - gitLogChars;
   const overheadTokens = overheadChars > 0 ? Math.round(overheadChars / charsPerToken) : 0;
 
-  return totalFileTokens + gitDiffTokenCount + gitLogTokenCount + overheadTokens;
+  return countedFileTokens + uncountedFileTokens + gitDiffTokenCount + gitLogTokenCount + overheadTokens;
 };
 
 /**
@@ -120,14 +126,12 @@ export const calculateMetrics = async (
     });
 
   try {
-    // For top files display optimization: calculate token counts only for top files by character count
-    // However, if tokenCountTree is enabled, calculate for all files to avoid double calculation
+    // Determine which files to calculate token counts for:
+    // - If tokenCountTree is enabled: calculate for all files (needed for display)
+    // - Otherwise: calculate only for top files by character count
     const topFilesLength = config.output.topFilesLength;
     const shouldCalculateAllFiles = !!config.output.tokenCountTree;
 
-    // Determine which files to calculate token counts for:
-    // - If tokenCountTree is enabled: calculate for all files to avoid double calculation
-    // - Otherwise: calculate only for top files by character count for optimization
     const metricsTargetPaths = shouldCalculateAllFiles
       ? processedFiles.map((file) => file.path)
       : [...processedFiles]
@@ -135,8 +139,10 @@ export const calculateMetrics = async (
           .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
           .map((file) => file.path);
 
-    // Start output-independent metrics immediately so they can overlap with output generation
-    // when output is passed as a promise
+    // Start all metrics immediately so they overlap with output generation.
+    // Total output tokens are always estimated from per-file counts + chars-to-tokens ratio
+    // rather than tokenizing the full output (~4MB). This eliminates the sequential dependency
+    // where output must complete before tokenization could begin, saving ~200-250ms.
     const selectiveFileMetricsPromise = deps.calculateSelectiveFileMetrics(
       processedFiles,
       metricsTargetPaths,
@@ -152,70 +158,17 @@ export const calculateMetrics = async (
     gitDiffMetricsPromise.catch(() => {});
     gitLogMetricsPromise.catch(() => {});
 
-    // Await the output (waits for output generation to complete)
-    const resolvedOutput = await outputPromise;
-    const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
-
-    const totalFiles = processedFiles.length;
-    const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
-
-    // When all files are individually counted (tokenCountTree enabled), skip the expensive
-    // output token counting (~3.8MB re-tokenization) and estimate total output tokens from
-    // per-file counts + overhead estimation. This eliminates ~50% of tokenization work.
-    if (shouldCalculateAllFiles) {
-      const [selectiveFileMetrics, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
-        selectiveFileMetricsPromise,
-        gitDiffMetricsPromise,
-        gitLogMetricsPromise,
-      ]);
-
-      const fileCharCounts: Record<string, number> = {};
-      const fileTokenCounts: Record<string, number> = {};
-      for (const file of processedFiles) {
-        fileCharCounts[file.path] = file.content.length;
-      }
-      for (const file of selectiveFileMetrics) {
-        fileTokenCounts[file.path] = file.tokenCount;
-      }
-
-      const totalTokens = estimateOutputTokens(
-        processedFiles,
-        fileTokenCounts,
-        totalCharacters,
-        gitDiffTokenCount,
-        gitLogTokenCount.gitLogTokenCount,
-        getGitDiffChars(gitDiffResult),
-        getGitLogChars(gitLogResult),
-      );
-
-      return {
-        totalFiles,
-        totalCharacters,
-        totalTokens,
-        fileCharCounts,
-        fileTokenCounts,
-        gitDiffTokenCount: gitDiffTokenCount,
-        gitLogTokenCount: gitLogTokenCount.gitLogTokenCount,
-      };
-    }
-
-    // Start output metrics after output is available
-    const outputMetricsPromise = Promise.all(
-      outputParts.map((part, index) => {
-        const partPath =
-          outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, index + 1) : config.output.filePath;
-        return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
-      }),
-    );
-
-    const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+    // Wait for output and all metrics in parallel
+    const [resolvedOutput, selectiveFileMetrics, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+      outputPromise,
       selectiveFileMetricsPromise,
-      outputMetricsPromise,
       gitDiffMetricsPromise,
       gitLogMetricsPromise,
     ]);
 
-    const totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
+    const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
+    const totalFiles = processedFiles.length;
+    const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
 
     // Build character counts for all files
     const fileCharCounts: Record<string, number> = {};
@@ -223,11 +176,24 @@ export const calculateMetrics = async (
       fileCharCounts[file.path] = file.content.length;
     }
 
-    // Build token counts only for top files
+    // Build token counts for counted files
     const fileTokenCounts: Record<string, number> = {};
     for (const file of selectiveFileMetrics) {
       fileTokenCounts[file.path] = file.tokenCount;
     }
+
+    // Estimate total output tokens from per-file counts + chars-to-tokens ratio.
+    // For counted files, exact token counts are used; for uncounted files and
+    // template overhead, the ratio from counted files is applied.
+    const totalTokens = estimateOutputTokens(
+      processedFiles,
+      fileTokenCounts,
+      totalCharacters,
+      gitDiffTokenCount,
+      gitLogTokenCount.gitLogTokenCount,
+      getGitDiffChars(gitDiffResult),
+      getGitLogChars(gitLogResult),
+    );
 
     return {
       totalFiles,

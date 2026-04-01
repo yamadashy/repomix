@@ -35,6 +35,9 @@ describe('calculateMetrics', () => {
     ];
     (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
 
+    // Total tokens are now estimated from per-file counts:
+    // countedFileTokens=30, countedFileChars=300, outputChars=300
+    // overhead=300-300-0-0=0, so totalTokens=30
     const aggregatedResult = {
       totalFiles: 2,
       totalCharacters: 300,
@@ -69,7 +72,6 @@ describe('calculateMetrics', () => {
       undefined,
       {
         calculateSelectiveFileMetrics,
-        calculateOutputMetrics: async () => 30,
         calculateGitDiffMetrics: () => Promise.resolve(0),
         calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
         taskRunner: mockTaskRunner,
@@ -113,8 +115,6 @@ describe('calculateMetrics', () => {
       cleanup: vi.fn(),
     };
 
-    const calculateOutputMetrics = vi.fn().mockResolvedValue(999);
-
     const result = await calculateMetrics(
       processedFiles,
       Promise.resolve(output),
@@ -124,15 +124,11 @@ describe('calculateMetrics', () => {
       undefined,
       {
         calculateSelectiveFileMetrics,
-        calculateOutputMetrics,
         calculateGitDiffMetrics: () => Promise.resolve(0),
         calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
         taskRunner: mockTaskRunner,
       },
     );
-
-    // calculateOutputMetrics should NOT be called when tokenCountTree is enabled
-    expect(calculateOutputMetrics).not.toHaveBeenCalled();
 
     // Total tokens should be estimated: fileTokens(75) + overhead estimation
     // Overhead chars = 350 - 300 - 0 - 0 = 50 chars
