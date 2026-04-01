@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775043452319,
+  "lastUpdate": 1775043597385,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -1305,6 +1305,51 @@ window.BENCHMARK_DATA = {
             "range": "±64",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 3051ms, Q3: 3115ms\nAll times: 2971, 2987, 3007, 3047, 3051, 3056, 3056, 3057, 3057, 3060, 3064, 3064, 3090, 3102, 3115, 3120, 3123, 3130, 3294ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "729427f6ef4ed156877aac555dabde5ea0e02f5a",
+          "message": "Merge pull request #1371 from yamadashy/dependabot/npm_and_yarn/npm_and_yarn-282a1442c2",
+          "timestamp": "2026-04-01T20:35:20+09:00",
+          "tree_id": "fc13a2683bc1565859520dd7b6a5a0e9c45db418",
+          "url": "https://github.com/yamadashy/repomix/commit/729427f6ef4ed156877aac555dabde5ea0e02f5a"
+        },
+        "date": 1775043597019,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1591,
+            "range": "±222",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1538ms, Q3: 1760ms\nAll times: 1395, 1456, 1460, 1463, 1475, 1503, 1517, 1538, 1540, 1549, 1550, 1561, 1565, 1574, 1580, 1591, 1601, 1608, 1631, 1646, 1664, 1688, 1760, 1776, 1793, 1820, 1852, 1859, 1896, 1984ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2298,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2283ms, Q3: 2308ms\nAll times: 2268, 2269, 2274, 2276, 2282, 2283, 2290, 2291, 2292, 2293, 2298, 2298, 2299, 2300, 2300, 2308, 2315, 2321, 2345, 2360ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2683,
+            "range": "±48",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2675ms, Q3: 2723ms\nAll times: 2656, 2665, 2667, 2671, 2673, 2675, 2676, 2678, 2683, 2683, 2683, 2686, 2690, 2694, 2715, 2723, 2727, 2737, 2741, 2752ms"
           }
         ]
       }
