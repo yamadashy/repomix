@@ -110,13 +110,22 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers
-  // gpt-tokenizer initialization in the worker thread without blocking the main pipeline.
+  // Pre-initialize metrics worker pool and warm 2 threads to overlap gpt-tokenizer loading
+  // (~242ms per thread) with the security check phase (2 security + 2 metrics = 4 threads
+  // on available cores, avoiding CPU contention).
+  // Without this, only minThreads=1 thread loads gpt-tokenizer during warmup. The second
+  // thread created on-demand during metrics calculation pays ~242ms gpt-tokenizer loading
+  // on the critical path, nearly doubling the metrics phase duration.
+  // By warming 2 threads, both are ready when tokenization batches arrive, and the 4 batches
+  // (for default top-50-files metrics) complete in 2 rounds of 2 instead of being bottlenecked
+  // by a cold thread loading the tokenizer mid-computation.
   const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const metricsWarmupPromise = metricsTaskRunner
-    .run({ content: '', encoding: config.tokenCount.encoding })
-    .catch(() => 0);
+  const METRICS_WARMUP_THREADS = 2;
+  const metricsWarmupPromise = Promise.all(
+    Array.from({ length: METRICS_WARMUP_THREADS }, () =>
+      metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0),
+    ),
+  );
 
   try {
     // Run file collection and git operations in parallel since they are independent:
