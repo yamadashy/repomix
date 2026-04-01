@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
+import { getProcessConcurrency } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -69,6 +70,21 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
+  // Pre-initialize metrics worker pool as early as possible to overlap gpt-tokenizer loading
+  // with file search, collection, and processing. The warm-up task triggers gpt-tokenizer
+  // initialization in the worker thread. Starting this before file search (rather than after)
+  // gives ~200ms more overlap time, preventing the main pipeline from idling while waiting
+  // for the tokenizer to load.
+  // Pass Infinity so the worker pool provisions the maximum number of threads (capped by
+  // CPU count internally). The actual file count is unknown at this point.
+  const metricsTaskRunner = deps.createMetricsTaskRunner(Infinity);
+  // Send multiple warmup tasks to ensure all worker threads load gpt-tokenizer in parallel.
+  // Tinypool creates threads on demand, so N concurrent tasks will spin up N threads.
+  const warmupTask = { content: '', encoding: config.tokenCount.encoding };
+  const metricsWarmupPromise = Promise.all(
+    Array.from({ length: getProcessConcurrency() }, () => metricsTaskRunner.run(warmupTask).catch(() => 0)),
+  );
+
   progressCallback('Searching for files...');
   const filePathsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
@@ -90,14 +106,6 @@ export const pack = async (
     rootDir,
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers
-  // gpt-tokenizer initialization in the worker thread without blocking the main pipeline.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const metricsWarmupPromise = metricsTaskRunner
-    .run({ content: '', encoding: config.tokenCount.encoding })
-    .catch(() => 0);
 
   try {
     // Run file collection and git operations in parallel since they are independent:
