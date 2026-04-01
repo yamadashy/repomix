@@ -101,6 +101,7 @@ const renderGroups = async (
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
   filePathsByRoot: FilesByRoot[] | undefined,
+  emptyDirPaths: string[] | undefined,
   generateOutput: GenerateOutputFn,
 ): Promise<string> => {
   const chunkProcessedFiles = groupsToRender.flatMap((g) => g.processedFiles);
@@ -115,6 +116,7 @@ const renderGroups = async (
     partIndex === 1 ? gitDiffResult : undefined,
     partIndex === 1 ? gitLogResult : undefined,
     filePathsByRoot,
+    emptyDirPaths,
   );
 };
 
@@ -128,6 +130,7 @@ export const generateSplitOutputParts = async ({
   gitLogResult,
   progressCallback,
   filePathsByRoot,
+  emptyDirPaths,
   deps,
 }: {
   rootDirs: string[];
@@ -139,6 +142,7 @@ export const generateSplitOutputParts = async ({
   gitLogResult: GitLogResult | undefined;
   progressCallback: RepomixProgressCallback;
   filePathsByRoot?: FilesByRoot[];
+  emptyDirPaths?: string[];
   deps: {
     generateOutput: GenerateOutputFn;
   };
@@ -178,6 +182,7 @@ export const generateSplitOutputParts = async ({
       gitDiffResult,
       gitLogResult,
       filePathsByRoot,
+      emptyDirPaths,
       deps.generateOutput,
     );
     const nextBytes = getUtf8ByteLength(nextContent);
@@ -215,6 +220,7 @@ export const generateSplitOutputParts = async ({
       gitDiffResult,
       gitLogResult,
       filePathsByRoot,
+      emptyDirPaths,
       deps.generateOutput,
     );
     const singleGroupBytes = getUtf8ByteLength(singleGroupContent);

@@ -70,22 +70,28 @@ export const pack = async (
   logMemoryUsage('Pack - Start');
 
   progressCallback('Searching for files...');
-  const filePathsByDir = await withMemoryLogging('Search Files', async () =>
+  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
-      rootDirs.map(async (rootDir) => ({
-        rootDir,
-        filePaths: (await deps.searchFiles(rootDir, config, explicitFiles)).filePaths,
-      })),
+      rootDirs.map(async (rootDir) => {
+        const result = await deps.searchFiles(rootDir, config, explicitFiles);
+        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+      }),
     ),
   );
 
+  // Deduplicate and sort empty directory paths for reuse during output generation,
+  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
+  const emptyDirPaths = config.output.includeEmptyDirectories
+    ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
+    : undefined;
+
   // Sort file paths
   progressCallback('Sorting files...');
-  const allFilePaths = filePathsByDir.flatMap(({ filePaths }) => filePaths);
+  const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
   const sortedFilePaths = deps.sortPaths(allFilePaths);
 
   // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(filePathsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
+  const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
   const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
     rootDir,
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
@@ -194,6 +200,7 @@ export const pack = async (
       gitLogResult,
       progressCallback,
       filePathsByRoot,
+      emptyDirPaths,
     );
 
     const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
