@@ -95,6 +95,19 @@ export const pack = async (
     ),
   );
 
+  // Start git operations early so their subprocesses overlap with file search.
+  // Git diffs/logs only need rootDirs and config, not search results.
+  // Wrap in Promise.resolve to handle test mocks that may return non-Promises.
+  // Suppress unhandled rejections here; errors are caught when awaited in Promise.all below.
+  const gitDiffPromise = Promise.resolve(deps.getGitDiffs(rootDirs, config));
+  gitDiffPromise.catch(() => {});
+  const gitLogPromise = Promise.resolve(deps.getGitLogs(rootDirs, config));
+  gitLogPromise.catch(() => {});
+  // Pre-fetch git file change counts to overlap the git subprocess with
+  // file search and collection I/O. sortOutputFiles will find cached data later.
+  // Errors are swallowed since this is an optimization; sortOutputFiles will retry if needed.
+  prefetchGitFileChangeCounts(config).catch(() => {});
+
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
@@ -121,10 +134,9 @@ export const pack = async (
   }));
 
   try {
-    // Run file collection and git operations in parallel since they are independent:
-    // - collectFiles reads file contents from disk
-    // - getGitDiffs/getGitLogs spawn git subprocesses
-    // Neither depends on the other's results.
+    // File collection runs alongside the already-started git operations.
+    // Git subprocesses were launched before search, so they've had ~100-200ms to complete
+    // by the time collection finishes. This eliminates the wait for git results.
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
       withMemoryLogging(
@@ -136,12 +148,8 @@ export const pack = async (
             ),
           ),
       ),
-      deps.getGitDiffs(rootDirs, config),
-      deps.getGitLogs(rootDirs, config),
-      // Pre-fetch git file change counts to overlap the git subprocess with
-      // file collection I/O. sortOutputFiles will find cached data later.
-      // Errors are swallowed since this is an optimization; sortOutputFiles will retry if needed.
-      prefetchGitFileChangeCounts(config).catch(() => {}),
+      gitDiffPromise,
+      gitLogPromise,
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
