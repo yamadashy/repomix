@@ -48,6 +48,7 @@ export const produceOutput = async (
       gitLogResult,
       progressCallback,
       filePathsByRoot,
+      emptyDirPaths,
       deps,
     );
   }
@@ -76,6 +77,7 @@ const generateAndWriteSplitOutput = async (
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
   filePathsByRoot: FilesByRoot[] | undefined,
+  emptyDirPaths: string[] | undefined,
   deps: typeof defaultDeps,
 ): Promise<ProduceOutputResult> => {
   const parts = await withMemoryLogging('Generate Split Output', async () => {
@@ -89,6 +91,7 @@ const generateAndWriteSplitOutput = async (
       gitLogResult,
       progressCallback,
       filePathsByRoot,
+      emptyDirPaths,
       deps: {
         generateOutput: deps.generateOutput,
       },
@@ -139,7 +142,6 @@ const generateAndWriteSingleOutput = async (
       gitDiffResult,
       gitLogResult,
       filePathsByRoot,
-      undefined,
       emptyDirPaths,
     ),
   );

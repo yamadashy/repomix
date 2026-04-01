@@ -131,6 +131,7 @@ index 123..456 100644
       gitDiffResult,
       undefined,
       undefined,
+      undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
         generateDirectOutput: mockGenerateDirectOutput,
@@ -202,6 +203,7 @@ index 123..456 100644
       processedFiles,
       ['file1.js'],
       gitDiffResult,
+      undefined,
       undefined,
       undefined,
       {
