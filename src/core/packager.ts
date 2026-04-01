@@ -225,9 +225,14 @@ export const pack = async (
       emptyDirPaths,
     );
 
+    // outputForMetrics resolves as soon as the output string is generated,
+    // BEFORE the disk write completes, so metrics calculation can overlap with I/O.
     const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
+    // Prevent unhandled rejection if metrics fail before write completes
+    const writeCompletePromise = outputPromise.then((r) => r.writeComplete);
+    writeCompletePromise.catch(() => {});
 
-    const [{ outputFiles }, metrics] = await Promise.all([
+    const [, metrics] = await Promise.all([
       outputPromise,
       withMemoryLogging('Calculate Metrics', () =>
         deps.calculateMetrics(
@@ -243,6 +248,10 @@ export const pack = async (
         ),
       ),
     ]);
+
+    // Ensure disk write completes before returning (re-throws if write failed)
+    const { outputFiles } = await outputPromise;
+    await writeCompletePromise;
 
     // Create a result object that includes metrics and security results
     const result = {

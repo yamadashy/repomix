@@ -27,6 +27,7 @@ describe('packager split output', () => {
     const produceOutput = vi.fn().mockResolvedValue({
       outputFiles: ['repomix-output.1.xml', 'repomix-output.2.xml'],
       outputForMetrics: ['x'.repeat(10), 'x'.repeat(10)],
+      writeComplete: Promise.resolve(),
     });
 
     const calculateMetrics = vi.fn().mockResolvedValue({

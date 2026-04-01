@@ -62,6 +62,7 @@ index 123..456 100644
     });
     const mockProduceOutput = vi.fn().mockResolvedValue({
       outputForMetrics: 'mocked output',
+      writeComplete: Promise.resolve(),
     });
     const mockCalculateMetrics = vi.fn().mockResolvedValue({
       totalFiles: 0,

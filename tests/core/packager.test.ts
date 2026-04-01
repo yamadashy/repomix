@@ -50,6 +50,7 @@ describe('packager', () => {
       }),
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
+        writeComplete: Promise.resolve(),
       }),
       createMetricsTaskRunner: vi.fn().mockReturnValue({
         run: vi.fn().mockResolvedValue(0),
