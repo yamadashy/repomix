@@ -108,7 +108,7 @@ index 123..456 100644
       };
     });
 
-    const mockGenerateHandlebarOutput = vi.fn().mockResolvedValue('<xml>output with diffs</xml>');
+    const mockGenerateDirectOutput = vi.fn().mockResolvedValue('<xml>output with diffs</xml>');
     const mockGenerateParsableXmlOutput = vi.fn().mockImplementation(async (renderContext: RenderContext) => {
       // Check that renderContext has gitDiffs
       expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
@@ -133,7 +133,7 @@ index 123..456 100644
       undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
-        generateHandlebarOutput: mockGenerateHandlebarOutput,
+        generateDirectOutput: mockGenerateDirectOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
         sortOutputFiles: mockSortOutputFiles,
@@ -145,7 +145,7 @@ index 123..456 100644
 
     // For non-parsable XML, should use Handlebars
     if (!mockConfig.output.parsableStyle) {
-      expect(mockGenerateHandlebarOutput).toHaveBeenCalled();
+      expect(mockGenerateDirectOutput).toHaveBeenCalled();
     } else {
       // For parsable XML, should use XML generator
       expect(mockGenerateParsableXmlOutput).toHaveBeenCalled();
@@ -182,7 +182,7 @@ index 123..456 100644
       };
     });
 
-    const mockGenerateHandlebarOutput = vi.fn().mockImplementation(async (_config, renderContext: RenderContext) => {
+    const mockGenerateDirectOutput = vi.fn().mockImplementation(async (_config, renderContext: RenderContext) => {
       // Check that renderContext has gitDiffs for markdown template
       expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
       return `# Markdown output with diffs\n\`\`\`diff\n${sampleDiff}\n\`\`\``;
@@ -206,7 +206,7 @@ index 123..456 100644
       undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
-        generateHandlebarOutput: mockGenerateHandlebarOutput,
+        generateDirectOutput: mockGenerateDirectOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
         sortOutputFiles: mockSortOutputFiles,
@@ -214,7 +214,7 @@ index 123..456 100644
     );
 
     // For markdown output, should use Handlebars
-    expect(mockGenerateHandlebarOutput).toHaveBeenCalled();
+    expect(mockGenerateDirectOutput).toHaveBeenCalled();
 
     // XML generator should not be called for markdown
     expect(mockGenerateParsableXmlOutput).not.toHaveBeenCalled();

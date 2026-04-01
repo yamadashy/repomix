@@ -30,6 +30,7 @@ export const produceOutput = async (
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
   filePathsByRoot?: FilesByRoot[],
+  emptyDirPaths?: string[],
   overrideDeps: Partial<typeof defaultDeps> = {},
 ): Promise<ProduceOutputResult> => {
   const deps = { ...defaultDeps, ...overrideDeps };
@@ -60,6 +61,7 @@ export const produceOutput = async (
     gitLogResult,
     progressCallback,
     filePathsByRoot,
+    emptyDirPaths,
     deps,
   );
 };
@@ -125,10 +127,21 @@ const generateAndWriteSingleOutput = async (
   gitLogResult: GitLogResult | undefined,
   progressCallback: RepomixProgressCallback,
   filePathsByRoot: FilesByRoot[] | undefined,
+  emptyDirPaths: string[] | undefined,
   deps: typeof defaultDeps,
 ): Promise<ProduceOutputResult> => {
   const output = await withMemoryLogging('Generate Output', () =>
-    deps.generateOutput(rootDirs, config, processedFiles, allFilePaths, gitDiffResult, gitLogResult, filePathsByRoot),
+    deps.generateOutput(
+      rootDirs,
+      config,
+      processedFiles,
+      allFilePaths,
+      gitDiffResult,
+      gitLogResult,
+      filePathsByRoot,
+      undefined,
+      emptyDirPaths,
+    ),
   );
 
   progressCallback('Writing output file...');

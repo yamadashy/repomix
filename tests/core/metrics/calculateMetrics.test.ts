@@ -35,6 +35,9 @@ describe('calculateMetrics', () => {
     ];
     (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
 
+    // Total tokens are now estimated from per-file counts:
+    // countedFileTokens=30, countedFileChars=300, outputChars=300
+    // overhead=300-300-0-0=0, so totalTokens=30
     const aggregatedResult = {
       totalFiles: 2,
       totalCharacters: 300,
@@ -69,7 +72,6 @@ describe('calculateMetrics', () => {
       undefined,
       {
         calculateSelectiveFileMetrics,
-        calculateOutputMetrics: async () => 30,
         calculateGitDiffMetrics: () => Promise.resolve(0),
         calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
         taskRunner: mockTaskRunner,
@@ -87,5 +89,58 @@ describe('calculateMetrics', () => {
       }),
     );
     expect(result).toEqual(aggregatedResult);
+  });
+
+  it('should estimate output tokens from per-file counts when tokenCountTree is enabled', async () => {
+    const processedFiles: ProcessedFile[] = [
+      { path: 'file1.txt', content: 'a'.repeat(100) },
+      { path: 'file2.txt', content: 'b'.repeat(200) },
+    ];
+    // Output contains file contents (300 chars) + overhead (50 chars of template markup)
+    const output = 'a'.repeat(100) + 'b'.repeat(200) + 'x'.repeat(50);
+    const progressCallback: RepomixProgressCallback = vi.fn();
+
+    const fileMetrics = [
+      { path: 'file1.txt', charCount: 100, tokenCount: 25 },
+      { path: 'file2.txt', charCount: 200, tokenCount: 50 },
+    ];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    const config = createMockConfig({
+      output: { tokenCountTree: true },
+    });
+
+    const mockTaskRunner = {
+      run: vi.fn(),
+      cleanup: vi.fn(),
+    };
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      progressCallback,
+      config,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // Total tokens should be estimated: fileTokens(75) + overhead estimation
+    // Overhead chars = 350 - 300 - 0 - 0 = 50 chars
+    // Chars per token = 300 / 75 = 4.0
+    // Overhead tokens = round(50 / 4.0) = 13
+    // Total = 75 + 13 = 88
+    expect(result.totalTokens).toBe(88);
+    expect(result.totalCharacters).toBe(350);
+    expect(result.totalFiles).toBe(2);
+    expect(result.fileTokenCounts).toEqual({
+      'file1.txt': 25,
+      'file2.txt': 50,
+    });
   });
 });
