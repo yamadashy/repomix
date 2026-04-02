@@ -16,10 +16,18 @@ export interface SecurityCheckTask {
   type: SecurityCheckType;
 }
 
+export interface SecurityCheckBatchTask {
+  batch: SecurityCheckTask[];
+}
+
 export interface SuspiciousFileResult {
   filePath: string;
   messages: string[];
   type: SecurityCheckType;
+}
+
+export interface SecurityCheckBatchResult {
+  results: (SuspiciousFileResult | null)[];
 }
 
 export const createSecretLintConfig = (): SecretLintCoreConfig => ({
@@ -34,23 +42,46 @@ export const createSecretLintConfig = (): SecretLintCoreConfig => ({
 // Cache config at module level - created once per worker, reused for all tasks
 const cachedConfig = createSecretLintConfig();
 
-export default async ({ filePath, content, type }: SecurityCheckTask) => {
+const runSingleTask = async (task: SecurityCheckTask): Promise<SuspiciousFileResult | null> => {
   const config = cachedConfig;
 
   try {
     const processStartAt = process.hrtime.bigint();
-    const secretLintResult = await runSecretLint(filePath, content, type, config);
+    const secretLintResult = await runSecretLint(task.filePath, task.content, task.type, config);
     const processEndAt = process.hrtime.bigint();
 
     logger.trace(
-      `Checked security on ${filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
+      `Checked security on ${task.filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
     );
 
     return secretLintResult;
   } catch (error) {
-    logger.error(`Error checking security on ${filePath}:`, error);
+    logger.error(`Error checking security on ${task.filePath}:`, error);
     throw error;
   }
+};
+
+const runBatchTask = async (task: SecurityCheckBatchTask): Promise<SecurityCheckBatchResult> => {
+  const processStartAt = process.hrtime.bigint();
+
+  const results: (SuspiciousFileResult | null)[] = [];
+  for (const item of task.batch) {
+    results.push(await runSingleTask(item));
+  }
+
+  logger.trace(
+    `Batch checked ${task.batch.length} files. Took: ${(Number(process.hrtime.bigint() - processStartAt) / 1e6).toFixed(2)}ms`,
+  );
+  return { results };
+};
+
+export default async (
+  task: SecurityCheckTask | SecurityCheckBatchTask,
+): Promise<SuspiciousFileResult | null | SecurityCheckBatchResult> => {
+  if ('batch' in task) {
+    return runBatchTask(task);
+  }
+  return runSingleTask(task);
 };
 
 export const runSecretLint = async (

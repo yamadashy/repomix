@@ -95,8 +95,8 @@ const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
     return 'fileProcess';
   }
 
-  // calculateMetrics: has content, encoding (must check before securityCheck)
-  if ('content' in taskObj && 'encoding' in taskObj) {
+  // calculateMetrics: has content+encoding (single) or batch+encoding (batched)
+  if (('content' in taskObj || 'batch' in taskObj) && 'encoding' in taskObj) {
     return 'calculateMetrics';
   }
 

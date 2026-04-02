@@ -11,7 +11,8 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
     run: async (task: T) => {
       return (await countTokens(task as TokenCountTask)) as R;
     },
-    cleanup: async () => {
+    cleanup: async () => {},
+    unref: () => {
       // Mock cleanup - no-op for tests
     },
   };
@@ -51,7 +52,8 @@ describe('calculateOutputMetrics', () => {
         run: async (_task: T) => {
           throw mockError;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -90,8 +92,9 @@ describe('calculateOutputMetrics', () => {
   });
 
   it('should process large content in parallel', async () => {
-    // Generate a large content that exceeds MIN_CONTENT_LENGTH_FOR_PARALLEL
-    const content = 'a'.repeat(1_100_000); // 1.1MB of content
+    // Generate content that exceeds MIN_CONTENT_LENGTH_FOR_PARALLEL (50 KB)
+    // and is large enough for multiple TARGET_CHARS_PER_CHUNK (100 KB) chunks
+    const content = 'a'.repeat(1_100_000); // 1.1 MB of content
     const encoding = 'o200k_base';
     const path = 'large-file.txt';
 
@@ -103,7 +106,8 @@ describe('calculateOutputMetrics', () => {
           // Return a fixed token count for each chunk
           return 100 as R;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -113,12 +117,13 @@ describe('calculateOutputMetrics', () => {
       taskRunner: mockParallelTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
-    expect(chunksProcessed).toBeGreaterThan(1); // Should have processed multiple chunks
-    expect(result).toBe(chunksProcessed * 100); // Each chunk returns 100 tokens
+    // 1.1MB / 100KB per chunk = 11 chunks
+    expect(chunksProcessed).toBe(11);
+    expect(result).toBe(11 * 100); // 11 chunks * 100 tokens per chunk
   });
 
   it('should handle errors in parallel processing', async () => {
-    const content = 'a'.repeat(1_100_000); // 1.1MB of content
+    const content = 'a'.repeat(1_100_000); // 1.1 MB of content
     const encoding = 'o200k_base';
     const mockError = new Error('Parallel processing error');
 
@@ -127,7 +132,8 @@ describe('calculateOutputMetrics', () => {
         run: async (_task: T) => {
           throw mockError;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -143,7 +149,7 @@ describe('calculateOutputMetrics', () => {
   });
 
   it('should correctly split content into chunks for parallel processing', async () => {
-    const content = 'a'.repeat(1_100_000); // 1.1MB of content
+    const content = 'a'.repeat(1_100_000); // 1.1 MB of content
     const encoding = 'o200k_base';
     const processedChunks: string[] = [];
 
@@ -154,7 +160,8 @@ describe('calculateOutputMetrics', () => {
           processedChunks.push(outputTask.content);
           return outputTask.content.length as R;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -168,18 +175,16 @@ describe('calculateOutputMetrics', () => {
       }),
     });
 
-    // Check that chunks are roughly equal in size
+    // 1.1MB / 100KB per chunk = 11 chunks, capped at MAX_CHUNKS=200
     const chunkSizes = processedChunks.map((chunk) => chunk.length);
 
-    // With TARGET_CHUNK_CHARS=50000, 1.1MB content yields 22 chunks: Math.min(ceil(1100000/50000), 200) = 22
-    const expectedChunks = Math.min(Math.ceil(1_100_000 / 50_000), 200);
-    expect(processedChunks.length).toBe(expectedChunks);
+    expect(processedChunks.length).toBe(11);
     expect(Math.max(...chunkSizes) - Math.min(...chunkSizes)).toBeLessThanOrEqual(1); // Chunks should be almost equal in size
     expect(processedChunks.join('')).toBe(content); // All content should be processed
   });
 
   it('should cap chunks at MAX_CHUNKS for very large content', async () => {
-    // 50MB content would create 1000 chunks at 50K target, but should be capped at 200
+    // 50MB content would create 500 chunks at 100K target, but should be capped at 200
     const content = 'a'.repeat(50_000_000);
     const encoding = 'o200k_base';
     const processedChunks: string[] = [];
@@ -192,6 +197,7 @@ describe('calculateOutputMetrics', () => {
           return outputTask.content.length as R;
         },
         cleanup: async () => {},
+        unref: () => {},
       };
     };
 
