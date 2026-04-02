@@ -151,6 +151,12 @@ describe('defaultActionWorker', () => {
     skippedFiles: [],
   };
 
+  // The worker strips file contents from processedFiles before IPC transfer
+  const expectedWorkerResult = {
+    ...mockPackResult,
+    processedFiles: [{ path: 'test.txt', content: '' }],
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -191,7 +197,7 @@ describe('defaultActionWorker', () => {
         {},
       );
       expect(result).toEqual({
-        packResult: mockPackResult,
+        packResult: expectedWorkerResult,
         config: mockConfig,
       });
     });
@@ -217,7 +223,7 @@ describe('defaultActionWorker', () => {
         {},
       );
       expect(result).toEqual({
-        packResult: mockPackResult,
+        packResult: expectedWorkerResult,
         config: mockConfig,
       });
     });
@@ -261,7 +267,7 @@ describe('defaultActionWorker', () => {
         {},
       );
       expect(result).toEqual({
-        packResult: mockPackResult,
+        packResult: expectedWorkerResult,
         config: mockConfig,
       });
     });

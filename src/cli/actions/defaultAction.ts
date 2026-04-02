@@ -19,6 +19,14 @@ import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skill
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
 
+// Re-export types that external consumers may depend on
+export type {
+  DefaultActionTask,
+  DefaultActionWorkerResult,
+  PingResult,
+  PingTask,
+} from './workers/defaultActionWorker.js';
+
 export interface DefaultActionRunnerResult {
   packResult: PackResult;
   config: RepomixConfigMerged;
@@ -83,7 +91,8 @@ export const runDefaultAction = async (
     }
   }
 
-  // Handle stdin processing before calling pack
+  // Handle stdin processing in main process (before worker creation)
+  // This is necessary because child_process workers don't inherit stdin
   let stdinFilePaths: string[] | undefined;
   if (cliOptions.stdin) {
     // Validate directory arguments for stdin mode
@@ -99,18 +108,18 @@ export const runDefaultAction = async (
     logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
   }
 
-  // Run pack directly in the main process to avoid the overhead of spawning a
-  // child process and re-loading all modules from scratch. The pack function uses
-  // async operations internally, keeping the event loop responsive for the spinner.
-  const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
-  const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
-
+  // Run pack directly in the main process to avoid child process startup overhead (~250ms).
+  // The spinner and progress callbacks work identically in the main process since
+  // picospinner uses setInterval which ticks between async operations.
   const spinner = new Spinner('Initializing...', cliOptions);
   spinner.start();
 
   let packResult: PackResult;
 
   try {
+    const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
+    const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
+
     if (stdinFilePaths) {
       logger.trace(`Processing ${stdinFilePaths.length} files from stdin`);
       packResult = await pack(
