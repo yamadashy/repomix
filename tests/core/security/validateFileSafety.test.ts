@@ -25,9 +25,9 @@ describe('validateFileSafety', () => {
       filterOutUntrustedFiles: vi.fn().mockReturnValue(safeRawFiles),
     };
 
-    const result = await validateFileSafety(rawFiles, progressCallback, config, undefined, undefined, deps);
+    const result = await validateFileSafety(rawFiles, progressCallback, config, undefined, undefined, undefined, deps);
 
-    expect(deps.runSecurityCheck).toHaveBeenCalledWith(rawFiles, progressCallback, undefined, undefined);
+    expect(deps.runSecurityCheck).toHaveBeenCalledWith(rawFiles, progressCallback, undefined, undefined, undefined);
     expect(deps.filterOutUntrustedFiles).toHaveBeenCalledWith(rawFiles, suspiciousFilesResults);
     expect(result).toEqual({
       safeRawFiles,

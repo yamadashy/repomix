@@ -15,9 +15,16 @@ import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { reportResults } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
-import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
+
+// Re-export types that external consumers may depend on
+export type {
+  DefaultActionTask,
+  DefaultActionWorkerResult,
+  PingResult,
+  PingTask,
+} from './workers/defaultActionWorker.js';
 
 export interface DefaultActionRunnerResult {
   packResult: PackResult;
@@ -66,6 +73,11 @@ export const runDefaultAction = async (
 
   // Validate skill generation options and prompt for location
   if (config.skillGenerate !== undefined) {
+    // Dynamic import: @clack/prompts adds ~33ms to module loading but is only
+    // needed for --skill-generate interactive prompts. Deferring this import
+    // keeps the default CLI path fast.
+    const { promptSkillLocation, resolveAndPrepareSkillDir } = await import('../prompts/skillPrompts.js');
+
     // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
     cliOptions.skillName ??=
       typeof config.skillGenerate === 'string'
@@ -83,7 +95,8 @@ export const runDefaultAction = async (
     }
   }
 
-  // Handle stdin processing
+  // Handle stdin processing in main process (before worker creation)
+  // This is necessary because child_process workers don't inherit stdin
   let stdinFilePaths: string[] | undefined;
   if (cliOptions.stdin) {
     // Validate directory arguments for stdin mode
@@ -99,9 +112,9 @@ export const runDefaultAction = async (
     logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
   }
 
-  // Run pack directly on the main thread.
-  // The spinner uses setInterval-based animation which continues to render
-  // between async I/O operations in pack().
+  // Run pack directly in the main process to avoid child process startup overhead (~250ms).
+  // The spinner and progress callbacks work identically in the main process since
+  // picospinner uses setInterval which ticks between async operations.
   const spinner = new Spinner('Initializing...', cliOptions);
   spinner.start();
 
@@ -143,7 +156,7 @@ export const runDefaultAction = async (
     throw error;
   }
 
-  // Report results
+  // Report results in main process
   reportResults(cwd, packResult, config, cliOptions);
 
   return {

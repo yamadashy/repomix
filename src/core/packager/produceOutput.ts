@@ -13,6 +13,7 @@ import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDi
 export interface ProduceOutputResult {
   outputFiles?: string[];
   outputForMetrics: string | string[];
+  writeComplete: Promise<void>;
 }
 
 const defaultDeps = {
@@ -99,7 +100,7 @@ const generateAndWriteSplitOutput = async (
   });
 
   progressCallback('Writing output files...');
-  await withMemoryLogging('Write Split Output', async () => {
+  const writeComplete = withMemoryLogging('Write Split Output', async () => {
     await Promise.all(
       parts.map((part) => {
         const partConfig = {
@@ -118,6 +119,7 @@ const generateAndWriteSplitOutput = async (
   return {
     outputFiles: parts.map((p) => p.filePath),
     outputForMetrics: parts.map((p) => p.content),
+    writeComplete,
   };
 };
 
@@ -146,12 +148,17 @@ const generateAndWriteSingleOutput = async (
     ),
   );
 
+  // Start disk write and clipboard copy concurrently, returning the output
+  // string immediately so metrics calculation can begin without waiting
+  // for I/O to complete.
   progressCallback('Writing output file...');
-  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
-
-  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  const writeComplete = (async () => {
+    await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+    await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  })();
 
   return {
     outputForMetrics: output,
+    writeComplete,
   };
 };

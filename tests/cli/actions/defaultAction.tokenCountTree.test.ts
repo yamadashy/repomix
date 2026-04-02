@@ -8,14 +8,16 @@ import * as packager from '../../../src/core/packager.js';
 vi.mock('../../../src/config/configLoad.js');
 vi.mock('../../../src/core/packager.js');
 vi.mock('../../../src/cli/cliReport.js');
-vi.mock('../../../src/cli/cliSpinner', () => ({
-  Spinner: class MockSpinner {
-    start = vi.fn();
-    update = vi.fn();
-    succeed = vi.fn();
-    fail = vi.fn();
-  },
-}));
+vi.mock('../../../src/cli/cliSpinner.js', () => {
+  const mockSpinner = { start: vi.fn(), update: vi.fn(), succeed: vi.fn(), fail: vi.fn() };
+  // Use a class so that `new Spinner(...)` works (arrow functions cannot be constructors)
+  class MockSpinner {
+    constructor() {
+      Object.assign(this, mockSpinner);
+    }
+  }
+  return { Spinner: MockSpinner };
+});
 vi.mock('../../../src/cli/actions/migrationAction.js', () => ({
   runMigrationAction: vi.fn(),
 }));
