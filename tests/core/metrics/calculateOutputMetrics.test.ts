@@ -91,6 +91,50 @@ describe('calculateOutputMetrics', () => {
     expect(typeof result).toBe('number');
   });
 
+  it('should not parallelize content at exactly 50KB threshold', async () => {
+    const content = 'a'.repeat(50_000); // exactly at MIN_CONTENT_LENGTH_FOR_PARALLEL
+    const encoding = 'o200k_base';
+
+    let tasksRun = 0;
+    const mockTaskRunner = <T, R>(_options: WorkerOptions) => ({
+      run: async (_task: T) => {
+        tasksRun++;
+        return 100 as R;
+      },
+      cleanup: async () => {},
+      unref: () => {},
+    });
+
+    await calculateOutputMetrics(content, encoding, undefined, {
+      taskRunner: mockTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+    });
+
+    expect(tasksRun).toBe(1); // Single task, no parallel chunking
+  });
+
+  it('should parallelize content just over 50KB threshold', async () => {
+    const content = 'a'.repeat(50_001); // just over MIN_CONTENT_LENGTH_FOR_PARALLEL
+    const encoding = 'o200k_base';
+
+    let tasksRun = 0;
+    const mockTaskRunner = <T, R>(_options: WorkerOptions) => ({
+      run: async (_task: T) => {
+        tasksRun++;
+        return 100 as R;
+      },
+      cleanup: async () => {},
+      unref: () => {},
+    });
+
+    await calculateOutputMetrics(content, encoding, undefined, {
+      taskRunner: mockTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+    });
+
+    // Content is just over threshold but smaller than TARGET_CHARS_PER_CHUNK (100K),
+    // so it still produces only 1 chunk
+    expect(tasksRun).toBe(1);
+  });
+
   it('should process large content in parallel', async () => {
     // Generate content that exceeds MIN_CONTENT_LENGTH_FOR_PARALLEL (50 KB)
     // and is large enough for multiple TARGET_CHARS_PER_CHUNK (100 KB) chunks
