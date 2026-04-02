@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { type Options as GlobbyOptions, globby } from 'globby';
+import type { Options as GlobbyOptions } from 'globby';
 import ignore from 'ignore';
 import { minimatch } from 'minimatch';
 
@@ -247,6 +247,7 @@ const runGlobbyFileSearch = async (
   ignoreFilePatterns: string[],
   config: RepomixConfigMerged,
 ): Promise<string[]> => {
+  const { globby } = await import('globby');
   return globby(includePatterns, {
     ...createBaseGlobbyOptions(rootDir, config, ignorePatterns, ignoreFilePatterns),
     onlyFiles: true,
@@ -272,6 +273,7 @@ const findEmptyDirsViaGlobby = async (
   logger.debug('[empty dirs] Searching for empty directories...');
   const emptyDirStartTime = Date.now();
 
+  const { globby } = await import('globby');
   const directories = await globby(includePatterns, {
     ...createBaseGlobbyOptions(rootDir, config, ignorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
@@ -624,6 +626,7 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
+  const { globby } = await import('globby');
   const directories = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
@@ -643,6 +646,7 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
 export const listFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
+  const { globby } = await import('globby');
   const files = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,
