@@ -1,6 +1,5 @@
 import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import type { ProcessedFile } from '../../core/file/fileTypes.js';
 import {
   buildTokenCountTree,
   type FileWithTokens,
@@ -8,22 +7,15 @@ import {
 } from '../../core/tokenCount/buildTokenCountStructure.js';
 import { logger } from '../../shared/logger.js';
 
-export const reportTokenCountTree = (
-  processedFiles: ProcessedFile[],
-  fileTokenCounts: Record<string, number>,
-  config: RepomixConfigMerged,
-) => {
+export const reportTokenCountTree = (fileTokenCounts: Record<string, number>, config: RepomixConfigMerged) => {
   const minTokenCount = typeof config.output.tokenCountTree === 'number' ? config.output.tokenCountTree : 0;
 
   const filesWithTokens: FileWithTokens[] = [];
-  for (const file of processedFiles) {
-    const tokens = fileTokenCounts[file.path];
-    if (tokens !== undefined) {
-      filesWithTokens.push({
-        path: file.path,
-        tokens,
-      });
-    }
+  for (const [filePath, tokens] of Object.entries(fileTokenCounts)) {
+    filesWithTokens.push({
+      path: filePath,
+      tokens,
+    });
   }
 
   // Display the token count tree

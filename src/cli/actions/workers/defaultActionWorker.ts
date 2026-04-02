@@ -103,8 +103,16 @@ async function defaultActionWorker(
 
     spinner.succeed('Packing completed successfully!');
 
+    // Strip file contents from processedFiles before IPC transfer.
+    // The main process only needs file paths (for tokenCountTree report);
+    // sending ~4MB of file contents through child_process IPC is wasteful.
+    const lightPackResult = {
+      ...packResult,
+      processedFiles: packResult.processedFiles.map((f) => ({ path: f.path, content: '' })),
+    };
+
     return {
-      packResult,
+      packResult: lightPackResult,
       config,
     };
   } catch (error) {

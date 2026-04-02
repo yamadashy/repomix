@@ -14,7 +14,8 @@ const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<MetricsWorkerTa
     run: async (task: MetricsWorkerTask) => {
       return await countTokens(task as TokenCountTask);
     },
-    cleanup: async () => {
+    cleanup: async () => {},
+    unref: () => {
       // Mock cleanup - no-op for tests
     },
   };
@@ -173,6 +174,7 @@ describe('calculateGitLogMetrics', () => {
       const customTaskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -247,6 +249,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const errorTaskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> = {
         run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -267,6 +270,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const errorTaskRunner = {
         run: vi.fn().mockRejectedValue(timeoutError),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -304,6 +308,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const errorTaskRunner = {
         run: vi.fn().mockRejectedValue(new Error('Test error')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await calculateGitLogMetrics(mockConfig, gitLogResult, {
@@ -334,6 +339,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const customTaskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await calculateGitLogMetrics(configWithDifferentEncoding, gitLogResult, {
@@ -371,6 +377,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       const errorTaskRunner = {
         run: vi.fn().mockRejectedValue(new Error('Test error')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitLogMetrics(mockConfig, gitLogResult, {

@@ -95,6 +95,7 @@ describe.runIf(!isWindows)('packager integration', () => {
         collectFiles: (filePaths, rootDir, config, progressCallback) => {
           return collectFiles(filePaths, rootDir, config, progressCallback, {
             readRawFile,
+            readRawFileSync: undefined,
           });
         },
         processFiles: async (rawFiles, config, _progressCallback) => {
@@ -109,7 +110,7 @@ describe.runIf(!isWindows)('packager integration', () => {
             workTreeDiffContent: '',
             stagedDiffContent: '',
           };
-          return validateFileSafety(rawFiles, progressCallback, config, gitDiffMock, undefined, {
+          return validateFileSafety(rawFiles, progressCallback, config, gitDiffMock, undefined, undefined, {
             runSecurityCheck: async () => [],
             filterOutUntrustedFiles,
           });
@@ -118,6 +119,12 @@ describe.runIf(!isWindows)('packager integration', () => {
         createMetricsTaskRunner: () => ({
           run: async () => 0,
           cleanup: async () => {},
+          unref: () => {},
+        }),
+        createSecurityTaskRunner: () => ({
+          run: async () => null,
+          cleanup: async () => {},
+          unref: () => {},
         }),
         calculateMetrics: async (
           processedFiles,

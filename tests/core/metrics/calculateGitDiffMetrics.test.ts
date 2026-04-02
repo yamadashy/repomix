@@ -14,7 +14,8 @@ const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<MetricsWorkerTa
     run: async (task: MetricsWorkerTask) => {
       return await countTokens(task as TokenCountTask);
     },
-    cleanup: async () => {
+    cleanup: async () => {},
+    unref: () => {
       // Mock cleanup - no-op for tests
     },
   };
@@ -176,6 +177,7 @@ describe('calculateGitDiffMetrics', () => {
       const customTaskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
@@ -205,6 +207,7 @@ describe('calculateGitDiffMetrics', () => {
       const customTaskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
@@ -230,6 +233,7 @@ describe('calculateGitDiffMetrics', () => {
       const customTaskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
@@ -270,6 +274,7 @@ describe('calculateGitDiffMetrics', () => {
       const errorTaskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> = {
         run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await expect(
@@ -293,6 +298,7 @@ describe('calculateGitDiffMetrics', () => {
           .mockResolvedValueOnce(5) // First call succeeds
           .mockRejectedValueOnce(new Error('Second call fails')), // Second call fails
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await expect(
@@ -342,6 +348,7 @@ describe('calculateGitDiffMetrics', () => {
       const customTaskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await calculateGitDiffMetrics(configWithDifferentEncoding, gitDiffResult, {

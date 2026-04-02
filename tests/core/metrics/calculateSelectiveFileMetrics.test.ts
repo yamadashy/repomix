@@ -7,25 +7,24 @@ import {
   type TokenCountBatchTask,
   type TokenCountTask,
 } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
-import type { TaskRunner, WorkerOptions } from '../../../src/shared/processConcurrency.js';
+import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 
 vi.mock('../../shared/processConcurrency', () => ({
   getProcessConcurrency: () => 1,
 }));
 
-type MetricsWorkerTask = TokenCountTask | TokenCountBatchTask;
-type MetricsWorkerResult = number | number[];
-
-const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<MetricsWorkerTask, MetricsWorkerResult> => {
+const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
-    run: async (task: MetricsWorkerTask) => {
-      if ('batch' in task) {
-        return await countTokensBatch(task);
+    run: async (task: T) => {
+      // Handle both single and batch tasks, mirroring the real worker's dispatch
+      if (task && typeof task === 'object' && 'batch' in task) {
+        return (await countTokensBatch(task as unknown as TokenCountBatchTask)) as R;
       }
-      return await countTokens(task);
+      return (await countTokens(task as TokenCountTask)) as R;
     },
-    cleanup: async () => {
+    cleanup: async () => {},
+    unref: () => {
       // Mock cleanup - no-op for tests
     },
   };
@@ -75,8 +74,8 @@ describe('calculateSelectiveFileMetrics', () => {
     expect(result).toEqual([]);
   });
 
-  it('should use batching for files above BATCH_THRESHOLD and produce correct results', async () => {
-    // Create 60 files (above BATCH_THRESHOLD of 50)
+  it('should use batching and produce correct results for many files', async () => {
+    // Create 60 files to exercise the batching path
     const processedFiles: ProcessedFile[] = Array.from({ length: 60 }, (_, i) => ({
       path: `file${i}.txt`,
       content: `content-${i}-${'x'.repeat(50)}`,
@@ -109,7 +108,6 @@ describe('calculateSelectiveFileMetrics', () => {
   });
 
   it('should produce identical results whether batched or individual', async () => {
-    // Create files that would trigger batching
     const processedFiles: ProcessedFile[] = Array.from({ length: 55 }, (_, i) => ({
       path: `src/module${i}.ts`,
       content: `export const value${i} = ${i};\n`.repeat(10),
@@ -117,19 +115,15 @@ describe('calculateSelectiveFileMetrics', () => {
     const targetFilePaths = processedFiles.map((f) => f.path);
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    const taskRunner = mockInitTaskRunner({
-      numOfTasks: 55,
-      workerType: 'calculateMetrics',
-      runtime: 'worker_threads',
-    });
-
-    // Get batched results (55 files >= BATCH_THRESHOLD)
+    // Get batched results
     const batchedResult = await calculateSelectiveFileMetrics(
       processedFiles,
       targetFilePaths,
       'o200k_base',
       progressCallback,
-      { taskRunner },
+      {
+        taskRunner: mockInitTaskRunner({ numOfTasks: 55, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+      },
     );
 
     // Get individual results for comparison (use countTokens directly)
