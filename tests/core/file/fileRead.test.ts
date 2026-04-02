@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { readRawFile } from '../../../src/core/file/fileRead.js';
+import { readRawFile, readRawFileSync } from '../../../src/core/file/fileRead.js';
 
 describe('readRawFile', () => {
   let testDir: string;
@@ -135,5 +135,118 @@ def hello():
 
     expect(result.content).toBeNull();
     expect(result.skippedReason).toBe('binary-content');
+  });
+});
+
+describe('readRawFileSync', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-fileReadSync-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(testDir, { recursive: true, force: true });
+  });
+
+  test('should read normal text file successfully', async () => {
+    const filePath = path.join(testDir, 'normal.txt');
+    const content = 'Hello World';
+    await fs.writeFile(filePath, content, 'utf-8');
+
+    const result = readRawFileSync(filePath, 1024);
+
+    expect(result).not.toBeNull();
+    expect(result?.content).toBe(content);
+    expect(result?.skippedReason).toBeUndefined();
+  });
+
+  test('should read empty file successfully', async () => {
+    const filePath = path.join(testDir, '__init__.py');
+    await fs.writeFile(filePath, '', 'utf-8');
+
+    const result = readRawFileSync(filePath, 1024);
+
+    expect(result).not.toBeNull();
+    expect(result?.content).toBe('');
+    expect(result?.skippedReason).toBeUndefined();
+  });
+
+  test('should strip UTF-8 BOM', async () => {
+    const filePath = path.join(testDir, 'bom.txt');
+    const bom = Buffer.from([0xef, 0xbb, 0xbf]);
+    await fs.writeFile(filePath, Buffer.concat([bom, Buffer.from('Hello')]));
+
+    const result = readRawFileSync(filePath, 1024);
+
+    expect(result).not.toBeNull();
+    expect(result?.content).toBe('Hello');
+  });
+
+  test('should skip binary file by extension', async () => {
+    const filePath = path.join(testDir, 'test.jpg');
+    await fs.writeFile(filePath, Buffer.from([0xff, 0xd8, 0xff, 0xe0]));
+
+    const result = readRawFileSync(filePath, 1024);
+
+    expect(result).not.toBeNull();
+    expect(result?.content).toBeNull();
+    expect(result?.skippedReason).toBe('binary-extension');
+  });
+
+  test('should skip file exceeding size limit', async () => {
+    const filePath = path.join(testDir, 'large.txt');
+    await fs.writeFile(filePath, 'x'.repeat(1000), 'utf-8');
+
+    const result = readRawFileSync(filePath, 100);
+
+    expect(result).not.toBeNull();
+    expect(result?.content).toBeNull();
+    expect(result?.skippedReason).toBe('size-limit');
+  });
+
+  test('should detect binary content via null bytes', async () => {
+    const filePath = path.join(testDir, 'binary.txt');
+    const data = Buffer.alloc(256);
+    for (let i = 0; i < 256; i++) {
+      data[i] = i;
+    }
+    await fs.writeFile(filePath, data);
+
+    const result = readRawFileSync(filePath, 1024);
+
+    expect(result).not.toBeNull();
+    expect(result?.content).toBeNull();
+    expect(result?.skippedReason).toBe('binary-content');
+  });
+
+  test('should return null for files with U+FFFD (triggers async fallback)', async () => {
+    const filePath = path.join(testDir, 'invalid.txt');
+    const utf8Bom = Buffer.from([0xef, 0xbb, 0xbf]);
+    const validText = 'Hello World\n'.repeat(50);
+    const invalidSequence = Buffer.from([0x80, 0x81, 0x82]);
+    const buffer = Buffer.concat([utf8Bom, Buffer.from(validText), invalidSequence, Buffer.from(validText)]);
+    await fs.writeFile(filePath, buffer);
+
+    const result = readRawFileSync(filePath, 1024 * 1024);
+
+    expect(result).toBeNull();
+  });
+
+  test('should return null for files with legitimate U+FFFD character (triggers async fallback for safety)', async () => {
+    const filePath = path.join(testDir, 'with-replacement-char.txt');
+    const content = 'Some text with replacement char: \uFFFD and more text';
+    await fs.writeFile(filePath, content, 'utf-8');
+
+    const result = readRawFileSync(filePath, 1024);
+
+    // Returns null because sync path can't distinguish legitimate U+FFFD from decode errors
+    expect(result).toBeNull();
+  });
+
+  test('should return null for non-existent files (triggers async fallback)', () => {
+    const result = readRawFileSync('/nonexistent/path/file.txt', 1024);
+
+    expect(result).toBeNull();
   });
 });

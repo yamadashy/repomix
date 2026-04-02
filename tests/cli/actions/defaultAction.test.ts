@@ -1,6 +1,7 @@
 import process from 'node:process';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import { buildCliConfig, runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
+import type { Spinner } from '../../../src/cli/cliSpinner.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import * as configLoader from '../../../src/config/configLoad.js';
 import * as fileStdin from '../../../src/core/file/fileStdin.js';
@@ -15,34 +16,53 @@ vi.mock('../../../src/core/file/packageJsonParse');
 vi.mock('../../../src/core/file/fileStdin');
 vi.mock('../../../src/shared/logger');
 
-const mockSpinnerMethods = {
-  start: vi.fn(),
-  update: vi.fn(),
-  succeed: vi.fn(),
-  fail: vi.fn(),
-  stop: vi.fn(),
-};
+const mockSpinner = {
+  start: vi.fn() as MockedFunction<() => void>,
+  update: vi.fn() as MockedFunction<(message: string) => void>,
+  succeed: vi.fn() as MockedFunction<(message: string) => void>,
+  fail: vi.fn() as MockedFunction<(message: string) => void>,
+  stop: vi.fn() as MockedFunction<() => void>,
+  message: 'test',
+  currentFrame: 0,
+  interval: null,
+  isQuiet: false,
+} as unknown as Spinner;
 
 vi.mock('../../../src/cli/cliSpinner', () => {
+  // Use a class so that `new Spinner(...)` works (arrow functions cannot be constructors)
   class MockSpinner {
-    start = mockSpinnerMethods.start;
-    update = mockSpinnerMethods.update;
-    succeed = mockSpinnerMethods.succeed;
-    fail = mockSpinnerMethods.fail;
-    stop = mockSpinnerMethods.stop;
-    message = 'test';
-    currentFrame = 0;
-    interval = null;
-    isQuiet = false;
+    constructor() {
+      Object.assign(this, mockSpinner);
+    }
   }
-
   return { Spinner: MockSpinner };
 });
 vi.mock('../../../src/cli/cliReport');
 
 describe('defaultAction', () => {
+  const mockPackResult = {
+    totalFiles: 10,
+    totalCharacters: 1000,
+    totalTokens: 200,
+    fileCharCounts: {},
+    fileTokenCounts: {},
+    suspiciousFilesResults: [],
+    suspiciousGitDiffResults: [],
+    suspiciousGitLogResults: [],
+    processedFiles: [],
+    safeFilePaths: [],
+    gitDiffTokenCount: 0,
+    gitLogTokenCount: 0,
+    skippedFiles: [],
+  };
+
   beforeEach(() => {
+    vi.resetAllMocks();
+
+    // Reset mockSpinner functions
     vi.clearAllMocks();
+
+    // mockSpinner methods are reset by clearAllMocks above
 
     vi.mocked(packageJsonParser.getVersion).mockResolvedValue('1.0.0');
     vi.mocked(configLoader.loadFileConfig).mockResolvedValue({});
@@ -90,25 +110,11 @@ describe('defaultAction', () => {
       filePaths: ['test1.txt', 'test2.txt'],
       emptyDirPaths: [],
     });
-    vi.mocked(packager.pack).mockResolvedValue({
-      totalFiles: 10,
-      totalCharacters: 1000,
-      totalTokens: 200,
-      fileCharCounts: {},
-      fileTokenCounts: {},
-      suspiciousFilesResults: [],
-      suspiciousGitDiffResults: [],
-      suspiciousGitLogResults: [],
-      processedFiles: [],
-      safeFilePaths: [],
-      gitDiffTokenCount: 0,
-      gitLogTokenCount: 0,
-      skippedFiles: [],
-    });
+    vi.mocked(packager.pack).mockResolvedValue(mockPackResult);
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it('should run the default command successfully', async () => {
@@ -119,9 +125,10 @@ describe('defaultAction', () => {
 
     await runDefaultAction(['.'], process.cwd(), options);
 
+    // pack() is called directly in the main process (no child process worker)
     expect(packager.pack).toHaveBeenCalled();
-    expect(mockSpinnerMethods.start).toHaveBeenCalled();
-    expect(mockSpinnerMethods.succeed).toHaveBeenCalled();
+    expect(mockSpinner.start).toHaveBeenCalled();
+    expect(mockSpinner.succeed).toHaveBeenCalledWith('Packing completed successfully!');
   });
 
   it('should handle custom include patterns', async () => {
@@ -141,14 +148,15 @@ describe('defaultAction', () => {
 
     await runDefaultAction(['.'], process.cwd(), options);
 
-    // pack should be called with stdinFilePaths
+    expect(fileStdin.readFilePathsFromStdin).toHaveBeenCalled();
+    // When stdin mode is used, pack is called with stdinFilePaths
     expect(packager.pack).toHaveBeenCalledWith(
       [process.cwd()],
-      expect.anything(),
+      expect.any(Object),
       expect.any(Function),
       {},
-      expect.any(Array),
-      expect.anything(),
+      ['test1.txt', 'test2.txt'],
+      expect.any(Object),
     );
   });
 
@@ -158,7 +166,7 @@ describe('defaultAction', () => {
     const options: CliOptions = {};
 
     await expect(runDefaultAction(['.'], process.cwd(), options)).rejects.toThrow('Test error');
-    expect(mockSpinnerMethods.fail).toHaveBeenCalled();
+    expect(mockSpinner.fail).toHaveBeenCalledWith('Error during packing');
   });
 
   describe('buildCliConfig', () => {
