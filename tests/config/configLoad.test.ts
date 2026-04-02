@@ -325,16 +325,17 @@ describe('configLoad', () => {
       expect(result.ignore.customPatterns).toContain('cli-ignore');
     });
 
-    test('should throw RepomixConfigValidationError for invalid merged config', () => {
+    test('should accept merged config without Zod re-validation', () => {
+      // mergeConfigs no longer validates with Zod since inputs are already validated.
+      // This test verifies that the merge completes without throwing.
       const fileConfig: RepomixConfigFile = {
         output: { filePath: 'file-output.txt', style: 'plain' },
       };
-      const cliConfig: RepomixConfigCli = {
-        // @ts-expect-error
-        output: { style: 'invalid' }, // Invalid style
-      };
+      const cliConfig: RepomixConfigCli = {};
 
-      expect(() => mergeConfigs(process.cwd(), fileConfig, cliConfig)).toThrow(RepomixConfigValidationError);
+      const result = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+      expect(result.output.filePath).toBe('file-output.txt');
+      expect(result.output.style).toBe('plain');
     });
 
     test('should merge nested git config correctly', () => {

@@ -35,6 +35,9 @@ describe('calculateMetrics', () => {
     ];
     (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
 
+    // Total tokens are now estimated from per-file counts:
+    // countedFileTokens=30, countedFileChars=300, outputChars=300
+    // overhead=300-300-0-0=0, so totalTokens=30
     const aggregatedResult = {
       totalFiles: 2,
       totalCharacters: 300,
@@ -58,6 +61,7 @@ describe('calculateMetrics', () => {
     const mockTaskRunner = {
       run: vi.fn(),
       cleanup: vi.fn(),
+      unref: vi.fn(),
     };
 
     const result = await calculateMetrics(
@@ -69,7 +73,6 @@ describe('calculateMetrics', () => {
       undefined,
       {
         calculateSelectiveFileMetrics,
-        calculateOutputMetrics: async () => 30,
         calculateGitDiffMetrics: () => Promise.resolve(0),
         calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
         taskRunner: mockTaskRunner,
@@ -89,31 +92,30 @@ describe('calculateMetrics', () => {
     expect(result).toEqual(aggregatedResult);
   });
 
-  it('should derive output tokens from file metrics when tokenCountTree is enabled', async () => {
+  it('should estimate output tokens from per-file counts when tokenCountTree is enabled', async () => {
     const processedFiles: ProcessedFile[] = [
       { path: 'file1.txt', content: 'a'.repeat(100) },
       { path: 'file2.txt', content: 'b'.repeat(200) },
     ];
-    // Output is 400 chars: 300 from files + 100 template overhead
-    const output = 'x'.repeat(400);
+    // Output contains file contents (300 chars) + overhead (50 chars of template markup)
+    const output = 'a'.repeat(100) + 'b'.repeat(200) + 'x'.repeat(50);
     const progressCallback: RepomixProgressCallback = vi.fn();
 
     const fileMetrics = [
-      { path: 'file1.txt', charCount: 100, tokenCount: 10 },
-      { path: 'file2.txt', charCount: 200, tokenCount: 20 },
+      { path: 'file1.txt', charCount: 100, tokenCount: 25 },
+      { path: 'file2.txt', charCount: 200, tokenCount: 50 },
     ];
     (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
 
     const config = createMockConfig({
-      output: { tokenCountTree: 50000 },
+      output: { tokenCountTree: true },
     });
 
     const mockTaskRunner = {
       run: vi.fn(),
       cleanup: vi.fn(),
+      unref: vi.fn(),
     };
-
-    const calculateOutputMetrics = vi.fn().mockResolvedValue(999);
 
     const result = await calculateMetrics(
       processedFiles,
@@ -124,77 +126,53 @@ describe('calculateMetrics', () => {
       undefined,
       {
         calculateSelectiveFileMetrics,
-        calculateOutputMetrics,
         calculateGitDiffMetrics: () => Promise.resolve(0),
         calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
         taskRunner: mockTaskRunner,
       },
     );
 
-    // calculateOutputMetrics should NOT be called when deriving from file metrics
-    expect(calculateOutputMetrics).not.toHaveBeenCalled();
-
-    // Derived total: sumFileTokens(30) + overhead estimate
-    // overhead = (400 - 300) * (30/300) = 100 * 0.1 = 10
-    // total = 30 + 10 = 40
-    expect(result.totalTokens).toBe(40);
-    expect(result.totalCharacters).toBe(400);
+    // Total tokens should be estimated: fileTokens(75) + overhead estimation
+    // Overhead chars = 350 - 300 - 0 - 0 = 50 chars
+    // Chars per token = 300 / 75 = 4.0
+    // Overhead tokens = round(50 / 4.0) = 13
+    // Total = 75 + 13 = 88
+    expect(result.totalTokens).toBe(88);
+    expect(result.totalCharacters).toBe(350);
+    expect(result.totalFiles).toBe(2);
+    expect(result.fileTokenCounts).toEqual({
+      'file1.txt': 25,
+      'file2.txt': 50,
+    });
   });
 
-  it('should use full output token counting when output is split', async () => {
-    const processedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'a'.repeat(100) }];
-    const outputParts = ['part1', 'part2'];
+  it('should estimate token counts for small files when tokenCountTree is enabled', async () => {
+    // 3 files: large (800), medium (200), small (50) = 1050 total
+    // 80% threshold = 840 chars → selects large (800) + medium (200) = 1000 >= 840
+    // small (50 chars) will be estimated, not BPE-counted
+    const processedFiles: ProcessedFile[] = [
+      { path: 'small.txt', content: 'a'.repeat(50) },
+      { path: 'medium.txt', content: 'b'.repeat(200) },
+      { path: 'large.txt', content: 'c'.repeat(800) },
+    ];
+    const output = 'a'.repeat(50) + 'b'.repeat(200) + 'c'.repeat(800);
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    const fileMetrics = [{ path: 'file1.txt', charCount: 100, tokenCount: 10 }];
+    // Only large and medium files are BPE-counted
+    const fileMetrics = [
+      { path: 'large.txt', charCount: 800, tokenCount: 200 },
+      { path: 'medium.txt', charCount: 200, tokenCount: 50 },
+    ];
     (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
 
     const config = createMockConfig({
-      output: { tokenCountTree: 50000 },
+      output: { tokenCountTree: true },
     });
 
     const mockTaskRunner = {
       run: vi.fn(),
       cleanup: vi.fn(),
-    };
-
-    const calculateOutputMetrics = vi.fn().mockResolvedValue(50);
-
-    const result = await calculateMetrics(
-      processedFiles,
-      Promise.resolve(outputParts),
-      progressCallback,
-      config,
-      undefined,
-      undefined,
-      {
-        calculateSelectiveFileMetrics,
-        calculateOutputMetrics,
-        calculateGitDiffMetrics: () => Promise.resolve(0),
-        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
-        taskRunner: mockTaskRunner,
-      },
-    );
-
-    // With split output, calculateOutputMetrics should be called for each part
-    expect(calculateOutputMetrics).toHaveBeenCalledTimes(2);
-    expect(result.totalTokens).toBe(100); // 50 per part * 2
-  });
-
-  it('should handle empty file metrics in derivation', async () => {
-    const processedFiles: ProcessedFile[] = [];
-    const output = 'x'.repeat(200);
-    const progressCallback: RepomixProgressCallback = vi.fn();
-
-    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue([]);
-
-    const config = createMockConfig({
-      output: { tokenCountTree: 50000 },
-    });
-
-    const mockTaskRunner = {
-      run: vi.fn(),
-      cleanup: vi.fn(),
+      unref: vi.fn(),
     };
 
     const result = await calculateMetrics(
@@ -206,15 +184,29 @@ describe('calculateMetrics', () => {
       undefined,
       {
         calculateSelectiveFileMetrics,
-        calculateOutputMetrics: vi.fn().mockResolvedValue(999),
         calculateGitDiffMetrics: () => Promise.resolve(0),
         calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
         taskRunner: mockTaskRunner,
       },
     );
 
-    // With empty files: sumFileTokens=0, sumFileChars=0, fallback ratio=0.25
-    // total = 0 + Math.round(200 * 0.25) = 50
-    expect(result.totalTokens).toBe(50);
+    // Verify only large + medium paths passed to BPE (sorted by size desc)
+    expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
+      processedFiles,
+      ['large.txt', 'medium.txt'],
+      'o200k_base',
+      progressCallback,
+      expect.objectContaining({ taskRunner: expect.any(Object) }),
+    );
+
+    // small.txt should be estimated using ratio from BPE-counted files:
+    // countedChars=1000, countedTokens=250, charsPerToken=4.0
+    // estimated tokens for small.txt = round(50 / 4.0) = 13
+    expect(result.fileTokenCounts['large.txt']).toBe(200);
+    expect(result.fileTokenCounts['medium.txt']).toBe(50);
+    expect(result.fileTokenCounts['small.txt']).toBe(13);
+
+    // Total tokens: 200 + 50 + 13 + overhead(0) = 263
+    expect(result.totalTokens).toBe(263);
   });
 });

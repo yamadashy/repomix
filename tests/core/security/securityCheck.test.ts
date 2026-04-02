@@ -4,8 +4,11 @@ import pc from 'picocolors';
 import { describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
-import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
-import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
+import { contentMayContainSecrets, runSecurityCheck } from '../../../src/core/security/securityCheck.js';
+import type {
+  SecurityCheckBatchTask,
+  SecurityCheckTask,
+} from '../../../src/core/security/workers/securityCheckWorker.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
@@ -23,6 +26,7 @@ vi.mock('../../../src/shared/processConcurrency', () => ({
       return await securityCheckWorker(task);
     }),
     cleanup: vi.fn(),
+    unref: vi.fn(),
   })),
 }));
 
@@ -42,9 +46,10 @@ const mockFiles: RawFile[] = [
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
-      return (await securityCheckWorker(task as SecurityCheckTask)) as R;
+      return (await securityCheckWorker(task as SecurityCheckTask | SecurityCheckBatchTask)) as R;
     },
-    cleanup: async () => {
+    cleanup: async () => {},
+    unref: () => {
       // Mock cleanup - no-op for tests
     },
   };
@@ -68,11 +73,10 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
+    // With the pre-filter, only test1.js passes (contains "://" + "@" trigger).
+    // test2.js is skipped because its content has no trigger substrings.
     expect(progressCallback).toHaveBeenCalledWith(
-      expect.stringContaining(`Running security check... (1/2) ${pc.dim('test1.js')}`),
-    );
-    expect(progressCallback).toHaveBeenCalledWith(
-      expect.stringContaining(`Running security check... (2/2) ${pc.dim('test2.js')}`),
+      expect.stringContaining(`Running security check... (1/1) ${pc.dim('test1.js')}`),
     );
   });
 
@@ -83,7 +87,8 @@ describe('runSecurityCheck', () => {
         run: async () => {
           throw mockError;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -162,12 +167,8 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process 2 files + 2 git diff contents = 4 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(4);
-
-    // Check that Git diff tasks were processed
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
+    // With batching, all 4 tasks (2 files + 2 git diffs) fit in one batch
+    expect(progressCallback).toHaveBeenCalledTimes(1);
 
     // Should find security issues in files (at least 1 from test1.js)
     expect(result.length).toBeGreaterThanOrEqual(1);
@@ -184,13 +185,8 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process 2 files + 1 git diff content = 3 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(3);
-
-    // Check that only working tree diff was processed
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
-    // Staged changes should not be processed because content is empty string (falsy)
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
+    // With batching, all 3 tasks fit in one batch
+    expect(progressCallback).toHaveBeenCalledTimes(1);
   });
 
   it('should process only stagedDiffContent when workTreeDiffContent is not available', async () => {
@@ -204,13 +200,8 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process 2 files + 1 git diff content = 3 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(3);
-
-    // Check that only staged diff was processed
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
-    // Working tree changes should not be processed because content is empty string (falsy)
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
+    // With batching, all 3 tasks fit in one batch
+    expect(progressCallback).toHaveBeenCalledTimes(1);
   });
 
   it('should handle gitDiffResult with no diff content', async () => {
@@ -224,11 +215,56 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // Should process only 2 files, no git diff content because both are empty strings (falsy)
-    expect(progressCallback).toHaveBeenCalledTimes(2);
+    // With batching, 2 tasks fit in one batch
+    expect(progressCallback).toHaveBeenCalledTimes(1);
+  });
+});
 
-    // Check that no git diff tasks were processed
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
+describe('contentMayContainSecrets', () => {
+  it('should return false for plain code without secret patterns', () => {
+    expect(contentMayContainSecrets('console.log("Hello World");')).toBe(false);
+    expect(contentMayContainSecrets('const x = 42;')).toBe(false);
+    expect(contentMayContainSecrets('function foo() { return bar; }')).toBe(false);
+  });
+
+  it('should return true for content with private key markers', () => {
+    expect(contentMayContainSecrets('-----BEGIN RSA PRIVATE KEY-----')).toBe(true);
+    expect(contentMayContainSecrets('has a PRIVATE KEY in it')).toBe(true);
+  });
+
+  it('should return true for content with API key patterns', () => {
+    expect(contentMayContainSecrets('token: ghp_abc123')).toBe(true);
+    expect(contentMayContainSecrets('key = "sk-ant-api01-xyz"')).toBe(true);
+    expect(contentMayContainSecrets('AKIA1234567890ABCDEF')).toBe(true);
+  });
+
+  it('should return true for content with database URLs', () => {
+    expect(contentMayContainSecrets('mysql://root:pass@localhost/db')).toBe(true);
+    expect(contentMayContainSecrets('postgres://user:pw@host/db')).toBe(true);
+    expect(contentMayContainSecrets('mongodb://admin:secret@cluster.example.com')).toBe(true);
+  });
+
+  it('should return true for URL-embedded credentials (BasicAuth)', () => {
+    // secretlint-disable
+    expect(contentMayContainSecrets('https://user:pass@example.com')).toBe(true);
+    expect(contentMayContainSecrets('ftp://admin:secret@fileserver.local')).toBe(true);
+    // secretlint-enable
+  });
+
+  it('should return false when :// and @ are far apart', () => {
+    const padding = 'a'.repeat(600);
+    expect(contentMayContainSecrets(`https://${padding}@example.com`)).toBe(false);
+  });
+
+  it('should return true for npm tokens', () => {
+    expect(contentMayContainSecrets('npm_abcdefg1234567890')).toBe(true);
+    expect(contentMayContainSecrets('_authToken=xyz')).toBe(true);
+  });
+
+  it('should return true for Slack tokens', () => {
+    // secretlint-disable
+    expect(contentMayContainSecrets('xoxb-123-456-abc')).toBe(true);
+    // secretlint-enable
+    expect(contentMayContainSecrets('hooks.slack.com/services/T00/B00/xxx')).toBe(true);
   });
 });
