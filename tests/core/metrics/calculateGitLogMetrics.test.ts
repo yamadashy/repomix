@@ -2,16 +2,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitLogResult } from '../../../src/core/git/gitLogHandle.js';
 import { calculateGitLogMetrics } from '../../../src/core/metrics/calculateGitLogMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
+import {
+  countTokens,
+  type TokenCountBatchTask,
+  type TokenCountTask,
+} from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
 import type { TaskRunner, WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountTask, number> => {
+const mockInitTaskRunner = (
+  _options: WorkerOptions,
+): TaskRunner<TokenCountTask | TokenCountBatchTask, number | number[]> => {
   return {
-    run: async (task: TokenCountTask) => {
-      return await countTokens(task);
+    run: async (task: TokenCountTask | TokenCountBatchTask) => {
+      return await countTokens(task as TokenCountTask);
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
@@ -169,7 +175,7 @@ describe('calculateGitLogMetrics', () => {
 
       const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(15);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountTask | TokenCountBatchTask, number | number[]> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
       };
@@ -243,7 +249,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         commits: [],
       };
 
-      const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const errorTaskRunner: TaskRunner<TokenCountTask | TokenCountBatchTask, number | number[]> = {
         run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
         cleanup: async () => {},
       };
@@ -330,7 +336,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
 
       const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(10);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountTask | TokenCountBatchTask, number | number[]> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
       };

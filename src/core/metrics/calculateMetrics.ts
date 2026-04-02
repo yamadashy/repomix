@@ -9,7 +9,11 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { TokenCountBatchTask, TokenCountTask } from './workers/calculateMetricsWorker.js';
+
+// Union type for task runner that supports both single and batch token counting
+type MetricsTask = TokenCountTask | TokenCountBatchTask;
+type MetricsResult = number | number[];
 
 export interface CalculateMetricsResult {
   totalFiles: number;
@@ -25,8 +29,8 @@ export interface CalculateMetricsResult {
  * Create a metrics task runner that can be pre-initialized to overlap
  * gpt-tokenizer loading with other pipeline stages.
  */
-export const createMetricsTaskRunner = (numOfTasks: number): TaskRunner<TokenCountTask, number> => {
-  return initTaskRunner<TokenCountTask, number>({
+export const createMetricsTaskRunner = (numOfTasks: number): TaskRunner<MetricsTask, MetricsResult> => {
+  return initTaskRunner<MetricsTask, MetricsResult>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
@@ -38,7 +42,7 @@ const defaultDeps = {
   calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
-  taskRunner: undefined as TaskRunner<TokenCountTask, number> | undefined,
+  taskRunner: undefined as TaskRunner<MetricsTask, MetricsResult> | undefined,
 };
 
 export const calculateMetrics = async (
@@ -57,7 +61,7 @@ export const calculateMetrics = async (
   // Initialize a single task runner for all metrics calculations
   const taskRunner =
     deps.taskRunner ??
-    initTaskRunner<TokenCountTask, number>({
+    initTaskRunner<MetricsTask, MetricsResult>({
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',

@@ -5,6 +5,13 @@ import { logger } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
+vi.mock('../../../src/shared/processConcurrency', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/shared/processConcurrency.js')>();
+  return {
+    ...actual,
+    getProcessConcurrency: () => 4,
+  };
+});
 
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
@@ -113,8 +120,9 @@ describe('calculateOutputMetrics', () => {
       taskRunner: mockParallelTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
+    // Chunk count equals getProcessConcurrency() (at least 1)
     expect(chunksProcessed).toBeGreaterThan(1); // Should have processed multiple chunks
-    expect(result).toBe(100_000); // 1000 chunks * 100 tokens per chunk
+    expect(result).toBe(chunksProcessed * 100); // Each chunk returns 100 tokens
   });
 
   it('should handle errors in parallel processing', async () => {
@@ -168,11 +176,10 @@ describe('calculateOutputMetrics', () => {
       }),
     });
 
-    // Check that chunks are roughly equal in size
-    const _expectedChunkSize = Math.ceil(content.length / 1000); // CHUNK_SIZE is 1000
+    // Chunk count equals mocked getProcessConcurrency() = 4
     const chunkSizes = processedChunks.map((chunk) => chunk.length);
 
-    expect(processedChunks.length).toBe(1000); // Should have 1000 chunks
+    expect(processedChunks.length).toBe(4); // One chunk per CPU core (mocked to 4)
     expect(Math.max(...chunkSizes) - Math.min(...chunkSizes)).toBeLessThanOrEqual(1); // Chunks should be almost equal in size
     expect(processedChunks.join('')).toBe(content); // All content should be processed
   });
