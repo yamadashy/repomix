@@ -20,6 +20,11 @@ export interface TokenCountTask {
   path?: string;
 }
 
+export interface TokenCountBatchTask {
+  batch: Array<{ content: string; path?: string }>;
+  encoding: TokenEncoding;
+}
+
 export const countTokens = async (task: TokenCountTask): Promise<number> => {
   const processStartAt = process.hrtime.bigint();
 
@@ -40,7 +45,25 @@ const getProcessDuration = (startTime: bigint): string => {
   return (Number(endTime - startTime) / 1e6).toFixed(2);
 };
 
-export default async (task: TokenCountTask): Promise<number> => {
+export const countTokensBatch = async (task: TokenCountBatchTask): Promise<number[]> => {
+  const processStartAt = process.hrtime.bigint();
+
+  try {
+    const counter = await getTokenCounter(task.encoding);
+    const results = task.batch.map((item) => counter.countTokens(item.content, item.path));
+
+    logger.trace(`Counted tokens for batch of ${task.batch.length}. Took: ${getProcessDuration(processStartAt)}ms`);
+    return results;
+  } catch (error) {
+    logger.error('Error in batch token counting worker:', error);
+    throw error;
+  }
+};
+
+export default async (task: TokenCountTask | TokenCountBatchTask): Promise<number | number[]> => {
+  if ('batch' in task) {
+    return countTokensBatch(task);
+  }
   return countTokens(task);
 };
 
