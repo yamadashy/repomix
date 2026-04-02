@@ -1,10 +1,12 @@
 import Handlebars from 'handlebars';
 import { generateTreeStringWithLineCounts } from '../file/fileTreeGenerate.js';
+import { getLanguageFromFilePath } from '../output/fileLanguageMap.js';
 import type { RenderContext } from '../output/outputGeneratorTypes.js';
-import { registerHandlebarsHelpers } from '../output/outputStyleUtils.js';
 
-// Register Handlebars helpers (idempotent)
-registerHandlebarsHelpers();
+// Register Handlebars helpers for skill templates
+Handlebars.registerHelper('getFileExtension', (filePath: string) => {
+  return getLanguageFromFilePath(filePath);
+});
 
 /**
  * Generates the summary section for skill output.

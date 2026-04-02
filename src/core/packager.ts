@@ -11,10 +11,10 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { prefetchGitFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
-import { packSkill } from './skill/packSkill.js';
 
 export interface PackResult {
   totalFiles: number;
@@ -45,7 +45,6 @@ const defaultDeps = {
   sortPaths,
   getGitDiffs,
   getGitLogs,
-  packSkill,
 };
 
 export interface PackOptions {
@@ -95,6 +94,12 @@ export const pack = async (
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.createSecurityTaskRunner(SECURITY_PREWARM_TASKS)
     : undefined;
+
+  // Pre-fetch git file change counts for output sorting. This spawns a
+  // `git log --name-only` subprocess that overlaps with the file search phase,
+  // so the data is cached when sortOutputFiles runs during output generation.
+  const gitSortPrefetchPromise = prefetchGitFileChangeCounts(config);
+  gitSortPrefetchPromise.catch(() => {}); // Prevent unhandled rejection
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -216,7 +221,11 @@ export const pack = async (
       resolveOutputForMetrics('');
       await metricsPromise.catch(() => {});
 
-      const result = await deps.packSkill({
+      // Dynamic import: packSkill depends on Handlebars which adds ~25ms to module loading.
+      // Since skill generation is a rarely used feature (--skill-generate flag), deferring
+      // this import keeps the default pack() path free of Handlebars overhead.
+      const { packSkill: packSkillFn } = await import('./skill/packSkill.js');
+      const result = await packSkillFn({
         rootDirs,
         config,
         options,
