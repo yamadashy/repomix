@@ -88,9 +88,12 @@ export const pack = async (
   // (~136ms). Without pre-warming, security module loading happens when the security check
   // stage begins, adding ~103ms to the critical path. Tinypool spawns minThreads=1 at pool
   // creation, which immediately begins loading the worker module in the background.
-  // numOfTasks=200 yields maxThreads=2, optimal for balancing module loading cost against
-  // scanning throughput.
-  const SECURITY_PREWARM_TASKS = 200;
+  // numOfTasks=100 yields maxThreads=1 (TASKS_PER_THREAD=100). A single security thread is
+  // sufficient because the content pre-filter in securityCheck.ts eliminates ~95% of files
+  // from scanning, leaving only ~30-50 files (1-2 batches) for the worker. Using 1 thread
+  // instead of 2 reduces CPU contention during startup by ~25ms, accelerating the concurrent
+  // metrics worker warmup (gpt-tokenizer loading).
+  const SECURITY_PREWARM_TASKS = 100;
   const securityTaskRunner = config.security.enableSecurityCheck
     ? deps.createSecurityTaskRunner(SECURITY_PREWARM_TASKS)
     : undefined;

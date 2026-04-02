@@ -4,7 +4,7 @@ import pc from 'picocolors';
 import { describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
-import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
+import { contentMayContainSecrets, runSecurityCheck } from '../../../src/core/security/securityCheck.js';
 import type {
   SecurityCheckBatchTask,
   SecurityCheckTask,
@@ -73,10 +73,10 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // With batching, small inputs are processed in a single batch.
-    // The callback reports accumulated file count with the last file in the batch.
+    // With the pre-filter, only test1.js passes (contains "://" + "@" trigger).
+    // test2.js is skipped because its content has no trigger substrings.
     expect(progressCallback).toHaveBeenCalledWith(
-      expect.stringContaining(`Running security check... (2/2) ${pc.dim('test2.js')}`),
+      expect.stringContaining(`Running security check... (1/1) ${pc.dim('test1.js')}`),
     );
   });
 
@@ -217,5 +217,54 @@ describe('runSecurityCheck', () => {
 
     // With batching, 2 tasks fit in one batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('contentMayContainSecrets', () => {
+  it('should return false for plain code without secret patterns', () => {
+    expect(contentMayContainSecrets('console.log("Hello World");')).toBe(false);
+    expect(contentMayContainSecrets('const x = 42;')).toBe(false);
+    expect(contentMayContainSecrets('function foo() { return bar; }')).toBe(false);
+  });
+
+  it('should return true for content with private key markers', () => {
+    expect(contentMayContainSecrets('-----BEGIN RSA PRIVATE KEY-----')).toBe(true);
+    expect(contentMayContainSecrets('has a PRIVATE KEY in it')).toBe(true);
+  });
+
+  it('should return true for content with API key patterns', () => {
+    expect(contentMayContainSecrets('token: ghp_abc123')).toBe(true);
+    expect(contentMayContainSecrets('key = "sk-ant-api01-xyz"')).toBe(true);
+    expect(contentMayContainSecrets('AKIA1234567890ABCDEF')).toBe(true);
+  });
+
+  it('should return true for content with database URLs', () => {
+    expect(contentMayContainSecrets('mysql://root:pass@localhost/db')).toBe(true);
+    expect(contentMayContainSecrets('postgres://user:pw@host/db')).toBe(true);
+    expect(contentMayContainSecrets('mongodb://admin:secret@cluster.example.com')).toBe(true);
+  });
+
+  it('should return true for URL-embedded credentials (BasicAuth)', () => {
+    // secretlint-disable
+    expect(contentMayContainSecrets('https://user:pass@example.com')).toBe(true);
+    expect(contentMayContainSecrets('ftp://admin:secret@fileserver.local')).toBe(true);
+    // secretlint-enable
+  });
+
+  it('should return false when :// and @ are far apart', () => {
+    const padding = 'a'.repeat(600);
+    expect(contentMayContainSecrets(`https://${padding}@example.com`)).toBe(false);
+  });
+
+  it('should return true for npm tokens', () => {
+    expect(contentMayContainSecrets('npm_abcdefg1234567890')).toBe(true);
+    expect(contentMayContainSecrets('_authToken=xyz')).toBe(true);
+  });
+
+  it('should return true for Slack tokens', () => {
+    // secretlint-disable
+    expect(contentMayContainSecrets('xoxb-123-456-abc')).toBe(true);
+    // secretlint-enable
+    expect(contentMayContainSecrets('hooks.slack.com/services/T00/B00/xxx')).toBe(true);
   });
 });
