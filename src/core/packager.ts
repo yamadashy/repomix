@@ -11,10 +11,10 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { prefetchGitFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
-import { packSkill } from './skill/packSkill.js';
 
 export interface PackResult {
   totalFiles: number;
@@ -41,10 +41,10 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
-  packSkill,
 };
 
 export interface PackOptions {
@@ -68,6 +68,38 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Pre-initialize metrics worker pool FIRST to maximize warmup overlap.
+  // gpt-tokenizer takes ~130ms to load per thread. Starting warmup at the very beginning
+  // of pack() ensures it completes before the security phase ends (~288ms from pack start),
+  // allowing per-file token counting to overlap with the security check tail.
+  // Cap pool to 2 threads (matching warmup count) to avoid cold-start penalty from
+  // on-demand thread creation. With 2 warm threads: ~135ms for top-50 file tokenization.
+  const METRICS_WARMUP_THREADS = 2;
+  const metricsTaskRunner = deps.createMetricsTaskRunner(METRICS_WARMUP_THREADS * 100);
+  const metricsWarmupPromise = Promise.all(
+    Array.from({ length: METRICS_WARMUP_THREADS }, () =>
+      metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => 0),
+    ),
+  );
+
+  // Pre-initialize security worker pool to overlap @secretlint/core module
+  // loading (~103ms cold start per thread) with the file search + sort + collection pipeline
+  // (~136ms). Without pre-warming, security module loading happens when the security check
+  // stage begins, adding ~103ms to the critical path. Tinypool spawns minThreads=1 at pool
+  // creation, which immediately begins loading the worker module in the background.
+  // numOfTasks=200 yields maxThreads=2, optimal for balancing module loading cost against
+  // scanning throughput.
+  const SECURITY_PREWARM_TASKS = 200;
+  const securityTaskRunner = config.security.enableSecurityCheck
+    ? deps.createSecurityTaskRunner(SECURITY_PREWARM_TASKS)
+    : undefined;
+
+  // Pre-fetch git file change counts for output sorting. This spawns a
+  // `git log --name-only` subprocess that overlaps with the file search phase,
+  // so the data is cached when sortOutputFiles runs during output generation.
+  const gitSortPrefetchPromise = prefetchGitFileChangeCounts(config);
+  gitSortPrefetchPromise.catch(() => {}); // Prevent unhandled rejection
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -97,14 +129,6 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers
-  // gpt-tokenizer initialization in the worker thread without blocking the main pipeline.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const metricsWarmupPromise = metricsTaskRunner
-    .run({ content: '', encoding: config.tokenCount.encoding })
-    .catch(() => 0);
-
   try {
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
@@ -128,19 +152,58 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Run security check and file processing concurrently.
+    // Start security check and file processing concurrently.
     // Security check uses worker threads while file processing runs on the main thread
     // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
-    // After both complete, filter out any suspicious files from the processed results.
-    const [validationResult, allProcessedFiles] = await Promise.all([
-      withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+    const securityPromise = withMemoryLogging('Security Check', () =>
+      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, securityTaskRunner),
+    );
+
+    const allProcessedFiles = await withMemoryLogging('Process Files', () => {
+      progressCallback('Processing files...');
+      return deps.processFiles(rawFiles, config, progressCallback);
+    });
+
+    // Ensure metrics warm-up completes before starting token counting
+    await metricsWarmupPromise;
+
+    // Start metrics calculation immediately, overlapping with the remaining security check.
+    // File processing completes in ~42ms while security takes ~223ms; by starting token
+    // counting here, ~135ms of metrics work runs during the ~181ms security tail, removing
+    // metrics from the critical path entirely.
+    // Uses a deferred output promise: per-file tokenization starts now, while the output
+    // character count (needed only for the final estimation) arrives after output generation.
+    //
+    // Note: We pass allProcessedFiles (before security filtering) to calculateMetrics.
+    // This means token counts may include suspicious files. In practice, suspicious files
+    // are extremely rare (typically 0), and the overestimate is negligible: estimateOutputTokens
+    // caps the overhead term at 0 when totalFileChars exceeds totalOutputChars, so only the
+    // per-file token counts for suspicious files (~few KB) inflate the total out of ~1M+ tokens.
+    let resolveOutputForMetrics!: (value: string | string[]) => void;
+    let rejectOutputForMetrics!: (reason: unknown) => void;
+    const deferredOutputPromise = new Promise<string | string[]>((resolve, reject) => {
+      resolveOutputForMetrics = resolve;
+      rejectOutputForMetrics = reject;
+    });
+
+    const metricsPromise = withMemoryLogging('Calculate Metrics', () =>
+      deps.calculateMetrics(
+        allProcessedFiles,
+        deferredOutputPromise,
+        progressCallback,
+        config,
+        gitDiffResult,
+        gitLogResult,
+        {
+          taskRunner: metricsTaskRunner,
+        },
       ),
-      withMemoryLogging('Process Files', () => {
-        progressCallback('Processing files...');
-        return deps.processFiles(rawFiles, config, progressCallback);
-      }),
-    ]);
+    );
+    // Prevent unhandled rejection if security/output fails before metrics completes
+    metricsPromise.catch(() => {});
+
+    // Wait for security check to complete
+    const validationResult = await securityPromise;
 
     const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       validationResult;
@@ -154,10 +217,15 @@ export const pack = async (
 
     // Check if skill generation is requested
     if (config.skillGenerate !== undefined && options.skillDir) {
-      // Await warmup to ensure graceful worker shutdown (avoid terminating WASM-loading thread)
-      await metricsWarmupPromise;
+      // Resolve the deferred output promise so metrics can complete gracefully
+      resolveOutputForMetrics('');
+      await metricsPromise.catch(() => {});
 
-      const result = await deps.packSkill({
+      // Dynamic import: packSkill depends on Handlebars which adds ~25ms to module loading.
+      // Since skill generation is a rarely used feature (--skill-generate flag), deferring
+      // this import keeps the default pack() path free of Handlebars overhead.
+      const { packSkill: packSkillFn } = await import('./skill/packSkill.js');
+      const result = await packSkillFn({
         rootDirs,
         config,
         options,
@@ -185,12 +253,9 @@ export const pack = async (
       files: filePaths,
     }));
 
-    // Ensure warm-up task completes before metrics calculation
-    await metricsWarmupPromise;
-
-    // Generate and write output, overlapping with metrics calculation.
-    // File and git metrics don't depend on the output, so they start immediately
-    // while output generation runs concurrently.
+    // Generate and write output. Metrics per-file tokenization is already running
+    // concurrently (started above). The deferred output promise connects the output
+    // character count to the final metrics estimation.
     const outputPromise = deps.produceOutput(
       rootDirs,
       config,
@@ -203,24 +268,22 @@ export const pack = async (
       emptyDirPaths,
     );
 
-    const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
+    // Connect output to deferred metrics promise: resolves as soon as the output string
+    // is generated (BEFORE disk write), unblocking estimateOutputTokens in calculateMetrics.
+    // On failure, reject the deferred promise so calculateMetrics doesn't hang.
+    outputPromise.then(
+      (r) => resolveOutputForMetrics(r.outputForMetrics),
+      (err) => rejectOutputForMetrics(err),
+    );
 
-    const [{ outputFiles }, metrics] = await Promise.all([
-      outputPromise,
-      withMemoryLogging('Calculate Metrics', () =>
-        deps.calculateMetrics(
-          processedFiles,
-          outputForMetricsPromise,
-          progressCallback,
-          config,
-          gitDiffResult,
-          gitLogResult,
-          {
-            taskRunner: metricsTaskRunner,
-          },
-        ),
-      ),
-    ]);
+    const writeCompletePromise = outputPromise.then((r) => r.writeComplete);
+    writeCompletePromise.catch(() => {});
+
+    const [, metrics] = await Promise.all([outputPromise, metricsPromise]);
+
+    // Ensure disk write completes before returning (re-throws if write failed)
+    const { outputFiles } = await outputPromise;
+    await writeCompletePromise;
 
     // Create a result object that includes metrics and security results
     const result = {
@@ -238,6 +301,13 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsTaskRunner.cleanup();
+    // Unref worker threads so they don't prevent the Node.js event loop from draining,
+    // then schedule pool cleanup in the background. This avoids ~80ms of synchronous
+    // thread termination overhead on the critical path. The cleanup promise still
+    // runs but doesn't block the caller. All worker onWorkerTermination hooks are
+    // no-ops (gpt-tokenizer is pure JS, secretlint needs no teardown).
+    metricsTaskRunner.unref();
+    securityTaskRunner?.unref();
+    Promise.all([metricsTaskRunner.cleanup(), securityTaskRunner?.cleanup()]).catch(() => {});
   }
 };

@@ -8,16 +8,23 @@ import {
   repomixConfigCliSchema,
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
-import type { PackResult } from '../../core/packager.js';
+import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { reportResults } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
-import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
+
+// Re-export types that external consumers may depend on
+export type {
+  DefaultActionTask,
+  DefaultActionWorkerResult,
+  PingResult,
+  PingTask,
+} from './workers/defaultActionWorker.js';
 
 export interface DefaultActionRunnerResult {
   packResult: PackResult;
@@ -66,6 +73,11 @@ export const runDefaultAction = async (
 
   // Validate skill generation options and prompt for location
   if (config.skillGenerate !== undefined) {
+    // Dynamic import: @clack/prompts adds ~33ms to module loading but is only
+    // needed for --skill-generate interactive prompts. Deferring this import
+    // keeps the default CLI path fast.
+    const { promptSkillLocation, resolveAndPrepareSkillDir } = await import('../prompts/skillPrompts.js');
+
     // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
     cliOptions.skillName ??=
       typeof config.skillGenerate === 'string'
@@ -100,23 +112,20 @@ export const runDefaultAction = async (
     logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
   }
 
-  // Run pack directly on the main thread instead of in a child_process worker.
-  // This eliminates the overhead of process spawning and module re-loading in the child,
-  // while still allowing the spinner to update via the async event loop.
+  // Run pack directly in the main process to avoid child process startup overhead (~250ms).
+  // The spinner and progress callbacks work identically in the main process since
+  // picospinner uses setInterval which ticks between async operations.
   const spinner = new Spinner('Initializing...', cliOptions);
   spinner.start();
+
+  let packResult: PackResult;
 
   try {
     const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
     const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
 
-    // Dynamically import pack to avoid loading heavy dependencies (secretlint, gpt-tokenizer)
-    // at CLI startup time — they load only when the default action is actually invoked.
-    const { pack } = await import('../../core/packager.js');
-
-    let packResult: PackResult;
-
     if (stdinFilePaths) {
+      logger.trace(`Processing ${stdinFilePaths.length} files from stdin`);
       packResult = await pack(
         [cwd],
         config,
@@ -142,18 +151,18 @@ export const runDefaultAction = async (
     }
 
     spinner.succeed('Packing completed successfully!');
-
-    // Report results
-    reportResults(cwd, packResult, config, cliOptions);
-
-    return {
-      packResult,
-      config,
-    };
   } catch (error) {
     spinner.fail('Error during packing');
     throw error;
   }
+
+  // Report results in main process
+  reportResults(cwd, packResult, config, cliOptions);
+
+  return {
+    packResult,
+    config,
+  };
 };
 
 /**
