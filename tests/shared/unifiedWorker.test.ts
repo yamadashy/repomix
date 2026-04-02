@@ -97,6 +97,18 @@ describe('unifiedWorker', () => {
       expect(securityCheckWorker.default).toHaveBeenCalledWith(task);
     });
 
+    it('should infer securityCheck from batched task with batch array', async () => {
+      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const task = {
+        batch: [{ filePath: 'test.ts', content: 'test content', type: 'file' }],
+      };
+
+      await handler(task);
+
+      const securityCheckWorker = await import('../../src/core/security/workers/securityCheckWorker.js');
+      expect(securityCheckWorker.default).toHaveBeenCalledWith(task);
+    });
+
     it('should throw error for unrecognizable task structure', async () => {
       const { default: handler } = await import('../../src/shared/unifiedWorker.js');
       const task = { unknownField: 'value' };

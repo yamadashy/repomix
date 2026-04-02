@@ -100,8 +100,11 @@ const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
     return 'calculateMetrics';
   }
 
-  // securityCheck: has filePath, content, type
+  // securityCheck: individual task has filePath+content+type, batched task has batch array
   if ('filePath' in taskObj && 'content' in taskObj && 'type' in taskObj) {
+    return 'securityCheck';
+  }
+  if ('batch' in taskObj && Array.isArray(taskObj.batch)) {
     return 'securityCheck';
   }
 
