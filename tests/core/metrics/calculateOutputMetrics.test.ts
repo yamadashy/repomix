@@ -114,7 +114,7 @@ describe('calculateOutputMetrics', () => {
     });
 
     expect(chunksProcessed).toBeGreaterThan(1); // Should have processed multiple chunks
-    expect(result).toBe(100_000); // 1000 chunks * 100 tokens per chunk
+    expect(result).toBe(chunksProcessed * 100); // Each chunk returns 100 tokens
   });
 
   it('should handle errors in parallel processing', async () => {
@@ -169,11 +169,41 @@ describe('calculateOutputMetrics', () => {
     });
 
     // Check that chunks are roughly equal in size
-    const _expectedChunkSize = Math.ceil(content.length / 1000); // CHUNK_SIZE is 1000
     const chunkSizes = processedChunks.map((chunk) => chunk.length);
 
-    expect(processedChunks.length).toBe(1000); // Should have 1000 chunks
+    // With TARGET_CHUNK_CHARS=50000, 1.1MB content yields 22 chunks: Math.min(ceil(1100000/50000), 200) = 22
+    const expectedChunks = Math.min(Math.ceil(1_100_000 / 50_000), 200);
+    expect(processedChunks.length).toBe(expectedChunks);
     expect(Math.max(...chunkSizes) - Math.min(...chunkSizes)).toBeLessThanOrEqual(1); // Chunks should be almost equal in size
+    expect(processedChunks.join('')).toBe(content); // All content should be processed
+  });
+
+  it('should cap chunks at MAX_CHUNKS for very large content', async () => {
+    // 50MB content would create 1000 chunks at 50K target, but should be capped at 200
+    const content = 'a'.repeat(50_000_000);
+    const encoding = 'o200k_base';
+    const processedChunks: string[] = [];
+
+    const mockChunkTrackingTaskRunner = <T, R>(_options: WorkerOptions) => {
+      return {
+        run: async (task: T) => {
+          const outputTask = task as TokenCountTask;
+          processedChunks.push(outputTask.content);
+          return outputTask.content.length as R;
+        },
+        cleanup: async () => {},
+      };
+    };
+
+    await calculateOutputMetrics(content, encoding, undefined, {
+      taskRunner: mockChunkTrackingTaskRunner({
+        numOfTasks: 1,
+        workerType: 'calculateMetrics',
+        runtime: 'worker_threads',
+      }),
+    });
+
+    expect(processedChunks.length).toBe(200); // MAX_CHUNKS cap
     expect(processedChunks.join('')).toBe(content); // All content should be processed
   });
 });
