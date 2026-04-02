@@ -13,7 +13,8 @@ const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountTask,
     run: async (task: TokenCountTask) => {
       return await countTokens(task);
     },
-    cleanup: async () => {
+    cleanup: async () => {},
+    unref: () => {
       // Mock cleanup - no-op for tests
     },
   };
@@ -175,6 +176,7 @@ describe('calculateGitDiffMetrics', () => {
       const customTaskRunner: TaskRunner<TokenCountTask, number> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
@@ -204,6 +206,7 @@ describe('calculateGitDiffMetrics', () => {
       const customTaskRunner: TaskRunner<TokenCountTask, number> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
@@ -229,6 +232,7 @@ describe('calculateGitDiffMetrics', () => {
       const customTaskRunner: TaskRunner<TokenCountTask, number> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       const result = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
@@ -269,6 +273,7 @@ describe('calculateGitDiffMetrics', () => {
       const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
         run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await expect(
@@ -292,6 +297,7 @@ describe('calculateGitDiffMetrics', () => {
           .mockResolvedValueOnce(5) // First call succeeds
           .mockRejectedValueOnce(new Error('Second call fails')), // Second call fails
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await expect(
@@ -341,6 +347,7 @@ describe('calculateGitDiffMetrics', () => {
       const customTaskRunner: TaskRunner<TokenCountTask, number> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
+        unref: () => {},
       };
 
       await calculateGitDiffMetrics(configWithDifferentEncoding, gitDiffResult, {
