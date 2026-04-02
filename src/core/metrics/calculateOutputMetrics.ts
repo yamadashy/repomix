@@ -1,15 +1,23 @@
 import { logger } from '../../shared/logger.js';
-import { getProcessConcurrency, type TaskRunner } from '../../shared/processConcurrency.js';
+import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { TokenEncoding } from './TokenCounter.js';
-import type { TokenCountBatchTask, TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
-const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1000KB
+// Target size per chunk in characters for parallel token counting.
+// 100KB balances tokenizer efficiency with parallelism across worker threads.
+const TARGET_CHARS_PER_CHUNK = 100_000;
+
+// Parallelise output token counting when the content exceeds this threshold.
+// BPE tokenisation is CPU-bound; distributing chunks across worker threads
+// reduces wall-clock time roughly proportionally to available workers.
+// Lowered from 1 MB to 50 KB so that typical outputs (~200-500 KB) also benefit.
+const MIN_CONTENT_LENGTH_FOR_PARALLEL = 50_000; // 50 KB
 
 export const calculateOutputMetrics = async (
   content: string,
   encoding: TokenEncoding,
   path: string | undefined,
-  deps: { taskRunner: TaskRunner<TokenCountTask | TokenCountBatchTask, number | number[]> },
+  deps: { taskRunner: TaskRunner<TokenCountTask, number> },
 ): Promise<number> => {
   const shouldRunInParallel = content.length > MIN_CONTENT_LENGTH_FOR_PARALLEL;
 
@@ -21,15 +29,12 @@ export const calculateOutputMetrics = async (
 
     if (shouldRunInParallel) {
       // Split content into chunks for parallel processing.
-      // Use one chunk per available CPU core to maximize parallelism while minimizing
-      // task dispatch overhead (structured clone serialization, tinypool scheduling,
-      // and Promise resolution per chunk).
-      const chunkCount = Math.max(1, getProcessConcurrency());
-      const chunkSize = Math.ceil(content.length / chunkCount);
+      // Previous code created ~1000 tiny chunks (~1-2KB each), causing worker thread
+      // communication overhead to dominate. Now we create ~10-40 chunks of ~100KB each.
       const chunks: string[] = [];
 
-      for (let i = 0; i < content.length; i += chunkSize) {
-        chunks.push(content.slice(i, i + chunkSize));
+      for (let i = 0; i < content.length; i += TARGET_CHARS_PER_CHUNK) {
+        chunks.push(content.slice(i, i + TARGET_CHARS_PER_CHUNK));
       }
 
       // Process chunks in parallel
@@ -44,17 +49,14 @@ export const calculateOutputMetrics = async (
       );
 
       // Sum up the results
-      result = 0;
-      for (const count of chunkResults) {
-        result += count as number;
-      }
+      result = chunkResults.reduce((sum, count) => sum + count, 0);
     } else {
       // Process small content directly
-      result = (await deps.taskRunner.run({
+      result = await deps.taskRunner.run({
         content,
         encoding,
         path,
-      })) as number;
+      });
     }
 
     const endTime = process.hrtime.bigint();

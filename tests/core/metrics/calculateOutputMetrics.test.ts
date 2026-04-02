@@ -5,20 +5,14 @@ import { logger } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
-vi.mock('../../../src/shared/processConcurrency', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../src/shared/processConcurrency.js')>();
-  return {
-    ...actual,
-    getProcessConcurrency: () => 4,
-  };
-});
 
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
       return (await countTokens(task as TokenCountTask)) as R;
     },
-    cleanup: async () => {
+    cleanup: async () => {},
+    unref: () => {
       // Mock cleanup - no-op for tests
     },
   };
@@ -58,7 +52,8 @@ describe('calculateOutputMetrics', () => {
         run: async (_task: T) => {
           throw mockError;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -97,8 +92,9 @@ describe('calculateOutputMetrics', () => {
   });
 
   it('should process large content in parallel', async () => {
-    // Generate a large content that exceeds MIN_CONTENT_LENGTH_FOR_PARALLEL
-    const content = 'a'.repeat(1_100_000); // 1.1MB of content
+    // Generate content that exceeds MIN_CONTENT_LENGTH_FOR_PARALLEL (50 KB)
+    // and is large enough for multiple TARGET_CHARS_PER_CHUNK (100 KB) chunks
+    const content = 'a'.repeat(1_100_000); // 1.1 MB of content
     const encoding = 'o200k_base';
     const path = 'large-file.txt';
 
@@ -110,7 +106,8 @@ describe('calculateOutputMetrics', () => {
           // Return a fixed token count for each chunk
           return 100 as R;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -120,13 +117,13 @@ describe('calculateOutputMetrics', () => {
       taskRunner: mockParallelTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
-    // Chunk count equals getProcessConcurrency() (at least 1)
-    expect(chunksProcessed).toBeGreaterThan(1); // Should have processed multiple chunks
-    expect(result).toBe(chunksProcessed * 100); // Each chunk returns 100 tokens
+    // 1.1MB / 100KB per chunk = 11 chunks
+    expect(chunksProcessed).toBe(11);
+    expect(result).toBe(11 * 100); // 11 chunks * 100 tokens per chunk
   });
 
   it('should handle errors in parallel processing', async () => {
-    const content = 'a'.repeat(1_100_000); // 1.1MB of content
+    const content = 'a'.repeat(1_100_000); // 1.1 MB of content
     const encoding = 'o200k_base';
     const mockError = new Error('Parallel processing error');
 
@@ -135,7 +132,8 @@ describe('calculateOutputMetrics', () => {
         run: async (_task: T) => {
           throw mockError;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -151,7 +149,7 @@ describe('calculateOutputMetrics', () => {
   });
 
   it('should correctly split content into chunks for parallel processing', async () => {
-    const content = 'a'.repeat(1_100_000); // 1.1MB of content
+    const content = 'a'.repeat(1_100_000); // 1.1 MB of content
     const encoding = 'o200k_base';
     const processedChunks: string[] = [];
 
@@ -162,7 +160,8 @@ describe('calculateOutputMetrics', () => {
           processedChunks.push(outputTask.content);
           return outputTask.content.length as R;
         },
-        cleanup: async () => {
+        cleanup: async () => {},
+        unref: () => {
           // Mock cleanup - no-op for tests
         },
       };
@@ -176,11 +175,16 @@ describe('calculateOutputMetrics', () => {
       }),
     });
 
-    // Chunk count equals mocked getProcessConcurrency() = 4
+    // 1.1MB / 100KB per chunk = 11 chunks
     const chunkSizes = processedChunks.map((chunk) => chunk.length);
 
-    expect(processedChunks.length).toBe(4); // One chunk per CPU core (mocked to 4)
-    expect(Math.max(...chunkSizes) - Math.min(...chunkSizes)).toBeLessThanOrEqual(1); // Chunks should be almost equal in size
+    expect(processedChunks.length).toBe(11);
+    // All chunks except the last should be exactly TARGET_CHARS_PER_CHUNK (100,000)
+    for (let i = 0; i < chunkSizes.length - 1; i++) {
+      expect(chunkSizes[i]).toBe(100_000);
+    }
+    // 1,100,000 divides evenly into 11 chunks of 100,000 each
+    expect(chunkSizes[chunkSizes.length - 1]).toBe(100_000);
     expect(processedChunks.join('')).toBe(content); // All content should be processed
   });
 });
