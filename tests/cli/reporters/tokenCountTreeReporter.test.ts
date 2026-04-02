@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
 import { reportTokenCountTree } from '../../../src/cli/reporters/tokenCountTreeReporter.js';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
-import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { logger } from '../../../src/shared/logger.js';
 
 vi.mock('../../../src/shared/logger');
@@ -25,12 +24,6 @@ describe('reportTokenCountTree', () => {
   });
 
   test('should use existing token counts and display tree', () => {
-    const processedFiles: ProcessedFile[] = [
-      { path: 'src/file1.js', content: 'const a = 1;' },
-      { path: 'src/file2.js', content: 'function test() {}' },
-      { path: 'tests/test.js', content: 'test("example", () => {});' },
-    ];
-
     const fileTokenCounts = {
       'src/file1.js': 5,
       'src/file2.js': 7,
@@ -41,7 +34,7 @@ describe('reportTokenCountTree', () => {
       output: { tokenCountTree: true },
     } as RepomixConfigMerged;
 
-    reportTokenCountTree(processedFiles, fileTokenCounts, config);
+    reportTokenCountTree(fileTokenCounts, config);
 
     // Verify token count tree is displayed
     const calls = mockLogger.mock.calls.map((call: unknown[]) => call[0] as string);
@@ -53,13 +46,12 @@ describe('reportTokenCountTree', () => {
   });
 
   test('should handle empty file list', () => {
-    const processedFiles: ProcessedFile[] = [];
     const fileTokenCounts = {};
     const config = {
       output: { tokenCountTree: true },
     } as RepomixConfigMerged;
 
-    reportTokenCountTree(processedFiles, fileTokenCounts, config);
+    reportTokenCountTree(fileTokenCounts, config);
 
     const calls = mockLogger.mock.calls.map((call: unknown[]) => call[0] as string);
     expect(calls.some((call) => call.includes('🔢 Token Count Tree:'))).toBe(true);
@@ -68,11 +60,6 @@ describe('reportTokenCountTree', () => {
   });
 
   test('should pass minimum token count threshold to display function', () => {
-    const processedFiles: ProcessedFile[] = [
-      { path: 'src/file1.js', content: 'const a = 1;' },
-      { path: 'src/file2.js', content: 'function test() {}' },
-    ];
-
     const fileTokenCounts = {
       'src/file1.js': 5,
       'src/file2.js': 15,
@@ -82,7 +69,7 @@ describe('reportTokenCountTree', () => {
       output: { tokenCountTree: 10 },
     } as RepomixConfigMerged;
 
-    reportTokenCountTree(processedFiles, fileTokenCounts, config);
+    reportTokenCountTree(fileTokenCounts, config);
 
     // Verify threshold message is displayed
     const calls = mockLogger.mock.calls.map((call: unknown[]) => call[0] as string);
@@ -91,31 +78,25 @@ describe('reportTokenCountTree', () => {
     expect(calls.some((call) => call.includes('DIM:────────────────────'))).toBe(true);
   });
 
-  test('should skip files without token counts', () => {
-    const processedFiles: ProcessedFile[] = [
-      { path: 'src/file1.js', content: 'const a = 1;' },
-      { path: 'src/file2.js', content: 'function test() {}' },
-      { path: 'src/file3.js', content: 'missing tokens' },
-    ];
-
+  test('should include only files with token counts', () => {
     const fileTokenCounts = {
       'src/file1.js': 5,
       'src/file2.js': 7,
-      // 'src/file3.js' is missing
+      // 'src/file3.js' is not present, so it won't appear in tree
     };
 
     const config = {
       output: { tokenCountTree: true },
     } as RepomixConfigMerged;
 
-    reportTokenCountTree(processedFiles, fileTokenCounts, config);
+    reportTokenCountTree(fileTokenCounts, config);
 
-    // Verify tree is displayed (files without token counts should be skipped)
+    // Verify tree is displayed with only files that have token counts
     const calls = mockLogger.mock.calls.map((call: unknown[]) => call[0] as string);
     expect(calls.some((call) => call.includes('🔢 Token Count Tree:'))).toBe(true);
     expect(calls.some((call) => call.includes('DIM:────────────────────'))).toBe(true);
     expect(calls.some((call) => call.includes('file1.js'))).toBe(true);
     expect(calls.some((call) => call.includes('file2.js'))).toBe(true);
-    expect(calls.some((call) => call.includes('file3.js'))).toBe(false); // Should be skipped
+    expect(calls.some((call) => call.includes('file3.js'))).toBe(false); // Not in fileTokenCounts
   });
 });
