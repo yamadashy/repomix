@@ -71,8 +71,8 @@ export const pack = async (
   logMemoryUsage('Pack - Start');
 
   // Pre-initialize metrics worker pool FIRST to maximize warmup overlap.
-  // gpt-tokenizer takes ~242ms to load per thread. Starting warmup at the very beginning
-  // of pack() ensures it completes before the security phase ends (~378ms from pack start),
+  // gpt-tokenizer takes ~130ms to load per thread. Starting warmup at the very beginning
+  // of pack() ensures it completes before the security phase ends (~288ms from pack start),
   // allowing per-file token counting to overlap with the security check tail.
   // Cap pool to 2 threads (matching warmup count) to avoid cold-start penalty from
   // on-demand thread creation. With 2 warm threads: ~135ms for top-50 file tokenization.

@@ -145,4 +145,68 @@ describe('calculateMetrics', () => {
       'file2.txt': 50,
     });
   });
+
+  it('should estimate token counts for small files when tokenCountTree is enabled', async () => {
+    // 3 files: large (800), medium (200), small (50) = 1050 total
+    // 80% threshold = 840 chars → selects large (800) + medium (200) = 1000 >= 840
+    // small (50 chars) will be estimated, not BPE-counted
+    const processedFiles: ProcessedFile[] = [
+      { path: 'small.txt', content: 'a'.repeat(50) },
+      { path: 'medium.txt', content: 'b'.repeat(200) },
+      { path: 'large.txt', content: 'c'.repeat(800) },
+    ];
+    const output = 'a'.repeat(50) + 'b'.repeat(200) + 'c'.repeat(800);
+    const progressCallback: RepomixProgressCallback = vi.fn();
+
+    // Only large and medium files are BPE-counted
+    const fileMetrics = [
+      { path: 'large.txt', charCount: 800, tokenCount: 200 },
+      { path: 'medium.txt', charCount: 200, tokenCount: 50 },
+    ];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    const config = createMockConfig({
+      output: { tokenCountTree: true },
+    });
+
+    const mockTaskRunner = {
+      run: vi.fn(),
+      cleanup: vi.fn(),
+      unref: vi.fn(),
+    };
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      progressCallback,
+      config,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // Verify only large + medium paths passed to BPE (sorted by size desc)
+    expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
+      processedFiles,
+      ['large.txt', 'medium.txt'],
+      'o200k_base',
+      progressCallback,
+      expect.objectContaining({ taskRunner: expect.any(Object) }),
+    );
+
+    // small.txt should be estimated using ratio from BPE-counted files:
+    // countedChars=1000, countedTokens=250, charsPerToken=4.0
+    // estimated tokens for small.txt = round(50 / 4.0) = 13
+    expect(result.fileTokenCounts['large.txt']).toBe(200);
+    expect(result.fileTokenCounts['medium.txt']).toBe(50);
+    expect(result.fileTokenCounts['small.txt']).toBe(13);
+
+    // Total tokens: 200 + 50 + 13 + overhead(0) = 263
+    expect(result.totalTokens).toBe(263);
+  });
 });

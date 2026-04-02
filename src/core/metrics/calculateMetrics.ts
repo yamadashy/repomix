@@ -88,6 +88,71 @@ const estimateOutputTokens = (
 };
 
 /**
+ * Select which files should get full BPE tokenization when tokenCountTree is enabled.
+ * Files are sorted by content size (descending) and the largest files that account for
+ * BPE_CONTENT_THRESHOLD (80%) of total content are selected. Remaining files will use
+ * character-ratio estimation, which is accurate enough for directory-level aggregation
+ * in the token count tree display.
+ */
+const BPE_CONTENT_THRESHOLD = 0.8;
+
+const selectBpeTargetFiles = (processedFiles: ProcessedFile[]): string[] => {
+  const totalChars = processedFiles.reduce((sum, f) => sum + f.content.length, 0);
+  if (totalChars === 0) {
+    return [];
+  }
+
+  const targetChars = totalChars * BPE_CONTENT_THRESHOLD;
+
+  // Sort by content length descending to prioritize large files
+  const sorted = [...processedFiles].sort((a, b) => b.content.length - a.content.length);
+
+  const targetPaths: string[] = [];
+  let cumulativeChars = 0;
+
+  for (const file of sorted) {
+    targetPaths.push(file.path);
+    cumulativeChars += file.content.length;
+    if (cumulativeChars >= targetChars) {
+      break;
+    }
+  }
+
+  return targetPaths;
+};
+
+/**
+ * Fill in estimated token counts for files that were not BPE-counted.
+ * Uses the chars-per-token ratio derived from BPE-counted files. Mutates fileTokenCounts.
+ */
+const estimateUncountedFileTokens = (
+  processedFiles: ProcessedFile[],
+  fileTokenCounts: Record<string, number>,
+): void => {
+  // Derive ratio from BPE-counted files
+  let countedChars = 0;
+  let countedTokens = 0;
+
+  for (const file of processedFiles) {
+    const tokens = fileTokenCounts[file.path];
+    if (tokens !== undefined) {
+      countedChars += file.content.length;
+      countedTokens += tokens;
+    }
+  }
+
+  // Fallback ratio of 4.0 chars/token for mixed code+text
+  const charsPerToken = countedTokens > 0 ? countedChars / countedTokens : 4.0;
+
+  // Estimate uncounted files
+  for (const file of processedFiles) {
+    if (fileTokenCounts[file.path] === undefined) {
+      fileTokenCounts[file.path] = Math.round(file.content.length / charsPerToken);
+    }
+  }
+};
+
+/**
  * Get the total character count of git diff content.
  */
 const getGitDiffChars = (gitDiffResult: GitDiffResult | undefined): number => {
@@ -127,17 +192,25 @@ export const calculateMetrics = async (
 
   try {
     // Determine which files to calculate token counts for:
-    // - If tokenCountTree is enabled: calculate for all files (needed for display)
+    // - If tokenCountTree is enabled: BPE-count the largest files that account for 80% of
+    //   total content, and estimate the rest using the chars-per-token ratio derived from
+    //   the BPE-counted files. This reduces BPE work by ~20% while maintaining accurate
+    //   aggregates for the token count tree display (estimation errors on small files
+    //   cancel out when summed into directory totals).
     // - Otherwise: calculate only for top files by character count
     const topFilesLength = config.output.topFilesLength;
     const shouldCalculateAllFiles = !!config.output.tokenCountTree;
 
-    const metricsTargetPaths = shouldCalculateAllFiles
-      ? processedFiles.map((file) => file.path)
-      : [...processedFiles]
-          .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
-          .map((file) => file.path);
+    let metricsTargetPaths: string[];
+
+    if (shouldCalculateAllFiles) {
+      metricsTargetPaths = selectBpeTargetFiles(processedFiles);
+    } else {
+      metricsTargetPaths = [...processedFiles]
+        .sort((a, b) => b.content.length - a.content.length)
+        .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
+        .map((file) => file.path);
+    }
 
     // Start all metrics immediately so they overlap with output generation.
     // Total output tokens are always estimated from per-file counts + chars-to-tokens ratio
@@ -176,10 +249,16 @@ export const calculateMetrics = async (
       fileCharCounts[file.path] = file.content.length;
     }
 
-    // Build token counts for counted files
+    // Build token counts for BPE-counted files
     const fileTokenCounts: Record<string, number> = {};
     for (const file of selectiveFileMetrics) {
       fileTokenCounts[file.path] = file.tokenCount;
+    }
+
+    // When tokenCountTree is enabled, estimate token counts for files that were not
+    // BPE-counted using the chars-per-token ratio derived from the counted files.
+    if (shouldCalculateAllFiles) {
+      estimateUncountedFileTokens(processedFiles, fileTokenCounts);
     }
 
     // Estimate total output tokens from per-file counts + chars-to-tokens ratio.
