@@ -8,11 +8,10 @@ import { logger } from '../shared/logger.js';
 import {
   defaultConfig,
   defaultFilePathMap,
+  getRepomixConfigFileSchema,
   type RepomixConfigCli,
   type RepomixConfigFile,
   type RepomixConfigMerged,
-  repomixConfigFileSchema,
-  repomixConfigMergedSchema,
 } from './configSchema.js';
 import { getGlobalDirectory } from './globalDirectory.js';
 
@@ -166,7 +165,7 @@ const loadAndValidateConfig = async (
         throw new RepomixError(`Unsupported config file format: ${filePath}`);
     }
 
-    return repomixConfigFileSchema.parse(config);
+    return getRepomixConfigFileSchema().parse(config);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');
     if (error instanceof SyntaxError) {
@@ -246,10 +245,9 @@ export const mergeConfigs = (
     ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
   };
 
-  try {
-    return repomixConfigMergedSchema.parse(mergedConfig);
-  } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid merged config');
-    throw error;
-  }
+  // The merged config is built from trusted sources (defaults + validated file config + validated CLI config),
+  // so full Zod re-validation is unnecessary. Skipping Zod schema validation here avoids importing
+  // Zod (~33ms) and running schema construction + parse (~19ms) when no config file exists.
+  // Config file validation still uses Zod (in loadAndValidateConfig) to catch user errors.
+  return mergedConfig as RepomixConfigMerged;
 };

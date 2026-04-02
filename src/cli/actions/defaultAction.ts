@@ -1,16 +1,15 @@
 import path from 'node:path';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
-import {
-  type RepomixConfigCli,
-  type RepomixConfigFile,
-  type RepomixConfigMerged,
-  type RepomixOutputStyle,
-  repomixConfigCliSchema,
+import type {
+  RepomixConfigCli,
+  RepomixConfigFile,
+  RepomixConfigMerged,
+  RepomixOutputStyle,
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
-import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
+import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import { reportResults } from '../cliReport.js';
@@ -362,12 +361,10 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.skillGenerate = options.skillGenerate;
   }
 
-  try {
-    return repomixConfigCliSchema.parse(cliConfig);
-  } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid cli arguments');
-    throw error;
-  }
+  // CLI config is built programmatically from Commander-validated options above,
+  // so Zod re-validation is unnecessary. Skipping it avoids eagerly importing Zod
+  // (~33ms) when no config file exists (the common case).
+  return cliConfig as RepomixConfigCli;
 };
 
 /**
