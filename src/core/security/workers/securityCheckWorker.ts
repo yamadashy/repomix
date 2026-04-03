@@ -10,10 +10,14 @@ setLogLevelByWorkerData();
 // Security check type to distinguish between regular files, git diffs, and git logs
 export type SecurityCheckType = 'file' | 'gitDiff' | 'gitLog';
 
-export interface SecurityCheckTask {
+export interface SecurityCheckItem {
   filePath: string;
   content: string;
   type: SecurityCheckType;
+}
+
+export interface SecurityCheckTask {
+  items: SecurityCheckItem[];
 }
 
 export interface SuspiciousFileResult {
@@ -34,21 +38,24 @@ export const createSecretLintConfig = (): SecretLintCoreConfig => ({
 // Cache config at module level - created once per worker, reused for all tasks
 const cachedConfig = createSecretLintConfig();
 
-export default async ({ filePath, content, type }: SecurityCheckTask) => {
+export default async (task: SecurityCheckTask): Promise<(SuspiciousFileResult | null)[]> => {
   const config = cachedConfig;
+  const processStartAt = process.hrtime.bigint();
 
   try {
-    const processStartAt = process.hrtime.bigint();
-    const secretLintResult = await runSecretLint(filePath, content, type, config);
-    const processEndAt = process.hrtime.bigint();
+    const results: (SuspiciousFileResult | null)[] = [];
+    for (const item of task.items) {
+      results.push(await runSecretLint(item.filePath, item.content, item.type, config));
+    }
 
+    const processEndAt = process.hrtime.bigint();
     logger.trace(
-      `Checked security on ${filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
+      `Checked security on ${task.items.length} items. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
     );
 
-    return secretLintResult;
+    return results;
   } catch (error) {
-    logger.error(`Error checking security on ${filePath}:`, error);
+    logger.error('Error in security check worker:', error);
     throw error;
   }
 };

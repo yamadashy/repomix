@@ -85,8 +85,8 @@ const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
     return 'calculateMetrics';
   }
 
-  // securityCheck: has filePath, content, type
-  if ('filePath' in taskObj && 'content' in taskObj && 'type' in taskObj) {
+  // securityCheck: has items array (without encoding, which distinguishes it from calculateMetrics)
+  if ('items' in taskObj && !('encoding' in taskObj)) {
     return 'securityCheck';
   }
 

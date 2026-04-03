@@ -5,13 +5,22 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import type { SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
+import type { SecurityCheckItem, SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
+
+export type { SecurityCheckType } from './workers/securityCheckWorker.js';
 
 export interface SuspiciousFileResult {
   filePath: string;
   messages: string[];
   type: SecurityCheckType;
 }
+
+// Batch size for grouping files into worker tasks to reduce IPC overhead.
+// Each batch is sent as a single message to a worker thread, avoiding
+// per-file round-trip costs that dominate when processing many files.
+// A moderate batch size (50) reduces IPC round-trips by ~98% (990 → 20 for a typical repo)
+// while keeping enough batches to utilize all available CPU cores.
+const BATCH_SIZE = 50;
 
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
@@ -22,13 +31,13 @@ export const runSecurityCheck = async (
     initTaskRunner,
   },
 ): Promise<SuspiciousFileResult[]> => {
-  const gitDiffTasks: SecurityCheckTask[] = [];
-  const gitLogTasks: SecurityCheckTask[] = [];
+  const gitDiffItems: SecurityCheckItem[] = [];
+  const gitLogItems: SecurityCheckItem[] = [];
 
   // Add Git diff content for security checking if available
   if (gitDiffResult) {
     if (gitDiffResult.workTreeDiffContent) {
-      gitDiffTasks.push({
+      gitDiffItems.push({
         filePath: 'Working tree changes',
         content: gitDiffResult.workTreeDiffContent,
         type: 'gitDiff',
@@ -36,7 +45,7 @@ export const runSecurityCheck = async (
     }
 
     if (gitDiffResult.stagedDiffContent) {
-      gitDiffTasks.push({
+      gitDiffItems.push({
         filePath: 'Staged changes',
         content: gitDiffResult.stagedDiffContent,
         type: 'gitDiff',
@@ -47,7 +56,7 @@ export const runSecurityCheck = async (
   // Add Git log content for security checking if available
   if (gitLogResult) {
     if (gitLogResult.logContent) {
-      gitLogTasks.push({
+      gitLogItems.push({
         filePath: 'Git log history',
         content: gitLogResult.logContent,
         type: 'gitLog',
@@ -55,51 +64,60 @@ export const runSecurityCheck = async (
     }
   }
 
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, SuspiciousFileResult | null>({
-    numOfTasks: rawFiles.length + gitDiffTasks.length + gitLogTasks.length,
+  const fileItems: SecurityCheckItem[] = rawFiles.map((file) => ({
+    filePath: file.path,
+    content: file.content,
+    type: 'file',
+  }));
+
+  // Combine all items, then split into batches
+  const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
+  const totalItems = allItems.length;
+
+  // NOTE: numOfTasks uses totalItems (not batches.length) intentionally.
+  // getWorkerThreadCount uses Math.ceil(numOfTasks / TASKS_PER_THREAD) to size the pool,
+  // where TASKS_PER_THREAD=100 is calibrated for fine-grained tasks.
+  // Passing batches.length (e.g. 2) would yield maxThreads=1, forcing sequential execution.
+  const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+    numOfTasks: totalItems,
     workerType: 'securityCheck',
     runtime: 'worker_threads',
   });
-  const fileTasks = rawFiles.map(
-    (file) =>
-      ({
-        filePath: file.path,
-        content: file.content,
-        type: 'file',
-      }) satisfies SecurityCheckTask,
-  );
 
-  // Combine file tasks, Git diff tasks, and Git log tasks
-  const tasks = [...fileTasks, ...gitDiffTasks, ...gitLogTasks];
+  // Split items into batches to reduce IPC round-trips
+  const batches: SecurityCheckItem[][] = [];
+  for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
+    batches.push(allItems.slice(i, i + BATCH_SIZE));
+  }
 
   try {
-    logger.trace(`Starting security check for ${tasks.length} files/content`);
+    logger.trace(`Starting security check for ${totalItems} files/content in ${batches.length} batches`);
     const startTime = process.hrtime.bigint();
 
-    let completedTasks = 0;
-    const totalTasks = tasks.length;
+    let completedItems = 0;
 
-    const results = await Promise.all(
-      tasks.map((task) =>
-        taskRunner.run(task).then((result) => {
-          completedTasks++;
-          progressCallback(`Running security check... (${completedTasks}/${totalTasks}) ${pc.dim(task.filePath)}`);
-          logger.trace(`Running security check... (${completedTasks}/${totalTasks}) ${task.filePath}`);
-          return result;
-        }),
-      ),
+    const batchResults = await Promise.all(
+      batches.map(async (batch) => {
+        const results = await taskRunner.run({ items: batch });
+
+        completedItems += batch.length;
+        const lastItem = batch[batch.length - 1];
+        progressCallback(`Running security check... (${completedItems}/${totalItems}) ${pc.dim(lastItem.filePath)}`);
+        logger.trace(`Running security check... (${completedItems}/${totalItems}) ${lastItem.filePath}`);
+
+        return results;
+      }),
     );
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;
     logger.trace(`Security check completed in ${duration.toFixed(2)}ms`);
 
-    return results.filter((result): result is SuspiciousFileResult => result !== null);
+    return batchResults.flat().filter((result): result is SuspiciousFileResult => result !== null);
   } catch (error) {
     logger.error('Error during security check:', error);
     throw error;
   } finally {
-    // Always cleanup worker pool
     await taskRunner.cleanup();
   }
 };
