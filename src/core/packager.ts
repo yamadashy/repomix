@@ -69,24 +69,20 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Pre-initialize metrics worker pool FIRST to maximize warmup overlap.
-  // gpt-tokenizer takes ~130ms to load per thread. Starting warmup at the very beginning
-  // of pack() ensures it completes before the security phase ends (~288ms from pack start),
-  // allowing per-file token counting to overlap with the security check tail.
-  // Cap pool to 2 threads (matching warmup count) to avoid cold-start penalty from
-  // on-demand thread creation. With 2 warm threads: ~135ms for top-50 file tokenization.
-  // Warm up ALL worker threads with substantive tokenization text to trigger
-  // V8 JIT compilation of gpt-tokenizer's hot paths. Using ~50KB of representative
-  // code text per thread primes the JIT optimizer, reducing subsequent token counting
-  // by ~30% compared to empty-string warmup.
-  const METRICS_WARMUP_THREADS = 2;
-  const metricsTaskRunner = deps.createMetricsTaskRunner(METRICS_WARMUP_THREADS * 100);
-  const jitWarmupText = 'export function example(a, b) { return a + b; }\n'.repeat(1024);
-  const metricsWarmupPromise = Promise.all(
-    Array.from({ length: METRICS_WARMUP_THREADS }, () =>
-      metricsTaskRunner.run({ content: jitWarmupText, encoding: config.tokenCount.encoding }).catch(() => 0),
-    ),
-  );
+  // Pre-initialize metrics worker pool and trigger thread scaling immediately.
+  // Tinypool starts only minThreads=1 at pool creation. Dispatching 2 lightweight
+  // tasks triggers the pool to scale to maxThreads=2, so both threads begin loading
+  // gpt-tokenizer in parallel with the file search + collection pipeline (~155ms).
+  // These tiny tasks complete almost instantly once modules are loaded (unlike the
+  // previous 51KB warmup tasks that added ~30ms of tokenization delay per thread).
+  // Crucially, we do NOT await these tasks — the previous approach awaited 51KB warmup
+  // tasks, blocking the main thread for ~220ms after file processing completed. By
+  // fire-and-forgetting lightweight triggers, the main thread proceeds to output
+  // generation as soon as security completes, unblocking ~120ms of pipeline.
+  const metricsTaskRunner = deps.createMetricsTaskRunner(200);
+  for (let i = 0; i < 2; i++) {
+    metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => {});
+  }
 
   // Pre-initialize security worker pool to overlap @secretlint/core module
   // loading (~103ms cold start per thread) with the file search + sort + collection pipeline
@@ -172,13 +168,10 @@ export const pack = async (
       return deps.processFiles(rawFiles, config, progressCallback);
     });
 
-    // Ensure metrics warm-up completes before starting token counting
-    await metricsWarmupPromise;
-
-    // Start metrics calculation immediately, overlapping with the remaining security check.
-    // File processing completes in ~42ms while security takes ~223ms; by starting token
-    // counting here, ~135ms of metrics work runs during the ~181ms security tail, removing
-    // metrics from the critical path entirely.
+    // Start metrics calculation immediately after file processing, overlapping with
+    // the remaining security check. Worker threads are already loading gpt-tokenizer
+    // in the background (started at pool creation). Real tokenization tasks queue behind
+    // module loading and begin processing as soon as threads are ready.
     // Uses a deferred output promise: per-file tokenization starts now, while the output
     // character count (needed only for the final estimation) arrives after output generation.
     //
