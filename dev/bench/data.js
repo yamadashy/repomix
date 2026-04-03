@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775202576337,
+  "lastUpdate": 1775231933598,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -1575,6 +1575,51 @@ window.BENCHMARK_DATA = {
             "range": "±24",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 2413ms, Q3: 2437ms\nAll times: 2396, 2404, 2404, 2405, 2413, 2414, 2420, 2420, 2423, 2425, 2426, 2429, 2434, 2436, 2437, 2442, 2444, 2451, 2483ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2a16edefa163b84f007671ca64330a0f66757b63",
+          "message": "Merge pull request #1380 from yamadashy/perf/batch-security-check-tasks\n\nperf(security): Batch security check tasks to reduce IPC overhead",
+          "timestamp": "2026-04-04T00:56:53+09:00",
+          "tree_id": "8f7ec3a0e4c7089a5894a97423abada05fca30a3",
+          "url": "https://github.com/yamadashy/repomix/commit/2a16edefa163b84f007671ca64330a0f66757b63"
+        },
+        "date": 1775231932998,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1129,
+            "range": "±35",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1113ms, Q3: 1148ms\nAll times: 1094, 1102, 1102, 1107, 1108, 1109, 1112, 1113, 1118, 1119, 1119, 1121, 1124, 1127, 1129, 1129, 1129, 1133, 1135, 1138, 1140, 1143, 1148, 1152, 1159, 1169, 1212, 1280, 1297, 1350ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1930,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1924ms, Q3: 1945ms\nAll times: 1912, 1912, 1914, 1915, 1917, 1924, 1925, 1927, 1928, 1929, 1930, 1930, 1931, 1933, 1943, 1945, 1945, 1947, 1949, 1954ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2394,
+            "range": "±55",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2376ms, Q3: 2431ms\nAll times: 2331, 2342, 2366, 2368, 2371, 2376, 2378, 2381, 2390, 2391, 2394, 2396, 2404, 2415, 2426, 2431, 2465, 2467, 2478, 2480ms"
           }
         ]
       }
