@@ -167,7 +167,7 @@ const downloadAndExtractArchive = async (
 
     // Stream: HTTP response -> progress tracking -> gunzip -> tar extract to disk
     // strip: 1 removes the top-level "repo-branch/" directory from archive paths
-    // filter: skip files matching default ignore patterns and binary extensions during extraction
+    // filter: skip binary files during extraction to avoid unnecessary disk I/O
     const stripComponents = 1;
     const entryFilter = deps.createArchiveEntryFilter(stripComponents);
     const extractStream = deps.tarExtract({
