@@ -111,33 +111,22 @@ export const runDefaultAction = async (
     const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
     const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
 
+    const targetPaths = stdinFilePaths ? [cwd] : directories.map((directory) => path.resolve(cwd, directory));
+
     if (stdinFilePaths) {
       logger.trace(`Processing ${stdinFilePaths.length} files from stdin`);
-
-      packResult = await pack(
-        [cwd],
-        config,
-        (message) => {
-          spinner.update(message);
-        },
-        {},
-        stdinFilePaths,
-        packOptions,
-      );
-    } else {
-      const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
-
-      packResult = await pack(
-        targetPaths,
-        config,
-        (message) => {
-          spinner.update(message);
-        },
-        {},
-        undefined,
-        packOptions,
-      );
     }
+
+    packResult = await pack(
+      targetPaths,
+      config,
+      (message) => {
+        spinner.update(message);
+      },
+      {},
+      stdinFilePaths,
+      packOptions,
+    );
 
     spinner.succeed('Packing completed successfully!');
   } catch (error) {
