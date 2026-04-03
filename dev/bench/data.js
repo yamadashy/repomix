@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775057323289,
+  "lastUpdate": 1775189671538,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -1395,6 +1395,51 @@ window.BENCHMARK_DATA = {
             "range": "±20",
             "unit": "ms",
             "extra": "Median of 18 runs\nQ1: 2697ms, Q3: 2717ms\nAll times: 2657, 2670, 2677, 2679, 2697, 2700, 2701, 2704, 2706, 2706, 2709, 2711, 2716, 2717, 2722, 2735, 2738, 2768ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "03828983d04ccdbaaea75564f1ab01d253938baa",
+          "message": "Merge pull request #1372 from yamadashy/perf/eliminate-child-process-in-default-action\n\nperf(cli): Eliminate child process in default action",
+          "timestamp": "2026-04-03T13:12:14+09:00",
+          "tree_id": "6717846d14036e1d092acd50947ab1721a5bcf47",
+          "url": "https://github.com/yamadashy/repomix/commit/03828983d04ccdbaaea75564f1ab01d253938baa"
+        },
+        "date": 1775189671228,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1735,
+            "range": "±160",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1623ms, Q3: 1783ms\nAll times: 1305, 1348, 1362, 1369, 1548, 1574, 1613, 1623, 1637, 1646, 1657, 1660, 1673, 1714, 1722, 1735, 1736, 1738, 1741, 1746, 1749, 1767, 1783, 1791, 1793, 1797, 1798, 1804, 1848, 1979ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2023,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2015ms, Q3: 2030ms\nAll times: 1995, 2002, 2004, 2007, 2010, 2015, 2017, 2017, 2018, 2022, 2023, 2028, 2028, 2029, 2029, 2030, 2031, 2033, 2045, 2047ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 3078,
+            "range": "±38",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 3061ms, Q3: 3099ms\nAll times: 3024, 3044, 3045, 3047, 3056, 3061, 3062, 3063, 3064, 3065, 3078, 3090, 3092, 3095, 3097, 3099, 3105, 3106, 3124, 3148ms"
           }
         ]
       }
