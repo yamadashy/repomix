@@ -13,25 +13,25 @@ describe('GitHub Archive API', () => {
     test('should build URL for default branch (HEAD)', () => {
       const repoInfo = { owner: 'user', repo: 'repo' };
       const url = buildGitHubArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/HEAD.tar.gz');
+      expect(url).toBe('https://codeload.github.com/user/repo/tar.gz/HEAD');
     });
 
     test('should build URL for specific branch', () => {
       const repoInfo = { owner: 'user', repo: 'repo', ref: 'develop' };
       const url = buildGitHubArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/refs/heads/develop.tar.gz');
+      expect(url).toBe('https://codeload.github.com/user/repo/tar.gz/develop');
     });
 
     test('should build URL for commit SHA', () => {
       const repoInfo = { owner: 'user', repo: 'repo', ref: 'abc123def456' };
       const url = buildGitHubArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/abc123def456.tar.gz');
+      expect(url).toBe('https://codeload.github.com/user/repo/tar.gz/abc123def456');
     });
 
     test('should build URL for full commit SHA', () => {
       const repoInfo = { owner: 'user', repo: 'repo', ref: 'abc123def456789012345678901234567890abcd' };
       const url = buildGitHubArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/abc123def456789012345678901234567890abcd.tar.gz');
+      expect(url).toBe('https://codeload.github.com/user/repo/tar.gz/abc123def456789012345678901234567890abcd');
     });
   });
 
@@ -39,7 +39,7 @@ describe('GitHub Archive API', () => {
     test('should build URL for master branch fallback', () => {
       const repoInfo = { owner: 'user', repo: 'repo' };
       const url = buildGitHubMasterArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/refs/heads/master.tar.gz');
+      expect(url).toBe('https://codeload.github.com/user/repo/tar.gz/master');
     });
 
     test('should return null when ref is specified', () => {
@@ -50,22 +50,10 @@ describe('GitHub Archive API', () => {
   });
 
   describe('buildGitHubTagArchiveUrl', () => {
-    test('should build URL for tag', () => {
-      const repoInfo = { owner: 'user', repo: 'repo', ref: 'v1.0.0' };
-      const url = buildGitHubTagArchiveUrl(repoInfo);
-      expect(url).toBe('https://github.com/user/repo/archive/refs/tags/v1.0.0.tar.gz');
-    });
-
-    test('should return null for commit SHA', () => {
-      const repoInfo = { owner: 'user', repo: 'repo', ref: 'abc123def456' };
-      const url = buildGitHubTagArchiveUrl(repoInfo);
-      expect(url).toBeNull();
-    });
-
-    test('should return null for no ref', () => {
-      const repoInfo = { owner: 'user', repo: 'repo' };
-      const url = buildGitHubTagArchiveUrl(repoInfo);
-      expect(url).toBeNull();
+    test('should always return null since codeload.github.com resolves refs automatically', () => {
+      expect(buildGitHubTagArchiveUrl({ owner: 'user', repo: 'repo', ref: 'v1.0.0' })).toBeNull();
+      expect(buildGitHubTagArchiveUrl({ owner: 'user', repo: 'repo', ref: 'abc123def456' })).toBeNull();
+      expect(buildGitHubTagArchiveUrl({ owner: 'user', repo: 'repo' })).toBeNull();
     });
   });
 
