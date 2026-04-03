@@ -1,10 +1,9 @@
 import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
-const CHUNK_SIZE = 1000;
-const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1000KB
+const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1MB
 
 export const calculateOutputMetrics = async (
   content: string,
@@ -21,8 +20,15 @@ export const calculateOutputMetrics = async (
     let result: number;
 
     if (shouldRunInParallel) {
-      // Split content into chunks for parallel processing
-      const chunkSize = Math.ceil(content.length / CHUNK_SIZE);
+      // Split content into CPU-core-count chunks for parallel processing.
+      // The previous approach created a fixed 1000 chunks (~3-5KB each for typical outputs),
+      // which caused excessive IPC overhead: each chunk requires a worker thread round-trip
+      // (message serialization, scheduling, deserialization). With 1000 tasks queued to a pool
+      // of 4-16 threads, the scheduling overhead alone can reach hundreds of milliseconds.
+      // Using core-count chunks (4-16 instead of 1000) reduces task scheduling overhead by
+      // ~100-250x while maintaining full CPU utilization across available cores.
+      const numChunks = Math.max(1, getProcessConcurrency());
+      const chunkSize = Math.ceil(content.length / numChunks);
       const chunks: string[] = [];
 
       for (let i = 0; i < content.length; i += chunkSize) {
