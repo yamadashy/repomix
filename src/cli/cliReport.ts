@@ -19,6 +19,25 @@ export interface ReportOptions {
 }
 
 /**
+ * Resolves the absolute output path for the completion banner.
+ * Priority: skill directory > first output file > config file path.
+ */
+export const resolveOutputPath = (
+  cwd: string,
+  packResult: PackResult,
+  config: RepomixConfigMerged,
+  options: ReportOptions,
+): string => {
+  if (config.skillGenerate !== undefined && options.skillDir) {
+    return path.resolve(cwd, options.skillDir);
+  }
+  if (packResult.outputFiles && packResult.outputFiles.length > 0) {
+    return path.resolve(cwd, packResult.outputFiles[0]);
+  }
+  return path.resolve(cwd, config.output.filePath);
+};
+
+/**
  * Reports the results of packing operation including top files, security check, summary, and completion.
  */
 export const reportResults = (
@@ -59,12 +78,7 @@ export const reportResults = (
   reportSummary(cwd, packResult, config, options);
   logger.log('');
 
-  const outputPath =
-    packResult.outputFiles && packResult.outputFiles.length > 0
-      ? path.resolve(cwd, packResult.outputFiles[0])
-      : path.resolve(cwd, config.output.filePath);
-
-  reportCompletion(outputPath);
+  reportCompletion(resolveOutputPath(cwd, packResult, config, options));
 };
 
 export const reportSummary = (
@@ -94,8 +108,8 @@ export const reportSummary = (
 
   // Show skill output path or regular output path
   if (config.skillGenerate !== undefined && options.skillDir) {
-    const displayPath = getDisplayPath(options.skillDir, cwd);
-    logger.log(`       Output: ${displayPath} ${pc.dim('(skill directory)')}`);
+    const skillDirPath = path.resolve(cwd, options.skillDir);
+    logger.log(`       Output: ${skillDirPath} ${pc.dim('(skill directory)')}`);
   } else {
     if (packResult.outputFiles && packResult.outputFiles.length > 0) {
       const first = packResult.outputFiles[0];
@@ -104,7 +118,9 @@ export const reportSummary = (
       const lastAbsPath = path.resolve(cwd, last);
 
       logger.log(
-        `       Output: ${firstAbsPath} ${pc.dim('…')} ${lastAbsPath} ${pc.dim(`(${packResult.outputFiles.length} parts)`)}`,
+        packResult.outputFiles.length === 1
+          ? `       Output: ${firstAbsPath}`
+          : `       Output: ${firstAbsPath} ${pc.dim('…')} ${lastAbsPath} ${pc.dim(`(${packResult.outputFiles.length} parts)`)}`,
       );
     } else {
       const outputPath = path.resolve(cwd, config.output.filePath);
@@ -246,7 +262,7 @@ export const reportCompletion = (outputPath: string) => {
   logger.log('Your repository has been successfully packed.');
 
   logger.log('');
-  logger.log(`📁 Output file generated at:`);
+  logger.log('📁 Output generated at:');
   logger.log(`   ${pc.bold(pc.cyan(pc.underline(outputPath)))}`);
 
   logger.log('');
