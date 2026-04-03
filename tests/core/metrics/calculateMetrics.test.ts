@@ -11,7 +11,7 @@ vi.mock('../../../src/shared/processConcurrency.js', async (importOriginal) => {
   return {
     ...original,
     initTaskRunner: vi.fn(() => ({
-      run: vi.fn().mockResolvedValue(0),
+      run: vi.fn().mockResolvedValue([0]),
       cleanup: vi.fn().mockResolvedValue(undefined),
     })),
   };
@@ -118,7 +118,7 @@ describe('createMetricsTaskRunner', () => {
 
     await result.warmupPromise;
 
-    expect(result.taskRunner.run).toHaveBeenCalledWith({ content: '', encoding: 'cl100k_base' });
+    expect(result.taskRunner.run).toHaveBeenCalledWith({ items: [{ content: '' }], encoding: 'cl100k_base' });
   });
 
   it('should swallow warmup task errors', async () => {
@@ -133,6 +133,7 @@ describe('createMetricsTaskRunner', () => {
     // warmupPromise should resolve (errors swallowed by .catch on each task)
     const resolved = await result.warmupPromise;
     expect(Array.isArray(resolved)).toBe(true);
-    expect((resolved as number[]).every((v) => v === 0)).toBe(true);
+    // Each warmup task resolves to number[] (or [0] on error), so resolved is number[][]
+    expect((resolved as number[][]).every((arr) => Array.isArray(arr) && arr.every((v) => v === 0))).toBe(true);
   });
 });

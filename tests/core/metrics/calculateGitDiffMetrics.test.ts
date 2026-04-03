@@ -2,16 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { calculateGitDiffMetrics } from '../../../src/core/metrics/calculateGitDiffMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
+import type { TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
-import type { TaskRunner, WorkerOptions } from '../../../src/shared/processConcurrency.js';
+import type { TaskRunner } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountTask, number> => {
+const mockInitTaskRunner = (): TaskRunner<TokenCountTask, number[]> => {
   return {
     run: async (task: TokenCountTask) => {
-      return await countTokens(task);
+      return task.items.map((item) => item.content.length);
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
@@ -67,11 +67,7 @@ describe('calculateGitDiffMetrics', () => {
     cwd: '/test/project',
   };
 
-  const mockTaskRunner = mockInitTaskRunner({
-    numOfTasks: 1,
-    workerType: 'calculateMetrics',
-    runtime: 'worker_threads',
-  });
+  const mockTaskRunner = mockInitTaskRunner();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -167,12 +163,9 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: 'staged changes',
       };
 
-      const mockTaskRunnerSpy = vi
-        .fn()
-        .mockResolvedValueOnce(5) // workTree tokens
-        .mockResolvedValueOnce(3); // staged tokens
+      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce([5, 3]); // Both items in one batch
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountTask, number[]> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
       };
@@ -181,13 +174,9 @@ describe('calculateGitDiffMetrics', () => {
         taskRunner: customTaskRunner,
       });
 
-      expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(2);
+      expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(1);
       expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'work tree changes',
-        encoding: 'o200k_base',
-      });
-      expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'staged changes',
+        items: [{ content: 'work tree changes' }, { content: 'staged changes' }],
         encoding: 'o200k_base',
       });
       expect(result).toBe(8); // 5 + 3
@@ -199,9 +188,9 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: '',
       };
 
-      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(7);
+      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce([7]);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountTask, number[]> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
       };
@@ -212,7 +201,7 @@ describe('calculateGitDiffMetrics', () => {
 
       expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(1);
       expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'work tree changes only',
+        items: [{ content: 'work tree changes only' }],
         encoding: 'o200k_base',
       });
       expect(result).toBe(7);
@@ -224,9 +213,9 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: 'staged changes only',
       };
 
-      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(4);
+      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce([4]);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountTask, number[]> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
       };
@@ -237,7 +226,7 @@ describe('calculateGitDiffMetrics', () => {
 
       expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(1);
       expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'staged changes only',
+        items: [{ content: 'staged changes only' }],
         encoding: 'o200k_base',
       });
       expect(result).toBe(4);
@@ -266,7 +255,7 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: 'some staged content',
       };
 
-      const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const errorTaskRunner: TaskRunner<TokenCountTask, number[]> = {
         run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
         cleanup: async () => {},
       };
@@ -280,17 +269,14 @@ describe('calculateGitDiffMetrics', () => {
       expect(logger.error).toHaveBeenCalledWith('Error during git diff token calculation:', expect.any(Error));
     });
 
-    it('should handle partial task runner failures', async () => {
+    it('should handle task runner failures', async () => {
       const gitDiffResult: GitDiffResult = {
         workTreeDiffContent: 'work tree content',
         stagedDiffContent: 'staged content',
       };
 
-      const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
-        run: vi
-          .fn()
-          .mockResolvedValueOnce(5) // First call succeeds
-          .mockRejectedValueOnce(new Error('Second call fails')), // Second call fails
+      const errorTaskRunner: TaskRunner<TokenCountTask, number[]> = {
+        run: vi.fn().mockRejectedValueOnce(new Error('Call fails')),
         cleanup: async () => {},
       };
 
@@ -298,7 +284,7 @@ describe('calculateGitDiffMetrics', () => {
         calculateGitDiffMetrics(mockConfig, gitDiffResult, {
           taskRunner: errorTaskRunner,
         }),
-      ).rejects.toThrow('Second call fails');
+      ).rejects.toThrow('Call fails');
 
       expect(logger.error).toHaveBeenCalledWith('Error during git diff token calculation:', expect.any(Error));
     });
@@ -336,9 +322,9 @@ describe('calculateGitDiffMetrics', () => {
         stagedDiffContent: '',
       };
 
-      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(10);
+      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce([10]);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountTask, number[]> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
       };
@@ -348,7 +334,7 @@ describe('calculateGitDiffMetrics', () => {
       });
 
       expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'test content',
+        items: [{ content: 'test content' }],
         encoding: 'cl100k_base',
       });
     });

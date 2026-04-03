@@ -23,7 +23,7 @@ export interface CalculateMetricsResult {
 }
 
 export interface MetricsTaskRunnerWithWarmup {
-  taskRunner: TaskRunner<TokenCountTask, number>;
+  taskRunner: TaskRunner<TokenCountTask, number[]>;
   warmupPromise: Promise<unknown>;
 }
 
@@ -34,7 +34,7 @@ export interface MetricsTaskRunnerWithWarmup {
  * output generation).
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
-  const taskRunner = initTaskRunner<TokenCountTask, number>({
+  const taskRunner = initTaskRunner<TokenCountTask, number[]>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
@@ -42,7 +42,7 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
 
   const { maxThreads } = getWorkerThreadCount(numOfTasks);
   const warmupPromise = Promise.all(
-    Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
+    Array.from({ length: maxThreads }, () => taskRunner.run({ items: [{ content: '' }], encoding }).catch(() => [0])),
   );
 
   return { taskRunner, warmupPromise };
@@ -53,7 +53,7 @@ const defaultDeps = {
   calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
-  taskRunner: undefined as TaskRunner<TokenCountTask, number> | undefined,
+  taskRunner: undefined as TaskRunner<TokenCountTask, number[]> | undefined,
 };
 
 export const calculateMetrics = async (
@@ -72,7 +72,7 @@ export const calculateMetrics = async (
   // Initialize a single task runner for all metrics calculations
   const taskRunner =
     deps.taskRunner ??
-    initTaskRunner<TokenCountTask, number>({
+    initTaskRunner<TokenCountTask, number[]>({
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',

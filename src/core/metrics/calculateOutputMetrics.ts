@@ -13,7 +13,7 @@ export const calculateOutputMetrics = async (
   content: string,
   encoding: TokenEncoding,
   path: string | undefined,
-  deps: { taskRunner: TaskRunner<TokenCountTask, number> },
+  deps: { taskRunner: TaskRunner<TokenCountTask, number[]> },
 ): Promise<number> => {
   const shouldRunInParallel = content.length > MIN_CONTENT_LENGTH_FOR_PARALLEL;
 
@@ -24,33 +24,34 @@ export const calculateOutputMetrics = async (
     let result: number;
 
     if (shouldRunInParallel) {
-      // Split content into chunks for parallel processing
-      const chunks: string[] = [];
+      // Split content into chunks and send each as a separate task for parallel processing.
+      // Each chunk is ~100KB of tokenization work, so IPC overhead is negligible.
+      // Sending all chunks to one worker would lose parallelism.
+      const chunks: { content: string; path?: string }[] = [];
 
       for (let i = 0; i < content.length; i += TARGET_CHARS_PER_CHUNK) {
-        chunks.push(content.slice(i, i + TARGET_CHARS_PER_CHUNK));
+        const chunkIndex = chunks.length;
+        chunks.push({
+          content: content.slice(i, i + TARGET_CHARS_PER_CHUNK),
+          path: path ? `${path}-chunk-${chunkIndex}` : undefined,
+        });
       }
 
-      // Process chunks in parallel
+      // Process chunks in parallel across workers (one item per task)
       const chunkResults = await Promise.all(
-        chunks.map(async (chunk, index) => {
-          return deps.taskRunner.run({
-            content: chunk,
-            encoding,
-            path: path ? `${path}-chunk-${index}` : undefined,
-          });
+        chunks.map(async (chunk) => {
+          const [tokenCount] = await deps.taskRunner.run({ items: [chunk], encoding });
+          return tokenCount;
         }),
       );
-
-      // Sum up the results
       result = chunkResults.reduce((sum, count) => sum + count, 0);
     } else {
-      // Process small content directly
-      result = await deps.taskRunner.run({
-        content,
+      // Process small content as a single-item batch
+      const [tokenCount] = await deps.taskRunner.run({
+        items: [{ content, path }],
         encoding,
-        path,
       });
+      result = tokenCount;
     }
 
     const endTime = process.hrtime.bigint();

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { calculateOutputMetrics } from '../../../src/core/metrics/calculateOutputMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
+import type { TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
@@ -9,7 +9,8 @@ vi.mock('../../../src/shared/logger');
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
-      return (await countTokens(task as TokenCountTask)) as R;
+      const t = task as TokenCountTask;
+      return t.items.map((item) => item.content.length) as R;
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
@@ -27,7 +28,8 @@ describe('calculateOutputMetrics', () => {
       taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
-    expect(result).toBe(2); // 'test content' should be counted as 2 tokens
+    // content.length = 12
+    expect(result).toBe(12);
   });
 
   it('should work without a specified path', async () => {
@@ -38,7 +40,7 @@ describe('calculateOutputMetrics', () => {
       taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
-    expect(result).toBe(2);
+    expect(result).toBe(12);
   });
 
   it('should handle errors from worker', async () => {
@@ -95,13 +97,14 @@ describe('calculateOutputMetrics', () => {
     const encoding = 'o200k_base';
     const path = 'large-file.txt';
 
-    let chunksProcessed = 0;
+    let callCount = 0;
     const mockParallelTaskRunner = <T, R>(_options: WorkerOptions) => {
       return {
-        run: async (_task: T) => {
-          chunksProcessed++;
-          // Return a fixed token count for each chunk
-          return 100 as R;
+        run: async (task: T) => {
+          callCount++;
+          const t = task as TokenCountTask;
+          // Return a fixed token count for each item in the batch
+          return t.items.map(() => 100) as R;
         },
         cleanup: async () => {
           // Mock cleanup - no-op for tests
@@ -113,8 +116,10 @@ describe('calculateOutputMetrics', () => {
       taskRunner: mockParallelTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
-    expect(chunksProcessed).toBeGreaterThan(1); // Should have processed multiple chunks
-    expect(result).toBe(chunksProcessed * 100); // chunks * 100 tokens per chunk
+    // Each chunk is sent as a separate single-item task for parallel processing
+    expect(callCount).toBe(11); // 1.1M / 100K = 11 chunks
+    // Each chunk returns 100 tokens
+    expect(result).toBe(11 * 100);
   });
 
   it('should handle errors in parallel processing', async () => {
@@ -150,9 +155,11 @@ describe('calculateOutputMetrics', () => {
     const mockChunkTrackingTaskRunner = <T, R>(_options: WorkerOptions) => {
       return {
         run: async (task: T) => {
-          const outputTask = task as TokenCountTask;
-          processedChunks.push(outputTask.content);
-          return outputTask.content.length as R;
+          const t = task as TokenCountTask;
+          for (const item of t.items) {
+            processedChunks.push(item.content);
+          }
+          return t.items.map((item) => item.content.length) as R;
         },
         cleanup: async () => {
           // Mock cleanup - no-op for tests

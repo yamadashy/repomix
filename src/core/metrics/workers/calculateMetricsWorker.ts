@@ -14,34 +14,36 @@ import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 // This must be called before any logging operations in the worker
 setLogLevelByWorkerData();
 
-export interface TokenCountTask {
+export interface TokenCountItem {
   content: string;
-  encoding: TokenEncoding;
   path?: string;
 }
 
-export const countTokens = async (task: TokenCountTask): Promise<number> => {
+export interface TokenCountTask {
+  items: TokenCountItem[];
+  encoding: TokenEncoding;
+}
+
+export default async (task: TokenCountTask): Promise<number[]> => {
   const processStartAt = process.hrtime.bigint();
 
   try {
     const counter = await getTokenCounter(task.encoding);
-    const tokenCount = counter.countTokens(task.content, task.path);
+    const results: number[] = [];
+    for (const item of task.items) {
+      results.push(counter.countTokens(item.content, item.path));
+    }
 
-    logger.trace(`Counted tokens. Count: ${tokenCount}. Took: ${getProcessDuration(processStartAt)}ms`);
-    return tokenCount;
+    const processEndAt = process.hrtime.bigint();
+    logger.trace(
+      `Counted tokens for ${task.items.length} items. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
+    );
+
+    return results;
   } catch (error) {
     logger.error('Error in token counting worker:', error);
     throw error;
   }
-};
-
-const getProcessDuration = (startTime: bigint): string => {
-  const endTime = process.hrtime.bigint();
-  return (Number(endTime - startTime) / 1e6).toFixed(2);
-};
-
-export default async (task: TokenCountTask): Promise<number> => {
-  return countTokens(task);
 };
 
 // Export cleanup function for Tinypool teardown
