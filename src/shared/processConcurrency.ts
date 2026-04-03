@@ -33,8 +33,6 @@ const getWorkerPath = (workerType: WorkerType): string => {
       return new URL('../core/security/workers/securityCheckWorker.js', import.meta.url).href;
     case 'calculateMetrics':
       return new URL('../core/metrics/workers/calculateMetricsWorker.js', import.meta.url).href;
-    case 'defaultAction':
-      return new URL('../cli/actions/workers/defaultActionWorker.js', import.meta.url).href;
     default:
       throw new Error(`Unknown worker type: ${workerType}`);
   }
