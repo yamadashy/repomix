@@ -33,25 +33,16 @@ export interface MetricsTaskRunnerWithWarmup {
  * loading to overlap with other pipeline stages (security check, file processing,
  * output generation).
  */
-// Cap metrics workers to limit memory: each worker loads gpt-tokenizer's BPE
-// rank table (~30-50 MB). Unlimited workers on high-core machines (8+) waste
-// hundreds of MB on duplicated BPE data. A cap of 4 balances throughput
-// against memory: typical repos (100-1000 files) use 1-4 workers anyway,
-// while 8+ core machines no longer spawn excessive workers.
-const METRICS_MAX_THREADS = 4;
-
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
   const taskRunner = initTaskRunner<TokenCountTask, number>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
-    maxThreadsCap: METRICS_MAX_THREADS,
   });
 
   const { maxThreads } = getWorkerThreadCount(numOfTasks);
-  const effectiveThreads = Math.max(1, Math.min(maxThreads, METRICS_MAX_THREADS));
   const warmupPromise = Promise.all(
-    Array.from({ length: effectiveThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
+    Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
 
   return { taskRunner, warmupPromise };
