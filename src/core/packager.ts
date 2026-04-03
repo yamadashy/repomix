@@ -97,6 +97,13 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
+  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
+  // (security check, file processing, output generation).
+  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+    allFilePaths.length,
+    config.tokenCount.encoding,
+  );
+
   // Run file collection and git operations in parallel since they are independent:
   // - collectFiles reads file contents from disk
   // - getGitDiffs/getGitLogs spawn git subprocesses
@@ -142,8 +149,11 @@ export const pack = async (
 
   progressCallback('Generating output...');
 
-  // Skill generation path — no metrics needed, skip worker pool creation
+  // Skill generation path — metrics not needed, clean up worker pool and return early
   if (config.skillGenerate !== undefined && options.skillDir) {
+    await metricsWarmupPromise.catch(() => {});
+    await metricsTaskRunner.cleanup();
+
     const result = await deps.packSkill({
       rootDirs,
       config,
@@ -163,12 +173,6 @@ export const pack = async (
     logMemoryUsage('Pack - End');
     return result;
   }
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with output generation.
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
-    config.tokenCount.encoding,
-  );
 
   try {
     // Build filePathsByRoot for multi-root tree generation
