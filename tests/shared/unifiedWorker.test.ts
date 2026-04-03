@@ -53,12 +53,10 @@ describe('unifiedWorker', () => {
       expect(calculateMetricsWorker.default).toHaveBeenCalledWith(task);
     });
 
-    it('should infer securityCheck from task with filePath, content, type', async () => {
+    it('should infer securityCheck from task with items (without encoding)', async () => {
       const { default: handler } = await import('../../src/shared/unifiedWorker.js');
       const task = {
-        filePath: 'test.ts',
-        content: 'test content',
-        type: 'file',
+        items: [{ filePath: 'test.ts', content: 'test content', type: 'file' }],
       };
 
       await handler(task);
