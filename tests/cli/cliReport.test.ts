@@ -15,6 +15,7 @@ vi.mock('picocolors', () => ({
     red: (str: string) => `RED:${str}`,
     cyan: (str: string) => `CYAN:${str}`,
     underline: (str: string) => `UNDERLINE:${str}`,
+    bold: (str: string) => `BOLD:${str}`,
   },
 }));
 
@@ -323,11 +324,15 @@ describe('cliReport', () => {
   });
 
   describe('reportCompletion', () => {
-    test('should print completion message', () => {
-      reportCompletion();
+    test('should print completion message with output path', () => {
+      reportCompletion('/home/user/project/repomix-output.xml');
 
       expect(logger.log).toHaveBeenCalledWith('GREEN:🎉 All Done!');
       expect(logger.log).toHaveBeenCalledWith('Your repository has been successfully packed.');
+      expect(logger.log).toHaveBeenCalledWith('📁 Output file generated at:');
+      expect(logger.log).toHaveBeenCalledWith(
+        '   BOLD:CYAN:UNDERLINE:/home/user/project/repomix-output.xml',
+      );
     });
   });
 });

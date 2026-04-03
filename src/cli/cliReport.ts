@@ -59,7 +59,12 @@ export const reportResults = (
   reportSummary(cwd, packResult, config, options);
   logger.log('');
 
-  reportCompletion();
+  const outputPath =
+    packResult.outputFiles && packResult.outputFiles.length > 0
+      ? path.resolve(cwd, packResult.outputFiles[0])
+      : path.resolve(cwd, config.output.filePath);
+
+  reportCompletion(outputPath);
 };
 
 export const reportSummary = (
@@ -95,16 +100,15 @@ export const reportSummary = (
     if (packResult.outputFiles && packResult.outputFiles.length > 0) {
       const first = packResult.outputFiles[0];
       const last = packResult.outputFiles[packResult.outputFiles.length - 1];
-      const firstDisplayPath = getDisplayPath(path.resolve(cwd, first), cwd);
-      const lastDisplayPath = getDisplayPath(path.resolve(cwd, last), cwd);
+      const firstAbsPath = path.resolve(cwd, first);
+      const lastAbsPath = path.resolve(cwd, last);
 
       logger.log(
-        `       Output: ${firstDisplayPath} ${pc.dim('…')} ${lastDisplayPath} ${pc.dim(`(${packResult.outputFiles.length} parts)`)}`,
+        `       Output: ${firstAbsPath} ${pc.dim('…')} ${lastAbsPath} ${pc.dim(`(${packResult.outputFiles.length} parts)`)}`,
       );
     } else {
       const outputPath = path.resolve(cwd, config.output.filePath);
-      const displayPath = getDisplayPath(outputPath, cwd);
-      logger.log(`       Output: ${displayPath}`);
+      logger.log(`       Output: ${outputPath}`);
     }
   }
   logger.log(`     Security: ${securityCheckMessage}`);
@@ -237,9 +241,13 @@ export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileIn
   logger.log(pc.yellow('Please review these files if you expected them to contain text content.'));
 };
 
-export const reportCompletion = () => {
+export const reportCompletion = (outputPath: string) => {
   logger.log(pc.green('🎉 All Done!'));
   logger.log('Your repository has been successfully packed.');
+
+  logger.log('');
+  logger.log(`📁 Output file generated at:`);
+  logger.log(`   ${pc.bold(pc.cyan(pc.underline(outputPath)))}`);
 
   logger.log('');
   logger.log(`💡 Repomix is now available in your browser! Try it at ${pc.underline('https://repomix.com')}`);
