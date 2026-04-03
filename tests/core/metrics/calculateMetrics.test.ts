@@ -130,7 +130,9 @@ describe('createMetricsTaskRunner', () => {
 
     const result = createMetricsTaskRunner(10, 'o200k_base');
 
-    // warmupPromise should resolve (error swallowed by .catch)
-    await expect(result.warmupPromise).resolves.toBe(0);
+    // warmupPromise should resolve (errors swallowed by .catch on each task)
+    const resolved = await result.warmupPromise;
+    expect(Array.isArray(resolved)).toBe(true);
+    expect((resolved as number[]).every((v) => v === 0)).toBe(true);
   });
 });

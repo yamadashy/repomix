@@ -1,5 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import { initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
+import { getWorkerThreadCount, initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -28,9 +28,9 @@ export interface MetricsTaskRunnerWithWarmup {
 }
 
 /**
- * Create a metrics task runner and trigger a single warmup task to pre-load
- * gpt-tokenizer in a worker thread. This allows the expensive module loading
- * to overlap with other pipeline stages (security check, file processing,
+ * Create a metrics task runner and warm up all worker threads by triggering
+ * gpt-tokenizer initialization in parallel. This allows the expensive module
+ * loading to overlap with other pipeline stages (security check, file processing,
  * output generation).
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
@@ -40,7 +40,10 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
     runtime: 'worker_threads',
   });
 
-  const warmupPromise = taskRunner.run({ content: '', encoding }).catch(() => 0);
+  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const warmupPromise = Promise.all(
+    Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
+  );
 
   return { taskRunner, warmupPromise };
 };
