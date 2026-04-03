@@ -98,7 +98,7 @@ describe('gitHubArchive', () => {
 
       // Verify fetch was called with tar.gz URL
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://codeload.github.com/yamadashy/repomix/tar.gz/refs/heads/main',
+        'https://codeload.github.com/yamadashy/repomix/tar.gz/main',
         expect.objectContaining({
           signal: expect.any(AbortSignal),
         }),
@@ -130,7 +130,7 @@ describe('gitHubArchive', () => {
         .mockRejectedValueOnce(new Error('Network error'))
         .mockResolvedValueOnce(createMockResponse());
 
-      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 2 }, undefined, mockDeps);
+      await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 3 }, undefined, mockDeps);
 
       expect(mockFetch).toHaveBeenCalledTimes(3);
     });
@@ -157,7 +157,7 @@ describe('gitHubArchive', () => {
         expect.any(Object),
       );
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://codeload.github.com/yamadashy/repomix/tar.gz/refs/heads/master',
+        'https://codeload.github.com/yamadashy/repomix/tar.gz/master',
         expect.any(Object),
       );
     });
@@ -169,8 +169,8 @@ describe('gitHubArchive', () => {
         downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 2 }, undefined, mockDeps),
       ).rejects.toThrow(RepomixError);
 
-      // 2 retries × 2 URLs (main + tag for "main" ref) = 4 total attempts
-      expect(mockFetch).toHaveBeenCalledTimes(4);
+      // 2 retries × 1 URL (tag fallback is null with codeload.github.com) = 2 total attempts
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
     test('should handle extraction error', async () => {
