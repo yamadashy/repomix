@@ -107,8 +107,9 @@ export class LanguageParser {
 
   public async dispose(): Promise<void> {
     for (const resources of this.loadedResources.values()) {
+      resources.query.delete();
       resources.parser.delete();
-      logger.debug(`Deleted parser for language: ${resources.lang}`);
+      logger.debug(`Deleted parser and query for language: ${resources.lang}`);
     }
     this.loadedResources.clear();
     this.initialized = false;

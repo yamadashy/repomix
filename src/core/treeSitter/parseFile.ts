@@ -55,14 +55,16 @@ export const parseFile = async (fileContent: string, filePath: string, config: R
   const processedChunks = new Set<string>();
   const capturedChunks: CapturedChunk[] = [];
 
-  try {
-    // Parse the file content into an Abstract Syntax Tree (AST)
-    const tree = parser.parse(fileContent);
-    if (!tree) {
-      logger.debug(`Failed to parse file: ${filePath}`);
-      return undefined;
-    }
+  // Parse the file content into an Abstract Syntax Tree (AST).
+  // The tree allocates native WASM memory that is NOT managed by the JS garbage collector,
+  // so it must be explicitly freed via tree.delete() when no longer needed.
+  const tree = parser.parse(fileContent);
+  if (!tree) {
+    logger.debug(`Failed to parse file: ${filePath}`);
+    return undefined;
+  }
 
+  try {
     // Get the appropriate parse strategy for the language
     const parseStrategy = await languageParser.getStrategyForLang(lang);
 
@@ -93,6 +95,8 @@ export const parseFile = async (fileContent: string, filePath: string, config: R
     }
   } catch (error: unknown) {
     logger.log(`Error parsing file: ${error}\n`);
+  } finally {
+    tree.delete();
   }
 
   const filteredChunks = filterDuplicatedChunks(capturedChunks);
