@@ -56,8 +56,11 @@ describe('packager split output', () => {
       produceOutput,
       calculateMetrics,
       createMetricsTaskRunner: vi.fn().mockReturnValue({
-        run: vi.fn().mockResolvedValue(0),
-        cleanup: vi.fn().mockResolvedValue(undefined),
+        taskRunner: {
+          run: vi.fn().mockResolvedValue(0),
+          cleanup: vi.fn().mockResolvedValue(undefined),
+        },
+        warmupPromise: Promise.resolve(),
       }),
     });
 

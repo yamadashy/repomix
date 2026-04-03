@@ -52,8 +52,11 @@ describe('packager', () => {
         outputForMetrics: mockOutput,
       }),
       createMetricsTaskRunner: vi.fn().mockReturnValue({
-        run: vi.fn().mockResolvedValue(0),
-        cleanup: vi.fn().mockResolvedValue(undefined),
+        taskRunner: {
+          run: vi.fn().mockResolvedValue(0),
+          cleanup: vi.fn().mockResolvedValue(undefined),
+        },
+        warmupPromise: Promise.resolve(),
       }),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
