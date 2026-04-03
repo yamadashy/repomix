@@ -3,6 +3,7 @@ import type { pipeline as pipelineType } from 'node:stream/promises';
 import type * as zlib from 'node:zlib';
 import type { extract as tarExtractType } from 'tar';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import type { createArchiveEntryFilter as createArchiveEntryFilterType } from '../../../src/core/git/archiveEntryFilter.js';
 import {
   type ArchiveDownloadOptions,
   downloadGitHubArchive,
@@ -22,6 +23,7 @@ interface MockDeps {
   Transform: typeof Transform;
   tarExtract: typeof tarExtractType;
   createGunzip: typeof zlib.createGunzip;
+  createArchiveEntryFilter: typeof createArchiveEntryFilterType;
 }
 
 // Simple test data
@@ -60,6 +62,7 @@ describe('gitHubArchive', () => {
       Transform,
       tarExtract: mockTarExtract as unknown as typeof tarExtractType,
       createGunzip: mockCreateGunzip as unknown as typeof zlib.createGunzip,
+      createArchiveEntryFilter: () => () => true,
     };
   });
 
@@ -104,10 +107,11 @@ describe('gitHubArchive', () => {
         }),
       );
 
-      // Verify tar extract was called with correct options
+      // Verify tar extract was called with correct options including filter
       expect(mockTarExtract).toHaveBeenCalledWith({
         cwd: mockTargetDirectory,
         strip: 1,
+        filter: expect.any(Function),
       });
 
       // Verify streaming pipeline was used

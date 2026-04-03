@@ -4,6 +4,7 @@ import * as zlib from 'node:zlib';
 import { extract as tarExtract } from 'tar';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { createArchiveEntryFilter } from './archiveEntryFilter.js';
 import {
   buildGitHubArchiveUrl,
   buildGitHubMasterArchiveUrl,
@@ -31,6 +32,7 @@ export interface ArchiveDownloadDeps {
   Transform: typeof Transform;
   tarExtract: typeof tarExtract;
   createGunzip: typeof zlib.createGunzip;
+  createArchiveEntryFilter: typeof createArchiveEntryFilter;
 }
 
 const defaultDeps: ArchiveDownloadDeps = {
@@ -39,6 +41,7 @@ const defaultDeps: ArchiveDownloadDeps = {
   Transform,
   tarExtract,
   createGunzip: zlib.createGunzip,
+  createArchiveEntryFilter,
 };
 
 /**
@@ -164,9 +167,13 @@ const downloadAndExtractArchive = async (
 
     // Stream: HTTP response -> progress tracking -> gunzip -> tar extract to disk
     // strip: 1 removes the top-level "repo-branch/" directory from archive paths
+    // filter: skip files matching default ignore patterns and binary extensions during extraction
+    const stripComponents = 1;
+    const entryFilter = deps.createArchiveEntryFilter(stripComponents);
     const extractStream = deps.tarExtract({
       cwd: targetDirectory,
-      strip: 1,
+      strip: stripComponents,
+      filter: (entryPath: string) => entryFilter(entryPath),
     });
     const gunzipStream = deps.createGunzip();
 
