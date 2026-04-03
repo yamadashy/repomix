@@ -87,7 +87,7 @@ describe('packager split output', () => {
       mockConfig,
       undefined,
       undefined,
-      expect.objectContaining({ taskRunner: expect.anything() }),
+      expect.objectContaining({ countTokens: expect.any(Function) }),
     );
 
     // Verify that calculateMetrics received a promise that resolves to the expected split output

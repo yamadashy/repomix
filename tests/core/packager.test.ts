@@ -6,18 +6,20 @@ import { createMockConfig } from '../testing/testUtils.js';
 vi.mock('node:fs/promises');
 vi.mock('fs/promises');
 vi.mock('../../src/core/metrics/TokenCounter.js', () => {
+  const mockCountTokens = vi.fn().mockReturnValue(10);
   return {
     TOKEN_ENCODINGS: ['o200k_base', 'cl100k_base', 'p50k_base', 'p50k_edit', 'r50k_base'],
     TokenCounter: vi.fn().mockImplementation(() => ({
-      countTokens: vi.fn().mockReturnValue(10),
+      countTokens: mockCountTokens,
       free: vi.fn(),
     })),
+    loadEncoding: vi.fn().mockResolvedValue(mockCountTokens),
   };
 });
 
 describe('packager', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
   });
 
   test('pack should orchestrate packing files and generating output', async () => {
@@ -120,7 +122,7 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
-      expect.objectContaining({ taskRunner: expect.anything() }),
+      expect.objectContaining({ countTokens: expect.any(Function) }),
     );
 
     // Verify that calculateMetrics received a promise that resolves to the expected output

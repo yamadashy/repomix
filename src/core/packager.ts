@@ -10,7 +10,8 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { type CountTokensFn, calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { loadEncoding } from './metrics/TokenCounter.js';
 import { prefetchGitFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
@@ -69,19 +70,30 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Pre-initialize metrics worker pool and trigger thread scaling immediately.
-  // Tinypool starts only minThreads=1 at pool creation. Dispatching 2 lightweight
-  // tasks triggers the pool to scale to maxThreads=2, so both threads begin loading
-  // gpt-tokenizer in parallel with the file search + collection pipeline (~155ms).
-  // These tiny tasks complete almost instantly once modules are loaded (unlike the
-  // previous 51KB warmup tasks that added ~30ms of tokenization delay per thread).
-  // Crucially, we do NOT await these tasks — the previous approach awaited 51KB warmup
-  // tasks, blocking the main thread for ~220ms after file processing completed. By
-  // fire-and-forgetting lightweight triggers, the main thread proceeds to output
-  // generation as soon as security completes, unblocking ~120ms of pipeline.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(200);
-  for (let i = 0; i < 2; i++) {
-    metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => {});
+  // Choose metrics strategy based on tokenCountTree config:
+  // - When tokenCountTree is disabled (default): preload the tokenizer module on the
+  //   main thread via dynamic import, which overlaps with the file search pipeline
+  //   (~85ms). After file processing completes, tokenization runs synchronously on the
+  //   main thread (~50ms for top files). This eliminates ~240ms of worker thread
+  //   cold-start + gpt-tokenizer module-loading overhead and ~100ms of JIT cold-start
+  //   that otherwise extend the critical path.
+  // - When tokenCountTree is enabled: use worker threads as before, since tokenizing
+  //   all/most files benefits from parallel execution across multiple threads.
+  const useMainThreadMetrics = !config.output.tokenCountTree;
+  let metricsTaskRunner: ReturnType<typeof deps.createMetricsTaskRunner> | undefined;
+  let countTokensPromise: Promise<CountTokensFn> | undefined;
+
+  if (useMainThreadMetrics) {
+    // Start loading the tokenizer module in the background. The dynamic import
+    // resolves in ~160ms, overlapping with the file search + collection pipeline.
+    countTokensPromise = loadEncoding(config.tokenCount.encoding);
+    countTokensPromise.catch(() => {}); // Prevent unhandled rejection
+  } else {
+    // Pre-initialize metrics worker pool and trigger thread scaling immediately.
+    metricsTaskRunner = deps.createMetricsTaskRunner(200);
+    for (let i = 0; i < 2; i++) {
+      metricsTaskRunner.run({ content: '', encoding: config.tokenCount.encoding }).catch(() => {});
+    }
   }
 
   // Pre-initialize security worker pool to overlap @secretlint/core module
@@ -168,18 +180,20 @@ export const pack = async (
       return deps.processFiles(rawFiles, config, progressCallback);
     });
 
-    // Start metrics calculation immediately after file processing, overlapping with
-    // the remaining security check. Worker threads are already loading gpt-tokenizer
-    // in the background (started at pool creation). Real tokenization tasks queue behind
-    // module loading and begin processing as soon as threads are ready.
-    // Uses a deferred output promise: per-file tokenization starts now, while the output
-    // character count (needed only for the final estimation) arrives after output generation.
+    // Start metrics calculation. Two paths:
+    // 1. Main-thread path (default): await the preloaded tokenizer, then pass it to
+    //    calculateMetrics which will tokenize synchronously. The deferred output promise
+    //    still connects output generation to the final token estimation.
+    // 2. Worker-thread path (tokenCountTree): fire-and-forget tokenization tasks on
+    //    worker threads that overlap with security + output generation.
     //
     // Note: We pass allProcessedFiles (before security filtering) to calculateMetrics.
     // This means token counts may include suspicious files. In practice, suspicious files
-    // are extremely rare (typically 0), and the overestimate is negligible: estimateOutputTokens
-    // caps the overhead term at 0 when totalFileChars exceeds totalOutputChars, so only the
-    // per-file token counts for suspicious files (~few KB) inflate the total out of ~1M+ tokens.
+    // are extremely rare (typically 0), and the overestimate is negligible.
+    // Await the preloaded tokenizer. If loading failed (e.g., missing module),
+    // fall back to undefined so calculateMetrics uses the worker-thread path.
+    const countTokensFn = countTokensPromise ? await countTokensPromise.catch(() => undefined) : undefined;
+
     let resolveOutputForMetrics!: (value: string | string[]) => void;
     let rejectOutputForMetrics!: (reason: unknown) => void;
     const deferredOutputPromise = new Promise<string | string[]>((resolve, reject) => {
@@ -197,6 +211,7 @@ export const pack = async (
         gitLogResult,
         {
           taskRunner: metricsTaskRunner,
+          countTokens: countTokensFn,
         },
       ),
     );
@@ -307,8 +322,8 @@ export const pack = async (
     // thread termination overhead on the critical path. The cleanup promise still
     // runs but doesn't block the caller. All worker onWorkerTermination hooks are
     // no-ops (gpt-tokenizer is pure JS, secretlint needs no teardown).
-    metricsTaskRunner.unref();
+    metricsTaskRunner?.unref();
     securityTaskRunner?.unref();
-    Promise.all([metricsTaskRunner.cleanup(), securityTaskRunner?.cleanup()]).catch(() => {});
+    Promise.all([metricsTaskRunner?.cleanup(), securityTaskRunner?.cleanup()]).catch(() => {});
   }
 };
