@@ -2,29 +2,30 @@ import { RepomixError } from '../../shared/errorHandle.js';
 import type { GitHubRepoInfo } from './gitRemoteParse.js';
 
 /**
- * Constructs GitHub archive download URL
- * Format: https://github.com/owner/repo/archive/refs/heads/branch.tar.gz
- * For tags:    https://github.com/owner/repo/archive/refs/tags/tag.tar.gz
- * For commits: https://github.com/owner/repo/archive/commit.tar.gz
+ * Constructs GitHub archive download URL using codeload.github.com directly.
+ * This skips the 302 redirect from github.com/archive, saving ~100-300ms per request.
+ * Format: https://codeload.github.com/owner/repo/tar.gz/refs/heads/branch
+ * For tags:    https://codeload.github.com/owner/repo/tar.gz/refs/tags/tag
+ * For commits: https://codeload.github.com/owner/repo/tar.gz/commit
  */
 export const buildGitHubArchiveUrl = (repoInfo: GitHubRepoInfo): string => {
   const { owner, repo, ref } = repoInfo;
-  const baseUrl = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive`;
+  const baseUrl = `https://codeload.github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tar.gz`;
 
   if (!ref) {
     // Default to HEAD (repository's default branch)
-    return `${baseUrl}/HEAD.tar.gz`;
+    return `${baseUrl}/HEAD`;
   }
 
   // Check if ref looks like a commit SHA (40 hex chars or shorter)
   const isCommitSha = /^[0-9a-f]{4,40}$/i.test(ref);
   if (isCommitSha) {
-    return `${baseUrl}/${encodeURIComponent(ref)}.tar.gz`;
+    return `${baseUrl}/${encodeURIComponent(ref)}`;
   }
 
   // For branches and tags, we need to determine the type
   // Default to branch format, will fallback to tag if needed
-  return `${baseUrl}/refs/heads/${encodeURIComponent(ref)}.tar.gz`;
+  return `${baseUrl}/refs/heads/${encodeURIComponent(ref)}`;
 };
 
 /**
@@ -36,7 +37,7 @@ export const buildGitHubMasterArchiveUrl = (repoInfo: GitHubRepoInfo): string | 
     return null; // Only applicable when no ref is specified
   }
 
-  return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive/refs/heads/master.tar.gz`;
+  return `https://codeload.github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tar.gz/refs/heads/master`;
 };
 
 /**
@@ -48,7 +49,7 @@ export const buildGitHubTagArchiveUrl = (repoInfo: GitHubRepoInfo): string | nul
     return null; // Not applicable for commits or no ref
   }
 
-  return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive/refs/tags/${encodeURIComponent(ref)}.tar.gz`;
+  return `https://codeload.github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tar.gz/refs/tags/${encodeURIComponent(ref)}`;
 };
 
 /**

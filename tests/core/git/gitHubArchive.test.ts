@@ -98,7 +98,7 @@ describe('gitHubArchive', () => {
 
       // Verify fetch was called with tar.gz URL
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://github.com/yamadashy/repomix/archive/refs/heads/main.tar.gz',
+        'https://codeload.github.com/yamadashy/repomix/tar.gz/refs/heads/main',
         expect.objectContaining({
           signal: expect.any(AbortSignal),
         }),
@@ -153,11 +153,11 @@ describe('gitHubArchive', () => {
 
       // Should try HEAD first, then master branch
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://github.com/yamadashy/repomix/archive/HEAD.tar.gz',
+        'https://codeload.github.com/yamadashy/repomix/tar.gz/HEAD',
         expect.any(Object),
       );
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://github.com/yamadashy/repomix/archive/refs/heads/master.tar.gz',
+        'https://codeload.github.com/yamadashy/repomix/tar.gz/refs/heads/master',
         expect.any(Object),
       );
     });
