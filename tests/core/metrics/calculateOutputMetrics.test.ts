@@ -114,7 +114,7 @@ describe('calculateOutputMetrics', () => {
     });
 
     expect(chunksProcessed).toBeGreaterThan(1); // Should have processed multiple chunks
-    expect(result).toBe(100_000); // 1000 chunks * 100 tokens per chunk
+    expect(result).toBe(chunksProcessed * 100); // chunks * 100 tokens per chunk
   });
 
   it('should handle errors in parallel processing', async () => {
@@ -168,12 +168,14 @@ describe('calculateOutputMetrics', () => {
       }),
     });
 
-    // Check that chunks are roughly equal in size
-    const _expectedChunkSize = Math.ceil(content.length / 1000); // CHUNK_SIZE is 1000
+    // With TARGET_CHARS_PER_CHUNK=100_000, 1.1MB content should produce 11 chunks
     const chunkSizes = processedChunks.map((chunk) => chunk.length);
 
-    expect(processedChunks.length).toBe(1000); // Should have 1000 chunks
-    expect(Math.max(...chunkSizes) - Math.min(...chunkSizes)).toBeLessThanOrEqual(1); // Chunks should be almost equal in size
+    expect(processedChunks.length).toBe(11);
+    // All chunks except the last should be exactly TARGET_CHARS_PER_CHUNK
+    for (let i = 0; i < chunkSizes.length - 1; i++) {
+      expect(chunkSizes[i]).toBe(100_000);
+    }
     expect(processedChunks.join('')).toBe(content); // All content should be processed
   });
 });
