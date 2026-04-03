@@ -18,9 +18,9 @@ export interface SuspiciousFileResult {
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
 // Each batch is sent as a single message to a worker thread, avoiding
 // per-file round-trip costs that dominate when processing many files.
-// Larger batches (500) reduce thread creation overhead while maintaining
-// sufficient parallelism (2 threads for 1000 files).
-const BATCH_SIZE = 500;
+// A moderate batch size (50) reduces IPC round-trips by ~98% (990 → 20 for a typical repo)
+// while keeping enough batches to utilize all available CPU cores.
+const BATCH_SIZE = 50;
 
 export const runSecurityCheck = async (
   rawFiles: RawFile[],

@@ -68,7 +68,7 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // With 2 files and batch size 500, all files are in a single batch
+    // With 2 files and batch size 50, all files are in a single batch
     // Progress callback is called once per batch with the last file in the batch
     expect(progressCallback).toHaveBeenCalledWith(
       expect.stringContaining(`Running security check... (2/2) ${pc.dim('test2.js')}`),
@@ -161,7 +161,7 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // With batch size 500 and 4 items (2 files + 2 git diffs), all in a single batch
+    // With batch size 50 and 4 items (2 files + 2 git diffs), all in a single batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
 
     // Should find security issues in files (at least 1 from test1.js)
@@ -179,7 +179,7 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // With batch size 500 and 3 items (2 files + 1 git diff), all in a single batch
+    // With batch size 50 and 3 items (2 files + 1 git diff), all in a single batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
   });
 
@@ -194,7 +194,7 @@ describe('runSecurityCheck', () => {
       initTaskRunner: mockInitTaskRunner,
     });
 
-    // With batch size 500 and 3 items (2 files + 1 git diff), all in a single batch
+    // With batch size 50 and 3 items (2 files + 1 git diff), all in a single batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
   });
 
@@ -210,7 +210,7 @@ describe('runSecurityCheck', () => {
     });
 
     // Should process only 2 files, no git diff content because both are empty strings (falsy)
-    // With batch size 500, all in a single batch
+    // With batch size 50, all in a single batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
   });
 });
