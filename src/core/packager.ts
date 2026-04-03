@@ -104,77 +104,75 @@ export const pack = async (
     config.tokenCount.encoding,
   );
 
-  // Run file collection and git operations in parallel since they are independent:
-  // - collectFiles reads file contents from disk
-  // - getGitDiffs/getGitLogs spawn git subprocesses
-  // Neither depends on the other's results.
-  progressCallback('Collecting files...');
-  const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
-    withMemoryLogging(
-      'Collect Files',
-      async () =>
-        await Promise.all(
-          sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-            deps.collectFiles(filePaths, rootDir, config, progressCallback),
-          ),
-        ),
-    ),
-    deps.getGitDiffs(rootDirs, config),
-    deps.getGitLogs(rootDirs, config),
-  ]);
-
-  const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
-  const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
-
-  // Run security check and file processing concurrently.
-  // Security check uses worker threads while file processing runs on the main thread
-  // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
-  // After both complete, filter out any suspicious files from the processed results.
-  const [validationResult, allProcessedFiles] = await Promise.all([
-    withMemoryLogging('Security Check', () =>
-      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
-    ),
-    withMemoryLogging('Process Files', () => {
-      progressCallback('Processing files...');
-      return deps.processFiles(rawFiles, config, progressCallback);
-    }),
-  ]);
-
-  const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } = validationResult;
-
-  // Filter processed files to exclude suspicious ones
-  const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
-  const processedFiles =
-    suspiciousPathSet.size > 0 ? allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path)) : allProcessedFiles;
-
-  progressCallback('Generating output...');
-
-  // Skill generation path — metrics not needed, clean up worker pool and return early
-  if (config.skillGenerate !== undefined && options.skillDir) {
-    await metricsWarmupPromise.catch(() => {});
-    await metricsTaskRunner.cleanup();
-
-    const result = await deps.packSkill({
-      rootDirs,
-      config,
-      options,
-      processedFiles,
-      allFilePaths,
-      gitDiffResult,
-      gitLogResult,
-      suspiciousFilesResults,
-      suspiciousGitDiffResults,
-      suspiciousGitLogResults,
-      safeFilePaths,
-      skippedFiles: allSkippedFiles,
-      progressCallback,
-    });
-
-    logMemoryUsage('Pack - End');
-    return result;
-  }
-
   try {
+    // Run file collection and git operations in parallel since they are independent:
+    // - collectFiles reads file contents from disk
+    // - getGitDiffs/getGitLogs spawn git subprocesses
+    // Neither depends on the other's results.
+    progressCallback('Collecting files...');
+    const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
+      withMemoryLogging(
+        'Collect Files',
+        async () =>
+          await Promise.all(
+            sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
+              deps.collectFiles(filePaths, rootDir, config, progressCallback),
+            ),
+          ),
+      ),
+      deps.getGitDiffs(rootDirs, config),
+      deps.getGitLogs(rootDirs, config),
+    ]);
+
+    const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
+    const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
+
+    // Run security check and file processing concurrently.
+    // Security check uses worker threads while file processing runs on the main thread
+    // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
+    // After both complete, filter out any suspicious files from the processed results.
+    const [validationResult, allProcessedFiles] = await Promise.all([
+      withMemoryLogging('Security Check', () =>
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+      ),
+      withMemoryLogging('Process Files', () => {
+        progressCallback('Processing files...');
+        return deps.processFiles(rawFiles, config, progressCallback);
+      }),
+    ]);
+
+    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+      validationResult;
+
+    // Filter processed files to exclude suspicious ones
+    const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
+    const processedFiles =
+      suspiciousPathSet.size > 0 ? allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path)) : allProcessedFiles;
+
+    progressCallback('Generating output...');
+
+    // Skill generation path — metrics not needed, return early (worker pool cleaned up by finally)
+    if (config.skillGenerate !== undefined && options.skillDir) {
+      const result = await deps.packSkill({
+        rootDirs,
+        config,
+        options,
+        processedFiles,
+        allFilePaths,
+        gitDiffResult,
+        gitLogResult,
+        suspiciousFilesResults,
+        suspiciousGitDiffResults,
+        suspiciousGitLogResults,
+        safeFilePaths,
+        skippedFiles: allSkippedFiles,
+        progressCallback,
+      });
+
+      logMemoryUsage('Pack - End');
+      return result;
+    }
+
     // Build filePathsByRoot for multi-root tree generation
     // Use directory basename as the label for each root
     // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
