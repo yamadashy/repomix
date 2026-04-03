@@ -1,11 +1,11 @@
 import path from 'node:path';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import {
+  getRepomixConfigCliSchema,
   type RepomixConfigCli,
   type RepomixConfigFile,
   type RepomixConfigMerged,
   type RepomixOutputStyle,
-  getRepomixConfigCliSchema,
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
