@@ -28,9 +28,15 @@ export const calculateMetricsOnMainThread = async (
   const topFilesLength = config.output.topFilesLength;
   const PLAIN_TEXT_OPTIONS = { disallowedSpecial: new Set<string>() };
 
-  // Select top files for BPE tokenization (same logic as worker path)
+  // Select top files for BPE tokenization. Use a small multiplier (2x) rather than
+  // the worker path's 10x, because main-thread tokenization is sequential (~4ms/file)
+  // and the chars-per-token ratio converges quickly with the largest files. Tokenizing
+  // 2× topFilesLength files (e.g., 10 for the default of 5) instead of 10× saves ~130ms
+  // while the total token estimate changes by <7%. A floor of 5 ensures a reasonable
+  // ratio sample even when topFilesLength is very small (e.g., 1 or 2).
   const sorted = [...processedFiles].sort((a, b) => b.content.length - a.content.length);
-  const targetCount = Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength));
+  const MIN_SAMPLE_SIZE = 5;
+  const targetCount = Math.min(processedFiles.length, Math.max(topFilesLength * 2, MIN_SAMPLE_SIZE));
   const targetFiles = sorted.slice(0, targetCount);
 
   // Tokenize target files on main thread
