@@ -14,11 +14,6 @@ vi.mock('../../src/core/metrics/workers/calculateMetricsWorker.js', () => ({
   default: vi.fn().mockResolvedValue(100),
   onWorkerTermination: vi.fn(),
 }));
-vi.mock('../../src/cli/actions/workers/defaultActionWorker.js', () => ({
-  default: vi.fn().mockResolvedValue({ packResult: {}, config: {} }),
-  onWorkerTermination: vi.fn(),
-}));
-
 // Mock worker_threads
 vi.mock('node:worker_threads', () => ({
   workerData: undefined,
@@ -32,31 +27,6 @@ describe('unifiedWorker', () => {
   });
 
   describe('inferWorkerTypeFromTask', () => {
-    it('should infer defaultAction from task with directories, cwd, config', async () => {
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
-      const task = {
-        directories: ['.'],
-        cwd: '/test',
-        config: {},
-        cliOptions: {},
-      };
-
-      await handler(task);
-
-      const defaultActionWorker = await import('../../src/cli/actions/workers/defaultActionWorker.js');
-      expect(defaultActionWorker.default).toHaveBeenCalledWith(task);
-    });
-
-    it('should infer defaultAction from ping task', async () => {
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
-      const task = { ping: true };
-
-      await handler(task);
-
-      const defaultActionWorker = await import('../../src/cli/actions/workers/defaultActionWorker.js');
-      expect(defaultActionWorker.default).toHaveBeenCalledWith(task);
-    });
-
     it('should infer fileProcess from task with rawFile and config', async () => {
       const { default: handler } = await import('../../src/shared/unifiedWorker.js');
       const task = {
@@ -133,33 +103,36 @@ describe('unifiedWorker', () => {
     it('should call cleanup on cached handlers', async () => {
       // First, load a handler to populate the cache
       const { default: handler, onWorkerTermination } = await import('../../src/shared/unifiedWorker.js');
-      const task = { ping: true };
+      const task = {
+        content: 'test content',
+        encoding: 'cl100k_base',
+      };
 
       await handler(task);
 
       // Now call termination
       await onWorkerTermination();
 
-      const defaultActionWorker = await import('../../src/cli/actions/workers/defaultActionWorker.js');
-      expect(defaultActionWorker.onWorkerTermination).toHaveBeenCalled();
+      const calculateMetricsWorker = await import('../../src/core/metrics/workers/calculateMetricsWorker.js');
+      expect(calculateMetricsWorker.onWorkerTermination).toHaveBeenCalled();
     });
 
     it('should clear handler cache after cleanup', async () => {
       const { default: handler, onWorkerTermination } = await import('../../src/shared/unifiedWorker.js');
 
       // Load handler
-      await handler({ ping: true });
+      await handler({ content: 'test', encoding: 'cl100k_base' });
 
       // Terminate
       await onWorkerTermination();
 
       // Load again - should call the module import again
       vi.clearAllMocks();
-      await handler({ ping: true });
+      await handler({ content: 'test', encoding: 'cl100k_base' });
 
-      const defaultActionWorker = await import('../../src/cli/actions/workers/defaultActionWorker.js');
+      const calculateMetricsWorker = await import('../../src/core/metrics/workers/calculateMetricsWorker.js');
       // The handler should be called again (cache was cleared)
-      expect(defaultActionWorker.default).toHaveBeenCalled();
+      expect(calculateMetricsWorker.default).toHaveBeenCalled();
     });
   });
 });

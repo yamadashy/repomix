@@ -12,7 +12,7 @@
 import { workerData } from 'node:worker_threads';
 
 // Worker type definitions
-export type WorkerType = 'fileProcess' | 'securityCheck' | 'calculateMetrics' | 'defaultAction';
+export type WorkerType = 'fileProcess' | 'securityCheck' | 'calculateMetrics';
 
 // Worker handler type - uses 'any' to accommodate different worker signatures
 // biome-ignore lint/suspicious/noExplicitAny: Worker handlers have varying signatures
@@ -54,11 +54,6 @@ const loadWorkerHandler = async (
       result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
       break;
     }
-    case 'defaultAction': {
-      const module = await import('../cli/actions/workers/defaultActionWorker.js');
-      result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
-      break;
-    }
     default:
       throw new Error(`Unknown worker type: ${workerType}`);
   }
@@ -79,16 +74,6 @@ const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
   }
 
   const taskObj = task as Record<string, unknown>;
-
-  // defaultAction: has directories, cwd, config, cliOptions
-  if ('directories' in taskObj && 'cwd' in taskObj && 'config' in taskObj) {
-    return 'defaultAction';
-  }
-
-  // defaultAction ping task
-  if ('ping' in taskObj) {
-    return 'defaultAction';
-  }
 
   // fileProcess: has rawFile (nested object) and config
   if ('rawFile' in taskObj && 'config' in taskObj) {
