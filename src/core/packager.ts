@@ -98,12 +98,11 @@ export const pack = async (
   }));
 
   // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers
-  // gpt-tokenizer initialization in the worker thread without blocking the main pipeline.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const metricsWarmupPromise = metricsTaskRunner
-    .run({ content: '', encoding: config.tokenCount.encoding })
-    .catch(() => 0);
+  // (security check, file processing, output generation).
+  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+    allFilePaths.length,
+    config.tokenCount.encoding,
+  );
 
   try {
     // Run file collection and git operations in parallel since they are independent:
@@ -152,11 +151,8 @@ export const pack = async (
 
     progressCallback('Generating output...');
 
-    // Check if skill generation is requested
+    // Skill generation path — metrics not needed, return early (worker pool cleaned up by finally)
     if (config.skillGenerate !== undefined && options.skillDir) {
-      // Await warmup to ensure graceful worker shutdown (avoid terminating WASM-loading thread)
-      await metricsWarmupPromise;
-
       const result = await deps.packSkill({
         rootDirs,
         config,
@@ -238,6 +234,7 @@ export const pack = async (
 
     return result;
   } finally {
+    await metricsWarmupPromise.catch(() => {});
     await metricsTaskRunner.cleanup();
   }
 };

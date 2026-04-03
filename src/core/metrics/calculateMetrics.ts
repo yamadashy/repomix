@@ -1,5 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import { initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
+import { getWorkerThreadCount, initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -9,6 +9,7 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
+import type { TokenEncoding } from './TokenCounter.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
@@ -21,16 +22,30 @@ export interface CalculateMetricsResult {
   gitLogTokenCount: number;
 }
 
+export interface MetricsTaskRunnerWithWarmup {
+  taskRunner: TaskRunner<TokenCountTask, number>;
+  warmupPromise: Promise<unknown>;
+}
+
 /**
- * Create a metrics task runner that can be pre-initialized to overlap
- * gpt-tokenizer loading with other pipeline stages.
+ * Create a metrics task runner and warm up all worker threads by triggering
+ * gpt-tokenizer initialization in parallel. This allows the expensive module
+ * loading to overlap with other pipeline stages (security check, file processing,
+ * output generation).
  */
-export const createMetricsTaskRunner = (numOfTasks: number): TaskRunner<TokenCountTask, number> => {
-  return initTaskRunner<TokenCountTask, number>({
+export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+  const taskRunner = initTaskRunner<TokenCountTask, number>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
   });
+
+  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const warmupPromise = Promise.all(
+    Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
+  );
+
+  return { taskRunner, warmupPromise };
 };
 
 const defaultDeps = {

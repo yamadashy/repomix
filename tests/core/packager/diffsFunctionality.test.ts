@@ -72,8 +72,11 @@ index 123..456 100644
     });
     const mockSortPaths = vi.fn().mockImplementation((paths) => paths);
     const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
-      run: vi.fn().mockResolvedValue(0),
-      cleanup: vi.fn().mockResolvedValue(undefined),
+      taskRunner: {
+        run: vi.fn().mockResolvedValue(0),
+        cleanup: vi.fn().mockResolvedValue(undefined),
+      },
+      warmupPromise: Promise.resolve(),
     });
 
     // Config with diffs disabled
@@ -127,8 +130,11 @@ index 123..456 100644
     });
     const mockSortPaths = vi.fn().mockImplementation((paths) => paths);
     const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
-      run: vi.fn().mockResolvedValue(0),
-      cleanup: vi.fn().mockResolvedValue(undefined),
+      taskRunner: {
+        run: vi.fn().mockResolvedValue(0),
+        cleanup: vi.fn().mockResolvedValue(undefined),
+      },
+      warmupPromise: Promise.resolve(),
     });
 
     // Config with diffs enabled
