@@ -6,20 +6,27 @@ Repomix can be configured using a configuration file or command-line options. Th
 
 Repomix supports multiple configuration file formats for flexibility and ease of use.
 
-Repomix will automatically search for configuration files in the following priority order:
+Repomix will automatically search for configuration files in the following locations and formats:
 
-1. **TypeScript** (`repomix.config.ts`, `repomix.config.mts`, `repomix.config.cts`)
-2. **JavaScript/ES Module** (`repomix.config.js`, `repomix.config.mjs`, `repomix.config.cjs`)
-3. **JSON** (`repomix.config.json5`, `repomix.config.jsonc`, `repomix.config.json`)
+**Locations** (searched in order):
+1. Project root: `repomix.config.{ext}`
+2. `.config/` directory: `.config/repomix.{ext}` or `.config/repomix.config.{ext}`
 
-### JSON Configuration
+**Supported formats**:
+1. **TypeScript** (`.ts`, `.mts`, `.cts`)
+2. **JavaScript/ES Module** (`.js`, `.mjs`, `.cjs`)
+3. **JSON** (`.json`, `.jsonc`, `.json5`)
+4. **YAML** (`.yaml`, `.yml`)
+5. **TOML** (`.toml`)
 
-Create a configuration file in your project directory:
+### Interactive Configuration
+
+Create a configuration file interactively:
 ```bash
 repomix --init
 ```
 
-This will create a `repomix.config.json` file with default settings. You can also create a global configuration file that will be used as a fallback when no local configuration is found:
+This will guide you through choosing a config location and format. It can create `repomix.config.{json,yaml,toml,ts,js}` in the project root, or `.config/repomix.{json,yaml,toml,ts,js}` and `.config/repomix.config.{json,yaml,toml,ts,js}` in the `.config/` directory. You can also create a global configuration file that will be used as a fallback when no local configuration is found:
 
 ```bash
 repomix --init --global
@@ -36,6 +43,8 @@ To use TypeScript or JavaScript configuration with `defineConfig`, you need to i
 ```bash
 npm install -D repomix
 ```
+
+`repomix --init` generates plain `export default { ... }` files for TypeScript and JavaScript so the generated config works without requiring a local `repomix` dependency. If you want editor type checking and autocomplete, switch the generated file to `defineConfig(...)` after installing Repomix locally.
 
 **Example:**
 
@@ -195,19 +204,14 @@ Here's an example of a complete configuration file (`repomix.config.json`):
 ## Configuration File Locations
 
 Repomix looks for configuration files in the following order:
-1. Local configuration file in the current directory (priority order: TS > JS > JSON)
-   - TypeScript: `repomix.config.ts`, `repomix.config.mts`, `repomix.config.cts`
-   - JavaScript: `repomix.config.js`, `repomix.config.mjs`, `repomix.config.cjs`
-   - JSON: `repomix.config.json5`, `repomix.config.jsonc`, `repomix.config.json`
-2. Global configuration file (priority order: TS > JS > JSON)
-   - Windows:
-     - TypeScript: `%LOCALAPPDATA%\Repomix\repomix.config.ts`, `.mts`, `.cts`
-     - JavaScript: `%LOCALAPPDATA%\Repomix\repomix.config.js`, `.mjs`, `.cjs`
-     - JSON: `%LOCALAPPDATA%\Repomix\repomix.config.json5`, `.jsonc`, `.json`
-   - macOS/Linux:
-     - TypeScript: `~/.config/repomix/repomix.config.ts`, `.mts`, `.cts`
-     - JavaScript: `~/.config/repomix/repomix.config.js`, `.mjs`, `.cjs`
-     - JSON: `~/.config/repomix/repomix.config.json5`, `.jsonc`, `.json`
+1. Explicit `--config` path (if provided)
+2. Local configuration in the current directory: `repomix.config.{ext}`
+3. `.config/` directory: `.config/repomix.{ext}` or `.config/repomix.config.{ext}`
+4. Global configuration file:
+   - Windows: `%LOCALAPPDATA%\Repomix\repomix.config.{ext}`
+   - macOS/Linux: `~/.config/repomix/repomix.config.{ext}`
+
+Supported extensions: `.ts`, `.mts`, `.cts`, `.js`, `.mjs`, `.cjs`, `.json`, `.jsonc`, `.json5`, `.yaml`, `.yml`, `.toml`
 
 Command-line options take precedence over configuration file settings.
 

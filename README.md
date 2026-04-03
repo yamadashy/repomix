@@ -295,11 +295,13 @@ repomix --compress
 repomix --remote yamadashy/repomix --compress
 ```
 
-To initialize a new configuration file (`repomix.config.json`):
+To initialize a new configuration file:
 
 ```bash
 repomix --init
 ```
+
+This will guide you through choosing a config location and format. It can create `repomix.config.{json,yaml,toml,ts,js}` in your project root, or `.config/repomix.{json,yaml,toml,ts,js}` and `.config/repomix.config.{json,yaml,toml,ts,js}` in the `.config/` directory.
 
 Once you have generated the packed file, you can use it with Generative AI tools like ChatGPT, DeepSeek, Perplexity, Gemini, Gemma, Llama, Grok, and more.
 
@@ -647,8 +649,8 @@ Instruction
 - `--remote-trust-config`: Trust and load config files from remote repositories (disabled by default for security)
 
 #### Configuration Options
-- `-c, --config <path>`: Use custom config file instead of repomix.config.json
-- `--init`: Create a new repomix.config.json file with defaults
+- `-c, --config <path>`: Use custom config file (supports .json, .ts, .js, .yaml, .toml, etc.)
+- `--init`: Create a new Repomix config file (choose location and format interactively)
 - `--global`: With --init, create config in home directory instead of current directory
 
 #### Security Options
@@ -1254,21 +1256,28 @@ Repomix supports multiple configuration file formats for flexibility and ease of
 
 ### Configuration File Formats
 
-Repomix will automatically search for configuration files in the following priority order:
+Repomix will automatically search for configuration files in the following locations and formats:
 
-1. **TypeScript** (`repomix.config.ts`, `repomix.config.mts`, `repomix.config.cts`)
-2. **JavaScript/ES Module** (`repomix.config.js`, `repomix.config.mjs`, `repomix.config.cjs`)
-3. **JSON** (`repomix.config.json5`, `repomix.config.jsonc`, `repomix.config.json`)
+**Locations** (searched in order):
+1. Project root: `repomix.config.{ext}`
+2. `.config/` directory: `.config/repomix.{ext}` or `.config/repomix.config.{ext}`
+
+**Supported formats**:
+1. **TypeScript** (`.ts`, `.mts`, `.cts`)
+2. **JavaScript/ES Module** (`.js`, `.mjs`, `.cjs`)
+3. **JSON** (`.json`, `.jsonc`, `.json5`)
+4. **YAML** (`.yaml`, `.yml`)
+5. **TOML** (`.toml`)
 
 #### JSON Configuration
 
-Create a `repomix.config.json` file in your project root:
+Create a configuration file interactively:
 
 ```bash
 repomix --init
 ```
 
-This will create a `repomix.config.json` file with default settings.
+This will guide you through choosing a config location and format. It can create `repomix.config.{json,yaml,toml,ts,js}` in the project root, or `.config/repomix.{json,yaml,toml,ts,js}` and `.config/repomix.config.{json,yaml,toml,ts,js}` in the `.config/` directory.
 
 #### TypeScript Configuration
 
@@ -1281,6 +1290,8 @@ To use TypeScript or JavaScript configuration with `defineConfig`, you need to i
 ```bash
 npm install -D repomix
 ```
+
+`repomix --init` generates plain `export default { ... }` files for TypeScript and JavaScript so the generated config works without requiring a local `repomix` dependency. If you want editor type checking and autocomplete, switch the generated file to `defineConfig(...)` after installing Repomix locally.
 
 **Example:**
 
@@ -1452,8 +1463,16 @@ repomix --init --global
 
 The global configuration file will be created in:
 
-- Windows: `%LOCALAPPDATA%\Repomix\repomix.config.json`
-- macOS/Linux: `$XDG_CONFIG_HOME/repomix/repomix.config.json` or `~/.config/repomix/repomix.config.json`
+- Windows: `%LOCALAPPDATA%\Repomix\repomix.config.{json,yaml,toml,ts,js}`
+- macOS/Linux: `$XDG_CONFIG_HOME/repomix/repomix.config.{json,yaml,toml,ts,js}` or `~/.config/repomix/repomix.config.{json,yaml,toml,ts,js}`
+
+Repomix searches for configuration files in this order:
+1. Explicit `--config` path (if provided)
+2. Project root: `repomix.config.{ext}`
+3. `.config/` directory: `.config/repomix.{ext}` or `.config/repomix.config.{ext}`
+4. Global configuration directory (as fallback)
+
+Supported extensions: `.ts`, `.mts`, `.cts`, `.js`, `.mjs`, `.cjs`, `.json`, `.jsonc`, `.json5`, `.yaml`, `.yml`, `.toml`
 
 Note: Local configuration (if present) takes precedence over global configuration.
 

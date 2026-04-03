@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as prompts from '@clack/prompts';
+import { stringifyTOML } from 'confbox/toml';
+import { stringifyYAML } from 'confbox/yaml';
 import pc from 'picocolors';
 import {
   defaultConfig,
@@ -9,11 +11,57 @@ import {
   type RepomixOutputStyle,
 } from '../../config/configSchema.js';
 import { getGlobalDirectory } from '../../config/globalDirectory.js';
+import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+
+type ConfigFormat = 'json' | 'yaml' | 'toml' | 'ts' | 'js';
+type ConfigLocation = 'root' | 'dotconfig' | 'dotconfig-full';
+
+const CONFIG_FORMAT_EXTENSIONS: Record<ConfigFormat, string> = {
+  json: '.json',
+  yaml: '.yaml',
+  toml: '.toml',
+  ts: '.ts',
+  js: '.js',
+};
+
+const serializeConfig = (config: RepomixConfigFile, format: ConfigFormat): string => {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(config, null, 2);
+    case 'yaml':
+      return stringifyYAML(config);
+    case 'toml':
+      return stringifyTOML(config as Record<string, unknown>);
+    case 'ts': {
+      const { $schema: _schema, ...configWithoutSchema } = config;
+      return [`export default ${JSON.stringify(configWithoutSchema, null, 2)};`, ''].join('\n');
+    }
+    case 'js': {
+      const { $schema: _schema, ...configWithoutSchema } = config;
+      return [`export default ${JSON.stringify(configWithoutSchema, null, 2)};`, ''].join('\n');
+    }
+  }
+};
 
 const onCancelOperation = () => {
   prompts.cancel('Initialization cancelled.');
   process.exit(0);
+};
+
+const assertSafeInitWriteTarget = async (targetPath: string, extraPathsToCheck: string[] = []): Promise<void> => {
+  for (const candidatePath of [...extraPathsToCheck, targetPath]) {
+    try {
+      const stats = await fs.lstat(candidatePath);
+      if (stats?.isSymbolicLink?.()) {
+        throw new RepomixError(`Refusing to write through symbolic link: ${candidatePath}`);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
 };
 
 export const runInitAction = async (rootDir: string, isGlobal: boolean): Promise<void> => {
@@ -39,19 +87,66 @@ export const runInitAction = async (rootDir: string, isGlobal: boolean): Promise
 };
 
 export const createConfigFile = async (rootDir: string, isGlobal: boolean): Promise<boolean> => {
-  const configPath = path.resolve(isGlobal ? getGlobalDirectory() : rootDir, 'repomix.config.json');
-
   const isCreateConfig = await prompts.confirm({
-    message: `Do you want to create a ${isGlobal ? 'global ' : ''}${pc.green('repomix.config.json')} file?`,
+    message: `Do you want to create a ${isGlobal ? 'global ' : ''}Repomix config file?`,
   });
   if (!isCreateConfig) {
-    prompts.log.info(`Skipping ${pc.green('repomix.config.json')} file creation.`);
+    prompts.log.info('Skipping config file creation.');
     return false;
   }
   if (prompts.isCancel(isCreateConfig)) {
     onCancelOperation();
     return false;
   }
+
+  // Ask where to place the config file (skip for global — always uses global dir)
+  let configDir: string;
+  let configLocation: ConfigLocation;
+
+  if (isGlobal) {
+    configDir = getGlobalDirectory();
+    configLocation = 'root';
+  } else {
+    const locationResult = await prompts.select({
+      message: 'Where should the config file be placed?',
+      options: [
+        { value: 'root', label: 'Project root', hint: 'repomix.config.*' },
+        { value: 'dotconfig', label: '.config/ directory (short)', hint: '.config/repomix.*' },
+        { value: 'dotconfig-full', label: '.config/ directory (full)', hint: '.config/repomix.config.*' },
+      ],
+      initialValue: 'root' as ConfigLocation,
+    });
+    if (prompts.isCancel(locationResult)) {
+      onCancelOperation();
+      return false;
+    }
+    configLocation = locationResult;
+    configDir = configLocation === 'root' ? rootDir : path.resolve(rootDir, '.config');
+  }
+
+  // Ask which format to use
+  const formatResult = await prompts.select({
+    message: 'Config file format:',
+    options: [
+      { value: 'json', label: 'JSON', hint: 'Simple and widely supported' },
+      { value: 'yaml', label: 'YAML', hint: 'Human-friendly with comments support' },
+      { value: 'toml', label: 'TOML', hint: 'Clean syntax, popular for config files' },
+      { value: 'ts', label: 'TypeScript', hint: 'TypeScript syntax with a plain default export' },
+      { value: 'js', label: 'JavaScript', hint: 'Dynamic values, no type checking needed' },
+    ],
+    initialValue: 'json' as ConfigFormat,
+  });
+  if (prompts.isCancel(formatResult)) {
+    onCancelOperation();
+    return false;
+  }
+  const configFormat = formatResult;
+
+  // Build filename based on location and format
+  const ext = CONFIG_FORMAT_EXTENSIONS[configFormat];
+  const configFileName = configLocation === 'dotconfig' ? `repomix${ext}` : `repomix.config${ext}`;
+
+  const configPath = path.resolve(configDir, configFileName);
 
   let isConfigFileExists = false;
   try {
@@ -63,10 +158,10 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
 
   if (isConfigFileExists) {
     const isOverwrite = await prompts.confirm({
-      message: `A ${isGlobal ? 'global ' : ''}${pc.green('repomix.config.json')} file already exists. Do you want to overwrite it?`,
+      message: `A ${isGlobal ? 'global ' : ''}${pc.green(configFileName)} file already exists. Do you want to overwrite it?`,
     });
     if (!isOverwrite) {
-      prompts.log.info(`Skipping ${pc.green('repomix.config.json')} file creation.`);
+      prompts.log.info(`Skipping ${pc.green(configFileName)} file creation.`);
       return false;
     }
     if (prompts.isCancel(isOverwrite)) {
@@ -113,8 +208,10 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
     },
   };
 
+  const extraPathsToCheck = configLocation === 'root' ? [] : [path.dirname(configPath)];
+  await assertSafeInitWriteTarget(configPath, extraPathsToCheck);
   await fs.mkdir(path.dirname(configPath), { recursive: true });
-  await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  await fs.writeFile(configPath, serializeConfig(config, configFormat));
 
   const relativeConfigPath = path.relative(rootDir, configPath);
 
@@ -157,6 +254,11 @@ export const createIgnoreFile = async (rootDir: string, isGlobal: boolean): Prom
       message: `A ${pc.green('.repomixignore')} file already exists. Do you want to overwrite it?`,
     });
 
+    if (prompts.isCancel(overwrite)) {
+      onCancelOperation();
+      return false;
+    }
+
     if (!overwrite) {
       prompts.log.info(`${pc.green('.repomixignore')} file creation skipped. Existing file will not be modified.`);
       return false;
@@ -169,6 +271,7 @@ export const createIgnoreFile = async (rootDir: string, isGlobal: boolean): Prom
 # tmp/
 `;
 
+  await assertSafeInitWriteTarget(ignorePath);
   await fs.writeFile(ignorePath, defaultIgnoreContent);
   prompts.log.success(
     pc.green('Created .repomixignore file!\n') + pc.dim(`Path: ${path.relative(rootDir, ignorePath)}`),

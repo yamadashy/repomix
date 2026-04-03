@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { loadFileConfig } from '../../src/config/configLoad.js';
@@ -51,31 +53,25 @@ describe('configLoad Integration Tests', () => {
     });
 
     test('should handle dynamic values in TypeScript config', async () => {
-      // Mock jiti to avoid coverage instability caused by dynamic module loading
-      // This ensures deterministic test results while verifying config validation
-      // We don't actually load the fixture file to prevent jiti from transforming src/ files
-      const config = await loadFileConfig(
-        tsFixturesDir,
-        'repomix-dynamic.config.ts',
-        {},
-        {
-          jitiImport: async (fileUrl: string) => {
-            // Verify we're loading the correct file
-            expect(fileUrl).toContain('repomix-dynamic.config.ts');
-
-            // Return mock config simulating dynamic values
-            return {
-              output: {
-                filePath: 'output-test-2024-01-01T00-00-00.xml',
-                style: 'xml',
-              },
-              ignore: {
-                customPatterns: ['**/node_modules/**'],
-              },
-            };
+      // Mock c12Load to avoid coverage instability caused by dynamic module loading.
+      // This ensures deterministic test results while verifying config validation.
+      const config = await loadFileConfig(tsFixturesDir, 'repomix-dynamic.config.ts', {}, {
+        c12Load: async (options) => ({
+          config: {
+            output: {
+              filePath: 'output-test-2024-01-01T00-00-00.xml',
+              style: 'xml',
+            },
+            ignore: {
+              customPatterns: ['**/node_modules/**'],
+            },
           },
-        },
-      );
+          configFile: path.resolve(options.cwd ?? '', options.configFile ?? ''),
+          _configFile: path.resolve(options.cwd ?? '', options.configFile ?? ''),
+          layers: [],
+          cwd: options.cwd,
+        }),
+      } as Parameters<typeof loadFileConfig>[3]);
 
       expect(config.output?.filePath).toBe('output-test-2024-01-01T00-00-00.xml');
       expect(config.output?.style).toBe('xml');
@@ -128,35 +124,81 @@ describe('configLoad Integration Tests', () => {
     });
 
     test('should handle dynamic values in JS config', async () => {
-      // Mock jiti to avoid coverage instability caused by dynamic module loading
-      // This ensures deterministic test results while verifying config validation
-      // We don't actually load the fixture file to prevent jiti from transforming src/ files
-      const config = await loadFileConfig(
-        jsFixturesDir,
-        'repomix-dynamic.config.js',
-        {},
-        {
-          jitiImport: async (fileUrl: string) => {
-            // Verify we're loading the correct file
-            expect(fileUrl).toContain('repomix-dynamic.config.js');
-
-            // Return mock config simulating dynamic values
-            return {
-              output: {
-                filePath: 'output-2024-01-01T00-00-00.xml',
-                style: 'xml',
-              },
-              ignore: {
-                customPatterns: ['**/node_modules/**'],
-              },
-            };
+      // Mock c12Load to avoid coverage instability caused by dynamic module loading.
+      // This ensures deterministic test results while verifying config validation.
+      const config = await loadFileConfig(jsFixturesDir, 'repomix-dynamic.config.js', {}, {
+        c12Load: async (options: { cwd: string; configFile: string }) => ({
+          config: {
+            output: {
+              filePath: 'output-2024-01-01T00-00-00.xml',
+              style: 'xml',
+            },
+            ignore: {
+              customPatterns: ['**/node_modules/**'],
+            },
           },
-        },
-      );
+          configFile: path.resolve(options.cwd, options.configFile),
+          _configFile: path.resolve(options.cwd, options.configFile),
+          layers: [],
+          cwd: options.cwd,
+        }),
+      } as Parameters<typeof loadFileConfig>[3]);
 
       expect(config.output?.filePath).toBe('output-2024-01-01T00-00-00.xml');
       expect(config.output?.style).toBe('xml');
       expect(config.ignore?.customPatterns).toEqual(['**/node_modules/**']);
+    });
+  });
+
+  describe('Discovery Integration', () => {
+    test('should not fall back to discovered .config files for a missing explicit config path', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-config-'));
+
+      try {
+        await fs.mkdir(path.join(tempDir, '.config'), { recursive: true });
+        await fs.writeFile(
+          path.join(tempDir, '.config', 'repomix.json'),
+          JSON.stringify({ output: { filePath: 'fallback-output.xml', style: 'xml' } }),
+        );
+
+        await expect(loadFileConfig(tempDir, 'missing.json')).rejects.toThrow('Config file not found at missing.json');
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    test('should discover TOML config in .config directory with the full filename', async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-config-'));
+
+      try {
+        await fs.mkdir(path.join(tempDir, '.config'), { recursive: true });
+        await fs.writeFile(
+          path.join(tempDir, '.config', 'repomix.config.toml'),
+          [
+            '[output]',
+            'filePath = "toml-output.xml"',
+            'style = "xml"',
+            '',
+            '[ignore]',
+            'customPatterns = ["**/tmp/**"]',
+            '',
+          ].join('\n'),
+        );
+
+        const config = await loadFileConfig(tempDir, null);
+
+        expect(config).toEqual({
+          output: {
+            filePath: 'toml-output.xml',
+            style: 'xml',
+          },
+          ignore: {
+            customPatterns: ['**/tmp/**'],
+          },
+        });
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      }
     });
   });
 });
