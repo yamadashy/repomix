@@ -74,6 +74,10 @@ export const runSecurityCheck = async (
   const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
   const totalItems = allItems.length;
 
+  // NOTE: numOfTasks uses totalItems (not batches.length) intentionally.
+  // getWorkerThreadCount uses Math.ceil(numOfTasks / TASKS_PER_THREAD) to size the pool,
+  // where TASKS_PER_THREAD=100 is calibrated for fine-grained tasks.
+  // Passing batches.length (e.g. 2) would yield maxThreads=1, forcing sequential execution.
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
     numOfTasks: totalItems,
     workerType: 'securityCheck',
