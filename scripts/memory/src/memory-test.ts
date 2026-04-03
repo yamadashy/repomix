@@ -172,22 +172,26 @@ function displayMemoryGraphs(history: MemoryHistory[]): void {
 function analyzeMemoryTrends(): void {
   if (memoryHistory.length < 10) return;
 
+  // Compare post-warmup baseline vs recent, not cold-start vs recent
+  const warmupCount = Math.max(1, Math.floor(memoryHistory.length * 0.2));
+  const baseline = memoryHistory.slice(warmupCount, warmupCount + 10);
   const recent = memoryHistory.slice(-10);
-  const initial = memoryHistory.slice(0, 10);
 
+  if (baseline.length === 0) return;
+
+  const avgBaselineHeap = baseline.reduce((sum, entry) => sum + entry.heapUsed, 0) / baseline.length;
   const avgRecentHeap = recent.reduce((sum, entry) => sum + entry.heapUsed, 0) / recent.length;
-  const avgInitialHeap = initial.reduce((sum, entry) => sum + entry.heapUsed, 0) / initial.length;
+  const avgBaselineRSS = baseline.reduce((sum, entry) => sum + entry.rss, 0) / baseline.length;
   const avgRecentRSS = recent.reduce((sum, entry) => sum + entry.rss, 0) / recent.length;
-  const avgInitialRSS = initial.reduce((sum, entry) => sum + entry.rss, 0) / initial.length;
 
-  const heapGrowth = ((avgRecentHeap - avgInitialHeap) / avgInitialHeap) * 100;
-  const rssGrowth = ((avgRecentRSS - avgInitialRSS) / avgInitialRSS) * 100;
+  const heapGrowth = avgBaselineHeap > 0 ? ((avgRecentHeap - avgBaselineHeap) / avgBaselineHeap) * 100 : 0;
+  const rssGrowth = avgBaselineRSS > 0 ? ((avgRecentRSS - avgBaselineRSS) / avgBaselineRSS) * 100 : 0;
 
-  console.log('\n📊 Memory Trend Analysis:');
+  console.log('\n📊 Memory Trend Analysis (post-warmup):');
   console.log(
-    `   Heap Growth: ${heapGrowth.toFixed(2)}% (${avgInitialHeap.toFixed(2)}MB → ${avgRecentHeap.toFixed(2)}MB)`,
+    `   Heap: ${avgBaselineHeap.toFixed(2)}MB → ${avgRecentHeap.toFixed(2)}MB (${heapGrowth.toFixed(2)}%)`,
   );
-  console.log(`   RSS Growth: ${rssGrowth.toFixed(2)}% (${avgInitialRSS.toFixed(2)}MB → ${avgRecentRSS.toFixed(2)}MB)`);
+  console.log(`   RSS:  ${avgBaselineRSS.toFixed(2)}MB → ${avgRecentRSS.toFixed(2)}MB (${rssGrowth.toFixed(2)}%)`);
 
   if (heapGrowth > WARNING_THRESHOLD || rssGrowth > WARNING_THRESHOLD) {
     console.log('⚠️  WARNING: Significant memory growth detected - possible memory leak!');
@@ -282,18 +286,26 @@ async function runMemoryTest(): Promise<void> {
 
   console.log('\n✅ Memory test completed!');
 
-  // Final analysis
-  const finalUsage = getMemoryUsage();
-  const initialUsage = memoryHistory[0];
+  // Final analysis — compare post-warmup baseline vs final measurements.
+  // The first ~20% of iterations are warmup (V8 JIT, module caching, heap expansion),
+  // so comparing cold-start to final would always show large growth that is not a leak.
+  const warmupCount = Math.max(1, Math.floor(memoryHistory.length * 0.2));
 
-  if (initialUsage) {
-    const heapGrowth =
-      initialUsage.heapUsed > 0 ? ((finalUsage.heapUsed - initialUsage.heapUsed) / initialUsage.heapUsed) * 100 : 0;
-    const rssGrowth = initialUsage.rss > 0 ? ((finalUsage.rss - initialUsage.rss) / initialUsage.rss) * 100 : 0;
+  if (memoryHistory.length >= 10) {
+    const baselineEntries = memoryHistory.slice(warmupCount, warmupCount + 5);
+    const recentEntries = memoryHistory.slice(-5);
 
-    console.log('\n📊 Final Memory Analysis:');
-    console.log(`Initial: Heap ${initialUsage.heapUsed}MB, RSS ${initialUsage.rss}MB`);
-    console.log(`Final:   Heap ${finalUsage.heapUsed}MB, RSS ${finalUsage.rss}MB`);
+    const avgBaselineHeap = baselineEntries.reduce((sum, e) => sum + e.heapUsed, 0) / baselineEntries.length;
+    const avgRecentHeap = recentEntries.reduce((sum, e) => sum + e.heapUsed, 0) / recentEntries.length;
+    const avgBaselineRSS = baselineEntries.reduce((sum, e) => sum + e.rss, 0) / baselineEntries.length;
+    const avgRecentRSS = recentEntries.reduce((sum, e) => sum + e.rss, 0) / recentEntries.length;
+
+    const heapGrowth = avgBaselineHeap > 0 ? ((avgRecentHeap - avgBaselineHeap) / avgBaselineHeap) * 100 : 0;
+    const rssGrowth = avgBaselineRSS > 0 ? ((avgRecentRSS - avgBaselineRSS) / avgBaselineRSS) * 100 : 0;
+
+    console.log('\n📊 Final Memory Analysis (post-warmup baseline vs final):');
+    console.log(`Baseline (avg ${warmupCount + 1}–${warmupCount + 5}): Heap ${avgBaselineHeap.toFixed(2)}MB, RSS ${avgBaselineRSS.toFixed(2)}MB`);
+    console.log(`Final    (avg last 5):     Heap ${avgRecentHeap.toFixed(2)}MB, RSS ${avgRecentRSS.toFixed(2)}MB`);
     console.log(`Growth:  Heap ${heapGrowth.toFixed(2)}%, RSS ${rssGrowth.toFixed(2)}%`);
 
     // Exit with error code if memory growth exceeds threshold
@@ -303,6 +315,8 @@ async function runMemoryTest(): Promise<void> {
     } else {
       console.log('✅ Memory usage appears stable');
     }
+  } else {
+    console.log('\n📊 Too few data points for reliable analysis (need at least 10)');
   }
 
   // Show final graph
