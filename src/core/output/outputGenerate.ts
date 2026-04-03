@@ -236,7 +236,11 @@ const generateHandlebarOutput = async (
 ): Promise<string> => {
   try {
     const compiledTemplate = getCompiledTemplate(config.output.style);
-    return compiledTemplate(renderContext);
+    // Handlebars conditional blocks leave leading/trailing whitespace when
+    // sections are disabled, so edge normalization is still needed. Removing
+    // the leading newline from templates (done separately) reduces .trim()'s
+    // work but cannot eliminate it entirely.
+    return `${compiledTemplate(renderContext).trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
       let largeFilesInfo = '';
