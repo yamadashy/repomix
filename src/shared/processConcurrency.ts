@@ -12,6 +12,8 @@ export interface WorkerOptions {
   numOfTasks: number;
   workerType: WorkerType;
   runtime: WorkerRuntime;
+  /** Optional hard cap on maxThreads, applied after the standard heuristic. */
+  maxThreadsCap?: number;
 }
 
 /**
@@ -60,8 +62,10 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
-  const { numOfTasks, workerType, runtime = 'child_process' } = options;
-  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { numOfTasks, workerType, runtime = 'child_process', maxThreadsCap } = options;
+  const threadCount = getWorkerThreadCount(numOfTasks);
+  const minThreads = threadCount.minThreads;
+  const maxThreads = maxThreadsCap ? Math.max(minThreads, Math.min(threadCount.maxThreads, maxThreadsCap)) : threadCount.maxThreads;
 
   // Get worker path - uses unified worker in bundled env, individual files otherwise
   const workerPath = getWorkerPath(workerType);
