@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775194529137,
+  "lastUpdate": 1775195666447,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -1485,6 +1485,51 @@ window.BENCHMARK_DATA = {
             "range": "±55",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 2529ms, Q3: 2584ms\nAll times: 2460, 2493, 2503, 2518, 2529, 2544, 2545, 2545, 2553, 2559, 2562, 2564, 2568, 2570, 2584, 2585, 2639, 2681, 2703ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d7a8979ca1fb344026ee22065279afe86c14125b",
+          "message": "Merge pull request #1375 from yamadashy/perf/use-codeload-github-direct\n\nperf(git): Use codeload.github.com directly to skip 302 redirect",
+          "timestamp": "2026-04-03T14:52:11+09:00",
+          "tree_id": "f39c7776d27dd096dee674ac39f31238bb7265dc",
+          "url": "https://github.com/yamadashy/repomix/commit/d7a8979ca1fb344026ee22065279afe86c14125b"
+        },
+        "date": 1775195666145,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1598,
+            "range": "±200",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1467ms, Q3: 1667ms\nAll times: 1212, 1227, 1285, 1315, 1349, 1412, 1465, 1467, 1468, 1471, 1495, 1498, 1562, 1590, 1594, 1598, 1600, 1621, 1642, 1642, 1649, 1651, 1667, 1740, 1793, 1843, 1933, 2094, 2151, 2243ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1945,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1931ms, Q3: 1968ms\nAll times: 1913, 1925, 1926, 1930, 1930, 1931, 1931, 1933, 1941, 1942, 1945, 1949, 1950, 1952, 1956, 1968, 1969, 1973, 1983, 1987ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2446,
+            "range": "±69",
+            "unit": "ms",
+            "extra": "Median of 19 runs\nQ1: 2407ms, Q3: 2476ms\nAll times: 2387, 2387, 2391, 2396, 2407, 2413, 2422, 2437, 2441, 2446, 2453, 2458, 2463, 2468, 2476, 2486, 2501, 2539, 2877ms"
           }
         ]
       }
