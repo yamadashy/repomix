@@ -18,7 +18,7 @@ const PLAIN_TEXT_OPTIONS: CountTokensOptions = { disallowedSpecial: new Set() };
 // Lazy-loaded countTokens functions keyed by encoding
 const encodingModules = new Map<string, CountTokensFn>();
 
-const loadEncoding = async (encodingName: TokenEncoding): Promise<CountTokensFn> => {
+export const loadEncoding = async (encodingName: TokenEncoding): Promise<CountTokensFn> => {
   const cached = encodingModules.get(encodingName);
   if (cached) {
     return cached;

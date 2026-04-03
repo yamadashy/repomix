@@ -1,28 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
-  repomixConfigBaseSchema,
-  repomixConfigCliSchema,
-  repomixConfigDefaultSchema,
-  repomixConfigFileSchema,
-  repomixConfigMergedSchema,
-  repomixOutputStyleSchema,
+  getRepomixConfigBaseSchema,
+  getRepomixConfigCliSchema,
+  getRepomixConfigDefaultSchema,
+  getRepomixConfigFileSchema,
+  getRepomixConfigMergedSchema,
+  getRepomixOutputStyleSchema,
 } from '../../src/config/configSchema.js';
 
 describe('configSchema', () => {
   describe('repomixOutputStyleSchema', () => {
     it('should accept valid output styles', () => {
+      const repomixOutputStyleSchema = getRepomixOutputStyleSchema();
       expect(repomixOutputStyleSchema.parse('plain')).toBe('plain');
       expect(repomixOutputStyleSchema.parse('xml')).toBe('xml');
     });
 
     it('should reject invalid output styles', () => {
+      const repomixOutputStyleSchema = getRepomixOutputStyleSchema();
       expect(() => repomixOutputStyleSchema.parse('invalid')).toThrow(z.ZodError);
     });
   });
 
   describe('tokenCountTree option', () => {
     it('should accept boolean values for tokenCountTree', () => {
+      const repomixConfigBaseSchema = getRepomixConfigBaseSchema();
       const configWithBooleanTrue = {
         output: {
           tokenCountTree: true,
@@ -38,6 +41,7 @@ describe('configSchema', () => {
     });
 
     it('should accept string values for tokenCountTree', () => {
+      const repomixConfigBaseSchema = getRepomixConfigBaseSchema();
       const configWithString = {
         output: {
           tokenCountTree: '100',
@@ -47,6 +51,7 @@ describe('configSchema', () => {
     });
 
     it('should reject invalid types for tokenCountTree', () => {
+      const repomixConfigBaseSchema = getRepomixConfigBaseSchema();
       const configWithInvalidType = {
         output: {
           tokenCountTree: [], // Should be boolean, number, or string
@@ -58,6 +63,7 @@ describe('configSchema', () => {
 
   describe('repomixConfigBaseSchema', () => {
     it('should accept valid base config', () => {
+      const repomixConfigBaseSchema = getRepomixConfigBaseSchema();
       const validConfig = {
         output: {
           filePath: 'output.txt',
@@ -78,10 +84,12 @@ describe('configSchema', () => {
     });
 
     it('should accept empty object', () => {
+      const repomixConfigBaseSchema = getRepomixConfigBaseSchema();
       expect(repomixConfigBaseSchema.parse({})).toEqual({});
     });
 
     it('should reject invalid types', () => {
+      const repomixConfigBaseSchema = getRepomixConfigBaseSchema();
       const invalidConfig = {
         output: {
           filePath: 123, // Should be string
@@ -95,6 +103,7 @@ describe('configSchema', () => {
 
   describe('repomixConfigDefaultSchema', () => {
     it('should accept valid default config', () => {
+      const repomixConfigDefaultSchema = getRepomixConfigDefaultSchema();
       const validConfig = {
         input: {
           maxFileSize: 50 * 1024 * 1024,
@@ -141,11 +150,13 @@ describe('configSchema', () => {
     });
 
     it('should reject incomplete config', () => {
+      const repomixConfigDefaultSchema = getRepomixConfigDefaultSchema();
       const invalidConfig = {};
       expect(() => repomixConfigDefaultSchema.parse(invalidConfig)).toThrow();
     });
 
     it('should provide helpful error for missing required fields', () => {
+      const repomixConfigDefaultSchema = getRepomixConfigDefaultSchema();
       const invalidConfig = {};
       expect(() => repomixConfigDefaultSchema.parse(invalidConfig)).toThrow(/expected object/i);
     });
@@ -153,6 +164,7 @@ describe('configSchema', () => {
 
   describe('repomixConfigFileSchema', () => {
     it('should accept valid file config', () => {
+      const repomixConfigFileSchema = getRepomixConfigFileSchema();
       const validConfig = {
         output: {
           filePath: 'custom-output.txt',
@@ -166,6 +178,7 @@ describe('configSchema', () => {
     });
 
     it('should accept partial config', () => {
+      const repomixConfigFileSchema = getRepomixConfigFileSchema();
       const partialConfig = {
         output: {
           filePath: 'partial-output.txt',
@@ -177,6 +190,7 @@ describe('configSchema', () => {
 
   describe('repomixConfigCliSchema', () => {
     it('should accept valid CLI config', () => {
+      const repomixConfigCliSchema = getRepomixConfigCliSchema();
       const validConfig = {
         output: {
           filePath: 'cli-output.txt',
@@ -188,6 +202,7 @@ describe('configSchema', () => {
     });
 
     it('should reject invalid CLI options', () => {
+      const repomixConfigCliSchema = getRepomixConfigCliSchema();
       const invalidConfig = {
         output: {
           filePath: 123, // Should be string
@@ -199,6 +214,7 @@ describe('configSchema', () => {
 
   describe('repomixConfigMergedSchema', () => {
     it('should accept valid merged config', () => {
+      const repomixConfigMergedSchema = getRepomixConfigMergedSchema();
       const validConfig = {
         cwd: '/path/to/project',
         input: {
@@ -246,6 +262,7 @@ describe('configSchema', () => {
     });
 
     it('should reject merged config missing required fields', () => {
+      const repomixConfigMergedSchema = getRepomixConfigMergedSchema();
       const invalidConfig = {
         output: {
           filePath: 'output.txt',
@@ -256,6 +273,7 @@ describe('configSchema', () => {
     });
 
     it('should reject merged config with invalid types', () => {
+      const repomixConfigMergedSchema = getRepomixConfigMergedSchema();
       const invalidConfig = {
         cwd: '/path/to/project',
         output: {

@@ -90,6 +90,25 @@ const checkGitAvailability = async (cwd: string, deps: SortDeps): Promise<boolea
   }
 };
 
+/**
+ * Pre-fetch git file change counts to populate the module-level cache.
+ * Call this early in the pipeline (e.g., during file collection) to overlap
+ * the git subprocess with I/O-bound operations. When sortOutputFiles runs
+ * later, it will find cached data and skip the git subprocess.
+ */
+export const prefetchGitFileChangeCounts = async (
+  config: RepomixConfigMerged,
+  deps: SortDeps = {
+    getFileChangeCount,
+    isGitInstalled,
+  },
+): Promise<void> => {
+  if (!config.output.git?.sortByChanges) {
+    return;
+  }
+  await getFileChangeCounts(config.cwd, config.output.git?.sortByChangesMaxCommits, deps);
+};
+
 // Sort files by git change count for output
 export const sortOutputFiles = async (
   files: ProcessedFile[],

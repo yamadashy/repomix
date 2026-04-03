@@ -40,7 +40,7 @@ export const reportResults = (
   }
 
   if (config.output.tokenCountTree) {
-    reportTokenCountTree(packResult.processedFiles, packResult.fileTokenCounts, config);
+    reportTokenCountTree(packResult.fileTokenCounts, config);
     logger.log('');
   }
 
