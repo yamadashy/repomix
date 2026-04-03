@@ -20,27 +20,38 @@ const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_S
  * @returns Content with base64 data truncated
  */
 export const truncateBase64Content = (content: string): string => {
-  // Reset lastIndex since patterns are global and reused across calls
-  dataUriPattern.lastIndex = 0;
-  standaloneBase64Pattern.lastIndex = 0;
+  // Fast path: skip regex scanning for files that cannot contain base64 data.
+  // Standalone base64 strings (256+ alphanumeric chars) are hard to pre-check cheaply,
+  // but data URIs always contain the literal "base64," marker. Files shorter than the
+  // minimum standalone length also cannot match.
+  const hasDataUri = content.includes('base64,');
+  const couldHaveStandalone = content.length >= MIN_BASE64_LENGTH_STANDALONE;
+  if (!hasDataUri && !couldHaveStandalone) {
+    return content;
+  }
 
   let processedContent = content;
 
   // Replace data URIs
-  processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
-    const preview = base64Data.substring(0, TRUNCATION_LENGTH);
-    return `data:${mimeType}${params || ''};base64,${preview}...`;
-  });
+  if (hasDataUri) {
+    dataUriPattern.lastIndex = 0;
+    processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
+      const preview = base64Data.substring(0, TRUNCATION_LENGTH);
+      return `data:${mimeType}${params || ''};base64,${preview}...`;
+    });
+  }
 
   // Replace standalone base64 strings
-  processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
-    // Check if this looks like actual base64 (not just a long string)
-    if (isLikelyBase64(base64String)) {
-      const preview = base64String.substring(0, TRUNCATION_LENGTH);
-      return `${preview}...`;
-    }
-    return match;
-  });
+  if (couldHaveStandalone) {
+    standaloneBase64Pattern.lastIndex = 0;
+    processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
+      if (isLikelyBase64(base64String)) {
+        const preview = base64String.substring(0, TRUNCATION_LENGTH);
+        return `${preview}...`;
+      }
+      return match;
+    });
+  }
 
   return processedContent;
 };
