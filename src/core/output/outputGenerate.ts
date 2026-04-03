@@ -236,7 +236,7 @@ const generateHandlebarOutput = async (
 ): Promise<string> => {
   try {
     const compiledTemplate = getCompiledTemplate(config.output.style);
-    return `${compiledTemplate(renderContext).trim()}\n`;
+    return compiledTemplate(renderContext);
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
       let largeFilesInfo = '';

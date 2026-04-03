@@ -4,8 +4,7 @@ import { registerHandlebarsHelpers } from '../outputStyleUtils.js';
 registerHandlebarsHelpers();
 
 export const getMarkdownTemplate = () => {
-  return /* md */ `
-{{#if fileSummaryEnabled}}
+  return /* md */ `{{#if fileSummaryEnabled}}
 {{{generationHeader}}}
 
 # File Summary
