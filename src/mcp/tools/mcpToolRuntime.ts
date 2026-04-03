@@ -6,11 +6,20 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { generateTreeString } from '../../core/file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../../core/file/fileTypes.js';
 
-// Map to store generated output files
+// Map to store generated output files. Capped to prevent unbounded growth
+// in long-running MCP server processes.
+const MAX_REGISTRY_SIZE = 100;
 const outputFileRegistry = new Map<string, string>();
 
-// Register an output file
+// Register an output file, evicting the oldest entry if at capacity
 export const registerOutputFile = (id: string, filePath: string): void => {
+  if (outputFileRegistry.size >= MAX_REGISTRY_SIZE) {
+    // Map iterates in insertion order; delete the oldest entry
+    const oldestKey = outputFileRegistry.keys().next().value;
+    if (oldestKey !== undefined) {
+      outputFileRegistry.delete(oldestKey);
+    }
+  }
   outputFileRegistry.set(id, filePath);
 };
 

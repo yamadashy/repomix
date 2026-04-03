@@ -5,8 +5,10 @@ import { logger } from '../../shared/logger.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import { getFileChangeCount, isGitInstalled } from '../git/gitRepositoryHandle.js';
 
-// Cache for git file change counts to avoid repeated git operations
+// Cache for git file change counts to avoid repeated git operations.
+// Capped to prevent unbounded growth in long-running MCP server processes.
 // Key format: `${cwd}:${maxCommits}`
+const MAX_CACHE_SIZE = 50;
 const fileChangeCountsCache = new Map<string, Record<string, number>>();
 
 // Cache for git availability check per cwd
@@ -48,6 +50,12 @@ const getFileChangeCounts = async (
   // Fetch from git log
   try {
     const fileChangeCounts = await deps.getFileChangeCount(cwd, maxCommits);
+    if (fileChangeCountsCache.size >= MAX_CACHE_SIZE) {
+      const oldestKey = fileChangeCountsCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        fileChangeCountsCache.delete(oldestKey);
+      }
+    }
     fileChangeCountsCache.set(cacheKey, fileChangeCounts);
 
     logger.trace('Git File change counts max commits:', maxCommits);
