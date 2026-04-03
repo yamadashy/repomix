@@ -124,7 +124,9 @@ export const pack = async (
       deps.getGitLogs(rootDirs, config),
     ]);
 
-    const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
+    let rawFiles: Awaited<ReturnType<typeof deps.collectFiles>>['rawFiles'] | null = collectResults.flatMap(
+      (curr) => curr.rawFiles,
+    );
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
     // Run security check and file processing concurrently.
@@ -133,13 +135,17 @@ export const pack = async (
     // After both complete, filter out any suspicious files from the processed results.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles!, progressCallback, config, gitDiffResult, gitLogResult),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
-        return deps.processFiles(rawFiles, config, progressCallback);
+        return deps.processFiles(rawFiles!, config, progressCallback);
       }),
     ]);
+
+    // Release rawFiles eagerly — processedFiles now holds the (possibly transformed) content,
+    // so keeping the original file contents in memory would only increase peak RSS.
+    rawFiles = null;
 
     const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       validationResult;

@@ -65,7 +65,9 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
   const { numOfTasks, workerType, runtime = 'child_process', maxThreadsCap } = options;
   const threadCount = getWorkerThreadCount(numOfTasks);
   const minThreads = threadCount.minThreads;
-  const maxThreads = maxThreadsCap ? Math.max(minThreads, Math.min(threadCount.maxThreads, maxThreadsCap)) : threadCount.maxThreads;
+  const maxThreads = maxThreadsCap
+    ? Math.max(minThreads, Math.min(threadCount.maxThreads, maxThreadsCap))
+    : threadCount.maxThreads;
 
   // Get worker path - uses unified worker in bundled env, individual files otherwise
   const workerPath = getWorkerPath(workerType);
