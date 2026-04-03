@@ -113,10 +113,6 @@ export const runDefaultAction = async (
 
     const targetPaths = stdinFilePaths ? [cwd] : directories.map((directory) => path.resolve(cwd, directory));
 
-    if (stdinFilePaths) {
-      logger.trace(`Processing ${stdinFilePaths.length} files from stdin`);
-    }
-
     packResult = await pack(
       targetPaths,
       config,

@@ -1,7 +1,6 @@
 import process from 'node:process';
 import { afterEach, beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import { buildCliConfig, runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
-import type { Spinner } from '../../../src/cli/cliSpinner.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import * as configLoader from '../../../src/config/configLoad.js';
 import * as fileStdin from '../../../src/core/file/fileStdin.js';
@@ -20,12 +19,7 @@ const mockSpinner = {
   update: vi.fn() as MockedFunction<(message: string) => void>,
   succeed: vi.fn() as MockedFunction<(message: string) => void>,
   fail: vi.fn() as MockedFunction<(message: string) => void>,
-  stop: vi.fn() as MockedFunction<() => void>,
-  message: 'test',
-  currentFrame: 0,
-  interval: null,
-  isQuiet: false,
-} as unknown as Spinner;
+};
 
 vi.mock('../../../src/cli/cliSpinner', () => {
   const MockSpinner = class {
