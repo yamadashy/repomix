@@ -47,6 +47,11 @@ const defaultDeps = {
   packSkill,
 };
 
+// Heuristic task count for early metrics worker pool initialization.
+// 200 yields 2 workers on most machines, balancing warmup speed
+// (less CPU contention during gpt-tokenizer loading) with parallelism.
+const EARLY_WARMUP_TASK_ESTIMATE = 200;
+
 export interface PackOptions {
   skillName?: string;
   skillDir?: string;
@@ -68,6 +73,13 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Pre-initialize metrics worker pool before file search to maximize overlap of
+  // gpt-tokenizer loading with the entire pipeline (search, collection, security, processing).
+  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+    EARLY_WARMUP_TASK_ESTIMATE,
+    config.tokenCount.encoding,
+  );
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -96,13 +108,6 @@ export const pack = async (
     rootDir,
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
-    config.tokenCount.encoding,
-  );
 
   try {
     // Run file collection and git operations in parallel since they are independent:
