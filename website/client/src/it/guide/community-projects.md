@@ -10,6 +10,13 @@ Estensione VSCode che aiuta a raggruppare i file in un singolo output per l'elab
 **Repository**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)
 **Marketplace**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## Applicazioni Desktop
+
+### Repomix Desktop
+Un'applicazione desktop non ufficiale della community che fornisce un wrapper GUI per il CLI di Repomix. Costruita con Python e CustomTkinter, offre un'interfaccia user-friendly senza bisogno di usare il terminale.
+
+**Repository**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## Implementazioni in Altri Linguaggi
 
 ### Python Repomix

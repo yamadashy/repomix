@@ -10,6 +10,13 @@ Extension VSCode qui aide à regrouper les fichiers en une seule sortie pour le 
 **Repository** : [massdo/repomix-runner](https://github.com/massdo/repomix-runner)  
 **Marketplace** : [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## Applications de Bureau
+
+### Repomix Desktop
+Une application de bureau communautaire non officielle qui fournit un wrapper GUI pour le CLI Repomix. Construite avec Python et CustomTkinter, elle offre une interface conviviale sans avoir besoin d'utiliser le terminal.
+
+**Repository** : [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## Implémentations de Langages
 
 ### Python Repomix

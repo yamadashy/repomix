@@ -10,6 +10,13 @@ VSCode एक्सटेंशन जो AI processing के लिए फा�
 **Repository**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)  
 **Marketplace**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## डेस्कटॉप एप्लिकेशन
+
+### Repomix Desktop
+एक अनौपचारिक कम्युनिटी डेस्कटॉप एप्लिकेशन जो Repomix CLI के लिए GUI wrapper प्रदान करता है। Python और CustomTkinter से बनाया गया, यह terminal का उपयोग किए बिना एक user-friendly interface प्रदान करता है।
+
+**Repository**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## भाषा implementations
 
 ### Python Repomix

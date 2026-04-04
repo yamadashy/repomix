@@ -10,6 +10,13 @@
 **Репозиторий**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)
 **Маркетплейс**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## Десктопные приложения
+
+### Repomix Desktop
+Неофициальное десктопное приложение от сообщества, предоставляющее GUI-обёртку для Repomix CLI. Создано на Python и CustomTkinter, предлагает удобный интерфейс без необходимости использования терминала.
+
+**Репозиторий**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## Языковые реализации
 
 ### Python Repomix
