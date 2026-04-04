@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import { initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -15,6 +15,22 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
+export type SecurityTaskRunner = TaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>;
+
+/**
+ * Create a security check task runner with eager worker creation.
+ * Workers start loading @secretlint/core immediately, overlapping the expensive
+ * module initialization (~150ms) with file search and collection.
+ */
+export const createSecurityTaskRunner = (numOfTasks: number): SecurityTaskRunner => {
+  return initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+    numOfTasks,
+    workerType: 'securityCheck',
+    runtime: 'worker_threads',
+    eagerWorkers: true,
+  });
+};
+
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
 // Each batch is sent as a single message to a worker thread, avoiding
 // per-file round-trip costs that dominate when processing many files.
@@ -27,9 +43,10 @@ export const runSecurityCheck = async (
   progressCallback: RepomixProgressCallback = () => {},
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
-  deps = {
-    initTaskRunner,
-  },
+  deps: {
+    initTaskRunner?: typeof initTaskRunner;
+    taskRunner?: SecurityTaskRunner;
+  } = {},
 ): Promise<SuspiciousFileResult[]> => {
   const gitDiffItems: SecurityCheckItem[] = [];
   const gitLogItems: SecurityCheckItem[] = [];
@@ -74,15 +91,21 @@ export const runSecurityCheck = async (
   const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
   const totalItems = allItems.length;
 
-  // NOTE: numOfTasks uses totalItems (not batches.length) intentionally.
-  // getWorkerThreadCount uses Math.ceil(numOfTasks / TASKS_PER_THREAD) to size the pool,
-  // where TASKS_PER_THREAD=100 is calibrated for fine-grained tasks.
-  // Passing batches.length (e.g. 2) would yield maxThreads=1, forcing sequential execution.
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-    numOfTasks: totalItems,
-    workerType: 'securityCheck',
-    runtime: 'worker_threads',
-  });
+  // Use pre-created task runner if available (workers already loading @secretlint in background),
+  // otherwise create one on-demand.
+  const init = deps.initTaskRunner ?? initTaskRunner;
+  const ownTaskRunner = deps.taskRunner
+    ? undefined
+    : init<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+        // NOTE: numOfTasks uses totalItems (not batches.length) intentionally.
+        // getWorkerThreadCount uses Math.ceil(numOfTasks / TASKS_PER_THREAD) to size the pool,
+        // where TASKS_PER_THREAD=100 is calibrated for fine-grained tasks.
+        numOfTasks: totalItems,
+        workerType: 'securityCheck',
+        runtime: 'worker_threads',
+      });
+  // biome-ignore lint/style/noNonNullAssertion: ownTaskRunner is guaranteed to be set when deps.taskRunner is undefined
+  const taskRunner = deps.taskRunner ?? ownTaskRunner!;
 
   // Split items into batches to reduce IPC round-trips
   const batches: SecurityCheckItem[][] = [];
@@ -118,11 +141,12 @@ export const runSecurityCheck = async (
     logger.error('Error during security check:', error);
     throw error;
   } finally {
-    // Fire-and-forget: worker threads are idle (all tasks complete).
-    // Avoiding the ~40ms synchronous termination overhead keeps
-    // the security stage off the critical path.
-    taskRunner.cleanup().catch((error) => {
-      logger.debug('Security worker pool cleanup error (non-fatal):', error);
-    });
+    // Only clean up if we created the task runner. Caller manages pre-created runners.
+    if (ownTaskRunner) {
+      // Fire-and-forget: worker threads are idle (all tasks complete).
+      ownTaskRunner.cleanup().catch((error) => {
+        logger.debug('Security worker pool cleanup error (non-fatal):', error);
+      });
+    }
   }
 };

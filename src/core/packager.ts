@@ -13,7 +13,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import { packSkill } from './skill/packSkill.js';
 
@@ -42,6 +42,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -82,6 +83,15 @@ export const pack = async (
     config.tokenCount.encoding,
   );
 
+  // Pre-initialize security worker pool with eager thread creation so @secretlint/core
+  // module loading (~150ms) overlaps with file search and collection I/O.
+  // Workers are created immediately (minThreads = maxThreads) and begin loading their
+  // modules in the background while the main thread performs file discovery.
+  const securityEnabled = config.security.enableSecurityCheck;
+  // numOfTasks estimate for pool sizing (actual count unknown until search completes).
+  // With TASKS_PER_THREAD=100, 1000 yields up to 10 threads capped by CPU count.
+  const securityTaskRunner = securityEnabled ? deps.createSecurityTaskRunner(1000) : undefined;
+
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
@@ -115,6 +125,7 @@ export const pack = async (
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
     // Neither depends on the other's results.
+    // Security workers are loading @secretlint in the background during this phase.
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
       withMemoryLogging(
@@ -134,18 +145,22 @@ export const pack = async (
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
     // Run security check and file processing concurrently.
-    // Security check uses worker threads while file processing runs on the main thread
-    // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
-    // After both complete, filter out any suspicious files from the processed results.
+    // Security workers are already warmed up (loaded @secretlint during file search/collection),
+    // so the security check starts processing immediately without module loading delay.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, securityTaskRunner),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
         return deps.processFiles(rawFiles, config, progressCallback);
       }),
     ]);
+
+    // Release security workers immediately to free CPU/memory for metrics calculation
+    if (securityTaskRunner) {
+      await securityTaskRunner.cleanup();
+    }
 
     const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       validationResult;
@@ -250,5 +265,11 @@ export const pack = async (
     metricsTaskRunner.cleanup().catch((error) => {
       logger.debug('Metrics worker pool cleanup error (non-fatal):', error);
     });
+    // Security cleanup: may already be done inline, safe to call again on error paths
+    if (securityTaskRunner) {
+      securityTaskRunner.cleanup().catch((error) => {
+        logger.debug('Security worker pool cleanup error (non-fatal):', error);
+      });
+    }
   }
 };
