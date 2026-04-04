@@ -2,16 +2,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitLogResult } from '../../../src/core/git/gitLogHandle.js';
 import { calculateGitLogMetrics } from '../../../src/core/metrics/calculateGitLogMetrics.js';
-import { countTokens, type TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
+import { getTokenCounter } from '../../../src/core/metrics/tokenCounterFactory.js';
+import type { TokenCountBatchTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
 import type { TaskRunner, WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountTask, number> => {
+const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<TokenCountBatchTask, number[]> => {
   return {
-    run: async (task: TokenCountTask) => {
-      return await countTokens(task);
+    run: async (task: TokenCountBatchTask) => {
+      const results: number[] = [];
+      for (const item of task.items) {
+        const counter = await getTokenCounter(item.encoding);
+        results.push(counter.countTokens(item.content, item.path));
+      }
+      return results;
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
@@ -167,9 +173,9 @@ describe('calculateGitLogMetrics', () => {
         commits: [],
       };
 
-      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(15);
+      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce([15]);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountBatchTask, number[]> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
       };
@@ -180,8 +186,12 @@ describe('calculateGitLogMetrics', () => {
 
       expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(1);
       expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'commit abc123\nAuthor: Test User\nDate: 2023-01-01\n\nTest commit message',
-        encoding: 'o200k_base',
+        items: [
+          {
+            content: 'commit abc123\nAuthor: Test User\nDate: 2023-01-01\n\nTest commit message',
+            encoding: 'o200k_base',
+          },
+        ],
       });
       expect(result).toEqual({ gitLogTokenCount: 15 });
     });
@@ -243,7 +253,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         commits: [],
       };
 
-      const errorTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const errorTaskRunner: TaskRunner<TokenCountBatchTask, number[]> = {
         run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
         cleanup: async () => {},
       };
@@ -328,9 +338,9 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         commits: [],
       };
 
-      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(10);
+      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce([10]);
 
-      const customTaskRunner: TaskRunner<TokenCountTask, number> = {
+      const customTaskRunner: TaskRunner<TokenCountBatchTask, number[]> = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
       };
@@ -340,8 +350,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       });
 
       expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        content: 'test log content',
-        encoding: 'cl100k_base',
+        items: [{ content: 'test log content', encoding: 'cl100k_base' }],
       });
     });
   });

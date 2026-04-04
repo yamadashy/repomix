@@ -80,13 +80,15 @@ const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
     return 'fileProcess';
   }
 
-  // calculateMetrics: has content, encoding (must check before securityCheck)
-  if ('content' in taskObj && 'encoding' in taskObj) {
-    return 'calculateMetrics';
-  }
-
-  // securityCheck: has items array (without encoding, which distinguishes it from calculateMetrics)
-  if ('items' in taskObj && !('encoding' in taskObj)) {
+  // Both calculateMetrics and securityCheck use { items: [...] } format.
+  // Distinguish by checking the first item's structure:
+  // - calculateMetrics items have 'encoding'
+  // - securityCheck items have 'type'
+  if ('items' in taskObj && Array.isArray(taskObj.items)) {
+    const firstItem = taskObj.items[0] as Record<string, unknown> | undefined;
+    if (firstItem && 'encoding' in firstItem) {
+      return 'calculateMetrics';
+    }
     return 'securityCheck';
   }
 
