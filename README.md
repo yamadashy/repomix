@@ -1802,6 +1802,19 @@ When bundling repomix with tools like Rolldown or esbuild, some dependencies mus
 
 For a working example, see [website/server/scripts/bundle.mjs](https://github.com/yamadashy/repomix/blob/main/website/server/scripts/bundle.mjs).
 
+## 🌍 Community Projects
+
+Discover amazing projects built by the Repomix community!
+
+- [Repomix Runner](https://github.com/massdo/repomix-runner) - VSCode extension for bundling files into a single output for AI processing
+- [Repomix Desktop](https://github.com/KevanMacGee/Repomix-Desktop) - GUI desktop application for Repomix built with Python and CustomTkinter
+- [Python Repomix](https://github.com/AndersonBY/python-repomix) - Python implementation with AST-based compression
+- [Rulefy](https://github.com/niklub/rulefy) - Transform GitHub repos into custom Cursor AI rules using Claude AI
+- [Codebase MCP](https://github.com/DeDeveloper23/codebase-mcp) - MCP server that uses Repomix for AI-powered codebase analysis
+- [vibe-tools](https://github.com/eastlondoner/vibe-tools) - CLI toolset for AI agents with web search, repo analysis, and browser automation
+
+For more details, visit our [Community Projects page](https://repomix.com/guide/community-projects).
+
 ## 🤝 Contribution
 
 We welcome contributions from the community! To get started, please refer to our [Contributing Guide](CONTRIBUTING.md).

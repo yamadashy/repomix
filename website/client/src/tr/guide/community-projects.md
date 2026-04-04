@@ -10,6 +10,13 @@ Dosyaları yapay zeka işleme için tek bir çıktıda paketlemeye yardımcı ol
 **Depo**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)
 **Market**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## Masaüstü Uygulamaları
+
+### Repomix Desktop
+Repomix CLI için GUI sarmalayıcı sağlayan bir topluluk masaüstü uygulaması. Python ve CustomTkinter ile oluşturulmuş olup, terminal kullanmadan kullanıcı dostu bir arayüz sunar.
+
+**Depo**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## Dil Uygulamaları
 
 ### Python Repomix

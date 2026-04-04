@@ -10,6 +10,13 @@ Ekstensi VSCode yang membantu menggabungkan file menjadi satu output untuk pemro
 **Repository**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)  
 **Marketplace**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## Aplikasi Desktop
+
+### Repomix Desktop
+Aplikasi desktop komunitas yang menyediakan wrapper GUI untuk Repomix CLI. Dibangun dengan Python dan CustomTkinter, menawarkan antarmuka yang ramah pengguna tanpa perlu menggunakan terminal.
+
+**Repository**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## Implementasi Bahasa
 
 ### Python Repomix
