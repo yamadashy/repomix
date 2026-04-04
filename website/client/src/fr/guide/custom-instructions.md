@@ -37,3 +37,10 @@ Ce dépôt contient le code source de l'outil Repomix. Veuillez suivre ces direc
 3. Ignorez tous les fichiers dans le répertoire `tests`.
 </instruction>
 ```
+
+## Ressources associées
+
+- [Configuration](/fr/guide/configuration) - Définir `output.instructionFilePath` dans le fichier de configuration
+- [Formats de sortie](/fr/guide/output) - Découvrir les différents formats de sortie
+- [Exemples de prompts](/fr/guide/prompt-examples) - Exemples de prompts pour l'analyse IA
+- [Cas d'utilisation](/fr/guide/use-cases) - Exemples concrets d'utilisation de Repomix avec l'IA

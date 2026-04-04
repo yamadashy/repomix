@@ -150,3 +150,10 @@ Identifique gargalos de performance e receba recomendações de otimização.
 ```
 Analise este codebase para gargalos de performance. Procure por algoritmos ineficientes, consultas desnecessárias ao banco de dados, vazamentos de memória e áreas que poderiam se beneficiar de cache ou otimização.
 ```
+
+## Recursos relacionados
+
+- [Exemplos de Prompts](/pt-br/guide/prompt-examples) - Mais modelos de prompts para análise de IA
+- [Formatos de Saída](/pt-br/guide/output) - Escolher o melhor formato para seu modelo de IA
+- [Instruções Personalizadas](/pt-br/guide/custom-instructions) - Adicionar contexto para guiar a análise de IA
+- [Processamento de Repositório GitHub](/pt-br/guide/remote-repository-processing) - Analisar repositórios remotos

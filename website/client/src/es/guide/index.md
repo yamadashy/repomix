@@ -62,6 +62,8 @@ Con todo el código disponible como contexto, Repomix permite una amplia varieda
 - [Guía de uso](usage.md): Aprende sobre las funciones básicas y avanzadas
 - [Configuración](configuration.md): Personaliza Repomix para tus necesidades
 - [Funciones de seguridad](security.md): Aprende sobre las comprobaciones de seguridad
+- [Formatos de salida](output.md): Elige el mejor formato para tu modelo de IA
+- [Servidor MCP](mcp-server.md): Integra Repomix directamente con asistentes de IA
 
 ## Comunidad
 

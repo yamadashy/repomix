@@ -40,3 +40,9 @@ Python-реализация Repomix со сжатием на основе AST д
 Набор CLI-инструментов для ИИ-агентов с множеством возможностей, включая веб-поиск через Perplexity, анализ репозиториев с Gemini и Repomix, и автоматизацию браузера с Stagehand.
 
 **Репозиторий**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## Связанные ресурсы
+
+- [Установка](/ru/guide/installation) - Установить Repomix CLI или расширение для браузера
+- [MCP-сервер](/ru/guide/mcp-server) - Использовать Repomix как MCP-сервер для ИИ-ассистентов
+- [Плагины Claude Code](/ru/guide/claude-code-plugins) - Официальные плагины для Claude Code

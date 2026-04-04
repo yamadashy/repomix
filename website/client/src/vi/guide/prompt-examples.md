@@ -140,8 +140,9 @@ Khi tùy chỉnh prompt của bạn, hãy xem xét bao gồm:
 4. **Giới hạn**: Đề cập đến bất kỳ ràng buộc hoặc giới hạn nào
 5. **Ưu tiên**: Làm rõ các khía cạnh quan trọng nhất đối với bạn
 
-## Tiếp theo là gì?
+## Tài nguyên liên quan
 
-- [Sử dụng cơ bản](usage.md): Tìm hiểu cách sử dụng Repomix
-- [Định dạng đầu ra](output.md): Tìm hiểu về các định dạng đầu ra khác nhau
-- [Hướng dẫn tùy chỉnh](custom-instructions.md): Tìm hiểu về hướng dẫn tùy chỉnh
+- [Định dạng đầu ra](/vi/guide/output) - Chi tiết về từng định dạng đầu ra
+- [Hướng dẫn tùy chỉnh](/vi/guide/custom-instructions) - Thêm ngữ cảnh và hướng dẫn vào đầu ra của bạn
+- [Trường hợp sử dụng](/vi/guide/use-cases) - Ví dụ thực tế về quy trình làm việc với AI
+- [Nén mã](/vi/guide/code-compress) - Giảm số lượng token cho codebase lớn

@@ -107,6 +107,12 @@ interface Item {
 ## 관련 옵션
 
 압축은 다음 옵션들과 함께 사용할 수 있습니다:
-- `--remove-comments`: 코드 주석 제거
+- `--remove-comments`: 코드 주석 제거 ([주석 제거](/ko/guide/comment-removal) 참조)
 - `--remove-empty-lines`: 빈 줄 제거
 - `--output-show-line-numbers`: 출력에 줄 번호 추가
+
+## 관련 리소스
+
+- [주석 제거](/ko/guide/comment-removal) - 주석을 제거하여 토큰 수를 더 줄이기
+- [설정](/ko/guide/configuration) - 설정 파일에서 `output.compress` 설정
+- [명령행 옵션](/ko/guide/command-line-options) - 전체 CLI 레퍼런스

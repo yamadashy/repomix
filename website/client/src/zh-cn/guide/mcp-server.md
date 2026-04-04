@@ -252,3 +252,10 @@ const dirContent = await tools.file_system_read_directory({
 4. **高级功能**：利用 Repomix 的所有功能，如代码压缩、token 计数和安全检查。
 
 配置完成后，你的 AI 助手可以直接使用 Repomix 的功能来分析代码库，使代码分析工作流更加高效。
+
+## 相关资源
+
+- [Claude Code 插件](/zh-cn/guide/claude-code-plugins) - 便捷的 Claude Code 插件集成
+- [配置](/zh-cn/guide/configuration) - 自定义 Repomix 行为
+- [命令行选项](/zh-cn/guide/command-line-options) - 完整的 CLI 参考
+- [输出格式](/zh-cn/guide/output) - 了解可用的输出格式

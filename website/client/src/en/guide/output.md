@@ -260,3 +260,10 @@ Set default format in `repomix.config.json`:
   }
 }
 ```
+
+## Related Resources
+
+- [Configuration](/guide/configuration) - Full configuration options reference
+- [Command Line Options](/guide/command-line-options) - Use `--style` to set output format
+- [Code Compression](/guide/code-compress) - Reduce token count while preserving structure
+- [Prompt Examples](/guide/prompt-examples) - Tips for using output with different AI models

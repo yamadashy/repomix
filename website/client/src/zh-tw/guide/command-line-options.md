@@ -59,6 +59,13 @@
 ## MCP 選項
 - `--mcp`: 作為 Model Context Protocol 伺服器運行，用於 AI 工具整合
 
+## 相關資源
+
+- [設定](/zh-tw/guide/configuration) - 透過設定檔而非 CLI 旗標設定選項
+- [輸出格式](/zh-tw/guide/output) - XML、Markdown、JSON 和純文字格式詳解
+- [程式碼壓縮](/zh-tw/guide/code-compress) - `--compress` 與 Tree-sitter 的運作原理
+- [安全](/zh-tw/guide/security) - `--no-security-check` 停用的功能
+
 ## 範例
 
 ```bash

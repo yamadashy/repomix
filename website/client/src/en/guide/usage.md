@@ -102,7 +102,9 @@ When using `--stdin`, the specified files are effectively added to the include p
 > [!NOTE]
 > When using `--stdin`, file paths can be relative or absolute, and Repomix will automatically handle path resolution and deduplication.
 
-### Code Compression
+### Code Compression {#code-compression}
+
+Reduce token count while preserving code structure. See the [Code Compression guide](/guide/code-compress) for details.
 
 ```bash
 repomix --compress
@@ -194,6 +196,9 @@ repomix --style plain
 ## Additional Options
 
 ### Remove Comments
+
+See [Comment Removal](/guide/comment-removal) for supported languages and details.
+
 ```bash
 repomix --remove-comments
 ```
@@ -209,6 +214,9 @@ repomix --copy
 ```
 
 ### Disable Security Check
+
+See [Security](/guide/security) for details on what Repomix detects.
+
 ```bash
 repomix --no-security-check
 ```
@@ -221,3 +229,10 @@ repomix --init
 ```
 
 See [Configuration Guide](/guide/configuration) for detailed options.
+
+## Related Resources
+
+- [Output Formats](/guide/output) - Learn about XML, Markdown, JSON, and plain text formats
+- [Command Line Options](/guide/command-line-options) - Full CLI reference
+- [Prompt Examples](/guide/prompt-examples) - Example prompts for AI analysis
+- [Use Cases](/guide/use-cases) - Real-world examples and workflows

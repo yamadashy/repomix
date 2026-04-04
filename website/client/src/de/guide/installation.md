@@ -80,3 +80,9 @@ Erhalten Sie direkten Zugang zu Repomix von jedem GitHub-Repository! Unsere Chro
 repomix --version
 repomix --help
 ```
+
+## Verwandte Ressourcen
+
+- [Grundlegende Verwendung](/de/guide/usage) - Lernen Sie, wie man Repomix verwendet
+- [Konfiguration](/de/guide/configuration) - Passen Sie Repomix an Ihre Bedürfnisse an
+- [Befehlszeilenoptionen](/de/guide/command-line-options) - Vollständige CLI-Referenz

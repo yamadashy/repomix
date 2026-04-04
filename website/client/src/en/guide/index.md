@@ -60,8 +60,10 @@ With the entire codebase available as context, Repomix enables a wide range of a
 
 - [Installation Guide](installation.md): Different ways to install Repomix
 - [Usage Guide](usage.md): Learn about basic and advanced features
+- [Output Formats](output.md): Choose the best format for your AI model
 - [Configuration](configuration.md): Customize Repomix for your needs
 - [Security Features](security.md): Learn about security checks
+- [MCP Server](mcp-server.md): Integrate Repomix with AI assistants directly
 
 ## Community
 

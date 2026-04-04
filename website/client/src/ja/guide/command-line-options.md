@@ -59,6 +59,12 @@
 ## MCPオプション
 - `--mcp`: AI ツール統合用のModel Context Protocolサーバーとして実行
 
+## 関連リソース
+
+- [設定](/ja/guide/configuration) - CLIフラグの代わりに設定ファイルでオプションを指定
+- [出力フォーマット](/ja/guide/output) - XML、Markdown、JSON、プレーンテキストの詳細
+- [コード圧縮](/ja/guide/code-compress) - `--compress`とTree-sitterの仕組み
+- [セキュリティ](/ja/guide/security) - `--no-security-check`で無効になる機能
 
 ## 使用例
 

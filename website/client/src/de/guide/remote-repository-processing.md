@@ -87,4 +87,11 @@ repomix --remote user/repo --config /home/user/repomix.config.json
 ### Große Repositories
 - Verwenden Sie `--include`, um bestimmte Pfade auszuwählen
 - Aktivieren Sie `--remove-comments`
-- Verarbeiten Sie Branches separat 
+- Verarbeiten Sie Branches separat
+
+## Verwandte Ressourcen
+
+- [Befehlszeilenoptionen](/de/guide/command-line-options) - Vollständige CLI-Referenz einschließlich `--remote`-Optionen
+- [Konfiguration](/de/guide/configuration) - Standardoptionen für Remote-Verarbeitung einrichten
+- [Code-Komprimierung](/de/guide/code-compress) - Ausgabegröße für große Repositories reduzieren
+- [Sicherheit](/de/guide/security) - Wie Repomix sensible Daten erkennt

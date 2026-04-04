@@ -59,6 +59,13 @@
 ## Opzioni MCP
 - `--mcp`: Funziona come server Model Context Protocol per l'integrazione di strumenti IA
 
+## Risorse correlate
+
+- [Configurazione](/it/guide/configuration) - Impostare le opzioni nel file di configurazione invece dei flag CLI
+- [Formati di Output](/it/guide/output) - Dettagli su XML, Markdown, JSON e testo semplice
+- [Compressione Codice](/it/guide/code-compress) - Come funziona `--compress` con Tree-sitter
+- [Sicurezza](/it/guide/security) - Cosa disabilita `--no-security-check`
+
 ## Esempi
 
 ```bash

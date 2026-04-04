@@ -64,3 +64,10 @@ Repomix는 출력 파일에 포함될 사용자 정의 지시사항을 제공할
 - 프로젝트의 변화를 반영하여 정기적으로 지시사항을 업데이트하세요
 - 지시사항이 프로젝트의 다른 문서와 일관성을 유지하도록 하세요
 - 명확한 계층 구조를 사용하여 콘텐츠를 구성하세요
+
+## 관련 리소스
+
+- [설정](/ko/guide/configuration) - 설정 파일에서 `output.instructionFilePath` 설정
+- [출력 형식](/ko/guide/output) - 다양한 출력 형식 알아보기
+- [프롬프트 예시](/ko/guide/prompt-examples) - AI 분석을 위한 예시 프롬프트
+- [사용 사례](/ko/guide/use-cases) - AI와 함께 Repomix를 사용하는 실제 예시

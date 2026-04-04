@@ -252,3 +252,10 @@ Die Verwendung von Repomix als MCP-Server bietet mehrere Vorteile:
 4. **Erweiterte Funktionen**: Nutzt alle Funktionen von Repomix wie Code-Komprimierung, Token-Zählung und Sicherheitsprüfungen.
 
 Nach der Konfiguration kann Ihr KI-Assistent die Funktionen von Repomix direkt nutzen, um Codebasen zu analysieren, was Codeanalyse-Workflows effizienter macht.
+
+## Verwandte Ressourcen
+
+- [Claude Code Plugins](/de/guide/claude-code-plugins) - Komfortable Plugin-Integration für Claude Code
+- [Konfiguration](/de/guide/configuration) - Repomix-Verhalten anpassen
+- [Befehlszeilenoptionen](/de/guide/command-line-options) - Vollständige CLI-Referenz
+- [Ausgabeformate](/de/guide/output) - Verfügbare Ausgabeformate kennenlernen

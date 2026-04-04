@@ -314,3 +314,11 @@ Ketika `output.removeComments` diset ke `true`, komentar dihapus dari jenis file
 - Fokus pada struktur dan logika kode
 
 Untuk bahasa yang didukung dan contoh detail, lihat [Panduan Penghapusan Komentar](comment-removal).
+
+## Sumber Daya Terkait
+
+- [Opsi Baris Perintah](/id/guide/command-line-options) - Referensi CLI lengkap (opsi CLI menimpa pengaturan file konfigurasi)
+- [Format Output](/id/guide/output) - Detail tentang setiap format output
+- [Keamanan](/id/guide/security) - Bagaimana Repomix mendeteksi informasi sensitif
+- [Kompresi Kode](/id/guide/code-compress) - Kurangi jumlah token dengan Tree-sitter
+- [Pemrosesan Repositori GitHub](/id/guide/remote-repository-processing) - Opsi untuk repositori remote

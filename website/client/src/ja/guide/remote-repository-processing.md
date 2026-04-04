@@ -88,3 +88,10 @@ repomix --remote user/repo --config /home/user/repomix.config.json
 - `--include`で特定のパスを選択
 - `--remove-comments`を有効化
 - ブランチごとに個別に処理
+
+## 関連リソース
+
+- [コマンドラインオプション](/ja/guide/command-line-options) - `--remote`オプションを含むCLIリファレンス
+- [設定](/ja/guide/configuration) - リモート処理のデフォルトオプションを設定
+- [コード圧縮](/ja/guide/code-compress) - 大規模リポジトリの出力サイズを削減
+- [セキュリティ](/ja/guide/security) - 機密データ検出の仕組み

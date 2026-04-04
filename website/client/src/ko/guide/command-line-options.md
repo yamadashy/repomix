@@ -59,6 +59,13 @@
 ## MCP 옵션
 - `--mcp`: AI 도구 통합을 위한 Model Context Protocol 서버로 실행
 
+## 관련 리소스
+
+- [설정](/ko/guide/configuration) - CLI 플래그 대신 설정 파일로 옵션 지정
+- [출력 형식](/ko/guide/output) - XML, Markdown, JSON, 일반 텍스트 형식 상세 정보
+- [코드 압축](/ko/guide/code-compress) - `--compress`와 Tree-sitter의 작동 방식
+- [보안](/ko/guide/security) - `--no-security-check`로 비활성화되는 기능
+
 ## 예시
 
 ```bash

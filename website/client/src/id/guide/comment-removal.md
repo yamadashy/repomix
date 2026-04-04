@@ -51,3 +51,9 @@ Penghapusan komentar paling berguna ketika:
 - Anda ingin fokus hanya pada kode yang dapat dieksekusi
 
 Jika komentar Anda berisi informasi penting yang membantu memahami kode, Anda mungkin ingin mempertahankannya.
+
+## Sumber Daya Terkait
+
+- [Kompresi Kode](/id/guide/code-compress) - Kurangi jumlah token lebih lanjut dengan mengekstrak struktur kode
+- [Konfigurasi](/id/guide/configuration) - Atur `output.removeComments` di file konfigurasi Anda
+- [Opsi Baris Perintah](/id/guide/command-line-options) - Gunakan flag `--remove-comments`

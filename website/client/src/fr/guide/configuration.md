@@ -366,3 +366,11 @@ Lorsque `output.removeComments` est défini à `true`, les commentaires sont sup
 - Vous vous concentrez sur la structure et la logique du code
 
 Pour les langages pris en charge et des exemples détaillés, consultez le [Guide de suppression des commentaires](comment-removal).
+
+## Ressources associées
+
+- [Options de ligne de commande](/fr/guide/command-line-options) - Référence complète de la CLI (les options CLI ont la priorité sur la configuration)
+- [Formats de sortie](/fr/guide/output) - Détails sur chaque format de sortie
+- [Sécurité](/fr/guide/security) - Comment Repomix détecte les informations sensibles
+- [Compression de code](/fr/guide/code-compress) - Réduire le nombre de tokens avec Tree-sitter
+- [Traitement des dépôts GitHub](/fr/guide/remote-repository-processing) - Options pour les dépôts distants

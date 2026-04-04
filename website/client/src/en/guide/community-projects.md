@@ -41,3 +41,9 @@ CLI toolset for AI agents with multiple capabilities including web search via Pe
 
 **Repository**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
 
+## Related Resources
+
+- [Installation](/guide/installation) - Install Repomix CLI or browser extension
+- [MCP Server](/guide/mcp-server) - Use Repomix as an MCP server for AI assistants
+- [Claude Code Plugins](/guide/claude-code-plugins) - Official plugins for Claude Code
+

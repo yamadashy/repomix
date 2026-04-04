@@ -102,7 +102,9 @@ echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
 > [!NOTE]
 > `--stdin` kullanıldığında dosya yolları göreceli veya mutlak olabilir; Repomix yol çözümlemesi ve tekilleştirmeyi otomatik olarak gerçekleştirir.
 
-### Kod Sıkıştırma
+### Kod Sıkıştırma {#code-compression}
+
+Kod yapısını koruyarak token sayısını azaltın. Ayrıntılar için [Kod Sıkıştırma kılavuzuna](/tr/guide/code-compress) bakın.
 
 ```bash
 repomix --compress
@@ -194,6 +196,9 @@ repomix --style plain
 ## Ek Seçenekler
 
 ### Yorumları Kaldırma
+
+Desteklenen diller ve ayrıntılar için [Yorum Kaldırma](/tr/guide/comment-removal) sayfasına bakın.
+
 ```bash
 repomix --remove-comments
 ```
@@ -209,6 +214,9 @@ repomix --copy
 ```
 
 ### Güvenlik Kontrolünü Devre Dışı Bırakma
+
+Repomix'in neleri tespit ettiğine dair ayrıntılar için [Güvenlik](/tr/guide/security) sayfasına bakın.
+
 ```bash
 repomix --no-security-check
 ```
@@ -221,3 +229,10 @@ repomix --init
 ```
 
 Ayrıntılı seçenekler için [Yapılandırma Rehberi](/tr/guide/configuration)'ne bakın.
+
+## İlgili Kaynaklar
+
+- [Çıktı Formatları](/tr/guide/output) - XML, Markdown, JSON ve düz metin formatları hakkında bilgi edinin
+- [Komut Satırı Seçenekleri](/tr/guide/command-line-options) - Tam CLI referansı
+- [Prompt Örnekleri](/tr/guide/prompt-examples) - AI analizi için örnek promptlar
+- [Kullanım Senaryoları](/tr/guide/use-cases) - Gerçek dünya örnekleri ve iş akışları

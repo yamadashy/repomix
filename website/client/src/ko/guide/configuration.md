@@ -366,3 +366,11 @@ build/
 - 코드 구조와 로직에 집중
 
 지원되는 언어와 자세한 예시는 [주석 제거 가이드](comment-removal)를 참조하세요.
+
+## 관련 리소스
+
+- [명령행 옵션](/ko/guide/command-line-options) - 전체 CLI 레퍼런스 (CLI 옵션이 설정 파일 설정보다 우선)
+- [출력 형식](/ko/guide/output) - 각 출력 형식의 상세 정보
+- [보안](/ko/guide/security) - Repomix의 민감한 정보 감지 방식
+- [코드 압축](/ko/guide/code-compress) - Tree-sitter로 토큰 수 줄이기
+- [GitHub 저장소 처리](/ko/guide/remote-repository-processing) - 원격 저장소 처리 옵션

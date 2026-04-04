@@ -98,3 +98,10 @@
 
 提供具體的良好和問題模式示例。
 ```
+
+## 相關資源
+
+- [輸出格式](/zh-tw/guide/output) - 各種輸出格式的詳細說明
+- [自定義指令](/zh-tw/guide/custom-instructions) - 為輸出添加上下文和指引
+- [使用案例](/zh-tw/guide/use-cases) - AI 輔助工作流程的實際案例
+- [程式碼壓縮](/zh-tw/guide/code-compress) - 為大型程式碼庫減少令牌數量

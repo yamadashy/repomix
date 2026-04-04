@@ -59,6 +59,13 @@
 ## Tùy chọn MCP
 - `--mcp`: Chạy như máy chủ Model Context Protocol để tích hợp công cụ AI
 
+## Tài nguyên liên quan
+
+- [Cấu hình](/vi/guide/configuration) - Đặt các tùy chọn trong tệp cấu hình thay vì cờ CLI
+- [Định dạng đầu ra](/vi/guide/output) - Chi tiết về các định dạng XML, Markdown, JSON và văn bản thuần túy
+- [Nén mã](/vi/guide/code-compress) - Cách `--compress` hoạt động với Tree-sitter
+- [Bảo mật](/vi/guide/security) - `--no-security-check` vô hiệu hóa những gì
+
 ## Ví dụ
 
 ```bash

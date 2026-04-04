@@ -122,3 +122,10 @@
 - 适用于所有格式
 - 每次请求专注于特定领域
 - 使用逐步分析
+
+## 相关资源
+
+- [输出格式](/zh-cn/guide/output) - 各种输出格式的详细说明
+- [自定义指令](/zh-cn/guide/custom-instructions) - 为输出添加上下文和指引
+- [使用场景](/zh-cn/guide/use-cases) - AI 辅助工作流的实际案例
+- [代码压缩](/zh-cn/guide/code-compress) - 为大型代码库减少 Token 数量

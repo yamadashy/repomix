@@ -88,3 +88,10 @@ repomix --remote user/repo --config /home/user/repomix.config.json
 - `--include`를 사용하여 특정 경로 선택
 - `--remove-comments` 활성화
 - 브랜치별로 개별 처리
+
+## 관련 리소스
+
+- [명령행 옵션](/ko/guide/command-line-options) - `--remote` 옵션을 포함한 전체 CLI 레퍼런스
+- [설정](/ko/guide/configuration) - 원격 처리를 위한 기본 옵션 설정
+- [코드 압축](/ko/guide/code-compress) - 대규모 저장소의 출력 크기 줄이기
+- [보안](/ko/guide/security) - Repomix의 민감한 데이터 감지 방식

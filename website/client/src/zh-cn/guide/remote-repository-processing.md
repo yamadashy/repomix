@@ -88,3 +88,10 @@ repomix --remote user/repo --config /home/user/repomix.config.json
 - 使用 `--include` 选择特定路径
 - 启用 `--remove-comments`
 - 分开处理不同分支
+
+## 相关资源
+
+- [命令行选项](/zh-cn/guide/command-line-options) - 完整的 CLI 参考，包括 `--remote` 选项
+- [配置](/zh-cn/guide/configuration) - 为远程处理设置默认选项
+- [代码压缩](/zh-cn/guide/code-compress) - 为大型仓库减少输出大小
+- [安全](/zh-cn/guide/security) - Repomix 如何处理敏感数据检测

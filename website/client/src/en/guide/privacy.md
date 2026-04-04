@@ -5,9 +5,9 @@
 - **Data Collection**: The Repomix CLI tool does **not** collect, transmit, or store any user data, telemetry, or repository information.
 - **Network Usage**: Repomix CLI operates fully offline after installation. The only cases where an internet connection is needed are:
   - Installation via npm/yarn.
-  - Using the `--remote` flag to process remote repositories.
+  - Using the [`--remote` flag](/guide/remote-repository-processing) to process remote repositories.
   - Checking for updates (manually triggered).
-- **Security Considerations**: Since all processing is local, Repomix CLI is safe to use with private and internal repositories.
+- **Security Considerations**: Since all processing is local, Repomix CLI is safe to use with private and internal repositories. See the [Security](/guide/security) page for more details on sensitive data detection.
 
 ## Repomix Website ([repomix.com](https://repomix.com/))
 

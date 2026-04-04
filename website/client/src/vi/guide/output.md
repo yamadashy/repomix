@@ -335,8 +335,9 @@ Mặc định, Repomix sẽ tạo:
 - `repomix-output.md` cho định dạng Markdown
 - `repomix-output.txt` cho định dạng văn bản thuần túy
 
-## Tiếp theo là gì?
+## Tài nguyên liên quan
 
-- [Tùy chọn dòng lệnh](command-line-options.md): Xem tất cả các tùy chọn dòng lệnh có sẵn
-- [Cấu hình](configuration.md): Tìm hiểu về tệp cấu hình
-- [Xóa bình luận](comment-removal.md): Tìm hiểu thêm về tính năng xóa bình luận
+- [Cấu hình](/vi/guide/configuration) - Tham chiếu đầy đủ về tùy chọn cấu hình
+- [Tùy chọn dòng lệnh](/vi/guide/command-line-options) - Sử dụng `--style` để đặt định dạng đầu ra
+- [Nén mã](/vi/guide/code-compress) - Giảm số lượng token mà vẫn bảo toàn cấu trúc
+- [Ví dụ prompt](/vi/guide/prompt-examples) - Mẹo sử dụng đầu ra với các mô hình AI khác nhau

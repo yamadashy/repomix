@@ -252,3 +252,10 @@ Menggunakan Repomix sebagai server MCP menawarkan beberapa keuntungan:
 4. **Fitur Lanjutan**: Memanfaatkan semua fitur Repomix seperti kompresi kode, penghitungan token, dan pemeriksaan keamanan.
 
 Setelah dikonfigurasi, asisten AI Anda dapat langsung menggunakan kemampuan Repomix untuk menganalisis codebase, membuat workflow analisis kode lebih efisien.
+
+## Sumber Daya Terkait
+
+- [Plugin Claude Code](/id/guide/claude-code-plugins) - Integrasi plugin yang nyaman untuk Claude Code
+- [Konfigurasi](/id/guide/configuration) - Kustomisasi perilaku Repomix
+- [Opsi Baris Perintah](/id/guide/command-line-options) - Referensi CLI lengkap
+- [Format Output](/id/guide/output) - Pelajari tentang format output yang tersedia

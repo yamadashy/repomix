@@ -107,6 +107,12 @@ Kod sıkıştırma özellikle şu durumlarda işe yarar:
 ## İlgili Seçenekler
 
 Sıkıştırmayı diğer seçeneklerle birleştirebilirsiniz:
-- `--remove-comments`: Kod yorumlarını kaldırır
+- `--remove-comments`: Kod yorumlarını kaldırır (bkz. [Yorum Kaldırma](/tr/guide/comment-removal))
 - `--remove-empty-lines`: Boş satırları kaldırır
 - `--output-show-line-numbers`: Çıktıya satır numaraları ekler
+
+## İlgili Kaynaklar
+
+- [Yorum Kaldırma](/tr/guide/comment-removal) - Token sayısını daha da azaltmak için yorumları kaldırın
+- [Yapılandırma](/tr/guide/configuration) - Yapılandırma dosyanızda `output.compress` ayarlayın
+- [Komut Satırı Seçenekleri](/tr/guide/command-line-options) - Tam CLI referansı

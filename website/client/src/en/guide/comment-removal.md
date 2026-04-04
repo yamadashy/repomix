@@ -52,3 +52,9 @@ function test() {
 
 - Comment removal is performed before other processing steps, such as line number addition.
 - Some comments, such as JSDoc comments, may be preserved depending on the language and context.
+
+## Related Resources
+
+- [Code Compression](/guide/code-compress) - Further reduce token count by extracting code structure
+- [Configuration](/guide/configuration) - Set `output.removeComments` in your config file
+- [Command Line Options](/guide/command-line-options) - Use `--remove-comments` flag

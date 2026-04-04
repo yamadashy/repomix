@@ -40,3 +40,11 @@ Este repositorio contiene el código fuente de la herramienta Repomix. Por favor
 2. Presta especial atención a las verificaciones de seguridad en `src/core/security`.
 3. Ignora cualquier archivo en el directorio `tests`.
 </instruction>
+```
+
+## Recursos relacionados
+
+- [Configuración](/es/guide/configuration) - Establecer `output.instructionFilePath` en el archivo de configuración
+- [Formatos de salida](/es/guide/output) - Conocer los diferentes formatos de salida
+- [Ejemplos de prompts](/es/guide/prompt-examples) - Ejemplos de prompts para análisis de IA
+- [Casos de uso](/es/guide/use-cases) - Ejemplos reales del uso de Repomix con IA

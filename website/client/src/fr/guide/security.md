@@ -63,3 +63,9 @@ Vous avez trouvé une vulnérabilité de sécurité? Veuillez:
 1. Ne pas ouvrir un ticket public
 2. Envoyer un email à: koukun0120@gmail.com
 3. Ou utiliser les [Avis de sécurité GitHub](https://github.com/yamadashy/repomix/security/advisories/new)
+
+## Ressources associées
+
+- [Configuration](/fr/guide/configuration) - Configurer les vérifications de sécurité via `security.enableSecurityCheck`
+- [Options de ligne de commande](/fr/guide/command-line-options) - Utiliser le flag `--no-security-check`
+- [Politique de confidentialité](/fr/guide/privacy) - En savoir plus sur le traitement des données par Repomix

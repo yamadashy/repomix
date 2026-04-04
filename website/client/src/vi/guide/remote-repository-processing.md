@@ -158,8 +158,9 @@ Khi sử dụng `--config` với `--remote`, cần chỉ định đường dẫn
 repomix --remote user/repo --config /home/user/repomix.config.json
 ```
 
-## Tiếp theo là gì?
+## Tài nguyên liên quan
 
-- [Tùy chọn dòng lệnh](command-line-options.md): Xem tất cả các tùy chọn dòng lệnh có sẵn
-- [Cấu hình](configuration.md): Tìm hiểu về tệp cấu hình
-- [GitHub Actions](github-actions.md): Tìm hiểu về tích hợp GitHub Actions
+- [Tùy chọn dòng lệnh](/vi/guide/command-line-options) - Tham chiếu CLI đầy đủ bao gồm các tùy chọn `--remote`
+- [Cấu hình](/vi/guide/configuration) - Thiết lập các tùy chọn mặc định cho xử lý từ xa
+- [Nén mã](/vi/guide/code-compress) - Giảm kích thước đầu ra cho các kho lưu trữ lớn
+- [Bảo mật](/vi/guide/security) - Cách Repomix xử lý phát hiện dữ liệu nhạy cảm

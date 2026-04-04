@@ -102,7 +102,9 @@ Bei der Verwendung von `--stdin` werden die angegebenen Dateien effektiv zu den 
 > [!NOTE]
 > Bei der Verwendung von `--stdin` können Dateipfade relativ oder absolut angegeben werden, und Repomix übernimmt automatisch die Pfadauflösung und Deduplizierung.
 
-### Code-Komprimierung
+### Code-Komprimierung {#code-compression}
+
+Reduzieren Sie die Token-Anzahl und bewahren Sie die Code-Struktur. Details finden Sie im Leitfaden zur [Code-Komprimierung](/de/guide/code-compress).
 
 ```bash
 repomix --compress
@@ -194,6 +196,9 @@ repomix --style plain
 ## Zusätzliche Optionen
 
 ### Kommentare entfernen
+
+Unterstützte Sprachen und Details finden Sie unter [Kommentarentfernung](/de/guide/comment-removal).
+
 ```bash
 repomix --remove-comments
 ```
@@ -209,6 +214,9 @@ repomix --copy
 ```
 
 ### Sicherheitsprüfung deaktivieren
+
+Details zu den Erkennungen von Repomix finden Sie unter [Sicherheit](/de/guide/security).
+
 ```bash
 repomix --no-security-check
 ```
@@ -220,4 +228,11 @@ Konfigurationsdatei initialisieren:
 repomix --init
 ```
 
-Siehe [Konfigurationsleitfaden](/de/guide/configuration) für detaillierte Optionen. 
+Siehe [Konfigurationsleitfaden](/de/guide/configuration) für detaillierte Optionen.
+
+## Verwandte Ressourcen
+
+- [Ausgabeformate](/de/guide/output) - XML, Markdown, JSON und Klartext-Formate kennenlernen
+- [Befehlszeilenoptionen](/de/guide/command-line-options) - Vollständige CLI-Referenz
+- [Prompt-Beispiele](/de/guide/prompt-examples) - Beispiel-Prompts für KI-Analyse
+- [Anwendungsfälle](/de/guide/use-cases) - Praxisbeispiele und Workflows

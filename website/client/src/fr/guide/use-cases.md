@@ -150,3 +150,10 @@ Identifiez les goulots d'étranglement de performance et recevez des recommandat
 ```
 Analysez cette base de code pour les goulots d'étranglement de performance. Recherchez les algorithmes inefficaces, les requêtes de base de données inutiles, les fuites mémoire et les zones qui pourraient bénéficier de mise en cache ou d'optimisation.
 ```
+
+## Ressources associées
+
+- [Exemples de prompts](/fr/guide/prompt-examples) - Plus de modèles de prompts pour l'analyse IA
+- [Formats de sortie](/fr/guide/output) - Choisir le meilleur format pour votre modèle IA
+- [Instructions personnalisées](/fr/guide/custom-instructions) - Ajouter du contexte pour guider l'analyse IA
+- [Traitement des dépôts GitHub](/fr/guide/remote-repository-processing) - Analyser des dépôts distants

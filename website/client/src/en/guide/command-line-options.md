@@ -58,6 +58,14 @@
 
 ## MCP Options
 - `--mcp`: Run as Model Context Protocol server for AI tool integration
+
+## Related Resources
+
+- [Configuration](/guide/configuration) - Set options in your config file instead of CLI flags
+- [Output Formats](/guide/output) - Details on XML, Markdown, JSON, and plain text formats
+- [Code Compression](/guide/code-compress) - How `--compress` works with Tree-sitter
+- [Security](/guide/security) - What `--no-security-check` disables
+
 ## Examples
 
 ```bash

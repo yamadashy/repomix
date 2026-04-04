@@ -150,3 +150,10 @@ Performans darboğazlarını belirleyin ve optimizasyon önerileri alın.
 ```
 Bu kod tabanını performans darboğazları açısından analiz edin. Verimsiz algoritmalar, gereksiz veritabanı sorguları, bellek sızıntıları ve önbellekleme veya optimizasyondan fayda sağlayabilecek alanları araştırın.
 ```
+
+## İlgili Kaynaklar
+
+- [Prompt Örnekleri](/tr/guide/prompt-examples) - AI analizi için daha fazla prompt şablonu
+- [Çıktı Formatları](/tr/guide/output) - AI modeliniz için en iyi formatı seçin
+- [Özel Talimatlar](/tr/guide/custom-instructions) - AI analizini yönlendirmek için bağlam ekleyin
+- [GitHub Depo İşleme](/tr/guide/remote-repository-processing) - Uzak depoları analiz edin

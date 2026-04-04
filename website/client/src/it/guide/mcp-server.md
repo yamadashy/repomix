@@ -250,3 +250,10 @@ L'uso di Repomix come server MCP offre diversi vantaggi:
 4. **Funzionalità avanzate**: Sfrutta tutte le funzionalità di Repomix come la compressione del codice, il conteggio dei token e i controlli di sicurezza.
 
 Una volta configurato, il tuo assistente IA può usare direttamente le capacità di Repomix per analizzare le codebase, rendendo i workflow di analisi del codice più efficienti.
+
+## Risorse correlate
+
+- [Plugin Claude Code](/it/guide/claude-code-plugins) - Integrazione pratica dei plugin per Claude Code
+- [Configurazione](/it/guide/configuration) - Personalizzare il comportamento di Repomix
+- [Opzioni da Linea di Comando](/it/guide/command-line-options) - Riferimento completo della CLI
+- [Formati di Output](/it/guide/output) - Scoprire i formati di output disponibili

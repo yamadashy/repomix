@@ -366,3 +366,11 @@ Wenn `output.removeComments` auf `true` gesetzt ist, werden Kommentare aus unter
 - Fokussierung auf Code-Struktur und -Logik
 
 Unterstützte Sprachen und detaillierte Beispiele finden Sie im [Kommentarentfernungs-Leitfaden](comment-removal).
+
+## Verwandte Ressourcen
+
+- [Befehlszeilenoptionen](/de/guide/command-line-options) - Vollständige CLI-Referenz (CLI-Optionen überschreiben Konfigurationsdatei-Einstellungen)
+- [Ausgabeformate](/de/guide/output) - Details zu jedem Ausgabeformat
+- [Sicherheit](/de/guide/security) - Wie Repomix sensible Informationen erkennt
+- [Code-Komprimierung](/de/guide/code-compress) - Token-Anzahl mit Tree-sitter reduzieren
+- [GitHub-Repository-Verarbeitung](/de/guide/remote-repository-processing) - Optionen für Remote-Repositories
