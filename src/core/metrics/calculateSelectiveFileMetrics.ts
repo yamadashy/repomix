@@ -1,16 +1,14 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
+import { getWorkerThreadCount, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { TokenCountItem, TokenCountTask } from './workers/calculateMetricsWorker.js';
 import type { FileMetrics } from './workers/types.js';
 
-// Batch size for grouping files into worker tasks to reduce IPC overhead.
-// A moderate batch size (50) reduces IPC round-trips by ~98%
-// while keeping enough batches to utilize all available CPU cores.
-const BATCH_SIZE = 50;
+// Minimum batches per thread to allow Tinypool work-stealing flexibility
+const MIN_BATCHES_PER_THREAD = 2;
 
 export const calculateSelectiveFileMetrics = async (
   processedFiles: ProcessedFile[],
@@ -30,6 +28,12 @@ export const calculateSelectiveFileMetrics = async (
     const startTime = process.hrtime.bigint();
     logger.trace(`Starting selective metrics calculation for ${filesToProcess.length} files using worker pool`);
 
+    // Compute dynamic batch size to ensure all worker threads stay busy.
+    // With fixed BATCH_SIZE=50 and default topFilesLength (50 files), only 1 batch
+    // would be created, serializing all work on a single thread.
+    const { maxThreads } = getWorkerThreadCount(filesToProcess.length);
+    const batchSize = Math.max(1, Math.ceil(filesToProcess.length / (maxThreads * MIN_BATCHES_PER_THREAD)));
+
     // Build items and split into batches
     const allItems: { item: TokenCountItem; file: ProcessedFile }[] = filesToProcess.map((file) => ({
       item: { content: file.content, path: file.path },
@@ -37,8 +41,8 @@ export const calculateSelectiveFileMetrics = async (
     }));
 
     const batches: { item: TokenCountItem; file: ProcessedFile }[][] = [];
-    for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-      batches.push(allItems.slice(i, i + BATCH_SIZE));
+    for (let i = 0; i < allItems.length; i += batchSize) {
+      batches.push(allItems.slice(i, i + batchSize));
     }
 
     let completedItems = 0;
