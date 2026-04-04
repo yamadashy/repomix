@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
+import { logger } from '../shared/logger.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
@@ -234,7 +235,15 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsWarmupPromise.catch(() => {});
-    await metricsTaskRunner.cleanup();
+    // Fire-and-forget: avoid blocking the return value on worker thread termination.
+    // Worker threads are idle at this point (all tasks complete) so termination
+    // is purely cleanup overhead (~100-150ms of IPC for graceful shutdown).
+    // For CLI usage the process exits shortly after pack() returns, which kills
+    // any remaining threads. For library/MCP usage the threads are still terminated
+    // asynchronously and reclaimed by the OS.
+    metricsWarmupPromise.catch(() => {});
+    metricsTaskRunner.cleanup().catch((error) => {
+      logger.debug('Metrics worker pool cleanup error (non-fatal):', error);
+    });
   }
 };
