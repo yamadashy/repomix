@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775304207825,
+  "lastUpdate": 1775313872939,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -1845,6 +1845,51 @@ window.BENCHMARK_DATA = {
             "range": "±142",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 2455ms, Q3: 2597ms\nAll times: 2423, 2436, 2440, 2452, 2455, 2456, 2465, 2481, 2495, 2498, 2507, 2536, 2558, 2572, 2597, 2604, 2607, 2630, 2719ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2accd6aaf11b9f2de5b333444f64a624ca058f05",
+          "message": "Merge pull request #1392 from yamadashy/perf/skip-binary-files-during-archive-extraction\n\nperf(core): Skip binary files during GitHub archive tar extraction",
+          "timestamp": "2026-04-04T23:42:04+09:00",
+          "tree_id": "aac69fe35bca3a2fe80588dbb4fb5d7ba2d061eb",
+          "url": "https://github.com/yamadashy/repomix/commit/2accd6aaf11b9f2de5b333444f64a624ca058f05"
+        },
+        "date": 1775313872007,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1227,
+            "range": "±160",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1199ms, Q3: 1359ms\nAll times: 1118, 1177, 1178, 1179, 1179, 1183, 1190, 1199, 1202, 1205, 1207, 1210, 1217, 1220, 1221, 1227, 1232, 1236, 1263, 1308, 1324, 1356, 1359, 1363, 1370, 1372, 1398, 1424, 1492, 1525ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1996,
+            "range": "±43",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1983ms, Q3: 2026ms\nAll times: 1960, 1964, 1979, 1982, 1982, 1983, 1985, 1987, 1988, 1989, 1996, 2007, 2009, 2011, 2022, 2026, 2031, 2041, 2049, 2381ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2538,
+            "range": "±97",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2495ms, Q3: 2592ms\nAll times: 2446, 2447, 2462, 2470, 2489, 2495, 2502, 2517, 2522, 2522, 2538, 2539, 2540, 2566, 2586, 2592, 2619, 2661, 2726, 3614ms"
           }
         ]
       }
