@@ -1,4 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
+import { logger } from '../../shared/logger.js';
 import { getWorkerThreadCount, initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
@@ -10,7 +11,7 @@ import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
 import type { TokenEncoding } from './TokenCounter.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { TokenCountBatchTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
   totalFiles: number;
@@ -23,7 +24,7 @@ export interface CalculateMetricsResult {
 }
 
 export interface MetricsTaskRunnerWithWarmup {
-  taskRunner: TaskRunner<TokenCountTask, number>;
+  taskRunner: TaskRunner<TokenCountBatchTask, number[]>;
   warmupPromise: Promise<unknown>;
 }
 
@@ -34,7 +35,7 @@ export interface MetricsTaskRunnerWithWarmup {
  * output generation).
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
-  const taskRunner = initTaskRunner<TokenCountTask, number>({
+  const taskRunner = initTaskRunner<TokenCountBatchTask, number[]>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
@@ -42,7 +43,7 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
 
   const { maxThreads } = getWorkerThreadCount(numOfTasks);
   const warmupPromise = Promise.all(
-    Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
+    Array.from({ length: maxThreads }, () => taskRunner.run({ items: [{ content: '', encoding }] }).catch(() => [0])),
   );
 
   return { taskRunner, warmupPromise };
@@ -53,7 +54,7 @@ const defaultDeps = {
   calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
-  taskRunner: undefined as TaskRunner<TokenCountTask, number> | undefined,
+  taskRunner: undefined as TaskRunner<TokenCountBatchTask, number[]> | undefined,
 };
 
 export const calculateMetrics = async (
@@ -72,7 +73,7 @@ export const calculateMetrics = async (
   // Initialize a single task runner for all metrics calculations
   const taskRunner =
     deps.taskRunner ??
-    initTaskRunner<TokenCountTask, number>({
+    initTaskRunner<TokenCountBatchTask, number[]>({
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
@@ -115,23 +116,68 @@ export const calculateMetrics = async (
     const resolvedOutput = await outputPromise;
     const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
 
-    // Start output metrics after output is available
-    const outputMetricsPromise = Promise.all(
-      outputParts.map((part, index) => {
-        const partPath =
-          outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, index + 1) : config.output.filePath;
-        return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
-      }),
-    );
+    let totalTokens: number;
+    let selectiveFileMetrics: Awaited<ReturnType<typeof deps.calculateSelectiveFileMetrics>>;
+    let gitDiffTokenCount: number;
+    let gitLogTokenCount: Awaited<ReturnType<typeof deps.calculateGitLogMetrics>>;
 
-    const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
-      selectiveFileMetricsPromise,
-      outputMetricsPromise,
-      gitDiffMetricsPromise,
-      gitLogMetricsPromise,
-    ]);
+    // When all files are individually tokenized (tokenCountTree enabled) and output is
+    // a single part, estimate output tokens from file token sums instead of re-tokenizing
+    // the entire output. The output is mostly file contents wrapped in template markup,
+    // so output_tokens ≈ sum(file_tokens) + overhead_tokens. The overhead tokens are
+    // estimated using the same chars-per-token ratio observed in the file content.
+    // This avoids ~200ms of redundant tokenization on the worker pool.
+    if (shouldCalculateAllFiles && outputParts.length === 1) {
+      // Wait for file metrics first (needed for the estimate)
+      [selectiveFileMetrics, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+        selectiveFileMetricsPromise,
+        gitDiffMetricsPromise,
+        gitLogMetricsPromise,
+      ]);
 
-    const totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
+      const totalFileTokens = selectiveFileMetrics.reduce((sum, f) => sum + f.tokenCount, 0);
+      const totalFileChars = processedFiles.reduce((sum, f) => sum + f.content.length, 0);
+
+      if (totalFileTokens > 0 && totalFileChars > 0) {
+        const outputChars = outputParts[0].length;
+        const overheadChars = outputChars - totalFileChars;
+        const charsPerToken = totalFileChars / totalFileTokens;
+        const overheadTokens = Math.max(0, Math.round(overheadChars / charsPerToken));
+        totalTokens = totalFileTokens + overheadTokens;
+        logger.trace(
+          `Estimated output tokens from file metrics: ${totalTokens} (file: ${totalFileTokens}, overhead: ${overheadTokens})`,
+        );
+      } else {
+        // Edge case: no file content, fall back to full tokenization
+        const outputTokenCounts = await Promise.all(
+          outputParts.map((part) =>
+            deps.calculateOutputMetrics(part, config.tokenCount.encoding, config.output.filePath, { taskRunner }),
+          ),
+        );
+        totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
+      }
+    } else {
+      // Standard path: tokenize each output part via workers
+      const outputMetricsPromise = Promise.all(
+        outputParts.map((part, index) => {
+          const partPath =
+            outputParts.length > 1
+              ? buildSplitOutputFilePath(config.output.filePath, index + 1)
+              : config.output.filePath;
+          return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
+        }),
+      );
+
+      let outputTokenCounts: number[];
+      [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+        selectiveFileMetricsPromise,
+        outputMetricsPromise,
+        gitDiffMetricsPromise,
+        gitLogMetricsPromise,
+      ]);
+      totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
+    }
+
     const totalFiles = processedFiles.length;
     const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
 
@@ -153,13 +199,16 @@ export const calculateMetrics = async (
       totalTokens,
       fileCharCounts,
       fileTokenCounts,
-      gitDiffTokenCount: gitDiffTokenCount,
+      gitDiffTokenCount,
       gitLogTokenCount: gitLogTokenCount.gitLogTokenCount,
     };
   } finally {
     // Cleanup the task runner after all calculations are complete (only if we created it)
     if (!deps.taskRunner) {
-      await taskRunner.cleanup();
+      // Fire-and-forget: worker threads are idle (all tasks complete).
+      taskRunner.cleanup().catch((error) => {
+        logger.debug('Metrics worker pool cleanup error (non-fatal):', error);
+      });
     }
   }
 };

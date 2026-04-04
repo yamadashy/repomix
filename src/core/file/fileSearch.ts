@@ -1,6 +1,8 @@
+import { execFile } from 'node:child_process';
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { type Options as GlobbyOptions, globby } from 'globby';
 import { minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
@@ -10,6 +12,29 @@ import { logger } from '../../shared/logger.js';
 import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
+
+const execFileAsync = promisify(execFile);
+
+/**
+ * Get the set of files visible to git (tracked + untracked, respecting .gitignore).
+ * Returns null if git is not available or the directory is not a git repo.
+ * This is much faster than globby's gitignore parsing (~10ms vs ~250ms).
+ */
+const getGitTrackedFiles = async (rootDir: string): Promise<Set<string> | null> => {
+  try {
+    const result = await execFileAsync(
+      'git',
+      ['-C', rootDir, 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+      {
+        maxBuffer: 50 * 1024 * 1024, // 50MB to handle large repos
+      },
+    );
+    const files = result.stdout.split('\0').filter(Boolean);
+    return new Set(files);
+  } catch {
+    return null;
+  }
+};
 
 export interface FileSearchResult {
   filePaths: string[];
@@ -189,11 +214,24 @@ export const searchFiles = async (
     logger.debug('[globby] Starting file search...');
     const globbyStartTime = Date.now();
 
+    // Optimization: when useGitignore is enabled, delegate gitignore handling to
+    // `git ls-files` (native C, ~10ms) instead of globby's JS gitignore parser (~250ms).
+    // globby still runs for include/ignore pattern matching and .repomixignore support,
+    // but with gitignore:false so it skips the expensive .gitignore file parsing.
+    // The results are then intersected with the git-visible file set.
+    const gitTrackedSet = config.ignore.useGitignore ? await getGitTrackedFiles(rootDir) : null;
+    const useGitignoreFastPath = gitTrackedSet !== null;
+
+    if (useGitignoreFastPath) {
+      logger.debug(`[git ls-files] Found ${gitTrackedSet.size} git-visible files, using fast path`);
+    }
+
     const filePaths = await globby(includePatterns, {
       ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+      // Skip globby's gitignore parsing when git ls-files handles it
+      gitignore: config.ignore.useGitignore && !useGitignoreFastPath,
       onlyFiles: true,
     }).catch((error: unknown) => {
-      // Handle EPERM errors specifically
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
       if (code === 'EPERM' || code === 'EACCES') {
         throw new PermissionError(
@@ -204,8 +242,13 @@ export const searchFiles = async (
       throw error;
     });
 
+    // When using git fast path, filter globby results to only include git-visible files
+    const filteredFilePaths = useGitignoreFastPath
+      ? filePaths.filter((filePath) => gitTrackedSet.has(filePath))
+      : filePaths;
+
     const globbyElapsedTime = Date.now() - globbyStartTime;
-    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filteredFilePaths.length} files`);
 
     let emptyDirPaths: string[] = [];
     if (config.output.includeEmptyDirectories) {
@@ -214,6 +257,7 @@ export const searchFiles = async (
 
       const directories = await globby(includePatterns, {
         ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+        gitignore: config.ignore.useGitignore,
         onlyDirectories: true,
       });
 
@@ -226,11 +270,11 @@ export const searchFiles = async (
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     }
 
-    logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
-    logger.trace(`Filtered ${filePaths.length} files`);
+    logger.debug(`[result] Total files: ${filteredFilePaths.length}, empty directories: ${emptyDirPaths.length}`);
+    logger.trace(`Filtered ${filteredFilePaths.length} files`);
 
     return {
-      filePaths: sortPaths(filePaths),
+      filePaths: sortPaths(filteredFilePaths),
       emptyDirPaths: sortPaths(emptyDirPaths),
     };
   } catch (error: unknown) {
@@ -305,13 +349,12 @@ const prepareIgnoreContext = async (
  */
 const createBaseGlobbyOptions = (
   rootDir: string,
-  config: RepomixConfigMerged,
+  _config: RepomixConfigMerged,
   ignorePatterns: string[],
   ignoreFilePatterns: string[],
-): Omit<GlobbyOptions, 'onlyFiles' | 'onlyDirectories'> => ({
+): Omit<GlobbyOptions, 'onlyFiles' | 'onlyDirectories' | 'gitignore'> => ({
   cwd: rootDir,
   ignore: ignorePatterns,
-  gitignore: config.ignore.useGitignore,
   ignoreFiles: ignoreFilePatterns,
   absolute: false,
   dot: true,
@@ -402,6 +445,7 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
 
   const directories = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    gitignore: config.ignore.useGitignore,
     onlyDirectories: true,
   });
 
@@ -421,6 +465,7 @@ export const listFiles = async (rootDir: string, config: RepomixConfigMerged): P
 
   const files = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    gitignore: config.ignore.useGitignore,
     onlyFiles: true,
   });
 

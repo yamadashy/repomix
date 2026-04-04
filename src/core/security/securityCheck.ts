@@ -118,6 +118,11 @@ export const runSecurityCheck = async (
     logger.error('Error during security check:', error);
     throw error;
   } finally {
-    await taskRunner.cleanup();
+    // Fire-and-forget: worker threads are idle (all tasks complete).
+    // Avoiding the ~40ms synchronous termination overhead keeps
+    // the security stage off the critical path.
+    taskRunner.cleanup().catch((error) => {
+      logger.debug('Security worker pool cleanup error (non-fatal):', error);
+    });
   }
 };

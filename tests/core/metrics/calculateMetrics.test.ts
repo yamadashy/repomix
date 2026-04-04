@@ -11,7 +11,7 @@ vi.mock('../../../src/shared/processConcurrency.js', async (importOriginal) => {
   return {
     ...original,
     initTaskRunner: vi.fn(() => ({
-      run: vi.fn().mockResolvedValue(0),
+      run: vi.fn().mockResolvedValue([0]),
       cleanup: vi.fn().mockResolvedValue(undefined),
     })),
   };
@@ -98,6 +98,120 @@ describe('calculateMetrics', () => {
     );
     expect(result).toEqual(aggregatedResult);
   });
+
+  it('should estimate output tokens from file metrics when tokenCountTree is enabled', async () => {
+    const processedFiles: ProcessedFile[] = [
+      { path: 'file1.txt', content: 'a'.repeat(100) },
+      { path: 'file2.txt', content: 'b'.repeat(200) },
+    ];
+    // Output includes file content (300 chars) + template overhead (50 chars)
+    const output = 'a'.repeat(100) + 'b'.repeat(200) + 'x'.repeat(50);
+
+    const fileMetrics = [
+      { path: 'file1.txt', charCount: 100, tokenCount: 25 },
+      { path: 'file2.txt', charCount: 200, tokenCount: 50 },
+    ];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    const config = createMockConfig({
+      output: { tokenCountTree: 50000 },
+    });
+
+    const mockTaskRunner = { run: vi.fn(), cleanup: vi.fn() };
+    const mockCalculateOutputMetrics = vi.fn();
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      vi.fn(),
+      config,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateOutputMetrics: mockCalculateOutputMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // Should NOT call calculateOutputMetrics (skipped for estimation)
+    expect(mockCalculateOutputMetrics).not.toHaveBeenCalled();
+    // Total tokens estimated: sum(file_tokens) + overhead_tokens
+    // file_tokens = 25 + 50 = 75, file_chars = 300, chars_per_token = 4
+    // overhead_chars = 350 - 300 = 50, overhead_tokens = round(50 / 4) = 13
+    expect(result.totalTokens).toBe(75 + 13);
+    expect(result.totalCharacters).toBe(350);
+  });
+
+  it('should fall back to full tokenization when tokenCountTree is disabled', async () => {
+    const processedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'a'.repeat(100) }];
+    const output = 'a'.repeat(150);
+
+    const fileMetrics = [{ path: 'file1.txt', charCount: 100, tokenCount: 25 }];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    const config = createMockConfig(); // tokenCountTree defaults to false
+
+    const mockTaskRunner = { run: vi.fn(), cleanup: vi.fn() };
+    const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(40);
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      vi.fn(),
+      config,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateOutputMetrics: mockCalculateOutputMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // Should call calculateOutputMetrics (standard path)
+    expect(mockCalculateOutputMetrics).toHaveBeenCalled();
+    expect(result.totalTokens).toBe(40);
+  });
+
+  it('should fall back to full tokenization when all file tokens are zero', async () => {
+    const processedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: '' }];
+    const output = 'template-only-output';
+
+    const fileMetrics = [{ path: 'file1.txt', charCount: 0, tokenCount: 0 }];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    const config = createMockConfig({
+      output: { tokenCountTree: 50000 },
+    });
+
+    const mockTaskRunner = { run: vi.fn(), cleanup: vi.fn() };
+    const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(5);
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      vi.fn(),
+      config,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateOutputMetrics: mockCalculateOutputMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // Should fall back to calculateOutputMetrics since file tokens are 0
+    expect(mockCalculateOutputMetrics).toHaveBeenCalled();
+    expect(result.totalTokens).toBe(5);
+  });
 });
 
 describe('createMetricsTaskRunner', () => {
@@ -118,7 +232,7 @@ describe('createMetricsTaskRunner', () => {
 
     await result.warmupPromise;
 
-    expect(result.taskRunner.run).toHaveBeenCalledWith({ content: '', encoding: 'cl100k_base' });
+    expect(result.taskRunner.run).toHaveBeenCalledWith({ items: [{ content: '', encoding: 'cl100k_base' }] });
   });
 
   it('should swallow warmup task errors', async () => {
@@ -133,6 +247,6 @@ describe('createMetricsTaskRunner', () => {
     // warmupPromise should resolve (errors swallowed by .catch on each task)
     const resolved = await result.warmupPromise;
     expect(Array.isArray(resolved)).toBe(true);
-    expect((resolved as number[]).every((v) => v === 0)).toBe(true);
+    expect((resolved as number[][]).every((v) => Array.isArray(v) && v.length === 1 && v[0] === 0)).toBe(true);
   });
 });
