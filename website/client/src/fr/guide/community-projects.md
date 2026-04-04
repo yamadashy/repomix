@@ -13,7 +13,7 @@ Extension VSCode qui aide à regrouper les fichiers en une seule sortie pour le 
 ## Applications de Bureau
 
 ### Repomix Desktop
-Une application de bureau communautaire non officielle qui fournit un wrapper GUI pour le CLI Repomix. Construite avec Python et CustomTkinter, elle offre une interface conviviale sans avoir besoin d'utiliser le terminal.
+Une application de bureau communautaire qui fournit un wrapper GUI pour le CLI Repomix. Construite avec Python et CustomTkinter, elle offre une interface conviviale sans avoir besoin d'utiliser le terminal.
 
 **Repository** : [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
 

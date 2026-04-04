@@ -13,7 +13,7 @@ VSCode extension that helps bundle files into a single output for AI processing.
 ## Desktop Applications
 
 ### Repomix Desktop
-An unofficial community desktop application that provides a GUI wrapper for the Repomix CLI. Built with Python and CustomTkinter, it offers a user-friendly interface without needing to use the terminal.
+A community desktop application that provides a GUI wrapper for the Repomix CLI. Built with Python and CustomTkinter, it offers a user-friendly interface without needing to use the terminal.
 
 **Repository**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
 

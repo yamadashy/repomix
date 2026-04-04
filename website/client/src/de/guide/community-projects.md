@@ -13,7 +13,7 @@ VSCode-Erweiterung, die dabei hilft, Dateien in eine einzige Ausgabe für die KI
 ## Desktop-Anwendungen
 
 ### Repomix Desktop
-Eine inoffizielle Community-Desktop-Anwendung, die einen GUI-Wrapper für die Repomix CLI bereitstellt. Entwickelt mit Python und CustomTkinter, bietet sie eine benutzerfreundliche Oberfläche ohne Terminal-Nutzung.
+Eine Community-Desktop-Anwendung, die einen GUI-Wrapper für die Repomix CLI bereitstellt. Entwickelt mit Python und CustomTkinter, bietet sie eine benutzerfreundliche Oberfläche ohne Terminal-Nutzung.
 
 **Repository**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
 

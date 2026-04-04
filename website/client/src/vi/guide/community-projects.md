@@ -13,7 +13,7 @@ Tiện ích mở rộng VSCode giúp đóng gói các tệp thành một đầu 
 ## Ứng Dụng Desktop
 
 ### Repomix Desktop
-Một ứng dụng desktop cộng đồng không chính thức cung cấp giao diện GUI cho Repomix CLI. Được xây dựng bằng Python và CustomTkinter, cung cấp giao diện thân thiện với người dùng mà không cần sử dụng terminal.
+Một ứng dụng desktop cộng đồng cung cấp giao diện GUI cho Repomix CLI. Được xây dựng bằng Python và CustomTkinter, cung cấp giao diện thân thiện với người dùng mà không cần sử dụng terminal.
 
 **Repository**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
 

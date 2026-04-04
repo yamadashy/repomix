@@ -13,7 +13,7 @@
 ## 桌面应用
 
 ### Repomix Desktop
-一个非官方的社区桌面应用程序，为 Repomix CLI 提供 GUI 封装。使用 Python 和 CustomTkinter 构建，提供用户友好的界面，无需使用终端。
+一个社区桌面应用程序，为 Repomix CLI 提供 GUI 封装。使用 Python 和 CustomTkinter 构建，提供用户友好的界面，无需使用终端。
 
 **仓库**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
 
