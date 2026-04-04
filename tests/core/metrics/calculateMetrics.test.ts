@@ -146,9 +146,7 @@ describe('calculateMetrics', () => {
   });
 
   it('should fall back to full tokenization when tokenCountTree is disabled', async () => {
-    const processedFiles: ProcessedFile[] = [
-      { path: 'file1.txt', content: 'a'.repeat(100) },
-    ];
+    const processedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'a'.repeat(100) }];
     const output = 'a'.repeat(150);
 
     const fileMetrics = [{ path: 'file1.txt', charCount: 100, tokenCount: 25 }];
@@ -181,9 +179,7 @@ describe('calculateMetrics', () => {
   });
 
   it('should fall back to full tokenization when all file tokens are zero', async () => {
-    const processedFiles: ProcessedFile[] = [
-      { path: 'file1.txt', content: '' },
-    ];
+    const processedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: '' }];
     const output = 'template-only-output';
 
     const fileMetrics = [{ path: 'file1.txt', charCount: 0, tokenCount: 0 }];
