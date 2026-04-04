@@ -157,13 +157,13 @@ describe('calculateGitDiffMetrics', () => {
   });
 
   describe('when processing git diffs', () => {
-    it('should calculate tokens for both workTree and staged diffs', async () => {
+    it('should calculate tokens for both workTree and staged diffs in parallel', async () => {
       const gitDiffResult: GitDiffResult = {
         workTreeDiffContent: 'work tree changes',
         stagedDiffContent: 'staged changes',
       };
 
-      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce([5, 3]); // Both items in one batch
+      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce([5]).mockResolvedValueOnce([3]);
 
       const customTaskRunner: TaskRunner<TokenCountTask, number[]> = {
         run: mockTaskRunnerSpy,
@@ -174,9 +174,14 @@ describe('calculateGitDiffMetrics', () => {
         taskRunner: customTaskRunner,
       });
 
-      expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(1);
+      // Each diff is sent as a separate single-item task for parallel processing
+      expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(2);
       expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
-        items: [{ content: 'work tree changes' }, { content: 'staged changes' }],
+        items: [{ content: 'work tree changes' }],
+        encoding: 'o200k_base',
+      });
+      expect(mockTaskRunnerSpy).toHaveBeenCalledWith({
+        items: [{ content: 'staged changes' }],
         encoding: 'o200k_base',
       });
       expect(result).toBe(8); // 5 + 3
@@ -269,14 +274,14 @@ describe('calculateGitDiffMetrics', () => {
       expect(logger.error).toHaveBeenCalledWith('Error during git diff token calculation:', expect.any(Error));
     });
 
-    it('should handle task runner failures', async () => {
+    it('should handle task runner failures for one of multiple diffs', async () => {
       const gitDiffResult: GitDiffResult = {
         workTreeDiffContent: 'work tree content',
         stagedDiffContent: 'staged content',
       };
 
       const errorTaskRunner: TaskRunner<TokenCountTask, number[]> = {
-        run: vi.fn().mockRejectedValueOnce(new Error('Call fails')),
+        run: vi.fn().mockResolvedValueOnce([5]).mockRejectedValueOnce(new Error('Second call fails')),
         cleanup: async () => {},
       };
 
@@ -284,7 +289,7 @@ describe('calculateGitDiffMetrics', () => {
         calculateGitDiffMetrics(mockConfig, gitDiffResult, {
           taskRunner: errorTaskRunner,
         }),
-      ).rejects.toThrow('Call fails');
+      ).rejects.toThrow('Second call fails');
 
       expect(logger.error).toHaveBeenCalledWith('Error during git diff token calculation:', expect.any(Error));
     });

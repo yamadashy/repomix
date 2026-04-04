@@ -2,7 +2,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { TokenCountItem, TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
 /**
  * Calculate token count for git diffs if included
@@ -25,19 +25,25 @@ export const calculateGitDiffMetrics = async (
     const startTime = process.hrtime.bigint();
     logger.trace('Starting git diff token calculation using worker');
 
-    const items: TokenCountItem[] = [];
+    // Send each diff as a separate single-item task for parallel processing
+    const countPromises: Promise<number>[] = [];
 
     if (gitDiffResult.workTreeDiffContent) {
-      items.push({ content: gitDiffResult.workTreeDiffContent });
+      countPromises.push(
+        deps.taskRunner
+          .run({ items: [{ content: gitDiffResult.workTreeDiffContent }], encoding: config.tokenCount.encoding })
+          .then((results) => results[0]),
+      );
     }
     if (gitDiffResult.stagedDiffContent) {
-      items.push({ content: gitDiffResult.stagedDiffContent });
+      countPromises.push(
+        deps.taskRunner
+          .run({ items: [{ content: gitDiffResult.stagedDiffContent }], encoding: config.tokenCount.encoding })
+          .then((results) => results[0]),
+      );
     }
 
-    const results = await deps.taskRunner.run({
-      items,
-      encoding: config.tokenCount.encoding,
-    });
+    const results = await Promise.all(countPromises);
     const totalTokens = results.reduce((sum, count) => sum + count, 0);
 
     const endTime = process.hrtime.bigint();

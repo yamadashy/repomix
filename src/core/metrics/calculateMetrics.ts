@@ -69,7 +69,11 @@ export const calculateMetrics = async (
 
   progressCallback('Calculating metrics...');
 
-  // Initialize a single task runner for all metrics calculations
+  // Initialize a single task runner for all metrics calculations.
+  // NOTE: numOfTasks uses processedFiles.length (not batches.length) intentionally.
+  // getWorkerThreadCount uses Math.ceil(numOfTasks / TASKS_PER_THREAD) to size the pool,
+  // where TASKS_PER_THREAD=100 is calibrated for fine-grained tasks.
+  // Passing batches.length would yield maxThreads=1, forcing sequential execution.
   const taskRunner =
     deps.taskRunner ??
     initTaskRunner<TokenCountTask, number[]>({
