@@ -257,13 +257,42 @@ export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileIn
   logger.log(pc.yellow('Please review these files if you expected them to contain text content.'));
 };
 
-export const reportCompletion = (outputPath: string) => {
+const getOutputSummary = (outputPaths: string | string[]) => {
+  const normalizedOutputPaths = Array.isArray(outputPaths) ? outputPaths : [outputPaths];
+
+  if (normalizedOutputPaths.length === 1) {
+    return {
+      heading: '📁 Output file generated at:',
+      lines: [normalizedOutputPaths[0]],
+    };
+  }
+
+  const outputDirectories = [...new Set(normalizedOutputPaths.map((outputPath) => path.dirname(outputPath)))];
+
+  if (outputDirectories.length === 1) {
+    return {
+      heading: `📁 ${normalizedOutputPaths.length} output files generated in:`,
+      lines: [outputDirectories[0]],
+    };
+  }
+
+  return {
+    heading: `📁 ${normalizedOutputPaths.length} output files generated:`,
+    lines: normalizedOutputPaths,
+  };
+};
+
+export const reportCompletion = (outputPaths: string | string[]) => {
   logger.log(pc.green('🎉 All Done!'));
   logger.log('Your repository has been successfully packed.');
 
+  const outputSummary = getOutputSummary(outputPaths);
+
   logger.log('');
-  logger.log('📁 Output generated at:');
-  logger.log(`   ${pc.bold(pc.cyan(pc.underline(outputPath)))}`);
+  logger.log(outputSummary.heading);
+  outputSummary.lines.forEach((outputPath) => {
+    logger.log(`   ${pc.bold(pc.cyan(pc.underline(outputPath)))}`);
+  });
 
   logger.log('');
   logger.log(`💡 Repomix is now available in your browser! Try it at ${pc.underline('https://repomix.com')}`);
