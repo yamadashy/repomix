@@ -3,6 +3,7 @@ import type { pipeline as pipelineType } from 'node:stream/promises';
 import type * as zlib from 'node:zlib';
 import type { extract as tarExtractType } from 'tar';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import type { createArchiveEntryFilter as createArchiveEntryFilterType } from '../../../src/core/git/archiveEntryFilter.js';
 import {
   type ArchiveDownloadOptions,
   downloadGitHubArchive,
@@ -22,6 +23,7 @@ interface MockDeps {
   Transform: typeof Transform;
   tarExtract: typeof tarExtractType;
   createGunzip: typeof zlib.createGunzip;
+  createArchiveEntryFilter: typeof createArchiveEntryFilterType;
 }
 
 // Simple test data
@@ -32,6 +34,7 @@ describe('gitHubArchive', () => {
   let mockPipeline: ReturnType<typeof vi.fn<typeof pipelineType>>;
   let mockTarExtract: ReturnType<typeof vi.fn<typeof tarExtractType>>;
   let mockCreateGunzip: ReturnType<typeof vi.fn<typeof zlib.createGunzip>>;
+  let mockCreateArchiveEntryFilter: ReturnType<typeof vi.fn<typeof createArchiveEntryFilterType>>;
   let mockDeps: MockDeps;
 
   beforeEach(() => {
@@ -53,6 +56,7 @@ describe('gitHubArchive', () => {
         },
       }) as unknown as ReturnType<typeof zlib.createGunzip>,
     );
+    mockCreateArchiveEntryFilter = vi.fn<typeof createArchiveEntryFilterType>().mockReturnValue(() => true);
 
     mockDeps = {
       fetch: mockFetch,
@@ -60,6 +64,7 @@ describe('gitHubArchive', () => {
       Transform,
       tarExtract: mockTarExtract as unknown as typeof tarExtractType,
       createGunzip: mockCreateGunzip as unknown as typeof zlib.createGunzip,
+      createArchiveEntryFilter: mockCreateArchiveEntryFilter,
     };
   });
 
@@ -104,10 +109,11 @@ describe('gitHubArchive', () => {
         }),
       );
 
-      // Verify tar extract was called with correct options
+      // Verify tar extract was called with correct options including filter
       expect(mockTarExtract).toHaveBeenCalledWith({
         cwd: mockTargetDirectory,
         strip: 1,
+        filter: expect.any(Function),
       });
 
       // Verify streaming pipeline was used
