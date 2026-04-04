@@ -80,3 +80,9 @@ Kurulumdan sonra Repomix'in çalıştığını doğrulayın:
 repomix --version
 repomix --help
 ```
+
+## İlgili Kaynaklar
+
+- [Temel Kullanım](/tr/guide/usage) - Repomix'i nasıl kullanacağınızı öğrenin
+- [Yapılandırma](/tr/guide/configuration) - Repomix'i ihtiyaçlarınıza göre özelleştirin
+- [Komut Satırı Seçenekleri](/tr/guide/command-line-options) - Tam CLI referansı

@@ -62,6 +62,8 @@ Tüm kod tabanı bağlam olarak mevcut olduğunda Repomix; uygulama planlaması,
 - [Kullanım Rehberi](usage.md): Temel ve gelişmiş özellikler hakkında bilgi edinin
 - [Yapılandırma](configuration.md): Repomix'i ihtiyaçlarınıza göre özelleştirin
 - [Güvenlik Özellikleri](security.md): Güvenlik kontrolleri hakkında bilgi edinin
+- [Çıktı Formatları](output.md): AI modeliniz için en iyi formatı seçin
+- [MCP Sunucusu](mcp-server.md): Repomix'i AI asistanlarıyla doğrudan entegre edin
 
 ## Topluluk
 

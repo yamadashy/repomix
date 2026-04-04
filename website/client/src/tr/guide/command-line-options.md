@@ -59,6 +59,13 @@
 ## MCP Seçenekleri
 - `--mcp`: AI araç entegrasyonu için Model Context Protocol sunucusu olarak çalıştır
 
+## İlgili Kaynaklar
+
+- [Yapılandırma](/tr/guide/configuration) - CLI bayrakları yerine yapılandırma dosyasında seçenekleri ayarlayın
+- [Çıktı Formatları](/tr/guide/output) - XML, Markdown, JSON ve düz metin formatlarının ayrıntıları
+- [Kod Sıkıştırma](/tr/guide/code-compress) - `--compress` seçeneğinin Tree-sitter ile nasıl çalıştığı
+- [Güvenlik](/tr/guide/security) - `--no-security-check` seçeneğinin devre dışı bıraktıkları
+
 ## Örnekler
 
 ```bash

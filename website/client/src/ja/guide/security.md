@@ -63,3 +63,9 @@ repomix --no-security-check
 1. パブリックなイシューは作成しないでください
 2. メール: koukun0120@gmail.com
 3. または[GitHub Security Advisories](https://github.com/yamadashy/repomix/security/advisories/new)を使用
+
+## 関連リソース
+
+- [設定](/ja/guide/configuration) - `security.enableSecurityCheck`でセキュリティチェックを設定
+- [コマンドラインオプション](/ja/guide/command-line-options) - `--no-security-check`フラグの使用
+- [プライバシーポリシー](/ja/guide/privacy) - Repomixのデータ取り扱いについて

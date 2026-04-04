@@ -40,3 +40,9 @@ Model Context Protocol-Server, der Repomix verwendet, um KI-Agenten bei der Anal
 CLI-Toolset für KI-Agenten mit mehreren Funktionen, einschließlich Websuche über Perplexity, Repository-Analyse mit Gemini und Repomix und Browser-Automatisierung mit Stagehand.
 
 **Repository**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## Verwandte Ressourcen
+
+- [Installation](/de/guide/installation) - Repomix CLI oder Browser-Erweiterung installieren
+- [MCP-Server](/de/guide/mcp-server) - Repomix als MCP-Server für KI-Assistenten verwenden
+- [Claude Code Plugins](/de/guide/claude-code-plugins) - Offizielle Plugins für Claude Code

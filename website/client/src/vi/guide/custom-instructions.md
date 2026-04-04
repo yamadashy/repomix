@@ -108,8 +108,9 @@ Khi tạo hướng dẫn tùy chỉnh:
 5. **Đánh dấu các khu vực quan trọng**: Hướng dẫn sự chú ý đến các tệp hoặc mô-đun quan trọng
 6. **Giữ ngắn gọn**: Tập trung vào thông tin có giá trị nhất
 
-## Tiếp theo là gì?
+## Tài nguyên liên quan
 
-- [Xử lý kho lưu trữ từ xa](remote-repository-processing.md): Tìm hiểu về xử lý kho lưu trữ từ xa
-- [Cấu hình](configuration.md): Tìm hiểu thêm về tùy chọn cấu hình
-- [Bảo mật](security.md): Tìm hiểu về tính năng bảo mật của Repomix
+- [Cấu hình](/vi/guide/configuration) - Đặt `output.instructionFilePath` trong tệp cấu hình của bạn
+- [Định dạng đầu ra](/vi/guide/output) - Tìm hiểu về các định dạng đầu ra khác nhau
+- [Ví dụ prompt](/vi/guide/prompt-examples) - Ví dụ prompt cho phân tích AI
+- [Trường hợp sử dụng](/vi/guide/use-cases) - Ví dụ thực tế về việc sử dụng Repomix với AI

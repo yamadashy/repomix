@@ -88,3 +88,10 @@ repomix --remote user/repo --config /home/user/repomix.config.json
 - Belirli yolları seçmek için `--include` kullanın
 - `--remove-comments` seçeneğini etkinleştirin
 - Dalları ayrı ayrı işleyin
+
+## İlgili Kaynaklar
+
+- [Komut Satırı Seçenekleri](/tr/guide/command-line-options) - `--remote` seçenekleri dahil tam CLI referansı
+- [Yapılandırma](/tr/guide/configuration) - Uzak işleme için varsayılan seçenekleri ayarlayın
+- [Kod Sıkıştırma](/tr/guide/code-compress) - Büyük depolar için çıktı boyutunu azaltın
+- [Güvenlik](/tr/guide/security) - Repomix'in hassas veri tespitini nasıl ele aldığı

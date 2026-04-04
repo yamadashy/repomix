@@ -59,6 +59,13 @@
 ## MCP विकल्प
 - `--mcp`: AI टूल एकीकरण के लिए Model Context Protocol सर्वर के रूप में चलाएं
 
+## संबंधित संसाधन
+
+- [कॉन्फिगरेशन](/hi/guide/configuration) - CLI फ्लैग के बजाय कॉन्फिग फाइल में विकल्प सेट करें
+- [आउटपुट फॉर्मेट](/hi/guide/output) - XML, मार्कडाउन, JSON और प्लेन टेक्स्ट फॉर्मेट का विवरण
+- [कोड कम्प्रेशन](/hi/guide/code-compress) - `--compress` Tree-sitter के साथ कैसे काम करता है
+- [सुरक्षा](/hi/guide/security) - `--no-security-check` क्या अक्षम करता है
+
 ## उदाहरण
 
 ```bash

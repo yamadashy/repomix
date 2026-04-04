@@ -366,3 +366,11 @@ When `output.removeComments` is set to `true`, comments are removed from support
 - Focusing on code structure and logic
 
 For supported languages and detailed examples, see the [Comment Removal Guide](comment-removal).
+
+## Related Resources
+
+- [Command Line Options](/guide/command-line-options) - Full CLI reference (CLI options override config file settings)
+- [Output Formats](/guide/output) - Details on each output format
+- [Security](/guide/security) - How Repomix detects sensitive information
+- [Code Compression](/guide/code-compress) - Reduce token count with Tree-sitter
+- [GitHub Repository Processing](/guide/remote-repository-processing) - Options for remote repos

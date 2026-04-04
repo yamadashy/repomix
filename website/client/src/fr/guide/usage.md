@@ -106,7 +106,9 @@ Lorsque vous utilisez `--stdin`, les fichiers spécifiés sont effectivement ajo
 > [!NOTE]
 > Lors de l'utilisation de `--stdin`, les chemins de fichiers peuvent être relatifs ou absolus, et Repomix gèrera automatiquement la résolution des chemins et la déduplication.
 
-### Compression de code
+### Compression de code {#code-compression}
+
+Réduisez le nombre de tokens tout en préservant la structure du code. Consultez le guide de [Compression de code](/fr/guide/code-compress) pour les détails.
 
 ```bash
 repomix --compress
@@ -203,6 +205,8 @@ repomix --style plain
 
 ### Supprimer les commentaires
 
+Consultez [Suppression des commentaires](/fr/guide/comment-removal) pour les langages pris en charge et les détails.
+
 ```bash
 repomix --remove-comments
 ```
@@ -221,6 +225,8 @@ repomix --copy
 
 ### Désactiver la vérification de sécurité
 
+Consultez [Sécurité](/fr/guide/security) pour les détails sur ce que Repomix détecte.
+
 ```bash
 repomix --no-security-check
 ```
@@ -234,3 +240,10 @@ repomix --init
 ```
 
 Consultez le [Guide de configuration](/fr/guide/configuration) pour les options détaillées.
+
+## Ressources associées
+
+- [Formats de sortie](/fr/guide/output) - Découvrir les formats XML, Markdown, JSON et texte brut
+- [Options de ligne de commande](/fr/guide/command-line-options) - Référence complète de la CLI
+- [Exemples de prompts](/fr/guide/prompt-examples) - Exemples de prompts pour l'analyse IA
+- [Cas d'utilisation](/fr/guide/use-cases) - Exemples concrets et workflows

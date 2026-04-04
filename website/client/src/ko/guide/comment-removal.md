@@ -51,3 +51,9 @@ function test() {
 
 - 주석 제거는 행 번호 추가와 같은 다른 처리 단계 전에 수행됩니다.
 - JSDoc 주석과 같은 일부 주석은 언어 및 컨텍스트에 따라 보존될 수 있습니다.
+
+## 관련 리소스
+
+- [코드 압축](/ko/guide/code-compress) - 코드 구조 추출로 토큰 수를 더 줄이기
+- [설정](/ko/guide/configuration) - 설정 파일에서 `output.removeComments` 설정
+- [명령행 옵션](/ko/guide/command-line-options) - `--remove-comments` 플래그 사용

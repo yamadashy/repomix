@@ -37,3 +37,10 @@ Questo repository contiene il codice sorgente dello strumento Repomix. Per favor
 3. Ignora tutti i file nella directory `tests`.
 </instruction>
 ```
+
+## Risorse correlate
+
+- [Configurazione](/it/guide/configuration) - Impostare `output.instructionFilePath` nel file di configurazione
+- [Formati di Output](/it/guide/output) - Scoprire i diversi formati di output
+- [Esempi di Prompt](/it/guide/prompt-examples) - Esempi di prompt per l'analisi IA
+- [Casi d'Uso](/it/guide/use-cases) - Esempi reali di utilizzo di Repomix con l'IA

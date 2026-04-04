@@ -150,3 +150,10 @@ Identify performance bottlenecks and receive optimization recommendations.
 ```
 Analyze this codebase for performance bottlenecks. Look for inefficient algorithms, unnecessary database queries, memory leaks, and areas that could benefit from caching or optimization.
 ```
+
+## Related Resources
+
+- [Prompt Examples](/guide/prompt-examples) - More prompt templates for AI analysis
+- [Output Formats](/guide/output) - Choose the best format for your AI model
+- [Custom Instructions](/guide/custom-instructions) - Add context to guide AI analysis
+- [GitHub Repository Processing](/guide/remote-repository-processing) - Analyze remote repositories

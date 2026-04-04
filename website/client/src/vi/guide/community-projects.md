@@ -40,3 +40,9 @@ Máy chủ Model Context Protocol sử dụng Repomix để giúp các agent AI 
 Bộ công cụ CLI cho các agent AI với nhiều khả năng bao gồm tìm kiếm web qua Perplexity, phân tích repository với Gemini và Repomix, và tự động hóa trình duyệt với Stagehand.
 
 **Repository**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## Tài nguyên liên quan
+
+- [Cài đặt](/vi/guide/installation) - Cài đặt Repomix CLI hoặc tiện ích mở rộng trình duyệt
+- [Máy chủ MCP](/vi/guide/mcp-server) - Sử dụng Repomix làm máy chủ MCP cho trợ lý AI
+- [Plugin Claude Code](/vi/guide/claude-code-plugins) - Plugin chính thức cho Claude Code

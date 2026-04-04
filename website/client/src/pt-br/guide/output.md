@@ -272,3 +272,10 @@ Defina o formato padrão no `repomix.config.json`:
   }
 }
 ```
+
+## Recursos relacionados
+
+- [Configuração](/pt-br/guide/configuration) - Referência completa de opções de configuração
+- [Opções de Linha de Comando](/pt-br/guide/command-line-options) - Usar `--style` para definir o formato de saída
+- [Compressão de Código](/pt-br/guide/code-compress) - Reduzir a contagem de tokens preservando a estrutura
+- [Exemplos de Prompts](/pt-br/guide/prompt-examples) - Dicas para usar a saída com diferentes modelos de IA

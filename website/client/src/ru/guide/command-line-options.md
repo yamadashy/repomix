@@ -58,6 +58,14 @@
 
 ## Опции MCP
 - `--mcp`: Запустить как сервер Model Context Protocol для интеграции с ИИ-инструментами
+
+## Связанные ресурсы
+
+- [Конфигурация](/ru/guide/configuration) - Настройка опций в файле конфигурации вместо CLI-флагов
+- [Форматы вывода](/ru/guide/output) - Подробности о форматах XML, Markdown, JSON и простого текста
+- [Сжатие кода](/ru/guide/code-compress) - Как `--compress` работает с Tree-sitter
+- [Безопасность](/ru/guide/security) - Что отключает `--no-security-check`
+
 ## Примеры
 
 ```bash

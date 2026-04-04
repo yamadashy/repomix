@@ -117,3 +117,10 @@ Fournissez des exemples spécifiques de modèles bons et problématiques.
 - Fonctionne avec tous les formats
 - Concentrez-vous sur des domaines spécifiques par demande
 - Utilisez une analyse étape par étape
+
+## Ressources associées
+
+- [Formats de sortie](/fr/guide/output) - Détails sur chaque format de sortie
+- [Instructions personnalisées](/fr/guide/custom-instructions) - Ajouter du contexte et des directives à la sortie
+- [Cas d'utilisation](/fr/guide/use-cases) - Exemples concrets de workflows assistés par l'IA
+- [Compression de code](/fr/guide/code-compress) - Réduire le nombre de tokens pour les grandes bases de code

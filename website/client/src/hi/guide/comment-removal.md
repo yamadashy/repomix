@@ -153,8 +153,8 @@ function authenticateUser(username, password) {
 }
 ```
 
-## अगला क्या है?
+## संबंधित संसाधन
 
-- [कोड कम्प्रेशन](code-compress.md) के बारे में जानें
-- [कमांड लाइन विकल्पों](command-line-options.md) का अन्वेषण करें
-- [कॉन्फिगरेशन विकल्पों](configuration.md) के बारे में अधिक जानें
+- [कोड कम्प्रेशन](/hi/guide/code-compress) - कोड संरचना निकालकर टोकन संख्या और कम करें
+- [कॉन्फिगरेशन](/hi/guide/configuration) - अपनी कॉन्फिग फाइल में `output.removeComments` सेट करें
+- [कमांड लाइन विकल्प](/hi/guide/command-line-options) - `--remove-comments` फ्लैग का उपयोग करें

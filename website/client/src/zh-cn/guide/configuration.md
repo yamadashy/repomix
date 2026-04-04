@@ -366,3 +366,11 @@ build/
 - 专注于代码结构和逻辑
 
 有关支持的语言和详细示例，请参阅[注释移除指南](comment-removal)。
+
+## 相关资源
+
+- [命令行选项](/zh-cn/guide/command-line-options) - 完整的 CLI 参考（CLI 选项优先于配置文件设置）
+- [输出格式](/zh-cn/guide/output) - 各种输出格式的详细说明
+- [安全](/zh-cn/guide/security) - Repomix 如何检测敏感信息
+- [代码压缩](/zh-cn/guide/code-compress) - 通过 Tree-sitter 减少 Token 数量
+- [GitHub 仓库处理](/zh-cn/guide/remote-repository-processing) - 远程仓库处理选项

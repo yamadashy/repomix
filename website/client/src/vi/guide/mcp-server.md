@@ -252,3 +252,10 @@ Sử dụng Repomix như một máy chủ MCP mang lại nhiều lợi thế:
 4. **Các tính năng nâng cao**: Tận dụng tất cả các tính năng của Repomix như nén code, đếm token và kiểm tra bảo mật.
 
 Một khi được cấu hình, trợ lý AI của bạn có thể sử dụng trực tiếp các khả năng của Repomix để phân tích codebase, làm cho luồng công việc phân tích code hiệu quả hơn.
+
+## Tài nguyên liên quan
+
+- [Plugin Claude Code](/vi/guide/claude-code-plugins) - Tích hợp plugin tiện lợi cho Claude Code
+- [Cấu hình](/vi/guide/configuration) - Tùy chỉnh hành vi Repomix
+- [Tùy chọn dòng lệnh](/vi/guide/command-line-options) - Tham chiếu CLI đầy đủ
+- [Định dạng đầu ra](/vi/guide/output) - Tìm hiểu về các định dạng đầu ra có sẵn

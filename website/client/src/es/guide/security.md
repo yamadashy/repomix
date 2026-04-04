@@ -63,3 +63,9 @@ Ejemplo de salida:
 1. No abras un issue público
 2. Envía un correo electrónico a: koukun0120@gmail.com
 3. O usa [GitHub Security Advisories](https://github.com/yamadashy/repomix/security/advisories/new)
+
+## Recursos relacionados
+
+- [Configuración](/es/guide/configuration) - Configurar verificaciones de seguridad mediante `security.enableSecurityCheck`
+- [Opciones de línea de comandos](/es/guide/command-line-options) - Usar la flag `--no-security-check`
+- [Política de privacidad](/es/guide/privacy) - Conocer el manejo de datos de Repomix

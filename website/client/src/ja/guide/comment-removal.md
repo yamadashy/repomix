@@ -51,3 +51,9 @@ function test() {
 
 - コメントの削除は、行番号の追加など、他の処理よりも先に行われます。
 - JSDocコメントなど、一部のコメントは削除されない場合があります。
+
+## 関連リソース
+
+- [コード圧縮](/ja/guide/code-compress) - コード構造の抽出によるさらなるトークン数削減
+- [設定](/ja/guide/configuration) - 設定ファイルで`output.removeComments`を設定
+- [コマンドラインオプション](/ja/guide/command-line-options) - `--remove-comments`フラグの使用

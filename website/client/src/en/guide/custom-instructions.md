@@ -42,3 +42,10 @@ This repository contains the source code for the Repomix tool. Please follow the
 </instruction>
 ```
 
+## Related Resources
+
+- [Configuration](/guide/configuration) - Set `output.instructionFilePath` in your config file
+- [Output Formats](/guide/output) - Learn about the different output formats
+- [Prompt Examples](/guide/prompt-examples) - Example prompts for AI analysis
+- [Use Cases](/guide/use-cases) - Real-world examples of using Repomix with AI
+

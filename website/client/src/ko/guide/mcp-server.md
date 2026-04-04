@@ -252,3 +252,10 @@ Repomix를 MCP 서버로 사용하면 여러 이점이 있습니다:
 4. **고급 기능**: 코드 압축, 토큰 카운팅, 보안 검사와 같은 Repomix의 모든 기능을 활용할 수 있습니다.
 
 구성이 완료되면 AI 어시스턴트가 Repomix의 기능을 직접 사용하여 코드베이스를 분석할 수 있어 코드 분석 워크플로우가 더 효율적이 됩니다.
+
+## 관련 리소스
+
+- [Claude Code 플러그인](/ko/guide/claude-code-plugins) - 편리한 Claude Code 플러그인 통합
+- [설정](/ko/guide/configuration) - Repomix 동작 사용자 정의
+- [명령행 옵션](/ko/guide/command-line-options) - 전체 CLI 레퍼런스
+- [출력 형식](/ko/guide/output) - 사용 가능한 출력 형식 알아보기

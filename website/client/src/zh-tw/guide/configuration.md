@@ -366,3 +366,11 @@ build/
 - 專注於程式碼結構和邏輯
 
 有關支援的語言和詳細範例，請參閱[註解移除指南](comment-removal)。
+
+## 相關資源
+
+- [命令列選項](/zh-tw/guide/command-line-options) - 完整的 CLI 參考（CLI 選項優先於設定檔設定）
+- [輸出格式](/zh-tw/guide/output) - 各種輸出格式的詳細說明
+- [安全](/zh-tw/guide/security) - Repomix 如何偵測敏感資訊
+- [程式碼壓縮](/zh-tw/guide/code-compress) - 透過 Tree-sitter 減少令牌數量
+- [GitHub 倉庫處理](/zh-tw/guide/remote-repository-processing) - 遠端倉庫處理選項

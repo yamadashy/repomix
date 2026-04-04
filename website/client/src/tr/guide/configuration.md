@@ -366,3 +366,11 @@ Daha fazla ayrıntı ve örnek için [Kod Sıkıştırma Kılavuzu](code-compres
 - Kod yapısına ve mantığına odaklanırken
 
 Desteklenen diller ve ayrıntılı örnekler için [Yorum Kaldırma Kılavuzu](comment-removal) sayfasına bakın.
+
+## İlgili Kaynaklar
+
+- [Komut Satırı Seçenekleri](/tr/guide/command-line-options) - Tam CLI referansı (CLI seçenekleri yapılandırma dosyası ayarlarını geçersiz kılar)
+- [Çıktı Formatları](/tr/guide/output) - Her çıktı formatının ayrıntıları
+- [Güvenlik](/tr/guide/security) - Repomix'in hassas bilgileri nasıl tespit ettiği
+- [Kod Sıkıştırma](/tr/guide/code-compress) - Tree-sitter ile token sayısını azaltın
+- [GitHub Depo İşleme](/tr/guide/remote-repository-processing) - Uzak depolar için seçenekler

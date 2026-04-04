@@ -63,3 +63,9 @@ repomix --no-security-check
 1. Не открывайте публичный issue
 2. Напишите на email: koukun0120@gmail.com
 3. Или используйте [GitHub Security Advisories](https://github.com/yamadashy/repomix/security/advisories/new)
+
+## Связанные ресурсы
+
+- [Конфигурация](/ru/guide/configuration) - Настройка проверок безопасности через `security.enableSecurityCheck`
+- [Параметры командной строки](/ru/guide/command-line-options) - Использование флага `--no-security-check`
+- [Политика конфиденциальности](/ru/guide/privacy) - Узнать об обработке данных в Repomix

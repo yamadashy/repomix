@@ -366,3 +366,11 @@ build/
 - コードの構造とロジックに集中したい場合
 
 サポートされている言語と詳細な例については[コメント削除ガイド](comment-removal)をご覧ください。
+
+## 関連リソース
+
+- [コマンドラインオプション](/ja/guide/command-line-options) - CLIリファレンス（CLIオプションは設定ファイルより優先）
+- [出力フォーマット](/ja/guide/output) - 各出力形式の詳細
+- [セキュリティ](/ja/guide/security) - 機密情報検出の仕組み
+- [コード圧縮](/ja/guide/code-compress) - Tree-sitterによるトークン数削減
+- [GitHubリポジトリの処理](/ja/guide/remote-repository-processing) - リモートリポジトリのオプション

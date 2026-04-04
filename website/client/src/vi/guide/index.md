@@ -62,6 +62,8 @@ Với toàn bộ codebase có sẵn làm ngữ cảnh, Repomix cho phép một l
 - [Hướng dẫn sử dụng](usage.md): Tìm hiểu về các tính năng cơ bản và nâng cao
 - [Cấu hình](configuration.md): Tùy chỉnh Repomix cho nhu cầu của bạn
 - [Tính năng bảo mật](security.md): Tìm hiểu về kiểm tra bảo mật
+- [Định dạng đầu ra](output.md): Chọn định dạng tốt nhất cho mô hình AI của bạn
+- [Máy chủ MCP](mcp-server.md): Tích hợp Repomix trực tiếp với trợ lý AI
 
 ## Cộng đồng
 

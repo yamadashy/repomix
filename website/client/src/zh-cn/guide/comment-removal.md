@@ -66,3 +66,9 @@ function test() {
 3. **性能考虑**：
   - 移除注释可以减少输出文件大小
   - 对于大型代码库特别有用
+
+## 相关资源
+
+- [代码压缩](/zh-cn/guide/code-compress) - 通过提取代码结构进一步减少 Token 数量
+- [配置](/zh-cn/guide/configuration) - 在配置文件中设置 `output.removeComments`
+- [命令行选项](/zh-cn/guide/command-line-options) - 使用 `--remove-comments` 标志

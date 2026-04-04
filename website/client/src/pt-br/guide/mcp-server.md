@@ -252,3 +252,10 @@ Usar o Repomix como um servidor MCP oferece várias vantagens:
 4. **Recursos Avançados**: Aproveita todos os recursos do Repomix como compressão de código, contagem de tokens e verificações de segurança.
 
 Uma vez configurado, seu assistente de IA pode usar diretamente as capacidades do Repomix para analisar bases de código, tornando os fluxos de trabalho de análise de código mais eficientes.
+
+## Recursos relacionados
+
+- [Plugins do Claude Code](/pt-br/guide/claude-code-plugins) - Integração conveniente de plugins para Claude Code
+- [Configuração](/pt-br/guide/configuration) - Personalizar o comportamento do Repomix
+- [Opções de Linha de Comando](/pt-br/guide/command-line-options) - Referência completa da CLI
+- [Formatos de Saída](/pt-br/guide/output) - Conhecer os formatos de saída disponíveis

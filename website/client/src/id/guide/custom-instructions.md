@@ -52,3 +52,10 @@ Saat menulis instruksi khusus, pertimbangkan hal berikut:
 5. **Berikan contoh**: Jika memungkinkan, berikan contoh jenis respons yang Anda harapkan.
 
 Instruksi yang jelas dan spesifik akan membantu model AI memberikan respons yang lebih berguna dan relevan.
+
+## Sumber Daya Terkait
+
+- [Konfigurasi](/id/guide/configuration) - Atur `output.instructionFilePath` di file konfigurasi Anda
+- [Format Output](/id/guide/output) - Pelajari tentang format output yang berbeda
+- [Contoh Prompt](/id/guide/prompt-examples) - Contoh prompt untuk analisis AI
+- [Kasus Penggunaan](/id/guide/use-cases) - Contoh nyata penggunaan Repomix dengan AI

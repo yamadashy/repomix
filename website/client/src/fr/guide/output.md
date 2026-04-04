@@ -252,4 +252,11 @@ Définissez le format par défaut dans `repomix.config.json`:
     "filePath": "output.xml"
   }
 }
+
+## Ressources associées
+
+- [Configuration](/fr/guide/configuration) - Référence complète des options de configuration
+- [Options de ligne de commande](/fr/guide/command-line-options) - Utiliser `--style` pour définir le format de sortie
+- [Compression de code](/fr/guide/code-compress) - Réduire le nombre de tokens tout en préservant la structure
+- [Exemples de prompts](/fr/guide/prompt-examples) - Conseils pour utiliser la sortie avec différents modèles IA
 ```

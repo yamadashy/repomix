@@ -252,3 +252,10 @@ Repomix'i MCP sunucusu olarak kullanmak birçok avantaj sunar:
 4. **Gelişmiş Özellikler**: Kod sıkıştırma, token sayımı ve güvenlik kontrolleri gibi Repomix'in tüm özelliklerinden yararlanır.
 
 Yapılandırıldıktan sonra AI asistanınız, kod tabanlarını analiz etmek için Repomix'in yeteneklerini doğrudan kullanabilir ve kod analizi iş akışlarını daha verimli hale getirir.
+
+## İlgili Kaynaklar
+
+- [Claude Code Eklentileri](/tr/guide/claude-code-plugins) - Claude Code için pratik eklenti entegrasyonu
+- [Yapılandırma](/tr/guide/configuration) - Repomix davranışını özelleştirin
+- [Komut Satırı Seçenekleri](/tr/guide/command-line-options) - Tam CLI referansı
+- [Çıktı Formatları](/tr/guide/output) - Mevcut çıktı formatları hakkında bilgi edinin

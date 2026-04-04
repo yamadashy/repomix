@@ -40,3 +40,9 @@ Serveur Model Context Protocol qui utilise Repomix pour aider les agents IA à a
 Ensemble d'outils CLI pour agents IA avec plusieurs capacités incluant la recherche web via Perplexity, l'analyse de repository avec Gemini et Repomix, et l'automatisation de navigateur avec Stagehand.
 
 **Repository** : [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## Ressources associées
+
+- [Installation](/fr/guide/installation) - Installer la CLI ou l'extension de navigateur Repomix
+- [Serveur MCP](/fr/guide/mcp-server) - Utiliser Repomix comme serveur MCP pour les assistants IA
+- [Plugins Claude Code](/fr/guide/claude-code-plugins) - Plugins officiels pour Claude Code

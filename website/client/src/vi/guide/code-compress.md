@@ -187,8 +187,8 @@ repomix --compress-code --remove-comments --style markdown
 
 Lệnh này sẽ tạo một đầu ra Markdown với mã đã nén và không có bình luận, giảm đáng kể kích thước đầu ra.
 
-## Tiếp theo là gì?
+## Tài nguyên liên quan
 
-- [Xóa bình luận](comment-removal.md): Tìm hiểu về tính năng xóa bình luận
-- [Cấu hình](configuration.md): Tìm hiểu về tệp cấu hình
-- [Tùy chọn dòng lệnh](command-line-options.md): Xem tất cả các tùy chọn dòng lệnh có sẵn
+- [Xóa bình luận](/vi/guide/comment-removal) - Xóa bình luận để giảm thêm số lượng token
+- [Cấu hình](/vi/guide/configuration) - Đặt `output.compress` trong tệp cấu hình của bạn
+- [Tùy chọn dòng lệnh](/vi/guide/command-line-options) - Tham chiếu CLI đầy đủ

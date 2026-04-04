@@ -59,6 +59,13 @@
 ## Opsi MCP
 - `--mcp`: Jalankan sebagai server Model Context Protocol untuk integrasi alat AI
 
+## Sumber Daya Terkait
+
+- [Konfigurasi](/id/guide/configuration) - Atur opsi di file konfigurasi alih-alih flag CLI
+- [Format Output](/id/guide/output) - Detail tentang format XML, Markdown, JSON, dan plain text
+- [Kompresi Kode](/id/guide/code-compress) - Cara kerja `--compress` dengan Tree-sitter
+- [Keamanan](/id/guide/security) - Apa yang dinonaktifkan oleh `--no-security-check`
+
 ## Contoh
 
 ```bash

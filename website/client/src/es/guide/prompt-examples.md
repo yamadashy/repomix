@@ -122,3 +122,10 @@ Proporciona ejemplos específicos de patrones buenos y problemáticos.
 - Funciona con todos los formatos
 - Concéntrate en áreas específicas por solicitud
 - Usa un análisis paso a paso
+
+## Recursos relacionados
+
+- [Formatos de salida](/es/guide/output) - Detalles sobre cada formato de salida
+- [Instrucciones personalizadas](/es/guide/custom-instructions) - Agregar contexto y pautas a la salida
+- [Casos de uso](/es/guide/use-cases) - Ejemplos reales de flujos de trabajo asistidos por IA
+- [Compresión de código](/es/guide/code-compress) - Reducir el conteo de tokens para bases de código grandes
