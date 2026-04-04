@@ -1,4 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
+import { logger } from '../../shared/logger.js';
 import { getWorkerThreadCount, initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
@@ -159,7 +160,10 @@ export const calculateMetrics = async (
   } finally {
     // Cleanup the task runner after all calculations are complete (only if we created it)
     if (!deps.taskRunner) {
-      await taskRunner.cleanup();
+      // Fire-and-forget: worker threads are idle (all tasks complete).
+      taskRunner.cleanup().catch((error) => {
+        logger.debug('Metrics worker pool cleanup error (non-fatal):', error);
+      });
     }
   }
 };

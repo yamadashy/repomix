@@ -123,7 +123,10 @@ export const processFiles = async (
       logger.error('Error during file processing:', error);
       throw error;
     } finally {
-      await taskRunner.cleanup();
+      // Fire-and-forget: worker threads are idle (all tasks complete).
+      taskRunner.cleanup().catch((error) => {
+        logger.debug('File processing worker pool cleanup error (non-fatal):', error);
+      });
     }
 
     // Phase 2: Lightweight transforms (no progress - already reported by workers)
