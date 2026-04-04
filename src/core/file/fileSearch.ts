@@ -214,6 +214,8 @@ export const searchFiles = async (
     logger.debug('[globby] Starting file search...');
     const globbyStartTime = Date.now();
 
+    const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+
     // Optimization: when useGitignore is enabled, delegate gitignore handling to
     // `git ls-files` (native C, ~10ms) instead of globby's JS gitignore parser (~250ms).
     // globby still runs for include/ignore pattern matching and .repomixignore support,
@@ -226,8 +228,21 @@ export const searchFiles = async (
       logger.debug(`[git ls-files] Found ${gitTrackedSet.size} git-visible files, using fast path`);
     }
 
+    // Optimization: start directory globby in parallel with file globby.
+    // The directory search (for empty directory detection) uses gitignore:true which is
+    // slower than the git-ls-files fast path used for files. Running them concurrently
+    // overlaps the two I/O-heavy traversals, saving ~30-50ms when includeEmptyDirectories
+    // is enabled.
+    const dirGlobbyPromise = config.output.includeEmptyDirectories
+      ? globby(includePatterns, {
+          ...baseGlobbyOptions,
+          gitignore: config.ignore.useGitignore,
+          onlyDirectories: true,
+        })
+      : null;
+
     const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+      ...baseGlobbyOptions,
       // Skip globby's gitignore parsing when git ls-files handles it
       gitignore: config.ignore.useGitignore && !useGitignoreFastPath,
       onlyFiles: true,
@@ -251,19 +266,9 @@ export const searchFiles = async (
     logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filteredFilePaths.length} files`);
 
     let emptyDirPaths: string[] = [];
-    if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories...');
-      const emptyDirStartTime = Date.now();
-
-      const directories = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        gitignore: config.ignore.useGitignore,
-        onlyDirectories: true,
-      });
-
-      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
-
+    if (dirGlobbyPromise) {
+      const directories = await dirGlobbyPromise;
+      logger.debug(`[empty dirs] Found ${directories.length} directories, filtering for empty...`);
       const filterStartTime = Date.now();
       emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
       const filterTime = Date.now() - filterStartTime;

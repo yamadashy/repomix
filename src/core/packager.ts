@@ -83,14 +83,7 @@ export const pack = async (
     config.tokenCount.encoding,
   );
 
-  // Pre-initialize security worker pool with eager thread creation so @secretlint/core
-  // module loading (~150ms) overlaps with file search and collection I/O.
-  // Workers are created immediately (minThreads = maxThreads) and begin loading their
-  // modules in the background while the main thread performs file discovery.
   const securityEnabled = config.security.enableSecurityCheck;
-  // numOfTasks estimate for pool sizing (actual count unknown until search completes).
-  // With TASKS_PER_THREAD=100, 1000 yields up to 10 threads capped by CPU count.
-  const securityTaskRunner = securityEnabled ? deps.createSecurityTaskRunner(1000) : undefined;
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -101,6 +94,14 @@ export const pack = async (
       }),
     ),
   );
+
+  // Initialize security worker pool AFTER file search completes, not before.
+  // Creating eager workers earlier causes heavy I/O contention during search
+  // (multiple worker threads loading @secretlint/core compete with globby's
+  // file-system traversal, inflating search from ~170ms to ~400ms).
+  // By deferring creation to here, @secretlint/core loading (~150ms) overlaps
+  // with the file collection phase instead, where I/O contention is lower.
+  const securityTaskRunner = securityEnabled ? deps.createSecurityTaskRunner(1000) : undefined;
 
   // Deduplicate and sort empty directory paths for reuse during output generation,
   // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
