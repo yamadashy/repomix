@@ -9,13 +9,6 @@
 ### [Warp, built for coding with multiple AI agents](https://go.warp.dev/repomix)
 [Available for MacOS, Linux, & Windows](https://go.warp.dev/repomix)<br>
 
-   <br>
-
-   <a href="https://git-tower.com/?utm_source=repomix&utm_medium=referral">
-      <img alt="Tower sponsorship" width="400" src="website/client/src/public/images/sponsors/tower/tower-most-powerful-git-client.png">
-   </a>
-
-### [Tower, the most powerful Git client for Mac and Windows](https://git-tower.com/?utm_source=repomix&utm_medium=referral)
 
 </div>
 
