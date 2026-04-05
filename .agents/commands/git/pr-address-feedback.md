@@ -109,6 +109,8 @@ Before making any changes, show a summary table:
 
 **Discuss** items are shown in the plan table for visibility, but do not act on them at this stage. Do not reply to or resolve them. They will be presented to the user for decision at the very end (Step 9) after all other work is complete.
 
+Proceed with Fix / Improve / Skip / Bot items without waiting for user approval. Do not ask for confirmation at this stage.
+
 ### 5. Apply code fixes
 
 For each **Fix** and **Improve** item:
