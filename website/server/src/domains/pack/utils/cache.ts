@@ -7,6 +7,7 @@ const decompressAsync = promisify(zlib.brotliDecompress);
 
 // Balanced speed/ratio for in-memory cache
 const BROTLI_QUALITY = 4;
+const BROTLI_WINDOW_SIZE = 19; // 512KB look-back window (default 22 = 4MB), sufficient for typical cache payloads
 
 interface CacheEntry {
   value: Uint8Array; // Compressed data
@@ -63,6 +64,7 @@ export class RequestCache<T> {
         params: {
           [zlib.constants.BROTLI_PARAM_MODE]: zlib.constants.BROTLI_MODE_TEXT,
           [zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY,
+          [zlib.constants.BROTLI_PARAM_LGWIN]: BROTLI_WINDOW_SIZE,
         },
       });
 
