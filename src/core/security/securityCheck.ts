@@ -74,10 +74,10 @@ export const runSecurityCheck = async (
   const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
   const totalItems = allItems.length;
 
-  // Cap security workers at half the available CPU cores to reduce contention with the
-  // metrics worker pool that runs concurrently. The security check uses coarse-grained
-  // batches (BATCH_SIZE=50), so fewer workers still provide sufficient parallelism.
-  const maxSecurityWorkers = Math.max(1, Math.floor(getProcessConcurrency() / 2));
+  // Cap security workers at 2 to reduce contention with the metrics worker pool that
+  // runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
+  // so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
+  const maxSecurityWorkers = Math.min(2, getProcessConcurrency());
 
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
     numOfTasks: totalItems,
