@@ -92,7 +92,7 @@ Identify bot authors: login containing `[bot]` or `-integration` (e.g., `coderab
 |----------|-------------|--------|
 | **Fix** | Clear defects, bugs, security issues, incorrect logic | Must fix in code |
 | **Improve** | Valid suggestions for better code quality, naming, structure | Fix unless it conflicts with project conventions |
-| **Discuss** | Ambiguous feedback, design disagreements, scope questions | Present to user for decision |
+| **Discuss** | Ambiguous feedback, design disagreements, scope questions | Do nothing — ask user at the end |
 | **Skip** | Already addressed, out of scope, false positives, style nitpicks | Reply with reason + resolve (no code change) |
 
 ### 4. Present the plan
@@ -103,12 +103,12 @@ Before making any changes, show a summary table:
 |---|------|----------|---------------|-------------------|----------------|
 | 1 | Review | Fix | src/foo.ts:42 | Missing null check | Add guard clause |
 | 2 | Review | Improve | src/bar.ts:10 | Rename variable | Rename `x` → `count` |
-| 3 | Review | Discuss | src/baz.ts:55 | Architecture concern | Ask user |
+| 3 | Review | Discuss | src/baz.ts:55 | Architecture concern | Ask user after all other work is done |
 | 4 | Review | Skip | src/foo.ts:20 | Style preference | No action — matches conventions |
 | 5 | Bot | Outdated | coderabbitai[bot] | Old review summary | Resolve + minimize |
 | 6 | Bot | Superseded | codecov[bot] | Older coverage report | Minimize |
 
-For **Discuss** items, ask the user whether to address them or skip. Wait for confirmation before proceeding.
+**Discuss** items are NOT shown to the user at this stage. Do not reply to or resolve them. They will be presented to the user at the very end (Step 9) after all other work is complete.
 
 ### 5. Apply code fixes
 
@@ -209,14 +209,43 @@ mutation {
 
 Available classifiers: `SPAM`, `ABUSE`, `OFF_TOPIC`, `OUTDATED`, `DUPLICATE`, `RESOLVED`
 
-### 9. Report results
+### 9. Final report
 
-Summarize what was done:
-- How many review comments addressed with code changes
-- How many review comments resolved as no-action-needed
-- How many bot threads resolved / comments minimized
-- Any items left for the user to decide (Discuss category)
-- Link to the pushed commit (if any)
+Present a structured report to the user covering all processed comments.
+
+#### ✅ Addressed (code changed)
+
+List each comment that was fixed with a code change:
+
+| # | File | Comment (summary) | What was done | Commit |
+|---|------|-------------------|---------------|--------|
+| 1 | src/foo.ts:42 | Missing null check | Added guard clause | `abc1234` |
+| 2 | src/bar.ts:10 | Rename variable | Renamed `x` → `count` | `abc1234` |
+
+#### ⏭️ No action needed (resolved with reason)
+
+List each comment that was resolved without code changes, with the reason:
+
+| # | File / Author | Comment (summary) | Reason |
+|---|---------------|-------------------|--------|
+| 1 | src/foo.ts:20 | Style preference | Matches project conventions |
+| 2 | coderabbitai[bot] | Old review summary | Outdated — code was updated |
+| 3 | codecov[bot] | Coverage report | Superseded by newer report |
+
+#### 🔍 Needs your input
+
+If there are **Discuss** items, present them with full context so the user can decide:
+
+| # | File | Comment (full text or summary) | Assessment |
+|---|------|-------------------------------|------------|
+| 1 | src/baz.ts:55 | "Consider splitting this into..." | Valid concern but may be out of scope |
+
+For each item, ask the user to choose:
+- **Address** — make the code change (will trigger another commit + push cycle)
+- **Skip** — reply with a reason and resolve the thread
+- **Leave** — do nothing, let the user handle it manually
+
+Do NOT reply to or resolve these threads until the user decides.
 
 ## Important
 
