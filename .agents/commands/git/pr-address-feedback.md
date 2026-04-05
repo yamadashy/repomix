@@ -26,17 +26,7 @@ Run in parallel:
 gh pr diff {pr_number}
 ```
 
-**Review comments (inline):**
-```bash
-gh api repos/{owner}/{repo}/pulls/{pr_number}/comments --paginate
-```
-
-**Issue comments (general):**
-```bash
-gh pr view {pr_number} --comments --json comments
-```
-
-**Review threads via GraphQL** (to check resolution status and outdated flags):
+**All comments via GraphQL** (review threads, issue comments, and review bodies in a single query):
 ```bash
 gh api graphql -f owner="$OWNER" -f repo="$REPO" -F pr_number=$PR_NUMBER -f query='
 query($owner: String!, $repo: String!, $pr_number: Int!, $threadCursor: String, $commentCursor: String, $reviewCursor: String) {
