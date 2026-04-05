@@ -39,7 +39,6 @@ export const calculateSelectiveFileMetrics = async (
     logger.trace(`Split ${filesToProcess.length} files into ${batches.length} batches for token counting`);
 
     let completedItems = 0;
-    const allResults: FileMetrics[] = [];
 
     const batchResults = await Promise.all(
       batches.map(async (batch) => {
@@ -65,9 +64,7 @@ export const calculateSelectiveFileMetrics = async (
       }),
     );
 
-    for (const batchResult of batchResults) {
-      allResults.push(...batchResult);
-    }
+    const allResults = batchResults.flat();
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;
