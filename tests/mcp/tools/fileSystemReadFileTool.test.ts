@@ -13,12 +13,12 @@ vi.mock('node:fs/promises', () => ({
   },
 }));
 vi.mock('node:path');
-vi.mock('../../../src/core/security/workers/securityCheckWorker.js', () => ({
+vi.mock('../../../src/core/security/secretLintRunner.js', () => ({
   createSecretLintConfig: vi.fn().mockReturnValue({}),
   runSecretLint: vi.fn().mockResolvedValue(null),
 }));
 
-import { runSecretLint } from '../../../src/core/security/workers/securityCheckWorker.js';
+import { runSecretLint } from '../../../src/core/security/secretLintRunner.js';
 
 describe('FileSystemReadFileTool', () => {
   const mockServer = {
