@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775396819729,
+  "lastUpdate": 1775407130022,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -2115,6 +2115,51 @@ window.BENCHMARK_DATA = {
             "range": "±56",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2649ms, Q3: 2705ms\nAll times: 2597, 2620, 2627, 2627, 2635, 2649, 2650, 2652, 2652, 2656, 2657, 2657, 2663, 2675, 2700, 2705, 2718, 2926, 3299, 3349ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9d5b92822c40aa6a78c0300e7f9870fe2eced4f1",
+          "message": "Merge pull request #1409 from yamadashy/perf/reduce-worker-thread-contention\n\nperf(core): Reduce worker thread contention for faster pipeline execution",
+          "timestamp": "2026-04-06T01:36:14+09:00",
+          "tree_id": "582d03543ef231440d987994c1cd377416b22793",
+          "url": "https://github.com/yamadashy/repomix/commit/9d5b92822c40aa6a78c0300e7f9870fe2eced4f1"
+        },
+        "date": 1775407129711,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1156,
+            "range": "±90",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1134ms, Q3: 1224ms\nAll times: 1100, 1124, 1126, 1129, 1129, 1132, 1132, 1134, 1136, 1138, 1139, 1139, 1145, 1147, 1156, 1156, 1158, 1165, 1167, 1179, 1181, 1214, 1224, 1237, 1240, 1243, 1258, 1271, 1308, 1419ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1992,
+            "range": "±32",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1974ms, Q3: 2006ms\nAll times: 1951, 1964, 1964, 1968, 1971, 1974, 1982, 1984, 1986, 1990, 1992, 1993, 2003, 2004, 2004, 2006, 2020, 2020, 2024, 2032ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2471,
+            "range": "±34",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2448ms, Q3: 2482ms\nAll times: 2419, 2440, 2443, 2447, 2447, 2448, 2454, 2459, 2462, 2465, 2471, 2472, 2473, 2474, 2476, 2482, 2495, 2498, 2514, 2527ms"
           }
         ]
       }
