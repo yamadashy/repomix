@@ -1,5 +1,10 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import { getWorkerThreadCount, initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
+import {
+  getProcessConcurrency,
+  getWorkerThreadCount,
+  initTaskRunner,
+  type TaskRunner,
+} from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -34,8 +39,15 @@ export interface MetricsTaskRunnerWithWarmup {
  * output generation).
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+  // Cap metrics workers at (processConcurrency - 1) to leave CPU headroom for the
+  // security worker pool that runs concurrently during the pipeline overlap phase.
+  // Benchmarks show 3 workers on a 4-core machine is optimal: the slightly longer
+  // tokenization is offset by faster warmup (less contention during gpt-tokenizer loading).
+  // Ensure at least 1 worker on single-core machines.
+  const maxMetricsWorkers = Math.max(1, getProcessConcurrency() - 1);
+  const cappedNumOfTasks = Math.min(numOfTasks, maxMetricsWorkers * 100);
   const taskRunner = initTaskRunner<TokenCountTask, number>({
-    numOfTasks,
+    numOfTasks: cappedNumOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
   });

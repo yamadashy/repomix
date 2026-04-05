@@ -12,6 +12,7 @@ import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 vi.mock('../../../src/shared/processConcurrency', () => ({
+  getProcessConcurrency: vi.fn(() => 4),
   initWorker: vi.fn(() => ({
     run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
       return await securityCheckWorker(task);
