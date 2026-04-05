@@ -41,8 +41,8 @@ describe('calculateSelectiveFileMetrics', () => {
     );
 
     expect(result).toEqual([
-      { path: 'file1.txt', charCount: 100, tokenCount: 13 },
       { path: 'file3.txt', charCount: 300, tokenCount: 75 },
+      { path: 'file1.txt', charCount: 100, tokenCount: 13 },
     ]);
   });
 

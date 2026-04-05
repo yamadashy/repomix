@@ -15,7 +15,9 @@ export const calculateSelectiveFileMetrics = async (
   deps: { taskRunner: TaskRunner<TokenCountTask, number> },
 ): Promise<FileMetrics[]> => {
   const targetFileSet = new Set(targetFilePaths);
-  const filesToProcess = processedFiles.filter((file) => targetFileSet.has(file.path));
+  const filesToProcess = processedFiles
+    .filter((file) => targetFileSet.has(file.path))
+    .sort((a, b) => b.content.length - a.content.length);
 
   if (filesToProcess.length === 0) {
     return [];
