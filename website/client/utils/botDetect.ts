@@ -1,5 +1,7 @@
+// Specific bot User-Agent patterns only — no bare "bot"/"spider" to avoid
+// false positives on legitimate devices (e.g., Cubot phones).
 const BOT_UA_PATTERN =
-  /bot|crawler|spider|crawling|Applebot|Googlebot|Bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|LinkedInBot|Twitterbot|Discordbot|WhatsApp|TelegramBot|Bytespider|GPTBot|ClaudeBot|CCBot|Amazonbot/i;
+  /Applebot|Googlebot|Bingbot|Baiduspider|YandexBot|DuckDuckBot|Slurp|facebookexternalhit|LinkedInBot|Twitterbot|Discordbot|WhatsApp|TelegramBot|Bytespider|GPTBot|ClaudeBot|CCBot|Amazonbot|PetalBot|SemrushBot|AhrefsBot/i;
 
 /**
  * Detects whether the current user agent is a bot/crawler.

@@ -4,14 +4,14 @@ import { getClientInfo } from '../utils/clientInfo.js';
 import { createErrorResponse } from '../utils/http.js';
 import { logWarning } from '../utils/logger.js';
 
-let lastBotBlockLogAt = 0;
-let botBlockCount = 0;
-const LOG_INTERVAL_MS = 60_000;
-
 export function botGuardMiddleware() {
-  return async function botGuardMiddleware(c: Context, next: Next) {
+  let lastBotBlockLogAt = 0;
+  let botBlockCount = 0;
+  const LOG_INTERVAL_MS = 60_000;
+
+  return async function botGuardHandler(c: Context, next: Next) {
     const clientInfo = getClientInfo(c);
-    const requestId = c.get('requestId');
+    const requestId = c.get('requestId') ?? 'unknown';
 
     if (isbot(clientInfo.userAgent)) {
       botBlockCount++;
