@@ -68,9 +68,7 @@ export const calculateSelectiveFileMetrics = async (
       }),
     );
 
-    for (const batchResult of batchResults) {
-      allResults.push(...batchResult);
-    }
+    allResults.push(...batchResults.flat());
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;

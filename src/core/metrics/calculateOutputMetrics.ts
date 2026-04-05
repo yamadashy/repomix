@@ -43,10 +43,7 @@ export const calculateOutputMetrics = async (
       );
 
       // Sum up the results
-      result = 0;
-      for (const count of chunkResults) {
-        result += count as number;
-      }
+      result = (chunkResults as number[]).reduce((sum, count) => sum + count, 0);
     } else {
       // Process small content directly
       result = (await deps.taskRunner.run({
