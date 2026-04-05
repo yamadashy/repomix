@@ -6,13 +6,15 @@ import { logger } from '../../shared/logger.js';
 // Lazy-load encoding detection libraries to avoid their ~25ms combined import cost.
 // The fast UTF-8 path (covers ~99% of source code files) never needs these;
 // they are only loaded when a file fails UTF-8 decoding.
-let _jschardet: typeof import('jschardet') | undefined;
-let _iconv: typeof import('iconv-lite') | undefined;
-const getEncodingDeps = async () => {
-  if (!_jschardet || !_iconv) {
-    [_jschardet, _iconv] = await Promise.all([import('jschardet'), import('iconv-lite')]);
-  }
-  return { jschardet: _jschardet, iconv: _iconv };
+// Caching the Promise (not the resolved values) guarantees exactly one import
+// regardless of how many concurrent calls hit the slow path.
+let _encodingDepsPromise: Promise<{ jschardet: typeof import('jschardet'); iconv: typeof import('iconv-lite') }>;
+const getEncodingDeps = () => {
+  _encodingDepsPromise ??= Promise.all([import('jschardet'), import('iconv-lite')]).then(([jschardet, iconv]) => ({
+    jschardet,
+    iconv,
+  }));
+  return _encodingDepsPromise;
 };
 
 export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
