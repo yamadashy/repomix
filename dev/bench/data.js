@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775313872939,
+  "lastUpdate": 1775368926906,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -1890,6 +1890,51 @@ window.BENCHMARK_DATA = {
             "range": "±97",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2495ms, Q3: 2592ms\nAll times: 2446, 2447, 2462, 2470, 2489, 2495, 2502, 2517, 2522, 2522, 2538, 2539, 2540, 2566, 2586, 2592, 2619, 2661, 2726, 3614ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2f561979bdc949a477701d81dc5a294e599d7d4e",
+          "message": "Merge pull request #1401 from yamadashy/perf/lazy-load-encoding-libs\n\nperf(core): Lazy-load jschardet and iconv-lite in fileRead",
+          "timestamp": "2026-04-05T14:59:00+09:00",
+          "tree_id": "d5c4db038ded78398816c28e9056538529364c0e",
+          "url": "https://github.com/yamadashy/repomix/commit/2f561979bdc949a477701d81dc5a294e599d7d4e"
+        },
+        "date": 1775368926014,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1149,
+            "range": "±65",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1141ms, Q3: 1206ms\nAll times: 1093, 1120, 1125, 1126, 1136, 1140, 1140, 1141, 1142, 1142, 1142, 1142, 1143, 1146, 1149, 1149, 1155, 1168, 1169, 1176, 1179, 1195, 1206, 1218, 1235, 1242, 1313, 1322, 1376, 1460ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2104,
+            "range": "±43",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2088ms, Q3: 2131ms\nAll times: 2027, 2068, 2077, 2083, 2086, 2088, 2094, 2095, 2101, 2104, 2104, 2106, 2108, 2108, 2122, 2131, 2132, 2206, 2444, 2491ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2506,
+            "range": "±165",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2487ms, Q3: 2652ms\nAll times: 2413, 2428, 2442, 2481, 2485, 2487, 2496, 2497, 2498, 2500, 2506, 2521, 2561, 2562, 2641, 2652, 2721, 2725, 3006, 3305ms"
           }
         ]
       }
