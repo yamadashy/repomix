@@ -5,11 +5,19 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.tool-versions'
       - '.github/workflows/ci-website.yml'
   pull_request:
     branches: [main]
     paths:
       - 'website/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.tool-versions'
       - '.github/workflows/ci-website.yml'
   workflow_dispatch:
 
