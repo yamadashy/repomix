@@ -53,30 +53,62 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
 };
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
-  const maxBackticks = files
-    .flatMap((file) => file.content.match(/`+/g) ?? [])
-    .reduce((max, match) => Math.max(max, match.length), 0);
-  return '`'.repeat(Math.max(3, maxBackticks + 1));
+  // Single-pass scan: avoid flatMap + intermediate array allocation by tracking max inline
+  let maxLen = 0;
+  for (const file of files) {
+    const re = /`+/g;
+    for (let match = re.exec(file.content); match !== null; match = re.exec(file.content)) {
+      if (match[0].length > maxLen) {
+        maxLen = match[0].length;
+      }
+    }
+  }
+  return '`'.repeat(Math.max(3, maxLen + 1));
+};
+
+const countNewlines = (content: string): number => {
+  let count = 0;
+  let pos = content.indexOf('\n');
+  while (pos !== -1) {
+    count++;
+    pos = content.indexOf('\n', pos + 1);
+  }
+  return count;
 };
 
 const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
   const lineCounts: Record<string, number> = {};
   for (const file of processedFiles) {
-    // Count lines: empty files have 0 lines, otherwise count newlines + 1
-    // (unless the content ends with a newline, in which case the last "line" is empty)
     const content = file.content;
     if (content.length === 0) {
       lineCounts[file.path] = 0;
     } else {
-      // Count actual lines (text editor style: number of \n + 1, but trailing \n doesn't add extra line)
-      const newlineCount = (content.match(/\n/g) || []).length;
+      const newlineCount = countNewlines(content);
       lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
     }
   }
   return lineCounts;
 };
 
-export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+export interface CreateRenderContextOptions {
+  // When true, compute all fields regardless of output style (needed by skill path)
+  forceAll?: boolean;
+}
+
+export const createRenderContext = (
+  outputGeneratorContext: OutputGeneratorContext,
+  options: CreateRenderContextOptions = {},
+): RenderContext => {
+  const style = outputGeneratorContext.config.output.style;
+
+  // fileLineCounts: not referenced by any Handlebars template or parsable output generator.
+  // Only the skill path (packSkill.ts) uses it, so skip the full-content scan for regular output.
+  const needsLineCounts = !!options.forceAll;
+
+  // markdownCodeBlockDelimiter: only used by the markdown template and skill generators.
+  // For XML, plain, JSON, and parsable-XML output, skip the full-content regex scan.
+  const needsMarkdownDelimiter = options.forceAll || style === 'markdown';
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -90,12 +122,14 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    fileLineCounts: needsLineCounts ? calculateFileLineCounts(outputGeneratorContext.processedFiles) : {},
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    markdownCodeBlockDelimiter: needsMarkdownDelimiter
+      ? calculateMarkdownDelimiter(outputGeneratorContext.processedFiles)
+      : '```',
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
