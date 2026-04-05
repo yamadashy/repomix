@@ -53,13 +53,18 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
 };
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
-  // Single-pass scan: avoid flatMap + intermediate array allocation by tracking max inline
+  // Single-pass character scan: avoid regex/flatMap overhead and intermediate array allocation
   let maxLen = 0;
   for (const file of files) {
-    const re = /`+/g;
-    for (let match = re.exec(file.content); match !== null; match = re.exec(file.content)) {
-      if (match[0].length > maxLen) {
-        maxLen = match[0].length;
+    let currentLen = 0;
+    for (let i = 0; i < file.content.length; i++) {
+      if (file.content[i] === '`') {
+        currentLen++;
+        if (currentLen > maxLen) {
+          maxLen = currentLen;
+        }
+      } else {
+        currentLen = 0;
       }
     }
   }
