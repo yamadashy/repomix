@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api repos/*/pulls/*/comments:*),Bash(gh api repos/*/pulls/*/comments/*/replies:*),Bash(gh api graphql:*),Bash(gh repo view:*),Bash(npm run lint:*),Bash(npm run test:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Read,Edit,Glob,Grep
+allowed-tools: Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(gh repo view:*),Bash(npm run lint:*),Bash(npm run test:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Read,Edit,Glob,Grep
 description: Address PR review feedback — fetch comments, fix code, commit, push, and resolve threads
 ---
 
@@ -26,7 +26,8 @@ Run in parallel:
 gh pr diff {pr_number}
 ```
 
-**All comments via GraphQL** (review threads, issue comments, and review bodies in a single query):
+**All comments via GraphQL** (review threads, issue comments, and review bodies in a single query).
+REST API (`gh api repos/...`) may also be used when needed (e.g., for replying to inline comments):
 ```bash
 gh api graphql -f owner="$OWNER" -f repo="$REPO" -F pr_number=$PR_NUMBER -f query='
 query($owner: String!, $repo: String!, $pr_number: Int!, $threadCursor: String, $commentCursor: String, $reviewCursor: String) {
