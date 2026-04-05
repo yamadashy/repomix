@@ -2,8 +2,8 @@ import { promisify } from 'node:util';
 import * as zlib from 'node:zlib';
 import type { PackOptions } from '../../../types.js';
 
-const inflateAsync = promisify(zlib.inflate);
-const deflateAsync = promisify(zlib.deflate);
+const compressAsync = promisify(zlib.brotliCompress);
+const decompressAsync = promisify(zlib.brotliDecompress);
 
 interface CacheEntry {
   value: Uint8Array; // Compressed data
@@ -43,7 +43,7 @@ export class RequestCache<T> {
 
     try {
       // Decompress and return the data
-      const decompressedData = await inflateAsync(entry.value);
+      const decompressedData = await decompressAsync(entry.value);
       return JSON.parse(decompressedData.toString('utf8'));
     } catch (error) {
       console.error('Error decompressing cache entry:', error);
@@ -56,7 +56,9 @@ export class RequestCache<T> {
     try {
       // Convert data to JSON string and compress
       const jsonString = JSON.stringify(value);
-      const compressedData = await deflateAsync(Buffer.from(jsonString, 'utf8'));
+      const compressedData = await compressAsync(Buffer.from(jsonString, 'utf8'), {
+        params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 4 },
+      });
 
       this.cache.set(key, {
         value: compressedData,
