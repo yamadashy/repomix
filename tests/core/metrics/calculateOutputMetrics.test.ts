@@ -90,7 +90,7 @@ describe('calculateOutputMetrics', () => {
   });
 
   it('should process large content in parallel', async () => {
-    // Generate a large content that exceeds MIN_CONTENT_LENGTH_FOR_PARALLEL
+    // Generate a large content that exceeds MIN_CONTENT_LENGTH_FOR_PARALLEL but below sampling threshold
     const content = 'a'.repeat(1_100_000); // 1.1MB of content
     const encoding = 'o200k_base';
     const path = 'large-file.txt';
@@ -98,14 +98,9 @@ describe('calculateOutputMetrics', () => {
     let chunksProcessed = 0;
     const mockParallelTaskRunner = <T, R>(_options: WorkerOptions) => {
       return {
-        run: async (task: T) => {
-          const t = task as TokenCountTask;
-          // Return inconsistent results for samples to force high CV and fallback to full tokenization
-          if (t.path?.includes('-sample-')) {
-            const idx = Number.parseInt(t.path.split('-sample-')[1] || '0', 10);
-            return (idx % 2 === 0 ? 1 : 10000) as R;
-          }
+        run: async (_task: T) => {
           chunksProcessed++;
+          // Return a fixed token count for each chunk
           return 100 as R;
         },
         cleanup: async () => {
@@ -148,7 +143,7 @@ describe('calculateOutputMetrics', () => {
   });
 
   it('should correctly split content into chunks for parallel processing', async () => {
-    const content = 'a'.repeat(1_100_000); // 1.1MB of content
+    const content = 'a'.repeat(1_100_000); // 1.1MB of content (below sampling threshold)
     const encoding = 'o200k_base';
     const processedChunks: string[] = [];
 
@@ -156,11 +151,6 @@ describe('calculateOutputMetrics', () => {
       return {
         run: async (task: T) => {
           const outputTask = task as TokenCountTask;
-          // Force sampling fallback with inconsistent sample results
-          if (outputTask.path?.includes('-sample-')) {
-            const idx = Number.parseInt(outputTask.path.split('-sample-')[1] || '0', 10);
-            return (idx % 2 === 0 ? 1 : 10000) as R;
-          }
           processedChunks.push(outputTask.content);
           return outputTask.content.length as R;
         },
@@ -170,7 +160,7 @@ describe('calculateOutputMetrics', () => {
       };
     };
 
-    await calculateOutputMetrics(content, encoding, 'large-file.txt', {
+    await calculateOutputMetrics(content, encoding, undefined, {
       taskRunner: mockChunkTrackingTaskRunner({
         numOfTasks: 1,
         workerType: 'calculateMetrics',
@@ -191,8 +181,8 @@ describe('calculateOutputMetrics', () => {
 
   describe('sampling estimation', () => {
     it('should use sampling estimation for large content with uniform token density', async () => {
-      // 600KB of uniform content (above 500KB threshold)
-      const content = 'hello world '.repeat(50_000); // ~600KB
+      // 3.5MB of uniform content (above 3MB sampling threshold)
+      const content = 'hello world '.repeat(291_667); // ~3.5MB
       const encoding = 'o200k_base';
       let totalRunCalls = 0;
 
@@ -210,7 +200,7 @@ describe('calculateOutputMetrics', () => {
         taskRunner: mockTaskRunner,
       });
 
-      // Should have used sampling (10 samples), not full tokenization
+      // Should have used sampling (10 samples), not full tokenization (35 chunks)
       expect(totalRunCalls).toBeLessThanOrEqual(10);
       // Estimated tokens should be approximately content.length / 4
       expect(result).toBeGreaterThan(0);
@@ -218,8 +208,8 @@ describe('calculateOutputMetrics', () => {
     });
 
     it('should fall back to full tokenization when sampling CV is too high', async () => {
-      // 1.2MB of content (above both thresholds)
-      const content = 'a'.repeat(1_200_000);
+      // 3.5MB of content (above sampling threshold)
+      const content = 'a'.repeat(3_500_000);
       const encoding = 'o200k_base';
       let runCallCount = 0;
 
@@ -243,14 +233,14 @@ describe('calculateOutputMetrics', () => {
         taskRunner: mockTaskRunner,
       });
 
-      // Should have fallen back to full parallel tokenization (more than 10 calls)
+      // Should have fallen back to full parallel tokenization (10 samples + 35 chunks)
       expect(runCallCount).toBeGreaterThan(10);
       expect(result).toBeGreaterThan(0);
     });
 
     it('should not use sampling for content below threshold', async () => {
-      // 400KB (below 500KB threshold)
-      const content = 'a'.repeat(400_000);
+      // 2MB (below 3MB sampling threshold, but above parallel threshold)
+      const content = 'a'.repeat(2_000_000);
       const encoding = 'o200k_base';
       let runCallCount = 0;
 
@@ -266,8 +256,8 @@ describe('calculateOutputMetrics', () => {
         taskRunner: mockTaskRunner,
       });
 
-      // Should process directly with a single call (no sampling)
-      expect(runCallCount).toBe(1);
+      // Should use full parallel tokenization (20 chunks), not sampling
+      expect(runCallCount).toBe(20);
     });
   });
 });

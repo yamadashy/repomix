@@ -11,7 +11,9 @@ const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1MB
 
 // Sampling constants for token count estimation on large outputs.
 // Instead of full BPE tokenization, we sample evenly spaced portions and extrapolate.
-const OUTPUT_SAMPLING_THRESHOLD = 500_000; // 500KB - outputs below this are fully tokenized
+// Threshold must be well above MIN_CONTENT_LENGTH_FOR_PARALLEL (1MB) so that sampling
+// (10 worker calls) is significantly fewer than full parallel chunking (30+ chunks).
+const OUTPUT_SAMPLING_THRESHOLD = 3_000_000; // 3MB - outputs below this are fully tokenized
 const OUTPUT_SAMPLE_SIZE = 100_000; // 100KB per sample
 const OUTPUT_SAMPLE_COUNT = 10; // Number of evenly spaced samples
 // Maximum coefficient of variation allowed for sampling estimation.
@@ -32,7 +34,7 @@ export const calculateOutputMetrics = async (
     let result: number;
 
     if (content.length > OUTPUT_SAMPLING_THRESHOLD) {
-      // For large outputs, try sampling estimation first
+      // For very large outputs, try sampling estimation first
       const estimated = await tryEstimateBySampling(content, encoding, path, deps);
       if (estimated !== null) {
         result = estimated;
@@ -41,8 +43,8 @@ export const calculateOutputMetrics = async (
         result = await fullTokenize(content, encoding, path, deps);
       }
     } else {
-      // Small content: process directly
-      result = await deps.taskRunner.run({ content, encoding, path });
+      // Standard path: full tokenization (parallel for > 1MB, direct for smaller)
+      result = await fullTokenize(content, encoding, path, deps);
     }
 
     const endTime = process.hrtime.bigint();
