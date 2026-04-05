@@ -4,7 +4,7 @@ import pc from 'picocolors';
 import { describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
-import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
+import { createSecurityCheckTaskRunner, runSecurityCheck } from '../../../src/core/security/securityCheck.js';
 import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
@@ -24,6 +24,7 @@ vi.mock('../../../src/shared/processConcurrency', () => ({
     }),
     cleanup: vi.fn(),
   })),
+  getWorkerThreadCount: vi.fn(() => ({ minThreads: 1, maxThreads: 1 })),
 }));
 
 const mockFiles: RawFile[] = [
@@ -50,10 +51,23 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   };
 };
 
+describe('createSecurityCheckTaskRunner', () => {
+  it('should return a taskRunner and warmupPromise', () => {
+    const result = createSecurityCheckTaskRunner(100);
+
+    expect(result).toHaveProperty('taskRunner');
+    expect(result).toHaveProperty('warmupPromise');
+    expect(result.taskRunner).toHaveProperty('run');
+    expect(result.taskRunner).toHaveProperty('cleanup');
+    expect(result.warmupPromise).toBeInstanceOf(Promise);
+  });
+});
+
 describe('runSecurityCheck', () => {
   it('should identify files with security issues', async () => {
     const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      taskRunner: undefined,
     });
 
     expect(result).toHaveLength(1);
@@ -66,6 +80,7 @@ describe('runSecurityCheck', () => {
 
     await runSecurityCheck(mockFiles, progressCallback, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      taskRunner: undefined,
     });
 
     // With 2 files and batch size 50, all files are in a single batch
@@ -91,6 +106,7 @@ describe('runSecurityCheck', () => {
     await expect(
       runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
         initTaskRunner: mockErrorTaskRunner,
+        taskRunner: undefined,
       }),
     ).rejects.toThrow('Worker error');
 
@@ -100,6 +116,7 @@ describe('runSecurityCheck', () => {
   it('should handle empty file list', async () => {
     const result = await runSecurityCheck([], () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      taskRunner: undefined,
     });
 
     expect(result).toEqual([]);
@@ -108,6 +125,7 @@ describe('runSecurityCheck', () => {
   it('should log performance metrics in trace mode', async () => {
     await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      taskRunner: undefined,
     });
 
     expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining('Starting security check for'));
@@ -119,6 +137,7 @@ describe('runSecurityCheck', () => {
 
     await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      taskRunner: undefined,
     });
 
     const endTime = Date.now();
@@ -133,6 +152,7 @@ describe('runSecurityCheck', () => {
 
     await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      taskRunner: undefined,
     });
 
     expect(mockFiles).toEqual(originalFiles);
@@ -159,6 +179,7 @@ describe('runSecurityCheck', () => {
     const progressCallback = vi.fn();
     const result = await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      taskRunner: undefined,
     });
 
     // With batch size 50 and 4 items (2 files + 2 git diffs), all in a single batch
@@ -177,6 +198,7 @@ describe('runSecurityCheck', () => {
     const progressCallback = vi.fn();
     await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      taskRunner: undefined,
     });
 
     // With batch size 50 and 3 items (2 files + 1 git diff), all in a single batch
@@ -192,10 +214,30 @@ describe('runSecurityCheck', () => {
     const progressCallback = vi.fn();
     await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      taskRunner: undefined,
     });
 
     // With batch size 50 and 3 items (2 files + 1 git diff), all in a single batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
+  });
+
+  it('should use external taskRunner when provided via deps', async () => {
+    const externalTaskRunner = {
+      run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
+        return await securityCheckWorker(task);
+      }),
+      cleanup: vi.fn(),
+    };
+
+    const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
+      initTaskRunner: mockInitTaskRunner,
+      taskRunner: externalTaskRunner,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].filePath).toBe('test1.js');
+    // External taskRunner should not be cleaned up by runSecurityCheck
+    expect(externalTaskRunner.cleanup).not.toHaveBeenCalled();
   });
 
   it('should handle gitDiffResult with no diff content', async () => {
@@ -207,6 +249,7 @@ describe('runSecurityCheck', () => {
     const progressCallback = vi.fn();
     await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      taskRunner: undefined,
     });
 
     // Should process only 2 files, no git diff content because both are empty strings (falsy)

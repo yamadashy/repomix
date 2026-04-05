@@ -1,11 +1,16 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import { getWorkerThreadCount, initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import type { SecurityCheckItem, SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
+import type {
+  SecurityCheckItem,
+  SecurityCheckTask,
+  SecurityCheckType,
+  SuspiciousFileResult as WorkerSuspiciousFileResult,
+} from './workers/securityCheckWorker.js';
 
 export type { SecurityCheckType } from './workers/securityCheckWorker.js';
 
@@ -14,6 +19,31 @@ export interface SuspiciousFileResult {
   messages: string[];
   type: SecurityCheckType;
 }
+
+export interface SecurityCheckTaskRunnerWithWarmup {
+  taskRunner: TaskRunner<SecurityCheckTask, (WorkerSuspiciousFileResult | null)[]>;
+  warmupPromise: Promise<unknown>;
+}
+
+/**
+ * Create a security check task runner and warm up all worker threads by triggering
+ * secretlint initialization in parallel. This allows the expensive module
+ * loading to overlap with other pipeline stages (file collection, git operations).
+ */
+export const createSecurityCheckTaskRunner = (numOfTasks: number): SecurityCheckTaskRunnerWithWarmup => {
+  const taskRunner = initTaskRunner<SecurityCheckTask, (WorkerSuspiciousFileResult | null)[]>({
+    numOfTasks,
+    workerType: 'securityCheck',
+    runtime: 'worker_threads',
+  });
+
+  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const warmupPromise = Promise.all(
+    Array.from({ length: maxThreads }, () => taskRunner.run({ items: [] }).catch(() => [])),
+  );
+
+  return { taskRunner, warmupPromise };
+};
 
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
 // Each batch is sent as a single message to a worker thread, avoiding
@@ -29,6 +59,7 @@ export const runSecurityCheck = async (
   gitLogResult?: GitLogResult,
   deps = {
     initTaskRunner,
+    taskRunner: undefined as TaskRunner<SecurityCheckTask, (WorkerSuspiciousFileResult | null)[]> | undefined,
   },
 ): Promise<SuspiciousFileResult[]> => {
   const gitDiffItems: SecurityCheckItem[] = [];
@@ -78,11 +109,13 @@ export const runSecurityCheck = async (
   // getWorkerThreadCount uses Math.ceil(numOfTasks / TASKS_PER_THREAD) to size the pool,
   // where TASKS_PER_THREAD=100 is calibrated for fine-grained tasks.
   // Passing batches.length (e.g. 2) would yield maxThreads=1, forcing sequential execution.
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-    numOfTasks: totalItems,
-    workerType: 'securityCheck',
-    runtime: 'worker_threads',
-  });
+  const taskRunner =
+    deps.taskRunner ??
+    deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+      numOfTasks: totalItems,
+      workerType: 'securityCheck',
+      runtime: 'worker_threads',
+    });
 
   // Split items into batches to reduce IPC round-trips
   const batches: SecurityCheckItem[][] = [];
@@ -118,6 +151,9 @@ export const runSecurityCheck = async (
     logger.error('Error during security check:', error);
     throw error;
   } finally {
-    await taskRunner.cleanup();
+    // Cleanup the task runner after all checks are complete (only if we created it)
+    if (!deps.taskRunner) {
+      await taskRunner.cleanup();
+    }
   }
 };
