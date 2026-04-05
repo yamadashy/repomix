@@ -11,7 +11,7 @@ vi.mock('../../src/core/security/workers/securityCheckWorker.js', () => ({
   onWorkerTermination: vi.fn(),
 }));
 vi.mock('../../src/core/metrics/workers/calculateMetricsWorker.js', () => ({
-  default: vi.fn().mockResolvedValue(100),
+  default: vi.fn().mockResolvedValue([100]),
   onWorkerTermination: vi.fn(),
 }));
 // Mock worker_threads
@@ -40,11 +40,10 @@ describe('unifiedWorker', () => {
       expect(fileProcessWorker.default).toHaveBeenCalledWith(task);
     });
 
-    it('should infer calculateMetrics from task with content and encoding', async () => {
+    it('should infer calculateMetrics from task with items containing encoding', async () => {
       const { default: handler } = await import('../../src/shared/unifiedWorker.js');
       const task = {
-        content: 'test content',
-        encoding: 'cl100k_base',
+        items: [{ content: 'test content', encoding: 'cl100k_base' }],
       };
 
       await handler(task);
@@ -90,8 +89,7 @@ describe('unifiedWorker', () => {
       // First, load a handler to populate the cache
       const { default: handler, onWorkerTermination } = await import('../../src/shared/unifiedWorker.js');
       const task = {
-        content: 'test content',
-        encoding: 'cl100k_base',
+        items: [{ content: 'test content', encoding: 'cl100k_base' }],
       };
 
       await handler(task);
@@ -107,14 +105,14 @@ describe('unifiedWorker', () => {
       const { default: handler, onWorkerTermination } = await import('../../src/shared/unifiedWorker.js');
 
       // Load handler
-      await handler({ content: 'test', encoding: 'cl100k_base' });
+      await handler({ items: [{ content: 'test', encoding: 'cl100k_base' }] });
 
       // Terminate
       await onWorkerTermination();
 
       // Load again - should call the module import again
       vi.clearAllMocks();
-      await handler({ content: 'test', encoding: 'cl100k_base' });
+      await handler({ items: [{ content: 'test', encoding: 'cl100k_base' }] });
 
       const calculateMetricsWorker = await import('../../src/core/metrics/workers/calculateMetricsWorker.js');
       // The handler should be called again (cache was cleared)

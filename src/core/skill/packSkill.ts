@@ -111,7 +111,7 @@ export const generateSkillReferences = async (
     gitDiffResult,
     gitLogResult,
   );
-  const renderContext = createRenderContext(outputGeneratorContext);
+  const renderContext = createRenderContext(outputGeneratorContext, { forceAll: true });
 
   // Calculate statistics
   const statistics = calculateStatistics(sortedProcessedFiles, renderContext.fileLineCounts);

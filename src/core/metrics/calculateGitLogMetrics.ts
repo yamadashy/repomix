@@ -2,7 +2,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { TokenCountBatchTask } from './workers/calculateMetricsWorker.js';
 
 /**
  * Calculate token count for git logs if included
@@ -10,7 +10,7 @@ import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 export const calculateGitLogMetrics = async (
   config: RepomixConfigMerged,
   gitLogResult: GitLogResult | undefined,
-  deps: { taskRunner: TaskRunner<TokenCountTask, number> },
+  deps: { taskRunner: TaskRunner<TokenCountBatchTask, number[]> },
 ): Promise<{ gitLogTokenCount: number }> => {
   // Return zero token count if git logs are disabled or no result
   if (!config.output.git?.includeLogs || !gitLogResult) {
@@ -30,9 +30,8 @@ export const calculateGitLogMetrics = async (
     const startTime = process.hrtime.bigint();
     logger.trace('Starting git log token calculation using worker');
 
-    const result = await deps.taskRunner.run({
-      content: gitLogResult.logContent,
-      encoding: config.tokenCount.encoding,
+    const results = await deps.taskRunner.run({
+      items: [{ content: gitLogResult.logContent, encoding: config.tokenCount.encoding }],
     });
 
     const endTime = process.hrtime.bigint();
@@ -40,7 +39,7 @@ export const calculateGitLogMetrics = async (
     logger.trace(`Git log token calculation completed in ${duration.toFixed(2)}ms`);
 
     return {
-      gitLogTokenCount: result,
+      gitLogTokenCount: results[0],
     };
   } catch (error) {
     logger.error('Failed to calculate git log metrics:', error);

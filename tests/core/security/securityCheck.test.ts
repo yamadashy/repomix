@@ -22,7 +22,7 @@ vi.mock('../../../src/shared/processConcurrency', () => ({
     run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
       return await securityCheckWorker(task);
     }),
-    cleanup: vi.fn(),
+    cleanup: vi.fn().mockResolvedValue(undefined),
   })),
 }));
 
