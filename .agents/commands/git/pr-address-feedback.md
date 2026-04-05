@@ -128,7 +128,8 @@ For each **Fix** and **Improve** item:
 
 1. Read the relevant file and understand the surrounding context
 2. Apply the minimal change that addresses the feedback
-3. Do NOT refactor surrounding code or make unrelated improvements
+3. Only modify files that are part of the current PR diff or directly referenced by the feedback
+4. Do NOT refactor surrounding code or make unrelated improvements
 
 ### 6. Verify
 
