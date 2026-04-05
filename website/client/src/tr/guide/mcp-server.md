@@ -106,11 +106,15 @@ MCP sunucusu olarak çalışırken Repomix şu araçları sunar:
 Bu araç, yerel bir kod dizinini AI analizine uygun birleşik bir XML dosyasına paketler. Kod tabanı yapısını analiz eder, ilgili kod içeriğini çıkarır ve metrikler, dosya ağacı ile biçimlendirilmiş kod içeriği dahil kapsamlı bir rapor oluşturur.
 
 **Parametreler:**
-- `directory`: (Zorunlu) Paketlenecek dizinin mutlak yolu
-- `compress`: (İsteğe bağlı, varsayılan: false) Uygulama ayrıntılarını kaldırırken temel kod imzalarını ve yapısını çıkarmak için Tree-sitter sıkıştırmasını etkinleştirin. Token kullanımını yaklaşık %70 azaltırken anlam bütünlüğünü korur. grep_repomix_output artımlı içerik getirmeye izin verdiğinden genellikle gerekli değildir. Yalnızca büyük depolar için tüm kod tabanı içeriğine ihtiyaç duyduğunuzda kullanın.
-- `includePatterns`: (İsteğe bağlı) fast-glob desenleri kullanarak eklenecek dosyaları belirtin. Birden fazla desen virgülle ayrılabilir (örn. "**/*.{js,ts}", "src/**,docs/**"). Yalnızca eşleşen dosyalar işlenir.
-- `ignorePatterns`: (İsteğe bağlı) fast-glob desenleri kullanarak hariç tutulacak ek dosyaları belirtin. Birden fazla desen virgülle ayrılabilir (örn. "test/**,*.spec.js", "node_modules/**,dist/**"). Bu desenler .gitignore ve yerleşik dışlamaları tamamlar.
-- `topFilesLength`: (İsteğe bağlı, varsayılan: 10) Kod tabanı analizi için metrik özetinde gösterilecek boyuta göre en büyük dosya sayısı.
+
+| Parametre | Zorunlu | Varsayılan | Açıklama |
+|-----------|---------|------------|----------|
+| `directory` | Evet | — | Paketlenecek dizinin mutlak yolu |
+| `compress` | Hayır | `false` | Uygulama ayrıntılarını kaldırırken temel kod imzalarını ve yapısını çıkarmak için Tree-sitter sıkıştırmasını etkinleştirin. Token kullanımını yaklaşık %70 azaltırken anlam bütünlüğünü korur. `grep_repomix_output` artımlı içerik getirmeye izin verdiğinden genellikle gerekli değildir. |
+| `includePatterns` | Hayır | — | fast-glob desenleri kullanarak eklenecek dosyalar. Virgülle ayrılmış (örn. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | Hayır | — | fast-glob desenleri kullanarak hariç tutulacak ek dosyalar. Virgülle ayrılmış (örn. `"test/**,*.spec.js"`). `.gitignore` ve yerleşik dışlamaları tamamlar. |
+| `topFilesLength` | Hayır | `10` | Metrik özetinde gösterilecek boyuta göre en büyük dosya sayısı |
+| `style` | Hayır | `xml` | Çıktı format stili: `xml`, `markdown`, `json` veya `plain` |
 
 **Örnek:**
 ```json
@@ -128,11 +132,15 @@ Bu araç, yerel bir kod dizinini AI analizine uygun birleşik bir XML dosyasına
 Bu araç, bir GitHub deposunu getirir, klonlar ve AI analizine uygun birleşik bir XML dosyasına paketler. Uzak depoyu otomatik olarak klonlar, yapısını analiz eder ve kapsamlı bir rapor oluşturur.
 
 **Parametreler:**
-- `remote`: (Zorunlu) GitHub deposu URL'si veya kullanıcı/repo biçimi (örn. "yamadashy/repomix", "https://github.com/user/repo" veya "https://github.com/user/repo/tree/branch")
-- `compress`: (İsteğe bağlı, varsayılan: false) Uygulama ayrıntılarını kaldırırken temel kod imzalarını ve yapısını çıkarmak için Tree-sitter sıkıştırmasını etkinleştirin. Token kullanımını yaklaşık %70 azaltırken anlam bütünlüğünü korur. grep_repomix_output artımlı içerik getirmeye izin verdiğinden genellikle gerekli değildir. Yalnızca büyük depolar için tüm kod tabanı içeriğine ihtiyaç duyduğunuzda kullanın.
-- `includePatterns`: (İsteğe bağlı) fast-glob desenleri kullanarak eklenecek dosyaları belirtin. Birden fazla desen virgülle ayrılabilir (örn. "**/*.{js,ts}", "src/**,docs/**"). Yalnızca eşleşen dosyalar işlenir.
-- `ignorePatterns`: (İsteğe bağlı) fast-glob desenleri kullanarak hariç tutulacak ek dosyaları belirtin. Birden fazla desen virgülle ayrılabilir (örn. "test/**,*.spec.js", "node_modules/**,dist/**"). Bu desenler .gitignore ve yerleşik dışlamaları tamamlar.
-- `topFilesLength`: (İsteğe bağlı, varsayılan: 10) Kod tabanı analizi için metrik özetinde gösterilecek boyuta göre en büyük dosya sayısı.
+
+| Parametre | Zorunlu | Varsayılan | Açıklama |
+|-----------|---------|------------|----------|
+| `remote` | Evet | — | GitHub deposu URL'si veya `kullanıcı/depo` biçimi (örn. `"yamadashy/repomix"`, `"https://github.com/user/repo"` veya `"https://github.com/user/repo/tree/branch"`) |
+| `compress` | Hayır | `false` | Uygulama ayrıntılarını kaldırırken temel kod imzalarını ve yapısını çıkarmak için Tree-sitter sıkıştırmasını etkinleştirin. Token kullanımını yaklaşık %70 azaltırken anlam bütünlüğünü korur. `grep_repomix_output` artımlı içerik getirmeye izin verdiğinden genellikle gerekli değildir. |
+| `includePatterns` | Hayır | — | fast-glob desenleri kullanarak eklenecek dosyalar. Virgülle ayrılmış (örn. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | Hayır | — | fast-glob desenleri kullanarak hariç tutulacak ek dosyalar. Virgülle ayrılmış (örn. `"test/**,*.spec.js"`). `.gitignore` ve yerleşik dışlamaları tamamlar. |
+| `topFilesLength` | Hayır | `10` | Metrik özetinde gösterilecek boyuta göre en büyük dosya sayısı |
+| `style` | Hayır | `xml` | Çıktı format stili: `xml`, `markdown`, `json` veya `plain` |
 
 **Örnek:**
 ```json
@@ -150,9 +158,12 @@ Bu araç, bir GitHub deposunu getirir, klonlar ve AI analizine uygun birleşik b
 Bu araç, Repomix tarafından oluşturulan çıktı dosyasının içeriğini okur. Büyük dosyalar için satır aralığı belirterek kısmi okumayı destekler. Bu araç, doğrudan dosya sistemi erişiminin sınırlı olduğu ortamlar için tasarlanmıştır.
 
 **Parametreler:**
-- `outputId`: (Zorunlu) Okunacak Repomix çıktı dosyasının kimliği
-- `startLine`: (İsteğe bağlı) Başlangıç satır numarası (1 tabanlı, dahil). Belirtilmezse baştan okur.
-- `endLine`: (İsteğe bağlı) Bitiş satır numarası (1 tabanlı, dahil). Belirtilmezse sona kadar okur.
+
+| Parametre | Zorunlu | Varsayılan | Açıklama |
+|-----------|---------|------------|----------|
+| `outputId` | Evet | — | Okunacak Repomix çıktı dosyasının kimliği |
+| `startLine` | Hayır | Dosya başı | Başlangıç satır numarası (1 tabanlı, dahil) |
+| `endLine` | Hayır | Dosya sonu | Bitiş satır numarası (1 tabanlı, dahil) |
 
 **Özellikler:**
 - Web tabanlı ortamlar veya korumalı uygulamalar için özel olarak tasarlanmıştır
@@ -174,12 +185,15 @@ Bu araç, Repomix tarafından oluşturulan çıktı dosyasının içeriğini oku
 Bu araç, JavaScript RegExp sözdizimini kullanan grep benzeri işlevsellikle bir Repomix çıktı dosyasında desen arar. Eşleşmelerin çevresinde isteğe bağlı bağlam satırlarıyla birlikte eşleşen satırları döndürür.
 
 **Parametreler:**
-- `outputId`: (Zorunlu) Aranacak Repomix çıktı dosyasının kimliği
-- `pattern`: (Zorunlu) Arama deseni (JavaScript RegExp düzenli ifade sözdizimi)
-- `contextLines`: (İsteğe bağlı, varsayılan: 0) Her eşleşmeden önce ve sonra gösterilecek bağlam satırı sayısı. beforeLines/afterLines belirtilmişse bunlar tarafından geçersiz kılınır.
-- `beforeLines`: (İsteğe bağlı) Her eşleşmeden önce gösterilecek bağlam satırı sayısı (grep -B gibi). contextLines'dan önceliklidir.
-- `afterLines`: (İsteğe bağlı) Her eşleşmeden sonra gösterilecek bağlam satırı sayısı (grep -A gibi). contextLines'dan önceliklidir.
-- `ignoreCase`: (İsteğe bağlı, varsayılan: false) Büyük/küçük harfe duyarsız eşleşme gerçekleştirin
+
+| Parametre | Zorunlu | Varsayılan | Açıklama |
+|-----------|---------|------------|----------|
+| `outputId` | Evet | — | Aranacak Repomix çıktı dosyasının kimliği |
+| `pattern` | Evet | — | Arama deseni (JavaScript RegExp sözdizimi) |
+| `contextLines` | Hayır | `0` | Her eşleşmeden önce ve sonra gösterilecek bağlam satırı sayısı. `beforeLines`/`afterLines` belirtilmişse geçersiz kılınır. |
+| `beforeLines` | Hayır | — | Her eşleşmeden önce gösterilecek satırlar (`grep -B` gibi). `contextLines`'dan önceliklidir. |
+| `afterLines` | Hayır | — | Her eşleşmeden sonra gösterilecek satırlar (`grep -A` gibi). `contextLines`'dan önceliklidir. |
+| `ignoreCase` | Hayır | `false` | Büyük/küçük harfe duyarsız eşleşme gerçekleştirin |
 
 **Özellikler:**
 - Güçlü desen eşleştirme için JavaScript RegExp sözdizimini kullanır

@@ -106,11 +106,15 @@ When running as an MCP server, Repomix provides the following tools:
 This tool packages a local code directory into a consolidated XML file for AI analysis. It analyzes the codebase structure, extracts relevant code content, and generates a comprehensive report including metrics, file tree, and formatted code content.
 
 **Parameters:**
-- `directory`: (Required) Absolute path to the directory to pack
-- `compress`: (Optional, default: false) Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Reduces token usage by ~70% while preserving semantic meaning. Generally not needed since grep_repomix_output allows incremental content retrieval. Use only when you specifically need the entire codebase content for large repositories.
-- `includePatterns`: (Optional) Specify files to include using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "**/*.{js,ts}", "src/**,docs/**"). Only matching files will be processed.
-- `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.
-- `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary for codebase analysis.
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `directory` | Yes | — | Absolute path to the directory to pack |
+| `compress` | No | `false` | Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Reduces token usage by ~70% while preserving semantic meaning. Generally not needed since `grep_repomix_output` allows incremental content retrieval. |
+| `includePatterns` | No | — | Files to include using fast-glob patterns. Comma-separated (e.g., `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | No | — | Additional files to exclude using fast-glob patterns. Comma-separated (e.g., `"test/**,*.spec.js"`). Supplements `.gitignore` and built-in exclusions. |
+| `topFilesLength` | No | `10` | Number of largest files by size to display in the metrics summary |
+| `style` | No | `xml` | Output format style: `xml`, `markdown`, `json`, or `plain` |
 
 **Example:**
 ```json
@@ -128,11 +132,15 @@ This tool packages a local code directory into a consolidated XML file for AI an
 This tool fetches, clones, and packages a GitHub repository into a consolidated XML file for AI analysis. It automatically clones the remote repository, analyzes its structure, and generates a comprehensive report.
 
 **Parameters:**
-- `remote`: (Required) GitHub repository URL or user/repo format (e.g., "yamadashy/repomix", "https://github.com/user/repo", or "https://github.com/user/repo/tree/branch")
-- `compress`: (Optional, default: false) Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Reduces token usage by ~70% while preserving semantic meaning. Generally not needed since grep_repomix_output allows incremental content retrieval. Use only when you specifically need the entire codebase content for large repositories.
-- `includePatterns`: (Optional) Specify files to include using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "**/*.{js,ts}", "src/**,docs/**"). Only matching files will be processed.
-- `ignorePatterns`: (Optional) Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.
-- `topFilesLength`: (Optional, default: 10) Number of largest files by size to display in the metrics summary for codebase analysis.
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `remote` | Yes | — | GitHub repository URL or `user/repo` format (e.g., `"yamadashy/repomix"`, `"https://github.com/user/repo"`, or `"https://github.com/user/repo/tree/branch"`) |
+| `compress` | No | `false` | Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Reduces token usage by ~70% while preserving semantic meaning. Generally not needed since `grep_repomix_output` allows incremental content retrieval. |
+| `includePatterns` | No | — | Files to include using fast-glob patterns. Comma-separated (e.g., `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | No | — | Additional files to exclude using fast-glob patterns. Comma-separated (e.g., `"test/**,*.spec.js"`). Supplements `.gitignore` and built-in exclusions. |
+| `topFilesLength` | No | `10` | Number of largest files by size to display in the metrics summary |
+| `style` | No | `xml` | Output format style: `xml`, `markdown`, `json`, or `plain` |
 
 **Example:**
 ```json
@@ -150,9 +158,12 @@ This tool fetches, clones, and packages a GitHub repository into a consolidated 
 This tool reads the contents of a Repomix-generated output file. Supports partial reading with line range specification for large files. This tool is designed for environments where direct file system access is limited.
 
 **Parameters:**
-- `outputId`: (Required) ID of the Repomix output file to read
-- `startLine`: (Optional) Starting line number (1-based, inclusive). If not specified, reads from beginning.
-- `endLine`: (Optional) Ending line number (1-based, inclusive). If not specified, reads to end.
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `outputId` | Yes | — | ID of the Repomix output file to read |
+| `startLine` | No | Beginning of file | Starting line number (1-based, inclusive) |
+| `endLine` | No | End of file | Ending line number (1-based, inclusive) |
 
 **Features:**
 - Specifically designed for web-based environments or sandboxed applications
@@ -174,12 +185,15 @@ This tool reads the contents of a Repomix-generated output file. Supports partia
 This tool searches for patterns in a Repomix output file using grep-like functionality with JavaScript RegExp syntax. Returns matching lines with optional context lines around matches.
 
 **Parameters:**
-- `outputId`: (Required) ID of the Repomix output file to search
-- `pattern`: (Required) Search pattern (JavaScript RegExp regular expression syntax)
-- `contextLines`: (Optional, default: 0) Number of context lines to show before and after each match. Overridden by beforeLines/afterLines if specified.
-- `beforeLines`: (Optional) Number of context lines to show before each match (like grep -B). Takes precedence over contextLines.
-- `afterLines`: (Optional) Number of context lines to show after each match (like grep -A). Takes precedence over contextLines.
-- `ignoreCase`: (Optional, default: false) Perform case-insensitive matching
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `outputId` | Yes | — | ID of the Repomix output file to search |
+| `pattern` | Yes | — | Search pattern (JavaScript RegExp syntax) |
+| `contextLines` | No | `0` | Number of context lines before and after each match. Overridden by `beforeLines`/`afterLines` if specified. |
+| `beforeLines` | No | — | Lines to show before each match (like `grep -B`). Takes precedence over `contextLines`. |
+| `afterLines` | No | — | Lines to show after each match (like `grep -A`). Takes precedence over `contextLines`. |
+| `ignoreCase` | No | `false` | Perform case-insensitive matching |
 
 **Features:**
 - Uses JavaScript RegExp syntax for powerful pattern matching

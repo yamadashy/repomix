@@ -106,11 +106,15 @@ Quando executado como um servidor MCP, o Repomix fornece as seguintes ferramenta
 Esta ferramenta empacota um diretório de código local em um arquivo XML para análise de IA. Ela analisa a estrutura da base de código, extrai conteúdo de código relevante e gera um relatório abrangente incluindo métricas, árvore de arquivos e conteúdo de código formatado.
 
 **Parâmetros:**
-- `directory`: (Obrigatório) Caminho absoluto para o diretório a ser empacotado
-- `compress`: (Opcional, padrão: false) Habilita compressão Tree-sitter para extrair assinaturas de código essenciais e estrutura enquanto remove detalhes de implementação. Reduz o uso de tokens em ~70% mantendo o significado semântico. Geralmente não é necessário já que grep_repomix_output permite recuperação incremental de conteúdo. Use apenas quando você especificamente precisar do conteúdo completo da base de código para repositórios grandes.
-- `includePatterns`: (Opcional) Especifica arquivos para incluir usando padrões fast-glob. Múltiplos padrões podem ser separados por vírgula (ex: "**/*.{js,ts}", "src/**,docs/**"). Apenas arquivos correspondentes serão processados.
-- `ignorePatterns`: (Opcional) Especifica arquivos adicionais para excluir usando padrões fast-glob. Múltiplos padrões podem ser separados por vírgula (ex: "test/**,*.spec.js", "node_modules/**,dist/**"). Estes padrões complementam .gitignore e exclusões integradas.
-- `topFilesLength`: (Opcional, padrão: 10) Número de maiores arquivos por tamanho para exibir no resumo de métricas para análise da base de código.
+
+| Parâmetro | Obrigatório | Padrão | Descrição |
+|-----------|-------------|--------|-----------|
+| `directory` | Sim | — | Caminho absoluto para o diretório a ser empacotado |
+| `compress` | Não | `false` | Habilita compressão Tree-sitter para extrair assinaturas de código essenciais e estrutura enquanto remove detalhes de implementação. Reduz o uso de tokens em ~70% mantendo o significado semântico. Geralmente não é necessário já que `grep_repomix_output` permite recuperação incremental de conteúdo. |
+| `includePatterns` | Não | — | Arquivos para incluir usando padrões fast-glob. Separados por vírgula (ex: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | Não | — | Arquivos adicionais para excluir usando padrões fast-glob. Separados por vírgula (ex: `"test/**,*.spec.js"`). Complementam `.gitignore` e exclusões integradas. |
+| `topFilesLength` | Não | `10` | Número de maiores arquivos por tamanho para exibir no resumo de métricas |
+| `style` | Não | `xml` | Estilo de formato de saída: `xml`, `markdown`, `json` ou `plain` |
 
 **Exemplo:**
 ```json
@@ -128,11 +132,15 @@ Esta ferramenta empacota um diretório de código local em um arquivo XML para a
 Esta ferramenta busca, clona e empacota um repositório GitHub em um arquivo XML para análise de IA. Ela automaticamente clona o repositório remoto, analisa sua estrutura e gera um relatório abrangente.
 
 **Parâmetros:**
-- `remote`: (Obrigatório) URL do repositório GitHub ou formato usuário/repo (ex: "yamadashy/repomix", "https://github.com/user/repo", ou "https://github.com/user/repo/tree/branch")
-- `compress`: (Opcional, padrão: false) Habilita compressão Tree-sitter para extrair assinaturas de código essenciais e estrutura enquanto remove detalhes de implementação. Reduz o uso de tokens em ~70% mantendo o significado semântico. Geralmente não é necessário já que grep_repomix_output permite recuperação incremental de conteúdo. Use apenas quando você especificamente precisar do conteúdo completo da base de código para repositórios grandes.
-- `includePatterns`: (Opcional) Especifica arquivos para incluir usando padrões fast-glob. Múltiplos padrões podem ser separados por vírgula (ex: "**/*.{js,ts}", "src/**,docs/**"). Apenas arquivos correspondentes serão processados.
-- `ignorePatterns`: (Opcional) Especifica arquivos adicionais para excluir usando padrões fast-glob. Múltiplos padrões podem ser separados por vírgula (ex: "test/**,*.spec.js", "node_modules/**,dist/**"). Estes padrões complementam .gitignore e exclusões integradas.
-- `topFilesLength`: (Opcional, padrão: 10) Número de maiores arquivos por tamanho para exibir no resumo de métricas para análise da base de código.
+
+| Parâmetro | Obrigatório | Padrão | Descrição |
+|-----------|-------------|--------|-----------|
+| `remote` | Sim | — | URL do repositório GitHub ou formato `user/repo` (ex: `"yamadashy/repomix"`, `"https://github.com/user/repo"` ou `"https://github.com/user/repo/tree/branch"`) |
+| `compress` | Não | `false` | Habilita compressão Tree-sitter para extrair assinaturas de código essenciais e estrutura enquanto remove detalhes de implementação. Reduz o uso de tokens em ~70% mantendo o significado semântico. Geralmente não é necessário já que `grep_repomix_output` permite recuperação incremental de conteúdo. |
+| `includePatterns` | Não | — | Arquivos para incluir usando padrões fast-glob. Separados por vírgula (ex: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | Não | — | Arquivos adicionais para excluir usando padrões fast-glob. Separados por vírgula (ex: `"test/**,*.spec.js"`). Complementam `.gitignore` e exclusões integradas. |
+| `topFilesLength` | Não | `10` | Número de maiores arquivos por tamanho para exibir no resumo de métricas |
+| `style` | Não | `xml` | Estilo de formato de saída: `xml`, `markdown`, `json` ou `plain` |
 
 **Exemplo:**
 ```json
@@ -150,9 +158,12 @@ Esta ferramenta busca, clona e empacota um repositório GitHub em um arquivo XML
 Esta ferramenta lê o conteúdo de um arquivo de saída gerado pelo Repomix. Suporta leitura parcial com especificação de intervalo de linhas para arquivos grandes. Esta ferramenta é projetada para ambientes onde o acesso direto ao sistema de arquivos é limitado.
 
 **Parâmetros:**
-- `outputId`: (Obrigatório) ID do arquivo de saída do Repomix a ser lido
-- `startLine`: (Opcional) Número da linha inicial (baseado em 1, inclusivo). Se não especificado, lê desde o início.
-- `endLine`: (Opcional) Número da linha final (baseado em 1, inclusivo). Se não especificado, lê até o final.
+
+| Parâmetro | Obrigatório | Padrão | Descrição |
+|-----------|-------------|--------|-----------|
+| `outputId` | Sim | — | ID do arquivo de saída do Repomix a ser lido |
+| `startLine` | Não | Início do arquivo | Número da linha inicial (baseado em 1, inclusivo) |
+| `endLine` | Não | Final do arquivo | Número da linha final (baseado em 1, inclusivo) |
 
 **Funcionalidades:**
 - Projetado especificamente para ambientes baseados na web ou aplicações em sandbox
@@ -174,12 +185,15 @@ Esta ferramenta lê o conteúdo de um arquivo de saída gerado pelo Repomix. Sup
 Esta ferramenta busca padrões em um arquivo de saída do Repomix usando funcionalidade similar ao grep com sintaxe JavaScript RegExp. Retorna linhas correspondentes com linhas de contexto opcionais ao redor das correspondências.
 
 **Parâmetros:**
-- `outputId`: (Obrigatório) ID do arquivo de saída do Repomix para buscar
-- `pattern`: (Obrigatório) Padrão de busca (sintaxe de expressão regular JavaScript RegExp)
-- `contextLines`: (Opcional, padrão: 0) Número de linhas de contexto para mostrar antes e depois de cada correspondência. Sobrescrito por beforeLines/afterLines se especificado.
-- `beforeLines`: (Opcional) Número de linhas de contexto para mostrar antes de cada correspondência (como grep -B). Tem precedência sobre contextLines.
-- `afterLines`: (Opcional) Número de linhas de contexto para mostrar depois de cada correspondência (como grep -A). Tem precedência sobre contextLines.
-- `ignoreCase`: (Opcional, padrão: false) Realizar correspondência insensível a maiúsculas e minúsculas
+
+| Parâmetro | Obrigatório | Padrão | Descrição |
+|-----------|-------------|--------|-----------|
+| `outputId` | Sim | — | ID do arquivo de saída do Repomix para buscar |
+| `pattern` | Sim | — | Padrão de busca (sintaxe de expressão regular JavaScript RegExp) |
+| `contextLines` | Não | `0` | Número de linhas de contexto para mostrar antes e depois de cada correspondência. Sobrescrito por `beforeLines`/`afterLines` se especificado. |
+| `beforeLines` | Não | — | Linhas para mostrar antes de cada correspondência (como `grep -B`). Tem precedência sobre `contextLines`. |
+| `afterLines` | Não | — | Linhas para mostrar depois de cada correspondência (como `grep -A`). Tem precedência sobre `contextLines`. |
+| `ignoreCase` | Não | `false` | Realizar correspondência insensível a maiúsculas e minúsculas |
 
 **Funcionalidades:**
 - Usa sintaxe JavaScript RegExp para correspondência de padrões poderosa

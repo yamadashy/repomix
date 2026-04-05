@@ -106,11 +106,15 @@ claude mcp add repomix -- npx -y repomix --mcp
 此工具将本地代码目录打包成一个用于 AI 分析的 XML 文件。它分析代码库结构，提取相关代码内容，并生成包含指标、文件树和格式化代码内容的综合报告。
 
 **参数：**
-- `directory`：（必需）要打包的目录的绝对路径
-- `compress`：（可选，默认值：false）启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义信息的同时减少约 70% 的 token 用量。由于 grep_repomix_output 支持按需检索内容，一般不需要启用此选项。仅在你特别需要大型仓库的整个代码库内容时使用。
-- `includePatterns`：（可选）使用 fast-glob 模式指定要包含的文件。多个模式可以用逗号分隔（例如，"**/*.{js,ts}", "src/**,docs/**"）。只有匹配的文件会被处理。
-- `ignorePatterns`：（可选）使用 fast-glob 模式指定要排除的其他文件。多个模式可以用逗号分隔（例如，"test/**,*.spec.js", "node_modules/**,dist/**"）。这些模式补充 .gitignore 和内置排除。
-- `topFilesLength`：（可选，默认值：10）在代码库分析的指标摘要中显示的最大文件数（按大小排序）。
+
+| 参数 | 必需 | 默认值 | 说明 |
+|------|------|--------|------|
+| `directory` | 是 | — | 要打包的目录的绝对路径 |
+| `compress` | 否 | `false` | 启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义信息的同时减少约 70% 的 token 用量。由于 `grep_repomix_output` 支持按需检索内容，一般不需要启用此选项。 |
+| `includePatterns` | 否 | — | 使用 fast-glob 模式指定要包含的文件。多个模式用逗号分隔（例如 `"**/*.{js,ts}"`、`"src/**,docs/**"`） |
+| `ignorePatterns` | 否 | — | 使用 fast-glob 模式指定要排除的其他文件。多个模式用逗号分隔（例如 `"test/**,*.spec.js"`）。补充 `.gitignore` 和内置排除。 |
+| `topFilesLength` | 否 | `10` | 在指标摘要中显示的最大文件数（按大小排序） |
+| `style` | 否 | `xml` | 输出格式样式：`xml`、`markdown`、`json` 或 `plain` |
 
 **示例：**
 ```json
@@ -128,11 +132,15 @@ claude mcp add repomix -- npx -y repomix --mcp
 此工具获取、克隆并将 GitHub 仓库打包成一个用于 AI 分析的 XML 文件。它自动克隆远程仓库，分析其结构，并生成综合报告。
 
 **参数：**
-- `remote`：（必需）GitHub 仓库 URL 或用户/仓库格式（例如，"yamadashy/repomix", "https://github.com/user/repo", 或 "https://github.com/user/repo/tree/branch"）
-- `compress`：（可选，默认值：false）启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义信息的同时减少约 70% 的 token 用量。由于 grep_repomix_output 支持按需检索内容，一般不需要启用此选项。仅在你特别需要大型仓库的整个代码库内容时使用。
-- `includePatterns`：（可选）使用 fast-glob 模式指定要包含的文件。多个模式可以用逗号分隔（例如，"**/*.{js,ts}", "src/**,docs/**"）。只有匹配的文件会被处理。
-- `ignorePatterns`：（可选）使用 fast-glob 模式指定要排除的其他文件。多个模式可以用逗号分隔（例如，"test/**,*.spec.js", "node_modules/**,dist/**"）。这些模式补充 .gitignore 和内置排除。
-- `topFilesLength`：（可选，默认值：10）在代码库分析的指标摘要中显示的最大文件数（按大小排序）。
+
+| 参数 | 必需 | 默认值 | 说明 |
+|------|------|--------|------|
+| `remote` | 是 | — | GitHub 仓库 URL 或 `user/repo` 格式（例如 `"yamadashy/repomix"`、`"https://github.com/user/repo"` 或 `"https://github.com/user/repo/tree/branch"`） |
+| `compress` | 否 | `false` | 启用 Tree-sitter 压缩以提取基本代码签名和结构，同时删除实现细节。在保持语义信息的同时减少约 70% 的 token 用量。由于 `grep_repomix_output` 支持按需检索内容，一般不需要启用此选项。 |
+| `includePatterns` | 否 | — | 使用 fast-glob 模式指定要包含的文件。多个模式用逗号分隔（例如 `"**/*.{js,ts}"`、`"src/**,docs/**"`） |
+| `ignorePatterns` | 否 | — | 使用 fast-glob 模式指定要排除的其他文件。多个模式用逗号分隔（例如 `"test/**,*.spec.js"`）。补充 `.gitignore` 和内置排除。 |
+| `topFilesLength` | 否 | `10` | 在指标摘要中显示的最大文件数（按大小排序） |
+| `style` | 否 | `xml` | 输出格式样式：`xml`、`markdown`、`json` 或 `plain` |
 
 **示例：**
 ```json
@@ -150,9 +158,12 @@ claude mcp add repomix -- npx -y repomix --mcp
 此工具读取 Repomix 生成的输出文件的内容。支持对大文件进行行范围指定的部分读取。此工具专为直接文件系统访问受限的环境而设计。
 
 **参数：**
-- `outputId`：（必需）要读取的 Repomix 输出文件的 ID
-- `startLine`：（可选）起始行号（从 1 开始，包含）。如果未指定，则从开头读取。
-- `endLine`：（可选）结束行号（从 1 开始，包含）。如果未指定，则读取到末尾。
+
+| 参数 | 必需 | 默认值 | 说明 |
+|------|------|--------|------|
+| `outputId` | 是 | — | 要读取的 Repomix 输出文件的 ID |
+| `startLine` | 否 | 文件开头 | 起始行号（从 1 开始，包含） |
+| `endLine` | 否 | 文件末尾 | 结束行号（从 1 开始，包含） |
 
 **功能：**
 - 专为基于 Web 的环境或沙箱应用程序设计
@@ -174,12 +185,15 @@ claude mcp add repomix -- npx -y repomix --mcp
 此工具使用 JavaScript RegExp 语法的类似 grep 的功能在 Repomix 输出文件中搜索模式。返回匹配行及其周围的可选上下文行。
 
 **参数：**
-- `outputId`：（必需）要搜索的 Repomix 输出文件的 ID
-- `pattern`：（必需）搜索模式（JavaScript RegExp 正则表达式语法）
-- `contextLines`：（可选，默认值：0）在每个匹配项前后显示的上下文行数。如果指定了 beforeLines/afterLines，则被覆盖。
-- `beforeLines`：（可选）在每个匹配项前显示的上下文行数（类似 grep -B）。优先于 contextLines。
-- `afterLines`：（可选）在每个匹配项后显示的上下文行数（类似 grep -A）。优先于 contextLines。
-- `ignoreCase`：（可选，默认值：false）执行不区分大小写的匹配
+
+| 参数 | 必需 | 默认值 | 说明 |
+|------|------|--------|------|
+| `outputId` | 是 | — | 要搜索的 Repomix 输出文件的 ID |
+| `pattern` | 是 | — | 搜索模式（JavaScript RegExp 语法） |
+| `contextLines` | 否 | `0` | 在每个匹配项前后显示的上下文行数。如果指定了 `beforeLines`/`afterLines`，则被覆盖。 |
+| `beforeLines` | 否 | — | 在每个匹配项前显示的行数（类似 `grep -B`）。优先于 `contextLines`。 |
+| `afterLines` | 否 | — | 在每个匹配项后显示的行数（类似 `grep -A`）。优先于 `contextLines`。 |
+| `ignoreCase` | 否 | `false` | 执行不区分大小写的匹配 |
 
 **功能：**
 - 使用 JavaScript RegExp 语法进行强大的模式匹配

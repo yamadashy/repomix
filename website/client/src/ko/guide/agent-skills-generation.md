@@ -78,26 +78,15 @@ Skills는 다음 구조로 생성됩니다:
 
 ### 파일 설명
 
-#### SKILL.md
+| 파일 | 용도 | 내용 |
+|------|------|------|
+| `SKILL.md` | 메인 Skills 메타데이터 및 문서 | Skills 이름, 설명, 프로젝트 정보, 파일/행/토큰 수, 사용 방법 개요, 일반적인 사용 사례 및 팁 |
+| `references/summary.md` | 목적, 형식 및 통계 | 참조 코드베이스 설명, 파일 구조 문서, 사용 지침, 파일 유형 및 언어별 분류 |
+| `references/project-structure.md` | 파일 탐색 | 파일당 행 수가 포함된 디렉토리 트리 |
+| `references/files.md` | 검색 가능한 코드 참조 | 구문 강조 헤더가 있는 모든 파일 내용, grep 친화적 검색에 최적화 |
+| `references/tech-stacks.md` | 기술 스택 요약 | 언어, 프레임워크, 런타임 버전, 패키지 관리자, 종속성, 설정 파일 |
 
-메인 Skills 파일로 다음을 포함합니다:
-- Skills 이름, 설명 및 프로젝트 정보
-- 파일 수, 행 수 및 토큰 수
-- Skills 사용 방법 개요
-- 파일 위치 및 형식 설명
-- 일반적인 사용 사례 및 팁
-
-#### references/summary.md
-
-포함 내용:
-- **목적**: AI 사용을 위한 참조 코드베이스임을 설명
-- **파일 구조**: 각 참조 파일의 내용 문서화
-- **사용 지침**: Skills를 효과적으로 사용하는 방법
-- **통계**: 파일 유형, 언어 및 가장 큰 파일별 분류
-
-#### references/project-structure.md
-
-파일 탐색을 위한 파일당 행 수가 포함된 디렉토리 트리:
+#### 예시: references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-grep 친화적인 검색에 최적화된 구문 강조 헤더가 있는 모든 파일 내용:
+#### 예시: references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### 예시: references/tech-stacks.md
 
 종속성 파일에서 자동 감지된 기술 스택:
 - **언어**: TypeScript, JavaScript, Python 등

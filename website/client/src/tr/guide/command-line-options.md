@@ -4,51 +4,67 @@
 - `-v, --version`: Sürüm bilgisini göster ve çık
 
 ## CLI Giriş/Çıkış Seçenekleri
-- `--verbose`: Ayrıntılı hata ayıklama günlüğünü etkinleştir (dosya işleme, token sayısı ve yapılandırma ayrıntılarını gösterir)
-- `--quiet`: Hatalar dışında tüm konsol çıktısını bastır (betik yazımı için kullanışlıdır)
-- `--stdout`: Paketlenmiş çıktıyı dosya yerine doğrudan stdout'a yaz (tüm günlük kaydını bastırır)
-- `--stdin`: Stdin'den dosya yollarını satır satır oku (belirtilen dosyalar doğrudan işlenir)
-- `--copy`: İşlemden sonra oluşturulan çıktıyı sistem panosuna kopyala
-- `--token-count-tree [threshold]`: Token sayısıyla dosya ağacını göster; isteğe bağlı eşik değeri yalnızca ≥N token içeren dosyaları gösterir (örn. --token-count-tree 100)
-- `--top-files-len <number>`: Özette gösterilecek en büyük dosya sayısı (varsayılan: 5, örn. --top-files-len 20)
+
+| Seçenek | Açıklama |
+|---------|----------|
+| `--verbose` | Ayrıntılı hata ayıklama günlüğünü etkinleştir (dosya işleme, token sayısı ve yapılandırma ayrıntılarını gösterir) |
+| `--quiet` | Hatalar dışında tüm konsol çıktısını bastır (betik yazımı için kullanışlıdır) |
+| `--stdout` | Paketlenmiş çıktıyı dosya yerine doğrudan stdout'a yaz (tüm günlük kaydını bastırır) |
+| `--stdin` | Stdin'den dosya yollarını satır satır oku (belirtilen dosyalar doğrudan işlenir) |
+| `--copy` | İşlemden sonra oluşturulan çıktıyı sistem panosuna kopyala |
+| `--token-count-tree [threshold]` | Token sayısıyla dosya ağacını göster; isteğe bağlı eşik yalnızca ≥N token içeren dosyaları gösterir (örn. `--token-count-tree 100`) |
+| `--top-files-len <number>` | Özette gösterilecek en büyük dosya sayısı (varsayılan: `5`) |
 
 ## Repomix Çıktı Seçenekleri
-- `-o, --output <file>`: Çıktı dosyası yolu (varsayılan: repomix-output.xml, stdout için "-" kullanın)
-- `--style <style>`: Çıktı formatı: xml, markdown, json veya plain (varsayılan: xml)
-- `--parsable-style`: Geçerli XML/Markdown sağlamak için özel karakterleri kaçış karakteriyle işle (çıktı biçimlendirmeyi bozan kod içerdiğinde gereklidir)
-- `--compress`: Tree-sitter ayrıştırmasını kullanarak temel kod yapısını (sınıflar, fonksiyonlar, arayüzler) çıkar
-- `--output-show-line-numbers`: Çıktıda her satırın önüne satır numarası ekle
-- `--no-file-summary`: Çıktıdan dosya özeti bölümünü çıkar
-- `--no-directory-structure`: Çıktıdan dizin ağacı görselleştirmesini çıkar
-- `--no-files`: Dosya içerikleri olmadan yalnızca meta veri oluştur (depo analizi için kullanışlıdır)
-- `--remove-comments`: Paketlemeden önce tüm kod yorumlarını kaldır
-- `--remove-empty-lines`: Tüm dosyalardan boş satırları kaldır
-- `--truncate-base64`: Çıktı boyutunu azaltmak için uzun base64 veri dizelerini kırp
-- `--header-text <text>`: Çıktının başına eklenecek özel metin
-- `--instruction-file-path <path>`: Çıktıya dahil edilecek özel talimatları içeren dosyanın yolu
-- `--split-output <size>`: Çıktıyı numaralı birden fazla dosyaya böl (örn. repomix-output.1.xml, repomix-output.2.xml); 500kb, 2mb veya 1.5mb gibi boyut değerleri
-- `--include-empty-directories`: Dizin yapısına dosyasız klasörleri dahil et
-- `--include-full-directory-structure`: --include kalıpları kullanılırken bile Dizin Yapısı bölümünde tüm depo ağacını göster
-- `--no-git-sort-by-changes`: Dosyaları git değişiklik sıklığına göre sıralama (varsayılan: en çok değiştirilen dosyalar önce)
-- `--include-diffs`: Çalışma ağacı ve aşamalı değişiklikleri gösteren git fark bölümü ekle
-- `--include-logs`: Mesajlar ve değiştirilen dosyalarla git commit geçmişi ekle
-- `--include-logs-count <count>`: --include-logs ile dahil edilecek son commit sayısı (varsayılan: 50)
+
+| Seçenek | Açıklama |
+|---------|----------|
+| `-o, --output <file>` | Çıktı dosyası yolu (varsayılan: `repomix-output.xml`, stdout için `"-"` kullanın) |
+| `--style <style>` | Çıktı formatı: `xml`, `markdown`, `json` veya `plain` (varsayılan: `xml`) |
+| `--parsable-style` | Geçerli XML/Markdown sağlamak için özel karakterleri kaçış karakteriyle işle (çıktı biçimlendirmeyi bozan kod içerdiğinde gereklidir) |
+| `--compress` | Tree-sitter ayrıştırmasını kullanarak temel kod yapısını (sınıflar, fonksiyonlar, arayüzler) çıkar |
+| `--output-show-line-numbers` | Çıktıda her satırın önüne satır numarası ekle |
+| `--no-file-summary` | Çıktıdan dosya özeti bölümünü çıkar |
+| `--no-directory-structure` | Çıktıdan dizin ağacı görselleştirmesini çıkar |
+| `--no-files` | Dosya içerikleri olmadan yalnızca meta veri oluştur (depo analizi için kullanışlıdır) |
+| `--remove-comments` | Paketlemeden önce tüm kod yorumlarını kaldır |
+| `--remove-empty-lines` | Tüm dosyalardan boş satırları kaldır |
+| `--truncate-base64` | Çıktı boyutunu azaltmak için uzun base64 veri dizelerini kırp |
+| `--header-text <text>` | Çıktının başına eklenecek özel metin |
+| `--instruction-file-path <path>` | Çıktıya dahil edilecek özel talimatları içeren dosyanın yolu |
+| `--split-output <size>` | Çıktıyı numaralı birden fazla dosyaya böl (örn. `repomix-output.1.xml`); `500kb`, `2mb` veya `1.5mb` gibi boyut değerleri |
+| `--include-empty-directories` | Dizin yapısına dosyasız klasörleri dahil et |
+| `--include-full-directory-structure` | `--include` kalıpları kullanılırken bile Dizin Yapısı bölümünde tüm depo ağacını göster |
+| `--no-git-sort-by-changes` | Dosyaları git değişiklik sıklığına göre sıralama (varsayılan: en çok değiştirilen dosyalar önce) |
+| `--include-diffs` | Çalışma ağacı ve aşamalı değişiklikleri gösteren git fark bölümü ekle |
+| `--include-logs` | Mesajlar ve değiştirilen dosyalarla git commit geçmişi ekle |
+| `--include-logs-count <count>` | `--include-logs` ile dahil edilecek son commit sayısı (varsayılan: `50`) |
 
 ## Dosya Seçim Seçenekleri
-- `--include <patterns>`: Yalnızca bu glob kalıplarıyla eşleşen dosyaları dahil et (virgülle ayrılmış, örn. "src/**/*.js,*.md")
-- `-i, --ignore <patterns>`: Hariç tutulacak ek kalıplar (virgülle ayrılmış, örn. "*.test.js,docs/**")
-- `--no-gitignore`: Dosyaları filtrelerken .gitignore kurallarını kullanma
-- `--no-dot-ignore`: Dosyaları filtrelerken .ignore kurallarını kullanma
-- `--no-default-patterns`: Yerleşik yoksayma kalıplarını uygulama (node_modules, .git, derleme dizinleri vb.)
+
+| Seçenek | Açıklama |
+|---------|----------|
+| `--include <patterns>` | Yalnızca bu glob kalıplarıyla eşleşen dosyaları dahil et (virgülle ayrılmış, örn. `"src/**/*.js,*.md"`) |
+| `-i, --ignore <patterns>` | Hariç tutulacak ek kalıplar (virgülle ayrılmış, örn. `"*.test.js,docs/**"`) |
+| `--no-gitignore` | Dosyaları filtrelerken `.gitignore` kurallarını kullanma |
+| `--no-dot-ignore` | Dosyaları filtrelerken `.ignore` kurallarını kullanma |
+| `--no-default-patterns` | Yerleşik yoksayma kalıplarını uygulama (`node_modules`, `.git`, derleme dizinleri vb.) |
 
 ## Uzak Depo Seçenekleri
-- `--remote <url>`: Uzak bir depoyu klonla ve paketle (GitHub URL'si veya kullanıcı/depo formatı)
-- `--remote-branch <name>`: Kullanılacak belirli dal, etiket veya commit (varsayılan: deponun varsayılan dalı)
+
+| Seçenek | Açıklama |
+|---------|----------|
+| `--remote <url>` | Uzak bir depoyu klonla ve paketle (GitHub URL'si veya `kullanıcı/depo` formatı) |
+| `--remote-branch <name>` | Kullanılacak belirli dal, etiket veya commit (varsayılan: deponun varsayılan dalı) |
+| `--remote-trust-config` | Uzak depolardan yapılandırma dosyalarına güven ve yükle (güvenlik için varsayılan olarak devre dışı) |
 
 ## Yapılandırma Seçenekleri
-- `-c, --config <path>`: repomix.config.json yerine özel yapılandırma dosyası kullan
-- `--init`: Varsayılan ayarlarla yeni bir repomix.config.json dosyası oluştur
-- `--global`: --init ile birlikte, yapılandırmayı geçerli dizin yerine home dizininde oluştur
+
+| Seçenek | Açıklama |
+|---------|----------|
+| `-c, --config <path>` | `repomix.config.json` yerine özel yapılandırma dosyası kullan |
+| `--init` | Varsayılan ayarlarla yeni bir `repomix.config.json` dosyası oluştur |
+| `--global` | `--init` ile birlikte, yapılandırmayı geçerli dizin yerine home dizininde oluştur |
 
 ## Güvenlik Seçenekleri
 - `--no-security-check`: API anahtarları ve parolalar gibi hassas verilerin taranmasını atla (dikkatli kullanın; çıktıda gizli bilgiler açığa çıkabilir)
@@ -58,6 +74,14 @@
 
 ## MCP Seçenekleri
 - `--mcp`: AI araç entegrasyonu için Model Context Protocol sunucusu olarak çalıştır
+
+## Ajan Becerileri Oluşturma Seçenekleri
+
+| Seçenek | Açıklama |
+|---------|----------|
+| `--skill-generate [name]` | Claude Agent Skills formatında çıktıyı `.claude/skills/<name>/` dizinine oluştur (ad belirtilmezse otomatik oluşturulur) |
+| `--skill-output <path>` | Beceri çıktı dizin yolunu doğrudan belirt (konum istemini atlar) |
+| `-f, --force` | Tüm onay istemlerini atla (örn. beceri dizini üzerine yazma) |
 
 ## İlgili Kaynaklar
 

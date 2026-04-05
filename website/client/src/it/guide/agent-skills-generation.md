@@ -78,26 +78,15 @@ Gli Skills vengono generati con la seguente struttura:
 
 ### Descrizioni dei File
 
-#### SKILL.md
+| File | Scopo | Contenuto |
+|------|-------|-----------|
+| `SKILL.md` | Metadati principali e documentazione Skills | Nome Skills, descrizione, informazioni del progetto, conteggio file/righe/token, panoramica dell'utilizzo, casi d'uso comuni e suggerimenti |
+| `references/summary.md` | Scopo, formato e statistiche | Spiegazione della codebase di riferimento, documentazione della struttura file, linee guida d'uso, ripartizione per tipo di file e linguaggio |
+| `references/project-structure.md` | Scoperta dei file | Albero con conteggio righe per file |
+| `references/files.md` | Riferimento codice consultabile | Tutto il contenuto dei file con intestazioni di syntax highlighting, ottimizzato per la ricerca compatibile grep |
+| `references/tech-stacks.md` | Riepilogo dello stack tecnologico | Linguaggi, framework, versioni runtime, package manager, dipendenze, file di configurazione |
 
-Il file principale degli Skills contiene:
-- Nome Skills, descrizione e informazioni del progetto
-- Conteggio file, righe e token
-- Panoramica dell'utilizzo degli Skills
-- Posizioni dei file e spiegazione del formato
-- Casi d'uso comuni e suggerimenti
-
-#### references/summary.md
-
-Contiene:
-- **Scopo**: Spiega che questa è una codebase di riferimento per uso IA
-- **Struttura File**: Documenta il contenuto di ogni file di riferimento
-- **Linee Guida d'Uso**: Come usare efficacemente gli Skills
-- **Statistiche**: Ripartizione per tipo di file, linguaggio e file più grandi
-
-#### references/project-structure.md
-
-Albero con conteggio righe per file per una facile scoperta:
+#### Esempio: references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-Tutto il contenuto dei file con intestazioni di syntax highlighting, ottimizzato per la ricerca compatibile grep:
+#### Esempio: references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### Esempio: references/tech-stacks.md
 
 Stack tecnologico auto-rilevato dai file delle dipendenze:
 - **Linguaggi**: TypeScript, JavaScript, Python, ecc.

@@ -78,26 +78,15 @@ Os Skills são gerados com a seguinte estrutura:
 
 ### Descrições dos Arquivos
 
-#### SKILL.md
+| Arquivo | Propósito | Conteúdo |
+|---------|-----------|----------|
+| `SKILL.md` | Metadados principais e documentação dos Skills | Nome dos Skills, descrição, informações do projeto, contagem de arquivos/linhas/tokens, visão geral de uso, casos de uso comuns e dicas |
+| `references/summary.md` | Propósito, formato e estatísticas | Explicação da base de código de referência, documentação de estrutura de arquivos, diretrizes de uso, divisão por tipo de arquivo e linguagem |
+| `references/project-structure.md` | Descoberta de arquivos | Árvore de diretórios com contagem de linhas por arquivo |
+| `references/files.md` | Referência de código pesquisável | Todo o conteúdo dos arquivos com cabeçalhos de destaque de sintaxe, otimizado para busca compatível com grep |
+| `references/tech-stacks.md` | Resumo do stack tecnológico | Linguagens, frameworks, versões de runtime, gerenciadores de pacotes, dependências, arquivos de configuração |
 
-O arquivo principal dos Skills contém:
-- Nome dos Skills, descrição e informações do projeto
-- Contagem de arquivos, linhas e tokens
-- Visão geral de como usar os Skills
-- Localizações dos arquivos e explicação do formato
-- Casos de uso comuns e dicas
-
-#### references/summary.md
-
-Contém:
-- **Propósito**: Explica que é uma base de código de referência para consumo de IA
-- **Estrutura de Arquivos**: Documenta o conteúdo de cada arquivo de referência
-- **Diretrizes de Uso**: Como usar os Skills efetivamente
-- **Estatísticas**: Divisão por tipo de arquivo, linguagem e maiores arquivos
-
-#### references/project-structure.md
-
-Árvore de diretórios com contagem de linhas por arquivo para fácil descoberta:
+#### Exemplo: references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-Todo o conteúdo dos arquivos com cabeçalhos de destaque de sintaxe, otimizado para busca compatível com grep:
+#### Exemplo: references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### Exemplo: references/tech-stacks.md
 
 Stack tecnológico auto-detectado dos arquivos de dependências:
 - **Linguagens**: TypeScript, JavaScript, Python, etc.

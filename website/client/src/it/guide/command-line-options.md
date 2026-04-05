@@ -4,51 +4,67 @@
 - `-v, --version`: Mostra la versione dello strumento
 
 ## Opzioni di Input/Output CLI
-- `--verbose`: Abilita il logging dettagliato
-- `--quiet`: Disabilita qualsiasi output verso stdout
-- `--stdout`: Output verso stdout invece di scrivere su file (non può essere usato con l'opzione `--output`)
-- `--stdin`: Legge i percorsi dei file da stdin invece di scoprire automaticamente i file
-- `--copy`: Copia anche l'output generato negli appunti di sistema
-- `--token-count-tree [threshold]`: Mostra l'albero dei file con riepiloghi del conteggio token (opzionale: soglia minima conteggio token). Utile per identificare file grandi e ottimizzare l'utilizzo dei token per i limiti di contesto IA
-- `--top-files-len <number>`: Numero dei file più grandi da mostrare nel riepilogo (predefinito: 5, es: --top-files-len 20)
+
+| Opzione | Descrizione |
+|---------|-------------|
+| `--verbose` | Abilita il logging di debug dettagliato (mostra l'elaborazione dei file, i conteggi token e i dettagli di configurazione) |
+| `--quiet` | Sopprime tutto l'output in console eccetto gli errori (utile per lo scripting) |
+| `--stdout` | Scrive l'output impacchettato direttamente su stdout invece di un file (sopprime tutto il logging) |
+| `--stdin` | Legge i percorsi dei file da stdin, uno per riga (i file specificati vengono elaborati direttamente) |
+| `--copy` | Copia l'output generato negli appunti di sistema dopo l'elaborazione |
+| `--token-count-tree [threshold]` | Mostra l'albero dei file con conteggi token; soglia opzionale per mostrare solo file con almeno N token (es: `--token-count-tree 100`) |
+| `--top-files-len <number>` | Numero dei file più grandi da mostrare nel riepilogo (predefinito: `5`) |
 
 ## Opzioni di Output Repomix
-- `-o, --output <file>`: Percorso del file di output (predefinito: repomix-output.xml, usa "-" per stdout)
-- `--style <type>`: Formato di output: xml, markdown, json o plain (predefinito: xml)
-- `--parsable-style`: Abilita output analizzabile basato sullo schema di stile scelto. Nota che questo può aumentare il conteggio token.
-- `--compress`: Esegue estrazione intelligente del codice, concentrandosi sulle firme essenziali di funzioni e classi per ridurre il conteggio token
-- `--output-show-line-numbers`: Mostra i numeri di riga nell'output
-- `--no-file-summary`: Disabilita l'output della sezione riepilogo file
-- `--no-directory-structure`: Disabilita l'output della sezione struttura directory
-- `--no-files`: Disabilita l'output del contenuto dei file (modalità solo metadati)
-- `--remove-comments`: Rimuove i commenti dai tipi di file supportati
-- `--remove-empty-lines`: Rimuove le righe vuote dall'output
-- `--truncate-base64`: Abilita il troncamento delle stringhe di dati base64
-- `--header-text <text>`: Testo personalizzato da includere nell'intestazione del file
-- `--instruction-file-path <path>`: Percorso a un file contenente istruzioni personalizzate dettagliate
-- `--split-output <size>`: Dividi l'output in più file numerati (es.: repomix-output.1.xml, repomix-output.2.xml); con dimensioni come 500kb, 2mb o 1.5mb
-- `--include-empty-directories`: Include le directory vuote nell'output
-- `--include-full-directory-structure`: Mostra l'albero completo del repository nella sezione Struttura Directory, anche quando si usano pattern --include
-- `--include-diffs`: Include i diff git nell'output (include le modifiche dell'albero di lavoro e le modifiche staged separatamente)
-- `--include-logs`: Include i log git nell'output (include la cronologia dei commit con date, messaggi e percorsi file)
-- `--include-logs-count <count>`: Numero di commit dei log git da includere (predefinito: 50)
-- `--no-git-sort-by-changes`: Disabilita l'ordinamento dei file per numero di modifiche git (abilitato per impostazione predefinita)
+
+| Opzione | Descrizione |
+|---------|-------------|
+| `-o, --output <file>` | Percorso del file di output (predefinito: `repomix-output.xml`, usa `"-"` per stdout) |
+| `--style <style>` | Formato di output: `xml`, `markdown`, `json` o `plain` (predefinito: `xml`) |
+| `--parsable-style` | Esegue l'escape dei caratteri speciali per garantire XML/Markdown valido (necessario quando l'output contiene codice che interrompe la formattazione) |
+| `--compress` | Estrae la struttura essenziale del codice (classi, funzioni, interfacce) tramite il parsing Tree-sitter |
+| `--output-show-line-numbers` | Prefissa ogni riga con il suo numero di riga nell'output |
+| `--no-file-summary` | Omette la sezione di riepilogo file dall'output |
+| `--no-directory-structure` | Omette la visualizzazione ad albero delle directory dall'output |
+| `--no-files` | Genera solo metadati senza contenuto dei file (utile per l'analisi del repository) |
+| `--remove-comments` | Rimuove tutti i commenti dal codice prima dell'impacchettamento |
+| `--remove-empty-lines` | Rimuove le righe vuote da tutti i file |
+| `--truncate-base64` | Tronca le lunghe stringhe di dati base64 per ridurre la dimensione dell'output |
+| `--header-text <text>` | Testo personalizzato da includere all'inizio dell'output |
+| `--instruction-file-path <path>` | Percorso a un file contenente istruzioni personalizzate da includere nell'output |
+| `--split-output <size>` | Divide l'output in più file numerati (es: `repomix-output.1.xml`); dimensione come `500kb`, `2mb` o `1.5mb` |
+| `--include-empty-directories` | Include le cartelle senza file nella struttura delle directory |
+| `--include-full-directory-structure` | Mostra l'albero completo del repository nella sezione Struttura Directory, anche quando si usano pattern `--include` |
+| `--no-git-sort-by-changes` | Non ordinare i file per frequenza di modifiche git (predefinito: file più modificati per primi) |
+| `--include-diffs` | Aggiunge una sezione diff git che mostra le modifiche dell'albero di lavoro e le modifiche staged |
+| `--include-logs` | Aggiunge la cronologia dei commit git con messaggi e file modificati |
+| `--include-logs-count <count>` | Numero di commit recenti da includere con `--include-logs` (predefinito: `50`) |
 
 ## Opzioni di Selezione File
-- `--include <patterns>`: Lista dei pattern di inclusione (separati da virgola)
-- `-i, --ignore <patterns>`: Pattern di esclusione aggiuntivi (separati da virgola)
-- `--no-gitignore`: Disabilita l'uso del file .gitignore
-- `--no-dot-ignore`: Disabilita l'uso del file .ignore
-- `--no-default-patterns`: Disabilita i pattern predefiniti
+
+| Opzione | Descrizione |
+|---------|-------------|
+| `--include <patterns>` | Includi solo i file che corrispondono a questi pattern glob (separati da virgola, es: `"src/**/*.js,*.md"`) |
+| `-i, --ignore <patterns>` | Pattern aggiuntivi da escludere (separati da virgola, es: `"*.test.js,docs/**"`) |
+| `--no-gitignore` | Non usare le regole `.gitignore` per filtrare i file |
+| `--no-dot-ignore` | Non usare le regole `.ignore` per filtrare i file |
+| `--no-default-patterns` | Non applicare i pattern di esclusione integrati (`node_modules`, `.git`, directory di build, ecc.) |
 
 ## Opzioni Repository Remoto
-- `--remote <url>`: Elabora un repository remoto
-- `--remote-branch <name>`: Specifica il nome del branch remoto, tag o hash del commit (predefinito al branch predefinito del repository)
+
+| Opzione | Descrizione |
+|---------|-------------|
+| `--remote <url>` | Clona e impacchetta un repository remoto (URL GitHub o formato `user/repo`) |
+| `--remote-branch <name>` | Branch, tag o commit specifico da usare (predefinito: branch predefinito del repository) |
+| `--remote-trust-config` | Considera affidabili e carica i file di configurazione dai repository remoti (disabilitato per impostazione predefinita per sicurezza) |
 
 ## Opzioni di Configurazione
-- `-c, --config <path>`: Percorso del file di configurazione personalizzato
-- `--init`: Crea un file di configurazione
-- `--global`: Usa la configurazione globale
+
+| Opzione | Descrizione |
+|---------|-------------|
+| `-c, --config <path>` | Usa un file di configurazione personalizzato al posto di `repomix.config.json` |
+| `--init` | Crea un nuovo file `repomix.config.json` con i valori predefiniti |
+| `--global` | Con `--init`, crea la configurazione nella directory home invece della directory corrente |
 
 ## Opzioni di Sicurezza
 - `--no-security-check`: Salta la ricerca di dati sensibili come chiavi API e password
@@ -58,6 +74,14 @@
 
 ## Opzioni MCP
 - `--mcp`: Funziona come server Model Context Protocol per l'integrazione di strumenti IA
+
+## Opzioni di Generazione Agent Skills
+
+| Opzione | Descrizione |
+|---------|-------------|
+| `--skill-generate [name]` | Genera output in formato Claude Agent Skills nella directory `.claude/skills/<name>/` (nome auto-generato se omesso) |
+| `--skill-output <path>` | Specifica direttamente il percorso della directory di output delle skill (salta il prompt di posizione) |
+| `-f, --force` | Salta tutti i prompt di conferma (es: sovrascrittura della directory delle skill) |
 
 ## Risorse correlate
 
