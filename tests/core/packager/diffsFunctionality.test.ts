@@ -93,6 +93,7 @@ index 123..456 100644
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       sortPaths: mockSortPaths,
+      prefetchSortData: vi.fn().mockResolvedValue(undefined),
     });
 
     // Should not call getWorkTreeDiff
@@ -151,6 +152,7 @@ index 123..456 100644
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       sortPaths: mockSortPaths,
+      prefetchSortData: vi.fn().mockResolvedValue(undefined),
     });
 
     // Check gitDiffTokenCount in the result

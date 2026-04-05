@@ -11,6 +11,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { prefetchSortData } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -44,6 +45,7 @@ const defaultDeps = {
   sortPaths,
   getGitDiffs,
   getGitLogs,
+  prefetchSortData,
   packSkill,
 };
 
@@ -122,6 +124,10 @@ export const pack = async (
       ),
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
+      // Pre-fetch git file change counts for sortOutputFiles.
+      // This overlaps the git log subprocess with file collection
+      // instead of blocking output generation later.
+      deps.prefetchSortData(config),
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);

@@ -90,6 +90,23 @@ const checkGitAvailability = async (cwd: string, deps: SortDeps): Promise<boolea
   }
 };
 
+/**
+ * Pre-fetch git file change counts so that the data is cached
+ * before sortOutputFiles is called during output generation.
+ */
+export const prefetchSortData = async (
+  config: RepomixConfigMerged,
+  deps: SortDeps = {
+    getFileChangeCount,
+    isGitInstalled,
+  },
+): Promise<void> => {
+  if (!config.output.git?.sortByChanges) {
+    return;
+  }
+  await getFileChangeCounts(config.cwd, config.output.git?.sortByChangesMaxCommits, deps);
+};
+
 // Sort files by git change count for output
 export const sortOutputFiles = async (
   files: ProcessedFile[],
