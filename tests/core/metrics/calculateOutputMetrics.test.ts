@@ -6,10 +6,10 @@ import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
+const mockInitTaskRunner = (_options: WorkerOptions) => {
   return {
-    run: async (task: T) => {
-      return (await countTokens(task as TokenCountTask)) as R;
+    run: async (task: unknown) => {
+      return await countTokens(task as TokenCountTask);
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests
