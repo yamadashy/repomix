@@ -79,20 +79,46 @@ export const calculateMetrics = async (
     });
 
   try {
-    // For top files display optimization: calculate token counts only for top files by character count
-    // However, if tokenCountTree is enabled, calculate for all files to avoid double calculation
+    // Determine which files need token counting.
+    // When tokenCountTree is a numeric threshold, pre-filter files by character count:
+    // a file with N characters can have at most N tokens, so files shorter than the
+    // threshold are guaranteed to be below it and can be skipped entirely.
+    // We always include the top files by character count for the "Top Files" report.
     const topFilesLength = config.output.topFilesLength;
-    const shouldCalculateAllFiles = !!config.output.tokenCountTree;
+    const topFilesCount = Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength));
+    const tokenCountTree = config.output.tokenCountTree;
 
-    // Determine which files to calculate token counts for:
-    // - If tokenCountTree is enabled: calculate for all files to avoid double calculation
-    // - Otherwise: calculate only for top files by character count for optimization
-    const metricsTargetPaths = shouldCalculateAllFiles
-      ? processedFiles.map((file) => file.path)
-      : [...processedFiles]
+    const metricsTargetPaths = (() => {
+      if (!tokenCountTree) {
+        // tokenCountTree disabled: only calculate for top files by character count
+        return [...processedFiles]
           .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
+          .slice(0, topFilesCount)
           .map((file) => file.path);
+      }
+
+      const threshold = typeof tokenCountTree === 'number' ? tokenCountTree : 0;
+      if (threshold <= 0) {
+        // tokenCountTree enabled without a meaningful threshold: calculate for all files
+        return processedFiles.map((file) => file.path);
+      }
+
+      // tokenCountTree with numeric threshold: only count files that might reach it,
+      // plus the top files by character count for the report display.
+      const topFilesBySize = [...processedFiles]
+        .sort((a, b) => b.content.length - a.content.length)
+        .slice(0, topFilesCount);
+      const topPathSet = new Set(topFilesBySize.map((f) => f.path));
+
+      // Add files that could reach the threshold (charCount >= threshold)
+      for (const file of processedFiles) {
+        if (file.content.length >= threshold && !topPathSet.has(file.path)) {
+          topPathSet.add(file.path);
+        }
+      }
+
+      return [...topPathSet];
+    })();
 
     // Start output-independent metrics immediately so they can overlap with output generation
     // when output is passed as a promise
