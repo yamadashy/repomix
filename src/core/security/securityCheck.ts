@@ -1,6 +1,9 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import {
+  getProcessConcurrency as defaultGetProcessConcurrency,
+  initTaskRunner,
+} from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -29,6 +32,7 @@ export const runSecurityCheck = async (
   gitLogResult?: GitLogResult,
   deps = {
     initTaskRunner,
+    getProcessConcurrency: defaultGetProcessConcurrency,
   },
 ): Promise<SuspiciousFileResult[]> => {
   const gitDiffItems: SecurityCheckItem[] = [];
@@ -74,14 +78,21 @@ export const runSecurityCheck = async (
   const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
   const totalItems = allItems.length;
 
-  // NOTE: numOfTasks uses totalItems (not batches.length) intentionally.
-  // getWorkerThreadCount uses Math.ceil(numOfTasks / TASKS_PER_THREAD) to size the pool,
-  // where TASKS_PER_THREAD=100 is calibrated for fine-grained tasks.
-  // Passing batches.length (e.g. 2) would yield maxThreads=1, forcing sequential execution.
+  if (totalItems === 0) {
+    return [];
+  }
+
+  // Cap security workers at 2 to reduce contention with the metrics worker pool that
+  // runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
+  // so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
+  const maxSecurityWorkers = Math.min(2, deps.getProcessConcurrency());
+
+  // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
     numOfTasks: totalItems,
     workerType: 'securityCheck',
     runtime: 'worker_threads',
+    maxWorkerThreads: maxSecurityWorkers,
   });
 
   // Split items into batches to reduce IPC round-trips
