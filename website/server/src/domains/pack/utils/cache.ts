@@ -5,6 +5,9 @@ import type { PackOptions } from '../../../types.js';
 const compressAsync = promisify(zlib.brotliCompress);
 const decompressAsync = promisify(zlib.brotliDecompress);
 
+// Balanced speed/ratio for in-memory cache
+const BROTLI_QUALITY = 4;
+
 interface CacheEntry {
   value: Uint8Array; // Compressed data
   timestamp: number;
@@ -59,7 +62,7 @@ export class RequestCache<T> {
       const compressedData = await compressAsync(jsonString, {
         params: {
           [zlib.constants.BROTLI_PARAM_MODE]: zlib.constants.BROTLI_MODE_TEXT,
-          [zlib.constants.BROTLI_PARAM_QUALITY]: 4,
+          [zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY,
         },
       });
 
