@@ -53,7 +53,7 @@ describe('packager split output', () => {
       }),
       getGitDiffs: vi.fn().mockResolvedValue(undefined),
       getGitLogs: vi.fn().mockResolvedValue(undefined),
-      prefetchSortData: vi.fn().mockResolvedValue(undefined),
+      prewarmGitSortCache: vi.fn().mockResolvedValue(undefined),
       produceOutput,
       calculateMetrics,
       createMetricsTaskRunner: vi.fn().mockReturnValue({

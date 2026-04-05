@@ -121,6 +121,22 @@ describe('createMetricsTaskRunner', () => {
     expect(result.taskRunner.run).toHaveBeenCalledWith({ content: '', encoding: 'cl100k_base' });
   });
 
+  it('should warm up all worker threads', async () => {
+    // With 1000 tasks on a system with N cores, maxThreads = min(N, ceil(1000/100)) = min(N, 10)
+    // All threads should be warmed up to avoid lazy init delays during metrics
+    const result = createMetricsTaskRunner(1000, 'o200k_base');
+
+    await result.warmupPromise;
+
+    const callCount = (result.taskRunner.run as Mock).mock.calls.length;
+    const { getWorkerThreadCount } = await import('../../../src/shared/processConcurrency.js');
+    // maxMetricsWorkers caps at processConcurrency - 1, so cappedNumOfTasks is used
+    const maxMetricsWorkers = Math.max(1, (await import('node:os')).default.availableParallelism() - 1);
+    const cappedNumOfTasks = Math.min(1000, maxMetricsWorkers * 100);
+    const { maxThreads } = getWorkerThreadCount(cappedNumOfTasks);
+    expect(callCount).toBe(maxThreads);
+  });
+
   it('should swallow warmup task errors', async () => {
     const { initTaskRunner } = await import('../../../src/shared/processConcurrency.js');
     (initTaskRunner as Mock).mockReturnValueOnce({

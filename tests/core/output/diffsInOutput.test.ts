@@ -15,6 +15,8 @@ vi.mock('../../../src/core/git/gitDiffHandle.js', () => ({
 
 vi.mock('../../../src/core/git/gitRepositoryHandle.js', () => ({
   isGitRepository: vi.fn(),
+  getFileChangeCount: vi.fn().mockResolvedValue({}),
+  isGitInstalled: vi.fn().mockResolvedValue(true),
 }));
 
 describe('Git Diffs in Output', () => {

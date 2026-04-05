@@ -2,7 +2,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 
 /**
  * Calculate token count for git diffs if included
@@ -10,7 +10,7 @@ import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 export const calculateGitDiffMetrics = async (
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
-  deps: { taskRunner: TaskRunner<TokenCountTask, number> },
+  deps: { taskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> },
 ): Promise<number> => {
   if (!config.output.git?.includeDiffs || !gitDiffResult) {
     return 0;
@@ -25,7 +25,7 @@ export const calculateGitDiffMetrics = async (
     const startTime = process.hrtime.bigint();
     logger.trace('Starting git diff token calculation using worker');
 
-    const countPromises: Promise<number>[] = [];
+    const countPromises: Promise<MetricsWorkerResult>[] = [];
 
     if (gitDiffResult.workTreeDiffContent) {
       countPromises.push(
@@ -45,7 +45,7 @@ export const calculateGitDiffMetrics = async (
     }
 
     const results = await Promise.all(countPromises);
-    const totalTokens = results.reduce((sum, count) => sum + count, 0);
+    const totalTokens = (results as number[]).reduce((sum, count) => sum + count, 0);
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;

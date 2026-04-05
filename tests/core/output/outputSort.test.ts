@@ -123,6 +123,59 @@ describe('outputSort', () => {
       expect(mockIsGitInstalled).not.toHaveBeenCalled();
     });
 
+    test('prewarmGitSortCache should be a no-op when sort is disabled', async () => {
+      const { prewarmGitSortCache } = await import('../../../src/core/output/outputSort.js');
+      const config = createMockConfig({
+        output: {
+          git: {
+            sortByChanges: false,
+          },
+        },
+        cwd: '/test',
+      });
+
+      const mockGetFileChangeCount = vi.fn();
+      const mockIsGitInstalled = vi.fn();
+
+      await prewarmGitSortCache(config, {
+        getFileChangeCount: mockGetFileChangeCount,
+        isGitInstalled: mockIsGitInstalled,
+      });
+
+      expect(mockGetFileChangeCount).not.toHaveBeenCalled();
+      expect(mockIsGitInstalled).not.toHaveBeenCalled();
+    });
+
+    test('prewarmGitSortCache should populate cache so sortOutputFiles does not call git again', async () => {
+      const { prewarmGitSortCache, sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
+      const input: ProcessedFile[] = [
+        { path: `src${sep}file1.ts`, content: 'content1' },
+        { path: `src${sep}file2.ts`, content: 'content2' },
+      ];
+
+      const mockGetFileChangeCount = vi.fn().mockResolvedValue({
+        [`src${sep}file1.ts`]: 5,
+        [`src${sep}file2.ts`]: 10,
+      });
+      const mockIsGitInstalled = vi.fn().mockResolvedValue(true);
+      const deps = {
+        getFileChangeCount: mockGetFileChangeCount,
+        isGitInstalled: mockIsGitInstalled,
+      };
+
+      // Pre-warm the cache
+      await prewarmGitSortCache(mockConfig, deps);
+      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
+
+      // sortOutputFiles should hit the cache, not call getFileChangeCount again
+      const result = await sortOutputFiles(input, mockConfig, deps);
+      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
+      expect(result).toEqual([
+        { path: `src${sep}file1.ts`, content: 'content1' },
+        { path: `src${sep}file2.ts`, content: 'content2' },
+      ]);
+    });
+
     test('should cache git file change counts for repeated calls', async () => {
       const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input1: ProcessedFile[] = [
@@ -157,79 +210,6 @@ describe('outputSort', () => {
       expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
       // isGitInstalled should also be cached
       expect(mockIsGitInstalled).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('prefetchSortData', () => {
-    test('should not call git functions when sortByChanges is disabled', async () => {
-      const { prefetchSortData } = await import('../../../src/core/output/outputSort.js');
-
-      const config = createMockConfig({
-        output: { git: { sortByChanges: false } },
-        cwd: '/test',
-      });
-
-      const mockGetFileChangeCount = vi.fn();
-      const mockIsGitInstalled = vi.fn();
-
-      await prefetchSortData(config, {
-        getFileChangeCount: mockGetFileChangeCount,
-        isGitInstalled: mockIsGitInstalled,
-      });
-
-      expect(mockGetFileChangeCount).not.toHaveBeenCalled();
-      expect(mockIsGitInstalled).not.toHaveBeenCalled();
-    });
-
-    test('should call getFileChangeCount when sortByChanges is enabled', async () => {
-      const { prefetchSortData } = await import('../../../src/core/output/outputSort.js');
-
-      const config = createMockConfig({
-        output: { git: { sortByChanges: true, sortByChangesMaxCommits: 200 } },
-        cwd: '/test',
-      });
-
-      const mockGetFileChangeCount = vi.fn().mockResolvedValue({ 'file.ts': 3 });
-      const mockIsGitInstalled = vi.fn().mockResolvedValue(true);
-
-      await prefetchSortData(config, {
-        getFileChangeCount: mockGetFileChangeCount,
-        isGitInstalled: mockIsGitInstalled,
-      });
-
-      expect(mockGetFileChangeCount).toHaveBeenCalledWith(expect.any(String), 200);
-      expect(mockIsGitInstalled).toHaveBeenCalled();
-    });
-
-    test('should warm cache so sortOutputFiles does not call getFileChangeCount again', async () => {
-      const { prefetchSortData, sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
-
-      const config = createMockConfig({
-        output: { git: { sortByChanges: true, sortByChangesMaxCommits: 100 } },
-        cwd: '/test',
-      });
-
-      const mockGetFileChangeCount = vi.fn().mockResolvedValue({
-        [`src${sep}file1.ts`]: 5,
-        [`src${sep}file2.ts`]: 2,
-      });
-      const mockIsGitInstalled = vi.fn().mockResolvedValue(true);
-      const deps = { getFileChangeCount: mockGetFileChangeCount, isGitInstalled: mockIsGitInstalled };
-
-      // Prefetch warms the cache
-      await prefetchSortData(config, deps);
-      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
-
-      // sortOutputFiles should hit the cache
-      const input: ProcessedFile[] = [
-        { path: `src${sep}file1.ts`, content: 'a' },
-        { path: `src${sep}file2.ts`, content: 'b' },
-      ];
-      const result = await sortOutputFiles(input, config, deps);
-
-      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
-      expect(result[0].path).toBe(`src${sep}file2.ts`);
-      expect(result[1].path).toBe(`src${sep}file1.ts`);
     });
   });
 });

@@ -11,7 +11,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
-import { prefetchSortData } from './output/outputSort.js';
+import { prewarmGitSortCache } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -45,7 +45,7 @@ const defaultDeps = {
   sortPaths,
   getGitDiffs,
   getGitLogs,
-  prefetchSortData,
+  prewarmGitSortCache,
   packSkill,
 };
 
@@ -107,9 +107,13 @@ export const pack = async (
   );
 
   try {
-    // Run file collection and git operations in parallel since they are independent:
+    // Run file collection, git operations, and git sort cache pre-warming in parallel
+    // since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
+    // - prewarmGitSortCache spawns `git log` for sort-by-changes, populating a module-level
+    //   cache so that sortOutputFiles (called later during output generation) hits the cache
+    //   instead of blocking the critical path with a subprocess.
     // Neither depends on the other's results.
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
@@ -124,10 +128,7 @@ export const pack = async (
       ),
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
-      // Pre-fetch git file change counts for sortOutputFiles.
-      // This overlaps the git log subprocess with file collection
-      // instead of blocking output generation later.
-      deps.prefetchSortData(config),
+      deps.prewarmGitSortCache(config),
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
