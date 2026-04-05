@@ -15,6 +15,7 @@ vi.mock('../../../src/core/git/gitDiffHandle.js', () => ({
 
 vi.mock('../../../src/core/git/gitRepositoryHandle.js', () => ({
   isGitRepository: vi.fn(),
+  getFileChangeCount: vi.fn().mockResolvedValue({}),
 }));
 
 describe('Git Diffs Functionality', () => {
@@ -89,7 +90,10 @@ index 123..456 100644
       collectFiles: mockCollectFiles,
       processFiles: mockProcessFiles,
       validateFileSafety: mockValidateFileSafety,
+      generateOutput: vi.fn().mockResolvedValue('mocked output'),
       produceOutput: mockProduceOutput,
+      writeOutputToDisk: vi.fn().mockResolvedValue(undefined),
+      copyToClipboardIfEnabled: vi.fn().mockResolvedValue(undefined),
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       createSecurityTaskRunner: vi.fn().mockReturnValue({
@@ -151,7 +155,10 @@ index 123..456 100644
       collectFiles: mockCollectFiles,
       processFiles: mockProcessFiles,
       validateFileSafety: mockValidateFileSafety,
+      generateOutput: vi.fn().mockResolvedValue('Generated output with diffs included'),
       produceOutput: mockProduceOutput,
+      writeOutputToDisk: vi.fn().mockResolvedValue(undefined),
+      copyToClipboardIfEnabled: vi.fn().mockResolvedValue(undefined),
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       createSecurityTaskRunner: vi.fn().mockReturnValue({

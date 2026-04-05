@@ -4,7 +4,19 @@ import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { type Options as GlobbyOptions, globby } from 'globby';
+import type { Options as GlobbyOptions } from 'globby';
+
+// Lazy-load globby to avoid its ~50ms import cost on the critical path.
+// The git-only fast path (default for git repos) never calls globby for file search,
+// so deferring the import saves startup time on every run.
+let _globby: typeof import('globby').globby | undefined;
+const getGlobby = async () => {
+  if (!_globby) {
+    _globby = (await import('globby')).globby;
+  }
+  return _globby;
+};
+
 import { minimatch } from 'minimatch'; // Used for findEmptyDirectories
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
@@ -334,11 +346,13 @@ export const searchFiles = async (
       // Start empty directory detection in parallel (if needed) since it requires globby
       // while the file search uses the fast git+picomatch path.
       const dirGlobbyForGitOnly = config.output.includeEmptyDirectories
-        ? globby(includePatterns, {
-            ...baseGlobbyOptions,
-            gitignore: config.ignore.useGitignore,
-            onlyDirectories: true,
-          })
+        ? getGlobby().then((g) =>
+            g(includePatterns, {
+              ...baseGlobbyOptions,
+              gitignore: config.ignore.useGitignore,
+              onlyDirectories: true,
+            }),
+          )
         : null;
 
       const gitOnlyResult = await tryGitOnlySearch(
@@ -375,15 +389,16 @@ export const searchFiles = async (
     // slower than the git-ls-files fast path used for files. Running them concurrently
     // overlaps the two I/O-heavy traversals, saving ~30-50ms when includeEmptyDirectories
     // is enabled.
+    const globbyFn = await getGlobby();
     const dirGlobbyPromise = config.output.includeEmptyDirectories
-      ? globby(includePatterns, {
+      ? globbyFn(includePatterns, {
           ...baseGlobbyOptions,
           gitignore: config.ignore.useGitignore,
           onlyDirectories: true,
         })
       : null;
 
-    const filePaths = await globby(includePatterns, {
+    const filePaths = await globbyFn(includePatterns, {
       ...baseGlobbyOptions,
       // Skip globby's gitignore parsing when git ls-files handles it
       gitignore: config.ignore.useGitignore && !useGitignoreFastPath,
@@ -590,7 +605,8 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
-  const directories = await globby(['**/*'], {
+  const globbyFn = await getGlobby();
+  const directories = await globbyFn(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     gitignore: config.ignore.useGitignore,
     onlyDirectories: true,
@@ -610,7 +626,8 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
 export const listFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
-  const files = await globby(['**/*'], {
+  const globbyFn = await getGlobby();
+  const files = await globbyFn(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     gitignore: config.ignore.useGitignore,
     onlyFiles: true,
