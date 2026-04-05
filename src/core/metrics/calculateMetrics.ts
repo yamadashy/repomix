@@ -1,10 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import {
-  getProcessConcurrency,
-  getWorkerThreadCount,
-  initTaskRunner,
-  type TaskRunner,
-} from '../../shared/processConcurrency.js';
+import { getWorkerThreadCount, initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -39,18 +34,13 @@ export interface MetricsTaskRunnerWithWarmup {
  * output generation).
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
-  // Cap metrics workers at (processConcurrency - 1) to leave CPU headroom for the
-  // security worker pool that runs concurrently during the pipeline overlap phase.
-  const maxMetricsWorkers = Math.max(1, getProcessConcurrency() - 1);
-
   const taskRunner = initTaskRunner<TokenCountTask, number>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
-    maxWorkerThreads: maxMetricsWorkers,
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks, maxMetricsWorkers);
+  const { maxThreads } = getWorkerThreadCount(numOfTasks);
   const warmupPromise = Promise.all(
     Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
