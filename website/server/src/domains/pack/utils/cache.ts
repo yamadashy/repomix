@@ -8,7 +8,6 @@ const decompressAsync = promisify(zlib.brotliDecompress);
 // Balanced speed/ratio for in-memory cache
 const BROTLI_QUALITY = 4;
 
-
 interface CacheEntry {
   value: Uint8Array; // Compressed data
   timestamp: number;
