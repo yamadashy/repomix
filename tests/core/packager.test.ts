@@ -48,15 +48,22 @@ describe('packager', () => {
         suspiciousGitDiffResults: [],
         suspiciousGitLogResults: [],
       }),
+      generateOutput: vi.fn().mockResolvedValue(mockOutput),
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
       }),
+      writeOutputToDisk: vi.fn().mockResolvedValue(undefined),
+      copyToClipboardIfEnabled: vi.fn().mockResolvedValue(undefined),
       createMetricsTaskRunner: vi.fn().mockReturnValue({
         taskRunner: {
           run: vi.fn().mockResolvedValue(0),
           cleanup: vi.fn().mockResolvedValue(undefined),
         },
         warmupPromise: Promise.resolve(),
+      }),
+      createSecurityTaskRunner: vi.fn().mockReturnValue({
+        run: vi.fn().mockResolvedValue([]),
+        cleanup: vi.fn().mockResolvedValue(undefined),
       }),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
@@ -83,7 +90,9 @@ describe('packager', () => {
     expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback);
     expect(mockDeps.validateFileSafety).toHaveBeenCalled();
     expect(mockDeps.processFiles).toHaveBeenCalled();
-    expect(mockDeps.produceOutput).toHaveBeenCalled();
+    // In the optimistic single-output path, generateOutput is used instead of produceOutput
+    expect(mockDeps.generateOutput).toHaveBeenCalled();
+    expect(mockDeps.writeOutputToDisk).toHaveBeenCalled();
     expect(mockDeps.calculateMetrics).toHaveBeenCalled();
 
     expect(mockDeps.validateFileSafety).toHaveBeenCalledWith(
@@ -92,16 +101,16 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      expect.anything(),
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);
-    expect(mockDeps.produceOutput).toHaveBeenCalledWith(
+    expect(mockDeps.generateOutput).toHaveBeenCalledWith(
       ['root'],
       mockConfig,
       mockProcessedFiles,
       mockFilePaths,
       undefined,
       undefined,
-      progressCallback,
       [{ rootLabel: 'root', files: mockFilePaths }],
       undefined,
     );

@@ -1,8 +1,23 @@
+import { execFile } from 'node:child_process';
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { type Options as GlobbyOptions, globby } from 'globby';
-import { minimatch } from 'minimatch';
+import { promisify } from 'node:util';
+import type { Options as GlobbyOptions } from 'globby';
+
+// Lazy-load globby to avoid its ~50ms import cost on the critical path.
+// The git-only fast path (default for git repos) never calls globby for file search,
+// so deferring the import saves startup time on every run.
+let _globby: typeof import('globby').globby | undefined;
+const getGlobby = async () => {
+  if (!_globby) {
+    _globby = (await import('globby')).globby;
+  }
+  return _globby;
+};
+
+import { minimatch } from 'minimatch'; // Used for findEmptyDirectories
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -10,6 +25,122 @@ import { logger } from '../../shared/logger.js';
 import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
+
+const execFileAsync = promisify(execFile);
+
+// picomatch is a transitive dependency (via fast-glob/micromatch) without bundled type declarations.
+// Using createRequire avoids TypeScript import errors while keeping runtime correctness.
+const esmRequire = createRequire(import.meta.url);
+const picomatch: (patterns: string[], options?: { dot?: boolean }) => (str: string) => boolean =
+  esmRequire('picomatch');
+
+interface GitFilesResult {
+  files: string[];
+  symlinkPaths: Set<string>;
+}
+
+/**
+ * Get the list of files visible to git (tracked + untracked, respecting .gitignore),
+ * along with the set of tracked symlink paths (mode 120000).
+ * Returns null if git is not available or the directory is not a git repo.
+ * This is much faster than globby's gitignore parsing (~10ms vs ~250ms).
+ */
+const getGitTrackedFiles = async (rootDir: string): Promise<GitFilesResult | null> => {
+  try {
+    // Run both git commands in parallel:
+    // - ls-files: all visible files (tracked + untracked)
+    // - ls-files -s: staged entries with mode info (to detect symlinks, mode 120000)
+    const [lsResult, stageResult] = await Promise.all([
+      execFileAsync('git', ['-C', rootDir, 'ls-files', '--cached', '--others', '--exclude-standard', '-z'], {
+        maxBuffer: 50 * 1024 * 1024,
+      }),
+      execFileAsync('git', ['-C', rootDir, 'ls-files', '-z', '-s', '--cached'], {
+        maxBuffer: 50 * 1024 * 1024,
+      }),
+    ]);
+
+    const files = lsResult.stdout.split('\0').filter(Boolean);
+
+    // Parse staged output to find symlinks (mode 120000)
+    // Format: "120000 <hash> <stage>\t<path>"
+    const symlinkPaths = new Set<string>();
+    for (const entry of stageResult.stdout.split('\0')) {
+      if (entry.startsWith('120000 ')) {
+        const tabIdx = entry.indexOf('\t');
+        if (tabIdx !== -1) {
+          symlinkPaths.add(entry.slice(tabIdx + 1));
+        }
+      }
+    }
+
+    return { files, symlinkPaths };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Ultra-fast file search using only git ls-files + picomatch filtering.
+ * Skips globby's filesystem traversal (~70ms) when all these hold:
+ * - git ls-files succeeded (gitFiles is not null)
+ * - Include patterns are default (**\/*) with no explicit files
+ * - No nested .repomixignore or .ignore files in the filtered result set
+ *
+ * Returns null if the fast path cannot be used (caller falls back to globby).
+ */
+const tryGitOnlySearch = async (
+  rootDir: string,
+  gitFiles: string[],
+  symlinkPaths: Set<string>,
+  ignorePatterns: string[],
+  config: RepomixConfigMerged,
+): Promise<string[] | null> => {
+  // Build the complete ignore pattern list
+  const allIgnorePatterns = [...ignorePatterns];
+
+  // Read root .repomixignore if it exists in the git file list
+  if (gitFiles.includes('.repomixignore')) {
+    try {
+      const content = await fs.readFile(path.join(rootDir, '.repomixignore'), 'utf8');
+      const parsed = parseIgnoreContent(content);
+      for (const pattern of parsed) {
+        const normalized = normalizeGlobPattern(pattern);
+        allIgnorePatterns.push(normalized);
+        // Ignore files treat bare names as directory matches too.
+        // Ensure patterns like "node_modules" or "tests/fixtures" also
+        // match all files within that directory, mirroring .gitignore behavior.
+        if (!normalized.endsWith('/**') && !normalized.endsWith('/*') && !normalized.includes('*')) {
+          allIgnorePatterns.push(`${normalized}/**`);
+        }
+      }
+    } catch (error) {
+      logger.debug('[git-only] Failed to read .repomixignore:', error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  // Compile all ignore patterns into a single picomatch matcher.
+  // picomatch (used internally by fast-glob/micromatch) compiles patterns into optimized
+  // regexes, giving ~3x faster matching than pre-compiled Minimatch objects.
+  const isIgnored = picomatch(allIgnorePatterns, { dot: true });
+
+  // Filter: exclude ignored files and symlinks (globby with followSymbolicLinks:false skips them)
+  const filtered = gitFiles.filter((filePath) => !isIgnored(filePath) && !symlinkPaths.has(filePath));
+
+  // After filtering, check if any nested .repomixignore or .ignore files remain.
+  // These require directory-scoped pattern matching that only globby handles correctly.
+  const hasNestedIgnoreFiles = filtered.some(
+    (f) =>
+      (f !== '.repomixignore' && f.endsWith('.repomixignore')) ||
+      (config.ignore.useDotIgnore && (f === '.ignore' || f.endsWith('/.ignore'))),
+  );
+  if (hasNestedIgnoreFiles) {
+    logger.debug('[git-only] Nested ignore files found in filtered results, falling back to globby');
+    return null;
+  }
+
+  logger.debug(`[git-only] Filtered ${gitFiles.length} → ${filtered.length} files`);
+  return filtered;
+};
 
 export interface FileSearchResult {
   filePaths: string[];
@@ -189,11 +320,90 @@ export const searchFiles = async (
     logger.debug('[globby] Starting file search...');
     const globbyStartTime = Date.now();
 
-    const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+
+    // Optimization: when useGitignore is enabled, delegate gitignore handling to
+    // `git ls-files` (native C, ~10ms) instead of globby's JS gitignore parser (~250ms).
+    // globby still runs for include/ignore pattern matching and .repomixignore support,
+    // but with gitignore:false so it skips the expensive .gitignore file parsing.
+    // The results are then intersected with the git-visible file set.
+    const gitResult = config.ignore.useGitignore ? await getGitTrackedFiles(rootDir) : null;
+
+    if (gitResult !== null) {
+      logger.debug(
+        `[git ls-files] Found ${gitResult.files.length} git-visible files, ${gitResult.symlinkPaths.size} symlinks`,
+      );
+    }
+
+    // Ultra-fast path: skip globby for file search when git ls-files provides
+    // all files. Empty directory detection (if enabled) still uses globby
+    // since git doesn't track empty directories.
+    // This avoids globby's filesystem traversal (~70ms) by filtering git results with picomatch.
+    const canUseGitOnlyPath =
+      gitResult !== null && !explicitFiles && includePatterns.length === 1 && includePatterns[0] === '**/*';
+
+    if (canUseGitOnlyPath) {
+      // Start empty directory detection in parallel (if needed) since it requires globby
+      // while the file search uses the fast git+picomatch path.
+      const dirGlobbyForGitOnly = config.output.includeEmptyDirectories
+        ? getGlobby().then((g) =>
+            g(includePatterns, {
+              ...baseGlobbyOptions,
+              gitignore: config.ignore.useGitignore,
+              onlyDirectories: true,
+            }),
+          )
+        : null;
+
+      const gitOnlyResult = await tryGitOnlySearch(
+        rootDir,
+        gitResult.files,
+        gitResult.symlinkPaths,
+        adjustedIgnorePatterns,
+        config,
+      );
+
+      if (gitOnlyResult !== null) {
+        let emptyDirPaths: string[] = [];
+        if (dirGlobbyForGitOnly) {
+          const directories = await dirGlobbyForGitOnly;
+          emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+        }
+
+        const elapsedTime = Date.now() - globbyStartTime;
+        logger.debug(`[git-only] Completed in ${elapsedTime}ms, found ${gitOnlyResult.length} files`);
+
+        return {
+          filePaths: sortPaths(gitOnlyResult),
+          emptyDirPaths: sortPaths(emptyDirPaths),
+        };
+      }
+    }
+
+    // Standard path: use globby for filesystem traversal with pattern matching
+    const gitTrackedSet = gitResult !== null ? new Set(gitResult.files) : null;
+    const useGitignoreFastPath = gitTrackedSet !== null;
+
+    // Optimization: start directory globby in parallel with file globby.
+    // The directory search (for empty directory detection) uses gitignore:true which is
+    // slower than the git-ls-files fast path used for files. Running them concurrently
+    // overlaps the two I/O-heavy traversals, saving ~30-50ms when includeEmptyDirectories
+    // is enabled.
+    const globbyFn = await getGlobby();
+    const dirGlobbyPromise = config.output.includeEmptyDirectories
+      ? globbyFn(includePatterns, {
+          ...baseGlobbyOptions,
+          gitignore: config.ignore.useGitignore,
+          onlyDirectories: true,
+        })
+      : null;
+
+    const filePaths = await globbyFn(includePatterns, {
+      ...baseGlobbyOptions,
+      // Skip globby's gitignore parsing when git ls-files handles it
+      gitignore: config.ignore.useGitignore && !useGitignoreFastPath,
       onlyFiles: true,
     }).catch((error: unknown) => {
-      // Handle EPERM errors specifically
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
       if (code === 'EPERM' || code === 'EACCES') {
         throw new PermissionError(
@@ -204,33 +414,29 @@ export const searchFiles = async (
       throw error;
     });
 
+    // When using git fast path, filter globby results to only include git-visible files
+    const filteredFilePaths = useGitignoreFastPath
+      ? filePaths.filter((filePath) => gitTrackedSet.has(filePath))
+      : filePaths;
+
     const globbyElapsedTime = Date.now() - globbyStartTime;
-    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filteredFilePaths.length} files`);
 
     let emptyDirPaths: string[] = [];
-    if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories...');
-      const emptyDirStartTime = Date.now();
-
-      const directories = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyDirectories: true,
-      });
-
-      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
-
+    if (dirGlobbyPromise) {
+      const directories = await dirGlobbyPromise;
+      logger.debug(`[empty dirs] Found ${directories.length} directories, filtering for empty...`);
       const filterStartTime = Date.now();
       emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     }
 
-    logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
-    logger.trace(`Filtered ${filePaths.length} files`);
+    logger.debug(`[result] Total files: ${filteredFilePaths.length}, empty directories: ${emptyDirPaths.length}`);
+    logger.trace(`Filtered ${filteredFilePaths.length} files`);
 
     return {
-      filePaths: sortPaths(filePaths),
+      filePaths: sortPaths(filteredFilePaths),
       emptyDirPaths: sortPaths(emptyDirPaths),
     };
   } catch (error: unknown) {
@@ -305,13 +511,12 @@ const prepareIgnoreContext = async (
  */
 const createBaseGlobbyOptions = (
   rootDir: string,
-  config: RepomixConfigMerged,
+  _config: RepomixConfigMerged,
   ignorePatterns: string[],
   ignoreFilePatterns: string[],
-): Omit<GlobbyOptions, 'onlyFiles' | 'onlyDirectories'> => ({
+): Omit<GlobbyOptions, 'onlyFiles' | 'onlyDirectories' | 'gitignore'> => ({
   cwd: rootDir,
   ignore: ignorePatterns,
-  gitignore: config.ignore.useGitignore,
   ignoreFiles: ignoreFilePatterns,
   absolute: false,
   dot: true,
@@ -400,8 +605,10 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
-  const directories = await globby(['**/*'], {
+  const globbyFn = await getGlobby();
+  const directories = await globbyFn(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    gitignore: config.ignore.useGitignore,
     onlyDirectories: true,
   });
 
@@ -419,8 +626,10 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
 export const listFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
-  const files = await globby(['**/*'], {
+  const globbyFn = await getGlobby();
+  const files = await globbyFn(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    gitignore: config.ignore.useGitignore,
     onlyFiles: true,
   });
 
