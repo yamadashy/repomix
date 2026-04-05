@@ -97,7 +97,9 @@ export const processFiles = async (
       runtime: 'worker_threads',
     });
 
-    const tasks = rawFiles.map(
+    const sortedFiles = [...rawFiles].sort((a, b) => b.content.length - a.content.length);
+
+    const tasks = sortedFiles.map(
       (rawFile) =>
         ({
           rawFile,

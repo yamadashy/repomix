@@ -49,9 +49,10 @@ describe('fileProcess', () => {
         getFileManipulator: mockGetFileManipulator,
       });
 
+      // Results are sorted by content length desc for better worker load balancing
       expect(result).toEqual([
-        { path: 'file1.js', content: 'const a = 1;' },
         { path: 'file2.js', content: 'const b = 2;' },
+        { path: 'file1.js', content: 'const a = 1;' },
       ]);
     });
 
