@@ -4,8 +4,16 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'LICENSE'
+      - '.github/releases/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'LICENSE'
+      - '.github/releases/**'
 
 permissions:
   contents: read

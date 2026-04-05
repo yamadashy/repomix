@@ -3,6 +3,14 @@ name: Performance Benchmark
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'bin/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - '.github/scripts/perf-benchmark/**'
+      - '.github/workflows/perf-benchmark.yml'
 
 concurrency:
   group: perf-benchmark-${{ github.event.pull_request.number }}

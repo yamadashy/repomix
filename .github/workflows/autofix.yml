@@ -2,8 +2,16 @@ name: autofix.ci
 
 on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'LICENSE'
+      - '.github/releases/**'
   push:
     branches: ["main"]
+    paths-ignore:
+      - '**/*.md'
+      - 'LICENSE'
+      - '.github/releases/**'
 
 permissions:
   contents: read

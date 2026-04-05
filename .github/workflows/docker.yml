@@ -4,16 +4,27 @@ on:
   push:
     branches:
       - "main"
-    paths-ignore:
-      - "**.md"
-      - LICENSE
+    paths:
+      - 'src/**'
+      - 'bin/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - '.github/workflows/docker.yml'
   pull_request:
     branches:
       - "*"
     paths:
-      - "Dockerfile"
-      - ".dockerignore"
-      - ".github/workflows/docker.yml"
+      - 'src/**'
+      - 'bin/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - '.github/workflows/docker.yml'
   workflow_dispatch:
   release:
     types: [published]

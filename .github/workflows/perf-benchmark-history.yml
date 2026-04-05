@@ -3,10 +3,14 @@ name: Performance Benchmark History
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'website/**'
-      - '*.md'
-      - 'LICENSE'
+    paths:
+      - 'src/**'
+      - 'bin/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - '.github/scripts/perf-benchmark-history/**'
+      - '.github/workflows/perf-benchmark-history.yml'
 
 concurrency:
   group: perf-benchmark-history

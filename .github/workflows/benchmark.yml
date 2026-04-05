@@ -3,8 +3,24 @@ name: Memory Benchmark
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'bin/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - 'scripts/memory/**'
+      - '.github/workflows/benchmark.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'bin/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - 'scripts/memory/**'
+      - '.github/workflows/benchmark.yml'
   workflow_dispatch:
     inputs:
       iterations:
