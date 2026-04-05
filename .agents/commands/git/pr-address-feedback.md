@@ -73,8 +73,7 @@ Each connection (`reviewThreads`, `comments`) paginates independently. If either
 First, skip comments that need no processing:
 - **Already resolved threads** (`isResolved: true`) → skip entirely
 - **Already minimized** (`isMinimized: true`) → skip entirely
-- **Your own comments** (from `claude` / the current actor) → skip entirely
-- **Pure praise or acknowledgments** ("LGTM", "looks good", etc.) → skip entirely
+- **Pure praise or acknowledgments** ("LGTM", "looks good", etc.) → resolve silently (no reply needed)
 
 #### 3a. Bot comments
 
@@ -108,7 +107,7 @@ Before making any changes, show a summary table:
 | 5 | Bot | Outdated | coderabbitai[bot] | Old review summary | Resolve + minimize |
 | 6 | Bot | Superseded | codecov[bot] | Older coverage report | Minimize |
 
-**Discuss** items are NOT shown to the user at this stage. Do not reply to or resolve them. They will be presented to the user at the very end (Step 9) after all other work is complete.
+**Discuss** items are shown in the plan table for visibility, but do not act on them at this stage. Do not reply to or resolve them. They will be presented to the user for decision at the very end (Step 9) after all other work is complete.
 
 ### 5. Apply code fixes
 
@@ -163,7 +162,7 @@ Reply with a brief reason, then resolve:
 
 #### 8c. Outdated bot threads
 
-Reply with a brief reason, then resolve and minimize:
+Reply with a brief reason, then resolve and minimize with `OUTDATED`:
 
 - "No longer applicable — the referenced code has been updated. 🤖"
 - "Superseded — a newer review covers this. 🤖"
@@ -171,6 +170,11 @@ Reply with a brief reason, then resolve and minimize:
 #### 8d. Superseded bot issue comments
 
 Minimize with `OUTDATED` classifier. No reply needed for regular issue comments.
+
+#### Classifier usage
+
+- Use `RESOLVED` when minimizing comments that were genuinely addressed by code changes (8a)
+- Use `OUTDATED` when minimizing comments that are stale or superseded (8c, 8d)
 
 #### API reference
 
