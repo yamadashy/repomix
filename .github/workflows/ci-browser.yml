@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - 'browser/**'
+      - '.tool-versions'
       - '.github/workflows/ci-browser.yml'
   pull_request:
     branches: [main]
     paths:
       - 'browser/**'
+      - '.tool-versions'
       - '.github/workflows/ci-browser.yml'
   workflow_dispatch:
 
