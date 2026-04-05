@@ -1,7 +1,7 @@
 import { logger } from '../../shared/logger.js';
 import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { TokenEncoding } from './TokenCounter.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 
 // Target ~100KB per chunk so that each worker task does meaningful tokenization work.
 // Previously this was 1000 (number of chunks), which created ~1KB chunks for 1MB output,
@@ -13,7 +13,7 @@ export const calculateOutputMetrics = async (
   content: string,
   encoding: TokenEncoding,
   path: string | undefined,
-  deps: { taskRunner: TaskRunner<TokenCountTask, number> },
+  deps: { taskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> },
 ): Promise<number> => {
   const shouldRunInParallel = content.length > MIN_CONTENT_LENGTH_FOR_PARALLEL;
 
@@ -43,14 +43,17 @@ export const calculateOutputMetrics = async (
       );
 
       // Sum up the results
-      result = chunkResults.reduce((sum, count) => sum + count, 0);
+      result = 0;
+      for (const count of chunkResults) {
+        result += count as number;
+      }
     } else {
       // Process small content directly
-      result = await deps.taskRunner.run({
+      result = (await deps.taskRunner.run({
         content,
         encoding,
         path,
-      });
+      })) as number;
     }
 
     const endTime = process.hrtime.bigint();
