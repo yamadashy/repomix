@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(gh repo view:*),Bash(npm run lint:*),Bash(npm run test:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Read,Edit,Glob,Grep
+allowed-tools: Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api repos/*/pulls/*/comments:*),Bash(gh api repos/*/pulls/*/comments/*/replies:*),Bash(gh api graphql:*),Bash(gh repo view:*),Bash(npm run lint:*),Bash(npm run test:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Read,Edit,Glob,Grep
 description: Address PR review feedback — fetch comments, fix code, commit, push, and resolve threads
 ---
 
