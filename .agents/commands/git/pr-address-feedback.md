@@ -1,4 +1,5 @@
 ---
+allowed-tools: Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api repos/*/pulls/*/comments:*),Bash(gh api repos/*/pulls/*/comments/*/replies:*),Bash(gh api graphql:*),Bash(gh repo view:*),Bash(npm run lint:*),Bash(npm run test:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Read,Edit,Glob,Grep
 description: Address PR review feedback — fetch comments, fix code, commit, push, and resolve threads
 ---
 
@@ -139,7 +140,7 @@ npm run lint
 npm run test
 ```
 
-If any check fails, fix the regression and re-run. Retry up to 3 times. If checks still fail after 3 attempts, stop and present the errors to the user — do not proceed to commit.
+If any check fails, fix the regression and re-run. Retry up to 3 times. If checks still fail after 3 attempts, stop and present the errors to the user — do not proceed to commit. However, still proceed with Step 8 for bot cleanup (8c/8d) and Skip items (8b) that do not depend on code changes.
 
 ### 7. Commit and push
 
@@ -159,6 +160,8 @@ If push fails (protected branch, upstream conflict, auth issue), do **not** proc
 
 **After push is confirmed**, process all classified comments.
 Only review threads can be resolved. Regular issue comments should be replied to (or minimized when applicable), not resolved as threads.
+
+Before replying to a thread, check if it already has a reply from the current user containing the `🤖` marker. If so, skip the reply to avoid duplicates.
 
 #### 8a. Addressed review comments (Fix / Improve)
 
