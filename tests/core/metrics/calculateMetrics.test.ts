@@ -178,6 +178,59 @@ describe('calculateMetrics', () => {
     expect(result.totalTokens).toBe(40);
   });
 
+  it('should estimate output tokens via sampling for large single outputs', async () => {
+    const processedFiles: ProcessedFile[] = [
+      { path: 'file1.txt', content: 'a'.repeat(300_000) },
+      { path: 'file2.txt', content: 'b'.repeat(300_000) },
+    ];
+    // Output > 500KB triggers sampling path
+    const output = 'x'.repeat(700_000);
+
+    const fileMetrics = [
+      { path: 'file1.txt', charCount: 300_000, tokenCount: 75_000 },
+      { path: 'file2.txt', charCount: 300_000, tokenCount: 75_000 },
+    ];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    const config = createMockConfig(); // tokenCountTree defaults to false
+
+    // Mock taskRunner to return token counts for sampled chunks
+    // Each 100KB sample returns 25,000 tokens (ratio: 4 chars/token)
+    const mockTaskRunner = {
+      run: vi.fn().mockResolvedValue(Array(7).fill(25_000)), // 7 samples × 25,000
+      cleanup: vi.fn(),
+    };
+    const mockCalculateOutputMetrics = vi.fn();
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      vi.fn(),
+      config,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateOutputMetrics: mockCalculateOutputMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // Should NOT call calculateOutputMetrics (sampling used instead)
+    expect(mockCalculateOutputMetrics).not.toHaveBeenCalled();
+    // taskRunner.run should be called with sampled items
+    expect(mockTaskRunner.run).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: expect.arrayContaining([expect.objectContaining({ encoding: 'o200k_base' })]),
+      }),
+    );
+    // Estimated tokens: 7 samples × 25,000 = 175,000 tokens from 700,000 sample chars
+    // Extrapolation: (700,000 / 700,000) × 175,000 = 175,000
+    expect(result.totalTokens).toBe(175_000);
+  });
+
   it('should fall back to full tokenization when all file tokens are zero', async () => {
     const processedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: '' }];
     const output = 'template-only-output';
