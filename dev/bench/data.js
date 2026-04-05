@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775394971892,
+  "lastUpdate": 1775396113194,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -2025,6 +2025,51 @@ window.BENCHMARK_DATA = {
             "range": "±515",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 2643ms, Q3: 3158ms\nAll times: 2522, 2598, 2618, 2631, 2643, 2661, 2664, 2698, 2721, 2761, 2886, 3131, 3150, 3156, 3158, 3206, 3343, 3355, 3912ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc23e80f991460af944c29646e82dc53cb442619",
+          "message": "Merge pull request #1406 from yamadashy/chore/add-pr-address-feedback-command\n\nchore(agents): Add unified pr-address-feedback command",
+          "timestamp": "2026-04-05T22:32:15+09:00",
+          "tree_id": "319e9f41b7e1d0872dd40449902d546c85acb555",
+          "url": "https://github.com/yamadashy/repomix/commit/dc23e80f991460af944c29646e82dc53cb442619"
+        },
+        "date": 1775396112253,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1485,
+            "range": "±192",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1390ms, Q3: 1582ms\nAll times: 1237, 1286, 1287, 1288, 1322, 1357, 1367, 1390, 1396, 1413, 1417, 1423, 1427, 1438, 1482, 1485, 1490, 1497, 1514, 1542, 1549, 1561, 1582, 1586, 1587, 1614, 1687, 1736, 1784, 2288ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2053,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2035ms, Q3: 2061ms\nAll times: 1990, 1998, 2009, 2013, 2029, 2035, 2037, 2041, 2044, 2044, 2053, 2053, 2056, 2057, 2058, 2061, 2071, 2077, 2106, 2144ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2453,
+            "range": "±216",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2439ms, Q3: 2655ms\nAll times: 2417, 2424, 2428, 2430, 2432, 2439, 2440, 2441, 2442, 2451, 2453, 2454, 2456, 2464, 2466, 2655, 2660, 2699, 2718, 2989ms"
           }
         ]
       }
