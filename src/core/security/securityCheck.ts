@@ -74,11 +74,16 @@ export const runSecurityCheck = async (
   const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
   const totalItems = allItems.length;
 
+  if (totalItems === 0) {
+    return [];
+  }
+
   // Cap security workers at 2 to reduce contention with the metrics worker pool that
   // runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
   // so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
   const maxSecurityWorkers = Math.min(2, getProcessConcurrency());
 
+  // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
     numOfTasks: totalItems,
     workerType: 'securityCheck',
