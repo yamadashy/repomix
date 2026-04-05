@@ -111,7 +111,7 @@ export const runSecurityCheck = async (
   // Passing batches.length (e.g. 2) would yield maxThreads=1, forcing sequential execution.
   const taskRunner =
     deps.taskRunner ??
-    deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+    deps.initTaskRunner<SecurityCheckTask, (WorkerSuspiciousFileResult | null)[]>({
       numOfTasks: totalItems,
       workerType: 'securityCheck',
       runtime: 'worker_threads',

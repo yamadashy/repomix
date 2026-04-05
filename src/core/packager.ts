@@ -99,16 +99,24 @@ export const pack = async (
   }));
 
   // Pre-initialize worker pools to overlap expensive module loading with subsequent pipeline stages
-  // (file collection, git operations).
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
-    config.tokenCount.encoding,
-  );
-  const { taskRunner: securityTaskRunner, warmupPromise: securityWarmupPromise } = deps.createSecurityCheckTaskRunner(
-    allFilePaths.length,
-  );
+  // (file collection, git operations). Both creations are inside try so the finally block always
+  // cleans up any pools that were successfully created.
+  let metricsTaskRunner: ReturnType<typeof deps.createMetricsTaskRunner>['taskRunner'] | undefined;
+  let securityTaskRunner: ReturnType<typeof deps.createSecurityCheckTaskRunner>['taskRunner'] | undefined;
+  let metricsWarmupPromise: Promise<unknown> = Promise.resolve();
+  let securityWarmupPromise: Promise<unknown> = Promise.resolve();
 
   try {
+    ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+      allFilePaths.length,
+      config.tokenCount.encoding,
+    ));
+
+    // Only create the security worker pool when security checks are enabled
+    if (config.security.enableSecurityCheck) {
+      ({ taskRunner: securityTaskRunner, warmupPromise: securityWarmupPromise } =
+        deps.createSecurityCheckTaskRunner(allFilePaths.length));
+    }
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
@@ -132,7 +140,9 @@ export const pack = async (
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
     // Ensure security worker warm-up completes before running security check
-    await securityWarmupPromise;
+    if (securityTaskRunner) {
+      await securityWarmupPromise;
+    }
 
     // Run security check and file processing concurrently.
     // Security check uses worker threads while file processing runs on the main thread
@@ -141,7 +151,7 @@ export const pack = async (
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
         deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
-          taskRunner: securityTaskRunner,
+          ...(securityTaskRunner && { taskRunner: securityTaskRunner }),
         }),
       ),
       withMemoryLogging('Process Files', () => {
@@ -245,6 +255,6 @@ export const pack = async (
   } finally {
     await metricsWarmupPromise.catch(() => {});
     await securityWarmupPromise.catch(() => {});
-    await Promise.all([metricsTaskRunner.cleanup(), securityTaskRunner.cleanup()]);
+    await Promise.allSettled([metricsTaskRunner?.cleanup(), securityTaskRunner?.cleanup()]);
   }
 };
