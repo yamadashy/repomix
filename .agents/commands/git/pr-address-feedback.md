@@ -14,7 +14,7 @@ $ARGUMENTS
 
 - If the user specifies a PR number, use that
 - Otherwise, detect from the current branch: `gh pr view --json number,url,headRefName,baseRefName`
-- Get OWNER/REPO: `gh repo view --json owner,name --jq '.owner.login + "/" + .name'`
+- Get OWNER and REPO separately: `gh repo view --json owner,name --jq '.owner.login, .name'`
 
 ### 2. Fetch the PR diff and all comments
 
@@ -22,7 +22,7 @@ Run in parallel:
 
 **PR diff:**
 ```bash
-gh pr diff
+gh pr diff {pr_number}
 ```
 
 **Review comments (inline):**
@@ -37,10 +37,10 @@ gh pr view {pr_number} --comments --json comments
 
 **Review threads via GraphQL** (to check resolution status and outdated flags):
 ```bash
-gh api graphql -f query='
-query($threadCursor: String, $commentCursor: String) {
-  repository(owner: "OWNER", name: "REPO") {
-    pullRequest(number: NUM) {
+gh api graphql -f owner="$OWNER" -f repo="$REPO" -F pr_number=$PR_NUMBER -f query='
+query($owner: String!, $repo: String!, $pr_number: Int!, $threadCursor: String, $commentCursor: String) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $pr_number) {
       reviewThreads(first: 100, after: $threadCursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
@@ -125,12 +125,12 @@ npm run lint
 npm run test
 ```
 
-If any check fails, fix the regression before continuing. Repeat until all checks pass.
+If any check fails, fix the regression and re-run. Retry up to 3 times. If checks still fail after 3 attempts, stop and present the errors to the user — do not proceed to commit.
 
 ### 7. Commit and push
 
 - Create a commit following the rules in CLAUDE.md
-- Typical format: `fix(scope): Address PR review feedback`
+- Typical format: `fix(<scope>): Address PR review feedback` (where `<scope>` is cli, core, etc.)
 - In the commit body, briefly list what was addressed
 - Push to the current branch:
   ```bash
@@ -139,9 +139,12 @@ If any check fails, fix the regression before continuing. Repeat until all check
 
 If there are no code changes (only bot cleanup), skip this step.
 
-### 8. Reply to comments and resolve threads
+If push fails (protected branch, upstream conflict, auth issue), do **not** proceed to Step 8. Present the error to the user and stop.
+
+### 8. Reply to comments and resolve where applicable
 
 **After push is confirmed**, process all classified comments.
+Only review threads can be resolved. Regular issue comments should be replied to (or minimized when applicable), not resolved as threads.
 
 #### 8a. Addressed review comments (Fix / Improve)
 
@@ -241,11 +244,11 @@ If there are **Discuss** items, present them with full context so the user can d
 | 1 | src/baz.ts:55 | "Consider splitting this into..." | Valid concern but may be out of scope |
 
 For each item, ask the user to choose:
-- **Address** — make the code change (will trigger another commit + push cycle)
+- **Address** — make the code change, then re-run Steps 5–8 for those items only (verify, commit, push, reply+resolve)
 - **Skip** — reply with a reason and resolve the thread
 - **Leave** — do nothing, let the user handle it manually
 
-Do NOT reply to or resolve these threads until the user decides.
+Do NOT reply to or resolve these threads until the user decides. If the user chooses **Address** for multiple items, batch them into a single commit+push cycle.
 
 ## Important
 
