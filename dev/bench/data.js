@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775368926906,
+  "lastUpdate": 1775369264655,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -1935,6 +1935,51 @@ window.BENCHMARK_DATA = {
             "range": "±165",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2487ms, Q3: 2652ms\nAll times: 2413, 2428, 2442, 2481, 2485, 2487, 2496, 2497, 2498, 2500, 2506, 2521, 2561, 2562, 2641, 2652, 2721, 2725, 3006, 3305ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4acbbc07838d4dcae53b5975211b33ba6c3c17a3",
+          "message": "Merge pull request #1400 from yamadashy/perf/eliminate-stat-syscall\n\nperf(core): Eliminate redundant stat() syscall in fileRead",
+          "timestamp": "2026-04-05T15:05:20+09:00",
+          "tree_id": "122c8bccd1417c1c0eb091821027577c4f26e387",
+          "url": "https://github.com/yamadashy/repomix/commit/4acbbc07838d4dcae53b5975211b33ba6c3c17a3"
+        },
+        "date": 1775369264346,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1754,
+            "range": "±290",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1674ms, Q3: 1964ms\nAll times: 1427, 1479, 1492, 1509, 1519, 1573, 1664, 1674, 1700, 1703, 1716, 1721, 1722, 1733, 1752, 1754, 1756, 1766, 1822, 1822, 1832, 1834, 1964, 1988, 1989, 1990, 2062, 2093, 2159, 2166ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1906,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1896ms, Q3: 1924ms\nAll times: 1858, 1860, 1884, 1890, 1894, 1896, 1898, 1902, 1904, 1906, 1906, 1915, 1919, 1920, 1924, 1924, 1927, 1930, 1940, 1942ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2441,
+            "range": "±221",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2408ms, Q3: 2629ms\nAll times: 2382, 2390, 2395, 2396, 2403, 2408, 2412, 2415, 2423, 2433, 2441, 2441, 2450, 2451, 2455, 2629, 2789, 3071, 3142, 3412ms"
           }
         ]
       }
