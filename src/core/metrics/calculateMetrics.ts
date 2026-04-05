@@ -52,9 +52,14 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
     runtime: 'worker_threads',
   });
 
+  // Warm up only half the worker threads to further reduce CPU contention during the
+  // overlapping file collection + security check pipeline stages. The remaining
+  // workers initialize lazily during metrics calculation, when security workers
+  // have already been cleaned up and CPU cores are free.
   const { maxThreads } = getWorkerThreadCount(cappedNumOfTasks);
+  const warmupCount = Math.max(1, Math.ceil(maxThreads / 2));
   const warmupPromise = Promise.all(
-    Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
+    Array.from({ length: warmupCount }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
 
   return { taskRunner, warmupPromise };
