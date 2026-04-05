@@ -114,6 +114,7 @@ Bu araç, yerel bir kod dizinini AI analizine uygun birleşik bir XML dosyasına
 | `includePatterns` | Hayır | — | fast-glob desenleri kullanarak eklenecek dosyalar. Virgülle ayrılmış (örn. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Hayır | — | fast-glob desenleri kullanarak hariç tutulacak ek dosyalar. Virgülle ayrılmış (örn. `"test/**,*.spec.js"`). `.gitignore` ve yerleşik dışlamaları tamamlar. |
 | `topFilesLength` | Hayır | `10` | Metrik özetinde gösterilecek boyuta göre en büyük dosya sayısı |
+| `style` | Hayır | `xml` | Çıktı format stili: `xml`, `markdown`, `json` veya `plain` |
 
 **Örnek:**
 ```json
@@ -135,10 +136,11 @@ Bu araç, bir GitHub deposunu getirir, klonlar ve AI analizine uygun birleşik b
 | Parametre | Zorunlu | Varsayılan | Açıklama |
 |-----------|---------|------------|----------|
 | `remote` | Evet | — | GitHub deposu URL'si veya `kullanıcı/depo` biçimi (örn. `"yamadashy/repomix"`, `"https://github.com/user/repo"` veya `"https://github.com/user/repo/tree/branch"`) |
-| `compress` | Hayır | `false` | Uygulama ayrıntılarını kaldırırken temel kod imzalarını ve yapısını çıkarmak için Tree-sitter sıkıştırmasını etkinleştirin. Token kullanımını yaklaşık %70 azaltırken anlam bütünlüğünü korur. |
+| `compress` | Hayır | `false` | Uygulama ayrıntılarını kaldırırken temel kod imzalarını ve yapısını çıkarmak için Tree-sitter sıkıştırmasını etkinleştirin. Token kullanımını yaklaşık %70 azaltırken anlam bütünlüğünü korur. `grep_repomix_output` artımlı içerik getirmeye izin verdiğinden genellikle gerekli değildir. |
 | `includePatterns` | Hayır | — | fast-glob desenleri kullanarak eklenecek dosyalar. Virgülle ayrılmış (örn. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Hayır | — | fast-glob desenleri kullanarak hariç tutulacak ek dosyalar. Virgülle ayrılmış (örn. `"test/**,*.spec.js"`). `.gitignore` ve yerleşik dışlamaları tamamlar. |
 | `topFilesLength` | Hayır | `10` | Metrik özetinde gösterilecek boyuta göre en büyük dosya sayısı |
+| `style` | Hayır | `xml` | Çıktı format stili: `xml`, `markdown`, `json` veya `plain` |
 
 **Örnek:**
 ```json

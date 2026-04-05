@@ -114,6 +114,7 @@ Công cụ này đóng gói một thư mục code cục bộ thành một file X
 | `includePatterns` | Không | — | File để bao gồm sử dụng pattern fast-glob. Tách bằng dấu phẩy (ví dụ: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Không | — | File bổ sung để loại trừ sử dụng pattern fast-glob. Tách bằng dấu phẩy (ví dụ: `"test/**,*.spec.js"`). Bổ sung cho `.gitignore` và loại trừ tích hợp. |
 | `topFilesLength` | Không | `10` | Số lượng file lớn nhất theo kích thước để hiển thị trong tóm tắt metrics |
+| `style` | Không | `xml` | Kiểu định dạng đầu ra: `xml`, `markdown`, `json`, hoặc `plain` |
 
 **Ví dụ:**
 ```json
@@ -135,10 +136,11 @@ Công cụ này lấy, clone và đóng gói một repository GitHub thành mộ
 | Tham số | Bắt buộc | Mặc định | Mô tả |
 |---------|----------|----------|-------|
 | `remote` | Có | — | URL repository GitHub hoặc định dạng `user/repo` (ví dụ: `"yamadashy/repomix"`, `"https://github.com/user/repo"`, hoặc `"https://github.com/user/repo/tree/branch"`) |
-| `compress` | Không | `false` | Kích hoạt nén Tree-sitter để trích xuất các chữ ký code cần thiết và cấu trúc trong khi loại bỏ chi tiết triển khai. Giảm sử dụng token khoảng 70% trong khi bảo toàn ý nghĩa ngữ nghĩa. |
+| `compress` | Không | `false` | Kích hoạt nén Tree-sitter để trích xuất các chữ ký code cần thiết và cấu trúc trong khi loại bỏ chi tiết triển khai. Giảm sử dụng token khoảng 70% trong khi bảo toàn ý nghĩa ngữ nghĩa. Thường không cần thiết vì `grep_repomix_output` cho phép truy xuất nội dung tăng dần. |
 | `includePatterns` | Không | — | File để bao gồm sử dụng pattern fast-glob. Tách bằng dấu phẩy (ví dụ: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Không | — | File bổ sung để loại trừ sử dụng pattern fast-glob. Tách bằng dấu phẩy (ví dụ: `"test/**,*.spec.js"`). Bổ sung cho `.gitignore` và loại trừ tích hợp. |
 | `topFilesLength` | Không | `10` | Số lượng file lớn nhất theo kích thước để hiển thị trong tóm tắt metrics |
+| `style` | Không | `xml` | Kiểu định dạng đầu ra: `xml`, `markdown`, `json`, hoặc `plain` |
 
 **Ví dụ:**
 ```json

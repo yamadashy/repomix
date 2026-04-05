@@ -114,6 +114,7 @@ This tool packages a local code directory into a consolidated XML file for AI an
 | `includePatterns` | No | — | Files to include using fast-glob patterns. Comma-separated (e.g., `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | No | — | Additional files to exclude using fast-glob patterns. Comma-separated (e.g., `"test/**,*.spec.js"`). Supplements `.gitignore` and built-in exclusions. |
 | `topFilesLength` | No | `10` | Number of largest files by size to display in the metrics summary |
+| `style` | No | `xml` | Output format style: `xml`, `markdown`, `json`, or `plain` |
 
 **Example:**
 ```json
@@ -135,10 +136,11 @@ This tool fetches, clones, and packages a GitHub repository into a consolidated 
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
 | `remote` | Yes | — | GitHub repository URL or `user/repo` format (e.g., `"yamadashy/repomix"`, `"https://github.com/user/repo"`, or `"https://github.com/user/repo/tree/branch"`) |
-| `compress` | No | `false` | Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Reduces token usage by ~70% while preserving semantic meaning. |
+| `compress` | No | `false` | Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Reduces token usage by ~70% while preserving semantic meaning. Generally not needed since `grep_repomix_output` allows incremental content retrieval. |
 | `includePatterns` | No | — | Files to include using fast-glob patterns. Comma-separated (e.g., `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | No | — | Additional files to exclude using fast-glob patterns. Comma-separated (e.g., `"test/**,*.spec.js"`). Supplements `.gitignore` and built-in exclusions. |
 | `topFilesLength` | No | `10` | Number of largest files by size to display in the metrics summary |
+| `style` | No | `xml` | Output format style: `xml`, `markdown`, `json`, or `plain` |
 
 **Example:**
 ```json

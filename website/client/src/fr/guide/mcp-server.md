@@ -112,6 +112,7 @@ Cet outil package un répertoire de code local dans un fichier XML pour l'analys
 | `includePatterns` | Non | — | Fichiers à inclure avec des motifs fast-glob. Séparés par des virgules (ex : `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Non | — | Fichiers supplémentaires à exclure avec des motifs fast-glob. Séparés par des virgules (ex : `"test/**,*.spec.js"`). Complète `.gitignore` et les exclusions intégrées. |
 | `topFilesLength` | Non | `10` | Nombre de plus gros fichiers par taille à afficher dans le résumé des métriques |
+| `style` | Non | `xml` | Style de format de sortie : `xml`, `markdown`, `json` ou `plain` |
 
 **Exemple :**
 ```json
@@ -133,10 +134,11 @@ Cet outil récupère, clone et package un dépôt GitHub dans un fichier XML pou
 | Paramètre | Requis | Par défaut | Description |
 |-----------|--------|------------|-------------|
 | `remote` | Oui | — | URL du dépôt GitHub ou format `utilisateur/dépôt` (ex : `"yamadashy/repomix"`, `"https://github.com/user/repo"` ou `"https://github.com/user/repo/tree/branch"`) |
-| `compress` | Non | `false` | Active la compression Tree-sitter pour extraire les signatures de code essentielles et la structure tout en supprimant les détails d'implémentation. Réduit l'utilisation de tokens d'environ 70% tout en préservant la signification sémantique. |
+| `compress` | Non | `false` | Active la compression Tree-sitter pour extraire les signatures de code essentielles et la structure tout en supprimant les détails d'implémentation. Réduit l'utilisation de tokens d'environ 70% tout en préservant la signification sémantique. Généralement non nécessaire car `grep_repomix_output` permet la récupération incrémentale de contenu. |
 | `includePatterns` | Non | — | Fichiers à inclure avec des motifs fast-glob. Séparés par des virgules (ex : `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Non | — | Fichiers supplémentaires à exclure avec des motifs fast-glob. Séparés par des virgules (ex : `"test/**,*.spec.js"`). Complète `.gitignore` et les exclusions intégrées. |
 | `topFilesLength` | Non | `10` | Nombre de plus gros fichiers par taille à afficher dans le résumé des métriques |
+| `style` | Non | `xml` | Style de format de sortie : `xml`, `markdown`, `json` ou `plain` |
 
 **Exemple:**
 ```json

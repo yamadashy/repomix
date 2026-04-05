@@ -112,6 +112,7 @@ Questo strumento impacchetta una directory di codice locale in un file XML per l
 | `includePatterns` | No | — | File da includere usando pattern fast-glob. Separati da virgole (es: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | No | — | File aggiuntivi da escludere usando pattern fast-glob. Separati da virgole (es: `"test/**,*.spec.js"`). Completano `.gitignore` e le esclusioni integrate. |
 | `topFilesLength` | No | `10` | Numero dei file più grandi per dimensione da mostrare nel riepilogo delle metriche |
+| `style` | No | `xml` | Stile del formato di output: `xml`, `markdown`, `json` o `plain` |
 
 **Esempio:**
 ```json
@@ -133,10 +134,11 @@ Questo strumento recupera, clona e impacchetta un repository GitHub in un file X
 | Parametro | Richiesto | Predefinito | Descrizione |
 |-----------|-----------|-------------|-------------|
 | `remote` | Si | — | URL del repository GitHub o formato `utente/repo` (es: `"yamadashy/repomix"`, `"https://github.com/user/repo"` o `"https://github.com/user/repo/tree/branch"`) |
-| `compress` | No | `false` | Abilita la compressione Tree-sitter per estrarre le firme di codice essenziali e la struttura rimuovendo i dettagli di implementazione. Riduce l'utilizzo dei token di circa il 70% preservando il significato semantico. |
+| `compress` | No | `false` | Abilita la compressione Tree-sitter per estrarre le firme di codice essenziali e la struttura rimuovendo i dettagli di implementazione. Riduce l'utilizzo dei token di circa il 70% preservando il significato semantico. Generalmente non necessario poiché `grep_repomix_output` permette il recupero incrementale del contenuto. |
 | `includePatterns` | No | — | File da includere usando pattern fast-glob. Separati da virgole (es: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | No | — | File aggiuntivi da escludere usando pattern fast-glob. Separati da virgole (es: `"test/**,*.spec.js"`). Completano `.gitignore` e le esclusioni integrate. |
 | `topFilesLength` | No | `10` | Numero dei file più grandi per dimensione da mostrare nel riepilogo delle metriche |
+| `style` | No | `xml` | Stile del formato di output: `xml`, `markdown`, `json` o `plain` |
 
 **Esempio:**
 ```json

@@ -114,6 +114,7 @@ Esta herramienta empaqueta un directorio de código local en un archivo XML para
 | `includePatterns` | No | — | Archivos a incluir usando patrones fast-glob. Separados por comas (ej: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | No | — | Archivos adicionales a excluir usando patrones fast-glob. Separados por comas (ej: `"test/**,*.spec.js"`). Complementan `.gitignore` y exclusiones integradas. |
 | `topFilesLength` | No | `10` | Número de archivos más grandes por tamaño para mostrar en el resumen de métricas |
+| `style` | No | `xml` | Estilo de formato de salida: `xml`, `markdown`, `json` o `plain` |
 
 **Ejemplo:**
 ```json
@@ -135,10 +136,11 @@ Esta herramienta obtiene, clona y empaqueta un repositorio de GitHub en un archi
 | Parámetro | Requerido | Predeterminado | Descripción |
 |-----------|-----------|----------------|-------------|
 | `remote` | Sí | — | URL del repositorio de GitHub o formato `user/repo` (ej: `"yamadashy/repomix"`, `"https://github.com/user/repo"` o `"https://github.com/user/repo/tree/branch"`) |
-| `compress` | No | `false` | Habilita la compresión Tree-sitter para extraer firmas de código esenciales y estructura mientras elimina detalles de implementación. Reduce el uso de tokens en ~70% manteniendo el significado semántico. |
+| `compress` | No | `false` | Habilita la compresión Tree-sitter para extraer firmas de código esenciales y estructura mientras elimina detalles de implementación. Reduce el uso de tokens en ~70% manteniendo el significado semántico. Generalmente no es necesario ya que `grep_repomix_output` permite recuperación incremental de contenido. |
 | `includePatterns` | No | — | Archivos a incluir usando patrones fast-glob. Separados por comas (ej: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | No | — | Archivos adicionales a excluir usando patrones fast-glob. Separados por comas (ej: `"test/**,*.spec.js"`). Complementan `.gitignore` y exclusiones integradas. |
 | `topFilesLength` | No | `10` | Número de archivos más grandes por tamaño para mostrar en el resumen de métricas |
+| `style` | No | `xml` | Estilo de formato de salida: `xml`, `markdown`, `json` o `plain` |
 
 **Ejemplo:**
 ```json

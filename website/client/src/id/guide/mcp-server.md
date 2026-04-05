@@ -114,6 +114,7 @@ Tool ini mengemas direktori kode lokal ke dalam file XML untuk analisis AI. Tool
 | `includePatterns` | Tidak | — | File yang akan disertakan menggunakan pola fast-glob. Dipisahkan koma (mis. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Tidak | — | File tambahan yang akan dikecualikan menggunakan pola fast-glob. Dipisahkan koma (mis. `"test/**,*.spec.js"`). Melengkapi `.gitignore` dan eksklusi built-in. |
 | `topFilesLength` | Tidak | `10` | Jumlah file terbesar berdasarkan ukuran untuk ditampilkan dalam ringkasan metrik |
+| `style` | Tidak | `xml` | Gaya format output: `xml`, `markdown`, `json`, atau `plain` |
 
 **Contoh:**
 ```json
@@ -135,10 +136,11 @@ Tool ini mengambil, mengkloning, dan mengemas repository GitHub ke dalam file XM
 | Parameter | Wajib | Default | Deskripsi |
 |-----------|-------|---------|-----------|
 | `remote` | Ya | — | URL repository GitHub atau format `user/repo` (mis. `"yamadashy/repomix"`, `"https://github.com/user/repo"`, atau `"https://github.com/user/repo/tree/branch"`) |
-| `compress` | Tidak | `false` | Mengaktifkan kompresi Tree-sitter untuk mengekstrak signature kode esensial dan struktur sambil menghapus detail implementasi. Mengurangi penggunaan token sekitar 70% sambil mempertahankan makna semantik. |
+| `compress` | Tidak | `false` | Mengaktifkan kompresi Tree-sitter untuk mengekstrak signature kode esensial dan struktur sambil menghapus detail implementasi. Mengurangi penggunaan token sekitar 70% sambil mempertahankan makna semantik. Umumnya tidak diperlukan karena `grep_repomix_output` memungkinkan pengambilan konten incremental. |
 | `includePatterns` | Tidak | — | File yang akan disertakan menggunakan pola fast-glob. Dipisahkan koma (mis. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Tidak | — | File tambahan yang akan dikecualikan menggunakan pola fast-glob. Dipisahkan koma (mis. `"test/**,*.spec.js"`). Melengkapi `.gitignore` dan eksklusi built-in. |
 | `topFilesLength` | Tidak | `10` | Jumlah file terbesar berdasarkan ukuran untuk ditampilkan dalam ringkasan metrik |
+| `style` | Tidak | `xml` | Gaya format output: `xml`, `markdown`, `json`, atau `plain` |
 
 **Contoh:**
 ```json

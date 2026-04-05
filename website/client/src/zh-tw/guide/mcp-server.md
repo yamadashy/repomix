@@ -114,6 +114,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 | `includePatterns` | 否 | — | 使用 fast-glob 模式指定要包含的檔案。多個模式用逗號分隔（例如 `"**/*.{js,ts}"`、`"src/**,docs/**"`） |
 | `ignorePatterns` | 否 | — | 使用 fast-glob 模式指定要排除的其他檔案。多個模式用逗號分隔（例如 `"test/**,*.spec.js"`）。補充 `.gitignore` 和內建排除。 |
 | `topFilesLength` | 否 | `10` | 在指標摘要中顯示的最大檔案數（按大小排序） |
+| `style` | 否 | `xml` | 輸出格式樣式：`xml`、`markdown`、`json` 或 `plain` |
 
 **示例：**
 ```json
@@ -135,10 +136,11 @@ claude mcp add repomix -- npx -y repomix --mcp
 | 參數 | 必需 | 預設值 | 說明 |
 |------|------|--------|------|
 | `remote` | 是 | — | GitHub 儲存庫 URL 或 `user/repo` 格式（例如 `"yamadashy/repomix"`、`"https://github.com/user/repo"` 或 `"https://github.com/user/repo/tree/branch"`） |
-| `compress` | 否 | `false` | 啟用 Tree-sitter 壓縮以提取基本程式碼簽名和結構，同時刪除實現細節。在保持語義含義的同時減少約 70% 的令牌使用量。 |
+| `compress` | 否 | `false` | 啟用 Tree-sitter 壓縮以提取基本程式碼簽名和結構，同時刪除實現細節。在保持語義含義的同時減少約 70% 的令牌使用量。由於 `grep_repomix_output` 允許增量內容檢索，通常不需要。 |
 | `includePatterns` | 否 | — | 使用 fast-glob 模式指定要包含的檔案。多個模式用逗號分隔（例如 `"**/*.{js,ts}"`、`"src/**,docs/**"`） |
 | `ignorePatterns` | 否 | — | 使用 fast-glob 模式指定要排除的其他檔案。多個模式用逗號分隔（例如 `"test/**,*.spec.js"`）。補充 `.gitignore` 和內建排除。 |
 | `topFilesLength` | 否 | `10` | 在指標摘要中顯示的最大檔案數（按大小排序） |
+| `style` | 否 | `xml` | 輸出格式樣式：`xml`、`markdown`、`json` 或 `plain` |
 
 **示例：**
 ```json

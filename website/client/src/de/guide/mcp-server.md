@@ -114,6 +114,7 @@ Dieses Tool verpackt ein lokales Code-Verzeichnis in eine XML-Datei für die KI-
 | `includePatterns` | Nein | — | Dateien zum Einschließen mit fast-glob-Mustern. Kommagetrennt (z.B. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Nein | — | Zusätzliche Dateien zum Ausschließen mit fast-glob-Mustern. Kommagetrennt (z.B. `"test/**,*.spec.js"`). Ergänzt `.gitignore` und eingebaute Ausschlüsse. |
 | `topFilesLength` | Nein | `10` | Anzahl der größten Dateien nach Größe in der Metrik-Zusammenfassung |
+| `style` | Nein | `xml` | Ausgabeformat: `xml`, `markdown`, `json` oder `plain` |
 
 **Beispiel:**
 ```json
@@ -135,10 +136,11 @@ Dieses Tool holt, klont und verpackt ein GitHub-Repository in eine XML-Datei fü
 | Parameter | Erforderlich | Standard | Beschreibung |
 |-----------|-------------|----------|-------------|
 | `remote` | Ja | — | GitHub-Repository-URL oder `user/repo`-Format (z.B. `"yamadashy/repomix"`, `"https://github.com/user/repo"` oder `"https://github.com/user/repo/tree/branch"`) |
-| `compress` | Nein | `false` | Tree-sitter-Komprimierung aktivieren, um wesentliche Code-Signaturen und -Strukturen zu extrahieren und Implementierungsdetails zu entfernen. Reduziert die Token-Nutzung um ~70% bei Beibehaltung der semantischen Bedeutung. |
+| `compress` | Nein | `false` | Tree-sitter-Komprimierung aktivieren, um wesentliche Code-Signaturen und -Strukturen zu extrahieren und Implementierungsdetails zu entfernen. Reduziert die Token-Nutzung um ~70% bei Beibehaltung der semantischen Bedeutung. Normalerweise nicht erforderlich, da `grep_repomix_output` inkrementelle Inhaltsabrufung ermöglicht. |
 | `includePatterns` | Nein | — | Dateien zum Einschließen mit fast-glob-Mustern. Kommagetrennt (z.B. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Nein | — | Zusätzliche Dateien zum Ausschließen mit fast-glob-Mustern. Kommagetrennt (z.B. `"test/**,*.spec.js"`). Ergänzt `.gitignore` und eingebaute Ausschlüsse. |
 | `topFilesLength` | Nein | `10` | Anzahl der größten Dateien nach Größe in der Metrik-Zusammenfassung |
+| `style` | Nein | `xml` | Ausgabeformat: `xml`, `markdown`, `json` oder `plain` |
 
 **Beispiel:**
 ```json
