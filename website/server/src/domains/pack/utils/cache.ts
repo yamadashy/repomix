@@ -56,8 +56,11 @@ export class RequestCache<T> {
     try {
       // Convert data to JSON string and compress
       const jsonString = JSON.stringify(value);
-      const compressedData = await compressAsync(Buffer.from(jsonString, 'utf8'), {
-        params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 4 },
+      const compressedData = await compressAsync(jsonString, {
+        params: {
+          [zlib.constants.BROTLI_PARAM_MODE]: zlib.constants.BROTLI_MODE_TEXT,
+          [zlib.constants.BROTLI_PARAM_QUALITY]: 4,
+        },
       });
 
       this.cache.set(key, {
