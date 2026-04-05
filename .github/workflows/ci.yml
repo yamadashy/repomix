@@ -7,12 +7,16 @@ on:
       - '**/*.md'
       - 'LICENSE'
       - '.github/releases/**'
+      - 'website/**'
+      - 'browser/**'
   pull_request:
     branches: [main]
     paths-ignore:
       - '**/*.md'
       - 'LICENSE'
       - '.github/releases/**'
+      - 'website/**'
+      - 'browser/**'
   workflow_dispatch:
 
 permissions:
@@ -48,6 +52,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint-oxlint && git diff --exit-code
+
   lint-ts:
     name: Lint TypeScript
     runs-on: ubuntu-latest
@@ -77,134 +82,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint-secretlint
-
-  lint-website-client:
-    name: Lint Website Client
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version-file: .tool-versions
-          cache: npm
-      - name: Install website client dependencies
-        working-directory: website/client
-        run: npm ci
-      - name: Lint website client
-        working-directory: website/client
-        run: npm run lint
-
-  lint-website-server:
-    name: Lint Website Server
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version-file: .tool-versions
-          cache: npm
-      - name: Build and link local repomix
-        run: |
-          npm ci
-          npm run build
-          npm link
-      - name: Install website server dependencies
-        working-directory: website/server
-        run: |
-          npm ci
-          npm link repomix
-      - name: Lint website server
-        working-directory: website/server
-        run: npm run lint
-
-  bundle-website-server:
-    name: Bundle Website Server
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version-file: .tool-versions
-          cache: npm
-      - name: Build and link local repomix
-        run: |
-          npm ci
-          npm run build
-          npm link
-      - name: Install website server dependencies
-        working-directory: website/server
-        run: |
-          npm ci
-          npm link repomix
-      - name: Bundle website server
-        working-directory: website/server
-        run: npm run bundle
-
-  lint-browser:
-    name: Lint Browser Extension
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version-file: .tool-versions
-          cache: npm
-      - name: Install browser extension dependencies
-        working-directory: browser
-        run: npm ci
-      - name: Prepare WXT
-        working-directory: browser
-        run: npm run prepare
-      - name: Lint browser extension
-        working-directory: browser
-        run: npm run lint
-
-  lint-actionlint:
-    name: Lint GitHub Actions (actionlint)
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - uses: rhysd/actionlint@393031adb9afb225ee52ae2ccd7a5af5525e03e8 # v1.7.11
-        with:
-          args: "-color"
-
-  lint-zizmor:
-    name: Lint GitHub Actions (zizmor)
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8 # v0.5.2
-        with:
-          advanced-security: "false"
-          annotations: "true"
-          config: .github/zizmor.yml
-
-  check-typos:
-    name: Check typos
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - uses: crate-ci/typos@631208b7aac2daa8b707f55e7331f9112b0e062d # v1.44.0
 
   test:
     name: Test
@@ -273,28 +150,6 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  test-browser:
-    name: Test Browser Extension
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version-file: .tool-versions
-          cache: npm
-      - name: Install browser extension dependencies
-        working-directory: browser
-        run: npm ci
-      - name: Prepare WXT
-        working-directory: browser
-        run: npm run prepare
-      - name: Test browser extension
-        working-directory: browser
-        run: npm run test
-
   build-and-run:
     name: Build and run
     strategy:
@@ -351,4 +206,3 @@ jobs:
         with:
           name: repomix-output-bun-${{ matrix.os }}-${{ matrix.bun-version }}.txt
           path: repomix-output.txt
-
