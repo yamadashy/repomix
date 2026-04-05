@@ -1,6 +1,9 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import { getProcessConcurrency, initTaskRunner } from '../../shared/processConcurrency.js';
+import {
+  getProcessConcurrency as defaultGetProcessConcurrency,
+  initTaskRunner,
+} from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -29,6 +32,7 @@ export const runSecurityCheck = async (
   gitLogResult?: GitLogResult,
   deps = {
     initTaskRunner,
+    getProcessConcurrency: defaultGetProcessConcurrency,
   },
 ): Promise<SuspiciousFileResult[]> => {
   const gitDiffItems: SecurityCheckItem[] = [];
@@ -81,7 +85,7 @@ export const runSecurityCheck = async (
   // Cap security workers at 2 to reduce contention with the metrics worker pool that
   // runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
   // so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
-  const maxSecurityWorkers = Math.min(2, getProcessConcurrency());
+  const maxSecurityWorkers = Math.min(2, deps.getProcessConcurrency());
 
   // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
