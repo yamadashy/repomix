@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -74,12 +74,14 @@ export const runSecurityCheck = async (
   const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
   const totalItems = allItems.length;
 
-  // NOTE: numOfTasks uses totalItems (not batches.length) intentionally.
-  // getWorkerThreadCount uses Math.ceil(numOfTasks / TASKS_PER_THREAD) to size the pool,
-  // where TASKS_PER_THREAD=100 is calibrated for fine-grained tasks.
-  // Passing batches.length (e.g. 2) would yield maxThreads=1, forcing sequential execution.
+  // Cap the security worker pool at half the available CPU cores to reduce contention
+  // with the metrics worker pool that runs concurrently. The security check uses
+  // coarse-grained batches (BATCH_SIZE=50), so fewer workers still provide sufficient
+  // parallelism while leaving headroom for the metrics pool's gpt-tokenizer warmup.
+  // Benchmarks show this yields a net improvement to overall pipeline throughput.
+  const maxSecurityWorkers = Math.max(1, Math.floor(getProcessConcurrency() / 2));
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-    numOfTasks: totalItems,
+    numOfTasks: Math.min(totalItems, maxSecurityWorkers * 100),
     workerType: 'securityCheck',
     runtime: 'worker_threads',
   });
