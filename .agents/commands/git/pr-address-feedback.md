@@ -99,9 +99,9 @@ Identify bot authors: login containing `[bot]` or `-integration` (e.g., `coderab
 | **Fix** | Clear defects, bugs, security issues, incorrect logic | Must fix in code |
 | **Improve** | Valid suggestions for better code quality, naming, structure | Fix unless it conflicts with project conventions |
 | **Discuss** | Ambiguous feedback, design disagreements, scope questions | Do nothing — ask user at the end |
+| **Skip** | Already addressed, out of scope, false positives, style nitpicks | Reply with reason + resolve (no code change) |
 
 When uncertain whether feedback is **Improve** or **Discuss**, prefer **Discuss** — this is safer since Discuss items get user confirmation while Improve items are auto-applied.
-| **Skip** | Already addressed, out of scope, false positives, style nitpicks | Reply with reason + resolve (no code change) |
 
 ### 4. Present the plan
 
@@ -166,7 +166,7 @@ Reply indicating the fix, then resolve:
 
 - "Addressed in `<commit_sha>` — `<brief description>`. 🤖"
 
-#### 8b. Skipped review comments (no code change needed)
+#### 8b. Skipped review comments and praise (no code change needed)
 
 Reply with a brief reason, then resolve:
 
@@ -174,6 +174,7 @@ Reply with a brief reason, then resolve:
 - **False positive**: "No action needed — `<brief explanation>`. 🤖"
 - **Out of scope**: "Out of scope for this PR — tracked separately. 🤖"
 - **Matches conventions**: "No action needed — this matches the project's existing conventions. 🤖"
+- **Praise / LGTM**: "Thanks! 🤖"
 
 #### 8c. Outdated bot threads
 
@@ -188,8 +189,8 @@ Minimize with `OUTDATED` classifier. No reply needed for regular issue comments.
 
 #### Classifier usage
 
-- Use `RESOLVED` when minimizing comments that were genuinely addressed by code changes (8a)
 - Use `OUTDATED` when minimizing comments that are stale or superseded (8c, 8d)
+- Use `RESOLVED` when minimizing comments that were genuinely addressed
 
 #### API reference
 
