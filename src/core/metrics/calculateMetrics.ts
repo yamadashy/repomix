@@ -1,5 +1,10 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import { getWorkerThreadCount, initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
+import {
+  getProcessConcurrency,
+  getWorkerThreadCount,
+  initTaskRunner,
+  type TaskRunner,
+} from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -10,7 +15,7 @@ import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
 import type { TokenEncoding } from './TokenCounter.js';
-import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
+import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
   totalFiles: number;
@@ -23,7 +28,7 @@ export interface CalculateMetricsResult {
 }
 
 export interface MetricsTaskRunnerWithWarmup {
-  taskRunner: TaskRunner<TokenCountTask, number>;
+  taskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult>;
   warmupPromise: Promise<unknown>;
 }
 
@@ -34,13 +39,26 @@ export interface MetricsTaskRunnerWithWarmup {
  * output generation).
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
-  const taskRunner = initTaskRunner<TokenCountTask, number>({
-    numOfTasks,
+  // Cap metrics workers at (processConcurrency - 1) to leave CPU headroom for the
+  // security worker pool that runs concurrently during the pipeline overlap phase.
+  // Benchmarks show 3 workers on a 4-core machine is optimal: the slightly longer
+  // tokenization is offset by faster warmup (less contention during gpt-tokenizer loading).
+  // Ensure at least 1 worker on single-core machines.
+  const maxMetricsWorkers = Math.max(1, getProcessConcurrency() - 1);
+  const cappedNumOfTasks = Math.min(numOfTasks, maxMetricsWorkers * 100);
+  const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
+    numOfTasks: cappedNumOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  // Warm up all worker threads to eliminate lazy initialization delays during the
+  // metrics phase. While warmup overlaps with security check workers (causing some
+  // CPU contention), having all workers ready when metrics calculation starts
+  // outweighs the contention cost: lazy initialization on cold workers adds ~150ms
+  // per worker during the metrics phase, which is worse than the brief contention
+  // during warmup when I/O-bound pipeline stages provide natural CPU headroom.
+  const { maxThreads } = getWorkerThreadCount(cappedNumOfTasks);
   const warmupPromise = Promise.all(
     Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
@@ -53,7 +71,7 @@ const defaultDeps = {
   calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
-  taskRunner: undefined as TaskRunner<TokenCountTask, number> | undefined,
+  taskRunner: undefined as TaskRunner<MetricsWorkerTask, MetricsWorkerResult> | undefined,
 };
 
 export const calculateMetrics = async (
@@ -72,7 +90,7 @@ export const calculateMetrics = async (
   // Initialize a single task runner for all metrics calculations
   const taskRunner =
     deps.taskRunner ??
-    initTaskRunner<TokenCountTask, number>({
+    initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',

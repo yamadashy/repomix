@@ -7,8 +7,8 @@ import { readRawFile as defaultReadRawFile, type FileSkipReason } from './fileRe
 import type { RawFile } from './fileTypes.js';
 
 // Concurrency limit for parallel file reads on the main thread.
-// 50 balances I/O throughput with FD/memory safety across different machines.
-const FILE_COLLECT_CONCURRENCY = 50;
+// Higher concurrency improves I/O throughput on modern systems (default ulimit 1024 FDs).
+const FILE_COLLECT_CONCURRENCY = 100;
 
 export interface SkippedFileInfo {
   path: string;
