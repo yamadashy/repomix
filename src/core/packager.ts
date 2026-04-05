@@ -114,8 +114,9 @@ export const pack = async (
 
     // Only create the security worker pool when security checks are enabled
     if (config.security.enableSecurityCheck) {
-      ({ taskRunner: securityTaskRunner, warmupPromise: securityWarmupPromise } =
-        deps.createSecurityCheckTaskRunner(allFilePaths.length));
+      ({ taskRunner: securityTaskRunner, warmupPromise: securityWarmupPromise } = deps.createSecurityCheckTaskRunner(
+        allFilePaths.length,
+      ));
     }
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
