@@ -90,6 +90,24 @@ const checkGitAvailability = async (cwd: string, deps: SortDeps): Promise<boolea
   }
 };
 
+/**
+ * Pre-warm the git file change counts cache.
+ * Call this early in the pipeline (e.g., alongside file collection) so that
+ * `sortOutputFiles` later hits the cache instead of spawning `git log` on the critical path.
+ */
+export const prewarmGitSortCache = async (
+  config: RepomixConfigMerged,
+  deps: SortDeps = {
+    getFileChangeCount,
+    isGitInstalled,
+  },
+): Promise<void> => {
+  if (!config.output.git?.sortByChanges) {
+    return;
+  }
+  await getFileChangeCounts(config.cwd, config.output.git?.sortByChangesMaxCommits, deps);
+};
+
 // Sort files by git change count for output
 export const sortOutputFiles = async (
   files: ProcessedFile[],
