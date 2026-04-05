@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "fflate": "^0.8.2",
+    "isbot": "^5.1.36",
     "lucide-vue-next": "^0.577.0",
     "vue3-ace-editor": "^2.2.4"
   },
