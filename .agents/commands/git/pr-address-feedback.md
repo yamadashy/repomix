@@ -38,7 +38,7 @@ gh pr view {pr_number} --comments --json comments
 **Review threads via GraphQL** (to check resolution status and outdated flags):
 ```bash
 gh api graphql -f owner="$OWNER" -f repo="$REPO" -F pr_number=$PR_NUMBER -f query='
-query($owner: String!, $repo: String!, $pr_number: Int!, $threadCursor: String, $commentCursor: String) {
+query($owner: String!, $repo: String!, $pr_number: Int!, $threadCursor: String, $commentCursor: String, $reviewCursor: String) {
   repository(owner: $owner, name: $repo) {
     pullRequest(number: $pr_number) {
       reviewThreads(first: 100, after: $threadCursor) {
@@ -61,12 +61,23 @@ query($owner: String!, $repo: String!, $pr_number: Int!, $threadCursor: String, 
           isMinimized
         }
       }
+      reviews(first: 100, after: $reviewCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          body
+          author { login }
+          state
+        }
+      }
     }
   }
 }'
 ```
 
-Each connection (`reviewThreads`, `comments`) paginates independently. If either `pageInfo.hasNextPage` is `true`, pass its `endCursor` as the corresponding cursor variable in subsequent requests.
+Each connection (`reviewThreads`, `comments`, `reviews`) paginates independently. If any `pageInfo.hasNextPage` is `true`, pass its `endCursor` as the corresponding cursor variable in subsequent requests.
+
+Review bodies (`reviews.nodes[].body`) may contain top-level feedback separate from inline comments. Include non-empty review bodies in classification alongside other comments.
 
 ### 3. Classify each comment
 
