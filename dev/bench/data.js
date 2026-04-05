@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775396113194,
+  "lastUpdate": 1775396819729,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -2070,6 +2070,51 @@ window.BENCHMARK_DATA = {
             "range": "±216",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2439ms, Q3: 2655ms\nAll times: 2417, 2424, 2428, 2430, 2432, 2439, 2440, 2441, 2442, 2451, 2453, 2454, 2456, 2464, 2466, 2655, 2660, 2699, 2718, 2989ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "55997367550976fb820ddb4fcb651fea887b926e",
+          "message": "Merge pull request #1408 from yamadashy/chore/split-ci-workflow\n\nchore(ci): Split monolithic ci.yml into separate workflow files",
+          "timestamp": "2026-04-05T22:43:53+09:00",
+          "tree_id": "fa2003198ac3b49ad0726023d205012f9214fff9",
+          "url": "https://github.com/yamadashy/repomix/commit/55997367550976fb820ddb4fcb651fea887b926e"
+        },
+        "date": 1775396818804,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1235,
+            "range": "±78",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1210ms, Q3: 1288ms\nAll times: 1179, 1186, 1192, 1195, 1203, 1207, 1208, 1210, 1217, 1218, 1220, 1223, 1230, 1230, 1231, 1235, 1236, 1238, 1240, 1242, 1247, 1287, 1288, 1309, 1317, 1324, 1404, 1415, 1507, 1776ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2104,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2097ms, Q3: 2115ms\nAll times: 2068, 2070, 2087, 2087, 2092, 2097, 2099, 2100, 2101, 2104, 2104, 2107, 2107, 2109, 2111, 2115, 2123, 2128, 2134, 2159ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2657,
+            "range": "±56",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2649ms, Q3: 2705ms\nAll times: 2597, 2620, 2627, 2627, 2635, 2649, 2650, 2652, 2652, 2656, 2657, 2657, 2663, 2675, 2700, 2705, 2718, 2926, 3299, 3349ms"
           }
         ]
       }
