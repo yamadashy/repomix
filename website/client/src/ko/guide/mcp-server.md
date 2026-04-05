@@ -106,11 +106,14 @@ MCP 서버로 실행할 때 Repomix는 다음 도구를 제공합니다:
 이 도구는 로컬 코드 디렉토리를 AI 분석용 XML 파일로 패키징합니다. 코드베이스 구조를 분석하고 관련 코드 내용을 추출하여 메트릭, 파일 트리, 포맷된 코드 내용을 포함한 포괄적인 보고서를 생성합니다.
 
 **매개변수:**
-- `directory`: (필수) 패키징할 디렉토리의 절대 경로
-- `compress`: (선택, 기본값: false) 구현 세부사항을 제거하면서 필수 코드 시그니처와 구조를 추출하는 Tree-sitter 압축을 활성화합니다. 의미론적 의미를 유지하면서 토큰 사용량을 ~70% 줄입니다. grep_repomix_output이 점진적 콘텐츠 검색을 가능하게 하므로 일반적으로 필요하지 않습니다. 대형 저장소의 전체 코드베이스 내용이 특별히 필요한 경우에만 사용하세요.
-- `includePatterns`: (선택) fast-glob 패턴을 사용하여 포함할 파일을 지정합니다. 여러 패턴은 쉼표로 구분할 수 있습니다(예: "**/*.{js,ts}", "src/**,docs/**"). 일치하는 파일만 처리됩니다.
-- `ignorePatterns`: (선택) fast-glob 패턴을 사용하여 제외할 추가 파일을 지정합니다. 여러 패턴은 쉼표로 구분할 수 있습니다(예: "test/**,*.spec.js", "node_modules/**,dist/**"). 이러한 패턴은 .gitignore와 내장 제외를 보완합니다.
-- `topFilesLength`: (선택, 기본값: 10) 코드베이스 분석을 위한 메트릭 요약에 표시할 크기별 최대 파일 수입니다.
+
+| 매개변수 | 필수 | 기본값 | 설명 |
+|----------|------|--------|------|
+| `directory` | 예 | — | 패키징할 디렉토리의 절대 경로 |
+| `compress` | 아니오 | `false` | 구현 세부사항을 제거하면서 핵심 코드 시그니처와 구조를 추출하는 Tree-sitter 압축 활성화. 의미를 유지하면서 토큰 사용량을 ~70% 줄입니다. `grep_repomix_output`이 점진적 콘텐츠 검색을 가능하게 하므로 일반적으로 불필요합니다. |
+| `includePatterns` | 아니오 | — | fast-glob 패턴으로 포함할 파일 지정. 쉼표로 구분 (예: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | 아니오 | — | fast-glob 패턴으로 제외할 추가 파일 지정. 쉼표로 구분 (예: `"test/**,*.spec.js"`). `.gitignore`와 내장 제외를 보완합니다. |
+| `topFilesLength` | 아니오 | `10` | 메트릭 요약에 표시할 크기별 최대 파일 수 |
 
 **예시:**
 ```json
@@ -128,11 +131,14 @@ MCP 서버로 실행할 때 Repomix는 다음 도구를 제공합니다:
 이 도구는 GitHub 저장소를 가져와 클론하고 AI 분석용 XML 파일로 패키징합니다. 원격 저장소를 자동으로 클론하고 구조를 분석하여 포괄적인 보고서를 생성합니다.
 
 **매개변수:**
-- `remote`: (필수) GitHub 저장소 URL 또는 사용자/저장소 형식(예: "yamadashy/repomix", "https://github.com/user/repo", 또는 "https://github.com/user/repo/tree/branch")
-- `compress`: (선택, 기본값: false) 구현 세부사항을 제거하면서 필수 코드 시그니처와 구조를 추출하는 Tree-sitter 압축을 활성화합니다. 의미론적 의미를 유지하면서 토큰 사용량을 ~70% 줄입니다. grep_repomix_output이 점진적 콘텐츠 검색을 가능하게 하므로 일반적으로 필요하지 않습니다. 대형 저장소의 전체 코드베이스 내용이 특별히 필요한 경우에만 사용하세요.
-- `includePatterns`: (선택) fast-glob 패턴을 사용하여 포함할 파일을 지정합니다. 여러 패턴은 쉼표로 구분할 수 있습니다(예: "**/*.{js,ts}", "src/**,docs/**"). 일치하는 파일만 처리됩니다.
-- `ignorePatterns`: (선택) fast-glob 패턴을 사용하여 제외할 추가 파일을 지정합니다. 여러 패턴은 쉼표로 구분할 수 있습니다(예: "test/**,*.spec.js", "node_modules/**,dist/**"). 이러한 패턴은 .gitignore와 내장 제외를 보완합니다.
-- `topFilesLength`: (선택, 기본값: 10) 코드베이스 분석을 위한 메트릭 요약에 표시할 크기별 최대 파일 수입니다.
+
+| 매개변수 | 필수 | 기본값 | 설명 |
+|----------|------|--------|------|
+| `remote` | 예 | — | GitHub 저장소 URL 또는 `user/repo` 형식 (예: `"yamadashy/repomix"`, `"https://github.com/user/repo"` 또는 `"https://github.com/user/repo/tree/branch"`) |
+| `compress` | 아니오 | `false` | 구현 세부사항을 제거하면서 핵심 코드 시그니처와 구조를 추출하는 Tree-sitter 압축 활성화. 의미를 유지하면서 토큰 사용량을 ~70% 줄입니다. |
+| `includePatterns` | 아니오 | — | fast-glob 패턴으로 포함할 파일 지정. 쉼표로 구분 (예: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | 아니오 | — | fast-glob 패턴으로 제외할 추가 파일 지정. 쉼표로 구분 (예: `"test/**,*.spec.js"`). `.gitignore`와 내장 제외를 보완합니다. |
+| `topFilesLength` | 아니오 | `10` | 메트릭 요약에 표시할 크기별 최대 파일 수 |
 
 **예시:**
 ```json
@@ -150,9 +156,12 @@ MCP 서버로 실행할 때 Repomix는 다음 도구를 제공합니다:
 이 도구는 Repomix에서 생성된 출력 파일의 내용을 읽습니다. 대용량 파일에 대한 라인 범위 지정을 통한 부분 읽기를 지원합니다. 이 도구는 직접 파일 시스템 접근이 제한된 환경을 위해 설계되었습니다.
 
 **매개변수:**
-- `outputId`: (필수) 읽을 Repomix 출력 파일의 ID
-- `startLine`: (선택) 시작 라인 번호(1부터 시작, 포함). 지정하지 않으면 처음부터 읽습니다.
-- `endLine`: (선택) 끝 라인 번호(1부터 시작, 포함). 지정하지 않으면 끝까지 읽습니다.
+
+| 매개변수 | 필수 | 기본값 | 설명 |
+|----------|------|--------|------|
+| `outputId` | 예 | — | 읽을 Repomix 출력 파일의 ID |
+| `startLine` | 아니오 | 파일 시작 | 시작 라인 번호 (1부터 시작, 포함) |
+| `endLine` | 아니오 | 파일 끝 | 끝 라인 번호 (1부터 시작, 포함) |
 
 **기능:**
 - 웹 기반 환경이나 샌드박스 애플리케이션을 위해 특별히 설계됨
@@ -174,12 +183,15 @@ MCP 서버로 실행할 때 Repomix는 다음 도구를 제공합니다:
 이 도구는 JavaScript RegExp 구문을 사용한 grep 유사 기능으로 Repomix 출력 파일에서 패턴을 검색합니다. 일치하는 라인과 일치 항목 주변의 선택적 컨텍스트 라인을 반환합니다.
 
 **매개변수:**
-- `outputId`: (필수) 검색할 Repomix 출력 파일의 ID
-- `pattern`: (필수) 검색 패턴(JavaScript RegExp 정규 표현식 구문)
-- `contextLines`: (선택, 기본값: 0) 각 일치 항목 전후에 표시할 컨텍스트 라인 수. beforeLines/afterLines가 지정되면 재정의됩니다.
-- `beforeLines`: (선택) 각 일치 항목 전에 표시할 컨텍스트 라인 수(grep -B와 같음). contextLines보다 우선합니다.
-- `afterLines`: (선택) 각 일치 항목 후에 표시할 컨텍스트 라인 수(grep -A와 같음). contextLines보다 우선합니다.
-- `ignoreCase`: (선택, 기본값: false) 대소문자를 구분하지 않는 매칭 수행
+
+| 매개변수 | 필수 | 기본값 | 설명 |
+|----------|------|--------|------|
+| `outputId` | 예 | — | 검색할 Repomix 출력 파일의 ID |
+| `pattern` | 예 | — | 검색 패턴 (JavaScript RegExp 구문) |
+| `contextLines` | 아니오 | `0` | 각 일치 항목 전후에 표시할 컨텍스트 라인 수. `beforeLines`/`afterLines`가 지정되면 재정의됩니다. |
+| `beforeLines` | 아니오 | — | 각 일치 항목 전에 표시할 라인 수 (`grep -B`와 같음). `contextLines`보다 우선합니다. |
+| `afterLines` | 아니오 | — | 각 일치 항목 후에 표시할 라인 수 (`grep -A`와 같음). `contextLines`보다 우선합니다. |
+| `ignoreCase` | 아니오 | `false` | 대소문자를 구분하지 않는 매칭 수행 |
 
 **기능:**
 - 강력한 패턴 매칭을 위한 JavaScript RegExp 구문 사용

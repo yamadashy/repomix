@@ -78,26 +78,15 @@ Skills dihasilkan dengan struktur berikut:
 
 ### Deskripsi File
 
-#### SKILL.md
+| File | Tujuan | Isi |
+|------|--------|-----|
+| `SKILL.md` | Metadata utama Skills & dokumentasi | Nama Skills, deskripsi, info proyek, jumlah file/baris/token, gambaran penggunaan, kasus penggunaan umum dan tips |
+| `references/summary.md` | Tujuan, format, dan statistik | Penjelasan codebase referensi, dokumentasi struktur file, panduan penggunaan, rincian berdasarkan tipe file dan bahasa |
+| `references/project-structure.md` | Penemuan file | Pohon direktori dengan jumlah baris per file |
+| `references/files.md` | Referensi kode yang dapat dicari | Semua konten file dengan header syntax highlighting, dioptimalkan untuk pencarian kompatibel grep |
+| `references/tech-stacks.md` | Ringkasan tech stack | Bahasa, framework, versi runtime, package manager, dependensi, file konfigurasi |
 
-File Skills utama berisi:
-- Nama Skills, deskripsi, dan info proyek
-- Jumlah file, jumlah baris, dan jumlah token
-- Gambaran cara menggunakan Skills
-- Lokasi file dan penjelasan format
-- Kasus penggunaan umum dan tips
-
-#### references/summary.md
-
-Berisi:
-- **Tujuan**: Menjelaskan ini adalah codebase referensi untuk konsumsi AI
-- **Struktur File**: Mendokumentasikan isi setiap file referensi
-- **Panduan Penggunaan**: Cara menggunakan Skills secara efektif
-- **Statistik**: Rincian berdasarkan tipe file, bahasa, dan file terbesar
-
-#### references/project-structure.md
-
-Pohon direktori dengan jumlah baris per file untuk penemuan file yang mudah:
+#### Contoh: references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-Semua konten file dengan header syntax highlighting, dioptimalkan untuk pencarian kompatibel grep:
+#### Contoh: references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### Contoh: references/tech-stacks.md
 
 Tech stack yang terdeteksi otomatis dari file dependensi:
 - **Bahasa**: TypeScript, JavaScript, Python, dll.

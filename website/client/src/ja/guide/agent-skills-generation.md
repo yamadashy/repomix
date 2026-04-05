@@ -78,26 +78,15 @@ Skillsは以下の構造で生成されます：
 
 ### ファイルの説明
 
-#### SKILL.md
+| ファイル | 目的 | 内容 |
+|---------|------|------|
+| `SKILL.md` | メインのSkillsメタデータとドキュメント | Skills名、説明、プロジェクト情報、ファイル/行/トークン数、使用方法の概要、一般的なユースケースとヒント |
+| `references/summary.md` | 目的、フォーマット、統計情報 | リファレンスコードベースの説明、ファイル構造ドキュメント、使用ガイドライン、ファイルタイプと言語の内訳 |
+| `references/project-structure.md` | ファイル探索 | 各ファイルの行数付きディレクトリツリー |
+| `references/files.md` | 検索可能なコードリファレンス | シンタックスハイライト付きの全ファイル内容、grep検索に最適化 |
+| `references/tech-stacks.md` | 技術スタックサマリー | 言語、フレームワーク、ランタイムバージョン、パッケージマネージャー、依存関係、設定ファイル |
 
-メインのSkillsファイルで、以下を含みます：
-- Skills名、説明、プロジェクト情報
-- ファイル数、行数、トークン数
-- Skillsの使用方法の概要
-- ファイルの場所とフォーマットの説明
-- 一般的なユースケースとヒント
-
-#### references/summary.md
-
-以下を含みます：
-- **目的**: AI利用のためのリファレンスコードベースであることを説明
-- **ファイル構造**: 各リファレンスファイルの内容を文書化
-- **使用ガイドライン**: Skillsを効果的に使用する方法
-- **統計情報**: ファイルタイプ、言語、最大ファイルの内訳
-
-#### references/project-structure.md
-
-ファイル探索を容易にするための、各ファイルの行数付きディレクトリツリー：
+#### 例: references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-grep検索に最適化された、シンタックスハイライト付きのすべてのファイル内容：
+#### 例: references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### 例: references/tech-stacks.md
 
 依存関係ファイルから自動検出される技術スタック：
 - **言語**: TypeScript、JavaScript、Python など

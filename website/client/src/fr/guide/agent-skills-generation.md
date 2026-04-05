@@ -78,26 +78,15 @@ Les Skills sont générés avec la structure suivante :
 
 ### Descriptions des Fichiers
 
-#### SKILL.md
+| Fichier | But | Contenu |
+|---------|-----|---------|
+| `SKILL.md` | Métadonnées principales et documentation des Skills | Nom des Skills, description, informations du projet, nombre de fichiers/lignes/tokens, aperçu de l'utilisation, cas d'utilisation courants et conseils |
+| `references/summary.md` | But, format et statistiques | Explication de la base de code de référence, documentation de la structure des fichiers, directives d'utilisation, répartition par type de fichier et langage |
+| `references/project-structure.md` | Découverte de fichiers | Arborescence avec nombre de lignes par fichier |
+| `references/files.md` | Référence de code consultable | Tout le contenu des fichiers avec en-têtes de coloration syntaxique, optimisé pour la recherche compatible grep |
+| `references/tech-stacks.md` | Résumé du stack technologique | Langages, frameworks, versions runtime, gestionnaires de paquets, dépendances, fichiers de configuration |
 
-Le fichier principal des Skills contient :
-- Nom des Skills, description et informations du projet
-- Nombre de fichiers, de lignes et de tokens
-- Aperçu de l'utilisation des Skills
-- Emplacements des fichiers et explication du format
-- Cas d'utilisation courants et conseils
-
-#### references/summary.md
-
-Contient :
-- **But** : Explique qu'il s'agit d'une base de code de référence pour utilisation par l'IA
-- **Structure des Fichiers** : Documente le contenu de chaque fichier de référence
-- **Directives d'Utilisation** : Comment utiliser efficacement les Skills
-- **Statistiques** : Répartition par type de fichier, langage et plus gros fichiers
-
-#### references/project-structure.md
-
-Arborescence avec nombre de lignes par fichier pour une découverte facile :
+#### Exemple : references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-Tout le contenu des fichiers avec en-têtes de coloration syntaxique, optimisé pour la recherche compatible grep :
+#### Exemple : references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### Exemple : references/tech-stacks.md
 
 Stack technologique auto-détecté depuis les fichiers de dépendances :
 - **Langages** : TypeScript, JavaScript, Python, etc.

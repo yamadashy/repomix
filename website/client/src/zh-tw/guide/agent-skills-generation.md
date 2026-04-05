@@ -78,26 +78,15 @@ Skills 按以下結構生成：
 
 ### 檔案說明
 
-#### SKILL.md
+| 檔案 | 用途 | 內容 |
+|------|------|------|
+| `SKILL.md` | Skills 主要中繼資料和文件 | Skills 名稱、描述、專案資訊、檔案/行/token 數、使用方法概述、常見用例和提示 |
+| `references/summary.md` | 目的、格式和統計資訊 | 參考程式碼庫說明、檔案結構文件、使用指南、按檔案類型和語言的分類 |
+| `references/project-structure.md` | 檔案發現 | 帶有每個檔案行數的目錄樹 |
+| `references/files.md` | 可搜尋的程式碼參考 | 所有帶語法高亮標頭的檔案內容，針對 grep 友善搜尋最佳化 |
+| `references/tech-stacks.md` | 技術堆疊摘要 | 語言、框架、執行環境版本、套件管理器、相依性、設定檔 |
 
-主要 Skills 檔案包含：
-- Skills 名稱、描述和專案資訊
-- 檔案數、行數和 token 數
-- Skills 使用方法概述
-- 檔案位置和格式說明
-- 常見用例和提示
-
-#### references/summary.md
-
-包含：
-- **目的**：說明這是供 AI 使用的參考程式碼庫
-- **檔案結構**：記錄每個參考檔案的內容
-- **使用指南**：如何有效使用 Skills
-- **統計資訊**：按檔案類型、語言和最大檔案的分類
-
-#### references/project-structure.md
-
-帶有每個檔案行數的目錄樹，便於檔案發現：
+#### 範例：references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-所有帶語法高亮標頭的檔案內容，針對 grep 友善搜尋最佳化：
+#### 範例：references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### 範例：references/tech-stacks.md
 
 從相依性檔案自動偵測的技術堆疊：
 - **語言**：TypeScript、JavaScript、Python 等

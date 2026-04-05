@@ -78,26 +78,15 @@ Skills được tạo với cấu trúc sau:
 
 ### Mô Tả File
 
-#### SKILL.md
+| File | Mục đích | Nội dung |
+|------|----------|----------|
+| `SKILL.md` | Metadata chính và tài liệu Skills | Tên Skills, mô tả, thông tin dự án, số lượng file/dòng/token, tổng quan sử dụng, các trường hợp sử dụng phổ biến và mẹo |
+| `references/summary.md` | Mục đích, định dạng và thống kê | Giải thích codebase tham chiếu, tài liệu cấu trúc file, hướng dẫn sử dụng, phân tích theo loại file và ngôn ngữ |
+| `references/project-structure.md` | Khám phá file | Cây thư mục với số dòng mỗi file |
+| `references/files.md` | Tham chiếu code có thể tìm kiếm | Tất cả nội dung file với header syntax highlighting, tối ưu hóa cho tìm kiếm tương thích grep |
+| `references/tech-stacks.md` | Tóm tắt tech stack | Ngôn ngữ, framework, phiên bản runtime, package manager, dependencies, file cấu hình |
 
-File Skills chính chứa:
-- Tên Skills, mô tả và thông tin dự án
-- Số lượng file, số dòng và số token
-- Tổng quan về cách sử dụng Skills
-- Vị trí file và giải thích định dạng
-- Các trường hợp sử dụng phổ biến và mẹo
-
-#### references/summary.md
-
-Chứa:
-- **Mục đích**: Giải thích đây là codebase tham chiếu cho AI sử dụng
-- **Cấu trúc File**: Tài liệu nội dung của mỗi file tham chiếu
-- **Hướng dẫn Sử dụng**: Cách sử dụng Skills hiệu quả
-- **Thống kê**: Phân tích theo loại file, ngôn ngữ và file lớn nhất
-
-#### references/project-structure.md
-
-Cây thư mục với số dòng mỗi file để dễ dàng khám phá:
+#### Ví dụ: references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-Tất cả nội dung file với header syntax highlighting, được tối ưu hóa cho tìm kiếm tương thích grep:
+#### Ví dụ: references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### Ví dụ: references/tech-stacks.md
 
 Tech stack được tự động phát hiện từ các file dependency:
 - **Ngôn ngữ**: TypeScript, JavaScript, Python, v.v.
