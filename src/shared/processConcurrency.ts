@@ -12,6 +12,7 @@ export interface WorkerOptions {
   numOfTasks: number;
   workerType: WorkerType;
   runtime: WorkerRuntime;
+  maxWorkerThreads?: number;
 }
 
 /**
@@ -45,13 +46,20 @@ export const getProcessConcurrency = (): number => {
   return typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length;
 };
 
-export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; maxThreads: number } => {
+export const getWorkerThreadCount = (
+  numOfTasks: number,
+  maxWorkerThreads?: number,
+): { minThreads: number; maxThreads: number } => {
   const processConcurrency = getProcessConcurrency();
 
   const minThreads = 1;
 
+  // Apply optional cap to limit thread count (e.g., to reduce contention with other concurrent pools)
+  const effectiveConcurrency =
+    maxWorkerThreads != null ? Math.min(processConcurrency, maxWorkerThreads) : processConcurrency;
+
   // Limit max threads based on number of tasks
-  const maxThreads = Math.max(minThreads, Math.min(processConcurrency, Math.ceil(numOfTasks / TASKS_PER_THREAD)));
+  const maxThreads = Math.max(minThreads, Math.min(effectiveConcurrency, Math.ceil(numOfTasks / TASKS_PER_THREAD)));
 
   return {
     minThreads,
@@ -60,8 +68,8 @@ export const getWorkerThreadCount = (numOfTasks: number): { minThreads: number; 
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
-  const { numOfTasks, workerType, runtime = 'child_process' } = options;
-  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { numOfTasks, workerType, runtime = 'child_process', maxWorkerThreads } = options;
+  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads);
 
   // Get worker path - uses unified worker in bundled env, individual files otherwise
   const workerPath = getWorkerPath(workerType);

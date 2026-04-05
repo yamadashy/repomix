@@ -77,6 +77,26 @@ describe('processConcurrency', () => {
       expect(minThreads).toBe(1);
       expect(maxThreads).toBe(1);
     });
+
+    it('should cap max threads when maxWorkerThreads is provided', () => {
+      // CPU has 8 cores, 1000 tasks would normally give 8 threads
+      const { maxThreads } = getWorkerThreadCount(1000, 3);
+
+      expect(maxThreads).toBe(3);
+    });
+
+    it('should not exceed task-based limit even with higher maxWorkerThreads', () => {
+      // 200 tasks → ceil(200/100) = 2 threads, maxWorkerThreads=6 should not increase it
+      const { maxThreads } = getWorkerThreadCount(200, 6);
+
+      expect(maxThreads).toBe(2);
+    });
+
+    it('should ignore maxWorkerThreads when undefined', () => {
+      const { maxThreads } = getWorkerThreadCount(1000, undefined);
+
+      expect(maxThreads).toBe(8);
+    });
   });
 
   describe('initWorker', () => {
