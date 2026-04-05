@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775369264655,
+  "lastUpdate": 1775394971892,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -1980,6 +1980,51 @@ window.BENCHMARK_DATA = {
             "range": "±221",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2408ms, Q3: 2629ms\nAll times: 2382, 2390, 2395, 2396, 2403, 2408, 2412, 2415, 2423, 2433, 2441, 2441, 2450, 2451, 2455, 2629, 2789, 3071, 3142, 3412ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a96b21275d05452869b00384213a1cfa81d5278e",
+          "message": "Merge pull request #1407 from yamadashy/chore/add-ci-path-filters\n\nchore(ci): Add paths-ignore to CI workflow triggers",
+          "timestamp": "2026-04-05T22:13:27+09:00",
+          "tree_id": "f9d3514a163001d03144db352cb480258c3d514d",
+          "url": "https://github.com/yamadashy/repomix/commit/a96b21275d05452869b00384213a1cfa81d5278e"
+        },
+        "date": 1775394971410,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1231,
+            "range": "±119",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1158ms, Q3: 1277ms\nAll times: 1131, 1134, 1137, 1140, 1148, 1151, 1157, 1158, 1161, 1168, 1177, 1199, 1210, 1212, 1214, 1231, 1231, 1241, 1242, 1253, 1258, 1263, 1277, 1280, 1291, 1302, 1311, 1324, 1379, 1408ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 2066,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2060ms, Q3: 2091ms\nAll times: 2030, 2043, 2052, 2056, 2060, 2060, 2060, 2062, 2064, 2065, 2066, 2068, 2070, 2074, 2084, 2091, 2093, 2095, 2098, 2099ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2761,
+            "range": "±515",
+            "unit": "ms",
+            "extra": "Median of 19 runs\nQ1: 2643ms, Q3: 3158ms\nAll times: 2522, 2598, 2618, 2631, 2643, 2661, 2664, 2698, 2721, 2761, 2886, 3131, 3150, 3156, 3158, 3206, 3343, 3355, 3912ms"
           }
         ]
       }
