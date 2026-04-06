@@ -84,7 +84,7 @@ export async function processRemoteRepo(
     // Process the cloned repository
     await onProgress?.('processing');
     const packProgressCallback = (message: string) => {
-      onProgress?.('processing', message);
+      return onProgress?.('processing', message);
     };
     const result = await runDefaultAction([tempDirPath], tempDirPath, cliOptions, packProgressCallback);
     await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
