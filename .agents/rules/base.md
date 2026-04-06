@@ -56,7 +56,7 @@ repomix/
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/) with scope: `type(scope): Description`
 
-```
+```text
 feat(cli): Add new --no-progress flag
 fix(security): Handle special characters in file paths
 docs(website): Update installation guide
