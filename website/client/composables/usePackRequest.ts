@@ -86,9 +86,12 @@ export function usePackRequest() {
         getPackRequestOptions.value,
         {
           onSuccess: (response) => {
+            console.log('[pack] onSuccess called, metadata:', response.metadata?.repository, 'files:', response.metadata?.summary?.totalFiles);
             result.value = response;
+            console.log('[pack] result.value set');
           },
           onError: (errorMessage) => {
+            console.log('[pack] onError called:', errorMessage);
             error.value = errorMessage;
           },
           onAbort: (message) => {
@@ -106,6 +109,7 @@ export function usePackRequest() {
       clearTimeout(timeoutId);
       loading.value = false;
       requestController = null;
+      console.log('[pack] finally: loading=false, result=', !!result.value, 'error=', error.value);
     }
   }
 
