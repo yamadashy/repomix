@@ -1,9 +1,38 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import type { PackProgressStage } from '../api/client';
+
+interface Props {
+  stage?: PackProgressStage | null;
+  message?: string | null;
+}
+
+const props = defineProps<Props>();
+
+const stageMessages: Record<PackProgressStage, string> = {
+  'cache-check': 'Checking cache...',
+  cloning: 'Cloning repository...',
+  'repository-fetch': 'Fetching repository...',
+  extracting: 'Extracting files...',
+  processing: 'Processing files...',
+};
+
+const MAX_DETAIL_LENGTH = 60;
+
+const detailMessage = computed(() => {
+  const text = props.message || (props.stage && stageMessages[props.stage]) || '...';
+  if (text.length <= MAX_DETAIL_LENGTH) return text;
+  return `${text.slice(0, MAX_DETAIL_LENGTH)}...`;
+});
+</script>
+
 <template>
   <div class="loading">
     <div class="loading-header">
       <div class="spinner"></div>
       <p>Processing repository...</p>
     </div>
+    <p class="loading-detail">{{ detailMessage }}</p>
     <div class="sponsor-section">
       <p class="sponsor-header">Special thanks to:</p>
       <a href="https://go.warp.dev/repomix" target="_blank" rel="noopener noreferrer">
@@ -38,6 +67,12 @@
 
 .loading-header p {
   margin: 0;
+}
+
+.loading-detail {
+  margin: 4px 0 0;
+  font-size: 0.8em;
+  color: var(--vp-c-text-3);
 }
 
 .spinner {
