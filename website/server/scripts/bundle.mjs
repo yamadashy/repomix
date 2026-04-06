@@ -51,7 +51,7 @@ async function bundleAll() {
       worker: join(rootDir, 'dist/worker-entry.js'),
     },
     platform: 'node',
-    external: ['tinypool', /^gpt-tokenizer/],
+    external: ['tinypool'],
   });
 
   await build.write({

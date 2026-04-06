@@ -38,9 +38,7 @@ COPY --from=builder /app/dist-bundled ./dist-bundled
 
 # Copy external dependencies (cannot be bundled due to runtime requirements)
 # - tinypool: spawns worker threads using file paths
-# - gpt-tokenizer: uses dynamic imports for encoding modules (gpt-tokenizer/encoding/*)
 COPY --from=builder /app/node_modules/tinypool ./node_modules/tinypool
-COPY --from=builder /app/node_modules/gpt-tokenizer ./node_modules/gpt-tokenizer
 
 # Copy warmup script for compile cache generation
 COPY --from=builder /app/warmup.mjs ./warmup.mjs
