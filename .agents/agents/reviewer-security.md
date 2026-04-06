@@ -1,4 +1,5 @@
 ---
+model: sonnet
 description: Review code changes for security vulnerabilities and unsafe patterns
 ---
 
