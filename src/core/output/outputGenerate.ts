@@ -53,22 +53,25 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
 };
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
-  const maxBackticks = files
-    .flatMap((file) => file.content.match(/`+/g) ?? [])
-    .reduce((max, match) => Math.max(max, match.length), 0);
-  return '`'.repeat(Math.max(3, maxBackticks + 1));
+  let max = 0;
+  for (const file of files) {
+    const matches = file.content.match(/`+/g);
+    if (matches) {
+      for (const m of matches) {
+        if (m.length > max) max = m.length;
+      }
+    }
+  }
+  return '`'.repeat(Math.max(3, max + 1));
 };
 
-const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
+const calculateFileLineCounts = (processedFiles: ReadonlyArray<ProcessedFile>): Record<string, number> => {
   const lineCounts: Record<string, number> = {};
   for (const file of processedFiles) {
-    // Count lines: empty files have 0 lines, otherwise count newlines + 1
-    // (unless the content ends with a newline, in which case the last "line" is empty)
     const content = file.content;
     if (content.length === 0) {
       lineCounts[file.path] = 0;
     } else {
-      // Count actual lines (text editor style: number of \n + 1, but trailing \n doesn't add extra line)
       const newlineCount = (content.match(/\n/g) || []).length;
       lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
     }
@@ -77,29 +80,32 @@ const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  const config = outputGeneratorContext.config;
+  const isMarkdown = config.output.style === 'markdown';
+
   return {
-    generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
-    summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
+    generationHeader: generateHeader(config, outputGeneratorContext.generationDate),
+    summaryPurpose: generateSummaryPurpose(config),
     summaryFileFormat: generateSummaryFileFormat(),
-    summaryUsageGuidelines: generateSummaryUsageGuidelines(
-      outputGeneratorContext.config,
-      outputGeneratorContext.instruction,
-    ),
-    summaryNotes: generateSummaryNotes(outputGeneratorContext.config),
-    headerText: outputGeneratorContext.config.output.headerText,
+    summaryUsageGuidelines: generateSummaryUsageGuidelines(config, outputGeneratorContext.instruction),
+    summaryNotes: generateSummaryNotes(config),
+    headerText: config.output.headerText,
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
-    fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
-    directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
-    filesEnabled: outputGeneratorContext.config.output.files,
-    escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
-    gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
+    // fileLineCounts is only consumed by markdown templates and skill generation
+    // (which forces style to 'markdown'). Skip the scan for other styles.
+    fileLineCounts: isMarkdown ? calculateFileLineCounts(outputGeneratorContext.processedFiles) : {},
+    fileSummaryEnabled: config.output.fileSummary,
+    directoryStructureEnabled: config.output.directoryStructure,
+    filesEnabled: config.output.files,
+    escapeFileContent: config.output.parsableStyle,
+    // markdownCodeBlockDelimiter is only referenced by markdown and skill templates.
+    markdownCodeBlockDelimiter: isMarkdown ? calculateMarkdownDelimiter(outputGeneratorContext.processedFiles) : '```',
+    gitDiffEnabled: config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
-    gitLogEnabled: outputGeneratorContext.config.output.git?.includeLogs,
+    gitLogEnabled: config.output.git?.includeLogs,
     gitLogContent: outputGeneratorContext.gitLogResult?.logContent,
     gitLogCommits: outputGeneratorContext.gitLogResult?.commits,
   };

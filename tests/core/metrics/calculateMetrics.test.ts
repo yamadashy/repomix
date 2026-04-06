@@ -45,22 +45,6 @@ describe('calculateMetrics', () => {
     ];
     (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
 
-    const aggregatedResult = {
-      totalFiles: 2,
-      totalCharacters: 300,
-      totalTokens: 30,
-      fileCharCounts: {
-        'file1.txt': 100,
-        'file2.txt': 200,
-      },
-      fileTokenCounts: {
-        'file1.txt': 10,
-        'file2.txt': 20,
-      },
-      gitDiffTokenCount: 0,
-      gitLogTokenCount: 0,
-    };
-
     const config = createMockConfig();
 
     const gitDiffResult: GitDiffResult | undefined = undefined;
@@ -79,7 +63,6 @@ describe('calculateMetrics', () => {
       undefined,
       {
         calculateSelectiveFileMetrics,
-        calculateOutputMetrics: async () => 30,
         calculateGitDiffMetrics: () => Promise.resolve(0),
         calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
         taskRunner: mockTaskRunner,
@@ -89,14 +72,22 @@ describe('calculateMetrics', () => {
     expect(progressCallback).toHaveBeenCalledWith('Calculating metrics...');
     expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
       processedFiles,
-      ['file2.txt', 'file1.txt'], // sorted by character count desc
+      ['file1.txt', 'file2.txt'], // all file paths
       'o200k_base',
       progressCallback,
       expect.objectContaining({
         taskRunner: expect.any(Object),
       }),
     );
-    expect(result).toEqual(aggregatedResult);
+    // totalTokens = sum of file tokens (30) + overhead estimate
+    // overhead chars = 300 (output) - 300 (file contents) = 0, so totalTokens = 30
+    expect(result.totalFiles).toBe(2);
+    expect(result.totalCharacters).toBe(300);
+    expect(result.totalTokens).toBe(30);
+    expect(result.fileCharCounts).toEqual({ 'file1.txt': 100, 'file2.txt': 200 });
+    expect(result.fileTokenCounts).toEqual({ 'file1.txt': 10, 'file2.txt': 20 });
+    expect(result.gitDiffTokenCount).toBe(0);
+    expect(result.gitLogTokenCount).toBe(0);
   });
 });
 
@@ -119,6 +110,22 @@ describe('createMetricsTaskRunner', () => {
     await result.warmupPromise;
 
     expect(result.taskRunner.run).toHaveBeenCalledWith({ content: '', encoding: 'cl100k_base' });
+  });
+
+  it('should warm up all worker threads', async () => {
+    // With 1000 tasks on a system with N cores, maxThreads = min(N, ceil(1000/100)) = min(N, 10)
+    // All threads should be warmed up to avoid lazy init delays during metrics
+    const result = createMetricsTaskRunner(1000, 'o200k_base');
+
+    await result.warmupPromise;
+
+    const callCount = (result.taskRunner.run as Mock).mock.calls.length;
+    const { getWorkerThreadCount } = await import('../../../src/shared/processConcurrency.js');
+    // maxMetricsWorkers uses all available cores for maximum throughput
+    const maxMetricsWorkers = Math.max(1, (await import('node:os')).default.availableParallelism());
+    const cappedNumOfTasks = Math.min(1000, maxMetricsWorkers * 100);
+    const { maxThreads } = getWorkerThreadCount(cappedNumOfTasks);
+    expect(callCount).toBe(maxThreads);
   });
 
   it('should swallow warmup task errors', async () => {

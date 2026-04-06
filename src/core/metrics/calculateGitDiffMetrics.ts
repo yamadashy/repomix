@@ -44,7 +44,7 @@ export const calculateGitDiffMetrics = async (
     }
 
     const results = await Promise.all(countPromises);
-    const totalTokens = results.reduce((sum, count) => sum + count, 0);
+    const totalTokens = (results as number[]).reduce((sum, count) => sum + count, 0);
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;

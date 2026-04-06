@@ -123,6 +123,59 @@ describe('outputSort', () => {
       expect(mockIsGitInstalled).not.toHaveBeenCalled();
     });
 
+    test('prewarmGitSortCache should be a no-op when sort is disabled', async () => {
+      const { prewarmGitSortCache } = await import('../../../src/core/output/outputSort.js');
+      const config = createMockConfig({
+        output: {
+          git: {
+            sortByChanges: false,
+          },
+        },
+        cwd: '/test',
+      });
+
+      const mockGetFileChangeCount = vi.fn();
+      const mockIsGitInstalled = vi.fn();
+
+      await prewarmGitSortCache(config, {
+        getFileChangeCount: mockGetFileChangeCount,
+        isGitInstalled: mockIsGitInstalled,
+      });
+
+      expect(mockGetFileChangeCount).not.toHaveBeenCalled();
+      expect(mockIsGitInstalled).not.toHaveBeenCalled();
+    });
+
+    test('prewarmGitSortCache should populate cache so sortOutputFiles does not call git again', async () => {
+      const { prewarmGitSortCache, sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
+      const input: ProcessedFile[] = [
+        { path: `src${sep}file1.ts`, content: 'content1' },
+        { path: `src${sep}file2.ts`, content: 'content2' },
+      ];
+
+      const mockGetFileChangeCount = vi.fn().mockResolvedValue({
+        [`src${sep}file1.ts`]: 5,
+        [`src${sep}file2.ts`]: 10,
+      });
+      const mockIsGitInstalled = vi.fn().mockResolvedValue(true);
+      const deps = {
+        getFileChangeCount: mockGetFileChangeCount,
+        isGitInstalled: mockIsGitInstalled,
+      };
+
+      // Pre-warm the cache
+      await prewarmGitSortCache(mockConfig, deps);
+      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
+
+      // sortOutputFiles should hit the cache, not call getFileChangeCount again
+      const result = await sortOutputFiles(input, mockConfig, deps);
+      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
+      expect(result).toEqual([
+        { path: `src${sep}file1.ts`, content: 'content1' },
+        { path: `src${sep}file2.ts`, content: 'content2' },
+      ]);
+    });
+
     test('should cache git file change counts for repeated calls', async () => {
       const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input1: ProcessedFile[] = [
