@@ -118,13 +118,9 @@ export const runDefaultAction = async (
     const handleProgress: RepomixProgressCallback = (message) => {
       spinner.update(message);
       if (progressCallback) {
-        try {
-          Promise.resolve(progressCallback(message)).catch((error) => {
-            logger.trace('progressCallback error:', error);
-          });
-        } catch (error) {
+        Promise.resolve(progressCallback(message)).catch((error) => {
           logger.trace('progressCallback error:', error);
-        }
+        });
       }
     };
 
