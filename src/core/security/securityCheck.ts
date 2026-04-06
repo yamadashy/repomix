@@ -23,8 +23,8 @@ export interface SuspiciousFileResult {
 // per-file round-trip costs that dominate when processing many files.
 // Security check always processes all files (~1000 in a typical repo), so a batch size of 50
 // already produces ~20 batches — enough to distribute well across available CPU cores.
-// (Unlike metrics, which may process only top N files and needs a smaller batch size of 10
-// to avoid a single batch monopolizing one worker.)
+// (Unlike metrics, which may process only a small number of top files when tokenCountTree
+// is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
 const BATCH_SIZE = 50;
 
 export const runSecurityCheck = async (
