@@ -1,8 +1,38 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import type { PackProgressStage } from '../api/client';
+
+interface Props {
+  stage?: PackProgressStage | null;
+  message?: string | null;
+}
+
+const props = defineProps<Props>();
+
+const stageMessages: Record<PackProgressStage, string> = {
+  'cache-check': 'Checking cache...',
+  cloning: 'Cloning repository...',
+  'repository-fetch': 'Fetching repository...',
+  extracting: 'Extracting files...',
+  processing: 'Processing files...',
+};
+
+const displayMessage = computed(() => {
+  if (props.message) {
+    return props.message;
+  }
+  if (props.stage && stageMessages[props.stage]) {
+    return stageMessages[props.stage];
+  }
+  return 'Processing repository...';
+});
+</script>
+
 <template>
   <div class="loading">
     <div class="loading-header">
       <div class="spinner"></div>
-      <p>Processing repository...</p>
+      <p>{{ displayMessage }}</p>
     </div>
     <div class="sponsor-section">
       <p class="sponsor-header">Special thanks to:</p>

@@ -49,3 +49,8 @@ export interface PackResult {
 export interface ErrorResponse {
   error: string;
 }
+
+// Progress streaming types
+export type PackProgressStage = 'cache-check' | 'cloning' | 'repository-fetch' | 'extracting' | 'processing';
+
+export type PackProgressCallback = (stage: PackProgressStage, message?: string) => void | Promise<void>;

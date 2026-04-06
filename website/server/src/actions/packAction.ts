@@ -1,11 +1,12 @@
 import type { Context } from 'hono';
+import { stream } from 'hono/streaming';
 import { isValidRemoteValue } from 'repomix';
 import { z } from 'zod';
 import { processZipFile } from '../domains/pack/processZipFile.js';
 import { processRemoteRepo } from '../domains/pack/remoteRepo.js';
 import { FILE_SIZE_LIMITS } from '../domains/pack/utils/fileUtils.js';
 import { sanitizePattern } from '../domains/pack/utils/validation.js';
-import type { PackResult } from '../types.js';
+import type { PackProgressStage, PackResult } from '../types.js';
 import { getClientInfo } from '../utils/clientInfo.js';
 import { createErrorResponse } from '../utils/http.js';
 import { logError, logInfo } from '../utils/logger.js';
@@ -70,12 +71,12 @@ const packRequestSchema = z
   });
 
 export const packAction = async (c: Context) => {
+  // Parse and validate request before starting stream
+  let validatedData: z.infer<typeof packRequestSchema>;
+  let sanitizedOptions: { includePatterns?: string; ignorePatterns?: string } & Record<string, unknown>;
+
   try {
     const formData = await c.req.formData();
-    const requestId = c.get('requestId');
-
-    // Get client information for logging
-    const clientInfo = getClientInfo(c);
 
     // Get form data
     const format = formData.get('format') as 'xml' | 'markdown' | 'plain';
@@ -84,13 +85,13 @@ export const packAction = async (c: Context) => {
     try {
       options = optionsRaw ? JSON.parse(optionsRaw) : {};
     } catch {
-      return c.json(createErrorResponse('Invalid JSON in options', requestId), 400);
+      return c.json(createErrorResponse('Invalid JSON in options', c.get('requestId')), 400);
     }
     const file = formData.get('file') as File | null;
     const url = formData.get('url') as string | null;
 
     // Validate and sanitize request data
-    const validatedData = validateRequest(packRequestSchema, {
+    validatedData = validateRequest(packRequestSchema, {
       url: url || undefined,
       file: file || undefined,
       format,
@@ -100,55 +101,13 @@ export const packAction = async (c: Context) => {
     const sanitizedIncludePatterns = sanitizePattern(validatedData.options.includePatterns);
     const sanitizedIgnorePatterns = sanitizePattern(validatedData.options.ignorePatterns);
 
-    // Create sanitized options
-    const sanitizedOptions = {
+    sanitizedOptions = {
       ...validatedData.options,
       includePatterns: sanitizedIncludePatterns,
       ignorePatterns: sanitizedIgnorePatterns,
     };
-
-    const startTime = Date.now();
-    const beforeMemory = getMemoryUsage();
-
-    // Process file or repository
-    let result: PackResult;
-    if (validatedData.file) {
-      result = await processZipFile(validatedData.file, validatedData.format, sanitizedOptions);
-    } else {
-      // Zod schema guarantees that url is present when file is not
-      result = await processRemoteRepo(validatedData.url as string, validatedData.format, sanitizedOptions);
-    }
-
-    // Log operation result with memory usage
-    const afterMemory = getMemoryUsage();
-    const memoryDiff = calculateMemoryDiff(beforeMemory, afterMemory);
-
-    logInfo('Pack operation completed', {
-      requestId,
-      format: validatedData.format,
-      repository: result.metadata.repository,
-      duration: formatLatencyForDisplay(startTime),
-      inputType: validatedData.file ? 'file' : validatedData.url ? 'url' : 'unknown',
-      clientInfo: {
-        ip: clientInfo.ip,
-        userAgent: clientInfo.userAgent,
-      },
-      memory: {
-        before: beforeMemory,
-        after: afterMemory,
-        diff: memoryDiff,
-      },
-      metrics: {
-        totalFiles: result.metadata.summary?.totalFiles,
-        totalCharacters: result.metadata.summary?.totalCharacters,
-        totalTokens: result.metadata.summary?.totalTokens,
-      },
-    });
-
-    return c.json(result);
   } catch (error) {
-    // Handle errors
-    logError('Pack operation failed', error instanceof Error ? error : new Error('Unknown error'), {
+    logError('Pack validation failed', error instanceof Error ? error : new Error('Unknown error'), {
       requestId: c.get('requestId'),
     });
 
@@ -156,4 +115,78 @@ export const packAction = async (c: Context) => {
     const appError = handlePackError(error);
     return c.json(createErrorResponse(appError.message, c.get('requestId')), appError.statusCode);
   }
+
+  const requestId = c.get('requestId');
+  const clientInfo = getClientInfo(c);
+
+  // Skip compression for streaming response to ensure real-time progress delivery
+  // (compress middleware skips when Content-Encoding is already set)
+  c.header('Content-Encoding', 'identity');
+
+  // Stream progress events and result via NDJSON using Hono's stream helper
+  return stream(c, async (s) => {
+    const writeLine = async (data: unknown) => {
+      await s.write(`${JSON.stringify(data)}\n`);
+    };
+
+    try {
+      const sendProgress = async (stage: PackProgressStage, message?: string) => {
+        await writeLine({ type: 'progress', stage, ...(message && { message }) });
+      };
+
+      const startTime = Date.now();
+      const beforeMemory = getMemoryUsage();
+
+      // Process file or repository with progress reporting
+      let result: PackResult;
+      if (validatedData.file) {
+        result = await processZipFile(validatedData.file, validatedData.format, sanitizedOptions, sendProgress);
+      } else {
+        result = await processRemoteRepo(
+          validatedData.url as string,
+          validatedData.format,
+          sanitizedOptions,
+          sendProgress,
+        );
+      }
+
+      // Log operation result with memory usage
+      const afterMemory = getMemoryUsage();
+      const memoryDiff = calculateMemoryDiff(beforeMemory, afterMemory);
+
+      logInfo('Pack operation completed', {
+        requestId,
+        format: validatedData.format,
+        repository: result.metadata.repository,
+        duration: formatLatencyForDisplay(startTime),
+        inputType: validatedData.file ? 'file' : validatedData.url ? 'url' : 'unknown',
+        clientInfo: {
+          ip: clientInfo.ip,
+          userAgent: clientInfo.userAgent,
+        },
+        memory: {
+          before: beforeMemory,
+          after: afterMemory,
+          diff: memoryDiff,
+        },
+        metrics: {
+          totalFiles: result.metadata.summary?.totalFiles,
+          totalCharacters: result.metadata.summary?.totalCharacters,
+          totalTokens: result.metadata.summary?.totalTokens,
+        },
+      });
+
+      // Send the final result
+      await writeLine({ type: 'result', data: result });
+    } catch (error) {
+      logError('Pack operation failed', error instanceof Error ? error : new Error('Unknown error'), {
+        requestId,
+      });
+
+      const { handlePackError } = await import('../utils/errorHandler.js');
+      const appError = handlePackError(error);
+
+      await writeLine({ type: 'error', message: appError.message });
+    }
+  });
 };
