@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775481005772,
+  "lastUpdate": 1775485600209,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -2475,6 +2475,51 @@ window.BENCHMARK_DATA = {
             "range": "±184",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2420ms, Q3: 2604ms\nAll times: 2397, 2404, 2409, 2412, 2417, 2420, 2432, 2434, 2439, 2439, 2494, 2545, 2549, 2563, 2590, 2604, 2633, 2685, 2979, 3115ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6a645d86637bab9cb670a7a297944039384000f5",
+          "message": "Merge pull request #1425 from yamadashy/chore/improve-claude-md\n\nchore(agents): Improve CLAUDE.md clarity and conciseness",
+          "timestamp": "2026-04-06T23:24:46+09:00",
+          "tree_id": "bc3d4c5050625f199762755f04bc43ac27f3f858",
+          "url": "https://github.com/yamadashy/repomix/commit/6a645d86637bab9cb670a7a297944039384000f5"
+        },
+        "date": 1775485599392,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1459,
+            "range": "±237",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1285ms, Q3: 1522ms\nAll times: 1208, 1214, 1216, 1219, 1228, 1248, 1269, 1285, 1334, 1336, 1348, 1397, 1415, 1429, 1451, 1459, 1470, 1488, 1497, 1516, 1520, 1521, 1522, 1528, 1554, 1611, 1755, 1792, 1809, 1826ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1876,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1866ms, Q3: 1883ms\nAll times: 1852, 1854, 1858, 1861, 1865, 1866, 1868, 1868, 1872, 1873, 1876, 1879, 1880, 1881, 1882, 1883, 1886, 1906, 1916, 1927ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2332,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2319ms, Q3: 2342ms\nAll times: 2290, 2296, 2313, 2318, 2318, 2319, 2319, 2322, 2323, 2326, 2332, 2335, 2336, 2338, 2338, 2342, 2344, 2356, 2362, 2375ms"
           }
         ]
       }
