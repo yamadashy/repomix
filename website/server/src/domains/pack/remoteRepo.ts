@@ -67,7 +67,6 @@ export async function processRemoteRepo(
     topFilesLen: 10,
     include: options.includePatterns,
     ignore: options.ignorePatterns,
-    tokenCountTree: true,
     quiet: true,
     skipLocalConfig: true, // Prevent loading config files from untrusted cloned repositories
   } as CliOptions;
