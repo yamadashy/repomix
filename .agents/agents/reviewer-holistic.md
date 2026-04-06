@@ -1,4 +1,5 @@
 ---
+model: sonnet
 description: Review code changes for overall design concerns, side effects, integration risks, and user impact
 ---
 
