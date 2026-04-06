@@ -115,7 +115,7 @@ Los archivos de configuración JavaScript funcionan igual que TypeScript, admiti
 | `ignore.useDefaultPatterns`      | Indica si se deben usar los patrones de ignorar predeterminados (node_modules, .git, etc.)                                | `true`                 |
 | `ignore.customPatterns`          | Patrones adicionales para ignorar usando [patrones glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
 | `security.enableSecurityCheck`   | Indica si se deben realizar comprobaciones de seguridad usando Secretlint para detectar información sensible               | `true`                 |
-| `tokenCount.encoding`            | Codificación de recuento de tokens utilizada por el tokenizador [tiktoken](https://github.com/openai/tiktoken) de OpenAI. Use `o200k_base` para GPT-4o, `cl100k_base` para GPT-4/3.5. Ver [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) para más detalles. | `"o200k_base"`         |
+| `tokenCount.encoding`            | Codificación de recuento de tokens compatible con OpenAI (por ejemplo, `o200k_base` para GPT-4o, `cl100k_base` para GPT-4/3.5). Utiliza [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer). | `"o200k_base"`         |
 
 El archivo de configuración admite la sintaxis [JSON5](https://json5.org/), que permite:
 - Comentarios (tanto de una línea como multilínea)
