@@ -13,6 +13,7 @@ import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
+import type { RepomixProgressCallback } from '../../shared/types.js';
 import { reportResults } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
 import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
@@ -28,6 +29,7 @@ export const runDefaultAction = async (
   directories: string[],
   cwd: string,
   cliOptions: CliOptions,
+  progressCallback?: RepomixProgressCallback,
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', cliOptions);
 
@@ -113,16 +115,12 @@ export const runDefaultAction = async (
 
     const targetPaths = stdinFilePaths ? [cwd] : directories.map((directory) => path.resolve(cwd, directory));
 
-    packResult = await pack(
-      targetPaths,
-      config,
-      (message) => {
-        spinner.update(message);
-      },
-      {},
-      stdinFilePaths,
-      packOptions,
-    );
+    const handleProgress: RepomixProgressCallback = (message) => {
+      spinner.update(message);
+      progressCallback?.(message);
+    };
+
+    packResult = await pack(targetPaths, config, handleProgress, {}, stdinFilePaths, packOptions);
 
     spinner.succeed('Packing completed successfully!');
   } catch (error) {
