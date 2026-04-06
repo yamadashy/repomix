@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775453988992,
+  "lastUpdate": 1775457836442,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -2205,6 +2205,51 @@ window.BENCHMARK_DATA = {
             "range": "±47",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2325ms, Q3: 2372ms\nAll times: 2277, 2283, 2306, 2322, 2325, 2325, 2327, 2332, 2334, 2341, 2349, 2350, 2360, 2361, 2367, 2372, 2385, 2401, 2402, 2432ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "01f5c1a8dcdf328e56a4470e49899a85390cf42f",
+          "message": "Merge pull request #1413 from yamadashy/docs/remove-tiktoken-references\n\ndocs(core): Replace tiktoken references with gpt-tokenizer",
+          "timestamp": "2026-04-06T15:37:39+09:00",
+          "tree_id": "29e2b3a3fb48f532c14c1fb480184579f21e4eb7",
+          "url": "https://github.com/yamadashy/repomix/commit/01f5c1a8dcdf328e56a4470e49899a85390cf42f"
+        },
+        "date": 1775457835530,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1384,
+            "range": "±205",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1262ms, Q3: 1467ms\nAll times: 1160, 1163, 1227, 1230, 1247, 1249, 1261, 1262, 1277, 1294, 1306, 1327, 1343, 1355, 1383, 1384, 1394, 1406, 1410, 1414, 1450, 1452, 1467, 1484, 1495, 1621, 1683, 1688, 1729, 1834ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1865,
+            "range": "±53",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1846ms, Q3: 1899ms\nAll times: 1818, 1825, 1827, 1840, 1842, 1846, 1856, 1857, 1860, 1862, 1865, 1875, 1876, 1885, 1886, 1899, 1907, 1912, 1935, 2057ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2363,
+            "range": "±55",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2348ms, Q3: 2403ms\nAll times: 2280, 2311, 2334, 2338, 2340, 2348, 2352, 2355, 2357, 2358, 2363, 2364, 2368, 2370, 2379, 2403, 2408, 2454, 2671, 3003ms"
           }
         ]
       }
