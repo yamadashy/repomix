@@ -3,12 +3,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
+import type { SuspiciousFileResult } from '../../../src/core/security/secretLintRunner.js';
 import { createSecretLintConfig, runSecretLint } from '../../../src/core/security/secretLintRunner.js';
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
-import type { SuspiciousFileResult } from '../../../src/core/security/secretLintRunner.js';
 import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
-import type { TaskRunner } from '../../../src/shared/processConcurrency.js';
 import { logger } from '../../../src/shared/logger.js';
+import type { TaskRunner } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
@@ -46,9 +46,7 @@ const createRealSecretlintTaskRunner = () => {
   });
 };
 
-const createMockInitTaskRunner = (
-  runFn: (task: SecurityCheckTask) => Promise<(SuspiciousFileResult | null)[]>,
-) => {
+const createMockInitTaskRunner = (runFn: (task: SecurityCheckTask) => Promise<(SuspiciousFileResult | null)[]>) => {
   return vi.fn().mockReturnValue({
     run: runFn,
     cleanup: vi.fn().mockResolvedValue(undefined),
@@ -74,9 +72,7 @@ describe('runSecurityCheck', () => {
     });
 
     // Worker-based approach reports start and end progress
-    expect(progressCallback).toHaveBeenCalledWith(
-      expect.stringContaining('Running security check...'),
-    );
+    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Running security check...'));
   });
 
   it('should handle errors gracefully', async () => {
@@ -161,9 +157,7 @@ describe('runSecurityCheck', () => {
     );
 
     expect(mockRun).toHaveBeenCalledWith({
-      items: expect.arrayContaining([
-        expect.objectContaining({ filePath: 'Git log history', type: 'gitLog' }),
-      ]),
+      items: expect.arrayContaining([expect.objectContaining({ filePath: 'Git log history', type: 'gitLog' })]),
     });
   });
 
