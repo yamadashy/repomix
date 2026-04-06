@@ -24,7 +24,7 @@ const fetchGitHubRepoSize = async (repoInfo: GitHubRepoInfo): Promise<number | n
       'User-Agent': 'Repomix',
     };
 
-    const token = process.env.GITHUB_TOKEN;
+    const token = process.env.GITHUB_TOKEN_REPO_SIZE_CHECK;
     if (token) {
       headers.Authorization = `token ${token}`;
     }
