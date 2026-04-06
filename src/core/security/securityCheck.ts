@@ -21,8 +21,10 @@ export interface SuspiciousFileResult {
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
 // Each batch is sent as a single message to a worker thread, avoiding
 // per-file round-trip costs that dominate when processing many files.
-// A moderate batch size (50) reduces IPC round-trips by ~98% (990 → 20 for a typical repo)
-// while keeping enough batches to utilize all available CPU cores.
+// Security check always processes all files (~1000 in a typical repo), so a batch size of 50
+// already produces ~20 batches — enough to distribute well across available CPU cores.
+// (Unlike metrics, which may process only a small number of top files when tokenCountTree
+// is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
 const BATCH_SIZE = 50;
 
 export const runSecurityCheck = async (
