@@ -1,10 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import {
-  getProcessConcurrency,
-  getWorkerThreadCount,
-  initTaskRunner,
-  type TaskRunner,
-} from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -14,6 +9,7 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
+import type { MetricsTaskRunner } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 
@@ -28,7 +24,7 @@ export interface CalculateMetricsResult {
 }
 
 export interface MetricsTaskRunnerWithWarmup {
-  taskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult>;
+  taskRunner: MetricsTaskRunner;
   warmupPromise: Promise<unknown>;
 }
 
@@ -70,7 +66,7 @@ const defaultDeps = {
   calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
-  taskRunner: undefined as TaskRunner<MetricsWorkerTask, MetricsWorkerResult> | undefined,
+  taskRunner: undefined as MetricsTaskRunner | undefined,
 };
 
 export const calculateMetrics = async (

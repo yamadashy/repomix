@@ -1,7 +1,6 @@
 import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
+import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
-import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 
 // Target ~200KB per chunk to balance tokenization throughput and worker round-trip overhead.
 // Benchmarks show 200K is the sweet spot: fewer round-trips than 100K with enough chunks
@@ -13,7 +12,7 @@ export const calculateOutputMetrics = async (
   content: string,
   encoding: TokenEncoding,
   path: string | undefined,
-  deps: { taskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> },
+  deps: { taskRunner: MetricsTaskRunner },
 ): Promise<number> => {
   const shouldRunInParallel = content.length > MIN_CONTENT_LENGTH_FOR_PARALLEL;
 
@@ -34,7 +33,7 @@ export const calculateOutputMetrics = async (
       // Process chunks in parallel
       const chunkResults = await Promise.all(
         chunks.map(async (chunk, index) => {
-          return deps.taskRunner.run({
+          return runTokenCount(deps.taskRunner, {
             content: chunk,
             encoding,
             path: path ? `${path}-chunk-${index}` : undefined,
@@ -46,11 +45,11 @@ export const calculateOutputMetrics = async (
       result = (chunkResults as number[]).reduce((sum, count) => sum + count, 0);
     } else {
       // Process small content directly
-      result = (await deps.taskRunner.run({
+      result = await runTokenCount(deps.taskRunner, {
         content,
         encoding,
         path,
-      })) as number;
+      });
     }
 
     const endTime = process.hrtime.bigint();

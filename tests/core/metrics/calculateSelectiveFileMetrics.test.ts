@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { calculateSelectiveFileMetrics } from '../../../src/core/metrics/calculateSelectiveFileMetrics.js';
+import type { MetricsTaskRunner } from '../../../src/core/metrics/metricsWorkerRunner.js';
 import {
   countTokens,
-  type MetricsWorkerResult,
   type MetricsWorkerTask,
   type TokenCountBatchTask,
   type TokenCountTask,
@@ -15,21 +15,18 @@ vi.mock('../../shared/processConcurrency', () => ({
   getProcessConcurrency: () => 1,
 }));
 
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
+const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
   return {
-    run: async (task: T): Promise<R> => {
-      const workerTask = task as MetricsWorkerTask;
-      if ('items' in workerTask) {
-        // Batch mode: count tokens for each item
-        const batchTask = workerTask as TokenCountBatchTask;
-        const results = await Promise.all(
+    run: async (task: MetricsWorkerTask) => {
+      if ('items' in task) {
+        const batchTask = task as TokenCountBatchTask;
+        return Promise.all(
           batchTask.items.map((item) =>
             countTokens({ content: item.content, encoding: batchTask.encoding, path: item.path }),
           ),
         );
-        return results as R;
       }
-      return (await countTokens(workerTask as TokenCountTask)) as R;
+      return countTokens(task as TokenCountTask);
     },
     cleanup: async () => {
       // Mock cleanup - no-op for tests

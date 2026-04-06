@@ -1,10 +1,9 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
+import { type MetricsTaskRunner, runBatchTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
-import type { MetricsWorkerResult, MetricsWorkerTask, TokenCountBatchTask } from './workers/calculateMetricsWorker.js';
 import type { FileMetrics } from './workers/types.js';
 
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
@@ -21,7 +20,7 @@ export const calculateSelectiveFileMetrics = async (
   targetFilePaths: string[],
   tokenCounterEncoding: TokenEncoding,
   progressCallback: RepomixProgressCallback,
-  deps: { taskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> },
+  deps: { taskRunner: MetricsTaskRunner },
 ): Promise<FileMetrics[]> => {
   const targetFileSet = new Set(targetFilePaths);
   const filesToProcess = processedFiles.filter((file) => targetFileSet.has(file.path));
@@ -43,16 +42,13 @@ export const calculateSelectiveFileMetrics = async (
     logger.trace(`Split ${filesToProcess.length} files into ${batches.length} batches for token counting`);
 
     let completedItems = 0;
-    const allResults: FileMetrics[] = [];
 
     const batchResults = await Promise.all(
       batches.map(async (batch) => {
-        const batchTask: TokenCountBatchTask = {
+        const tokenCounts = await runBatchTokenCount(deps.taskRunner, {
           items: batch.map((file) => ({ content: file.content, path: file.path })),
           encoding: tokenCounterEncoding,
-        };
-
-        const tokenCounts = (await deps.taskRunner.run(batchTask)) as number[];
+        });
 
         const results: FileMetrics[] = batch.map((file, index) => ({
           path: file.path,
@@ -71,7 +67,7 @@ export const calculateSelectiveFileMetrics = async (
       }),
     );
 
-    allResults.push(...batchResults.flat());
+    const allResults = batchResults.flat();
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;

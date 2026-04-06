@@ -2,18 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitLogResult } from '../../../src/core/git/gitLogHandle.js';
 import { calculateGitLogMetrics } from '../../../src/core/metrics/calculateGitLogMetrics.js';
+import type { MetricsTaskRunner } from '../../../src/core/metrics/metricsWorkerRunner.js';
 import {
   countTokens,
-  type MetricsWorkerResult,
   type MetricsWorkerTask,
   type TokenCountTask,
 } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
-import type { TaskRunner, WorkerOptions } from '../../../src/shared/processConcurrency.js';
+import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 
-const mockInitTaskRunner = (_options: WorkerOptions): TaskRunner<MetricsWorkerTask, MetricsWorkerResult> => {
+const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
   return {
     run: async (task: MetricsWorkerTask) => {
       return await countTokens(task as TokenCountTask);
@@ -174,7 +174,7 @@ describe('calculateGitLogMetrics', () => {
 
       const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(15);
 
-      const customTaskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> = {
+      const customTaskRunner: MetricsTaskRunner = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
       };
@@ -248,7 +248,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         commits: [],
       };
 
-      const errorTaskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> = {
+      const errorTaskRunner: MetricsTaskRunner = {
         run: vi.fn().mockRejectedValue(new Error('Task runner failed')),
         cleanup: async () => {},
       };
@@ -335,7 +335,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
 
       const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(10);
 
-      const customTaskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> = {
+      const customTaskRunner: MetricsTaskRunner = {
         run: mockTaskRunnerSpy,
         cleanup: async () => {},
       };

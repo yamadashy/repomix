@@ -1,8 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
+import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 
 /**
  * Calculate token count for git diffs if included
@@ -10,7 +9,7 @@ import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculate
 export const calculateGitDiffMetrics = async (
   config: RepomixConfigMerged,
   gitDiffResult: GitDiffResult | undefined,
-  deps: { taskRunner: TaskRunner<MetricsWorkerTask, MetricsWorkerResult> },
+  deps: { taskRunner: MetricsTaskRunner },
 ): Promise<number> => {
   if (!config.output.git?.includeDiffs || !gitDiffResult) {
     return 0;
@@ -25,11 +24,11 @@ export const calculateGitDiffMetrics = async (
     const startTime = process.hrtime.bigint();
     logger.trace('Starting git diff token calculation using worker');
 
-    const countPromises: Promise<MetricsWorkerResult>[] = [];
+    const countPromises: Promise<number>[] = [];
 
     if (gitDiffResult.workTreeDiffContent) {
       countPromises.push(
-        deps.taskRunner.run({
+        runTokenCount(deps.taskRunner, {
           content: gitDiffResult.workTreeDiffContent,
           encoding: config.tokenCount.encoding,
         }),
@@ -37,7 +36,7 @@ export const calculateGitDiffMetrics = async (
     }
     if (gitDiffResult.stagedDiffContent) {
       countPromises.push(
-        deps.taskRunner.run({
+        runTokenCount(deps.taskRunner, {
           content: gitDiffResult.stagedDiffContent,
           encoding: config.tokenCount.encoding,
         }),
