@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Repomix
 
-A tool that packs repository contents into a single AI-friendly file. Supports XML, Markdown, and plain text output formats.
+A tool that packs repository contents into a single AI-friendly file. Supports XML, Markdown, JSON, and plain text output formats.
 
 Refer to `README.md` for full project overview and `CONTRIBUTING.md` for contribution procedures.
 
