@@ -41,7 +41,7 @@ repomix/
 
 # Coding Guidelines
 
-- Follow the Airbnb JavaScript Style Guide
+- Follow the project's coding standards enforced by Biome (`biome.json`)
 - Maintain feature-based directory structure and avoid dependencies between features
 - Split files exceeding 250 lines into multiple files based on functionality
 - Add comments in English where non-obvious logic exists
