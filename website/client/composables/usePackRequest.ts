@@ -1,5 +1,5 @@
 import { computed, onMounted, ref } from 'vue';
-import type { FileInfo, PackResult } from '../components/api/client';
+import type { FileInfo, PackProgressStage, PackResult } from '../components/api/client';
 import { handlePackRequest } from '../components/utils/requestHandlers';
 import { isValidRemoteValue } from '../components/utils/validation';
 import { parseUrlParameters } from '../utils/urlParams';
@@ -24,6 +24,7 @@ export function usePackRequest() {
   const errorType = ref<'error' | 'warning'>('error');
   const result = ref<PackResult | null>(null);
   const hasExecuted = ref(false);
+  const progressStage = ref<PackProgressStage | null>(null);
 
   // Request controller for cancellation
   let requestController: AbortController | null = null;
@@ -71,6 +72,7 @@ export function usePackRequest() {
     errorType.value = 'error';
     result.value = null;
     hasExecuted.value = true;
+    progressStage.value = null;
     inputRepositoryUrl.value = inputUrl.value;
 
     // Set up automatic timeout
@@ -92,6 +94,9 @@ export function usePackRequest() {
           onAbort: (message) => {
             error.value = message;
             errorType.value = 'warning';
+          },
+          onProgress: (stage) => {
+            progressStage.value = stage;
           },
           signal: requestController.signal,
           file: mode.value === 'file' || mode.value === 'folder' ? uploadedFile.value || undefined : undefined,
@@ -175,6 +180,7 @@ export function usePackRequest() {
     errorType,
     result,
     hasExecuted,
+    progressStage,
 
     // Computed
     isSubmitValid,

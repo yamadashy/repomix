@@ -21,7 +21,6 @@ export interface PackRequest {
   url: string;
   format: 'xml' | 'markdown' | 'plain';
   options: PackOptions;
-  signal?: AbortSignal;
   file?: File;
 }
 
@@ -62,9 +61,45 @@ export class ApiError extends Error {
   }
 }
 
+export type PackProgressStage = 'cache-check' | 'repository-fetch' | 'extracting' | 'processing';
+
+export interface PackStreamCallbacks {
+  onProgress?: (stage: PackProgressStage) => void;
+  signal?: AbortSignal;
+}
+
 const API_BASE_URL = import.meta.env.PROD ? 'https://api.repomix.com' : 'http://localhost:8080';
 
-export async function packRepository(request: PackRequest): Promise<PackResult> {
+interface ParsedSSEEvent {
+  event: string;
+  data: string;
+}
+
+function parseSSEChunk(text: string): { events: ParsedSSEEvent[]; remaining: string } {
+  const events: ParsedSSEEvent[] = [];
+  const blocks = text.split('\n\n');
+  const remaining = blocks.pop() || '';
+
+  for (const block of blocks) {
+    if (!block.trim()) continue;
+    let event = '';
+    const dataLines: string[] = [];
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event:')) {
+        event = line.slice(6).trim();
+      } else if (line.startsWith('data:')) {
+        dataLines.push(line.slice(5).trim());
+      }
+    }
+    if (event || dataLines.length > 0) {
+      events.push({ event, data: dataLines.join('\n') });
+    }
+  }
+
+  return { events, remaining };
+}
+
+export async function packRepository(request: PackRequest, callbacks?: PackStreamCallbacks): Promise<PackResult> {
   const formData = new FormData();
 
   if (request.file) {
@@ -78,14 +113,54 @@ export async function packRepository(request: PackRequest): Promise<PackResult> 
   const response = await fetch(`${API_BASE_URL}/api/pack`, {
     method: 'POST',
     body: formData,
-    signal: request.signal,
+    signal: callbacks?.signal,
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
+  // Handle non-streaming error responses (validation errors return JSON)
+  const contentType = response.headers.get('content-type') || '';
+  if (!response.ok || contentType.includes('application/json')) {
+    const data = await response.json();
     throw new ApiError((data as ErrorResponse).error);
   }
 
-  return data as PackResult;
+  // Handle SSE stream
+  if (!response.body) {
+    throw new ApiError('No response body received');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let result: PackResult | null = null;
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const { events, remaining } = parseSSEChunk(buffer);
+      buffer = remaining;
+
+      for (const sseEvent of events) {
+        if (sseEvent.event === 'progress') {
+          const data = JSON.parse(sseEvent.data) as { stage: PackProgressStage };
+          callbacks?.onProgress?.(data.stage);
+        } else if (sseEvent.event === 'result') {
+          result = JSON.parse(sseEvent.data) as PackResult;
+        } else if (sseEvent.event === 'error') {
+          const data = JSON.parse(sseEvent.data) as { message: string };
+          throw new ApiError(data.message);
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (!result) {
+    throw new ApiError('No result received from server');
+  }
+
+  return result;
 }

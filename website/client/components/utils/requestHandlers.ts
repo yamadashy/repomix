@@ -1,4 +1,4 @@
-import type { PackOptions, PackRequest, PackResult } from '../api/client';
+import type { PackOptions, PackProgressStage, PackRequest, PackResult } from '../api/client';
 import { packRepository } from '../api/client';
 import { type AnalyticsActionType, analyticsUtils } from './analytics';
 
@@ -6,6 +6,7 @@ interface RequestHandlerOptions {
   onSuccess?: (result: PackResult) => void;
   onError?: (error: string) => void;
   onAbort?: (message: string) => void;
+  onProgress?: (stage: PackProgressStage) => void;
   signal?: AbortSignal;
   file?: File;
 }
@@ -19,7 +20,7 @@ export async function handlePackRequest(
   options: PackOptions,
   handlerOptions: RequestHandlerOptions = {},
 ): Promise<void> {
-  const { onSuccess, onError, onAbort, signal, file } = handlerOptions;
+  const { onSuccess, onError, onAbort, onProgress, signal, file } = handlerOptions;
   const processedUrl = url.trim();
 
   // Track pack start
@@ -30,11 +31,13 @@ export async function handlePackRequest(
       url: processedUrl,
       format,
       options,
-      signal,
       file,
     };
 
-    const response = await packRepository(request);
+    const response = await packRepository(request, {
+      onProgress,
+      signal,
+    });
 
     // Track successful pack
     if (response.metadata.summary) {

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { unzip } from 'fflate';
 import { type CliOptions, runDefaultAction, setLogLevel } from 'repomix';
-import type { PackOptions, PackResult } from '../../types.js';
+import type { PackOptions, PackProgressCallback, PackResult } from '../../types.js';
 import { AppError } from '../../utils/errorHandler.js';
 import { logMemoryUsage } from '../../utils/logger.js';
 import { cleanupTempDirectory, copyOutputToCurrentDirectory, createTempDirectory } from './utils/fileUtils.js';
@@ -20,7 +20,12 @@ const ZIP_SECURITY_LIMITS = {
 /**
  * Process an uploaded ZIP file
  */
-export async function processZipFile(file: File, format: string, options: PackOptions): Promise<PackResult> {
+export async function processZipFile(
+  file: File,
+  format: string,
+  options: PackOptions,
+  onProgress?: PackProgressCallback,
+): Promise<PackResult> {
   if (!file) {
     throw new AppError('File is required for file processing', 400);
   }
@@ -58,9 +63,11 @@ export async function processZipFile(file: File, format: string, options: PackOp
     });
 
     // Extract the ZIP file to the temporary directory with enhanced security checks
+    await onProgress?.('extracting');
     await extractZipWithSecurity(file, tempDirPath);
 
     // Execute default action on the extracted directory
+    await onProgress?.('processing');
     const result = await runDefaultAction([tempDirPath], tempDirPath, cliOptions);
     await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
     const { packResult } = result;

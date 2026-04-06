@@ -1,13 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { type CliOptions, runCli } from 'repomix';
-import type { PackOptions, PackResult } from '../../types.js';
+import type { PackOptions, PackProgressCallback, PackResult } from '../../types.js';
 import { AppError } from '../../utils/errorHandler.js';
 import { logMemoryUsage } from '../../utils/logger.js';
 import { generateCacheKey } from './utils/cache.js';
 import { cache } from './utils/sharedInstance.js';
 
-export async function processRemoteRepo(repoUrl: string, format: string, options: PackOptions): Promise<PackResult> {
+export async function processRemoteRepo(
+  repoUrl: string,
+  format: string,
+  options: PackOptions,
+  onProgress?: PackProgressCallback,
+): Promise<PackResult> {
   if (!repoUrl) {
     throw new AppError('Repository URL is required for remote processing', 400);
   }
@@ -16,10 +21,13 @@ export async function processRemoteRepo(repoUrl: string, format: string, options
   const cacheKey = generateCacheKey(repoUrl, format, options, 'url');
 
   // Check if the result is already cached
+  await onProgress?.('cache-check');
   const cachedResult = await cache.get(cacheKey);
   if (cachedResult) {
     return cachedResult;
   }
+
+  await onProgress?.('repository-fetch');
 
   const outputFilePath = `repomix-output-${randomUUID()}.txt`;
 

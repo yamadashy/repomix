@@ -96,6 +96,7 @@
           :error-type="errorType"
           :repository-url="inputRepositoryUrl"
           :pack-options="packOptions"
+          :progress-stage="progressStage"
           @repack="handleRepack"
         />
       </div>
@@ -136,6 +137,7 @@ const {
   errorType,
   result,
   hasExecuted,
+  progressStage,
 
   // Computed
   isSubmitValid,
