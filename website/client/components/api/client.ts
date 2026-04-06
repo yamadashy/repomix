@@ -61,7 +61,7 @@ export class ApiError extends Error {
   }
 }
 
-export type PackProgressStage = 'cache-check' | 'repository-fetch' | 'extracting' | 'processing';
+export type PackProgressStage = 'cache-check' | 'cloning' | 'repository-fetch' | 'extracting' | 'processing';
 
 export interface PackStreamCallbacks {
   onProgress?: (stage: PackProgressStage) => void;

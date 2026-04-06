@@ -51,6 +51,6 @@ export interface ErrorResponse {
 }
 
 // Progress streaming types
-export type PackProgressStage = 'cache-check' | 'repository-fetch' | 'extracting' | 'processing';
+export type PackProgressStage = 'cache-check' | 'cloning' | 'repository-fetch' | 'extracting' | 'processing';
 
 export type PackProgressCallback = (stage: PackProgressStage) => void | Promise<void>;

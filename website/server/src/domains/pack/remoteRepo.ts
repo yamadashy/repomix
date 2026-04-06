@@ -1,11 +1,33 @@
+import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
-import { type CliOptions, runCli } from 'repomix';
+import { promisify } from 'node:util';
+import { type CliOptions, parseRemoteValue, runDefaultAction, setLogLevel } from 'repomix';
 import type { PackOptions, PackProgressCallback, PackResult } from '../../types.js';
 import { AppError } from '../../utils/errorHandler.js';
 import { logMemoryUsage } from '../../utils/logger.js';
 import { generateCacheKey } from './utils/cache.js';
+import { cleanupTempDirectory, copyOutputToCurrentDirectory, createTempDirectory } from './utils/fileUtils.js';
 import { cache } from './utils/sharedInstance.js';
+
+const execFileAsync = promisify(execFile);
+
+async function cloneRepository(repoUrl: string, destPath: string, branch?: string): Promise<void> {
+  const args = ['clone', '--depth', '1', '--single-branch'];
+  if (branch) {
+    args.push('--branch', branch);
+  }
+  args.push(repoUrl, destPath);
+
+  try {
+    await execFileAsync('git', args, { timeout: 60_000 });
+  } catch (error) {
+    throw new AppError(
+      `Failed to clone repository.\nThe repository may not be public or the URL may be invalid.\n\n${(error as Error).message}`,
+      500,
+    );
+  }
+}
 
 export async function processRemoteRepo(
   repoUrl: string,
@@ -27,13 +49,14 @@ export async function processRemoteRepo(
     return cachedResult;
   }
 
-  await onProgress?.('repository-fetch');
-
+  // Clone the repository
+  await onProgress?.('cloning');
+  const parsed = parseRemoteValue(repoUrl);
+  const tempDirPath = await createTempDirectory();
   const outputFilePath = `repomix-output-${randomUUID()}.txt`;
 
-  // Create CLI options with correct mapping
+  // Create CLI options for runDefaultAction (no 'remote' needed since we clone ourselves)
   const cliOptions = {
-    remote: repoUrl,
     output: outputFilePath,
     style: format,
     parsableStyle: options.outputParsable,
@@ -47,9 +70,11 @@ export async function processRemoteRepo(
     topFilesLen: 10,
     include: options.includePatterns,
     ignore: options.ignorePatterns,
-    tokenCountTree: true, // Required to generate token counts for all files in the repository
-    quiet: true, // Enable quiet mode to suppress output
+    tokenCountTree: true,
+    quiet: true,
   } as CliOptions;
+
+  setLogLevel(-1);
 
   try {
     // Log memory usage before processing
@@ -58,11 +83,13 @@ export async function processRemoteRepo(
       format: format,
     });
 
-    // Execute remote action
-    const result = await runCli(['.'], process.cwd(), cliOptions);
-    if (!result) {
-      throw new AppError('Remote action failed to return a result', 500);
-    }
+    // Clone the repository to temp directory
+    await cloneRepository(parsed.repoUrl, tempDirPath, parsed.remoteBranch);
+
+    // Process the cloned repository
+    await onProgress?.('processing');
+    const result = await runDefaultAction([tempDirPath], tempDirPath, cliOptions);
+    await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
     const { packResult } = result;
 
     // Read the generated file
@@ -92,7 +119,7 @@ export async function processRemoteRepo(
           .map(([path]) => ({
             path,
             tokenCount: packResult.fileTokenCounts[path] || 0,
-            selected: true, // Default to selected for initial packing
+            selected: true,
           }))
           .sort((a, b) => b.tokenCount - a.tokenCount),
       },
@@ -112,6 +139,9 @@ export async function processRemoteRepo(
     return packResultData;
   } catch (error) {
     console.error('Error in remote repository processing:', error);
+    if (error instanceof AppError) {
+      throw error;
+    }
     if (error instanceof Error) {
       throw new AppError(
         `Remote repository processing failed.\nThe repository may not be public or there may be an issue with Repomix.\n\n${error.message}`,
@@ -123,12 +153,11 @@ export async function processRemoteRepo(
       500,
     );
   } finally {
-    // Clean up the output file
+    cleanupTempDirectory(tempDirPath);
     try {
       await fs.unlink(outputFilePath);
-    } catch (err) {
+    } catch {
       // Ignore file deletion errors
-      console.warn('Failed to cleanup output file:', err);
     }
   }
 }

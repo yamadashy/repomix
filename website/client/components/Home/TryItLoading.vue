@@ -10,6 +10,7 @@ const props = defineProps<Props>();
 
 const stageMessages: Record<PackProgressStage, string> = {
   'cache-check': 'Checking cache...',
+  cloning: 'Cloning repository...',
   'repository-fetch': 'Fetching repository...',
   extracting: 'Extracting files...',
   processing: 'Processing files...',
