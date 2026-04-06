@@ -1,3 +1,5 @@
+import { GptEncoding } from 'gpt-tokenizer/GptEncoding';
+import { resolveEncodingAsync } from 'gpt-tokenizer/resolveEncodingAsync';
 import { logger } from '../../shared/logger.js';
 
 // Supported token encoding types (OpenAI encoding names)
@@ -25,9 +27,11 @@ const loadEncoding = async (encodingName: TokenEncoding): Promise<CountTokensFn>
 
   const startTime = process.hrtime.bigint();
 
-  // Dynamic import of the specific encoding module from gpt-tokenizer
-  const mod = await import(`gpt-tokenizer/encoding/${encodingName}`);
-  const countFn = mod.countTokens as CountTokensFn;
+  // Use resolveEncodingAsync to lazily load BPE rank data, then create a GptEncoding instance.
+  // resolveEncodingAsync uses static import paths internally, so bundlers (rolldown) can resolve them.
+  const bpeRanks = await resolveEncodingAsync(encodingName);
+  const encoder = GptEncoding.getEncodingApi(encodingName, () => bpeRanks);
+  const countFn = encoder.countTokens.bind(encoder) as CountTokensFn;
   encodingModules.set(encodingName, countFn);
 
   const endTime = process.hrtime.bigint();
