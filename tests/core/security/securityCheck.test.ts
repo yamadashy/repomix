@@ -8,7 +8,6 @@ import { createSecretLintConfig, runSecretLint } from '../../../src/core/securit
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
 import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger } from '../../../src/shared/logger.js';
-import type { TaskRunner } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 

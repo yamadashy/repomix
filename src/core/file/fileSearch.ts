@@ -192,8 +192,10 @@ export const searchFiles = async (
     logger.debug('[globby] Starting file search...');
     const globbyStartTime = Date.now();
 
-    const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+
+    const fileSearchPromise = globby(includePatterns, {
+      ...baseGlobbyOptions,
       onlyFiles: true,
     }).catch((error: unknown) => {
       // Handle EPERM errors specifically
@@ -207,30 +209,50 @@ export const searchFiles = async (
       throw error;
     });
 
-    const globbyElapsedTime = Date.now() - globbyStartTime;
-    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
-
+    // Run directory search in parallel with file search when empty directory
+    // tracking is enabled. Both globby calls traverse the same filesystem tree,
+    // so running them concurrently overlaps the I/O wait and pattern matching.
     let emptyDirPaths: string[] = [];
     if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories...');
-      const emptyDirStartTime = Date.now();
+      logger.debug('[empty dirs] Searching for empty directories (parallel with file search)...');
 
-      const directories = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyDirectories: true,
-      });
+      const [filePaths, directories] = await Promise.all([
+        fileSearchPromise,
+        globby(includePatterns, {
+          ...baseGlobbyOptions,
+          onlyDirectories: true,
+        }).catch((error: unknown) => {
+          const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
+          if (code === 'EPERM' || code === 'EACCES') {
+            throw new PermissionError(
+              `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
+              rootDir,
+            );
+          }
+          throw error;
+        }),
+      ]);
 
-      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
+      const globbyElapsedTime = Date.now() - globbyStartTime;
+      logger.debug(
+        `[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files, ${directories.length} directories`,
+      );
 
       const filterStartTime = Date.now();
       emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
+
+      return {
+        filePaths: sortPaths(filePaths),
+        emptyDirPaths: sortPaths(emptyDirPaths),
+      };
     }
 
-    logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
-    logger.trace(`Filtered ${filePaths.length} files`);
+    const filePaths = await fileSearchPromise;
+
+    const globbyElapsedTime = Date.now() - globbyStartTime;
+    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
 
     return {
       filePaths: sortPaths(filePaths),
