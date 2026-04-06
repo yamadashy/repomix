@@ -4,6 +4,7 @@ import type { PackProgressStage } from '../api/client';
 
 interface Props {
   stage?: PackProgressStage | null;
+  message?: string | null;
 }
 
 const props = defineProps<Props>();
@@ -17,6 +18,9 @@ const stageMessages: Record<PackProgressStage, string> = {
 };
 
 const displayMessage = computed(() => {
+  if (props.message) {
+    return props.message;
+  }
   if (props.stage && stageMessages[props.stage]) {
     return stageMessages[props.stage];
   }

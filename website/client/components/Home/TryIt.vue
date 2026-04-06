@@ -97,6 +97,7 @@
           :repository-url="inputRepositoryUrl"
           :pack-options="packOptions"
           :progress-stage="progressStage"
+          :progress-message="progressMessage"
           @repack="handleRepack"
         />
       </div>
@@ -138,6 +139,7 @@ const {
   result,
   hasExecuted,
   progressStage,
+  progressMessage,
 
   // Computed
   isSubmitValid,

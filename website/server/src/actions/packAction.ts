@@ -130,8 +130,8 @@ export const packAction = async (c: Context) => {
     };
 
     try {
-      const sendProgress = async (stage: PackProgressStage) => {
-        await writeLine({ type: 'progress', stage });
+      const sendProgress = async (stage: PackProgressStage, message?: string) => {
+        await writeLine({ type: 'progress', stage, ...(message && { message }) });
       };
 
       const startTime = Date.now();

@@ -68,7 +68,10 @@ export async function processZipFile(
 
     // Execute default action on the extracted directory
     await onProgress?.('processing');
-    const result = await runDefaultAction([tempDirPath], tempDirPath, cliOptions);
+    const packProgressCallback = (message: string) => {
+      onProgress?.('processing', message);
+    };
+    const result = await runDefaultAction([tempDirPath], tempDirPath, cliOptions, packProgressCallback);
     await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
     const { packResult } = result;
 

@@ -17,6 +17,7 @@ interface Props {
   repositoryUrl?: string;
   packOptions?: PackOptions;
   progressStage?: PackProgressStage | null;
+  progressMessage?: string | null;
 }
 
 interface Emits {
@@ -52,7 +53,7 @@ const handleRepack = (selectedFiles: FileInfo[]) => {
 <template>
   <div class="result-viewer">
     <template v-if="loading && !result">
-      <TryItLoading :stage="progressStage" />
+      <TryItLoading :stage="progressStage" :message="progressMessage" />
       <SupportMessage />
     </template>
     <TryItResultErrorContent

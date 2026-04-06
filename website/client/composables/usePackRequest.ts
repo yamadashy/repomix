@@ -25,6 +25,7 @@ export function usePackRequest() {
   const result = ref<PackResult | null>(null);
   const hasExecuted = ref(false);
   const progressStage = ref<PackProgressStage | null>(null);
+  const progressMessage = ref<string | null>(null);
 
   // Request controller for cancellation
   let requestController: AbortController | null = null;
@@ -73,6 +74,7 @@ export function usePackRequest() {
     result.value = null;
     hasExecuted.value = true;
     progressStage.value = null;
+    progressMessage.value = null;
     inputRepositoryUrl.value = inputUrl.value;
 
     // Set up automatic timeout
@@ -95,8 +97,9 @@ export function usePackRequest() {
             error.value = message;
             errorType.value = 'warning';
           },
-          onProgress: (stage) => {
+          onProgress: (stage, message) => {
             progressStage.value = stage;
+            progressMessage.value = message ?? null;
           },
           signal: requestController.signal,
           file: mode.value === 'file' || mode.value === 'folder' ? uploadedFile.value || undefined : undefined,
@@ -181,6 +184,7 @@ export function usePackRequest() {
     result,
     hasExecuted,
     progressStage,
+    progressMessage,
 
     // Computed
     isSubmitValid,

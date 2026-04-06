@@ -6,7 +6,7 @@ interface RequestHandlerOptions {
   onSuccess?: (result: PackResult) => void;
   onError?: (error: string) => void;
   onAbort?: (message: string) => void;
-  onProgress?: (stage: PackProgressStage) => void;
+  onProgress?: (stage: PackProgressStage, message?: string) => void;
   signal?: AbortSignal;
   file?: File;
 }

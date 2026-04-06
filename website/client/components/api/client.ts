@@ -64,7 +64,7 @@ export class ApiError extends Error {
 export type PackProgressStage = 'cache-check' | 'cloning' | 'repository-fetch' | 'extracting' | 'processing';
 
 export interface PackStreamCallbacks {
-  onProgress?: (stage: PackProgressStage) => void;
+  onProgress?: (stage: PackProgressStage, message?: string) => void;
   signal?: AbortSignal;
 }
 
@@ -74,6 +74,7 @@ const API_BASE_URL = import.meta.env.PROD ? 'https://api.repomix.com' : 'http://
 interface ProgressEvent {
   type: 'progress';
   stage: PackProgressStage;
+  message?: string;
 }
 
 interface ResultEvent {
@@ -137,7 +138,7 @@ export async function packRepository(request: PackRequest, callbacks?: PackStrea
 
         const event = JSON.parse(line) as StreamEvent;
         if (event.type === 'progress') {
-          callbacks?.onProgress?.(event.stage);
+          callbacks?.onProgress?.(event.stage, event.message);
         } else if (event.type === 'result') {
           result = event.data;
         } else if (event.type === 'error') {
