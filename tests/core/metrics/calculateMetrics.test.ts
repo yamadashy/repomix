@@ -130,8 +130,8 @@ describe('createMetricsTaskRunner', () => {
 
     const callCount = (result.taskRunner.run as Mock).mock.calls.length;
     const { getWorkerThreadCount } = await import('../../../src/shared/processConcurrency.js');
-    // maxMetricsWorkers caps at processConcurrency - 1, so cappedNumOfTasks is used
-    const maxMetricsWorkers = Math.max(1, (await import('node:os')).default.availableParallelism() - 1);
+    // maxMetricsWorkers uses all available cores for maximum throughput
+    const maxMetricsWorkers = Math.max(1, (await import('node:os')).default.availableParallelism());
     const cappedNumOfTasks = Math.min(1000, maxMetricsWorkers * 100);
     const { maxThreads } = getWorkerThreadCount(cappedNumOfTasks);
     expect(callCount).toBe(maxThreads);

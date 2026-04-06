@@ -39,12 +39,11 @@ export interface MetricsTaskRunnerWithWarmup {
  * output generation).
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
-  // Cap metrics workers at (processConcurrency - 1) to leave CPU headroom for the
-  // security worker pool that runs concurrently during the pipeline overlap phase.
-  // Benchmarks show 3 workers on a 4-core machine is optimal: the slightly longer
-  // tokenization is offset by faster warmup (less contention during gpt-tokenizer loading).
-  // Ensure at least 1 worker on single-core machines.
-  const maxMetricsWorkers = Math.max(1, getProcessConcurrency() - 1);
+  // Use all available cores for metrics workers. The security check worker (1 thread)
+  // may still be running during the early overlap phase, but it finishes quickly and
+  // the brief oversubscription is outweighed by higher sustained throughput for the
+  // token counting workload that dominates total execution time.
+  const maxMetricsWorkers = Math.max(1, getProcessConcurrency());
   const cappedNumOfTasks = Math.min(numOfTasks, maxMetricsWorkers * 100);
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     numOfTasks: cappedNumOfTasks,
