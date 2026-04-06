@@ -90,7 +90,6 @@ When bundling repomix with tools like Rolldown or esbuild, some dependencies mus
 
 **External dependencies (cannot be bundled):**
 - `tinypool` - Spawns worker threads using file paths
-- `tiktoken` - Loads WASM files dynamically at runtime
 
 **WASM files to copy:**
 - `web-tree-sitter.wasm` → Same directory as bundled JS (required for code compression feature)

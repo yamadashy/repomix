@@ -90,7 +90,6 @@ async function analyzeFiles(directory) {
 
 **External 依賴項（無法打包）：**
 - `tinypool` - 使用文件路徑生成 worker 線程
-- `tiktoken` - 在運行時動態加載 WASM 文件
 
 **需要複製的 WASM 文件：**
 - `web-tree-sitter.wasm` → 與打包後的 JS 相同的目錄（代碼壓縮功能需要）

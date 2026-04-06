@@ -115,7 +115,7 @@ JavaScript configuration files work the same as TypeScript, supporting `defineCo
 | `ignore.useDefaultPatterns`      | Whether to use default ignore patterns (node_modules, .git, etc.)                                                           | `true`                 |
 | `ignore.customPatterns`          | Additional patterns to ignore using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)   | `[]`                   |
 | `security.enableSecurityCheck`   | Whether to perform security checks using Secretlint to detect sensitive information                                          | `true`                 |
-| `tokenCount.encoding`            | Token count encoding used by OpenAI's [tiktoken](https://github.com/openai/tiktoken) tokenizer. Use `o200k_base` for GPT-4o, `cl100k_base` for GPT-4/3.5. See [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) for details. | `"o200k_base"`         |
+| `tokenCount.encoding`            | Token count encoding for OpenAI-compatible tokenization (e.g., `o200k_base` for GPT-4o, `cl100k_base` for GPT-4/3.5). Powered by [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer). | `"o200k_base"`         |
 
 The configuration file supports [JSON5](https://json5.org/) syntax, which allows:
 - Comments (both single-line and multi-line)

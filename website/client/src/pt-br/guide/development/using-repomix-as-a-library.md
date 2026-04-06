@@ -90,7 +90,6 @@ Ao fazer bundle do repomix com ferramentas como Rolldown ou esbuild, algumas dep
 
 **Dependências externas (não podem ser bundled):**
 - `tinypool` - Cria threads de worker usando caminhos de arquivo
-- `tiktoken` - Carrega arquivos WASM dinamicamente em tempo de execução
 
 **Arquivos WASM a copiar:**
 - `web-tree-sitter.wasm` → Mesmo diretório do JS bundled (necessário para o recurso de compressão de código)

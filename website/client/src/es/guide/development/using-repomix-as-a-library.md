@@ -90,7 +90,6 @@ Al empaquetar repomix con herramientas como Rolldown o esbuild, algunas dependen
 
 **Dependencias externas (no se pueden empaquetar):**
 - `tinypool` - Genera hilos de trabajo usando rutas de archivos
-- `tiktoken` - Carga archivos WASM dinámicamente en tiempo de ejecución
 
 **Archivos WASM a copiar:**
 - `web-tree-sitter.wasm` → Mismo directorio que el JS empaquetado (requerido para la función de compresión de código)
