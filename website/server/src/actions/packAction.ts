@@ -130,7 +130,21 @@ export const packAction = async (c: Context) => {
     };
 
     try {
+      const THROTTLE_MS = 200;
+      let lastProgressTime = 0;
+      let lastStage: PackProgressStage | null = null;
+
       const sendProgress = async (stage: PackProgressStage, message?: string) => {
+        const now = Date.now();
+        const stageChanged = stage !== lastStage;
+
+        // Always send immediately when stage changes; throttle within same stage
+        if (!stageChanged && now - lastProgressTime < THROTTLE_MS) {
+          return;
+        }
+
+        lastProgressTime = now;
+        lastStage = stage;
         await writeLine({ type: 'progress', stage, ...(message && { message }) });
       };
 
