@@ -17,10 +17,10 @@ async function cloneRepository(repoUrl: string, destPath: string, branch?: strin
   if (branch) {
     args.push('--branch', branch);
   }
-  args.push(repoUrl, destPath);
+  args.push('--', repoUrl, destPath);
 
   try {
-    await execFileAsync('git', args, { timeout: 60_000 });
+    await execFileAsync('git', args, { timeout: 60_000, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
   } catch {
     throw new AppError('Failed to clone repository.\nThe repository may not be public or the URL may be invalid.', 500);
   }
