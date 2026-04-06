@@ -1,3 +1,5 @@
+import { GptEncoding } from 'gpt-tokenizer/GptEncoding';
+import { resolveEncodingAsync } from 'gpt-tokenizer/resolveEncodingAsync';
 import { logger } from '../../shared/logger.js';
 
 // Supported token encoding types (OpenAI encoding names)
@@ -14,17 +16,6 @@ type CountTokensFn = (text: string, options?: CountTokensOptions) => number;
 // so special tokens like <|endoftext|> are tokenized as ordinary text.
 const PLAIN_TEXT_OPTIONS: CountTokensOptions = { disallowedSpecial: new Set() };
 
-// Static import map for gpt-tokenizer encoding modules.
-// Using explicit imports instead of dynamic template literals (e.g. `gpt-tokenizer/encoding/${name}`)
-// so that bundlers (rolldown) can resolve and include them in the bundle.
-const encodingImportMap: Record<TokenEncoding, () => Promise<{ countTokens: CountTokensFn }>> = {
-  o200k_base: () => import('gpt-tokenizer/encoding/o200k_base'),
-  cl100k_base: () => import('gpt-tokenizer/encoding/cl100k_base'),
-  p50k_base: () => import('gpt-tokenizer/encoding/p50k_base'),
-  p50k_edit: () => import('gpt-tokenizer/encoding/p50k_edit'),
-  r50k_base: () => import('gpt-tokenizer/encoding/r50k_base'),
-};
-
 // Lazy-loaded countTokens functions keyed by encoding
 const encodingModules = new Map<string, CountTokensFn>();
 
@@ -36,8 +27,11 @@ const loadEncoding = async (encodingName: TokenEncoding): Promise<CountTokensFn>
 
   const startTime = process.hrtime.bigint();
 
-  const mod = await encodingImportMap[encodingName]();
-  const countFn = mod.countTokens as CountTokensFn;
+  // Use resolveEncodingAsync to lazily load BPE rank data, then create a GptEncoding instance.
+  // resolveEncodingAsync uses static import paths internally, so bundlers (rolldown) can resolve them.
+  const bpeRanks = await resolveEncodingAsync(encodingName);
+  const encoder = GptEncoding.getEncodingApi(encodingName, () => bpeRanks);
+  const countFn = encoder.countTokens.bind(encoder) as CountTokensFn;
   encodingModules.set(encodingName, countFn);
 
   const endTime = process.hrtime.bigint();
