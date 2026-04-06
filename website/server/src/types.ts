@@ -18,7 +18,7 @@ interface TopFile {
 
 interface FileInfo {
   path: string;
-  tokenCount: number;
+  charCount: number;
   selected?: boolean;
 }
 

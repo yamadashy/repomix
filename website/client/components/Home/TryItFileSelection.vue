@@ -43,8 +43,8 @@
       </span>
       <span class="stat-separator">|</span>
       <span class="stat-item">
-        {{ selectedTokens.toLocaleString() }} tokens
-        ({{ totalTokens > 0 ? ((selectedTokens / totalTokens) * 100).toFixed(1) : '0.0' }}%)
+        {{ selectedChars.toLocaleString() }} chars
+        ({{ totalChars > 0 ? ((selectedChars / totalChars) * 100).toFixed(1) : '0.0' }}%)
       </span>
     </div>
 
@@ -64,7 +64,7 @@
                 />
               </th>
               <th class="file-path-column">File Path</th>
-              <th class="tokens-column">Tokens</th>
+              <th class="tokens-column">Chars</th>
             </tr>
           </thead>
           <tbody>
@@ -87,7 +87,7 @@
                 <span class="file-path">{{ file.path }}</span>
               </td>
               <td class="tokens-cell">
-                <span class="file-tokens">{{ file.tokenCount.toLocaleString() }}</span>
+                <span class="file-tokens">{{ file.charCount.toLocaleString() }}</span>
               </td>
             </tr>
           </tbody>
@@ -147,11 +147,11 @@ const selectedFiles = computed(() => localFiles.value.filter((file) => file.sele
 
 const hasSelectedFiles = computed(() => selectedFiles.value.length > 0);
 
-const totalTokens = computed(() => localFiles.value.reduce((sum, file) => sum + file.tokenCount, 0));
+const totalChars = computed(() => localFiles.value.reduce((sum, file) => sum + file.charCount, 0));
 
-const selectedTokens = computed(() => selectedFiles.value.reduce((sum, file) => sum + file.tokenCount, 0));
+const selectedChars = computed(() => selectedFiles.value.reduce((sum, file) => sum + file.charCount, 0));
 
-const sortedFiles = computed(() => [...localFiles.value].sort((a, b) => b.tokenCount - a.tokenCount));
+const sortedFiles = computed(() => [...localFiles.value].sort((a, b) => b.charCount - a.charCount));
 
 const selectAll = () => {
   for (const file of localFiles.value) {
