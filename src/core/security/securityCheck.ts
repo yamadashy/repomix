@@ -1,19 +1,14 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
+import { initTaskRunner, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import type { SecurityCheckItem, SecurityCheckType, SuspiciousFileResult } from './secretLintRunner.js';
-import {
-  createSecretLintConfig as defaultCreateSecretLintConfig,
-  runSecretLint as defaultRunSecretLint,
-} from './secretLintRunner.js';
+import type { SecurityCheckItem, SuspiciousFileResult } from './secretLintRunner.js';
+import type { SecurityCheckTask } from './workers/securityCheckWorker.js';
 
 export type { SecurityCheckItem, SecurityCheckType, SuspiciousFileResult } from './secretLintRunner.js';
-
-// Number of items processed before reporting progress to avoid excessive UI updates
-const PROGRESS_INTERVAL = 50;
 
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
@@ -21,8 +16,11 @@ export const runSecurityCheck = async (
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
   deps = {
-    runSecretLint: defaultRunSecretLint,
-    createSecretLintConfig: defaultCreateSecretLintConfig,
+    initTaskRunner: initTaskRunner as (options: {
+      numOfTasks: number;
+      workerType: 'securityCheck';
+      runtime: 'worker_threads';
+    }) => TaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>,
   },
 ): Promise<SuspiciousFileResult[]> => {
   const gitDiffItems: SecurityCheckItem[] = [];
@@ -74,25 +72,25 @@ export const runSecurityCheck = async (
   logger.trace(`Starting security check for ${totalItems} files/content`);
   const startTime = process.hrtime.bigint();
 
-  const config = deps.createSecretLintConfig();
-  const suspiciousResults: SuspiciousFileResult[] = [];
+  // Run security check in a dedicated worker thread to isolate secretlint's
+  // V8 JIT pollution from the main thread. Secretlint's regex-heavy rule
+  // evaluation degrades V8's optimized code paths for subsequent string
+  // operations (e.g., Handlebars template rendering), causing a ~17x slowdown
+  // in output generation when run on the main thread.
+  const taskRunner = deps.initTaskRunner({
+    numOfTasks: 1,
+    workerType: 'securityCheck',
+    runtime: 'worker_threads',
+  });
 
   try {
-    for (let i = 0; i < allItems.length; i++) {
-      const item = allItems[i];
-      const result = await deps.runSecretLint(item.filePath, item.content, item.type, config);
+    progressCallback(`Running security check... (0/${totalItems}) ${pc.dim('starting...')}`);
 
-      if (result !== null) {
-        suspiciousResults.push(result);
-      }
+    const results = await taskRunner.run({ items: allItems });
 
-      const completedItems = i + 1;
-      // Report progress at each interval boundary or at the final item
-      if (completedItems % PROGRESS_INTERVAL === 0 || completedItems === totalItems) {
-        progressCallback(`Running security check... (${completedItems}/${totalItems}) ${pc.dim(item.filePath)}`);
-        logger.trace(`Running security check... (${completedItems}/${totalItems}) ${item.filePath}`);
-      }
-    }
+    const suspiciousResults = results.filter((r): r is SuspiciousFileResult => r !== null);
+
+    progressCallback(`Running security check... (${totalItems}/${totalItems}) ${pc.dim('done')}`);
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;
@@ -102,5 +100,7 @@ export const runSecurityCheck = async (
   } catch (error) {
     logger.error('Error during security check:', error);
     throw error;
+  } finally {
+    await taskRunner.cleanup();
   }
 };
