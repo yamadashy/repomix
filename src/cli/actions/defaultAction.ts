@@ -117,7 +117,15 @@ export const runDefaultAction = async (
 
     const handleProgress: RepomixProgressCallback = (message) => {
       spinner.update(message);
-      progressCallback?.(message);
+      if (progressCallback) {
+        try {
+          Promise.resolve(progressCallback(message)).catch((error) => {
+            logger.trace('progressCallback error:', error);
+          });
+        } catch (error) {
+          logger.trace('progressCallback error:', error);
+        }
+      }
     };
 
     packResult = await pack(targetPaths, config, handleProgress, {}, stdinFilePaths, packOptions);
