@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { stream } from 'hono/streaming';
 import { isValidRemoteValue } from 'repomix';
 import { z } from 'zod';
 import { processZipFile } from '../domains/pack/processZipFile.js';
@@ -118,17 +119,12 @@ export const packAction = async (c: Context) => {
   const requestId = c.get('requestId');
   const clientInfo = getClientInfo(c);
 
-  // Stream progress events and result via NDJSON
-  const { readable, writable } = new TransformStream();
-  const writer = writable.getWriter();
-  const encoder = new TextEncoder();
+  // Stream progress events and result via NDJSON using Hono's stream helper
+  return stream(c, async (s) => {
+    const writeLine = async (data: unknown) => {
+      await s.write(`${JSON.stringify(data)}\n`);
+    };
 
-  const writeLine = async (data: unknown) => {
-    await writer.write(encoder.encode(`${JSON.stringify(data)}\n`));
-  };
-
-  // Run processing in the background
-  (async () => {
     try {
       const sendProgress = async (stage: PackProgressStage) => {
         await writeLine({ type: 'progress', stage });
@@ -187,18 +183,6 @@ export const packAction = async (c: Context) => {
       const appError = handlePackError(error);
 
       await writeLine({ type: 'error', message: appError.message });
-    } finally {
-      await writer.close();
     }
-  })();
-
-  // Return the streaming response immediately
-  return new Response(readable, {
-    headers: {
-      'Content-Type': 'text/plain; charset=UTF-8',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'X-Content-Type-Options': 'nosniff',
-    },
   });
 };
