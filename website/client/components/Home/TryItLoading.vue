@@ -18,13 +18,18 @@ const stageMessages: Record<PackProgressStage, string> = {
 };
 
 const displayMessage = computed(() => {
-  if (props.message) {
-    return props.message;
-  }
   if (props.stage && stageMessages[props.stage]) {
     return stageMessages[props.stage];
   }
   return 'Processing repository...';
+});
+
+const MAX_DETAIL_LENGTH = 60;
+
+const detailMessage = computed(() => {
+  if (!props.message) return null;
+  if (props.message.length <= MAX_DETAIL_LENGTH) return props.message;
+  return `${props.message.slice(0, MAX_DETAIL_LENGTH)}...`;
 });
 </script>
 
@@ -34,6 +39,7 @@ const displayMessage = computed(() => {
       <div class="spinner"></div>
       <p>{{ displayMessage }}</p>
     </div>
+    <p v-if="detailMessage" class="loading-detail">{{ detailMessage }}</p>
     <div class="sponsor-section">
       <p class="sponsor-header">Special thanks to:</p>
       <a href="https://go.warp.dev/repomix" target="_blank" rel="noopener noreferrer">
@@ -68,6 +74,12 @@ const displayMessage = computed(() => {
 
 .loading-header p {
   margin: 0;
+}
+
+.loading-detail {
+  margin: 4px 0 0;
+  font-size: 0.8em;
+  color: var(--vp-c-text-3);
 }
 
 .spinner {
