@@ -17,19 +17,14 @@ const stageMessages: Record<PackProgressStage, string> = {
   processing: 'Processing files...',
 };
 
-const displayMessage = computed(() => {
-  if (props.stage && stageMessages[props.stage]) {
-    return stageMessages[props.stage];
-  }
-  return 'Processing repository...';
-});
-
 const MAX_DETAIL_LENGTH = 60;
 
 const detailMessage = computed(() => {
-  if (!props.message) return null;
-  if (props.message.length <= MAX_DETAIL_LENGTH) return props.message;
-  return `${props.message.slice(0, MAX_DETAIL_LENGTH)}...`;
+  // Show detailed message from pack() if available, otherwise show stage message
+  const text = props.message || (props.stage && stageMessages[props.stage]) || null;
+  if (!text) return null;
+  if (text.length <= MAX_DETAIL_LENGTH) return text;
+  return `${text.slice(0, MAX_DETAIL_LENGTH)}...`;
 });
 </script>
 
@@ -37,7 +32,7 @@ const detailMessage = computed(() => {
   <div class="loading">
     <div class="loading-header">
       <div class="spinner"></div>
-      <p>{{ displayMessage }}</p>
+      <p>Processing repository...</p>
     </div>
     <p v-if="detailMessage" class="loading-detail">{{ detailMessage }}</p>
     <div class="sponsor-section">
