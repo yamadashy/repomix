@@ -86,7 +86,12 @@ export function usePackRequest() {
         getPackRequestOptions.value,
         {
           onSuccess: (response) => {
-            console.log('[pack] onSuccess called, metadata:', response.metadata?.repository, 'files:', response.metadata?.summary?.totalFiles);
+            console.log(
+              '[pack] onSuccess called, metadata:',
+              response.metadata?.repository,
+              'files:',
+              response.metadata?.summary?.totalFiles,
+            );
             result.value = response;
             console.log('[pack] result.value set');
           },
