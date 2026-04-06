@@ -173,7 +173,7 @@ describe('calculateOutputMetrics', () => {
       }),
     });
 
-    // With TARGET_CHARS_PER_CHUNK=200_000, 1.1MB content should produce 6 chunks
+    // With TARGET_CHARS_PER_CHUNK=200_000, 1.1M character content should produce 6 chunks
     const chunkSizes = processedChunks.map((chunk) => chunk.length);
 
     expect(processedChunks.length).toBe(6);

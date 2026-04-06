@@ -2,9 +2,9 @@ import { logger } from '../../shared/logger.js';
 import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 
-// Target ~200KB per chunk to balance tokenization throughput and worker round-trip overhead.
+// Target ~200K characters per chunk to balance tokenization throughput and worker round-trip overhead.
 // Benchmarks show 200K is the sweet spot: fewer round-trips than 100K with enough chunks
-// for good parallelism across available threads (e.g., 20 chunks for 4MB output on 4 cores).
+// for good parallelism across available threads (e.g., 20 chunks for a 4M character output).
 const TARGET_CHARS_PER_CHUNK = 200_000;
 const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1MB
 
