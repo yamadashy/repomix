@@ -5,6 +5,7 @@ import type { PackOptions, PackResult } from '../../types.js';
 import { AppError } from '../../utils/errorHandler.js';
 import { logMemoryUsage } from '../../utils/logger.js';
 import { generateCacheKey } from './utils/cache.js';
+import { checkGitHubRepoSize } from './utils/gitHubRepoSize.js';
 import { cache } from './utils/sharedInstance.js';
 
 export async function processRemoteRepo(repoUrl: string, format: string, options: PackOptions): Promise<PackResult> {
@@ -20,6 +21,9 @@ export async function processRemoteRepo(repoUrl: string, format: string, options
   if (cachedResult) {
     return cachedResult;
   }
+
+  // Check repository size before processing
+  await checkGitHubRepoSize(repoUrl);
 
   const outputFilePath = `repomix-output-${randomUUID()}.txt`;
 

@@ -17,8 +17,10 @@ export {
   isExplicitRemoteUrl,
   isValidRemoteValue,
   isValidShorthand,
+  parseGitHubRepoInfo,
   parseRemoteValue,
 } from './core/git/gitRemoteParse.js';
+export type { GitHubRepoInfo } from './core/git/gitRemoteParse.js';
 
 // Security
 export { runSecurityCheck } from './core/security/securityCheck.js';
