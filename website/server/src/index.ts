@@ -43,9 +43,8 @@ if (!isWarmupMode()) {
   // Block direct access bypassing Cloudflare (API routes only, health check excluded)
   app.use('/api/*', cloudflareGuardMiddleware());
 
-  // Enable compression (skip for /api/pack which uses SSE streaming;
-  // compression buffers chunks and prevents real-time progress events)
-  app.use('/health', compress());
+  // Enable compression
+  app.use(compress());
 
   // Set timeout for API routes
   app.use('/api', timeout(API_TIMEOUT_MS));

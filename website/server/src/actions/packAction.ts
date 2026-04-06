@@ -119,6 +119,10 @@ export const packAction = async (c: Context) => {
   const requestId = c.get('requestId');
   const clientInfo = getClientInfo(c);
 
+  // Skip compression for streaming response to ensure real-time progress delivery
+  // (compress middleware skips when Content-Encoding is already set)
+  c.header('Content-Encoding', 'identity');
+
   // Stream progress events and result via NDJSON using Hono's stream helper
   return stream(c, async (s) => {
     const writeLine = async (data: unknown) => {
