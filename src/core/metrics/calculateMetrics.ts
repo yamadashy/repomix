@@ -4,10 +4,8 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import { buildSplitOutputFilePath } from '../output/outputSplit.js';
 import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
-import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
 import type { MetricsTaskRunner } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
@@ -63,7 +61,6 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
 
 const defaultDeps = {
   calculateSelectiveFileMetrics,
-  calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
   taskRunner: undefined as MetricsTaskRunner | undefined,
@@ -92,26 +89,18 @@ export const calculateMetrics = async (
     });
 
   try {
-    // For top files display optimization: calculate token counts only for top files by character count
-    // However, if tokenCountTree is enabled, calculate for all files to avoid double calculation
-    const topFilesLength = config.output.topFilesLength;
-    const shouldCalculateAllFiles = !!config.output.tokenCountTree;
-
-    // Determine which files to calculate token counts for:
-    // - If tokenCountTree is enabled: calculate for all files to avoid double calculation
-    // - Otherwise: calculate only for top files by character count for optimization
-    const metricsTargetPaths = shouldCalculateAllFiles
-      ? processedFiles.map((file) => file.path)
-      : [...processedFiles]
-          .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
-          .map((file) => file.path);
+    // Always tokenize all files individually. This enables computing the output
+    // total token count from the sum of file tokens plus template overhead,
+    // avoiding a redundant full-output tokenization pass (~3-4MB) that otherwise
+    // dominates metrics time. The per-file token counts are also needed when
+    // tokenCountTree is enabled and are useful for the top-files display.
+    const allFilePaths = processedFiles.map((file) => file.path);
 
     // Start output-independent metrics immediately so they can overlap with output generation
     // when output is passed as a promise
     const selectiveFileMetricsPromise = deps.calculateSelectiveFileMetrics(
       processedFiles,
-      metricsTargetPaths,
+      allFilePaths,
       config.tokenCount.encoding,
       progressCallback,
       { taskRunner },
@@ -128,25 +117,33 @@ export const calculateMetrics = async (
     const resolvedOutput = await outputPromise;
     const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
 
-    // Start output metrics after output is available
-    const outputMetricsPromise = Promise.all(
-      outputParts.map((part, index) => {
-        const partPath =
-          outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, index + 1) : config.output.filePath;
-        return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
-      }),
-    );
-
-    const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+    const [selectiveFileMetrics, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
       selectiveFileMetricsPromise,
-      outputMetricsPromise,
       gitDiffMetricsPromise,
       gitLogMetricsPromise,
     ]);
 
-    const totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
+    // Compute output total token count from individual file tokens + template overhead.
+    // This avoids tokenizing the full output (which is mostly the same file contents
+    // already tokenized above). The template overhead (XML tags, headers, tree structure)
+    // is estimated using the char-to-token ratio derived from the file contents.
+    // This approach is comparable in accuracy to the previous chunk-based output
+    // tokenization, which also introduced boundary effects by splitting at arbitrary
+    // 200KB positions.
+    const totalFileTokens = selectiveFileMetrics.reduce((sum, m) => sum + m.tokenCount, 0);
+    const totalFileChars = processedFiles.reduce((sum, f) => sum + f.content.length, 0);
+    const totalOutputChars = outputParts.reduce((sum, part) => sum + part.length, 0);
+    // Guard against negative overhead (e.g., if output truncates content or
+    // entity-encoding inflates chars asymmetrically in parsableStyle mode).
+    const overheadChars = Math.max(0, totalOutputChars - totalFileChars);
+    // Default ratio 0.25 tokens/char is a conservative estimate for template
+    // markup when no file content is available to derive the ratio.
+    const charToTokenRatio = totalFileChars > 0 ? totalFileTokens / totalFileChars : 0.25;
+    const overheadTokens = Math.round(overheadChars * charToTokenRatio);
+    const totalTokens = totalFileTokens + overheadTokens;
+
     const totalFiles = processedFiles.length;
-    const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
+    const totalCharacters = totalOutputChars;
 
     // Build character counts for all files
     const fileCharCounts: Record<string, number> = {};
@@ -154,7 +151,7 @@ export const calculateMetrics = async (
       fileCharCounts[file.path] = file.content.length;
     }
 
-    // Build token counts only for top files
+    // Build token counts for all files
     const fileTokenCounts: Record<string, number> = {};
     for (const file of selectiveFileMetrics) {
       fileTokenCounts[file.path] = file.tokenCount;

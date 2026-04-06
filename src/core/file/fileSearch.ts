@@ -194,11 +194,7 @@ export const searchFiles = async (
 
     const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
 
-    const fileSearchPromise = globby(includePatterns, {
-      ...baseGlobbyOptions,
-      onlyFiles: true,
-    }).catch((error: unknown) => {
-      // Handle EPERM errors specifically
+    const handleGlobbyError = (error: unknown): never => {
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
       if (code === 'EPERM' || code === 'EACCES') {
         throw new PermissionError(
@@ -207,52 +203,43 @@ export const searchFiles = async (
         );
       }
       throw error;
-    });
+    };
 
-    // Run directory search in parallel with file search when empty directory
-    // tracking is enabled. Both globby calls traverse the same filesystem tree,
-    // so running them concurrently overlaps the I/O wait and pattern matching.
-    let emptyDirPaths: string[] = [];
-    if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories (parallel with file search)...');
+    // Run file search and directory search in parallel to overlap filesystem scans.
+    const fileSearchPromise = globby(includePatterns, {
+      ...baseGlobbyOptions,
+      onlyFiles: true,
+    }).catch(handleGlobbyError);
 
-      const [filePaths, directories] = await Promise.all([
-        fileSearchPromise,
-        globby(includePatterns, {
-          ...baseGlobbyOptions,
-          onlyDirectories: true,
-        }).catch((error: unknown) => {
-          const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
-          if (code === 'EPERM' || code === 'EACCES') {
-            throw new PermissionError(
-              `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
-              rootDir,
-            );
-          }
-          throw error;
-        }),
-      ]);
+    const emptyDirPromise = config.output.includeEmptyDirectories
+      ? (async () => {
+          logger.debug('[empty dirs] Searching for empty directories...');
+          const emptyDirStartTime = Date.now();
 
-      const globbyElapsedTime = Date.now() - globbyStartTime;
-      logger.debug(
-        `[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files, ${directories.length} directories`,
-      );
+          const directories = await globby(includePatterns, {
+            ...baseGlobbyOptions,
+            onlyDirectories: true,
+          });
 
-      const filterStartTime = Date.now();
-      emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
-      const filterTime = Date.now() - filterStartTime;
-      logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
+          const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
+          logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
 
-      return {
-        filePaths: sortPaths(filePaths),
-        emptyDirPaths: sortPaths(emptyDirPaths),
-      };
-    }
+          const filterStartTime = Date.now();
+          const result = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+          const filterTime = Date.now() - filterStartTime;
+          logger.debug(`[empty dirs] Filtered to ${result.length} empty directories in ${filterTime}ms`);
 
-    const filePaths = await fileSearchPromise;
+          return result;
+        })()
+      : Promise.resolve([] as string[]);
 
-    const globbyElapsedTime = Date.now() - globbyStartTime;
-    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+    const [filePaths, emptyDirPaths] = await Promise.all([fileSearchPromise, emptyDirPromise]);
+
+    const searchElapsedTime = Date.now() - globbyStartTime;
+    logger.debug(`[search] Completed in ${searchElapsedTime}ms, found ${filePaths.length} files`);
+
+    logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
+    logger.trace(`Filtered ${filePaths.length} files`);
 
     return {
       filePaths: sortPaths(filePaths),
