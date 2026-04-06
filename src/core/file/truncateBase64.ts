@@ -13,6 +13,23 @@ const dataUriPattern = new RegExp(
 const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
 
 /**
+ * Check whether the content has any line (run of non-newline characters)
+ * at least `minLength` characters long.  This avoids the cost of running
+ * the standalone base64 regex on files where no line is long enough to
+ * contain a match, which is the common case for source code files.
+ */
+const hasLongLine = (content: string, minLength: number): boolean => {
+  let lineStart = 0;
+  for (let i = 0; i <= content.length; i++) {
+    if (i === content.length || content.charCodeAt(i) === 10) {
+      if (i - lineStart >= minLength) return true;
+      lineStart = i + 1;
+    }
+  }
+  return false;
+};
+
+/**
  * Truncates base64 encoded data in content to reduce file size
  * Detects common base64 patterns like data URIs and standalone base64 strings
  *
@@ -20,27 +37,40 @@ const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_S
  * @returns Content with base64 data truncated
  */
 export const truncateBase64Content = (content: string): string => {
-  // Reset lastIndex since patterns are global and reused across calls
-  dataUriPattern.lastIndex = 0;
-  standaloneBase64Pattern.lastIndex = 0;
+  // Fast path: skip regex scanning for files that cannot contain matches.
+  // Data URIs require the literal "base64," marker. Standalone base64
+  // requires 256+ consecutive base64 characters, which can only appear
+  // on a line of at least that length.
+  const mayContainDataUri = content.includes('base64,');
+  const mayContainStandaloneBase64 = hasLongLine(content, MIN_BASE64_LENGTH_STANDALONE);
+
+  if (!mayContainDataUri && !mayContainStandaloneBase64) {
+    return content;
+  }
 
   let processedContent = content;
 
   // Replace data URIs
-  processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
-    const preview = base64Data.substring(0, TRUNCATION_LENGTH);
-    return `data:${mimeType}${params || ''};base64,${preview}...`;
-  });
+  if (mayContainDataUri) {
+    dataUriPattern.lastIndex = 0;
+    processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
+      const preview = base64Data.substring(0, TRUNCATION_LENGTH);
+      return `data:${mimeType}${params || ''};base64,${preview}...`;
+    });
+  }
 
   // Replace standalone base64 strings
-  processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
-    // Check if this looks like actual base64 (not just a long string)
-    if (isLikelyBase64(base64String)) {
-      const preview = base64String.substring(0, TRUNCATION_LENGTH);
-      return `${preview}...`;
-    }
-    return match;
-  });
+  if (mayContainStandaloneBase64) {
+    standaloneBase64Pattern.lastIndex = 0;
+    processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
+      // Check if this looks like actual base64 (not just a long string)
+      if (isLikelyBase64(base64String)) {
+        const preview = base64String.substring(0, TRUNCATION_LENGTH);
+        return `${preview}...`;
+      }
+      return match;
+    });
+  }
 
   return processedContent;
 };
