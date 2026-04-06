@@ -115,7 +115,7 @@ JavaScript-Konfigurationsdateien funktionieren genauso wie TypeScript und unters
 | `ignore.useDefaultPatterns`      | Ob Standard-Ignorier-Muster (node_modules, .git etc.) verwendet werden sollen                                             | `true`                 |
 | `ignore.customPatterns`          | Zusätzliche Ignorier-Muster (verwendet [glob-Muster](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)) | `[]`                   |
 | `security.enableSecurityCheck`   | Ob Secretlint verwendet werden soll, um Sicherheitsprüfungen auf sensible Informationen durchzuführen                    | `true`                 |
-| `tokenCount.encoding`            | Token-Count-Encoding für OpenAIs [tiktoken](https://github.com/openai/tiktoken) Tokenizer. Verwenden Sie `o200k_base` für GPT-4o, `cl100k_base` für GPT-4/3.5. Details siehe [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) | `"o200k_base"`         |
+| `tokenCount.encoding`            | OpenAI-kompatibles Token-Count-Encoding (z.B. `o200k_base` für GPT-4o, `cl100k_base` für GPT-4/3.5). Verwendet [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer). | `"o200k_base"`         |
 
 Die Konfigurationsdatei unterstützt [JSON5](https://json5.org/)-Syntax, die Folgendes erlaubt:
 - Kommentare (einzeilig und mehrzeilig)

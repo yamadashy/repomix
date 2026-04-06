@@ -1,6 +1,6 @@
 import { logger } from '../../shared/logger.js';
 
-// Supported token encoding types (compatible with tiktoken encoding names)
+// Supported token encoding types (OpenAI encoding names)
 export const TOKEN_ENCODINGS = ['o200k_base', 'cl100k_base', 'p50k_base', 'p50k_edit', 'r50k_base'] as const;
 export type TokenEncoding = (typeof TOKEN_ENCODINGS)[number];
 
@@ -10,9 +10,8 @@ interface CountTokensOptions {
 
 type CountTokensFn = (text: string, options?: CountTokensOptions) => number;
 
-// Treat all text as regular content by disallowing nothing.
-// This matches the old tiktoken behavior: encode(content, [], []).length
-// where special tokens like <|endoftext|> are tokenized as ordinary text.
+// Treat all text as regular content by disallowing nothing,
+// so special tokens like <|endoftext|> are tokenized as ordinary text.
 const PLAIN_TEXT_OPTIONS: CountTokensOptions = { disallowedSpecial: new Set() };
 
 // Lazy-loaded countTokens functions keyed by encoding
@@ -57,8 +56,7 @@ export class TokenCounter {
 
     try {
       // Use PLAIN_TEXT_OPTIONS to treat all content as ordinary text,
-      // matching the old tiktoken behavior: encode(content, [], []).length
-      // This also skips gpt-tokenizer's default regex scan for special tokens.
+      // skipping gpt-tokenizer's default regex scan for special tokens.
       return this.countFn(content, PLAIN_TEXT_OPTIONS);
     } catch (error) {
       let message = '';

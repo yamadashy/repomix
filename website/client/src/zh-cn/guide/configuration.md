@@ -115,7 +115,7 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
 | `ignore.useDefaultPatterns`      | 是否使用默认忽略模式（node_modules、.git 等）                                                                              | `true`                 |
 | `ignore.customPatterns`          | 额外的忽略模式（使用 [glob 模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)）                   | `[]`                   |
 | `security.enableSecurityCheck`   | 是否使用 Secretlint 执行安全检查以检测敏感信息                                                                              | `true`                 |
-| `tokenCount.encoding`            | OpenAI 的 [tiktoken](https://github.com/openai/tiktoken) 分词器使用的 token 计数编码。GPT-4o 使用 `o200k_base`，GPT-4/3.5 使用 `cl100k_base`。详见 [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) | `"o200k_base"`         |
+| `tokenCount.encoding`            | OpenAI 兼容的 token 计数编码（GPT-4o 使用 `o200k_base`，GPT-4/3.5 使用 `cl100k_base`）。使用 [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer)。 | `"o200k_base"`         |
 
 配置文件支持 [JSON5](https://json5.org/) 语法，允许：
 - 注释（单行和多行）

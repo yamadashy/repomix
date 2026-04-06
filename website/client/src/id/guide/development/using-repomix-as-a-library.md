@@ -276,7 +276,6 @@ Saat membundle repomix dengan tools seperti Rolldown atau esbuild, beberapa depe
 
 **Dependency external (tidak dapat dibundle):**
 - `tinypool` - Memulai worker thread menggunakan path file
-- `tiktoken` - Memuat file WASM secara dinamis saat runtime
 
 **File WASM yang perlu disalin:**
 - `web-tree-sitter.wasm` → Direktori yang sama dengan JS yang dibundle (diperlukan untuk fitur kompresi kode)

@@ -115,7 +115,7 @@ JavaScript 설정 파일은 TypeScript와 동일하게 작동하며 `defineConfi
 | `ignore.useDefaultPatterns`      | 기본 무시 패턴(node_modules, .git 등)을 사용할지 여부                                                                     | `true`                 |
 | `ignore.customPatterns`          | 추가 무시 패턴([glob 패턴](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) 사용)                   | `[]`                   |
 | `security.enableSecurityCheck`   | Secretlint를 사용하여 민감한 정보를 감지하는 보안 검사를 수행할지 여부                                                    | `true`                 |
-| `tokenCount.encoding`            | OpenAI의 [tiktoken](https://github.com/openai/tiktoken) 토크나이저가 사용하는 토큰 카운트 인코딩. GPT-4o는 `o200k_base`, GPT-4/3.5는 `cl100k_base`를 사용. 자세한 내용은 [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) 참조 | `"o200k_base"`         |
+| `tokenCount.encoding`            | OpenAI 호환 토큰 카운트 인코딩 (GPT-4o는 `o200k_base`, GPT-4/3.5는 `cl100k_base`). [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer) 사용. | `"o200k_base"`         |
 
 설정 파일은 [JSON5](https://json5.org/) 구문을 지원하며, 다음을 허용합니다:
 - 주석(한 줄 및 여러 줄)
