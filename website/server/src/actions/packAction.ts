@@ -1,5 +1,4 @@
 import type { Context } from 'hono';
-import { streamSSE } from 'hono/streaming';
 import { isValidRemoteValue } from 'repomix';
 import { z } from 'zod';
 import { processZipFile } from '../domains/pack/processZipFile.js';
@@ -71,7 +70,7 @@ const packRequestSchema = z
   });
 
 export const packAction = async (c: Context) => {
-  // Parse and validate request before starting SSE stream
+  // Parse and validate request before starting stream
   let validatedData: z.infer<typeof packRequestSchema>;
   let sanitizedOptions: { includePatterns?: string; ignorePatterns?: string } & Record<string, unknown>;
 
@@ -119,16 +118,22 @@ export const packAction = async (c: Context) => {
   const requestId = c.get('requestId');
   const clientInfo = getClientInfo(c);
 
-  // Stream progress events and result via SSE
-  return streamSSE(c, async (stream) => {
-    const sendProgress = async (stage: PackProgressStage) => {
-      await stream.writeSSE({
-        event: 'progress',
-        data: JSON.stringify({ stage }),
-      });
-    };
+  // Stream progress events and result via NDJSON
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const encoder = new TextEncoder();
 
+  const writeLine = async (data: unknown) => {
+    await writer.write(encoder.encode(`${JSON.stringify(data)}\n`));
+  };
+
+  // Run processing in the background
+  (async () => {
     try {
+      const sendProgress = async (stage: PackProgressStage) => {
+        await writeLine({ type: 'progress', stage });
+      };
+
       const startTime = Date.now();
       const beforeMemory = getMemoryUsage();
 
@@ -172,10 +177,7 @@ export const packAction = async (c: Context) => {
       });
 
       // Send the final result
-      await stream.writeSSE({
-        event: 'result',
-        data: JSON.stringify(result),
-      });
+      await writeLine({ type: 'result', data: result });
     } catch (error) {
       logError('Pack operation failed', error instanceof Error ? error : new Error('Unknown error'), {
         requestId,
@@ -184,10 +186,19 @@ export const packAction = async (c: Context) => {
       const { handlePackError } = await import('../utils/errorHandler.js');
       const appError = handlePackError(error);
 
-      await stream.writeSSE({
-        event: 'error',
-        data: JSON.stringify({ message: appError.message }),
-      });
+      await writeLine({ type: 'error', message: appError.message });
+    } finally {
+      await writer.close();
     }
+  })();
+
+  // Return the streaming response immediately
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'text/plain; charset=UTF-8',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Content-Type-Options': 'nosniff',
+    },
   });
 };

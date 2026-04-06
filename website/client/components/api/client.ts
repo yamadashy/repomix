@@ -70,34 +70,23 @@ export interface PackStreamCallbacks {
 
 const API_BASE_URL = import.meta.env.PROD ? 'https://api.repomix.com' : 'http://localhost:8080';
 
-interface ParsedSSEEvent {
-  event: string;
-  data: string;
+// NDJSON stream event types
+interface ProgressEvent {
+  type: 'progress';
+  stage: PackProgressStage;
 }
 
-function parseSSEChunk(text: string): { events: ParsedSSEEvent[]; remaining: string } {
-  const events: ParsedSSEEvent[] = [];
-  const blocks = text.split('\n\n');
-  const remaining = blocks.pop() || '';
-
-  for (const block of blocks) {
-    if (!block.trim()) continue;
-    let event = '';
-    const dataLines: string[] = [];
-    for (const line of block.split('\n')) {
-      if (line.startsWith('event:')) {
-        event = line.slice(6).trim();
-      } else if (line.startsWith('data:')) {
-        dataLines.push(line.slice(5).trim());
-      }
-    }
-    if (event || dataLines.length > 0) {
-      events.push({ event, data: dataLines.join('\n') });
-    }
-  }
-
-  return { events, remaining };
+interface ResultEvent {
+  type: 'result';
+  data: PackResult;
 }
+
+interface StreamErrorEvent {
+  type: 'error';
+  message: string;
+}
+
+type StreamEvent = ProgressEvent | ResultEvent | StreamErrorEvent;
 
 export async function packRepository(request: PackRequest, callbacks?: PackStreamCallbacks): Promise<PackResult> {
   const formData = new FormData();
@@ -117,13 +106,12 @@ export async function packRepository(request: PackRequest, callbacks?: PackStrea
   });
 
   // Handle non-streaming error responses (validation errors return JSON)
-  const contentType = response.headers.get('content-type') || '';
-  if (!response.ok || contentType.includes('application/json')) {
+  if (!response.ok) {
     const data = await response.json();
     throw new ApiError((data as ErrorResponse).error);
   }
 
-  // Handle SSE stream
+  // Handle NDJSON stream
   if (!response.body) {
     throw new ApiError('No response body received');
   }
@@ -139,18 +127,21 @@ export async function packRepository(request: PackRequest, callbacks?: PackStrea
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const { events, remaining } = parseSSEChunk(buffer);
-      buffer = remaining;
 
-      for (const sseEvent of events) {
-        if (sseEvent.event === 'progress') {
-          const data = JSON.parse(sseEvent.data) as { stage: PackProgressStage };
-          callbacks?.onProgress?.(data.stage);
-        } else if (sseEvent.event === 'result') {
-          result = JSON.parse(sseEvent.data) as PackResult;
-        } else if (sseEvent.event === 'error') {
-          const data = JSON.parse(sseEvent.data) as { message: string };
-          throw new ApiError(data.message);
+      // Parse complete lines from buffer
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        const event = JSON.parse(line) as StreamEvent;
+        if (event.type === 'progress') {
+          callbacks?.onProgress?.(event.stage);
+        } else if (event.type === 'result') {
+          result = event.data;
+        } else if (event.type === 'error') {
+          throw new ApiError(event.message);
         }
       }
     }
