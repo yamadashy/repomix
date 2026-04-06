@@ -8,9 +8,9 @@ import { processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
-import { getGitDiffs, type GitDiffResult } from './git/gitDiffHandle.js';
-import { getGitLogs, type GitLogResult } from './git/gitLogHandle.js';
-import { calculateMetrics, type CalculateMetricsResult, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { type GitDiffResult, getGitDiffs } from './git/gitDiffHandle.js';
+import { type GitLogResult, getGitLogs } from './git/gitLogHandle.js';
+import { type CalculateMetricsResult, calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { prewarmGitSortCache } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
@@ -80,8 +80,15 @@ const runOutputAndMetrics = async (
   deps: Pick<typeof defaultDeps, 'produceOutput' | 'calculateMetrics'>,
 ): Promise<{ outputFiles: string[] | undefined; metrics: CalculateMetricsResult }> => {
   const outputPromise = deps.produceOutput(
-    rootDirs, config, processedFiles, allFilePaths,
-    gitDiffResult, gitLogResult, progressCallback, filePathsByRoot, emptyDirPaths,
+    rootDirs,
+    config,
+    processedFiles,
+    allFilePaths,
+    gitDiffResult,
+    gitLogResult,
+    progressCallback,
+    filePathsByRoot,
+    emptyDirPaths,
   );
 
   const outputForMetrics = outputPromise.then((r) => r.outputForMetrics);
@@ -90,8 +97,13 @@ const runOutputAndMetrics = async (
     outputPromise,
     withMemoryLogging('Calculate Metrics', () =>
       deps.calculateMetrics(
-        processedFiles, outputForMetrics, progressCallback, config,
-        gitDiffResult, gitLogResult, metricsRunnerDeps,
+        processedFiles,
+        outputForMetrics,
+        progressCallback,
+        config,
+        gitDiffResult,
+        gitLogResult,
+        metricsRunnerDeps,
       ),
     ),
   ]);
@@ -219,9 +231,17 @@ export const pack = async (
     // fall back to regenerating with filtered files.
     const metricsRunnerDeps = { taskRunner: metricsTaskRunner };
     const outputAndMetrics = runOutputAndMetrics(
-      rootDirs, config, allProcessedFiles, allFilePaths,
-      gitDiffResult, gitLogResult, progressCallback, filePathsByRoot, emptyDirPaths,
-      metricsRunnerDeps, deps,
+      rootDirs,
+      config,
+      allProcessedFiles,
+      allFilePaths,
+      gitDiffResult,
+      gitLogResult,
+      progressCallback,
+      filePathsByRoot,
+      emptyDirPaths,
+      metricsRunnerDeps,
+      deps,
     );
 
     // Prevent unhandled rejections if securityPromise rejects before
@@ -229,8 +249,10 @@ export const pack = async (
     outputAndMetrics.catch(() => {});
 
     // Wait for the optimistic pipeline and security check to complete
-    const [{ outputFiles: optimisticOutputFiles, metrics: optimisticMetrics }, validationResult] =
-      await Promise.all([outputAndMetrics, securityPromise]);
+    const [{ outputFiles: optimisticOutputFiles, metrics: optimisticMetrics }, validationResult] = await Promise.all([
+      outputAndMetrics,
+      securityPromise,
+    ]);
 
     const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       validationResult;
@@ -244,9 +266,17 @@ export const pack = async (
       finalProcessedFiles = filterSuspiciousFiles(allProcessedFiles, suspiciousFilesResults);
 
       const filtered = await runOutputAndMetrics(
-        rootDirs, config, finalProcessedFiles, allFilePaths,
-        gitDiffResult, gitLogResult, progressCallback, filePathsByRoot, emptyDirPaths,
-        metricsRunnerDeps, deps,
+        rootDirs,
+        config,
+        finalProcessedFiles,
+        allFilePaths,
+        gitDiffResult,
+        gitLogResult,
+        progressCallback,
+        filePathsByRoot,
+        emptyDirPaths,
+        metricsRunnerDeps,
+        deps,
       );
       finalOutputFiles = filtered.outputFiles;
       finalMetrics = filtered.metrics;
