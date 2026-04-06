@@ -20,9 +20,7 @@ const stageMessages: Record<PackProgressStage, string> = {
 const MAX_DETAIL_LENGTH = 60;
 
 const detailMessage = computed(() => {
-  // Show detailed message from pack() if available, otherwise show stage message
-  const text = props.message || (props.stage && stageMessages[props.stage]) || null;
-  if (!text) return null;
+  const text = props.message || (props.stage && stageMessages[props.stage]) || '...';
   if (text.length <= MAX_DETAIL_LENGTH) return text;
   return `${text.slice(0, MAX_DETAIL_LENGTH)}...`;
 });
@@ -34,7 +32,7 @@ const detailMessage = computed(() => {
       <div class="spinner"></div>
       <p>Processing repository...</p>
     </div>
-    <p v-if="detailMessage" class="loading-detail">{{ detailMessage }}</p>
+    <p class="loading-detail">{{ detailMessage }}</p>
     <div class="sponsor-section">
       <p class="sponsor-header">Special thanks to:</p>
       <a href="https://go.warp.dev/repomix" target="_blank" rel="noopener noreferrer">
