@@ -116,19 +116,14 @@ export async function packRepository(request: PackRequest, callbacks?: PackStrea
     throw new ApiError('No response body received');
   }
 
-  console.log('[pack] Starting NDJSON stream reading, content-type:', response.headers.get('content-type'));
-
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let result: PackResult | null = null;
-  let chunkCount = 0;
 
   try {
     while (true) {
       const { value, done } = await reader.read();
-      chunkCount++;
-      console.log(`[pack] Chunk #${chunkCount}: done=${done}, bytes=${value?.length ?? 0}`);
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
@@ -141,7 +136,6 @@ export async function packRepository(request: PackRequest, callbacks?: PackStrea
         if (!line.trim()) continue;
 
         const event = JSON.parse(line) as StreamEvent;
-        console.log('[pack] Event:', event.type, event.type === 'progress' ? event.stage : '');
         if (event.type === 'progress') {
           callbacks?.onProgress?.(event.stage);
         } else if (event.type === 'result') {
@@ -152,7 +146,6 @@ export async function packRepository(request: PackRequest, callbacks?: PackStrea
       }
     }
   } finally {
-    console.log('[pack] Stream ended. result received:', !!result, 'buffer remaining:', buffer.length);
     reader.releaseLock();
   }
 
