@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775468591603,
+  "lastUpdate": 1775480670480,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -2385,6 +2385,51 @@ window.BENCHMARK_DATA = {
             "range": "±60",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2464ms, Q3: 2524ms\nAll times: 2339, 2436, 2440, 2454, 2461, 2464, 2468, 2479, 2487, 2487, 2495, 2496, 2497, 2502, 2507, 2524, 2561, 2582, 2894, 3269ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3bb57cacd9b46b745b505cb0741cf0488103705a",
+          "message": "Merge pull request #1420 from yamadashy/feat/add-progress-callback-to-default-action\n\nfeat(core): Add progressCallback parameter to runDefaultAction",
+          "timestamp": "2026-04-06T22:02:23+09:00",
+          "tree_id": "270770052b967255c84bcc74e0a38528fab258c4",
+          "url": "https://github.com/yamadashy/repomix/commit/3bb57cacd9b46b745b505cb0741cf0488103705a"
+        },
+        "date": 1775480670104,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 2271,
+            "range": "±428",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 2084ms, Q3: 2512ms\nAll times: 1968, 1998, 2016, 2050, 2051, 2078, 2084, 2084, 2109, 2124, 2145, 2150, 2209, 2240, 2255, 2271, 2281, 2290, 2334, 2394, 2398, 2499, 2512, 2518, 2612, 2620, 2634, 2719, 2929, 2978ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1890,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1880ms, Q3: 1903ms\nAll times: 1839, 1854, 1859, 1866, 1868, 1880, 1881, 1885, 1887, 1888, 1890, 1891, 1892, 1897, 1902, 1903, 1908, 1910, 1941, 1977ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2412,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2402ms, Q3: 2435ms\nAll times: 2370, 2372, 2396, 2399, 2401, 2402, 2406, 2407, 2409, 2410, 2412, 2416, 2418, 2421, 2426, 2435, 2445, 2449, 2463, 2472ms"
           }
         ]
       }
