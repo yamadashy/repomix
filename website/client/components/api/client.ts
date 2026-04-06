@@ -13,7 +13,6 @@ export interface PackOptions {
 export interface FileInfo {
   path: string;
   charCount: number;
-  tokenCount: number;
   selected?: boolean;
 }
 
