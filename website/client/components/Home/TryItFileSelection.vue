@@ -64,7 +64,7 @@
                 />
               </th>
               <th class="file-path-column">File Path</th>
-              <th class="tokens-column">Chars</th>
+              <th class="chars-column">Chars</th>
             </tr>
           </thead>
           <tbody>
@@ -86,8 +86,8 @@
               <td class="file-path-cell">
                 <span class="file-path">{{ file.path }}</span>
               </td>
-              <td class="tokens-cell">
-                <span class="file-tokens">{{ file.charCount.toLocaleString() }}</span>
+              <td class="chars-cell">
+                <span class="file-chars">{{ file.charCount.toLocaleString() }}</span>
               </td>
             </tr>
           </tbody>
@@ -298,7 +298,7 @@ const toggleFileSelection = (file: FileInfo, event?: Event) => {
   width: 70%;
 }
 
-.file-table .tokens-column {
+.file-table .chars-column {
   width: 30%;
   text-align: left;
   padding-right: 2rem;
@@ -334,12 +334,12 @@ const toggleFileSelection = (file: FileInfo, event?: Event) => {
   font-family: var(--vp-font-family-mono);
 }
 
-.file-table .tokens-cell {
+.file-table .chars-cell {
   text-align: left;
   padding-right: 2rem;
 }
 
-.file-tokens {
+.file-chars {
   font-size: 12px;
   color: var(--vp-c-text-2);
   white-space: nowrap;
