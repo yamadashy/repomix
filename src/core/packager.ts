@@ -8,9 +8,9 @@ import { processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
-import { getGitDiffs } from './git/gitDiffHandle.js';
-import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { getGitDiffs, type GitDiffResult } from './git/gitDiffHandle.js';
+import { getGitLogs, type GitLogResult } from './git/gitLogHandle.js';
+import { calculateMetrics, type CalculateMetricsResult, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { prewarmGitSortCache } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
@@ -56,6 +56,49 @@ export interface PackOptions {
   skillSourceUrl?: string;
 }
 
+const filterSuspiciousFiles = (
+  allFiles: ProcessedFile[],
+  suspiciousResults: SuspiciousFileResult[],
+): ProcessedFile[] => {
+  if (suspiciousResults.length === 0) return allFiles;
+  const suspiciousPathSet = new Set(suspiciousResults.map((r) => r.filePath));
+  return allFiles.filter((f) => !suspiciousPathSet.has(f.path));
+};
+
+/** Run output generation and metrics calculation in parallel. */
+const runOutputAndMetrics = async (
+  rootDirs: string[],
+  config: RepomixConfigMerged,
+  processedFiles: ProcessedFile[],
+  allFilePaths: string[],
+  gitDiffResult: GitDiffResult | undefined,
+  gitLogResult: GitLogResult | undefined,
+  progressCallback: RepomixProgressCallback,
+  filePathsByRoot: FilesByRoot[],
+  emptyDirPaths: string[] | undefined,
+  metricsRunnerDeps: { taskRunner: ReturnType<typeof createMetricsTaskRunner>['taskRunner'] },
+  deps: Pick<typeof defaultDeps, 'produceOutput' | 'calculateMetrics'>,
+): Promise<{ outputFiles: string[] | undefined; metrics: CalculateMetricsResult }> => {
+  const outputPromise = deps.produceOutput(
+    rootDirs, config, processedFiles, allFilePaths,
+    gitDiffResult, gitLogResult, progressCallback, filePathsByRoot, emptyDirPaths,
+  );
+
+  const outputForMetrics = outputPromise.then((r) => r.outputForMetrics);
+
+  const [{ outputFiles }, metrics] = await Promise.all([
+    outputPromise,
+    withMemoryLogging('Calculate Metrics', () =>
+      deps.calculateMetrics(
+        processedFiles, outputForMetrics, progressCallback, config,
+        gitDiffResult, gitLogResult, metricsRunnerDeps,
+      ),
+    ),
+  ]);
+
+  return { outputFiles, metrics };
+};
+
 export const pack = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
@@ -81,26 +124,21 @@ export const pack = async (
     ),
   );
 
-  // Deduplicate and sort empty directory paths for reuse during output generation,
-  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
+  // Deduplicate and sort empty directory paths for reuse during output generation.
   const emptyDirPaths = config.output.includeEmptyDirectories
     ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
     : undefined;
 
-  // Sort file paths
   progressCallback('Sorting files...');
   const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
   const sortedFilePaths = deps.sortPaths(allFilePaths);
-
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
   const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
   const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
     rootDir,
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
+  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent stages.
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
     allFilePaths.length,
     config.tokenCount.encoding,
@@ -108,13 +146,7 @@ export const pack = async (
 
   try {
     // Run file collection, git operations, and git sort cache pre-warming in parallel
-    // since they are independent:
-    // - collectFiles reads file contents from disk
-    // - getGitDiffs/getGitLogs spawn git subprocesses
-    // - prewarmGitSortCache spawns `git log` for sort-by-changes, populating a module-level
-    //   cache so that sortOutputFiles (called later during output generation) hits the cache
-    //   instead of blocking the critical path with a subprocess.
-    // Neither depends on the other's results.
+    // since they are independent.
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
       withMemoryLogging(
@@ -135,31 +167,22 @@ export const pack = async (
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
     // Run security check and file processing concurrently.
-    // Security check uses worker threads while file processing runs on the main thread
-    // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
-    // After both complete, filter out any suspicious files from the processed results.
-    const [validationResult, allProcessedFiles] = await Promise.all([
-      withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
-      ),
-      withMemoryLogging('Process Files', () => {
-        progressCallback('Processing files...');
-        return deps.processFiles(rawFiles, config, progressCallback);
-      }),
-    ]);
+    const securityPromise = withMemoryLogging('Security Check', () =>
+      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+    );
 
-    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-      validationResult;
+    const allProcessedFiles = await withMemoryLogging('Process Files', () => {
+      progressCallback('Processing files...');
+      return deps.processFiles(rawFiles, config, progressCallback);
+    });
 
-    // Filter processed files to exclude suspicious ones
-    const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
-    const processedFiles =
-      suspiciousPathSet.size > 0 ? allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path)) : allProcessedFiles;
-
-    progressCallback('Generating output...');
-
-    // Skill generation path — metrics not needed, return early (worker pool cleaned up by finally)
+    // Skill generation path — wait for security, filter, and return early
     if (config.skillGenerate !== undefined && options.skillDir) {
+      const validationResult = await securityPromise;
+      const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+        validationResult;
+      const processedFiles = filterSuspiciousFiles(allProcessedFiles, suspiciousFilesResults);
+
       const result = await deps.packSkill({
         rootDirs,
         config,
@@ -181,8 +204,6 @@ export const pack = async (
     }
 
     // Build filePathsByRoot for multi-root tree generation
-    // Use directory basename as the label for each root
-    // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
     const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
       rootLabel: path.basename(rootDir) || rootDir,
       files: filePaths,
@@ -191,48 +212,53 @@ export const pack = async (
     // Ensure warm-up task completes before metrics calculation
     await metricsWarmupPromise;
 
-    // Generate and write output, overlapping with metrics calculation.
-    // File and git metrics don't depend on the output, so they start immediately
-    // while output generation runs concurrently.
-    const outputPromise = deps.produceOutput(
-      rootDirs,
-      config,
-      processedFiles,
-      allFilePaths,
-      gitDiffResult,
-      gitLogResult,
-      progressCallback,
-      filePathsByRoot,
-      emptyDirPaths,
+    progressCallback('Generating output...');
+
+    // Start output and metrics optimistically with ALL processed files, overlapping
+    // with the still-running security check. If security finds suspicious files (rare),
+    // fall back to regenerating with filtered files.
+    const metricsRunnerDeps = { taskRunner: metricsTaskRunner };
+    const outputAndMetrics = runOutputAndMetrics(
+      rootDirs, config, allProcessedFiles, allFilePaths,
+      gitDiffResult, gitLogResult, progressCallback, filePathsByRoot, emptyDirPaths,
+      metricsRunnerDeps, deps,
     );
 
-    const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
+    // Prevent unhandled rejections if securityPromise rejects before
+    // the optimistic pipeline settles.
+    outputAndMetrics.catch(() => {});
 
-    const [{ outputFiles }, metrics] = await Promise.all([
-      outputPromise,
-      withMemoryLogging('Calculate Metrics', () =>
-        deps.calculateMetrics(
-          processedFiles,
-          outputForMetricsPromise,
-          progressCallback,
-          config,
-          gitDiffResult,
-          gitLogResult,
-          {
-            taskRunner: metricsTaskRunner,
-          },
-        ),
-      ),
-    ]);
+    // Wait for the optimistic pipeline and security check to complete
+    const [{ outputFiles: optimisticOutputFiles, metrics: optimisticMetrics }, validationResult] =
+      await Promise.all([outputAndMetrics, securityPromise]);
 
-    // Create a result object that includes metrics and security results
+    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+      validationResult;
+
+    let finalOutputFiles = optimisticOutputFiles;
+    let finalMetrics = optimisticMetrics;
+    let finalProcessedFiles: ProcessedFile[] = allProcessedFiles;
+
+    // If security found suspicious files, regenerate output and metrics with filtered files
+    if (suspiciousFilesResults.length > 0) {
+      finalProcessedFiles = filterSuspiciousFiles(allProcessedFiles, suspiciousFilesResults);
+
+      const filtered = await runOutputAndMetrics(
+        rootDirs, config, finalProcessedFiles, allFilePaths,
+        gitDiffResult, gitLogResult, progressCallback, filePathsByRoot, emptyDirPaths,
+        metricsRunnerDeps, deps,
+      );
+      finalOutputFiles = filtered.outputFiles;
+      finalMetrics = filtered.metrics;
+    }
+
     const result = {
-      ...metrics,
-      ...(outputFiles && { outputFiles }),
+      ...finalMetrics,
+      ...(finalOutputFiles && { outputFiles: finalOutputFiles }),
       suspiciousFilesResults,
       suspiciousGitDiffResults,
       suspiciousGitLogResults,
-      processedFiles,
+      processedFiles: finalProcessedFiles,
       safeFilePaths,
       skippedFiles: allSkippedFiles,
     };
