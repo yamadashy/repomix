@@ -11,8 +11,8 @@ import type { FileMetrics } from './workers/types.js';
 // per-file round-trip costs (~0.5ms each) that dominate when processing many files.
 // A size of 10 keeps individual worker tasks small so that workers become
 // available sooner, enabling overlap between file metrics and output token
-// counting. All batches are dispatched concurrently via Promise.all, so
-// the per-batch IPC cost is amortized across available workers.
+// counting. While smaller batches increase total IPC overhead, the cost is
+// distributed across available workers and offset by improved utilization.
 const METRICS_BATCH_SIZE = 10;
 
 export const calculateSelectiveFileMetrics = async (
