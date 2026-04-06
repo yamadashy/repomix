@@ -19,11 +19,18 @@ const fetchGitHubRepoSize = async (repoInfo: GitHubRepoInfo): Promise<number | n
   const url = `https://api.github.com/repos/${encodeURIComponent(repoInfo.owner)}/${encodeURIComponent(repoInfo.repo)}`;
 
   try {
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'Repomix',
+    };
+
+    const token = process.env.GITHUB_TOKEN;
+    if (token) {
+      headers.Authorization = `token ${token}`;
+    }
+
     const response = await fetch(url, {
-      headers: {
-        Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'Repomix',
-      },
+      headers,
       signal: AbortSignal.timeout(GITHUB_API_TIMEOUT_MS),
     });
 
