@@ -5,7 +5,6 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import type { Options as GlobbyOptions } from 'globby';
 import { minimatch } from 'minimatch';
-// @ts-expect-error -- picomatch has no type declarations but is a transitive dependency of globby
 import picomatch from 'picomatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
