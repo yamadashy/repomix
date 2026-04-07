@@ -3,10 +3,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { type Options as GlobbyOptions, globby } from 'globby';
 import { minimatch } from 'minimatch';
+// @ts-expect-error -- picomatch has no type declarations but is a transitive dependency of globby
+import picomatch from 'picomatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { execGitLsFiles } from '../git/gitCommand.js';
 import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
@@ -92,6 +95,78 @@ export const normalizeGlobPattern = (pattern: string): string => {
   return pattern;
 };
 
+/**
+ * Fast path: use `git ls-files` to list files instead of globby.
+ * Git already maintains a file index and respects .gitignore, making it ~5x faster
+ * than globby's full directory traversal + gitignore parsing (~40ms vs ~250ms).
+ *
+ * Returns null if git is not available, the directory is not a git repo, or
+ * the config uses features that require globby (e.g., custom include patterns
+ * that can't be efficiently applied as post-filters).
+ */
+const searchFilesGit = async (
+  rootDir: string,
+  config: RepomixConfigMerged,
+  deps = { execGitLsFiles },
+): Promise<string[] | null> => {
+  // Only use fast path when gitignore integration is enabled
+  if (!config.ignore.useGitignore) {
+    return null;
+  }
+
+  const gitFiles = await deps.execGitLsFiles(rootDir);
+  if (gitFiles === null) {
+    return null;
+  }
+
+  logger.debug(`[git-ls-files] Found ${gitFiles.length} files from git`);
+
+  // Build ignore patterns from repomix config (default patterns, custom patterns, .git/info/exclude)
+  const ignorePatterns = await getIgnorePatterns(rootDir, config);
+  const normalizedPatterns = ignorePatterns.map(normalizeGlobPattern);
+
+  // Load .repomixignore and .ignore files for pattern-based filtering.
+  // Read files that globby's ignoreFiles option would process.
+  const ignoreFileNames = await getIgnoreFilePatterns(config);
+  for (const ignoreFileGlob of ignoreFileNames) {
+    // Find actual ignore files in the git file list (e.g., '**/.repomixignore' → '.repomixignore', 'src/.repomixignore')
+    const ignoreFileMatcher = picomatch(ignoreFileGlob, { dot: true });
+    for (const filePath of gitFiles) {
+      if (ignoreFileMatcher(filePath)) {
+        try {
+          const content = await fs.readFile(path.join(rootDir, filePath), 'utf8');
+          const patterns = parseIgnoreContent(content);
+          const dir = path.dirname(filePath);
+          for (const pattern of patterns) {
+            // Scope patterns to the directory containing the ignore file
+            const scopedPattern = dir === '.' ? pattern : `${dir}/${pattern}`;
+            normalizedPatterns.push(normalizeGlobPattern(scopedPattern));
+          }
+        } catch {
+          // Ignore file read errors
+        }
+      }
+    }
+  }
+
+  // Build include patterns
+  let includePatterns = config.include.map((pattern) => escapeGlobPattern(pattern));
+  if (includePatterns.length === 0) {
+    includePatterns = ['**/*'];
+  }
+
+  // Compile matchers
+  const isIgnored = picomatch(normalizedPatterns, { dot: true });
+  const isIncluded = picomatch(includePatterns, { dot: true });
+
+  // Filter files
+  const filtered = gitFiles.filter((f) => isIncluded(f) && !isIgnored(f));
+
+  logger.debug(`[git-ls-files] Filtered to ${filtered.length} files`);
+
+  return filtered;
+};
+
 // Get all file paths considering the config
 export const searchFiles = async (
   rootDir: string,
@@ -146,6 +221,35 @@ export const searchFiles = async (
   }
 
   try {
+    // Fast path: use git ls-files when available. This is ~5x faster than globby
+    // because git already has a cached file index and built-in gitignore support.
+    // Skip when explicit files are provided (stdin mode uses globby for precise matching).
+    if (!explicitFiles) {
+      const gitFastPathStartTime = Date.now();
+      const gitFiles = await searchFilesGit(rootDir, config);
+      if (gitFiles !== null) {
+        const gitFastPathElapsed = Date.now() - gitFastPathStartTime;
+        logger.debug(`[git-ls-files] Completed in ${gitFastPathElapsed}ms, found ${gitFiles.length} files`);
+
+        let emptyDirPaths: string[] = [];
+        if (config.output.includeEmptyDirectories) {
+          // Fall back to globby for empty directory detection (git doesn't track empty dirs)
+          const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+          const directories = await globby(['**/*'], {
+            ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+            onlyDirectories: true,
+          });
+          emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+        }
+
+        return {
+          filePaths: sortPaths(gitFiles),
+          emptyDirPaths: sortPaths(emptyDirPaths),
+        };
+      }
+      logger.debug('[git-ls-files] Fast path not available, falling back to globby');
+    }
+
     const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);

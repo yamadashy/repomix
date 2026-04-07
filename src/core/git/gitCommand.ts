@@ -11,6 +11,52 @@ const GIT_REMOTE_TIMEOUT = 30000;
 const gitRemoteEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
 const gitRemoteOpts = { timeout: GIT_REMOTE_TIMEOUT, env: gitRemoteEnv };
 
+/**
+ * List tracked and untracked files using `git ls-files`, respecting .gitignore.
+ * Returns file paths relative to the repository root, excluding symlinks.
+ * Returns null if git is not available or the command fails.
+ */
+export const execGitLsFiles = async (
+  directory: string,
+  deps = {
+    execFileAsync,
+  },
+): Promise<string[] | null> => {
+  try {
+    // -c: cached (tracked), -o: others (untracked), -s: show stage info (includes file mode)
+    // --exclude-standard: apply .gitignore, .git/info/exclude, and global gitignore
+    const result = await deps.execFileAsync(
+      'git',
+      ['-C', directory, 'ls-files', '-c', '-o', '-s', '--exclude-standard'],
+      {
+        maxBuffer: 50 * 1024 * 1024,
+      },
+    );
+
+    const files: string[] = [];
+    for (const line of result.stdout.split('\n')) {
+      if (!line) continue;
+      const tabIndex = line.indexOf('\t');
+      if (tabIndex === -1) {
+        // Untracked file (no mode/hash info) — include it
+        files.push(line);
+      } else {
+        const mode = line.slice(0, 6);
+        const filePath = line.slice(tabIndex + 1);
+        // Skip symlinks (mode 120000)
+        if (mode !== '120000') {
+          files.push(filePath);
+        }
+      }
+    }
+
+    return files;
+  } catch (error) {
+    logger.trace('Failed to list files via git:', (error as Error).message);
+    return null;
+  }
+};
+
 export const execGitLogFilenames = async (
   directory: string,
   maxCommits = 100,

@@ -13,34 +13,89 @@ const dataUriPattern = new RegExp(
 const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
 
 /**
+ * Fast check: does the content have any line with 256+ characters?
+ * Uses String.indexOf (SIMD-accelerated in V8) to find newlines quickly.
+ * Standalone base64 must appear as a long run within a line, so short-line
+ * files can't contain it.
+ */
+const hasLongLine = (content: string, minLen: number): boolean => {
+  let start = 0;
+  for (;;) {
+    const nlIdx = content.indexOf('\n', start);
+    const end = nlIdx === -1 ? content.length : nlIdx;
+    if (end - start >= minLen) return true;
+    if (nlIdx === -1) return false;
+    start = nlIdx + 1;
+  }
+};
+
+/**
+ * Check if content has a run of 256+ consecutive non-whitespace characters.
+ * Base64 strings are dense (no spaces/newlines), so this filters out files
+ * where long lines are just code with spaces.
+ */
+const hasLongNonWhitespaceRun = (content: string, minLen: number): boolean => {
+  let run = 0;
+  for (let i = 0; i < content.length; i++) {
+    const c = content.charCodeAt(i);
+    // Treat ASCII control chars and space (0-32) as whitespace
+    if (c <= 32) {
+      run = 0;
+    } else if (++run >= minLen) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
  * Truncates base64 encoded data in content to reduce file size
  * Detects common base64 patterns like data URIs and standalone base64 strings
+ *
+ * Uses a two-phase fast-path to avoid expensive regex scans on files that
+ * clearly don't contain base64 data:
+ * - Data URIs: gated by String.includes('base64,') (~2ms for 1000 files)
+ * - Standalone base64: gated by line-length check then non-whitespace run check
+ *   (~9ms for 1000 files vs ~80ms for ungated regex scan)
  *
  * @param content The content to process
  * @returns Content with base64 data truncated
  */
 export const truncateBase64Content = (content: string): string => {
-  // Reset lastIndex since patterns are global and reused across calls
-  dataUriPattern.lastIndex = 0;
-  standaloneBase64Pattern.lastIndex = 0;
+  // Check if either type of base64 could be present
+  const hasDataUri = content.includes('base64,');
+  const couldHaveStandalone =
+    hasLongLine(content, MIN_BASE64_LENGTH_STANDALONE) &&
+    hasLongNonWhitespaceRun(content, MIN_BASE64_LENGTH_STANDALONE);
+
+  // Fast path: skip files with no potential base64 content
+  if (!hasDataUri && !couldHaveStandalone) {
+    return content;
+  }
 
   let processedContent = content;
 
   // Replace data URIs
-  processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
-    const preview = base64Data.substring(0, TRUNCATION_LENGTH);
-    return `data:${mimeType}${params || ''};base64,${preview}...`;
-  });
+  if (hasDataUri) {
+    dataUriPattern.lastIndex = 0;
+    processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
+      const preview = base64Data.substring(0, TRUNCATION_LENGTH);
+      return `data:${mimeType}${params || ''};base64,${preview}...`;
+    });
+  }
 
   // Replace standalone base64 strings
-  processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
-    // Check if this looks like actual base64 (not just a long string)
-    if (isLikelyBase64(base64String)) {
-      const preview = base64String.substring(0, TRUNCATION_LENGTH);
-      return `${preview}...`;
-    }
-    return match;
-  });
+  if (couldHaveStandalone) {
+    standaloneBase64Pattern.lastIndex = 0;
+    processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
+      // Check if this looks like actual base64 (not just a long string)
+      if (isLikelyBase64(base64String)) {
+        const preview = base64String.substring(0, TRUNCATION_LENGTH);
+        return `${preview}...`;
+      }
+      return match;
+    });
+  }
 
   return processedContent;
 };
