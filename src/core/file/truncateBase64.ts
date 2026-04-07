@@ -13,36 +13,21 @@ const dataUriPattern = new RegExp(
 const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
 
 /**
- * Fast check: does the content have any line with 256+ characters?
- * Uses String.indexOf (SIMD-accelerated in V8) to find newlines quickly.
- * Standalone base64 must appear as a long run within a line, so short-line
- * files can't contain it.
+ * Fast pre-check: scan content for a run of MIN_BASE64_LENGTH_STANDALONE+
+ * consecutive base64 characters. Returns false (and avoids the expensive
+ * regex) when no such run exists — which is the common case for source code.
  */
-const hasLongLine = (content: string, minLen: number): boolean => {
-  let start = 0;
-  for (;;) {
-    const nlIdx = content.indexOf('\n', start);
-    const end = nlIdx === -1 ? content.length : nlIdx;
-    if (end - start >= minLen) return true;
-    if (nlIdx === -1) return false;
-    start = nlIdx + 1;
-  }
-};
-
-/**
- * Check if content has a run of 256+ consecutive non-whitespace characters.
- * Base64 strings are dense (no spaces/newlines), so this filters out files
- * where long lines are just code with spaces.
- */
-const hasLongNonWhitespaceRun = (content: string, minLen: number): boolean => {
+const hasLongBase64Run = (content: string): boolean => {
   let run = 0;
   for (let i = 0; i < content.length; i++) {
     const c = content.charCodeAt(i);
-    // Treat ASCII control chars and space (0-32) as whitespace
-    if (c <= 32) {
+    // A-Z (65-90), a-z (97-122), 0-9 (48-57), + (43), / (47)
+    if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47) {
+      if (++run >= MIN_BASE64_LENGTH_STANDALONE) {
+        return true;
+      }
+    } else {
       run = 0;
-    } else if (++run >= minLen) {
-      return true;
     }
   }
   return false;
@@ -52,24 +37,16 @@ const hasLongNonWhitespaceRun = (content: string, minLen: number): boolean => {
  * Truncates base64 encoded data in content to reduce file size
  * Detects common base64 patterns like data URIs and standalone base64 strings
  *
- * Uses a two-phase fast-path to avoid expensive regex scans on files that
- * clearly don't contain base64 data:
- * - Data URIs: gated by String.includes('base64,') (~2ms for 1000 files)
- * - Standalone base64: gated by line-length check then non-whitespace run check
- *   (~9ms for 1000 files vs ~80ms for ungated regex scan)
- *
  * @param content The content to process
  * @returns Content with base64 data truncated
  */
 export const truncateBase64Content = (content: string): string => {
-  // Check if either type of base64 could be present
-  const hasDataUri = content.includes('base64,');
-  const couldHaveStandalone =
-    hasLongLine(content, MIN_BASE64_LENGTH_STANDALONE) &&
-    hasLongNonWhitespaceRun(content, MIN_BASE64_LENGTH_STANDALONE);
+  // Fast path: skip the expensive regex when the content has no data URIs
+  // and no long runs of base64 characters (the common case for source code).
+  const hasDataUri = content.includes(';base64,');
+  const hasStandaloneBase64 = hasLongBase64Run(content);
 
-  // Fast path: skip files with no potential base64 content
-  if (!hasDataUri && !couldHaveStandalone) {
+  if (!hasDataUri && !hasStandaloneBase64) {
     return content;
   }
 
@@ -85,7 +62,7 @@ export const truncateBase64Content = (content: string): string => {
   }
 
   // Replace standalone base64 strings
-  if (couldHaveStandalone) {
+  if (hasStandaloneBase64) {
     standaloneBase64Pattern.lastIndex = 0;
     processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
       // Check if this looks like actual base64 (not just a long string)

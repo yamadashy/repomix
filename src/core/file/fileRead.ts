@@ -1,6 +1,7 @@
+import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
 import isBinaryPath from 'is-binary-path';
-import { isBinaryFile } from 'isbinaryfile';
+import { isBinaryFile, isBinaryFileSync } from 'isbinaryfile';
 import { logger } from '../../shared/logger.js';
 
 // Lazy-load encoding detection libraries to avoid their ~25ms combined import cost.
@@ -17,7 +18,12 @@ const getEncodingDeps = () => {
   return _encodingDepsPromise;
 };
 
-export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
+export type FileSkipReason =
+  | 'binary-extension'
+  | 'binary-content'
+  | 'size-limit'
+  | 'encoding-error'
+  | 'needs-async-encoding';
 
 export interface FileReadResult {
   content: string | null;
@@ -83,6 +89,52 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     }
 
     return { content };
+  } catch (error) {
+    logger.warn(`Failed to read file: ${filePath}`, error);
+    return { content: null, skippedReason: 'encoding-error' };
+  }
+};
+
+/**
+ * Synchronous version of readRawFile. Uses fs.readFileSync to avoid libuv thread pool
+ * bottleneck and event loop scheduling overhead. For repos with hundreds to thousands
+ * of mostly small source files, sync reads are ~2-3x faster than async reads pooled
+ * through the 4-thread libuv default.
+ */
+export const readRawFileSync = (filePath: string, maxFileSize: number): FileReadResult => {
+  try {
+    if (isBinaryPath(filePath)) {
+      logger.debug(`Skipping binary file: ${filePath}`);
+      return { content: null, skippedReason: 'binary-extension' };
+    }
+
+    logger.trace(`Reading file: ${filePath}`);
+
+    const buffer = fsSync.readFileSync(filePath);
+
+    if (buffer.length > maxFileSize) {
+      const sizeKB = (buffer.length / 1024).toFixed(1);
+      const maxSizeKB = (maxFileSize / 1024).toFixed(1);
+      logger.trace(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
+      return { content: null, skippedReason: 'size-limit' };
+    }
+
+    if (isBinaryFileSync(buffer)) {
+      logger.debug(`Skipping binary file (content check): ${filePath}`);
+      return { content: null, skippedReason: 'binary-content' };
+    }
+
+    // Fast path: UTF-8 decoding (covers ~99% of source code files)
+    try {
+      let content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+      if (content.charCodeAt(0) === 0xfeff) {
+        content = content.slice(1);
+      }
+      return { content };
+    } catch {
+      // Not valid UTF-8; signal caller to retry with async encoding detection
+      return { content: null, skippedReason: 'needs-async-encoding' };
+    }
   } catch (error) {
     logger.warn(`Failed to read file: ${filePath}`, error);
     return { content: null, skippedReason: 'encoding-error' };
