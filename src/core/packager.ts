@@ -127,19 +127,51 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Run security check and file processing concurrently.
+    // Start security check and file processing concurrently.
     // Security check uses worker threads while file processing runs on the main thread
     // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
-    // After both complete, filter out any suspicious files from the processed results.
-    const [validationResult, allProcessedFiles] = await Promise.all([
-      withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+    const validationPromise = withMemoryLogging('Security Check', () =>
+      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+    );
+
+    const allProcessedFiles = await withMemoryLogging('Process Files', () => {
+      progressCallback('Processing files...');
+      return deps.processFiles(rawFiles, config, progressCallback);
+    });
+
+    // Ensure warm-up task completes before metrics calculation
+    await metricsWarmupPromise;
+
+    // Create a deferred promise for the output. This allows starting file and git metrics
+    // immediately (they don't depend on output), while output metrics waits for the deferred
+    // to be resolved once output generation completes. The output generation itself must wait
+    // for the security check to filter suspicious files, but file/git metrics can overlap
+    // with the remaining security check time.
+    let resolveOutputForMetrics!: (value: string | string[]) => void;
+    let rejectOutputForMetrics!: (reason?: unknown) => void;
+    const outputForMetricsDeferred = new Promise<string | string[]>((resolve, reject) => {
+      resolveOutputForMetrics = resolve;
+      rejectOutputForMetrics = reject;
+    });
+
+    // Start metrics calculation immediately. File and git metrics begin right away,
+    // output metrics will start once the deferred promise resolves.
+    const metricsPromise = withMemoryLogging('Calculate Metrics', () =>
+      deps.calculateMetrics(
+        allProcessedFiles,
+        outputForMetricsDeferred,
+        progressCallback,
+        config,
+        gitDiffResult,
+        gitLogResult,
+        {
+          taskRunner: metricsTaskRunner,
+        },
       ),
-      withMemoryLogging('Process Files', () => {
-        progressCallback('Processing files...');
-        return deps.processFiles(rawFiles, config, progressCallback);
-      }),
-    ]);
+    );
+
+    // Wait for security check to complete before generating output
+    const validationResult = await validationPromise;
 
     const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       validationResult;
@@ -153,6 +185,10 @@ export const pack = async (
 
     // Skill generation path — metrics not needed, return early (worker pool cleaned up by finally)
     if (config.skillGenerate !== undefined && options.skillDir) {
+      // Resolve the deferred to unblock metrics cleanup, then cancel by cleaning up the pool
+      resolveOutputForMetrics('');
+      await metricsPromise.catch(() => {});
+
       const result = await deps.packSkill({
         rootDirs,
         config,
@@ -181,12 +217,8 @@ export const pack = async (
       files: filePaths,
     }));
 
-    // Ensure warm-up task completes before metrics calculation
-    await metricsWarmupPromise;
-
-    // Generate and write output, overlapping with metrics calculation.
-    // File and git metrics don't depend on the output, so they start immediately
-    // while output generation runs concurrently.
+    // Generate and write output. Resolve the deferred promise to feed the output
+    // into the metrics calculation that's already running file/git metrics.
     const outputPromise = deps.produceOutput(
       rootDirs,
       config,
@@ -198,29 +230,19 @@ export const pack = async (
       filePathsByRoot,
       emptyDirPaths,
     );
+    outputPromise.then(
+      (r) => resolveOutputForMetrics(r.outputForMetrics),
+      (err) => rejectOutputForMetrics(err),
+    );
 
-    const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
+    const [{ outputFiles }, metrics] = await Promise.all([outputPromise, metricsPromise]);
 
-    const [{ outputFiles }, metrics] = await Promise.all([
-      outputPromise,
-      withMemoryLogging('Calculate Metrics', () =>
-        deps.calculateMetrics(
-          processedFiles,
-          outputForMetricsPromise,
-          progressCallback,
-          config,
-          gitDiffResult,
-          gitLogResult,
-          {
-            taskRunner: metricsTaskRunner,
-          },
-        ),
-      ),
-    ]);
-
-    // Create a result object that includes metrics and security results
+    // Create a result object that includes metrics and security results.
+    // Override totalFiles since metrics ran on allProcessedFiles (pre-security-filter)
+    // to overlap with the security check, but the reported count should reflect the filtered set.
     const result = {
       ...metrics,
+      totalFiles: processedFiles.length,
       ...(outputFiles && { outputFiles }),
       suspiciousFilesResults,
       suspiciousGitDiffResults,
