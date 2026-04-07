@@ -98,6 +98,60 @@ describe('calculateMetrics', () => {
     );
     expect(result).toEqual(aggregatedResult);
   });
+
+  it('should estimate output tokens from file token counts when tokenCountTree is enabled', async () => {
+    const processedFiles: ProcessedFile[] = [
+      { path: 'file1.txt', content: 'a'.repeat(100) },
+      { path: 'file2.txt', content: 'b'.repeat(200) },
+    ];
+    // Output = file content (300 chars) + overhead (60 chars of XML tags etc.)
+    const output = 'a'.repeat(100) + '<tag>' + 'b'.repeat(200) + '</tag>' + 'x'.repeat(49);
+    const progressCallback: RepomixProgressCallback = vi.fn();
+
+    const fileMetrics = [
+      { path: 'file1.txt', charCount: 100, tokenCount: 25 },
+      { path: 'file2.txt', charCount: 200, tokenCount: 50 },
+    ];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    const config = createMockConfig({
+      output: { tokenCountTree: true },
+    });
+
+    const calculateOutputMetricsMock = vi.fn();
+
+    const mockTaskRunner = {
+      run: vi.fn(),
+      cleanup: vi.fn(),
+    };
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      progressCallback,
+      config,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateOutputMetrics: calculateOutputMetricsMock,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // calculateOutputMetrics should NOT be called when tokenCountTree is enabled
+    expect(calculateOutputMetricsMock).not.toHaveBeenCalled();
+
+    // Total tokens should be estimated from file tokens + overhead ratio
+    // totalFileTokens = 75, totalFileChars = 300
+    // overheadChars = output.length(360) - 300 = 60
+    // overheadTokens = round(60 * 75 / 300) = round(15) = 15
+    // totalTokens = 75 + 15 = 90
+    expect(result.totalTokens).toBe(90);
+    expect(result.totalFiles).toBe(2);
+  });
 });
 
 describe('createMetricsTaskRunner', () => {

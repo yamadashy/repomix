@@ -116,25 +116,50 @@ export const calculateMetrics = async (
     const resolvedOutput = await outputPromise;
     const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
 
-    // Start output metrics after output is available
-    const outputMetricsPromise = Promise.all(
-      outputParts.map((part, index) => {
-        const partPath =
-          outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, index + 1) : config.output.filePath;
-        return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
-      }),
-    );
+    // When all file tokens are already counted (tokenCountTree enabled), skip full output
+    // tokenization and estimate total tokens from file token counts + overhead ratio.
+    // The output is ~97% file content (already counted) and ~3% structural overhead
+    // (XML/markdown tags, headers, tree). Estimating overhead tokens via the file token
+    // density ratio avoids tokenizing the full output, eliminating worker pool contention
+    // between file metrics and output metrics tasks.
+    const outputMetricsPromise = shouldCalculateAllFiles
+      ? null
+      : Promise.all(
+          outputParts.map((part, index) => {
+            const partPath =
+              outputParts.length > 1
+                ? buildSplitOutputFilePath(config.output.filePath, index + 1)
+                : config.output.filePath;
+            return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
+          }),
+        );
 
     const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
       selectiveFileMetricsPromise,
-      outputMetricsPromise,
+      outputMetricsPromise ?? Promise.resolve(null),
       gitDiffMetricsPromise,
       gitLogMetricsPromise,
     ]);
 
-    const totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
     const totalFiles = processedFiles.length;
     const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
+
+    let totalTokens: number;
+    if (outputTokenCounts) {
+      totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
+    } else {
+      // Estimate output tokens from per-file token counts.
+      // totalFileTokens covers ~97% of the output; the remaining ~3% (structural overhead)
+      // is estimated using the same chars-per-token ratio observed in file content.
+      const totalFileTokens = selectiveFileMetrics.reduce((sum, f) => sum + f.tokenCount, 0);
+      const totalFileChars = processedFiles.reduce((sum, f) => sum + f.content.length, 0);
+      if (totalFileChars > 0 && totalFileTokens > 0) {
+        const overheadChars = Math.max(0, totalCharacters - totalFileChars);
+        totalTokens = totalFileTokens + Math.round(overheadChars * (totalFileTokens / totalFileChars));
+      } else {
+        totalTokens = 0;
+      }
+    }
 
     // Build character counts for all files
     const fileCharCounts: Record<string, number> = {};
