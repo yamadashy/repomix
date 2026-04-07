@@ -3,7 +3,7 @@ import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { type Options as GlobbyOptions, globby } from 'globby';
+import type { Options as GlobbyOptions } from 'globby';
 import { minimatch } from 'minimatch';
 import picomatch from 'picomatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
@@ -14,7 +14,77 @@ import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
 
+// Lazy-load globby to avoid its ~55ms import cost on the common git fast path
+// where it's not needed. Only loaded when falling back to globby-based search
+// or when listing directories/files for includeFullDirectoryStructure.
+let globbyCache: typeof import('globby')['globby'] | undefined;
+const getGlobby = async () => {
+  if (!globbyCache) {
+    const mod = await import('globby');
+    globbyCache = mod.globby;
+  }
+  return globbyCache;
+};
+
 const execFileAsync = promisify(execFile);
+
+/**
+ * Extracts all unique parent directories from a list of file paths,
+ * then discovers any child directories that exist on the filesystem
+ * but don't contain tracked files (e.g., completely empty directories).
+ *
+ * This replaces the globby directory scan on the git fast path, avoiding
+ * both the globby import (~55ms) and its filesystem traversal (~63ms).
+ */
+const discoverDirectories = async (rootDir: string, filePaths: string[]): Promise<string[]> => {
+  // Phase 1: Extract all unique parent directories from file paths
+  const knownDirs = new Set<string>();
+  for (const filePath of filePaths) {
+    let dir = path.dirname(filePath);
+    while (dir !== '.') {
+      if (knownDirs.has(dir)) break;
+      knownDirs.add(dir);
+      dir = path.dirname(dir);
+    }
+  }
+
+  // Phase 2: Discover child directories not containing tracked files.
+  // For each known directory, check for subdirectories that aren't in our set.
+  // This catches completely empty directories (no files at all) that git doesn't track.
+  const discoveredDirs = new Set<string>();
+  const dirsToCheck = [...knownDirs];
+
+  while (dirsToCheck.length > 0) {
+    const batch = dirsToCheck.splice(0, dirsToCheck.length);
+    const childResults = await Promise.all(
+      batch.map(async (dir) => {
+        const fullPath = path.join(rootDir, dir);
+        try {
+          const entries = await fs.readdir(fullPath, { withFileTypes: true });
+          const newDirs: string[] = [];
+          for (const entry of entries) {
+            if (entry.isDirectory()) {
+              const subDir = `${dir}/${entry.name}`;
+              if (!knownDirs.has(subDir) && !discoveredDirs.has(subDir)) {
+                discoveredDirs.add(subDir);
+                newDirs.push(subDir);
+              }
+            }
+          }
+          return newDirs;
+        } catch {
+          return [];
+        }
+      }),
+    );
+    // Recursively check newly discovered directories for nested empty dirs
+    for (const newDirs of childResults) {
+      dirsToCheck.push(...newDirs);
+    }
+  }
+
+  return [...knownDirs, ...discoveredDirs];
+};
 
 export interface FileSearchResult {
   filePaths: string[];
@@ -26,28 +96,33 @@ const findEmptyDirectories = async (
   directories: string[],
   ignorePatterns: string[],
 ): Promise<string[]> => {
-  const emptyDirs: string[] = [];
+  // Check all directories in parallel to avoid sequential readdir waterfall.
+  // For repos with 200+ directories, this reduces ~22ms sequential I/O to ~6ms.
+  const results = await Promise.all(
+    directories.map(async (dir) => {
+      const fullPath = path.join(rootDir, dir);
+      try {
+        const entries = await fs.readdir(fullPath);
+        const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
 
-  for (const dir of directories) {
-    const fullPath = path.join(rootDir, dir);
-    try {
-      const entries = await fs.readdir(fullPath);
-      const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
+        if (!hasVisibleContents) {
+          // This checks if the directory itself matches any ignore patterns
+          const shouldIgnore = ignorePatterns.some(
+            (pattern) => minimatch(dir, pattern) || minimatch(`${dir}/`, pattern),
+          );
 
-      if (!hasVisibleContents) {
-        // This checks if the directory itself matches any ignore patterns
-        const shouldIgnore = ignorePatterns.some((pattern) => minimatch(dir, pattern) || minimatch(`${dir}/`, pattern));
-
-        if (!shouldIgnore) {
-          emptyDirs.push(dir);
+          if (!shouldIgnore) {
+            return dir;
+          }
         }
+      } catch (error) {
+        logger.debug(`Error checking directory ${dir}:`, error);
       }
-    } catch (error) {
-      logger.debug(`Error checking directory ${dir}:`, error);
-    }
-  }
+      return null;
+    }),
+  );
 
-  return emptyDirs;
+  return results.filter((dir): dir is string => dir !== null);
 };
 
 // Check if a path is a git worktree reference file
@@ -367,14 +442,13 @@ export const searchFiles = async (
       const gitElapsedTime = Date.now() - searchStartTime;
       logger.debug(`[git ls-files] Completed in ${gitElapsedTime}ms, found ${filePaths.length} files`);
 
-      // Empty directory search still needs globby since git doesn't track directories
+      // Discover directories from file paths instead of running a separate globby scan.
+      // This avoids globby's expensive filesystem traversal + gitignore parsing (~63ms)
+      // by reusing the file paths already obtained from git ls-files, then doing a
+      // lightweight recursive check for subdirectories that might be completely empty.
       if (config.output.includeEmptyDirectories) {
-        const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
-        const directories = await globby(includePatterns, {
-          ...baseGlobbyOptions,
-          onlyDirectories: true,
-        });
-        logger.debug(`[empty dirs] Found ${directories.length} directories`);
+        const directories = await discoverDirectories(rootDir, filePaths);
+        logger.debug(`[empty dirs] Discovered ${directories.length} directories from file paths`);
         emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
       }
     } else {
@@ -386,6 +460,8 @@ export const searchFiles = async (
       // Run file search and directory search in parallel when includeEmptyDirectories is enabled.
       // Both globby calls traverse the same directory tree with identical ignore patterns,
       // so running them concurrently lets them share the OS filesystem cache.
+      const globby = await getGlobby();
+
       const fileSearchPromise = globby(includePatterns, {
         ...baseGlobbyOptions,
         onlyFiles: true,
@@ -595,6 +671,7 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
+  const globby = await getGlobby();
   const directories = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
@@ -614,6 +691,7 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
 export const listFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
+  const globby = await getGlobby();
   const files = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,
