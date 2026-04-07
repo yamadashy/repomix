@@ -117,22 +117,23 @@ export const pack = async (
   }));
 
   try {
-    // Run file collection, git operations, and sort pre-fetch in parallel since they are independent:
-    // - collectFiles reads file contents from disk
-    // - getGitDiffs/getGitLogs spawn git subprocesses
-    // - prefetchFileChangeCounts warms the module-level cache so sortOutputFiles
-    //   (called later inside generateOutput) finds the result already cached
+    // Collect files first (uses synchronous reads which block the event loop),
+    // then run git operations in parallel. Separating these phases avoids starving
+    // git subprocess I/O: sync reads would prevent the event loop from processing
+    // child_process stdout data if both ran inside a single Promise.all.
     progressCallback('Collecting files...');
-    const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
-      withMemoryLogging(
-        'Collect Files',
-        async () =>
-          await Promise.all(
-            sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-              deps.collectFiles(filePaths, rootDir, config, progressCallback),
-            ),
+    const collectResults = await withMemoryLogging(
+      'Collect Files',
+      async () =>
+        await Promise.all(
+          sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
+            deps.collectFiles(filePaths, rootDir, config, progressCallback),
           ),
-      ),
+        ),
+    );
+
+    // Run git operations and sort pre-fetch in parallel (all spawn child processes)
+    const [gitDiffResult, gitLogResult] = await Promise.all([
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
       deps.prefetchFileChangeCounts(config),
