@@ -131,6 +131,12 @@ export const runSecurityCheck = async (
     logger.error('Error during security check:', error);
     throw error;
   } finally {
-    await taskRunner.cleanup();
+    // Fire-and-forget: the security worker pool cleanup (~40ms) runs in the background
+    // while subsequent pipeline stages (output generation, metrics) proceed.
+    // All security tasks are complete, so this only terminates idle threads.
+    // The cleanup's IPC work is processed during the metrics phase's event loop ticks.
+    Promise.resolve(taskRunner.cleanup()).catch((error) => {
+      logger.debug('Security worker pool cleanup error:', error);
+    });
   }
 };

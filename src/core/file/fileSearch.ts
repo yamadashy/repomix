@@ -1,15 +1,20 @@
+import { execFile } from 'node:child_process';
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { type Options as GlobbyOptions, globby } from 'globby';
 import { minimatch } from 'minimatch';
+import picomatch from 'picomatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { sortPaths } from './filePathSort.js';
-import { searchFilesGit } from './fileSearchGit.js';
+
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
+
+const execFileAsync = promisify(execFile);
 
 export interface FileSearchResult {
   filePaths: string[];
@@ -92,6 +97,165 @@ export const normalizeGlobPattern = (pattern: string): string => {
   return pattern;
 };
 
+/**
+ * Normalizes a gitignore-style pattern from an ignore file to a glob pattern.
+ * Per gitignore spec, a bare name without slashes (e.g., "dist") matches at any
+ * depth in the tree. Names with slashes are anchored to the ignore file's directory.
+ * Patterns with glob metacharacters are left as-is.
+ */
+const normalizeIgnoreFilePattern = (pattern: string): string[] => {
+  // If pattern already contains glob metacharacters, use as-is
+  if (pattern.includes('*') || pattern.includes('?') || pattern.includes('{')) {
+    return [pattern];
+  }
+  // If pattern contains a slash, it's anchored — match the entry and its contents
+  if (pattern.includes('/')) {
+    return [pattern, `${pattern}/**`];
+  }
+  // Bare name (no slash): match at any depth, mimicking gitignore behavior
+  return [pattern, `${pattern}/**`, `**/${pattern}`, `**/${pattern}/**`];
+};
+
+/**
+ * Fast file search using `git ls-files` to avoid globby's expensive .gitignore traversal.
+ * Falls back to null if git is unavailable or the directory is not a git repo.
+ *
+ * `git ls-files --cached --others --exclude-standard` returns:
+ * - Tracked files (--cached)
+ * - Untracked but not ignored files (--others --exclude-standard)
+ * This natively respects .gitignore, .git/info/exclude, and core.excludesFile.
+ */
+const searchFilesWithGit = async (
+  rootDir: string,
+  includePatterns: string[],
+  ignorePatterns: string[],
+  ignoreFilePatterns: string[],
+  deps = { execFileAsync },
+): Promise<string[] | null> => {
+  try {
+    // Run all three git commands in parallel:
+    // 1. List all tracked + untracked non-ignored files
+    // 2. List staged files with modes (to identify symlinks/submodules)
+    // 3. List deleted-but-not-staged files (to exclude from results)
+    const gitMaxBuffer = { cwd: rootDir, maxBuffer: 50 * 1024 * 1024 };
+    const [result, stageResult, deletedResult] = await Promise.all([
+      deps.execFileAsync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], gitMaxBuffer),
+      deps.execFileAsync('git', ['ls-files', '--cached', '-s', '-z'], gitMaxBuffer),
+      deps.execFileAsync('git', ['ls-files', '--deleted', '-z'], gitMaxBuffer),
+    ]);
+
+    // -z flag uses NUL separators for safe handling of special characters in filenames
+    let files = result.stdout.split('\0').filter(Boolean);
+
+    logger.debug(`[git ls-files] Found ${files.length} files`);
+
+    // Filter out symlinks (mode 120000) and submodules (mode 160000).
+    // git ls-files returns them as regular entries, but globby skips symlinks
+    // (followSymbolicLinks:false) and submodules aren't regular files.
+    // Also filter deleted-but-not-staged files that exist in the git index
+    // but not on disk, matching globby's filesystem-based behavior.
+    try {
+      const excludePaths = new Set<string>();
+
+      // Exclude symlinks and submodules by mode
+      for (const entry of stageResult.stdout.split('\0')) {
+        // Format: "mode hash stage\tpath"
+        if (entry.startsWith('120000 ') || entry.startsWith('160000 ')) {
+          const tabIndex = entry.indexOf('\t');
+          if (tabIndex !== -1) {
+            excludePaths.add(entry.slice(tabIndex + 1));
+          }
+        }
+      }
+
+      // Exclude deleted-but-not-staged files
+      for (const deletedFile of deletedResult.stdout.split('\0')) {
+        if (deletedFile) {
+          excludePaths.add(deletedFile);
+        }
+      }
+
+      if (excludePaths.size > 0) {
+        files = files.filter((file) => !excludePaths.has(file));
+      }
+    } catch {
+      // If git commands fail, skip filtering (minor correctness trade-off)
+    }
+
+    const picoOpts = { dot: true };
+
+    // Build ignore matcher from ignorePatterns (defaultIgnore + custom patterns).
+    // normalizeGlobPattern may have appended "/**" to file patterns like
+    // "**/package-lock.json" → "**/package-lock.json/**". Include both forms
+    // so file paths still match.
+    // picomatch compiles all patterns into a single efficient regex for batch matching.
+    const allIgnorePatterns: string[] = [];
+    for (const pattern of ignorePatterns) {
+      allIgnorePatterns.push(pattern);
+      if (pattern.endsWith('/**')) {
+        allIgnorePatterns.push(pattern.slice(0, -3));
+      }
+    }
+
+    // Read and apply per-directory ignore files (.repomixignore, .ignore)
+    // These files are not handled by git and need manual application.
+    const isIgnoreFile = picomatch(ignoreFilePatterns, picoOpts);
+    const ignoreFileSet = new Set<string>();
+    for (const file of files) {
+      if (isIgnoreFile(file)) {
+        ignoreFileSet.add(file);
+      }
+    }
+
+    if (ignoreFileSet.size > 0) {
+      const ignoreRules: Array<{ dir: string; isIgnored: (path: string) => boolean }> = [];
+      for (const ignoreFile of ignoreFileSet) {
+        try {
+          const content = await fs.readFile(path.join(rootDir, ignoreFile), 'utf8');
+          const rawPatterns = parseIgnoreContent(content);
+          const patterns = rawPatterns.flatMap(normalizeIgnoreFilePattern);
+          if (patterns.length > 0) {
+            ignoreRules.push({ dir: path.dirname(ignoreFile), isIgnored: picomatch(patterns, picoOpts) });
+          }
+        } catch {
+          // Ignore files that can't be read
+        }
+      }
+
+      if (ignoreRules.length > 0) {
+        files = files.filter((file) => {
+          for (const rule of ignoreRules) {
+            const relativeToIgnoreDir =
+              rule.dir === '.' ? file : file.startsWith(`${rule.dir}/`) ? file.slice(rule.dir.length + 1) : null;
+            if (relativeToIgnoreDir === null) continue;
+            if (rule.isIgnored(relativeToIgnoreDir)) return false;
+          }
+          return true;
+        });
+      }
+    }
+
+    // Apply ignore patterns
+    if (allIgnorePatterns.length > 0) {
+      const isIgnored = picomatch(allIgnorePatterns, picoOpts);
+      files = files.filter((file) => !isIgnored(file));
+    }
+
+    // Apply include patterns (filter to only matching files)
+    const isDefaultInclude = includePatterns.length === 1 && includePatterns[0] === '**/*';
+    if (!isDefaultInclude && includePatterns.length > 0) {
+      const isIncluded = picomatch(includePatterns, picoOpts);
+      files = files.filter((file) => isIncluded(file));
+    }
+
+    logger.debug(`[git ls-files] After filtering: ${files.length} files`);
+    return files;
+  } catch (error) {
+    logger.debug('[git ls-files] Failed, falling back to globby:', (error as Error).message);
+    return null;
+  }
+};
+
 // Get all file paths considering the config
 export const searchFiles = async (
   rootDir: string,
@@ -146,31 +310,6 @@ export const searchFiles = async (
   }
 
   try {
-    // Try git ls-files fast path for git repositories.
-    // This avoids the expensive filesystem walk that globby performs.
-    // Only applicable when: no explicit files, gitignore is enabled, and it's a git repo.
-    if (!explicitFiles && config.ignore.useGitignore) {
-      const gitStartTime = Date.now();
-      const gitFilePaths = await searchFilesGit(rootDir, config);
-
-      if (gitFilePaths !== null) {
-        const gitElapsedTime = Date.now() - gitStartTime;
-        logger.debug(`[git ls-files] Completed in ${gitElapsedTime}ms, found ${gitFilePaths.length} files`);
-
-        // For empty directories, fall back to globby-based search since
-        // git ls-files doesn't provide directory information
-        let emptyDirPaths: string[] = [];
-        if (config.output.includeEmptyDirectories) {
-          emptyDirPaths = await searchEmptyDirectories(rootDir, config);
-        }
-
-        return {
-          filePaths: sortPaths(gitFilePaths),
-          emptyDirPaths: sortPaths(emptyDirPaths),
-        };
-      }
-    }
-
     const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
@@ -211,30 +350,75 @@ export const searchFiles = async (
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns (for globby):', ignoreFilePatterns);
 
-    logger.debug('[globby] Starting file search...');
-    const globbyStartTime = Date.now();
+    const searchStartTime = Date.now();
 
-    const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-      onlyFiles: true,
-    }).catch((error: unknown) => {
-      // Handle EPERM errors specifically
-      const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
-      if (code === 'EPERM' || code === 'EACCES') {
-        throw new PermissionError(
-          `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
-          rootDir,
-        );
-      }
-      throw error;
-    });
-
-    const globbyElapsedTime = Date.now() - globbyStartTime;
-    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+    // Fast path: use `git ls-files` to avoid globby's expensive .gitignore traversal (~100ms).
+    // git ls-files reads from the git index which is much faster than a filesystem scan.
+    // Only used when gitignore handling is needed; falls back to globby on failure.
+    let filePaths: string[] | null = null;
+    if (config.ignore.useGitignore) {
+      filePaths = await searchFilesWithGit(rootDir, includePatterns, adjustedIgnorePatterns, ignoreFilePatterns);
+    }
 
     let emptyDirPaths: string[] = [];
-    if (config.output.includeEmptyDirectories) {
-      emptyDirPaths = await searchEmptyDirectories(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+
+    if (filePaths !== null) {
+      // Git fast path succeeded
+      const gitElapsedTime = Date.now() - searchStartTime;
+      logger.debug(`[git ls-files] Completed in ${gitElapsedTime}ms, found ${filePaths.length} files`);
+
+      // Empty directory search still needs globby since git doesn't track directories
+      if (config.output.includeEmptyDirectories) {
+        const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+        const directories = await globby(includePatterns, {
+          ...baseGlobbyOptions,
+          onlyDirectories: true,
+        });
+        logger.debug(`[empty dirs] Found ${directories.length} directories`);
+        emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+      }
+    } else {
+      // Fallback: use globby with gitignore traversal
+      logger.debug('[globby] Starting file search...');
+
+      const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+
+      // Run file search and directory search in parallel when includeEmptyDirectories is enabled.
+      // Both globby calls traverse the same directory tree with identical ignore patterns,
+      // so running them concurrently lets them share the OS filesystem cache.
+      const fileSearchPromise = globby(includePatterns, {
+        ...baseGlobbyOptions,
+        onlyFiles: true,
+      }).catch((error: unknown) => {
+        // Handle EPERM errors specifically
+        const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
+        if (code === 'EPERM' || code === 'EACCES') {
+          throw new PermissionError(
+            `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
+            rootDir,
+          );
+        }
+        throw error;
+      });
+
+      const emptyDirSearchPromise = config.output.includeEmptyDirectories
+        ? globby(includePatterns, {
+            ...baseGlobbyOptions,
+            onlyDirectories: true,
+          }).then((directories) => {
+            logger.debug(`[empty dirs] Found ${directories.length} directories`);
+            return findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+          })
+        : Promise.resolve([] as string[]);
+
+      const [globbyFilePaths, globbyEmptyDirPaths] = await Promise.all([fileSearchPromise, emptyDirSearchPromise]);
+      filePaths = globbyFilePaths;
+      emptyDirPaths = globbyEmptyDirPaths;
+
+      const globbyElapsedTime = Date.now() - searchStartTime;
+      logger.debug(
+        `[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files, ${emptyDirPaths.length} empty dirs`,
+      );
     }
 
     logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
@@ -258,45 +442,6 @@ export const searchFiles = async (
     logger.error('An unexpected error occurred:', error);
     throw new Error('An unexpected error occurred while filtering files.');
   }
-};
-
-/**
- * Search for empty directories using globby.
- * Extracted to be reusable by both globby and git ls-files code paths.
- */
-const searchEmptyDirectories = async (
-  rootDir: string,
-  config: RepomixConfigMerged,
-  adjustedIgnorePatterns?: string[],
-  ignoreFilePatterns?: string[],
-): Promise<string[]> => {
-  // If patterns are not provided, compute them
-  if (!adjustedIgnorePatterns || !ignoreFilePatterns) {
-    const context = await prepareIgnoreContext(rootDir, config);
-    adjustedIgnorePatterns = context.adjustedIgnorePatterns;
-    ignoreFilePatterns = context.ignoreFilePatterns;
-  }
-
-  const includePatterns =
-    config.include.length > 0 ? config.include.map((pattern) => escapeGlobPattern(pattern)) : ['**/*'];
-
-  logger.debug('[empty dirs] Searching for empty directories...');
-  const emptyDirStartTime = Date.now();
-
-  const directories = await globby(includePatterns, {
-    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-    onlyDirectories: true,
-  });
-
-  const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-  logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
-
-  const filterStartTime = Date.now();
-  const emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
-  const filterTime = Date.now() - filterStartTime;
-  logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
-
-  return emptyDirPaths;
 };
 
 export const parseIgnoreContent = (content: string): string[] => {

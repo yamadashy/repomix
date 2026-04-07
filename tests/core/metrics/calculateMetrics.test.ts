@@ -79,7 +79,6 @@ describe('calculateMetrics', () => {
       undefined,
       {
         calculateSelectiveFileMetrics,
-        calculateOutputMetrics: async () => 30,
         calculateGitDiffMetrics: () => Promise.resolve(0),
         calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
         taskRunner: mockTaskRunner,
@@ -89,7 +88,7 @@ describe('calculateMetrics', () => {
     expect(progressCallback).toHaveBeenCalledWith('Calculating metrics...');
     expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
       processedFiles,
-      ['file2.txt', 'file1.txt'], // sorted by character count desc
+      ['file1.txt', 'file2.txt'], // all files
       'o200k_base',
       progressCallback,
       expect.objectContaining({

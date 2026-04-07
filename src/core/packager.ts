@@ -1,6 +1,8 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
+import { logger } from '../shared/logger.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
+import { getProcessConcurrency } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -11,6 +13,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { prefetchFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -41,10 +44,12 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  getProcessConcurrency,
   sortPaths,
   getGitDiffs,
   getGitLogs,
   packSkill,
+  prefetchFileChangeCounts,
 };
 
 export interface PackOptions {
@@ -68,6 +73,21 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Pre-initialize metrics worker pool BEFORE searchFiles so that gpt-tokenizer loading
+  // overlaps with file search (I/O-bound globby) and file collection (I/O-bound reads).
+  // This ensures warmup completes before the CPU-bound security check starts, avoiding
+  // thread contention between warmup and security workers on limited CPU cores.
+  //
+  // Since file count is unknown at this point, pass processConcurrency * TASKS_PER_THREAD
+  // to ensure getWorkerThreadCount allocates the maximum number of threads (one per core).
+  // This may over-allocate for very small repos, but the cost is bounded by processConcurrency
+  // threads and is negligible compared to the contention savings for typical repos.
+  const processConcurrency = deps.getProcessConcurrency();
+  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+    processConcurrency * 100,
+    config.tokenCount.encoding,
+  );
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -97,31 +117,27 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
-    config.tokenCount.encoding,
-  );
-
   try {
-    // Run file collection and git operations in parallel since they are independent:
-    // - collectFiles reads file contents from disk
-    // - getGitDiffs/getGitLogs spawn git subprocesses
-    // Neither depends on the other's results.
+    // Collect files first (uses synchronous reads which block the event loop),
+    // then run git operations in parallel. Separating these phases avoids starving
+    // git subprocess I/O: sync reads would prevent the event loop from processing
+    // child_process stdout data if both ran inside a single Promise.all.
     progressCallback('Collecting files...');
-    const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
-      withMemoryLogging(
-        'Collect Files',
-        async () =>
-          await Promise.all(
-            sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-              deps.collectFiles(filePaths, rootDir, config, progressCallback),
-            ),
+    const collectResults = await withMemoryLogging(
+      'Collect Files',
+      async () =>
+        await Promise.all(
+          sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
+            deps.collectFiles(filePaths, rootDir, config, progressCallback),
           ),
-      ),
+        ),
+    );
+
+    // Run git operations and sort pre-fetch in parallel (all spawn child processes)
+    const [gitDiffResult, gitLogResult] = await Promise.all([
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
+      deps.prefetchFileChangeCounts(config),
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
@@ -234,7 +250,13 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsWarmupPromise.catch(() => {});
-    await metricsTaskRunner.cleanup();
+    // Fire-and-forget: don't block on worker pool teardown (~70ms).
+    // All metric tasks have completed, so this only terminates idle threads.
+    // For CLI: process.exit() in the entry point handles immediate thread cleanup.
+    // For MCP/library: Tinypool's idleTimeout (5s) reclaims threads.
+    metricsWarmupPromise.catch(() => {});
+    Promise.resolve(metricsTaskRunner.cleanup()).catch((error) => {
+      logger.debug('Metrics worker pool cleanup error:', error);
+    });
   }
 };

@@ -58,6 +58,18 @@ function setupErrorHandlers() {
 
     const { run } = await import('../lib/cli/cliRun.js');
     await run();
+
+    // Exit immediately after all output is written. Skips waiting for background
+    // worker pool cleanup (~70ms) — the OS terminates threads on process exit.
+    // Skip for --mcp which runs a long-lived server that must stay alive.
+    if (!process.argv.includes('--mcp')) {
+      // Ensure piped stdout (--stdout | ...) is fully flushed before exiting.
+      if (process.stdout.writableNeedDrain) {
+        process.stdout.once('drain', () => process.exit(EXIT_CODES.SUCCESS));
+      } else {
+        process.exit(EXIT_CODES.SUCCESS);
+      }
+    }
   } catch (error) {
     if (error instanceof Error) {
       console.error('Fatal Error:', {
