@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
+import { getProcessConcurrency } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -42,6 +43,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  getProcessConcurrency,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -71,6 +73,21 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
+  // Pre-initialize metrics worker pool BEFORE searchFiles so that gpt-tokenizer loading
+  // overlaps with file search (I/O-bound globby) and file collection (I/O-bound reads).
+  // This ensures warmup completes before the CPU-bound security check starts, avoiding
+  // thread contention between warmup and security workers on limited CPU cores.
+  //
+  // Since file count is unknown at this point, pass processConcurrency * TASKS_PER_THREAD
+  // to ensure getWorkerThreadCount allocates the maximum number of threads (one per core).
+  // This may over-allocate for very small repos, but the cost is bounded by processConcurrency
+  // threads and is negligible compared to the contention savings for typical repos.
+  const processConcurrency = deps.getProcessConcurrency();
+  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+    processConcurrency * 100,
+    config.tokenCount.encoding,
+  );
+
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
@@ -98,13 +115,6 @@ export const pack = async (
     rootDir,
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
-    config.tokenCount.encoding,
-  );
 
   try {
     // Run file collection, git operations, and sort pre-fetch in parallel since they are independent:

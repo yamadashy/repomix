@@ -60,6 +60,67 @@ describe('calculateSelectiveFileMetrics', () => {
     ]);
   });
 
+  it('should use larger batches for more than 100 files', async () => {
+    // Generate 150 files to trigger the large batch path (>100 files → batch size 50)
+    const fileCount = 150;
+    const processedFiles: ProcessedFile[] = Array.from({ length: fileCount }, (_, i) => ({
+      path: `file${i}.txt`,
+      content: 'test',
+    }));
+    const targetFilePaths = processedFiles.map((f) => f.path);
+
+    let batchCount = 0;
+    const taskRunner: MetricsTaskRunner = {
+      run: async (task: MetricsWorkerTask) => {
+        batchCount++;
+        if ('items' in task) {
+          const batchTask = task as TokenCountBatchTask;
+          return batchTask.items.map(() => 1);
+        }
+        return 1;
+      },
+      cleanup: async () => {},
+    };
+
+    const result = await calculateSelectiveFileMetrics(processedFiles, targetFilePaths, 'o200k_base', vi.fn(), {
+      taskRunner,
+    });
+
+    expect(result).toHaveLength(fileCount);
+    // With batch size 50 for >100 files: ceil(150/50) = 3 batches
+    expect(batchCount).toBe(3);
+  });
+
+  it('should use smaller batches for 100 or fewer files', async () => {
+    const fileCount = 100;
+    const processedFiles: ProcessedFile[] = Array.from({ length: fileCount }, (_, i) => ({
+      path: `file${i}.txt`,
+      content: 'test',
+    }));
+    const targetFilePaths = processedFiles.map((f) => f.path);
+
+    let batchCount = 0;
+    const taskRunner: MetricsTaskRunner = {
+      run: async (task: MetricsWorkerTask) => {
+        batchCount++;
+        if ('items' in task) {
+          const batchTask = task as TokenCountBatchTask;
+          return batchTask.items.map(() => 1);
+        }
+        return 1;
+      },
+      cleanup: async () => {},
+    };
+
+    const result = await calculateSelectiveFileMetrics(processedFiles, targetFilePaths, 'o200k_base', vi.fn(), {
+      taskRunner,
+    });
+
+    expect(result).toHaveLength(fileCount);
+    // With batch size 10 for <=100 files: ceil(100/10) = 10 batches
+    expect(batchCount).toBe(10);
+  });
+
   it('should return empty array when no target files match', async () => {
     const processedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'a'.repeat(100) }];
     const targetFilePaths = ['nonexistent.txt'];
