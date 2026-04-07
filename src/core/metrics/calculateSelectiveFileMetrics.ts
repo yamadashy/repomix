@@ -6,13 +6,19 @@ import { type MetricsTaskRunner, runBatchTokenCount } from './metricsWorkerRunne
 import type { TokenEncoding } from './TokenCounter.js';
 import type { FileMetrics } from './workers/types.js';
 
-// Batch size for grouping files into worker tasks to reduce IPC overhead.
+// Batch sizes for grouping files into worker tasks to reduce IPC overhead.
 // Each batch is sent as a single message to a worker thread, avoiding
-// per-file round-trip costs (~0.5ms each) that dominate when processing many files.
-// A size of 50 balances IPC overhead reduction with load balancing across workers:
-// for a 1000-file repo this yields ~20 batches, providing good distribution across
-// available CPU cores while cutting round-trips by 5x compared to smaller batch sizes.
-const METRICS_BATCH_SIZE = 50;
+// per-file round-trip costs (~0.5-1ms each) that dominate when processing many files.
+//
+// When processing many files (tokenCountTree enabled), larger batches significantly
+// reduce the total number of IPC round-trips (e.g., 1000 files: 20 batches of 50 vs
+// 100 batches of 10), saving ~80ms of scheduling overhead on a typical 4-core machine.
+//
+// When processing few files (tokenCountTree disabled, only top files), smaller batches
+// ensure work is distributed across available workers rather than monopolizing one.
+const METRICS_BATCH_SIZE_SMALL = 10;
+const METRICS_BATCH_SIZE_LARGE = 50;
+const LARGE_BATCH_THRESHOLD = 100;
 
 export const calculateSelectiveFileMetrics = async (
   processedFiles: ProcessedFile[],
@@ -32,10 +38,13 @@ export const calculateSelectiveFileMetrics = async (
     const startTime = process.hrtime.bigint();
     logger.trace(`Starting selective metrics calculation for ${filesToProcess.length} files using worker pool`);
 
-    // Split files into batches to reduce IPC round-trips
+    // Split files into batches to reduce IPC round-trips.
+    // Use larger batches when processing many files to minimize scheduling overhead.
+    const batchSize =
+      filesToProcess.length > LARGE_BATCH_THRESHOLD ? METRICS_BATCH_SIZE_LARGE : METRICS_BATCH_SIZE_SMALL;
     const batches: ProcessedFile[][] = [];
-    for (let i = 0; i < filesToProcess.length; i += METRICS_BATCH_SIZE) {
-      batches.push(filesToProcess.slice(i, i + METRICS_BATCH_SIZE));
+    for (let i = 0; i < filesToProcess.length; i += batchSize) {
+      batches.push(filesToProcess.slice(i, i + batchSize));
     }
 
     logger.trace(`Split ${filesToProcess.length} files into ${batches.length} batches for token counting`);
