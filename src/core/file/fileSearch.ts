@@ -8,7 +8,7 @@ import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { sortPaths } from './filePathSort.js';
-
+import { searchFilesGit } from './fileSearchGit.js';
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
 
 export interface FileSearchResult {
@@ -146,6 +146,31 @@ export const searchFiles = async (
   }
 
   try {
+    // Try git ls-files fast path for git repositories.
+    // This avoids the expensive filesystem walk that globby performs.
+    // Only applicable when: no explicit files, gitignore is enabled, and it's a git repo.
+    if (!explicitFiles && config.ignore.useGitignore) {
+      const gitStartTime = Date.now();
+      const gitFilePaths = await searchFilesGit(rootDir, config);
+
+      if (gitFilePaths !== null) {
+        const gitElapsedTime = Date.now() - gitStartTime;
+        logger.debug(`[git ls-files] Completed in ${gitElapsedTime}ms, found ${gitFilePaths.length} files`);
+
+        // For empty directories, fall back to globby-based search since
+        // git ls-files doesn't provide directory information
+        let emptyDirPaths: string[] = [];
+        if (config.output.includeEmptyDirectories) {
+          emptyDirPaths = await searchEmptyDirectories(rootDir, config);
+        }
+
+        return {
+          filePaths: sortPaths(gitFilePaths),
+          emptyDirPaths: sortPaths(emptyDirPaths),
+        };
+      }
+    }
+
     const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
@@ -209,21 +234,7 @@ export const searchFiles = async (
 
     let emptyDirPaths: string[] = [];
     if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories...');
-      const emptyDirStartTime = Date.now();
-
-      const directories = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyDirectories: true,
-      });
-
-      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
-
-      const filterStartTime = Date.now();
-      emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
-      const filterTime = Date.now() - filterStartTime;
-      logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
+      emptyDirPaths = await searchEmptyDirectories(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
     }
 
     logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
@@ -247,6 +258,45 @@ export const searchFiles = async (
     logger.error('An unexpected error occurred:', error);
     throw new Error('An unexpected error occurred while filtering files.');
   }
+};
+
+/**
+ * Search for empty directories using globby.
+ * Extracted to be reusable by both globby and git ls-files code paths.
+ */
+const searchEmptyDirectories = async (
+  rootDir: string,
+  config: RepomixConfigMerged,
+  adjustedIgnorePatterns?: string[],
+  ignoreFilePatterns?: string[],
+): Promise<string[]> => {
+  // If patterns are not provided, compute them
+  if (!adjustedIgnorePatterns || !ignoreFilePatterns) {
+    const context = await prepareIgnoreContext(rootDir, config);
+    adjustedIgnorePatterns = context.adjustedIgnorePatterns;
+    ignoreFilePatterns = context.ignoreFilePatterns;
+  }
+
+  const includePatterns =
+    config.include.length > 0 ? config.include.map((pattern) => escapeGlobPattern(pattern)) : ['**/*'];
+
+  logger.debug('[empty dirs] Searching for empty directories...');
+  const emptyDirStartTime = Date.now();
+
+  const directories = await globby(includePatterns, {
+    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    onlyDirectories: true,
+  });
+
+  const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
+  logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
+
+  const filterStartTime = Date.now();
+  const emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+  const filterTime = Date.now() - filterStartTime;
+  logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
+
+  return emptyDirPaths;
 };
 
 export const parseIgnoreContent = (content: string): string[] => {
