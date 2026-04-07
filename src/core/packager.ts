@@ -11,6 +11,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { prefetchFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -45,6 +46,7 @@ const defaultDeps = {
   getGitDiffs,
   getGitLogs,
   packSkill,
+  prefetchFileChangeCounts,
 };
 
 export interface PackOptions {
@@ -105,10 +107,11 @@ export const pack = async (
   );
 
   try {
-    // Run file collection and git operations in parallel since they are independent:
+    // Run file collection, git operations, and sort pre-fetch in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
-    // Neither depends on the other's results.
+    // - prefetchFileChangeCounts warms the module-level cache so sortOutputFiles
+    //   (called later inside generateOutput) finds the result already cached
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
       withMemoryLogging(
@@ -122,6 +125,7 @@ export const pack = async (
       ),
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
+      deps.prefetchFileChangeCounts(config),
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
