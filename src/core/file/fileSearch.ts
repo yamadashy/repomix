@@ -155,7 +155,6 @@ const searchFilesWithGit = async (
     // Also filter deleted-but-not-staged files that exist in the git index
     // but not on disk, matching globby's filesystem-based behavior.
     try {
-
       const excludePaths = new Set<string>();
 
       // Exclude symlinks and submodules by mode
