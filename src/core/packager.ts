@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
+import { logger } from '../shared/logger.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import { getProcessConcurrency } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
@@ -249,7 +250,13 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsWarmupPromise.catch(() => {});
-    await metricsTaskRunner.cleanup();
+    // Fire-and-forget: don't block on worker pool teardown (~70ms).
+    // All metric tasks have completed, so this only terminates idle threads.
+    // For CLI: process.exit() in the entry point handles immediate thread cleanup.
+    // For MCP/library: Tinypool's idleTimeout (5s) reclaims threads.
+    metricsWarmupPromise.catch(() => {});
+    Promise.resolve(metricsTaskRunner.cleanup()).catch((error) => {
+      logger.debug('Metrics worker pool cleanup error:', error);
+    });
   }
 };
