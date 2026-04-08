@@ -13,9 +13,9 @@ import {
   type SecurityCheckItem,
   type SecurityCheckTask,
   type SecurityCheckType,
-} from './workers/securityCheckWorker.js';
+} from './securityPreFilter.js';
 
-export type { SecurityCheckType } from './workers/securityCheckWorker.js';
+export type { SecurityCheckType } from './securityPreFilter.js';
 
 export interface SuspiciousFileResult {
   filePath: string;
