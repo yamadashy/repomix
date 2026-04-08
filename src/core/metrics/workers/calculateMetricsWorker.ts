@@ -1,6 +1,6 @@
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
 import type { TokenEncoding } from '../TokenCounter.js';
-import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
+import { freeTokenCounters, getTokenCounter, initTokenCounterFromBpeRanks } from '../tokenCounterFactory.js';
 
 /**
  * Token counting worker for metrics calculation.
@@ -18,6 +18,10 @@ export interface TokenCountTask {
   content: string;
   encoding: TokenEncoding;
   path?: string;
+  /** Pre-serialized BPE rank data (JSON string) for fast worker initialization.
+   * When provided (typically in warmup tasks), the worker skips the expensive
+   * per-worker BPE file I/O (~105ms) and initializes from the pre-loaded data. */
+  bpeRanksJson?: string;
 }
 
 export interface TokenCountBatchItem {
@@ -37,6 +41,19 @@ export const countTokens = async (task: TokenCountTask): Promise<number> => {
   const processStartAt = process.hrtime.bigint();
 
   try {
+    // Initialize from pre-loaded BPE data if provided (warmup path).
+    // This avoids each worker independently loading the ~3.6MB BPE file from disk,
+    // saving ~105ms per worker by receiving the data via IPC instead.
+    // If parsing fails, getTokenCounter below falls back to disk loading.
+    if (task.bpeRanksJson) {
+      try {
+        const bpeRanks = JSON.parse(task.bpeRanksJson);
+        initTokenCounterFromBpeRanks(task.encoding, bpeRanks);
+      } catch {
+        // Fall through to getTokenCounter which loads from disk
+      }
+    }
+
     const counter = await getTokenCounter(task.encoding);
     const tokenCount = counter.countTokens(task.content, task.path);
 

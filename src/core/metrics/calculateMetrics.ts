@@ -8,7 +8,7 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
 import type { MetricsTaskRunner } from './metricsWorkerRunner.js';
-import type { TokenEncoding } from './TokenCounter.js';
+import { loadBpeRanks, type TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
@@ -31,8 +31,23 @@ export interface MetricsTaskRunnerWithWarmup {
  * gpt-tokenizer initialization in parallel. This allows the expensive module
  * loading to overlap with other pipeline stages (security check, file processing,
  * output generation).
+ *
+ * BPE rank data (~200K entries, ~3.6MB on disk) is pre-loaded once on the main
+ * thread and sent to each worker as a JSON string (~1.6MB). Workers deserialize
+ * and build the encoder locally (~73ms) instead of each independently reading
+ * and parsing the BPE file from disk (~210-330ms). The JSON string serializes
+ * via structured clone in ~3ms (vs ~26ms for the raw array), making the IPC
+ * overhead negligible.
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+  // Start loading BPE data on the main thread (async I/O, overlaps with pool creation
+  // and subsequent pipeline stages like searchFiles and collectFiles).
+  // If pre-loading fails (e.g., missing BPE asset in bundled builds), fall back to
+  // null so workers load BPE from disk independently (slower but correct).
+  const bpeRanksJsonPromise = loadBpeRanks(encoding)
+    .then((bpeRanks) => JSON.stringify(bpeRanks))
+    .catch(() => null as string | null);
+
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     numOfTasks,
     workerType: 'calculateMetrics',
@@ -40,8 +55,16 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
   });
 
   const { maxThreads } = getWorkerThreadCount(numOfTasks);
-  const warmupPromise = Promise.all(
-    Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
+
+  // Once BPE data is loaded, dispatch warmup tasks carrying the pre-serialized data.
+  // Workers deserialize + build encoder (~73ms) instead of loading from disk (~280ms).
+  // If bpeRanksJson is null (pre-load failed), workers fall back to disk loading.
+  const warmupPromise = bpeRanksJsonPromise.then((bpeRanksJson) =>
+    Promise.all(
+      Array.from({ length: maxThreads }, () =>
+        taskRunner.run({ content: '', encoding, ...(bpeRanksJson != null && { bpeRanksJson }) }).catch(() => 0),
+      ),
+    ),
   );
 
   return { taskRunner, warmupPromise };
