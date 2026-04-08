@@ -11,13 +11,16 @@ import type { FileMetrics } from './workers/types.js';
 // per-file round-trip costs (~0.5-1ms each) that dominate when processing many files.
 //
 // When processing many files (tokenCountTree enabled), larger batches significantly
-// reduce the total number of IPC round-trips (e.g., 1000 files: 20 batches of 50 vs
-// 100 batches of 10), saving ~80ms of scheduling overhead on a typical 4-core machine.
+// reduce the total number of IPC round-trips (e.g., 1000 files: 10 batches of 100 vs
+// 100 batches of 10), saving ~30ms of scheduling overhead on a typical 4-core machine.
+// Batch size 100 is optimal: large enough to minimize IPC round-trips, small enough
+// to maintain good load balancing across workers (avoiding the imbalance seen with
+// batch sizes ≥250 where a single oversized batch can stall one worker).
 //
 // When processing few files (tokenCountTree disabled, only top files), smaller batches
 // ensure work is distributed across available workers rather than monopolizing one.
 const METRICS_BATCH_SIZE_SMALL = 10;
-const METRICS_BATCH_SIZE_LARGE = 50;
+const METRICS_BATCH_SIZE_LARGE = 100;
 const LARGE_BATCH_THRESHOLD = 100;
 
 export const calculateSelectiveFileMetrics = async (

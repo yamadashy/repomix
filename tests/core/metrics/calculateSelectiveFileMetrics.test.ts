@@ -61,7 +61,7 @@ describe('calculateSelectiveFileMetrics', () => {
   });
 
   it('should use larger batches for more than 100 files', async () => {
-    // Generate 150 files to trigger the large batch path (>100 files → batch size 50)
+    // Generate 150 files to trigger the large batch path (>100 files → batch size 100)
     const fileCount = 150;
     const processedFiles: ProcessedFile[] = Array.from({ length: fileCount }, (_, i) => ({
       path: `file${i}.txt`,
@@ -87,8 +87,8 @@ describe('calculateSelectiveFileMetrics', () => {
     });
 
     expect(result).toHaveLength(fileCount);
-    // With batch size 50 for >100 files: ceil(150/50) = 3 batches
-    expect(batchCount).toBe(3);
+    // With batch size 100 for >100 files: ceil(150/100) = 2 batches
+    expect(batchCount).toBe(2);
   });
 
   it('should use smaller batches for 100 or fewer files', async () => {

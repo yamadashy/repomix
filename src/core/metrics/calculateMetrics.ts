@@ -77,17 +77,22 @@ export const calculateMetrics = async (
     });
 
   try {
-    // Always calculate token counts for all files. This:
-    // 1. Enables estimating total output tokens from file tokens + overhead ratio,
-    //    avoiding the expensive full-output token counting (~20% faster for large repos)
-    // 2. Provides per-file token data for tokenCountTree display at no extra cost
-    const allFilePaths = processedFiles.map((file) => file.path);
+    // Determine which files to tokenize. When tokenCountTree is enabled, tokenize all
+    // files for accurate per-directory aggregation. When disabled (the default), only
+    // tokenize the largest files by character count — enough to identify the top-N files
+    // for display and to compute an accurate token/char ratio for estimating the total.
+    // This avoids tokenizing hundreds of small files that don't affect the top-N ranking,
+    // reducing token counting time by ~80% for typical repos.
+    const needsAllFileTokens = config.output.tokenCountTree;
+    const targetFilePaths = needsAllFileTokens
+      ? processedFiles.map((file) => file.path)
+      : selectTopFilesBySize(processedFiles, config.output.topFilesLength);
 
     // Start output-independent metrics immediately so they can overlap with output generation
     // when output is passed as a promise
     const fileMetricsPromise = deps.calculateSelectiveFileMetrics(
       processedFiles,
-      allFilePaths,
+      targetFilePaths,
       config.tokenCount.encoding,
       progressCallback,
       { taskRunner },
@@ -112,24 +117,26 @@ export const calculateMetrics = async (
     const totalFiles = processedFiles.length;
     const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);
 
-    // Build character and token counts for all files
+    // Build character counts for all files, token counts for tokenized files
     const fileCharCounts: Record<string, number> = {};
     const fileTokenCounts: Record<string, number> = {};
-    let fileTokenSum = 0;
-    let fileCharSum = 0;
+    let tokenizedCharSum = 0;
+    let tokenizedTokenSum = 0;
     for (const file of fileMetrics) {
       fileTokenCounts[file.path] = file.tokenCount;
-      fileTokenSum += file.tokenCount;
+      tokenizedTokenSum += file.tokenCount;
+      tokenizedCharSum += file.charCount;
     }
+    let totalFileCharSum = 0;
     for (const file of processedFiles) {
       fileCharCounts[file.path] = file.content.length;
-      fileCharSum += file.content.length;
+      totalFileCharSum += file.content.length;
     }
 
-    // Estimate total output tokens from exact file/git token counts + structural overhead.
+    // Estimate total output tokens from file/git token counts + structural overhead.
     // Git diff/log tokens are already exactly counted, so use those directly.
-    // Only the structural overhead (headers, tree, XML/markdown tags) is estimated
-    // using the average token-per-character ratio from file content.
+    // The structural overhead (headers, tree, XML/markdown tags) and any un-tokenized
+    // files are estimated using the token/char ratio from the tokenized file sample.
     const resolvedGitDiffTokenCount = gitDiffTokenCount;
     const resolvedGitLogTokenCount = gitLogTokenCount.gitLogTokenCount;
 
@@ -139,10 +146,19 @@ export const calculateMetrics = async (
     const gitLogChars = gitLogResult?.logContent?.length ?? 0;
 
     // Structural overhead = output size minus file contents and git content
-    const structuralOverheadChars = Math.max(0, totalCharacters - fileCharSum - gitDiffChars - gitLogChars);
-    const tokenCharRatio = fileCharSum > 0 ? fileTokenSum / fileCharSum : 0;
+    const structuralOverheadChars = Math.max(0, totalCharacters - totalFileCharSum - gitDiffChars - gitLogChars);
+    const tokenCharRatio = tokenizedCharSum > 0 ? tokenizedTokenSum / tokenizedCharSum : 0;
+
+    // When only a subset of files was tokenized (tokenCountTree disabled), estimate
+    // tokens for un-tokenized files using the sampled ratio. When all files were
+    // tokenized, untokenizedChars is 0 and this adds nothing.
+    const untokenizedChars = totalFileCharSum - tokenizedCharSum;
     const totalTokens = Math.round(
-      fileTokenSum + structuralOverheadChars * tokenCharRatio + resolvedGitDiffTokenCount + resolvedGitLogTokenCount,
+      tokenizedTokenSum +
+        untokenizedChars * tokenCharRatio +
+        structuralOverheadChars * tokenCharRatio +
+        resolvedGitDiffTokenCount +
+        resolvedGitLogTokenCount,
     );
 
     return {
@@ -160,4 +176,27 @@ export const calculateMetrics = async (
       await taskRunner.cleanup();
     }
   }
+};
+
+/**
+ * Select the top files by character count for tokenization. Returns enough files
+ * to reliably identify the top-N by token count and compute an accurate token/char ratio.
+ * Uses 10× topFilesLength (min 50) to account for token/char ratio variation across files.
+ */
+const selectTopFilesBySize = (processedFiles: ProcessedFile[], topFilesLength: number): string[] => {
+  // Tokenize enough files to reliably capture the top-N by tokens.
+  // Token count is highly correlated with char count, so 10× the display count
+  // provides a generous margin for ranking accuracy.
+  const targetCount = Math.max(50, topFilesLength * 10);
+
+  if (processedFiles.length <= targetCount) {
+    return processedFiles.map((f) => f.path);
+  }
+
+  // Sort by content length descending and take the top candidates
+  const sorted = processedFiles
+    .map((f) => ({ path: f.path, length: f.content.length }))
+    .sort((a, b) => b.length - a.length);
+
+  return sorted.slice(0, targetCount).map((f) => f.path);
 };
