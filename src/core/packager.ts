@@ -90,6 +90,18 @@ export const pack = async (
   );
 
   try {
+    // Start git operations early: they depend only on rootDirs and config (not on the file list),
+    // so they can run concurrently with file search and collection. Git subprocesses execute
+    // during the async searchFiles phase when the event loop is active and can drain subprocess
+    // stdout. For typical repos the subprocesses finish before collectFiles starts its
+    // synchronous reads; if not, their output is buffered in the OS pipe and drained when
+    // the event loop resumes after collectFiles.
+    const gitOpsPromise = Promise.all([
+      deps.getGitDiffs(rootDirs, config),
+      deps.getGitLogs(rootDirs, config),
+      deps.prefetchFileChangeCounts(config),
+    ]);
+
     progressCallback('Searching for files...');
     const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
       Promise.all(
@@ -117,10 +129,7 @@ export const pack = async (
       rootDir,
       filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
     }));
-    // Collect files first (uses synchronous reads which block the event loop),
-    // then run git operations in parallel. Separating these phases avoids starving
-    // git subprocess I/O: sync reads would prevent the event loop from processing
-    // child_process stdout data if both ran inside a single Promise.all.
+
     progressCallback('Collecting files...');
     const collectResults = await withMemoryLogging(
       'Collect Files',
@@ -132,27 +141,26 @@ export const pack = async (
         ),
     );
 
-    // Run git operations and sort pre-fetch in parallel (all spawn child processes)
-    const [gitDiffResult, gitLogResult] = await Promise.all([
-      deps.getGitDiffs(rootDirs, config),
-      deps.getGitLogs(rootDirs, config),
-      deps.prefetchFileChangeCounts(config),
-    ]);
-
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Start security check and file processing concurrently.
-    // Security check uses worker threads while file processing runs on the main thread
-    // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
+    // Start file processing immediately — it doesn't depend on git results.
+    const processFilesPromise = withMemoryLogging('Process Files', () => {
+      progressCallback('Processing files...');
+      return deps.processFiles(rawFiles, config, progressCallback);
+    });
+
+    // Await git results (typically already completed during searchFiles + collectFiles).
+    const [gitDiffResult, gitLogResult] = await gitOpsPromise;
+
+    // Start security check. When few items pass the keyword pre-filter (common case),
+    // the check runs on the main thread to avoid spawning worker threads that would
+    // compete for CPU with the metrics warmup workers running concurrently.
     const validationPromise = withMemoryLogging('Security Check', () =>
       deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
     );
 
-    const allProcessedFiles = await withMemoryLogging('Process Files', () => {
-      progressCallback('Processing files...');
-      return deps.processFiles(rawFiles, config, progressCallback);
-    });
+    const allProcessedFiles = await processFilesPromise;
 
     // Ensure warm-up task completes before metrics calculation
     await metricsWarmupPromise;

@@ -93,8 +93,17 @@ describe('runSecurityCheck', () => {
       };
     };
 
+    // Generate enough files with secret keywords to exceed the main-thread threshold (50),
+    // forcing the worker path where the error mock takes effect.
+    const manyFiles: RawFile[] = Array.from({ length: 60 }, (_, i) => ({
+      path: `test${i}.js`,
+      // secretlint-disable
+      content: `https://user:pass${i}@example.com`,
+      // secretlint-enable
+    }));
+
     await expect(
-      runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
+      runSecurityCheck(manyFiles, () => {}, undefined, undefined, {
         initTaskRunner: mockErrorTaskRunner,
         getProcessConcurrency: mockGetProcessConcurrency,
       }),
