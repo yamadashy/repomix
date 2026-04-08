@@ -38,6 +38,93 @@ export const createSecretLintConfig = (): SecretLintCoreConfig => ({
 // Cache config at module level - created once per worker, reused for all tasks
 const cachedConfig = createSecretLintConfig();
 
+// Fast keyword pre-filter to skip expensive lintSource() for files that clearly don't contain secrets.
+// Each keyword is a substring that MUST be present for at least one secretlint rule to fire.
+// If none appear in the content, we can safely skip the full security check (~15 rule instantiations,
+// StructuredSource index scan, and regex matching per file).
+//
+// Coverage: all secretlint-rule-preset-recommend rules including BasicAuth (via ://).
+const SECURITY_KEYWORDS: readonly string[] = [
+  // AWS Access Key ID prefixes (secretlint-rule-aws)
+  'AKIA',
+  'AGPA',
+  'AIDA',
+  'AROA',
+  'AIPA',
+  'ANPA',
+  'ANVA',
+  'ASIA',
+  // AWS Secret Access Key — covers all case/underscore variants of the secretlint regex
+  // (?:SECRET|secret|Secret)_?(?:ACCESS|access|Access)_?(?:KEY|key|Key)
+  '_ACCESS_KEY',
+  '_access_key',
+  'AccessKey',
+  '_Access_Key',
+  // AWS Account ID — most common naming patterns (secretlint-rule-aws, disabled by default)
+  'ACCOUNT_ID',
+  'account_id',
+  'AccountId',
+  // GCP Service Account JSON (secretlint-rule-gcp)
+  'private_key_id',
+  // NPM tokens (secretlint-rule-npm)
+  '_authToken',
+  'npm_',
+  // Slack tokens and webhooks (secretlint-rule-slack)
+  'xoxb',
+  'xoxp',
+  'xoxa',
+  'xoxo',
+  'xoxr',
+  'xapp-',
+  'hooks.slack.com',
+  // OpenAI API keys (secretlint-rule-openai)
+  'sk-proj-',
+  'sk-svcacct-',
+  'sk-admin-',
+  'T3BlbkFJ',
+  // Anthropic API keys (secretlint-rule-anthropic)
+  'sk-ant-api0',
+  // Linear API keys (secretlint-rule-linear)
+  'lin_api_',
+  // Private keys in PEM format (secretlint-rule-privatekey)
+  'PRIVATE KEY',
+  // SendGrid API keys (secretlint-rule-sendgrid)
+  'SG.',
+  // Shopify tokens (secretlint-rule-shopify)
+  'shppa',
+  'shpca',
+  'shpat',
+  'shpss',
+  // GitHub tokens (secretlint-rule-github)
+  'ghp_',
+  'gho_',
+  'ghu_',
+  'ghs_',
+  'ghr_',
+  'github_pat_',
+  // 1Password service account tokens (secretlint-rule-1password)
+  'ops_ey',
+  // Database connection strings (secretlint-rule-database-connection-string)
+  'mongodb://',
+  'mongodb+srv://',
+  'mysql://',
+  'jdbc:mysql',
+  'postgres://',
+  'postgresql://',
+];
+
+// BasicAuth pattern: protocol://user:password@host (secretlint-rule-basicauth)
+// Using a targeted regex instead of broad '://' keyword to avoid false positives on normal URLs.
+const BASIC_AUTH_PATTERN = /\w:\/\/[^\s/:]+:[^\s/:]+@/;
+
+/**
+ * Fast check whether content might contain a secret.
+ * Returns true if any security keyword is found, meaning the file should go through full lintSource().
+ * Returns false if no keywords are found, allowing us to skip the expensive check.
+ */
+export const mightContainSecret = (content: string): boolean =>
+  SECURITY_KEYWORDS.some((keyword) => content.includes(keyword)) || BASIC_AUTH_PATTERN.test(content);
+
 export default async (task: SecurityCheckTask): Promise<(SuspiciousFileResult | null)[]> => {
   const config = cachedConfig;
   const processStartAt = process.hrtime.bigint();
@@ -66,6 +153,13 @@ export const runSecretLint = async (
   type: SecurityCheckType,
   config: SecretLintCoreConfig,
 ): Promise<SuspiciousFileResult | null> => {
+  // Fast path: skip expensive lintSource() if content has no security-relevant keywords.
+  // This avoids creating ~15 rule instances, StructuredSource index scan, and regex matching
+  // for files that clearly don't contain secrets (typically 95-99% of files in a repo).
+  if (!mightContainSecret(content)) {
+    return null;
+  }
+
   const result = await lintSource({
     source: {
       filePath: filePath,

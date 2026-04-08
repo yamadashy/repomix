@@ -8,7 +8,12 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import type { SecurityCheckItem, SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
+import {
+  mightContainSecret,
+  type SecurityCheckItem,
+  type SecurityCheckTask,
+  type SecurityCheckType,
+} from './workers/securityCheckWorker.js';
 
 export type { SecurityCheckType } from './workers/securityCheckWorker.js';
 
@@ -70,13 +75,19 @@ export const runSecurityCheck = async (
     }
   }
 
-  const fileItems: SecurityCheckItem[] = rawFiles.map((file) => ({
-    filePath: file.path,
-    content: file.content,
-    type: 'file',
-  }));
+  // Pre-filter files on the main thread to avoid IPC overhead for files that clearly
+  // don't contain secrets. This eliminates structured-clone serialization of file content
+  // for skipped files, reducing both memory pressure and worker thread contention.
+  const fileItems: SecurityCheckItem[] = rawFiles
+    .filter((file) => mightContainSecret(file.content))
+    .map((file) => ({
+      filePath: file.path,
+      content: file.content,
+      type: 'file' as const,
+    }));
 
-  // Combine all items, then split into batches
+  // Git diff/log content is not pre-filtered on the main thread (small volume, high value).
+  // The worker-side mightContainSecret() check still applies to these items.
   const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
   const totalItems = allItems.length;
 

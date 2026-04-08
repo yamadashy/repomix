@@ -73,10 +73,10 @@ describe('runSecurityCheck', () => {
       getProcessConcurrency: mockGetProcessConcurrency,
     });
 
-    // With 2 files and batch size 50, all files are in a single batch
-    // Progress callback is called once per batch with the last file in the batch
+    // With pre-filter, only test1.js (contains secret keyword '://') is sent to workers.
+    // test2.js has no secret keywords and is filtered out on the main thread.
     expect(progressCallback).toHaveBeenCalledWith(
-      expect.stringContaining(`Running security check... (2/2) ${pc.dim('test2.js')}`),
+      expect.stringContaining(`Running security check... (1/1) ${pc.dim('test1.js')}`),
     );
   });
 
@@ -161,10 +161,12 @@ describe('runSecurityCheck', () => {
   });
 
   it('should process Git diff content when gitDiffResult is provided', async () => {
+    // secretlint-disable
     const gitDiffResult: GitDiffResult = {
-      workTreeDiffContent: 'diff --git a/test.js b/test.js\n+const secret = "password123";',
-      stagedDiffContent: 'diff --git a/config.js b/config.js\n+const apiKey = "sk-1234567890abcdef";',
+      workTreeDiffContent: 'diff --git a/test.js b/test.js\n+const token = "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";',
+      stagedDiffContent: 'diff --git a/config.js b/config.js\n+const apiKey = "sk-ant-api03-test-key";',
     };
+    // secretlint-enable
 
     const progressCallback = vi.fn();
     const result = await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
@@ -172,10 +174,10 @@ describe('runSecurityCheck', () => {
       getProcessConcurrency: mockGetProcessConcurrency,
     });
 
-    // With batch size 50 and 4 items (2 files + 2 git diffs), all in a single batch
+    // With pre-filter: 1 file (test1.js) + 2 git diffs = 3 items, all in a single batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
 
-    // Should find security issues in files (at least 1 from test1.js)
+    // Should find security issues in files and git diffs
     expect(result.length).toBeGreaterThanOrEqual(1);
   });
 

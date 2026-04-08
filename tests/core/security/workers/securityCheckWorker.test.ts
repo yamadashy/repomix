@@ -1,6 +1,10 @@
 import type { SecretLintCoreConfig } from '@secretlint/types';
 import { describe, expect, test } from 'vitest';
-import { createSecretLintConfig, runSecretLint } from '../../../../src/core/security/workers/securityCheckWorker.js';
+import {
+  createSecretLintConfig,
+  mightContainSecret,
+  runSecretLint,
+} from '../../../../src/core/security/workers/securityCheckWorker.js';
 
 describe('securityCheck', () => {
   const config: SecretLintCoreConfig = createSecretLintConfig();
@@ -48,6 +52,17 @@ H4PSJT5bvaEhxRj7QCwonoX4ZpV0beTnzloS55Z65g==
     expect(secretLintResult).not.toBeNull();
   });
 
+  test('should detect sensitive information even when pre-filter matches on a single keyword', async () => {
+    // Content with ONLY an AWS secret access key pattern (no other secret types)
+    // secretlint-disable
+    const awsOnlyContent = `AWS_SECRET_ACCESS_KEY = wJalrXUtnFEMI/K7MDENG/bPxRfiCYSECRETSKEY`;
+    // secretlint-enable
+
+    const secretLintResult = await runSecretLint('aws-config.env', awsOnlyContent, 'file', config);
+    expect(secretLintResult).not.toBeNull();
+    expect(secretLintResult?.messages.length).toBeGreaterThan(0);
+  });
+
   test('should not detect sensitive information in normal content', async () => {
     const normalContent = `
 # Normal Content
@@ -73,5 +88,71 @@ That's all!
 
     const secretLintResult = await runSecretLint('normal.md', normalContent, 'file', config);
     expect(secretLintResult).toBeNull();
+  });
+});
+
+describe('mightContainSecret', () => {
+  test('should return false for normal content without any secret keywords', () => {
+    const content = `
+      function greet(name) {
+        console.log("Hello, " + name);
+      }
+      export default greet;
+    `;
+    expect(mightContainSecret(content)).toBe(false);
+  });
+
+  test('should return true for content with AWS Access Key ID prefix', () => {
+    expect(mightContainSecret('my key is AKIAIOSFODNN7EXAMPLE')).toBe(true);
+  });
+
+  test('should return true for content with GitHub token prefix', () => {
+    // secretlint-disable
+    expect(mightContainSecret('token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')).toBe(true);
+    // secretlint-enable
+  });
+
+  test('should return true for content with private key header', () => {
+    expect(mightContainSecret('-----BEGIN RSA PRIVATE KEY-----')).toBe(true);
+  });
+
+  test('should return true for content with Slack token', () => {
+    // secretlint-disable
+    expect(mightContainSecret('SLACK_TOKEN=xoxb-123456789-123456789-abc')).toBe(true);
+    // secretlint-enable
+  });
+
+  test('should return true for content with database connection string', () => {
+    expect(mightContainSecret('DATABASE_URL=mongodb://user:pass@host:27017/db')).toBe(true);
+  });
+
+  test('should return true for content with BasicAuth URL', () => {
+    // secretlint-disable
+    expect(mightContainSecret('URL: https://user:pass@example.com')).toBe(true);
+    // secretlint-enable
+  });
+
+  test('should return true for content with SendGrid key', () => {
+    expect(mightContainSecret('SENDGRID_API_KEY=SG.xxxxx.xxxxx')).toBe(true);
+  });
+
+  test('should return true for content with AWS Secret Access Key context', () => {
+    expect(mightContainSecret('AWS_SECRET_ACCESS_KEY=some_key_value')).toBe(true);
+  });
+
+  test('should return true for content with NPM token', () => {
+    expect(mightContainSecret('//registry.npmjs.org/:_authToken=token')).toBe(true);
+  });
+
+  test('should return true for content with Anthropic key prefix', () => {
+    expect(mightContainSecret('ANTHROPIC_API_KEY=sk-ant-api03-xxx')).toBe(true);
+  });
+
+  test('should return true for content with OpenAI key prefix', () => {
+    expect(mightContainSecret('OPENAI_API_KEY=sk-proj-xxx')).toBe(true);
+  });
+
+  test('should return true for content with Shopify token prefix', () => {
+    expect(mightContainSecret('SHOPIFY_TOKEN=shpat_xxxxxxxxxxxx')).toBe(true);
   });
 });
