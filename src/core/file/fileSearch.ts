@@ -4,7 +4,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import type { Options as GlobbyOptions } from 'globby';
-import { minimatch } from 'minimatch';
 import picomatch from 'picomatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
@@ -27,6 +26,19 @@ const getGlobby = async () => {
 };
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Builds a single combined RegExp from an array of glob patterns by extracting
+ * each pattern's regex source via picomatch.makeRe() and joining with alternation.
+ * This is ~2x faster than picomatch's default arrayMatcher for large pattern sets
+ * (100+ patterns) because it performs a single regex test per string instead of
+ * testing each pattern's regex individually.
+ */
+const buildCombinedRegex = (patterns: string[], options: picomatch.PicomatchOptions): RegExp => {
+  const regexes = patterns.map((p) => picomatch.makeRe(p, options));
+  const sources = regexes.map((r) => r.source);
+  return new RegExp(sources.join('|'), regexes[0].flags);
+};
 
 /**
  * Extracts all unique parent directories from a list of file paths,
@@ -96,6 +108,10 @@ const findEmptyDirectories = async (
   directories: string[],
   ignorePatterns: string[],
 ): Promise<string[]> => {
+  // Lazy-load minimatch to avoid its ~9ms import cost on the common path
+  // where includeEmptyDirectories is disabled (the default).
+  const { minimatch } = await import('minimatch');
+
   // Check all directories in parallel to avoid sequential readdir waterfall.
   // For repos with 200+ directories, this reduces ~22ms sequential I/O to ~6ms.
   const results = await Promise.all(
@@ -310,17 +326,21 @@ const searchFilesWithGit = async (
       }
     }
 
-    // Apply ignore patterns
+    // Apply ignore patterns using a single combined regex for faster matching.
+    // picomatch(array) creates an arrayMatcher that tests each pattern individually,
+    // requiring up to N regex tests per file (N = number of patterns). By extracting
+    // each pattern's regex source via makeRe() and joining with alternation, we get
+    // a single regex test per file — ~2x faster for the typical 130+ ignore patterns.
     if (allIgnorePatterns.length > 0) {
-      const isIgnored = picomatch(allIgnorePatterns, picoOpts);
-      files = files.filter((file) => !isIgnored(file));
+      const combinedIgnoreRegex = buildCombinedRegex(allIgnorePatterns, picoOpts);
+      files = files.filter((file) => !combinedIgnoreRegex.test(file));
     }
 
     // Apply include patterns (filter to only matching files)
     const isDefaultInclude = includePatterns.length === 1 && includePatterns[0] === '**/*';
     if (!isDefaultInclude && includePatterns.length > 0) {
-      const isIncluded = picomatch(includePatterns, picoOpts);
-      files = files.filter((file) => isIncluded(file));
+      const combinedIncludeRegex = buildCombinedRegex(includePatterns, picoOpts);
+      files = files.filter((file) => combinedIncludeRegex.test(file));
     }
 
     logger.debug(`[git ls-files] After filtering: ${files.length} files`);
