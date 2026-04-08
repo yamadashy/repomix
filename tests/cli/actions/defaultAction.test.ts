@@ -142,7 +142,7 @@ describe('defaultAction', () => {
       [process.cwd()],
       expect.any(Object),
       expect.any(Function),
-      {},
+      expect.objectContaining({ createMetricsTaskRunner: expect.any(Function) }),
       ['test1.txt', 'test2.txt'],
       expect.any(Object),
     );
