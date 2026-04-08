@@ -98,6 +98,69 @@ describe('calculateMetrics', () => {
     expect(result).toEqual(aggregatedResult);
   });
 
+  it('should only tokenize large files and estimate the rest when tokenCountTree is a threshold number', async () => {
+    vi.mocked(calculateSelectiveFileMetrics).mockClear();
+
+    // Create files: one large (above char threshold for 500 tokens) and two small
+    // charThreshold = 500 * 5 (MAX_CHARS_PER_TOKEN) = 2500
+    const processedFiles: ProcessedFile[] = [
+      { path: 'large.txt', content: 'a'.repeat(3000) },
+      { path: 'small1.txt', content: 'b'.repeat(100) },
+      { path: 'small2.txt', content: 'c'.repeat(200) },
+    ];
+    const output = 'x'.repeat(3300);
+    const progressCallback: RepomixProgressCallback = vi.fn();
+
+    // Only large.txt + top-50 sample (all 3 files since < 50) are tokenized
+    const fileMetrics = [
+      { path: 'large.txt', charCount: 3000, tokenCount: 900 },
+      { path: 'small1.txt', charCount: 100, tokenCount: 30 },
+      { path: 'small2.txt', charCount: 200, tokenCount: 60 },
+    ];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    const config = createMockConfig({
+      output: { tokenCountTree: 500 },
+    });
+
+    const mockTaskRunner = {
+      run: vi.fn(),
+      cleanup: vi.fn(),
+    };
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      progressCallback,
+      config,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // selectFilesAboveThreshold should be called with a subset (not all files)
+    // The call includes files above charThreshold (2500) + top 50 by size
+    const selectCall = (calculateSelectiveFileMetrics as unknown as Mock).mock.calls[0];
+    const targetPaths = selectCall[1] as string[];
+    // All 3 files are included: large.txt exceeds charThreshold, and all 3 are in top-50
+    expect(targetPaths).toContain('large.txt');
+
+    // fileTokenCounts should include ALL files (tokenized + estimated)
+    expect(result.fileTokenCounts).toHaveProperty('large.txt');
+    expect(result.fileTokenCounts).toHaveProperty('small1.txt');
+    expect(result.fileTokenCounts).toHaveProperty('small2.txt');
+
+    // Token counts for tokenized files should be exact
+    expect(result.fileTokenCounts['large.txt']).toBe(900);
+    expect(result.fileTokenCounts['small1.txt']).toBe(30);
+    expect(result.fileTokenCounts['small2.txt']).toBe(60);
+  });
+
   it('should estimate output tokens from file token counts plus structural overhead ratio', async () => {
     const processedFiles: ProcessedFile[] = [
       { path: 'file1.txt', content: 'a'.repeat(100) },

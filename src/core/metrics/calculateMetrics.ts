@@ -77,16 +77,25 @@ export const calculateMetrics = async (
     });
 
   try {
-    // Determine which files to tokenize. When tokenCountTree is enabled, tokenize all
-    // files for accurate per-directory aggregation. When disabled (the default), only
-    // tokenize the largest files by character count — enough to identify the top-N files
-    // for display and to compute an accurate token/char ratio for estimating the total.
-    // This avoids tokenizing hundreds of small files that don't affect the top-N ranking,
-    // reducing token counting time by ~80% for typical repos.
-    const needsAllFileTokens = config.output.tokenCountTree;
-    const targetFilePaths = needsAllFileTokens
-      ? processedFiles.map((file) => file.path)
-      : selectTopFilesBySize(processedFiles, config.output.topFilesLength);
+    // Determine which files to tokenize based on the tokenCountTree setting:
+    //
+    // - boolean true: tokenize ALL files (no threshold, every file shown in tree)
+    // - number (threshold): only tokenize files that could plausibly exceed the
+    //   threshold. Files below a conservative char-based cutoff are estimated using
+    //   the token/char ratio from the tokenized sample. This avoids tokenizing
+    //   hundreds of small files that would be filtered from the tree display anyway,
+    //   reducing tokenization time by ~90% for typical repos with a threshold.
+    // - false/undefined: tokenize top-N files by size for ranking + ratio estimation
+    const tokenCountTree = config.output.tokenCountTree;
+    const tokenThreshold = typeof tokenCountTree === 'number' ? tokenCountTree : 0;
+    const targetFilePaths =
+      tokenCountTree === true
+        ? processedFiles.map((file) => file.path)
+        : tokenThreshold > 0
+          ? selectFilesAboveThreshold(processedFiles, tokenThreshold)
+          : tokenCountTree
+            ? processedFiles.map((file) => file.path)
+            : selectTopFilesBySize(processedFiles, config.output.topFilesLength);
 
     // Start output-independent metrics immediately so they can overlap with output generation
     // when output is passed as a promise
@@ -133,6 +142,18 @@ export const calculateMetrics = async (
       totalFileCharSum += file.content.length;
     }
 
+    // When tokenCountTree is a threshold number, fill in estimated token counts
+    // for files that were skipped (below char threshold). This ensures directory
+    // aggregation in the token count tree includes all files.
+    if (typeof tokenCountTree === 'number' && tokenizedCharSum > 0) {
+      const ratio = tokenizedTokenSum / tokenizedCharSum;
+      for (const file of processedFiles) {
+        if (!(file.path in fileTokenCounts)) {
+          fileTokenCounts[file.path] = Math.round(file.content.length * ratio);
+        }
+      }
+    }
+
     // Estimate total output tokens from file/git token counts + structural overhead.
     // Git diff/log tokens are already exactly counted, so use those directly.
     // The structural overhead (headers, tree, XML/markdown tags) and any un-tokenized
@@ -176,6 +197,44 @@ export const calculateMetrics = async (
       await taskRunner.cleanup();
     }
   }
+};
+
+/**
+ * Select files whose character count is high enough that they could plausibly exceed
+ * the token threshold. Uses a conservative upper bound on chars-per-token (5) to avoid
+ * false negatives — even very sparse code rarely exceeds 5 chars per token, so any
+ * file with fewer than threshold × 5 chars cannot reach the token threshold.
+ *
+ * Always includes at least the top 50 files by size (same as the default path) to
+ * ensure a reliable token/char ratio for estimating un-tokenized files.
+ */
+const selectFilesAboveThreshold = (processedFiles: ProcessedFile[], tokenThreshold: number): string[] => {
+  // Upper bound on chars per token. Typical code averages 3–4 chars/token (0.25–0.33
+  // tokens/char). Using 5 chars/token as the ceiling ensures we don't miss any file
+  // that could plausibly reach the threshold.
+  const MAX_CHARS_PER_TOKEN = 5;
+  const charThreshold = tokenThreshold * MAX_CHARS_PER_TOKEN;
+
+  const aboveThreshold = new Set<string>();
+  const sorted: { path: string; length: number }[] = [];
+
+  for (const file of processedFiles) {
+    const len = file.content.length;
+    if (len >= charThreshold) {
+      aboveThreshold.add(file.path);
+    }
+    sorted.push({ path: file.path, length: len });
+  }
+
+  // Always include the top 50 files by size for ratio estimation accuracy,
+  // even if they're below the threshold.
+  sorted.sort((a, b) => b.length - a.length);
+  const minSample = 50;
+  for (let i = 0; i < Math.min(minSample, sorted.length); i++) {
+    aboveThreshold.add(sorted[i].path);
+  }
+
+  return [...aboveThreshold];
 };
 
 /**
