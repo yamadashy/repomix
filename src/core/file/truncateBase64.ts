@@ -12,17 +12,50 @@ const dataUriPattern = new RegExp(
 );
 const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
 
+// Lookup table for base64 characters: A-Z, a-z, 0-9, +, /
+const b64Lookup = new Uint8Array(128);
+for (let i = 65; i <= 90; i++) b64Lookup[i] = 1; // A-Z
+for (let i = 97; i <= 122; i++) b64Lookup[i] = 1; // a-z
+for (let i = 48; i <= 57; i++) b64Lookup[i] = 1; // 0-9
+b64Lookup[43] = 1; // +
+b64Lookup[47] = 1; // /
+
+/**
+ * Fast pre-check using indexOf('\n') to find lines >= MIN_BASE64_LENGTH_STANDALONE.
+ * V8's indexOf uses SIMD-accelerated native code, making this ~7x faster than
+ * charCodeAt iteration for typical source code where most lines are short.
+ * Only files with at least one long line can contain a standalone base64 run.
+ */
+const hasLongLine = (content: string): boolean => {
+  let pos = 0;
+  let idx = content.indexOf('\n');
+  while (idx !== -1) {
+    if (idx - pos >= MIN_BASE64_LENGTH_STANDALONE) return true;
+    pos = idx + 1;
+    idx = content.indexOf('\n', pos);
+  }
+  return content.length - pos >= MIN_BASE64_LENGTH_STANDALONE;
+};
+
 /**
  * Fast pre-check: scan content for a run of MIN_BASE64_LENGTH_STANDALONE+
  * consecutive base64 characters. Returns false (and avoids the expensive
  * regex) when no such run exists — which is the common case for source code.
+ *
+ * Uses a three-phase approach:
+ * 1. Skip files shorter than the minimum run length
+ * 2. Skip files where no line is long enough to contain a base64 run
+ *    (uses indexOf('\n') which is SIMD-accelerated in V8)
+ * 3. Full character scan only for files that pass both filters
  */
 const hasLongBase64Run = (content: string): boolean => {
+  if (content.length < MIN_BASE64_LENGTH_STANDALONE) return false;
+  if (!hasLongLine(content)) return false;
+
   let run = 0;
   for (let i = 0; i < content.length; i++) {
     const c = content.charCodeAt(i);
-    // A-Z (65-90), a-z (97-122), 0-9 (48-57), + (43), / (47)
-    if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47) {
+    if (c < 128 && b64Lookup[c]) {
       if (++run >= MIN_BASE64_LENGTH_STANDALONE) {
         return true;
       }
