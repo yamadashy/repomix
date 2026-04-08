@@ -26,13 +26,12 @@ export interface SuspiciousFileResult {
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
 const BATCH_SIZE = 50;
 
-// When few items need checking, run on the main thread to avoid worker pool overhead.
-// Worker pool creation (~5ms) + secretlint module loading in worker (~100ms) + IPC overhead
-// makes workers expensive for small item counts. More importantly, security worker threads
-// compete for CPU with the metrics warmup workers that run concurrently, extending the
-// warmup wait by ~40-90ms on machines with ≤4 cores. Running on the main thread eliminates
-// this contention, allowing warmup to finish sooner.
-const MAIN_THREAD_THRESHOLD = 50;
+// Always run security checks on the main thread. Security worker threads loading @secretlint
+// cause severe CPU contention with the metrics worker pool (either during gpt-tokenizer
+// warmup or during tokenization), extending the pipeline from ~2s to ~9s on 4-core machines.
+// On the main thread, @secretlint loads once (~40ms) and lintSource runs ~2-4ms per item,
+// which is fast enough even for hundreds of candidates while avoiding worker thread overhead.
+const MAIN_THREAD_THRESHOLD = Number.MAX_SAFE_INTEGER;
 
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
@@ -76,9 +75,9 @@ export const runSecurityCheck = async (
     return [];
   }
 
-  // For small item counts, run on the main thread to avoid worker pool overhead and
-  // CPU contention with metrics warmup workers. This is the common case: keyword
-  // pre-filtering typically reduces ~1000 files to <10 candidates.
+  // Always run on the main thread to avoid worker pool overhead and CPU contention
+  // with the metrics worker pool. Keyword pre-filtering typically reduces candidates
+  // to single digits, and even hundreds of items complete in ~1-2s on the main thread.
   if (totalItems <= MAIN_THREAD_THRESHOLD) {
     return runSecurityCheckOnMainThread(allItems, progressCallback);
   }

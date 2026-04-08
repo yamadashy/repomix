@@ -80,21 +80,10 @@ describe('runSecurityCheck', () => {
     );
   });
 
-  it('should handle worker errors gracefully', async () => {
-    const mockError = new Error('Worker error');
-    const mockErrorTaskRunner = (_options?: WorkerOptions) => {
-      return {
-        run: async () => {
-          throw mockError;
-        },
-        cleanup: async () => {
-          // Mock cleanup - no-op for tests
-        },
-      };
-    };
-
-    // Generate enough files with secret keywords to exceed the main-thread threshold (50),
-    // forcing the worker path where the error mock takes effect.
+  it('should handle many files with secret keywords on the main thread', async () => {
+    // All security checks run on the main thread (MAIN_THREAD_THRESHOLD = MAX_SAFE_INTEGER)
+    // to avoid CPU contention with the metrics worker pool. Verify that large batches
+    // still produce correct results.
     const manyFiles: RawFile[] = Array.from({ length: 60 }, (_, i) => ({
       path: `test${i}.js`,
       // secretlint-disable
@@ -102,14 +91,17 @@ describe('runSecurityCheck', () => {
       // secretlint-enable
     }));
 
-    await expect(
-      runSecurityCheck(manyFiles, () => {}, undefined, undefined, {
-        initTaskRunner: mockErrorTaskRunner,
-        getProcessConcurrency: mockGetProcessConcurrency,
-      }),
-    ).rejects.toThrow('Worker error');
+    const result = await runSecurityCheck(manyFiles, () => {}, undefined, undefined, {
+      initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
 
-    expect(logger.error).toHaveBeenCalledWith('Error during security check:', mockError);
+    // All 60 files contain basic auth credentials
+    expect(result).toHaveLength(60);
+    for (const r of result) {
+      expect(r.messages).toHaveLength(1);
+      expect(r.type).toBe('file');
+    }
   });
 
   it('should handle empty file list', async () => {

@@ -153,9 +153,9 @@ export const pack = async (
     // Await git results (typically already completed during searchFiles + collectFiles).
     const [gitDiffResult, gitLogResult] = await gitOpsPromise;
 
-    // Start security check. When few items pass the keyword pre-filter (common case),
-    // the check runs on the main thread to avoid spawning worker threads that would
-    // compete for CPU with the metrics warmup workers running concurrently.
+    // Start security check. Runs on the main thread (see MAIN_THREAD_THRESHOLD in
+    // securityCheck.ts) to avoid spawning worker threads that would compete for CPU
+    // with the metrics worker pool.
     const validationPromise = withMemoryLogging('Security Check', () =>
       deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
     );
