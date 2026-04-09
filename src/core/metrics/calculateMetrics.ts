@@ -28,6 +28,15 @@ export interface MetricsTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
+// Token counting tasks are CPU-heavy (~50ms each for BPE tokenization), unlike file-processing
+// tasks (<1ms each). Use a lower tasks-per-thread ratio so the pool scales up sooner,
+// avoiding excessive serialization of output token chunks through a single worker.
+// Cap at 2 threads to balance parallelism against warmup I/O contention:
+// each worker loads gpt-tokenizer's BPE data (~250ms), and too many workers
+// competing for I/O during the concurrent file collection phase degrades throughput.
+const METRICS_TASKS_PER_THREAD = 10;
+const MAX_METRICS_WORKER_THREADS = 2;
+
 /**
  * Create a metrics task runner and warm up all worker threads by triggering
  * gpt-tokenizer initialization in parallel. This allows the expensive module
@@ -39,9 +48,11 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    tasksPerThread: METRICS_TASKS_PER_THREAD,
+    maxWorkerThreads: MAX_METRICS_WORKER_THREADS,
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { maxThreads } = getWorkerThreadCount(numOfTasks, MAX_METRICS_WORKER_THREADS, METRICS_TASKS_PER_THREAD);
   const warmupPromise = Promise.all(
     Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
@@ -77,6 +88,8 @@ export const calculateMetrics = async (
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
+      tasksPerThread: METRICS_TASKS_PER_THREAD,
+      maxWorkerThreads: MAX_METRICS_WORKER_THREADS,
     });
 
   try {

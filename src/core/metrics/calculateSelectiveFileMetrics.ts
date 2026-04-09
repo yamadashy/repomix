@@ -14,7 +14,7 @@ import type { FileMetrics } from './workers/types.js';
 // When tokenCountTree is disabled, metrics only processes a small number of top files
 // (e.g., topFilesLength * 10 = 50 by default), so a smaller batch size avoids
 // a single batch monopolizing one worker.
-const METRICS_BATCH_SIZE = 10;
+export const METRICS_BATCH_SIZE = 10;
 
 export const calculateSelectiveFileMetrics = async (
   processedFiles: ProcessedFile[],

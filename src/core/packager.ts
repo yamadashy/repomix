@@ -11,6 +11,8 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { TARGET_CHARS_PER_CHUNK } from './metrics/calculateOutputMetrics.js';
+import { METRICS_BATCH_SIZE } from './metrics/calculateSelectiveFileMetrics.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -101,19 +103,26 @@ export const pack = async (
   // (security check, file processing, output generation).
   // Right-size the pool based on actual expected task count rather than total file count.
   // By default (tokenCountTree disabled), only top files are tokenized (topFilesLength * 10),
-  // batched into groups of 10, plus a handful of output/git metrics tasks.
+  // batched into groups of 10, plus output token chunks and git metrics tasks.
   // Over-provisioning wastes worker threads that each independently load gpt-tokenizer (~250ms),
   // consuming memory and competing for I/O with concurrent file collection and security checks.
   // When split output is configured, the number of output parts is unknown at this point,
   // so we fall back to the original file-count-based sizing to avoid under-provisioning.
-  const METRICS_BATCH_SIZE = 10; // Must match calculateSelectiveFileMetrics.ts METRICS_BATCH_SIZE
   const useRightSizedPool = config.output.splitOutput === undefined;
   const metricsFileCount =
     !useRightSizedPool || config.output.tokenCountTree
       ? allFilePaths.length
       : Math.min(allFilePaths.length, config.output.topFilesLength * 10);
-  // +4 accounts for: 1 output metrics, 2 git diff (workTree + staged), 1 git log
-  const estimatedMetricsTasks = Math.ceil(metricsFileCount / METRICS_BATCH_SIZE) + 4;
+  // Estimate output token counting tasks: the output is roughly proportional to file count
+  // (each file contributes content + XML/markdown wrapper). calculateOutputMetrics chunks
+  // at TARGET_CHARS_PER_CHUNK chars; a typical code file averages ~5K chars with wrapper overhead.
+  const ESTIMATED_CHARS_PER_FILE = 5000;
+  const estimatedOutputChunks = Math.max(
+    1,
+    Math.ceil((allFilePaths.length * ESTIMATED_CHARS_PER_FILE) / TARGET_CHARS_PER_CHUNK),
+  );
+  // +3 accounts for: 2 git diff (workTree + staged), 1 git log
+  const estimatedMetricsTasks = Math.ceil(metricsFileCount / METRICS_BATCH_SIZE) + 3 + estimatedOutputChunks;
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
     estimatedMetricsTasks,
     config.tokenCount.encoding,
