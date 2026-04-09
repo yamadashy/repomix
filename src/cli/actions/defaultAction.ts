@@ -8,13 +8,11 @@ import {
   repomixConfigCliSchema,
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
-import { createMetricsTaskRunner } from '../../core/metrics/calculateMetrics.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
-import { getProcessConcurrency } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { reportResults } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
@@ -103,12 +101,6 @@ export const runDefaultAction = async (
     logger.trace(`Read ${stdinFilePaths.length} file paths from stdin`);
   }
 
-  // Pre-create the metrics worker pool so gpt-tokenizer BPE data loading
-  // (~150ms in worker threads) overlaps with spinner setup and early pack()
-  // stages (file search/collection). This gives workers ~60ms more warmup time
-  // compared to creating the pool inside pack(), reducing the warmup wait.
-  const earlyMetricsRunner = createMetricsTaskRunner(getProcessConcurrency() * 100, config.tokenCount.encoding);
-
   // Run pack() directly in the main process instead of spawning a child process.
   // The child process startup cost (~250ms for Node.js init + module re-loading) was
   // pure overhead since the spinner and pack ran in the same child process anyway.
@@ -136,14 +128,7 @@ export const runDefaultAction = async (
       }
     };
 
-    packResult = await pack(
-      targetPaths,
-      config,
-      handleProgress,
-      { createMetricsTaskRunner: () => earlyMetricsRunner },
-      stdinFilePaths,
-      packOptions,
-    );
+    packResult = await pack(targetPaths, config, handleProgress, {}, stdinFilePaths, packOptions);
 
     spinner.succeed('Packing completed successfully!');
   } catch (error) {

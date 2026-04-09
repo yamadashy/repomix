@@ -80,20 +80,8 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Pre-initialize metrics worker pool BEFORE searchFiles so that gpt-tokenizer loading
-  // overlaps with file search (I/O-bound globby) and file collection (I/O-bound reads).
-  // This ensures warmup completes before the CPU-bound security check starts, avoiding
-  // thread contention between warmup and security workers on limited CPU cores.
-  //
-  // Since file count is unknown at this point, pass processConcurrency * TASKS_PER_THREAD
-  // to ensure getWorkerThreadCount allocates the maximum number of threads (one per core).
-  // This may over-allocate for very small repos, but the cost is bounded by processConcurrency
-  // threads and is negligible compared to the contention savings for typical repos.
-  const processConcurrency = deps.getProcessConcurrency();
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    processConcurrency * 100,
-    config.tokenCount.encoding,
-  );
+  let metricsTaskRunner: Awaited<ReturnType<typeof deps.createMetricsTaskRunner>>['taskRunner'] | undefined;
+  let metricsWarmupPromise: Promise<unknown> | undefined;
 
   try {
     // Start git operations early: they depend only on rootDirs and config (not on the file list),
@@ -117,6 +105,20 @@ export const pack = async (
         }),
       ),
     );
+
+    // Initialize metrics worker pool AFTER file search completes.
+    // Worker thread spawning and BPE initialization are CPU-intensive (~120ms total),
+    // which competes with git subprocesses and picomatch pattern matching during
+    // file search on machines with limited cores (4-core: 4 worker threads + 6 git
+    // processes + main thread = 11 tasks on 4 cores). Deferring pool creation until
+    // after search eliminates this contention, reducing search time significantly.
+    // The warmup then overlaps with file collection, processing, and the security
+    // check, which are I/O-bound and don't contend with worker CPU usage.
+    const allFileCount = searchResultsByDir.reduce((sum, r) => sum + r.filePaths.length, 0);
+    ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+      allFileCount,
+      config.tokenCount.encoding,
+    ));
 
     // Deduplicate and sort empty directory paths for reuse during output generation,
     // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
@@ -289,9 +291,13 @@ export const pack = async (
     // All metric tasks have completed, so this only terminates idle threads.
     // For CLI: process.exit() in the entry point handles immediate thread cleanup.
     // For MCP/library: Tinypool's idleTimeout (5s) reclaims threads.
-    metricsWarmupPromise.catch(() => {});
-    Promise.resolve(metricsTaskRunner.cleanup()).catch((error) => {
-      logger.debug('Metrics worker pool cleanup error:', error);
-    });
+    if (metricsWarmupPromise) {
+      metricsWarmupPromise.catch(() => {});
+    }
+    if (metricsTaskRunner) {
+      Promise.resolve(metricsTaskRunner.cleanup()).catch((error) => {
+        logger.debug('Metrics worker pool cleanup error:', error);
+      });
+    }
   }
 };
