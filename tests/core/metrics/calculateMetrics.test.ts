@@ -23,6 +23,7 @@ vi.mock('../../../src/core/metrics/TokenCounter.js', () => {
       countTokens: vi.fn().mockReturnValue(10),
       free: vi.fn(),
     })),
+    loadBpeRanks: vi.fn().mockResolvedValue(['mock-bpe-data']),
   };
 });
 vi.mock('../../../src/core/metrics/aggregateMetrics.js');
@@ -113,12 +114,16 @@ describe('createMetricsTaskRunner', () => {
     await expect(result.warmupPromise).resolves.toBeDefined();
   });
 
-  it('should fire a warmup task with empty content', async () => {
+  it('should fire a warmup task with empty content and pre-loaded BPE data', async () => {
     const result = createMetricsTaskRunner(50, 'cl100k_base');
 
     await result.warmupPromise;
 
-    expect(result.taskRunner.run).toHaveBeenCalledWith({ content: '', encoding: 'cl100k_base' });
+    expect(result.taskRunner.run).toHaveBeenCalledWith({
+      content: '',
+      encoding: 'cl100k_base',
+      bpeRanksJson: expect.any(String),
+    });
   });
 
   it('should swallow warmup task errors', async () => {
