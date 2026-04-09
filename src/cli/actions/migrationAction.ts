@@ -1,6 +1,5 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import * as prompts from '@clack/prompts';
 import pc from 'picocolors';
 import { getGlobalDirectory } from '../../config/globalDirectory.js';
 import { logger } from '../../shared/logger.js';
@@ -108,11 +107,12 @@ const migrateFile = async (
 
   const exists = await fileExists(newPath);
   if (exists) {
-    const shouldOverwrite = await prompts.confirm({
+    const p = await import('@clack/prompts');
+    const shouldOverwrite = await p.confirm({
       message: `${description} already exists at ${newPath}. Do you want to overwrite it?`,
     });
 
-    if (prompts.isCancel(shouldOverwrite) || !shouldOverwrite) {
+    if (p.isCancel(shouldOverwrite) || !shouldOverwrite) {
       logger.info(`Skipping migration of ${description}`);
       return false;
     }
@@ -244,12 +244,16 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
     if (hasOldGlobalConfig) items.push('global configuration');
     migrationMessage += `${items.join(' and ')}. Would you like to migrate to ${pc.green('Repomix')}?`;
 
+    // Lazy-load @clack/prompts (~16ms) — only needed when old Repopack files
+    // are detected, which is rare after initial migration.
+    const p = await import('@clack/prompts');
+
     // Confirm migration with user
-    const shouldMigrate = await prompts.confirm({
+    const shouldMigrate = await p.confirm({
       message: migrationMessage,
     });
 
-    if (prompts.isCancel(shouldMigrate) || !shouldMigrate) {
+    if (p.isCancel(shouldMigrate) || !shouldMigrate) {
       logger.info('Migration cancelled.');
       return result;
     }

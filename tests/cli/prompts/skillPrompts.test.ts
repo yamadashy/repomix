@@ -20,6 +20,7 @@ const createMockDeps = (overrides: {
   select: vi.fn().mockResolvedValue(overrides.selectValue),
   confirm: vi.fn().mockResolvedValue(overrides.confirmValue),
   isCancel: overrides.isCancelFn as (value: unknown) => value is symbol,
+  cancel: vi.fn(),
   access: overrides.accessRejects
     ? vi.fn().mockRejectedValue(new Error('ENOENT'))
     : vi.fn().mockResolvedValue(undefined),

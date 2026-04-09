@@ -1,7 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import XMLBuilder from 'fast-xml-builder';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -22,11 +20,28 @@ import {
 import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
+import { registerHandlebarsHelpers } from './outputStyleUtils.js';
+
+// Lazy-load Handlebars to defer its ~25ms import cost until output generation.
+// The module is loaded eagerly in the import chain (packager → produceOutput →
+// outputGenerate) but only needed late in the pipeline during template rendering.
+// biome-ignore lint/suspicious/noExplicitAny: Handlebars type is complex and only used internally
+let handlebarsPromise: Promise<any> | undefined;
+const getHandlebars = () => {
+  if (!handlebarsPromise) {
+    handlebarsPromise = import('handlebars').then((mod) => {
+      registerHandlebarsHelpers(mod.default);
+      return mod.default;
+    });
+  }
+  return handlebarsPromise;
+};
 
 // Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
+// biome-ignore lint/suspicious/noExplicitAny: Handlebars TemplateDelegate type requires the full module
+const compiledTemplateCache = new Map<string, any>();
 
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
+const getCompiledTemplate = async (style: string) => {
   const cached = compiledTemplateCache.get(style);
   if (cached) {
     return cached;
@@ -47,6 +62,7 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
       throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
   }
 
+  const Handlebars = await getHandlebars();
   const compiled = Handlebars.compile(template);
   compiledTemplateCache.set(style, compiled);
   return compiled;
@@ -106,7 +122,9 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
 };
 
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
-  const xmlBuilder = new XMLBuilder({ ignoreAttributes: false });
+  // Lazy-load fast-xml-builder (~3ms) — only used for parsable XML output (non-default)
+  const FastXmlBuilder = (await import('fast-xml-builder')).default;
+  const xmlBuilder = new FastXmlBuilder({ ignoreAttributes: false });
   const xmlDocument = {
     repomix: {
       file_summary: renderContext.fileSummaryEnabled
@@ -220,7 +238,7 @@ const generateHandlebarOutput = async (
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
   try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
+    const compiledTemplate = await getCompiledTemplate(config.output.style);
     return `${compiledTemplate(renderContext).trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
