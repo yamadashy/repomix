@@ -17,7 +17,7 @@ import { prefetchFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
-import { packSkill } from './skill/packSkill.js';
+import type { PackSkillParams } from './skill/packSkill.js';
 
 export interface PackResult {
   totalFiles: number;
@@ -48,7 +48,13 @@ const defaultDeps = {
   sortPaths,
   getGitDiffs,
   getGitLogs,
-  packSkill,
+  // Lazy-load packSkill to defer importing the skill module chain
+  // (skillSectionGenerators, skillStyle → Handlebars), which adds ~25ms
+  // to module loading. Only used when --skill-generate is active (non-default).
+  packSkill: async (params: PackSkillParams) => {
+    const { packSkill } = await import('./skill/packSkill.js');
+    return packSkill(params);
+  },
   prefetchFileChangeCounts,
 };
 
