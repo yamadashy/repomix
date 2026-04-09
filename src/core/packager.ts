@@ -71,6 +71,37 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
+  // Pre-initialize metrics worker pool so gpt-tokenizer loading overlaps with searchFiles.
+  // searchFiles is typically the longest early stage (300-700ms for large repos), giving
+  // workers ample time to load BPE data (~250ms each) without competing for I/O with
+  // the subsequent file collection phase.
+  //
+  // We use a pre-search task estimate since the exact file count is unknown at this point.
+  // The estimate only affects worker count (via ceil(tasks/tasksPerThread)), not correctness.
+  // For tokenCountTree or splitOutput configs, we use a generous upper-bound estimate to
+  // ensure enough workers; for default configs, the output chunk estimate alone ensures
+  // adequate scaling.
+  const ESTIMATED_CHARS_PER_FILE = 5000;
+  // Metrics target count: how many files will be individually tokenized
+  const estimatedMetricsFileCount =
+    config.output.splitOutput !== undefined || config.output.tokenCountTree
+      ? 500 // Generous upper bound for large-output configs; capped by maxWorkerThreads regardless
+      : Math.max(config.output.topFilesLength * 10, 50);
+  // Output chunk count: the output includes ALL files, not just the metrics targets.
+  // Since the actual file count is unknown before searchFiles, use a generous estimate
+  // to ensure the pool scales to maxWorkerThreads for repos with 200+ files.
+  const ESTIMATED_TOTAL_FILES_FOR_OUTPUT = 500;
+  const estimatedOutputChunks = Math.max(
+    1,
+    Math.ceil((ESTIMATED_TOTAL_FILES_FOR_OUTPUT * ESTIMATED_CHARS_PER_FILE) / TARGET_CHARS_PER_CHUNK),
+  );
+  // +3 accounts for: 2 git diff (workTree + staged), 1 git log
+  const estimatedTasks = Math.ceil(estimatedMetricsFileCount / METRICS_BATCH_SIZE) + 3 + estimatedOutputChunks;
+  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+    estimatedTasks,
+    config.tokenCount.encoding,
+  );
+
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
@@ -98,35 +129,6 @@ export const pack = async (
     rootDir,
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
-  // Right-size the pool based on actual expected task count rather than total file count.
-  // By default (tokenCountTree disabled), only top files are tokenized (topFilesLength * 10),
-  // batched into groups of 10, plus output token chunks and git metrics tasks.
-  // Over-provisioning wastes worker threads that each independently load gpt-tokenizer (~250ms),
-  // consuming memory and competing for I/O with concurrent file collection and security checks.
-  // When split output is configured, the number of output parts is unknown at this point,
-  // so we fall back to the original file-count-based sizing to avoid under-provisioning.
-  const useRightSizedPool = config.output.splitOutput === undefined;
-  const metricsFileCount =
-    !useRightSizedPool || config.output.tokenCountTree
-      ? allFilePaths.length
-      : Math.min(allFilePaths.length, config.output.topFilesLength * 10);
-  // Estimate output token counting tasks: the output is roughly proportional to file count
-  // (each file contributes content + XML/markdown wrapper). calculateOutputMetrics chunks
-  // at TARGET_CHARS_PER_CHUNK chars; a typical code file averages ~5K chars with wrapper overhead.
-  const ESTIMATED_CHARS_PER_FILE = 5000;
-  const estimatedOutputChunks = Math.max(
-    1,
-    Math.ceil((allFilePaths.length * ESTIMATED_CHARS_PER_FILE) / TARGET_CHARS_PER_CHUNK),
-  );
-  // +3 accounts for: 2 git diff (workTree + staged), 1 git log
-  const estimatedMetricsTasks = Math.ceil(metricsFileCount / METRICS_BATCH_SIZE) + 3 + estimatedOutputChunks;
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    estimatedMetricsTasks,
-    config.tokenCount.encoding,
-  );
 
   try {
     // Run file collection and git operations in parallel since they are independent:

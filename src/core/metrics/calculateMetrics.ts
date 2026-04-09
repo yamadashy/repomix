@@ -31,11 +31,11 @@ export interface MetricsTaskRunnerWithWarmup {
 // Token counting tasks are CPU-heavy (~50ms each for BPE tokenization), unlike file-processing
 // tasks (<1ms each). Use a lower tasks-per-thread ratio so the pool scales up sooner,
 // avoiding excessive serialization of output token chunks through a single worker.
-// Cap at 2 threads to balance parallelism against warmup I/O contention:
-// each worker loads gpt-tokenizer's BPE data (~250ms), and too many workers
-// competing for I/O during the concurrent file collection phase degrades throughput.
+// Cap at 3 threads: the pool is now initialized before searchFiles (not during collectFiles),
+// so worker warmup overlaps with the file search phase (~300-700ms) rather than competing
+// for I/O with concurrent file collection and security checks.
 const METRICS_TASKS_PER_THREAD = 10;
-const MAX_METRICS_WORKER_THREADS = 2;
+const MAX_METRICS_WORKER_THREADS = 3;
 
 /**
  * Create a metrics task runner and warm up all worker threads by triggering
