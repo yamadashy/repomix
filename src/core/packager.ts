@@ -15,7 +15,7 @@ import { TARGET_CHARS_PER_CHUNK } from './metrics/calculateOutputMetrics.js';
 import { METRICS_BATCH_SIZE } from './metrics/calculateSelectiveFileMetrics.js';
 import { prefetchFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import { packSkill } from './skill/packSkill.js';
 
@@ -44,6 +44,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityTaskRunner,
   sortPaths,
   getGitDiffs,
   getGitLogs,
@@ -114,6 +115,14 @@ export const pack = async (
     ),
   );
 
+  // Pre-initialize security worker pool now that searchFiles is complete.
+  // Secretlint module loading takes ~200ms per worker; by starting workers here,
+  // the loading runs concurrently with collectFiles + git operations (~50ms) and
+  // processFiles, so workers are ready or nearly ready when the security check runs.
+  // Created after searchFiles (not at pack start) to avoid I/O contention between
+  // security worker startup, metrics worker startup, and globby's directory traversal.
+  const securityPreWarm = config.security.enableSecurityCheck ? deps.createSecurityTaskRunner() : undefined;
+
   // Deduplicate and sort empty directory paths for reuse during output generation,
   // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
   const emptyDirPaths = config.output.includeEmptyDirectories
@@ -163,21 +172,33 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Process files first since output generation and metrics depend on the result.
-    // This was previously overlapped with validateFileSafety, but since the next stage
-    // overlaps security with output+metrics, processFiles must complete before those start.
-    // The net effect is the same or better: security check time is now hidden behind the
-    // larger output+metrics phase instead of the smaller processFiles phase.
+    // Start security check immediately — it only needs rawFiles (not processedFiles),
+    // uses its own pre-warmed worker pool (secretlint), and shares no mutable state with
+    // processFiles or output generation. Starting it here allows it to overlap with
+    // processFiles, the remaining metrics worker warmup, and output generation.
+    // The pre-warmed security workers (started after searchFiles) have been loading
+    // secretlint during collectFiles + git operations, so they are ready or nearly ready.
+    const validationPromise = withMemoryLogging('Security Check', () =>
+      deps.validateFileSafety(
+        rawFiles,
+        progressCallback,
+        config,
+        gitDiffResult,
+        gitLogResult,
+        undefined,
+        securityPreWarm?.taskRunner,
+      ),
+    );
+
+    // Process files — output generation and metrics depend on the result.
     const allProcessedFiles = await withMemoryLogging('Process Files', () => {
       progressCallback('Processing files...');
       return deps.processFiles(rawFiles, config, progressCallback);
     });
 
-    // Skill generation path — needs security results before continuing, can't overlap
+    // Skill generation path — needs security results before continuing
     if (config.skillGenerate !== undefined && options.skillDir) {
-      const validationResult = await withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
-      );
+      const validationResult = await validationPromise;
       const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
         validationResult;
       const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
@@ -214,19 +235,17 @@ export const pack = async (
       files: filePaths,
     }));
 
-    // Ensure warm-up task completes before metrics calculation
-    await metricsWarmupPromise;
+    // Don't block on metrics warmup — the worker pool handles task queuing naturally.
+    // Warmup tasks (submitted in createMetricsTaskRunner) and real metrics tasks share
+    // the same pool; real tasks execute as soon as warmup completes on each worker.
+    // This frees output generation and the already-running security check from waiting
+    // on the unrelated metrics warmup, saving ~40ms on small-to-medium repos where
+    // the warmup outlasts the search+collect+process phases.
 
     progressCallback('Generating output...');
 
-    // Overlap security check with output generation and metrics calculation.
-    //
-    // Security check uses its own worker threads (secretlint), metrics calculation
-    // uses separate worker threads (gpt-tokenizer), and output generation runs on the
-    // main thread — they don't share mutable state and can proceed concurrently.
-    //
     // Output generation optimistically uses ALL processed files. In the common case
-    // (no suspicious files detected), this is correct and saves ~100ms by removing
+    // (no suspicious files detected), this is correct and saves time by removing
     // the security check from the critical path. In the rare case where files ARE
     // flagged, we regenerate output and recalculate metrics with filtered files.
     // Note: if copyToClipboard is enabled and suspicious files are found, the clipboard
@@ -247,9 +266,7 @@ export const pack = async (
     const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
 
     const [validationResult, { outputFiles }, metrics] = await Promise.all([
-      withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
-      ),
+      validationPromise,
       outputPromise,
       withMemoryLogging('Calculate Metrics', () =>
         deps.calculateMetrics(
@@ -329,5 +346,9 @@ export const pack = async (
   } finally {
     await metricsWarmupPromise.catch(() => {});
     await metricsTaskRunner.cleanup();
+    if (securityPreWarm) {
+      await securityPreWarm.warmupPromise.catch(() => {});
+      await securityPreWarm.taskRunner.cleanup();
+    }
   }
 };
