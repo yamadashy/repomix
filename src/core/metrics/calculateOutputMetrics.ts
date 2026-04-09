@@ -1,9 +1,8 @@
 import { logger } from '../../shared/logger.js';
-import type { TaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, type TaskRunner } from '../../shared/processConcurrency.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { TokenCountTask } from './workers/calculateMetricsWorker.js';
 
-const CHUNK_SIZE = 1000;
 const MIN_CONTENT_LENGTH_FOR_PARALLEL = 1_000_000; // 1000KB
 
 export const calculateOutputMetrics = async (
@@ -21,8 +20,11 @@ export const calculateOutputMetrics = async (
     let result: number;
 
     if (shouldRunInParallel) {
-      // Split content into chunks for parallel processing
-      const chunkSize = Math.ceil(content.length / CHUNK_SIZE);
+      // Split content into chunks matching the number of available CPU cores.
+      // Using fewer, larger chunks minimizes IPC overhead (postMessage serialization
+      // per task) while still saturating all worker threads.
+      const numChunks = Math.max(1, getProcessConcurrency());
+      const chunkSize = Math.ceil(content.length / numChunks);
       const chunks: string[] = [];
 
       for (let i = 0; i < content.length; i += chunkSize) {
