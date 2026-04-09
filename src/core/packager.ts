@@ -15,7 +15,7 @@ import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { prefetchFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { preloadSecurityModule, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -56,6 +56,7 @@ const defaultDeps = {
     return packSkill(params);
   },
   prefetchFileChangeCounts,
+  preloadSecurityModule,
 };
 
 export interface PackOptions {
@@ -95,6 +96,11 @@ export const pack = async (
       deps.getGitLogs(rootDirs, config),
       deps.prefetchFileChangeCounts(config),
     ]);
+
+    // Preload @secretlint before metrics workers spawn to avoid CPU contention (~300ms penalty).
+    if (config.security.enableSecurityCheck) {
+      deps.preloadSecurityModule();
+    }
 
     progressCallback('Searching for files...');
     const searchResultsByDir = await withMemoryLogging('Search Files', async () =>

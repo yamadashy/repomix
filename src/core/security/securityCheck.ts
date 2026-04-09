@@ -17,6 +17,28 @@ import {
 
 export type { SecurityCheckType } from './securityPreFilter.js';
 
+// Cached promise for the lazy-loaded security worker module.
+// Shared between preloadSecurityModule() and runSecurityCheckOnMainThread()
+// to ensure the module is loaded exactly once.
+let securityWorkerModulePromise: Promise<typeof import('./workers/securityCheckWorker.js')> | undefined;
+
+/**
+ * Start loading @secretlint/core in the background before metrics workers spawn.
+ * The secretlint module takes ~70ms to load on an idle CPU, but ~300-400ms when
+ * loading concurrently with metrics worker BPE initialization due to CPU contention.
+ * By preloading during the I/O-bound file search phase (before workers exist),
+ * the module is cached by the time the security check runs, eliminating the
+ * contention penalty entirely.
+ */
+export const preloadSecurityModule = (): void => {
+  if (!securityWorkerModulePromise) {
+    securityWorkerModulePromise = import('./workers/securityCheckWorker.js');
+    // Prevent unhandled rejection if preload fails — the actual security check
+    // will retry and report the error properly.
+    securityWorkerModulePromise.catch(() => {});
+  }
+};
+
 export interface SuspiciousFileResult {
   filePath: string;
   messages: string[];
@@ -93,8 +115,9 @@ const runSecurityCheckOnMainThread = async (
   logger.trace(`Starting security check for ${totalItems} items on main thread`);
   const startTime = process.hrtime.bigint();
 
-  // Lazy-load secretlint to avoid paying the import cost when security is disabled
-  const { runSecretLint, createSecretLintConfig } = await import('./workers/securityCheckWorker.js');
+  // Use the preloaded module if available, otherwise load it now.
+  const workerModule = await (securityWorkerModulePromise ?? import('./workers/securityCheckWorker.js'));
+  const { runSecretLint, createSecretLintConfig } = workerModule;
   const config = createSecretLintConfig();
 
   const results: (SuspiciousFileResult | null)[] = [];

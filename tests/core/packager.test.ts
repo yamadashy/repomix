@@ -74,6 +74,7 @@ describe('packager', () => {
         gitLogTokenCount: 0,
       }),
       prefetchFileChangeCounts: vi.fn().mockResolvedValue(null),
+      preloadSecurityModule: vi.fn(),
     };
 
     const mockConfig = createMockConfig();

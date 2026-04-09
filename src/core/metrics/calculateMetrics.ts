@@ -8,7 +8,8 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
 import type { MetricsTaskRunner } from './metricsWorkerRunner.js';
-import { loadBpeRanks, type TokenEncoding } from './TokenCounter.js';
+import { loadBpeRanks } from './TokenCounter.js';
+import type { TokenEncoding } from './tokenEncodings.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
