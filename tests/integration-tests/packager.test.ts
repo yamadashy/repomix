@@ -93,9 +93,7 @@ describe.runIf(!isWindows)('packager integration', () => {
         searchFiles,
         sortPaths: (filePaths) => filePaths,
         collectFiles: (filePaths, rootDir, config, progressCallback) => {
-          return collectFiles(filePaths, rootDir, config, progressCallback, {
-            readRawFile,
-          });
+          return collectFiles(filePaths, rootDir, config, progressCallback);
         },
         processFiles: async (rawFiles, config, _progressCallback) => {
           const processedFiles: ProcessedFile[] = [];

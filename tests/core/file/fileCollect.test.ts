@@ -8,9 +8,11 @@ import { createMockConfig } from '../../testing/testUtils.js';
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 describe('fileCollect', () => {
+  let mockReadRawFileSync: Mock<(filePath: string, maxFileSize: number) => FileReadResult>;
   let mockReadRawFile: Mock<(filePath: string, maxFileSize: number) => Promise<FileReadResult>>;
 
   beforeEach(() => {
+    mockReadRawFileSync = vi.fn();
     mockReadRawFile = vi.fn();
   });
 
@@ -19,10 +21,11 @@ describe('fileCollect', () => {
     const mockRootDir = '/root';
     const mockConfig = createMockConfig();
 
-    mockReadRawFile.mockResolvedValue({ content: 'file content' });
+    mockReadRawFileSync.mockReturnValue({ content: 'file content' });
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
+      readRawFileSync: mockReadRawFileSync,
     });
 
     expect(result).toEqual({
@@ -32,9 +35,9 @@ describe('fileCollect', () => {
       ],
       skippedFiles: [],
     });
-    expect(mockReadRawFile).toHaveBeenCalledTimes(2);
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/file1.txt'), MAX_FILE_SIZE);
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/file2.txt'), MAX_FILE_SIZE);
+    expect(mockReadRawFileSync).toHaveBeenCalledTimes(2);
+    expect(mockReadRawFileSync).toHaveBeenCalledWith(path.resolve('/root/file1.txt'), MAX_FILE_SIZE);
+    expect(mockReadRawFileSync).toHaveBeenCalledWith(path.resolve('/root/file2.txt'), MAX_FILE_SIZE);
   });
 
   it('should skip binary files', async () => {
@@ -42,7 +45,7 @@ describe('fileCollect', () => {
     const mockRootDir = '/root';
     const mockConfig = createMockConfig();
 
-    mockReadRawFile.mockImplementation(async (filePath) => {
+    mockReadRawFileSync.mockImplementation((filePath) => {
       if (filePath.endsWith('binary.bin')) {
         return { content: null, skippedReason: 'binary-extension' };
       }
@@ -51,6 +54,7 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
+      readRawFileSync: mockReadRawFileSync,
     });
 
     expect(result).toEqual({
@@ -64,7 +68,7 @@ describe('fileCollect', () => {
     const mockRootDir = '/root';
     const mockConfig = createMockConfig();
 
-    mockReadRawFile.mockImplementation(async (filePath) => {
+    mockReadRawFileSync.mockImplementation((filePath) => {
       if (filePath.endsWith('large.txt')) {
         return { content: null, skippedReason: 'size-limit' };
       }
@@ -73,6 +77,7 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
+      readRawFileSync: mockReadRawFileSync,
     });
 
     expect(result).toEqual({
@@ -91,7 +96,7 @@ describe('fileCollect', () => {
       },
     });
 
-    mockReadRawFile.mockImplementation(async (filePath) => {
+    mockReadRawFileSync.mockImplementation((filePath) => {
       if (filePath.endsWith('medium.txt')) {
         return { content: null, skippedReason: 'size-limit' };
       }
@@ -100,6 +105,7 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
+      readRawFileSync: mockReadRawFileSync,
     });
 
     expect(result).toEqual({
@@ -107,40 +113,48 @@ describe('fileCollect', () => {
       skippedFiles: [{ path: 'medium.txt', reason: 'size-limit' }],
     });
 
-    // Verify readRawFile is called with custom maxFileSize
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/medium.txt'), customMaxFileSize);
-    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/small.txt'), customMaxFileSize);
+    // Verify readRawFileSync is called with custom maxFileSize
+    expect(mockReadRawFileSync).toHaveBeenCalledWith(path.resolve('/root/medium.txt'), customMaxFileSize);
+    expect(mockReadRawFileSync).toHaveBeenCalledWith(path.resolve('/root/small.txt'), customMaxFileSize);
   });
 
-  it('should handle file read errors', async () => {
-    const mockFilePaths = ['error.txt'];
+  it('should fall back to async read for non-UTF-8 files', async () => {
+    const mockFilePaths = ['encoding.txt'];
     const mockRootDir = '/root';
     const mockConfig = createMockConfig();
 
-    mockReadRawFile.mockResolvedValue({ content: null, skippedReason: 'encoding-error' });
+    // Sync read signals needs-async-encoding, async read succeeds with encoding detection
+    mockReadRawFileSync.mockReturnValue({ content: null, skippedReason: 'needs-async-encoding' });
+    mockReadRawFile.mockResolvedValue({ content: 'non-utf8 content' });
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
+      readRawFileSync: mockReadRawFileSync,
     });
 
     expect(result).toEqual({
-      rawFiles: [],
-      skippedFiles: [{ path: 'error.txt', reason: 'encoding-error' }],
+      rawFiles: [{ path: 'encoding.txt', content: 'non-utf8 content' }],
+      skippedFiles: [],
     });
+    expect(mockReadRawFileSync).toHaveBeenCalledTimes(1);
+    expect(mockReadRawFile).toHaveBeenCalledTimes(1);
+    expect(mockReadRawFile).toHaveBeenCalledWith(path.resolve('/root/encoding.txt'), MAX_FILE_SIZE);
   });
 
-  it('should call progressCallback for each file', async () => {
+  it('should call progressCallback periodically', async () => {
     const mockFilePaths = ['file1.txt', 'file2.txt'];
     const mockRootDir = '/root';
     const mockConfig = createMockConfig();
     const mockProgress = vi.fn();
 
-    mockReadRawFile.mockResolvedValue({ content: 'file content' });
+    mockReadRawFileSync.mockReturnValue({ content: 'file content' });
 
     await collectFiles(mockFilePaths, mockRootDir, mockConfig, mockProgress, {
       readRawFile: mockReadRawFile,
+      readRawFileSync: mockReadRawFileSync,
     });
 
-    expect(mockProgress).toHaveBeenCalledTimes(2);
+    // Progress is called at the end of processing (last file or every 100 files)
+    expect(mockProgress).toHaveBeenCalled();
   });
 });
