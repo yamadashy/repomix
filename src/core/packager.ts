@@ -99,8 +99,23 @@ export const pack = async (
 
   // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
   // (security check, file processing, output generation).
+  // Right-size the pool based on actual expected task count rather than total file count.
+  // By default (tokenCountTree disabled), only top files are tokenized (topFilesLength * 10),
+  // batched into groups of 10, plus a handful of output/git metrics tasks.
+  // Over-provisioning wastes worker threads that each independently load gpt-tokenizer (~250ms),
+  // consuming memory and competing for I/O with concurrent file collection and security checks.
+  // When split output is configured, the number of output parts is unknown at this point,
+  // so we fall back to the original file-count-based sizing to avoid under-provisioning.
+  const METRICS_BATCH_SIZE = 10; // Must match calculateSelectiveFileMetrics.ts METRICS_BATCH_SIZE
+  const useRightSizedPool = config.output.splitOutput === undefined;
+  const metricsFileCount =
+    !useRightSizedPool || config.output.tokenCountTree
+      ? allFilePaths.length
+      : Math.min(allFilePaths.length, config.output.topFilesLength * 10);
+  // +4 accounts for: 1 output metrics, 2 git diff (workTree + staged), 1 git log
+  const estimatedMetricsTasks = Math.ceil(metricsFileCount / METRICS_BATCH_SIZE) + 4;
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
+    estimatedMetricsTasks,
     config.tokenCount.encoding,
   );
 
