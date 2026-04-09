@@ -86,6 +86,12 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
   // for XML, JSON, and plain output styles where the delimiter is unused.
   const needsMarkdownDelimiter = outputGeneratorContext.config.output.style === 'markdown';
 
+  // Only compute file line counts for skill generation, which is the only code path
+  // that uses them (packSkill.ts, skillStatistics.ts, skillSectionGenerators.ts).
+  // Normal output templates (xml, markdown, plain, json) never access fileLineCounts.
+  // This avoids an O(N) scan over all file contents (~5ms per 1000 files).
+  const needsLineCounts = outputGeneratorContext.config.skillGenerate !== undefined;
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -99,7 +105,7 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    fileLineCounts: needsLineCounts ? calculateFileLineCounts(outputGeneratorContext.processedFiles) : {},
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
