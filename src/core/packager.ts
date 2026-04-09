@@ -13,6 +13,7 @@ import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { TARGET_CHARS_PER_CHUNK } from './metrics/calculateOutputMetrics.js';
 import { METRICS_BATCH_SIZE } from './metrics/calculateSelectiveFileMetrics.js';
+import { prefetchFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -47,6 +48,7 @@ const defaultDeps = {
   getGitDiffs,
   getGitLogs,
   packSkill,
+  prefetchFileChangeCounts,
 };
 
 export interface PackOptions {
@@ -131,10 +133,15 @@ export const pack = async (
   }));
 
   try {
-    // Run file collection and git operations in parallel since they are independent:
+    // Run file collection, git operations, and sort-by-changes prefetch in parallel
+    // since they are all independent I/O-bound operations:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
-    // Neither depends on the other's results.
+    // - prefetchFileChangeCounts spawns `git log --name-only` for sortByChanges
+    //
+    // The prefetch populates the module-level cache in outputSort.ts so that
+    // sortOutputFiles (called later inside produceOutput) gets a cache hit
+    // instead of spawning a blocking git subprocess on the critical path.
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
       withMemoryLogging(
@@ -148,6 +155,9 @@ export const pack = async (
       ),
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
+      config.output.git?.sortByChanges
+        ? deps.prefetchFileChangeCounts(config.cwd, config.output.git.sortByChangesMaxCommits)
+        : undefined,
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
