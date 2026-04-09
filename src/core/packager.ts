@@ -13,6 +13,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { loadBpeRanks } from './metrics/TokenCounter.js';
 import { prefetchFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { preloadSecurityModule, type SuspiciousFileResult } from './security/securityCheck.js';
@@ -57,6 +58,7 @@ const defaultDeps = {
   },
   prefetchFileChangeCounts,
   preloadSecurityModule,
+  loadBpeRanks,
 };
 
 export interface PackOptions {
@@ -102,6 +104,21 @@ export const pack = async (
       deps.preloadSecurityModule();
     }
 
+    // Preload BPE rank data for the token encoder. This async I/O (~100ms) runs concurrently
+    // with searchFiles (git subprocess) while the event loop is available. Without preloading,
+    // loadBpeRanks is called inside createMetricsTaskRunner (after searchFiles), but its async
+    // callback cannot fire during the subsequent synchronous collectFiles (~150ms). This delays
+    // BPE availability until after collectFiles, causing worker warmup to stall the pipeline
+    // by ~200ms. By preloading here, BPE data is ready before collectFiles begins, and worker
+    // warmup completes during collectFiles instead of after it.
+    const bpePreloadPromise = deps
+      .loadBpeRanks(config.tokenCount.encoding)
+      .then((bpeRanks) => JSON.stringify(bpeRanks))
+      .catch((error) => {
+        logger.debug('BPE preload failed, workers will load from disk:', error);
+        return null as string | null;
+      });
+
     progressCallback('Searching for files...');
     const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
       Promise.all(
@@ -131,6 +148,7 @@ export const pack = async (
     ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
       estimatedTokenTasks,
       config.tokenCount.encoding,
+      bpePreloadPromise,
     ));
 
     // Deduplicate and sort empty directory paths for reuse during output generation,
@@ -183,8 +201,17 @@ export const pack = async (
 
     const allProcessedFiles = await processFilesPromise;
 
-    // Ensure warm-up task completes before metrics calculation
-    await metricsWarmupPromise;
+    // NOTE: We intentionally do NOT await metricsWarmupPromise here. The warmup tasks
+    // (BPE initialization) were dispatched to workers in createMetricsTaskRunner and are
+    // expected to be enqueued before real tokenization tasks due to the timing of the
+    // preloaded BPE promise resolving during searchFiles. With BPE data pre-loaded,
+    // workers typically complete warmup during collectFiles (~73ms of BPE deserialization
+    // overlaps with ~150ms of synchronous file reads). By not awaiting, calculateMetrics
+    // can dispatch tasks immediately — they queue behind warmup and start processing as
+    // each worker finishes initialization, eliminating the ~200ms pipeline stall that
+    // occurred when the main thread waited for all workers to warm up.
+    // If timing does not align (e.g., very fast searchFiles), workers fall back to loading
+    // BPE from disk on first real task via getTokenCounter — slower but correct.
 
     // Create a deferred promise for the output. This allows starting file and git metrics
     // immediately (they don't depend on output), while output metrics waits for the deferred

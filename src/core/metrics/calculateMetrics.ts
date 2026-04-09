@@ -40,14 +40,21 @@ export interface MetricsTaskRunnerWithWarmup {
  * via structured clone in ~3ms (vs ~26ms for the raw array), making the IPC
  * overhead negligible.
  */
-export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
-  // Start loading BPE data on the main thread (async I/O, overlaps with pool creation
-  // and subsequent pipeline stages like searchFiles and collectFiles).
-  // If pre-loading fails (e.g., missing BPE asset in bundled builds), fall back to
-  // null so workers load BPE from disk independently (slower but correct).
-  const bpeRanksJsonPromise = loadBpeRanks(encoding)
-    .then((bpeRanks) => JSON.stringify(bpeRanks))
-    .catch(() => null as string | null);
+export const createMetricsTaskRunner = (
+  numOfTasks: number,
+  encoding: TokenEncoding,
+  preloadedBpeRanksJsonPromise?: Promise<string | null>,
+): MetricsTaskRunnerWithWarmup => {
+  // Use pre-loaded BPE data promise if available. The preload is started at the beginning
+  // of pack() so the async I/O overlaps with searchFiles (when the event loop is available).
+  // Without preloading, loadBpeRanks is called here (after searchFiles), but its async
+  // callback cannot fire during the subsequent synchronous collectFiles (~150ms), delaying
+  // BPE availability and causing worker warmup to stall the pipeline by ~200ms.
+  const bpeRanksJsonPromise =
+    preloadedBpeRanksJsonPromise ??
+    loadBpeRanks(encoding)
+      .then((bpeRanks) => JSON.stringify(bpeRanks))
+      .catch(() => null as string | null);
 
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     numOfTasks,
