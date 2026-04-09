@@ -285,3 +285,10 @@ Files:
   }
 }
 ```
+
+## 相关资源
+
+- [配置](/zh-cn/guide/configuration) - 完整的配置选项参考
+- [命令行选项](/zh-cn/guide/command-line-options) - 使用 `--style` 设置输出格式
+- [代码压缩](/zh-cn/guide/code-compress) - 在保持结构的同时减少 Token 数量
+- [提示词示例](/zh-cn/guide/prompt-examples) - 搭配不同 AI 模型使用输出的技巧

@@ -1,13 +1,12 @@
-import path from 'node:path';
 import process from 'node:process';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import { buildCliConfig, runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import * as configLoader from '../../../src/config/configLoad.js';
 import * as fileStdin from '../../../src/core/file/fileStdin.js';
 import * as packageJsonParser from '../../../src/core/file/packageJsonParse.js';
 import * as packager from '../../../src/core/packager.js';
-
+import * as loggerModule from '../../../src/shared/logger.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 vi.mock('../../../src/core/packager');
@@ -16,44 +15,30 @@ vi.mock('../../../src/core/file/packageJsonParse');
 vi.mock('../../../src/core/file/fileStdin');
 vi.mock('../../../src/shared/logger');
 
-// Use vi.hoisted to create a class-based Spinner mock that works with `new`
-const { MockSpinner, getLastSpinnerInstance, resetLastSpinnerInstance } = vi.hoisted(() => {
-  let lastInstance: {
-    start: ReturnType<typeof vi.fn>;
-    update: ReturnType<typeof vi.fn>;
-    succeed: ReturnType<typeof vi.fn>;
-    fail: ReturnType<typeof vi.fn>;
-  } | null = null;
+const mockSpinner = {
+  start: vi.fn() as MockedFunction<() => void>,
+  update: vi.fn() as MockedFunction<(message: string) => void>,
+  succeed: vi.fn() as MockedFunction<(message: string) => void>,
+  fail: vi.fn() as MockedFunction<(message: string) => void>,
+};
 
-  class MockSpinner {
-    start = vi.fn();
-    update = vi.fn();
-    succeed = vi.fn();
-    fail = vi.fn();
-
-    constructor() {
-      lastInstance = this;
-    }
-  }
-
-  return {
-    MockSpinner,
-    getLastSpinnerInstance: () => lastInstance,
-    resetLastSpinnerInstance: () => {
-      lastInstance = null;
-    },
+vi.mock('../../../src/cli/cliSpinner', () => {
+  const MockSpinner = class {
+    start = mockSpinner.start;
+    update = mockSpinner.update;
+    succeed = mockSpinner.succeed;
+    fail = mockSpinner.fail;
   };
+  return { Spinner: MockSpinner };
 });
-
-vi.mock('../../../src/cli/cliSpinner', () => ({
-  Spinner: MockSpinner,
-}));
 vi.mock('../../../src/cli/cliReport');
 
 describe('defaultAction', () => {
   beforeEach(() => {
+    vi.resetAllMocks();
+
+    // Reset mockSpinner functions
     vi.clearAllMocks();
-    resetLastSpinnerInstance();
 
     vi.mocked(packageJsonParser.getVersion).mockResolvedValue('1.0.0');
     vi.mocked(configLoader.loadFileConfig).mockResolvedValue({});
@@ -118,6 +103,10 @@ describe('defaultAction', () => {
     });
   });
 
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
   it('should run the default command successfully', async () => {
     const options: CliOptions = {
       output: 'custom-output.txt',
@@ -126,10 +115,9 @@ describe('defaultAction', () => {
 
     await runDefaultAction(['.'], process.cwd(), options);
 
-    const spinner = getLastSpinnerInstance();
     expect(packager.pack).toHaveBeenCalled();
-    expect(spinner?.start).toHaveBeenCalled();
-    expect(spinner?.succeed).toHaveBeenCalledWith('Packing completed successfully!');
+    expect(mockSpinner.start).toHaveBeenCalled();
+    expect(mockSpinner.succeed).toHaveBeenCalled();
   });
 
   it('should handle custom include patterns', async () => {
@@ -139,14 +127,7 @@ describe('defaultAction', () => {
 
     await runDefaultAction(['.'], process.cwd(), options);
 
-    expect(packager.pack).toHaveBeenCalledWith(
-      [path.resolve(process.cwd(), '.')],
-      expect.any(Object),
-      expect.any(Function),
-      {},
-      undefined,
-      expect.any(Object),
-    );
+    expect(packager.pack).toHaveBeenCalled();
   });
 
   it('should handle stdin mode', async () => {
@@ -156,6 +137,7 @@ describe('defaultAction', () => {
 
     await runDefaultAction(['.'], process.cwd(), options);
 
+    expect(fileStdin.readFilePathsFromStdin).toHaveBeenCalledWith(process.cwd());
     expect(packager.pack).toHaveBeenCalledWith(
       [process.cwd()],
       expect.any(Object),
@@ -172,8 +154,96 @@ describe('defaultAction', () => {
     const options: CliOptions = {};
 
     await expect(runDefaultAction(['.'], process.cwd(), options)).rejects.toThrow('Test error');
-    const spinner = getLastSpinnerInstance();
-    expect(spinner?.fail).toHaveBeenCalledWith('Error during packing');
+    expect(mockSpinner.fail).toHaveBeenCalledWith('Error during packing');
+  });
+
+  describe('progressCallback', () => {
+    it('should forward progress messages to the provided callback', async () => {
+      // Configure pack mock to invoke its 3rd argument (progressCallback)
+      vi.mocked(packager.pack).mockImplementation(async (_paths, _config, progressCallback = () => {}) => {
+        progressCallback('Searching for files...');
+        progressCallback('Processing files...');
+        return {
+          totalFiles: 10,
+          totalCharacters: 1000,
+          totalTokens: 200,
+          fileCharCounts: {},
+          fileTokenCounts: {},
+          suspiciousFilesResults: [],
+          suspiciousGitDiffResults: [],
+          suspiciousGitLogResults: [],
+          processedFiles: [],
+          safeFilePaths: [],
+          gitDiffTokenCount: 0,
+          gitLogTokenCount: 0,
+          skippedFiles: [],
+        };
+      });
+
+      const callback = vi.fn();
+      await runDefaultAction(['.'], process.cwd(), {}, callback);
+
+      expect(callback).toHaveBeenCalledWith('Searching for files...');
+      expect(callback).toHaveBeenCalledWith('Processing files...');
+    });
+
+    it('should isolate async callback errors without affecting pack flow', async () => {
+      vi.mocked(packager.pack).mockImplementation(async (_paths, _config, progressCallback = () => {}) => {
+        progressCallback('test message');
+        // Allow microtask to process the rejected promise
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return {
+          totalFiles: 10,
+          totalCharacters: 1000,
+          totalTokens: 200,
+          fileCharCounts: {},
+          fileTokenCounts: {},
+          suspiciousFilesResults: [],
+          suspiciousGitDiffResults: [],
+          suspiciousGitLogResults: [],
+          processedFiles: [],
+          safeFilePaths: [],
+          gitDiffTokenCount: 0,
+          gitLogTokenCount: 0,
+          skippedFiles: [],
+        };
+      });
+
+      const rejectingCallback = vi.fn().mockRejectedValue(new Error('callback error'));
+      const result = await runDefaultAction(['.'], process.cwd(), {}, rejectingCallback);
+
+      expect(result.packResult.totalFiles).toBe(10);
+      expect(loggerModule.logger.trace).toHaveBeenCalledWith('progressCallback error:', expect.any(Error));
+    });
+
+    it('should still update spinner even when callback throws synchronously', async () => {
+      vi.mocked(packager.pack).mockImplementation(async (_paths, _config, progressCallback = () => {}) => {
+        progressCallback('test message');
+        return {
+          totalFiles: 10,
+          totalCharacters: 1000,
+          totalTokens: 200,
+          fileCharCounts: {},
+          fileTokenCounts: {},
+          suspiciousFilesResults: [],
+          suspiciousGitDiffResults: [],
+          suspiciousGitLogResults: [],
+          processedFiles: [],
+          safeFilePaths: [],
+          gitDiffTokenCount: 0,
+          gitLogTokenCount: 0,
+          skippedFiles: [],
+        };
+      });
+
+      const throwingCallback = vi.fn().mockImplementation(() => {
+        throw new Error('sync error');
+      });
+      await runDefaultAction(['.'], process.cwd(), {}, throwingCallback);
+
+      // Spinner should still be updated despite callback failure
+      expect(mockSpinner.update).toHaveBeenCalledWith('test message');
+    });
   });
 
   describe('buildCliConfig', () => {

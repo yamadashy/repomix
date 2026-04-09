@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
+import { beforeEach, describe, expect, type Mock, type MockedFunction, test, vi } from 'vitest';
 import { runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
 import * as cliReport from '../../../src/cli/cliReport.js';
 import type { CliOptions } from '../../../src/cli/types.js';
@@ -8,22 +8,26 @@ import * as packager from '../../../src/core/packager.js';
 vi.mock('../../../src/config/configLoad.js');
 vi.mock('../../../src/core/packager.js');
 vi.mock('../../../src/cli/cliReport.js');
-const { MockSpinner } = vi.hoisted(() => {
-  class MockSpinner {
-    start = vi.fn();
-    update = vi.fn();
-    succeed = vi.fn();
-    fail = vi.fn();
-  }
-  return { MockSpinner };
-});
-vi.mock('../../../src/cli/cliSpinner.js', () => ({
-  Spinner: MockSpinner,
-}));
 vi.mock('../../../src/cli/actions/migrationAction.js', () => ({
   runMigrationAction: vi.fn(),
 }));
-vi.mock('../../../src/shared/logger');
+
+const mockSpinner = {
+  start: vi.fn() as MockedFunction<() => void>,
+  update: vi.fn() as MockedFunction<(message: string) => void>,
+  succeed: vi.fn() as MockedFunction<(message: string) => void>,
+  fail: vi.fn() as MockedFunction<(message: string) => void>,
+};
+
+vi.mock('../../../src/cli/cliSpinner', () => {
+  const MockSpinner = class {
+    start = mockSpinner.start;
+    update = mockSpinner.update;
+    succeed = mockSpinner.succeed;
+    fail = mockSpinner.fail;
+  };
+  return { Spinner: MockSpinner };
+});
 
 describe('defaultAction with tokenCountTree', () => {
   const mockLoadFileConfig = configLoad.loadFileConfig as Mock;
@@ -53,8 +57,6 @@ describe('defaultAction with tokenCountTree', () => {
       fileCharCounts: {},
       fileTokenCounts: {},
       gitDiffTokenCount: 0,
-      gitLogTokenCount: 0,
-      skippedFiles: [],
       suspiciousFilesResults: [],
       suspiciousGitDiffResults: [],
       processedFiles: [

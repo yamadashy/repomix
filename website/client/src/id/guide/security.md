@@ -82,3 +82,9 @@ Saat berbagi basis kode dengan AI, ikuti praktik terbaik ini:
 ## Pelaporan Masalah Keamanan
 
 Jika Anda menemukan masalah keamanan di Repomix, harap laporkan secara bertanggung jawab dengan membuka [issue di GitHub](https://github.com/yamadashy/repomix/issues) atau menghubungi pemelihara secara langsung.
+
+## Sumber Daya Terkait
+
+- [Konfigurasi](/id/guide/configuration) - Konfigurasi pemeriksaan keamanan melalui `security.enableSecurityCheck`
+- [Opsi Baris Perintah](/id/guide/command-line-options) - Gunakan flag `--no-security-check`
+- [Kebijakan Privasi](/id/guide/privacy) - Pelajari tentang penanganan data Repomix

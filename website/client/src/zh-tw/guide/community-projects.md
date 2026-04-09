@@ -10,6 +10,13 @@
 **儲存庫**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)  
 **市集**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## 桌面應用程式
+
+### Repomix Desktop
+一個社群桌面應用程式，為 Repomix CLI 提供 GUI 封裝。使用 Python 和 CustomTkinter 構建，提供使用者友善的介面，無需使用終端。
+
+**儲存庫**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## 語言實作
 
 ### Python Repomix
@@ -33,3 +40,9 @@
 為 AI 代理提供多種功能的 CLI 工具集，包括透過 Perplexity 進行網路搜尋、透過 Gemini 和 Repomix 進行儲存庫分析，以及透過 Stagehand 進行瀏覽器自動化。
 
 **儲存庫**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## 相關資源
+
+- [安裝](/zh-tw/guide/installation) - 安裝 Repomix CLI 或瀏覽器擴充功能
+- [MCP 伺服器](/zh-tw/guide/mcp-server) - 將 Repomix 作為 MCP 伺服器用於 AI 助手
+- [Claude Code 外掛](/zh-tw/guide/claude-code-plugins) - 官方 Claude Code 外掛

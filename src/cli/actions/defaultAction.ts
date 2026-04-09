@@ -13,6 +13,7 @@ import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
+import type { RepomixProgressCallback } from '../../shared/types.js';
 import { reportResults } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
 import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
@@ -28,6 +29,7 @@ export const runDefaultAction = async (
   directories: string[],
   cwd: string,
   cliOptions: CliOptions,
+  progressCallback?: RepomixProgressCallback,
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', cliOptions);
 
@@ -83,7 +85,7 @@ export const runDefaultAction = async (
     }
   }
 
-  // Handle stdin processing before pack execution
+  // Handle stdin processing
   let stdinFilePaths: string[] | undefined;
   if (cliOptions.stdin) {
     // Validate directory arguments for stdin mode
@@ -96,11 +98,12 @@ export const runDefaultAction = async (
 
     const stdinResult = await readFilePathsFromStdin(cwd);
     stdinFilePaths = stdinResult.filePaths;
-    logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
+    logger.trace(`Read ${stdinFilePaths.length} file paths from stdin`);
   }
 
-  // Run pack directly in the main process to avoid the overhead of spawning
-  // a child_process worker (~200ms), which is significant for typical CLI runs.
+  // Run pack() directly in the main process instead of spawning a child process.
+  // The child process startup cost (~250ms for Node.js init + module re-loading) was
+  // pure overhead since the spinner and pack ran in the same child process anyway.
   const spinner = new Spinner('Initializing...', cliOptions);
   spinner.start();
 
@@ -110,31 +113,22 @@ export const runDefaultAction = async (
     const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
     const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
 
-    if (stdinFilePaths) {
-      packResult = await pack(
-        [cwd],
-        config,
-        (message) => {
-          spinner.update(message);
-        },
-        {},
-        stdinFilePaths,
-        packOptions,
-      );
-    } else {
-      const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
+    const targetPaths = stdinFilePaths ? [cwd] : directories.map((directory) => path.resolve(cwd, directory));
 
-      packResult = await pack(
-        targetPaths,
-        config,
-        (message) => {
-          spinner.update(message);
-        },
-        {},
-        undefined,
-        packOptions,
-      );
-    }
+    const handleProgress: RepomixProgressCallback = (message) => {
+      spinner.update(message);
+      if (progressCallback) {
+        try {
+          Promise.resolve(progressCallback(message)).catch((error) => {
+            logger.trace('progressCallback error:', error);
+          });
+        } catch (error) {
+          logger.trace('progressCallback error:', error);
+        }
+      }
+    };
+
+    packResult = await pack(targetPaths, config, handleProgress, {}, stdinFilePaths, packOptions);
 
     spinner.succeed('Packing completed successfully!');
   } catch (error) {
@@ -142,7 +136,7 @@ export const runDefaultAction = async (
     throw error;
   }
 
-  // Report results in main process
+  // Report results
   reportResults(cwd, packResult, config, cliOptions);
 
   return {

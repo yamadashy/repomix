@@ -78,26 +78,15 @@ The Skills are generated with the following structure:
 
 ### File Descriptions
 
-#### SKILL.md
+| File | Purpose | Contents |
+|------|---------|----------|
+| `SKILL.md` | Main Skills metadata & documentation | Skills name, description, project info, file/line/token counts, usage overview, common use cases and tips |
+| `references/summary.md` | Purpose, format, and statistics | Reference codebase explanation, file structure docs, usage guidelines, breakdown by file type and language |
+| `references/project-structure.md` | File discovery | Directory tree with line counts per file |
+| `references/files.md` | Searchable code reference | All file contents with syntax highlighting headers, optimized for grep-friendly searching |
+| `references/tech-stacks.md` | Tech stack summary | Languages, frameworks, runtime versions, package managers, dependencies, config files |
 
-The main Skills file containing:
-- Skills name, description, and project info
-- File count, line count, and token count
-- Overview of how to use the Skills
-- File locations and format explanation
-- Common use cases and tips
-
-#### references/summary.md
-
-Contains:
-- **Purpose**: Explains this is a reference codebase for AI consumption
-- **File Structure**: Documents what's in each reference file
-- **Usage Guidelines**: How to use the Skills effectively
-- **Statistics**: Breakdown by file type, language, and largest files
-
-#### references/project-structure.md
-
-Directory tree with line counts per file for easy file discovery:
+#### Example: references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-All file contents with syntax highlighting headers, optimized for grep-friendly searching:
+#### Example: references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### Example: references/tech-stacks.md
 
 Auto-detected tech stack from dependency files:
 - **Languages**: TypeScript, JavaScript, Python, etc.

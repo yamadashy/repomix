@@ -78,26 +78,15 @@ Skills 按以下结构生成：
 
 ### 文件说明
 
-#### SKILL.md
+| 文件 | 用途 | 内容 |
+|------|------|------|
+| `SKILL.md` | Skills 主元数据和文档 | Skills 名称、描述、项目信息、文件/行/token 数、使用方法概述、常见用例和提示 |
+| `references/summary.md` | 目的、格式和统计信息 | 参考代码库说明、文件结构文档、使用指南、按文件类型和语言的分类 |
+| `references/project-structure.md` | 文件发现 | 带有每个文件行数的目录树 |
+| `references/files.md` | 可搜索的代码参考 | 所有带语法高亮头的文件内容，针对 grep 友好搜索优化 |
+| `references/tech-stacks.md` | 技术栈摘要 | 语言、框架、运行时版本、包管理器、依赖项、配置文件 |
 
-主 Skills 文件包含：
-- Skills 名称、描述和项目信息
-- 文件数、行数和 token 数
-- Skills 使用方法概述
-- 文件位置和格式说明
-- 常见用例和提示
-
-#### references/summary.md
-
-包含：
-- **目的**：说明这是供 AI 使用的参考代码库
-- **文件结构**：记录每个参考文件的内容
-- **使用指南**：如何有效使用 Skills
-- **统计信息**：按文件类型、语言和最大文件的分类
-
-#### references/project-structure.md
-
-带有每个文件行数的目录树，便于文件发现：
+#### 示例：references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-所有带语法高亮头的文件内容，针对 grep 友好搜索优化：
+#### 示例：references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### 示例：references/tech-stacks.md
 
 从依赖文件自动检测的技术栈：
 - **语言**：TypeScript、JavaScript、Python 等

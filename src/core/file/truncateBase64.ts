@@ -12,6 +12,60 @@ const dataUriPattern = new RegExp(
 );
 const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
 
+// Lookup table for base64 characters: A-Z, a-z, 0-9, +, /
+const b64Lookup = new Uint8Array(128);
+for (let i = 65; i <= 90; i++) b64Lookup[i] = 1; // A-Z
+for (let i = 97; i <= 122; i++) b64Lookup[i] = 1; // a-z
+for (let i = 48; i <= 57; i++) b64Lookup[i] = 1; // 0-9
+b64Lookup[43] = 1; // +
+b64Lookup[47] = 1; // /
+
+/**
+ * Fast pre-check using indexOf('\n') to find lines >= MIN_BASE64_LENGTH_STANDALONE.
+ * V8's indexOf uses SIMD-accelerated native code, making this ~7x faster than
+ * charCodeAt iteration for typical source code where most lines are short.
+ * Only files with at least one long line can contain a standalone base64 run.
+ */
+const hasLongLine = (content: string): boolean => {
+  let pos = 0;
+  let idx = content.indexOf('\n');
+  while (idx !== -1) {
+    if (idx - pos >= MIN_BASE64_LENGTH_STANDALONE) return true;
+    pos = idx + 1;
+    idx = content.indexOf('\n', pos);
+  }
+  return content.length - pos >= MIN_BASE64_LENGTH_STANDALONE;
+};
+
+/**
+ * Fast pre-check: scan content for a run of MIN_BASE64_LENGTH_STANDALONE+
+ * consecutive base64 characters. Returns false (and avoids the expensive
+ * regex) when no such run exists — which is the common case for source code.
+ *
+ * Uses a three-phase approach:
+ * 1. Skip files shorter than the minimum run length
+ * 2. Skip files where no line is long enough to contain a base64 run
+ *    (uses indexOf('\n') which is SIMD-accelerated in V8)
+ * 3. Full character scan only for files that pass both filters
+ */
+const hasLongBase64Run = (content: string): boolean => {
+  if (content.length < MIN_BASE64_LENGTH_STANDALONE) return false;
+  if (!hasLongLine(content)) return false;
+
+  let run = 0;
+  for (let i = 0; i < content.length; i++) {
+    const c = content.charCodeAt(i);
+    if (c < 128 && b64Lookup[c]) {
+      if (++run >= MIN_BASE64_LENGTH_STANDALONE) {
+        return true;
+      }
+    } else {
+      run = 0;
+    }
+  }
+  return false;
+};
+
 /**
  * Truncates base64 encoded data in content to reduce file size
  * Detects common base64 patterns like data URIs and standalone base64 strings
@@ -20,27 +74,38 @@ const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_S
  * @returns Content with base64 data truncated
  */
 export const truncateBase64Content = (content: string): string => {
-  // Reset lastIndex since patterns are global and reused across calls
-  dataUriPattern.lastIndex = 0;
-  standaloneBase64Pattern.lastIndex = 0;
+  // Fast path: skip the expensive regex when the content has no data URIs
+  // and no long runs of base64 characters (the common case for source code).
+  const hasDataUri = content.includes(';base64,');
+  const hasStandaloneBase64 = hasLongBase64Run(content);
+
+  if (!hasDataUri && !hasStandaloneBase64) {
+    return content;
+  }
 
   let processedContent = content;
 
   // Replace data URIs
-  processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
-    const preview = base64Data.substring(0, TRUNCATION_LENGTH);
-    return `data:${mimeType}${params || ''};base64,${preview}...`;
-  });
+  if (hasDataUri) {
+    dataUriPattern.lastIndex = 0;
+    processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
+      const preview = base64Data.substring(0, TRUNCATION_LENGTH);
+      return `data:${mimeType}${params || ''};base64,${preview}...`;
+    });
+  }
 
   // Replace standalone base64 strings
-  processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
-    // Check if this looks like actual base64 (not just a long string)
-    if (isLikelyBase64(base64String)) {
-      const preview = base64String.substring(0, TRUNCATION_LENGTH);
-      return `${preview}...`;
-    }
-    return match;
-  });
+  if (hasStandaloneBase64) {
+    standaloneBase64Pattern.lastIndex = 0;
+    processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
+      // Check if this looks like actual base64 (not just a long string)
+      if (isLikelyBase64(base64String)) {
+        const preview = base64String.substring(0, TRUNCATION_LENGTH);
+        return `${preview}...`;
+      }
+      return match;
+    });
+  }
 
   return processedContent;
 };

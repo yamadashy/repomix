@@ -106,11 +106,15 @@ Wenn Repomix als MCP-Server ausgeführt wird, stellt es die folgenden Tools bere
 Dieses Tool verpackt ein lokales Code-Verzeichnis in eine XML-Datei für die KI-Analyse. Es analysiert die Codebase-Struktur, extrahiert relevanten Code-Inhalt und generiert einen umfassenden Bericht mit Metriken, Dateibaum und formatiertem Code-Inhalt.
 
 **Parameter:**
-- `directory`: (Erforderlich) Absoluter Pfad zum zu verpackenden Verzeichnis
-- `compress`: (Optional, Standard: false) Aktiviert Tree-sitter-Komprimierung zur Extraktion wesentlicher Code-Signaturen und -Strukturen bei gleichzeitiger Entfernung von Implementierungsdetails. Reduziert die Token-Nutzung um ~70% bei Beibehaltung der semantischen Bedeutung. Normalerweise nicht erforderlich, da grep_repomix_output inkrementelle Inhaltsabrufung ermöglicht. Verwenden Sie dies nur, wenn Sie speziell den gesamten Codebase-Inhalt für große Repositories benötigen.
-- `includePatterns`: (Optional) Spezifiziert Dateien zum Einschließen mit fast-glob-Mustern. Mehrere Muster können durch Kommas getrennt werden (z.B. "**/*.{js,ts}", "src/**,docs/**"). Nur übereinstimmende Dateien werden verarbeitet.
-- `ignorePatterns`: (Optional) Spezifiziert zusätzliche Dateien zum Ausschließen mit fast-glob-Mustern. Mehrere Muster können durch Kommas getrennt werden (z.B. "test/**,*.spec.js", "node_modules/**,dist/**"). Diese Muster ergänzen .gitignore und eingebaute Ausschlüsse.
-- `topFilesLength`: (Optional, Standard: 10) Anzahl der größten Dateien nach Größe, die in der Metrik-Zusammenfassung für die Codebase-Analyse angezeigt werden.
+
+| Parameter | Erforderlich | Standard | Beschreibung |
+|-----------|-------------|----------|-------------|
+| `directory` | Ja | — | Absoluter Pfad zum zu verpackenden Verzeichnis |
+| `compress` | Nein | `false` | Tree-sitter-Komprimierung aktivieren, um wesentliche Code-Signaturen und -Strukturen zu extrahieren und Implementierungsdetails zu entfernen. Reduziert die Token-Nutzung um ~70% bei Beibehaltung der semantischen Bedeutung. Normalerweise nicht erforderlich, da `grep_repomix_output` inkrementelle Inhaltsabrufung ermöglicht. |
+| `includePatterns` | Nein | — | Dateien zum Einschließen mit fast-glob-Mustern. Kommagetrennt (z.B. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | Nein | — | Zusätzliche Dateien zum Ausschließen mit fast-glob-Mustern. Kommagetrennt (z.B. `"test/**,*.spec.js"`). Ergänzt `.gitignore` und eingebaute Ausschlüsse. |
+| `topFilesLength` | Nein | `10` | Anzahl der größten Dateien nach Größe in der Metrik-Zusammenfassung |
+| `style` | Nein | `xml` | Ausgabeformat: `xml`, `markdown`, `json` oder `plain` |
 
 **Beispiel:**
 ```json
@@ -128,11 +132,15 @@ Dieses Tool verpackt ein lokales Code-Verzeichnis in eine XML-Datei für die KI-
 Dieses Tool holt, klont und verpackt ein GitHub-Repository in eine XML-Datei für die KI-Analyse. Es klont automatisch das entfernte Repository, analysiert seine Struktur und generiert einen umfassenden Bericht.
 
 **Parameter:**
-- `remote`: (Erforderlich) GitHub-Repository-URL oder user/repo-Format (z.B. "yamadashy/repomix", "https://github.com/user/repo", oder "https://github.com/user/repo/tree/branch")
-- `compress`: (Optional, Standard: false) Aktiviert Tree-sitter-Komprimierung zur Extraktion wesentlicher Code-Signaturen und -Strukturen bei gleichzeitiger Entfernung von Implementierungsdetails. Reduziert die Token-Nutzung um ~70% bei Beibehaltung der semantischen Bedeutung. Normalerweise nicht erforderlich, da grep_repomix_output inkrementelle Inhaltsabrufung ermöglicht. Verwenden Sie dies nur, wenn Sie speziell den gesamten Codebase-Inhalt für große Repositories benötigen.
-- `includePatterns`: (Optional) Spezifiziert Dateien zum Einschließen mit fast-glob-Mustern. Mehrere Muster können durch Kommas getrennt werden (z.B. "**/*.{js,ts}", "src/**,docs/**"). Nur übereinstimmende Dateien werden verarbeitet.
-- `ignorePatterns`: (Optional) Spezifiziert zusätzliche Dateien zum Ausschließen mit fast-glob-Mustern. Mehrere Muster können durch Kommas getrennt werden (z.B. "test/**,*.spec.js", "node_modules/**,dist/**"). Diese Muster ergänzen .gitignore und eingebaute Ausschlüsse.
-- `topFilesLength`: (Optional, Standard: 10) Anzahl der größten Dateien nach Größe, die in der Metrik-Zusammenfassung für die Codebase-Analyse angezeigt werden.
+
+| Parameter | Erforderlich | Standard | Beschreibung |
+|-----------|-------------|----------|-------------|
+| `remote` | Ja | — | GitHub-Repository-URL oder `user/repo`-Format (z.B. `"yamadashy/repomix"`, `"https://github.com/user/repo"` oder `"https://github.com/user/repo/tree/branch"`) |
+| `compress` | Nein | `false` | Tree-sitter-Komprimierung aktivieren, um wesentliche Code-Signaturen und -Strukturen zu extrahieren und Implementierungsdetails zu entfernen. Reduziert die Token-Nutzung um ~70% bei Beibehaltung der semantischen Bedeutung. Normalerweise nicht erforderlich, da `grep_repomix_output` inkrementelle Inhaltsabrufung ermöglicht. |
+| `includePatterns` | Nein | — | Dateien zum Einschließen mit fast-glob-Mustern. Kommagetrennt (z.B. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | Nein | — | Zusätzliche Dateien zum Ausschließen mit fast-glob-Mustern. Kommagetrennt (z.B. `"test/**,*.spec.js"`). Ergänzt `.gitignore` und eingebaute Ausschlüsse. |
+| `topFilesLength` | Nein | `10` | Anzahl der größten Dateien nach Größe in der Metrik-Zusammenfassung |
+| `style` | Nein | `xml` | Ausgabeformat: `xml`, `markdown`, `json` oder `plain` |
 
 **Beispiel:**
 ```json
@@ -150,9 +158,12 @@ Dieses Tool holt, klont und verpackt ein GitHub-Repository in eine XML-Datei fü
 Dieses Tool liest den Inhalt einer von Repomix generierten Ausgabedatei. Es unterstützt partielles Lesen mit Zeilenbereichen für große Dateien. Dieses Tool ist für Umgebungen konzipiert, in denen der direkte Dateisystemzugriff eingeschränkt ist.
 
 **Parameter:**
-- `outputId`: (Erforderlich) ID der zu lesenden Repomix-Ausgabedatei
-- `startLine`: (Optional) Startzeilennummer (1-basiert, inklusive). Wenn nicht angegeben, wird vom Anfang gelesen.
-- `endLine`: (Optional) Endzeilennummer (1-basiert, inklusive). Wenn nicht angegeben, wird bis zum Ende gelesen.
+
+| Parameter | Erforderlich | Standard | Beschreibung |
+|-----------|-------------|----------|-------------|
+| `outputId` | Ja | — | ID der zu lesenden Repomix-Ausgabedatei |
+| `startLine` | Nein | Dateianfang | Startzeilennummer (1-basiert, inklusive) |
+| `endLine` | Nein | Dateiende | Endzeilennummer (1-basiert, inklusive) |
 
 **Funktionen:**
 - Speziell für webbasierte Umgebungen oder Sandbox-Anwendungen entwickelt
@@ -174,12 +185,15 @@ Dieses Tool liest den Inhalt einer von Repomix generierten Ausgabedatei. Es unte
 Dieses Tool durchsucht Muster in einer Repomix-Ausgabedatei mit grep-ähnlicher Funktionalität unter Verwendung der JavaScript RegExp-Syntax. Es gibt übereinstimmende Zeilen mit optionalen Kontextzeilen um die Übereinstimmungen zurück.
 
 **Parameter:**
-- `outputId`: (Erforderlich) ID der zu durchsuchenden Repomix-Ausgabedatei
-- `pattern`: (Erforderlich) Suchmuster (JavaScript RegExp-Syntax für reguläre Ausdrücke)
-- `contextLines`: (Optional, Standard: 0) Anzahl der Kontextzeilen, die vor und nach jeder Übereinstimmung angezeigt werden. Wird von beforeLines/afterLines überschrieben, wenn angegeben.
-- `beforeLines`: (Optional) Anzahl der Kontextzeilen, die vor jeder Übereinstimmung angezeigt werden (wie grep -B). Hat Vorrang vor contextLines.
-- `afterLines`: (Optional) Anzahl der Kontextzeilen, die nach jeder Übereinstimmung angezeigt werden (wie grep -A). Hat Vorrang vor contextLines.
-- `ignoreCase`: (Optional, Standard: false) Führt groß-/kleinschreibungsunabhängige Übereinstimmung durch
+
+| Parameter | Erforderlich | Standard | Beschreibung |
+|-----------|-------------|----------|-------------|
+| `outputId` | Ja | — | ID der zu durchsuchenden Repomix-Ausgabedatei |
+| `pattern` | Ja | — | Suchmuster (JavaScript RegExp-Syntax) |
+| `contextLines` | Nein | `0` | Anzahl der Kontextzeilen vor und nach jeder Übereinstimmung. Wird von `beforeLines`/`afterLines` überschrieben, wenn angegeben. |
+| `beforeLines` | Nein | — | Zeilen vor jeder Übereinstimmung (wie `grep -B`). Hat Vorrang vor `contextLines`. |
+| `afterLines` | Nein | — | Zeilen nach jeder Übereinstimmung (wie `grep -A`). Hat Vorrang vor `contextLines`. |
+| `ignoreCase` | Nein | `false` | Groß-/Kleinschreibungsunabhängige Übereinstimmung durchführen |
 
 **Funktionen:**
 - Verwendet JavaScript RegExp-Syntax für leistungsstarke Musterübereinstimmung
@@ -252,3 +266,10 @@ Die Verwendung von Repomix als MCP-Server bietet mehrere Vorteile:
 4. **Erweiterte Funktionen**: Nutzt alle Funktionen von Repomix wie Code-Komprimierung, Token-Zählung und Sicherheitsprüfungen.
 
 Nach der Konfiguration kann Ihr KI-Assistent die Funktionen von Repomix direkt nutzen, um Codebasen zu analysieren, was Codeanalyse-Workflows effizienter macht.
+
+## Verwandte Ressourcen
+
+- [Claude Code Plugins](/de/guide/claude-code-plugins) - Komfortable Plugin-Integration für Claude Code
+- [Konfiguration](/de/guide/configuration) - Repomix-Verhalten anpassen
+- [Befehlszeilenoptionen](/de/guide/command-line-options) - Vollständige CLI-Referenz
+- [Ausgabeformate](/de/guide/output) - Verfügbare Ausgabeformate kennenlernen

@@ -62,4 +62,10 @@ Beispielausgabe:
 Haben Sie eine Sicherheitslücke gefunden? Bitte:
 1. Öffnen Sie kein öffentliches Issue
 2. E-Mail: koukun0120@gmail.com
-3. Oder nutzen Sie [GitHub Security Advisories](https://github.com/yamadashy/repomix/security/advisories/new) 
+3. Oder nutzen Sie [GitHub Security Advisories](https://github.com/yamadashy/repomix/security/advisories/new)
+
+## Verwandte Ressourcen
+
+- [Konfiguration](/de/guide/configuration) - Sicherheitsprüfungen über `security.enableSecurityCheck` konfigurieren
+- [Befehlszeilenoptionen](/de/guide/command-line-options) - `--no-security-check`-Flag verwenden
+- [Datenschutzrichtlinie](/de/guide/privacy) - Erfahren Sie mehr über Repomix' Datenverarbeitung

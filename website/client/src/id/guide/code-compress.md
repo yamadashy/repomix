@@ -108,6 +108,12 @@ Kompresi kode sangat berguna ketika:
 ## Opsi Terkait
 
 Anda dapat menggabungkan kompresi dengan opsi lain:
-- `--remove-comments`: Menghapus komentar kode
+- `--remove-comments`: Menghapus komentar kode (lihat [Penghapusan Komentar](/id/guide/comment-removal))
 - `--remove-empty-lines`: Menghapus baris kosong
 - `--output-show-line-numbers`: Menambahkan nomor baris ke output
+
+## Sumber Daya Terkait
+
+- [Penghapusan Komentar](/id/guide/comment-removal) - Hapus komentar untuk mengurangi jumlah token lebih lanjut
+- [Konfigurasi](/id/guide/configuration) - Atur `output.compress` di file konfigurasi Anda
+- [Opsi Baris Perintah](/id/guide/command-line-options) - Referensi CLI lengkap

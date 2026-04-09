@@ -107,6 +107,12 @@ Code compression is particularly useful when:
 ## Related Options
 
 You can combine compression with other options:
-- `--remove-comments`: Remove code comments
+- `--remove-comments`: Remove code comments (see [Comment Removal](/guide/comment-removal))
 - `--remove-empty-lines`: Remove empty lines
 - `--output-show-line-numbers`: Add line numbers to output
+
+## Related Resources
+
+- [Comment Removal](/guide/comment-removal) - Remove comments for further token reduction
+- [Configuration](/guide/configuration) - Set `output.compress` in your config file
+- [Command Line Options](/guide/command-line-options) - Full CLI reference

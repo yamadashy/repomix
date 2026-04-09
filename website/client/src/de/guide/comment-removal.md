@@ -50,4 +50,10 @@ function test() {
 ## Hinweise
 
 - Die Kommentarentfernung wird vor anderen Verarbeitungsschritten durchgeführt, wie z.B. der Zeilennummerierung.
-- Einige Kommentare, wie JSDoc-Kommentare, können je nach Sprache und Kontext erhalten bleiben. 
+- Einige Kommentare, wie JSDoc-Kommentare, können je nach Sprache und Kontext erhalten bleiben.
+
+## Verwandte Ressourcen
+
+- [Code-Komprimierung](/de/guide/code-compress) - Token-Anzahl durch Extraktion der Code-Struktur weiter reduzieren
+- [Konfiguration](/de/guide/configuration) - `output.removeComments` in der Konfigurationsdatei setzen
+- [Befehlszeilenoptionen](/de/guide/command-line-options) - `--remove-comments`-Flag verwenden

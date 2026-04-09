@@ -5,13 +5,14 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
-import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
+import type { SecurityCheckTask } from '../../../src/core/security/securityPreFilter.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/shared/logger');
 vi.mock('../../../src/shared/processConcurrency', () => ({
+  getProcessConcurrency: vi.fn(() => 4),
   initWorker: vi.fn(() => ({
     run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
       return await securityCheckWorker(task);
@@ -39,6 +40,8 @@ const mockFiles: RawFile[] = [
   },
 ];
 
+const mockGetProcessConcurrency = () => 4;
+
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
@@ -54,6 +57,7 @@ describe('runSecurityCheck', () => {
   it('should identify files with security issues', async () => {
     const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     expect(result).toHaveLength(1);
@@ -61,46 +65,49 @@ describe('runSecurityCheck', () => {
     expect(result[0].messages).toHaveLength(1);
   });
 
-  it('should call progress callback with correct messages', async () => {
+  it('should call progress callback for each batch', async () => {
     const progressCallback = vi.fn();
 
     await runSecurityCheck(mockFiles, progressCallback, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
+    // With pre-filter, only test1.js (contains secret keyword '://') is sent to workers.
+    // test2.js has no secret keywords and is filtered out on the main thread.
     expect(progressCallback).toHaveBeenCalledWith(
-      expect.stringContaining(`Running security check... (1/2) ${pc.dim('test1.js')}`),
-    );
-    expect(progressCallback).toHaveBeenCalledWith(
-      expect.stringContaining(`Running security check... (2/2) ${pc.dim('test2.js')}`),
+      expect.stringContaining(`Running security check... (1/1) ${pc.dim('test1.js')}`),
     );
   });
 
-  it('should handle worker errors gracefully', async () => {
-    const mockError = new Error('Worker error');
-    const mockErrorTaskRunner = (_options?: WorkerOptions) => {
-      return {
-        run: async () => {
-          throw mockError;
-        },
-        cleanup: async () => {
-          // Mock cleanup - no-op for tests
-        },
-      };
-    };
+  it('should handle many files with secret keywords on the main thread', async () => {
+    // All security checks run on the main thread (MAIN_THREAD_THRESHOLD = MAX_SAFE_INTEGER)
+    // to avoid CPU contention with the metrics worker pool. Verify that large batches
+    // still produce correct results.
+    const manyFiles: RawFile[] = Array.from({ length: 60 }, (_, i) => ({
+      path: `test${i}.js`,
+      // secretlint-disable
+      content: `https://user:pass${i}@example.com`,
+      // secretlint-enable
+    }));
 
-    await expect(
-      runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
-        initTaskRunner: mockErrorTaskRunner,
-      }),
-    ).rejects.toThrow('Worker error');
+    const result = await runSecurityCheck(manyFiles, () => {}, undefined, undefined, {
+      initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
 
-    expect(logger.error).toHaveBeenCalledWith('Error during security check:', mockError);
+    // All 60 files contain basic auth credentials
+    expect(result).toHaveLength(60);
+    for (const r of result) {
+      expect(r.messages).toHaveLength(1);
+      expect(r.type).toBe('file');
+    }
   });
 
   it('should handle empty file list', async () => {
     const result = await runSecurityCheck([], () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     expect(result).toEqual([]);
@@ -109,6 +116,7 @@ describe('runSecurityCheck', () => {
   it('should log performance metrics in trace mode', async () => {
     await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining('Starting security check for'));
@@ -120,6 +128,7 @@ describe('runSecurityCheck', () => {
 
     await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     const endTime = Date.now();
@@ -134,6 +143,7 @@ describe('runSecurityCheck', () => {
 
     await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     expect(mockFiles).toEqual(originalFiles);
@@ -152,24 +162,23 @@ describe('runSecurityCheck', () => {
   });
 
   it('should process Git diff content when gitDiffResult is provided', async () => {
+    // secretlint-disable
     const gitDiffResult: GitDiffResult = {
-      workTreeDiffContent: 'diff --git a/test.js b/test.js\n+const secret = "password123";',
-      stagedDiffContent: 'diff --git a/config.js b/config.js\n+const apiKey = "sk-1234567890abcdef";',
+      workTreeDiffContent: 'diff --git a/test.js b/test.js\n+const token = "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";',
+      stagedDiffContent: 'diff --git a/config.js b/config.js\n+const apiKey = "sk-ant-api03-test-key";',
     };
+    // secretlint-enable
 
     const progressCallback = vi.fn();
     const result = await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
-    // Should process 2 files + 2 git diff contents = 4 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(4);
+    // With pre-filter: 1 file (test1.js) + 2 git diffs = 3 items, all in a single batch
+    expect(progressCallback).toHaveBeenCalledTimes(1);
 
-    // Check that Git diff tasks were processed
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
-
-    // Should find security issues in files (at least 1 from test1.js)
+    // Should find security issues in files and git diffs
     expect(result.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -182,15 +191,11 @@ describe('runSecurityCheck', () => {
     const progressCallback = vi.fn();
     await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
-    // Should process 2 files + 1 git diff content = 3 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(3);
-
-    // Check that only working tree diff was processed
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
-    // Staged changes should not be processed because content is empty string (falsy)
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
+    // With batch size 50 and 3 items (2 files + 1 git diff), all in a single batch
+    expect(progressCallback).toHaveBeenCalledTimes(1);
   });
 
   it('should process only stagedDiffContent when workTreeDiffContent is not available', async () => {
@@ -202,15 +207,11 @@ describe('runSecurityCheck', () => {
     const progressCallback = vi.fn();
     await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
-    // Should process 2 files + 1 git diff content = 3 total tasks
-    expect(progressCallback).toHaveBeenCalledTimes(3);
-
-    // Check that only staged diff was processed
-    expect(progressCallback).toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
-    // Working tree changes should not be processed because content is empty string (falsy)
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
+    // With batch size 50 and 3 items (2 files + 1 git diff), all in a single batch
+    expect(progressCallback).toHaveBeenCalledTimes(1);
   });
 
   it('should handle gitDiffResult with no diff content', async () => {
@@ -222,13 +223,11 @@ describe('runSecurityCheck', () => {
     const progressCallback = vi.fn();
     await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     // Should process only 2 files, no git diff content because both are empty strings (falsy)
-    expect(progressCallback).toHaveBeenCalledTimes(2);
-
-    // Check that no git diff tasks were processed
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Working tree changes'));
-    expect(progressCallback).not.toHaveBeenCalledWith(expect.stringContaining('Staged changes'));
+    // With batch size 50, all in a single batch
+    expect(progressCallback).toHaveBeenCalledTimes(1);
   });
 });

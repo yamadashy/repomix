@@ -103,14 +103,18 @@ En mode serveur MCP, Repomix fournit les outils suivants:
 
 Cet outil package un répertoire de code local dans un fichier XML pour l'analyse par IA. Il analyse la structure de la base de code, extrait le contenu de code pertinent et génère un rapport complet incluant les métriques, l'arbre des fichiers et le contenu de code formaté.
 
-**Paramètres:**
-- `directory`: (Requis) Chemin absolu vers le répertoire à packager
-- `compress`: (Optionnel, par défaut: false) Active la compression Tree-sitter pour extraire les signatures de code essentielles et la structure tout en supprimant les détails d'implémentation. Réduit l'utilisation de tokens d'environ 70% tout en préservant la signification sémantique. Généralement non nécessaire car grep_repomix_output permet la récupération incrémentale de contenu. Utilisez uniquement lorsque vous avez spécifiquement besoin du contenu complet de la base de code pour de gros dépôts.
-- `includePatterns`: (Optionnel) Spécifie les fichiers à inclure en utilisant des motifs fast-glob. Plusieurs motifs peuvent être séparés par des virgules (ex: "**/*.{js,ts}", "src/**,docs/**"). Seuls les fichiers correspondants seront traités.
-- `ignorePatterns`: (Optionnel) Spécifie les fichiers supplémentaires à exclure en utilisant des motifs fast-glob. Plusieurs motifs peuvent être séparés par des virgules (ex: "test/**,*.spec.js", "node_modules/**,dist/**"). Ces motifs complètent .gitignore et les exclusions intégrées.
-- `topFilesLength`: (Optionnel, par défaut: 10) Nombre de plus gros fichiers par taille à afficher dans le résumé des métriques pour l'analyse de la base de code.
+**Paramètres :**
 
-**Exemple:**
+| Paramètre | Requis | Par défaut | Description |
+|-----------|--------|------------|-------------|
+| `directory` | Oui | — | Chemin absolu vers le répertoire à packager |
+| `compress` | Non | `false` | Active la compression Tree-sitter pour extraire les signatures de code essentielles et la structure tout en supprimant les détails d'implémentation. Réduit l'utilisation de tokens d'environ 70% tout en préservant la signification sémantique. Généralement non nécessaire car `grep_repomix_output` permet la récupération incrémentale de contenu. |
+| `includePatterns` | Non | — | Fichiers à inclure avec des motifs fast-glob. Séparés par des virgules (ex : `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | Non | — | Fichiers supplémentaires à exclure avec des motifs fast-glob. Séparés par des virgules (ex : `"test/**,*.spec.js"`). Complète `.gitignore` et les exclusions intégrées. |
+| `topFilesLength` | Non | `10` | Nombre de plus gros fichiers par taille à afficher dans le résumé des métriques |
+| `style` | Non | `xml` | Style de format de sortie : `xml`, `markdown`, `json` ou `plain` |
+
+**Exemple :**
 ```json
 {
   "directory": "/path/to/your/project",
@@ -125,12 +129,16 @@ Cet outil package un répertoire de code local dans un fichier XML pour l'analys
 
 Cet outil récupère, clone et package un dépôt GitHub dans un fichier XML pour l'analyse par IA. Il clone automatiquement le dépôt distant, analyse sa structure et génère un rapport complet.
 
-**Paramètres:**
-- `remote`: (Requis) URL du dépôt GitHub ou format utilisateur/dépôt (ex: "yamadashy/repomix", "https://github.com/user/repo", ou "https://github.com/user/repo/tree/branch")
-- `compress`: (Optionnel, par défaut: false) Active la compression Tree-sitter pour extraire les signatures de code essentielles et la structure tout en supprimant les détails d'implémentation. Réduit l'utilisation de tokens d'environ 70% tout en préservant la signification sémantique. Généralement non nécessaire car grep_repomix_output permet la récupération incrémentale de contenu. Utilisez uniquement lorsque vous avez spécifiquement besoin du contenu complet de la base de code pour de gros dépôts.
-- `includePatterns`: (Optionnel) Spécifie les fichiers à inclure en utilisant des motifs fast-glob. Plusieurs motifs peuvent être séparés par des virgules (ex: "**/*.{js,ts}", "src/**,docs/**"). Seuls les fichiers correspondants seront traités.
-- `ignorePatterns`: (Optionnel) Spécifie les fichiers supplémentaires à exclure en utilisant des motifs fast-glob. Plusieurs motifs peuvent être séparés par des virgules (ex: "test/**,*.spec.js", "node_modules/**,dist/**"). Ces motifs complètent .gitignore et les exclusions intégrées.
-- `topFilesLength`: (Optionnel, par défaut: 10) Nombre de plus gros fichiers par taille à afficher dans le résumé des métriques pour l'analyse de la base de code.
+**Paramètres :**
+
+| Paramètre | Requis | Par défaut | Description |
+|-----------|--------|------------|-------------|
+| `remote` | Oui | — | URL du dépôt GitHub ou format `utilisateur/dépôt` (ex : `"yamadashy/repomix"`, `"https://github.com/user/repo"` ou `"https://github.com/user/repo/tree/branch"`) |
+| `compress` | Non | `false` | Active la compression Tree-sitter pour extraire les signatures de code essentielles et la structure tout en supprimant les détails d'implémentation. Réduit l'utilisation de tokens d'environ 70% tout en préservant la signification sémantique. Généralement non nécessaire car `grep_repomix_output` permet la récupération incrémentale de contenu. |
+| `includePatterns` | Non | — | Fichiers à inclure avec des motifs fast-glob. Séparés par des virgules (ex : `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | Non | — | Fichiers supplémentaires à exclure avec des motifs fast-glob. Séparés par des virgules (ex : `"test/**,*.spec.js"`). Complète `.gitignore` et les exclusions intégrées. |
+| `topFilesLength` | Non | `10` | Nombre de plus gros fichiers par taille à afficher dans le résumé des métriques |
+| `style` | Non | `xml` | Style de format de sortie : `xml`, `markdown`, `json` ou `plain` |
 
 **Exemple:**
 ```json
@@ -147,12 +155,15 @@ Cet outil récupère, clone et package un dépôt GitHub dans un fichier XML pou
 
 Cet outil lit le contenu d'un fichier de sortie généré par Repomix. Il prend en charge la lecture partielle avec spécification de plage de lignes pour les gros fichiers. Cet outil est conçu pour les environnements où l'accès direct au système de fichiers est limité.
 
-**Paramètres:**
-- `outputId`: (Requis) ID du fichier de sortie Repomix à lire
-- `startLine`: (Optionnel) Numéro de ligne de début (basé sur 1, inclusif). Si non spécifié, lit depuis le début.
-- `endLine`: (Optionnel) Numéro de ligne de fin (basé sur 1, inclusif). Si non spécifié, lit jusqu'à la fin.
+**Paramètres :**
 
-**Fonctionnalités:**
+| Paramètre | Requis | Par défaut | Description |
+|-----------|--------|------------|-------------|
+| `outputId` | Oui | — | ID du fichier de sortie Repomix à lire |
+| `startLine` | Non | Début du fichier | Numéro de ligne de début (basé sur 1, inclusif) |
+| `endLine` | Non | Fin du fichier | Numéro de ligne de fin (basé sur 1, inclusif) |
+
+**Fonctionnalités :**
 - Conçu spécifiquement pour les environnements basés sur le web ou les applications en bac à sable
 - Récupère le contenu des sorties générées précédemment en utilisant leur ID
 - Fournit un accès sécurisé à la base de code packagée sans nécessiter d'accès au système de fichiers
@@ -171,15 +182,18 @@ Cet outil lit le contenu d'un fichier de sortie généré par Repomix. Il prend 
 
 Cet outil recherche des motifs dans un fichier de sortie Repomix en utilisant une fonctionnalité similaire à grep avec la syntaxe JavaScript RegExp. Il retourne les lignes correspondantes avec des lignes de contexte optionnelles autour des correspondances.
 
-**Paramètres:**
-- `outputId`: (Requis) ID du fichier de sortie Repomix à rechercher
-- `pattern`: (Requis) Motif de recherche (syntaxe d'expression régulière JavaScript RegExp)
-- `contextLines`: (Optionnel, par défaut: 0) Nombre de lignes de contexte à afficher avant et après chaque correspondance. Remplacé par beforeLines/afterLines si spécifié.
-- `beforeLines`: (Optionnel) Nombre de lignes de contexte à afficher avant chaque correspondance (comme grep -B). Priorité sur contextLines.
-- `afterLines`: (Optionnel) Nombre de lignes de contexte à afficher après chaque correspondance (comme grep -A). Priorité sur contextLines.
-- `ignoreCase`: (Optionnel, par défaut: false) Effectue une correspondance insensible à la casse
+**Paramètres :**
 
-**Fonctionnalités:**
+| Paramètre | Requis | Par défaut | Description |
+|-----------|--------|------------|-------------|
+| `outputId` | Oui | — | ID du fichier de sortie Repomix à rechercher |
+| `pattern` | Oui | — | Motif de recherche (syntaxe JavaScript RegExp) |
+| `contextLines` | Non | `0` | Nombre de lignes de contexte avant et après chaque correspondance. Remplacé par `beforeLines`/`afterLines` si spécifié. |
+| `beforeLines` | Non | — | Lignes à afficher avant chaque correspondance (comme `grep -B`). Priorité sur `contextLines`. |
+| `afterLines` | Non | — | Lignes à afficher après chaque correspondance (comme `grep -A`). Priorité sur `contextLines`. |
+| `ignoreCase` | Non | `false` | Effectuer une correspondance insensible à la casse |
+
+**Fonctionnalités :**
 - Utilise la syntaxe JavaScript RegExp pour une correspondance de motifs puissante
 - Prend en charge les lignes de contexte pour une meilleure compréhension des correspondances
 - Permet un contrôle séparé des lignes de contexte avant/après
@@ -250,3 +264,10 @@ L'utilisation de Repomix comme serveur MCP offre plusieurs avantages:
 4. **Fonctionnalités avancées**: Exploite toutes les fonctionnalités de Repomix comme la compression de code, le comptage de tokens et les vérifications de sécurité.
 
 Une fois configuré, votre assistant IA peut utiliser directement les capacités de Repomix pour analyser les bases de code, rendant les flux de travail d'analyse de code plus efficaces.
+
+## Ressources associées
+
+- [Plugins Claude Code](/fr/guide/claude-code-plugins) - Intégration pratique de plugins pour Claude Code
+- [Configuration](/fr/guide/configuration) - Personnaliser le comportement de Repomix
+- [Options de ligne de commande](/fr/guide/command-line-options) - Référence complète de la CLI
+- [Formats de sortie](/fr/guide/output) - Découvrir les formats de sortie disponibles

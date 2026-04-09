@@ -1,7 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import XMLBuilder from 'fast-xml-builder';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -22,11 +20,28 @@ import {
 import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
+import { registerHandlebarsHelpers } from './outputStyleUtils.js';
+
+// Lazy-load Handlebars to defer its ~25ms import cost until output generation.
+// The module is loaded eagerly in the import chain (packager → produceOutput →
+// outputGenerate) but only needed late in the pipeline during template rendering.
+// biome-ignore lint/suspicious/noExplicitAny: Handlebars type is complex and only used internally
+let handlebarsPromise: Promise<any> | undefined;
+const getHandlebars = () => {
+  if (!handlebarsPromise) {
+    handlebarsPromise = import('handlebars').then((mod) => {
+      registerHandlebarsHelpers(mod.default);
+      return mod.default;
+    });
+  }
+  return handlebarsPromise;
+};
 
 // Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
+// biome-ignore lint/suspicious/noExplicitAny: Handlebars TemplateDelegate type requires the full module
+const compiledTemplateCache = new Map<string, any>();
 
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
+const getCompiledTemplate = async (style: string) => {
   const cached = compiledTemplateCache.get(style);
   if (cached) {
     return cached;
@@ -47,6 +62,7 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
       throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
   }
 
+  const Handlebars = await getHandlebars();
   const compiled = Handlebars.compile(template);
   compiledTemplateCache.set(style, compiled);
   return compiled;
@@ -62,21 +78,36 @@ const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string
 const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
   const lineCounts: Record<string, number> = {};
   for (const file of processedFiles) {
-    // Count lines: empty files have 0 lines, otherwise count newlines + 1
-    // (unless the content ends with a newline, in which case the last "line" is empty)
     const content = file.content;
     if (content.length === 0) {
       lineCounts[file.path] = 0;
     } else {
-      // Count actual lines (text editor style: number of \n + 1, but trailing \n doesn't add extra line)
-      const newlineCount = (content.match(/\n/g) || []).length;
-      lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
+      // Count newlines using indexOf loop instead of regex match() to avoid
+      // allocating a temporary array of all newline matches per file.
+      let count = 0;
+      let pos = content.indexOf('\n');
+      while (pos !== -1) {
+        count++;
+        pos = content.indexOf('\n', pos + 1);
+      }
+      lineCounts[file.path] = content.endsWith('\n') ? count : count + 1;
     }
   }
   return lineCounts;
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  // Only compute the markdown delimiter when actually using markdown style.
+  // This avoids scanning all file contents with a backtick regex (~5ms on 1000 files)
+  // for XML, JSON, and plain output styles where the delimiter is unused.
+  const needsMarkdownDelimiter = outputGeneratorContext.config.output.style === 'markdown';
+
+  // Only compute file line counts for skill generation, which is the only code path
+  // that uses them (packSkill.ts, skillStatistics.ts, skillSectionGenerators.ts).
+  // Normal output templates (xml, markdown, plain, json) never access fileLineCounts.
+  // This avoids an O(N) scan over all file contents (~5ms per 1000 files).
+  const needsLineCounts = outputGeneratorContext.config.skillGenerate !== undefined;
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -90,12 +121,14 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    fileLineCounts: needsLineCounts ? calculateFileLineCounts(outputGeneratorContext.processedFiles) : {},
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    markdownCodeBlockDelimiter: needsMarkdownDelimiter
+      ? calculateMarkdownDelimiter(outputGeneratorContext.processedFiles)
+      : '```',
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
@@ -106,7 +139,9 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
 };
 
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
-  const xmlBuilder = new XMLBuilder({ ignoreAttributes: false });
+  // Lazy-load fast-xml-builder (~3ms) — only used for parsable XML output (non-default)
+  const FastXmlBuilder = (await import('fast-xml-builder')).default;
+  const xmlBuilder = new FastXmlBuilder({ ignoreAttributes: false });
   const xmlDocument = {
     repomix: {
       file_summary: renderContext.fileSummaryEnabled
@@ -220,7 +255,7 @@ const generateHandlebarOutput = async (
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
   try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
+    const compiledTemplate = await getCompiledTemplate(config.output.style);
     return `${compiledTemplate(renderContext).trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {

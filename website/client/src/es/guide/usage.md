@@ -102,7 +102,9 @@ Cuando se usa `--stdin`, los archivos especificados se agregan efectivamente a l
 > [!NOTE]
 > Cuando uses `--stdin`, las rutas de archivos pueden ser relativas o absolutas, y Repomix manejará automáticamente la resolución de rutas y la eliminación de duplicados.
 
-### Compresión de código
+### Compresión de código {#code-compression}
+
+Reduce el conteo de tokens preservando la estructura del código. Consulta la [guía de Compresión de código](/es/guide/code-compress) para más detalles.
 
 ```bash
 repomix --compress
@@ -194,6 +196,9 @@ repomix --style plain
 ## Opciones adicionales
 
 ### Eliminar comentarios
+
+Consulta [Eliminación de comentarios](/es/guide/comment-removal) para lenguajes soportados y detalles.
+
 ```bash
 repomix --remove-comments
 ```
@@ -209,6 +214,9 @@ repomix --copy
 ```
 
 ### Deshabilitar la verificación de seguridad
+
+Consulta [Seguridad](/es/guide/security) para detalles sobre lo que Repomix detecta.
+
 ```bash
 repomix --no-security-check
 ```
@@ -220,4 +228,11 @@ Inicializar el archivo de configuración:
 repomix --init
 ```
 
-Consulta la [Guía de configuración](/guide/configuration) para obtener opciones detalladas.
+Consulta la [Guía de configuración](/es/guide/configuration) para obtener opciones detalladas.
+
+## Recursos relacionados
+
+- [Formatos de salida](/es/guide/output) - Conocer los formatos XML, Markdown, JSON y texto plano
+- [Opciones de línea de comandos](/es/guide/command-line-options) - Referencia completa de CLI
+- [Ejemplos de prompts](/es/guide/prompt-examples) - Ejemplos de prompts para análisis de IA
+- [Casos de uso](/es/guide/use-cases) - Ejemplos reales y flujos de trabajo

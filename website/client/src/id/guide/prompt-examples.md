@@ -91,3 +91,10 @@ Untuk hasil terbaik dengan prompt Anda:
 3. **Berikan contoh**: Jika memungkinkan, berikan contoh output yang Anda harapkan
 4. **Gunakan instruksi bertahap**: Pecah permintaan kompleks menjadi langkah-langkah yang lebih kecil
 5. **Iterasi**: Jika respons pertama tidak ideal, perbaiki prompt Anda dan coba lagi
+
+## Sumber Daya Terkait
+
+- [Format Output](/id/guide/output) - Detail tentang setiap format output
+- [Instruksi Khusus](/id/guide/custom-instructions) - Tambahkan konteks dan pedoman ke output Anda
+- [Kasus Penggunaan](/id/guide/use-cases) - Contoh nyata workflow dengan bantuan AI
+- [Kompresi Kode](/id/guide/code-compress) - Kurangi jumlah token untuk codebase besar

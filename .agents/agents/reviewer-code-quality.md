@@ -1,4 +1,5 @@
 ---
+model: sonnet
 description: Review code changes for bugs, logic errors, edge cases, and code smells
 ---
 

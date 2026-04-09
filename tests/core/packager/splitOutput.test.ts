@@ -53,11 +53,15 @@ describe('packager split output', () => {
       }),
       getGitDiffs: vi.fn().mockResolvedValue(undefined),
       getGitLogs: vi.fn().mockResolvedValue(undefined),
+      prefetchFileChangeCounts: vi.fn().mockResolvedValue(null),
       produceOutput,
       calculateMetrics,
       createMetricsTaskRunner: vi.fn().mockReturnValue({
-        run: vi.fn().mockResolvedValue(0),
-        cleanup: vi.fn().mockResolvedValue(undefined),
+        taskRunner: {
+          run: vi.fn().mockResolvedValue(0),
+          cleanup: vi.fn().mockResolvedValue(undefined),
+        },
+        warmupPromise: Promise.resolve(),
       }),
     });
 

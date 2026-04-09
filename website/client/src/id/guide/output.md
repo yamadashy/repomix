@@ -273,3 +273,9 @@ Atur format default di `repomix.config.json`:
 }
 ```
 
+## Sumber Daya Terkait
+
+- [Konfigurasi](/id/guide/configuration) - Referensi opsi konfigurasi lengkap
+- [Opsi Baris Perintah](/id/guide/command-line-options) - Gunakan `--style` untuk mengatur format output
+- [Kompresi Kode](/id/guide/code-compress) - Kurangi jumlah token sambil mempertahankan struktur
+- [Contoh Prompt](/id/guide/prompt-examples) - Tips menggunakan output dengan berbagai model AI

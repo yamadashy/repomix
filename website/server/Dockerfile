@@ -38,9 +38,7 @@ COPY --from=builder /app/dist-bundled ./dist-bundled
 
 # Copy external dependencies (cannot be bundled due to runtime requirements)
 # - tinypool: spawns worker threads using file paths
-# - tiktoken: loads WASM files dynamically at runtime
 COPY --from=builder /app/node_modules/tinypool ./node_modules/tinypool
-COPY --from=builder /app/node_modules/tiktoken ./node_modules/tiktoken
 
 # Copy warmup script for compile cache generation
 COPY --from=builder /app/warmup.mjs ./warmup.mjs

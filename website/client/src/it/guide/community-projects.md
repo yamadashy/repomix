@@ -10,6 +10,13 @@ Estensione VSCode che aiuta a raggruppare i file in un singolo output per l'elab
 **Repository**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)
 **Marketplace**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## Applicazioni Desktop
+
+### Repomix Desktop
+Un'applicazione desktop della community che fornisce un wrapper GUI per il CLI di Repomix. Costruita con Python e CustomTkinter, offre un'interfaccia user-friendly senza bisogno di usare il terminale.
+
+**Repository**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## Implementazioni in Altri Linguaggi
 
 ### Python Repomix
@@ -33,3 +40,9 @@ Server Model Context Protocol che usa Repomix per aiutare gli agenti IA ad anali
 Set di strumenti CLI per agenti IA con multiple capacità incluse ricerca web tramite Perplexity, analisi repository con Gemini e Repomix, e automazione browser con Stagehand.
 
 **Repository**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## Risorse correlate
+
+- [Installazione](/it/guide/installation) - Installare la CLI o l'estensione browser di Repomix
+- [Server MCP](/it/guide/mcp-server) - Usare Repomix come server MCP per gli assistenti IA
+- [Plugin Claude Code](/it/guide/claude-code-plugins) - Plugin ufficiali per Claude Code

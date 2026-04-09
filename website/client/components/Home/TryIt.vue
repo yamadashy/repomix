@@ -96,6 +96,8 @@
           :error-type="errorType"
           :repository-url="inputRepositoryUrl"
           :pack-options="packOptions"
+          :progress-stage="progressStage"
+          :progress-message="progressMessage"
           @repack="handleRepack"
         />
       </div>
@@ -107,6 +109,7 @@
 import { FolderArchive, FolderOpen, Link2, RotateCcw } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { usePackRequest } from '../../composables/usePackRequest';
+import { isBot } from '../../utils/botDetect';
 import { hasNonDefaultValues, parseUrlParameters, updateUrlParameters } from '../../utils/urlParams';
 import type { FileInfo } from '../api/client';
 import { isValidRemoteValue } from '../utils/validation';
@@ -135,6 +138,8 @@ const {
   errorType,
   result,
   hasExecuted,
+  progressStage,
+  progressMessage,
 
   // Computed
   isSubmitValid,
@@ -242,7 +247,9 @@ onMounted(() => {
   const urlParams = parseUrlParameters();
 
   // If repository parameter exists and is valid, trigger packing automatically
-  if (urlParams.repo && isValidRemoteValue(urlParams.repo.trim())) {
+  // Skip auto-execution for bots/crawlers to prevent unintended API calls
+  // (e.g., Applebot executing JS on permalink URLs causes mass pack requests)
+  if (urlParams.repo && isValidRemoteValue(urlParams.repo.trim()) && !isBot()) {
     // Use nextTick to ensure all reactive values are properly initialized
     nextTick(async () => {
       try {

@@ -115,7 +115,7 @@ I file di configurazione JavaScript funzionano allo stesso modo di TypeScript, s
 | `ignore.useDefaultPatterns`      | Se usare i pattern di ignore predefiniti (node_modules, .git, ecc.)                                    | `true`                 |
 | `ignore.customPatterns`          | Pattern aggiuntivi da ignorare usando [pattern glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
 | `security.enableSecurityCheck`   | Se eseguire controlli di sicurezza usando Secretlint per rilevare informazioni sensibili   | `true`                 |
-| `tokenCount.encoding`            | Encoding del conteggio token usato dal tokenizer [tiktoken](https://github.com/openai/tiktoken) di OpenAI. Usa `o200k_base` per GPT-4o, `cl100k_base` per GPT-4/3.5. Vedi [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) per dettagli. | `"o200k_base"`         |
+| `tokenCount.encoding`            | Encoding del conteggio token compatibile con OpenAI (ad es., `o200k_base` per GPT-4o, `cl100k_base` per GPT-4/3.5). Utilizza [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer). | `"o200k_base"`         |
 
 Il file di configurazione supporta la sintassi [JSON5](https://json5.org/), che permette:
 - Commenti (sia su singola riga che su più righe)
@@ -366,3 +366,11 @@ Quando `output.removeComments` è impostato a `true`, i commenti sono rimossi da
 - Ti concentri sulla struttura e la logica del codice
 
 Per i linguaggi supportati e esempi dettagliati, consulta la [Guida alla Rimozione Commenti](comment-removal).
+
+## Risorse correlate
+
+- [Opzioni da Linea di Comando](/it/guide/command-line-options) - Riferimento completo della CLI (le opzioni CLI sovrascrivono le impostazioni del file di configurazione)
+- [Formati di Output](/it/guide/output) - Dettagli su ogni formato di output
+- [Sicurezza](/it/guide/security) - Come Repomix rileva le informazioni sensibili
+- [Compressione Codice](/it/guide/code-compress) - Ridurre il conteggio token con Tree-sitter
+- [Elaborazione Repository Remoti](/it/guide/remote-repository-processing) - Opzioni per i repository remoti

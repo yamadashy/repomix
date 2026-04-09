@@ -106,7 +106,9 @@ Quando usi `--stdin`, i file specificati vengono effettivamente aggiunti ai patt
 > [!NOTE]
 > Quando usi `--stdin`, i percorsi dei file possono essere relativi o assoluti, e Repomix gestirà automaticamente la risoluzione dei percorsi e la deduplicazione.
 
-### Compressione Codice
+### Compressione Codice {#code-compression}
+
+Riduci il conteggio token preservando la struttura del codice. Consulta la guida alla [Compressione Codice](/it/guide/code-compress) per i dettagli.
 
 ```bash
 repomix --compress
@@ -203,6 +205,8 @@ repomix --style plain
 
 ### Rimuovere Commenti
 
+Consulta [Rimozione Commenti](/it/guide/comment-removal) per i linguaggi supportati e i dettagli.
+
 ```bash
 repomix --remove-comments
 ```
@@ -221,6 +225,8 @@ repomix --copy
 
 ### Disabilitare Controllo di Sicurezza
 
+Consulta [Sicurezza](/it/guide/security) per i dettagli su cosa rileva Repomix.
+
 ```bash
 repomix --no-security-check
 ```
@@ -234,3 +240,10 @@ repomix --init
 ```
 
 Consulta la [Guida alla Configurazione](/it/guide/configuration) per le opzioni dettagliate.
+
+## Risorse correlate
+
+- [Formati di Output](/it/guide/output) - Scoprire i formati XML, Markdown, JSON e testo semplice
+- [Opzioni da Linea di Comando](/it/guide/command-line-options) - Riferimento completo della CLI
+- [Esempi di Prompt](/it/guide/prompt-examples) - Esempi di prompt per l'analisi IA
+- [Casi d'Uso](/it/guide/use-cases) - Esempi reali e workflow

@@ -88,3 +88,10 @@ repomix --remote user/repo --config /home/user/repomix.config.json
 - Use `--include` to select specific paths
 - Enable `--remove-comments`
 - Process branches separately
+
+## Related Resources
+
+- [Command Line Options](/guide/command-line-options) - Full CLI reference including `--remote` options
+- [Configuration](/guide/configuration) - Set up default options for remote processing
+- [Code Compression](/guide/code-compress) - Reduce output size for large repositories
+- [Security](/guide/security) - How Repomix handles sensitive data detection

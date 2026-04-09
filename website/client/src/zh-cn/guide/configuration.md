@@ -115,7 +115,7 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
 | `ignore.useDefaultPatterns`      | 是否使用默认忽略模式（node_modules、.git 等）                                                                              | `true`                 |
 | `ignore.customPatterns`          | 额外的忽略模式（使用 [glob 模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)）                   | `[]`                   |
 | `security.enableSecurityCheck`   | 是否使用 Secretlint 执行安全检查以检测敏感信息                                                                              | `true`                 |
-| `tokenCount.encoding`            | OpenAI 的 [tiktoken](https://github.com/openai/tiktoken) 分词器使用的 token 计数编码。GPT-4o 使用 `o200k_base`，GPT-4/3.5 使用 `cl100k_base`。详见 [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) | `"o200k_base"`         |
+| `tokenCount.encoding`            | OpenAI 兼容的 token 计数编码（GPT-4o 使用 `o200k_base`，GPT-4/3.5 使用 `cl100k_base`）。使用 [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer)。 | `"o200k_base"`         |
 
 配置文件支持 [JSON5](https://json5.org/) 语法，允许：
 - 注释（单行和多行）
@@ -366,3 +366,11 @@ build/
 - 专注于代码结构和逻辑
 
 有关支持的语言和详细示例，请参阅[注释移除指南](comment-removal)。
+
+## 相关资源
+
+- [命令行选项](/zh-cn/guide/command-line-options) - 完整的 CLI 参考（CLI 选项优先于配置文件设置）
+- [输出格式](/zh-cn/guide/output) - 各种输出格式的详细说明
+- [安全](/zh-cn/guide/security) - Repomix 如何检测敏感信息
+- [代码压缩](/zh-cn/guide/code-compress) - 通过 Tree-sitter 减少 Token 数量
+- [GitHub 仓库处理](/zh-cn/guide/remote-repository-processing) - 远程仓库处理选项

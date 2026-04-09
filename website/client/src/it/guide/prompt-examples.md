@@ -117,3 +117,10 @@ Fornisci esempi specifici di pattern buoni e problematici.
 - Funziona con tutti i formati
 - Concentrati su aree specifiche per richiesta
 - Usa analisi passo-passo
+
+## Risorse correlate
+
+- [Formati di Output](/it/guide/output) - Dettagli su ogni formato di output
+- [Istruzioni Personalizzate](/it/guide/custom-instructions) - Aggiungere contesto e direttive all'output
+- [Casi d'Uso](/it/guide/use-cases) - Esempi reali di workflow assistiti dall'IA
+- [Compressione Codice](/it/guide/code-compress) - Ridurre il conteggio token per grandi codebase

@@ -80,3 +80,9 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix --remote yamadash
 repomix --version
 repomix --help
 ```
+
+## 相關資源
+
+- [基本用法](/zh-tw/guide/usage) - 了解如何使用 Repomix
+- [設定](/zh-tw/guide/configuration) - 根據需求自訂 Repomix
+- [命令列選項](/zh-tw/guide/command-line-options) - 完整的 CLI 參考

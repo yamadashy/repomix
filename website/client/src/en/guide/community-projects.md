@@ -10,6 +10,13 @@ VSCode extension that helps bundle files into a single output for AI processing.
 **Repository**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)  
 **Marketplace**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## Desktop Applications
+
+### Repomix Desktop
+A community desktop application that provides a GUI wrapper for the Repomix CLI. Built with Python and CustomTkinter, it offers a user-friendly interface without needing to use the terminal.
+
+**Repository**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## Language Implementations
 
 ### Python Repomix
@@ -33,4 +40,10 @@ Model Context Protocol server that uses Repomix to help AI agents analyze codeba
 CLI toolset for AI agents with multiple capabilities including web search via Perplexity, repository analysis with Gemini and Repomix, and browser automation with Stagehand.
 
 **Repository**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## Related Resources
+
+- [Installation](/guide/installation) - Install Repomix CLI or browser extension
+- [MCP Server](/guide/mcp-server) - Use Repomix as an MCP server for AI assistants
+- [Claude Code Plugins](/guide/claude-code-plugins) - Official plugins for Claude Code
 

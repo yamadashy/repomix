@@ -1,6 +1,8 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
+import { logger } from '../shared/logger.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
+import { getProcessConcurrency } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -11,10 +13,11 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { prefetchFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
-import { packSkill } from './skill/packSkill.js';
+import type { PackSkillParams } from './skill/packSkill.js';
 
 export interface PackResult {
   totalFiles: number;
@@ -41,10 +44,18 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  getProcessConcurrency,
   sortPaths,
   getGitDiffs,
   getGitLogs,
-  packSkill,
+  // Lazy-load packSkill to defer importing the skill module chain
+  // (skillSectionGenerators, skillStyle → Handlebars), which adds ~25ms
+  // to module loading. Only used when --skill-generate is active (non-default).
+  packSkill: async (params: PackSkillParams) => {
+    const { packSkill } = await import('./skill/packSkill.js');
+    return packSkill(params);
+  },
+  prefetchFileChangeCounts,
 };
 
 export interface PackOptions {
@@ -69,78 +80,129 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  progressCallback('Searching for files...');
-  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
-    Promise.all(
-      rootDirs.map(async (rootDir) => {
-        const result = await deps.searchFiles(rootDir, config, explicitFiles);
-        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
-      }),
-    ),
-  );
-
-  // Deduplicate and sort empty directory paths for reuse during output generation,
-  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
-  const emptyDirPaths = config.output.includeEmptyDirectories
-    ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
-    : undefined;
-
-  // Sort file paths
-  progressCallback('Sorting files...');
-  const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
-
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
-    rootDir,
-    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
-  }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation). The warm-up task triggers
-  // gpt-tokenizer initialization in the worker thread without blocking the main pipeline.
-  const metricsTaskRunner = deps.createMetricsTaskRunner(allFilePaths.length);
-  const metricsWarmupPromise = metricsTaskRunner
-    .run({ content: '', encoding: config.tokenCount.encoding })
-    .catch(() => 0);
+  let metricsTaskRunner: Awaited<ReturnType<typeof deps.createMetricsTaskRunner>>['taskRunner'] | undefined;
+  let metricsWarmupPromise: Promise<unknown> | undefined;
 
   try {
-    // Run file collection and git operations in parallel since they are independent:
-    // - collectFiles reads file contents from disk
-    // - getGitDiffs/getGitLogs spawn git subprocesses
-    // Neither depends on the other's results.
-    progressCallback('Collecting files...');
-    const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
-      withMemoryLogging(
-        'Collect Files',
-        async () =>
-          await Promise.all(
-            sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-              deps.collectFiles(filePaths, rootDir, config, progressCallback),
-            ),
-          ),
-      ),
+    // Start git operations early: they depend only on rootDirs and config (not on the file list),
+    // so they can run concurrently with file search and collection. Git subprocesses execute
+    // during the async searchFiles phase when the event loop is active and can drain subprocess
+    // stdout. For typical repos the subprocesses finish before collectFiles starts its
+    // synchronous reads; if not, their output is buffered in the OS pipe and drained when
+    // the event loop resumes after collectFiles.
+    const gitOpsPromise = Promise.all([
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
+      deps.prefetchFileChangeCounts(config),
     ]);
+
+    progressCallback('Searching for files...');
+    const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
+      Promise.all(
+        rootDirs.map(async (rootDir) => {
+          const result = await deps.searchFiles(rootDir, config, explicitFiles);
+          return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+        }),
+      ),
+    );
+
+    // Initialize metrics worker pool AFTER file search completes.
+    // Worker thread spawning and BPE initialization are CPU-intensive (~120ms total),
+    // which competes with git subprocesses and picomatch pattern matching during
+    // file search on machines with limited cores (4-core: 4 worker threads + 6 git
+    // processes + main thread = 11 tasks on 4 cores). Deferring pool creation until
+    // after search eliminates this contention, reducing search time significantly.
+    // The warmup then overlaps with file collection, processing, and the security
+    // check, which are I/O-bound and don't contend with worker CPU usage.
+    const allFileCount = searchResultsByDir.reduce((sum, r) => sum + r.filePaths.length, 0);
+    ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+      allFileCount,
+      config.tokenCount.encoding,
+    ));
+
+    // Deduplicate and sort empty directory paths for reuse during output generation,
+    // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
+    const emptyDirPaths = config.output.includeEmptyDirectories
+      ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
+      : undefined;
+
+    // Sort file paths
+    progressCallback('Sorting files...');
+    const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
+    const sortedFilePaths = deps.sortPaths(allFilePaths);
+
+    // Regroup sorted file paths by rootDir using Set for O(1) membership checks
+    const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
+    const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+      rootDir,
+      filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+    }));
+
+    progressCallback('Collecting files...');
+    const collectResults = await withMemoryLogging(
+      'Collect Files',
+      async () =>
+        await Promise.all(
+          sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
+            deps.collectFiles(filePaths, rootDir, config, progressCallback),
+          ),
+        ),
+    );
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Run security check and file processing concurrently.
-    // Security check uses worker threads while file processing runs on the main thread
-    // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
-    // After both complete, filter out any suspicious files from the processed results.
-    const [validationResult, allProcessedFiles] = await Promise.all([
-      withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+    // Start file processing immediately — it doesn't depend on git results.
+    const processFilesPromise = withMemoryLogging('Process Files', () => {
+      progressCallback('Processing files...');
+      return deps.processFiles(rawFiles, config, progressCallback);
+    });
+
+    // Await git results (typically already completed during searchFiles + collectFiles).
+    const [gitDiffResult, gitLogResult] = await gitOpsPromise;
+
+    // Start security check. Runs on the main thread (see MAIN_THREAD_THRESHOLD in
+    // securityCheck.ts) to avoid spawning worker threads that would compete for CPU
+    // with the metrics worker pool.
+    const validationPromise = withMemoryLogging('Security Check', () =>
+      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+    );
+
+    const allProcessedFiles = await processFilesPromise;
+
+    // Ensure warm-up task completes before metrics calculation
+    await metricsWarmupPromise;
+
+    // Create a deferred promise for the output. This allows starting file and git metrics
+    // immediately (they don't depend on output), while output metrics waits for the deferred
+    // to be resolved once output generation completes. The output generation itself must wait
+    // for the security check to filter suspicious files, but file/git metrics can overlap
+    // with the remaining security check time.
+    let resolveOutputForMetrics!: (value: string | string[]) => void;
+    let rejectOutputForMetrics!: (reason?: unknown) => void;
+    const outputForMetricsDeferred = new Promise<string | string[]>((resolve, reject) => {
+      resolveOutputForMetrics = resolve;
+      rejectOutputForMetrics = reject;
+    });
+
+    // Start metrics calculation immediately. File and git metrics begin right away,
+    // output metrics will start once the deferred promise resolves.
+    const metricsPromise = withMemoryLogging('Calculate Metrics', () =>
+      deps.calculateMetrics(
+        allProcessedFiles,
+        outputForMetricsDeferred,
+        progressCallback,
+        config,
+        gitDiffResult,
+        gitLogResult,
+        {
+          taskRunner: metricsTaskRunner,
+        },
       ),
-      withMemoryLogging('Process Files', () => {
-        progressCallback('Processing files...');
-        return deps.processFiles(rawFiles, config, progressCallback);
-      }),
-    ]);
+    );
+
+    // Wait for security check to complete before generating output
+    const validationResult = await validationPromise;
 
     const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       validationResult;
@@ -152,10 +214,11 @@ export const pack = async (
 
     progressCallback('Generating output...');
 
-    // Check if skill generation is requested
+    // Skill generation path — metrics not needed, return early (worker pool cleaned up by finally)
     if (config.skillGenerate !== undefined && options.skillDir) {
-      // Await warmup to ensure graceful worker shutdown (avoid terminating WASM-loading thread)
-      await metricsWarmupPromise;
+      // Resolve the deferred to unblock metrics cleanup, then cancel by cleaning up the pool
+      resolveOutputForMetrics('');
+      await metricsPromise.catch(() => {});
 
       const result = await deps.packSkill({
         rootDirs,
@@ -185,12 +248,8 @@ export const pack = async (
       files: filePaths,
     }));
 
-    // Ensure warm-up task completes before metrics calculation
-    await metricsWarmupPromise;
-
-    // Generate and write output, overlapping with metrics calculation.
-    // File and git metrics don't depend on the output, so they start immediately
-    // while output generation runs concurrently.
+    // Generate and write output. Resolve the deferred promise to feed the output
+    // into the metrics calculation that's already running file/git metrics.
     const outputPromise = deps.produceOutput(
       rootDirs,
       config,
@@ -202,29 +261,19 @@ export const pack = async (
       filePathsByRoot,
       emptyDirPaths,
     );
+    outputPromise.then(
+      (r) => resolveOutputForMetrics(r.outputForMetrics),
+      (err) => rejectOutputForMetrics(err),
+    );
 
-    const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
+    const [{ outputFiles }, metrics] = await Promise.all([outputPromise, metricsPromise]);
 
-    const [{ outputFiles }, metrics] = await Promise.all([
-      outputPromise,
-      withMemoryLogging('Calculate Metrics', () =>
-        deps.calculateMetrics(
-          processedFiles,
-          outputForMetricsPromise,
-          progressCallback,
-          config,
-          gitDiffResult,
-          gitLogResult,
-          {
-            taskRunner: metricsTaskRunner,
-          },
-        ),
-      ),
-    ]);
-
-    // Create a result object that includes metrics and security results
+    // Create a result object that includes metrics and security results.
+    // Override totalFiles since metrics ran on allProcessedFiles (pre-security-filter)
+    // to overlap with the security check, but the reported count should reflect the filtered set.
     const result = {
       ...metrics,
+      totalFiles: processedFiles.length,
       ...(outputFiles && { outputFiles }),
       suspiciousFilesResults,
       suspiciousGitDiffResults,
@@ -238,6 +287,17 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsTaskRunner.cleanup();
+    // Fire-and-forget: don't block on worker pool teardown (~70ms).
+    // All metric tasks have completed, so this only terminates idle threads.
+    // For CLI: process.exit() in the entry point handles immediate thread cleanup.
+    // For MCP/library: Tinypool's idleTimeout (5s) reclaims threads.
+    if (metricsWarmupPromise) {
+      metricsWarmupPromise.catch(() => {});
+    }
+    if (metricsTaskRunner) {
+      Promise.resolve(metricsTaskRunner.cleanup()).catch((error) => {
+        logger.debug('Metrics worker pool cleanup error:', error);
+      });
+    }
   }
 };

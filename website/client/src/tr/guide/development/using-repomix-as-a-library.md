@@ -90,7 +90,6 @@ Repomix'i Rolldown veya esbuild gibi araçlarla paketlerken bazı bağımlılık
 
 **Harici bırakılması gereken bağımlılıklar (paketlenemez):**
 - `tinypool` - Dosya yollarını kullanarak worker thread'leri başlatır
-- `tiktoken` - Çalışma zamanında WASM dosyalarını dinamik olarak yükler
 
 **Kopyalanması gereken WASM dosyaları:**
 - `web-tree-sitter.wasm` → Paketlenmiş JS ile aynı dizine (kod sıkıştırma özelliği için gereklidir)

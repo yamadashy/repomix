@@ -115,7 +115,7 @@ Os arquivos de configuração JavaScript funcionam da mesma forma que TypeScript
 | `ignore.useDefaultPatterns`      | Indica se deve usar os padrões de ignorar padrão (node_modules, .git, etc.)                                            | `true`                 |
 | `ignore.customPatterns`          | Padrões adicionais para ignorar usando [padrões glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
 | `security.enableSecurityCheck`   | Indica se deve realizar verificações de segurança usando Secretlint para detectar informações sensíveis                  | `true`                 |
-| `tokenCount.encoding`            | Codificação de contagem de tokens usada pelo tokenizador [tiktoken](https://github.com/openai/tiktoken) da OpenAI. Use `o200k_base` para GPT-4o, `cl100k_base` para GPT-4/3.5. Veja [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) para mais detalhes. | `"o200k_base"`         |
+| `tokenCount.encoding`            | Codificação de contagem de tokens compatível com OpenAI (por ex., `o200k_base` para GPT-4o, `cl100k_base` para GPT-4/3.5). Usa [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer). | `"o200k_base"`         |
 
 O arquivo de configuração suporta a sintaxe [JSON5](https://json5.org/), que permite:
 - Comentários (tanto de uma linha quanto multilinha)
@@ -366,3 +366,11 @@ Quando `output.removeComments` é definido como `true`, os comentários são rem
 - Você está focando na estrutura e lógica do código
 
 Para os idiomas suportados e exemplos detalhados, consulte o [Guia de remoção de comentários](comment-removal).
+
+## Recursos relacionados
+
+- [Opções de Linha de Comando](/pt-br/guide/command-line-options) - Referência completa da CLI (opções CLI substituem configurações do arquivo)
+- [Formatos de Saída](/pt-br/guide/output) - Detalhes sobre cada formato de saída
+- [Segurança](/pt-br/guide/security) - Como o Repomix detecta informações sensíveis
+- [Compressão de Código](/pt-br/guide/code-compress) - Reduzir a contagem de tokens com Tree-sitter
+- [Processamento de Repositório GitHub](/pt-br/guide/remote-repository-processing) - Opções para repositórios remotos

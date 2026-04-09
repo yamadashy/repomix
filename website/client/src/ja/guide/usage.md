@@ -104,6 +104,8 @@ echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
 
 ### コード圧縮
 
+コード構造を維持しながらトークン数を削減します。詳細は[コード圧縮ガイド](/ja/guide/code-compress)をご覧ください。
+
 ```bash
 repomix --compress
 
@@ -194,6 +196,9 @@ repomix --style plain
 ## その他のオプション
 
 ### コメントを削除
+
+サポートされている言語や詳細は[コメント削除](/ja/guide/comment-removal)をご覧ください。
+
 ```bash
 repomix --remove-comments
 ```
@@ -209,6 +214,9 @@ repomix --copy
 ```
 
 ### セキュリティチェックを無効化
+
+Repomixが検出する内容の詳細は[セキュリティ](/ja/guide/security)をご覧ください。
+
 ```bash
 repomix --no-security-check
 ```
@@ -221,3 +229,10 @@ repomix --init
 ```
 
 詳細なオプションについては[設定ガイド](/ja/guide/configuration)を参照してください。
+
+## 関連リソース
+
+- [出力フォーマット](/ja/guide/output) - XML、Markdown、JSON、プレーンテキスト形式について
+- [コマンドラインオプション](/ja/guide/command-line-options) - CLIリファレンス
+- [プロンプト例](/ja/guide/prompt-examples) - AI分析用のプロンプトテンプレート
+- [ユースケース](/ja/guide/use-cases) - 実際のワークフロー例

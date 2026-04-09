@@ -116,8 +116,8 @@ repomix --version
 
 Lệnh này sẽ hiển thị phiên bản Repomix hiện được cài đặt.
 
-## Tiếp theo là gì?
+## Tài nguyên liên quan
 
-- [Sử dụng cơ bản](usage.md): Tìm hiểu cách sử dụng Repomix
-- [Cấu hình](configuration.md): Tùy chỉnh Repomix cho nhu cầu của bạn
-- [Tùy chọn dòng lệnh](command-line-options.md): Khám phá tất cả các tùy chọn có sẵn
+- [Sử dụng cơ bản](/vi/guide/usage) - Tìm hiểu cách sử dụng Repomix
+- [Cấu hình](/vi/guide/configuration) - Tùy chỉnh Repomix cho nhu cầu của bạn
+- [Tùy chọn dòng lệnh](/vi/guide/command-line-options) - Tham chiếu CLI đầy đủ

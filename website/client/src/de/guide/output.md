@@ -261,4 +261,11 @@ Setzen Sie das Standardformat in `repomix.config.json`:
     "filePath": "output.json"
   }
 }
+
+## Verwandte Ressourcen
+
+- [Konfiguration](/de/guide/configuration) - Vollständige Referenz der Konfigurationsoptionen
+- [Befehlszeilenoptionen](/de/guide/command-line-options) - `--style` zum Setzen des Ausgabeformats verwenden
+- [Code-Komprimierung](/de/guide/code-compress) - Token-Anzahl reduzieren und Struktur beibehalten
+- [Prompt-Beispiele](/de/guide/prompt-examples) - Tipps zur Verwendung der Ausgabe mit verschiedenen KI-Modellen
 ```

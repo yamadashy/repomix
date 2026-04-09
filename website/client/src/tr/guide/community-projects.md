@@ -10,6 +10,13 @@ Dosyaları yapay zeka işleme için tek bir çıktıda paketlemeye yardımcı ol
 **Depo**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)
 **Market**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## Masaüstü Uygulamaları
+
+### Repomix Desktop
+Repomix CLI için GUI sarmalayıcı sağlayan bir topluluk masaüstü uygulaması. Python ve CustomTkinter ile oluşturulmuş olup, terminal kullanmadan kullanıcı dostu bir arayüz sunar.
+
+**Depo**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## Dil Uygulamaları
 
 ### Python Repomix
@@ -33,3 +40,9 @@ Yapay zeka ajanlarının kod tabanlarını analiz etmesine yardımcı olmak içi
 Perplexity aracılığıyla web araması, Gemini ve Repomix ile depo analizi ve Stagehand ile tarayıcı otomasyonu dahil çok sayıda yetenekle donatılmış yapay zeka ajanları için CLI araç seti.
 
 **Depo**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## İlgili Kaynaklar
+
+- [Kurulum](/tr/guide/installation) - Repomix CLI veya tarayıcı uzantısını kurun
+- [MCP Sunucusu](/tr/guide/mcp-server) - AI asistanları için Repomix'i MCP sunucusu olarak kullanın
+- [Claude Code Eklentileri](/tr/guide/claude-code-plugins) - Claude Code için resmi eklentiler

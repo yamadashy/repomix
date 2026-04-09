@@ -80,3 +80,9 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix --remote yamadash
 repomix --version
 repomix --help
 ```
+
+## Связанные ресурсы
+
+- [Базовое использование](/ru/guide/usage) - Узнайте, как использовать Repomix
+- [Конфигурация](/ru/guide/configuration) - Настройте Repomix под свои нужды
+- [Параметры командной строки](/ru/guide/command-line-options) - Полная справка по CLI

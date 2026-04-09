@@ -122,3 +122,10 @@
 - 모든 형식과 호환
 - 요청당 특정 영역에 집중
 - 단계별 분석 사용
+
+## 관련 리소스
+
+- [출력 형식](/ko/guide/output) - 각 출력 형식의 상세 정보
+- [사용자 정의 지시사항](/ko/guide/custom-instructions) - 출력에 컨텍스트와 가이드라인 추가
+- [사용 사례](/ko/guide/use-cases) - AI 지원 워크플로우의 실제 예시
+- [코드 압축](/ko/guide/code-compress) - 대규모 코드베이스의 토큰 수 줄이기

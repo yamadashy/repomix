@@ -2,29 +2,16 @@ import { RepomixError } from '../../shared/errorHandle.js';
 import type { GitHubRepoInfo } from './gitRemoteParse.js';
 
 /**
- * Constructs GitHub archive download URL
- * Format: https://github.com/owner/repo/archive/refs/heads/branch.tar.gz
- * For tags:    https://github.com/owner/repo/archive/refs/tags/tag.tar.gz
- * For commits: https://github.com/owner/repo/archive/commit.tar.gz
+ * Constructs GitHub archive download URL using codeload.github.com directly.
+ * This skips the 302 redirect from github.com/archive, saving ~100-300ms per request.
+ * codeload.github.com resolves branches, tags, and commit SHAs automatically,
+ * so no refs/heads/ or refs/tags/ prefix is needed.
+ * Format: https://codeload.github.com/owner/repo/tar.gz/{ref}
  */
 export const buildGitHubArchiveUrl = (repoInfo: GitHubRepoInfo): string => {
   const { owner, repo, ref } = repoInfo;
-  const baseUrl = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive`;
-
-  if (!ref) {
-    // Default to HEAD (repository's default branch)
-    return `${baseUrl}/HEAD.tar.gz`;
-  }
-
-  // Check if ref looks like a commit SHA (40 hex chars or shorter)
-  const isCommitSha = /^[0-9a-f]{4,40}$/i.test(ref);
-  if (isCommitSha) {
-    return `${baseUrl}/${encodeURIComponent(ref)}.tar.gz`;
-  }
-
-  // For branches and tags, we need to determine the type
-  // Default to branch format, will fallback to tag if needed
-  return `${baseUrl}/refs/heads/${encodeURIComponent(ref)}.tar.gz`;
+  const baseUrl = `https://codeload.github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tar.gz`;
+  return `${baseUrl}/${ref ? encodeURIComponent(ref) : 'HEAD'}`;
 };
 
 /**
@@ -36,19 +23,15 @@ export const buildGitHubMasterArchiveUrl = (repoInfo: GitHubRepoInfo): string | 
     return null; // Only applicable when no ref is specified
   }
 
-  return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive/refs/heads/master.tar.gz`;
+  return `https://codeload.github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tar.gz/master`;
 };
 
 /**
  * Builds alternative archive URL for tags
+ * With codeload.github.com, refs are resolved automatically so tag fallback is no longer needed.
  */
-export const buildGitHubTagArchiveUrl = (repoInfo: GitHubRepoInfo): string | null => {
-  const { owner, repo, ref } = repoInfo;
-  if (!ref || /^[0-9a-f]{4,40}$/i.test(ref)) {
-    return null; // Not applicable for commits or no ref
-  }
-
-  return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archive/refs/tags/${encodeURIComponent(ref)}.tar.gz`;
+export const buildGitHubTagArchiveUrl = (_repoInfo: GitHubRepoInfo): string | null => {
+  return null;
 };
 
 /**

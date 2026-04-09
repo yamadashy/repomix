@@ -106,6 +106,12 @@ interface Item {
 ## 関連オプション
 
 圧縮は以下のオプションと組み合わせることができます：
-- `--remove-comments`: コードコメントを削除
+- `--remove-comments`: コードコメントを削除（[コメント削除](/ja/guide/comment-removal)を参照）
 - `--remove-empty-lines`: 空行を削除
 - `--output-show-line-numbers`: 出力に行番号を追加
+
+## 関連リソース
+
+- [コメント削除](/ja/guide/comment-removal) - コメント除去によるさらなるトークン数削減
+- [設定](/ja/guide/configuration) - 設定ファイルで`output.compress`を設定
+- [コマンドラインオプション](/ja/guide/command-line-options) - CLIリファレンス

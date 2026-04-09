@@ -66,3 +66,9 @@ function test() {
 3. **效能考慮**：
   - 移除註釋可以減少輸出文件大小
   - 對於大型程式碼庫特別有用
+
+## 相關資源
+
+- [程式碼壓縮](/zh-tw/guide/code-compress) - 透過提取程式碼結構進一步減少令牌數量
+- [設定](/zh-tw/guide/configuration) - 在設定檔中設定 `output.removeComments`
+- [命令列選項](/zh-tw/guide/command-line-options) - 使用 `--remove-comments` 旗標

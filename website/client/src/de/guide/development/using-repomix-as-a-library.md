@@ -90,7 +90,6 @@ Beim Bündeln von Repomix mit Tools wie Rolldown oder esbuild müssen einige Abh
 
 **Externe Abhängigkeiten (können nicht gebündelt werden):**
 - `tinypool` - Startet Worker-Threads unter Verwendung von Dateipfaden
-- `tiktoken` - Lädt WASM-Dateien dynamisch zur Laufzeit
 
 **Zu kopierende WASM-Dateien:**
 - `web-tree-sitter.wasm` → Gleiches Verzeichnis wie das gebündelte JS (erforderlich für die Code-Komprimierungsfunktion)

@@ -51,3 +51,9 @@ function test() {
 
 - Yorum kaldırma işlemi, satır numarası ekleme gibi diğer işlem adımlarından önce gerçekleştirilir.
 - JSDoc yorumları gibi bazı yorumlar, dile ve bağlama göre korunabilir.
+
+## İlgili Kaynaklar
+
+- [Kod Sıkıştırma](/tr/guide/code-compress) - Kod yapısını çıkararak token sayısını daha da azaltın
+- [Yapılandırma](/tr/guide/configuration) - Yapılandırma dosyanızda `output.removeComments` ayarlayın
+- [Komut Satırı Seçenekleri](/tr/guide/command-line-options) - `--remove-comments` bayrağını kullanın
