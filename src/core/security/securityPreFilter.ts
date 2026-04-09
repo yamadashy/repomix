@@ -16,27 +16,21 @@ export interface SecurityCheckTask {
 // If none appear in the content, we can safely skip the full security check (~15 rule instantiations,
 // StructuredSource index scan, and regex matching per file).
 //
-// Coverage: all secretlint-rule-preset-recommend rules including BasicAuth (via ://).
+// Coverage: all ACTIVE secretlint-rule-preset-recommend rules including BasicAuth (via ://).
+//
+// EXCLUDED (disabled by default in @secretlint/secretlint-rule-aws, enableIDScanRule: false):
+//   AWS Access Key ID prefixes: AKIA, AGPA, AIDA, AROA, AIPA, ANPA, ANVA, ASIA
+//   AWS Account ID patterns: ACCOUNT_ID, account_id, AccountId
+// These keywords cause false positives on extremely common code patterns (e.g., account_id
+// in database models, ASIA in timezone handling) triggering expensive lintSource() calls
+// that always find nothing because the corresponding rules are never executed.
 const SECURITY_KEYWORDS: readonly string[] = [
-  // AWS Access Key ID prefixes (secretlint-rule-aws)
-  'AKIA',
-  'AGPA',
-  'AIDA',
-  'AROA',
-  'AIPA',
-  'ANPA',
-  'ANVA',
-  'ASIA',
   // AWS Secret Access Key — covers all case/underscore variants of the secretlint regex
   // (?:SECRET|secret|Secret)_?(?:ACCESS|access|Access)_?(?:KEY|key|Key)
   '_ACCESS_KEY',
   '_access_key',
   'AccessKey',
   '_Access_Key',
-  // AWS Account ID — most common naming patterns (secretlint-rule-aws, disabled by default)
-  'ACCOUNT_ID',
-  'account_id',
-  'AccountId',
   // GCP Service Account JSON (secretlint-rule-gcp)
   'private_key_id',
   // NPM tokens (secretlint-rule-npm)

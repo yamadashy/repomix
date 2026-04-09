@@ -99,8 +99,21 @@ describe('mightContainSecret', () => {
     expect(mightContainSecret(content)).toBe(false);
   });
 
-  test('should return true for content with AWS Access Key ID prefix', () => {
-    expect(mightContainSecret('my key is AKIAIOSFODNN7EXAMPLE')).toBe(true);
+  test('should return false for content with only AWS Access Key ID prefix (rule disabled by default)', () => {
+    // AWS Access Key ID scanning (enableIDScanRule) is disabled by default in
+    // @secretlint/secretlint-rule-aws, so AKIA prefixes are excluded from the
+    // pre-filter to avoid false positives on common code patterns.
+    expect(mightContainSecret('my key is AKIAIOSFODNN7EXAMPLE')).toBe(false);
+  });
+
+  test('should return false for content with only AWS Account ID pattern (rule disabled by default)', () => {
+    expect(mightContainSecret('const account_id = "123456789012";')).toBe(false);
+    expect(mightContainSecret('const id = process.env.ACCOUNT_ID;')).toBe(false);
+    expect(mightContainSecret('interface Config { AccountId: string; }')).toBe(false);
+  });
+
+  test('should return false for content with ASIA timezone string (rule disabled by default)', () => {
+    expect(mightContainSecret('const tz = "Asia/Tokyo"; const REGIONS = ["US", "EU", "ASIA"];')).toBe(false);
   });
 
   test('should return true for content with GitHub token prefix', () => {
