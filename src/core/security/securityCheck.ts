@@ -8,9 +8,36 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import type { SecurityCheckItem, SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
+import {
+  mightContainSecret,
+  type SecurityCheckItem,
+  type SecurityCheckTask,
+  type SecurityCheckType,
+} from './securityPreFilter.js';
 
-export type { SecurityCheckType } from './workers/securityCheckWorker.js';
+export type { SecurityCheckType } from './securityPreFilter.js';
+
+// Cached promise for the lazy-loaded security worker module.
+// Shared between preloadSecurityModule() and runSecurityCheckOnMainThread()
+// to ensure the module is loaded exactly once.
+let securityWorkerModulePromise: Promise<typeof import('./workers/securityCheckWorker.js')> | undefined;
+
+/**
+ * Start loading @secretlint/core in the background before metrics workers spawn.
+ * The secretlint module takes ~70ms to load on an idle CPU, but ~300-400ms when
+ * loading concurrently with metrics worker BPE initialization due to CPU contention.
+ * By preloading during the I/O-bound file search phase (before workers exist),
+ * the module is cached by the time the security check runs, eliminating the
+ * contention penalty entirely.
+ */
+export const preloadSecurityModule = (): void => {
+  if (!securityWorkerModulePromise) {
+    securityWorkerModulePromise = import('./workers/securityCheckWorker.js');
+    // Prevent unhandled rejection if preload fails — the actual security check
+    // will retry and report the error properly.
+    securityWorkerModulePromise.catch(() => {});
+  }
+};
 
 export interface SuspiciousFileResult {
   filePath: string;
@@ -19,13 +46,14 @@ export interface SuspiciousFileResult {
 }
 
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
-// Each batch is sent as a single message to a worker thread, avoiding
-// per-file round-trip costs that dominate when processing many files.
-// Security check always processes all files (~1000 in a typical repo), so a batch size of 50
-// already produces ~20 batches — enough to distribute well across available CPU cores.
-// (Unlike metrics, which may process only a small number of top files when tokenCountTree
-// is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
 const BATCH_SIZE = 50;
+
+// Always run security checks on the main thread. Security worker threads loading @secretlint
+// cause severe CPU contention with the metrics worker pool (either during gpt-tokenizer
+// warmup or during tokenization), extending the pipeline from ~2s to ~9s on 4-core machines.
+// On the main thread, @secretlint loads once (~40ms) and lintSource runs ~2-4ms per item,
+// which is fast enough even for hundreds of candidates while avoiding worker thread overhead.
+const MAIN_THREAD_THRESHOLD = Number.MAX_SAFE_INTEGER;
 
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
@@ -37,59 +65,92 @@ export const runSecurityCheck = async (
     getProcessConcurrency: defaultGetProcessConcurrency,
   },
 ): Promise<SuspiciousFileResult[]> => {
-  const gitDiffItems: SecurityCheckItem[] = [];
-  const gitLogItems: SecurityCheckItem[] = [];
+  // Pre-filter files on the main thread to avoid IPC overhead for files that clearly
+  // don't contain secrets. This eliminates structured-clone serialization of file content
+  // for skipped files, reducing both memory pressure and worker thread contention.
+  const fileItems: SecurityCheckItem[] = rawFiles
+    .filter((file) => mightContainSecret(file.content))
+    .map((file) => ({
+      filePath: file.path,
+      content: file.content,
+      type: 'file' as const,
+    }));
 
-  // Add Git diff content for security checking if available
-  if (gitDiffResult) {
-    if (gitDiffResult.workTreeDiffContent) {
-      gitDiffItems.push({
-        filePath: 'Working tree changes',
-        content: gitDiffResult.workTreeDiffContent,
-        type: 'gitDiff',
-      });
-    }
-
-    if (gitDiffResult.stagedDiffContent) {
-      gitDiffItems.push({
-        filePath: 'Staged changes',
-        content: gitDiffResult.stagedDiffContent,
-        type: 'gitDiff',
-      });
-    }
+  // Pre-filter git diff/log content too. The worker-side mightContainSecret() check would
+  // skip these anyway, but pre-filtering avoids creating the worker pool entirely when all
+  // items are filtered out — eliminating worker thread CPU contention with metrics warmup.
+  const gitItems: SecurityCheckItem[] = [];
+  if (gitDiffResult?.workTreeDiffContent && mightContainSecret(gitDiffResult.workTreeDiffContent)) {
+    gitItems.push({ filePath: 'Working tree changes', content: gitDiffResult.workTreeDiffContent, type: 'gitDiff' });
+  }
+  if (gitDiffResult?.stagedDiffContent && mightContainSecret(gitDiffResult.stagedDiffContent)) {
+    gitItems.push({ filePath: 'Staged changes', content: gitDiffResult.stagedDiffContent, type: 'gitDiff' });
+  }
+  if (gitLogResult?.logContent && mightContainSecret(gitLogResult.logContent)) {
+    gitItems.push({ filePath: 'Git log history', content: gitLogResult.logContent, type: 'gitLog' });
   }
 
-  // Add Git log content for security checking if available
-  if (gitLogResult) {
-    if (gitLogResult.logContent) {
-      gitLogItems.push({
-        filePath: 'Git log history',
-        content: gitLogResult.logContent,
-        type: 'gitLog',
-      });
-    }
-  }
-
-  const fileItems: SecurityCheckItem[] = rawFiles.map((file) => ({
-    filePath: file.path,
-    content: file.content,
-    type: 'file',
-  }));
-
-  // Combine all items, then split into batches
-  const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
+  const allItems = [...fileItems, ...gitItems];
   const totalItems = allItems.length;
 
   if (totalItems === 0) {
     return [];
   }
 
+  // Always run on the main thread to avoid worker pool overhead and CPU contention
+  // with the metrics worker pool. Keyword pre-filtering typically reduces candidates
+  // to single digits, and even hundreds of items complete in ~1-2s on the main thread.
+  if (totalItems <= MAIN_THREAD_THRESHOLD) {
+    return runSecurityCheckOnMainThread(allItems, progressCallback);
+  }
+
+  return runSecurityCheckWithWorkers(allItems, progressCallback, deps);
+};
+
+const runSecurityCheckOnMainThread = async (
+  allItems: SecurityCheckItem[],
+  progressCallback: RepomixProgressCallback,
+): Promise<SuspiciousFileResult[]> => {
+  const totalItems = allItems.length;
+  logger.trace(`Starting security check for ${totalItems} items on main thread`);
+  const startTime = process.hrtime.bigint();
+
+  // Use the preloaded module if available, otherwise load it now.
+  const workerModule = await (securityWorkerModulePromise ?? import('./workers/securityCheckWorker.js'));
+  const { runSecretLint, createSecretLintConfig } = workerModule;
+  const config = createSecretLintConfig();
+
+  const results: (SuspiciousFileResult | null)[] = [];
+  for (let i = 0; i < allItems.length; i++) {
+    const item = allItems[i];
+    results.push(await runSecretLint(item.filePath, item.content, item.type, config));
+    if ((i + 1) % 10 === 0 || i === totalItems - 1) {
+      progressCallback(`Running security check... (${i + 1}/${totalItems}) ${pc.dim(item.filePath)}`);
+    }
+  }
+
+  const endTime = process.hrtime.bigint();
+  const duration = Number(endTime - startTime) / 1e6;
+  logger.trace(`Security check completed in ${duration.toFixed(2)}ms (main thread)`);
+
+  return results.filter((result): result is SuspiciousFileResult => result !== null);
+};
+
+const runSecurityCheckWithWorkers = async (
+  allItems: SecurityCheckItem[],
+  progressCallback: RepomixProgressCallback,
+  deps: {
+    initTaskRunner: typeof initTaskRunner;
+    getProcessConcurrency: typeof defaultGetProcessConcurrency;
+  },
+): Promise<SuspiciousFileResult[]> => {
+  const totalItems = allItems.length;
+
   // Cap security workers at 2 to reduce contention with the metrics worker pool that
   // runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
   // so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
   const maxSecurityWorkers = Math.min(2, deps.getProcessConcurrency());
 
-  // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
     numOfTasks: totalItems,
     workerType: 'securityCheck',
@@ -131,6 +192,10 @@ export const runSecurityCheck = async (
     logger.error('Error during security check:', error);
     throw error;
   } finally {
-    await taskRunner.cleanup();
+    // Fire-and-forget: the security worker pool cleanup (~40ms) runs in the background
+    // while subsequent pipeline stages (output generation, metrics) proceed.
+    Promise.resolve(taskRunner.cleanup()).catch((error) => {
+      logger.debug('Security worker pool cleanup error:', error);
+    });
   }
 };

@@ -2,23 +2,11 @@ import { lintSource } from '@secretlint/core';
 import { creator } from '@secretlint/secretlint-rule-preset-recommend';
 import type { SecretLintCoreConfig } from '@secretlint/types';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
+import { mightContainSecret, type SecurityCheckTask, type SecurityCheckType } from '../securityPreFilter.js';
 
 // Initialize logger configuration from workerData at module load time
 // This must be called before any logging operations in the worker
 setLogLevelByWorkerData();
-
-// Security check type to distinguish between regular files, git diffs, and git logs
-export type SecurityCheckType = 'file' | 'gitDiff' | 'gitLog';
-
-export interface SecurityCheckItem {
-  filePath: string;
-  content: string;
-  type: SecurityCheckType;
-}
-
-export interface SecurityCheckTask {
-  items: SecurityCheckItem[];
-}
 
 export interface SuspiciousFileResult {
   filePath: string;
@@ -66,6 +54,13 @@ export const runSecretLint = async (
   type: SecurityCheckType,
   config: SecretLintCoreConfig,
 ): Promise<SuspiciousFileResult | null> => {
+  // Fast path: skip expensive lintSource() if content has no security-relevant keywords.
+  // This avoids creating ~15 rule instances, StructuredSource index scan, and regex matching
+  // for files that clearly don't contain secrets (typically 95-99% of files in a repo).
+  if (!mightContainSecret(content)) {
+    return null;
+  }
+
   const result = await lintSource({
     source: {
       filePath: filePath,

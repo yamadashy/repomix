@@ -2,7 +2,8 @@ import process from 'node:process';
 import { DOMParser } from '@xmldom/xmldom';
 import { describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
-import { generateOutput } from '../../../src/core/output/outputGenerate.js';
+import { createRenderContext, generateOutput } from '../../../src/core/output/outputGenerate.js';
+import type { OutputGeneratorContext } from '../../../src/core/output/outputGeneratorTypes.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 const createStrictXmlParser = () => {
@@ -315,5 +316,39 @@ describe('outputGenerate', () => {
     const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, ['file1.txt']);
 
     expect(output).not.toContain('Directory Structure');
+  });
+
+  describe('createRenderContext', () => {
+    const mockProcessedFiles: ProcessedFile[] = [
+      { path: 'file1.txt', content: 'line1\nline2\nline3\n' },
+      { path: 'file2.txt', content: 'single line' },
+    ];
+
+    const createContext = (config: ReturnType<typeof createMockConfig>): OutputGeneratorContext => ({
+      generationDate: new Date().toISOString(),
+      treeString: '',
+      processedFiles: mockProcessedFiles,
+      config,
+      instruction: '',
+      gitDiffResult: undefined,
+      gitLogResult: undefined,
+    });
+
+    test('should skip fileLineCounts for normal (non-skill) output paths', () => {
+      const config = createMockConfig({ output: { style: 'xml' } });
+      const context = createRenderContext(createContext(config));
+
+      expect(context.fileLineCounts).toEqual({});
+    });
+
+    test('should compute fileLineCounts when skillGenerate is set', () => {
+      const config = createMockConfig({ skillGenerate: 'test-skill' });
+      const context = createRenderContext(createContext(config));
+
+      expect(context.fileLineCounts).toEqual({
+        'file1.txt': 3,
+        'file2.txt': 1,
+      });
+    });
   });
 });

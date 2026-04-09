@@ -12,6 +12,7 @@ vi.mock('../../src/core/metrics/TokenCounter.js', () => {
       countTokens: vi.fn().mockReturnValue(10),
       free: vi.fn(),
     })),
+    loadBpeRanks: vi.fn().mockResolvedValue([]),
   };
 });
 
@@ -73,6 +74,9 @@ describe('packager', () => {
         gitDiffTokenCount: 0,
         gitLogTokenCount: 0,
       }),
+      prefetchFileChangeCounts: vi.fn().mockResolvedValue(null),
+      preloadSecurityModule: vi.fn(),
+      loadBpeRanks: vi.fn().mockResolvedValue([]),
     };
 
     const mockConfig = createMockConfig();

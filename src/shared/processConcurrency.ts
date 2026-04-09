@@ -52,14 +52,17 @@ export const getWorkerThreadCount = (
 ): { minThreads: number; maxThreads: number } => {
   const processConcurrency = getProcessConcurrency();
 
-  const minThreads = 1;
-
   // Apply optional cap to limit thread count (e.g., to reduce contention with other concurrent pools)
   const effectiveConcurrency =
     maxWorkerThreads != null ? Math.min(processConcurrency, maxWorkerThreads) : processConcurrency;
 
   // Limit max threads based on number of tasks
-  const maxThreads = Math.max(minThreads, Math.min(effectiveConcurrency, Math.ceil(numOfTasks / TASKS_PER_THREAD)));
+  const maxThreads = Math.max(1, Math.min(effectiveConcurrency, Math.ceil(numOfTasks / TASKS_PER_THREAD)));
+
+  // Set minThreads = maxThreads so all workers are spawned eagerly at pool creation.
+  // This ensures warmup tasks (e.g., gpt-tokenizer BPE data loading) run truly in parallel
+  // across all threads, rather than being serialized through a single lazily-spawned thread.
+  const minThreads = maxThreads;
 
   return {
     minThreads,

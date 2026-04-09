@@ -53,7 +53,7 @@ describe('processConcurrency', () => {
     it('should limit max threads based on number of tasks', () => {
       const { minThreads, maxThreads } = getWorkerThreadCount(1000);
 
-      expect(minThreads).toBe(1);
+      expect(minThreads).toBe(8); // minThreads = maxThreads for eager spawning
       expect(maxThreads).toBe(8); // Limited by CPU count: Math.min(8, 1000/100) = 8
     });
 
@@ -67,7 +67,7 @@ describe('processConcurrency', () => {
     it('should handle large numbers of tasks', () => {
       const { minThreads, maxThreads } = getWorkerThreadCount(10000);
 
-      expect(minThreads).toBe(1);
+      expect(minThreads).toBe(8); // minThreads = maxThreads for eager spawning
       expect(maxThreads).toBe(8); // Limited by CPU count: Math.min(8, 10000/100) = 8
     });
 
@@ -116,7 +116,7 @@ describe('processConcurrency', () => {
       expect(Tinypool).toHaveBeenCalledWith({
         filename: expect.stringContaining('fileProcessWorker.js'),
         runtime: 'child_process',
-        minThreads: 1,
+        minThreads: 4, // minThreads = maxThreads for eager spawning
         maxThreads: 4, // Math.min(4, 500/100) = 4
         idleTimeout: 5000,
         teardown: 'onWorkerTermination',
@@ -139,7 +139,7 @@ describe('processConcurrency', () => {
       expect(Tinypool).toHaveBeenCalledWith({
         filename: expect.stringContaining('securityCheckWorker.js'),
         runtime: 'worker_threads',
-        minThreads: 1,
+        minThreads: 4, // minThreads = maxThreads for eager spawning
         maxThreads: 4, // Math.min(4, 500/100) = 4
         idleTimeout: 5000,
         teardown: 'onWorkerTermination',

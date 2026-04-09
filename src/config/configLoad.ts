@@ -1,7 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import JSON5 from 'json5';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
@@ -156,7 +155,10 @@ const loadAndValidateConfig = async (
       case 'json5':
       case 'jsonc':
       case 'json': {
-        // Use JSON5 for JSON/JSON5/JSONC files
+        // Lazy-load json5 (~28ms) to avoid paying the import cost when no
+        // config file exists (the common case). JSON5 is used for all JSON
+        // variants since .json configs may contain comments or trailing commas.
+        const JSON5 = (await import('json5')).default;
         const fileContent = await fs.readFile(filePath, 'utf-8');
         config = JSON5.parse(fileContent);
         break;

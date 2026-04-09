@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TOKEN_ENCODINGS } from '../core/metrics/TokenCounter.js';
+import { TOKEN_ENCODINGS } from '../core/metrics/tokenEncodings.js';
 
 // Output style enum
 export const repomixOutputStyleSchema = z.enum(['xml', 'markdown', 'json', 'plain']);

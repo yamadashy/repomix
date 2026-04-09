@@ -173,13 +173,13 @@ describe('calculateOutputMetrics', () => {
       }),
     });
 
-    // With TARGET_CHARS_PER_CHUNK=200_000, 1.1M character content should produce 6 chunks
+    // With TARGET_CHARS_PER_CHUNK=500_000, 1.1M character content should produce 3 chunks
     const chunkSizes = processedChunks.map((chunk) => chunk.length);
 
-    expect(processedChunks.length).toBe(6);
+    expect(processedChunks.length).toBe(3);
     // All chunks except the last should be exactly TARGET_CHARS_PER_CHUNK
     for (let i = 0; i < chunkSizes.length - 1; i++) {
-      expect(chunkSizes[i]).toBe(200_000);
+      expect(chunkSizes[i]).toBe(500_000);
     }
     expect(processedChunks.join('')).toBe(content); // All content should be processed
   });
