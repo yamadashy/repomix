@@ -115,8 +115,15 @@ export const pack = async (
     // The warmup then overlaps with file collection, processing, and the security
     // check, which are I/O-bound and don't contend with worker CPU usage.
     const allFileCount = searchResultsByDir.reduce((sum, r) => sum + r.filePaths.length, 0);
+
+    // Size the worker pool based on estimated tokenization needs, not total file count.
+    // When tokenCountTree is disabled, only ~50 files are tokenized for ranking/estimation
+    // (mirrors selectTopFilesBySize), so spawning excess workers causes BPE init contention.
+    const estimatedTokenTasks = config.output.tokenCountTree
+      ? allFileCount
+      : Math.max(50, config.output.topFilesLength * 10);
     ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-      allFileCount,
+      estimatedTokenTasks,
       config.tokenCount.encoding,
     ));
 
