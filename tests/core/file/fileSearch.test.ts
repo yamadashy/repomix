@@ -811,6 +811,14 @@ node_modules
     test('should not convert patterns that already have /**/*', () => {
       expect(normalizeGlobPattern('**/folder/**/*')).toBe('**/folder/**/*');
     });
+
+    test('should normalize **/folder/ with trailing slash to **/folder/**', () => {
+      expect(normalizeGlobPattern('**/bin/')).toBe('**/bin/**');
+    });
+
+    test('should normalize **/nested/folder/ with trailing slash to **/nested/folder/**', () => {
+      expect(normalizeGlobPattern('**/nested/folder/')).toBe('**/nested/folder/**');
+    });
   });
 
   describe('searchFiles path validation', () => {

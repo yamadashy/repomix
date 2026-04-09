@@ -79,17 +79,19 @@ export const escapeGlobPattern = (pattern: string): string => {
  * @returns The normalized pattern
  */
 export const normalizeGlobPattern = (pattern: string): string => {
+  let normalized = pattern;
+
   // Remove trailing slash but preserve patterns that end with "**/"
-  if (pattern.endsWith('/') && !pattern.endsWith('**/')) {
-    return pattern.slice(0, -1);
+  if (normalized.endsWith('/') && !normalized.endsWith('**/')) {
+    normalized = normalized.slice(0, -1);
   }
 
   // Convert **/folder to **/folder/** for consistent ignore pattern behavior
-  if (pattern.startsWith('**/') && !pattern.includes('/**')) {
-    return `${pattern}/**`;
+  if (normalized.startsWith('**/') && !normalized.includes('/**')) {
+    return `${normalized}/**`;
   }
 
-  return pattern;
+  return normalized;
 };
 
 // Get all file paths considering the config
