@@ -62,6 +62,8 @@ Dengan seluruh codebase tersedia sebagai konteks, Repomix memungkinkan berbagai 
 - [Panduan Penggunaan](usage.md): Pelajari tentang fitur dasar dan lanjutan
 - [Konfigurasi](configuration.md): Kustomisasi Repomix untuk kebutuhan Anda
 - [Fitur Keamanan](security.md): Pelajari tentang pemeriksaan keamanan
+- [Format Output](output.md): Pilih format terbaik untuk model AI Anda
+- [Server MCP](mcp-server.md): Integrasikan Repomix dengan asisten AI secara langsung
 
 ## Komunitas
 

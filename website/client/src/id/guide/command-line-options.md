@@ -4,51 +4,67 @@
 - `-v, --version`: Menampilkan versi alat
 
 ## Opsi Input/Output CLI
-- `--verbose`: Mengaktifkan pencatatan verbose
-- `--quiet`: Menonaktifkan semua output ke stdout
-- `--stdout`: Output ke stdout alih-alih menulis ke file (tidak dapat digunakan dengan opsi `--output`)
-- `--stdin`: Membaca jalur file dari stdin alih-alih menemukan file secara otomatis
-- `--copy`: Menyalin output yang dihasilkan ke clipboard sistem
-- `--token-count-tree [threshold]`: Menampilkan pohon file dengan ringkasan jumlah token (opsional: ambang batas jumlah token minimum). Berguna untuk mengidentifikasi file besar dan mengoptimalkan penggunaan token untuk batas konteks AI
-- `--top-files-len <number>`: Jumlah file terbesar untuk ditampilkan dalam ringkasan (default: 5, contoh: --top-files-len 20)
+
+| Opsi | Deskripsi |
+|------|-----------|
+| `--verbose` | Mengaktifkan pencatatan debug detail (menampilkan pemrosesan file, jumlah token, dan detail konfigurasi) |
+| `--quiet` | Menekan semua output konsol kecuali error (berguna untuk scripting) |
+| `--stdout` | Menulis output yang dikemas langsung ke stdout alih-alih file (menekan semua pencatatan) |
+| `--stdin` | Membaca jalur file dari stdin, satu per baris (file yang ditentukan langsung diproses) |
+| `--copy` | Menyalin output yang dihasilkan ke clipboard sistem setelah pemrosesan |
+| `--token-count-tree [threshold]` | Menampilkan pohon file dengan jumlah token; ambang batas opsional untuk menampilkan hanya file dengan ≥N token (mis. `--token-count-tree 100`) |
+| `--top-files-len <number>` | Jumlah file terbesar untuk ditampilkan dalam ringkasan (default: `5`) |
 
 ## Opsi Output Repomix
-- `-o, --output <file>`: Jalur file output (default: repomix-output.xml, gunakan "-" untuk stdout)
-- `--style <type>`: Format output: xml, markdown, json atau plain (default: xml)
-- `--parsable-style`: Mengaktifkan output yang dapat diurai berdasarkan skema gaya yang dipilih. Perhatikan bahwa ini dapat meningkatkan jumlah token.
-- `--compress`: Melakukan ekstraksi kode cerdas, fokus pada tanda tangan fungsi dan kelas penting untuk mengurangi jumlah token
-- `--output-show-line-numbers`: Menampilkan nomor baris dalam output
-- `--no-file-summary`: Menonaktifkan output bagian ringkasan file
-- `--no-directory-structure`: Menonaktifkan output bagian struktur direktori
-- `--no-files`: Menonaktifkan output konten file (mode hanya metadata)
-- `--remove-comments`: Menghapus komentar dari jenis file yang didukung
-- `--remove-empty-lines`: Menghapus baris kosong dari output
-- `--truncate-base64`: Mengaktifkan pemotongan string data base64
-- `--header-text <text>`: Teks kustom untuk disertakan dalam header file
-- `--instruction-file-path <path>`: Jalur ke file yang berisi instruksi kustom terperinci
-- `--split-output <size>`: Membagi output menjadi beberapa file bernomor (mis: repomix-output.1.xml, repomix-output.2.xml); contohnya 500kb, 2mb, atau 1.5mb
-- `--include-empty-directories`: Menyertakan direktori kosong dalam output
-- `--include-full-directory-structure`: Menampilkan pohon repositori lengkap di bagian Struktur Direktori, bahkan saat menggunakan pola --include
-- `--include-diffs`: Menyertakan diff git dalam output (menyertakan perubahan pohon kerja dan perubahan staged secara terpisah)
-- `--include-logs`: Menyertakan log git dalam output (menyertakan riwayat commit dengan tanggal, pesan, dan jalur file)
-- `--include-logs-count <count>`: Jumlah commit log git yang akan disertakan (default: 50)
-- `--no-git-sort-by-changes`: Menonaktifkan pengurutan file berdasarkan jumlah perubahan git (diaktifkan secara default)
+
+| Opsi | Deskripsi |
+|------|-----------|
+| `-o, --output <file>` | Jalur file output (default: `repomix-output.xml`, gunakan `"-"` untuk stdout) |
+| `--style <style>` | Format output: `xml`, `markdown`, `json`, atau `plain` (default: `xml`) |
+| `--parsable-style` | Escape karakter khusus untuk memastikan XML/Markdown yang valid (diperlukan saat output berisi kode yang merusak format) |
+| `--compress` | Mengekstrak struktur kode esensial (kelas, fungsi, interface) menggunakan parsing Tree-sitter |
+| `--output-show-line-numbers` | Menambahkan nomor baris di depan setiap baris dalam output |
+| `--no-file-summary` | Menghilangkan bagian ringkasan file dari output |
+| `--no-directory-structure` | Menghilangkan visualisasi pohon direktori dari output |
+| `--no-files` | Menghasilkan hanya metadata tanpa konten file (berguna untuk analisis repositori) |
+| `--remove-comments` | Menghapus semua komentar kode sebelum pengemasan |
+| `--remove-empty-lines` | Menghapus baris kosong dari semua file |
+| `--truncate-base64` | Memotong string data base64 yang panjang untuk mengurangi ukuran output |
+| `--header-text <text>` | Teks kustom untuk disertakan di awal output |
+| `--instruction-file-path <path>` | Jalur ke file berisi instruksi kustom untuk disertakan dalam output |
+| `--split-output <size>` | Membagi output menjadi beberapa file bernomor (mis. `repomix-output.1.xml`); ukuran seperti `500kb`, `2mb`, atau `1.5mb` |
+| `--include-empty-directories` | Menyertakan folder tanpa file dalam struktur direktori |
+| `--include-full-directory-structure` | Menampilkan pohon repositori lengkap di bagian Struktur Direktori, bahkan saat menggunakan pola `--include` |
+| `--no-git-sort-by-changes` | Jangan mengurutkan file berdasarkan frekuensi perubahan git (default: file paling sering diubah dahulu) |
+| `--include-diffs` | Menambahkan bagian git diff yang menampilkan perubahan pohon kerja dan staged |
+| `--include-logs` | Menambahkan riwayat commit git dengan pesan dan file yang diubah |
+| `--include-logs-count <count>` | Jumlah commit terbaru untuk disertakan dengan `--include-logs` (default: `50`) |
 
 ## Opsi Seleksi File
-- `--include <patterns>`: Daftar pola penyertaan (dipisahkan koma)
-- `-i, --ignore <patterns>`: Pola pengabaian tambahan (dipisahkan koma)
-- `--no-gitignore`: Menonaktifkan penggunaan file .gitignore
-- `--no-dot-ignore`: Menonaktifkan penggunaan file .ignore
-- `--no-default-patterns`: Menonaktifkan pola default
+
+| Opsi | Deskripsi |
+|------|-----------|
+| `--include <patterns>` | Hanya menyertakan file yang cocok dengan pola glob ini (dipisahkan koma, mis. `"src/**/*.js,*.md"`) |
+| `-i, --ignore <patterns>` | Pola tambahan untuk dikecualikan (dipisahkan koma, mis. `"*.test.js,docs/**"`) |
+| `--no-gitignore` | Tidak menggunakan aturan `.gitignore` untuk memfilter file |
+| `--no-dot-ignore` | Tidak menggunakan aturan `.ignore` untuk memfilter file |
+| `--no-default-patterns` | Tidak menerapkan pola pengabaian bawaan (`node_modules`, `.git`, direktori build, dll.) |
 
 ## Opsi Repositori Remote
-- `--remote <url>`: Memproses repositori remote
-- `--remote-branch <name>`: Menentukan nama branch remote, tag, atau hash commit (default ke branch default repositori)
+
+| Opsi | Deskripsi |
+|------|-----------|
+| `--remote <url>` | Mengkloning dan mengemas repositori remote (URL GitHub atau format `user/repo`) |
+| `--remote-branch <name>` | Branch, tag, atau commit spesifik yang akan digunakan (default: branch default repositori) |
+| `--remote-trust-config` | Memercayai dan memuat file konfigurasi dari repositori remote (dinonaktifkan secara default untuk keamanan) |
 
 ## Opsi Konfigurasi
-- `-c, --config <path>`: Jalur file konfigurasi kustom
-- `--init`: Membuat file konfigurasi
-- `--global`: Menggunakan konfigurasi global
+
+| Opsi | Deskripsi |
+|------|-----------|
+| `-c, --config <path>` | Menggunakan file konfigurasi kustom alih-alih `repomix.config.json` |
+| `--init` | Membuat file `repomix.config.json` baru dengan pengaturan default |
+| `--global` | Dengan `--init`, membuat konfigurasi di direktori home alih-alih direktori saat ini |
 
 ## Opsi Keamanan
 - `--no-security-check`: Lewati pemindaian data sensitif seperti kunci API dan kata sandi
@@ -58,6 +74,21 @@
 
 ## Opsi MCP
 - `--mcp`: Jalankan sebagai server Model Context Protocol untuk integrasi alat AI
+
+## Opsi Pembuatan Agent Skills
+
+| Opsi | Deskripsi |
+|------|-----------|
+| `--skill-generate [name]` | Menghasilkan output format Claude Agent Skills ke direktori `.claude/skills/<name>/` (nama otomatis dihasilkan jika dihilangkan) |
+| `--skill-output <path>` | Menentukan jalur direktori output skill secara langsung (melewati prompt lokasi) |
+| `-f, --force` | Melewati semua prompt konfirmasi (mis. penimpaan direktori skill) |
+
+## Sumber Daya Terkait
+
+- [Konfigurasi](/id/guide/configuration) - Atur opsi di file konfigurasi alih-alih flag CLI
+- [Format Output](/id/guide/output) - Detail tentang format XML, Markdown, JSON, dan plain text
+- [Kompresi Kode](/id/guide/code-compress) - Cara kerja `--compress` dengan Tree-sitter
+- [Keamanan](/id/guide/security) - Apa yang dinonaktifkan oleh `--no-security-check`
 
 ## Contoh
 

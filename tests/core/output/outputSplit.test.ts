@@ -193,6 +193,78 @@ describe('outputSplit', () => {
       expect(uniqueRootEntries.sort()).toEqual(['docs', 'src', 'tests']);
     });
 
+    it('returns single part when all groups fit within limit', async () => {
+      const processedFiles = [
+        { path: 'src/a.ts', content: 'source a' },
+        { path: 'tests/test.ts', content: 'test content' },
+      ];
+      const allFilePaths = ['src/a.ts', 'tests/test.ts'];
+
+      const mockGenerateOutput = async (_rootDirs: string[], _config: unknown, files: Array<{ path: string }>) => {
+        return 'x'.repeat(20 + files.length * 30);
+      };
+
+      const result = await generateSplitOutputParts({
+        rootDirs: ['/test'],
+        baseConfig: createMockConfig(),
+        processedFiles,
+        allFilePaths,
+        maxBytesPerPart: 10000, // Large enough to fit everything
+        gitDiffResult: undefined,
+        gitLogResult: undefined,
+        progressCallback: () => {},
+        deps: { generateOutput: mockGenerateOutput as ReturnType<typeof createMockDeps>['generateOutput'] },
+      });
+
+      expect(result.length).toBe(1);
+      const allGroupEntries = result[0].groups.map((g) => g.rootEntry).sort();
+      expect(allGroupEntries).toEqual(['src', 'tests']);
+    });
+
+    it('triggers adjustment loop when estimation is off', async () => {
+      // Mock that returns output size proportional to file count, but adds a
+      // large non-linear overhead when groups are combined (simulating a format
+      // where the combined tree/header is much larger than the sum of individual parts).
+      const processedFiles = [
+        { path: 'a/f1.ts', content: 'a' },
+        { path: 'b/f2.ts', content: 'b' },
+        { path: 'c/f3.ts', content: 'c' },
+      ];
+      const allFilePaths = ['a/f1.ts', 'b/f2.ts', 'c/f3.ts'];
+
+      let callCount = 0;
+      const mockGenerateOutput = async (_rootDirs: string[], _config: unknown, files: Array<{ path: string }>) => {
+        callCount++;
+        const baseSize = 20;
+        const perFileSize = 30;
+        // Add a non-linear penalty for multi-group renders to trigger adjustment
+        const combinedPenalty = files.length > 1 ? 50 : 0;
+        return 'x'.repeat(baseSize + files.length * perFileSize + combinedPenalty);
+      };
+
+      const result = await generateSplitOutputParts({
+        rootDirs: ['/test'],
+        baseConfig: createMockConfig(),
+        processedFiles,
+        allFilePaths,
+        maxBytesPerPart: 100, // Tight enough that the penalty causes adjustment
+        gitDiffResult: undefined,
+        gitLogResult: undefined,
+        progressCallback: () => {},
+        deps: { generateOutput: mockGenerateOutput as ReturnType<typeof createMockDeps>['generateOutput'] },
+      });
+
+      // Should produce valid output regardless of adjustment
+      expect(result.length).toBeGreaterThan(0);
+      for (const part of result) {
+        expect(part.byteLength).toBeLessThanOrEqual(100);
+      }
+
+      // All groups should be present
+      const allGroupEntries = result.flatMap((p) => p.groups.map((g) => g.rootEntry)).sort();
+      expect(allGroupEntries).toEqual(['a', 'b', 'c']);
+    });
+
     it('includes git diff/log only in first part', async () => {
       const processedFiles = [
         { path: 'src/a.ts', content: 'source a' },

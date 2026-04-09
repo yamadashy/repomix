@@ -126,7 +126,7 @@ repomix --output-file my-codebase.xml
 
 ### Xóa bình luận
 
-Để xóa bình luận khỏi mã nguồn trong đầu ra:
+Xem [Xóa bình luận](/vi/guide/comment-removal) để biết các ngôn ngữ được hỗ trợ và chi tiết.
 
 ```bash
 repomix --remove-comments
@@ -182,7 +182,9 @@ Bạn cũng có thể tạo một tệp `.repomixignore` trong thư mục gốc 
 
 ## Tùy chọn nâng cao
 
-### Nén mã
+### Nén mã {#code-compression}
+
+Giảm số lượng token mà vẫn bảo toàn cấu trúc mã. Xem [hướng dẫn Nén mã](/vi/guide/code-compress) để biết chi tiết.
 
 ```bash
 repomix --compress
@@ -251,7 +253,7 @@ repomix --token-count-tree 1000  # Chỉ hiển thị tệp/thư mục có 1000+
 
 ### Kiểm tra bảo mật
 
-Để tắt kiểm tra bảo mật:
+Xem [Bảo mật](/vi/guide/security) để biết chi tiết về những gì Repomix phát hiện.
 
 ```bash
 repomix --no-security-check
@@ -312,8 +314,9 @@ Tệp này chứa toàn bộ codebase của tôi. Tôi muốn bạn:
 3. Đề xuất cải tiến
 ```
 
-## Tiếp theo là gì?
+## Tài nguyên liên quan
 
-- [Tùy chọn dòng lệnh](command-line-options.md): Danh sách đầy đủ các tùy chọn dòng lệnh
-- [Cấu hình](configuration.md): Tùy chỉnh Repomix thông qua tệp cấu hình
-- [Xử lý kho lưu trữ từ xa](remote-repository-processing.md): Thông tin chi tiết về xử lý kho lưu trữ từ xa
+- [Định dạng đầu ra](/vi/guide/output) - Tìm hiểu về các định dạng XML, Markdown, JSON và văn bản thuần túy
+- [Tùy chọn dòng lệnh](/vi/guide/command-line-options) - Tham chiếu CLI đầy đủ
+- [Ví dụ prompt](/vi/guide/prompt-examples) - Ví dụ prompt cho phân tích AI
+- [Trường hợp sử dụng](/vi/guide/use-cases) - Ví dụ thực tế và quy trình làm việc

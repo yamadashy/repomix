@@ -99,3 +99,19 @@ interface Item {
 程式碼壓縮在以下情況特別有用：
 - 分析程式碼結構和架構
 - 減少用於 LLM 處理的令牌數量
+- 建立高層次文件
+- 理解程式碼模式和簽名
+- 共享 API 和介面設計
+
+## 相關選項
+
+你可以將壓縮與其他選項結合使用：
+- `--remove-comments`: 移除程式碼註釋（參見[註釋移除](/zh-tw/guide/comment-removal)）
+- `--remove-empty-lines`: 移除空行
+- `--output-show-line-numbers`: 在輸出中添加行號
+
+## 相關資源
+
+- [註釋移除](/zh-tw/guide/comment-removal) - 移除註釋以進一步減少令牌數量
+- [設定](/zh-tw/guide/configuration) - 在設定檔中設定 `output.compress`
+- [命令列選項](/zh-tw/guide/command-line-options) - 完整的 CLI 參考

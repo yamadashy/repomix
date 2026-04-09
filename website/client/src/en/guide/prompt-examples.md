@@ -122,3 +122,10 @@ Provide specific examples of good and problematic patterns.
 - Works with all formats
 - Focus on specific areas per request
 - Use step-by-step analysis
+
+## Related Resources
+
+- [Output Formats](/guide/output) - Details on each output format
+- [Custom Instructions](/guide/custom-instructions) - Add context and guidelines to your output
+- [Use Cases](/guide/use-cases) - Real-world examples of AI-assisted workflows
+- [Code Compression](/guide/code-compress) - Reduce token count for large codebases

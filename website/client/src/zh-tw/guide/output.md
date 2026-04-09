@@ -271,3 +271,10 @@ src/core/output/outputGenerate.ts
   }
 }
 ```
+
+## 相關資源
+
+- [設定](/zh-tw/guide/configuration) - 完整的設定選項參考
+- [命令列選項](/zh-tw/guide/command-line-options) - 使用 `--style` 設定輸出格式
+- [程式碼壓縮](/zh-tw/guide/code-compress) - 在保持結構的同時減少令牌數量
+- [提示範例](/zh-tw/guide/prompt-examples) - 搭配不同 AI 模型使用輸出的技巧

@@ -62,6 +62,8 @@ Avec l'ensemble de la base de code disponible comme contexte, Repomix permet une
 - [Guide d'utilisation](usage.md): Découvrez les fonctionnalités de base et avancées
 - [Configuration](configuration.md): Personnalisez Repomix selon vos besoins
 - [Fonctionnalités de sécurité](security.md): Découvrez les vérifications de sécurité
+- [Formats de sortie](output.md): Choisissez le meilleur format pour votre modèle IA
+- [Serveur MCP](mcp-server.md): Intégrez Repomix directement avec les assistants IA
 
 ## Communauté
 

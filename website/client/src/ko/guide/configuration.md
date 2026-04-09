@@ -115,7 +115,7 @@ JavaScript 설정 파일은 TypeScript와 동일하게 작동하며 `defineConfi
 | `ignore.useDefaultPatterns`      | 기본 무시 패턴(node_modules, .git 등)을 사용할지 여부                                                                     | `true`                 |
 | `ignore.customPatterns`          | 추가 무시 패턴([glob 패턴](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) 사용)                   | `[]`                   |
 | `security.enableSecurityCheck`   | Secretlint를 사용하여 민감한 정보를 감지하는 보안 검사를 수행할지 여부                                                    | `true`                 |
-| `tokenCount.encoding`            | OpenAI의 [tiktoken](https://github.com/openai/tiktoken) 토크나이저가 사용하는 토큰 카운트 인코딩. GPT-4o는 `o200k_base`, GPT-4/3.5는 `cl100k_base`를 사용. 자세한 내용은 [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) 참조 | `"o200k_base"`         |
+| `tokenCount.encoding`            | OpenAI 호환 토큰 카운트 인코딩 (GPT-4o는 `o200k_base`, GPT-4/3.5는 `cl100k_base`). [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer) 사용. | `"o200k_base"`         |
 
 설정 파일은 [JSON5](https://json5.org/) 구문을 지원하며, 다음을 허용합니다:
 - 주석(한 줄 및 여러 줄)
@@ -366,3 +366,11 @@ build/
 - 코드 구조와 로직에 집중
 
 지원되는 언어와 자세한 예시는 [주석 제거 가이드](comment-removal)를 참조하세요.
+
+## 관련 리소스
+
+- [명령행 옵션](/ko/guide/command-line-options) - 전체 CLI 레퍼런스 (CLI 옵션이 설정 파일 설정보다 우선)
+- [출력 형식](/ko/guide/output) - 각 출력 형식의 상세 정보
+- [보안](/ko/guide/security) - Repomix의 민감한 정보 감지 방식
+- [코드 압축](/ko/guide/code-compress) - Tree-sitter로 토큰 수 줄이기
+- [GitHub 저장소 처리](/ko/guide/remote-repository-processing) - 원격 저장소 처리 옵션

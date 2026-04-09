@@ -62,6 +62,8 @@ Mit der gesamten Codebasis als Kontext eröffnet Repomix vielfältige Einsatzmö
 - [Verwendungsleitfaden](usage.md): Lernen Sie grundlegende und erweiterte Funktionen kennen
 - [Konfiguration](configuration.md): Passen Sie Repomix an Ihre Bedürfnisse an
 - [Sicherheitsfunktionen](security.md): Erfahren Sie mehr über Sicherheitsprüfungen
+- [Ausgabeformate](output.md): Wählen Sie das beste Format für Ihr KI-Modell
+- [MCP-Server](mcp-server.md): Integrieren Sie Repomix direkt mit KI-Assistenten
 
 ## Community
 

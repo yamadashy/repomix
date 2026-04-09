@@ -2,19 +2,11 @@ import { lintSource } from '@secretlint/core';
 import { creator } from '@secretlint/secretlint-rule-preset-recommend';
 import type { SecretLintCoreConfig } from '@secretlint/types';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
+import { mightContainSecret, type SecurityCheckTask, type SecurityCheckType } from '../securityPreFilter.js';
 
 // Initialize logger configuration from workerData at module load time
 // This must be called before any logging operations in the worker
 setLogLevelByWorkerData();
-
-// Security check type to distinguish between regular files, git diffs, and git logs
-export type SecurityCheckType = 'file' | 'gitDiff' | 'gitLog';
-
-export interface SecurityCheckTask {
-  filePath: string;
-  content: string;
-  type: SecurityCheckType;
-}
 
 export interface SuspiciousFileResult {
   filePath: string;
@@ -34,21 +26,24 @@ export const createSecretLintConfig = (): SecretLintCoreConfig => ({
 // Cache config at module level - created once per worker, reused for all tasks
 const cachedConfig = createSecretLintConfig();
 
-export default async ({ filePath, content, type }: SecurityCheckTask) => {
+export default async (task: SecurityCheckTask): Promise<(SuspiciousFileResult | null)[]> => {
   const config = cachedConfig;
+  const processStartAt = process.hrtime.bigint();
 
   try {
-    const processStartAt = process.hrtime.bigint();
-    const secretLintResult = await runSecretLint(filePath, content, type, config);
-    const processEndAt = process.hrtime.bigint();
+    const results: (SuspiciousFileResult | null)[] = [];
+    for (const item of task.items) {
+      results.push(await runSecretLint(item.filePath, item.content, item.type, config));
+    }
 
+    const processEndAt = process.hrtime.bigint();
     logger.trace(
-      `Checked security on ${filePath}. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
+      `Checked security on ${task.items.length} items. Took: ${(Number(processEndAt - processStartAt) / 1e6).toFixed(2)}ms`,
     );
 
-    return secretLintResult;
+    return results;
   } catch (error) {
-    logger.error(`Error checking security on ${filePath}:`, error);
+    logger.error('Error in security check worker:', error);
     throw error;
   }
 };
@@ -59,6 +54,13 @@ export const runSecretLint = async (
   type: SecurityCheckType,
   config: SecretLintCoreConfig,
 ): Promise<SuspiciousFileResult | null> => {
+  // Fast path: skip expensive lintSource() if content has no security-relevant keywords.
+  // This avoids creating ~15 rule instances, StructuredSource index scan, and regex matching
+  // for files that clearly don't contain secrets (typically 95-99% of files in a repo).
+  if (!mightContainSecret(content)) {
+    return null;
+  }
+
   const result = await lintSource({
     source: {
       filePath: filePath,

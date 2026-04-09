@@ -285,3 +285,10 @@ Files:
   }
 }
 ```
+
+## 관련 리소스
+
+- [설정](/ko/guide/configuration) - 전체 설정 옵션 레퍼런스
+- [명령행 옵션](/ko/guide/command-line-options) - `--style`로 출력 형식 설정
+- [코드 압축](/ko/guide/code-compress) - 구조를 유지하면서 토큰 수 줄이기
+- [프롬프트 예시](/ko/guide/prompt-examples) - 다양한 AI 모델과 출력 활용 팁

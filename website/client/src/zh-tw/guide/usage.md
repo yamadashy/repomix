@@ -102,7 +102,9 @@ echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
 > [!NOTE]
 > 使用 `--stdin` 時，文件路徑可以是相對路徑或絕對路徑，Repomix 會自動處理路徑解析和去重。
 
-### 程式碼壓縮
+### 程式碼壓縮 {#code-compression}
+
+詳情請參閱[程式碼壓縮指南](/zh-tw/guide/code-compress)。
 
 ```bash
 repomix --compress
@@ -194,6 +196,9 @@ repomix --style plain
 ## 其他選項
 
 ### 移除註釋
+
+有關支援的語言和詳細資訊，請參閱[註釋移除](/zh-tw/guide/comment-removal)。
+
 ```bash
 repomix --remove-comments
 ```
@@ -209,6 +214,9 @@ repomix --copy
 ```
 
 ### 禁用安全檢查
+
+有關 Repomix 偵測內容的詳細資訊，請參閱[安全](/zh-tw/guide/security)。
+
 ```bash
 repomix --no-security-check
 ```
@@ -221,3 +229,10 @@ repomix --init
 ```
 
 更多詳細配置選項請參閱[配置指南](/zh-tw/guide/configuration)。
+
+## 相關資源
+
+- [輸出格式](/zh-tw/guide/output) - 了解 XML、Markdown、JSON 和純文字格式
+- [命令列選項](/zh-tw/guide/command-line-options) - 完整的 CLI 參考
+- [提示範例](/zh-tw/guide/prompt-examples) - AI 分析的示例提示
+- [使用案例](/zh-tw/guide/use-cases) - 實際案例和工作流程

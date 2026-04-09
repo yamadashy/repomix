@@ -65,6 +65,8 @@ Setelah instalasi, Anda dapat memverifikasi bahwa Repomix telah diinstal dengan 
 repomix --version
 ```
 
-## Langkah Selanjutnya
+## Sumber Daya Terkait
 
-Setelah Anda menginstal Repomix, lihat [Panduan Penggunaan](usage.md) untuk mempelajari cara menggunakannya.
+- [Penggunaan Dasar](/id/guide/usage) - Pelajari cara menggunakan Repomix
+- [Konfigurasi](/id/guide/configuration) - Kustomisasi Repomix untuk kebutuhan Anda
+- [Opsi Baris Perintah](/id/guide/command-line-options) - Referensi CLI lengkap

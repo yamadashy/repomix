@@ -78,3 +78,9 @@ Dopo l'installazione, verifica che Repomix funzioni:
 repomix --version
 repomix --help
 ```
+
+## Risorse correlate
+
+- [Utilizzo Base](/it/guide/usage) - Scoprire come usare Repomix
+- [Configurazione](/it/guide/configuration) - Personalizzare Repomix secondo le tue esigenze
+- [Opzioni da Linea di Comando](/it/guide/command-line-options) - Riferimento completo della CLI

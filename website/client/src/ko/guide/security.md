@@ -63,3 +63,9 @@ repomix --no-security-check
 1. 공개 이슈를 생성하지 마세요
 2. 이메일: koukun0120@gmail.com
 3. 또는 [GitHub 보안 권고](https://github.com/yamadashy/repomix/security/advisories/new) 사용
+
+## 관련 리소스
+
+- [설정](/ko/guide/configuration) - `security.enableSecurityCheck`로 보안 검사 설정
+- [명령행 옵션](/ko/guide/command-line-options) - `--no-security-check` 플래그 사용
+- [개인정보 보호정책](/ko/guide/privacy) - Repomix의 데이터 처리 방식 알아보기

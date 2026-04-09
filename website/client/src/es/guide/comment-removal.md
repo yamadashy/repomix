@@ -51,3 +51,9 @@ function test() {
 
 - La eliminación de comentarios se realiza antes que otros pasos de procesamiento, como la adición de números de línea.
 - Algunos comentarios, como los comentarios JSDoc, pueden conservarse dependiendo del lenguaje y el contexto.
+
+## Recursos relacionados
+
+- [Compresión de código](/es/guide/code-compress) - Reducir aún más el conteo de tokens extrayendo la estructura del código
+- [Configuración](/es/guide/configuration) - Establecer `output.removeComments` en el archivo de configuración
+- [Opciones de línea de comandos](/es/guide/command-line-options) - Usar la flag `--remove-comments`

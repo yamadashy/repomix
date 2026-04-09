@@ -63,3 +63,9 @@ Bir güvenlik açığı mı buldunuz? Lütfen:
 1. Herkese açık bir sorun (issue) açmayın
 2. E-posta gönderin: koukun0120@gmail.com
 3. Ya da [GitHub Güvenlik Danışmaları](https://github.com/yamadashy/repomix/security/advisories/new)'nı kullanın
+
+## İlgili Kaynaklar
+
+- [Yapılandırma](/tr/guide/configuration) - `security.enableSecurityCheck` ile güvenlik kontrollerini yapılandırın
+- [Komut Satırı Seçenekleri](/tr/guide/command-line-options) - `--no-security-check` bayrağını kullanın
+- [Gizlilik Politikası](/tr/guide/privacy) - Repomix'in veri işleme hakkında bilgi edinin

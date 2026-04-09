@@ -106,6 +106,12 @@ interface Item {
 ## 相关选项
 
 你可以将压缩与其他选项结合使用：
-- `--remove-comments`: 移除代码注释
+- `--remove-comments`: 移除代码注释（参见[注释移除](/zh-cn/guide/comment-removal)）
 - `--remove-empty-lines`: 移除空行
 - `--output-show-line-numbers`: 在输出中添加行号
+
+## 相关资源
+
+- [注释移除](/zh-cn/guide/comment-removal) - 移除注释以进一步减少 Token 数量
+- [配置](/zh-cn/guide/configuration) - 在配置文件中设置 `output.compress`
+- [命令行选项](/zh-cn/guide/command-line-options) - 完整的 CLI 参考

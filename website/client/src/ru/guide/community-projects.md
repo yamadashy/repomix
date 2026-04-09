@@ -10,6 +10,13 @@
 **Репозиторий**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)
 **Маркетплейс**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## Десктопные приложения
+
+### Repomix Desktop
+Десктопное приложение от сообщества, предоставляющее GUI-обёртку для Repomix CLI. Создано на Python и CustomTkinter, предлагает удобный интерфейс без необходимости использования терминала.
+
+**Репозиторий**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## Языковые реализации
 
 ### Python Repomix
@@ -33,3 +40,9 @@ Python-реализация Repomix со сжатием на основе AST д
 Набор CLI-инструментов для ИИ-агентов с множеством возможностей, включая веб-поиск через Perplexity, анализ репозиториев с Gemini и Repomix, и автоматизацию браузера с Stagehand.
 
 **Репозиторий**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## Связанные ресурсы
+
+- [Установка](/ru/guide/installation) - Установить Repomix CLI или расширение для браузера
+- [MCP-сервер](/ru/guide/mcp-server) - Использовать Repomix как MCP-сервер для ИИ-ассистентов
+- [Плагины Claude Code](/ru/guide/claude-code-plugins) - Официальные плагины для Claude Code

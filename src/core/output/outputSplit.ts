@@ -108,7 +108,7 @@ const renderGroups = async (
   const chunkAllFilePaths = groupsToRender.flatMap((g) => g.allFilePaths);
   const chunkConfig = makeChunkConfig(baseConfig, partIndex);
 
-  return await generateOutput(
+  return generateOutput(
     rootDirs,
     chunkConfig,
     chunkProcessedFiles,
@@ -156,26 +156,108 @@ export const generateSplitOutputParts = async ({
     return [];
   }
 
-  const parts: OutputSplitPart[] = [];
-  let currentGroups: OutputSplitGroup[] = [];
-  let currentContent = '';
-  let currentBytes = 0;
+  // ── Phase 1: Solo-render each group to measure per-group sizes ──
+  // Each group is rendered in isolation as a non-first part (partIndex=2, no git sections)
+  // so that per-group content cost is measured independently of git overhead.
+  // This is O(N) renders, each processing only one group's files.
+  const soloBytes: number[] = new Array(groups.length);
+  for (let i = 0; i < groups.length; i++) {
+    progressCallback(`Generating output... ${pc.dim(`measuring ${groups[i].rootEntry}`)}`);
+    const content = await renderGroups(
+      [groups[i]],
+      2,
+      rootDirs,
+      baseConfig,
+      gitDiffResult,
+      gitLogResult,
+      filePathsByRoot,
+      emptyDirPaths,
+      deps.generateOutput,
+    );
+    soloBytes[i] = getUtf8ByteLength(content);
+  }
 
-  // Note: This algorithm has O(N²) complexity where N is the number of groups.
-  // For each group, we render all accumulated groups to measure the exact output size.
-  // This approach is intentional because:
-  // 1. The final output size cannot be predicted by simple addition - the output includes
-  //    a file tree structure and template formatting (XML/Markdown) that vary non-linearly.
-  // 2. Headers, footers, and file tree size change based on the combination of groups.
-  // 3. For typical repositories with ~10-20 top-level directories, this is acceptable.
-  // If performance becomes an issue, consider caching individual group content sizes
-  // and estimating combined sizes with a safety margin.
-  for (const group of groups) {
-    const partIndex = parts.length + 1;
-    const nextGroups = [...currentGroups, group];
-    progressCallback(`Generating output... (part ${partIndex}) ${pc.dim(`evaluating ${group.rootEntry}`)}`);
-    const nextContent = await renderGroups(
-      nextGroups,
+  // ── Phase 2: Calibrate overhead values for accurate size estimation ──
+  // Git overhead: the byte cost of git diff/log sections included only in part 1.
+  const soloWithGitContent = await renderGroups(
+    [groups[0]],
+    1,
+    rootDirs,
+    baseConfig,
+    gitDiffResult,
+    gitLogResult,
+    filePathsByRoot,
+    emptyDirPaths,
+    deps.generateOutput,
+  );
+  const gitOverhead = getUtf8ByteLength(soloWithGitContent) - soloBytes[0];
+
+  // Shared overhead: the fixed cost (header, footer, tree-base) that each solo render
+  // includes once but a combined render deduplicates. Since groups have non-overlapping
+  // root entries (by construction), the file tree is approximately additive across groups,
+  // so this overhead is predominantly header + footer. Computed from the first two groups.
+  // Clamped to 0 for safety; if negative (format adds inter-group cost), Phase 4
+  // verification renders will catch any resulting estimation inaccuracy.
+  let sharedOverhead = 0;
+  if (groups.length >= 2) {
+    const combinedContent = await renderGroups(
+      [groups[0], groups[1]],
+      2,
+      rootDirs,
+      baseConfig,
+      gitDiffResult,
+      gitLogResult,
+      filePathsByRoot,
+      emptyDirPaths,
+      deps.generateOutput,
+    );
+    sharedOverhead = Math.max(0, soloBytes[0] + soloBytes[1] - getUtf8ByteLength(combinedContent));
+  }
+
+  // ── Phase 3: Greedy bin-packing using estimated combined sizes ──
+  // Estimate: first group in part = soloBytes[i] + gitOverhead (part 1 only)
+  //           each additional group = + soloBytes[j] - sharedOverhead
+  // This is exact when the tree contribution is additive (non-overlapping root entries).
+  const partGroupIndices: number[][] = [];
+  let currentIndices: number[] = [];
+  let currentEstimate = 0;
+
+  for (let i = 0; i < groups.length; i++) {
+    const isFirstPart = partGroupIndices.length === 0;
+    let nextEstimate: number;
+
+    if (currentIndices.length === 0) {
+      nextEstimate = soloBytes[i] + (isFirstPart ? gitOverhead : 0);
+    } else {
+      nextEstimate = currentEstimate + soloBytes[i] - sharedOverhead;
+    }
+
+    if (nextEstimate <= maxBytesPerPart || currentIndices.length === 0) {
+      currentIndices.push(i);
+      currentEstimate = nextEstimate;
+    } else {
+      partGroupIndices.push(currentIndices);
+      currentIndices = [i];
+      currentEstimate = soloBytes[i];
+    }
+  }
+  if (currentIndices.length > 0) {
+    partGroupIndices.push(currentIndices);
+  }
+
+  // ── Phase 4: Render each part once for exact content, verify against byte limit ──
+  const parts: OutputSplitPart[] = [];
+
+  for (let p = 0; p < partGroupIndices.length; p++) {
+    const partIndex = p + 1;
+    const indices = partGroupIndices[p];
+    let partGroups = indices.map((i) => groups[i]);
+
+    progressCallback(
+      `Generating output... (part ${partIndex}) ${pc.dim(partGroups.map((g) => g.rootEntry).join(', '))}`,
+    );
+    let content = await renderGroups(
+      partGroups,
       partIndex,
       rootDirs,
       baseConfig,
@@ -185,65 +267,48 @@ export const generateSplitOutputParts = async ({
       emptyDirPaths,
       deps.generateOutput,
     );
-    const nextBytes = getUtf8ByteLength(nextContent);
+    let bytes = getUtf8ByteLength(content);
 
-    if (nextBytes <= maxBytesPerPart) {
-      currentGroups = nextGroups;
-      currentContent = nextContent;
-      currentBytes = nextBytes;
-      continue;
+    // If the rendered part exceeds the limit (estimation was imprecise), iteratively
+    // remove the last group and push it to the next part until it fits.
+    while (bytes > maxBytesPerPart && partGroups.length > 1) {
+      const removedIndex = indices.pop()!;
+      partGroups = indices.map((i) => groups[i]);
+
+      if (p + 1 < partGroupIndices.length) {
+        partGroupIndices[p + 1].unshift(removedIndex);
+      } else {
+        partGroupIndices.push([removedIndex]);
+      }
+
+      progressCallback(`Generating output... (part ${partIndex}) ${pc.dim('adjusting')}`);
+      content = await renderGroups(
+        partGroups,
+        partIndex,
+        rootDirs,
+        baseConfig,
+        gitDiffResult,
+        gitLogResult,
+        filePathsByRoot,
+        emptyDirPaths,
+        deps.generateOutput,
+      );
+      bytes = getUtf8ByteLength(content);
     }
 
-    if (currentGroups.length === 0) {
+    if (bytes > maxBytesPerPart) {
       throw new RepomixError(
-        `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-          `Part size ${nextBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
+        `Cannot split output: root entry '${partGroups[0].rootEntry}' exceeds max size. ` +
+          `Part size ${bytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
       );
     }
 
-    // Finalize current part and start a new one with the current group.
     parts.push({
       index: partIndex,
       filePath: buildSplitOutputFilePath(baseConfig.output.filePath, partIndex),
-      content: currentContent,
-      byteLength: currentBytes,
-      groups: currentGroups,
-    });
-
-    const newPartIndex = parts.length + 1;
-    progressCallback(`Generating output... (part ${newPartIndex}) ${pc.dim(`evaluating ${group.rootEntry}`)}`);
-    const singleGroupContent = await renderGroups(
-      [group],
-      newPartIndex,
-      rootDirs,
-      baseConfig,
-      gitDiffResult,
-      gitLogResult,
-      filePathsByRoot,
-      emptyDirPaths,
-      deps.generateOutput,
-    );
-    const singleGroupBytes = getUtf8ByteLength(singleGroupContent);
-    if (singleGroupBytes > maxBytesPerPart) {
-      throw new RepomixError(
-        `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-          `Part size ${singleGroupBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
-      );
-    }
-
-    currentGroups = [group];
-    currentContent = singleGroupContent;
-    currentBytes = singleGroupBytes;
-  }
-
-  if (currentGroups.length > 0) {
-    const finalIndex = parts.length + 1;
-    parts.push({
-      index: finalIndex,
-      filePath: buildSplitOutputFilePath(baseConfig.output.filePath, finalIndex),
-      content: currentContent,
-      byteLength: currentBytes,
-      groups: currentGroups,
+      content,
+      byteLength: bytes,
+      groups: partGroups,
     });
   }
 

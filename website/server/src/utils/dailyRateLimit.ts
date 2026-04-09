@@ -2,7 +2,7 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { logInfo } from './logger.js';
 
-const DAILY_LIMIT = 10;
+const DAILY_LIMIT = 30;
 
 const createDailyRateLimiter = (): Ratelimit | null => {
   const url = process.env.UPSTASH_REDIS_REST_URL;

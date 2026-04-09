@@ -10,6 +10,13 @@ Tiện ích mở rộng VSCode giúp đóng gói các tệp thành một đầu 
 **Repository**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)  
 **Marketplace**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## Ứng Dụng Desktop
+
+### Repomix Desktop
+Một ứng dụng desktop cộng đồng cung cấp giao diện GUI cho Repomix CLI. Được xây dựng bằng Python và CustomTkinter, cung cấp giao diện thân thiện với người dùng mà không cần sử dụng terminal.
+
+**Repository**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## Triển Khai Ngôn Ngữ
 
 ### Python Repomix
@@ -33,3 +40,9 @@ Máy chủ Model Context Protocol sử dụng Repomix để giúp các agent AI 
 Bộ công cụ CLI cho các agent AI với nhiều khả năng bao gồm tìm kiếm web qua Perplexity, phân tích repository với Gemini và Repomix, và tự động hóa trình duyệt với Stagehand.
 
 **Repository**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## Tài nguyên liên quan
+
+- [Cài đặt](/vi/guide/installation) - Cài đặt Repomix CLI hoặc tiện ích mở rộng trình duyệt
+- [Máy chủ MCP](/vi/guide/mcp-server) - Sử dụng Repomix làm máy chủ MCP cho trợ lý AI
+- [Plugin Claude Code](/vi/guide/claude-code-plugins) - Plugin chính thức cho Claude Code

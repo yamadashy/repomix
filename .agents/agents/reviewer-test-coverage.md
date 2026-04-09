@@ -1,4 +1,5 @@
 ---
+model: sonnet
 description: Review code changes for missing tests, untested edge cases, and test quality
 ---
 

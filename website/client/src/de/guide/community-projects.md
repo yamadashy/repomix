@@ -10,6 +10,13 @@ VSCode-Erweiterung, die dabei hilft, Dateien in eine einzige Ausgabe für die KI
 **Repository**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)  
 **Marketplace**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## Desktop-Anwendungen
+
+### Repomix Desktop
+Eine Community-Desktop-Anwendung, die einen GUI-Wrapper für die Repomix CLI bereitstellt. Entwickelt mit Python und CustomTkinter, bietet sie eine benutzerfreundliche Oberfläche ohne Terminal-Nutzung.
+
+**Repository**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## Sprach-Implementierungen
 
 ### Python Repomix
@@ -33,3 +40,9 @@ Model Context Protocol-Server, der Repomix verwendet, um KI-Agenten bei der Anal
 CLI-Toolset für KI-Agenten mit mehreren Funktionen, einschließlich Websuche über Perplexity, Repository-Analyse mit Gemini und Repomix und Browser-Automatisierung mit Stagehand.
 
 **Repository**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## Verwandte Ressourcen
+
+- [Installation](/de/guide/installation) - Repomix CLI oder Browser-Erweiterung installieren
+- [MCP-Server](/de/guide/mcp-server) - Repomix als MCP-Server für KI-Assistenten verwenden
+- [Claude Code Plugins](/de/guide/claude-code-plugins) - Offizielle Plugins für Claude Code

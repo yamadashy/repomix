@@ -10,6 +10,13 @@ VSCode एक्सटेंशन जो AI processing के लिए फा�
 **Repository**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)  
 **Marketplace**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## डेस्कटॉप एप्लिकेशन
+
+### Repomix Desktop
+एक कम्युनिटी डेस्कटॉप एप्लिकेशन जो Repomix CLI के लिए GUI wrapper प्रदान करता है। Python और CustomTkinter से बनाया गया, यह terminal का उपयोग किए बिना एक user-friendly interface प्रदान करता है।
+
+**Repository**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## भाषा implementations
 
 ### Python Repomix
@@ -33,3 +40,9 @@ Model Context Protocol server जो AI agents को codebases का analysis 
 AI agents के लिए CLI toolset जिसमें Perplexity के माध्यम से web search, Gemini और Repomix के साथ repository analysis, और Stagehand के साथ browser automation सहित कई capabilities हैं।
 
 **Repository**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## संबंधित संसाधन
+
+- [इंस्टॉलेशन](/hi/guide/installation) - Repomix CLI या ब्राउज़र एक्सटेंशन इंस्टॉल करें
+- [MCP सर्वर](/hi/guide/mcp-server) - AI असिस्टेंट्स के लिए Repomix को MCP सर्वर के रूप में उपयोग करें
+- [Claude Code प्लगइन्स](/hi/guide/claude-code-plugins) - Claude Code के लिए आधिकारिक प्लगइन्स

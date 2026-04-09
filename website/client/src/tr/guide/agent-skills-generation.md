@@ -78,26 +78,15 @@ Beceriler şu yapıyla oluşturulur:
 
 ### Dosya Açıklamaları
 
-#### SKILL.md
+| Dosya | Amaç | İçerik |
+|-------|------|--------|
+| `SKILL.md` | Ana Beceriler meta verisi ve belgeleri | Beceri adı, açıklaması, proje bilgileri, dosya/satır/token sayıları, kullanım genel bakışı, yaygın kullanım durumları ve ipuçları |
+| `references/summary.md` | Amaç, biçim ve istatistikler | Referans kod tabanı açıklaması, dosya yapısı belgeleri, kullanım kılavuzları, dosya türü ve dile göre döküm |
+| `references/project-structure.md` | Dosya keşfi | Dosya başına satır sayılarıyla dizin ağacı |
+| `references/files.md` | Aranabilir kod referansı | Sözdizimi vurgulama başlıklarıyla tüm dosya içerikleri, grep'e uygun aramaya optimize edilmiş |
+| `references/tech-stacks.md` | Teknoloji yığını özeti | Diller, çerçeveler, çalışma zamanı sürümleri, paket yöneticileri, bağımlılıklar, yapılandırma dosyaları |
 
-Şunları içeren ana Beceriler dosyası:
-- Beceriler adı, açıklaması ve proje bilgileri
-- Dosya sayısı, satır sayısı ve token sayısı
-- Becerilerin nasıl kullanılacağına dair genel bakış
-- Dosya konumları ve biçim açıklaması
-- Yaygın kullanım durumları ve ipuçları
-
-#### references/summary.md
-
-Şunları içerir:
-- **Amaç**: Bunun AI tüketimi için bir referans kod tabanı olduğunu açıklar
-- **Dosya Yapısı**: Her referans dosyasında nelerin olduğunu belgeler
-- **Kullanım Kılavuzları**: Becerilerin etkili kullanımı
-- **İstatistikler**: Dosya türü, dil ve en büyük dosyalara göre dökümü
-
-#### references/project-structure.md
-
-Kolay dosya keşfi için dosya başına satır sayılarıyla dizin ağacı:
+#### Örnek: references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-Sözdizimi vurgulama başlıklarıyla tüm dosya içerikleri, grep'e uygun aramaya optimize edilmiş:
+#### Örnek: references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### Örnek: references/tech-stacks.md
 
 Bağımlılık dosyalarından otomatik algılanan teknoloji yığını:
 - **Diller**: TypeScript, JavaScript, Python vb.

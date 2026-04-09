@@ -117,7 +117,9 @@ Saat menggunakan `--stdin`, file yang ditentukan secara efektif ditambahkan ke p
 > [!NOTE]
 > Saat menggunakan `--stdin`, jalur file dapat berupa jalur relatif atau absolut, dan Repomix akan menangani resolusi jalur dan deduplikasi secara otomatis.
 
-### Kompresi Kode
+### Kompresi Kode {#code-compression}
+
+Kurangi jumlah token sambil mempertahankan struktur kode. Lihat [panduan Kompresi Kode](/id/guide/code-compress) untuk detail.
 
 ```bash
 repomix --compress
@@ -209,6 +211,9 @@ repomix --style plain
 ## Opsi Tambahan
 
 ### Hapus Komentar
+
+Lihat [Penghapusan Komentar](/id/guide/comment-removal) untuk bahasa yang didukung dan detail.
+
 ```bash
 repomix --remove-comments
 ```
@@ -224,6 +229,9 @@ repomix --copy
 ```
 
 ### Nonaktifkan Pemeriksaan Keamanan
+
+Lihat [Keamanan](/id/guide/security) untuk detail tentang apa yang dideteksi Repomix.
+
 ```bash
 repomix --no-security-check
 ```
@@ -262,3 +270,10 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix --remote https://
 Setelah Anda menghasilkan file yang dikemas, Anda dapat menggunakannya dengan alat AI Generatif seperti Claude, ChatGPT, dan Gemini.
 
 Untuk informasi lebih lanjut tentang opsi baris perintah, lihat [Opsi Baris Perintah](command-line-options.md).
+
+## Sumber Daya Terkait
+
+- [Format Output](/id/guide/output) - Pelajari tentang format XML, Markdown, JSON, dan plain text
+- [Opsi Baris Perintah](/id/guide/command-line-options) - Referensi CLI lengkap
+- [Contoh Prompt](/id/guide/prompt-examples) - Contoh prompt untuk analisis AI
+- [Kasus Penggunaan](/id/guide/use-cases) - Contoh nyata dan workflow

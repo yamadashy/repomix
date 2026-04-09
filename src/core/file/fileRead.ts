@@ -1,11 +1,29 @@
+import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
-import iconv from 'iconv-lite';
 import isBinaryPath from 'is-binary-path';
-import { isBinaryFile } from 'isbinaryfile';
-import jschardet from 'jschardet';
+import { isBinaryFile, isBinaryFileSync } from 'isbinaryfile';
 import { logger } from '../../shared/logger.js';
 
-export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
+// Lazy-load encoding detection libraries to avoid their ~25ms combined import cost.
+// The fast UTF-8 path (covers ~99% of source code files) never needs these;
+// they are only loaded when a file fails UTF-8 decoding.
+// Caching the Promise (not the resolved values) guarantees exactly one import
+// regardless of how many concurrent calls hit the slow path.
+let _encodingDepsPromise: Promise<{ jschardet: typeof import('jschardet'); iconv: typeof import('iconv-lite') }>;
+const getEncodingDeps = () => {
+  _encodingDepsPromise ??= Promise.all([import('jschardet'), import('iconv-lite')]).then(([jschardet, iconv]) => ({
+    jschardet,
+    iconv,
+  }));
+  return _encodingDepsPromise;
+};
+
+export type FileSkipReason =
+  | 'binary-extension'
+  | 'binary-content'
+  | 'size-limit'
+  | 'encoding-error'
+  | 'needs-async-encoding';
 
 export interface FileReadResult {
   content: string | null;
@@ -20,24 +38,25 @@ export interface FileReadResult {
  */
 export const readRawFile = async (filePath: string, maxFileSize: number): Promise<FileReadResult> => {
   try {
-    // Check binary extension first (no I/O needed) to skip stat + read for binary files
+    // Check binary extension first (no I/O needed) to skip read for binary files
     if (isBinaryPath(filePath)) {
       logger.debug(`Skipping binary file: ${filePath}`);
       return { content: null, skippedReason: 'binary-extension' };
     }
 
-    const stats = await fs.stat(filePath);
+    logger.trace(`Reading file: ${filePath}`);
 
-    if (stats.size > maxFileSize) {
-      const sizeKB = (stats.size / 1024).toFixed(1);
+    // Read the file directly and check size afterward, avoiding a separate stat() syscall.
+    // This halves the number of I/O operations per file.
+    // Files exceeding maxFileSize are rare, so the occasional oversized read is acceptable.
+    const buffer = await fs.readFile(filePath);
+
+    if (buffer.length > maxFileSize) {
+      const sizeKB = (buffer.length / 1024).toFixed(1);
       const maxSizeKB = (maxFileSize / 1024).toFixed(1);
       logger.trace(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
       return { content: null, skippedReason: 'size-limit' };
     }
-
-    logger.trace(`Reading file: ${filePath}`);
-
-    const buffer = await fs.readFile(filePath);
 
     if (await isBinaryFile(buffer)) {
       logger.debug(`Skipping binary file (content check): ${filePath}`);
@@ -58,9 +77,11 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     }
 
     // Slow path: Detect encoding with jschardet for non-UTF-8 files (e.g., Shift-JIS, EUC-KR)
-    const { encoding: detectedEncoding } = jschardet.detect(buffer) ?? {};
-    const encoding = detectedEncoding && iconv.encodingExists(detectedEncoding) ? detectedEncoding : 'utf-8';
-    const content = iconv.decode(buffer, encoding, { stripBOM: true });
+    const encodingDeps = await getEncodingDeps();
+    const { encoding: detectedEncoding } = encodingDeps.jschardet.detect(buffer) ?? {};
+    const encoding =
+      detectedEncoding && encodingDeps.iconv.encodingExists(detectedEncoding) ? detectedEncoding : 'utf-8';
+    const content = encodingDeps.iconv.decode(buffer, encoding, { stripBOM: true });
 
     if (content.includes('\uFFFD')) {
       logger.debug(`Skipping file due to encoding errors (detected: ${encoding}): ${filePath}`);
@@ -68,6 +89,52 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     }
 
     return { content };
+  } catch (error) {
+    logger.warn(`Failed to read file: ${filePath}`, error);
+    return { content: null, skippedReason: 'encoding-error' };
+  }
+};
+
+/**
+ * Synchronous version of readRawFile. Uses fs.readFileSync to avoid libuv thread pool
+ * bottleneck and event loop scheduling overhead. For repos with hundreds to thousands
+ * of mostly small source files, sync reads are ~2-3x faster than async reads pooled
+ * through the 4-thread libuv default.
+ */
+export const readRawFileSync = (filePath: string, maxFileSize: number): FileReadResult => {
+  try {
+    if (isBinaryPath(filePath)) {
+      logger.debug(`Skipping binary file: ${filePath}`);
+      return { content: null, skippedReason: 'binary-extension' };
+    }
+
+    logger.trace(`Reading file: ${filePath}`);
+
+    const buffer = fsSync.readFileSync(filePath);
+
+    if (buffer.length > maxFileSize) {
+      const sizeKB = (buffer.length / 1024).toFixed(1);
+      const maxSizeKB = (maxFileSize / 1024).toFixed(1);
+      logger.trace(`File exceeds size limit: ${sizeKB}KB > ${maxSizeKB}KB (${filePath})`);
+      return { content: null, skippedReason: 'size-limit' };
+    }
+
+    if (isBinaryFileSync(buffer)) {
+      logger.debug(`Skipping binary file (content check): ${filePath}`);
+      return { content: null, skippedReason: 'binary-content' };
+    }
+
+    // Fast path: UTF-8 decoding (covers ~99% of source code files)
+    try {
+      let content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+      if (content.charCodeAt(0) === 0xfeff) {
+        content = content.slice(1);
+      }
+      return { content };
+    } catch {
+      // Not valid UTF-8; signal caller to retry with async encoding detection
+      return { content: null, skippedReason: 'needs-async-encoding' };
+    }
   } catch (error) {
     logger.warn(`Failed to read file: ${filePath}`, error);
     return { content: null, skippedReason: 'encoding-error' };

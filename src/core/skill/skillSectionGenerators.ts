@@ -3,8 +3,10 @@ import { generateTreeStringWithLineCounts } from '../file/fileTreeGenerate.js';
 import type { RenderContext } from '../output/outputGeneratorTypes.js';
 import { registerHandlebarsHelpers } from '../output/outputStyleUtils.js';
 
-// Register Handlebars helpers (idempotent)
-registerHandlebarsHelpers();
+// Register Handlebars helpers (idempotent).
+// This module's Handlebars import cost is only paid when --skill-generate
+// is active, because packager.ts lazy-loads packSkill via dynamic import.
+registerHandlebarsHelpers(Handlebars);
 
 /**
  * Generates the summary section for skill output.

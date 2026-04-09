@@ -10,6 +10,13 @@
 **仓库**: [massdo/repomix-runner](https://github.com/massdo/repomix-runner)  
 **市场**: [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=DorianMassoulier.repomix-runner)
 
+## 桌面应用
+
+### Repomix Desktop
+一个社区桌面应用程序，为 Repomix CLI 提供 GUI 封装。使用 Python 和 CustomTkinter 构建，提供用户友好的界面，无需使用终端。
+
+**仓库**: [KevanMacGee/Repomix-Desktop](https://github.com/KevanMacGee/Repomix-Desktop)
+
 ## 语言实现
 
 ### Python Repomix
@@ -33,3 +40,9 @@
 为 AI 代理提供多种功能的 CLI 工具集，包括通过 Perplexity 进行网络搜索、通过 Gemini 和 Repomix 进行仓库分析，以及通过 Stagehand 进行浏览器自动化。
 
 **仓库**: [eastlondoner/vibe-tools](https://github.com/eastlondoner/vibe-tools)
+
+## 相关资源
+
+- [安装](/zh-cn/guide/installation) - 安装 Repomix CLI 或浏览器扩展
+- [MCP 服务器](/zh-cn/guide/mcp-server) - 将 Repomix 作为 MCP 服务器用于 AI 助手
+- [Claude Code 插件](/zh-cn/guide/claude-code-plugins) - 官方 Claude Code 插件

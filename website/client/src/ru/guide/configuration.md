@@ -115,7 +115,7 @@ export default defineConfig({
 | `ignore.useDefaultPatterns`      | Использовать ли паттерны игнорирования по умолчанию (node_modules, .git и т.д.)                                                | `true`                 |
 | `ignore.customPatterns`          | Дополнительные паттерны для игнорирования с использованием [glob-паттернов](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
 | `security.enableSecurityCheck`   | Выполнять ли проверки безопасности с помощью Secretlint для обнаружения конфиденциальной информации                            | `true`                 |
-| `tokenCount.encoding`            | Кодировка подсчёта токенов, используемая токенизатором OpenAI [tiktoken](https://github.com/openai/tiktoken). Используйте `o200k_base` для GPT-4o, `cl100k_base` для GPT-4/3.5. См. [tiktoken model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py#L24) для деталей. | `"o200k_base"`         |
+| `tokenCount.encoding`            | Кодировка подсчёта токенов, совместимая с OpenAI (например, `o200k_base` для GPT-4o, `cl100k_base` для GPT-4/3.5). Использует [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer). | `"o200k_base"`         |
 
 Файл конфигурации поддерживает синтаксис [JSON5](https://json5.org/), который позволяет:
 - Комментарии (как однострочные, так и многострочные)
@@ -366,3 +366,11 @@ build/
 - Фокусируетесь на структуре и логике кода
 
 Поддерживаемые языки и подробные примеры см. в [Руководстве по удалению комментариев](comment-removal).
+
+## Связанные ресурсы
+
+- [Параметры командной строки](/ru/guide/command-line-options) - Полная справка по CLI (параметры CLI переопределяют настройки файла конфигурации)
+- [Форматы вывода](/ru/guide/output) - Подробности о каждом формате вывода
+- [Безопасность](/ru/guide/security) - Как Repomix обнаруживает конфиденциальную информацию
+- [Сжатие кода](/ru/guide/code-compress) - Уменьшение количества токенов с помощью Tree-sitter
+- [Обработка GitHub-репозиториев](/ru/guide/remote-repository-processing) - Опции для удалённых репозиториев

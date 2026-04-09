@@ -1,25 +1,39 @@
-import { beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
+import { beforeEach, describe, expect, type Mock, type MockedFunction, test, vi } from 'vitest';
 import { runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
 import * as cliReport from '../../../src/cli/cliReport.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import * as configLoad from '../../../src/config/configLoad.js';
 import * as packager from '../../../src/core/packager.js';
-import * as processConcurrency from '../../../src/shared/processConcurrency.js';
 
 vi.mock('../../../src/config/configLoad.js');
 vi.mock('../../../src/core/packager.js');
 vi.mock('../../../src/cli/cliReport.js');
-vi.mock('../../../src/shared/processConcurrency.js');
 vi.mock('../../../src/cli/actions/migrationAction.js', () => ({
   runMigrationAction: vi.fn(),
 }));
+
+const mockSpinner = {
+  start: vi.fn() as MockedFunction<() => void>,
+  update: vi.fn() as MockedFunction<(message: string) => void>,
+  succeed: vi.fn() as MockedFunction<(message: string) => void>,
+  fail: vi.fn() as MockedFunction<(message: string) => void>,
+};
+
+vi.mock('../../../src/cli/cliSpinner', () => {
+  const MockSpinner = class {
+    start = mockSpinner.start;
+    update = mockSpinner.update;
+    succeed = mockSpinner.succeed;
+    fail = mockSpinner.fail;
+  };
+  return { Spinner: MockSpinner };
+});
 
 describe('defaultAction with tokenCountTree', () => {
   const mockLoadFileConfig = configLoad.loadFileConfig as Mock;
   const mockMergeConfigs = configLoad.mergeConfigs as Mock;
   const mockPack = packager.pack as Mock;
   const mockReportResults = cliReport.reportResults as Mock;
-  const mockInitTaskRunner = processConcurrency.initTaskRunner as Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -51,29 +65,6 @@ describe('defaultAction with tokenCountTree', () => {
       ],
       safeFilePaths: ['/test/file1.js', '/test/file2.js'],
     });
-
-    // Mock initTaskRunner to return the config from mockMergeConfigs
-    mockInitTaskRunner.mockImplementation(() => ({
-      run: vi.fn().mockImplementation(async () => ({
-        packResult: {
-          totalFiles: 3,
-          totalCharacters: 1000,
-          totalTokens: 200,
-          fileCharCounts: {},
-          fileTokenCounts: {},
-          gitDiffTokenCount: 0,
-          suspiciousFilesResults: [],
-          suspiciousGitDiffResults: [],
-          processedFiles: [
-            { path: '/test/file1.js', content: 'content1' },
-            { path: '/test/file2.js', content: 'content2' },
-          ],
-          safeFilePaths: ['/test/file1.js', '/test/file2.js'],
-        },
-        config: mockMergeConfigs.mock.results[mockMergeConfigs.mock.results.length - 1]?.value || {},
-      })),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    }));
   });
 
   test('should display token count tree when --token-count-tree option is provided', async () => {

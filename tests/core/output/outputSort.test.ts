@@ -123,6 +123,53 @@ describe('outputSort', () => {
       expect(mockIsGitInstalled).not.toHaveBeenCalled();
     });
 
+    test('should populate cache via prefetch so sortOutputFiles hits cache', async () => {
+      const { prefetchFileChangeCounts, sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
+      const input: ProcessedFile[] = [
+        { path: `src${sep}file1.ts`, content: 'content1' },
+        { path: `src${sep}file2.ts`, content: 'content2' },
+      ];
+
+      const mockGetFileChangeCount = vi.fn().mockResolvedValue({
+        [`src${sep}file1.ts`]: 5,
+        [`src${sep}file2.ts`]: 10,
+      });
+      const mockIsGitInstalled = vi.fn().mockResolvedValue(true);
+      const deps = {
+        getFileChangeCount: mockGetFileChangeCount,
+        isGitInstalled: mockIsGitInstalled,
+      };
+
+      // Prefetch populates the cache
+      await prefetchFileChangeCounts(mockConfig, deps);
+      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
+
+      // Subsequent sortOutputFiles should hit cache — no additional git call
+      const result = await sortOutputFiles(input, mockConfig, deps);
+      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
+      expect(result[0].path).toBe(`src${sep}file1.ts`); // 5 changes
+      expect(result[1].path).toBe(`src${sep}file2.ts`); // 10 changes
+    });
+
+    test('prefetch should be a no-op when sortByChanges is disabled', async () => {
+      const { prefetchFileChangeCounts } = await import('../../../src/core/output/outputSort.js');
+      const disabledConfig = createMockConfig({
+        output: { git: { sortByChanges: false } },
+        cwd: '/test',
+      });
+
+      const mockGetFileChangeCount = vi.fn();
+      const mockIsGitInstalled = vi.fn();
+
+      await prefetchFileChangeCounts(disabledConfig, {
+        getFileChangeCount: mockGetFileChangeCount,
+        isGitInstalled: mockIsGitInstalled,
+      });
+
+      expect(mockGetFileChangeCount).not.toHaveBeenCalled();
+      expect(mockIsGitInstalled).not.toHaveBeenCalled();
+    });
+
     test('should cache git file change counts for repeated calls', async () => {
       const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input1: ProcessedFile[] = [

@@ -122,3 +122,10 @@ Kod kalitesini değerlendir ve iyileştirmeler öner:
 - Tüm formatlarla çalışır
 - Her istekte belirli alanlara odaklanın
 - Adım adım analiz kullanın
+
+## İlgili Kaynaklar
+
+- [Çıktı Formatları](/tr/guide/output) - Her çıktı formatının ayrıntıları
+- [Özel Talimatlar](/tr/guide/custom-instructions) - Çıktınıza bağlam ve yönergeler ekleyin
+- [Kullanım Senaryoları](/tr/guide/use-cases) - AI destekli iş akışlarının gerçek dünya örnekleri
+- [Kod Sıkıştırma](/tr/guide/code-compress) - Büyük kod tabanları için token sayısını azaltın

@@ -1,4 +1,5 @@
 ---
+model: sonnet
 description: Review code changes for performance inefficiencies and resource issues
 ---
 

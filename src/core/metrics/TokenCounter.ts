@@ -1,8 +1,15 @@
+import { GptEncoding } from 'gpt-tokenizer/GptEncoding';
+import { resolveEncodingAsync } from 'gpt-tokenizer/resolveEncodingAsync';
 import { logger } from '../../shared/logger.js';
 
-// Supported token encoding types (compatible with tiktoken encoding names)
+// Supported token encoding types (OpenAI encoding names)
 export const TOKEN_ENCODINGS = ['o200k_base', 'cl100k_base', 'p50k_base', 'p50k_edit', 'r50k_base'] as const;
 export type TokenEncoding = (typeof TOKEN_ENCODINGS)[number];
+
+// BPE rank data type returned by resolveEncodingAsync.
+// Matches gpt-tokenizer's RawBytePairRanks: each entry is either a base64 string
+// or an array of raw byte values.
+export type BpeRanks = readonly (string | readonly number[])[];
 
 interface CountTokensOptions {
   disallowedSpecial?: Set<string>;
@@ -10,13 +17,19 @@ interface CountTokensOptions {
 
 type CountTokensFn = (text: string, options?: CountTokensOptions) => number;
 
-// Treat all text as regular content by disallowing nothing.
-// This matches the old tiktoken behavior: encode(content, [], []).length
-// where special tokens like <|endoftext|> are tokenized as ordinary text.
+// Treat all text as regular content by disallowing nothing,
+// so special tokens like <|endoftext|> are tokenized as ordinary text.
 const PLAIN_TEXT_OPTIONS: CountTokensOptions = { disallowedSpecial: new Set() };
 
 // Lazy-loaded countTokens functions keyed by encoding
 const encodingModules = new Map<string, CountTokensFn>();
+
+const createEncoderFromBpeRanks = (encodingName: TokenEncoding, bpeRanks: BpeRanks): CountTokensFn => {
+  const encoder = GptEncoding.getEncodingApi(encodingName, () => bpeRanks);
+  const countFn = encoder.countTokens.bind(encoder) as CountTokensFn;
+  encodingModules.set(encodingName, countFn);
+  return countFn;
+};
 
 const loadEncoding = async (encodingName: TokenEncoding): Promise<CountTokensFn> => {
   const cached = encodingModules.get(encodingName);
@@ -26,16 +39,24 @@ const loadEncoding = async (encodingName: TokenEncoding): Promise<CountTokensFn>
 
   const startTime = process.hrtime.bigint();
 
-  // Dynamic import of the specific encoding module from gpt-tokenizer
-  const mod = await import(`gpt-tokenizer/encoding/${encodingName}`);
-  const countFn = mod.countTokens as CountTokensFn;
-  encodingModules.set(encodingName, countFn);
+  // Use resolveEncodingAsync to lazily load BPE rank data, then create a GptEncoding instance.
+  // resolveEncodingAsync uses static import paths internally, so bundlers (rolldown) can resolve them.
+  const bpeRanks = await resolveEncodingAsync(encodingName);
+  const countFn = createEncoderFromBpeRanks(encodingName, bpeRanks);
 
   const endTime = process.hrtime.bigint();
   const initTime = Number(endTime - startTime) / 1e6;
   logger.debug(`TokenCounter initialization for ${encodingName} took ${initTime.toFixed(2)}ms`);
 
   return countFn;
+};
+
+/**
+ * Pre-load BPE rank data for an encoding. Called on the main thread to load
+ * once and share with worker threads, avoiding redundant file I/O per worker.
+ */
+export const loadBpeRanks = async (encodingName: TokenEncoding): Promise<BpeRanks> => {
+  return resolveEncodingAsync(encodingName);
 };
 
 export class TokenCounter {
@@ -50,6 +71,20 @@ export class TokenCounter {
     this.countFn = await loadEncoding(this.encodingName);
   }
 
+  /**
+   * Initialize from pre-loaded BPE rank data, skipping the async file I/O.
+   * Used by worker threads that receive BPE data from the main thread.
+   */
+  initFromBpeRanks(bpeRanks: BpeRanks): void {
+    const startTime = process.hrtime.bigint();
+    this.countFn = createEncoderFromBpeRanks(this.encodingName, bpeRanks);
+    const endTime = process.hrtime.bigint();
+    const initTime = Number(endTime - startTime) / 1e6;
+    logger.debug(
+      `TokenCounter initialization from pre-loaded BPE for ${this.encodingName} took ${initTime.toFixed(2)}ms`,
+    );
+  }
+
   public countTokens(content: string, filePath?: string): number {
     if (!this.countFn) {
       throw new Error('TokenCounter not initialized. Call init() first.');
@@ -57,8 +92,7 @@ export class TokenCounter {
 
     try {
       // Use PLAIN_TEXT_OPTIONS to treat all content as ordinary text,
-      // matching the old tiktoken behavior: encode(content, [], []).length
-      // This also skips gpt-tokenizer's default regex scan for special tokens.
+      // skipping gpt-tokenizer's default regex scan for special tokens.
       return this.countFn(content, PLAIN_TEXT_OPTIONS);
     } catch (error) {
       let message = '';

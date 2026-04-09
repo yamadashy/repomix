@@ -150,3 +150,10 @@ Identifica i colli di bottiglia delle performance e ricevi raccomandazioni di ot
 ```
 Analizza questa codebase per i colli di bottiglia delle performance. Cerca algoritmi inefficienti, query di database inutili, memory leak e aree che potrebbero beneficiare di caching o ottimizzazione.
 ```
+
+## Risorse correlate
+
+- [Esempi di Prompt](/it/guide/prompt-examples) - Altri modelli di prompt per l'analisi IA
+- [Formati di Output](/it/guide/output) - Scegliere il formato migliore per il tuo modello IA
+- [Istruzioni Personalizzate](/it/guide/custom-instructions) - Aggiungere contesto per guidare l'analisi IA
+- [Elaborazione Repository Remoti](/it/guide/remote-repository-processing) - Analizzare repository remoti

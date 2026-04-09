@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import type { PackOptions } from '../../composables/usePackOptions';
 import type { TabType } from '../../types/ui';
-import type { FileInfo, PackResult } from '../api/client';
+import type { FileInfo, PackProgressStage, PackResult } from '../api/client';
 import SupportMessage from './SupportMessage.vue';
 import TryItFileSelection from './TryItFileSelection.vue';
 import TryItLoading from './TryItLoading.vue';
@@ -16,6 +16,8 @@ interface Props {
   errorType?: 'error' | 'warning';
   repositoryUrl?: string;
   packOptions?: PackOptions;
+  progressStage?: PackProgressStage | null;
+  progressMessage?: string | null;
 }
 
 interface Emits {
@@ -51,7 +53,7 @@ const handleRepack = (selectedFiles: FileInfo[]) => {
 <template>
   <div class="result-viewer">
     <template v-if="loading && !result">
-      <TryItLoading />
+      <TryItLoading :stage="progressStage" :message="progressMessage" />
       <SupportMessage />
     </template>
     <TryItResultErrorContent

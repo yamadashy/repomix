@@ -63,3 +63,9 @@ Encontrou uma vulnerabilidade de segurança? Por favor:
 1. Não abra uma issue pública
 2. Envie um e-mail para: koukun0120@gmail.com
 3. Ou use [Avisos de Segurança do GitHub](https://github.com/yamadashy/repomix/security/advisories/new)
+
+## Recursos relacionados
+
+- [Configuração](/pt-br/guide/configuration) - Configurar verificações de segurança via `security.enableSecurityCheck`
+- [Opções de Linha de Comando](/pt-br/guide/command-line-options) - Usar a flag `--no-security-check`
+- [Política de Privacidade](/pt-br/guide/privacy) - Saiba sobre o tratamento de dados do Repomix

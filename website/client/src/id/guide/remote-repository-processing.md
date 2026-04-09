@@ -102,3 +102,10 @@ Pemrosesan repositori remote sangat berguna untuk:
 - Berbagi basis kode dengan AI untuk mendapatkan wawasan cepat
 - Memeriksa bagian tertentu dari repositori besar
 - Membandingkan implementasi di berbagai proyek
+
+## Sumber Daya Terkait
+
+- [Opsi Baris Perintah](/id/guide/command-line-options) - Referensi CLI lengkap termasuk opsi `--remote`
+- [Konfigurasi](/id/guide/configuration) - Atur opsi default untuk pemrosesan remote
+- [Kompresi Kode](/id/guide/code-compress) - Kurangi ukuran output untuk repositori besar
+- [Keamanan](/id/guide/security) - Bagaimana Repomix menangani deteksi data sensitif

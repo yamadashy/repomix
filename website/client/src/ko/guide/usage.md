@@ -102,7 +102,9 @@ echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
 > [!NOTE]
 > `--stdin`을 사용할 때 파일 경로는 상대 경로 또는 절대 경로가 될 수 있으며, Repomix가 자동으로 경로 해석과 중복 제거를 처리합니다.
 
-### 코드 압축
+### 코드 압축 {#code-compression}
+
+자세한 내용은 [코드 압축 가이드](/ko/guide/code-compress)를 참조하세요.
 
 ```bash
 repomix --compress
@@ -194,6 +196,9 @@ repomix --style plain
 ## 추가 옵션
 
 ### 주석 제거
+
+지원되는 언어와 자세한 내용은 [주석 제거](/ko/guide/comment-removal)를 참조하세요.
+
 ```bash
 repomix --remove-comments
 ```
@@ -209,6 +214,9 @@ repomix --copy
 ```
 
 ### 보안 검사 비활성화
+
+Repomix가 감지하는 항목에 대한 자세한 내용은 [보안](/ko/guide/security)을 참조하세요.
+
 ```bash
 repomix --no-security-check
 ```
@@ -221,3 +229,10 @@ repomix --init
 ```
 
 더 자세한 설정 옵션은 [설정 가이드](/ko/guide/configuration)를 참조하세요.
+
+## 관련 리소스
+
+- [출력 형식](/ko/guide/output) - XML, Markdown, JSON, 일반 텍스트 형식 알아보기
+- [명령행 옵션](/ko/guide/command-line-options) - 전체 CLI 레퍼런스
+- [프롬프트 예시](/ko/guide/prompt-examples) - AI 분석을 위한 예시 프롬프트
+- [사용 사례](/ko/guide/use-cases) - 실제 예시와 워크플로우

@@ -294,3 +294,10 @@ Files:
   }
 }
 ```
+
+## 関連リソース
+
+- [設定](/ja/guide/configuration) - 設定オプションの完全なリファレンス
+- [コマンドラインオプション](/ja/guide/command-line-options) - `--style`で出力形式を設定
+- [コード圧縮](/ja/guide/code-compress) - 構造を維持しながらトークン数を削減
+- [プロンプト例](/ja/guide/prompt-examples) - AIモデル別の出力活用のヒント

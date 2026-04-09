@@ -260,3 +260,10 @@ Her format AI modelleriyle iyi çalışır, ancak şunları göz önünde bulund
   }
 }
 ```
+
+## İlgili Kaynaklar
+
+- [Yapılandırma](/tr/guide/configuration) - Tam yapılandırma seçenekleri referansı
+- [Komut Satırı Seçenekleri](/tr/guide/command-line-options) - Çıktı formatını ayarlamak için `--style` kullanın
+- [Kod Sıkıştırma](/tr/guide/code-compress) - Yapıyı koruyarak token sayısını azaltın
+- [Prompt Örnekleri](/tr/guide/prompt-examples) - Farklı AI modelleriyle çıktı kullanma ipuçları

@@ -5,6 +5,7 @@ import { compress } from 'hono/compress';
 import { timeout } from 'hono/timeout';
 import { packAction } from './actions/packAction.js';
 import { bodyLimitMiddleware } from './middlewares/bodyLimit.js';
+import { botGuardMiddleware } from './middlewares/botGuard.js';
 import { cloudflareGuardMiddleware } from './middlewares/cloudflareGuard.js';
 import { cloudLoggerMiddleware } from './middlewares/cloudLogger.js';
 import { corsMiddleware } from './middlewares/cors.js';
@@ -50,6 +51,9 @@ if (!isWarmupMode()) {
 
   // Setup custom logger
   app.use('*', cloudLoggerMiddleware());
+
+  // Block bot/crawler requests from triggering pack operations
+  app.use('/api/*', botGuardMiddleware());
 
   // Apply rate limiting to API routes
   app.use('/api/*', rateLimitMiddleware());

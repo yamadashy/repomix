@@ -106,11 +106,15 @@ Ketika dijalankan sebagai server MCP, Repomix menyediakan tools berikut:
 Tool ini mengemas direktori kode lokal ke dalam file XML untuk analisis AI. Tool ini menganalisis struktur codebase, mengekstrak konten kode yang relevan, dan menghasilkan laporan komprehensif termasuk metrik, pohon file, dan konten kode yang diformat.
 
 **Parameter:**
-- `directory`: (Wajib) Path absolut ke direktori yang akan dikemas
-- `compress`: (Opsional, default: false) Mengaktifkan kompresi Tree-sitter untuk mengekstrak signature kode esensial dan struktur sambil menghapus detail implementasi. Mengurangi penggunaan token sekitar 70% sambil mempertahankan makna semantik. Umumnya tidak diperlukan karena grep_repomix_output memungkinkan pengambilan konten incremental. Gunakan hanya ketika Anda khusus membutuhkan konten codebase lengkap untuk repository besar.
-- `includePatterns`: (Opsional) Menentukan file yang akan disertakan menggunakan pola fast-glob. Beberapa pola dapat dipisahkan dengan koma (contoh: "**/*.{js,ts}", "src/**,docs/**"). Hanya file yang cocok yang akan diproses.
-- `ignorePatterns`: (Opsional) Menentukan file tambahan yang akan dikecualikan menggunakan pola fast-glob. Beberapa pola dapat dipisahkan dengan koma (contoh: "test/**,*.spec.js", "node_modules/**,dist/**"). Pola ini melengkapi .gitignore dan eksklusi built-in.
-- `topFilesLength`: (Opsional, default: 10) Jumlah file terbesar berdasarkan ukuran untuk ditampilkan dalam ringkasan metrik untuk analisis codebase.
+
+| Parameter | Wajib | Default | Deskripsi |
+|-----------|-------|---------|-----------|
+| `directory` | Ya | — | Path absolut ke direktori yang akan dikemas |
+| `compress` | Tidak | `false` | Mengaktifkan kompresi Tree-sitter untuk mengekstrak signature kode esensial dan struktur sambil menghapus detail implementasi. Mengurangi penggunaan token sekitar 70% sambil mempertahankan makna semantik. Umumnya tidak diperlukan karena `grep_repomix_output` memungkinkan pengambilan konten incremental. |
+| `includePatterns` | Tidak | — | File yang akan disertakan menggunakan pola fast-glob. Dipisahkan koma (mis. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | Tidak | — | File tambahan yang akan dikecualikan menggunakan pola fast-glob. Dipisahkan koma (mis. `"test/**,*.spec.js"`). Melengkapi `.gitignore` dan eksklusi built-in. |
+| `topFilesLength` | Tidak | `10` | Jumlah file terbesar berdasarkan ukuran untuk ditampilkan dalam ringkasan metrik |
+| `style` | Tidak | `xml` | Gaya format output: `xml`, `markdown`, `json`, atau `plain` |
 
 **Contoh:**
 ```json
@@ -128,11 +132,15 @@ Tool ini mengemas direktori kode lokal ke dalam file XML untuk analisis AI. Tool
 Tool ini mengambil, mengkloning, dan mengemas repository GitHub ke dalam file XML untuk analisis AI. Tool ini secara otomatis mengkloning repository remote, menganalisis strukturnya, dan menghasilkan laporan komprehensif.
 
 **Parameter:**
-- `remote`: (Wajib) URL repository GitHub atau format user/repo (contoh: "yamadashy/repomix", "https://github.com/user/repo", atau "https://github.com/user/repo/tree/branch")
-- `compress`: (Opsional, default: false) Mengaktifkan kompresi Tree-sitter untuk mengekstrak signature kode esensial dan struktur sambil menghapus detail implementasi. Mengurangi penggunaan token sekitar 70% sambil mempertahankan makna semantik. Umumnya tidak diperlukan karena grep_repomix_output memungkinkan pengambilan konten incremental. Gunakan hanya ketika Anda khusus membutuhkan konten codebase lengkap untuk repository besar.
-- `includePatterns`: (Opsional) Menentukan file yang akan disertakan menggunakan pola fast-glob. Beberapa pola dapat dipisahkan dengan koma (contoh: "**/*.{js,ts}", "src/**,docs/**"). Hanya file yang cocok yang akan diproses.
-- `ignorePatterns`: (Opsional) Menentukan file tambahan yang akan dikecualikan menggunakan pola fast-glob. Beberapa pola dapat dipisahkan dengan koma (contoh: "test/**,*.spec.js", "node_modules/**,dist/**"). Pola ini melengkapi .gitignore dan eksklusi built-in.
-- `topFilesLength`: (Opsional, default: 10) Jumlah file terbesar berdasarkan ukuran untuk ditampilkan dalam ringkasan metrik untuk analisis codebase.
+
+| Parameter | Wajib | Default | Deskripsi |
+|-----------|-------|---------|-----------|
+| `remote` | Ya | — | URL repository GitHub atau format `user/repo` (mis. `"yamadashy/repomix"`, `"https://github.com/user/repo"`, atau `"https://github.com/user/repo/tree/branch"`) |
+| `compress` | Tidak | `false` | Mengaktifkan kompresi Tree-sitter untuk mengekstrak signature kode esensial dan struktur sambil menghapus detail implementasi. Mengurangi penggunaan token sekitar 70% sambil mempertahankan makna semantik. Umumnya tidak diperlukan karena `grep_repomix_output` memungkinkan pengambilan konten incremental. |
+| `includePatterns` | Tidak | — | File yang akan disertakan menggunakan pola fast-glob. Dipisahkan koma (mis. `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
+| `ignorePatterns` | Tidak | — | File tambahan yang akan dikecualikan menggunakan pola fast-glob. Dipisahkan koma (mis. `"test/**,*.spec.js"`). Melengkapi `.gitignore` dan eksklusi built-in. |
+| `topFilesLength` | Tidak | `10` | Jumlah file terbesar berdasarkan ukuran untuk ditampilkan dalam ringkasan metrik |
+| `style` | Tidak | `xml` | Gaya format output: `xml`, `markdown`, `json`, atau `plain` |
 
 **Contoh:**
 ```json
@@ -150,9 +158,12 @@ Tool ini mengambil, mengkloning, dan mengemas repository GitHub ke dalam file XM
 Tool ini membaca konten file output yang dihasilkan oleh Repomix. Mendukung pembacaan parsial dengan spesifikasi rentang baris untuk file besar. Tool ini dirancang untuk lingkungan di mana akses filesystem langsung terbatas.
 
 **Parameter:**
-- `outputId`: (Wajib) ID file output Repomix untuk dibaca
-- `startLine`: (Opsional) Nomor baris awal (berbasis 1, inklusif). Jika tidak ditentukan, membaca dari awal.
-- `endLine`: (Opsional) Nomor baris akhir (berbasis 1, inklusif). Jika tidak ditentukan, membaca hingga akhir.
+
+| Parameter | Wajib | Default | Deskripsi |
+|-----------|-------|---------|-----------|
+| `outputId` | Ya | — | ID file output Repomix untuk dibaca |
+| `startLine` | Tidak | Awal file | Nomor baris awal (berbasis 1, inklusif) |
+| `endLine` | Tidak | Akhir file | Nomor baris akhir (berbasis 1, inklusif) |
 
 **Fitur:**
 - Dirancang khusus untuk lingkungan berbasis web atau aplikasi sandbox
@@ -174,12 +185,15 @@ Tool ini membaca konten file output yang dihasilkan oleh Repomix. Mendukung pemb
 Tool ini mencari pola dalam file output Repomix menggunakan fungsionalitas mirip grep dengan sintaks JavaScript RegExp. Mengembalikan baris yang cocok dengan baris konteks opsional di sekitar kecocokan.
 
 **Parameter:**
-- `outputId`: (Wajib) ID file output Repomix untuk dicari
-- `pattern`: (Wajib) Pola pencarian (sintaks regular expression JavaScript RegExp)
-- `contextLines`: (Opsional, default: 0) Jumlah baris konteks untuk ditampilkan sebelum dan sesudah setiap kecocokan. Diganti oleh beforeLines/afterLines jika ditentukan.
-- `beforeLines`: (Opsional) Jumlah baris konteks untuk ditampilkan sebelum setiap kecocokan (seperti grep -B). Mengambil prioritas atas contextLines.
-- `afterLines`: (Opsional) Jumlah baris konteks untuk ditampilkan setelah setiap kecocokan (seperti grep -A). Mengambil prioritas atas contextLines.
-- `ignoreCase`: (Opsional, default: false) Melakukan pencocokan case-insensitive
+
+| Parameter | Wajib | Default | Deskripsi |
+|-----------|-------|---------|-----------|
+| `outputId` | Ya | — | ID file output Repomix untuk dicari |
+| `pattern` | Ya | — | Pola pencarian (sintaks JavaScript RegExp) |
+| `contextLines` | Tidak | `0` | Jumlah baris konteks sebelum dan sesudah setiap kecocokan. Diganti oleh `beforeLines`/`afterLines` jika ditentukan. |
+| `beforeLines` | Tidak | — | Baris untuk ditampilkan sebelum setiap kecocokan (seperti `grep -B`). Mengambil prioritas atas `contextLines`. |
+| `afterLines` | Tidak | — | Baris untuk ditampilkan setelah setiap kecocokan (seperti `grep -A`). Mengambil prioritas atas `contextLines`. |
+| `ignoreCase` | Tidak | `false` | Melakukan pencocokan case-insensitive |
 
 **Fitur:**
 - Menggunakan sintaks JavaScript RegExp untuk pencocokan pola yang kuat
@@ -252,3 +266,10 @@ Menggunakan Repomix sebagai server MCP menawarkan beberapa keuntungan:
 4. **Fitur Lanjutan**: Memanfaatkan semua fitur Repomix seperti kompresi kode, penghitungan token, dan pemeriksaan keamanan.
 
 Setelah dikonfigurasi, asisten AI Anda dapat langsung menggunakan kemampuan Repomix untuk menganalisis codebase, membuat workflow analisis kode lebih efisien.
+
+## Sumber Daya Terkait
+
+- [Plugin Claude Code](/id/guide/claude-code-plugins) - Integrasi plugin yang nyaman untuk Claude Code
+- [Konfigurasi](/id/guide/configuration) - Kustomisasi perilaku Repomix
+- [Opsi Baris Perintah](/id/guide/command-line-options) - Referensi CLI lengkap
+- [Format Output](/id/guide/output) - Pelajari tentang format output yang tersedia

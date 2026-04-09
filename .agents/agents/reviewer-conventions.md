@@ -1,4 +1,5 @@
 ---
+model: sonnet
 description: Review code changes for adherence to project conventions, naming, and structure
 ---
 

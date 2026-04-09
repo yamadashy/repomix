@@ -63,3 +63,9 @@ repomix --no-security-check
 1. 不要創建公開的 Issue
 2. 發送郵件至：koukun0120@gmail.com
 3. 或使用 [GitHub 安全公告](https://github.com/yamadashy/repomix/security/advisories/new)
+
+## 相關資源
+
+- [設定](/zh-tw/guide/configuration) - 透過 `security.enableSecurityCheck` 設定安全檢查
+- [命令列選項](/zh-tw/guide/command-line-options) - 使用 `--no-security-check` 旗標
+- [隱私權政策](/zh-tw/guide/privacy) - 了解 Repomix 的資料處理方式

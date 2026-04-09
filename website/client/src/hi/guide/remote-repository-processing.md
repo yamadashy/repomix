@@ -124,8 +124,9 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 repomix --remote user/repo --config /home/user/repomix.config.json
 ```
 
-## अगला क्या है?
+## संबंधित संसाधन
 
-- [कमांड लाइन विकल्पों](command-line-options.md) के बारे में अधिक जानें
-- [कॉन्फिगरेशन विकल्पों](configuration.md) का अन्वेषण करें
-- [आउटपुट फॉर्मेट](output.md) के बारे में जानें
+- [कमांड लाइन विकल्प](/hi/guide/command-line-options) - `--remote` विकल्पों सहित पूर्ण CLI संदर्भ
+- [कॉन्फिगरेशन](/hi/guide/configuration) - रिमोट प्रोसेसिंग के लिए डिफ़ॉल्ट विकल्प सेट करें
+- [कोड कम्प्रेशन](/hi/guide/code-compress) - बड़े रिपॉजिटरी के लिए आउटपुट आकार कम करें
+- [सुरक्षा](/hi/guide/security) - Repomix संवेदनशील डेटा का पता कैसे लगाता है

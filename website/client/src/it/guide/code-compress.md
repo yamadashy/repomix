@@ -105,6 +105,12 @@ La compressione del codice è particolarmente utile per:
 ## Opzioni Correlate
 
 Puoi combinare la compressione con altre opzioni:
-- `--remove-comments`: Rimuove i commenti dal codice
+- `--remove-comments`: Rimuove i commenti dal codice (vedi [Rimozione Commenti](/it/guide/comment-removal))
 - `--remove-empty-lines`: Rimuove le righe vuote
 - `--output-show-line-numbers`: Aggiunge numeri di riga all'output
+
+## Risorse correlate
+
+- [Rimozione Commenti](/it/guide/comment-removal) - Rimuovere i commenti per ridurre ulteriormente i token
+- [Configurazione](/it/guide/configuration) - Impostare `output.compress` nel file di configurazione
+- [Opzioni da Linea di Comando](/it/guide/command-line-options) - Riferimento completo della CLI

@@ -80,3 +80,9 @@ After installation, verify that Repomix is working:
 repomix --version
 repomix --help
 ```
+
+## Related Resources
+
+- [Basic Usage](/guide/usage) - Learn how to use Repomix
+- [Configuration](/guide/configuration) - Customize Repomix for your needs
+- [Command Line Options](/guide/command-line-options) - Full CLI reference

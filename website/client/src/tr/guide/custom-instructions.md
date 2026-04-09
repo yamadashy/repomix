@@ -41,3 +41,10 @@ Bu depo, Repomix aracının kaynak kodunu içermektedir. Kodu analiz ederken lü
 3. `tests` dizinindeki dosyaları yoksayın.
 </instruction>
 ```
+
+## İlgili Kaynaklar
+
+- [Yapılandırma](/tr/guide/configuration) - Yapılandırma dosyanızda `output.instructionFilePath` ayarlayın
+- [Çıktı Formatları](/tr/guide/output) - Farklı çıktı formatları hakkında bilgi edinin
+- [Prompt Örnekleri](/tr/guide/prompt-examples) - AI analizi için örnek promptlar
+- [Kullanım Senaryoları](/tr/guide/use-cases) - AI ile Repomix kullanmanın gerçek dünya örnekleri

@@ -8,22 +8,17 @@ import {
   repomixConfigCliSchema,
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
-import type { PackResult } from '../../core/packager.js';
+import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import type { RepomixProgressCallback } from '../../shared/types.js';
 import { reportResults } from '../cliReport.js';
+import { Spinner } from '../cliSpinner.js';
 import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
-import type {
-  DefaultActionTask,
-  DefaultActionWorkerResult,
-  PingResult,
-  PingTask,
-} from './workers/defaultActionWorker.js';
 
 export interface DefaultActionRunnerResult {
   packResult: PackResult;
@@ -34,6 +29,7 @@ export const runDefaultAction = async (
   directories: string[],
   cwd: string,
   cliOptions: CliOptions,
+  progressCallback?: RepomixProgressCallback,
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', cliOptions);
 
@@ -89,8 +85,7 @@ export const runDefaultAction = async (
     }
   }
 
-  // Handle stdin processing in main process (before worker creation)
-  // This is necessary because child_process workers don't inherit stdin
+  // Handle stdin processing
   let stdinFilePaths: string[] | undefined;
   if (cliOptions.stdin) {
     // Validate directory arguments for stdin mode
@@ -103,43 +98,51 @@ export const runDefaultAction = async (
 
     const stdinResult = await readFilePathsFromStdin(cwd);
     stdinFilePaths = stdinResult.filePaths;
-    logger.trace(`Read ${stdinFilePaths.length} file paths from stdin in main process`);
+    logger.trace(`Read ${stdinFilePaths.length} file paths from stdin`);
   }
 
-  // Create worker task runner
-  const taskRunner = initTaskRunner<DefaultActionTask | PingTask, DefaultActionWorkerResult | PingResult>({
-    numOfTasks: 1,
-    workerType: 'defaultAction',
-    runtime: 'child_process',
-  });
+  // Run pack() directly in the main process instead of spawning a child process.
+  // The child process startup cost (~250ms for Node.js init + module re-loading) was
+  // pure overhead since the spinner and pack ran in the same child process anyway.
+  const spinner = new Spinner('Initializing...', cliOptions);
+  spinner.start();
+
+  let packResult: PackResult;
 
   try {
-    // Wait for worker to be ready (Bun compatibility)
-    await waitForWorkerReady(taskRunner);
+    const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
+    const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
 
-    // Create task for worker (now with pre-loaded config and stdin file paths)
-    const task: DefaultActionTask = {
-      directories,
-      cwd,
-      config,
-      cliOptions,
-      stdinFilePaths,
+    const targetPaths = stdinFilePaths ? [cwd] : directories.map((directory) => path.resolve(cwd, directory));
+
+    const handleProgress: RepomixProgressCallback = (message) => {
+      spinner.update(message);
+      if (progressCallback) {
+        try {
+          Promise.resolve(progressCallback(message)).catch((error) => {
+            logger.trace('progressCallback error:', error);
+          });
+        } catch (error) {
+          logger.trace('progressCallback error:', error);
+        }
+      }
     };
 
-    // Run the task in worker (spinner is handled inside worker)
-    const result = (await taskRunner.run(task)) as DefaultActionWorkerResult;
+    packResult = await pack(targetPaths, config, handleProgress, {}, stdinFilePaths, packOptions);
 
-    // Report results in main process
-    reportResults(cwd, result.packResult, result.config, cliOptions);
-
-    return {
-      packResult: result.packResult,
-      config: result.config,
-    };
-  } finally {
-    // Always cleanup worker pool
-    await taskRunner.cleanup();
+    spinner.succeed('Packing completed successfully!');
+  } catch (error) {
+    spinner.fail('Error during packing');
+    throw error;
   }
+
+  // Report results
+  reportResults(cwd, packResult, config, cliOptions);
+
+  return {
+    packResult,
+    config,
+  };
 };
 
 /**
@@ -344,45 +347,6 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid cli arguments');
     throw error;
-  }
-};
-
-/**
- * Wait for worker to be ready by sending a ping request.
- * This is specifically needed for Bun compatibility due to ES module initialization timing issues.
- */
-const waitForWorkerReady = async (taskRunner: {
-  run: (task: DefaultActionTask | PingTask) => Promise<DefaultActionWorkerResult | PingResult>;
-}): Promise<void> => {
-  const isBun = process.versions?.bun;
-  if (!isBun) {
-    // No need to wait for Node.js
-    return;
-  }
-
-  const maxRetries = 3;
-  const retryDelay = 50; // ms
-  let pingSuccessful = false;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      await taskRunner.run({
-        ping: true,
-      });
-      logger.debug(`Worker initialization ping successful on attempt ${attempt}`);
-      pingSuccessful = true;
-      break;
-    } catch (error) {
-      logger.debug(`Worker ping failed on attempt ${attempt}/${maxRetries}:`, error);
-      if (attempt < maxRetries) {
-        logger.debug(`Waiting ${retryDelay}ms before retry...`);
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
-      }
-    }
-  }
-
-  if (!pingSuccessful) {
-    logger.debug('All Worker ping attempts failed, proceeding anyway...');
   }
 };
 

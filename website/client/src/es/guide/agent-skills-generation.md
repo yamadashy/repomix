@@ -78,26 +78,15 @@ Los Skills se generan con la siguiente estructura:
 
 ### Descripciones de Archivos
 
-#### SKILL.md
+| Archivo | Propósito | Contenido |
+|---------|-----------|-----------|
+| `SKILL.md` | Metadatos principales y documentación de Skills | Nombre del Skills, descripción, información del proyecto, conteo de archivos/líneas/tokens, resumen de uso, casos de uso comunes y consejos |
+| `references/summary.md` | Propósito, formato y estadísticas | Explicación del código base de referencia, documentación de estructura de archivos, guías de uso, desglose por tipo de archivo y lenguaje |
+| `references/project-structure.md` | Descubrimiento de archivos | Árbol de directorios con conteo de líneas por archivo |
+| `references/files.md` | Referencia de código con búsqueda | Todo el contenido de archivos con encabezados de resaltado de sintaxis, optimizado para búsqueda compatible con grep |
+| `references/tech-stacks.md` | Resumen del stack tecnológico | Lenguajes, frameworks, versiones de runtime, gestores de paquetes, dependencias, archivos de configuración |
 
-El archivo principal de Skills contiene:
-- Nombre del Skills, descripción e información del proyecto
-- Conteo de archivos, líneas y tokens
-- Resumen de cómo usar los Skills
-- Ubicaciones de archivos y explicación del formato
-- Casos de uso comunes y consejos
-
-#### references/summary.md
-
-Contiene:
-- **Propósito**: Explica que es un código base de referencia para consumo de IA
-- **Estructura de Archivos**: Documenta el contenido de cada archivo de referencia
-- **Guías de Uso**: Cómo usar los Skills efectivamente
-- **Estadísticas**: Desglose por tipo de archivo, lenguaje y archivos más grandes
-
-#### references/project-structure.md
-
-Árbol de directorios con conteo de líneas por archivo para fácil descubrimiento:
+#### Ejemplo: references/project-structure.md
 
 ```text
 src/
@@ -107,9 +96,7 @@ src/
     math.ts (87 lines)
 ```
 
-#### references/files.md
-
-Todo el contenido de archivos con encabezados de resaltado de sintaxis, optimizado para búsqueda compatible con grep:
+#### Ejemplo: references/files.md
 
 ````markdown
 ## File: src/index.ts
@@ -122,7 +109,7 @@ export function main() {
 ```
 ````
 
-#### references/tech-stacks.md
+#### Ejemplo: references/tech-stacks.md
 
 Stack tecnológico autodetectado desde archivos de dependencias:
 - **Lenguajes**: TypeScript, JavaScript, Python, etc.
