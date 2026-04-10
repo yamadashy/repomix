@@ -21,6 +21,15 @@ const getGlobby = () => {
   return _globbyPromise;
 };
 
+// Lazy-load the `ignore` package: cached so the ~15-20ms dynamic import cost
+// is paid at most once and can overlap with other async work (e.g., git ls-files).
+// biome-ignore lint/suspicious/noExplicitAny: dynamic import type is complex
+let _ignorePromise: Promise<any> | undefined;
+const getIgnore = () => {
+  _ignorePromise ??= import('ignore');
+  return _ignorePromise;
+};
+
 export interface FileSearchResult {
   filePaths: string[];
   emptyDirPaths: string[];
@@ -172,27 +181,35 @@ const searchFilesWithGit = async (
   rawIgnorePatterns: string[],
   ignoreFilePatterns: string[],
   deps = { execGitLsFiles },
+  prefetchedGitFiles?: string[] | null,
 ): Promise<string[] | null> => {
   // git ls-files --exclude-standard inherently uses .gitignore, so only use this
   // fast path when useGitignore is enabled to maintain consistent behavior.
   if (!config.ignore.useGitignore) return null;
 
-  let gitFiles: string[];
-  try {
-    gitFiles = await deps.execGitLsFiles(rootDir);
-  } catch {
-    return null;
-  }
+  // Use pre-fetched git files if available (started in parallel with prepareIgnoreContext),
+  // otherwise fetch now. The ignore module import also starts early via getIgnore().
+  const ignorePromise = getIgnore();
 
-  if (gitFiles.length === 0) return null;
+  let gitFiles: string[];
+  if (prefetchedGitFiles !== undefined) {
+    if (prefetchedGitFiles === null || prefetchedGitFiles.length === 0) return null;
+    gitFiles = prefetchedGitFiles;
+  } else {
+    try {
+      gitFiles = await deps.execGitLsFiles(rootDir);
+    } catch {
+      return null;
+    }
+    if (gitFiles.length === 0) return null;
+  }
 
   // --- Build ignore filter using the `ignore` package (.gitignore-compatible matching) ---
   // IMPORTANT: Use raw ignore patterns here, NOT the normalizeGlobPattern-adjusted ones.
   // normalizeGlobPattern converts `**/foo` to `**/foo/**` for globby compatibility,
   // but that transformation breaks the `ignore` package's matching (it would treat
   // `**/package-lock.json/**` as a directory pattern instead of a file pattern).
-  // Lazy-import `ignore` to avoid adding module load cost when the git fast path is not used.
-  const { default: ignore } = await import('ignore');
+  const { default: ignore } = await ignorePromise;
   const ig = ignore();
 
   // Add raw ignore patterns (defaultIgnoreList + custom + output file path + git/info/exclude)
@@ -267,6 +284,13 @@ export const searchFiles = async (
   config: RepomixConfigMerged,
   explicitFiles?: string[],
 ): Promise<FileSearchResult> => {
+  // Eagerly start loading the `ignore` module so it resolves during
+  // the stat/permission checks below (~5ms), giving the dynamic import
+  // (~15-20ms) a head start before searchFilesWithGit needs it.
+  if (config.ignore.useGitignore) {
+    getIgnore();
+  }
+
   // Check if the path exists and get its type
   let pathStats: Stats;
   try {
@@ -315,6 +339,13 @@ export const searchFiles = async (
   }
 
   try {
+    // Start git ls-files early so it runs in parallel with prepareIgnoreContext.
+    // git ls-files spawns a subprocess (~40ms) that only needs rootDir; the ignore
+    // patterns are applied afterward during filtering. This overlaps the subprocess
+    // spawn with ignore context preparation (~5ms) and include pattern computation.
+    const earlyGitFilesPromise =
+      !explicitFiles && config.ignore.useGitignore ? execGitLsFiles(rootDir).catch((): null => null) : undefined;
+
     const { rawIgnorePatterns, adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(
       rootDir,
       config,
@@ -359,12 +390,16 @@ export const searchFiles = async (
     // rather than walking the entire filesystem. Falls back to globby on failure.
     if (!explicitFiles) {
       const gitStartTime = Date.now();
+      // Await the pre-fetched git files (started before prepareIgnoreContext)
+      const prefetchedGitFiles = earlyGitFilesPromise !== undefined ? await earlyGitFilesPromise : undefined;
       const gitResult = await searchFilesWithGit(
         rootDir,
         config,
         includePatterns,
         rawIgnorePatterns,
         ignoreFilePatterns,
+        undefined,
+        prefetchedGitFiles,
       );
 
       if (gitResult !== null) {

@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import isBinaryPath from 'is-binary-path';
-import { isBinaryFile } from 'isbinaryfile';
+import { isBinaryFileSync } from 'isbinaryfile';
 import { logger } from '../../shared/logger.js';
 
 // Lazy-load encoding detection libraries to avoid their ~25ms combined import cost.
@@ -16,6 +16,10 @@ const getEncodingDeps = () => {
   }));
   return _encodingDepsPromise;
 };
+
+// Reusable UTF-8 decoder: avoids creating ~1000 TextDecoder instances per run.
+// TextDecoder in non-streaming mode holds no state between calls, so reuse is safe.
+const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
 
 export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
 
@@ -52,7 +56,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
       return { content: null, skippedReason: 'size-limit' };
     }
 
-    if (await isBinaryFile(buffer)) {
+    if (isBinaryFileSync(buffer)) {
       logger.debug(`Skipping binary file (content check): ${filePath}`);
       return { content: null, skippedReason: 'binary-content' };
     }
@@ -61,7 +65,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     // This skips the expensive jschardet.detect() which scans the entire buffer
     // through multiple encoding probers with frequency table lookups
     try {
-      let content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+      let content = utf8Decoder.decode(buffer);
       if (content.charCodeAt(0) === 0xfeff) {
         content = content.slice(1); // strip UTF-8 BOM
       }
