@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -10,6 +9,7 @@ import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
 import { sortOutputFiles } from './outputSort.js';
+import { buildMarkdownOutput, buildPlainOutput, buildXmlOutput } from './outputStyleBuild.js';
 import {
   generateHeader,
   generateSummaryFileFormat,
@@ -18,57 +18,6 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
-import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { getXmlTemplate } from './outputStyles/xmlStyle.js';
-import { registerHandlebarsHelpers } from './outputStyleUtils.js';
-
-// Lazy-load handlebars: the module costs ~33ms to cold-import and is only
-// needed when output generation actually compiles a template. Deferring the
-// import removes it from the eager module-loading phase at startup.
-// The Promise is cached (not the value) to avoid double-importing under
-// concurrent calls — Node.js ESM would deduplicate anyway, but caching the
-// Promise is the canonical lazy-singleton pattern.
-let _handlebarsPromise: Promise<typeof Handlebars> | undefined;
-const loadHandlebars = (): Promise<typeof Handlebars> => {
-  if (!_handlebarsPromise) {
-    _handlebarsPromise = import('handlebars').then((m) => {
-      registerHandlebarsHelpers(m.default);
-      return m.default;
-    });
-  }
-  return _handlebarsPromise;
-};
-
-// Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
-
-const getCompiledTemplate = async (style: string): Promise<Handlebars.TemplateDelegate> => {
-  const cached = compiledTemplateCache.get(style);
-  if (cached) {
-    return cached;
-  }
-
-  let template: string;
-  switch (style) {
-    case 'xml':
-      template = getXmlTemplate();
-      break;
-    case 'markdown':
-      template = getMarkdownTemplate();
-      break;
-    case 'plain':
-      template = getPlainTemplate();
-      break;
-    default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
-  }
-
-  const hbs = await loadHandlebars();
-  const compiled = hbs.compile(template);
-  compiledTemplateCache.set(style, compiled);
-  return compiled;
-};
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
   // Scan for the longest backtick run using indexOf to skip non-backtick content,
@@ -264,19 +213,32 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
   }
 };
 
-const generateHandlebarOutput = async (
+const generateDirectOutput = (
   config: RepomixConfigMerged,
   renderContext: RenderContext,
   processedFiles?: ProcessedFile[],
-): Promise<string> => {
+): string => {
   try {
-    const compiledTemplate = await getCompiledTemplate(config.output.style);
-    return `${compiledTemplate(renderContext).trim()}\n`;
+    let output: string;
+    switch (config.output.style) {
+      case 'xml':
+        output = buildXmlOutput(renderContext);
+        break;
+      case 'markdown':
+        output = buildMarkdownOutput(renderContext);
+        break;
+      case 'plain':
+        output = buildPlainOutput(renderContext);
+        break;
+      default:
+        throw new RepomixError(`Unsupported output style: ${config.output.style}`);
+    }
+    return `${output.trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
       let largeFilesInfo = '';
       if (processedFiles && processedFiles.length > 0) {
-        const topFiles = processedFiles
+        const topFiles = [...processedFiles]
           .sort((a, b) => b.content.length - a.content.length)
           .slice(0, 5)
           .map((f) => `  - ${f.path} (${(f.content.length / 1024 / 1024).toFixed(1)} MB)`)
@@ -294,7 +256,7 @@ Please try:
       );
     }
     throw new RepomixError(
-      `Failed to compile template: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      `Failed to generate output: ${error instanceof Error ? error.message : 'Unknown error'}`,
       error instanceof Error ? { cause: error } : undefined,
     );
   }
@@ -311,7 +273,7 @@ export const generateOutput = async (
   emptyDirPaths?: string[],
   deps = {
     buildOutputGeneratorContext,
-    generateHandlebarOutput,
+    generateDirectOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
     sortOutputFiles,
@@ -336,12 +298,12 @@ export const generateOutput = async (
     case 'xml':
       return config.output.parsableStyle
         ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+        : deps.generateDirectOutput(config, renderContext, sortedProcessedFiles);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':
     case 'plain':
-      return deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+      return deps.generateDirectOutput(config, renderContext, sortedProcessedFiles);
     default:
       throw new RepomixError(`Unsupported output style: ${config.output.style}`);
   }

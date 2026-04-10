@@ -120,7 +120,7 @@ export const pack = async (
   // the loading runs concurrently with collectFiles + git operations (~50ms) and
   // processFiles, so workers are ready or nearly ready when the security check runs.
   // Created after searchFiles (not at pack start) to avoid I/O contention between
-  // security worker startup, metrics worker startup, and globby's directory traversal.
+  // security worker startup, metrics worker startup, and the git ls-files subprocess.
   const securityPreWarm = config.security.enableSecurityCheck ? deps.createSecurityTaskRunner() : undefined;
 
   // Deduplicate and sort empty directory paths for reuse during output generation,
