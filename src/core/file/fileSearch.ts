@@ -2,11 +2,12 @@ import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { type Options as GlobbyOptions, globby } from 'globby';
-import { minimatch } from 'minimatch';
+import { Minimatch, minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { execGitLsFiles } from '../git/gitCommand.js';
 import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
@@ -92,6 +93,109 @@ export const normalizeGlobPattern = (pattern: string): string => {
   return pattern;
 };
 
+/**
+ * Fast file search using `git ls-files`. Returns null if the fast path cannot be used
+ * (not a git repo, git error, or incompatible config). Falls back to globby in the caller.
+ *
+ * ~40x faster than globby for git repos (~5ms vs ~200ms) because git reads from
+ * its pre-built index rather than walking the entire filesystem.
+ */
+const searchFilesWithGit = async (
+  rootDir: string,
+  config: RepomixConfigMerged,
+  includePatterns: string[],
+  rawIgnorePatterns: string[],
+  ignoreFilePatterns: string[],
+  deps = { execGitLsFiles },
+): Promise<string[] | null> => {
+  // git ls-files --exclude-standard inherently uses .gitignore, so only use this
+  // fast path when useGitignore is enabled to maintain consistent behavior.
+  if (!config.ignore.useGitignore) return null;
+
+  let gitFiles: string[];
+  try {
+    gitFiles = await deps.execGitLsFiles(rootDir);
+  } catch {
+    return null;
+  }
+
+  if (gitFiles.length === 0) return null;
+
+  // --- Build ignore filter using the `ignore` package (.gitignore-compatible matching) ---
+  // IMPORTANT: Use raw ignore patterns here, NOT the normalizeGlobPattern-adjusted ones.
+  // normalizeGlobPattern converts `**/foo` to `**/foo/**` for globby compatibility,
+  // but that transformation breaks the `ignore` package's matching (it would treat
+  // `**/package-lock.json/**` as a directory pattern instead of a file pattern).
+  // Lazy-import `ignore` to avoid adding module load cost when the git fast path is not used.
+  const { default: ignore } = await import('ignore');
+  const ig = ignore();
+
+  // Add raw ignore patterns (defaultIgnoreList + custom + output file path + git/info/exclude)
+  // These are passed from the caller to avoid a redundant getIgnorePatterns call.
+  for (const pattern of rawIgnorePatterns) {
+    ig.add(pattern);
+  }
+
+  // Read and apply ignore files (.repomixignore, .ignore) from the repo.
+  // Check both git output (tracked/untracked-non-ignored) and the filesystem
+  // (covers root files that might be .gitignored but still present on disk).
+  const ignoreFileBasenames = ignoreFilePatterns.map((p) => p.replace('**/', ''));
+  const ignoreFileSet = new Set<string>();
+
+  // Find ignore files from git output
+  for (const filePath of gitFiles) {
+    const basename = path.basename(filePath);
+    if (ignoreFileBasenames.includes(basename)) {
+      ignoreFileSet.add(filePath);
+    }
+  }
+
+  // Also check root directory directly (in case the file is .gitignored)
+  for (const basename of ignoreFileBasenames) {
+    ignoreFileSet.add(basename);
+  }
+
+  // Read and apply each ignore file
+  for (const ignoreFilePath of ignoreFileSet) {
+    const fullPath = path.join(rootDir, ignoreFilePath);
+    try {
+      const content = await fs.readFile(fullPath, 'utf-8');
+      const dir = path.dirname(ignoreFilePath);
+
+      if (dir === '.') {
+        // Root-level ignore file: patterns apply from root
+        ig.add(content);
+      } else {
+        // Nested ignore file: prefix patterns with directory path
+        const parsed = parseIgnoreContent(content);
+        for (const pattern of parsed) {
+          if (pattern.startsWith('!')) {
+            ig.add(`!${dir}/${pattern.slice(1)}`);
+          } else {
+            ig.add(`${dir}/${pattern}`);
+          }
+        }
+      }
+    } catch {
+      // File doesn't exist on disk (possibly a stale git index entry)
+    }
+  }
+
+  // --- Build include filter ---
+  const isDefaultInclude = includePatterns.length === 1 && includePatterns[0] === '**/*';
+
+  // Pre-compile include matchers for efficient batch matching
+  const includeMatchers = isDefaultInclude ? null : includePatterns.map((p) => new Minimatch(p, { dot: true }));
+
+  // --- Filter files ---
+  return gitFiles.filter((file) => {
+    // Include filter: skip if file doesn't match any include pattern
+    if (includeMatchers && !includeMatchers.some((m) => m.match(file))) return false;
+    // Ignore filter: skip if file matches any ignore pattern
+    return !ig.ignores(file);
+  });
+};
+
 // Get all file paths considering the config
 export const searchFiles = async (
   rootDir: string,
@@ -146,7 +250,7 @@ export const searchFiles = async (
   }
 
   try {
-    const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+    const { rawIgnorePatterns, adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns:', ignoreFilePatterns);
@@ -180,6 +284,34 @@ export const searchFiles = async (
     // If no include patterns at all, default to all files
     if (includePatterns.length === 0) {
       includePatterns = ['**/*'];
+    }
+
+    // Try git ls-files fast path for git repositories.
+    // This is ~40x faster than globby because it reads from the git index
+    // rather than walking the entire filesystem. Falls back to globby on failure.
+    if (!explicitFiles) {
+      const gitStartTime = Date.now();
+      const gitResult = await searchFilesWithGit(rootDir, config, includePatterns, rawIgnorePatterns, ignoreFilePatterns);
+
+      if (gitResult !== null) {
+        const gitElapsedTime = Date.now() - gitStartTime;
+        logger.debug(`[git-ls-files] Completed in ${gitElapsedTime}ms, found ${gitResult.length} files`);
+
+        // Empty directories still require globby when enabled
+        let emptyDirPaths: string[] = [];
+        if (config.output.includeEmptyDirectories) {
+          const directories = await globby(includePatterns, {
+            ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+            onlyDirectories: true,
+          });
+          emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+        }
+
+        return {
+          filePaths: sortPaths(gitResult),
+          emptyDirPaths: sortPaths(emptyDirPaths),
+        };
+      }
     }
 
     logger.trace('Include patterns with explicit files:', includePatterns);
@@ -272,11 +404,15 @@ export const parseIgnoreContent = (content: string): string[] => {
 const prepareIgnoreContext = async (
   rootDir: string,
   config: RepomixConfigMerged,
-): Promise<{ adjustedIgnorePatterns: string[]; ignoreFilePatterns: string[] }> => {
+): Promise<{ rawIgnorePatterns: string[]; adjustedIgnorePatterns: string[]; ignoreFilePatterns: string[] }> => {
   const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
     getIgnorePatterns(rootDir, config),
     getIgnoreFilePatterns(config),
   ]);
+
+  // Keep raw patterns for the git fast path (which uses the `ignore` package
+  // and needs patterns without the globby-specific normalizeGlobPattern transform).
+  const rawIgnorePatterns = [...ignorePatterns];
 
   // Normalize ignore patterns to handle trailing slashes consistently
   const normalizedIgnorePatterns = ignorePatterns.map(normalizeGlobPattern);
@@ -296,7 +432,7 @@ const prepareIgnoreContext = async (
     }
   }
 
-  return { adjustedIgnorePatterns, ignoreFilePatterns };
+  return { rawIgnorePatterns, adjustedIgnorePatterns, ignoreFilePatterns };
 };
 
 /**

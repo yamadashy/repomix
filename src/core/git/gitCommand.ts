@@ -88,6 +88,54 @@ export const execGitRevParse = async (
   }
 };
 
+/**
+ * List files known to git (tracked + untracked non-ignored) using NUL-separated output.
+ * Returns paths relative to the git working directory.
+ * Uses --exclude-standard to respect .gitignore, .git/info/exclude, and global gitignore.
+ * Excludes symlinks (mode 120000) and submodules (mode 160000) from tracked files.
+ */
+export const execGitLsFiles = async (
+  directory: string,
+  deps = {
+    execFileAsync,
+  },
+): Promise<string[]> => {
+  // Run tracked and untracked queries in parallel for speed.
+  // --cached --stage: tracked files with mode info (to filter out symlinks/submodules)
+  // --others --exclude-standard: untracked files not ignored by .gitignore
+  const [trackedResult, untrackedResult] = await Promise.all([
+    deps.execFileAsync('git', ['-C', directory, 'ls-files', '-z', '--cached', '--stage'], {
+      maxBuffer: 50 * 1024 * 1024,
+    }),
+    deps.execFileAsync('git', ['-C', directory, 'ls-files', '-z', '--others', '--exclude-standard'], {
+      maxBuffer: 50 * 1024 * 1024,
+    }),
+  ]);
+
+  // Parse --stage output: "mode SP hash SP stage TAB path NUL"
+  // Only include regular files (mode 100644, 100755). Exclude symlinks (120000)
+  // and submodules (160000) which appear as directories on the filesystem.
+  const tracked: string[] = [];
+  if (trackedResult.stdout) {
+    for (const entry of trackedResult.stdout.split('\0')) {
+      if (!entry) continue;
+      // Mode is the first 6 characters: 100644, 100755, 120000, 160000
+      if (entry.startsWith('10')) {
+        const tabIndex = entry.indexOf('\t');
+        if (tabIndex !== -1) {
+          tracked.push(entry.substring(tabIndex + 1));
+        }
+      }
+    }
+  }
+
+  // Untracked files from --others are always regular files (no mode filtering needed)
+  const untracked = untrackedResult.stdout ? untrackedResult.stdout.split('\0').filter(Boolean) : [];
+
+  // Combine (untracked is disjoint from tracked by definition)
+  return [...tracked, ...untracked];
+};
+
 export const execLsRemote = async (
   url: string,
   deps = {
