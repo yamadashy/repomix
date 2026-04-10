@@ -151,6 +151,94 @@ describe('calculateMetrics', () => {
     expect(result.totalCharacters).toBe(0);
   });
 
+  it('should estimate token counts for non-top files when tokenCountTree is enabled', async () => {
+    // 4 files, but only top 2 by size will be exactly tokenized (topFilesLength=1, so top 1*10=10, but min slice is 2)
+    const processedFiles: ProcessedFile[] = [
+      { path: 'big.txt', content: 'a'.repeat(400) },
+      { path: 'medium.txt', content: 'b'.repeat(200) },
+      { path: 'small1.txt', content: 'c'.repeat(100) },
+      { path: 'small2.txt', content: 'd'.repeat(50) },
+    ];
+    const output = 'x'.repeat(750);
+
+    // Only top 2 files are exactly tokenized
+    const fileMetrics = [
+      { path: 'big.txt', charCount: 400, tokenCount: 100 },
+      { path: 'medium.txt', charCount: 200, tokenCount: 50 },
+    ];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    const config = createMockConfig({
+      output: { tokenCountTree: 50000, topFilesLength: 1 },
+    });
+
+    const mockTaskRunner = { run: vi.fn(), cleanup: vi.fn() };
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      vi.fn(),
+      config,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // All 4 files should have token counts
+    expect(Object.keys(result.fileTokenCounts)).toHaveLength(4);
+    // Top files have exact counts
+    expect(result.fileTokenCounts['big.txt']).toBe(100);
+    expect(result.fileTokenCounts['medium.txt']).toBe(50);
+    // Remaining files have estimated counts based on calibrated ratio
+    // sampleRatio = 600/150 = 4.0, coverage = 600/750 = 0.8
+    // blendedRatio = 4.0 * 0.8 + 3.75 * 0.2 = 3.95
+    // small1.txt: round(100 / 3.95) = round(25.32) = 25
+    // small2.txt: round(50 / 3.95) = round(12.66) = 13
+    expect(result.fileTokenCounts['small1.txt']).toBe(25);
+    expect(result.fileTokenCounts['small2.txt']).toBe(13);
+  });
+
+  it('should not estimate token counts when tokenCountTree is disabled', async () => {
+    const processedFiles: ProcessedFile[] = [
+      { path: 'big.txt', content: 'a'.repeat(400) },
+      { path: 'small.txt', content: 'b'.repeat(100) },
+    ];
+
+    const fileMetrics = [{ path: 'big.txt', charCount: 400, tokenCount: 100 }];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    const config = createMockConfig({
+      output: { tokenCountTree: false, topFilesLength: 1 },
+    });
+
+    const mockTaskRunner = { run: vi.fn(), cleanup: vi.fn() };
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve('x'.repeat(500)),
+      vi.fn(),
+      config,
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // Only the exactly-tokenized file should have a token count
+    expect(Object.keys(result.fileTokenCounts)).toHaveLength(1);
+    expect(result.fileTokenCounts['big.txt']).toBe(100);
+    expect(result.fileTokenCounts['small.txt']).toBeUndefined();
+  });
+
   it('should blend sample ratio with default when sample coverage is partial', async () => {
     // Sample covers 50% of file content: 2 files, only the larger one tokenized
     const processedFiles: ProcessedFile[] = [

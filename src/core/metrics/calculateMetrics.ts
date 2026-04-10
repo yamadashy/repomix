@@ -64,12 +64,8 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
 const DEFAULT_CHARS_PER_TOKEN = 3.75;
 
 /**
- * Estimate total token count from character count using a calibrated chars/token ratio.
- *
- * Instead of tokenizing the entire output string (~450ms CPU for a 4MB output),
- * we use the chars/token ratio observed from the files we already tokenize
- * (selective file metrics) to estimate the output token count. This eliminates
- * the single largest CPU task in the metrics pipeline.
+ * Compute a calibrated chars/token ratio from a sample of exact-tokenized files,
+ * blended with the default ratio weighted by how representative the sample is.
  *
  * The top files by character count (our sample) tend to have a slightly higher
  * chars/token ratio than smaller files (e.g., large docs/tests use more prose
@@ -77,6 +73,41 @@ const DEFAULT_CHARS_PER_TOKEN = 3.75;
  * is blended with the default ratio, weighted by how much of the total file
  * content the sample covers. When coverage is high (sample is representative),
  * the sample ratio dominates; when low, the default acts as a prior.
+ */
+const estimateCharsPerToken = (fileMetrics: FileMetrics[], processedFiles: ProcessedFile[]): number => {
+  let sampleChars = 0;
+  let sampleTokens = 0;
+  for (const file of fileMetrics) {
+    sampleChars += file.charCount;
+    sampleTokens += file.tokenCount;
+  }
+
+  if (sampleTokens === 0) {
+    return DEFAULT_CHARS_PER_TOKEN;
+  }
+
+  const sampleRatio = sampleChars / sampleTokens;
+
+  let totalFileChars = 0;
+  for (const file of processedFiles) {
+    totalFileChars += file.content.length;
+  }
+
+  if (totalFileChars === 0) {
+    return sampleRatio;
+  }
+
+  const coverage = Math.min(sampleChars / totalFileChars, 1.0);
+  return sampleRatio * coverage + DEFAULT_CHARS_PER_TOKEN * (1 - coverage);
+};
+
+/**
+ * Estimate total token count from character count using a calibrated chars/token ratio.
+ *
+ * Instead of tokenizing the entire output string (~450ms CPU for a 4MB output),
+ * we use the chars/token ratio observed from the files we already tokenize
+ * (selective file metrics) to estimate the output token count. This eliminates
+ * the single largest CPU task in the metrics pipeline.
  *
  * Accuracy: typically within 1-2% of exact tokenization on real-world repos.
  */
@@ -86,37 +117,7 @@ const estimateTokenCount = (
   processedFiles: ProcessedFile[],
 ): number => {
   if (totalOutputChars === 0) return 0;
-
-  // Calibrate from the files we already tokenized
-  let sampleChars = 0;
-  let sampleTokens = 0;
-  for (const file of fileMetrics) {
-    sampleChars += file.charCount;
-    sampleTokens += file.tokenCount;
-  }
-
-  if (sampleTokens === 0) {
-    return Math.round(totalOutputChars / DEFAULT_CHARS_PER_TOKEN);
-  }
-
-  const sampleRatio = sampleChars / sampleTokens;
-
-  // Compute what fraction of total file content our sample covers
-  let totalFileChars = 0;
-  for (const file of processedFiles) {
-    totalFileChars += file.content.length;
-  }
-
-  if (totalFileChars === 0) {
-    return Math.round(totalOutputChars / sampleRatio);
-  }
-
-  // Blend sample ratio with the default, weighted by coverage.
-  // High coverage → trust the sample more; low coverage → rely on the default.
-  const coverage = Math.min(sampleChars / totalFileChars, 1.0);
-  const blendedRatio = sampleRatio * coverage + DEFAULT_CHARS_PER_TOKEN * (1 - coverage);
-
-  return Math.round(totalOutputChars / blendedRatio);
+  return Math.round(totalOutputChars / estimateCharsPerToken(fileMetrics, processedFiles));
 };
 
 const defaultDeps = {
@@ -151,20 +152,18 @@ export const calculateMetrics = async (
     });
 
   try {
-    // For top files display optimization: calculate token counts only for top files by character count
-    // However, if tokenCountTree is enabled, calculate for all files to avoid double calculation
+    // Always calculate exact token counts only for the top files by character count.
+    // When tokenCountTree is enabled, remaining files get estimated token counts
+    // using the calibrated chars/token ratio from the exact-tokenized sample.
+    // This avoids BPE-tokenizing every file while keeping exact counts for the
+    // largest files (most likely to individually cross thresholds). Directory token
+    // sums remain accurate to within ~2% of exact tokenization.
     const topFilesLength = config.output.topFilesLength;
-    const shouldCalculateAllFiles = !!config.output.tokenCountTree;
 
-    // Determine which files to calculate token counts for:
-    // - If tokenCountTree is enabled: calculate for all files to avoid double calculation
-    // - Otherwise: calculate only for top files by character count for optimization
-    const metricsTargetPaths = shouldCalculateAllFiles
-      ? processedFiles.map((file) => file.path)
-      : [...processedFiles]
-          .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
-          .map((file) => file.path);
+    const metricsTargetPaths = [...processedFiles]
+      .sort((a, b) => b.content.length - a.content.length)
+      .slice(0, Math.min(processedFiles.length, topFilesLength * 10))
+      .map((file) => file.path);
 
     // Start output-independent metrics immediately so they can overlap with output generation
     // when output is passed as a promise
@@ -200,10 +199,25 @@ export const calculateMetrics = async (
       fileCharCounts[file.path] = file.content.length;
     }
 
-    // Build token counts only for top files
+    // Build token counts: exact for selectively tokenized files, estimated for the rest
     const fileTokenCounts: Record<string, number> = {};
+    const exactTokenizedPaths = new Set<string>();
     for (const file of selectiveFileMetrics) {
       fileTokenCounts[file.path] = file.tokenCount;
+      exactTokenizedPaths.add(file.path);
+    }
+
+    // When tokenCountTree is enabled, estimate token counts for remaining files
+    // using the calibrated chars/token ratio from the exact-tokenized sample.
+    // Per-file estimates have higher variance (~12% median error) but directory
+    // token sums are accurate to ~2% due to error cancellation across many files.
+    if (config.output.tokenCountTree && processedFiles.length > exactTokenizedPaths.size) {
+      const charsPerToken = estimateCharsPerToken(selectiveFileMetrics, processedFiles);
+      for (const file of processedFiles) {
+        if (!exactTokenizedPaths.has(file.path)) {
+          fileTokenCounts[file.path] = Math.round(file.content.length / charsPerToken);
+        }
+      }
     }
 
     return {

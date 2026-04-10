@@ -80,13 +80,14 @@ export const pack = async (
   //
   // We use a pre-search task estimate since the exact file count is unknown at this point.
   // The estimate only affects worker count (via ceil(tasks/tasksPerThread)), not correctness.
-  // For tokenCountTree or splitOutput configs, we use a generous upper-bound estimate to
-  // ensure enough workers; for default configs, the file metrics estimate alone ensures
-  // adequate scaling.
-  // Metrics target count: how many files will be individually tokenized
+  // For splitOutput configs, we use a generous upper-bound estimate to ensure enough workers;
+  // for default configs, the file metrics estimate alone ensures adequate scaling.
+  // Metrics target count: how many files will be individually tokenized.
+  // Token counting now always targets only the top files by size (even when tokenCountTree
+  // is enabled), with remaining files estimated via calibrated chars/token ratio.
   const estimatedMetricsFileCount =
-    config.output.splitOutput !== undefined || config.output.tokenCountTree
-      ? 500 // Generous upper bound for large-output configs; capped by maxWorkerThreads regardless
+    config.output.splitOutput !== undefined
+      ? 500 // Generous upper bound for split-output configs; capped by maxWorkerThreads regardless
       : Math.max(config.output.topFilesLength * 10, 50);
   // +3 accounts for: 2 git diff (workTree + staged), 1 git log
   // Output token counting is estimated from calibrated chars/token ratio (no worker tasks needed).
