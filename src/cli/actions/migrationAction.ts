@@ -1,9 +1,19 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import * as prompts from '@clack/prompts';
 import pc from 'picocolors';
 import { getGlobalDirectory } from '../../config/globalDirectory.js';
 import { logger } from '../../shared/logger.js';
+
+// Lazy-load @clack/prompts: only needed when old Repopack files are found (~41ms cold import).
+// The vast majority of runs skip migration entirely, so this avoids the import.
+// Cache the Promise (not the value) to use the canonical lazy-singleton pattern.
+let _promptsPromise: Promise<typeof import('@clack/prompts')> | undefined;
+const loadPrompts = () => {
+  if (!_promptsPromise) {
+    _promptsPromise = import('@clack/prompts');
+  }
+  return _promptsPromise;
+};
 
 interface MigrationPaths {
   oldConfigPath: string;
@@ -108,11 +118,12 @@ const migrateFile = async (
 
   const exists = await fileExists(newPath);
   if (exists) {
-    const shouldOverwrite = await prompts.confirm({
+    const p = await loadPrompts();
+    const shouldOverwrite = await p.confirm({
       message: `${description} already exists at ${newPath}. Do you want to overwrite it?`,
     });
 
-    if (prompts.isCancel(shouldOverwrite) || !shouldOverwrite) {
+    if (p.isCancel(shouldOverwrite) || !shouldOverwrite) {
       logger.info(`Skipping migration of ${description}`);
       return false;
     }
@@ -223,14 +234,16 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
   try {
     const paths = getMigrationPaths(rootDir);
 
-    // Check if migration is needed
-    const hasOldConfig = await fileExists(paths.oldConfigPath);
-    const hasOldIgnore = await fileExists(paths.oldIgnorePath);
-    const hasOldInstruction = await fileExists(paths.oldInstructionPath);
-    const hasOldGlobalConfig = await fileExists(paths.oldGlobalConfigPath);
-    const hasOldOutput = await Promise.all(paths.oldOutputPaths.map(fileExists)).then((results) =>
-      results.some((exists) => exists),
-    );
+    // Check if migration is needed — probe all paths in parallel instead of sequentially.
+    // These are all independent fs.access calls; parallelizing saves ~7ms on every run.
+    const [hasOldConfig, hasOldIgnore, hasOldInstruction, hasOldGlobalConfig, outputResults] = await Promise.all([
+      fileExists(paths.oldConfigPath),
+      fileExists(paths.oldIgnorePath),
+      fileExists(paths.oldInstructionPath),
+      fileExists(paths.oldGlobalConfigPath),
+      Promise.all(paths.oldOutputPaths.map(fileExists)),
+    ]);
+    const hasOldOutput = outputResults.some((exists) => exists);
 
     if (!hasOldConfig && !hasOldIgnore && !hasOldInstruction && !hasOldOutput && !hasOldGlobalConfig) {
       logger.debug('No Repopack files found to migrate.');
@@ -245,11 +258,12 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
     migrationMessage += `${items.join(' and ')}. Would you like to migrate to ${pc.green('Repomix')}?`;
 
     // Confirm migration with user
-    const shouldMigrate = await prompts.confirm({
+    const p = await loadPrompts();
+    const shouldMigrate = await p.confirm({
       message: migrationMessage,
     });
 
-    if (prompts.isCancel(shouldMigrate) || !shouldMigrate) {
+    if (p.isCancel(shouldMigrate) || !shouldMigrate) {
       logger.info('Migration cancelled.');
       return result;
     }

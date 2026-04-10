@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import Handlebars from 'handlebars';
+import type Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -21,11 +21,29 @@ import {
 import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
+import { registerHandlebarsHelpers } from './outputStyleUtils.js';
+
+// Lazy-load handlebars: the module costs ~33ms to cold-import and is only
+// needed when output generation actually compiles a template. Deferring the
+// import removes it from the eager module-loading phase at startup.
+// The Promise is cached (not the value) to avoid double-importing under
+// concurrent calls — Node.js ESM would deduplicate anyway, but caching the
+// Promise is the canonical lazy-singleton pattern.
+let _handlebarsPromise: Promise<typeof Handlebars> | undefined;
+const loadHandlebars = (): Promise<typeof Handlebars> => {
+  if (!_handlebarsPromise) {
+    _handlebarsPromise = import('handlebars').then((m) => {
+      registerHandlebarsHelpers(m.default);
+      return m.default;
+    });
+  }
+  return _handlebarsPromise;
+};
 
 // Cache for compiled Handlebars templates to avoid recompilation on every call
 const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
 
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
+const getCompiledTemplate = async (style: string): Promise<Handlebars.TemplateDelegate> => {
   const cached = compiledTemplateCache.get(style);
   if (cached) {
     return cached;
@@ -46,7 +64,8 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
       throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
   }
 
-  const compiled = Handlebars.compile(template);
+  const hbs = await loadHandlebars();
+  const compiled = hbs.compile(template);
   compiledTemplateCache.set(style, compiled);
   return compiled;
 };
@@ -251,7 +270,7 @@ const generateHandlebarOutput = async (
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
   try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
+    const compiledTemplate = await getCompiledTemplate(config.output.style);
     return `${compiledTemplate(renderContext).trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {

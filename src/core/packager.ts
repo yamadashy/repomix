@@ -16,7 +16,7 @@ import { prefetchFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
-import { packSkill } from './skill/packSkill.js';
+import type { PackSkillParams } from './skill/packSkill.js';
 
 export interface PackResult {
   totalFiles: number;
@@ -35,6 +35,14 @@ export interface PackResult {
   skippedFiles: SkippedFileInfo[];
 }
 
+// Lazy-load packSkill: skill generation is rare, but the packSkill module
+// chain pulls in skill-specific modules (skillSectionGenerators, skillStyle,
+// etc.). Deferring this import removes them from the default startup path.
+const lazyPackSkill = async (params: PackSkillParams) => {
+  const { packSkill } = await import('./skill/packSkill.js');
+  return packSkill(params);
+};
+
 const defaultDeps = {
   searchFiles,
   collectFiles,
@@ -47,7 +55,7 @@ const defaultDeps = {
   sortPaths,
   getGitDiffs,
   getGitLogs,
-  packSkill,
+  packSkill: lazyPackSkill,
   prefetchFileChangeCounts,
 };
 

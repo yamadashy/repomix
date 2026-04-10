@@ -1,6 +1,9 @@
 import Handlebars from 'handlebars';
 import { describe, expect, test } from 'vitest';
 import { getMarkdownTemplate } from '../../../../src/core/output/outputStyles/markdownStyle.js';
+import { registerHandlebarsHelpers } from '../../../../src/core/output/outputStyleUtils.js';
+
+registerHandlebarsHelpers(Handlebars);
 
 describe('markdownStyle', () => {
   describe('getMarkdownTemplate', () => {
