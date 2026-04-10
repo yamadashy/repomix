@@ -1,7 +1,7 @@
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { type Options as GlobbyOptions, globby } from 'globby';
+import type { Options as GlobbyOptions } from 'globby';
 import { Minimatch, minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
@@ -11,6 +11,15 @@ import { execGitLsFiles } from '../git/gitCommand.js';
 import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
+
+// Lazy-load globby: the git ls-files fast path (the common case for git repos)
+// never uses globby. Deferring the import avoids ~50ms of module loading on
+// every CLI invocation. The promise is cached so concurrent callers share it.
+let _globbyPromise: Promise<typeof import('globby').globby> | undefined;
+const getGlobby = () => {
+  _globbyPromise ??= import('globby').then((m) => m.globby);
+  return _globbyPromise;
+};
 
 export interface FileSearchResult {
   filePaths: string[];
@@ -385,6 +394,7 @@ export const searchFiles = async (
     logger.debug('[globby] Starting file search...');
     const globbyStartTime = Date.now();
 
+    const globby = await getGlobby();
     const filePaths = await globby(includePatterns, {
       ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
       onlyFiles: true,
@@ -408,7 +418,8 @@ export const searchFiles = async (
       logger.debug('[empty dirs] Searching for empty directories...');
       const emptyDirStartTime = Date.now();
 
-      const directories = await globby(includePatterns, {
+      const globbyForDirs = await getGlobby();
+      const directories = await globbyForDirs(includePatterns, {
         ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
         onlyDirectories: true,
       });
@@ -600,6 +611,7 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
+  const globby = await getGlobby();
   const directories = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
@@ -619,6 +631,7 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
 export const listFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
+  const globby = await getGlobby();
   const files = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,

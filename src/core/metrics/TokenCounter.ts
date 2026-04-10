@@ -1,10 +1,9 @@
 import { GptEncoding } from 'gpt-tokenizer/GptEncoding';
 import { resolveEncodingAsync } from 'gpt-tokenizer/resolveEncodingAsync';
+import type { TokenEncoding } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 
-// Supported token encoding types (OpenAI encoding names)
-export const TOKEN_ENCODINGS = ['o200k_base', 'cl100k_base', 'p50k_base', 'p50k_edit', 'r50k_base'] as const;
-export type TokenEncoding = (typeof TOKEN_ENCODINGS)[number];
+export type { TokenEncoding } from '../../config/configSchema.js';
 
 interface CountTokensOptions {
   disallowedSpecial?: Set<string>;
