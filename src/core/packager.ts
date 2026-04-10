@@ -11,7 +11,6 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
-import { TARGET_CHARS_PER_CHUNK } from './metrics/calculateOutputMetrics.js';
 import { METRICS_BATCH_SIZE } from './metrics/calculateSelectiveFileMetrics.js';
 import { prefetchFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
@@ -82,24 +81,16 @@ export const pack = async (
   // We use a pre-search task estimate since the exact file count is unknown at this point.
   // The estimate only affects worker count (via ceil(tasks/tasksPerThread)), not correctness.
   // For tokenCountTree or splitOutput configs, we use a generous upper-bound estimate to
-  // ensure enough workers; for default configs, the output chunk estimate alone ensures
+  // ensure enough workers; for default configs, the file metrics estimate alone ensures
   // adequate scaling.
-  const ESTIMATED_CHARS_PER_FILE = 5000;
   // Metrics target count: how many files will be individually tokenized
   const estimatedMetricsFileCount =
     config.output.splitOutput !== undefined || config.output.tokenCountTree
       ? 500 // Generous upper bound for large-output configs; capped by maxWorkerThreads regardless
       : Math.max(config.output.topFilesLength * 10, 50);
-  // Output chunk count: the output includes ALL files, not just the metrics targets.
-  // Since the actual file count is unknown before searchFiles, use a generous estimate
-  // to ensure the pool scales to maxWorkerThreads for repos with 200+ files.
-  const ESTIMATED_TOTAL_FILES_FOR_OUTPUT = 500;
-  const estimatedOutputChunks = Math.max(
-    1,
-    Math.ceil((ESTIMATED_TOTAL_FILES_FOR_OUTPUT * ESTIMATED_CHARS_PER_FILE) / TARGET_CHARS_PER_CHUNK),
-  );
   // +3 accounts for: 2 git diff (workTree + staged), 1 git log
-  const estimatedTasks = Math.ceil(estimatedMetricsFileCount / METRICS_BATCH_SIZE) + 3 + estimatedOutputChunks;
+  // Output token counting is estimated from calibrated chars/token ratio (no worker tasks needed).
+  const estimatedTasks = Math.ceil(estimatedMetricsFileCount / METRICS_BATCH_SIZE) + 3;
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
     estimatedTasks,
     config.tokenCount.encoding,

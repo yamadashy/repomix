@@ -79,7 +79,6 @@ describe('calculateMetrics', () => {
       undefined,
       {
         calculateSelectiveFileMetrics,
-        calculateOutputMetrics: async () => 30,
         calculateGitDiffMetrics: () => Promise.resolve(0),
         calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
         taskRunner: mockTaskRunner,
@@ -96,7 +95,105 @@ describe('calculateMetrics', () => {
         taskRunner: expect.any(Object),
       }),
     );
-    expect(result).toEqual(aggregatedResult);
+
+    // totalTokens is estimated from chars/token ratio of the selectively tokenized files.
+    // With 300 chars of file content at a ratio of 10 chars/token, the estimated total
+    // for a 300-char output is 30.
+    expect(result.totalFiles).toBe(aggregatedResult.totalFiles);
+    expect(result.totalCharacters).toBe(aggregatedResult.totalCharacters);
+    expect(result.totalTokens).toBe(30); // 300 chars / (300 chars / 30 tokens) = 30
+    expect(result.fileCharCounts).toEqual(aggregatedResult.fileCharCounts);
+    expect(result.fileTokenCounts).toEqual(aggregatedResult.fileTokenCounts);
+    expect(result.gitDiffTokenCount).toBe(aggregatedResult.gitDiffTokenCount);
+    expect(result.gitLogTokenCount).toBe(aggregatedResult.gitLogTokenCount);
+  });
+
+  it('should use default ratio when no files are tokenized', async () => {
+    const processedFiles: ProcessedFile[] = [
+      { path: 'file1.txt', content: 'a'.repeat(375) },
+    ];
+    const output = 'a'.repeat(375);
+
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue([]);
+
+    const mockTaskRunner = { run: vi.fn(), cleanup: vi.fn() };
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      vi.fn(),
+      createMockConfig(),
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // Default ratio of 3.75 chars/token: 375 / 3.75 = 100
+    expect(result.totalTokens).toBe(100);
+  });
+
+  it('should return zero tokens for empty output', async () => {
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue([]);
+
+    const mockTaskRunner = { run: vi.fn(), cleanup: vi.fn() };
+
+    const result = await calculateMetrics(
+      [],
+      Promise.resolve(''),
+      vi.fn(),
+      createMockConfig(),
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    expect(result.totalTokens).toBe(0);
+    expect(result.totalCharacters).toBe(0);
+  });
+
+  it('should blend sample ratio with default when sample coverage is partial', async () => {
+    // Sample covers 50% of file content: 2 files, only the larger one tokenized
+    const processedFiles: ProcessedFile[] = [
+      { path: 'small.txt', content: 'a'.repeat(100) },
+      { path: 'large.txt', content: 'b'.repeat(100) },
+    ];
+    const output = 'x'.repeat(200);
+
+    // Only one file tokenized, covering 50% of total file content
+    const fileMetrics = [{ path: 'large.txt', charCount: 100, tokenCount: 25 }];
+    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+
+    const mockTaskRunner = { run: vi.fn(), cleanup: vi.fn() };
+
+    const result = await calculateMetrics(
+      processedFiles,
+      Promise.resolve(output),
+      vi.fn(),
+      createMockConfig(),
+      undefined,
+      undefined,
+      {
+        calculateSelectiveFileMetrics,
+        calculateGitDiffMetrics: () => Promise.resolve(0),
+        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+        taskRunner: mockTaskRunner,
+      },
+    );
+
+    // sampleRatio = 100/25 = 4.0, coverage = 100/200 = 0.5
+    // blendedRatio = 4.0 * 0.5 + 3.75 * 0.5 = 3.875
+    // totalTokens = round(200 / 3.875) = round(51.61) = 52
+    expect(result.totalTokens).toBe(52);
   });
 });
 
