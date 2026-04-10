@@ -10,6 +10,7 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
+import { MAX_METRICS_WORKER_THREADS } from '../metrics/calculateMetrics.js';
 import type { SecurityCheckItem, SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
 
 export type { SecurityCheckType } from './workers/securityCheckWorker.js';
@@ -27,10 +28,25 @@ export interface SecurityTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
-// Cap security workers at 2 to reduce contention with the metrics worker pool that
-// runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
-// so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
+// Hard cap on security workers. The actual count is further limited by
+// getMaxSecurityWorkers() to avoid CPU oversubscription with the concurrent
+// metrics worker pool.
 const MAX_SECURITY_WORKER_THREADS = 2;
+
+/**
+ * Compute the effective number of security workers based on available CPU cores.
+ * The security and metrics worker pools run concurrently during the parallel phase.
+ * On systems with few cores (e.g., 4), running 3 metrics + 2 security + 1 main = 6
+ * threads causes 50% CPU oversubscription, where context-switching overhead outweighs
+ * the parallelism benefit. By scaling security workers down to 1 on small systems,
+ * total threads stay at or below the core count, eliminating contention.
+ */
+const getMaxSecurityWorkers = (getProcessConcurrency: () => number): number => {
+  const availableCores = getProcessConcurrency();
+  // Reserve cores for: main thread (1) + metrics workers (up to MAX_METRICS_WORKER_THREADS)
+  const headroom = availableCores - MAX_METRICS_WORKER_THREADS - 1;
+  return Math.max(1, Math.min(MAX_SECURITY_WORKER_THREADS, headroom));
+};
 
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
 // Each batch is sent as a single message to a worker thread, avoiding
@@ -53,7 +69,7 @@ export const createSecurityTaskRunner = (
     getProcessConcurrency: defaultGetProcessConcurrency,
   },
 ): SecurityTaskRunnerWithWarmup => {
-  const maxSecurityWorkers = Math.min(MAX_SECURITY_WORKER_THREADS, deps.getProcessConcurrency());
+  const maxSecurityWorkers = getMaxSecurityWorkers(deps.getProcessConcurrency);
 
   // Use a generous task estimate to ensure the pool scales to maxSecurityWorkers.
   // The estimate only affects worker count (via ceil(tasks/tasksPerThread)), not correctness.
@@ -143,7 +159,7 @@ export const runSecurityCheck = async (
       numOfTasks: totalItems,
       workerType: 'securityCheck',
       runtime: 'worker_threads',
-      maxWorkerThreads: Math.min(MAX_SECURITY_WORKER_THREADS, deps.getProcessConcurrency()),
+      maxWorkerThreads: getMaxSecurityWorkers(deps.getProcessConcurrency),
     });
 
   // Split items into batches to reduce IPC round-trips

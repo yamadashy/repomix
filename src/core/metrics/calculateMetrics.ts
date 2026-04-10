@@ -34,7 +34,7 @@ export interface MetricsTaskRunnerWithWarmup {
 // so worker warmup overlaps with the file search phase (~300-700ms) rather than competing
 // for I/O with concurrent file collection and security checks.
 const METRICS_TASKS_PER_THREAD = 10;
-const MAX_METRICS_WORKER_THREADS = 3;
+export const MAX_METRICS_WORKER_THREADS = 3;
 
 /**
  * Create a metrics task runner and warm up all worker threads by triggering
