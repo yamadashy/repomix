@@ -250,7 +250,10 @@ export const searchFiles = async (
   }
 
   try {
-    const { rawIgnorePatterns, adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+    const { rawIgnorePatterns, adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(
+      rootDir,
+      config,
+    );
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns:', ignoreFilePatterns);
@@ -291,7 +294,13 @@ export const searchFiles = async (
     // rather than walking the entire filesystem. Falls back to globby on failure.
     if (!explicitFiles) {
       const gitStartTime = Date.now();
-      const gitResult = await searchFilesWithGit(rootDir, config, includePatterns, rawIgnorePatterns, ignoreFilePatterns);
+      const gitResult = await searchFilesWithGit(
+        rootDir,
+        config,
+        includePatterns,
+        rawIgnorePatterns,
+        ignoreFilePatterns,
+      );
 
       if (gitResult !== null) {
         const gitElapsedTime = Date.now() - gitStartTime;
