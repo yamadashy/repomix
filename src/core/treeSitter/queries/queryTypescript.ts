@@ -1,12 +1,12 @@
 export const queryTypescript = `
 (import_statement
-  (import_clause (identifier) @name.reference.module)) @definition.import
+  (import_clause (identifier))) @definition.import
 
 (import_statement
   (import_clause
     (named_imports
       (import_specifier
-        name: (identifier) @name.reference.module))) @definition.import)
+        name: (identifier))))) @definition.import
 
 (comment) @comment
 
@@ -22,17 +22,8 @@ export const queryTypescript = `
 (abstract_class_declaration
   name: (type_identifier) @name.definition.class) @definition.class
 
-(module
-  name: (identifier) @name.definition.module) @definition.module
-
 (interface_declaration
   name: (type_identifier) @name.definition.interface) @definition.interface
-
-(type_annotation
-  (type_identifier) @name.reference.type) @reference.type
-
-(new_expression
-  constructor: (identifier) @name.reference.class) @reference.class
 
 (function_declaration
   name: (identifier) @name.definition.function) @definition.function
