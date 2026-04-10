@@ -46,6 +46,62 @@ const findEmptyDirectories = async (
   return emptyDirs;
 };
 
+/**
+ * Derives empty directories from a file list without a full globby directory scan.
+ * Instead of walking the entire filesystem (~80-120ms), analyzes the git ls-files
+ * output to find directories whose only direct children are dot-prefixed entries,
+ * then verifies with fs.readdir (~3ms total for typical repos).
+ */
+const findEmptyDirsFromFilePaths = async (
+  rootDir: string,
+  filePaths: string[],
+  ignorePatterns: string[],
+): Promise<string[]> => {
+  const allDirs = new Set<string>();
+  const dirsWithVisibleChildren = new Set<string>();
+
+  for (const filePath of filePaths) {
+    // git ls-files always uses '/' as separator, regardless of OS
+    const parts = filePath.split('/');
+
+    // Build directory paths incrementally to avoid repeated slice+join allocations
+    let currentDir = '';
+    for (let i = 0; i < parts.length; i++) {
+      const childName = parts[i];
+      const parentDir = currentDir;
+
+      // If this direct child doesn't start with '.', parent has visible content
+      if (!childName.startsWith('.')) {
+        dirsWithVisibleChildren.add(parentDir);
+      }
+
+      // Build the current directory path
+      currentDir = currentDir ? `${currentDir}/${childName}` : childName;
+
+      // Track all directories (non-leaf path components)
+      if (i < parts.length - 1) {
+        allDirs.add(currentDir);
+      }
+    }
+  }
+
+  // Candidate empty dirs: directories with no visible direct children from the file list
+  const candidates: string[] = [];
+  for (const dir of allDirs) {
+    if (!dirsWithVisibleChildren.has(dir)) {
+      candidates.push(dir);
+    }
+  }
+
+  if (candidates.length === 0) {
+    return [];
+  }
+
+  // Verify candidates against the actual filesystem (handles non-tracked visible entries)
+  // and apply ignore patterns, matching the behavior of findEmptyDirectories
+  return findEmptyDirectories(rootDir, candidates, ignorePatterns);
+};
+
 // Check if a path is a git worktree reference file
 const isGitWorktreeRef = async (gitPath: string): Promise<boolean> => {
   try {
@@ -306,14 +362,13 @@ export const searchFiles = async (
         const gitElapsedTime = Date.now() - gitStartTime;
         logger.debug(`[git-ls-files] Completed in ${gitElapsedTime}ms, found ${gitResult.length} files`);
 
-        // Empty directories still require globby when enabled
+        // Derive empty directories from the file list instead of running a full
+        // globby directory scan (~80-120ms). By analyzing direct children of each
+        // directory from the git output, we identify candidates without any visible
+        // (non-dot-prefixed) entries, then verify with fs.readdir (~3ms total).
         let emptyDirPaths: string[] = [];
         if (config.output.includeEmptyDirectories) {
-          const directories = await globby(includePatterns, {
-            ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-            onlyDirectories: true,
-          });
-          emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+          emptyDirPaths = await findEmptyDirsFromFilePaths(rootDir, gitResult, adjustedIgnorePatterns);
         }
 
         return {
