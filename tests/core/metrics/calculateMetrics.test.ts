@@ -109,9 +109,7 @@ describe('calculateMetrics', () => {
   });
 
   it('should use default ratio when no files are tokenized', async () => {
-    const processedFiles: ProcessedFile[] = [
-      { path: 'file1.txt', content: 'a'.repeat(375) },
-    ];
+    const processedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'a'.repeat(375) }];
     const output = 'a'.repeat(375);
 
     (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue([]);
@@ -142,20 +140,12 @@ describe('calculateMetrics', () => {
 
     const mockTaskRunner = { run: vi.fn(), cleanup: vi.fn() };
 
-    const result = await calculateMetrics(
-      [],
-      Promise.resolve(''),
-      vi.fn(),
-      createMockConfig(),
-      undefined,
-      undefined,
-      {
-        calculateSelectiveFileMetrics,
-        calculateGitDiffMetrics: () => Promise.resolve(0),
-        calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
-        taskRunner: mockTaskRunner,
-      },
-    );
+    const result = await calculateMetrics([], Promise.resolve(''), vi.fn(), createMockConfig(), undefined, undefined, {
+      calculateSelectiveFileMetrics,
+      calculateGitDiffMetrics: () => Promise.resolve(0),
+      calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+      taskRunner: mockTaskRunner,
+    });
 
     expect(result.totalTokens).toBe(0);
     expect(result.totalCharacters).toBe(0);
