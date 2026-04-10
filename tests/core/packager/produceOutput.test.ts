@@ -40,12 +40,13 @@ describe('produceOutput', () => {
         undefined,
         undefined,
       );
+      expect(result.outputForMetrics).toEqual('generated output');
+      expect(result.outputFiles).toBeUndefined();
+      if (result.pendingWrite) {
+        await result.pendingWrite;
+      }
       expect(mockDeps.writeOutputToDisk).toHaveBeenCalledWith('generated output', mockConfig);
       expect(mockDeps.copyToClipboardIfEnabled).toHaveBeenCalledWith('generated output', progressCallback, mockConfig);
-      expect(result).toEqual({
-        outputForMetrics: 'generated output',
-      });
-      expect(result.outputFiles).toBeUndefined();
     });
 
     it('passes git diff and log results to generateOutput', async () => {

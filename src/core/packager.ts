@@ -265,7 +265,7 @@ export const pack = async (
 
     const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
 
-    const [validationResult, { outputFiles }, metrics] = await Promise.all([
+    const [validationResult, produceOutputResult, metrics] = await Promise.all([
       validationPromise,
       outputPromise,
       withMemoryLogging('Calculate Metrics', () =>
@@ -283,6 +283,13 @@ export const pack = async (
       ),
     ]);
 
+    // Ensure the background disk write (started in produceOutput) has completed
+    // before proceeding. The write ran concurrently with metrics tokenization.
+    if (produceOutputResult.pendingWrite) {
+      await produceOutputResult.pendingWrite;
+    }
+
+    const { outputFiles } = produceOutputResult;
     const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       validationResult;
 
@@ -324,6 +331,9 @@ export const pack = async (
         ),
       ]);
 
+      if (regeneratedOutput.pendingWrite) {
+        await regeneratedOutput.pendingWrite;
+      }
       finalOutputFiles = regeneratedOutput.outputFiles;
       finalMetrics = regeneratedMetrics;
     }
