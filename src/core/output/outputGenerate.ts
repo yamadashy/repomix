@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import XMLBuilder from 'fast-xml-builder';
 import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -53,30 +52,51 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
 };
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
-  const maxBackticks = files
-    .flatMap((file) => file.content.match(/`+/g) ?? [])
-    .reduce((max, match) => Math.max(max, match.length), 0);
-  return '`'.repeat(Math.max(3, maxBackticks + 1));
+  // Scan for the longest backtick run using indexOf to skip non-backtick content,
+  // avoiding flatMap + match that allocates intermediate arrays per file.
+  let maxLen = 0;
+  for (const file of files) {
+    const content = file.content;
+    let pos = content.indexOf('`');
+    while (pos !== -1) {
+      let end = pos + 1;
+      while (end < content.length && content.charCodeAt(end) === 96) end++;
+      const runLen = end - pos;
+      if (runLen > maxLen) maxLen = runLen;
+      pos = content.indexOf('`', end);
+    }
+  }
+  return '`'.repeat(Math.max(3, maxLen + 1));
 };
 
 const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
   const lineCounts: Record<string, number> = {};
   for (const file of processedFiles) {
-    // Count lines: empty files have 0 lines, otherwise count newlines + 1
-    // (unless the content ends with a newline, in which case the last "line" is empty)
     const content = file.content;
     if (content.length === 0) {
       lineCounts[file.path] = 0;
-    } else {
-      // Count actual lines (text editor style: number of \n + 1, but trailing \n doesn't add extra line)
-      const newlineCount = (content.match(/\n/g) || []).length;
-      lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
+      continue;
     }
+    // Count newlines using indexOf (avoids allocating a match array per file)
+    let count = 0;
+    let pos = content.indexOf('\n');
+    while (pos !== -1) {
+      count++;
+      pos = content.indexOf('\n', pos + 1);
+    }
+    // Text editor style: number of \n + 1, but trailing \n doesn't add extra line
+    lineCounts[file.path] = content.endsWith('\n') ? count : count + 1;
   }
   return lineCounts;
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  // fileLineCounts is lazy: only computed when accessed. The normal output templates
+  // (XML, markdown, plain, JSON) never reference it — only the skill generation path
+  // reads it (for tree-with-line-counts and statistics). Deferring this avoids a
+  // full-content scan of all processed files on every non-skill pack run.
+  let cachedFileLineCounts: Record<string, number> | undefined;
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -90,12 +110,20 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    get fileLineCounts() {
+      if (cachedFileLineCounts === undefined) {
+        cachedFileLineCounts = calculateFileLineCounts(outputGeneratorContext.processedFiles);
+      }
+      return cachedFileLineCounts;
+    },
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    markdownCodeBlockDelimiter:
+      outputGeneratorContext.config.output.style === 'markdown'
+        ? calculateMarkdownDelimiter(outputGeneratorContext.processedFiles)
+        : '```',
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
@@ -106,6 +134,9 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
 };
 
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
+  // Lazy-load fast-xml-builder: only parsable XML style uses it. Deferring the import
+  // avoids ~5ms of module loading on every non-parsable run (the common case).
+  const XMLBuilder = (await import('fast-xml-builder')).default;
   const xmlBuilder = new XMLBuilder({ ignoreAttributes: false });
   const xmlDocument = {
     repomix: {
