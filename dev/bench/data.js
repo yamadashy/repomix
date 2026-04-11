@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775898474917,
+  "lastUpdate": 1775898764976,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -2790,6 +2790,51 @@ window.BENCHMARK_DATA = {
             "range": "±55",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2374ms, Q3: 2429ms\nAll times: 2306, 2309, 2312, 2367, 2373, 2374, 2383, 2383, 2384, 2393, 2396, 2396, 2409, 2410, 2414, 2429, 2438, 2448, 2470, 2479ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9ebeb117a98073b09de84c83e0fc2cfe8a9d7cfb",
+          "message": "Merge pull request #1446 from yamadashy/renovate/rhysd-actionlint-1.x\n\nchore(deps): update rhysd/actionlint action to v1.7.12",
+          "timestamp": "2026-04-11T18:06:50+09:00",
+          "tree_id": "294fb3453c4168a2766e84d4bca7cfa831e86723",
+          "url": "https://github.com/yamadashy/repomix/commit/9ebeb117a98073b09de84c83e0fc2cfe8a9d7cfb"
+        },
+        "date": 1775898764655,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1140,
+            "range": "±75",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1111ms, Q3: 1186ms\nAll times: 1089, 1092, 1098, 1102, 1103, 1109, 1110, 1111, 1113, 1114, 1119, 1119, 1122, 1124, 1139, 1140, 1152, 1154, 1157, 1160, 1163, 1176, 1186, 1191, 1199, 1205, 1219, 1283, 1355, 1412ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1897,
+            "range": "±30",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1877ms, Q3: 1907ms\nAll times: 1849, 1852, 1860, 1869, 1871, 1877, 1878, 1886, 1889, 1897, 1897, 1898, 1901, 1902, 1904, 1907, 1922, 1931, 1934, 1947ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2406,
+            "range": "±309",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2364ms, Q3: 2673ms\nAll times: 2339, 2345, 2352, 2354, 2356, 2364, 2365, 2368, 2382, 2405, 2406, 2421, 2447, 2552, 2634, 2673, 2819, 2956, 2966, 3020ms"
           }
         ]
       }
