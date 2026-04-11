@@ -33,9 +33,9 @@
   "author": "yamadashy",
   "license": "MIT",
   "devDependencies": {
-    "@types/chrome": "^0.1.38",
-    "@types/node": "^24.12.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260328.1",
+    "@types/chrome": "^0.1.39",
+    "@types/node": "^24.12.2",
+    "@typescript/native-preview": "^7.0.0-dev.20260403.1",
     "jsdom": "^29.0.1",
     "sharp": "^0.34.5",
     "tsx": "^4.21.0",
