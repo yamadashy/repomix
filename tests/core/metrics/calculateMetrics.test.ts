@@ -152,7 +152,8 @@ describe('calculateMetrics', () => {
   });
 
   it('should estimate token counts for non-top files when tokenCountTree is enabled', async () => {
-    // 4 files, but only top 2 by size will be exactly tokenized (topFilesLength=1, so top 1*10=10, but min slice is 2)
+    // 4 files, but the mock returns only 2 exactly-tokenized entries (topFilesLength=1, so the
+    // calibration sample is min(processedFiles.length, 1 * CALIBRATION_SAMPLE_MULTIPLIER) = 3 paths)
     const processedFiles: ProcessedFile[] = [
       { path: 'big.txt', content: 'a'.repeat(400) },
       { path: 'medium.txt', content: 'b'.repeat(200) },

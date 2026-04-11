@@ -10,7 +10,11 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import {
+  CALIBRATION_SAMPLE_MULTIPLIER,
+  calculateMetrics,
+  createMetricsTaskRunner,
+} from './metrics/calculateMetrics.js';
 import { METRICS_BATCH_SIZE } from './metrics/calculateSelectiveFileMetrics.js';
 import { prefetchFileChangeCounts } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
@@ -96,7 +100,7 @@ export const pack = async (
   const estimatedMetricsFileCount =
     config.output.splitOutput !== undefined
       ? 500 // Generous upper bound for split-output configs; capped by maxWorkerThreads regardless
-      : Math.max(config.output.topFilesLength * 10, 50);
+      : Math.max(config.output.topFilesLength * CALIBRATION_SAMPLE_MULTIPLIER, 15);
   // +3 accounts for: 2 git diff (workTree + staged), 1 git log
   // Output token counting is estimated from calibrated chars/token ratio (no worker tasks needed).
   const estimatedTasks = Math.ceil(estimatedMetricsFileCount / METRICS_BATCH_SIZE) + 3;
