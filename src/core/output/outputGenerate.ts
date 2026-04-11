@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import XMLBuilder from 'fast-xml-builder';
 import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -106,7 +105,9 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
 };
 
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
-  const xmlBuilder = new XMLBuilder({ ignoreAttributes: false });
+  // Lazy-load fast-xml-builder (~3ms) — only used for parsable XML output (non-default)
+  const FastXmlBuilder = (await import('fast-xml-builder')).default;
+  const xmlBuilder = new FastXmlBuilder({ ignoreAttributes: false });
   const xmlDocument = {
     repomix: {
       file_summary: renderContext.fileSummaryEnabled
