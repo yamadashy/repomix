@@ -132,9 +132,19 @@ export const packAction = async (c: Context) => {
 
   return stream(c, async (s) => {
     const gzip = zlib.createGzip();
-    const pendingWrites: Promise<unknown>[] = [];
+    // Required: without an 'error' listener, a zlib error would crash the
+    // Node process via unhandled EventEmitter error.
+    gzip.on('error', (err) => {
+      logError('Gzip compression error', err instanceof Error ? err : new Error(String(err)), {
+        requestId,
+      });
+    });
+
+    // Serialize downstream writes via a promise chain so each compressed chunk
+    // is awaited before the next, bounding memory under slow-client backpressure.
+    let writeChain: Promise<unknown> = Promise.resolve();
     gzip.on('data', (chunk: Buffer) => {
-      pendingWrites.push(s.write(chunk));
+      writeChain = writeChain.then(() => s.write(chunk));
     });
 
     const writeLine = async (data: unknown) => {
@@ -142,10 +152,12 @@ export const packAction = async (c: Context) => {
       await new Promise<void>((resolve, reject) => {
         gzip.write(line, (err) => (err ? reject(err) : resolve()));
       });
+      // zlib flush callback signature is () => void; errors surface via the
+      // 'error' event listener registered above.
       await new Promise<void>((resolve) => {
         gzip.flush(zlib.constants.Z_SYNC_FLUSH, () => resolve());
       });
-      await Promise.all(pendingWrites.splice(0));
+      await writeChain;
     };
 
     try {
@@ -222,7 +234,7 @@ export const packAction = async (c: Context) => {
       await writeLine({ type: 'error', message: appError.message });
     } finally {
       await new Promise<void>((resolve) => gzip.end(() => resolve()));
-      await Promise.all(pendingWrites.splice(0));
+      await writeChain;
     }
   });
 };
