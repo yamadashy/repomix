@@ -136,7 +136,7 @@ jobs:
           node-version-file: .tool-versions
           cache: npm
       - run: npm ci
-      - run: npm run test-coverage -- --reporter=verbose
+      - run: npm run test-coverage -- --reporter=verbose --reporter=junit --outputFile.junit=./test-report.junit.xml
         env:
           CI_OS: ${{ runner.os }}
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -147,6 +147,12 @@ jobs:
         with:
           fail_ci_if_error: true
           directory: ./coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+        if: ${{ !cancelled() }}
+        with:
+          files: ./test-report.junit.xml
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
