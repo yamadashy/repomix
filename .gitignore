@@ -20,6 +20,7 @@ website/server/.compile-cache/
 
 # Test coverage
 coverage/
+test-report.junit.xml
 
 # Temporary files
 *.tmp
