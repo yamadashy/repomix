@@ -1,3 +1,4 @@
+import zlib from 'node:zlib';
 import type { Context } from 'hono';
 import { stream } from 'hono/streaming';
 import { isValidRemoteValue } from 'repomix';
@@ -119,14 +120,32 @@ export const packAction = async (c: Context) => {
   const requestId = c.get('requestId');
   const clientInfo = getClientInfo(c);
 
-  // Skip compression for streaming response to ensure real-time progress delivery
-  // (compress middleware skips when Content-Encoding is already set)
-  c.header('Content-Encoding', 'identity');
+  // Stream NDJSON with per-line gzip flush. Bypasses hono/compress (which uses
+  // Web CompressionStream and cannot flush mid-stream) by pre-setting
+  // Content-Encoding, and uses Node zlib with Z_SYNC_FLUSH after every write
+  // so progress events reach the client immediately while the large final
+  // result still benefits from compression.
+  c.header('Content-Type', 'application/x-ndjson; charset=utf-8');
+  c.header('Content-Encoding', 'gzip');
+  c.header('Cache-Control', 'no-cache, no-transform');
+  c.header('X-Accel-Buffering', 'no');
 
-  // Stream progress events and result via NDJSON using Hono's stream helper
   return stream(c, async (s) => {
+    const gzip = zlib.createGzip();
+    const pendingWrites: Promise<unknown>[] = [];
+    gzip.on('data', (chunk: Buffer) => {
+      pendingWrites.push(s.write(chunk));
+    });
+
     const writeLine = async (data: unknown) => {
-      await s.write(`${JSON.stringify(data)}\n`);
+      const line = `${JSON.stringify(data)}\n`;
+      await new Promise<void>((resolve, reject) => {
+        gzip.write(line, (err) => (err ? reject(err) : resolve()));
+      });
+      await new Promise<void>((resolve) => {
+        gzip.flush(zlib.constants.Z_SYNC_FLUSH, () => resolve());
+      });
+      await Promise.all(pendingWrites.splice(0));
     };
 
     try {
@@ -201,6 +220,9 @@ export const packAction = async (c: Context) => {
       const appError = handlePackError(error);
 
       await writeLine({ type: 'error', message: appError.message });
+    } finally {
+      await new Promise<void>((resolve) => gzip.end(() => resolve()));
+      await Promise.all(pendingWrites.splice(0));
     }
   });
 };
