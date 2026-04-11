@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -22,26 +23,10 @@ import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
 import { registerHandlebarsHelpers } from './outputStyleUtils.js';
 
-// Lazy-load Handlebars to defer its ~25ms import cost until output generation.
-// The module is loaded eagerly in the import chain (packager → produceOutput →
-// outputGenerate) but only needed late in the pipeline during template rendering.
-// biome-ignore lint/suspicious/noExplicitAny: Handlebars type is complex and only used internally
-let handlebarsPromise: Promise<any> | undefined;
-const getHandlebars = () => {
-  if (!handlebarsPromise) {
-    handlebarsPromise = import('handlebars').then((mod) => {
-      registerHandlebarsHelpers(mod.default);
-      return mod.default;
-    });
-  }
-  return handlebarsPromise;
-};
-
 // Cache for compiled Handlebars templates to avoid recompilation on every call
-// biome-ignore lint/suspicious/noExplicitAny: Handlebars TemplateDelegate type requires the full module
-const compiledTemplateCache = new Map<string, any>();
+const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
 
-const getCompiledTemplate = async (style: string) => {
+const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
   const cached = compiledTemplateCache.get(style);
   if (cached) {
     return cached;
@@ -62,7 +47,6 @@ const getCompiledTemplate = async (style: string) => {
       throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
   }
 
-  const Handlebars = await getHandlebars();
   const compiled = Handlebars.compile(template);
   compiledTemplateCache.set(style, compiled);
   return compiled;
@@ -238,7 +222,7 @@ const generateHandlebarOutput = async (
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
   try {
-    const compiledTemplate = await getCompiledTemplate(config.output.style);
+    const compiledTemplate = getCompiledTemplate(config.output.style);
     return `${compiledTemplate(renderContext).trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {

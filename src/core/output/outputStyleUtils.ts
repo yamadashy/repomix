@@ -1,6 +1,7 @@
 /**
  * Shared utilities for output style generation.
  */
+import Handlebars from 'handlebars';
 
 /**
  * Map of file extensions to syntax highlighting language names.
@@ -227,19 +228,14 @@ let handlebarsHelpersRegistered = false;
 
 /**
  * Register common Handlebars helpers for output generation.
- * Accepts a Handlebars instance to avoid requiring a top-level import of handlebars,
- * which would add ~25ms to the module import chain on every CLI startup.
  * This function is idempotent - calling it multiple times has no effect.
  */
-export const registerHandlebarsHelpers = (handlebarsInstance: {
-  // biome-ignore lint/suspicious/noExplicitAny: Handlebars registerHelper callback signature is loosely typed
-  registerHelper: (name: string, fn: (...args: any[]) => any) => void;
-}): void => {
+export const registerHandlebarsHelpers = (): void => {
   if (handlebarsHelpersRegistered) {
     return;
   }
 
-  handlebarsInstance.registerHelper('getFileExtension', (filePath: string) => {
+  Handlebars.registerHelper('getFileExtension', (filePath: string) => {
     return getLanguageFromFilePath(filePath);
   });
 
