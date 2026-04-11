@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775900676681,
+  "lastUpdate": 1775902541601,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -2925,6 +2925,51 @@ window.BENCHMARK_DATA = {
             "range": "±49",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2301ms, Q3: 2350ms\nAll times: 2236, 2260, 2268, 2297, 2300, 2301, 2302, 2303, 2303, 2308, 2309, 2310, 2310, 2327, 2334, 2350, 2356, 2359, 2364, 2374ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5a011342d442d87c1ae6f39c5a5ed982a1fb7df5",
+          "message": "Merge pull request #1453 from yamadashy/perf/security-disable-secretlint-profiler\n\nperf(security): Disable @secretlint/profiler in security worker (-6.5%)",
+          "timestamp": "2026-04-11T19:12:25+09:00",
+          "tree_id": "7270b996cbed130cb3eaf174eab434adaadcce06",
+          "url": "https://github.com/yamadashy/repomix/commit/5a011342d442d87c1ae6f39c5a5ed982a1fb7df5"
+        },
+        "date": 1775902540753,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1909,
+            "range": "±174",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1831ms, Q3: 2005ms\nAll times: 1698, 1751, 1780, 1782, 1805, 1822, 1827, 1831, 1833, 1835, 1839, 1844, 1853, 1873, 1909, 1909, 1913, 1913, 1914, 1938, 1971, 1992, 2005, 2017, 2067, 2078, 2140, 2209, 2524, 2757ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1909,
+            "range": "±62",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1871ms, Q3: 1933ms\nAll times: 1836, 1844, 1858, 1860, 1860, 1871, 1876, 1880, 1885, 1905, 1909, 1912, 1918, 1922, 1931, 1933, 1944, 2102, 2126, 2236ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2352,
+            "range": "±94",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2324ms, Q3: 2418ms\nAll times: 2282, 2314, 2314, 2316, 2319, 2324, 2330, 2333, 2340, 2351, 2352, 2356, 2359, 2384, 2401, 2418, 2431, 2437, 2441, 2443ms"
           }
         ]
       }
