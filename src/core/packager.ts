@@ -11,6 +11,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -42,6 +43,7 @@ const defaultDeps = {
   calculateMetrics,
   createMetricsTaskRunner,
   sortPaths,
+  sortOutputFiles,
   getGitDiffs,
   getGitLogs,
   // Lazy-load packSkill to defer importing the skill module chain
@@ -152,8 +154,17 @@ export const pack = async (
 
     // Filter processed files to exclude suspicious ones
     const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
-    const processedFiles =
+    const filteredProcessedFiles =
       suspiciousPathSet.size > 0 ? allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path)) : allProcessedFiles;
+
+    // Pre-sort processedFiles in the same order they will appear in the generated output.
+    // `generateOutput` internally calls `sortOutputFiles` which is stable + memoized via
+    // `fileChangeCountsCache`, so sorting once here and passing the result downstream costs
+    // only a single git-log subprocess (cached) and guarantees that any consumer (metrics,
+    // mcp handles, etc.) sees files in output order. In particular, the output-metrics
+    // fast path in `calculateMetrics` relies on walking file contents through the output
+    // string in order, so the two orderings must match.
+    const processedFiles = await deps.sortOutputFiles(filteredProcessedFiles, config);
 
     progressCallback('Generating output...');
 
