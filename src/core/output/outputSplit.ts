@@ -157,94 +157,103 @@ export const generateSplitOutputParts = async ({
   }
 
   const parts: OutputSplitPart[] = [];
-  let currentGroups: OutputSplitGroup[] = [];
-  let currentContent = '';
-  let currentBytes = 0;
+  let startIdx = 0;
 
-  // Note: This algorithm has O(N²) complexity where N is the number of groups.
-  // For each group, we render all accumulated groups to measure the exact output size.
-  // This approach is intentional because:
-  // 1. The final output size cannot be predicted by simple addition - the output includes
-  //    a file tree structure and template formatting (XML/Markdown) that vary non-linearly.
-  // 2. Headers, footers, and file tree size change based on the combination of groups.
-  // 3. For typical repositories with ~10-20 top-level directories, this is acceptable.
-  // If performance becomes an issue, consider caching individual group content sizes
-  // and estimating combined sizes with a safety margin.
-  for (const group of groups) {
+  // Use exponential probing + binary search to find the maximum number of groups
+  // that fit in each part. This reduces renderGroups calls from O(N²) (the previous
+  // linear scan re-rendered all accumulated groups for every new addition) to
+  // O(P·log(N/P)) where P is the number of parts and N is the number of groups.
+  while (startIdx < groups.length) {
     const partIndex = parts.length + 1;
-    const nextGroups = [...currentGroups, group];
-    progressCallback(`Generating output... (part ${partIndex}) ${pc.dim(`evaluating ${group.rootEntry}`)}`);
-    const nextContent = await renderGroups(
-      nextGroups,
-      partIndex,
-      rootDirs,
-      baseConfig,
-      gitDiffResult,
-      gitLogResult,
-      filePathsByRoot,
-      emptyDirPaths,
-      deps.generateOutput,
-    );
-    const nextBytes = getUtf8ByteLength(nextContent);
 
-    if (nextBytes <= maxBytesPerPart) {
-      currentGroups = nextGroups;
-      currentContent = nextContent;
-      currentBytes = nextBytes;
-      continue;
-    }
+    // Bind invariant arguments so each call-site only varies groupsToRender.
+    const render = (groupsToRender: OutputSplitGroup[]) =>
+      renderGroups(
+        groupsToRender,
+        partIndex,
+        rootDirs,
+        baseConfig,
+        gitDiffResult,
+        gitLogResult,
+        filePathsByRoot,
+        emptyDirPaths,
+        deps.generateOutput,
+      );
 
-    if (currentGroups.length === 0) {
+    // Render the first group of this part to verify it fits on its own.
+    progressCallback(`Generating output... (part ${partIndex}) ${pc.dim(`evaluating ${groups[startIdx].rootEntry}`)}`);
+    const initialContent = await render([groups[startIdx]]);
+    const initialBytes = getUtf8ByteLength(initialContent);
+
+    if (initialBytes > maxBytesPerPart) {
       throw new RepomixError(
-        `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-          `Part size ${nextBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
+        `Cannot split output: root entry '${groups[startIdx].rootEntry}' exceeds max size. ` +
+          `Part size ${initialBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
       );
     }
 
-    // Finalize current part and start a new one with the current group.
+    let bestEnd = startIdx;
+    let bestContent = initialContent;
+    let bestBytes = initialBytes;
+
+    if (startIdx < groups.length - 1) {
+      // Phase 1: Exponential probing — double the probe distance each step
+      // to find an upper bound where the output exceeds the byte limit.
+      let firstOverflowIdx = groups.length; // index of first probe that overflowed (or sentinel)
+      let probeDistance = 1;
+
+      while (startIdx + probeDistance < groups.length) {
+        const probeEnd = Math.min(startIdx + probeDistance, groups.length - 1);
+        const probeGroups = groups.slice(startIdx, probeEnd + 1);
+        progressCallback(
+          `Generating output... (part ${partIndex}) ${pc.dim(`evaluating ${probeGroups.length} groups`)}`,
+        );
+        const probeContent = await render(probeGroups);
+        const probeBytes = getUtf8ByteLength(probeContent);
+
+        if (probeBytes <= maxBytesPerPart) {
+          bestEnd = probeEnd;
+          bestContent = probeContent;
+          bestBytes = probeBytes;
+          if (probeEnd === groups.length - 1) break;
+          probeDistance *= 2;
+        } else {
+          firstOverflowIdx = probeEnd;
+          break;
+        }
+      }
+
+      // Phase 2: Binary search between bestEnd+1 and firstOverflowIdx-1
+      // to find the exact maximum number of groups that fit.
+      let lo = bestEnd + 1;
+      let hi = firstOverflowIdx - 1;
+      while (lo <= hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        const midGroups = groups.slice(startIdx, mid + 1);
+        progressCallback(`Generating output... (part ${partIndex}) ${pc.dim(`evaluating ${midGroups.length} groups`)}`);
+        const midContent = await render(midGroups);
+        const midBytes = getUtf8ByteLength(midContent);
+
+        if (midBytes <= maxBytesPerPart) {
+          bestEnd = mid;
+          bestContent = midContent;
+          bestBytes = midBytes;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+    }
+
     parts.push({
       index: partIndex,
       filePath: buildSplitOutputFilePath(baseConfig.output.filePath, partIndex),
-      content: currentContent,
-      byteLength: currentBytes,
-      groups: currentGroups,
+      content: bestContent,
+      byteLength: bestBytes,
+      groups: groups.slice(startIdx, bestEnd + 1),
     });
 
-    const newPartIndex = parts.length + 1;
-    progressCallback(`Generating output... (part ${newPartIndex}) ${pc.dim(`evaluating ${group.rootEntry}`)}`);
-    const singleGroupContent = await renderGroups(
-      [group],
-      newPartIndex,
-      rootDirs,
-      baseConfig,
-      gitDiffResult,
-      gitLogResult,
-      filePathsByRoot,
-      emptyDirPaths,
-      deps.generateOutput,
-    );
-    const singleGroupBytes = getUtf8ByteLength(singleGroupContent);
-    if (singleGroupBytes > maxBytesPerPart) {
-      throw new RepomixError(
-        `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-          `Part size ${singleGroupBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
-      );
-    }
-
-    currentGroups = [group];
-    currentContent = singleGroupContent;
-    currentBytes = singleGroupBytes;
-  }
-
-  if (currentGroups.length > 0) {
-    const finalIndex = parts.length + 1;
-    parts.push({
-      index: finalIndex,
-      filePath: buildSplitOutputFilePath(baseConfig.output.filePath, finalIndex),
-      content: currentContent,
-      byteLength: currentBytes,
-      groups: currentGroups,
-    });
+    startIdx = bestEnd + 1;
   }
 
   return parts;

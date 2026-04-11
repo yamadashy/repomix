@@ -13,6 +13,7 @@ import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDi
 export interface ProduceOutputResult {
   outputFiles?: string[];
   outputForMetrics: string | string[];
+  pendingWrite?: Promise<void>;
 }
 
 const defaultDeps = {
@@ -146,12 +147,20 @@ const generateAndWriteSingleOutput = async (
     ),
   );
 
+  // Start disk write and clipboard copy in the background. The output string is
+  // already available for metrics tokenization, so there is no need to block on
+  // I/O before returning it. The caller awaits `pendingWrite` before exiting.
   progressCallback('Writing output file...');
-  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
-
-  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  const pendingWrite = (async () => {
+    await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+    await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  })();
+  // Suppress unhandledRejection if the write fails before the caller awaits.
+  // The caller re-throws by awaiting pendingWrite directly.
+  pendingWrite.catch(() => {});
 
   return {
     outputForMetrics: output,
+    pendingWrite,
   };
 };

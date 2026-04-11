@@ -13,6 +13,7 @@ export interface WorkerOptions {
   workerType: WorkerType;
   runtime: WorkerRuntime;
   maxWorkerThreads?: number;
+  tasksPerThread?: number;
 }
 
 /**
@@ -49,6 +50,7 @@ export const getProcessConcurrency = (): number => {
 export const getWorkerThreadCount = (
   numOfTasks: number,
   maxWorkerThreads?: number,
+  tasksPerThread?: number,
 ): { minThreads: number; maxThreads: number } => {
   const processConcurrency = getProcessConcurrency();
 
@@ -58,8 +60,14 @@ export const getWorkerThreadCount = (
   const effectiveConcurrency =
     maxWorkerThreads != null ? Math.min(processConcurrency, maxWorkerThreads) : processConcurrency;
 
-  // Limit max threads based on number of tasks
-  const maxThreads = Math.max(minThreads, Math.min(effectiveConcurrency, Math.ceil(numOfTasks / TASKS_PER_THREAD)));
+  // Limit max threads based on number of tasks.
+  // tasksPerThread can be overridden for heavier workloads (e.g., token counting ~50ms/task
+  // vs file processing <1ms/task) to avoid excessive serialization.
+  const effectiveTasksPerThread = tasksPerThread ?? TASKS_PER_THREAD;
+  const maxThreads = Math.max(
+    minThreads,
+    Math.min(effectiveConcurrency, Math.ceil(numOfTasks / effectiveTasksPerThread)),
+  );
 
   return {
     minThreads,
@@ -68,8 +76,8 @@ export const getWorkerThreadCount = (
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
-  const { numOfTasks, workerType, runtime = 'child_process', maxWorkerThreads } = options;
-  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads);
+  const { numOfTasks, workerType, runtime = 'child_process', maxWorkerThreads, tasksPerThread } = options;
+  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads, tasksPerThread);
 
   // Get worker path - uses unified worker in bundled env, individual files otherwise
   const workerPath = getWorkerPath(workerType);

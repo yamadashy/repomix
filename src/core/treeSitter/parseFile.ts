@@ -55,9 +55,11 @@ export const parseFile = async (fileContent: string, filePath: string, config: R
   const processedChunks = new Set<string>();
   const capturedChunks: CapturedChunk[] = [];
 
+  // Declare tree outside try so it can be cleaned up in finally
+  let tree: ReturnType<typeof parser.parse> | null = null;
   try {
     // Parse the file content into an Abstract Syntax Tree (AST)
-    const tree = parser.parse(fileContent);
+    tree = parser.parse(fileContent);
     if (!tree) {
       logger.debug(`Failed to parse file: ${filePath}`);
       return undefined;
@@ -76,10 +78,8 @@ export const parseFile = async (fileContent: string, filePath: string, config: R
     };
 
     // Apply the query to the AST and get the captures
+    // tree-sitter's captures() returns results in document order, so no sort is needed.
     const captures = query.captures(tree.rootNode);
-
-    // Sort captures by their start position
-    captures.sort((a, b) => a.node.startPosition.row - b.node.startPosition.row);
 
     for (const capture of captures) {
       const capturedChunkContent = parseStrategy.parseCapture(capture, lines, processedChunks, context);
@@ -93,6 +93,11 @@ export const parseFile = async (fileContent: string, filePath: string, config: R
     }
   } catch (error: unknown) {
     logger.log(`Error parsing file: ${error}\n`);
+  } finally {
+    // Free the WASM-side AST memory now that all Node references have been read.
+    // Without this, parsed trees accumulate in the WASM heap until GC runs,
+    // causing memory pressure when processing many files.
+    tree?.delete();
   }
 
   const filteredChunks = filterDuplicatedChunks(capturedChunks);
@@ -146,8 +151,10 @@ const filterDuplicatedChunks = (chunks: CapturedChunk[]): CapturedChunk[] => {
     filteredChunks.push(rowChunks[0]);
   }
 
-  // Sort filtered chunks by start row
-  return filteredChunks.sort((a, b) => a.startRow - b.startRow);
+  // Chunks are already in startRow order because:
+  // 1. tree-sitter captures() returns results in document order
+  // 2. Map preserves insertion order, so chunksByStartRow keys are sorted
+  return filteredChunks;
 };
 
 const mergeAdjacentChunks = (chunks: CapturedChunk[]): CapturedChunk[] => {

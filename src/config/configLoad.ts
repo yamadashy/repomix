@@ -1,7 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import JSON5 from 'json5';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
@@ -42,15 +41,20 @@ const checkFileExists = async (filePath: string): Promise<boolean> => {
   }
 };
 
+// Probe all config paths in parallel instead of sequentially.
+// In the common case (no config file), the sequential approach made up to 9
+// serial fs.stat calls per config scope; parallelizing compresses them into
+// a single batch (~1-3ms total instead of ~10-15ms).
 const findConfigFile = async (configPaths: string[], logPrefix: string): Promise<string | null> => {
-  for (const configPath of configPaths) {
-    logger.trace(`Checking for ${logPrefix} config at:`, configPath);
+  logger.trace(`Checking for ${logPrefix} config at:`, configPaths.join(', '));
 
-    const fileExists = await checkFileExists(configPath);
+  const results = await Promise.all(configPaths.map((p) => checkFileExists(p).then((exists) => ({ path: p, exists }))));
 
-    if (fileExists) {
-      logger.trace(`Found ${logPrefix} config at:`, configPath);
-      return configPath;
+  // Return the first match in priority order (configPaths is priority-ordered)
+  for (const result of results) {
+    if (result.exists) {
+      logger.trace(`Found ${logPrefix} config at:`, result.path);
+      return result.path;
     }
   }
   return null;
@@ -156,7 +160,9 @@ const loadAndValidateConfig = async (
       case 'json5':
       case 'jsonc':
       case 'json': {
-        // Use JSON5 for JSON/JSON5/JSONC files
+        // Lazy-load JSON5: only needed when a config file exists (~2.5ms import cost).
+        // Most runs use the default config (no file), so this avoids the import entirely.
+        const JSON5 = (await import('json5')).default;
         const fileContent = await fs.readFile(filePath, 'utf-8');
         config = JSON5.parse(fileContent);
         break;

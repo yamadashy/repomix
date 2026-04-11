@@ -4,7 +4,7 @@ import type { RenderContext } from '../output/outputGeneratorTypes.js';
 import { registerHandlebarsHelpers } from '../output/outputStyleUtils.js';
 
 // Register Handlebars helpers (idempotent)
-registerHandlebarsHelpers();
+registerHandlebarsHelpers(Handlebars);
 
 /**
  * Generates the summary section for skill output.

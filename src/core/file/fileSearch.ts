@@ -1,15 +1,34 @@
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { type Options as GlobbyOptions, globby } from 'globby';
-import { minimatch } from 'minimatch';
+import type { Options as GlobbyOptions } from 'globby';
+import { Minimatch, minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { execGitLsFiles } from '../git/gitCommand.js';
 import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
+
+// Lazy-load globby: the git ls-files fast path (the common case for git repos)
+// never uses globby. Deferring the import avoids ~50ms of module loading on
+// every CLI invocation. The promise is cached so concurrent callers share it.
+let _globbyPromise: Promise<typeof import('globby').globby> | undefined;
+const getGlobby = () => {
+  _globbyPromise ??= import('globby').then((m) => m.globby);
+  return _globbyPromise;
+};
+
+// Lazy-load the `ignore` package: cached so the ~15-20ms dynamic import cost
+// is paid at most once and can overlap with other async work (e.g., git ls-files).
+// biome-ignore lint/suspicious/noExplicitAny: dynamic import type is complex
+let _ignorePromise: Promise<any> | undefined;
+const getIgnore = () => {
+  _ignorePromise ??= import('ignore');
+  return _ignorePromise;
+};
 
 export interface FileSearchResult {
   filePaths: string[];
@@ -43,6 +62,62 @@ const findEmptyDirectories = async (
   }
 
   return emptyDirs;
+};
+
+/**
+ * Derives empty directories from a file list without a full globby directory scan.
+ * Instead of walking the entire filesystem (~80-120ms), analyzes the git ls-files
+ * output to find directories whose only direct children are dot-prefixed entries,
+ * then verifies with fs.readdir (~3ms total for typical repos).
+ */
+const findEmptyDirsFromFilePaths = async (
+  rootDir: string,
+  filePaths: string[],
+  ignorePatterns: string[],
+): Promise<string[]> => {
+  const allDirs = new Set<string>();
+  const dirsWithVisibleChildren = new Set<string>();
+
+  for (const filePath of filePaths) {
+    // git ls-files always uses '/' as separator, regardless of OS
+    const parts = filePath.split('/');
+
+    // Build directory paths incrementally to avoid repeated slice+join allocations
+    let currentDir = '';
+    for (let i = 0; i < parts.length; i++) {
+      const childName = parts[i];
+      const parentDir = currentDir;
+
+      // If this direct child doesn't start with '.', parent has visible content
+      if (!childName.startsWith('.')) {
+        dirsWithVisibleChildren.add(parentDir);
+      }
+
+      // Build the current directory path
+      currentDir = currentDir ? `${currentDir}/${childName}` : childName;
+
+      // Track all directories (non-leaf path components)
+      if (i < parts.length - 1) {
+        allDirs.add(currentDir);
+      }
+    }
+  }
+
+  // Candidate empty dirs: directories with no visible direct children from the file list
+  const candidates: string[] = [];
+  for (const dir of allDirs) {
+    if (!dirsWithVisibleChildren.has(dir)) {
+      candidates.push(dir);
+    }
+  }
+
+  if (candidates.length === 0) {
+    return [];
+  }
+
+  // Verify candidates against the actual filesystem (handles non-tracked visible entries)
+  // and apply ignore patterns, matching the behavior of findEmptyDirectories
+  return findEmptyDirectories(rootDir, candidates, ignorePatterns);
 };
 
 // Check if a path is a git worktree reference file
@@ -92,12 +167,130 @@ export const normalizeGlobPattern = (pattern: string): string => {
   return pattern;
 };
 
+/**
+ * Fast file search using `git ls-files`. Returns null if the fast path cannot be used
+ * (not a git repo, git error, or incompatible config). Falls back to globby in the caller.
+ *
+ * ~40x faster than globby for git repos (~5ms vs ~200ms) because git reads from
+ * its pre-built index rather than walking the entire filesystem.
+ */
+const searchFilesWithGit = async (
+  rootDir: string,
+  config: RepomixConfigMerged,
+  includePatterns: string[],
+  rawIgnorePatterns: string[],
+  ignoreFilePatterns: string[],
+  deps = { execGitLsFiles },
+  prefetchedGitFiles?: string[] | null,
+): Promise<string[] | null> => {
+  // git ls-files --exclude-standard inherently uses .gitignore, so only use this
+  // fast path when useGitignore is enabled to maintain consistent behavior.
+  if (!config.ignore.useGitignore) return null;
+
+  // Use pre-fetched git files if available (started in parallel with prepareIgnoreContext),
+  // otherwise fetch now. The ignore module import also starts early via getIgnore().
+  const ignorePromise = getIgnore();
+
+  let gitFiles: string[];
+  if (prefetchedGitFiles !== undefined) {
+    if (prefetchedGitFiles === null || prefetchedGitFiles.length === 0) return null;
+    gitFiles = prefetchedGitFiles;
+  } else {
+    try {
+      gitFiles = await deps.execGitLsFiles(rootDir);
+    } catch {
+      return null;
+    }
+    if (gitFiles.length === 0) return null;
+  }
+
+  // --- Build ignore filter using the `ignore` package (.gitignore-compatible matching) ---
+  // IMPORTANT: Use raw ignore patterns here, NOT the normalizeGlobPattern-adjusted ones.
+  // normalizeGlobPattern converts `**/foo` to `**/foo/**` for globby compatibility,
+  // but that transformation breaks the `ignore` package's matching (it would treat
+  // `**/package-lock.json/**` as a directory pattern instead of a file pattern).
+  const { default: ignore } = await ignorePromise;
+  const ig = ignore();
+
+  // Add raw ignore patterns (defaultIgnoreList + custom + output file path + git/info/exclude)
+  // These are passed from the caller to avoid a redundant getIgnorePatterns call.
+  for (const pattern of rawIgnorePatterns) {
+    ig.add(pattern);
+  }
+
+  // Read and apply ignore files (.repomixignore, .ignore) from the repo.
+  // Check both git output (tracked/untracked-non-ignored) and the filesystem
+  // (covers root files that might be .gitignored but still present on disk).
+  const ignoreFileBasenames = ignoreFilePatterns.map((p) => p.replace('**/', ''));
+  const ignoreFileSet = new Set<string>();
+
+  // Find ignore files from git output
+  for (const filePath of gitFiles) {
+    const basename = path.basename(filePath);
+    if (ignoreFileBasenames.includes(basename)) {
+      ignoreFileSet.add(filePath);
+    }
+  }
+
+  // Also check root directory directly (in case the file is .gitignored)
+  for (const basename of ignoreFileBasenames) {
+    ignoreFileSet.add(basename);
+  }
+
+  // Read and apply each ignore file
+  for (const ignoreFilePath of ignoreFileSet) {
+    const fullPath = path.join(rootDir, ignoreFilePath);
+    try {
+      const content = await fs.readFile(fullPath, 'utf-8');
+      const dir = path.dirname(ignoreFilePath);
+
+      if (dir === '.') {
+        // Root-level ignore file: patterns apply from root
+        ig.add(content);
+      } else {
+        // Nested ignore file: prefix patterns with directory path
+        const parsed = parseIgnoreContent(content);
+        for (const pattern of parsed) {
+          if (pattern.startsWith('!')) {
+            ig.add(`!${dir}/${pattern.slice(1)}`);
+          } else {
+            ig.add(`${dir}/${pattern}`);
+          }
+        }
+      }
+    } catch {
+      // File doesn't exist on disk (possibly a stale git index entry)
+    }
+  }
+
+  // --- Build include filter ---
+  const isDefaultInclude = includePatterns.length === 1 && includePatterns[0] === '**/*';
+
+  // Pre-compile include matchers for efficient batch matching
+  const includeMatchers = isDefaultInclude ? null : includePatterns.map((p) => new Minimatch(p, { dot: true }));
+
+  // --- Filter files ---
+  return gitFiles.filter((file) => {
+    // Include filter: skip if file doesn't match any include pattern
+    if (includeMatchers && !includeMatchers.some((m) => m.match(file))) return false;
+    // Ignore filter: skip if file matches any ignore pattern
+    return !ig.ignores(file);
+  });
+};
+
 // Get all file paths considering the config
 export const searchFiles = async (
   rootDir: string,
   config: RepomixConfigMerged,
   explicitFiles?: string[],
 ): Promise<FileSearchResult> => {
+  // Eagerly start loading the `ignore` module so it resolves during
+  // the stat/permission checks below (~5ms), giving the dynamic import
+  // (~15-20ms) a head start before searchFilesWithGit needs it.
+  if (config.ignore.useGitignore) {
+    getIgnore();
+  }
+
   // Check if the path exists and get its type
   let pathStats: Stats;
   try {
@@ -146,7 +339,17 @@ export const searchFiles = async (
   }
 
   try {
-    const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+    // Start git ls-files early so it runs in parallel with prepareIgnoreContext.
+    // git ls-files spawns a subprocess (~40ms) that only needs rootDir; the ignore
+    // patterns are applied afterward during filtering. This overlaps the subprocess
+    // spawn with ignore context preparation (~5ms) and include pattern computation.
+    const earlyGitFilesPromise =
+      !explicitFiles && config.ignore.useGitignore ? execGitLsFiles(rootDir).catch((): null => null) : undefined;
+
+    const { rawIgnorePatterns, adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(
+      rootDir,
+      config,
+    );
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns:', ignoreFilePatterns);
@@ -182,6 +385,43 @@ export const searchFiles = async (
       includePatterns = ['**/*'];
     }
 
+    // Try git ls-files fast path for git repositories.
+    // This is ~40x faster than globby because it reads from the git index
+    // rather than walking the entire filesystem. Falls back to globby on failure.
+    if (!explicitFiles) {
+      const gitStartTime = Date.now();
+      // Await the pre-fetched git files (started before prepareIgnoreContext)
+      const prefetchedGitFiles = earlyGitFilesPromise !== undefined ? await earlyGitFilesPromise : undefined;
+      const gitResult = await searchFilesWithGit(
+        rootDir,
+        config,
+        includePatterns,
+        rawIgnorePatterns,
+        ignoreFilePatterns,
+        undefined,
+        prefetchedGitFiles,
+      );
+
+      if (gitResult !== null) {
+        const gitElapsedTime = Date.now() - gitStartTime;
+        logger.debug(`[git-ls-files] Completed in ${gitElapsedTime}ms, found ${gitResult.length} files`);
+
+        // Derive empty directories from the file list instead of running a full
+        // globby directory scan (~80-120ms). By analyzing direct children of each
+        // directory from the git output, we identify candidates without any visible
+        // (non-dot-prefixed) entries, then verify with fs.readdir (~3ms total).
+        let emptyDirPaths: string[] = [];
+        if (config.output.includeEmptyDirectories) {
+          emptyDirPaths = await findEmptyDirsFromFilePaths(rootDir, gitResult, adjustedIgnorePatterns);
+        }
+
+        return {
+          filePaths: sortPaths(gitResult),
+          emptyDirPaths: sortPaths(emptyDirPaths),
+        };
+      }
+    }
+
     logger.trace('Include patterns with explicit files:', includePatterns);
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns (for globby):', ignoreFilePatterns);
@@ -189,6 +429,7 @@ export const searchFiles = async (
     logger.debug('[globby] Starting file search...');
     const globbyStartTime = Date.now();
 
+    const globby = await getGlobby();
     const filePaths = await globby(includePatterns, {
       ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
       onlyFiles: true,
@@ -212,7 +453,8 @@ export const searchFiles = async (
       logger.debug('[empty dirs] Searching for empty directories...');
       const emptyDirStartTime = Date.now();
 
-      const directories = await globby(includePatterns, {
+      const globbyForDirs = await getGlobby();
+      const directories = await globbyForDirs(includePatterns, {
         ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
         onlyDirectories: true,
       });
@@ -272,11 +514,15 @@ export const parseIgnoreContent = (content: string): string[] => {
 const prepareIgnoreContext = async (
   rootDir: string,
   config: RepomixConfigMerged,
-): Promise<{ adjustedIgnorePatterns: string[]; ignoreFilePatterns: string[] }> => {
+): Promise<{ rawIgnorePatterns: string[]; adjustedIgnorePatterns: string[]; ignoreFilePatterns: string[] }> => {
   const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
     getIgnorePatterns(rootDir, config),
     getIgnoreFilePatterns(config),
   ]);
+
+  // Keep raw patterns for the git fast path (which uses the `ignore` package
+  // and needs patterns without the globby-specific normalizeGlobPattern transform).
+  const rawIgnorePatterns = [...ignorePatterns];
 
   // Normalize ignore patterns to handle trailing slashes consistently
   const normalizedIgnorePatterns = ignorePatterns.map(normalizeGlobPattern);
@@ -296,7 +542,7 @@ const prepareIgnoreContext = async (
     }
   }
 
-  return { adjustedIgnorePatterns, ignoreFilePatterns };
+  return { rawIgnorePatterns, adjustedIgnorePatterns, ignoreFilePatterns };
 };
 
 /**
@@ -400,6 +646,7 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
+  const globby = await getGlobby();
   const directories = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
@@ -419,6 +666,7 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
 export const listFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
+  const globby = await getGlobby();
   const files = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,

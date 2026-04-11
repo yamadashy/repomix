@@ -1,7 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import XMLBuilder from 'fast-xml-builder';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -11,6 +9,7 @@ import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
 import { sortOutputFiles } from './outputSort.js';
+import { buildMarkdownOutput, buildPlainOutput, buildXmlOutput } from './outputStyleBuild.js';
 import {
   generateHeader,
   generateSummaryFileFormat,
@@ -19,64 +18,53 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
-import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { getXmlTemplate } from './outputStyles/xmlStyle.js';
-
-// Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
-
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
-  const cached = compiledTemplateCache.get(style);
-  if (cached) {
-    return cached;
-  }
-
-  let template: string;
-  switch (style) {
-    case 'xml':
-      template = getXmlTemplate();
-      break;
-    case 'markdown':
-      template = getMarkdownTemplate();
-      break;
-    case 'plain':
-      template = getPlainTemplate();
-      break;
-    default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
-  }
-
-  const compiled = Handlebars.compile(template);
-  compiledTemplateCache.set(style, compiled);
-  return compiled;
-};
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
-  const maxBackticks = files
-    .flatMap((file) => file.content.match(/`+/g) ?? [])
-    .reduce((max, match) => Math.max(max, match.length), 0);
-  return '`'.repeat(Math.max(3, maxBackticks + 1));
+  // Scan for the longest backtick run using indexOf to skip non-backtick content,
+  // avoiding flatMap + match that allocates intermediate arrays per file.
+  let maxLen = 0;
+  for (const file of files) {
+    const content = file.content;
+    let pos = content.indexOf('`');
+    while (pos !== -1) {
+      let end = pos + 1;
+      while (end < content.length && content.charCodeAt(end) === 96) end++;
+      const runLen = end - pos;
+      if (runLen > maxLen) maxLen = runLen;
+      pos = content.indexOf('`', end);
+    }
+  }
+  return '`'.repeat(Math.max(3, maxLen + 1));
 };
 
 const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string, number> => {
   const lineCounts: Record<string, number> = {};
   for (const file of processedFiles) {
-    // Count lines: empty files have 0 lines, otherwise count newlines + 1
-    // (unless the content ends with a newline, in which case the last "line" is empty)
     const content = file.content;
     if (content.length === 0) {
       lineCounts[file.path] = 0;
-    } else {
-      // Count actual lines (text editor style: number of \n + 1, but trailing \n doesn't add extra line)
-      const newlineCount = (content.match(/\n/g) || []).length;
-      lineCounts[file.path] = content.endsWith('\n') ? newlineCount : newlineCount + 1;
+      continue;
     }
+    // Count newlines using indexOf (avoids allocating a match array per file)
+    let count = 0;
+    let pos = content.indexOf('\n');
+    while (pos !== -1) {
+      count++;
+      pos = content.indexOf('\n', pos + 1);
+    }
+    // Text editor style: number of \n + 1, but trailing \n doesn't add extra line
+    lineCounts[file.path] = content.endsWith('\n') ? count : count + 1;
   }
   return lineCounts;
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  // fileLineCounts is lazy: only computed when accessed. The normal output templates
+  // (XML, markdown, plain, JSON) never reference it — only the skill generation path
+  // reads it (for tree-with-line-counts and statistics). Deferring this avoids a
+  // full-content scan of all processed files on every non-skill pack run.
+  let cachedFileLineCounts: Record<string, number> | undefined;
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -90,12 +78,20 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    get fileLineCounts() {
+      if (cachedFileLineCounts === undefined) {
+        cachedFileLineCounts = calculateFileLineCounts(outputGeneratorContext.processedFiles);
+      }
+      return cachedFileLineCounts;
+    },
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    markdownCodeBlockDelimiter:
+      outputGeneratorContext.config.output.style === 'markdown'
+        ? calculateMarkdownDelimiter(outputGeneratorContext.processedFiles)
+        : '```',
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
@@ -106,6 +102,9 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
 };
 
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
+  // Lazy-load fast-xml-builder: only parsable XML style uses it. Deferring the import
+  // avoids ~5ms of module loading on every non-parsable run (the common case).
+  const XMLBuilder = (await import('fast-xml-builder')).default;
   const xmlBuilder = new XMLBuilder({ ignoreAttributes: false });
   const xmlDocument = {
     repomix: {
@@ -214,19 +213,32 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
   }
 };
 
-const generateHandlebarOutput = async (
+const generateDirectOutput = (
   config: RepomixConfigMerged,
   renderContext: RenderContext,
   processedFiles?: ProcessedFile[],
-): Promise<string> => {
+): string => {
   try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
-    return `${compiledTemplate(renderContext).trim()}\n`;
+    let output: string;
+    switch (config.output.style) {
+      case 'xml':
+        output = buildXmlOutput(renderContext);
+        break;
+      case 'markdown':
+        output = buildMarkdownOutput(renderContext);
+        break;
+      case 'plain':
+        output = buildPlainOutput(renderContext);
+        break;
+      default:
+        throw new RepomixError(`Unsupported output style: ${config.output.style}`);
+    }
+    return `${output.trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
       let largeFilesInfo = '';
       if (processedFiles && processedFiles.length > 0) {
-        const topFiles = processedFiles
+        const topFiles = [...processedFiles]
           .sort((a, b) => b.content.length - a.content.length)
           .slice(0, 5)
           .map((f) => `  - ${f.path} (${(f.content.length / 1024 / 1024).toFixed(1)} MB)`)
@@ -244,7 +256,7 @@ Please try:
       );
     }
     throw new RepomixError(
-      `Failed to compile template: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      `Failed to generate output: ${error instanceof Error ? error.message : 'Unknown error'}`,
       error instanceof Error ? { cause: error } : undefined,
     );
   }
@@ -261,7 +273,7 @@ export const generateOutput = async (
   emptyDirPaths?: string[],
   deps = {
     buildOutputGeneratorContext,
-    generateHandlebarOutput,
+    generateDirectOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
     sortOutputFiles,
@@ -286,12 +298,12 @@ export const generateOutput = async (
     case 'xml':
       return config.output.parsableStyle
         ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+        : deps.generateDirectOutput(config, renderContext, sortedProcessedFiles);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':
     case 'plain':
-      return deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+      return deps.generateDirectOutput(config, renderContext, sortedProcessedFiles);
     default:
       throw new RepomixError(`Unsupported output style: ${config.output.style}`);
   }

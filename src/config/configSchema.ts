@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { TOKEN_ENCODINGS } from '../core/metrics/TokenCounter.js';
+
+// Supported token encoding types (OpenAI encoding names).
+// Defined here (rather than in TokenCounter.ts) to avoid pulling gpt-tokenizer
+// into the CLI startup path — TokenCounter.ts imports gpt-tokenizer at the top
+// level, and configSchema.ts is loaded very early during CLI initialization.
+export const TOKEN_ENCODINGS = ['o200k_base', 'cl100k_base', 'p50k_base', 'p50k_edit', 'r50k_base'] as const;
+export type TokenEncoding = (typeof TOKEN_ENCODINGS)[number];
 
 // Output style enum
 export const repomixOutputStyleSchema = z.enum(['xml', 'markdown', 'json', 'plain']);

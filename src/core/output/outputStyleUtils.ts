@@ -1,7 +1,6 @@
 /**
  * Shared utilities for output style generation.
  */
-import Handlebars from 'handlebars';
 
 /**
  * Map of file extensions to syntax highlighting language names.
@@ -230,12 +229,15 @@ let handlebarsHelpersRegistered = false;
  * Register common Handlebars helpers for output generation.
  * This function is idempotent - calling it multiple times has no effect.
  */
-export const registerHandlebarsHelpers = (): void => {
+export const registerHandlebarsHelpers = (handlebars: {
+  // biome-ignore lint/suspicious/noExplicitAny: Handlebars helper signature requires any
+  registerHelper: (name: string, fn: (...args: any[]) => any) => void;
+}): void => {
   if (handlebarsHelpersRegistered) {
     return;
   }
 
-  Handlebars.registerHelper('getFileExtension', (filePath: string) => {
+  handlebars.registerHelper('getFileExtension', (filePath: string) => {
     return getLanguageFromFilePath(filePath);
   });
 

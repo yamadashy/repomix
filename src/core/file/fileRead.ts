@@ -1,6 +1,6 @@
-import * as fs from 'node:fs/promises';
+import * as fs from 'node:fs';
 import isBinaryPath from 'is-binary-path';
-import { isBinaryFile } from 'isbinaryfile';
+import { isBinaryFileSync } from 'isbinaryfile';
 import { logger } from '../../shared/logger.js';
 
 // Lazy-load encoding detection libraries to avoid their ~25ms combined import cost.
@@ -17,6 +17,10 @@ const getEncodingDeps = () => {
   return _encodingDepsPromise;
 };
 
+// Reusable UTF-8 decoder: avoids creating ~1000 TextDecoder instances per run.
+// TextDecoder in non-streaming mode holds no state between calls, so reuse is safe.
+const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+
 export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
 
 export interface FileReadResult {
@@ -25,7 +29,18 @@ export interface FileReadResult {
 }
 
 /**
- * Read a file and return its text content
+ * Read a file and return its text content.
+ *
+ * Uses `fs.readFileSync` on the main thread. Benchmarks on a 1046-file repo
+ * (warm cache) show `fs.readFileSync` completes in ~13 ms for the full set,
+ * whereas the equivalent `fs.readFile` + Promise-pool path takes ~108 ms — a
+ * ~95 ms per-run difference driven by libuv thread-hop dispatch plus Promise
+ * resolution overhead rather than raw I/O latency. Since collectFiles has no
+ * useful main-thread work to overlap while it waits for file reads (git
+ * subprocesses finish in <5 ms and worker warmup runs on separate OS threads),
+ * blocking the main thread for the duration of the sync reads shortens the
+ * collectFiles wall time without penalizing any parallel work.
+ *
  * @param filePath Path to the file
  * @param maxFileSize Maximum file size in bytes
  * @returns File content as string and skip reason if file was skipped
@@ -40,10 +55,11 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
 
     logger.trace(`Reading file: ${filePath}`);
 
-    // Read the file directly and check size afterward, avoiding a separate stat() syscall.
-    // This halves the number of I/O operations per file.
-    // Files exceeding maxFileSize are rare, so the occasional oversized read is acceptable.
-    const buffer = await fs.readFile(filePath);
+    // Read the file synchronously and check size afterward, avoiding a separate
+    // stat() syscall. This halves the number of I/O operations per file. Files
+    // exceeding maxFileSize are rare, so the occasional oversized read is
+    // acceptable.
+    const buffer = fs.readFileSync(filePath);
 
     if (buffer.length > maxFileSize) {
       const sizeKB = (buffer.length / 1024).toFixed(1);
@@ -52,7 +68,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
       return { content: null, skippedReason: 'size-limit' };
     }
 
-    if (await isBinaryFile(buffer)) {
+    if (isBinaryFileSync(buffer)) {
       logger.debug(`Skipping binary file (content check): ${filePath}`);
       return { content: null, skippedReason: 'binary-content' };
     }
@@ -61,7 +77,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     // This skips the expensive jschardet.detect() which scans the entire buffer
     // through multiple encoding probers with frequency table lookups
     try {
-      let content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+      let content = utf8Decoder.decode(buffer);
       if (content.charCodeAt(0) === 0xfeff) {
         content = content.slice(1); // strip UTF-8 BOM
       }
