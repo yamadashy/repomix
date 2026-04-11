@@ -94,6 +94,7 @@ describe('skillPrompts', () => {
       await expect(promptSkillLocation('test-skill', '/test/project', mockDeps)).rejects.toThrow(
         OperationCancelledError,
       );
+      expect(mockDeps.cancel).toHaveBeenCalledWith('Skill generation cancelled.');
     });
 
     test('should throw OperationCancelledError when overwrite is declined', async () => {
@@ -107,6 +108,7 @@ describe('skillPrompts', () => {
       await expect(promptSkillLocation('test-skill', '/test/project', mockDeps)).rejects.toThrow(
         OperationCancelledError,
       );
+      expect(mockDeps.cancel).toHaveBeenCalledWith('Skill generation cancelled.');
     });
 
     test('should throw OperationCancelledError when confirm is cancelled', async () => {
@@ -125,6 +127,7 @@ describe('skillPrompts', () => {
       await expect(promptSkillLocation('test-skill', '/test/project', mockDeps)).rejects.toThrow(
         OperationCancelledError,
       );
+      expect(mockDeps.cancel).toHaveBeenCalledWith('Skill generation cancelled.');
     });
   });
 
