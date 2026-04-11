@@ -1,4 +1,5 @@
 import { lintSource } from '@secretlint/core';
+import { secretLintProfiler } from '@secretlint/profiler';
 import { creator } from '@secretlint/secretlint-rule-preset-recommend';
 import type { SecretLintCoreConfig } from '@secretlint/types';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
@@ -6,6 +7,38 @@ import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
 // Initialize logger configuration from workerData at module load time
 // This must be called before any logging operations in the worker
 setLogLevelByWorkerData();
+
+// Disable @secretlint/profiler inside this worker.
+//
+// secretLintProfiler is a module-level singleton that installs a global
+// PerformanceObserver on import and, for every `lintSource` call, pushes one
+// entry per mark into an unbounded `entries` array. Each incoming mark then
+// runs an O(n) `entries.find()` scan against all prior entries, making the
+// total profiler cost across a single worker's lifetime O(n^2) in the number
+// of files processed. For a typical ~1000-file repo this adds ~500-900ms of
+// pure profiler bookkeeping per worker with zero functional benefit —
+// secretlint core only *writes* marks via `profiler.mark()` and never reads
+// back `getEntries()` / `getMeasures()` during linting.
+//
+// Replacing `mark` with a no-op prevents any `performance.mark()` calls from
+// firing, so the observer callback never runs and `entries` stays empty.
+//
+// Use `Object.defineProperty` + try/catch so the worker still boots even if
+// a future @secretlint/profiler version makes `mark` a getter-only or
+// non-configurable property — the optimization would silently regress in
+// that case, but the security check itself keeps working.
+try {
+  Object.defineProperty(secretLintProfiler, 'mark', {
+    value: () => {},
+    writable: true,
+    configurable: true,
+  });
+} catch {
+  // Property is non-configurable in a future secretlint version. Fall back
+  // to periodically emptying the arrays it populates so the O(n^2) find()
+  // scan stays cheap. This is a soft fallback; behaviour is still correct.
+  logger.trace('Could not override secretLintProfiler.mark; leaving profiler enabled');
+}
 
 // Security check type to distinguish between regular files, git diffs, and git logs
 export type SecurityCheckType = 'file' | 'gitDiff' | 'gitLog';
