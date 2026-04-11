@@ -33,11 +33,11 @@ try {
     writable: true,
     configurable: true,
   });
-} catch {
-  // Property is non-configurable in a future secretlint version. Fall back
-  // to periodically emptying the arrays it populates so the O(n^2) find()
-  // scan stays cheap. This is a soft fallback; behaviour is still correct.
-  logger.trace('Could not override secretLintProfiler.mark; leaving profiler enabled');
+} catch (error) {
+  // Property may be non-configurable in a future secretlint version.
+  // Security linting still works correctly — only this performance
+  // optimization is skipped.
+  logger.trace('Could not override secretLintProfiler.mark; leaving profiler enabled', error);
 }
 
 // Security check type to distinguish between regular files, git diffs, and git logs
