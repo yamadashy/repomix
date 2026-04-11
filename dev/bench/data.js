@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775902541601,
+  "lastUpdate": 1775904249013,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -2970,6 +2970,51 @@ window.BENCHMARK_DATA = {
             "range": "±94",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2324ms, Q3: 2418ms\nAll times: 2282, 2314, 2314, 2316, 2319, 2324, 2330, 2333, 2340, 2351, 2352, 2356, 2359, 2384, 2401, 2418, 2431, 2437, 2441, 2443ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1d02c636fb85c904c6e6b0a169838419b15187cc",
+          "message": "Merge pull request #1454 from yamadashy/ci/add-codecov-test-analytics\n\nci: Enable Codecov Test Analytics and update badge token",
+          "timestamp": "2026-04-11T19:42:02+09:00",
+          "tree_id": "2ce83a9a9f474ecedc8b3ee1f0e1645b92183070",
+          "url": "https://github.com/yamadashy/repomix/commit/1d02c636fb85c904c6e6b0a169838419b15187cc"
+        },
+        "date": 1775904248676,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1582,
+            "range": "±400",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1339ms, Q3: 1739ms\nAll times: 1159, 1245, 1270, 1274, 1298, 1331, 1338, 1339, 1372, 1530, 1537, 1538, 1549, 1556, 1562, 1582, 1593, 1593, 1594, 1616, 1658, 1721, 1739, 1746, 1764, 1765, 1777, 1782, 1805, 1885ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1837,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1820ms, Q3: 1843ms\nAll times: 1791, 1795, 1797, 1802, 1803, 1820, 1824, 1827, 1829, 1830, 1837, 1838, 1842, 1842, 1843, 1843, 1852, 1853, 1854, 1855ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2187,
+            "range": "±53",
+            "unit": "ms",
+            "extra": "Median of 19 runs\nQ1: 2159ms, Q3: 2212ms\nAll times: 2125, 2145, 2149, 2153, 2159, 2164, 2170, 2182, 2185, 2187, 2192, 2199, 2201, 2211, 2212, 2212, 2223, 2225, 2266ms"
           }
         ]
       }
