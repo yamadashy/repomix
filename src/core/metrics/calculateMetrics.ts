@@ -1,4 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
+import { logger } from '../../shared/logger.js';
 import { getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
@@ -9,7 +10,7 @@ import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
-import type { MetricsTaskRunner } from './metricsWorkerRunner.js';
+import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 
@@ -55,6 +56,71 @@ const defaultDeps = {
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
   taskRunner: undefined as MetricsTaskRunner | undefined,
+};
+
+/**
+ * Extract the "wrapper" portion of a generated output: the output string minus
+ * every file's content. Returns `null` if any file's content cannot be located
+ * in the output (e.g., the template escaped it, the output was split, or the
+ * processedFiles order does not match the output order).
+ *
+ * Assumes `processedFilesInOutputOrder` lists files in the same order they
+ * appear in `output`. A single forward pass with `indexOf(content, cursor)`
+ * is enough and handles identical content between files (each occurrence is
+ * consumed in order).
+ */
+const extractOutputWrapper = (
+  output: string,
+  processedFilesInOutputOrder: ReadonlyArray<ProcessedFile>,
+): string | null => {
+  const wrapperSegments: string[] = [];
+  let cursor = 0;
+  for (const file of processedFilesInOutputOrder) {
+    // Empty file contents produce no occurrence in the output, so skip them
+    // (their contribution to sum-of-file-tokens is zero anyway).
+    if (file.content.length === 0) continue;
+
+    const idx = output.indexOf(file.content, cursor);
+    if (idx === -1) {
+      return null;
+    }
+    wrapperSegments.push(output.slice(cursor, idx));
+    cursor = idx + file.content.length;
+  }
+  wrapperSegments.push(output.slice(cursor));
+  return wrapperSegments.join('');
+};
+
+/**
+ * When `tokenCountTree` is enabled we already tokenize every file individually
+ * via `calculateSelectiveFileMetrics`. On large repos (~1000 files, ~4 MB
+ * output) tokenizing the full output again in 200 KB chunks via
+ * `calculateOutputMetrics` is by far the longest parallel task in the metrics
+ * pipeline (≈1 s wall, dominating the `Promise.all` below).
+ *
+ * Since `totalTokens` is the sum of tokens in the output, and the output is
+ * built by concatenating file contents with template boilerplate, we can
+ * substitute the full re-tokenization with:
+ *
+ *     totalTokens ≈ Σ per-file tokens + tokens(wrapper-only output)
+ *
+ * where the "wrapper-only output" is the output with every file's content
+ * spliced out. The two values differ only at file↔wrapper boundaries where
+ * BPE could otherwise merge tokens across the boundary — empirically ~0.02 %
+ * on the repomix repository itself (309 tokens out of ~1.28 M).
+ *
+ * The fast path is only enabled for templates that embed file contents
+ * verbatim (xml non-parsable, markdown, plain) and only for single-part output.
+ * JSON output and parsable XML go through `fast-xml-builder` / `JSON.stringify`
+ * which escape file contents, so walking the output with `indexOf(content)`
+ * would miss them; those paths fall back to `calculateOutputMetrics`.
+ */
+const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean => {
+  if (!config.output.tokenCountTree) return false;
+  if (config.output.splitOutput !== undefined) return false;
+  if (config.output.parsableStyle) return false;
+  const style = config.output.style;
+  return style === 'xml' || style === 'markdown' || style === 'plain';
 };
 
 export const calculateMetrics = async (
@@ -116,14 +182,43 @@ export const calculateMetrics = async (
     const resolvedOutput = await outputPromise;
     const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
 
-    // Start output metrics after output is available
-    const outputMetricsPromise = Promise.all(
-      outputParts.map((part, index) => {
-        const partPath =
-          outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, index + 1) : config.output.filePath;
-        return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
-      }),
-    );
+    // Fast path: when `tokenCountTree` is enabled we already tokenize every file
+    // individually on the primary worker pool. Reuse those counts plus a single
+    // cheap tokenization of the output "wrapper" (the output string minus file
+    // contents) to avoid re-tokenizing the file contents a second time as part
+    // of the 200 KB output chunks. On a ~4 MB output this removes ≈1 s of
+    // serialized worker time, which was the dominant critical-path task in
+    // `Promise.all` below. See `canUseFastOutputTokenPath` / `extractOutputWrapper`
+    // for the accuracy bound (~0.02 %) and the conditions under which the fast
+    // path is enabled.
+    const fastOutputToken = canUseFastOutputTokenPath(config) && outputParts.length === 1 ? outputParts[0] : null;
+    const fastWrapper = fastOutputToken !== null ? extractOutputWrapper(fastOutputToken, processedFiles) : null;
+
+    const outputMetricsPromise: Promise<number[]> =
+      fastWrapper !== null
+        ? (async () => {
+            // Reuse per-file token counts from the primary selective metrics run.
+            const selective = await selectiveFileMetricsPromise;
+            const fileTokensSum = selective.reduce((sum, f) => sum + f.tokenCount, 0);
+            // Tokenize only the wrapper, not the ~4 MB output.
+            const wrapperTokens = await runTokenCount(taskRunner, {
+              content: fastWrapper,
+              encoding: config.tokenCount.encoding,
+            });
+            logger.trace(
+              `Fast-path output tokens: files=${fileTokensSum}, wrapper=${wrapperTokens} (${fastWrapper.length} chars)`,
+            );
+            return [fileTokensSum + wrapperTokens];
+          })()
+        : Promise.all(
+            outputParts.map((part, index) => {
+              const partPath =
+                outputParts.length > 1
+                  ? buildSplitOutputFilePath(config.output.filePath, index + 1)
+                  : config.output.filePath;
+              return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
+            }),
+          );
 
     const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
       selectiveFileMetricsPromise,
