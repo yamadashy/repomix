@@ -1,4 +1,5 @@
 import perf_hooks from 'node:perf_hooks';
+import { isMainThread } from 'node:worker_threads';
 import { lintSource } from '@secretlint/core';
 import { creator } from '@secretlint/secretlint-rule-preset-recommend';
 import type { SecretLintCoreConfig } from '@secretlint/types';
@@ -31,18 +32,36 @@ setLogLevelByWorkerData();
 // `perf_hooks.performance` object and call its `.mark()` for every event.
 // Replacing `performance.mark` with a no-op therefore neutralizes both (or
 // any number of) copies simultaneously without dependence on module layout.
-// The worker thread is isolated to secretlint and imports no other code
-// that relies on `performance.mark`, so there is no observable side effect.
+//
+// Why the `isMainThread` guard:
+// This module is also imported from `src/mcp/tools/fileSystemReadFileTool.ts`
+// (for `createSecretLintConfig` / `runSecretLint`), which runs in the MCP
+// server's main process — not a worker thread. Applying the patch there
+// would silently disable `performance.mark` process-wide, affecting any
+// other code in the main process that relies on the Node built-in. By
+// gating on `!isMainThread`, the patch is scoped to the Tinypool worker
+// thread where this module is the sole runtime and no other code observes
+// `performance.mark`. In the main-process MCP path only a handful of files
+// are linted per call, so leaving the profiler active there has no
+// measurable cost.
 //
 // The assignment creates an own property on the `perf_hooks.performance`
 // instance that shadows `Performance.prototype.mark`; the prototype is
 // deliberately left alone so no other `Performance` instance in the worker
-// (or the Node process) is affected.
-Object.defineProperty(perf_hooks.performance, 'mark', {
-  value: () => undefined,
-  writable: true,
-  configurable: true,
-});
+// is affected. The `try/catch` protects against a future Node.js version
+// making the property non-configurable — the optimization would silently
+// skip in that case, but the security check itself keeps working.
+if (!isMainThread) {
+  try {
+    Object.defineProperty(perf_hooks.performance, 'mark', {
+      value: () => undefined,
+      writable: true,
+      configurable: true,
+    });
+  } catch (error) {
+    logger.trace('Could not override performance.mark; leaving profiler enabled', error);
+  }
+}
 
 // Security check type to distinguish between regular files, git diffs, and git logs
 export type SecurityCheckType = 'file' | 'gitDiff' | 'gitLog';
