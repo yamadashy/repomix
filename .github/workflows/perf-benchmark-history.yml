@@ -113,7 +113,7 @@ jobs:
           '
 
       - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@a7bc2366eda11037936ea57d811a43b3418d3073 # v1.21.0
+        uses: benchmark-action/github-action-benchmark@a60cea5bc7b49e15c1f58f411161f99e0df48372 # v1.22.0
         with:
           name: Repomix Performance
           tool: customSmallerIsBetter
