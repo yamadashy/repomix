@@ -21,24 +21,33 @@ const findEmptyDirectories = async (
   directories: string[],
   ignorePatterns: string[],
 ): Promise<string[]> => {
+  // Dispatch all readdirs concurrently via libuv's thread pool; this turns the
+  // O(N) sequential stat-per-directory scan (~0.1ms each) into a single round
+  // of parallel I/O, which is meaningful on repos with hundreds of directories.
+  // Preserves the input order of `directories` since the for-loop below walks
+  // the results in the same order as the input array.
+  const readdirResults = await Promise.all(
+    directories.map((dir) =>
+      fs
+        .readdir(path.join(rootDir, dir))
+        .then((entries) => ({ dir, entries }))
+        .catch((error: unknown) => {
+          logger.debug(`Error checking directory ${dir}:`, error);
+          return { dir, entries: null as string[] | null };
+        }),
+    ),
+  );
+
   const emptyDirs: string[] = [];
+  for (const { dir, entries } of readdirResults) {
+    if (entries === null) continue;
+    const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
+    if (hasVisibleContents) continue;
 
-  for (const dir of directories) {
-    const fullPath = path.join(rootDir, dir);
-    try {
-      const entries = await fs.readdir(fullPath);
-      const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
-
-      if (!hasVisibleContents) {
-        // This checks if the directory itself matches any ignore patterns
-        const shouldIgnore = ignorePatterns.some((pattern) => minimatch(dir, pattern) || minimatch(`${dir}/`, pattern));
-
-        if (!shouldIgnore) {
-          emptyDirs.push(dir);
-        }
-      }
-    } catch (error) {
-      logger.debug(`Error checking directory ${dir}:`, error);
+    // This checks if the directory itself matches any ignore patterns
+    const shouldIgnore = ignorePatterns.some((pattern) => minimatch(dir, pattern) || minimatch(`${dir}/`, pattern));
+    if (!shouldIgnore) {
+      emptyDirs.push(dir);
     }
   }
 
@@ -189,10 +198,42 @@ export const searchFiles = async (
     logger.debug('[globby] Starting file search...');
     const globbyStartTime = Date.now();
 
-    const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-      onlyFiles: true,
-    }).catch((error: unknown) => {
+    const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+
+    // When empty directories are requested, fuse the file and directory searches
+    // into a single globby traversal (`onlyFiles: false` + `objectMode: true`),
+    // then classify each entry locally via its `dirent`. A single traversal is
+    // ~2x faster than two separate `onlyFiles` / `onlyDirectories` calls because
+    // it avoids re-running ignore-pattern matching and gitignore loading twice.
+    // Otherwise we keep the simpler `onlyFiles: true` path (no classification).
+    const needDirectoryEntries = config.output.includeEmptyDirectories;
+    let filePaths: string[];
+    const directories: string[] = [];
+    try {
+      if (needDirectoryEntries) {
+        const entries = await globby(includePatterns, {
+          ...baseGlobbyOptions,
+          onlyFiles: false,
+          objectMode: true,
+        });
+        filePaths = [];
+        for (const entry of entries) {
+          // `dirent` is provided by fast-glob when `objectMode: true` is set;
+          // we use it to classify entries without an extra stat call.
+          const dirent = entry.dirent;
+          if (dirent?.isFile()) {
+            filePaths.push(entry.path);
+          } else if (dirent?.isDirectory()) {
+            directories.push(entry.path);
+          }
+        }
+      } else {
+        filePaths = await globby(includePatterns, {
+          ...baseGlobbyOptions,
+          onlyFiles: true,
+        });
+      }
+    } catch (error: unknown) {
       // Handle EPERM errors specifically
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
       if (code === 'EPERM' || code === 'EACCES') {
@@ -202,24 +243,16 @@ export const searchFiles = async (
         );
       }
       throw error;
-    });
+    }
 
     const globbyElapsedTime = Date.now() - globbyStartTime;
-    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+    logger.debug(
+      `[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files` +
+        (needDirectoryEntries ? ` and ${directories.length} directories` : ''),
+    );
 
     let emptyDirPaths: string[] = [];
-    if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories...');
-      const emptyDirStartTime = Date.now();
-
-      const directories = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyDirectories: true,
-      });
-
-      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
-
+    if (needDirectoryEntries) {
       const filterStartTime = Date.now();
       emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
       const filterTime = Date.now() - filterStartTime;

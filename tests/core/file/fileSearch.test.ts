@@ -109,9 +109,24 @@ describe('fileSearch', () => {
       const mockFilePaths = ['src/file1.js', 'src/file2.js'];
       const mockEmptyDirs = ['src/empty', 'empty-root'];
 
+      // When includeEmptyDirectories is on, searchFiles issues a single fused
+      // globby call with `onlyFiles: false` + `objectMode: true`, then classifies
+      // each entry locally using its `dirent`. Mock the fused call shape.
       vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
-        if ((options as Record<string, unknown>)?.onlyDirectories) {
-          return mockEmptyDirs;
+        const opts = options as Record<string, unknown>;
+        if (opts?.objectMode) {
+          return [
+            ...mockFilePaths.map((p) => ({
+              path: p,
+              name: path.basename(p),
+              dirent: { isFile: () => true, isDirectory: () => false },
+            })),
+            ...mockEmptyDirs.map((d) => ({
+              path: d,
+              name: path.basename(d),
+              dirent: { isFile: () => false, isDirectory: () => true },
+            })),
+          ] as unknown as string[];
         }
         return mockFilePaths;
       });
