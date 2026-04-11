@@ -21,7 +21,6 @@ import {
 import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
-import { registerHandlebarsHelpers } from './outputStyleUtils.js';
 
 // Cache for compiled Handlebars templates to avoid recompilation on every call
 const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();

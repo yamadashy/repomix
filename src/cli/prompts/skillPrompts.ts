@@ -47,10 +47,9 @@ const createPromptDeps = async () => {
 export const promptSkillLocation = async (
   skillName: string,
   cwd: string,
-  deps = {} as Awaited<ReturnType<typeof createPromptDeps>>,
+  deps?: Awaited<ReturnType<typeof createPromptDeps>>,
 ): Promise<SkillPromptResult> => {
-  // Resolve deps: use provided test deps or lazy-load defaults
-  const resolvedDeps = Object.keys(deps).length > 0 ? deps : await createPromptDeps();
+  const resolvedDeps = deps ?? (await createPromptDeps());
   // Step 1: Ask for skill location
   const location = await resolvedDeps.select({
     message: 'Where would you like to save the skill?',
