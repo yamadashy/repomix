@@ -2,7 +2,7 @@ name: Performance Benchmark History
 
 on:
   push:
-    branches: [main]
+    branches: [main, perf/auto-perf-tuning]
     paths-ignore:
       - 'website/**'
       - '*.md'
@@ -115,7 +115,8 @@ jobs:
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@a60cea5bc7b49e15c1f58f411161f99e0df48372 # v1.22.0
         with:
-          name: Repomix Performance
+          name: ${{ github.ref == 'refs/heads/main' && 'Repomix Performance' || 'Repomix Performance (auto-perf-tuning)' }}
+          benchmark-data-dir-path: ${{ github.ref == 'refs/heads/main' && 'dev/bench' || 'dev/bench/auto-perf-tuning' }}
           tool: customSmallerIsBetter
           output-file-path: combined-bench-result.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
