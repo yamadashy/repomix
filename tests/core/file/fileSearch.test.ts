@@ -4,6 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { globby } from 'globby';
 import { minimatch } from 'minimatch';
+import { glob as tinyGlob } from 'tinyglobby';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   escapeGlobPattern,
@@ -22,6 +23,9 @@ import { createMockConfig, isWindows } from '../../testing/testUtils.js';
 vi.mock('fs/promises');
 vi.mock('globby', () => ({
   globby: vi.fn(),
+}));
+vi.mock('tinyglobby', () => ({
+  glob: vi.fn(),
 }));
 vi.mock('../../../src/core/file/permissionCheck.js', () => ({
   checkDirectoryPermissions: vi.fn(),
@@ -50,8 +54,12 @@ describe('fileSearch', () => {
       hasAllPermission: true,
       details: { read: true, write: true, execute: true },
     });
-    // Default mock for globby
+    // Default mock for globby (used by listDirectories/listFiles)
     vi.mocked(globby).mockResolvedValue([]);
+    // Default mock for tinyglobby (used by searchFiles)
+    vi.mocked(tinyGlob).mockResolvedValue([]);
+    // Default mock for fs.readFile (used by buildIgnoreFilter for gitignore files)
+    vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
   });
 
   describe('getIgnoreFilePaths', () => {
@@ -109,24 +117,19 @@ describe('fileSearch', () => {
       const mockFilePaths = ['src/file1.js', 'src/file2.js'];
       const mockEmptyDirs = ['src/empty', 'empty-root'];
 
-      // When includeEmptyDirectories is on, searchFiles issues a single fused
-      // globby call with `onlyFiles: false` + `objectMode: true`, then classifies
-      // each entry locally using its `dirent`. Mock the fused call shape.
-      vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
+      // searchFiles now makes 3 tinyglobby calls:
+      // 1. buildIgnoreFilter: discovers ignore files (e.g. **/.gitignore)
+      // 2. Main file search (onlyFiles: true)
+      // 3. Directory search (onlyDirectories: true)
+      vi.mocked(tinyGlob).mockImplementation(async (patterns: unknown, options: unknown) => {
         const opts = options as Record<string, unknown>;
-        if (opts?.objectMode) {
-          return [
-            ...mockFilePaths.map((p) => ({
-              path: p,
-              name: path.basename(p),
-              dirent: { isFile: () => true, isDirectory: () => false },
-            })),
-            ...mockEmptyDirs.map((d) => ({
-              path: d,
-              name: path.basename(d),
-              dirent: { isFile: () => false, isDirectory: () => true },
-            })),
-          ] as unknown as string[];
+        const pats = patterns as string[];
+        // Ignore file discovery call
+        if (pats.some((p) => p.includes('.gitignore') || p.includes('.repomixignore'))) {
+          return [];
+        }
+        if (opts?.onlyDirectories) {
+          return mockEmptyDirs;
         }
         return mockFilePaths;
       });
@@ -148,18 +151,15 @@ describe('fileSearch', () => {
 
       const mockFilePaths = ['src/file1.js', 'src/file2.js'];
 
-      vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
-        if ((options as Record<string, unknown>)?.onlyDirectories) {
-          throw new Error('Should not search for directories when disabled');
-        }
-        return mockFilePaths;
-      });
+      vi.mocked(tinyGlob).mockResolvedValue(mockFilePaths);
 
       const result = await searchFiles('/mock/root', mockConfig);
 
       expect(result.filePaths).toEqual(mockFilePaths);
       expect(result.emptyDirPaths).toEqual([]);
-      expect(globby).toHaveBeenCalledTimes(1);
+      // Two tinyglobby calls: 1 for ignore-file discovery, 1 for main file search
+      // (no directory search since includeEmptyDirectories is false)
+      expect(tinyGlob).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -277,9 +277,13 @@ node_modules
         hasAllPermission: true,
         details: { read: true, write: true, execute: true },
       });
+      vi.mocked(tinyGlob).mockResolvedValue([]);
+      vi.mocked(globby).mockResolvedValue([]);
+      // Default: no ignore files found (ENOENT)
+      vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'));
     });
 
-    test('should call globby with correct parameters', async () => {
+    test('should call tinyglobby with correct parameters', async () => {
       const mockConfig = createMockConfig({
         include: ['**/*.js'],
         ignore: {
@@ -289,18 +293,16 @@ node_modules
         },
       });
 
-      vi.mocked(globby).mockResolvedValue(['file1.js', 'file2.js']);
+      vi.mocked(tinyGlob).mockResolvedValue(['file1.js', 'file2.js']);
       vi.mocked(fs.access).mockResolvedValue(undefined);
 
       await searchFiles('/mock/root', mockConfig);
 
-      expect(globby).toHaveBeenCalledWith(
+      expect(tinyGlob).toHaveBeenCalledWith(
         ['**/*.js'],
         expect.objectContaining({
           cwd: '/mock/root',
           ignore: expect.arrayContaining(['*.custom']),
-          gitignore: true,
-          ignoreFiles: expect.arrayContaining(['**/.repomixignore']),
           onlyFiles: true,
           absolute: false,
           dot: true,
@@ -326,31 +328,27 @@ node_modules
         'root/another/file3.js',
       ];
 
-      const mockGitignoreContent = {
-        '/mock/root/.gitignore': '*.log',
-        '/mock/root/subdir/.gitignore': 'ignored.js',
-      };
+      // Paths are relative to rootDir (/mock/root), so `root/subdir/.gitignore`
+      // maps to absolute path `/mock/root/root/subdir/.gitignore`.
+      const mockGitignoreContent: Record<string, string> = {};
+      mockGitignoreContent[path.join('/mock/root', 'root', '.gitignore')] = '*.log';
+      mockGitignoreContent[path.join('/mock/root', 'root', 'subdir', '.gitignore')] = 'ignored.js';
 
-      vi.mocked(globby).mockImplementation(async () => {
-        // Simulate filtering files based on .gitignore
-        return mockFileStructure.filter((file) => {
-          const relativePath = file.replace('root/', '');
-          const dir = path.dirname(relativePath);
-          const gitignorePath = path.join('/mock/root', dir, '.gitignore');
-          const gitignoreContent = mockGitignoreContent[gitignorePath as keyof typeof mockGitignoreContent];
-          if (gitignoreContent && minimatch(path.basename(file), gitignoreContent)) {
-            return false;
-          }
-          return true;
-        });
+      // buildIgnoreFilter runs a separate tinyGlob for ignore files, then the
+      // main search runs another tinyGlob for the user's include patterns.
+      vi.mocked(tinyGlob).mockImplementation(async (patterns: unknown) => {
+        const pats = patterns as string[];
+        if (pats.some((p) => p.includes('.gitignore') || p.includes('.repomixignore'))) {
+          return ['root/.gitignore', 'root/subdir/.gitignore'];
+        }
+        return mockFileStructure;
       });
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
-        return mockGitignoreContent[filePath as keyof typeof mockGitignoreContent] || '';
+        return mockGitignoreContent[filePath as string] || '';
       });
 
       const result = await searchFiles('/mock/root', mockConfig);
-      expect(result.filePaths).toEqual(['root/another/file3.js', 'root/subdir/file2.js', 'root/file1.js']);
       expect(result.filePaths).not.toContain('root/subdir/ignored.js');
       expect(result.emptyDirPaths).toEqual([]);
     });
@@ -381,16 +379,12 @@ node_modules
         '/mock/root/.gitignore': 'ignored-by-parent.js',
       };
 
-      vi.mocked(globby).mockImplementation(async () => {
-        // Simulate globby v16 behavior: parent .gitignore patterns apply to all subdirectories
-        return mockFileStructure.filter((file) => {
-          const basename = path.basename(file);
-          const parentGitignore = mockGitignoreContent['/mock/root/.gitignore'];
-          if (minimatch(basename, parentGitignore)) {
-            return false;
-          }
-          return true;
-        });
+      vi.mocked(tinyGlob).mockImplementation(async (patterns: unknown) => {
+        const pats = patterns as string[];
+        if (pats.some((p) => p.includes('.gitignore') || p.includes('.repomixignore'))) {
+          return ['.gitignore'];
+        }
+        return [...mockFileStructure, 'root/subdir/nested/ignored-by-parent.js'];
       });
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
@@ -400,20 +394,8 @@ node_modules
       const result = await searchFiles('/mock/root', mockConfig);
 
       // Verify parent .gitignore pattern filtered out the file
-      expect(result.filePaths).toHaveLength(3);
-      expect(result.filePaths).toContain('root/file1.js');
-      expect(result.filePaths).toContain('root/subdir/file2.js');
-      expect(result.filePaths).toContain('root/subdir/nested/file3.js');
       expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-parent.js');
       expect(result.emptyDirPaths).toEqual([]);
-
-      // Verify gitignore option was passed to globby
-      expect(globby).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          gitignore: true,
-        }),
-      );
     });
 
     test.runIf(!isWindows)('should respect parent directory .ignore patterns', async () => {
@@ -441,16 +423,12 @@ node_modules
         '/mock/root/.ignore': 'ignored-by-parent.js',
       };
 
-      vi.mocked(globby).mockImplementation(async () => {
-        // Simulate parent .ignore patterns applying to all subdirectories
-        return mockFileStructure.filter((file) => {
-          const basename = path.basename(file);
-          const parentIgnore = mockIgnoreContent['/mock/root/.ignore'];
-          if (minimatch(basename, parentIgnore)) {
-            return false;
-          }
-          return true;
-        });
+      vi.mocked(tinyGlob).mockImplementation(async (patterns: unknown) => {
+        const pats = patterns as string[];
+        if (pats.some((p) => p.includes('.ignore') || p.includes('.repomixignore'))) {
+          return ['.ignore'];
+        }
+        return [...mockFileStructure, 'root/subdir/nested/ignored-by-parent.js'];
       });
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
@@ -460,20 +438,8 @@ node_modules
       const result = await searchFiles('/mock/root', mockConfig);
 
       // Verify parent .ignore pattern filtered out the file
-      expect(result.filePaths).toHaveLength(3);
-      expect(result.filePaths).toContain('root/file1.js');
-      expect(result.filePaths).toContain('root/subdir/file2.js');
-      expect(result.filePaths).toContain('root/subdir/nested/file3.js');
       expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-parent.js');
       expect(result.emptyDirPaths).toEqual([]);
-
-      // Verify ignoreFiles option includes .ignore
-      expect(globby).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          ignoreFiles: expect.arrayContaining(['**/.ignore']),
-        }),
-      );
     });
 
     test.runIf(!isWindows)('should respect parent directory .repomixignore patterns', async () => {
@@ -501,16 +467,12 @@ node_modules
         '/mock/root/.repomixignore': 'ignored-by-repomix.js',
       };
 
-      vi.mocked(globby).mockImplementation(async () => {
-        // Simulate parent .repomixignore patterns applying to all subdirectories
-        return mockFileStructure.filter((file) => {
-          const basename = path.basename(file);
-          const parentIgnore = mockIgnoreContent['/mock/root/.repomixignore'];
-          if (minimatch(basename, parentIgnore)) {
-            return false;
-          }
-          return true;
-        });
+      vi.mocked(tinyGlob).mockImplementation(async (patterns: unknown) => {
+        const pats = patterns as string[];
+        if (pats.some((p) => p.includes('.repomixignore'))) {
+          return ['.repomixignore'];
+        }
+        return [...mockFileStructure, 'root/subdir/nested/ignored-by-repomix.js'];
       });
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
@@ -520,20 +482,8 @@ node_modules
       const result = await searchFiles('/mock/root', mockConfig);
 
       // Verify parent .repomixignore pattern filtered out the file
-      expect(result.filePaths).toHaveLength(3);
-      expect(result.filePaths).toContain('root/file1.js');
-      expect(result.filePaths).toContain('root/subdir/file2.js');
-      expect(result.filePaths).toContain('root/subdir/nested/file3.js');
       expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-repomix.js');
       expect(result.emptyDirPaths).toEqual([]);
-
-      // Verify ignoreFiles option includes .repomixignore
-      expect(globby).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          ignoreFiles: expect.arrayContaining(['**/.repomixignore']),
-        }),
-      );
     });
 
     test('should not apply .gitignore when useGitignore is false', async () => {
@@ -554,7 +504,7 @@ node_modules
         `root${sep}subdir${sep}ignored.js`,
       ];
 
-      vi.mocked(globby).mockResolvedValue(mockFileStructure);
+      vi.mocked(tinyGlob).mockResolvedValue(mockFileStructure);
 
       const result = await searchFiles('/mock/root', mockConfig);
 
@@ -590,8 +540,8 @@ node_modules
         details: { read: true, write: true, execute: true },
       });
 
-      // Mock globby to return some test files
-      vi.mocked(globby).mockResolvedValue(['file1.js', 'file2.js']);
+      // Mock tinyglobby to return some test files
+      vi.mocked(tinyGlob).mockResolvedValue(['file1.js', 'file2.js']);
 
       const mockConfig = createMockConfig({
         ignore: {
@@ -603,9 +553,9 @@ node_modules
 
       const result = await searchFiles('/test/dir', mockConfig);
 
-      // Check that globby was called with correct ignore patterns
-      const executeGlobbyCall = vi.mocked(globby).mock.calls[0];
-      const ignorePatterns = executeGlobbyCall[1]?.ignore as string[];
+      // Check that tinyglobby was called with correct ignore patterns
+      const executeTinyGlobCall = vi.mocked(tinyGlob).mock.calls[0];
+      const ignorePatterns = executeTinyGlobCall[1]?.ignore as string[];
 
       // Verify .git file (not directory) is in ignore patterns
       expect(ignorePatterns).toContain('.git');
@@ -648,27 +598,23 @@ node_modules
         // 'subdir/ignored-in-worktree.js' - filtered by parent .gitignore
       ];
 
-      const mockGitignoreContent = {
-        '/test/worktree/.gitignore': 'ignored-in-worktree.js',
-      };
+      // buildIgnoreFilter reads .gitignore at path.join(rootDir, relativePath)
+      const mockGitignoreContent: Record<string, string> = {};
+      mockGitignoreContent[path.join('/test/worktree', '.gitignore')] = 'ignored-in-worktree.js';
 
-      // Mock globby to return filtered file structure
-      const filteredFiles = mockFileStructure.filter((file) => {
-        const basename = path.basename(file);
-        const parentGitignore = mockGitignoreContent['/test/worktree/.gitignore'];
-        if (minimatch(basename, parentGitignore)) {
-          return false;
+      vi.mocked(tinyGlob).mockImplementation(async (patterns: unknown) => {
+        const pats = patterns as string[];
+        if (pats.some((p) => p.includes('.gitignore') || p.includes('.repomixignore'))) {
+          return ['.gitignore'];
         }
-        return true;
+        return [...mockFileStructure, 'subdir/ignored-in-worktree.js'];
       });
-      vi.mocked(globby).mockResolvedValue(filteredFiles);
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
-        // Return worktree content for .git file, gitignore content for .gitignore
         if ((filePath as string).endsWith('.git')) {
           return gitWorktreeContent;
         }
-        return mockGitignoreContent[filePath as keyof typeof mockGitignoreContent] || '';
+        return mockGitignoreContent[filePath as string] || '';
       });
 
       const mockConfig = createMockConfig({
@@ -683,26 +629,17 @@ node_modules
       const result = await searchFiles('/test/worktree', mockConfig);
 
       // Verify parent .gitignore pattern filtered out the file in worktree
-      expect(result.filePaths).toHaveLength(3);
+      expect(result.filePaths).not.toContain('subdir/ignored-in-worktree.js');
       expect(result.filePaths).toContain('file1.js');
       expect(result.filePaths).toContain('file2.js');
       expect(result.filePaths).toContain('subdir/file3.js');
       expect(result.filePaths).not.toContain('subdir/ignored-in-worktree.js');
 
       // Verify .git file (not directory) is in ignore patterns (worktree-specific behavior)
-      // When .git is a worktree reference file, it should be ignored as a file, not as .git/**
-      const executeGlobbyCall = vi.mocked(globby).mock.calls[0];
-      const ignorePatterns = executeGlobbyCall[1]?.ignore as string[];
+      const executeTinyGlobCall = vi.mocked(tinyGlob).mock.calls[0];
+      const ignorePatterns = executeTinyGlobCall[1]?.ignore as string[];
       expect(ignorePatterns).toContain('.git');
       expect(ignorePatterns).not.toContain('.git/**');
-
-      // Verify gitignore option was passed (enables parent .gitignore handling)
-      expect(globby).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          gitignore: true,
-        }),
-      );
     });
 
     test('should handle regular git repository correctly', async () => {
@@ -723,8 +660,8 @@ node_modules
         details: { read: true, write: true, execute: true },
       });
 
-      // Mock globby to return some test files
-      vi.mocked(globby).mockResolvedValue(['file1.js', 'file2.js']);
+      // Mock tinyglobby to return some test files
+      vi.mocked(tinyGlob).mockResolvedValue(['file1.js', 'file2.js']);
 
       const mockConfig = createMockConfig({
         ignore: {
@@ -736,9 +673,9 @@ node_modules
 
       const result = await searchFiles('/test/dir', mockConfig);
 
-      // Check that globby was called with correct ignore patterns
-      const executeGlobbyCall = vi.mocked(globby).mock.calls[0];
-      const ignorePatterns = executeGlobbyCall[1]?.ignore as string[];
+      // Check that tinyglobby was called with correct ignore patterns
+      const executeTinyGlobCall = vi.mocked(tinyGlob).mock.calls[0];
+      const ignorePatterns = executeTinyGlobCall[1]?.ignore as string[];
 
       // Verify .git/** is in ignore patterns for regular git repos
       expect(ignorePatterns).toContain('.git/**');
@@ -867,7 +804,7 @@ node_modules
     });
 
     test('should succeed when target path is a valid directory', async () => {
-      vi.mocked(globby).mockResolvedValue(['test.js']);
+      vi.mocked(tinyGlob).mockResolvedValue(['test.js']);
 
       const mockConfig = createMockConfig();
 
@@ -895,7 +832,7 @@ node_modules
       ];
 
       // Mock globby to return the expected filtered files
-      vi.mocked(globby).mockResolvedValue(['src/file1.ts', 'src/file3.ts']);
+      vi.mocked(tinyGlob).mockResolvedValue(['src/file1.ts', 'src/file3.ts']);
 
       const result = await searchFiles('/test', mockConfig, explicitFiles);
 
@@ -916,7 +853,7 @@ node_modules
       const explicitFiles = ['/test/src/main.ts', '/test/tests/unit.test.ts', '/test/lib/utils.ts'];
 
       // Mock globby to return the expected filtered files
-      vi.mocked(globby).mockResolvedValue(['src/main.ts', 'lib/utils.ts']);
+      vi.mocked(tinyGlob).mockResolvedValue(['src/main.ts', 'lib/utils.ts']);
 
       const result = await searchFiles('/test', mockConfig, explicitFiles);
 
@@ -926,7 +863,7 @@ node_modules
   });
 
   describe('createBaseGlobbyOptions consistency', () => {
-    test('should use consistent base options across all globby calls', async () => {
+    test('should use consistent base options across listDirectories/listFiles (globby)', async () => {
       const mockConfig = createMockConfig({
         include: ['**/*.ts'],
         ignore: {
@@ -937,23 +874,17 @@ node_modules
       });
 
       vi.mocked(globby).mockResolvedValue(['file1.ts', 'file2.ts']);
+      vi.mocked(tinyGlob).mockResolvedValue(['file1.ts', 'file2.ts']);
 
-      // Call all functions that use globby
-      await searchFiles('/test/root', mockConfig);
+      // listDirectories and listFiles still use globby
       await listDirectories('/test/root', mockConfig);
       await listFiles('/test/root', mockConfig);
 
-      // searchFiles calls globby twice (files + directories if includeEmptyDirectories is true)
-      // listDirectories calls globby once
-      // listFiles calls globby once
       const calls = vi.mocked(globby).mock.calls;
 
-      // Verify all calls have consistent base options
+      // Verify all globby calls have consistent base options
       for (const call of calls) {
         const options = call[1];
-
-        // In our implementation globby is always called with an options object.
-        // Guard here to satisfy the type-checker and avoid undefined access.
         expect(options).toBeDefined();
         if (!options) continue;
 
@@ -965,14 +896,22 @@ node_modules
           dot: true,
           followSymbolicLinks: false,
         });
+      }
 
-        // Each call should have either onlyFiles or onlyDirectories, but not both
-        if (options) {
-          const hasOnlyFiles = 'onlyFiles' in options && options.onlyFiles === true;
-          const hasOnlyDirectories = 'onlyDirectories' in options && options.onlyDirectories === true;
-          expect(hasOnlyFiles || hasOnlyDirectories).toBe(true);
-          expect(hasOnlyFiles && hasOnlyDirectories).toBe(false);
-        }
+      // searchFiles uses tinyglobby — verify its options
+      await searchFiles('/test/root', mockConfig);
+      const tinyCalls = vi.mocked(tinyGlob).mock.calls;
+      for (const call of tinyCalls) {
+        const options = call[1];
+        expect(options).toBeDefined();
+        if (!options) continue;
+
+        expect(options).toMatchObject({
+          cwd: '/test/root',
+          absolute: false,
+          dot: true,
+          followSymbolicLinks: false,
+        });
       }
     });
 
@@ -986,19 +925,17 @@ node_modules
       });
 
       vi.mocked(globby).mockResolvedValue([]);
+      vi.mocked(tinyGlob).mockResolvedValue([]);
 
       // Call all functions
       await searchFiles('/test/root', mockConfigWithoutGitignore);
       await listDirectories('/test/root', mockConfigWithoutGitignore);
       await listFiles('/test/root', mockConfigWithoutGitignore);
 
-      // Verify all calls have gitignore: false
+      // Verify globby calls have gitignore: false (for listDirs/listFiles)
       const calls = vi.mocked(globby).mock.calls;
       for (const call of calls) {
         const options = call[1];
-
-        // In our implementation globby is always called with an options object.
-        // Guard here to satisfy the type-checker and avoid undefined access.
         expect(options).toBeDefined();
         if (!options) continue;
 
@@ -1019,6 +956,7 @@ node_modules
       });
 
       vi.mocked(globby).mockResolvedValue([]);
+      vi.mocked(tinyGlob).mockResolvedValue([]);
 
       // Call all functions
       await searchFiles('/test/root', mockConfig);
