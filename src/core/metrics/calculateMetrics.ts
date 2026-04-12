@@ -69,7 +69,7 @@ const defaultDeps = {
  * is enough and handles identical content between files (each occurrence is
  * consumed in order).
  */
-const extractOutputWrapper = (
+export const extractOutputWrapper = (
   output: string,
   processedFilesInOutputOrder: ReadonlyArray<ProcessedFile>,
 ): string | null => {
@@ -91,7 +91,7 @@ const extractOutputWrapper = (
   return wrapperSegments.join('');
 };
 
-const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean => {
+export const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean => {
   if (config.output.splitOutput !== undefined) return false;
   if (config.output.parsableStyle) return false;
   const style = config.output.style;
