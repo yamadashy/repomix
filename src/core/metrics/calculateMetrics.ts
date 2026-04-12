@@ -148,9 +148,9 @@ export const calculateMetrics = async (
     // the output "wrapper" (output minus file contents) instead of re-tokenizing
     // the full ~4 MB output in 200 KB chunks. Falls back to calculateOutputMetrics
     // for JSON/parsable-XML/split output where indexOf can't find verbatim content.
-    const fastOutputToken = canUseFastOutputTokenPath(config) && outputParts.length === 1 ? outputParts[0] : null;
-    const fastWrapper = fastOutputToken !== null ? extractOutputWrapper(fastOutputToken, processedFiles) : null;
-    if (fastOutputToken !== null && fastWrapper === null) {
+    const singleOutput = canUseFastOutputTokenPath(config) && outputParts.length === 1 ? outputParts[0] : null;
+    const fastWrapper = singleOutput !== null ? extractOutputWrapper(singleOutput, processedFiles) : null;
+    if (singleOutput !== null && fastWrapper === null) {
       logger.trace('Fast-path unavailable, falling back to full output tokenization');
     }
 
