@@ -1,5 +1,6 @@
+import perf_hooks from 'node:perf_hooks';
+import { isMainThread } from 'node:worker_threads';
 import { lintSource } from '@secretlint/core';
-import { secretLintProfiler } from '@secretlint/profiler';
 import { creator } from '@secretlint/secretlint-rule-preset-recommend';
 import type { SecretLintCoreConfig } from '@secretlint/types';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
@@ -8,36 +9,58 @@ import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
 // This must be called before any logging operations in the worker
 setLogLevelByWorkerData();
 
-// Disable @secretlint/profiler inside this worker.
+// Neutralize @secretlint/profiler inside this worker by no-op'ing
+// `perf_hooks.performance.mark`.
 //
 // secretLintProfiler is a module-level singleton that installs a global
-// PerformanceObserver on import and, for every `lintSource` call, pushes one
-// entry per mark into an unbounded `entries` array. Each incoming mark then
-// runs an O(n) `entries.find()` scan against all prior entries, making the
-// total profiler cost across a single worker's lifetime O(n^2) in the number
-// of files processed. For a typical ~1000-file repo this adds ~500-900ms of
-// pure profiler bookkeeping per worker with zero functional benefit —
-// secretlint core only *writes* marks via `profiler.mark()` and never reads
+// PerformanceObserver on import, and for every `lintSource` call it pushes
+// one entry per mark into an unbounded `entries` array. Each incoming mark
+// then runs an O(n) `entries.find()` scan against all prior entries, making
+// the total profiler cost across a single worker's lifetime O(n^2) in the
+// number of files processed. For a typical ~1000-file repo this adds ~1.2s
+// of pure profiler bookkeeping per worker with zero functional benefit —
+// @secretlint/core only *writes* marks via `profiler.mark()` and never reads
 // back `getEntries()` / `getMeasures()` during linting.
 //
-// Replacing `mark` with a no-op prevents any `performance.mark()` calls from
-// firing, so the observer callback never runs and `entries` stays empty.
+// Why patch `performance.mark` instead of the profiler singleton:
+// `@secretlint/core` declares an exact-version peer dep on
+// `@secretlint/profiler`. Whenever that version drifts from our top-level
+// resolution, npm nests a second copy under
+// `node_modules/@secretlint/core/node_modules/@secretlint/profiler`, and the
+// copy `@secretlint/core` actually calls is no longer the same singleton we
+// imported. Both profiler copies, however, share the single Node built-in
+// `perf_hooks.performance` object and call its `.mark()` for every event.
+// Replacing `performance.mark` with a no-op therefore neutralizes both (or
+// any number of) copies simultaneously without dependence on module layout.
 //
-// Use `Object.defineProperty` + try/catch so the worker still boots even if
-// a future @secretlint/profiler version makes `mark` a getter-only or
-// non-configurable property — the optimization would silently regress in
-// that case, but the security check itself keeps working.
-try {
-  Object.defineProperty(secretLintProfiler, 'mark', {
-    value: () => {},
-    writable: true,
-    configurable: true,
-  });
-} catch (error) {
-  // Property may be non-configurable in a future secretlint version.
-  // Security linting still works correctly — only this performance
-  // optimization is skipped.
-  logger.trace('Could not override secretLintProfiler.mark; leaving profiler enabled', error);
+// Why the `isMainThread` guard:
+// This module is also imported from `src/mcp/tools/fileSystemReadFileTool.ts`
+// (for `createSecretLintConfig` / `runSecretLint`), which runs in the MCP
+// server's main process — not a worker thread. Applying the patch there
+// would silently disable `performance.mark` process-wide, affecting any
+// other code in the main process that relies on the Node built-in. By
+// gating on `!isMainThread`, the patch is scoped to the Tinypool worker
+// thread where this module is the sole runtime and no other code observes
+// `performance.mark`. In the main-process MCP path only a handful of files
+// are linted per call, so leaving the profiler active there has no
+// measurable cost.
+//
+// The assignment creates an own property on the `perf_hooks.performance`
+// instance that shadows `Performance.prototype.mark`; the prototype is
+// deliberately left alone so no other `Performance` instance in the worker
+// is affected. The `try/catch` protects against a future Node.js version
+// making the property non-configurable — the optimization would silently
+// skip in that case, but the security check itself keeps working.
+if (!isMainThread) {
+  try {
+    Object.defineProperty(perf_hooks.performance, 'mark', {
+      value: () => undefined,
+      writable: true,
+      configurable: true,
+    });
+  } catch (error) {
+    logger.trace('Could not override performance.mark; leaving profiler enabled', error);
+  }
 }
 
 // Security check type to distinguish between regular files, git diffs, and git logs
