@@ -58,6 +58,13 @@ describe('packager', () => {
         },
         warmupPromise: Promise.resolve(),
       }),
+      createSecurityTaskRunner: vi.fn().mockReturnValue({
+        taskRunner: {
+          run: vi.fn().mockResolvedValue([]),
+          cleanup: vi.fn().mockResolvedValue(undefined),
+        },
+        warmupPromise: Promise.resolve(),
+      }),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -81,6 +88,7 @@ describe('packager', () => {
 
     expect(mockDeps.searchFiles).toHaveBeenCalledWith('root', mockConfig, undefined);
     expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback);
+    expect(mockDeps.createSecurityTaskRunner).toHaveBeenCalledWith(mockFilePaths.length);
     expect(mockDeps.validateFileSafety).toHaveBeenCalled();
     expect(mockDeps.processFiles).toHaveBeenCalled();
     expect(mockDeps.produceOutput).toHaveBeenCalled();
@@ -92,6 +100,9 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      expect.objectContaining({
+        securityTaskRunner: expect.anything(),
+      }),
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(

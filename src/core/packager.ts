@@ -13,7 +13,8 @@ import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { filterOutUntrustedFiles } from './security/filterOutUntrustedFiles.js';
+import { createSecurityTaskRunner, runSecurityCheck, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -42,6 +43,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityTaskRunner,
   sortPaths,
   sortOutputFiles,
   getGitDiffs,
@@ -105,12 +107,19 @@ export const pack = async (
     filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
   }));
 
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
+  // Pre-initialize both worker pools to overlap module loading with subsequent
+  // pipeline stages (file search, collection, git operations). Each pool spawns
+  // threads and runs a warm-up task that triggers expensive module initialisation
+  // inside the worker (gpt-tokenizer ≈ 250ms, secretlint ≈ 100ms). By starting
+  // both before searchFiles, their initialisation runs concurrently with file
+  // search + collection rather than blocking the critical path later.
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
     allFilePaths.length,
     config.tokenCount.encoding,
   );
+
+  const securityEnabled = config.security.enableSecurityCheck;
+  const securityTaskRunnerWithWarmup = securityEnabled ? deps.createSecurityTaskRunner(allFilePaths.length) : undefined;
 
   try {
     // Run file collection and git operations in parallel since they are independent:
@@ -135,13 +144,22 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
+    // Ensure security workers are warmed up before dispatching real work
+    if (securityTaskRunnerWithWarmup) {
+      await securityTaskRunnerWithWarmup.warmupPromise;
+    }
+
     // Run security check and file processing concurrently.
     // Security check uses worker threads while file processing runs on the main thread
     // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
     // After both complete, filter out any suspicious files from the processed results.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
+          runSecurityCheck,
+          filterOutUntrustedFiles,
+          securityTaskRunner: securityTaskRunnerWithWarmup?.taskRunner,
+        }),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
@@ -253,5 +271,9 @@ export const pack = async (
   } finally {
     await metricsWarmupPromise.catch(() => {});
     await metricsTaskRunner.cleanup();
+    if (securityTaskRunnerWithWarmup) {
+      await securityTaskRunnerWithWarmup.warmupPromise.catch(() => {});
+      await securityTaskRunnerWithWarmup.taskRunner.cleanup();
+    }
   }
 };

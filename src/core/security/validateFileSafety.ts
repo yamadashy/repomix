@@ -1,11 +1,15 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
+import {
+  getProcessConcurrency as defaultGetProcessConcurrency,
+  initTaskRunner as defaultInitTaskRunner,
+} from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import { filterOutUntrustedFiles } from './filterOutUntrustedFiles.js';
-import { runSecurityCheck, type SuspiciousFileResult } from './securityCheck.js';
+import { runSecurityCheck, type SecurityTaskRunner, type SuspiciousFileResult } from './securityCheck.js';
 
 // Marks which files are suspicious and which are safe
 // Returns Git diff results separately so they can be included in the output
@@ -16,7 +20,11 @@ export const validateFileSafety = async (
   config: RepomixConfigMerged,
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
-  deps = {
+  deps: {
+    runSecurityCheck: typeof runSecurityCheck;
+    filterOutUntrustedFiles: typeof filterOutUntrustedFiles;
+    securityTaskRunner?: SecurityTaskRunner;
+  } = {
     runSecurityCheck,
     filterOutUntrustedFiles,
   },
@@ -27,7 +35,11 @@ export const validateFileSafety = async (
 
   if (config.security.enableSecurityCheck) {
     progressCallback('Running security check...');
-    const allResults = await deps.runSecurityCheck(rawFiles, progressCallback, gitDiffResult, gitLogResult);
+    const allResults = await deps.runSecurityCheck(rawFiles, progressCallback, gitDiffResult, gitLogResult, {
+      initTaskRunner: defaultInitTaskRunner,
+      getProcessConcurrency: defaultGetProcessConcurrency,
+      taskRunner: deps.securityTaskRunner,
+    });
 
     // Separate Git diff and Git log results from regular file results
     suspiciousFilesResults = allResults.filter((result) => result.type === 'file');
