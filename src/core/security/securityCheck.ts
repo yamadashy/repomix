@@ -74,8 +74,9 @@ export const createSecurityTaskRunner = (
 // per-file round-trip costs that dominate when processing many files.
 // Security check always processes all files (~1000 in a typical repo), so a batch size of 50
 // already produces ~20 batches — enough to distribute well across available CPU cores.
-// (Unlike metrics, which may process only a small number of top files when tokenCountTree
-// is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
+// Metrics uses the same batch size of 50 for consistency; when tokenCountTree is disabled
+// and only ~50 files are processed, the single resulting batch leaves other workers free
+// for concurrent git-log/output tokenization tasks.
 const BATCH_SIZE = 50;
 
 export const runSecurityCheck = async (
