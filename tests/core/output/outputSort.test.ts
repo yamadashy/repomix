@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
@@ -8,9 +9,11 @@ vi.mock('node:fs/promises');
 describe('outputSort', () => {
   const sep = path.sep;
 
-  // Reset module cache before each test to ensure clean state for caching tests
+  // Reset module cache and mock implementations before each test to ensure clean state.
+  // resetAllMocks is needed to undo mockRejectedValue etc. set by individual tests.
   beforeEach(async () => {
     vi.resetModules();
+    vi.resetAllMocks();
   });
 
   describe('sort by git changes', () => {
@@ -54,10 +57,11 @@ describe('outputSort', () => {
       ).toEqual(expected);
 
       expect(mockGetFileChangeCount).toHaveBeenCalledWith(expect.any(String), 150);
-      expect(mockIsGitInstalled).toHaveBeenCalled();
     });
 
-    test('should return original order when git is not installed', async () => {
+    test('should return original order when .git directory does not exist', async () => {
+      vi.mocked(fs.access).mockRejectedValue(new Error('ENOENT'));
+
       const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input: ProcessedFile[] = [
         { path: `src${sep}utils${sep}file1.ts`, content: 'content1' },
@@ -145,7 +149,6 @@ describe('outputSort', () => {
       });
 
       expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
-      expect(mockIsGitInstalled).toHaveBeenCalledTimes(1);
 
       // Second call with same config - should use cache
       await sortOutputFiles(input2, mockConfig, {
@@ -155,8 +158,6 @@ describe('outputSort', () => {
 
       // getFileChangeCount should NOT be called again (cached)
       expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
-      // isGitInstalled should also be cached
-      expect(mockIsGitInstalled).toHaveBeenCalledTimes(1);
     });
   });
 });

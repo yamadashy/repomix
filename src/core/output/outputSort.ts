@@ -60,24 +60,22 @@ const getFileChangeCounts = async (
 };
 
 /**
- * Check if git is available in the given directory.
- * Results are cached per cwd.
+ * Check if this directory is likely a git repository by looking for .git.
+ * This is a fast filesystem check (~0.1ms) that avoids spawning a
+ * `git --version` subprocess (~15ms) for the common case where git IS
+ * installed. If .git doesn't exist, we skip the expensive git operations.
+ * If .git exists but git isn't installed, getFileChangeCount will fail
+ * gracefully and we cache the failure. Results are cached per cwd.
  */
-const checkGitAvailability = async (cwd: string, deps: SortDeps): Promise<boolean> => {
+const checkGitAvailability = async (cwd: string, _deps: SortDeps): Promise<boolean> => {
   const cached = gitAvailabilityCache.get(cwd);
   if (cached !== undefined) {
     return cached;
   }
 
-  // Check if Git is installed
-  const gitInstalled = await deps.isGitInstalled();
-  if (!gitInstalled) {
-    logger.trace('Git is not installed');
-    gitAvailabilityCache.set(cwd, false);
-    return false;
-  }
-
-  // Check if .git directory exists
+  // Quick filesystem check: skip git operations for non-git directories.
+  // This avoids spawning a `git --version` subprocess just to discover
+  // the directory isn't a git repository.
   const gitFolderPath = path.resolve(cwd, '.git');
   try {
     await fs.access(gitFolderPath);
