@@ -1,15 +1,16 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
+import { logger } from '../../shared/logger.js';
 import { getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import { buildSplitOutputFilePath } from '../output/outputSplit.js';
+import { calculateFileMetrics } from './calculateFileMetrics.js';
 import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
-import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
-import type { MetricsTaskRunner } from './metricsWorkerRunner.js';
+import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 
@@ -50,11 +51,51 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
 };
 
 const defaultDeps = {
-  calculateSelectiveFileMetrics,
+  calculateFileMetrics,
   calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
   taskRunner: undefined as MetricsTaskRunner | undefined,
+};
+
+/**
+ * Extract the "wrapper" portion of a generated output: the output string minus
+ * every file's content. Returns `null` if any file's content cannot be located
+ * in the output (e.g., the template escaped it, the output was split, or the
+ * processedFiles order does not match the output order).
+ *
+ * Assumes `processedFilesInOutputOrder` lists files in the same order they
+ * appear in `output`. A single forward pass with `indexOf(content, cursor)`
+ * is enough and handles identical content between files (each occurrence is
+ * consumed in order).
+ */
+export const extractOutputWrapper = (
+  output: string,
+  processedFilesInOutputOrder: ReadonlyArray<ProcessedFile>,
+): string | null => {
+  const wrapperSegments: string[] = [];
+  let cursor = 0;
+  for (const file of processedFilesInOutputOrder) {
+    // Empty file contents produce no occurrence in the output, so skip them
+    // (their contribution to sum-of-file-tokens is zero anyway).
+    if (file.content.length === 0) continue;
+
+    const idx = output.indexOf(file.content, cursor);
+    if (idx === -1) {
+      return null;
+    }
+    wrapperSegments.push(output.slice(cursor, idx));
+    cursor = idx + file.content.length;
+  }
+  wrapperSegments.push(output.slice(cursor));
+  return wrapperSegments.join('');
+};
+
+export const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean => {
+  if (config.output.splitOutput !== undefined) return false;
+  if (config.output.parsableStyle) return false;
+  const style = config.output.style;
+  return style === 'xml' || style === 'markdown' || style === 'plain';
 };
 
 export const calculateMetrics = async (
@@ -80,24 +121,11 @@ export const calculateMetrics = async (
     });
 
   try {
-    // For top files display optimization: calculate token counts only for top files by character count
-    // However, if tokenCountTree is enabled, calculate for all files to avoid double calculation
-    const topFilesLength = config.output.topFilesLength;
-    const shouldCalculateAllFiles = !!config.output.tokenCountTree;
-
-    // Determine which files to calculate token counts for:
-    // - If tokenCountTree is enabled: calculate for all files to avoid double calculation
-    // - Otherwise: calculate only for top files by character count for optimization
-    const metricsTargetPaths = shouldCalculateAllFiles
-      ? processedFiles.map((file) => file.path)
-      : [...processedFiles]
-          .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
-          .map((file) => file.path);
+    const metricsTargetPaths = processedFiles.map((file) => file.path);
 
     // Start output-independent metrics immediately so they can overlap with output generation
     // when output is passed as a promise
-    const selectiveFileMetricsPromise = deps.calculateSelectiveFileMetrics(
+    const fileMetricsPromise = deps.calculateFileMetrics(
       processedFiles,
       metricsTargetPaths,
       config.tokenCount.encoding,
@@ -108,7 +136,7 @@ export const calculateMetrics = async (
     const gitLogMetricsPromise = deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner });
 
     // Prevent unhandled rejections if `await outputPromise` throws before Promise.all
-    selectiveFileMetricsPromise.catch(() => {});
+    fileMetricsPromise.catch(() => {});
     gitDiffMetricsPromise.catch(() => {});
     gitLogMetricsPromise.catch(() => {});
 
@@ -116,17 +144,43 @@ export const calculateMetrics = async (
     const resolvedOutput = await outputPromise;
     const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
 
-    // Start output metrics after output is available
-    const outputMetricsPromise = Promise.all(
-      outputParts.map((part, index) => {
-        const partPath =
-          outputParts.length > 1 ? buildSplitOutputFilePath(config.output.filePath, index + 1) : config.output.filePath;
-        return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
-      }),
-    );
+    // Fast path: reuse per-file token counts plus a single cheap tokenization of
+    // the output "wrapper" (output minus file contents) instead of re-tokenizing
+    // the full ~4 MB output in 200 KB chunks. Falls back to calculateOutputMetrics
+    // for JSON/parsable-XML/split output where indexOf can't find verbatim content.
+    const singleOutput = canUseFastOutputTokenPath(config) && outputParts.length === 1 ? outputParts[0] : null;
+    const outputWrapper = singleOutput !== null ? extractOutputWrapper(singleOutput, processedFiles) : null;
+    if (singleOutput !== null && outputWrapper === null) {
+      logger.trace('Fast-path unavailable, falling back to full output tokenization');
+    }
 
-    const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
-      selectiveFileMetricsPromise,
+    const outputMetricsPromise: Promise<number[]> =
+      outputWrapper !== null
+        ? (async () => {
+            const allFileMetrics = await fileMetricsPromise;
+            const fileTokensSum = allFileMetrics.reduce((sum, f) => sum + f.tokenCount, 0);
+            // Tokenize only the wrapper, not the ~4 MB output.
+            const wrapperTokens = await runTokenCount(taskRunner, {
+              content: outputWrapper,
+              encoding: config.tokenCount.encoding,
+            });
+            logger.trace(
+              `Fast-path output tokens: files=${fileTokensSum}, wrapper=${wrapperTokens} (${outputWrapper.length} chars)`,
+            );
+            return [fileTokensSum + wrapperTokens];
+          })()
+        : Promise.all(
+            outputParts.map((part, index) => {
+              const partPath =
+                outputParts.length > 1
+                  ? buildSplitOutputFilePath(config.output.filePath, index + 1)
+                  : config.output.filePath;
+              return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
+            }),
+          );
+
+    const [fileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+      fileMetricsPromise,
       outputMetricsPromise,
       gitDiffMetricsPromise,
       gitLogMetricsPromise,
@@ -142,9 +196,9 @@ export const calculateMetrics = async (
       fileCharCounts[file.path] = file.content.length;
     }
 
-    // Build token counts only for top files
+    // Build per-file token counts
     const fileTokenCounts: Record<string, number> = {};
-    for (const file of selectiveFileMetrics) {
+    for (const file of fileMetrics) {
       fileTokenCounts[file.path] = file.tokenCount;
     }
 

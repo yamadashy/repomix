@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
-import { calculateSelectiveFileMetrics } from '../../../src/core/metrics/calculateSelectiveFileMetrics.js';
+import { calculateFileMetrics } from '../../../src/core/metrics/calculateFileMetrics.js';
 import type { MetricsTaskRunner } from '../../../src/core/metrics/metricsWorkerRunner.js';
 import {
   countTokens,
@@ -34,8 +34,8 @@ const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
   };
 };
 
-describe('calculateSelectiveFileMetrics', () => {
-  it('should calculate metrics for selective files only', async () => {
+describe('calculateFileMetrics', () => {
+  it('should calculate metrics for target files', async () => {
     const processedFiles: ProcessedFile[] = [
       { path: 'file1.txt', content: 'a'.repeat(100) },
       { path: 'file2.txt', content: 'b'.repeat(200) },
@@ -44,15 +44,9 @@ describe('calculateSelectiveFileMetrics', () => {
     const targetFilePaths = ['file1.txt', 'file3.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    const result = await calculateSelectiveFileMetrics(
-      processedFiles,
-      targetFilePaths,
-      'o200k_base',
-      progressCallback,
-      {
-        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
-      },
-    );
+    const result = await calculateFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback, {
+      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+    });
 
     expect(result).toEqual([
       { path: 'file1.txt', charCount: 100, tokenCount: 13 },
@@ -65,15 +59,9 @@ describe('calculateSelectiveFileMetrics', () => {
     const targetFilePaths = ['nonexistent.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    const result = await calculateSelectiveFileMetrics(
-      processedFiles,
-      targetFilePaths,
-      'o200k_base',
-      progressCallback,
-      {
-        taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
-      },
-    );
+    const result = await calculateFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback, {
+      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+    });
 
     expect(result).toEqual([]);
   });

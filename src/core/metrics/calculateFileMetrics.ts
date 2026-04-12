@@ -11,12 +11,9 @@ import type { FileMetrics } from './workers/types.js';
 // per-file round-trip costs (~0.5ms each) that dominate when processing many files.
 // A size of 10 keeps individual worker tasks small so that workers become available sooner,
 // enabling overlap between file metrics and output generation.
-// When tokenCountTree is disabled, metrics only processes a small number of top files
-// (e.g., topFilesLength * 10 = 50 by default), so a smaller batch size avoids
-// a single batch monopolizing one worker.
 const METRICS_BATCH_SIZE = 10;
 
-export const calculateSelectiveFileMetrics = async (
+export const calculateFileMetrics = async (
   processedFiles: ProcessedFile[],
   targetFilePaths: string[],
   tokenCounterEncoding: TokenEncoding,
@@ -32,7 +29,7 @@ export const calculateSelectiveFileMetrics = async (
 
   try {
     const startTime = process.hrtime.bigint();
-    logger.trace(`Starting selective metrics calculation for ${filesToProcess.length} files using worker pool`);
+    logger.trace(`Starting file metrics calculation for ${filesToProcess.length} files using worker pool`);
 
     // Split files into batches to reduce IPC round-trips
     const batches: ProcessedFile[][] = [];
@@ -72,11 +69,11 @@ export const calculateSelectiveFileMetrics = async (
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;
-    logger.trace(`Selective metrics calculation completed in ${duration.toFixed(2)}ms`);
+    logger.trace(`File metrics calculation completed in ${duration.toFixed(2)}ms`);
 
     return allResults;
   } catch (error) {
-    logger.error('Error during selective metrics calculation:', error);
+    logger.error('Error during file metrics calculation:', error);
     throw error;
   }
 };

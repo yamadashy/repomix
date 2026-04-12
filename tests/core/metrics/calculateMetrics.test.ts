@@ -1,8 +1,8 @@
 import { describe, expect, it, type Mock, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
+import { calculateFileMetrics } from '../../../src/core/metrics/calculateFileMetrics.js';
 import { calculateMetrics, createMetricsTaskRunner } from '../../../src/core/metrics/calculateMetrics.js';
-import { calculateSelectiveFileMetrics } from '../../../src/core/metrics/calculateSelectiveFileMetrics.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
@@ -26,8 +26,8 @@ vi.mock('../../../src/core/metrics/TokenCounter.js', () => {
   };
 });
 vi.mock('../../../src/core/metrics/aggregateMetrics.js');
-vi.mock('../../../src/core/metrics/calculateSelectiveFileMetrics.js', () => ({
-  calculateSelectiveFileMetrics: vi.fn(),
+vi.mock('../../../src/core/metrics/calculateFileMetrics.js', () => ({
+  calculateFileMetrics: vi.fn(),
 }));
 
 describe('calculateMetrics', () => {
@@ -43,7 +43,7 @@ describe('calculateMetrics', () => {
       { path: 'file1.txt', charCount: 100, tokenCount: 10 },
       { path: 'file2.txt', charCount: 200, tokenCount: 20 },
     ];
-    (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+    (calculateFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
 
     const aggregatedResult = {
       totalFiles: 2,
@@ -61,7 +61,7 @@ describe('calculateMetrics', () => {
       gitLogTokenCount: 0,
     };
 
-    const config = createMockConfig();
+    const config = createMockConfig({ output: { parsableStyle: true } });
 
     const gitDiffResult: GitDiffResult | undefined = undefined;
 
@@ -78,7 +78,7 @@ describe('calculateMetrics', () => {
       gitDiffResult,
       undefined,
       {
-        calculateSelectiveFileMetrics,
+        calculateFileMetrics,
         calculateOutputMetrics: async () => 30,
         calculateGitDiffMetrics: () => Promise.resolve(0),
         calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
@@ -87,9 +87,9 @@ describe('calculateMetrics', () => {
     );
 
     expect(progressCallback).toHaveBeenCalledWith('Calculating metrics...');
-    expect(calculateSelectiveFileMetrics).toHaveBeenCalledWith(
+    expect(calculateFileMetrics).toHaveBeenCalledWith(
       processedFiles,
-      ['file2.txt', 'file1.txt'], // sorted by character count desc
+      ['file1.txt', 'file2.txt'],
       'o200k_base',
       progressCallback,
       expect.objectContaining({
