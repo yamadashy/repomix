@@ -229,12 +229,11 @@ export const pack = async (
       files: filePaths,
     }));
 
-    // Ensure warm-up task completes before metrics calculation
-    await metricsWarmupPromise;
-
-    // Generate and write output, overlapping with metrics calculation.
-    // File and git metrics don't depend on the output, so they start immediately
-    // while output generation runs concurrently.
+    // Start output generation immediately — it does not need the metrics
+    // worker pool.  The metrics warmup promise is awaited inside the metrics
+    // branch only, so that output generation (lazy module import + XML string
+    // concat + disk write) can overlap with any remaining worker warm-up
+    // instead of stalling behind it.
     const outputPromise = deps.produceOutput(
       rootDirs,
       config,
@@ -251,8 +250,10 @@ export const pack = async (
 
     const [{ outputFiles }, metrics] = await Promise.all([
       outputPromise,
-      withMemoryLogging('Calculate Metrics', () =>
-        deps.calculateMetrics(
+      withMemoryLogging('Calculate Metrics', async () => {
+        // Wait for worker warm-up only before dispatching metrics tasks.
+        await metricsWarmupPromise;
+        return deps.calculateMetrics(
           processedFiles,
           outputForMetricsPromise,
           progressCallback,
@@ -262,8 +263,8 @@ export const pack = async (
           {
             taskRunner: metricsTaskRunner,
           },
-        ),
-      ),
+        );
+      }),
     ]);
 
     // Create a result object that includes metrics and security results
