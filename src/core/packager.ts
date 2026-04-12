@@ -11,7 +11,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
-import { sortOutputFiles } from './output/outputSort.js';
+import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { filterOutUntrustedFiles } from './security/filterOutUntrustedFiles.js';
 import { createSecurityTaskRunner, runSecurityCheck, type SuspiciousFileResult } from './security/securityCheck.js';
@@ -45,6 +45,7 @@ const defaultDeps = {
   createMetricsTaskRunner,
   createSecurityTaskRunner,
   sortPaths,
+  prefetchSortData,
   sortOutputFiles,
   getGitDiffs,
   getGitLogs,
@@ -78,6 +79,16 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Start prefetching git sort data (git log --name-only) immediately so the
+  // result is cached by the time sortOutputFiles runs on the critical path.
+  // Without this, sortOutputFiles spawns a ~15ms git subprocess that blocks
+  // between the security/process phase and the output/metrics phase.
+  const sortDataPromise = deps.prefetchSortData(config);
+
+  // Prevent unhandled rejection if an early exit occurs before the Promise.all
+  // that awaits sortDataPromise (e.g., searchFiles throws).
+  sortDataPromise.catch(() => {});
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -122,10 +133,12 @@ export const pack = async (
   const securityTaskRunnerWithWarmup = securityEnabled ? deps.createSecurityTaskRunner(allFilePaths.length) : undefined;
 
   try {
-    // Run file collection and git operations in parallel since they are independent:
+    // Run file collection, git operations, and sort-data prefetch in parallel since
+    // they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
-    // Neither depends on the other's results.
+    // - sortDataPromise populates the fileChangeCountsCache for sortOutputFiles
+    // None depend on each other's results.
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
       withMemoryLogging(
@@ -139,6 +152,7 @@ export const pack = async (
       ),
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
+      sortDataPromise,
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);

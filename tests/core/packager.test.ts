@@ -65,6 +65,7 @@ describe('packager', () => {
         },
         warmupPromise: Promise.resolve(),
       }),
+      prefetchSortData: vi.fn().mockResolvedValue(undefined),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
