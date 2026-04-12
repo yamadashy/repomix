@@ -13,6 +13,7 @@ import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDi
 export interface ProduceOutputResult {
   outputFiles?: string[];
   outputForMetrics: string | string[];
+  pendingIO?: Promise<void>;
 }
 
 const defaultDeps = {
@@ -105,8 +106,10 @@ const generateAndWriteSplitOutput = async (
     });
   });
 
+  // Return output content immediately so metrics can start while disk I/O
+  // runs in the background. The caller awaits pendingIO after metrics.
   progressCallback('Writing output files...');
-  await withMemoryLogging('Write Split Output', async () => {
+  const pendingIO = withMemoryLogging('Write Split Output', async () => {
     await Promise.all(
       parts.map((part) => {
         const partConfig = {
@@ -122,9 +125,13 @@ const generateAndWriteSplitOutput = async (
     );
   });
 
+  // Prevent unhandled rejection (see single-output path comment).
+  pendingIO.catch(() => {});
+
   return {
     outputFiles: parts.map((p) => p.filePath),
     outputForMetrics: parts.map((p) => p.content),
+    pendingIO,
   };
 };
 
@@ -153,12 +160,21 @@ const generateAndWriteSingleOutput = async (
     ),
   );
 
+  // Return the output string immediately so calculateMetrics can begin
+  // tokenizing while disk I/O runs in the background. The caller awaits
+  // pendingIO after metrics complete to ensure the write finishes before
+  // pack() returns.
   progressCallback('Writing output file...');
-  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+  const pendingIO = withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config)).then(() =>
+    deps.copyToClipboardIfEnabled(output, progressCallback, config),
+  );
 
-  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  // Prevent unhandled rejection if the caller doesn't reach `await pendingIO`
+  // before this promise rejects (e.g., metrics throws first).
+  pendingIO.catch(() => {});
 
   return {
     outputForMetrics: output,
+    pendingIO,
   };
 };

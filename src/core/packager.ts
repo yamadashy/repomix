@@ -253,6 +253,12 @@ export const pack = async (
 
     const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
 
+    // Extract pendingIO separately so we can await it even if Promise.all rejects.
+    // The .catch(() => {}) in produceOutput prevents unhandled rejections, but we
+    // still want to surface the error if we do reach the await.
+    const pendingIOPromise = outputPromise.then((r) => r.pendingIO);
+    pendingIOPromise.catch(() => {});
+
     const [{ outputFiles }, metrics] = await Promise.all([
       outputPromise,
       withMemoryLogging('Calculate Metrics', async () => {
@@ -271,6 +277,13 @@ export const pack = async (
         );
       }),
     ]);
+
+    // Ensure disk write + clipboard copy completed before returning.
+    // The I/O ran in the background while metrics were being calculated.
+    const pendingIO = await pendingIOPromise;
+    if (pendingIO) {
+      await pendingIO;
+    }
 
     // Create a result object that includes metrics and security results
     const result = {

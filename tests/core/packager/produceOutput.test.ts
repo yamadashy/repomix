@@ -40,11 +40,11 @@ describe('produceOutput', () => {
         undefined,
         undefined,
       );
+      // Await background I/O to ensure writes complete
+      await result.pendingIO;
       expect(mockDeps.writeOutputToDisk).toHaveBeenCalledWith('generated output', mockConfig);
       expect(mockDeps.copyToClipboardIfEnabled).toHaveBeenCalledWith('generated output', progressCallback, mockConfig);
-      expect(result).toEqual({
-        outputForMetrics: 'generated output',
-      });
+      expect(result.outputForMetrics).toBe('generated output');
       expect(result.outputFiles).toBeUndefined();
     });
 
@@ -84,7 +84,7 @@ describe('produceOutput', () => {
       const mockConfig = createMockConfig();
       const progressCallback = vi.fn();
 
-      await produceOutput(
+      const result = await produceOutput(
         ['/root'],
         mockConfig,
         [],
@@ -96,6 +96,7 @@ describe('produceOutput', () => {
         undefined,
         mockDeps,
       );
+      await result.pendingIO;
 
       expect(progressCallback).toHaveBeenCalledWith('Writing output file...');
     });
@@ -135,6 +136,7 @@ describe('produceOutput', () => {
         mockDeps,
       );
 
+      await result.pendingIO;
       expect(mockDeps.writeOutputToDisk).toHaveBeenCalled();
       expect(result.outputFiles).toBeDefined();
       expect(Array.isArray(result.outputForMetrics)).toBe(true);
@@ -150,7 +152,7 @@ describe('produceOutput', () => {
       });
       const progressCallback = vi.fn();
 
-      await produceOutput(
+      const result = await produceOutput(
         ['/root'],
         mockConfig,
         [],
@@ -162,6 +164,7 @@ describe('produceOutput', () => {
         undefined,
         mockDeps,
       );
+      await result.pendingIO;
 
       expect(progressCallback).toHaveBeenCalledWith('Writing output files...');
     });
@@ -175,7 +178,19 @@ describe('produceOutput', () => {
         },
       });
 
-      await produceOutput(['/root'], mockConfig, [], [], undefined, undefined, vi.fn(), undefined, undefined, mockDeps);
+      const result = await produceOutput(
+        ['/root'],
+        mockConfig,
+        [],
+        [],
+        undefined,
+        undefined,
+        vi.fn(),
+        undefined,
+        undefined,
+        mockDeps,
+      );
+      await result.pendingIO;
 
       expect(mockDeps.copyToClipboardIfEnabled).not.toHaveBeenCalled();
     });
