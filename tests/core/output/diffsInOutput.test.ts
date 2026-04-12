@@ -108,6 +108,7 @@ index 123..456 100644
       };
     });
 
+    const mockGenerateDirectXmlOutput = vi.fn().mockReturnValue('<xml>direct output with diffs</xml>');
     const mockGenerateHandlebarOutput = vi.fn().mockResolvedValue('<xml>output with diffs</xml>');
     const mockGenerateParsableXmlOutput = vi.fn().mockImplementation(async (renderContext: RenderContext) => {
       // Check that renderContext has gitDiffs
@@ -132,22 +133,17 @@ index 123..456 100644
       undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
+        generateDirectXmlOutput: mockGenerateDirectXmlOutput,
         generateHandlebarOutput: mockGenerateHandlebarOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
       },
     );
 
-    // Check that the output was generated with the correct template
+    // Check that the output was generated with the correct generator
     expect(mockBuildOutputGeneratorContext).toHaveBeenCalled();
-
-    // For non-parsable XML, should use Handlebars
-    if (!mockConfig.output.parsableStyle) {
-      expect(mockGenerateHandlebarOutput).toHaveBeenCalled();
-    } else {
-      // For parsable XML, should use XML generator
-      expect(mockGenerateParsableXmlOutput).toHaveBeenCalled();
-    }
+    // For non-parsable XML, should use the direct XML builder
+    expect(mockGenerateDirectXmlOutput).toHaveBeenCalled();
   });
 
   test('generateOutput should include diffs in Markdown output', async () => {
@@ -204,6 +200,7 @@ index 123..456 100644
       undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
+        generateDirectXmlOutput: vi.fn(),
         generateHandlebarOutput: mockGenerateHandlebarOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),

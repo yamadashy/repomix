@@ -214,6 +214,111 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
   }
 };
 
+/**
+ * Build XML output via direct string concatenation instead of Handlebars.
+ *
+ * On a ~4 MB output (997 files), Handlebars template execution takes ~250 ms
+ * because its compiled template builds the result through many small string
+ * concatenations and function calls. Array.push() + join() lets V8 allocate
+ * the final string in one shot, finishing in ~15–20 ms (10–15× faster).
+ *
+ * The output is byte-for-byte identical to the Handlebars XML template.
+ * Keep in sync with getXmlTemplate() in outputStyles/xmlStyle.ts.
+ */
+const generateDirectXmlOutput = (outputGeneratorContext: OutputGeneratorContext): string => {
+  const config = outputGeneratorContext.config;
+  const fileSummaryEnabled = config.output.fileSummary;
+  const directoryStructureEnabled = config.output.directoryStructure;
+  const filesEnabled = config.output.files;
+  const gitDiffEnabled = !!config.output.git?.includeDiffs;
+  const gitLogEnabled = !!config.output.git?.includeLogs;
+
+  const generationHeader = generateHeader(config, outputGeneratorContext.generationDate);
+  const summaryPurpose = generateSummaryPurpose(config);
+  const summaryFileFormat = generateSummaryFileFormat();
+  const summaryUsageGuidelines = generateSummaryUsageGuidelines(config, outputGeneratorContext.instruction);
+  const summaryNotes = generateSummaryNotes(config);
+
+  const parts: string[] = [];
+
+  if (fileSummaryEnabled) {
+    parts.push(
+      generationHeader,
+      '\n\n<file_summary>\nThis section contains a summary of this file.\n\n<purpose>\n',
+      summaryPurpose,
+      '\n</purpose>\n\n<file_format>\n',
+      summaryFileFormat,
+      '\n5. Multiple file entries, each consisting of:\n  - File path as an attribute\n  - Full contents of the file\n</file_format>\n\n<usage_guidelines>\n',
+      summaryUsageGuidelines,
+      '\n</usage_guidelines>\n\n<notes>\n',
+      summaryNotes,
+      '\n</notes>\n\n</file_summary>\n\n',
+    );
+  }
+
+  if (config.output.headerText) {
+    parts.push('<user_provided_header>\n', config.output.headerText, '\n</user_provided_header>\n\n');
+  }
+
+  if (directoryStructureEnabled) {
+    parts.push('<directory_structure>\n', outputGeneratorContext.treeString, '\n</directory_structure>\n\n');
+  }
+
+  if (filesEnabled) {
+    parts.push("<files>\nThis section contains the contents of the repository's files.\n\n");
+    for (const file of outputGeneratorContext.processedFiles) {
+      parts.push('<file path="', file.path, '">\n', file.content, '\n</file>\n\n');
+    }
+    parts.push('</files>\n');
+  }
+
+  // The Handlebars template has unconditional blank lines between the
+  // files/gitDiff, gitDiff/gitLog, and gitLog/instruction block boundaries.
+  // These blank lines sit outside any {{#if}} block, so Handlebars always
+  // preserves them regardless of which sections are enabled.
+  parts.push('\n');
+
+  if (gitDiffEnabled) {
+    parts.push(
+      '<git_diffs>\n<git_diff_work_tree>\n',
+      outputGeneratorContext.gitDiffResult?.workTreeDiffContent ?? '',
+      '\n</git_diff_work_tree>\n<git_diff_staged>\n',
+      outputGeneratorContext.gitDiffResult?.stagedDiffContent ?? '',
+      '\n</git_diff_staged>\n</git_diffs>\n',
+    );
+  }
+
+  parts.push('\n');
+
+  if (gitLogEnabled) {
+    parts.push('<git_logs>\n');
+    if (outputGeneratorContext.gitLogResult?.commits) {
+      for (const commit of outputGeneratorContext.gitLogResult.commits) {
+        parts.push(
+          '<git_log_commit>\n<date>',
+          commit.date,
+          '</date>\n<message>',
+          commit.message,
+          '</message>\n<files>\n',
+        );
+        for (const file of commit.files) {
+          parts.push(file, '\n');
+        }
+        parts.push('</files>\n</git_log_commit>\n');
+      }
+    }
+    parts.push('</git_logs>\n');
+  }
+
+  parts.push('\n');
+
+  if (outputGeneratorContext.instruction) {
+    parts.push('<instruction>\n', outputGeneratorContext.instruction, '\n</instruction>\n');
+  }
+
+  return `${parts.join('').trim()}\n`;
+};
+
 const generateHandlebarOutput = async (
   config: RepomixConfigMerged,
   renderContext: RenderContext,
@@ -261,6 +366,7 @@ export const generateOutput = async (
   emptyDirPaths?: string[],
   deps = {
     buildOutputGeneratorContext,
+    generateDirectXmlOutput,
     generateHandlebarOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
@@ -279,13 +385,20 @@ export const generateOutput = async (
     filePathsByRoot,
     emptyDirPaths,
   );
+
+  // For non-parsable XML (the default), use direct string concatenation which
+  // is 10–15× faster than Handlebars for large outputs (~250ms → ~20ms on 4MB).
+  // This path also skips calculateMarkdownDelimiter and calculateFileLineCounts
+  // which are only needed by markdown templates and the skill generation path.
+  if (config.output.style === 'xml' && !config.output.parsableStyle) {
+    return deps.generateDirectXmlOutput(outputGeneratorContext);
+  }
+
   const renderContext = createRenderContext(outputGeneratorContext);
 
   switch (config.output.style) {
     case 'xml':
-      return config.output.parsableStyle
-        ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, processedFiles);
+      return deps.generateParsableXmlOutput(renderContext);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':

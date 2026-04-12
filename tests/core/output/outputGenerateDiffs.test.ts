@@ -59,23 +59,24 @@ describe('Output Generation with Diffs', () => {
       instruction: '',
       gitDiffResult,
     })),
+    generateDirectXmlOutput: vi.fn(),
     generateHandlebarOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
   };
 
   test('XML style output should include diffs section when includeDiffs is enabled', async () => {
-    // Explicitly set XML style and parsable to false to use the template
+    // Explicitly set XML style and parsable to false to use the direct XML builder
     mockConfig.output.style = 'xml';
     mockConfig.output.parsableStyle = false;
 
-    // Mock the Handlebars output function to check for diffs in the template
-    mockDeps.generateHandlebarOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
-      // Verify that the renderContext has the gitDiffs property
-      expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
+    // Mock the direct XML output function to check for diffs
+    mockDeps.generateDirectXmlOutput.mockImplementation((outputGeneratorContext) => {
+      // Verify that the context has the gitDiffResult
+      expect(outputGeneratorContext.gitDiffResult?.workTreeDiffContent).toBe(sampleDiff);
 
       // Simulate the rendered output to check later
-      return `<diffs>${renderContext.gitDiffWorkTree}</diffs>`;
+      return `<diffs>${outputGeneratorContext.gitDiffResult?.workTreeDiffContent}</diffs>`;
     });
 
     // Generate the output
@@ -96,8 +97,8 @@ describe('Output Generation with Diffs', () => {
     expect(output).toContain(sampleDiff);
     expect(output).toContain('</diffs>');
 
-    // Verify that the generateHandlebarOutput function was called
-    expect(mockDeps.generateHandlebarOutput).toHaveBeenCalled();
+    // Verify that the generateDirectXmlOutput function was called
+    expect(mockDeps.generateDirectXmlOutput).toHaveBeenCalled();
   });
 
   test('XML style output with parsableStyle should include diffs section', async () => {
@@ -208,6 +209,10 @@ describe('Output Generation with Diffs', () => {
   });
 
   test('Output should not include diffs section when includeDiffs is disabled', async () => {
+    // Reset to XML style (may have been changed by prior tests)
+    mockConfig.output.style = 'xml';
+    mockConfig.output.parsableStyle = false;
+
     // Disable the includeDiffs option
     if (mockConfig.output.git) {
       mockConfig.output.git.includeDiffs = false;
@@ -223,10 +228,10 @@ describe('Output Generation with Diffs', () => {
       // No gitDiffs property
     }));
 
-    // Mock the Handlebars output function
-    mockDeps.generateHandlebarOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
-      // Verify that the renderContext does not have the gitDiffs property
-      expect(renderContext.gitDiffWorkTree).toBeUndefined();
+    // Mock the direct XML output function (XML non-parsable is the default style)
+    mockDeps.generateDirectXmlOutput.mockImplementation((outputGeneratorContext) => {
+      // Verify that the context does not have the gitDiffResult
+      expect(outputGeneratorContext.gitDiffResult).toBeUndefined();
 
       // Simulate the output without diffs
       return 'Output without diffs';
@@ -249,7 +254,7 @@ describe('Output Generation with Diffs', () => {
     expect(output).not.toContain('Git Diffs');
     expect(output).not.toContain(sampleDiff);
 
-    // Verify that the generateHandlebarOutput function was called
-    expect(mockDeps.generateHandlebarOutput).toHaveBeenCalled();
+    // Verify that the generateDirectXmlOutput function was called
+    expect(mockDeps.generateDirectXmlOutput).toHaveBeenCalled();
   });
 });
