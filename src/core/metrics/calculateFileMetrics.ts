@@ -9,18 +9,11 @@ import type { FileMetrics } from './workers/types.js';
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
 // Each batch is sent as a single message to a worker thread, avoiding
 // per-file round-trip costs (~0.5ms each) that dominate when processing many files.
-// A size of 50 balances IPC round-trips against scheduling granularity:
-//   - For ~1000 files (tokenCountTree enabled): 20 batches → 5 rounds on 4 workers
-//     instead of 100 batches → 25 rounds, cutting IPC round-trips by 5× and
-//     reducing worker idle time between batches (CPU profiling shows workers spend
-//     25-38% of the metrics phase in atomicsWaitLoop at batch size 10).
-//   - For ~50 files (tokenCountTree disabled): 1 batch per worker, leaving other
-//     workers free for git-log/output tokenization tasks.
-// Benchmarks show batch 50 reduces the selective metrics phase by ~16% (~80ms)
-// versus batch 10 on a 997-file repository.
-const METRICS_BATCH_SIZE = 50;
+// A size of 10 keeps individual worker tasks small so that workers become available sooner,
+// enabling overlap between file metrics and output generation.
+const METRICS_BATCH_SIZE = 10;
 
-export const calculateSelectiveFileMetrics = async (
+export const calculateFileMetrics = async (
   processedFiles: ProcessedFile[],
   targetFilePaths: string[],
   tokenCounterEncoding: TokenEncoding,
@@ -36,7 +29,7 @@ export const calculateSelectiveFileMetrics = async (
 
   try {
     const startTime = process.hrtime.bigint();
-    logger.trace(`Starting selective metrics calculation for ${filesToProcess.length} files using worker pool`);
+    logger.trace(`Starting file metrics calculation for ${filesToProcess.length} files using worker pool`);
 
     // Split files into batches to reduce IPC round-trips
     const batches: ProcessedFile[][] = [];
@@ -76,11 +69,11 @@ export const calculateSelectiveFileMetrics = async (
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;
-    logger.trace(`Selective metrics calculation completed in ${duration.toFixed(2)}ms`);
+    logger.trace(`File metrics calculation completed in ${duration.toFixed(2)}ms`);
 
     return allResults;
   } catch (error) {
-    logger.error('Error during selective metrics calculation:', error);
+    logger.error('Error during file metrics calculation:', error);
     throw error;
   }
 };

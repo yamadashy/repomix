@@ -11,7 +11,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
-import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
+import { sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { filterOutUntrustedFiles } from './security/filterOutUntrustedFiles.js';
 import { createSecurityTaskRunner, runSecurityCheck, type SuspiciousFileResult } from './security/securityCheck.js';
@@ -46,7 +46,6 @@ const defaultDeps = {
   createSecurityTaskRunner,
   sortPaths,
   sortOutputFiles,
-  prefetchSortData,
   getGitDiffs,
   getGitLogs,
   // Lazy-load packSkill to defer importing the skill module chain
@@ -122,15 +121,6 @@ export const pack = async (
   const securityEnabled = config.security.enableSecurityCheck;
   const securityTaskRunnerWithWarmup = securityEnabled ? deps.createSecurityTaskRunner(allFilePaths.length) : undefined;
 
-  // Pre-fetch git file-change counts for sortOutputFiles while collection
-  // and other git operations are in flight. Without this, the first
-  // sortOutputFiles call spawns `git --version` + `git log --name-only`
-  // (~15ms) on the critical path between process-files and output-generation.
-  // The fetched data lands in outputSort's module-level cache, so the later
-  // sortOutputFiles call becomes a cheap cache-hit + in-memory sort.
-  // Failures are non-fatal: sortOutputFiles will re-fetch on the critical path
-  const sortDataPromise = deps.prefetchSortData(config).catch(() => {});
-
   try {
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
@@ -186,12 +176,11 @@ export const pack = async (
       suspiciousPathSet.size > 0 ? allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path)) : allProcessedFiles;
 
     // Pre-sort processedFiles in the same order they will appear in the generated output.
-    // The git file-change data was pre-fetched via `sortDataPromise` (launched alongside
-    // collectFiles), so this call only performs the in-memory sort — no subprocess spawn.
-    // `generateOutput` trusts this pre-sorted order (the redundant internal sort was
-    // removed), so sorting once here guarantees that any consumer (metrics fast path,
-    // mcp handles, etc.) sees files in output order.
-    await sortDataPromise;
+    // `generateOutput` internally calls `sortOutputFiles` as well; both share the same
+    // git-log subprocess result (cached via `fileChangeCountsCache`). The array sort itself
+    // runs twice but is negligible (~1ms for 1000 files). This ordering is required by the
+    // fast-path in `calculateMetrics`, which walks file contents through the output string
+    // in order via `extractOutputWrapper`.
     const processedFiles = await deps.sortOutputFiles(filteredProcessedFiles, config);
 
     progressCallback('Generating output...');

@@ -6,10 +6,10 @@ import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import { buildSplitOutputFilePath } from '../output/outputSplit.js';
+import { calculateFileMetrics } from './calculateFileMetrics.js';
 import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
-import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
 import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
@@ -51,7 +51,7 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
 };
 
 const defaultDeps = {
-  calculateSelectiveFileMetrics,
+  calculateFileMetrics,
   calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
@@ -69,7 +69,7 @@ const defaultDeps = {
  * is enough and handles identical content between files (each occurrence is
  * consumed in order).
  */
-const extractOutputWrapper = (
+export const extractOutputWrapper = (
   output: string,
   processedFilesInOutputOrder: ReadonlyArray<ProcessedFile>,
 ): string | null => {
@@ -91,32 +91,7 @@ const extractOutputWrapper = (
   return wrapperSegments.join('');
 };
 
-/**
- * When `tokenCountTree` is enabled we already tokenize every file individually
- * via `calculateSelectiveFileMetrics`. On large repos (~1000 files, ~4 MB
- * output) tokenizing the full output again in 200 KB chunks via
- * `calculateOutputMetrics` is by far the longest parallel task in the metrics
- * pipeline (≈1 s wall, dominating the `Promise.all` below).
- *
- * Since `totalTokens` is the sum of tokens in the output, and the output is
- * built by concatenating file contents with template boilerplate, we can
- * substitute the full re-tokenization with:
- *
- *     totalTokens ≈ Σ per-file tokens + tokens(wrapper-only output)
- *
- * where the "wrapper-only output" is the output with every file's content
- * spliced out. The two values differ only at file↔wrapper boundaries where
- * BPE could otherwise merge tokens across the boundary — empirically ~0.02 %
- * on the repomix repository itself (309 tokens out of ~1.28 M).
- *
- * The fast path is only enabled for templates that embed file contents
- * verbatim (xml non-parsable, markdown, plain) and only for single-part output.
- * JSON output and parsable XML go through `fast-xml-builder` / `JSON.stringify`
- * which escape file contents, so walking the output with `indexOf(content)`
- * would miss them; those paths fall back to `calculateOutputMetrics`.
- */
-const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean => {
-  if (!config.output.tokenCountTree) return false;
+export const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean => {
   if (config.output.splitOutput !== undefined) return false;
   if (config.output.parsableStyle) return false;
   const style = config.output.style;
@@ -146,24 +121,11 @@ export const calculateMetrics = async (
     });
 
   try {
-    // For top files display optimization: calculate token counts only for top files by character count
-    // However, if tokenCountTree is enabled, calculate for all files to avoid double calculation
-    const topFilesLength = config.output.topFilesLength;
-    const shouldCalculateAllFiles = !!config.output.tokenCountTree;
-
-    // Determine which files to calculate token counts for:
-    // - If tokenCountTree is enabled: calculate for all files to avoid double calculation
-    // - Otherwise: calculate only for top files by character count for optimization
-    const metricsTargetPaths = shouldCalculateAllFiles
-      ? processedFiles.map((file) => file.path)
-      : [...processedFiles]
-          .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, Math.min(processedFiles.length, Math.max(topFilesLength * 10, topFilesLength)))
-          .map((file) => file.path);
+    const metricsTargetPaths = processedFiles.map((file) => file.path);
 
     // Start output-independent metrics immediately so they can overlap with output generation
     // when output is passed as a promise
-    const selectiveFileMetricsPromise = deps.calculateSelectiveFileMetrics(
+    const fileMetricsPromise = deps.calculateFileMetrics(
       processedFiles,
       metricsTargetPaths,
       config.tokenCount.encoding,
@@ -174,7 +136,7 @@ export const calculateMetrics = async (
     const gitLogMetricsPromise = deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner });
 
     // Prevent unhandled rejections if `await outputPromise` throws before Promise.all
-    selectiveFileMetricsPromise.catch(() => {});
+    fileMetricsPromise.catch(() => {});
     gitDiffMetricsPromise.catch(() => {});
     gitLogMetricsPromise.catch(() => {});
 
@@ -182,31 +144,28 @@ export const calculateMetrics = async (
     const resolvedOutput = await outputPromise;
     const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
 
-    // Fast path: when `tokenCountTree` is enabled we already tokenize every file
-    // individually on the primary worker pool. Reuse those counts plus a single
-    // cheap tokenization of the output "wrapper" (the output string minus file
-    // contents) to avoid re-tokenizing the file contents a second time as part
-    // of the 200 KB output chunks. On a ~4 MB output this removes ≈1 s of
-    // serialized worker time, which was the dominant critical-path task in
-    // `Promise.all` below. See `canUseFastOutputTokenPath` / `extractOutputWrapper`
-    // for the accuracy bound (~0.02 %) and the conditions under which the fast
-    // path is enabled.
-    const fastOutputToken = canUseFastOutputTokenPath(config) && outputParts.length === 1 ? outputParts[0] : null;
-    const fastWrapper = fastOutputToken !== null ? extractOutputWrapper(fastOutputToken, processedFiles) : null;
+    // Fast path: reuse per-file token counts plus a single cheap tokenization of
+    // the output "wrapper" (output minus file contents) instead of re-tokenizing
+    // the full ~4 MB output in 200 KB chunks. Falls back to calculateOutputMetrics
+    // for JSON/parsable-XML/split output where indexOf can't find verbatim content.
+    const singleOutput = canUseFastOutputTokenPath(config) && outputParts.length === 1 ? outputParts[0] : null;
+    const outputWrapper = singleOutput !== null ? extractOutputWrapper(singleOutput, processedFiles) : null;
+    if (singleOutput !== null && outputWrapper === null) {
+      logger.trace('Fast-path unavailable, falling back to full output tokenization');
+    }
 
     const outputMetricsPromise: Promise<number[]> =
-      fastWrapper !== null
+      outputWrapper !== null
         ? (async () => {
-            // Reuse per-file token counts from the primary selective metrics run.
-            const selective = await selectiveFileMetricsPromise;
-            const fileTokensSum = selective.reduce((sum, f) => sum + f.tokenCount, 0);
+            const allFileMetrics = await fileMetricsPromise;
+            const fileTokensSum = allFileMetrics.reduce((sum, f) => sum + f.tokenCount, 0);
             // Tokenize only the wrapper, not the ~4 MB output.
             const wrapperTokens = await runTokenCount(taskRunner, {
-              content: fastWrapper,
+              content: outputWrapper,
               encoding: config.tokenCount.encoding,
             });
             logger.trace(
-              `Fast-path output tokens: files=${fileTokensSum}, wrapper=${wrapperTokens} (${fastWrapper.length} chars)`,
+              `Fast-path output tokens: files=${fileTokensSum}, wrapper=${wrapperTokens} (${outputWrapper.length} chars)`,
             );
             return [fileTokensSum + wrapperTokens];
           })()
@@ -220,8 +179,8 @@ export const calculateMetrics = async (
             }),
           );
 
-    const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
-      selectiveFileMetricsPromise,
+    const [fileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+      fileMetricsPromise,
       outputMetricsPromise,
       gitDiffMetricsPromise,
       gitLogMetricsPromise,
@@ -237,9 +196,9 @@ export const calculateMetrics = async (
       fileCharCounts[file.path] = file.content.length;
     }
 
-    // Build token counts only for top files
+    // Build per-file token counts
     const fileTokenCounts: Record<string, number> = {};
-    for (const file of selectiveFileMetrics) {
+    for (const file of fileMetrics) {
       fileTokenCounts[file.path] = file.tokenCount;
     }
 
