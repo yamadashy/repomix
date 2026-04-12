@@ -103,4 +103,60 @@ describe('truncateBase64Content', () => {
     const result = truncateBase64Content(input);
     expect(result).toBe(input);
   });
+
+  // Regression coverage for the standalone-pattern fast-path skip:
+  // `truncateBase64Content` short-circuits the expensive standalone regex
+  // when no run of 256+ base64-alphabet characters exists in the content.
+  // The cases below exercise both branches of that pre-scan.
+  describe('standalone fast-path skip', () => {
+    it('should skip standalone replace when no 256-char base64 run exists', () => {
+      // Many short base64-like tokens separated by non-base64 chars (newlines,
+      // spaces, hyphens). Each run is well under 256 chars, so the standalone
+      // pattern can never match.
+      const noisyContent = `${'aB1+/aB1+/'.repeat(20)}\n${'-'.repeat(50)}\n${'cD2+/cD2+/'.repeat(20)}`;
+      const input = `const fragments = "${noisyContent}";`;
+      const result = truncateBase64Content(input);
+      expect(result).toBe(input);
+    });
+
+    it('should still detect a base64 run that is broken into the middle of long files', () => {
+      // Filler with no base64 chars, then a 300-char real base64 run, then more filler.
+      // The fast-path scanner must reset its run counter on the filler section
+      // and re-detect the run after it.
+      const filler = '\n# section\n  /// a comment with no encodable run /// \n'.repeat(50);
+      const input = `${filler}const data = "${longBase64}";\n${filler}`;
+      const result = truncateBase64Content(input);
+      expect(result).toContain('DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg...');
+      expect(result).not.toContain(longBase64);
+    });
+
+    it('should treat exactly 255 base64 chars as below threshold (no truncation)', () => {
+      // 255 base64 chars sits one character below the standalone threshold.
+      // The fast-path scanner should NOT trip, and the content must round-trip.
+      const justUnder = longBase64.substring(0, 255);
+      const input = `const data = "${justUnder}";`;
+      const result = truncateBase64Content(input);
+      expect(result).toBe(input);
+    });
+
+    it('should trip on a run of exactly 256 base64 chars (lower-bound of fast-path)', () => {
+      // Exactly 256 base64 chars exercises the lower bound of the pre-scan
+      // (`runLength >= MIN_BASE64_LENGTH_STANDALONE`). The fast-path scanner
+      // must enter the slow path and the regex must truncate.
+      const exact256 = longBase64.substring(0, 256);
+      const input = `const data = "${exact256}";`;
+      const result = truncateBase64Content(input);
+      expect(result).toBe('const data = "DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg...";');
+    });
+
+    it('should still apply data URI truncation even when standalone fast-path skips', () => {
+      // A short data URI alone — its base64 payload is 88 chars (well under 256),
+      // so the standalone pre-scan returns false. The data URI replace must
+      // still run regardless of the standalone skip.
+      const input =
+        'background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==);';
+      const result = truncateBase64Content(input);
+      expect(result).toBe('background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...);');
+    });
+  });
 });
