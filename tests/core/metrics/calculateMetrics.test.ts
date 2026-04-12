@@ -323,9 +323,7 @@ describe('calculateMetrics', () => {
 
     it('falls back for split output (multiple parts)', async () => {
       const processedFiles: ProcessedFile[] = [{ path: 'a.ts', content: 'const a = 1;' }];
-      (calculateFileMetrics as unknown as Mock).mockResolvedValue([
-        { path: 'a.ts', charCount: 12, tokenCount: 5 },
-      ]);
+      (calculateFileMetrics as unknown as Mock).mockResolvedValue([{ path: 'a.ts', charCount: 12, tokenCount: 5 }]);
       const config = createMockConfig();
       Object.assign(config.output, { tokenCountTree: true, style: 'xml' });
 
