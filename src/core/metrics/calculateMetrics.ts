@@ -150,11 +150,13 @@ export const calculateMetrics = async (
     // for JSON/parsable-XML/split output where indexOf can't find verbatim content.
     const fastOutputToken = canUseFastOutputTokenPath(config) && outputParts.length === 1 ? outputParts[0] : null;
     const fastWrapper = fastOutputToken !== null ? extractOutputWrapper(fastOutputToken, processedFiles) : null;
+    if (fastOutputToken !== null && fastWrapper === null) {
+      logger.trace('Fast-path unavailable, falling back to full output tokenization');
+    }
 
     const outputMetricsPromise: Promise<number[]> =
       fastWrapper !== null
         ? (async () => {
-            // Reuse per-file token counts from the primary selective metrics run.
             const selective = await fileMetricsPromise;
             const fileTokensSum = selective.reduce((sum, f) => sum + f.tokenCount, 0);
             // Tokenize only the wrapper, not the ~4 MB output.
