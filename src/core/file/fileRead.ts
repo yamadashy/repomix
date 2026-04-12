@@ -1,25 +1,28 @@
-import * as fs from 'node:fs/promises';
+import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import isBinaryPath from 'is-binary-path';
 import { isBinaryFileSync } from 'isbinaryfile';
 import { logger } from '../../shared/logger.js';
 
-// Lazy-load encoding detection libraries to avoid their ~25ms combined import cost.
-// The fast UTF-8 path (covers ~99% of source code files) never needs these;
-// they are only loaded when a file fails UTF-8 decoding.
-// Caching the Promise (not the resolved values) guarantees exactly one import
-// regardless of how many concurrent calls hit the slow path.
 // Module-level singleton for the common UTF-8 path. TextDecoder without
 // { stream: true } resets internal state on each decode() call, so a single
-// instance is safe for concurrent use within the promise pool.
+// instance is safe for reuse across sequential calls.
 const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
 
-let _encodingDepsPromise: Promise<{ jschardet: typeof import('jschardet'); iconv: typeof import('iconv-lite') }>;
-const getEncodingDeps = () => {
-  _encodingDepsPromise ??= Promise.all([import('jschardet'), import('iconv-lite')]).then(([jschardet, iconv]) => ({
-    jschardet,
-    iconv,
-  }));
-  return _encodingDepsPromise;
+// Lazy-load encoding detection libraries. The fast UTF-8 path (covers ~99%
+// of source code files) never needs these; they are only loaded when a file
+// fails UTF-8 decoding. Using synchronous require() via createRequire keeps
+// the readRawFile call stack fully synchronous.
+let _encodingDeps: { jschardet: typeof import('jschardet'); iconv: typeof import('iconv-lite') } | undefined;
+const getEncodingDepsSync = (): { jschardet: typeof import('jschardet'); iconv: typeof import('iconv-lite') } => {
+  if (!_encodingDeps) {
+    const require = createRequire(import.meta.url);
+    _encodingDeps = {
+      jschardet: require('jschardet') as typeof import('jschardet'),
+      iconv: require('iconv-lite') as typeof import('iconv-lite'),
+    };
+  }
+  return _encodingDeps;
 };
 
 export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
@@ -30,12 +33,19 @@ export interface FileReadResult {
 }
 
 /**
- * Read a file and return its text content
+ * Read a file and return its text content.
+ *
+ * Uses synchronous I/O (readFileSync) because for many small source files the
+ * per-file async overhead (Promise creation, event-loop scheduling, libuv
+ * thread-pool dispatch) dominates: ~95ms for 1000 files async vs ~10ms sync.
+ * Sync reads also eliminate CPU contention between the event loop and
+ * worker-thread warm-up that otherwise inflates collection time by ~100ms.
+ *
  * @param filePath Path to the file
  * @param maxFileSize Maximum file size in bytes
  * @returns File content as string and skip reason if file was skipped
  */
-export const readRawFile = async (filePath: string, maxFileSize: number): Promise<FileReadResult> => {
+export const readRawFile = (filePath: string, maxFileSize: number): FileReadResult => {
   try {
     // Check binary extension first (no I/O needed) to skip read for binary files
     if (isBinaryPath(filePath)) {
@@ -48,7 +58,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     // Read the file directly and check size afterward, avoiding a separate stat() syscall.
     // This halves the number of I/O operations per file.
     // Files exceeding maxFileSize are rare, so the occasional oversized read is acceptable.
-    const buffer = await fs.readFile(filePath);
+    const buffer = fs.readFileSync(filePath);
 
     if (buffer.length > maxFileSize) {
       const sizeKB = (buffer.length / 1024).toFixed(1);
@@ -76,7 +86,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     }
 
     // Slow path: Detect encoding with jschardet for non-UTF-8 files (e.g., Shift-JIS, EUC-KR)
-    const encodingDeps = await getEncodingDeps();
+    const encodingDeps = getEncodingDepsSync();
     const { encoding: detectedEncoding } = encodingDeps.jschardet.detect(buffer) ?? {};
     const encoding =
       detectedEncoding && encodingDeps.iconv.encodingExists(detectedEncoding) ? detectedEncoding : 'utf-8';

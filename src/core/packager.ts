@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
+import { getProcessConcurrency } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -49,6 +50,7 @@ const defaultDeps = {
   sortOutputFiles,
   getGitDiffs,
   getGitLogs,
+  getProcessConcurrency,
   // Lazy-load packSkill to defer importing the skill module chain
   // (skillSectionGenerators, skillStyle → Handlebars), which adds ~25ms
   // to module loading. Only used when --skill-generate is active (non-default).
@@ -90,49 +92,52 @@ export const pack = async (
   // that awaits sortDataPromise (e.g., searchFiles throws).
   sortDataPromise.catch(() => {});
 
-  progressCallback('Searching for files...');
-  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
-    Promise.all(
-      rootDirs.map(async (rootDir) => {
-        const result = await deps.searchFiles(rootDir, config, explicitFiles);
-        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
-      }),
-    ),
-  );
+  const securityEnabled = config.security.enableSecurityCheck;
 
-  // Deduplicate and sort empty directory paths for reuse during output generation,
-  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
-  const emptyDirPaths = config.output.includeEmptyDirectories
-    ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
-    : undefined;
-
-  // Sort file paths
-  progressCallback('Sorting files...');
-  const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
-
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
-    rootDir,
-    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
-  }));
-
-  // Pre-initialize both worker pools to overlap module loading with subsequent
-  // pipeline stages (file search, collection, git operations). Each pool spawns
-  // threads and runs a warm-up task that triggers expensive module initialisation
-  // inside the worker (gpt-tokenizer ≈ 250ms, secretlint ≈ 100ms). By starting
-  // both before searchFiles, their initialisation runs concurrently with file
-  // search + collection rather than blocking the critical path later.
+  // Pre-initialize worker pools BEFORE searchFiles so that warm-up (gpt-tokenizer
+  // ~150ms, secretlint ~97ms) overlaps with both searchFiles (~135ms) and
+  // collectFiles (~20ms with sync I/O). The exact file count is unknown before
+  // searchFiles, so we use getProcessConcurrency() × TASKS_PER_THREAD as the
+  // task estimate — this guarantees maxThreads = processConcurrency for any repo
+  // large enough to benefit from parallelism (≥ 400 files). For smaller repos the
+  // extra threads are harmless: they share the same warm-up wall-time and sit idle
+  // during the metrics phase if there aren't enough batches to fill them.
+  const estimatedTasks = deps.getProcessConcurrency() * 100;
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
+    estimatedTasks,
     config.tokenCount.encoding,
   );
-
-  const securityEnabled = config.security.enableSecurityCheck;
-  const securityTaskRunnerWithWarmup = securityEnabled ? deps.createSecurityTaskRunner(allFilePaths.length) : undefined;
+  const securityTaskRunnerWithWarmup = securityEnabled ? deps.createSecurityTaskRunner(estimatedTasks) : undefined;
 
   try {
+    progressCallback('Searching for files...');
+    const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
+      Promise.all(
+        rootDirs.map(async (rootDir) => {
+          const result = await deps.searchFiles(rootDir, config, explicitFiles);
+          return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+        }),
+      ),
+    );
+
+    // Deduplicate and sort empty directory paths for reuse during output generation,
+    // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
+    const emptyDirPaths = config.output.includeEmptyDirectories
+      ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
+      : undefined;
+
+    // Sort file paths
+    progressCallback('Sorting files...');
+    const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
+    const sortedFilePaths = deps.sortPaths(allFilePaths);
+
+    // Regroup sorted file paths by rootDir using Set for O(1) membership checks
+    const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
+    const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+      rootDir,
+      filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+    }));
+
     // Run file collection, git operations, and sort-data prefetch in parallel since
     // they are independent:
     // - collectFiles reads file contents from disk
