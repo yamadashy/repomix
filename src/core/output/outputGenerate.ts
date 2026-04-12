@@ -9,7 +9,6 @@ import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
-import { sortOutputFiles } from './outputSort.js';
 import {
   generateHeader,
   generateSummaryFileFormat,
@@ -265,17 +264,16 @@ export const generateOutput = async (
     generateHandlebarOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
-    sortOutputFiles,
   },
 ): Promise<string> => {
-  // Sort processed files by git change count if enabled
-  const sortedProcessedFiles = await deps.sortOutputFiles(processedFiles, config);
-
+  // processedFiles are already sorted by the caller (packager.ts) via
+  // sortOutputFiles before invoking produceOutput. Sorting again here would
+  // be redundant and waste ~20ms on a cached git-log lookup + O(n log n) sort.
   const outputGeneratorContext = await deps.buildOutputGeneratorContext(
     rootDirs,
     config,
     allFilePaths,
-    sortedProcessedFiles,
+    processedFiles,
     gitDiffResult,
     gitLogResult,
     filePathsByRoot,
@@ -287,12 +285,12 @@ export const generateOutput = async (
     case 'xml':
       return config.output.parsableStyle
         ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+        : deps.generateHandlebarOutput(config, renderContext, processedFiles);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':
     case 'plain':
-      return deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+      return deps.generateHandlebarOutput(config, renderContext, processedFiles);
     default:
       throw new RepomixError(`Unsupported output style: ${config.output.style}`);
   }

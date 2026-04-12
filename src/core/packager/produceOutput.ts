@@ -5,7 +5,7 @@ import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import { generateOutput as generateOutputDefault } from '../output/outputGenerate.js';
+import type { generateOutput as GenerateOutputFn } from '../output/outputGenerate.js';
 import { generateSplitOutputParts } from '../output/outputSplit.js';
 import { copyToClipboardIfEnabled as copyToClipboardIfEnabledDefault } from './copyToClipboardIfEnabled.js';
 import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDisk.js';
@@ -16,7 +16,14 @@ export interface ProduceOutputResult {
 }
 
 const defaultDeps = {
-  generateOutput: generateOutputDefault,
+  // Lazy-load outputGenerate to defer importing Handlebars + output style modules
+  // (~19ms) from CLI startup to when output generation actually starts. At that
+  // point calculateMetrics is already running on worker threads (~500ms), so the
+  // import cost is completely hidden behind the parallel metrics phase.
+  generateOutput: (async (...args: Parameters<typeof GenerateOutputFn>) => {
+    const { generateOutput } = await import('../output/outputGenerate.js');
+    return generateOutput(...args);
+  }) as typeof GenerateOutputFn,
   writeOutputToDisk: writeOutputToDiskDefault,
   copyToClipboardIfEnabled: copyToClipboardIfEnabledDefault,
 };

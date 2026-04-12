@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { TOKEN_ENCODINGS } from '../core/metrics/TokenCounter.js';
+
+// Supported token encoding names (OpenAI BPE encodings).
+// Inlined here to avoid importing TokenCounter.ts at startup, which transitively
+// pulls in gpt-tokenizer (~17ms). TokenCounter.ts defines its own identical
+// TOKEN_ENCODINGS; the two must stay in sync.
+const TOKEN_ENCODINGS = ['o200k_base', 'cl100k_base', 'p50k_base', 'p50k_edit', 'r50k_base'] as const;
 
 // Output style enum
 export const repomixOutputStyleSchema = z.enum(['xml', 'markdown', 'json', 'plain']);

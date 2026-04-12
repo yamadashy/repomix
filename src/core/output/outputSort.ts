@@ -113,6 +113,24 @@ export const sortOutputFiles = async (
   return sortFilesByChangeCounts(files, fileChangeCounts);
 };
 
+/**
+ * Pre-fetch git file change counts so that a later `sortOutputFiles` call
+ * hits the in-memory cache instead of spawning git subprocesses on the
+ * critical path. This is intended to be called early in the pipeline
+ * (alongside collectFiles / git diff / git log) so that the ~15ms
+ * subprocess cost overlaps with other I/O work.
+ */
+export const prefetchSortData = async (
+  config: RepomixConfigMerged,
+  deps: SortDeps = {
+    getFileChangeCount,
+    isGitInstalled,
+  },
+): Promise<void> => {
+  if (!config.output.git?.sortByChanges) return;
+  await getFileChangeCounts(config.cwd, config.output.git?.sortByChangesMaxCommits, deps);
+};
+
 const sortFilesByChangeCounts = (files: ProcessedFile[], fileChangeCounts: Record<string, number>): ProcessedFile[] => {
   // Sort files by change count (files with more changes go to the bottom)
   return [...files].sort((a, b) => {
