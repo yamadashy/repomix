@@ -131,7 +131,7 @@ describe('calculateMetrics', () => {
       if (options.configOverrides) {
         Object.assign(config.output, options.configOverrides);
       }
-      (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue(options.fileMetrics);
+      (calculateFileMetrics as unknown as Mock).mockResolvedValue(options.fileMetrics);
 
       const mockCalculateOutputMetrics = vi.fn().mockResolvedValue(999);
       const taskRunner = makeTaskRunner(tokenForContent);
@@ -144,7 +144,7 @@ describe('calculateMetrics', () => {
         undefined,
         undefined,
         {
-          calculateSelectiveFileMetrics,
+          calculateFileMetrics,
           calculateOutputMetrics: mockCalculateOutputMetrics,
           calculateGitDiffMetrics: () => Promise.resolve(0),
           calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
@@ -190,21 +190,26 @@ describe('calculateMetrics', () => {
       expect(result.totalTokens).toBe(5 + 7 + wrapper.length);
     });
 
-    it('falls back to calculateOutputMetrics when tokenCountTree is disabled', async () => {
+    it('still uses the wrapper fast path even when tokenCountTree is disabled', async () => {
+      // The fast path reuses per-file token counts from calculateFileMetrics
+      // (which always runs), so tokenCountTree has no bearing on eligibility.
       const processedFiles: ProcessedFile[] = [{ path: 'a.ts', content: 'const a = 1;' }];
       const output = `<file path="a.ts">\n${processedFiles[0].content}\n</file>`;
 
-      const { mockCalculateOutputMetrics, taskRunner } = await runWithConfig({
-        processedFiles,
-        fileMetrics: [{ path: 'a.ts', charCount: 12, tokenCount: 5 }],
-        output,
-        configOverrides: { tokenCountTree: false },
-      });
+      const { mockCalculateOutputMetrics, taskRunner } = await runWithConfig(
+        {
+          processedFiles,
+          fileMetrics: [{ path: 'a.ts', charCount: 12, tokenCount: 5 }],
+          output,
+          configOverrides: { tokenCountTree: false, style: 'xml' },
+        },
+        (content) => content.length,
+      );
 
-      expect(mockCalculateOutputMetrics).toHaveBeenCalledTimes(1);
-      // No direct taskRunner calls from the fast path — the slow path uses
-      // calculateOutputMetrics, which is mocked here.
-      expect(taskRunner.run).not.toHaveBeenCalled();
+      // Fast path is used — calculateOutputMetrics is NOT called.
+      expect(mockCalculateOutputMetrics).not.toHaveBeenCalled();
+      // One worker call for the wrapper.
+      expect(taskRunner.run).toHaveBeenCalledTimes(1);
     });
 
     it('falls back when parsableStyle is true (content is XML-escaped)', async () => {
@@ -318,7 +323,7 @@ describe('calculateMetrics', () => {
 
     it('falls back for split output (multiple parts)', async () => {
       const processedFiles: ProcessedFile[] = [{ path: 'a.ts', content: 'const a = 1;' }];
-      (calculateSelectiveFileMetrics as unknown as Mock).mockResolvedValue([
+      (calculateFileMetrics as unknown as Mock).mockResolvedValue([
         { path: 'a.ts', charCount: 12, tokenCount: 5 },
       ]);
       const config = createMockConfig();
@@ -335,7 +340,7 @@ describe('calculateMetrics', () => {
         undefined,
         undefined,
         {
-          calculateSelectiveFileMetrics,
+          calculateFileMetrics,
           calculateOutputMetrics: mockCalculateOutputMetrics,
           calculateGitDiffMetrics: () => Promise.resolve(0),
           calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
