@@ -157,8 +157,8 @@ export const calculateMetrics = async (
     const outputMetricsPromise: Promise<number[]> =
       outputWrapper !== null
         ? (async () => {
-            const selective = await fileMetricsPromise;
-            const fileTokensSum = selective.reduce((sum, f) => sum + f.tokenCount, 0);
+            const allFileMetrics = await fileMetricsPromise;
+            const fileTokensSum = allFileMetrics.reduce((sum, f) => sum + f.tokenCount, 0);
             // Tokenize only the wrapper, not the ~4 MB output.
             const wrapperTokens = await runTokenCount(taskRunner, {
               content: outputWrapper,
