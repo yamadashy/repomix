@@ -12,38 +12,67 @@ const dataUriPattern = new RegExp(
 );
 const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
 
+// Lookup table for base64 alphabet: A-Z, a-z, 0-9, +, /
+const isBase64Char = (() => {
+  const table = new Uint8Array(128);
+  for (let i = 65; i <= 90; i++) {
+    table[i] = 1;
+  } // A-Z
+  for (let i = 97; i <= 122; i++) {
+    table[i] = 1;
+  } // a-z
+  for (let i = 48; i <= 57; i++) {
+    table[i] = 1;
+  } // 0-9
+  table[43] = 1; // '+'
+  table[47] = 1; // '/'
+  return table;
+})();
+
 /**
  * Fast pre-scan that returns true if `content` contains at least one run of
  * `MIN_BASE64_LENGTH_STANDALONE` consecutive base64 alphabet characters
  * (`A-Z`, `a-z`, `0-9`, `+`, `/`). This is the necessary condition for
  * `standaloneBase64Pattern` to match anywhere in the content.
  *
- * Iterating with `charCodeAt` and a counter is roughly 5-10x faster than
- * letting V8's regex engine walk the same string with the global pattern,
- * because we exit at the first qualifying run instead of continuing to
- * collect all matches and we avoid all regex bookkeeping. The vast majority
- * of source files contain no such run, so this turns the standalone replace
- * into a no-op for them.
+ * Uses a newline-gap strategy: since base64 runs cannot span newlines (a
+ * newline is not in the base64 alphabet), any qualifying run must exist
+ * within a single line. We use `indexOf('\n')` to skip lines shorter than
+ * `MIN_BASE64_LENGTH_STANDALONE` entirely, avoiding character-by-character
+ * scanning of the vast majority of source code (where lines are typically
+ * < 100 chars). Only lines long enough to potentially contain a 256-char
+ * run are scanned with the lookup table.
+ *
+ * Much faster than a full `charCodeAt` scan because `indexOf('\n')` uses
+ * V8's optimized native string search, and most source code lines are far
+ * shorter than 256 chars.
  */
 const hasStandaloneBase64Run = (content: string): boolean => {
-  let runLength = 0;
-  for (let i = 0; i < content.length; i++) {
-    const code = content.charCodeAt(i);
-    // [A-Z] | [a-z] | [0-9] | '+' | '/'
-    if (
-      (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) ||
-      (code >= 48 && code <= 57) ||
-      code === 43 ||
-      code === 47
-    ) {
-      runLength++;
-      if (runLength >= MIN_BASE64_LENGTH_STANDALONE) {
-        return true;
+  if (content.length < MIN_BASE64_LENGTH_STANDALONE) {
+    return false;
+  }
+  let pos = 0;
+  while (pos < content.length) {
+    const nlPos = content.indexOf('\n', pos);
+    const lineEnd = nlPos === -1 ? content.length : nlPos;
+
+    if (lineEnd - pos >= MIN_BASE64_LENGTH_STANDALONE) {
+      // This line is long enough — scan it for a base64 run
+      let runLength = 0;
+      for (let j = pos; j < lineEnd; j++) {
+        const code = content.charCodeAt(j);
+        if (code < 128 && isBase64Char[code]) {
+          if (++runLength >= MIN_BASE64_LENGTH_STANDALONE) {
+            return true;
+          }
+        } else {
+          runLength = 0;
+        }
       }
-    } else {
-      runLength = 0;
     }
+
+    if (nlPos === -1) break;
+    pos = nlPos + 1;
   }
   return false;
 };
@@ -56,16 +85,19 @@ const hasStandaloneBase64Run = (content: string): boolean => {
  * @returns Content with base64 data truncated
  */
 export const truncateBase64Content = (content: string): string => {
-  // Reset lastIndex since patterns are global and reused across calls
-  dataUriPattern.lastIndex = 0;
-
   let processedContent = content;
 
-  // Replace data URIs
-  processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
-    const preview = base64Data.substring(0, TRUNCATION_LENGTH);
-    return `data:${mimeType}${params || ''};base64,${preview}...`;
-  });
+  // Skip the data-URI regex when the content doesn't contain "data:" at all.
+  // indexOf is a single native call in V8 vs the regex engine walking the
+  // full string, so this avoids the regex overhead for the majority of
+  // source files that contain no data URIs.
+  if (content.indexOf('data:') !== -1) {
+    dataUriPattern.lastIndex = 0;
+    processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
+      const preview = base64Data.substring(0, TRUNCATION_LENGTH);
+      return `data:${mimeType}${params || ''};base64,${preview}...`;
+    });
+  }
 
   // The standalone-base64 regex is by far the most expensive part of this
   // function on real-world source code. Skip it entirely when the content
