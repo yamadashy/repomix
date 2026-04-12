@@ -61,7 +61,7 @@ describe('calculateMetrics', () => {
       gitLogTokenCount: 0,
     };
 
-    const config = createMockConfig();
+    const config = createMockConfig({ output: { parsableStyle: true } });
 
     const gitDiffResult: GitDiffResult | undefined = undefined;
 
