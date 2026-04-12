@@ -6,10 +6,10 @@ import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import { buildSplitOutputFilePath } from '../output/outputSplit.js';
+import { calculateFileMetrics } from './calculateFileMetrics.js';
 import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
-import { calculateSelectiveFileMetrics } from './calculateSelectiveFileMetrics.js';
 import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
@@ -51,7 +51,7 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
 };
 
 const defaultDeps = {
-  calculateSelectiveFileMetrics,
+  calculateFileMetrics,
   calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
@@ -125,7 +125,7 @@ export const calculateMetrics = async (
 
     // Start output-independent metrics immediately so they can overlap with output generation
     // when output is passed as a promise
-    const selectiveFileMetricsPromise = deps.calculateSelectiveFileMetrics(
+    const fileMetricsPromise = deps.calculateFileMetrics(
       processedFiles,
       metricsTargetPaths,
       config.tokenCount.encoding,
@@ -136,7 +136,7 @@ export const calculateMetrics = async (
     const gitLogMetricsPromise = deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner });
 
     // Prevent unhandled rejections if `await outputPromise` throws before Promise.all
-    selectiveFileMetricsPromise.catch(() => {});
+    fileMetricsPromise.catch(() => {});
     gitDiffMetricsPromise.catch(() => {});
     gitLogMetricsPromise.catch(() => {});
 
@@ -155,7 +155,7 @@ export const calculateMetrics = async (
       fastWrapper !== null
         ? (async () => {
             // Reuse per-file token counts from the primary selective metrics run.
-            const selective = await selectiveFileMetricsPromise;
+            const selective = await fileMetricsPromise;
             const fileTokensSum = selective.reduce((sum, f) => sum + f.tokenCount, 0);
             // Tokenize only the wrapper, not the ~4 MB output.
             const wrapperTokens = await runTokenCount(taskRunner, {
@@ -177,8 +177,8 @@ export const calculateMetrics = async (
             }),
           );
 
-    const [selectiveFileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
-      selectiveFileMetricsPromise,
+    const [fileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
+      fileMetricsPromise,
       outputMetricsPromise,
       gitDiffMetricsPromise,
       gitLogMetricsPromise,
@@ -196,7 +196,7 @@ export const calculateMetrics = async (
 
     // Build per-file token counts
     const fileTokenCounts: Record<string, number> = {};
-    for (const file of selectiveFileMetrics) {
+    for (const file of fileMetrics) {
       fileTokenCounts[file.path] = file.tokenCount;
     }
 
