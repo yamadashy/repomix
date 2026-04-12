@@ -2,6 +2,7 @@ import os from 'node:os';
 import { Tinypool } from 'tinypool';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  cleanupWorkerPool,
   createWorkerPool,
   getProcessConcurrency,
   getWorkerThreadCount,
@@ -149,6 +150,62 @@ describe('processConcurrency', () => {
         },
       });
       expect(tinypool).toBeDefined();
+    });
+  });
+
+  describe('cleanupWorkerPool', () => {
+    it('should call unref on each thread and fire-and-forget destroy', async () => {
+      const mockUnref1 = vi.fn();
+      const mockUnref2 = vi.fn();
+      const mockDestroy = vi.fn().mockResolvedValue(undefined);
+      const mockPool = {
+        threads: [{ unref: mockUnref1 }, { unref: mockUnref2 }],
+        destroy: mockDestroy,
+      } as unknown as Tinypool;
+
+      await cleanupWorkerPool(mockPool);
+
+      expect(mockUnref1).toHaveBeenCalledOnce();
+      expect(mockUnref2).toHaveBeenCalledOnce();
+      expect(mockDestroy).toHaveBeenCalledOnce();
+    });
+
+    it('should skip null/undefined threads', async () => {
+      const mockUnref = vi.fn();
+      const mockDestroy = vi.fn().mockResolvedValue(undefined);
+      const mockPool = {
+        threads: [null, undefined, { unref: mockUnref }],
+        destroy: mockDestroy,
+      } as unknown as Tinypool;
+
+      await cleanupWorkerPool(mockPool);
+
+      expect(mockUnref).toHaveBeenCalledOnce();
+      expect(mockDestroy).toHaveBeenCalledOnce();
+    });
+
+    it('should not block on slow pool.destroy()', async () => {
+      const mockDestroy = vi.fn().mockReturnValue(new Promise(() => {})); // never resolves
+      const mockPool = {
+        threads: [],
+        destroy: mockDestroy,
+      } as unknown as Tinypool;
+
+      // cleanupWorkerPool should return immediately without awaiting destroy
+      await cleanupWorkerPool(mockPool);
+
+      expect(mockDestroy).toHaveBeenCalledOnce();
+    });
+
+    it('should swallow errors from pool.destroy()', async () => {
+      const mockDestroy = vi.fn().mockRejectedValue(new Error('destroy failed'));
+      const mockPool = {
+        threads: [],
+        destroy: mockDestroy,
+      } as unknown as Tinypool;
+
+      // Should not throw
+      await expect(cleanupWorkerPool(mockPool)).resolves.toBeUndefined();
     });
   });
 

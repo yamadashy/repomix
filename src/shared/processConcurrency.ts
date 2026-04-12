@@ -129,8 +129,17 @@ export const cleanupWorkerPool = async (pool: Tinypool): Promise<void> => {
       // If running in Bun, we cannot use Tinypool's destroy method
       logger.debug('Running in Bun environment, skipping Tinypool destroy method');
     } else {
-      // Standard Node.js cleanup
-      await pool.destroy();
+      // Unref all worker threads so they don't prevent the process from exiting,
+      // then fire-and-forget the actual destroy. This avoids the ~40-80ms
+      // synchronous wait for worker thread termination that blocks pack()'s
+      // return in the finally block. The workers still receive the termination
+      // signal and shut down cleanly, but the main thread doesn't wait for it.
+      for (const thread of pool.threads) {
+        if (thread && 'unref' in thread) {
+          (thread as { unref: () => void }).unref();
+        }
+      }
+      void pool.destroy().catch(() => {});
     }
 
     logger.debug('Worker pool cleaned up successfully');
