@@ -130,7 +130,6 @@ const loadAndValidateConfig = async (
   },
 ): Promise<RepomixConfigFile> => {
   try {
-    let config: unknown;
     const ext = getFileExtension(filePath);
 
     switch (ext) {
@@ -142,28 +141,30 @@ const loadAndValidateConfig = async (
       case 'cjs': {
         // Use jiti for TypeScript and JavaScript files
         // This provides consistent behavior and avoids Node.js module cache issues
-        config = await deps.jitiImport(pathToFileURL(filePath).href);
-        break;
+        const config = await deps.jitiImport(pathToFileURL(filePath).href);
+
+        // JS/TS configs can produce arbitrary shapes, so validate with Zod.
+        // Lazy-load configSchema (and Zod, ~44ms) only for this code path.
+        const { repomixConfigFileSchema } = await import('./configSchema.js');
+        return repomixConfigFileSchema.parse(config);
       }
 
       case 'json5':
       case 'jsonc':
       case 'json': {
-        // Use JSON5 for JSON/JSON5/JSONC files
+        // Use JSON5 for JSON/JSON5/JSONC files.
+        // Skip Zod validation to avoid importing Zod (~44ms). JSON/JSON5 parsing
+        // already validates syntax, mergeConfigs applies defaults for all missing
+        // fields via spread from defaultConfig, and the $schema field enables IDE
+        // validation for type errors. This is consistent with cliConfig
+        // (Commander-validated) and mergedConfig, which both skip Zod.
         const fileContent = await fs.readFile(filePath, 'utf-8');
-        config = JSON5.parse(fileContent);
-        break;
+        return JSON5.parse(fileContent) as RepomixConfigFile;
       }
 
       default:
         throw new RepomixError(`Unsupported config file format: ${filePath}`);
     }
-
-    // Lazy-load configSchema (and Zod) only when a config file actually needs
-    // validation. This avoids the ~44ms Zod import cost on the common path
-    // where no config file exists.
-    const { repomixConfigFileSchema } = await import('./configSchema.js');
-    return repomixConfigFileSchema.parse(config);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');
     if (error instanceof SyntaxError) {

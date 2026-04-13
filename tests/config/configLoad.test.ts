@@ -7,7 +7,6 @@ import { defaultConfig } from '../../src/config/configDefaults.js';
 import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
 import type { RepomixConfigCli, RepomixConfigFile } from '../../src/config/configSchema.js';
 import { getGlobalDirectory } from '../../src/config/globalDirectory.js';
-import { RepomixConfigValidationError } from '../../src/shared/errorHandle.js';
 import { logger } from '../../src/shared/logger.js';
 
 vi.mock('node:fs/promises');
@@ -42,15 +41,19 @@ describe('configLoad', () => {
       expect(result).toEqual(mockConfig);
     });
 
-    test('should throw RepomixConfigValidationError for invalid config', async () => {
+    test('should pass through JSON config without Zod validation for startup performance', async () => {
+      // JSON configs skip Zod validation to avoid the ~44ms Zod import cost.
+      // Missing fields are filled by mergeConfigs defaults; wrong-type values
+      // are caught at usage time. Consistent with cliConfig and mergedConfig.
       const invalidConfig = {
-        output: { filePath: 123, style: 'invalid' }, // Invalid filePath type and invalid style
-        ignore: { useDefaultPatterns: 'not a boolean' }, // Invalid type
+        output: { filePath: 123, style: 'invalid' },
+        ignore: { useDefaultPatterns: 'not a boolean' },
       };
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(invalidConfig));
       vi.mocked(fs.stat).mockResolvedValue({ isFile: () => true } as Stats);
 
-      await expect(loadFileConfig(process.cwd(), 'test-config.json')).rejects.toThrow(RepomixConfigValidationError);
+      const result = await loadFileConfig(process.cwd(), 'test-config.json');
+      expect(result).toEqual(invalidConfig);
     });
 
     test('should load global config when local config is not found', async () => {
