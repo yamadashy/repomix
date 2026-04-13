@@ -10,6 +10,10 @@ import { calculateFileMetrics } from './calculateFileMetrics.js';
 import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
+import { type OutputStyle, extractOutputWrapper } from './extractOutputWrapper.js';
+
+// Re-export for backward compatibility (used by tests and external consumers)
+export { extractOutputWrapper } from './extractOutputWrapper.js';
 import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
@@ -59,39 +63,6 @@ const defaultDeps = {
   taskRunner: undefined as MetricsTaskRunner | undefined,
   precomputedFileMetrics: undefined as Promise<FileMetrics[]> | undefined,
   suspiciousPathSet: undefined as Set<string> | undefined,
-};
-
-/**
- * Extract the "wrapper" portion of a generated output: the output string minus
- * every file's content. Returns `null` if any file's content cannot be located
- * in the output (e.g., the template escaped it, the output was split, or the
- * processedFiles order does not match the output order).
- *
- * Assumes `processedFilesInOutputOrder` lists files in the same order they
- * appear in `output`. A single forward pass with `indexOf(content, cursor)`
- * is enough and handles identical content between files (each occurrence is
- * consumed in order).
- */
-export const extractOutputWrapper = (
-  output: string,
-  processedFilesInOutputOrder: ReadonlyArray<ProcessedFile>,
-): string | null => {
-  const wrapperSegments: string[] = [];
-  let cursor = 0;
-  for (const file of processedFilesInOutputOrder) {
-    // Empty file contents produce no occurrence in the output, so skip them
-    // (their contribution to sum-of-file-tokens is zero anyway).
-    if (file.content.length === 0) continue;
-
-    const idx = output.indexOf(file.content, cursor);
-    if (idx === -1) {
-      return null;
-    }
-    wrapperSegments.push(output.slice(cursor, idx));
-    cursor = idx + file.content.length;
-  }
-  wrapperSegments.push(output.slice(cursor));
-  return wrapperSegments.join('');
 };
 
 export const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean => {
@@ -166,7 +137,8 @@ export const calculateMetrics = async (
     // the full ~4 MB output in 200 KB chunks. Falls back to calculateOutputMetrics
     // for JSON/parsable-XML/split output where indexOf can't find verbatim content.
     const singleOutput = canUseFastOutputTokenPath(config) && outputParts.length === 1 ? outputParts[0] : null;
-    const outputWrapper = singleOutput !== null ? extractOutputWrapper(singleOutput, processedFiles) : null;
+    const style = config.output.style as 'xml' | 'markdown' | 'plain';
+    const outputWrapper = singleOutput !== null ? extractOutputWrapper(singleOutput, processedFiles, style) : null;
     if (singleOutput !== null && outputWrapper === null) {
       logger.trace('Fast-path unavailable, falling back to full output tokenization');
     }
