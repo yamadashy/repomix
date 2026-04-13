@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776121208712,
+  "lastUpdate": 1776121806372,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2115,6 +2115,51 @@ window.BENCHMARK_DATA = {
             "range": "±29",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 1237ms, Q3: 1266ms\nAll times: 1222, 1223, 1234, 1235, 1237, 1239, 1246, 1249, 1251, 1254, 1255, 1257, 1260, 1262, 1266, 1268, 1279, 1294, 1294ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "adeaae6de8ce974eec38458789e973d804cb2aa9",
+          "message": "perf(security): Pre-filter security items on main thread to reduce IPC round-trips (-2.6%)\n\nMove SECRETLINT_PRESCAN regex to main thread and filter items before\ndispatching to the security worker. With MAX_SECURITY_WORKERS=1, this\nreduces Tinypool IPC round-trips from ~20 batches to typically 1,\neliminating ~19 unnecessary scheduling+serialization cycles.\n\nChanges:\n- Extract SECRETLINT_PRESCAN to shared securityPrescan.ts module\n- Apply prescan filter in runSecurityCheck before batching\n- Only suspect items (~3% of files) are sent to the worker\n- Worker retains prescan as defense-in-depth\n\nBenchmark (20 runs each, repomix on its own 1002-file repo):\n  BEFORE: mean 875.9ms, median 865.0ms, p90 943.3ms\n  AFTER:  mean 853.1ms, median 854.8ms, p90 873.4ms\n  Improvement: -22.8ms (-2.6% mean), -70ms at p90\n\nWhy: With 1 security worker, all batches execute serially on the same\nthread. Each batch incurs Tinypool task scheduling + structured clone\noverhead. The prescan regex already filters ~97% of files (only ~36 of\n1002 files match in this repo), so sending all 1002 files as 20 batches\nwastes ~20ms of IPC overhead for items that will be immediately skipped\nby the worker's prescan check anyway.\n\nhttps://claude.ai/code/session_01FMohCSdfQ68CQ497bwU6Uv",
+          "timestamp": "2026-04-13T23:08:07Z",
+          "tree_id": "8e1115a4de725725ce092f85127580f6f31595ac",
+          "url": "https://github.com/yamadashy/repomix/commit/adeaae6de8ce974eec38458789e973d804cb2aa9"
+        },
+        "date": 1776121806040,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1503,
+            "range": "±371",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1248ms, Q3: 1619ms\nAll times: 948, 1073, 1136, 1177, 1204, 1209, 1211, 1248, 1259, 1301, 1339, 1362, 1373, 1439, 1441, 1503, 1512, 1521, 1528, 1558, 1574, 1599, 1619, 1630, 1631, 1671, 2203, 2225, 2611, 3552ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 927,
+            "range": "±74",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 921ms, Q3: 995ms\nAll times: 907, 909, 913, 916, 916, 921, 924, 924, 925, 927, 927, 929, 930, 934, 935, 995, 1109, 1120, 1123, 1209ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1569,
+            "range": "±64",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1550ms, Q3: 1614ms\nAll times: 1231, 1260, 1271, 1277, 1296, 1550, 1556, 1557, 1558, 1561, 1569, 1577, 1577, 1589, 1611, 1614, 1622, 1666, 1680, 1681ms"
           }
         ]
       }
