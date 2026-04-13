@@ -48,6 +48,7 @@ describe('calculateGitDiffMetrics', () => {
       includeEmptyDirectories: false,
       includeFullDirectoryStructure: false,
       tokenCountTree: false,
+      showFileOffsets: false,
       git: {
         sortByChanges: true,
         sortByChangesMaxCommits: 100,

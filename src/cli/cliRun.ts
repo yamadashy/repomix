@@ -172,6 +172,10 @@ export const run = async () => {
         '--token-count-encoding <encoding>',
         'Tokenizer model for counting: o200k_base (GPT-4o), cl100k_base (GPT-3.5/4), etc. (default: o200k_base)',
       )
+      .option(
+        '--show-file-offsets',
+        'Annotate each file in the directory structure with its line range in the output (e.g., [lines 42–78])',
+      )
       // MCP
       .optionsGroup('MCP')
       .option('--mcp', 'Run as Model Context Protocol server for AI tool integration')

@@ -4,10 +4,17 @@ import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
-import { type FilesByRoot, generateTreeString, generateTreeStringWithRoots } from '../file/fileTreeGenerate.js';
+import {
+  type FilesByRoot,
+  generateTreeString,
+  generateTreeStringWithFileOffsets,
+  generateTreeStringWithRoots,
+  generateTreeStringWithRootsAndFileOffsets,
+} from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
+import { computeFileLineOffsets } from './fileOffsets.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
 import { sortOutputFiles } from './outputSort.js';
 import {
@@ -251,6 +258,31 @@ Please try:
   }
 };
 
+const renderOutput = async (
+  config: RepomixConfigMerged,
+  renderContext: RenderContext,
+  sortedProcessedFiles: ProcessedFile[],
+  deps: {
+    generateHandlebarOutput: typeof generateHandlebarOutput;
+    generateParsableXmlOutput: typeof generateParsableXmlOutput;
+    generateParsableJsonOutput: typeof generateParsableJsonOutput;
+  },
+): Promise<string> => {
+  switch (config.output.style) {
+    case 'xml':
+      return config.output.parsableStyle
+        ? deps.generateParsableXmlOutput(renderContext)
+        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+    case 'json':
+      return deps.generateParsableJsonOutput(renderContext);
+    case 'markdown':
+    case 'plain':
+      return deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+    default:
+      throw new RepomixError(`Unsupported output style: ${config.output.style}`);
+  }
+};
+
 export const generateOutput = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
@@ -281,21 +313,32 @@ export const generateOutput = async (
     filePathsByRoot,
     emptyDirPaths,
   );
-  const renderContext = createRenderContext(outputGeneratorContext);
 
-  switch (config.output.style) {
-    case 'xml':
-      return config.output.parsableStyle
-        ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
-    case 'json':
-      return deps.generateParsableJsonOutput(renderContext);
-    case 'markdown':
-    case 'plain':
-      return deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
-    default:
-      throw new RepomixError(`Unsupported output style: ${config.output.style}`);
+  // When showFileOffsets is enabled, do a two-pass render:
+  // 1. Render without offsets to discover file line positions
+  // 2. Annotate the tree string with those positions and re-render
+  // The tree section has the same number of lines in both passes (only line content changes),
+  // so the file block positions remain stable between passes.
+  if (config.output.showFileOffsets && config.output.directoryStructure && config.output.files) {
+    const firstPassContext = createRenderContext(outputGeneratorContext);
+    const firstPassOutput = await renderOutput(config, firstPassContext, sortedProcessedFiles, deps);
+
+    const offsets = computeFileLineOffsets(firstPassOutput, config.output.style);
+
+    const annotatedTree = filePathsByRoot
+      ? generateTreeStringWithRootsAndFileOffsets(filePathsByRoot, offsets, emptyDirPaths)
+      : generateTreeStringWithFileOffsets(allFilePaths, offsets, emptyDirPaths);
+
+    const annotatedContext = createRenderContext({
+      ...outputGeneratorContext,
+      treeString: annotatedTree,
+    });
+
+    return renderOutput(config, annotatedContext, sortedProcessedFiles, deps);
   }
+
+  const renderContext = createRenderContext(outputGeneratorContext);
+  return renderOutput(config, renderContext, sortedProcessedFiles, deps);
 };
 
 export const buildOutputGeneratorContext = async (

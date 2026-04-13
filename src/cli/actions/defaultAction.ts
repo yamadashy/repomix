@@ -337,6 +337,13 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     };
   }
 
+  if (options.showFileOffsets) {
+    cliConfig.output = {
+      ...cliConfig.output,
+      showFileOffsets: options.showFileOffsets,
+    };
+  }
+
   // Skill generation
   if (options.skillGenerate !== undefined) {
     cliConfig.skillGenerate = options.skillGenerate;

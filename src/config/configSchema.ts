@@ -42,6 +42,7 @@ export const repomixConfigBaseSchema = z.object({
       includeFullDirectoryStructure: z.boolean().optional(),
       splitOutput: z.number().int().min(1).optional(),
       tokenCountTree: z.union([z.boolean(), z.number(), z.string()]).optional(),
+      showFileOffsets: z.boolean().optional(),
       git: z
         .object({
           sortByChanges: z.boolean().optional(),
@@ -103,6 +104,7 @@ export const repomixConfigDefaultSchema = z.object({
     includeFullDirectoryStructure: z.boolean().default(false),
     splitOutput: z.number().int().min(1).optional(),
     tokenCountTree: z.union([z.boolean(), z.number(), z.string()]).default(false),
+    showFileOffsets: z.boolean().default(false),
     git: z.object({
       sortByChanges: z.boolean().default(true),
       sortByChangesMaxCommits: z.number().int().min(1).default(100),

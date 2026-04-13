@@ -115,6 +115,7 @@ describe('configSchema', () => {
           copyToClipboard: true,
           includeFullDirectoryStructure: false,
           tokenCountTree: '100',
+          showFileOffsets: false,
           git: {
             sortByChanges: true,
             sortByChangesMaxCommits: 100,
@@ -220,6 +221,7 @@ describe('configSchema', () => {
           copyToClipboard: false,
           includeFullDirectoryStructure: false,
           tokenCountTree: false,
+          showFileOffsets: false,
           git: {
             sortByChanges: true,
             sortByChangesMaxCommits: 100,

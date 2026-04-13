@@ -25,6 +25,7 @@ const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): Repomix
     includeEmptyDirectories: false,
     includeFullDirectoryStructure: true,
     tokenCountTree: false,
+    showFileOffsets: false,
     git: {
       sortByChanges: false,
       sortByChangesMaxCommits: 10,
@@ -143,6 +144,7 @@ describe('includeEmptyDirectories with pre-computed emptyDirPaths', () => {
       includeEmptyDirectories: true,
       includeFullDirectoryStructure: false,
       tokenCountTree: false,
+      showFileOffsets: false,
       git: {
         sortByChanges: false,
         sortByChangesMaxCommits: 10,
