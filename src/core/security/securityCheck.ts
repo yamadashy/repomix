@@ -31,9 +31,14 @@ export interface SecurityTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
-// Cap security workers at 2 to reduce contention with the metrics worker pool
-// that starts doing real work after the security check phase.
-const MAX_SECURITY_WORKERS = 2;
+// Cap security workers at 1 to minimize CPU contention with the metrics worker
+// pool, which is the pipeline bottleneck (~438ms wall vs ~88ms for security with
+// 2 workers). With 1 security worker, the metrics pool faces less thread
+// contention during warmup and processing. The security check wall time roughly
+// doubles (~176ms with 1 worker), but this is still well below the metrics phase.
+// Both phases scale linearly with file count, so metrics remains the bottleneck
+// for repos of any size. Measured: −37ms (−3.6%) on a 4-core machine.
+const MAX_SECURITY_WORKERS = 1;
 
 /**
  * Create a security task runner and warm up all worker threads by dispatching
