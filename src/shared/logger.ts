@@ -1,5 +1,4 @@
 import util from 'node:util';
-import { workerData } from 'node:worker_threads';
 import pc from 'picocolors';
 
 export const repomixLogLevels = {
@@ -107,20 +106,14 @@ const isValidLogLevel = (level: number): level is RepomixLogLevel => {
 };
 
 export const setLogLevelByWorkerData = () => {
-  // Try to get log level from environment variable first (for child_process workers)
+  // Read log level from environment variable. The main process sets
+  // REPOMIX_LOG_LEVEL before creating worker pools, and both worker_threads
+  // and child_process workers inherit it. For child_process workers it is also
+  // explicitly passed via the env option in createWorkerPool.
   const envLogLevel = process.env.REPOMIX_LOG_LEVEL;
   if (envLogLevel !== undefined) {
     const logLevel = Number(envLogLevel);
     if (!Number.isNaN(logLevel) && isValidLogLevel(logLevel)) {
-      setLogLevel(logLevel);
-      return;
-    }
-  }
-
-  // Fallback to workerData for worker_threads
-  if (Array.isArray(workerData) && workerData.length > 1 && workerData[1]?.logLevel !== undefined) {
-    const logLevel = workerData[1].logLevel;
-    if (isValidLogLevel(logLevel)) {
       setLogLevel(logLevel);
     }
   }
