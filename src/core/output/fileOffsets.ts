@@ -1,18 +1,20 @@
+import type { RepomixOutputStyle } from '../../config/configSchema.js';
+
 export interface FileLineOffset {
   start: number;
   end: number;
 }
 
 /**
- * Finds the 1-indexed line number where the files section starts in the output.
+ * Finds the 0-indexed line position where the files section starts in the output.
  * Restricting offset scanning to this section prevents false matches when a file's
  * own content contains marker strings (e.g., a file that itself contains XML tags
  * or Markdown headings matching our patterns).
  */
-const findFilesSectionStart = (lines: string[], style: string): number => {
+const findFilesSectionStart = (lines: string[], style: RepomixOutputStyle): number => {
   if (style === 'xml') {
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i] === '<files>') return i;
+      if (lines[i].trim() === '<files>') return i;
     }
   } else if (style === 'markdown') {
     for (let i = 0; i < lines.length; i++) {
@@ -38,7 +40,7 @@ const findFilesSectionStart = (lines: string[], style: string): number => {
  * Supports XML, Markdown, and plain text output styles.
  * JSON output is structured and does not use this function.
  */
-export const computeFileLineOffsets = (output: string, style: string): Record<string, FileLineOffset> => {
+export const computeFileLineOffsets = (output: string, style: RepomixOutputStyle): Record<string, FileLineOffset> => {
   const offsets: Record<string, FileLineOffset> = {};
   const lines = output.split('\n');
 
@@ -52,14 +54,15 @@ export const computeFileLineOffsets = (output: string, style: string): Record<st
       const line = lines[i];
       const lineNum = i + 1;
 
-      const startMatch = line.match(/^<file path="(.+)">$/);
+      // Allow optional surrounding whitespace; use non-greedy [^"]+ to match path
+      const startMatch = line.match(/^\s*<file path="([^"]+)">\s*$/);
       if (startMatch) {
         currentPath = startMatch[1];
         currentStart = lineNum;
-      } else if (line === '</file>' && currentPath !== null) {
+      } else if (line.trim() === '</file>' && currentPath !== null) {
         offsets[currentPath] = { start: currentStart, end: lineNum };
         currentPath = null;
-      } else if (line === '</files>') {
+      } else if (line.trim() === '</files>') {
         break;
       }
     }
@@ -69,7 +72,7 @@ export const computeFileLineOffsets = (output: string, style: string): Record<st
     for (let i = sectionStart; i < lines.length; i++) {
       const match = lines[i].match(/^## File: (.+)$/);
       if (match) {
-        fileStarts.push({ path: match[1], line: i + 1 });
+        fileStarts.push({ path: match[1].trim(), line: i + 1 });
       } else if (lines[i].startsWith('# ') && i > sectionStart) {
         // Hit the next top-level section — stop scanning
         break;
@@ -84,6 +87,7 @@ export const computeFileLineOffsets = (output: string, style: string): Record<st
   } else if (style === 'plain') {
     // Plain format: "================" then "File: path" then "================" then content
     // End of content = line before next "================" separator
+    // The short separator is exactly 16 '=' characters (matches PLAIN_SEPARATOR in plainStyle.ts)
     const SEPARATOR = '================';
     const fileHeaderLines: Array<{ path: string; line: number }> = [];
 
@@ -94,7 +98,7 @@ export const computeFileLineOffsets = (output: string, style: string): Record<st
       if (line === SEPARATOR) {
         // Check if next line is a File: header
         if (i + 1 < lines.length && lines[i + 1].startsWith('File: ')) {
-          const filePath = lines[i + 1].slice('File: '.length);
+          const filePath = lines[i + 1].slice('File: '.length).trim();
           fileHeaderLines.push({ path: filePath, line: lineNum });
         }
       }

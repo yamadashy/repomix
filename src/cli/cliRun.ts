@@ -125,6 +125,10 @@ export const run = async () => {
         'Show entire repository tree in the Directory Structure section, even when using --include patterns',
       )
       .option(
+        '--show-file-offsets',
+        'Annotate each file in the directory structure with its line range in the output (e.g., [lines 42–78])',
+      )
+      .option(
         '--no-git-sort-by-changes',
         "Don't sort files by git change frequency (default: most changed files first)",
       )
@@ -171,10 +175,6 @@ export const run = async () => {
       .option(
         '--token-count-encoding <encoding>',
         'Tokenizer model for counting: o200k_base (GPT-4o), cl100k_base (GPT-3.5/4), etc. (default: o200k_base)',
-      )
-      .option(
-        '--show-file-offsets',
-        'Annotate each file in the directory structure with its line range in the output (e.g., [lines 42–78])',
       )
       // MCP
       .optionsGroup('MCP')
