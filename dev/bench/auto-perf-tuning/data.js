@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776053532006,
+  "lastUpdate": 1776061111000,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -1620,6 +1620,51 @@ window.BENCHMARK_DATA = {
             "range": "±27",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1506ms, Q3: 1533ms\nAll times: 1489, 1491, 1491, 1494, 1501, 1506, 1512, 1513, 1517, 1520, 1524, 1525, 1527, 1527, 1532, 1533, 1537, 1538, 1540, 1552ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "d4f72a6d60d6223238107182778163af33124c00",
+          "message": "perf(security): Reduce security worker pool from 2 to 1 thread (-3.6%)\n\nReduce MAX_SECURITY_WORKERS from 2 to 1 to minimize CPU contention with\nthe metrics worker pool, which is the pipeline bottleneck.\n\nProblem:\nWith 4 metrics workers + 2 security workers = 6 threads on a 4-core\nmachine, the security workers add CPU contention during both warmup\n(secretlint module loading) and processing, slowing down the metrics\nworkers that are on the critical path. The security check completes\nin ~88ms wall time (2 workers) — far below the metrics phase (~438ms).\nThe extra security parallelism only added contention without reducing\nthe critical path.\n\nSolution:\nCap security workers at 1 thread. This frees CPU for the 4 metrics\nworkers during their overlapped execution. The security check now\ntakes ~176ms with 1 worker (vs ~88ms with 2), but this is still well\nbelow the metrics bottleneck. Both phases scale linearly with file\ncount, so metrics remains the bottleneck for repos of any size.\n\nBenchmark (30 alternating A/B measurements, `node bin/repomix.cjs --quiet`):\n\n  Before (MAX_SECURITY_WORKERS=2):\n    mean=1032.1ms, median=1022.6ms, trimmed_mean=1024.8ms, std=45.4\n\n  After (MAX_SECURITY_WORKERS=1):\n    mean=995.0ms, median=985.8ms, trimmed_mean=989.5ms, std=32.5\n\n  Improvement: −37.1ms mean (−3.6%), paired t=−3.59, df=29 (p < 0.002)\n\nAll 1134 tests pass, lint clean.\n\nhttps://claude.ai/code/session_019zxnc9Xhhx66w1KXgXkxzj",
+          "timestamp": "2026-04-13T06:16:43Z",
+          "tree_id": "7630cc64112bc991041cf7bde23071c239121e50",
+          "url": "https://github.com/yamadashy/repomix/commit/d4f72a6d60d6223238107182778163af33124c00"
+        },
+        "date": 1776061110479,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 928,
+            "range": "±201",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 805ms, Q3: 1006ms\nAll times: 731, 749, 759, 759, 760, 792, 796, 805, 835, 848, 858, 866, 871, 876, 908, 928, 943, 944, 945, 952, 968, 1002, 1006, 1008, 1015, 1024, 1067, 1075, 1096, 1110ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1218,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1201ms, Q3: 1228ms\nAll times: 1188, 1192, 1193, 1194, 1196, 1201, 1203, 1205, 1213, 1216, 1218, 1219, 1219, 1226, 1227, 1228, 1229, 1231, 1270, 1287ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1535,
+            "range": "±136",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1500ms, Q3: 1636ms\nAll times: 1454, 1472, 1483, 1492, 1499, 1500, 1504, 1510, 1522, 1535, 1535, 1539, 1542, 1563, 1591, 1636, 1681, 1882, 1904, 2127ms"
           }
         ]
       }
