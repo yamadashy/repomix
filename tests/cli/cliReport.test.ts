@@ -356,7 +356,7 @@ describe('cliReport', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('malformed.json'));
     });
 
-    test('should report both binary-content and encoding-error files', () => {
+    test('should report both binary-content and encoding-error files with separator', () => {
       reportSkippedFiles('/root', [
         { path: 'data.bin', reason: 'binary-content' },
         { path: 'broken.txt', reason: 'encoding-error' },
@@ -365,6 +365,8 @@ describe('cliReport', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Encoding Error Files Detected'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('data.bin'));
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('broken.txt'));
+      // Empty line separator between sections
+      expect(logger.log).toHaveBeenCalledWith('');
     });
   });
 

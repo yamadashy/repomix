@@ -249,6 +249,12 @@ export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileIn
   );
 
   const encodingErrorFiles = skippedFiles.filter((file) => file.reason === 'encoding-error');
+
+  // Add spacing when both sections are rendered
+  if (binaryContentFiles.length > 0 && encodingErrorFiles.length > 0) {
+    logger.log('');
+  }
+
   reportSkippedCategory(
     '⚠️  Encoding Error Files Detected:',
     '──────────────────────────────────',
