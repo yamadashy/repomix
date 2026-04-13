@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776050357371,
+  "lastUpdate": 1776053532006,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -1575,6 +1575,51 @@ window.BENCHMARK_DATA = {
             "range": "±502",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1582ms, Q3: 2084ms\nAll times: 1527, 1554, 1561, 1568, 1582, 1582, 1602, 1605, 1607, 1611, 1612, 1724, 1746, 1909, 2026, 2084, 2099, 2103, 2299, 2523ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "9531c4b4062f2a5349ce372068e9c0dc7689bed7",
+          "message": "perf(output): Lazy-load Handlebars to skip ~27ms import on default XML path (-2.9%)\n\nAction: defer-handlebars-import\nWhy: outputGenerate.ts eagerly imports Handlebars (~27ms) even though the\ndefault XML output path (generateDirectXmlOutput) never uses it. Handlebars\nis only needed for markdown, plain, and parsable-XML styles which go through\ngenerateHandlebarOutput → getCompiledTemplate.\n\nWhat changed:\n- Removed static `import Handlebars from 'handlebars'` from outputGenerate.ts\n- Removed static imports of markdownStyle, plainStyle, xmlStyle templates\n- Made getCompiledTemplate async; loads Handlebars and the requested template\n  module lazily via Promise.all on first call\n- generateHandlebarOutput already async, now awaits getCompiledTemplate\n\nBenchmark (node bin/repomix.cjs --quiet, 30 runs, median ± IQR):\n  Before: 1118ms (±23ms)\n  After:  1086ms (±40ms)\n  Δ:      −32ms (−2.9%)\n\nThe default XML path no longer loads Handlebars at all, reducing main-thread\nCPU usage during the output generation phase by ~18ms (measured: outputGenerate\nmodule import dropped from 63ms to 45ms). This frees CPU cycles for the\nconcurrent metrics worker threads.\n\nConstraint: The cached compiled template map now uses a generic function type\ninstead of Handlebars.TemplateDelegate, since the Handlebars type is not\navailable at module level. biome-ignore directives added for the necessary\n`any` types.",
+          "timestamp": "2026-04-13T04:09:40Z",
+          "tree_id": "4dd32cf60d710c034e9dde4b81a9cb2706d32f1c",
+          "url": "https://github.com/yamadashy/repomix/commit/9531c4b4062f2a5349ce372068e9c0dc7689bed7"
+        },
+        "date": 1776053531664,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 728,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 713ms, Q3: 744ms\nAll times: 686, 688, 702, 707, 707, 711, 712, 713, 714, 715, 725, 725, 725, 727, 727, 728, 729, 732, 734, 734, 738, 739, 744, 745, 763, 808, 809, 831, 835, 878ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1139,
+            "range": "±68",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1121ms, Q3: 1189ms\nAll times: 1105, 1105, 1113, 1114, 1114, 1121, 1126, 1126, 1129, 1136, 1139, 1140, 1141, 1142, 1158, 1189, 1245, 1361, 1373, 1383ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1524,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1506ms, Q3: 1533ms\nAll times: 1489, 1491, 1491, 1494, 1501, 1506, 1512, 1513, 1517, 1520, 1524, 1525, 1527, 1527, 1532, 1533, 1537, 1538, 1540, 1552ms"
           }
         ]
       }
