@@ -111,6 +111,18 @@ export const pack = async (
   );
   const securityTaskRunnerWithWarmup = securityEnabled ? deps.createSecurityTaskRunner(estimatedTasks) : undefined;
 
+  // Start git operations immediately — they only need rootDirs and config, not
+  // searchFiles results. Launching them here overlaps the ~50-70ms git diff/log
+  // subprocesses with searchFiles (~135ms) and worker warm-up, hiding their cost
+  // entirely. Previously they started after searchFiles inside the collectFiles
+  // Promise.all, extending the critical path by up to 70ms when git operations
+  // took longer than file collection.
+  const gitDiffPromise = deps.getGitDiffs(rootDirs, config);
+  const gitLogPromise = deps.getGitLogs(rootDirs, config);
+  // Prevent unhandled rejections if searchFiles throws before we await these
+  gitDiffPromise?.catch?.(() => {});
+  gitLogPromise?.catch?.(() => {});
+
   try {
     progressCallback('Searching for files...');
     const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -149,12 +161,10 @@ export const pack = async (
       }));
     }
 
-    // Run file collection, git operations, and sort-data prefetch in parallel since
-    // they are independent:
-    // - collectFiles reads file contents from disk
-    // - getGitDiffs/getGitLogs spawn git subprocesses
-    // - sortDataPromise populates the fileChangeCountsCache for sortOutputFiles
-    // None depend on each other's results.
+    // Run file collection and await pre-started git operations in parallel.
+    // collectFiles reads file contents from disk; getGitDiffs/getGitLogs were
+    // started before searchFiles (see above) so their subprocesses have been
+    // running concurrently with the search and are likely already resolved.
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
       withMemoryLogging(
@@ -166,8 +176,8 @@ export const pack = async (
             ),
           ),
       ),
-      deps.getGitDiffs(rootDirs, config),
-      deps.getGitLogs(rootDirs, config),
+      gitDiffPromise,
+      gitLogPromise,
       sortDataPromise,
     ]);
 
@@ -185,9 +195,12 @@ export const pack = async (
       return deps.processFiles(rawFiles, config, progressCallback);
     });
 
-    // Ensure metrics workers are warmed up before dispatching file metrics
-    await metricsWarmupPromise;
-
+    // Dispatch file metrics batches without waiting for the metrics warmup to
+    // complete. Tinypool queues tasks FIFO per worker — each batch sits behind
+    // its worker's warmup task and starts as soon as that worker's gpt-tokenizer
+    // load finishes. This avoids a main-thread stall where fast workers idle
+    // while the slowest worker is still warming up.
+    //
     // Start per-file token counting immediately — this is the most expensive
     // single operation in the pipeline (~400ms). Starting it here instead of
     // after the security check allows the first ~50ms of token counting to
