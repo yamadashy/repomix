@@ -39,6 +39,16 @@ export const runRemoteAction = async (
     );
   }
 
+  // Validate --include-from-file path: only absolute paths work in remote mode because
+  // cwd inside runDefaultAction is the temp clone directory, not the user's working directory
+  if (cliOptions.includeFromFile && !path.isAbsolute(cliOptions.includeFromFile)) {
+    throw new RepomixError(
+      `In remote mode, --include-from-file must be an absolute path.\n` +
+        `  Provided: ${cliOptions.includeFromFile}\n` +
+        `  Example:  repomix --remote <url> --include-from-file /home/user/patterns.txt`,
+    );
+  }
+
   let tempDirPath = await createTempDirectory();
   let result: DefaultActionRunnerResult;
   let downloadMethod: 'archive' | 'git' = 'git';
