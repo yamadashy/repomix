@@ -1,6 +1,6 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -42,13 +42,23 @@ export interface MetricsTaskRunnerWithWarmup {
  * output generation).
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+  // Reserve one CPU core for the main thread by capping metrics workers at
+  // concurrency - 1. During warmup, each worker loads gpt-tokenizer (~150ms of
+  // CPU-intensive BPE rank parsing). With N workers on N cores plus the main
+  // thread, the over-subscription causes heavy cache/memory-bus contention that
+  // inflates warmup from ~150ms to ~380ms. Leaving one core free keeps the main
+  // thread responsive for searchFiles and reduces per-worker contention, cutting
+  // total warmup wall time despite having one fewer worker. The slightly lower
+  // tokenization throughput is more than offset by the eliminated warmup stall.
+  const maxMetricsWorkers = Math.max(1, getProcessConcurrency() - 1);
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    maxWorkerThreads: maxMetricsWorkers,
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { maxThreads } = getWorkerThreadCount(numOfTasks, maxMetricsWorkers);
   const warmupPromise = Promise.all(
     Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
