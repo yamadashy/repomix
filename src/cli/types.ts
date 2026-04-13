@@ -31,6 +31,7 @@ export interface CliOptions extends OptionValues {
 
   // Filter Options
   include?: string;
+  includeFromFile?: string;
   ignore?: string;
   gitignore?: boolean;
   dotIgnore?: boolean;

@@ -146,6 +146,10 @@ export const run = async () => {
         '--include <patterns>',
         'Include only files matching these glob patterns (comma-separated, e.g., "src/**/*.js,*.md")',
       )
+      .option(
+        '--include-from-file <path>',
+        'Load include patterns from a file (one glob pattern per line, # comments supported)',
+      )
       .option('-i, --ignore <patterns>', 'Additional patterns to exclude (comma-separated, e.g., "*.test.js,docs/**")')
       .option('--no-gitignore', "Don't use .gitignore rules for filtering files")
       .option('--no-dot-ignore', "Don't use .ignore rules for filtering files")

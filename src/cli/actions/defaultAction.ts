@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import {
@@ -41,6 +42,27 @@ export const runDefaultAction = async (
     skipLocalConfig: cliOptions.skipLocalConfig,
   });
   logger.trace('Loaded file config:', fileConfig);
+
+  // Load include patterns from file if --include-from-file was specified
+  if (cliOptions.includeFromFile) {
+    const filePath = path.resolve(cwd, cliOptions.includeFromFile);
+    let fileContent: string;
+    try {
+      fileContent = await fs.readFile(filePath, 'utf8');
+    } catch {
+      throw new RepomixError(`Could not read include patterns file: ${filePath}`);
+    }
+    const filePatterns = fileContent
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith('#'));
+    // Merge with any patterns already provided via --include
+    const existingPatterns = cliOptions.include ? splitPatterns(cliOptions.include) : [];
+    const merged = [...existingPatterns, ...filePatterns];
+    // Store back as a comma-joined string so buildCliConfig can process it uniformly
+    cliOptions.include = merged.join(',');
+    logger.debug(`[include-from-file] Loaded ${filePatterns.length} pattern(s) from ${filePath}`);
+  }
 
   // Parse the CLI options into a config
   const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);
