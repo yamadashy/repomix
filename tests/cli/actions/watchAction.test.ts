@@ -69,6 +69,35 @@ function createMockWatch(watcher: ReturnType<typeof createMockWatcher>): WatchDe
   return vi.fn().mockReturnValue(watcher) as unknown as WatchDeps['watch'];
 }
 
+describe('watch option conflicts', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('should throw when --watch is used with --remote', async () => {
+    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const options: CliOptions = { watch: true, remote: 'user/repo' };
+    await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --remote');
+  });
+
+  it('should throw when --watch is used with --stdout', async () => {
+    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const options: CliOptions = { watch: true, stdout: true };
+    await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --stdout');
+  });
+
+  it('should throw when --watch is used with --stdin', async () => {
+    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const options: CliOptions = { watch: true, stdin: true };
+    await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --stdin');
+  });
+});
+
 describe('watchAction', () => {
   let mockWatcher: ReturnType<typeof createMockWatcher>;
 
