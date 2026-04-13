@@ -9,6 +9,7 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
+import { SECRETLINT_PRESCAN } from './securityPrescan.js';
 import type {
   SecurityCheckItem,
   SecurityCheckTask,
@@ -74,14 +75,10 @@ export const createSecurityTaskRunner = (
   return { taskRunner, warmupPromise };
 };
 
-// Batch size for grouping files into worker tasks to reduce IPC overhead.
-// Each batch is sent as a single message to a worker thread, avoiding
-// per-file round-trip costs that dominate when processing many files.
-// Security check always processes all files (~1000 in a typical repo), so a batch size of 50
-// already produces ~20 batches — enough to distribute well across available CPU cores.
-// Metrics uses the same batch size of 50 for consistency; when tokenCountTree is disabled
-// and only ~50 files are processed, the single resulting batch leaves other workers free
-// for concurrent git-log/output tokenization tasks.
+// Batch size for grouping suspect items into worker tasks.
+// After main-thread prescan filtering (~97% of files skipped), typically only
+// ~30 items remain — fitting in a single batch. The batch size of 50 handles
+// overflow for repos with many suspect files while keeping IPC round-trips low.
 const BATCH_SIZE = 50;
 
 export const runSecurityCheck = async (
@@ -137,13 +134,27 @@ export const runSecurityCheck = async (
     type: 'file',
   }));
 
-  // Combine all items, then split into batches
+  // Combine all items, then pre-filter on the main thread using the same
+  // SECRETLINT_PRESCAN regex the worker uses. ~97% of items are eliminated,
+  // which with MAX_SECURITY_WORKERS=1 avoids ~19 unnecessary Tinypool IPC
+  // round-trips (~3.2ms scheduling overhead each). The main-thread prescan
+  // cost (~1-5ms for 1000 files) is negligible compared to the ~60ms saved.
   const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
   const totalItems = allItems.length;
 
   if (totalItems === 0) {
     return [];
   }
+
+  const suspectItems = allItems.filter((item) => SECRETLINT_PRESCAN.test(item.content));
+  const skippedCount = totalItems - suspectItems.length;
+
+  if (suspectItems.length === 0) {
+    logger.trace(`Security pre-scan: all ${totalItems} items skipped (no patterns matched)`);
+    return [];
+  }
+
+  logger.trace(`Security pre-scan: ${skippedCount}/${totalItems} items skipped, ${suspectItems.length} items to check`);
 
   // Use pre-warmed task runner if provided, otherwise create one on the spot
   const ownedTaskRunner = !deps.taskRunner;
@@ -152,21 +163,22 @@ export const runSecurityCheck = async (
     (() => {
       const maxSecurityWorkers = Math.min(MAX_SECURITY_WORKERS, deps.getProcessConcurrency());
       return deps.initTaskRunner<SecurityCheckTask, (WorkerSuspiciousFileResult | null)[]>({
-        numOfTasks: totalItems,
+        numOfTasks: suspectItems.length,
         workerType: 'securityCheck',
         runtime: 'worker_threads',
         maxWorkerThreads: maxSecurityWorkers,
       });
     })();
 
-  // Split items into batches to reduce IPC round-trips
+  // Batch the suspect items. Typically ~30 items -> 1 batch with BATCH_SIZE=50,
+  // down from ~20 batches of 50 when all items were sent unfiltered.
   const batches: SecurityCheckItem[][] = [];
-  for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-    batches.push(allItems.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < suspectItems.length; i += BATCH_SIZE) {
+    batches.push(suspectItems.slice(i, i + BATCH_SIZE));
   }
 
   try {
-    logger.trace(`Starting security check for ${totalItems} files/content in ${batches.length} batches`);
+    logger.trace(`Starting security check for ${suspectItems.length} suspect items in ${batches.length} batches`);
     const startTime = process.hrtime.bigint();
 
     let completedItems = 0;
@@ -177,8 +189,10 @@ export const runSecurityCheck = async (
 
         completedItems += batch.length;
         const lastItem = batch[batch.length - 1];
-        progressCallback(`Running security check... (${completedItems}/${totalItems}) ${pc.dim(lastItem.filePath)}`);
-        logger.trace(`Running security check... (${completedItems}/${totalItems}) ${lastItem.filePath}`);
+        progressCallback(
+          `Running security check... (${skippedCount + completedItems}/${totalItems}) ${pc.dim(lastItem.filePath)}`,
+        );
+        logger.trace(`Running security check... (${skippedCount + completedItems}/${totalItems}) ${lastItem.filePath}`);
 
         return results;
       }),

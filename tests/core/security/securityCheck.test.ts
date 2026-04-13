@@ -73,10 +73,11 @@ describe('runSecurityCheck', () => {
       getProcessConcurrency: mockGetProcessConcurrency,
     });
 
-    // With 2 files and batch size 50, all files are in a single batch
-    // Progress callback is called once per batch with the last file in the batch
+    // test2.js is skipped by main-thread prescan (no secret patterns), so only
+    // test1.js is sent to the worker. Progress shows (2/2) because skipped
+    // items are counted as already completed.
     expect(progressCallback).toHaveBeenCalledWith(
-      expect.stringContaining(`Running security check... (2/2) ${pc.dim('test2.js')}`),
+      expect.stringContaining(`Running security check... (2/2) ${pc.dim('test1.js')}`),
     );
   });
 
@@ -172,7 +173,8 @@ describe('runSecurityCheck', () => {
       getProcessConcurrency: mockGetProcessConcurrency,
     });
 
-    // With batch size 50 and 4 items (2 files + 2 git diffs), all in a single batch
+    // Prescan filters git diff content (no secret patterns) and test2.js.
+    // Only test1.js passes prescan → 1 suspect item → 1 batch → 1 callback.
     expect(progressCallback).toHaveBeenCalledTimes(1);
 
     // Should find security issues in files (at least 1 from test1.js)
@@ -191,7 +193,7 @@ describe('runSecurityCheck', () => {
       getProcessConcurrency: mockGetProcessConcurrency,
     });
 
-    // With batch size 50 and 3 items (2 files + 1 git diff), all in a single batch
+    // 3 total items (2 files + 1 git diff), but only test1.js passes prescan → 1 batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
   });
 
@@ -207,7 +209,7 @@ describe('runSecurityCheck', () => {
       getProcessConcurrency: mockGetProcessConcurrency,
     });
 
-    // With batch size 50 and 3 items (2 files + 1 git diff), all in a single batch
+    // 3 total items (2 files + 1 git diff), but only test1.js passes prescan → 1 batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
   });
 
@@ -223,8 +225,37 @@ describe('runSecurityCheck', () => {
       getProcessConcurrency: mockGetProcessConcurrency,
     });
 
-    // Should process only 2 files, no git diff content because both are empty strings (falsy)
-    // With batch size 50, all in a single batch
+    // 2 files total, only test1.js passes prescan → 1 batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
+  });
+
+  it('should return empty array without calling worker when all items are skipped by prescan', async () => {
+    const cleanFiles: RawFile[] = [
+      { path: 'clean1.js', content: 'console.log("Hello");' },
+      { path: 'clean2.js', content: 'export const x = 42;' },
+    ];
+
+    const progressCallback = vi.fn();
+    const mockTaskRunnerSpy = vi.fn();
+    const spyInitTaskRunner = <T, R>(_options: WorkerOptions) => ({
+      run: async (task: T) => {
+        mockTaskRunnerSpy();
+        return (await securityCheckWorker(task as SecurityCheckTask)) as R;
+      },
+      cleanup: async () => {},
+    });
+
+    const result = await runSecurityCheck(cleanFiles, progressCallback, undefined, undefined, {
+      initTaskRunner: spyInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
+
+    expect(result).toEqual([]);
+    // Worker should never be called since all items are filtered by prescan
+    expect(mockTaskRunnerSpy).not.toHaveBeenCalled();
+    // No progress callback since no batches were dispatched
+    expect(progressCallback).not.toHaveBeenCalled();
+    // Trace log should indicate all items were skipped
+    expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining('all 2 items skipped'));
   });
 });
