@@ -239,6 +239,19 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     options.stdout = true;
   }
 
+  // Validate --watch conflicts early, before log level changes can suppress error messages
+  if (options.watch) {
+    if (options.remote) {
+      throw new RepomixError('--watch cannot be used with --remote. Watch mode only works with local directories.');
+    }
+    if (options.stdout) {
+      throw new RepomixError('--watch cannot be used with --stdout. Watch mode writes to a file.');
+    }
+    if (options.stdin) {
+      throw new RepomixError('--watch cannot be used with --stdin. Watch mode discovers files automatically.');
+    }
+  }
+
   // Set log level based on verbose and quiet flags
   if (options.quiet) {
     logger.setLogLevel(repomixLogLevels.SILENT);
@@ -256,19 +269,6 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   logger.trace('directories:', directories);
   logger.trace('cwd:', cwd);
   logger.trace('options:', options);
-
-  // Validate --watch conflicts before any routing
-  if (options.watch) {
-    if (options.remote) {
-      throw new RepomixError('--watch cannot be used with --remote. Watch mode only works with local directories.');
-    }
-    if (options.stdout) {
-      throw new RepomixError('--watch cannot be used with --stdout. Watch mode writes to a file.');
-    }
-    if (options.stdin) {
-      throw new RepomixError('--watch cannot be used with --stdin. Watch mode discovers files automatically.');
-    }
-  }
 
   if (options.mcp) {
     const { runMcpAction } = await import('./actions/mcpAction.js');
