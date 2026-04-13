@@ -97,6 +97,12 @@ describe('watch option conflicts', () => {
     await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --stdin');
   });
 
+  it('should throw when --watch is used with --split-output', async () => {
+    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const options: CliOptions = { watch: true, splitOutput: 1000 };
+    await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --split-output');
+  });
+
   it('should throw when --watch is used with a positional remote URL', async () => {
     const { runCli } = await import('../../../src/cli/cliRun.js');
     const options: CliOptions = { watch: true };

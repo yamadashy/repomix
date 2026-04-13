@@ -126,12 +126,15 @@ export const runWatchAction = async (
   watcher.on('unlink', scheduleRebuild);
 
   // Graceful shutdown — named handlers so they can be removed on cleanup
+  let keepAliveResolve: (() => void) | null = null;
+
   const cleanup = async () => {
     if (debounceTimer !== null) {
       clearTimeout(debounceTimer);
     }
     process.removeListener('SIGINT', onSigint);
     process.removeListener('SIGTERM', onSigterm);
+    keepAliveResolve?.();
     await watcher.close();
   };
 
@@ -151,7 +154,7 @@ export const runWatchAction = async (
     process.on('SIGTERM', onSigterm);
   }
 
-  // Keep alive — wait until signal is aborted (in tests) or process exits
+  // Keep alive — wait until signal is aborted (in tests) or cleanup resolves the promise
   if (resolvedDeps.signal) {
     await new Promise<void>((resolve) => {
       if (resolvedDeps.signal?.aborted) {
@@ -161,7 +164,8 @@ export const runWatchAction = async (
       resolvedDeps.signal?.addEventListener('abort', () => resolve());
     });
   } else {
-    // In production, keep the process alive indefinitely
-    await new Promise<void>(() => {});
+    await new Promise<void>((resolve) => {
+      keepAliveResolve = resolve;
+    });
   }
 };
