@@ -43,7 +43,9 @@ export const runDefaultAction = async (
   });
   logger.trace('Loaded file config:', fileConfig);
 
-  // Load include patterns from file if --include-from-file was specified
+  // Load include patterns from file if --include-from-file was specified.
+  // Resolved asynchronously here so buildCliConfig (synchronous) can stay pure.
+  let includeFromFilePatterns: string[] = [];
   if (cliOptions.includeFromFile) {
     const filePath = path.resolve(cwd, cliOptions.includeFromFile);
     let fileContent: string;
@@ -52,20 +54,21 @@ export const runDefaultAction = async (
     } catch {
       throw new RepomixError(`Could not read include patterns file: ${filePath}`);
     }
-    const filePatterns = fileContent
-      .split('\n')
+    includeFromFilePatterns = fileContent
+      .split(/\r?\n/)
       .map((line) => line.trim())
       .filter((line) => line.length > 0 && !line.startsWith('#'));
-    // Merge with any patterns already provided via --include
-    const existingPatterns = cliOptions.include ? splitPatterns(cliOptions.include) : [];
-    const merged = [...existingPatterns, ...filePatterns];
-    // Store back as a comma-joined string so buildCliConfig can process it uniformly
-    cliOptions.include = merged.join(',');
-    logger.debug(`[include-from-file] Loaded ${filePatterns.length} pattern(s) from ${filePath}`);
+    logger.debug(`[include-from-file] Loaded ${includeFromFilePatterns.length} pattern(s) from ${filePath}`);
   }
 
   // Parse the CLI options into a config
   const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);
+
+  // Merge file patterns directly into cliConfig.include as an array — avoids the
+  // lossy comma-join round-trip that would break patterns containing literal commas.
+  if (includeFromFilePatterns.length > 0) {
+    cliConfig.include = [...(cliConfig.include ?? []), ...includeFromFilePatterns];
+  }
   logger.trace('CLI config:', cliConfig);
 
   // Merge default, file, and CLI configs

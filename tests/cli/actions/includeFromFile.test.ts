@@ -91,6 +91,20 @@ describe('--include-from-file', () => {
     expect(cliConfig.include).toContain('src/**');
   });
 
+  it('should preserve patterns that contain literal commas', async () => {
+    // File paths with commas must not be split — comma is only a delimiter in --include strings
+    vi.mocked(fs.readFile).mockResolvedValue('docs/spec,final.md\nsrc/**/*.ts\n');
+
+    await runDefaultAction(['.'], process.cwd(), { includeFromFile: 'patterns.txt' });
+
+    const cliConfig = vi.mocked(configLoader.mergeConfigs).mock.calls[0][2];
+    expect(cliConfig.include).toContain('docs/spec,final.md');
+    expect(cliConfig.include).toContain('src/**/*.ts');
+    // Must not split on the comma inside the path
+    expect(cliConfig.include).not.toContain('docs/spec');
+    expect(cliConfig.include).not.toContain('final.md');
+  });
+
   it('should throw RepomixError when the patterns file does not exist', async () => {
     vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT: no such file'));
 
