@@ -48,16 +48,16 @@ const MAX_SECURITY_WORKERS = 1;
  * pipeline stages (file search, file collection), so that the first real
  * security check batch runs at full speed without a cold-start stall.
  */
-export const createSecurityTaskRunner = (
+export const createSecurityTaskRunner = async (
   numOfTasks: number,
   deps = {
     initTaskRunner,
     getProcessConcurrency: defaultGetProcessConcurrency,
   },
-): SecurityTaskRunnerWithWarmup => {
+): Promise<SecurityTaskRunnerWithWarmup> => {
   const maxSecurityWorkers = Math.min(MAX_SECURITY_WORKERS, deps.getProcessConcurrency());
 
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, (WorkerSuspiciousFileResult | null)[]>({
+  const taskRunner = await deps.initTaskRunner<SecurityCheckTask, (WorkerSuspiciousFileResult | null)[]>({
     numOfTasks,
     workerType: 'securityCheck',
     runtime: 'worker_threads',
@@ -160,7 +160,7 @@ export const runSecurityCheck = async (
   const ownedTaskRunner = !deps.taskRunner;
   const taskRunner =
     deps.taskRunner ??
-    (() => {
+    (await (async () => {
       const maxSecurityWorkers = Math.min(MAX_SECURITY_WORKERS, deps.getProcessConcurrency());
       return deps.initTaskRunner<SecurityCheckTask, (WorkerSuspiciousFileResult | null)[]>({
         numOfTasks: suspectItems.length,
@@ -168,7 +168,7 @@ export const runSecurityCheck = async (
         runtime: 'worker_threads',
         maxWorkerThreads: maxSecurityWorkers,
       });
-    })();
+    })());
 
   // Batch the suspect items. Typically ~30 items -> 1 batch with BATCH_SIZE=50,
   // down from ~20 batches of 50 when all items were sent unfiltered.

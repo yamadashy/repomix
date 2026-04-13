@@ -115,14 +115,14 @@ describe.runIf(!isWindows)('packager integration', () => {
           });
         },
         produceOutput,
-        createMetricsTaskRunner: () => ({
+        createMetricsTaskRunner: async () => ({
           taskRunner: {
             run: async () => 0,
             cleanup: async () => {},
           },
           warmupPromise: Promise.resolve(),
         }),
-        createSecurityTaskRunner: () => ({
+        createSecurityTaskRunner: async () => ({
           taskRunner: {
             run: async () => [],
             cleanup: async () => {},

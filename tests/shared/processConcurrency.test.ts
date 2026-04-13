@@ -111,8 +111,8 @@ describe('processConcurrency', () => {
       });
     });
 
-    it('should initialize Tinypool with correct configuration', () => {
-      const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'fileProcess', runtime: 'child_process' });
+    it('should initialize Tinypool with correct configuration', async () => {
+      const tinypool = await createWorkerPool({ numOfTasks: 500, workerType: 'fileProcess', runtime: 'child_process' });
 
       expect(Tinypool).toHaveBeenCalledWith({
         filename: expect.stringContaining('fileProcessWorker.js'),
@@ -134,8 +134,12 @@ describe('processConcurrency', () => {
       expect(tinypool).toBeDefined();
     });
 
-    it('should initialize Tinypool with worker_threads runtime when specified', () => {
-      const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'securityCheck', runtime: 'worker_threads' });
+    it('should initialize Tinypool with worker_threads runtime when specified', async () => {
+      const tinypool = await createWorkerPool({
+        numOfTasks: 500,
+        workerType: 'securityCheck',
+        runtime: 'worker_threads',
+      });
 
       expect(Tinypool).toHaveBeenCalledWith({
         filename: expect.stringContaining('securityCheckWorker.js'),
@@ -220,8 +224,8 @@ describe('processConcurrency', () => {
       });
     });
 
-    it('should return a TaskRunner with run and cleanup methods', () => {
-      const taskRunner = initTaskRunner({ numOfTasks: 100, workerType: 'fileProcess', runtime: 'child_process' });
+    it('should return a TaskRunner with run and cleanup methods', async () => {
+      const taskRunner = await initTaskRunner({ numOfTasks: 100, workerType: 'fileProcess', runtime: 'child_process' });
 
       expect(taskRunner).toHaveProperty('run');
       expect(taskRunner).toHaveProperty('cleanup');
@@ -229,8 +233,12 @@ describe('processConcurrency', () => {
       expect(typeof taskRunner.cleanup).toBe('function');
     });
 
-    it('should pass runtime parameter to createWorkerPool', () => {
-      const taskRunner = initTaskRunner({ numOfTasks: 100, workerType: 'calculateMetrics', runtime: 'worker_threads' });
+    it('should pass runtime parameter to createWorkerPool', async () => {
+      const taskRunner = await initTaskRunner({
+        numOfTasks: 100,
+        workerType: 'calculateMetrics',
+        runtime: 'worker_threads',
+      });
 
       expect(Tinypool).toHaveBeenCalledWith(
         expect.objectContaining({

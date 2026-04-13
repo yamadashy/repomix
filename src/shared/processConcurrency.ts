@@ -1,7 +1,16 @@
 import os from 'node:os';
-import { type Options, Tinypool } from 'tinypool';
+import type { Options, Tinypool } from 'tinypool';
 import { logger } from './logger.js';
 import type { WorkerType } from './unifiedWorker.js';
+
+// Pre-start the tinypool module load asynchronously during ESM evaluation.
+// A static `import { Tinypool } from 'tinypool'` blocks the module chain for
+// ~29ms, inflating the defaultAction.js import tree and pushing the CLI
+// critical path past what getVersion() I/O can overlap. The dynamic import()
+// fires immediately but doesn't block — by the time createWorkerPool is called
+// (~50ms later inside pack()), tinypool is already cached in the module registry.
+const tinypoolPromise = import('tinypool');
+tinypoolPromise.catch(() => {});
 
 export type WorkerRuntime = NonNullable<Options['runtime']>;
 
@@ -67,7 +76,7 @@ export const getWorkerThreadCount = (
   };
 };
 
-export const createWorkerPool = (options: WorkerOptions): Tinypool => {
+export const createWorkerPool = async (options: WorkerOptions): Promise<Tinypool> => {
   const { numOfTasks, workerType, runtime = 'child_process', maxWorkerThreads } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads);
 
@@ -80,7 +89,11 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
 
   const startTime = process.hrtime.bigint();
 
-  const pool = new Tinypool({
+  // Await the pre-started tinypool import — typically already resolved by the
+  // time pack() reaches pool creation (~50ms after module evaluation).
+  const { Tinypool: TinypoolCtor } = await tinypoolPromise;
+
+  const pool = new TinypoolCtor({
     filename: workerPath,
     runtime,
     minThreads,
@@ -153,8 +166,8 @@ export interface TaskRunner<T, R> {
   cleanup: () => Promise<void>;
 }
 
-export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> => {
-  const pool = createWorkerPool(options);
+export const initTaskRunner = async <T, R>(options: WorkerOptions): Promise<TaskRunner<T, R>> => {
+  const pool = await createWorkerPool(options);
   return {
     run: (task: T) => pool.run(task),
     cleanup: () => cleanupWorkerPool(pool),

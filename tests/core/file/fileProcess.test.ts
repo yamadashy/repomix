@@ -19,7 +19,7 @@ const mockGetFileManipulator = (filePath: string): FileManipulator | null => {
   return null;
 };
 
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
+const mockInitTaskRunner = async <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
       return (await fileProcessWorker(task as FileProcessTask)) as R;

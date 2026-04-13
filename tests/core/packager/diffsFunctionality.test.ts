@@ -73,7 +73,7 @@ index 123..456 100644
       fileTokenCounts: {},
     });
     const mockSortPaths = vi.fn().mockImplementation((paths) => paths);
-    const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
+    const mockCreateMetricsTaskRunner = vi.fn().mockResolvedValue({
       taskRunner: {
         run: vi.fn().mockResolvedValue(0),
         cleanup: vi.fn().mockResolvedValue(undefined),
@@ -94,7 +94,7 @@ index 123..456 100644
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
-      createSecurityTaskRunner: vi.fn().mockReturnValue({
+      createSecurityTaskRunner: vi.fn().mockResolvedValue({
         taskRunner: { run: vi.fn().mockResolvedValue([]), cleanup: vi.fn().mockResolvedValue(undefined) },
         warmupPromise: Promise.resolve(),
       }),
@@ -135,7 +135,7 @@ index 123..456 100644
       gitDiffTokenCount: 15, // Mock diff token count
     });
     const mockSortPaths = vi.fn().mockImplementation((paths) => paths);
-    const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
+    const mockCreateMetricsTaskRunner = vi.fn().mockResolvedValue({
       taskRunner: {
         run: vi.fn().mockResolvedValue(0),
         cleanup: vi.fn().mockResolvedValue(undefined),
@@ -156,7 +156,7 @@ index 123..456 100644
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
-      createSecurityTaskRunner: vi.fn().mockReturnValue({
+      createSecurityTaskRunner: vi.fn().mockResolvedValue({
         taskRunner: { run: vi.fn().mockResolvedValue([]), cleanup: vi.fn().mockResolvedValue(undefined) },
         warmupPromise: Promise.resolve(),
       }),

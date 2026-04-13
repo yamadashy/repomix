@@ -55,14 +55,14 @@ describe('packager split output', () => {
       getGitLogs: vi.fn().mockResolvedValue(undefined),
       produceOutput,
       calculateMetrics,
-      createMetricsTaskRunner: vi.fn().mockReturnValue({
+      createMetricsTaskRunner: vi.fn().mockResolvedValue({
         taskRunner: {
           run: vi.fn().mockResolvedValue(0),
           cleanup: vi.fn().mockResolvedValue(undefined),
         },
         warmupPromise: Promise.resolve(),
       }),
-      createSecurityTaskRunner: vi.fn().mockReturnValue({
+      createSecurityTaskRunner: vi.fn().mockResolvedValue({
         taskRunner: {
           run: vi.fn().mockResolvedValue([]),
           cleanup: vi.fn().mockResolvedValue(undefined),

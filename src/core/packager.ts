@@ -111,12 +111,14 @@ export const pack = async (
   // large enough to benefit from parallelism (≥ 400 files). For smaller repos the
   // extra threads are harmless: they share the same warm-up wall-time and sit idle
   // during the metrics phase if there aren't enough batches to fill them.
+  //
+  // Pool creation is async (tinypool loaded via dynamic import to avoid blocking
+  // the ESM module chain), so fire both pools in parallel alongside git operations
+  // and searchFiles — the tinypool module is already cached from the preload
+  // started during module evaluation, so the await resolves near-instantly.
   const estimatedTasks = deps.getProcessConcurrency() * 100;
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    estimatedTasks,
-    config.tokenCount.encoding,
-  );
-  const securityTaskRunnerWithWarmup = securityEnabled ? deps.createSecurityTaskRunner(estimatedTasks) : undefined;
+  const metricsTaskRunnerPromise = deps.createMetricsTaskRunner(estimatedTasks, config.tokenCount.encoding);
+  const securityTaskRunnerPromise = securityEnabled ? deps.createSecurityTaskRunner(estimatedTasks) : undefined;
 
   // Start git operations immediately — they only need rootDirs and config, not
   // searchFiles results. Launching them here overlaps the ~50-70ms git diff/log
@@ -129,6 +131,8 @@ export const pack = async (
   // Prevent unhandled rejections if searchFiles throws before we await these
   gitDiffPromise?.catch?.(() => {});
   gitLogPromise?.catch?.(() => {});
+  metricsTaskRunnerPromise.catch(() => {});
+  securityTaskRunnerPromise?.catch(() => {});
 
   try {
     progressCallback('Searching for files...');
@@ -140,6 +144,11 @@ export const pack = async (
         }),
       ),
     );
+
+    // Resolve pool creation promises — they ran in parallel with searchFiles and
+    // are typically already settled (tinypool was pre-loaded during module evaluation).
+    const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = await metricsTaskRunnerPromise;
+    const securityTaskRunnerWithWarmup = await (securityTaskRunnerPromise ?? Promise.resolve(undefined));
 
     // Deduplicate and sort empty directory paths for reuse during output generation,
     // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
@@ -354,11 +363,23 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsWarmupPromise.catch(() => {});
-    await metricsTaskRunner.cleanup();
-    if (securityTaskRunnerWithWarmup) {
-      await securityTaskRunnerWithWarmup.warmupPromise.catch(() => {});
-      await securityTaskRunnerWithWarmup.taskRunner.cleanup();
+    // Cleanup pools — resolve the creation promises directly (they may not have
+    // been awaited if searchFiles threw before reaching the resolution point).
+    try {
+      const { taskRunner, warmupPromise } = await metricsTaskRunnerPromise;
+      await warmupPromise.catch(() => {});
+      await taskRunner.cleanup();
+    } catch {
+      // Pool creation failed — nothing to clean up
+    }
+    if (securityTaskRunnerPromise) {
+      try {
+        const secRunner = await securityTaskRunnerPromise;
+        await secRunner.warmupPromise.catch(() => {});
+        await secRunner.taskRunner.cleanup();
+      } catch {
+        // Pool creation failed — nothing to clean up
+      }
     }
   }
 };

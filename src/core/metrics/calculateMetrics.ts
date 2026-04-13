@@ -41,7 +41,10 @@ export interface MetricsTaskRunnerWithWarmup {
  * loading to overlap with other pipeline stages (security check, file processing,
  * output generation).
  */
-export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+export const createMetricsTaskRunner = async (
+  numOfTasks: number,
+  encoding: TokenEncoding,
+): Promise<MetricsTaskRunnerWithWarmup> => {
   // Reserve one CPU core for the main thread by capping metrics workers at
   // concurrency - 1. During warmup, each worker loads gpt-tokenizer (~150ms of
   // CPU-intensive BPE rank parsing). With N workers on N cores plus the main
@@ -51,7 +54,7 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
   // total warmup wall time despite having one fewer worker. The slightly lower
   // tokenization throughput is more than offset by the eliminated warmup stall.
   const maxMetricsWorkers = Math.max(1, getProcessConcurrency() - 1);
-  const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
+  const taskRunner = await initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
@@ -99,11 +102,11 @@ export const calculateMetrics = async (
   // Initialize a single task runner for all metrics calculations
   const taskRunner =
     deps.taskRunner ??
-    initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
+    (await initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
-    });
+    }));
 
   try {
     // Use pre-computed file metrics if available (already started earlier in the

@@ -19,7 +19,7 @@ vi.mock('../../../src/shared/processConcurrency', () => ({
     }),
   })),
   cleanupWorkerPool: vi.fn(),
-  initTaskRunner: vi.fn(() => ({
+  initTaskRunner: vi.fn(async () => ({
     run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
       return await securityCheckWorker(task);
     }),
@@ -42,7 +42,7 @@ const mockFiles: RawFile[] = [
 
 const mockGetProcessConcurrency = () => 4;
 
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
+const mockInitTaskRunner = async <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
       return (await securityCheckWorker(task as SecurityCheckTask)) as R;
@@ -83,7 +83,7 @@ describe('runSecurityCheck', () => {
 
   it('should handle worker errors gracefully', async () => {
     const mockError = new Error('Worker error');
-    const mockErrorTaskRunner = (_options?: WorkerOptions) => {
+    const mockErrorTaskRunner = async (_options?: WorkerOptions) => {
       return {
         run: async () => {
           throw mockError;
@@ -237,7 +237,7 @@ describe('runSecurityCheck', () => {
 
     const progressCallback = vi.fn();
     const mockTaskRunnerSpy = vi.fn();
-    const spyInitTaskRunner = <T, R>(_options: WorkerOptions) => ({
+    const spyInitTaskRunner = async <T, R>(_options: WorkerOptions) => ({
       run: async (task: T) => {
         mockTaskRunnerSpy();
         return (await securityCheckWorker(task as SecurityCheckTask)) as R;
