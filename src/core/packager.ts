@@ -126,17 +126,26 @@ export const pack = async (
       ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
       : undefined;
 
-    // Sort file paths
-    progressCallback('Sorting files...');
     const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-    const sortedFilePaths = deps.sortPaths(allFilePaths);
 
-    // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-    const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
-    const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
-      rootDir,
-      filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
-    }));
+    // For a single root (the common case), searchFiles already returned sorted
+    // paths, so re-sorting + Set-based regrouping (~11 ms) is pure overhead.
+    // For multiple roots, we need to merge-sort across roots for deterministic
+    // ordering and regroup the sorted paths back to their respective roots.
+    let filePathsByDir: { rootDir: string; filePaths: string[] }[];
+    if (rootDirs.length === 1) {
+      filePathsByDir = searchResultsByDir;
+    } else {
+      progressCallback('Sorting files...');
+      const sortedFilePaths = deps.sortPaths(allFilePaths);
+      const filePathSetByDir = new Map(
+        searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]),
+      );
+      filePathsByDir = rootDirs.map((rootDir) => ({
+        rootDir,
+        filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+      }));
+    }
 
     // Run file collection, git operations, and sort-data prefetch in parallel since
     // they are independent:
@@ -150,7 +159,7 @@ export const pack = async (
         'Collect Files',
         async () =>
           await Promise.all(
-            sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
+            filePathsByDir.map(({ rootDir, filePaths }) =>
               deps.collectFiles(filePaths, rootDir, config, progressCallback),
             ),
           ),
@@ -229,7 +238,7 @@ export const pack = async (
     // Build filePathsByRoot for multi-root tree generation
     // Use directory basename as the label for each root
     // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
-    const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
+    const filePathsByRoot: FilesByRoot[] = filePathsByDir.map(({ rootDir, filePaths }) => ({
       rootLabel: path.basename(rootDir) || rootDir,
       files: filePaths,
     }));

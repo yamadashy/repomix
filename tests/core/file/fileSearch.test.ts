@@ -117,10 +117,9 @@ describe('fileSearch', () => {
       const mockFilePaths = ['src/file1.js', 'src/file2.js'];
       const mockEmptyDirs = ['src/empty', 'empty-root'];
 
-      // searchFiles now makes 3 tinyglobby calls:
-      // 1. buildIgnoreFilter: discovers ignore files (e.g. **/.gitignore)
-      // 2. Main file search (onlyFiles: true)
-      // 3. Directory search (onlyDirectories: true)
+      // searchFiles makes 2 tinyglobby calls for default includes:
+      // 1. Main file search (onlyFiles: true) — ignore files extracted from results
+      // 2. Directory search (onlyDirectories: true)
       vi.mocked(tinyGlob).mockImplementation(async (patterns: unknown, options: unknown) => {
         const opts = options as Record<string, unknown>;
         const pats = patterns as string[];
@@ -157,9 +156,44 @@ describe('fileSearch', () => {
 
       expect(result.filePaths).toEqual(mockFilePaths);
       expect(result.emptyDirPaths).toEqual([]);
-      // Two tinyglobby calls: 1 for ignore-file discovery, 1 for main file search
+      // One tinyglobby call for default includes: the main file search only.
+      // Ignore-file discovery is inlined by extracting from the main results.
       // (no directory search since includeEmptyDirectories is false)
-      expect(tinyGlob).toHaveBeenCalledTimes(2);
+      expect(tinyGlob).toHaveBeenCalledTimes(1);
+    });
+
+    test('should extract ignore files from main glob results for default includes', async () => {
+      const mockConfig = createMockConfig({
+        output: {
+          includeEmptyDirectories: false,
+        },
+        ignore: {
+          useGitignore: true,
+          useDotIgnore: true,
+        },
+      });
+
+      // Main glob returns regular files plus a nested .gitignore
+      // The .gitignore in src/ contains 'secret.js', which should exclude src/secret.js
+      const rawFiles = ['src/file1.js', 'src/secret.js', 'src/.gitignore', 'lib/file2.js'];
+
+      vi.mocked(tinyGlob).mockResolvedValue(rawFiles);
+      vi.mocked(fs.readFile).mockImplementation(async (filePath: unknown) => {
+        if (String(filePath).endsWith('.gitignore')) {
+          return 'secret.js';
+        }
+        return '';
+      });
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      // Should have only 1 tinyGlob call (no separate ignore-file discovery)
+      expect(tinyGlob).toHaveBeenCalledTimes(1);
+      // src/secret.js should be filtered by src/.gitignore containing 'secret.js'
+      expect(result.filePaths).not.toContain('src/secret.js');
+      // Other files are unaffected
+      expect(result.filePaths).toContain('src/file1.js');
+      expect(result.filePaths).toContain('lib/file2.js');
     });
   });
 

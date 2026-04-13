@@ -114,41 +114,69 @@ export const normalizeGlobPattern = (pattern: string): string => {
 };
 
 /**
- * Builds a filter function from nested gitignore/repomixignore/dotignore files.
- *
- * Discovers ignore files via a separate tinyglobby traversal that is independent
- * of the user's include patterns. This ensures that ignore files are always found
- * even when the include patterns would not match them (e.g. --include with .ts
- * patterns would not find .gitignore files). The traversal is fast because fdir
- * skips already-ignored directories and the FS cache is warm from the main traversal.
+ * Determine which ignore-file basenames to look for given the current config.
  */
+const getIgnoreFileBaseNames = (config: RepomixConfigMerged): Set<string> => {
+  const names = new Set<string>(['.repomixignore']);
+  if (config.ignore.useGitignore) names.add('.gitignore');
+  if (config.ignore.useDotIgnore) names.add('.ignore');
+  return names;
+};
+
+/**
+ * Extract ignore-file paths from an already-discovered file list.
+ * This is an O(n) string scan, replacing a separate tinyglobby traversal
+ * (~15-20 ms) when the main glob already matched ignore files (i.e. when
+ * include patterns are the default `['**​/*']`).
+ */
+const extractIgnoreFilePaths = (allFiles: string[], baseNames: Set<string>): string[] => {
+  const result: string[] = [];
+  for (const fp of allFiles) {
+    // Fast basename extraction without path.basename overhead
+    const lastSlash = fp.lastIndexOf('/');
+    const base = lastSlash === -1 ? fp : fp.slice(lastSlash + 1);
+    if (baseNames.has(base)) {
+      result.push(fp);
+    }
+  }
+  return result;
+};
+
 const buildIgnoreFilter = async (
   rootDir: string,
   ignorePatterns: string[],
   config: RepomixConfigMerged,
+  preDiscoveredFiles?: string[],
 ): Promise<((filePath: string) => boolean) | null> => {
-  // Build glob patterns for the ignore files we need to discover
-  const ignoreFileGlobs: string[] = [];
-  ignoreFileGlobs.push('**/.repomixignore');
-  if (config.ignore.useGitignore) {
-    ignoreFileGlobs.push('**/.gitignore');
-  }
-  if (config.ignore.useDotIgnore) {
-    ignoreFileGlobs.push('**/.ignore');
-  }
+  let ignoreFilePaths: string[];
 
-  // Discover ignore files via a separate traversal that is independent of the
-  // user's include patterns. This is critical: `--include '**/*.ts'` must still
-  // respect .gitignore rules, but tinyglobby only returns files matching the
-  // include patterns. This dedicated traversal finds all ignore files regardless.
-  const ignoreFilePaths = await tinyGlob(ignoreFileGlobs, {
-    cwd: rootDir,
-    ignore: ignorePatterns,
-    onlyFiles: true,
-    dot: true,
-    absolute: false,
-    followSymbolicLinks: false,
-  });
+  if (preDiscoveredFiles) {
+    // Fast path: extract ignore files from the main glob results (~0.1 ms)
+    // instead of running a separate tinyglobby traversal (~15-20 ms).
+    ignoreFilePaths = extractIgnoreFilePaths(preDiscoveredFiles, getIgnoreFileBaseNames(config));
+  } else {
+    // Slow path: custom include patterns may not match ignore files, so we
+    // need a dedicated traversal. This is critical: `--include '**/*.ts'`
+    // must still respect .gitignore rules, but tinyglobby only returns files
+    // matching the include patterns.
+    const ignoreFileGlobs: string[] = [];
+    ignoreFileGlobs.push('**/.repomixignore');
+    if (config.ignore.useGitignore) {
+      ignoreFileGlobs.push('**/.gitignore');
+    }
+    if (config.ignore.useDotIgnore) {
+      ignoreFileGlobs.push('**/.ignore');
+    }
+
+    ignoreFilePaths = await tinyGlob(ignoreFileGlobs, {
+      cwd: rootDir,
+      ignore: ignorePatterns,
+      onlyFiles: true,
+      dot: true,
+      absolute: false,
+      followSymbolicLinks: false,
+    });
+  }
 
   // Read discovered ignore files in parallel.
   // Note: .git/info/exclude is NOT read here because its patterns are already
@@ -313,23 +341,31 @@ export const searchFiles = async (
       followSymbolicLinks: false,
     };
 
-    try {
-      // Build the gitignore/repomixignore/dotignore filter first. This runs a
-      // separate tinyglobby traversal for ignore files (e.g. **/.gitignore)
-      // independent of the user's include patterns, so `--include '**/*.ts'`
-      // still respects .gitignore rules even though .gitignore doesn't match
-      // '**/*.ts'. The traversal is fast (~2-5ms) because fdir skips ignored
-      // directories and the FS cache is warm from subsequent main traversals.
-      const ignoreFilter = await buildIgnoreFilter(rootDir, adjustedIgnorePatterns, config);
+    // When include patterns are the default wildcard ('**/*'), the main glob
+    // already returns every file including .gitignore/.repomixignore/.ignore.
+    // We can extract ignore files directly from the results (~0.1 ms) instead
+    // of running a dedicated tinyglobby traversal (~15-20 ms), saving one
+    // full directory walk on the critical path.
+    // For custom include patterns (e.g. '**/*.ts'), the main glob won't match
+    // ignore files, so a separate traversal is still necessary.
+    const isDefaultInclude = includePatterns.length === 1 && includePatterns[0] === '**/*';
 
+    try {
       if (needDirectoryEntries) {
-        // Run file and directory searches in parallel — two tinyglobby traversals
-        // are still faster than one globby objectMode traversal because fdir's
-        // walker is ~3-4× faster, and the FS cache is warm for the second call.
+        // Build the ignore filter first when using custom includes, or defer
+        // to post-extraction when using the default wildcard.
+        const ignoreFilterBeforeGlob = isDefaultInclude
+          ? null
+          : await buildIgnoreFilter(rootDir, adjustedIgnorePatterns, config);
+
         const [rawFiles, rawDirs] = await Promise.all([
           tinyGlob(includePatterns, { ...tinyGlobOptions, onlyFiles: true }),
           tinyGlob(includePatterns, { ...tinyGlobOptions, onlyDirectories: true }),
         ]);
+
+        // Build the ignore filter from the main results when possible
+        const ignoreFilter =
+          ignoreFilterBeforeGlob ?? (await buildIgnoreFilter(rootDir, adjustedIgnorePatterns, config, rawFiles));
 
         if (ignoreFilter) {
           filePaths = rawFiles.filter((fp) => !ignoreFilter(fp));
@@ -343,6 +379,12 @@ export const searchFiles = async (
       } else {
         // Simple file-only search
         const rawFiles = await tinyGlob(includePatterns, { ...tinyGlobOptions, onlyFiles: true });
+
+        // Build ignore filter — fast path extracts from rawFiles for default includes
+        const ignoreFilter = isDefaultInclude
+          ? await buildIgnoreFilter(rootDir, adjustedIgnorePatterns, config, rawFiles)
+          : await buildIgnoreFilter(rootDir, adjustedIgnorePatterns, config);
+
         filePaths = ignoreFilter ? rawFiles.filter((fp) => !ignoreFilter(fp)) : rawFiles;
       }
     } catch (error: unknown) {
