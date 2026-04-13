@@ -34,7 +34,7 @@ export const formatTokenBudget = (totalTokens: number): string => {
     const pct = (totalTokens / tokens) * 100;
     const formatted = pct < 10 ? pct.toFixed(1) : Math.round(pct).toString();
     return `${formatted}% of ${label}`;
-  }).join(pc.dim(' · '));
+  }).join(' · ');
 };
 
 /**
@@ -104,7 +104,7 @@ export const reportSummary = (
   logger.log(pc.dim('────────────────'));
   logger.log(`  Total Files: ${packResult.totalFiles.toLocaleString()} files`);
   logger.log(` Total Tokens: ${packResult.totalTokens.toLocaleString()} tokens`);
-  logger.log(`Token Budget: ${pc.dim(formatTokenBudget(packResult.totalTokens))}`);
+  logger.log(` Token Budget: ${pc.dim(formatTokenBudget(packResult.totalTokens))}`);
   logger.log(`  Total Chars: ${packResult.totalCharacters.toLocaleString()} chars`);
 
   // Show skill output path or regular output path
