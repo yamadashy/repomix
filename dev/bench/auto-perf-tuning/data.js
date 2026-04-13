@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776061111000,
+  "lastUpdate": 1776066303592,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -1665,6 +1665,51 @@ window.BENCHMARK_DATA = {
             "range": "±136",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1500ms, Q3: 1636ms\nAll times: 1454, 1472, 1483, 1492, 1499, 1500, 1504, 1510, 1522, 1535, 1535, 1539, 1542, 1563, 1591, 1636, 1681, 1882, 1904, 2127ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "65adea894e09015ea2de74b6e79aed1b77a2291a",
+          "message": "perf(core): Start git diff/log before file search and remove metrics warmup stall (-2.4%)\n\nTwo scheduling optimizations in the pack pipeline:\n\n1. Move getGitDiffs and getGitLogs to start before searchFiles.\n   These git operations only need rootDirs and config (available at\n   pack entry), not file search results. Previously they were inside\n   the collectFiles Promise.all, starting only after searchFiles\n   completed (~135ms into the pipeline). Now they launch alongside\n   worker pool initialization, overlapping their ~50-70ms subprocess\n   cost with the searchFiles traversal. When git operations took\n   longer than collectFiles, they extended the critical path by up\n   to 70ms — this is now eliminated.\n\n2. Remove the await metricsWarmupPromise stall before file metrics\n   dispatch. The warmup tasks are queued first in each Tinypool\n   worker (FIFO), so dispatching file metrics batches immediately\n   is safe — they queue behind the warmup and start as soon as each\n   worker's gpt-tokenizer finishes loading. Previously the main\n   thread blocked until ALL workers completed warmup, leaving fast\n   workers idle while the slowest one finished.\n\nBenchmark (20 alternating A/B pairs, trimmed to 14):\n  Round 1:\n    Before: mean=1022.9ms, median=1028.3ms\n    After:  mean=996.5ms, median=1000.4ms\n    Diff:   -26.5ms (-2.6%), paired t=5.57 (p << 0.001)\n  Round 2:\n    Before: mean=1020.7ms, median=1023.6ms\n    After:  mean=998.0ms, median=998.3ms\n    Diff:   -22.8ms (-2.2%), paired t=3.69 (p < 0.005)\n\nhttps://claude.ai/code/session_016hRta6wofSu9JMG8z28Y55",
+          "timestamp": "2026-04-13T07:38:14Z",
+          "tree_id": "264fd7cd3fc0d2ab41628ba3139300f52369e46a",
+          "url": "https://github.com/yamadashy/repomix/commit/65adea894e09015ea2de74b6e79aed1b77a2291a"
+        },
+        "date": 1776066303231,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 816,
+            "range": "±114",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 773ms, Q3: 887ms\nAll times: 744, 749, 758, 759, 759, 763, 764, 773, 777, 779, 780, 796, 806, 810, 812, 816, 826, 829, 873, 875, 879, 881, 887, 892, 908, 918, 919, 973, 1014, 1082ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1125,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1113ms, Q3: 1131ms\nAll times: 1091, 1109, 1111, 1111, 1112, 1113, 1115, 1117, 1120, 1124, 1125, 1127, 1127, 1127, 1129, 1131, 1134, 1135, 1252, 1288ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1578,
+            "range": "±65",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1543ms, Q3: 1608ms\nAll times: 1497, 1512, 1521, 1533, 1534, 1543, 1544, 1552, 1560, 1568, 1578, 1578, 1579, 1580, 1608, 1608, 1616, 1617, 1675, 1759ms"
           }
         ]
       }
