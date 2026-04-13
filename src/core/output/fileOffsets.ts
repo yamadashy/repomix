@@ -4,8 +4,36 @@ export interface FileLineOffset {
 }
 
 /**
+ * Finds the 1-indexed line number where the files section starts in the output.
+ * Restricting offset scanning to this section prevents false matches when a file's
+ * own content contains marker strings (e.g., a file that itself contains XML tags
+ * or Markdown headings matching our patterns).
+ */
+const findFilesSectionStart = (lines: string[], style: string): number => {
+  if (style === 'xml') {
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i] === '<files>') return i;
+    }
+  } else if (style === 'markdown') {
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i] === '# Files') return i;
+    }
+  } else if (style === 'plain') {
+    // Plain format: long separator (64 =) followed by "Files" line
+    const LONG_SEPARATOR = '='.repeat(64);
+    for (let i = 0; i < lines.length - 1; i++) {
+      if (lines[i] === LONG_SEPARATOR && lines[i + 1] === 'Files') return i;
+    }
+  }
+  return 0; // fallback: scan entire output
+};
+
+/**
  * Scans a rendered output string and returns the line range (1-indexed, inclusive)
  * for each file's content block.
+ *
+ * Scanning is restricted to the files section of the output to avoid false matches
+ * from file content that happens to contain marker strings.
  *
  * Supports XML, Markdown, and plain text output styles.
  * JSON output is structured and does not use this function.
@@ -14,11 +42,13 @@ export const computeFileLineOffsets = (output: string, style: string): Record<st
   const offsets: Record<string, FileLineOffset> = {};
   const lines = output.split('\n');
 
+  const sectionStart = findFilesSectionStart(lines, style);
+
   if (style === 'xml') {
     let currentPath: string | null = null;
     let currentStart = 0;
 
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = sectionStart; i < lines.length; i++) {
       const line = lines[i];
       const lineNum = i + 1;
 
@@ -29,15 +59,20 @@ export const computeFileLineOffsets = (output: string, style: string): Record<st
       } else if (line === '</file>' && currentPath !== null) {
         offsets[currentPath] = { start: currentStart, end: lineNum };
         currentPath = null;
+      } else if (line === '</files>') {
+        break;
       }
     }
   } else if (style === 'markdown') {
     const fileStarts: Array<{ path: string; line: number }> = [];
 
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = sectionStart; i < lines.length; i++) {
       const match = lines[i].match(/^## File: (.+)$/);
       if (match) {
         fileStarts.push({ path: match[1], line: i + 1 });
+      } else if (lines[i].startsWith('# ') && i > sectionStart) {
+        // Hit the next top-level section — stop scanning
+        break;
       }
     }
 
@@ -50,15 +85,13 @@ export const computeFileLineOffsets = (output: string, style: string): Record<st
     // Plain format: "================" then "File: path" then "================" then content
     // End of content = line before next "================" separator
     const SEPARATOR = '================';
-    const fileSeparatorLines: number[] = [];
     const fileHeaderLines: Array<{ path: string; line: number }> = [];
 
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = sectionStart; i < lines.length; i++) {
       const line = lines[i];
       const lineNum = i + 1;
 
       if (line === SEPARATOR) {
-        fileSeparatorLines.push(lineNum);
         // Check if next line is a File: header
         if (i + 1 < lines.length && lines[i + 1].startsWith('File: ')) {
           const filePath = lines[i + 1].slice('File: '.length);

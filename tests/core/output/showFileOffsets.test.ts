@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { computeFileLineOffsets } from '../../../src/core/output/fileOffsets.js';
 import {
   generateTreeStringWithFileOffsets,
   generateTreeStringWithRootsAndFileOffsets,
 } from '../../../src/core/file/fileTreeGenerate.js';
+import { computeFileLineOffsets } from '../../../src/core/output/fileOffsets.js';
 
 describe('showFileOffsets', () => {
   describe('computeFileLineOffsets', () => {
@@ -15,7 +15,7 @@ describe('showFileOffsets', () => {
         '</directory_structure>',
         '',
         '<files>',
-        'This section contains the contents of the repository\'s files.',
+        "This section contains the contents of the repository's files.",
         '',
         '<file path="src/foo.ts">',
         'const x = 1;',
@@ -83,16 +83,16 @@ describe('showFileOffsets', () => {
         'Files',
         '================================================================================',
         '',
-        '================',        // line 11: file separator
-        'File: src/foo.ts',        // line 12
-        '================',        // line 13
-        'const x = 1;',            // line 14: content start
-        '',                        // line 15
-        '================',        // line 16: next file separator
-        'File: src/bar.ts',        // line 17
-        '================',        // line 18
-        'const y = 2;',            // line 19: content start
-        '',                        // line 20
+        '================', // line 11: file separator
+        'File: src/foo.ts', // line 12
+        '================', // line 13
+        'const x = 1;', // line 14: content start
+        '', // line 15
+        '================', // line 16: next file separator
+        'File: src/bar.ts', // line 17
+        '================', // line 18
+        'const y = 2;', // line 19: content start
+        '', // line 20
       ].join('\n');
 
       const offsets = computeFileLineOffsets(output, 'plain');
@@ -103,6 +103,52 @@ describe('showFileOffsets', () => {
       expect(offsets['src/bar.ts']).toBeDefined();
       // separator(16) + File:(17) + separator(18) → content at 19 = 16+3
       expect(offsets['src/bar.ts'].start).toBe(19);
+    });
+
+    test('does not pick up XML file markers outside the <files> section', () => {
+      // Markers that appear before <files> (e.g. in directory_structure or header) must not
+      // produce false offset entries. This is the primary false-match scenario.
+      const output = [
+        // Some header content that happens to look like a file marker
+        '<file path="src/decoy.ts">',
+        'not real content',
+        '</file>',
+        '',
+        '<files>',
+        '',
+        '<file path="src/real.ts">',
+        'const x = 1;',
+        '</file>',
+        '',
+        '</files>',
+      ].join('\n');
+
+      const offsets = computeFileLineOffsets(output, 'xml');
+
+      // Decoy outside <files> must not be captured
+      expect(offsets['src/decoy.ts']).toBeUndefined();
+      // Real file inside <files> must be captured
+      expect(offsets['src/real.ts']).toBeDefined();
+    });
+
+    test('does not pick up Markdown ## File: headers outside the # Files section', () => {
+      const output = [
+        '## File: src/decoy.ts', // appears before # Files — must be ignored
+        '',
+        '# Files',
+        '',
+        '## File: src/real.ts',
+        '```ts',
+        'const x = 1;',
+        '```',
+        '',
+      ].join('\n');
+
+      const offsets = computeFileLineOffsets(output, 'markdown');
+
+      expect(offsets['src/decoy.ts']).toBeUndefined();
+      expect(offsets['src/real.ts']).toBeDefined();
+      expect(offsets['src/real.ts'].start).toBe(5);
     });
 
     test('returns empty object for JSON style', () => {

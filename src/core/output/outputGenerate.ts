@@ -325,9 +325,12 @@ export const generateOutput = async (
 
     const offsets = computeFileLineOffsets(firstPassOutput, config.output.style);
 
-    const annotatedTree = filePathsByRoot
-      ? generateTreeStringWithRootsAndFileOffsets(filePathsByRoot, offsets, emptyDirPaths)
-      : generateTreeStringWithFileOffsets(allFilePaths, offsets, emptyDirPaths);
+    // Use the exact file/directory sets that buildOutputGeneratorContext used for the tree
+    // (these may differ from allFilePaths when includeFullDirectoryStructure adds extra files)
+    const { filePathsForTree, directoryPathsForTree, filePathsByRootForTree } = outputGeneratorContext;
+    const annotatedTree = filePathsByRootForTree
+      ? generateTreeStringWithRootsAndFileOffsets(filePathsByRootForTree, offsets, directoryPathsForTree)
+      : generateTreeStringWithFileOffsets(filePathsForTree, offsets, directoryPathsForTree);
 
     const annotatedContext = createRenderContext({
       ...outputGeneratorContext,
@@ -434,6 +437,9 @@ export const buildOutputGeneratorContext = async (
   return {
     generationDate: new Date().toISOString(),
     treeString,
+    filePathsForTree,
+    directoryPathsForTree,
+    filePathsByRootForTree: filePathsByRoot,
     processedFiles,
     config,
     instruction: repositoryInstruction,

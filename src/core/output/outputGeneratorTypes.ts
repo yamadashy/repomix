@@ -1,4 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
+import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogCommit, GitLogResult } from '../git/gitLogHandle.js';
@@ -6,6 +7,12 @@ import type { GitLogCommit, GitLogResult } from '../git/gitLogHandle.js';
 export interface OutputGeneratorContext {
   generationDate: string;
   treeString: string;
+  /** The exact file paths used to build treeString (may differ from allFilePaths in full-tree mode). */
+  filePathsForTree: string[];
+  /** The directory paths (e.g. empty dirs) used to build treeString. */
+  directoryPathsForTree: string[];
+  /** The per-root file grouping used for multi-root trees, if applicable. */
+  filePathsByRootForTree?: FilesByRoot[];
   processedFiles: ProcessedFile[];
   config: RepomixConfigMerged;
   instruction: string;
