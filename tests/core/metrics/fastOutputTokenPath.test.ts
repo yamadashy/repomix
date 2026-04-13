@@ -77,7 +77,8 @@ describe('extractOutputWrapper', () => {
         { path: 'a.ts', content: 'const a = 1;' },
         { path: 'b.ts', content: 'const b = 2;' },
       ];
-      const output = '<files>\n<file path="a.ts">\nconst a = 1;\n</file>\n\n<file path="b.ts">\nconst b = 2;\n</file>\n</files>\n';
+      const output =
+        '<files>\n<file path="a.ts">\nconst a = 1;\n</file>\n\n<file path="b.ts">\nconst b = 2;\n</file>\n</files>\n';
 
       const wrapper = extractOutputWrapper(output, files, 'xml');
       expect(wrapper).toBe('<files>\n<file path="a.ts">\n\n</file>\n\n<file path="b.ts">\n\n</file>\n</files>\n');
@@ -124,10 +125,13 @@ describe('extractOutputWrapper', () => {
         { path: 'empty.ts', content: '' },
         { path: 'b.ts', content: 'world' },
       ];
-      const output = '<file path="a.ts">\nhello\n</file>\n\n<file path="empty.ts">\n\n</file>\n\n<file path="b.ts">\nworld\n</file>\n';
+      const output =
+        '<file path="a.ts">\nhello\n</file>\n\n<file path="empty.ts">\n\n</file>\n\n<file path="b.ts">\nworld\n</file>\n';
 
       const wrapper = extractOutputWrapper(output, files, 'xml');
-      expect(wrapper).toBe('<file path="a.ts">\n\n</file>\n\n<file path="empty.ts">\n\n</file>\n\n<file path="b.ts">\n\n</file>\n');
+      expect(wrapper).toBe(
+        '<file path="a.ts">\n\n</file>\n\n<file path="empty.ts">\n\n</file>\n\n<file path="b.ts">\n\n</file>\n',
+      );
     });
   });
 });

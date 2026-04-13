@@ -10,10 +10,11 @@ import { calculateFileMetrics } from './calculateFileMetrics.js';
 import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
-import { type OutputStyle, extractOutputWrapper } from './extractOutputWrapper.js';
+import { extractOutputWrapper, type OutputStyle } from './extractOutputWrapper.js';
 
 // Re-export for backward compatibility (used by tests and external consumers)
 export { extractOutputWrapper } from './extractOutputWrapper.js';
+
 import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
