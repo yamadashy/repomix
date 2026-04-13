@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776121806372,
+  "lastUpdate": 1776123645199,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2160,6 +2160,51 @@ window.BENCHMARK_DATA = {
             "range": "±64",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1550ms, Q3: 1614ms\nAll times: 1231, 1260, 1271, 1277, 1296, 1550, 1556, 1557, 1558, 1561, 1569, 1577, 1577, 1589, 1611, 1614, 1622, 1666, 1680, 1681ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "ddaf211a6c24f49e245f7eec35a4de7e2df22db8",
+          "message": "perf(core): Defer tinypool import from ESM module chain to async preload (-2.7%)\n\nReplace the synchronous `import { Tinypool } from 'tinypool'` in\nprocessConcurrency.ts with a non-blocking dynamic `import('tinypool')`\nthat fires during module evaluation but doesn't block the ESM chain.\n\nProblem: The static tinypool import (~29ms) sits in the defaultAction.js\nmodule chain (defaultAction → packager → processConcurrency → tinypool).\nThis chain takes ~38ms total, exceeding the ~21ms getVersion() I/O that\nit's supposed to overlap with, leaving ~17ms of uncovered wait time on\nthe critical startup path.\n\nSolution: Use `import type` for compile-time types (zero runtime cost)\nand `const tinypoolPromise = import('tinypool')` at module scope to\nstart loading tinypool asynchronously. The module chain drops to ~9ms,\nfully hidden behind getVersion(). By the time pack() calls\ncreateWorkerPool (~50ms later), tinypool is already cached.\n\nAPI changes:\n- createWorkerPool: sync → async (awaits pre-resolved tinypoolPromise)\n- initTaskRunner: sync → async\n- createMetricsTaskRunner: sync → async\n- createSecurityTaskRunner: sync → async\n- In packager.ts, pool creation promises fire in parallel with\n  searchFiles and git operations, resolved after searchFiles completes.\n\nBenchmark (30 alternating runs, `node bin/repomix.cjs --quiet`):\n- Baseline:  mean=876.7ms  median=876.5ms  stdev=36.4ms\n- Optimized: mean=852.8ms  median=853.0ms  stdev=19.3ms\n- Improvement: -23.9ms (-2.7% mean), -23.5ms (-2.7% median)\n- Variance also reduced (stdev 36.4ms → 19.3ms)\n\nhttps://claude.ai/code/session_01UjES61XckhoK7r9KviW6vc",
+          "timestamp": "2026-04-13T23:37:59Z",
+          "tree_id": "7a4811502282ceb871e124c6b8e2203bb3defb61",
+          "url": "https://github.com/yamadashy/repomix/commit/ddaf211a6c24f49e245f7eec35a4de7e2df22db8"
+        },
+        "date": 1776123644660,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 662,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 651ms, Q3: 682ms\nAll times: 639, 642, 647, 647, 648, 649, 651, 651, 651, 653, 655, 659, 661, 661, 661, 662, 662, 663, 664, 670, 671, 672, 682, 687, 688, 691, 712, 716, 825, 832ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 966,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 955ms, Q3: 972ms\nAll times: 947, 948, 949, 950, 951, 955, 955, 957, 959, 964, 966, 967, 967, 970, 971, 972, 973, 989, 1002, 1164ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1281,
+            "range": "±69",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1251ms, Q3: 1320ms\nAll times: 1229, 1234, 1248, 1248, 1249, 1251, 1251, 1252, 1255, 1263, 1281, 1282, 1301, 1306, 1318, 1320, 1329, 1338, 1342, 1408ms"
           }
         ]
       }
