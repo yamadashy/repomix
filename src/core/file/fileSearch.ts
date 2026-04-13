@@ -192,6 +192,9 @@ export const searchFiles = async (
     const filePaths = await globby(includePatterns, {
       ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
       onlyFiles: true,
+      // Limit traversal depth at the globby level to avoid scanning the full tree.
+      // Undefined leaves the default (unlimited).
+      ...(config.input.maxDepth !== undefined && { deep: config.input.maxDepth }),
     }).catch((error: unknown) => {
       // Handle EPERM errors specifically
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
@@ -207,18 +210,6 @@ export const searchFiles = async (
     const globbyElapsedTime = Date.now() - globbyStartTime;
     logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
 
-    // Apply max depth filter if configured
-    if (config.input.maxDepth !== undefined) {
-      const maxDepth = config.input.maxDepth;
-      const beforeCount = filePaths.length;
-      // Depth is the number of path segments; a root-level file has depth 1.
-      // Split on both '/' and '\' for cross-platform correctness.
-      const getPathDepth = (p: string) => p.split(/[\\/]/).filter(Boolean).length;
-      const filtered = filePaths.filter((p) => getPathDepth(p) <= maxDepth);
-      logger.debug(`[max-depth] Filtered from ${beforeCount} to ${filtered.length} files (maxDepth=${maxDepth})`);
-      filePaths.splice(0, filePaths.length, ...filtered);
-    }
-
     let emptyDirPaths: string[] = [];
     if (config.output.includeEmptyDirectories) {
       logger.debug('[empty dirs] Searching for empty directories...');
@@ -227,6 +218,8 @@ export const searchFiles = async (
       const directories = await globby(includePatterns, {
         ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
         onlyDirectories: true,
+        // Apply the same depth limit so empty-directory results stay consistent with file results.
+        ...(config.input.maxDepth !== undefined && { deep: config.input.maxDepth }),
       });
 
       const emptyDirElapsedTime = Date.now() - emptyDirStartTime;

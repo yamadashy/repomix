@@ -911,64 +911,51 @@ node_modules
   });
 
   describe('maxDepth filter', () => {
-    test('should include all files when maxDepth is not set', async () => {
+    test('should not pass deep option to globby when maxDepth is not set', async () => {
       const mockConfig = createMockConfig();
-      const files = ['root.ts', 'src/a.ts', 'src/nested/b.ts', 'src/nested/deep/c.ts'];
-      vi.mocked(globby).mockResolvedValue(files);
+      vi.mocked(globby).mockResolvedValue(['root.ts', 'src/a.ts', 'src/nested/b.ts']);
 
-      const result = await searchFiles('/mock/root', mockConfig);
+      await searchFiles('/mock/root', mockConfig);
 
-      expect(result.filePaths).toHaveLength(4);
-      expect(result.filePaths).toContain('root.ts');
-      expect(result.filePaths).toContain('src/nested/deep/c.ts');
+      const globbyOptions = vi.mocked(globby).mock.calls[0][1] as Record<string, unknown>;
+      expect(globbyOptions.deep).toBeUndefined();
     });
 
-    test('should include only root-level files when maxDepth is 1', async () => {
-      const mockConfig = createMockConfig({ input: { maxDepth: 1 } });
-      const files = ['root.ts', 'src/a.ts', 'src/nested/b.ts'];
-      vi.mocked(globby).mockResolvedValue(files);
-
-      const result = await searchFiles('/mock/root', mockConfig);
-
-      expect(result.filePaths).toEqual(['root.ts']);
-    });
-
-    test('should include files up to specified depth', async () => {
+    test('should pass deep option to globby when maxDepth is set', async () => {
       const mockConfig = createMockConfig({ input: { maxDepth: 2 } });
-      const files = ['root.ts', 'src/a.ts', 'src/nested/b.ts', 'src/nested/deep/c.ts'];
-      vi.mocked(globby).mockResolvedValue(files);
+      // Mock returns only what globby would return at depth 2
+      vi.mocked(globby).mockResolvedValue(['root.ts', 'src/a.ts']);
 
       const result = await searchFiles('/mock/root', mockConfig);
 
-      // depth 1: root.ts (1 segment), depth 2: src/a.ts (2 segments)
-      expect(result.filePaths).toHaveLength(2);
+      const globbyOptions = vi.mocked(globby).mock.calls[0][1] as Record<string, unknown>;
+      expect(globbyOptions.deep).toBe(2);
       expect(result.filePaths).toContain('root.ts');
       expect(result.filePaths).toContain('src/a.ts');
-      expect(result.filePaths).not.toContain('src/nested/b.ts');
-      expect(result.filePaths).not.toContain('src/nested/deep/c.ts');
     });
 
-    test('should include all files when maxDepth is large', async () => {
-      const mockConfig = createMockConfig({ input: { maxDepth: 10 } });
-      const files = ['root.ts', 'src/a.ts', 'src/nested/b.ts', 'src/nested/deep/c.ts'];
-      vi.mocked(globby).mockResolvedValue(files);
+    test('should apply same deep option to empty-directory search', async () => {
+      const mockConfig = createMockConfig({
+        input: { maxDepth: 2 },
+        output: { includeEmptyDirectories: true },
+      });
 
-      const result = await searchFiles('/mock/root', mockConfig);
+      vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
+        if ((options as Record<string, unknown>)?.onlyDirectories) {
+          return ['src'];
+        }
+        return ['root.ts', 'src/a.ts'];
+      });
+      vi.mocked(fs.readdir).mockResolvedValue([]);
 
-      expect(result.filePaths).toHaveLength(4);
-    });
+      await searchFiles('/mock/root', mockConfig);
 
-    test('should handle Windows-style backslash-separated paths correctly', async () => {
-      const mockConfig = createMockConfig({ input: { maxDepth: 2 } });
-      // Simulate globby returning Windows-style paths
-      const files = ['root.ts', 'src\\a.ts', 'src\\nested\\b.ts'];
-      vi.mocked(globby).mockResolvedValue(files);
-
-      const result = await searchFiles('/mock/root', mockConfig);
-
-      expect(result.filePaths).toContain('root.ts');
-      expect(result.filePaths).toContain('src\\a.ts');
-      expect(result.filePaths).not.toContain('src\\nested\\b.ts');
+      const calls = vi.mocked(globby).mock.calls;
+      // Both file and directory calls should have deep: 2
+      for (const call of calls) {
+        const opts = call[1] as Record<string, unknown>;
+        expect(opts.deep).toBe(2);
+      }
     });
   });
 
