@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776099747988,
+  "lastUpdate": 1776105487105,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -1980,6 +1980,51 @@ window.BENCHMARK_DATA = {
             "range": "±107",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 1553ms, Q3: 1660ms\nAll times: 1315, 1323, 1324, 1394, 1553, 1618, 1631, 1645, 1646, 1648, 1649, 1653, 1658, 1659, 1660, 1678, 1681, 1686, 1745ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "5d795f1a2e36ccac6ffecf973bfe024a47beffb6",
+          "message": "perf(metrics): Cap metrics workers at concurrency-1 to reduce CPU contention (-5.2%)\n\nReserve one CPU core for the main thread by capping metrics worker threads at\ngetProcessConcurrency() - 1 instead of getProcessConcurrency().\n\nDuring warmup, each worker loads gpt-tokenizer by parsing the ~3.6MB BPE ranks\nfile (~150ms of CPU-intensive work). With N workers on N cores plus the main\nthread, over-subscription causes heavy cache and memory-bus contention that\ninflates total warmup wall time from ~150ms to ~380ms. The main thread's\nsearchFiles (tinyglobby/fdir directory walking) also suffers from this\ncontention.\n\nBy leaving one core free for the main thread:\n- Worker warmup contention drops significantly (fewer threads competing)\n- searchFiles runs with less CPU pressure\n- The warmup stall (idle time waiting for workers after all pre-work completes)\n  is eliminated or greatly reduced\n- The slight reduction in tokenization throughput (3 vs 4 workers) is more than\n  offset by the eliminated warmup stall\n\nBenchmark (30 alternating A/B measurements on 4-core machine, 1001 files):\n  Baseline (4 workers):  trimmed mean = 1011ms\n  Optimized (3 workers): trimmed mean =  958ms\n  Improvement: -54ms mean (-5.2%), paired t = 9.24 (p << 0.001)\n\nConfirmed with reversed alternation (20 runs):\n  Improvement: -41ms mean (-4.3%), paired t = 5.49\n\nhttps://claude.ai/code/session_014yLYZN9a9JA4SrXxDMn8Zm",
+          "timestamp": "2026-04-13T18:33:52Z",
+          "tree_id": "77f6f37943c0134f81a0d356d91c3784220e0762",
+          "url": "https://github.com/yamadashy/repomix/commit/5d795f1a2e36ccac6ffecf973bfe024a47beffb6"
+        },
+        "date": 1776105486684,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 928,
+            "range": "±146",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 815ms, Q3: 961ms\nAll times: 699, 772, 775, 784, 790, 804, 805, 815, 816, 840, 869, 891, 904, 917, 925, 928, 929, 938, 939, 948, 950, 960, 961, 970, 989, 1017, 1043, 1069, 1073, 1112ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 992,
+            "range": "±40",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 983ms, Q3: 1023ms\nAll times: 958, 964, 977, 977, 979, 983, 984, 985, 986, 988, 992, 997, 1003, 1008, 1009, 1023, 1098, 1172, 1185, 1422ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1276,
+            "range": "±62",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1244ms, Q3: 1306ms\nAll times: 1226, 1228, 1231, 1236, 1238, 1244, 1254, 1266, 1266, 1270, 1276, 1286, 1295, 1296, 1300, 1306, 1309, 1322, 1325, 1357ms"
           }
         ]
       }
