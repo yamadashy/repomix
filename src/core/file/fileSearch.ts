@@ -207,6 +207,16 @@ export const searchFiles = async (
     const globbyElapsedTime = Date.now() - globbyStartTime;
     logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
 
+    // Apply max depth filter if configured
+    if (config.input.maxDepth !== undefined) {
+      const maxDepth = config.input.maxDepth;
+      const beforeCount = filePaths.length;
+      // Depth is the number of path segments; a root-level file has depth 1
+      const filtered = filePaths.filter((p) => p.split('/').length <= maxDepth);
+      logger.debug(`[max-depth] Filtered from ${beforeCount} to ${filtered.length} files (maxDepth=${maxDepth})`);
+      filePaths.splice(0, filePaths.length, ...filtered);
+    }
+
     let emptyDirPaths: string[] = [];
     if (config.output.includeEmptyDirectories) {
       logger.debug('[empty dirs] Searching for empty directories...');

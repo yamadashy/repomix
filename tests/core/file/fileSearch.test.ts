@@ -910,6 +910,55 @@ node_modules
     });
   });
 
+  describe('maxDepth filter', () => {
+    test('should include all files when maxDepth is not set', async () => {
+      const mockConfig = createMockConfig();
+      const files = ['root.ts', 'src/a.ts', 'src/nested/b.ts', 'src/nested/deep/c.ts'];
+      vi.mocked(globby).mockResolvedValue(files);
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      expect(result.filePaths).toHaveLength(4);
+      expect(result.filePaths).toContain('root.ts');
+      expect(result.filePaths).toContain('src/nested/deep/c.ts');
+    });
+
+    test('should include only root-level files when maxDepth is 1', async () => {
+      const mockConfig = createMockConfig({ input: { maxDepth: 1 } });
+      const files = ['root.ts', 'src/a.ts', 'src/nested/b.ts'];
+      vi.mocked(globby).mockResolvedValue(files);
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      expect(result.filePaths).toEqual(['root.ts']);
+    });
+
+    test('should include files up to specified depth', async () => {
+      const mockConfig = createMockConfig({ input: { maxDepth: 2 } });
+      const files = ['root.ts', 'src/a.ts', 'src/nested/b.ts', 'src/nested/deep/c.ts'];
+      vi.mocked(globby).mockResolvedValue(files);
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      // depth 1: root.ts (1 segment), depth 2: src/a.ts (2 segments)
+      expect(result.filePaths).toHaveLength(2);
+      expect(result.filePaths).toContain('root.ts');
+      expect(result.filePaths).toContain('src/a.ts');
+      expect(result.filePaths).not.toContain('src/nested/b.ts');
+      expect(result.filePaths).not.toContain('src/nested/deep/c.ts');
+    });
+
+    test('should include all files when maxDepth is large', async () => {
+      const mockConfig = createMockConfig({ input: { maxDepth: 10 } });
+      const files = ['root.ts', 'src/a.ts', 'src/nested/b.ts', 'src/nested/deep/c.ts'];
+      vi.mocked(globby).mockResolvedValue(files);
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      expect(result.filePaths).toHaveLength(4);
+    });
+  });
+
   describe('createBaseGlobbyOptions consistency', () => {
     test('should use consistent base options across all globby calls', async () => {
       const mockConfig = createMockConfig({

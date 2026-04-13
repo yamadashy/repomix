@@ -19,6 +19,7 @@ export const repomixConfigBaseSchema = z.object({
   input: z
     .object({
       maxFileSize: z.number().optional(),
+      maxDepth: z.number().int().min(1).optional(),
     })
     .optional(),
   output: z
