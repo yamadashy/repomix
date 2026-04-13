@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776066303592,
+  "lastUpdate": 1776069816171,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -1710,6 +1710,51 @@ window.BENCHMARK_DATA = {
             "range": "±65",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1543ms, Q3: 1608ms\nAll times: 1497, 1512, 1521, 1533, 1534, 1543, 1544, 1552, 1560, 1568, 1578, 1578, 1579, 1580, 1608, 1608, 1616, 1617, 1675, 1759ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "e3bea89070f63a88b1dbbf6f16d9b17afff4e286",
+          "message": "perf(core): Remove minimatch dependency, defer worker_threads, parallelize wrapper tokenization\n\nThree independent optimizations targeting startup cost and metrics parallelism:\n\n1. Remove `minimatch` from fileSearch.ts (-7ms module load):\n   The `findEmptyDirectories` function re-checked each directory against\n   ignore patterns using `minimatch()`, but the directories were already\n   filtered by both tinyglobby's `ignore` option and the .gitignore/\n   .repomixignore post-filter. This redundant check created hundreds of\n   `Minimatch` objects per run. Removing it eliminates the `minimatch`\n   import entirely from the module graph.\n\n2. Remove `node:worker_threads` from logger.ts (-8ms module load):\n   The `workerData` import was only used in `setLogLevelByWorkerData()`,\n   which is called exclusively from worker files. Workers already have\n   `worker_threads` loaded as part of their runtime, so the import was\n   pure overhead for the main thread. Replaced with `process.env.\n   REPOMIX_LOG_LEVEL` propagation from cliRun.ts, which worker_threads\n   inherit automatically.\n\n3. Parallelize wrapper tokenization with file metrics:\n   In the fast-path of `calculateMetrics`, the wrapper tokenization was\n   dispatched sequentially after all file metrics completed. Dispatching\n   it immediately via `Promise.all` allows it to run on an idle worker\n   while file metrics batches still occupy other workers (~20ms savings\n   on 8+ core machines).\n\nBenchmark (local, 60 paired runs, interleaved A/B):\n  Baseline: 1098ms median (±52 IQR)\n  Changed:  1068ms median (±40 IQR)\n  Paired t=2.29, mean_diff=10.0ms (p<0.025 one-sided)\n\nNote: The full improvement is expected to be larger on CI runners with\n8+ cores where the wrapper tokenization parallelization provides\nadditional overlap, and on larger repos where minimatch construction\ncosts scale with directory count.\n\nhttps://claude.ai/code/session_0168ruogGTpqLsSvfeu33hfY",
+          "timestamp": "2026-04-13T08:41:36Z",
+          "tree_id": "d37d111a607a9b698dcfe13a9fe6853907019ba6",
+          "url": "https://github.com/yamadashy/repomix/commit/e3bea89070f63a88b1dbbf6f16d9b17afff4e286"
+        },
+        "date": 1776069815582,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 738,
+            "range": "±75",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 712ms, Q3: 787ms\nAll times: 649, 686, 691, 702, 706, 708, 711, 712, 716, 717, 722, 723, 725, 727, 730, 738, 741, 746, 759, 764, 773, 780, 787, 791, 864, 890, 915, 967, 1009, 1051ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1062,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1058ms, Q3: 1084ms\nAll times: 1045, 1047, 1048, 1056, 1057, 1058, 1059, 1059, 1061, 1062, 1062, 1065, 1070, 1070, 1078, 1084, 1086, 1101, 1133, 1216ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1461,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1444ms, Q3: 1467ms\nAll times: 1425, 1426, 1433, 1437, 1439, 1444, 1450, 1459, 1459, 1461, 1461, 1462, 1463, 1466, 1466, 1467, 1468, 1471, 1473, 1481ms"
           }
         ]
       }
