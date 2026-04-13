@@ -250,6 +250,11 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     if (options.stdin) {
       throw new RepomixError('--watch cannot be used with --stdin. Watch mode discovers files automatically.');
     }
+    if (options.splitOutput) {
+      throw new RepomixError(
+        '--watch cannot be used with --split-output. Watch mode does not yet support split output files.',
+      );
+    }
     if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
       throw new RepomixError('--watch cannot be used with remote URLs. Watch mode only works with local directories.');
     }
