@@ -639,6 +639,7 @@ Instruction
 |--------|-------------|
 | `--include <patterns>` | Include only files matching these glob patterns (comma-separated, e.g., `"src/**/*.js,*.md"`) |
 | `-i, --ignore <patterns>` | Additional patterns to exclude (comma-separated, e.g., `"*.test.js,docs/**"`) |
+| `--max-depth <number>` | Only include files up to N directory levels deep (e.g., `--max-depth 2` includes files in root and one level of subdirectories) |
 | `--no-gitignore` | Don't use `.gitignore` rules for filtering files |
 | `--no-dot-ignore` | Don't use `.ignore` rules for filtering files |
 | `--no-default-patterns` | Don't apply built-in ignore patterns (`node_modules`, `.git`, build dirs, etc.) |
@@ -1344,6 +1345,7 @@ Here's an explanation of the configuration options:
 | Option                           | Description                                                                                                                  | Default                |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | Maximum file size in bytes to process. Files larger than this will be skipped                                                | `50000000`            |
+| `input.maxDepth`                 | Maximum directory depth to include. Files deeper than this level are excluded (e.g., `2` includes root and one subdirectory level) | `null`            |
 | `output.filePath`                | The name of the output file                                                                                                  | `"repomix-output.xml"` |
 | `output.style`                   | The style of the output (`xml`, `markdown`, `json`, `plain`)                                                                 | `"xml"`                |
 | `output.parsableStyle`           | Whether to escape the output based on the chosen style schema. Note that this can increase token count.                      | `false`                |
