@@ -37,10 +37,44 @@ export const runDefaultAction = async (
   await runMigrationAction(cwd);
 
   // Load the config file in main process
-  const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, {
+  let fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, {
     skipLocalConfig: cliOptions.skipLocalConfig,
   });
   logger.trace('Loaded file config:', fileConfig);
+
+  // Apply profile overrides if --profile is specified
+  if (cliOptions.profile) {
+    const profile = fileConfig.profiles?.[cliOptions.profile];
+    if (!profile) {
+      const availableProfiles = fileConfig.profiles ? Object.keys(fileConfig.profiles) : [];
+      const hint =
+        availableProfiles.length > 0
+          ? ` Available profiles: ${availableProfiles.join(', ')}.`
+          : ' No profiles are defined in the config file.';
+      throw new RepomixError(`Profile "${cliOptions.profile}" not found.${hint}`);
+    }
+    // Merge profile into fileConfig. Profile overrides file-level settings;
+    // CLI options (applied later) still take precedence.
+    fileConfig = {
+      ...fileConfig,
+      ...profile,
+      output: {
+        ...fileConfig.output,
+        ...profile.output,
+        git: {
+          ...fileConfig.output?.git,
+          ...profile.output?.git,
+        },
+      },
+      ignore: {
+        ...fileConfig.ignore,
+        ...profile.ignore,
+        customPatterns: [...(fileConfig.ignore?.customPatterns ?? []), ...(profile.ignore?.customPatterns ?? [])],
+      },
+      include: [...(fileConfig.include ?? []), ...(profile.include ?? [])],
+    };
+    logger.debug(`Applied config profile: "${cliOptions.profile}"`);
+  }
 
   // Parse the CLI options into a config
   const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);

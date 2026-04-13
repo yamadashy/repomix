@@ -161,6 +161,7 @@ export const run = async () => {
       // Configuration Options
       .optionsGroup('Configuration Options')
       .option('-c, --config <path>', 'Use custom config file instead of repomix.config.json')
+      .option('--profile <name>', 'Apply a named config profile defined in repomix.config.json')
       .option('--init', 'Create a new repomix.config.json file with defaults')
       .option('--global', 'With --init, create config in home directory instead of current directory')
       // Security Options

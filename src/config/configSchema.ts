@@ -126,8 +126,12 @@ export const repomixConfigDefaultSchema = z.object({
   }),
 });
 
-// File-specific schema. Add options for file path and style
-export const repomixConfigFileSchema = repomixConfigBaseSchema;
+// File-specific schema. Extends base with a `profiles` map for named config overrides.
+export const repomixConfigFileSchema = repomixConfigBaseSchema.and(
+  z.object({
+    profiles: z.record(z.string(), repomixConfigBaseSchema).optional(),
+  }),
+);
 
 // CLI-specific schema. Add options for standard output mode and skill generation
 export const repomixConfigCliSchema = repomixConfigBaseSchema.and(
