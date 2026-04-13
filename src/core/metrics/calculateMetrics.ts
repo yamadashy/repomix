@@ -13,6 +13,7 @@ import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
+import type { FileMetrics } from './workers/types.js';
 
 export interface CalculateMetricsResult {
   totalFiles: number;
@@ -56,6 +57,8 @@ const defaultDeps = {
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
   taskRunner: undefined as MetricsTaskRunner | undefined,
+  precomputedFileMetrics: undefined as Promise<FileMetrics[]> | undefined,
+  suspiciousPathSet: undefined as Set<string> | undefined,
 };
 
 /**
@@ -121,22 +124,36 @@ export const calculateMetrics = async (
     });
 
   try {
-    const metricsTargetPaths = processedFiles.map((file) => file.path);
+    // Use pre-computed file metrics if available (already started earlier in the
+    // pipeline to overlap with security check), otherwise start fresh.
+    // When pre-computed metrics are used, they may include results for files that
+    // were later marked suspicious by the security check. These are filtered out
+    // using suspiciousPathSet before computing totals.
+    const fileMetricsPromise: Promise<FileMetrics[]> = deps.precomputedFileMetrics
+      ? deps.precomputedFileMetrics.then((allMetrics) => {
+          const suspicious = deps.suspiciousPathSet;
+          if (suspicious && suspicious.size > 0) {
+            return allMetrics.filter((m) => !suspicious.has(m.path));
+          }
+          return allMetrics;
+        })
+      : (() => {
+          const metricsTargetPaths = processedFiles.map((file) => file.path);
+          const p = deps.calculateFileMetrics(
+            processedFiles,
+            metricsTargetPaths,
+            config.tokenCount.encoding,
+            progressCallback,
+            { taskRunner },
+          );
+          p.catch(() => {});
+          return p;
+        })();
 
-    // Start output-independent metrics immediately so they can overlap with output generation
-    // when output is passed as a promise
-    const fileMetricsPromise = deps.calculateFileMetrics(
-      processedFiles,
-      metricsTargetPaths,
-      config.tokenCount.encoding,
-      progressCallback,
-      { taskRunner },
-    );
     const gitDiffMetricsPromise = deps.calculateGitDiffMetrics(config, gitDiffResult, { taskRunner });
     const gitLogMetricsPromise = deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner });
 
     // Prevent unhandled rejections if `await outputPromise` throws before Promise.all
-    fileMetricsPromise.catch(() => {});
     gitDiffMetricsPromise.catch(() => {});
     gitLogMetricsPromise.catch(() => {});
 

@@ -11,6 +11,7 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
+import { calculateFileMetrics } from './metrics/calculateFileMetrics.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
@@ -42,6 +43,7 @@ const defaultDeps = {
   processFiles,
   validateFileSafety,
   produceOutput,
+  calculateFileMetrics,
   calculateMetrics,
   createMetricsTaskRunner,
   createSecurityTaskRunner,
@@ -172,28 +174,47 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Ensure security workers are warmed up before dispatching real work
+    // Process files on the main thread first (lightweight: truncateBase64 + trim,
+    // ~1-15ms), then immediately dispatch per-file token counting to metrics workers
+    // BEFORE the security check completes. This overlaps ~50ms of metrics worker
+    // computation with the remaining security check, since they use separate worker
+    // pools and don't compete for CPU. Any files later marked suspicious by the
+    // security check are filtered from the metrics results.
+    const allProcessedFiles = await withMemoryLogging('Process Files', () => {
+      progressCallback('Processing files...');
+      return deps.processFiles(rawFiles, config, progressCallback);
+    });
+
+    // Ensure metrics workers are warmed up before dispatching file metrics
+    await metricsWarmupPromise;
+
+    // Start per-file token counting immediately — this is the most expensive
+    // single operation in the pipeline (~400ms). Starting it here instead of
+    // after the security check allows the first ~50ms of token counting to
+    // overlap with the remaining security check.
+    const allFileMetricsPromise = deps.calculateFileMetrics(
+      allProcessedFiles,
+      allProcessedFiles.map((f) => f.path),
+      config.tokenCount.encoding,
+      progressCallback,
+      { taskRunner: metricsTaskRunner },
+    );
+    // Prevent unhandled rejection if security throws before we await this
+    allFileMetricsPromise.catch(() => {});
+
+    // Ensure security workers are warmed up, then run security check concurrently
+    // with the already-running file metrics workers
     if (securityTaskRunnerWithWarmup) {
       await securityTaskRunnerWithWarmup.warmupPromise;
     }
 
-    // Run security check and file processing concurrently.
-    // Security check uses worker threads while file processing runs on the main thread
-    // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
-    // After both complete, filter out any suspicious files from the processed results.
-    const [validationResult, allProcessedFiles] = await Promise.all([
-      withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
-          runSecurityCheck,
-          filterOutUntrustedFiles,
-          securityTaskRunner: securityTaskRunnerWithWarmup?.taskRunner,
-        }),
-      ),
-      withMemoryLogging('Process Files', () => {
-        progressCallback('Processing files...');
-        return deps.processFiles(rawFiles, config, progressCallback);
+    const validationResult = await withMemoryLogging('Security Check', () =>
+      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
+        runSecurityCheck,
+        filterOutUntrustedFiles,
+        securityTaskRunner: securityTaskRunnerWithWarmup?.taskRunner,
       }),
-    ]);
+    );
 
     const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       validationResult;
@@ -268,11 +289,12 @@ export const pack = async (
     const pendingIOPromise = outputPromise.then((r) => r.pendingIO);
     pendingIOPromise.catch(() => {});
 
+    // Pass the early-started file metrics promise to calculateMetrics so it can
+    // continue running concurrently with output generation. The suspicious file
+    // filtering is done inside calculateMetrics when the promise resolves.
     const [{ outputFiles }, metrics] = await Promise.all([
       outputPromise,
       withMemoryLogging('Calculate Metrics', async () => {
-        // Wait for worker warm-up only before dispatching metrics tasks.
-        await metricsWarmupPromise;
         return deps.calculateMetrics(
           processedFiles,
           outputForMetricsPromise,
@@ -282,6 +304,8 @@ export const pack = async (
           gitLogResult,
           {
             taskRunner: metricsTaskRunner,
+            precomputedFileMetrics: allFileMetricsPromise,
+            suspiciousPathSet,
           },
         );
       }),
