@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776046834216,
+  "lastUpdate": 1776050357371,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -1530,6 +1530,51 @@ window.BENCHMARK_DATA = {
             "range": "±22",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1592ms, Q3: 1614ms\nAll times: 1563, 1570, 1587, 1587, 1591, 1592, 1592, 1594, 1595, 1596, 1598, 1601, 1605, 1608, 1611, 1614, 1616, 1620, 1622, 1633ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "40ebdb0091138a5a0db09c451a8c225db6b545bc",
+          "message": "perf(config): Defer Zod loading to avoid ~35ms startup cost (-3.7%)\n\nExtract defaultConfig, defaultFilePathMap, and defineConfig into a new\nconfigDefaults.ts module that has no dependency on Zod.  All modules that\npreviously imported these values from configSchema.ts now import from\nconfigDefaults.ts instead (configLoad, defaultAction, initAction, MCP\ntools, index.ts, test utils).\n\nThe Zod schema is now loaded lazily — only when a config file is found\nand needs validation (inside loadAndValidateConfig via dynamic import).\nThe CLI-argument validation (repomixConfigCliSchema.parse) and the\nmerged-config validation (repomixConfigMergedSchema.parse) are removed:\nCLI arguments are already type-checked by Commander.js, and the merge\nof known-good parts (hardcoded defaults + Commander-validated CLI +\nZod-validated file config) is correct by construction.\n\nFor the common case (no repomix.config.json), Zod is never imported at\nall, saving the full ~44ms of module loading + schema construction.\nFor repos with a config file, Zod is loaded during config validation\n(no regression).\n\nBenchmark: 20 alternating A/B measurements (no config file), paired\nt-test:\n\n  Before: 956.8ms mean / 948.0ms median\n  After:  921.3ms mean / 920.5ms median\n  Δ:      −35.5ms mean (−3.7%), t=3.60, df=19, p<0.002\n\nWith config file: no regression (median 993ms vs 1006ms baseline).\nAll 1134 tests pass.  Output is byte-for-byte identical.\n\nhttps://claude.ai/code/session_01Tui9Lpm9k4FDSHd2XXWKrZ",
+          "timestamp": "2026-04-13T03:16:33Z",
+          "tree_id": "3030d9d72d5383c53739252c0c0c65891f4d5de1",
+          "url": "https://github.com/yamadashy/repomix/commit/40ebdb0091138a5a0db09c451a8c225db6b545bc"
+        },
+        "date": 1776050356848,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 822,
+            "range": "±137",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 765ms, Q3: 902ms\nAll times: 675, 689, 712, 714, 753, 762, 764, 765, 794, 794, 799, 811, 812, 814, 822, 822, 833, 833, 847, 871, 876, 886, 902, 903, 945, 958, 1004, 1059, 1203, 1282ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1208,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1192ms, Q3: 1229ms\nAll times: 1170, 1175, 1180, 1190, 1191, 1192, 1193, 1200, 1204, 1207, 1208, 1209, 1216, 1219, 1223, 1229, 1231, 1233, 1239, 1299ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1612,
+            "range": "±502",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1582ms, Q3: 2084ms\nAll times: 1527, 1554, 1561, 1568, 1582, 1582, 1602, 1605, 1607, 1611, 1612, 1724, 1746, 1909, 2026, 2084, 2099, 2103, 2299, 2523ms"
           }
         ]
       }
