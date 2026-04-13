@@ -96,6 +96,14 @@ describe('watch option conflicts', () => {
     const options: CliOptions = { watch: true, stdin: true };
     await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --stdin');
   });
+
+  it('should throw when --watch is used with a positional remote URL', async () => {
+    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const options: CliOptions = { watch: true };
+    await expect(runCli(['https://github.com/user/repo'], process.cwd(), options)).rejects.toThrow(
+      '--watch cannot be used with remote URLs',
+    );
+  });
 });
 
 describe('watchAction', () => {
