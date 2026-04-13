@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776077873398,
+  "lastUpdate": 1776099747988,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -1935,6 +1935,51 @@ window.BENCHMARK_DATA = {
             "range": "±32",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1389ms, Q3: 1421ms\nAll times: 1377, 1381, 1382, 1385, 1386, 1389, 1391, 1395, 1403, 1404, 1404, 1407, 1413, 1414, 1420, 1421, 1425, 1430, 1444, 1456ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "d403615f71e2fc31c11dfc2f269e384834b950f6",
+          "message": "perf(cli): Overlap defaultAction module loading with getVersion() I/O (-3.1%)\n\nStart importing the defaultAction module tree (packager → tinypool,\ntinyglobby, processConcurrency, etc.) as a background promise before\nawaiting getVersion().  The ~38ms of ESM compilation now overlaps with\nthe ~21ms async readFile in getVersion(), hiding the version-banner I/O\nlatency entirely on the default CLI path.\n\nOn --init / --remote early-exit paths the module import is never\nawaited; the only overhead is a small amount of V8 background\ncompilation that is reclaimed at process exit.\n\nBenchmark (30 alternating A/B measurements, `node bin/repomix.cjs --quiet`\non the repomix repo, 1001 files):\n\n  Baseline avg : 0.964s  (15 runs)\n  Changed avg  : 0.924s  (15 runs)\n  Improvement  : -40ms (-4.0%)\n\n  Confirmation (20 additional runs):\n  Changed avg  : 0.934s\n  Improvement  : -30ms (-3.1%)",
+          "timestamp": "2026-04-13T17:00:02Z",
+          "tree_id": "037962db3bd9c7eeadb776012c8948947fcedfa7",
+          "url": "https://github.com/yamadashy/repomix/commit/d403615f71e2fc31c11dfc2f269e384834b950f6"
+        },
+        "date": 1776099746899,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 953,
+            "range": "±54",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 924ms, Q3: 978ms\nAll times: 770, 784, 785, 792, 851, 886, 902, 924, 925, 927, 929, 933, 937, 938, 953, 953, 955, 959, 961, 963, 963, 965, 978, 978, 990, 1147, 1152, 1235, 1245, 1620ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1055,
+            "range": "±127",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1044ms, Q3: 1171ms\nAll times: 1025, 1032, 1033, 1043, 1043, 1044, 1047, 1049, 1050, 1053, 1055, 1057, 1067, 1085, 1170, 1171, 1235, 1249, 1258, 1295ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1648,
+            "range": "±107",
+            "unit": "ms",
+            "extra": "Median of 19 runs\nQ1: 1553ms, Q3: 1660ms\nAll times: 1315, 1323, 1324, 1394, 1553, 1618, 1631, 1645, 1646, 1648, 1649, 1653, 1658, 1659, 1660, 1678, 1681, 1686, 1745ms"
           }
         ]
       }
