@@ -60,6 +60,8 @@ describe('Output Generation with Diffs', () => {
       gitDiffResult,
     })),
     generateDirectXmlOutput: vi.fn(),
+    generateDirectMarkdownOutput: vi.fn(),
+    generateDirectPlainOutput: vi.fn(),
     generateHandlebarOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
@@ -142,13 +144,13 @@ describe('Output Generation with Diffs', () => {
     mockConfig.output.style = 'markdown';
     mockConfig.output.parsableStyle = false;
 
-    // Mock the Handlebars output function for markdown
-    mockDeps.generateHandlebarOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
-      // Verify that the renderContext has the gitDiffs property
-      expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
+    // Mock the direct markdown output function
+    mockDeps.generateDirectMarkdownOutput.mockImplementation((outputGeneratorContext) => {
+      // Verify that the context has the gitDiffResult
+      expect(outputGeneratorContext.gitDiffResult?.workTreeDiffContent).toBe(sampleDiff);
 
       // Simulate the markdown output
-      return `# Git Diffs\n\`\`\`diff\n${renderContext.gitDiffWorkTree}\n\`\`\``;
+      return `# Git Diffs\n\`\`\`diff\n${outputGeneratorContext.gitDiffResult?.workTreeDiffContent}\n\`\`\``;
     });
 
     // Generate the output
@@ -170,8 +172,8 @@ describe('Output Generation with Diffs', () => {
     expect(output).toContain(sampleDiff);
     expect(output).toContain('```');
 
-    // Verify that the generateHandlebarOutput function was called
-    expect(mockDeps.generateHandlebarOutput).toHaveBeenCalled();
+    // Verify that the generateDirectMarkdownOutput function was called
+    expect(mockDeps.generateDirectMarkdownOutput).toHaveBeenCalled();
   });
 
   test('Plain style output should include diffs section when includeDiffs is enabled', async () => {
@@ -179,12 +181,12 @@ describe('Output Generation with Diffs', () => {
     mockConfig.output.style = 'plain';
     mockConfig.output.parsableStyle = false;
 
-    // Mock the Handlebars output function for plain text
-    mockDeps.generateHandlebarOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
-      expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
+    // Mock the direct plain output function
+    mockDeps.generateDirectPlainOutput.mockImplementation((outputGeneratorContext) => {
+      expect(outputGeneratorContext.gitDiffResult?.workTreeDiffContent).toBe(sampleDiff);
 
       // Simulate the plain text output
-      return `===============\nGit Diffs\n===============\n${renderContext.gitDiffWorkTree}`;
+      return `===============\nGit Diffs\n===============\n${outputGeneratorContext.gitDiffResult?.workTreeDiffContent}`;
     });
 
     // Generate the output
@@ -204,8 +206,8 @@ describe('Output Generation with Diffs', () => {
     expect(output).toContain('===============\nGit Diffs\n===============');
     expect(output).toContain(sampleDiff);
 
-    // Verify that the generateHandlebarOutput function was called
-    expect(mockDeps.generateHandlebarOutput).toHaveBeenCalled();
+    // Verify that the generateDirectPlainOutput function was called
+    expect(mockDeps.generateDirectPlainOutput).toHaveBeenCalled();
   });
 
   test('Output should not include diffs section when includeDiffs is disabled', async () => {

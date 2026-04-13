@@ -8,6 +8,7 @@ import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
+import { getLanguageFromFilePath } from './outputLanguageMap.js';
 import {
   generateHeader,
   generateSummaryFileFormat,
@@ -330,6 +331,244 @@ const generateDirectXmlOutput = (outputGeneratorContext: OutputGeneratorContext)
   return `${parts.join('').trim()}\n`;
 };
 
+/**
+ * Build Markdown output via direct string concatenation instead of Handlebars.
+ *
+ * Eliminates the ~27ms Handlebars import, ~5ms template compilation, and
+ * ~15ms template execution overhead. Array.push() + join() produces output
+ * that is byte-for-byte identical to the Handlebars markdown template.
+ * Keep in sync with getMarkdownTemplate() in outputStyles/markdownStyle.ts.
+ */
+const generateDirectMarkdownOutput = (outputGeneratorContext: OutputGeneratorContext): string => {
+  const config = outputGeneratorContext.config;
+  const fileSummaryEnabled = config.output.fileSummary;
+  const directoryStructureEnabled = config.output.directoryStructure;
+  const filesEnabled = config.output.files;
+  const gitDiffEnabled = !!config.output.git?.includeDiffs;
+  const gitLogEnabled = !!config.output.git?.includeLogs;
+
+  const generationHeader = generateHeader(config, outputGeneratorContext.generationDate);
+  const summaryPurpose = generateSummaryPurpose(config);
+  const summaryFileFormat = generateSummaryFileFormat();
+  const summaryUsageGuidelines = generateSummaryUsageGuidelines(config, outputGeneratorContext.instruction);
+  const summaryNotes = generateSummaryNotes(config);
+
+  // Compute markdown code block delimiter only when files are enabled
+  const delimiter = filesEnabled ? calculateMarkdownDelimiter(outputGeneratorContext.processedFiles) : '```';
+
+  const parts: string[] = [];
+
+  if (fileSummaryEnabled) {
+    parts.push(
+      generationHeader,
+      '\n\n# File Summary\n\n## Purpose\n',
+      summaryPurpose,
+      '\n\n## File Format\n',
+      summaryFileFormat,
+      '\n5. Multiple file entries, each consisting of:\n  a. A header with the file path (## File: path/to/file)\n  b. The full contents of the file in a code block\n\n## Usage Guidelines\n',
+      summaryUsageGuidelines,
+      '\n\n## Notes\n',
+      summaryNotes,
+      '\n\n',
+    );
+  }
+
+  if (config.output.headerText) {
+    parts.push('# User Provided Header\n', config.output.headerText, '\n\n');
+  }
+
+  if (directoryStructureEnabled) {
+    parts.push('# Directory Structure\n```\n', outputGeneratorContext.treeString, '\n```\n\n');
+  }
+
+  if (filesEnabled) {
+    parts.push('# Files\n\n');
+    for (const file of outputGeneratorContext.processedFiles) {
+      const lang = getLanguageFromFilePath(file.path);
+      parts.push('## File: ', file.path, '\n', delimiter, lang, '\n', file.content, '\n', delimiter, '\n\n');
+    }
+  }
+
+  // The Handlebars template has unconditional blank lines between the
+  // files/gitDiff, gitDiff/gitLog, and gitLog/instruction block boundaries.
+  // These blank lines sit outside any {{#if}} block, so Handlebars always
+  // preserves them regardless of which sections are enabled.
+  parts.push('\n');
+
+  if (gitDiffEnabled) {
+    parts.push(
+      '# Git Diffs\n## Git Diffs Working Tree\n```diff\n',
+      outputGeneratorContext.gitDiffResult?.workTreeDiffContent ?? '',
+      '\n```\n\n## Git Diffs Staged\n```diff\n',
+      outputGeneratorContext.gitDiffResult?.stagedDiffContent ?? '',
+      '\n```\n\n',
+    );
+  }
+
+  parts.push('\n');
+
+  if (gitLogEnabled) {
+    parts.push('# Git Logs\n\n');
+    if (outputGeneratorContext.gitLogResult?.commits) {
+      for (const commit of outputGeneratorContext.gitLogResult.commits) {
+        parts.push('## Commit: ', commit.date, '\n**Message:** ', commit.message, '\n\n**Files:**\n');
+        for (const file of commit.files) {
+          parts.push('- ', file, '\n');
+        }
+        parts.push('\n');
+      }
+    }
+  }
+
+  parts.push('\n');
+
+  if (outputGeneratorContext.instruction) {
+    parts.push('# Instruction\n', outputGeneratorContext.instruction, '\n');
+  }
+
+  return `${parts.join('').trim()}\n`;
+};
+
+const PLAIN_SEPARATOR = '='.repeat(16);
+const PLAIN_LONG_SEPARATOR = '='.repeat(64);
+
+/**
+ * Build plain-text output via direct string concatenation instead of Handlebars.
+ *
+ * Same approach as generateDirectMarkdownOutput — eliminates Handlebars import,
+ * compilation, and execution overhead. Output is byte-for-byte identical to
+ * the Handlebars plain template.
+ * Keep in sync with getPlainTemplate() in outputStyles/plainStyle.ts.
+ */
+const generateDirectPlainOutput = (outputGeneratorContext: OutputGeneratorContext): string => {
+  const config = outputGeneratorContext.config;
+  const fileSummaryEnabled = config.output.fileSummary;
+  const directoryStructureEnabled = config.output.directoryStructure;
+  const filesEnabled = config.output.files;
+  const gitDiffEnabled = !!config.output.git?.includeDiffs;
+  const gitLogEnabled = !!config.output.git?.includeLogs;
+
+  const generationHeader = generateHeader(config, outputGeneratorContext.generationDate);
+  const summaryPurpose = generateSummaryPurpose(config);
+  const summaryFileFormat = generateSummaryFileFormat();
+  const summaryUsageGuidelines = generateSummaryUsageGuidelines(config, outputGeneratorContext.instruction);
+  const summaryNotes = generateSummaryNotes(config);
+
+  const parts: string[] = [];
+
+  if (fileSummaryEnabled) {
+    parts.push(
+      generationHeader,
+      '\n\n',
+      PLAIN_LONG_SEPARATOR,
+      '\nFile Summary\n',
+      PLAIN_LONG_SEPARATOR,
+      '\n\nPurpose:\n--------\n',
+      summaryPurpose,
+      '\n\nFile Format:\n------------\n',
+      summaryFileFormat,
+      '\n5. Multiple file entries, each consisting of:\n  a. A separator line (================)\n  b. The file path (File: path/to/file)\n  c. Another separator line\n  d. The full contents of the file\n  e. A blank line\n\nUsage Guidelines:\n-----------------\n',
+      summaryUsageGuidelines,
+      '\n\nNotes:\n------\n',
+      summaryNotes,
+      '\n\n',
+    );
+  }
+
+  // The Handlebars template has an unconditional blank line between the
+  // fileSummary/headerText blocks. Replicate it here.
+  parts.push('\n');
+
+  if (config.output.headerText) {
+    parts.push(
+      PLAIN_LONG_SEPARATOR,
+      '\nUser Provided Header\n',
+      PLAIN_LONG_SEPARATOR,
+      '\n',
+      config.output.headerText,
+      '\n\n',
+    );
+  }
+
+  if (directoryStructureEnabled) {
+    parts.push(
+      PLAIN_LONG_SEPARATOR,
+      '\nDirectory Structure\n',
+      PLAIN_LONG_SEPARATOR,
+      '\n',
+      outputGeneratorContext.treeString,
+      '\n\n',
+    );
+  }
+
+  if (filesEnabled) {
+    parts.push(PLAIN_LONG_SEPARATOR, '\nFiles\n', PLAIN_LONG_SEPARATOR, '\n\n');
+    for (const file of outputGeneratorContext.processedFiles) {
+      parts.push(PLAIN_SEPARATOR, '\nFile: ', file.path, '\n', PLAIN_SEPARATOR, '\n', file.content, '\n\n');
+    }
+  }
+
+  parts.push('\n');
+
+  if (gitDiffEnabled) {
+    parts.push(
+      PLAIN_LONG_SEPARATOR,
+      '\nGit Diffs\n',
+      PLAIN_LONG_SEPARATOR,
+      '\n',
+      PLAIN_SEPARATOR,
+      '\n',
+      outputGeneratorContext.gitDiffResult?.workTreeDiffContent ?? '',
+      '\n',
+      PLAIN_SEPARATOR,
+      '\n\n',
+      PLAIN_SEPARATOR,
+      '\nGit Diffs Staged\n',
+      PLAIN_SEPARATOR,
+      '\n',
+      outputGeneratorContext.gitDiffResult?.stagedDiffContent ?? '',
+      '\n\n',
+    );
+  }
+
+  parts.push('\n');
+
+  if (gitLogEnabled) {
+    parts.push(PLAIN_LONG_SEPARATOR, '\nGit Logs\n', PLAIN_LONG_SEPARATOR, '\n');
+    if (outputGeneratorContext.gitLogResult?.commits) {
+      for (const commit of outputGeneratorContext.gitLogResult.commits) {
+        parts.push(PLAIN_SEPARATOR, '\nDate: ', commit.date, '\nMessage: ', commit.message, '\nFiles:\n');
+        for (const file of commit.files) {
+          parts.push('  - ', file, '\n');
+        }
+        parts.push(PLAIN_SEPARATOR, '\n\n');
+      }
+    }
+    parts.push('\n');
+  }
+
+  parts.push('\n');
+
+  if (outputGeneratorContext.instruction) {
+    parts.push(
+      PLAIN_LONG_SEPARATOR,
+      '\nInstruction\n',
+      PLAIN_LONG_SEPARATOR,
+      '\n',
+      outputGeneratorContext.instruction,
+      '\n',
+    );
+  }
+
+  // Unconditional blank line between instruction and End of Codebase,
+  // matching the blank line in the Handlebars template outside any {{#if}}.
+  parts.push('\n');
+
+  parts.push(PLAIN_LONG_SEPARATOR, '\nEnd of Codebase\n', PLAIN_LONG_SEPARATOR, '\n');
+
+  return `${parts.join('').trim()}\n`;
+};
+
 const generateHandlebarOutput = async (
   config: RepomixConfigMerged,
   renderContext: RenderContext,
@@ -378,6 +617,8 @@ export const generateOutput = async (
   deps = {
     buildOutputGeneratorContext,
     generateDirectXmlOutput,
+    generateDirectMarkdownOutput,
+    generateDirectPlainOutput,
     generateHandlebarOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
@@ -397,12 +638,19 @@ export const generateOutput = async (
     emptyDirPaths,
   );
 
-  // For non-parsable XML (the default), use direct string concatenation which
-  // is 10–15× faster than Handlebars for large outputs (~250ms → ~20ms on 4MB).
-  // This path also skips calculateMarkdownDelimiter and calculateFileLineCounts
-  // which are only needed by markdown templates and the skill generation path.
-  if (config.output.style === 'xml' && !config.output.parsableStyle) {
-    return deps.generateDirectXmlOutput(outputGeneratorContext);
+  // For non-parsable styles (xml, markdown, plain), use direct string
+  // concatenation which is 10–15× faster than Handlebars for large outputs.
+  // This path also skips createRenderContext (calculateMarkdownDelimiter,
+  // calculateFileLineCounts) which add unnecessary overhead.
+  if (!config.output.parsableStyle) {
+    switch (config.output.style) {
+      case 'xml':
+        return deps.generateDirectXmlOutput(outputGeneratorContext);
+      case 'markdown':
+        return deps.generateDirectMarkdownOutput(outputGeneratorContext);
+      case 'plain':
+        return deps.generateDirectPlainOutput(outputGeneratorContext);
+    }
   }
 
   const renderContext = createRenderContext(outputGeneratorContext);

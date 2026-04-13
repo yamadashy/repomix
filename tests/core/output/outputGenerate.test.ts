@@ -17,6 +17,8 @@ describe('outputGenerate', () => {
   const mockDeps = {
     buildOutputGeneratorContext: vi.fn(),
     generateDirectXmlOutput: vi.fn(),
+    generateDirectMarkdownOutput: vi.fn(),
+    generateDirectPlainOutput: vi.fn(),
     generateHandlebarOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
@@ -42,7 +44,7 @@ describe('outputGenerate', () => {
       instruction: '',
       filesEnabled: true,
     });
-    mockDeps.generateHandlebarOutput.mockResolvedValue('mock output');
+    mockDeps.generateDirectPlainOutput.mockReturnValue('mock output');
 
     const output = await generateOutput(
       [process.cwd()],

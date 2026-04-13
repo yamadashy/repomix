@@ -134,6 +134,8 @@ index 123..456 100644
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
         generateDirectXmlOutput: mockGenerateDirectXmlOutput,
+        generateDirectMarkdownOutput: vi.fn(),
+        generateDirectPlainOutput: vi.fn(),
         generateHandlebarOutput: mockGenerateHandlebarOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
@@ -176,9 +178,9 @@ index 123..456 100644
       };
     });
 
-    const mockGenerateHandlebarOutput = vi.fn().mockImplementation(async (_config, renderContext: RenderContext) => {
-      // Check that renderContext has gitDiffs for markdown template
-      expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
+    const mockGenerateDirectMarkdownOutput = vi.fn().mockImplementation((outputGeneratorContext) => {
+      // Check that context has gitDiffResult for markdown template
+      expect(outputGeneratorContext.gitDiffResult?.workTreeDiffContent).toBe(sampleDiff);
       return `# Markdown output with diffs\n\`\`\`diff\n${sampleDiff}\n\`\`\``;
     });
 
@@ -201,14 +203,16 @@ index 123..456 100644
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
         generateDirectXmlOutput: vi.fn(),
-        generateHandlebarOutput: mockGenerateHandlebarOutput,
+        generateDirectMarkdownOutput: mockGenerateDirectMarkdownOutput,
+        generateDirectPlainOutput: vi.fn(),
+        generateHandlebarOutput: vi.fn(),
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
       },
     );
 
-    // For markdown output, should use Handlebars
-    expect(mockGenerateHandlebarOutput).toHaveBeenCalled();
+    // For non-parsable markdown, should use direct markdown builder
+    expect(mockGenerateDirectMarkdownOutput).toHaveBeenCalled();
 
     // XML generator should not be called for markdown
     expect(mockGenerateParsableXmlOutput).not.toHaveBeenCalled();
