@@ -1,4 +1,5 @@
 import path from 'node:path';
+import process from 'node:process';
 import type { ChokidarOptions, FSWatcher } from 'chokidar';
 import pc from 'picocolors';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
@@ -74,19 +75,18 @@ export const runWatchAction = async (
   // Run initial pack
   const packResult = await runPack(targetPaths, config, cliOptions);
   reportResults(cwd, packResult, config, cliOptions);
-  logger.log(pc.dim('Watching for changes...'));
+  logger.log(pc.dim(`\nWatching ${packResult.safeFilePaths.length} files for changes... (Ctrl+C to stop)\n`));
 
-  // Resolve safeFilePaths against the first target path for watching
-  const rootDir = targetPaths[0];
-  const absoluteWatchPaths = packResult.safeFilePaths.map((filePath) => path.resolve(rootDir, filePath));
-
-  // Set up chokidar watcher
-  const watcher = resolvedDeps.watch(absoluteWatchPaths, {
+  // Watch target directories instead of individual files so new files are detected
+  const watcher = resolvedDeps.watch(targetPaths, {
     ignoreInitial: true,
     awaitWriteFinish: { stabilityThreshold: 100 },
+    ignored: config.output.filePath ? path.resolve(cwd, config.output.filePath) : undefined,
   });
 
-  // Debounced rebuild
+  // Rebuild guard — prevents concurrent packs and queues a follow-up if changes arrive mid-pack
+  let isRebuilding = false;
+  let pendingRebuild = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   const scheduleRebuild = () => {
@@ -95,6 +95,13 @@ export const runWatchAction = async (
     }
     debounceTimer = setTimeout(async () => {
       debounceTimer = null;
+
+      if (isRebuilding) {
+        pendingRebuild = true;
+        return;
+      }
+
+      isRebuilding = true;
       try {
         const result = await runPack(targetPaths, config, cliOptions);
         reportResults(cwd, result, config, cliOptions);
@@ -104,6 +111,12 @@ export const runWatchAction = async (
         logger.log(pc.dim('Watching for changes...'));
       } catch (error) {
         logger.error('Watch rebuild failed:', error);
+      } finally {
+        isRebuilding = false;
+        if (pendingRebuild) {
+          pendingRebuild = false;
+          scheduleRebuild();
+        }
       }
     }, 300);
   };
@@ -112,12 +125,21 @@ export const runWatchAction = async (
   watcher.on('add', scheduleRebuild);
   watcher.on('unlink', scheduleRebuild);
 
-  // Graceful shutdown
+  // Graceful shutdown — named handlers so they can be removed on cleanup
   const cleanup = async () => {
     if (debounceTimer !== null) {
       clearTimeout(debounceTimer);
     }
+    process.removeListener('SIGINT', onSigint);
+    process.removeListener('SIGTERM', onSigterm);
     await watcher.close();
+  };
+
+  const onSigint = async () => {
+    await cleanup();
+  };
+  const onSigterm = async () => {
+    await cleanup();
   };
 
   if (resolvedDeps.signal) {
@@ -125,14 +147,8 @@ export const runWatchAction = async (
       cleanup();
     });
   } else {
-    process.on('SIGINT', async () => {
-      await cleanup();
-      process.exit(0);
-    });
-    process.on('SIGTERM', async () => {
-      await cleanup();
-      process.exit(0);
-    });
+    process.on('SIGINT', onSigint);
+    process.on('SIGTERM', onSigterm);
   }
 
   // Keep alive — wait until signal is aborted (in tests) or process exits
