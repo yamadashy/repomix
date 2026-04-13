@@ -3,8 +3,9 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { defaultConfig } from '../../src/config/configDefaults.js';
 import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
-import { defaultConfig, type RepomixConfigCli, type RepomixConfigFile } from '../../src/config/configSchema.js';
+import type { RepomixConfigCli, RepomixConfigFile } from '../../src/config/configSchema.js';
 import { getGlobalDirectory } from '../../src/config/globalDirectory.js';
 import { RepomixConfigValidationError } from '../../src/shared/errorHandle.js';
 import { logger } from '../../src/shared/logger.js';
@@ -325,16 +326,20 @@ describe('configLoad', () => {
       expect(result.ignore.customPatterns).toContain('cli-ignore');
     });
 
-    test('should throw RepomixConfigValidationError for invalid merged config', () => {
+    test('should not validate merged config (validation is done at the individual-part level)', () => {
+      // mergeConfigs trusts its inputs for performance: Zod validation is skipped
+      // to avoid eagerly importing configSchema (→ Zod, ~44ms).  Individual parts
+      // are validated at their own load sites (Commander for CLI, Zod for config files).
       const fileConfig: RepomixConfigFile = {
         output: { filePath: 'file-output.txt', style: 'plain' },
       };
       const cliConfig: RepomixConfigCli = {
         // @ts-expect-error
-        output: { style: 'invalid' }, // Invalid style
+        output: { style: 'invalid' }, // Invalid style — not caught at merge time
       };
 
-      expect(() => mergeConfigs(process.cwd(), fileConfig, cliConfig)).toThrow(RepomixConfigValidationError);
+      const result = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+      expect(result.output.style).toBe('invalid');
     });
 
     test('should merge nested git config correctly', () => {

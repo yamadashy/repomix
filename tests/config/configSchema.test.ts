@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { defaultConfig as hardcodedDefaultConfig } from '../../src/config/configDefaults.js';
 import {
   repomixConfigBaseSchema,
   repomixConfigCliSchema,
@@ -90,6 +91,19 @@ describe('configSchema', () => {
         include: 'not-an-array', // Should be an array
       };
       expect(() => repomixConfigBaseSchema.parse(invalidConfig)).toThrow(z.ZodError);
+    });
+  });
+
+  describe('configDefaults consistency', () => {
+    it('hardcoded defaultConfig must match Zod-parsed defaults', () => {
+      const zodDefault = repomixConfigDefaultSchema.parse({
+        input: {},
+        output: { git: {} },
+        ignore: {},
+        security: {},
+        tokenCount: {},
+      });
+      expect(hardcodedDefaultConfig).toEqual(zodDefault);
     });
   });
 

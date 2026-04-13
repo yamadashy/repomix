@@ -5,15 +5,8 @@ import JSON5 from 'json5';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
-import {
-  defaultConfig,
-  defaultFilePathMap,
-  type RepomixConfigCli,
-  type RepomixConfigFile,
-  type RepomixConfigMerged,
-  repomixConfigFileSchema,
-  repomixConfigMergedSchema,
-} from './configSchema.js';
+import { defaultConfig, defaultFilePathMap } from './configDefaults.js';
+import type { RepomixConfigCli, RepomixConfigFile, RepomixConfigMerged } from './configSchema.js';
 import { getGlobalDirectory } from './globalDirectory.js';
 
 const defaultConfigPaths = [
@@ -166,6 +159,10 @@ const loadAndValidateConfig = async (
         throw new RepomixError(`Unsupported config file format: ${filePath}`);
     }
 
+    // Lazy-load configSchema (and Zod) only when a config file actually needs
+    // validation. This avoids the ~44ms Zod import cost on the common path
+    // where no config file exists.
+    const { repomixConfigFileSchema } = await import('./configSchema.js');
     return repomixConfigFileSchema.parse(config);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');
@@ -246,10 +243,12 @@ export const mergeConfigs = (
     ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
   };
 
-  try {
-    return repomixConfigMergedSchema.parse(mergedConfig);
-  } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid merged config');
-    throw error;
-  }
+  // The merged config is constructed from defaultConfig (hardcoded, known-good),
+  // fileConfig (Zod-validated if loaded from a file, otherwise {}), and cliConfig
+  // (Commander-validated).  The spread-merge preserves all required fields from
+  // defaultConfig, so the result is always structurally valid.  Skipping the
+  // repomixConfigMergedSchema.parse() call here avoids eagerly importing Zod
+  // (~44ms) on every CLI invocation — a significant fraction of the startup
+  // budget — while the individual-part validations still catch user errors.
+  return mergedConfig as RepomixConfigMerged;
 };

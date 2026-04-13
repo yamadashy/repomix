@@ -95,7 +95,14 @@ export const run = async () => {
       // Repomix Output Options
       .optionsGroup('Repomix Output Options')
       .option('-o, --output <file>', 'Output file path (default: repomix-output.xml, use "-" for stdout)')
-      .option('--style <type>', 'Output format: xml, markdown, json, or plain (default: xml)')
+      .addOption(
+        new Option('--style <type>', 'Output format: xml, markdown, json, or plain (default: xml)').choices([
+          'xml',
+          'markdown',
+          'json',
+          'plain',
+        ]),
+      )
       .option(
         '--parsable-style',
         'Escape special characters to ensure valid XML/Markdown (needed when output contains code that breaks formatting)',
@@ -168,9 +175,11 @@ export const run = async () => {
       .option('--no-security-check', 'Skip scanning for sensitive data like API keys and passwords')
       // Token Count Options
       .optionsGroup('Token Count Options')
-      .option(
-        '--token-count-encoding <encoding>',
-        'Tokenizer model for counting: o200k_base (GPT-4o), cl100k_base (GPT-3.5/4), etc. (default: o200k_base)',
+      .addOption(
+        new Option(
+          '--token-count-encoding <encoding>',
+          'Tokenizer model for counting: o200k_base (GPT-4o), cl100k_base (GPT-3.5/4), etc. (default: o200k_base)',
+        ).choices(['o200k_base', 'cl100k_base', 'p50k_base', 'p50k_edit', 'r50k_base']),
       )
       // MCP
       .optionsGroup('MCP')

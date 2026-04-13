@@ -1,16 +1,15 @@
 import path from 'node:path';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
-import {
-  type RepomixConfigCli,
-  type RepomixConfigFile,
-  type RepomixConfigMerged,
-  type RepomixOutputStyle,
-  repomixConfigCliSchema,
+import type {
+  RepomixConfigCli,
+  RepomixConfigFile,
+  RepomixConfigMerged,
+  RepomixOutputStyle,
 } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
-import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
+import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
@@ -342,12 +341,13 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.skillGenerate = options.skillGenerate;
   }
 
-  try {
-    return repomixConfigCliSchema.parse(cliConfig);
-  } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid cli arguments');
-    throw error;
-  }
+  // CLI arguments are already type-checked by Commander.js.  Skipping the
+  // repomixConfigCliSchema.parse() call avoids eagerly importing configSchema
+  // (→ Zod, ~44ms) when no config file is present. The merged-config
+  // validation in mergeConfigs is also skipped for the same reason, but the
+  // individual parts (defaultConfig, fileConfig, cliConfig) are all known-good
+  // by construction or by their own validation at load time.
+  return cliConfig as RepomixConfigCli;
 };
 
 /**
