@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776041219661,
+  "lastUpdate": 1776041336173,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -1395,6 +1395,51 @@ window.BENCHMARK_DATA = {
             "range": "±36",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 1619ms, Q3: 1655ms\nAll times: 1604, 1608, 1617, 1618, 1619, 1622, 1627, 1629, 1635, 1635, 1642, 1645, 1648, 1651, 1655, 1657, 1658, 1661, 1669ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "5e51889aab06a4388f5132c5679e9e370dac819b",
+          "message": "perf(search): Eliminate redundant directory traversal and sort from search pipeline (-2.6%)\n\nTwo optimizations targeting the searchFiles → collectFiles critical path:\n\n1. Inline buildIgnoreFilter for default include patterns\n   When include patterns are the default wildcard ('**/*'), the main\n   tinyglobby traversal already returns all files including\n   .gitignore/.repomixignore/.ignore files. Extract ignore files from\n   the main results via an O(n) string scan (~0.1 ms) instead of\n   running a separate tinyglobby traversal (~15-20 ms). Custom include\n   patterns (e.g. '**/*.ts') fall back to the dedicated traversal since\n   the main glob won't match ignore files.\n\n2. Skip redundant sort + regroup for single root directory\n   searchFiles already returns sorted paths. For the common single-root\n   case, packager.ts re-sorted all paths and regrouped them via Set-based\n   filtering (~11 ms) — pure overhead since the paths are already sorted\n   and correctly grouped. Now skipped; multi-root still sorts and regroups.\n\nBenchmark (20 alternating measurements, `node bin/repomix.cjs --quiet`\non repomix itself, ~1000 files):\n\n  Baseline:  mean 1175 ms, median 1166 ms\n  Optimized: mean 1144 ms, median 1146 ms\n  Δ mean:    −31 ms (−2.6%)\n  Δ median:  −20 ms (−1.7%)\n  Welch t:   2.61, df ≈ 36, p < 0.01\n\nOutput is byte-for-byte identical (file order preserved).\nAll 1132 tests pass, lint clean.\n\nhttps://claude.ai/code/session_01VW4odyy8JmLo9fdXMQRNAW",
+          "timestamp": "2026-04-13T00:45:35Z",
+          "tree_id": "bae138bff5118266c446be5958a6ef9df0b7e713",
+          "url": "https://github.com/yamadashy/repomix/commit/5e51889aab06a4388f5132c5679e9e370dac819b"
+        },
+        "date": 1776041335178,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1081,
+            "range": "±217",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 983ms, Q3: 1200ms\nAll times: 851, 924, 931, 950, 957, 970, 976, 983, 986, 1026, 1028, 1040, 1054, 1068, 1071, 1081, 1083, 1091, 1103, 1115, 1121, 1189, 1200, 1203, 1214, 1220, 1285, 1498, 1539, 1544ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1203,
+            "range": "±76",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1182ms, Q3: 1258ms\nAll times: 1173, 1174, 1176, 1177, 1177, 1182, 1183, 1185, 1188, 1193, 1203, 1203, 1206, 1207, 1231, 1258, 1322, 1425, 1435, 1456ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1639,
+            "range": "±173",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1576ms, Q3: 1749ms\nAll times: 1527, 1535, 1567, 1569, 1575, 1576, 1592, 1612, 1616, 1629, 1639, 1644, 1662, 1708, 1745, 1749, 1810, 1996, 2040, 2089ms"
           }
         ]
       }
