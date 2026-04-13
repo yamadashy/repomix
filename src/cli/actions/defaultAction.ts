@@ -58,6 +58,10 @@ export const runDefaultAction = async (
     fileConfig = {
       ...fileConfig,
       ...profile,
+      input: {
+        ...fileConfig.input,
+        ...profile.input,
+      },
       output: {
         ...fileConfig.output,
         ...profile.output,
@@ -72,6 +76,14 @@ export const runDefaultAction = async (
         customPatterns: [...(fileConfig.ignore?.customPatterns ?? []), ...(profile.ignore?.customPatterns ?? [])],
       },
       include: [...(fileConfig.include ?? []), ...(profile.include ?? [])],
+      security: {
+        ...fileConfig.security,
+        ...profile.security,
+      },
+      tokenCount: {
+        ...fileConfig.tokenCount,
+        ...profile.tokenCount,
+      },
     };
     logger.debug(`Applied config profile: "${cliOptions.profile}"`);
   }
