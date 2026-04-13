@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776105487105,
+  "lastUpdate": 1776106790623,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2025,6 +2025,51 @@ window.BENCHMARK_DATA = {
             "range": "±62",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1244ms, Q3: 1306ms\nAll times: 1226, 1228, 1231, 1236, 1238, 1244, 1254, 1266, 1266, 1270, 1276, 1286, 1295, 1296, 1300, 1306, 1309, 1322, 1325, 1357ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "9877889fb9af0250455c70af6c8c3ff68102f993",
+          "message": "perf(core): Defer eager dependency imports across startup module chain (-3.9%)\n\nLazy-load four groups of npm dependencies that were eagerly imported at\nmodule evaluation time but only used inside pack():\n\n1. packageJsonParse.ts: Replace async fs.readFile + node:fs/promises +\n   node:path + node:url with synchronous createRequire (eliminates ~12ms\n   from cliRun.ts critical path)\n2. fileSearch.ts: Lazy-load tinyglobby (~10ms) and ignore (~4ms) via\n   module-level singletons — only resolved on first searchFiles() call\n3. configLoad.ts: Lazy-load json5 (~4ms) inside the JSON config branch —\n   skipped entirely when no config file exists (the common default)\n4. fileRead.ts: Lazy-load is-binary-path + isbinaryfile (~6ms) via\n   createRequire singleton — first resolved on first readRawFile() call\n\nThese modules were all loaded during the defaultAction.ts import chain\nevaluation, adding ~35ms to the startup path before pack() begins.\nDeferring them to their point of first use removes this cost from the\nmodule graph resolution and allows it to overlap with worker pool warmup\nand git subprocess I/O during pack().\n\nBenchmark (20 alternating A/B runs, full repo, `node bin/repomix.cjs --quiet`):\n  Before: 1016ms mean / 1003ms median\n  After:   977ms mean /  970ms median\n  Diff:   -39.8ms mean (-3.9%), paired t=2.91 (p < 0.01)\n\nhttps://claude.ai/code/session_01WSEBk7Xsin8uQWn6eBeafR",
+          "timestamp": "2026-04-13T18:57:58Z",
+          "tree_id": "747d9ec816475426ece4aeb69f8d99233bb24579",
+          "url": "https://github.com/yamadashy/repomix/commit/9877889fb9af0250455c70af6c8c3ff68102f993"
+        },
+        "date": 1776106790257,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 959,
+            "range": "±114",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 895ms, Q3: 1009ms\nAll times: 824, 847, 872, 872, 874, 881, 882, 895, 897, 906, 915, 921, 929, 944, 945, 959, 961, 975, 986, 986, 997, 1001, 1009, 1032, 1034, 1041, 1057, 1094, 1220, 1286ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 984,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 973ms, Q3: 989ms\nAll times: 960, 969, 970, 970, 972, 973, 974, 977, 979, 981, 984, 985, 985, 986, 988, 989, 990, 999, 1006, 1006ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1276,
+            "range": "±47",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1251ms, Q3: 1298ms\nAll times: 1244, 1248, 1248, 1248, 1251, 1251, 1258, 1265, 1268, 1269, 1276, 1277, 1277, 1278, 1292, 1298, 1300, 1301, 1301, 1309ms"
           }
         ]
       }
