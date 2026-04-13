@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776041685262,
+  "lastUpdate": 1776046834216,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -1485,6 +1485,51 @@ window.BENCHMARK_DATA = {
             "range": "±46",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1526ms, Q3: 1572ms\nAll times: 1504, 1510, 1514, 1522, 1523, 1526, 1530, 1532, 1538, 1539, 1543, 1546, 1550, 1551, 1566, 1572, 1575, 1586, 1593, 1597ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "fc21a911d9ca3282c819d25e0a822ceddcab4dc2",
+          "message": "perf(core): Overlap file metrics dispatch with security check (-2.4%)\n\nStart per-file token counting immediately after processFiles completes,\nbefore waiting for the security check to finish. The metrics and security\nworker pools are independent, so they run concurrently without CPU\ncontention. Any files later flagged as suspicious are filtered from the\nmetrics results via suspiciousPathSet.\n\nPipeline change:\n  Old: [security + processFiles] → filter → sort → [output + metrics]\n  New: processFiles → [security + fileMetrics] → filter → sort → [output + remaining metrics]\n\nThis overlaps ~50ms of per-file token counting with the security check\nphase, reducing overall wall time.\n\nBenchmark (20 alternating A/B pairs, `node bin/repomix.cjs --quiet`):\n  Baseline  mean: 1207.9ms  median: 1201.0ms  std: 35.4\n  Optimized mean: 1185.5ms  median: 1172.5ms  std: 32.2\n  Improvement: -28.5ms median (-2.4%), Welch t=2.09, df=37.7\n\nhttps://claude.ai/code/session_01Dy3coLN7fiBN7ARvuxTfGP",
+          "timestamp": "2026-04-13T02:17:22Z",
+          "tree_id": "181bc0929f6bda69a74c7f36247f2d45e851edb6",
+          "url": "https://github.com/yamadashy/repomix/commit/fc21a911d9ca3282c819d25e0a822ceddcab4dc2"
+        },
+        "date": 1776046833845,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 682,
+            "range": "±64",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 660ms, Q3: 724ms\nAll times: 649, 650, 653, 653, 656, 660, 660, 660, 662, 662, 664, 664, 665, 674, 679, 682, 684, 684, 691, 697, 698, 699, 724, 742, 752, 754, 804, 844, 866, 885ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1180,
+            "range": "±32",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1158ms, Q3: 1190ms\nAll times: 1138, 1152, 1152, 1157, 1157, 1158, 1171, 1177, 1178, 1180, 1180, 1182, 1188, 1188, 1188, 1190, 1192, 1194, 1196, 1209ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1598,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1592ms, Q3: 1614ms\nAll times: 1563, 1570, 1587, 1587, 1591, 1592, 1592, 1594, 1595, 1596, 1598, 1601, 1605, 1608, 1611, 1614, 1616, 1620, 1622, 1633ms"
           }
         ]
       }
