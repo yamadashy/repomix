@@ -957,6 +957,19 @@ node_modules
 
       expect(result.filePaths).toHaveLength(4);
     });
+
+    test('should handle Windows-style backslash-separated paths correctly', async () => {
+      const mockConfig = createMockConfig({ input: { maxDepth: 2 } });
+      // Simulate globby returning Windows-style paths
+      const files = ['root.ts', 'src\\a.ts', 'src\\nested\\b.ts'];
+      vi.mocked(globby).mockResolvedValue(files);
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      expect(result.filePaths).toContain('root.ts');
+      expect(result.filePaths).toContain('src\\a.ts');
+      expect(result.filePaths).not.toContain('src\\nested\\b.ts');
+    });
   });
 
   describe('createBaseGlobbyOptions consistency', () => {

@@ -237,6 +237,14 @@ const reportSkippedCategory = (
   logger.log(pc.yellow(guidanceMessage));
 };
 
+/**
+ * Reports files that were skipped during packing.
+ *
+ * Only 'binary-content' and 'encoding-error' are surfaced to the user because
+ * they represent unexpected exclusions that the user should be aware of.
+ * 'binary-extension' and 'size-limit' are intentional automatic filters and
+ * do not require user attention.
+ */
 export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileInfo[]) => {
   const binaryContentFiles = skippedFiles.filter((file) => file.reason === 'binary-content');
   reportSkippedCategory(
