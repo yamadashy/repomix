@@ -113,7 +113,7 @@ describe('watchAction', () => {
       createMockConfig({
         cwd: process.cwd(),
         output: {
-          filePath: 'output.txt',
+          filePath: 'repomix-output.xml',
           style: 'plain',
           parsableStyle: false,
           fileSummary: true,
@@ -178,7 +178,7 @@ describe('watchAction', () => {
     expect(mockSpinner.succeed).toHaveBeenCalled();
   });
 
-  it('should set up chokidar watcher on safeFilePaths resolved against targetPaths[0]', async () => {
+  it('should watch target directories instead of individual files', async () => {
     const controller = new AbortController();
     const options: CliOptions = {};
     const mockWatch = createMockWatch(mockWatcher);
@@ -197,13 +197,37 @@ describe('watchAction', () => {
     controller.abort();
     await watchPromise;
 
-    const rootDir = path.resolve(cwd, '.');
-    const expectedPaths = ['src/index.ts', 'src/utils.ts'].map((p) => path.resolve(rootDir, p));
+    const expectedTargetPaths = [path.resolve(cwd, '.')];
 
-    expect(mockWatch).toHaveBeenCalledWith(expectedPaths, {
+    expect(mockWatch).toHaveBeenCalledWith(expectedTargetPaths, {
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 100 },
+      ignored: path.resolve(cwd, 'repomix-output.xml'),
     });
+  });
+
+  it('should ignore the output file path in the watcher', async () => {
+    const controller = new AbortController();
+    const options: CliOptions = {};
+    const mockWatch = createMockWatch(mockWatcher);
+    const cwd = process.cwd();
+
+    const watchPromise = (async () => {
+      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+      return runWatchAction(['.'], cwd, options, {
+        watch: mockWatch,
+        signal: controller.signal,
+      });
+    })();
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    controller.abort();
+    await watchPromise;
+
+    const watchCall = (mockWatch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const watchOptions = watchCall[1];
+    expect(watchOptions.ignored).toBe(path.resolve(cwd, 'repomix-output.xml'));
   });
 
   it('should re-pack on file change after debounce', async () => {
@@ -270,6 +294,63 @@ describe('watchAction', () => {
     await watchPromise;
   });
 
+  it('should not start a concurrent rebuild while one is in progress', async () => {
+    const controller = new AbortController();
+    const options: CliOptions = {};
+    const mockWatch = createMockWatch(mockWatcher);
+
+    // Make pack take some time so we can trigger a change mid-rebuild
+    let resolveSecondPack: (() => void) | undefined;
+    let packCallCount = 0;
+
+    vi.mocked(packager.pack).mockImplementation(async () => {
+      packCallCount++;
+      if (packCallCount === 2) {
+        // Second pack (first rebuild) — hold it open so we can trigger a change mid-rebuild
+        await new Promise<void>((resolve) => {
+          resolveSecondPack = resolve;
+        });
+      }
+      return createMockPackResult();
+    });
+
+    const watchPromise = (async () => {
+      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+      return runWatchAction(['.'], process.cwd(), options, {
+        watch: mockWatch,
+        signal: controller.signal,
+      });
+    })();
+
+    // Let initial pack complete
+    await vi.advanceTimersByTimeAsync(0);
+    expect(packager.pack).toHaveBeenCalledTimes(1);
+
+    // Trigger first rebuild
+    mockWatcher.emit('change', 'src/index.ts');
+    await vi.advanceTimersByTimeAsync(350);
+
+    // Second pack is now in progress (held open by resolveSecondPack)
+    expect(packager.pack).toHaveBeenCalledTimes(2);
+
+    // Trigger another change while rebuild is in progress
+    mockWatcher.emit('change', 'src/utils.ts');
+    await vi.advanceTimersByTimeAsync(350);
+
+    // Should still be 2 because the rebuild guard prevents a concurrent pack
+    expect(packager.pack).toHaveBeenCalledTimes(2);
+
+    // Resolve the in-progress pack — the pending rebuild should now fire
+    resolveSecondPack?.();
+    await vi.advanceTimersByTimeAsync(350);
+
+    // Now the queued rebuild should have run
+    expect(packager.pack).toHaveBeenCalledTimes(3);
+
+    controller.abort();
+    await watchPromise;
+  });
+
   it('should log "Rebuilt at" timestamp after rebuild', async () => {
     const controller = new AbortController();
     const options: CliOptions = {};
@@ -314,7 +395,7 @@ describe('watchAction', () => {
     // Let initial pack complete
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(loggerModule.logger.log).toHaveBeenCalledWith(expect.stringContaining('Watching for changes...'));
+    expect(loggerModule.logger.log).toHaveBeenCalledWith(expect.stringContaining('Watching'));
 
     controller.abort();
     await watchPromise;
