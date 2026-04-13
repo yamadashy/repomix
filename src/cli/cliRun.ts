@@ -276,6 +276,15 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     return;
   }
 
+  // Start loading the defaultAction module tree (packager, tinypool, tinyglobby,
+  // etc.) immediately so that its ~38ms of ESM compilation overlaps with the
+  // ~21ms getVersion() disk read below.  On the --init / --remote early exit
+  // paths the module is never awaited, so the only cost is a small amount of
+  // background compilation that V8 can reclaim.  Suppress unhandled rejection
+  // in case an early exit prevents us from awaiting the promise.
+  const defaultActionPromise = import('./actions/defaultAction.js');
+  defaultActionPromise.catch(() => {});
+
   // Skip version header in stdin mode to avoid interfering with piped output from interactive tools like fzf
   if (!options.stdin) {
     const version = await getVersion();
@@ -300,6 +309,6 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     return await runRemoteAction(directories[0], options);
   }
 
-  const { runDefaultAction } = await import('./actions/defaultAction.js');
+  const { runDefaultAction } = await defaultActionPromise;
   return await runDefaultAction(directories, cwd, options);
 };
