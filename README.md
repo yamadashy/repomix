@@ -628,6 +628,7 @@ Instruction
 | `--split-output <size>` | Split output into multiple numbered files (e.g., `repomix-output.1.xml`); size like `500kb`, `2mb`, or `1.5mb` |
 | `--include-empty-directories` | Include folders with no files in directory structure |
 | `--include-full-directory-structure` | Show complete directory tree in output, including files not matched by `--include` patterns |
+| `--show-file-offsets` | Annotate each file in the directory structure with its line range in the output (e.g., `[lines 42–78]`); works with XML, Markdown, and plain text styles |
 | `--no-git-sort-by-changes` | Don't sort files by git change frequency (default: most changed files first) |
 | `--include-diffs` | Add git diff section showing working tree and staged changes |
 | `--include-logs` | Add git commit history with messages and changed files |
@@ -1363,6 +1364,7 @@ Here's an explanation of the configuration options:
 | `output.tokenCountTree`          | Whether to display file tree with token count summaries. Can be boolean or number (minimum token count threshold)           | `false`                |
 | `output.includeEmptyDirectories` | Whether to include empty directories in the repository structure                                                             | `false`                |
 | `output.includeFullDirectoryStructure` | When using `include` patterns, whether to display the complete directory tree (respecting ignore patterns) while still processing only the included files. Provides full repository context for AI analysis | `false`                |
+| `output.showFileOffsets`         | Whether to annotate each file in the directory structure with its line range in the output (e.g., `[lines 42–78]`). Works with XML, Markdown, and plain text styles | `false`                |
 | `output.git.sortByChanges`       | Whether to sort files by git change count (files with more changes appear at the bottom)                                     | `true`                 |
 | `output.git.sortByChangesMaxCommits` | Maximum number of commits to analyze for git changes                                                                     | `100`                  |
 | `output.git.includeDiffs`       | Whether to include git diffs in the output (includes both work tree and staged changes separately)                          | `false`                |

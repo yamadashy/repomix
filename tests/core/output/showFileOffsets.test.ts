@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   generateTreeStringWithFileOffsets,
   generateTreeStringWithRootsAndFileOffsets,
-} from '../../../src/core/file/fileTreeGenerate.js';
+} from '../../../src/core/file/fileTreeOffsets.js';
 import { computeFileLineOffsets } from '../../../src/core/output/fileOffsets.js';
 
 describe('showFileOffsets', () => {

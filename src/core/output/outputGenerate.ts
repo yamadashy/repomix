@@ -4,13 +4,11 @@ import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
+import { type FilesByRoot, generateTreeString, generateTreeStringWithRoots } from '../file/fileTreeGenerate.js';
 import {
-  type FilesByRoot,
-  generateTreeString,
   generateTreeStringWithFileOffsets,
-  generateTreeStringWithRoots,
   generateTreeStringWithRootsAndFileOffsets,
-} from '../file/fileTreeGenerate.js';
+} from '../file/fileTreeOffsets.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
