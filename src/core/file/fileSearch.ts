@@ -1,8 +1,7 @@
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import ignoreLib from 'ignore';
-import { glob as tinyGlob } from 'tinyglobby';
+import type ignoreType from 'ignore';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -20,6 +19,28 @@ const getGlobby = async () => {
     globbyModule = await import('globby');
   }
   return globbyModule.globby;
+};
+
+// Lazy-load tinyglobby (~10ms) and ignore (~4ms). These are only used inside
+// searchFiles/buildIgnoreFilter which run during pack(), not at module load time.
+// Deferring them removes ~14ms from the defaultAction.ts import chain.
+// Cache the Promise (not the resolved value) to ensure only one dynamic import
+// is initiated even when multiple concurrent callers (e.g., multi-root
+// Promise.all in searchFiles) race on the first invocation.
+let _tinyGlobPromise: Promise<typeof import('tinyglobby').glob> | undefined;
+const getTinyGlob = () => {
+  if (!_tinyGlobPromise) {
+    _tinyGlobPromise = import('tinyglobby').then((m) => m.glob);
+  }
+  return _tinyGlobPromise;
+};
+
+let _ignoreLibPromise: Promise<typeof ignoreType> | undefined;
+const getIgnoreLib = () => {
+  if (!_ignoreLibPromise) {
+    _ignoreLibPromise = import('ignore').then((m) => m.default);
+  }
+  return _ignoreLibPromise;
 };
 
 export interface FileSearchResult {
@@ -163,6 +184,7 @@ const buildIgnoreFilter = async (
       ignoreFileGlobs.push('**/.ignore');
     }
 
+    const tinyGlob = await getTinyGlob();
     ignoreFilePaths = await tinyGlob(ignoreFileGlobs, {
       cwd: rootDir,
       ignore: ignorePatterns,
@@ -189,6 +211,7 @@ const buildIgnoreFilter = async (
   if (results.length === 0) return null;
 
   // Build per-directory ignore instances
+  const ignoreLib = await getIgnoreLib();
   const dirIgnores = new Map<string, ReturnType<typeof ignoreLib>>();
   for (const { dir, content } of results) {
     const key = dir === '.' ? '' : dir;
@@ -324,6 +347,7 @@ export const searchFiles = async (
     // npm package as a post-filter instead of globby's built-in gitignore
     // support. This is correct because the `ignore` package implements the
     // full gitignore spec (directory patterns, negation, scoping).
+    const tinyGlob = await getTinyGlob();
     const needDirectoryEntries = config.output.includeEmptyDirectories;
     let filePaths: string[];
     const directories: string[] = [];

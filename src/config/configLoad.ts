@@ -1,7 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import JSON5 from 'json5';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
@@ -158,6 +157,9 @@ const loadAndValidateConfig = async (
         // fields via spread from defaultConfig, and the $schema field enables IDE
         // validation for type errors. This is consistent with cliConfig
         // (Commander-validated) and mergedConfig, which both skip Zod.
+        // Lazy-load JSON5 (~4ms) to avoid paying the import cost in the common
+        // case where no config file exists (the default).
+        const JSON5 = (await import('json5')).default;
         const fileContent = await fs.readFile(filePath, 'utf-8');
         return JSON5.parse(fileContent) as RepomixConfigFile;
       }

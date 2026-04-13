@@ -1,13 +1,32 @@
 import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
-import isBinaryPath from 'is-binary-path';
-import { isBinaryFileSync } from 'isbinaryfile';
 import { logger } from '../../shared/logger.js';
 
 // Module-level singleton for the common UTF-8 path. TextDecoder without
 // { stream: true } resets internal state on each decode() call, so a single
 // instance is safe for reuse across sequential calls.
 const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+
+// Shared createRequire instance for all lazy-loaded CJS dependencies.
+const cjsRequire = createRequire(import.meta.url);
+
+// Lazy-load binary detection libraries (~6ms combined). These are only used
+// inside readRawFile which runs during collectFiles() in pack(), not at module
+// load time. Deferring them removes their cost from the defaultAction.ts import
+// chain. Using synchronous require() keeps readRawFile fully synchronous.
+let _binaryDeps:
+  | { isBinaryPath: (filePath: string) => boolean; isBinaryFileSync: (buffer: Buffer) => boolean }
+  | undefined;
+const getBinaryDeps = () => {
+  if (!_binaryDeps) {
+    _binaryDeps = {
+      isBinaryPath: (cjsRequire('is-binary-path') as { default: (filePath: string) => boolean }).default,
+      isBinaryFileSync: (cjsRequire('isbinaryfile') as { isBinaryFileSync: (buffer: Buffer) => boolean })
+        .isBinaryFileSync,
+    };
+  }
+  return _binaryDeps;
+};
 
 // Lazy-load encoding detection libraries. The fast UTF-8 path (covers ~99%
 // of source code files) never needs these; they are only loaded when a file
@@ -16,10 +35,9 @@ const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
 let _encodingDeps: { jschardet: typeof import('jschardet'); iconv: typeof import('iconv-lite') } | undefined;
 const getEncodingDepsSync = (): { jschardet: typeof import('jschardet'); iconv: typeof import('iconv-lite') } => {
   if (!_encodingDeps) {
-    const require = createRequire(import.meta.url);
     _encodingDeps = {
-      jschardet: require('jschardet') as typeof import('jschardet'),
-      iconv: require('iconv-lite') as typeof import('iconv-lite'),
+      jschardet: cjsRequire('jschardet') as typeof import('jschardet'),
+      iconv: cjsRequire('iconv-lite') as typeof import('iconv-lite'),
     };
   }
   return _encodingDeps;
@@ -47,6 +65,8 @@ export interface FileReadResult {
  */
 export const readRawFile = (filePath: string, maxFileSize: number): FileReadResult => {
   try {
+    const { isBinaryPath, isBinaryFileSync } = getBinaryDeps();
+
     // Check binary extension first (no I/O needed) to skip read for binary files
     if (isBinaryPath(filePath)) {
       logger.debug(`Skipping binary file: ${filePath}`);
