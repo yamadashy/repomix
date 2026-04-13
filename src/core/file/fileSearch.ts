@@ -2,7 +2,6 @@ import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import ignoreLib from 'ignore';
-import { minimatch } from 'minimatch';
 import { glob as tinyGlob } from 'tinyglobby';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
@@ -28,16 +27,16 @@ export interface FileSearchResult {
   emptyDirPaths: string[];
 }
 
-const findEmptyDirectories = async (
-  rootDir: string,
-  directories: string[],
-  ignorePatterns: string[],
-): Promise<string[]> => {
+const findEmptyDirectories = async (rootDir: string, directories: string[]): Promise<string[]> => {
   // Dispatch all readdirs concurrently via libuv's thread pool; this turns the
   // O(N) sequential stat-per-directory scan (~0.1ms each) into a single round
   // of parallel I/O, which is meaningful on repos with hundreds of directories.
   // Preserves the input order of `directories` since the for-loop below walks
   // the results in the same order as the input array.
+  //
+  // No per-directory ignore-pattern re-check is needed here. The `directories`
+  // array was already filtered by both tinyglobby's `ignore` option (which uses
+  // the same adjustedIgnorePatterns) and the .gitignore/.repomixignore post-filter.
   const readdirResults = await Promise.all(
     directories.map((dir) =>
       fs
@@ -54,11 +53,7 @@ const findEmptyDirectories = async (
   for (const { dir, entries } of readdirResults) {
     if (entries === null) continue;
     const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
-    if (hasVisibleContents) continue;
-
-    // This checks if the directory itself matches any ignore patterns
-    const shouldIgnore = ignorePatterns.some((pattern) => minimatch(dir, pattern) || minimatch(`${dir}/`, pattern));
-    if (!shouldIgnore) {
+    if (!hasVisibleContents) {
       emptyDirs.push(dir);
     }
   }
@@ -407,7 +402,7 @@ export const searchFiles = async (
     let emptyDirPaths: string[] = [];
     if (needDirectoryEntries) {
       const filterStartTime = Date.now();
-      emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+      emptyDirPaths = await findEmptyDirectories(rootDir, directories);
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     }

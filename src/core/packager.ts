@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
+import { logger } from '../shared/logger.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import { getProcessConcurrency } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
@@ -83,6 +84,12 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Ensure REPOMIX_LOG_LEVEL is set before worker pools are created so that
+  // worker_threads (which inherit process.env) pick up the correct log level.
+  // This is a no-op when called via runCli (which sets it earlier), but is
+  // necessary when pack() is used as a library without going through the CLI.
+  process.env.REPOMIX_LOG_LEVEL ??= String(logger.getLogLevel());
 
   // Start prefetching git sort data (git log --name-only) immediately so the
   // result is cached by the time sortOutputFiles runs on the critical path.

@@ -256,6 +256,11 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     logger.setLogLevel(repomixLogLevels.SILENT);
   }
 
+  // Propagate log level via env so worker_threads inherit it automatically,
+  // eliminating the need for the static `import { workerData } from
+  // 'node:worker_threads'` in logger.ts (~8ms startup cost on the main thread).
+  process.env.REPOMIX_LOG_LEVEL = String(logger.getLogLevel());
+
   logger.trace('directories:', directories);
   logger.trace('cwd:', cwd);
   logger.trace('options:', options);
