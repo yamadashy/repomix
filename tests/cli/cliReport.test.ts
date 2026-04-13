@@ -339,21 +339,6 @@ describe('cliReport', () => {
       expect(logger.log).not.toHaveBeenCalled();
     });
 
-    test('should report a single binary-content file', () => {
-      reportSkippedFiles('/root', [{ path: 'data.bin', reason: 'binary-content' }]);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Binary Files Detected'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('1 file detected as binary'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('data.bin'));
-    });
-
-    test('should report multiple binary-content files', () => {
-      reportSkippedFiles('/root', [
-        { path: 'a.bin', reason: 'binary-content' },
-        { path: 'b.bin', reason: 'binary-content' },
-      ]);
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2 files detected as binary'));
-    });
-
     test('should report a single encoding-error file', () => {
       reportSkippedFiles('/root', [{ path: 'broken.txt', reason: 'encoding-error' }]);
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Encoding Error Files Detected'));

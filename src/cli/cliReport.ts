@@ -212,52 +212,51 @@ export const reportTopFiles = (
   });
 };
 
+const reportSkippedCategory = (
+  title: string,
+  divider: string,
+  files: SkippedFileInfo[],
+  singularMessage: string,
+  pluralMessage: (count: number) => string,
+  guidanceMessage: string,
+): void => {
+  if (files.length === 0) {
+    return;
+  }
+
+  logger.log(title);
+  logger.log(pc.dim(divider));
+  logger.log(pc.yellow(files.length === 1 ? singularMessage : pluralMessage(files.length)));
+
+  for (const [index, file] of files.entries()) {
+    const indexString = `${index + 1}.`.padEnd(3, ' ');
+    logger.log(`${indexString}${file.path}`);
+  }
+
+  logger.log(pc.yellow('\nThese files have been excluded from the output.'));
+  logger.log(pc.yellow(guidanceMessage));
+};
+
 export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileInfo[]) => {
   const binaryContentFiles = skippedFiles.filter((file) => file.reason === 'binary-content');
-
-  if (binaryContentFiles.length > 0) {
-    logger.log('📄 Binary Files Detected:');
-    logger.log(pc.dim('─────────────────────────'));
-
-    if (binaryContentFiles.length === 1) {
-      logger.log(pc.yellow('1 file detected as binary by content inspection:'));
-    } else {
-      logger.log(pc.yellow(`${binaryContentFiles.length} files detected as binary by content inspection:`));
-    }
-
-    binaryContentFiles.forEach((file, index) => {
-      const indexString = `${index + 1}.`.padEnd(3, ' ');
-      logger.log(`${indexString}${file.path}`);
-    });
-
-    logger.log(pc.yellow('\nThese files have been excluded from the output.'));
-    logger.log(pc.yellow('Please review these files if you expected them to contain text content.'));
-  }
+  reportSkippedCategory(
+    '📄 Binary Files Detected:',
+    '─────────────────────────',
+    binaryContentFiles,
+    '1 file detected as binary by content inspection:',
+    (count) => `${count} files detected as binary by content inspection:`,
+    'Please review these files if you expected them to contain text content.',
+  );
 
   const encodingErrorFiles = skippedFiles.filter((file) => file.reason === 'encoding-error');
-
-  if (encodingErrorFiles.length > 0) {
-    logger.log('⚠️  Encoding Error Files Detected:');
-    logger.log(pc.dim('──────────────────────────────────'));
-
-    if (encodingErrorFiles.length === 1) {
-      logger.log(pc.yellow('1 file skipped due to encoding errors (malformed or undecodable content):'));
-    } else {
-      logger.log(
-        pc.yellow(
-          `${encodingErrorFiles.length} files skipped due to encoding errors (malformed or undecodable content):`,
-        ),
-      );
-    }
-
-    encodingErrorFiles.forEach((file, index) => {
-      const indexString = `${index + 1}.`.padEnd(3, ' ');
-      logger.log(`${indexString}${file.path}`);
-    });
-
-    logger.log(pc.yellow('\nThese files have been excluded from the output.'));
-    logger.log(pc.yellow('Please check the file encoding or remove problematic characters.'));
-  }
+  reportSkippedCategory(
+    '⚠️  Encoding Error Files Detected:',
+    '──────────────────────────────────',
+    encodingErrorFiles,
+    '1 file skipped due to encoding errors (malformed or undecodable content):',
+    (count) => `${count} files skipped due to encoding errors (malformed or undecodable content):`,
+    'Please check the file encoding or remove problematic characters.',
+  );
 };
 
 export const reportCompletion = () => {
