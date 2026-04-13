@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776041336173,
+  "lastUpdate": 1776041685262,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -1440,6 +1440,51 @@ window.BENCHMARK_DATA = {
             "range": "±173",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1576ms, Q3: 1749ms\nAll times: 1527, 1535, 1567, 1569, 1575, 1576, 1592, 1612, 1616, 1629, 1639, 1644, 1662, 1708, 1745, 1749, 1810, 1996, 2040, 2089ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "3856e1ec0ffc9ed6887b93033f61624f966c2abd",
+          "message": "perf(security): Skip lintSource for files that cannot match any secretlint rule (-3.7%)\n\nAdd a pre-scan regex that checks file content against all 15 rules in\n@secretlint/secretlint-rule-preset-recommend v11.4.1 before calling\nlintSource(). Files that cannot match any rule pattern skip the expensive\nper-file setup entirely (~0.079ms/file saved):\n  - StructuredSource creation (regex scan to build line-index array)\n  - ContextEvents + RunningEvents allocation (EventEmitter setup)\n  - Re-registration of all 15 rules (createRuleContext + handler binding)\n\nThe pre-scan regex covers: AWS (access key IDs, secret keys, account IDs),\nGCP/PrivateKey (PEM headers), NPM (tokens, authToken), Slack (API tokens,\nwebhook URLs), BasicAuth (credentials in URLs), OpenAI, Anthropic, Linear,\nSendGrid, Shopify, GitHub (classic + fine-grained tokens), 1Password\n(service account tokens), and Database connection strings (MongoDB, MySQL,\nPostgreSQL).\n\nDesign: false positives (clean file matches pre-scan) → full lintSource\nruns, which is acceptable. False negatives (file with secret skips\npre-scan) → must not happen. The regex is bounded to prevent catastrophic\nbacktracking.\n\nBenchmark (20 alternating pairs, `node bin/repomix.cjs --quiet`):\n  Baseline:  mean=1200.0ms  std=33.9ms\n  Optimized: mean=1155.2ms  std=30.4ms\n  Diff:      -44.8ms (-3.7%)\n  Median:    -43.1ms (-3.6%)\n  Welch t=4.40, df=37.6 (p < 0.05)\n\nhttps://claude.ai/code/session_01Xfn2xJ4pRy527QcxMw3SDs",
+          "timestamp": "2026-04-13T00:52:49Z",
+          "tree_id": "f918eb7b2a159128c40ab5e054c32e5f6d743575",
+          "url": "https://github.com/yamadashy/repomix/commit/3856e1ec0ffc9ed6887b93033f61624f966c2abd"
+        },
+        "date": 1776041684705,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 874,
+            "range": "±168",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 822ms, Q3: 990ms\nAll times: 738, 775, 781, 786, 796, 808, 811, 822, 830, 830, 839, 841, 845, 854, 866, 874, 882, 902, 922, 939, 941, 951, 990, 992, 1006, 1026, 1107, 1120, 1144, 1233ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1198,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1183ms, Q3: 1208ms\nAll times: 1176, 1176, 1178, 1181, 1183, 1183, 1184, 1186, 1193, 1194, 1198, 1199, 1199, 1199, 1206, 1208, 1215, 1224, 1261, 1307ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1543,
+            "range": "±46",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1526ms, Q3: 1572ms\nAll times: 1504, 1510, 1514, 1522, 1523, 1526, 1530, 1532, 1538, 1539, 1543, 1546, 1550, 1551, 1566, 1572, 1575, 1586, 1593, 1597ms"
           }
         ]
       }
