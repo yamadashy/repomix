@@ -1,6 +1,12 @@
 import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { reportCompletion, reportSecurityCheck, reportSummary, reportTopFiles } from '../../src/cli/cliReport.js';
+import {
+  formatTokenBudget,
+  reportCompletion,
+  reportSecurityCheck,
+  reportSummary,
+  reportTopFiles,
+} from '../../src/cli/cliReport.js';
 import type { SuspiciousFileResult } from '../../src/core/security/securityCheck.js';
 import type { PackResult } from '../../src/index.js';
 import { logger } from '../../src/shared/logger.js';
@@ -319,6 +325,31 @@ describe('cliReport', () => {
       reportTopFiles({}, {}, 5, 0);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Top 5 Files'));
+    });
+  });
+
+  describe('formatTokenBudget', () => {
+    test('should show percentage of common LLM context windows', () => {
+      // 64000 tokens = 50% of GPT-4o (128k), 32% of Claude (200k), 6.4% of Gemini (1M)
+      const result = formatTokenBudget(64_000);
+      expect(result).toContain('50%');
+      expect(result).toContain('GPT-4o');
+      expect(result).toContain('32%');
+      expect(result).toContain('Claude');
+    });
+
+    test('should use one decimal for percentages under 10%', () => {
+      // 50000 tokens = 5% of Gemini 1M
+      const result = formatTokenBudget(50_000);
+      expect(result).toContain('5.0%');
+      expect(result).toContain('Gemini');
+    });
+
+    test('should round percentages 10% and above to whole numbers', () => {
+      // 128000 tokens = 100% of GPT-4o
+      const result = formatTokenBudget(128_000);
+      expect(result).toContain('100%');
+      expect(result).not.toContain('100.0%');
     });
   });
 

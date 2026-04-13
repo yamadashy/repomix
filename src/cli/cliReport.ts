@@ -18,6 +18,25 @@ export interface ReportOptions {
   skillDir?: string;
 }
 
+// Well-known LLM context window sizes (in tokens)
+const CONTEXT_WINDOWS = [
+  { label: 'GPT-4o', tokens: 128_000 },
+  { label: 'Claude Sonnet/Opus', tokens: 200_000 },
+  { label: 'Gemini 1.5 Pro', tokens: 1_000_000 },
+] as const;
+
+/**
+ * Returns a short string showing what % of common LLM context windows the token count fills.
+ * Example: "65% of GPT-4o · 41% of Claude · 6.5% of Gemini 1.5 Pro"
+ */
+export const formatTokenBudget = (totalTokens: number): string => {
+  return CONTEXT_WINDOWS.map(({ label, tokens }) => {
+    const pct = (totalTokens / tokens) * 100;
+    const formatted = pct < 10 ? pct.toFixed(1) : Math.round(pct).toString();
+    return `${formatted}% of ${label}`;
+  }).join(pc.dim(' · '));
+};
+
 /**
  * Reports the results of packing operation including top files, security check, summary, and completion.
  */
@@ -85,6 +104,7 @@ export const reportSummary = (
   logger.log(pc.dim('────────────────'));
   logger.log(`  Total Files: ${packResult.totalFiles.toLocaleString()} files`);
   logger.log(` Total Tokens: ${packResult.totalTokens.toLocaleString()} tokens`);
+  logger.log(`Token Budget: ${pc.dim(formatTokenBudget(packResult.totalTokens))}`);
   logger.log(`  Total Chars: ${packResult.totalCharacters.toLocaleString()} chars`);
 
   // Show skill output path or regular output path
