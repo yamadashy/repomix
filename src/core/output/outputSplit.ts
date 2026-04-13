@@ -2,6 +2,7 @@ import path from 'node:path';
 import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
+import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
@@ -195,10 +196,24 @@ export const generateSplitOutputParts = async ({
     }
 
     if (currentGroups.length === 0) {
-      throw new RepomixError(
-        `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-          `Part size ${nextBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
+      // The root entry alone exceeds the size limit. Place it in its own part with a warning
+      // rather than aborting, since the user cannot split within a single root directory.
+      logger.warn(
+        `Root entry '${group.rootEntry}' exceeds the split size limit ` +
+          `(${nextBytes.toLocaleString()} bytes > ${maxBytesPerPart.toLocaleString()} bytes). ` +
+          'It will be placed in its own output part.',
       );
+      parts.push({
+        index: partIndex,
+        filePath: buildSplitOutputFilePath(baseConfig.output.filePath, partIndex),
+        content: nextContent,
+        byteLength: nextBytes,
+        groups: [group],
+      });
+      currentGroups = [];
+      currentContent = '';
+      currentBytes = 0;
+      continue;
     }
 
     // Finalize current part and start a new one with the current group.
@@ -225,9 +240,12 @@ export const generateSplitOutputParts = async ({
     );
     const singleGroupBytes = getUtf8ByteLength(singleGroupContent);
     if (singleGroupBytes > maxBytesPerPart) {
-      throw new RepomixError(
-        `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-          `Part size ${singleGroupBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
+      // The root entry alone exceeds the size limit. Place it in its own part with a warning
+      // rather than aborting, since the user cannot split within a single root directory.
+      logger.warn(
+        `Root entry '${group.rootEntry}' exceeds the split size limit ` +
+          `(${singleGroupBytes.toLocaleString()} bytes > ${maxBytesPerPart.toLocaleString()} bytes). ` +
+          'It will be placed in its own output part.',
       );
     }
 

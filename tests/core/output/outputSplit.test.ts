@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildOutputSplitGroups,
   buildSplitOutputFilePath,
   generateSplitOutputParts,
   getRootEntry,
 } from '../../../src/core/output/outputSplit.js';
+import { logger } from '../../../src/shared/logger.js';
+
+vi.mock('../../../src/shared/logger.js');
 
 describe('outputSplit', () => {
   describe('getRootEntry', () => {
@@ -61,6 +64,10 @@ describe('outputSplit', () => {
   });
 
   describe('generateSplitOutputParts', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
     const createMockConfig = () =>
       ({
         output: {
@@ -76,23 +83,55 @@ describe('outputSplit', () => {
       generateOutput: async () => 'x'.repeat(outputSize),
     });
 
-    it('throws error when single root entry exceeds maxBytesPerPart', async () => {
+    it('places oversized single root entry in its own part and warns instead of throwing', async () => {
       const processedFiles = [{ path: 'src/large.ts', content: 'large content' }];
       const allFilePaths = ['src/large.ts'];
 
-      await expect(
-        generateSplitOutputParts({
-          rootDirs: ['/test'],
-          baseConfig: createMockConfig(),
-          processedFiles,
-          allFilePaths,
-          maxBytesPerPart: 10, // Very small limit
-          gitDiffResult: undefined,
-          gitLogResult: undefined,
-          progressCallback: () => {},
-          deps: createMockDeps(100), // Output larger than limit
-        }),
-      ).rejects.toThrow(/exceeds max size/);
+      const result = await generateSplitOutputParts({
+        rootDirs: ['/test'],
+        baseConfig: createMockConfig(),
+        processedFiles,
+        allFilePaths,
+        maxBytesPerPart: 10, // Very small limit
+        gitDiffResult: undefined,
+        gitLogResult: undefined,
+        progressCallback: () => {},
+        deps: createMockDeps(100), // Output larger than limit
+      });
+
+      // Should produce one part containing the oversized entry instead of throwing
+      expect(result).toHaveLength(1);
+      expect(result[0].groups[0].rootEntry).toBe('src');
+      expect(result[0].byteLength).toBe(100);
+
+      // Should have logged a warning
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Root entry 'src' exceeds the split size limit"),
+      );
+    });
+
+    it('places each oversized root entry in its own part when multiple entries exceed limit', async () => {
+      const processedFiles = [
+        { path: 'src/large.ts', content: 'large content' },
+        { path: 'tests/large.test.ts', content: 'large test' },
+      ];
+      const allFilePaths = ['src/large.ts', 'tests/large.test.ts'];
+
+      const result = await generateSplitOutputParts({
+        rootDirs: ['/test'],
+        baseConfig: createMockConfig(),
+        processedFiles,
+        allFilePaths,
+        maxBytesPerPart: 10, // Very small limit — both entries exceed it
+        gitDiffResult: undefined,
+        gitLogResult: undefined,
+        progressCallback: () => {},
+        deps: createMockDeps(100), // Output larger than limit
+      });
+
+      // Both entries should each get their own part
+      expect(result).toHaveLength(2);
+      expect(logger.warn).toHaveBeenCalledTimes(2);
     });
 
     it('throws error for invalid maxBytesPerPart', async () => {
