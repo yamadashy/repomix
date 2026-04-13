@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -17,33 +16,45 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
-import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { getXmlTemplate } from './outputStyles/xmlStyle.js';
 
-// Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
+// Cache for compiled Handlebars templates to avoid recompilation on every call.
+// Uses a generic function type so that Handlebars types are not needed at the
+// module level (Handlebars is lazy-loaded only when a non-XML style is used).
+// biome-ignore lint/suspicious/noExplicitAny: Handlebars template delegates accept any context
+const compiledTemplateCache = new Map<string, (context: any) => string>();
 
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
+// biome-ignore lint/suspicious/noExplicitAny: Handlebars template delegates accept any context
+const getCompiledTemplate = async (style: string): Promise<(context: any) => string> => {
   const cached = compiledTemplateCache.get(style);
   if (cached) {
     return cached;
   }
 
-  let template: string;
-  switch (style) {
-    case 'xml':
-      template = getXmlTemplate();
-      break;
-    case 'markdown':
-      template = getMarkdownTemplate();
-      break;
-    case 'plain':
-      template = getPlainTemplate();
-      break;
-    default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
-  }
+  // Lazy-load Handlebars and the requested template module. This defers the
+  // ~27ms Handlebars import cost from every CLI run to only those that actually
+  // need Handlebars (markdown, plain, or parsable-XML output). The default XML
+  // path uses generateDirectXmlOutput and never reaches this function.
+  const [Handlebars, template] = await Promise.all([
+    import('handlebars').then((m) => m.default),
+    (async () => {
+      switch (style) {
+        case 'xml': {
+          const { getXmlTemplate } = await import('./outputStyles/xmlStyle.js');
+          return getXmlTemplate();
+        }
+        case 'markdown': {
+          const { getMarkdownTemplate } = await import('./outputStyles/markdownStyle.js');
+          return getMarkdownTemplate();
+        }
+        case 'plain': {
+          const { getPlainTemplate } = await import('./outputStyles/plainStyle.js');
+          return getPlainTemplate();
+        }
+        default:
+          throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
+      }
+    })(),
+  ]);
 
   const compiled = Handlebars.compile(template);
   compiledTemplateCache.set(style, compiled);
@@ -325,7 +336,7 @@ const generateHandlebarOutput = async (
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
   try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
+    const compiledTemplate = await getCompiledTemplate(config.output.style);
     return `${compiledTemplate(renderContext).trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
