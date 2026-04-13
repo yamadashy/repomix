@@ -131,6 +131,8 @@ describe('outputSplit', () => {
 
       // Both entries should each get their own part
       expect(result).toHaveLength(2);
+      expect(result[0].groups[0].rootEntry).toBe('src');
+      expect(result[1].groups[0].rootEntry).toBe('tests');
       expect(logger.warn).toHaveBeenCalledTimes(2);
     });
 
