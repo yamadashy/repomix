@@ -10,11 +10,10 @@ describe('reportSkippedFiles', () => {
     vi.resetAllMocks();
   });
 
-  test('should not report anything when there are no binary-content files', () => {
+  test('should not report anything when only size-limit or binary-extension files are skipped', () => {
     const skippedFiles: SkippedFileInfo[] = [
       { path: 'large.txt', reason: 'size-limit' },
       { path: 'binary.bin', reason: 'binary-extension' },
-      { path: 'error.txt', reason: 'encoding-error' },
     ];
 
     reportSkippedFiles('/root', skippedFiles);

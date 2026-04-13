@@ -1,6 +1,12 @@
 import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { reportCompletion, reportSecurityCheck, reportSummary, reportTopFiles } from '../../src/cli/cliReport.js';
+import {
+  reportCompletion,
+  reportSecurityCheck,
+  reportSkippedFiles,
+  reportSummary,
+  reportTopFiles,
+} from '../../src/cli/cliReport.js';
 import type { SuspiciousFileResult } from '../../src/core/security/securityCheck.js';
 import type { PackResult } from '../../src/index.js';
 import { logger } from '../../src/shared/logger.js';
@@ -319,6 +325,61 @@ describe('cliReport', () => {
       reportTopFiles({}, {}, 5, 0);
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Top 5 Files'));
+    });
+  });
+
+  describe('reportSkippedFiles', () => {
+    test('should not print anything when no files are skipped', () => {
+      reportSkippedFiles('/root', []);
+      expect(logger.log).not.toHaveBeenCalled();
+    });
+
+    test('should not print anything when only binary-extension files are skipped', () => {
+      reportSkippedFiles('/root', [{ path: 'image.png', reason: 'binary-extension' }]);
+      expect(logger.log).not.toHaveBeenCalled();
+    });
+
+    test('should report a single binary-content file', () => {
+      reportSkippedFiles('/root', [{ path: 'data.bin', reason: 'binary-content' }]);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Binary Files Detected'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('1 file detected as binary'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('data.bin'));
+    });
+
+    test('should report multiple binary-content files', () => {
+      reportSkippedFiles('/root', [
+        { path: 'a.bin', reason: 'binary-content' },
+        { path: 'b.bin', reason: 'binary-content' },
+      ]);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2 files detected as binary'));
+    });
+
+    test('should report a single encoding-error file', () => {
+      reportSkippedFiles('/root', [{ path: 'broken.txt', reason: 'encoding-error' }]);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Encoding Error Files Detected'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('1 file skipped due to encoding errors'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('broken.txt'));
+    });
+
+    test('should report multiple encoding-error files', () => {
+      reportSkippedFiles('/root', [
+        { path: 'corrupted.txt', reason: 'encoding-error' },
+        { path: 'malformed.json', reason: 'encoding-error' },
+      ]);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('2 files skipped due to encoding errors'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('corrupted.txt'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('malformed.json'));
+    });
+
+    test('should report both binary-content and encoding-error files', () => {
+      reportSkippedFiles('/root', [
+        { path: 'data.bin', reason: 'binary-content' },
+        { path: 'broken.txt', reason: 'encoding-error' },
+      ]);
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Binary Files Detected'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Encoding Error Files Detected'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('data.bin'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('broken.txt'));
     });
   });
 

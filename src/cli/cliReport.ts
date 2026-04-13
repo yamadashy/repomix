@@ -215,26 +215,49 @@ export const reportTopFiles = (
 export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileInfo[]) => {
   const binaryContentFiles = skippedFiles.filter((file) => file.reason === 'binary-content');
 
-  if (binaryContentFiles.length === 0) {
-    return;
+  if (binaryContentFiles.length > 0) {
+    logger.log('📄 Binary Files Detected:');
+    logger.log(pc.dim('─────────────────────────'));
+
+    if (binaryContentFiles.length === 1) {
+      logger.log(pc.yellow('1 file detected as binary by content inspection:'));
+    } else {
+      logger.log(pc.yellow(`${binaryContentFiles.length} files detected as binary by content inspection:`));
+    }
+
+    binaryContentFiles.forEach((file, index) => {
+      const indexString = `${index + 1}.`.padEnd(3, ' ');
+      logger.log(`${indexString}${file.path}`);
+    });
+
+    logger.log(pc.yellow('\nThese files have been excluded from the output.'));
+    logger.log(pc.yellow('Please review these files if you expected them to contain text content.'));
   }
 
-  logger.log('📄 Binary Files Detected:');
-  logger.log(pc.dim('─────────────────────────'));
+  const encodingErrorFiles = skippedFiles.filter((file) => file.reason === 'encoding-error');
 
-  if (binaryContentFiles.length === 1) {
-    logger.log(pc.yellow('1 file detected as binary by content inspection:'));
-  } else {
-    logger.log(pc.yellow(`${binaryContentFiles.length} files detected as binary by content inspection:`));
+  if (encodingErrorFiles.length > 0) {
+    logger.log('⚠️  Encoding Error Files Detected:');
+    logger.log(pc.dim('──────────────────────────────────'));
+
+    if (encodingErrorFiles.length === 1) {
+      logger.log(pc.yellow('1 file skipped due to encoding errors (malformed or undecodable content):'));
+    } else {
+      logger.log(
+        pc.yellow(
+          `${encodingErrorFiles.length} files skipped due to encoding errors (malformed or undecodable content):`,
+        ),
+      );
+    }
+
+    encodingErrorFiles.forEach((file, index) => {
+      const indexString = `${index + 1}.`.padEnd(3, ' ');
+      logger.log(`${indexString}${file.path}`);
+    });
+
+    logger.log(pc.yellow('\nThese files have been excluded from the output.'));
+    logger.log(pc.yellow('Please check the file encoding or remove problematic characters.'));
   }
-
-  binaryContentFiles.forEach((file, index) => {
-    const indexString = `${index + 1}.`.padEnd(3, ' ');
-    logger.log(`${indexString}${file.path}`);
-  });
-
-  logger.log(pc.yellow('\nThese files have been excluded from the output.'));
-  logger.log(pc.yellow('Please review these files if you expected them to contain text content.'));
 };
 
 export const reportCompletion = () => {
