@@ -319,9 +319,12 @@ export const generateOutput = async (
   // so the file block positions remain stable between passes.
   if (config.output.showFileOffsets && config.output.directoryStructure && config.output.files) {
     const firstPassContext = createRenderContext(outputGeneratorContext);
-    const firstPassOutput = await renderOutput(config, firstPassContext, sortedProcessedFiles, deps);
+    let firstPassOutput: string | null = await renderOutput(config, firstPassContext, sortedProcessedFiles, deps);
 
     const offsets = computeFileLineOffsets(firstPassOutput, config.output.style);
+    // Release the first-pass string before the second render so GC can reclaim it,
+    // avoiding holding two full output strings in memory simultaneously.
+    firstPassOutput = null;
 
     // Use the exact file/directory sets that buildOutputGeneratorContext used for the tree
     // (these may differ from allFilePaths when includeFullDirectoryStructure adds extra files)
