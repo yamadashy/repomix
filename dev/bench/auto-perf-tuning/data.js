@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776072046662,
+  "lastUpdate": 1776072759195,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -1845,6 +1845,51 @@ window.BENCHMARK_DATA = {
             "range": "±40",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1397ms, Q3: 1437ms\nAll times: 1371, 1374, 1393, 1394, 1394, 1397, 1400, 1401, 1403, 1405, 1406, 1413, 1414, 1421, 1428, 1437, 1448, 1450, 1458, 1468ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "6f0768358132928319b9ff7b306ac2fda16604ce",
+          "message": "perf(config): Skip Zod validation for JSON config files (-3.5%)\n\nEliminate the ~44ms Zod import cost from the critical path when loading\nJSON/JSON5/JSONC config files. JSON parsing already validates syntax,\nand mergeConfigs applies defaults for all required fields via spread\nfrom defaultConfig. This is consistent with cliConfig (Commander-validated)\nand mergedConfig, which both already skip Zod validation.\n\nJS/TS config files still use Zod validation since their output shape is\nless predictable (arbitrary code can produce any structure).\n\nBenchmark (30 alternating A/B pairs on this repo):\n  Baseline mean: 1032ms\n  Optimized mean: 996ms\n  Mean improvement: 36.1ms (-3.5%)\n  Paired t = 3.69, df = 29, p < 0.001\n\nhttps://claude.ai/code/session_013HM174cgM7W9CGDgkTUtNe",
+          "timestamp": "2026-04-13T09:30:33Z",
+          "tree_id": "6ab6dea08a6390bc7ee87ebb918dde4f54c4a329",
+          "url": "https://github.com/yamadashy/repomix/commit/6f0768358132928319b9ff7b306ac2fda16604ce"
+        },
+        "date": 1776072758803,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 662,
+            "range": "±44",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 651ms, Q3: 695ms\nAll times: 623, 630, 633, 639, 640, 646, 649, 651, 653, 657, 658, 658, 659, 659, 661, 662, 662, 664, 666, 673, 679, 680, 695, 707, 742, 756, 760, 764, 765, 912ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1048,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1041ms, Q3: 1058ms\nAll times: 1022, 1025, 1028, 1033, 1039, 1041, 1043, 1045, 1045, 1046, 1048, 1049, 1049, 1050, 1051, 1058, 1062, 1158, 1217, 1304ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1361,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1347ms, Q3: 1369ms\nAll times: 1310, 1321, 1329, 1342, 1342, 1347, 1350, 1352, 1357, 1361, 1361, 1362, 1365, 1365, 1366, 1369, 1371, 1374, 1375, 1378ms"
           }
         ]
       }
