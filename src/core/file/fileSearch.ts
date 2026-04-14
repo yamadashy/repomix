@@ -247,6 +247,123 @@ const buildIgnoreFilter = async (
   };
 };
 
+// Build a fast directory filter that handles simple glob patterns via Set lookups
+// and string operations instead of picomatch regex tests. Simple patterns (root
+// prefixes, any-level directory names, exact filenames, root extensions) use O(1)
+// Set lookups; only complex patterns with character classes fall back to picomatch.
+export const buildFastDirectoryMatcher = (rawDirectoryPatterns: string[]): ((filePath: string) => boolean) => {
+  const rootPrefixDirs = new Set<string>();
+  const anyLevelDirs = new Set<string>();
+  const rootExactNames = new Set<string>();
+  const rootMultiSegPrefixes: string[] = [];
+  const rootSuffixes: string[] = [];
+  const complexPatterns: string[] = [];
+
+  for (const pattern of rawDirectoryPatterns) {
+    // dir/** -> root-level directory prefix
+    if (pattern.endsWith('/**') && !pattern.startsWith('**/')) {
+      const dir = pattern.slice(0, -3);
+      if (!/[*[{?]/.test(dir)) {
+        if (dir.includes('/')) {
+          rootMultiSegPrefixes.push(`${dir}/`);
+        } else {
+          rootPrefixDirs.add(dir);
+        }
+        continue;
+      }
+    }
+
+    // **/dir/** -> directory name at any level
+    if (pattern.startsWith('**/') && pattern.endsWith('/**')) {
+      const dir = pattern.slice(3, -3);
+      if (!dir.includes('/') && !/[*[{?]/.test(dir)) {
+        anyLevelDirs.add(dir);
+        continue;
+      }
+    }
+
+    // *.ext or *.name.ext -> root-level suffix match (no slashes, no other wildcards)
+    if (pattern.startsWith('*.') && !pattern.includes('/') && !/[*[{?]/.test(pattern.slice(1))) {
+      rootSuffixes.push(pattern.slice(1));
+      continue;
+    }
+
+    // Exact filename (no wildcards, no slashes) -> root-level exact match
+    if (!/[*[{?/]/.test(pattern)) {
+      rootExactNames.add(pattern);
+      continue;
+    }
+
+    // Complex pattern -> normalize and fall back to picomatch
+    complexPatterns.push(normalizeGlobPattern(pattern));
+  }
+
+  // Only load picomatch if there are complex patterns that need it
+  let complexMatcher: ((str: string) => boolean) | null = null;
+  if (complexPatterns.length > 0) {
+    const cjsRequire = createRequire(import.meta.url);
+    const picomatchFn = cjsRequire('picomatch') as (
+      patterns: string[],
+      options?: Record<string, unknown>,
+    ) => (str: string) => boolean;
+    complexMatcher = picomatchFn(complexPatterns, { dot: true });
+  }
+
+  return (filePath: string): boolean => {
+    const firstSlash = filePath.indexOf('/');
+    const isRootLevel = firstSlash === -1;
+
+    // Root-level exact name match (e.g., '.env', '.hgignore')
+    if (isRootLevel && rootExactNames.size > 0 && rootExactNames.has(filePath)) {
+      return true;
+    }
+
+    // Root-level suffix match (e.g., '*.pid' -> '.pid')
+    if (isRootLevel && rootSuffixes.length > 0) {
+      for (const suffix of rootSuffixes) {
+        if (filePath.endsWith(suffix)) return true;
+      }
+    }
+
+    if (!isRootLevel) {
+      // Root-level directory prefix match (e.g., 'dist/**' -> 'dist/')
+      if (rootPrefixDirs.size > 0) {
+        const firstSeg = filePath.slice(0, firstSlash);
+        if (rootPrefixDirs.has(firstSeg)) return true;
+      }
+
+      // Multi-segment root prefix (e.g., 'build/Release/**')
+      for (const prefix of rootMultiSegPrefixes) {
+        if (filePath.startsWith(prefix)) return true;
+      }
+
+      // Any-level directory name match (e.g., '**/node_modules/**')
+      if (anyLevelDirs.size > 0) {
+        // Check first segment
+        const firstSeg = filePath.slice(0, firstSlash);
+        if (anyLevelDirs.has(firstSeg)) return true;
+
+        // Check intermediate segments via indexOf
+        let searchFrom = firstSlash;
+        while (searchFrom < filePath.length) {
+          const nextSlash = filePath.indexOf('/', searchFrom + 1);
+          if (nextSlash === -1) break;
+          const seg = filePath.slice(searchFrom + 1, nextSlash);
+          if (anyLevelDirs.has(seg)) return true;
+          searchFrom = nextSlash;
+        }
+      }
+    }
+
+    // Complex patterns via picomatch (only ~6 patterns for the default ignore list)
+    if (complexMatcher !== null) {
+      return complexMatcher(filePath);
+    }
+
+    return false;
+  };
+};
+
 /**
  * Fast path: use `git ls-files` to enumerate files instead of directory traversal.
  *
@@ -263,7 +380,11 @@ const buildIgnoreFilter = async (
  * Returns null when git is not available or the fast path is not applicable,
  * signalling the caller to fall back to the tinyglobby traversal.
  */
-const tryGitLsFilesFastPath = (rootDir: string, rawIgnorePatterns: string[]): string[] | null => {
+const tryGitLsFilesFastPath = (
+  rootDir: string,
+  rawIgnorePatterns: string[],
+  useDotIgnore?: boolean,
+): string[] | null => {
   try {
     const gitOutput = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--stage', '-z'], {
       cwd: rootDir,
@@ -299,19 +420,14 @@ const tryGitLsFilesFastPath = (rootDir: string, rawIgnorePatterns: string[]): st
     }
 
     // Apply repomix ignore patterns as a post-filter.
-    // splitIgnorePatterns separates patterns into directory patterns (picomatch)
-    // and file-level patterns (Set lookups), matching the tinyglobby code path.
+    // splitIgnorePatterns separates patterns into directory patterns and
+    // file-level patterns (Set lookups), matching the tinyglobby code path.
     const { directoryPatterns, fileFilter: fileIgnoreFilter } = splitIgnorePatterns(rawIgnorePatterns);
 
-    // picomatch is already loaded by tinyglobby's fdir dependency, so this
-    // require resolves from the module cache without any I/O or parsing cost.
-    const cjsRequire = createRequire(import.meta.url);
-    const picomatchFn = cjsRequire('picomatch') as (
-      patterns: string[],
-      options?: Record<string, unknown>,
-    ) => (str: string) => boolean;
-    const normalizedDirPatterns = directoryPatterns.map(normalizeGlobPattern);
-    const dirMatcher = picomatchFn(normalizedDirPatterns, { dot: true });
+    // Use the fast directory matcher (Set lookups + string ops) instead of
+    // picomatch for the ~50 simple directory patterns; only ~6 complex
+    // patterns with character classes need picomatch regex compilation.
+    const dirMatcher = buildFastDirectoryMatcher(directoryPatterns);
 
     let filtered = filePaths.filter((f) => !dirMatcher(f));
     if (fileIgnoreFilter) {
@@ -323,16 +439,31 @@ const tryGitLsFilesFastPath = (rootDir: string, rawIgnorePatterns: string[]): st
     // handles them via buildIgnoreFilter. For the fast path, root-level
     // coverage is sufficient because the vast majority of repos only have
     // a root .repomixignore.
-    try {
-      const repomixIgnoreContent = fsSync.readFileSync(path.join(rootDir, '.repomixignore'), 'utf8');
-      if (repomixIgnoreContent) {
-        const ignoreFactory = (cjsRequire('ignore') as { default: typeof ignoreType }).default;
-        const ig = ignoreFactory();
-        ig.add(repomixIgnoreContent);
-        filtered = filtered.filter((f) => !ig.ignores(f));
+    // Helper to apply root-level ignore file patterns.
+    // Uses the `ignore` module to parse gitignore-compatible patterns.
+    const applyRootIgnoreFile = (fileName: string): void => {
+      try {
+        const content = fsSync.readFileSync(path.join(rootDir, fileName), 'utf8');
+        if (content) {
+          const cjsRequire = createRequire(import.meta.url);
+          const ignoreFactory = (cjsRequire('ignore') as { default: typeof ignoreType }).default;
+          const ig = ignoreFactory();
+          ig.add(content);
+          filtered = filtered.filter((f) => !ig.ignores(f));
+        }
+      } catch {
+        // File not found — nothing to filter
       }
-    } catch {
-      // No .repomixignore — nothing to filter
+    };
+
+    applyRootIgnoreFile('.repomixignore');
+
+    // Apply root-level .ignore patterns (same root-only approach as .repomixignore).
+    // Nested .ignore files are NOT applied by the fast path — only the root .ignore
+    // is read. Repos with nested .ignore files are rare; disabling the fast path via
+    // `useGitignore: false` forces the tinyglobby path which fully supports them.
+    if (useDotIgnore) {
+      applyRootIgnoreFile('.ignore');
     }
 
     logger.debug(`[search] git ls-files fast path: ${filePaths.length} entries → ${filtered.length} files`);
@@ -452,14 +583,14 @@ export const searchFiles = async (
     //  - no explicit files from stdin
     //  - useGitignore is enabled (git ls-files --exclude-standard applies
     //    .gitignore; if disabled, we need tinyglobby to include gitignored files)
-    //  - useDotIgnore is disabled (the fast path does not read .ignore files)
+    // Root-level .ignore files (useDotIgnore) are handled as a post-filter in
+    // the fast path, matching the root-only approach used for .repomixignore.
     // These conditions cover the vast majority of CLI invocations.
     const isDefaultInclude = includePatterns.length === 1 && includePatterns[0] === '**/*';
     const needDirectoryEntries = config.output.includeEmptyDirectories;
-    const canUseGitFastPath =
-      isDefaultInclude && !explicitFiles && config.ignore.useGitignore !== false && !config.ignore.useDotIgnore;
+    const canUseGitFastPath = isDefaultInclude && !explicitFiles && config.ignore.useGitignore !== false;
     if (canUseGitFastPath) {
-      const gitFiles = tryGitLsFilesFastPath(rootDir, rawIgnorePatterns);
+      const gitFiles = tryGitLsFilesFastPath(rootDir, rawIgnorePatterns, config.ignore.useDotIgnore);
       if (gitFiles !== null) {
         let emptyDirPaths: string[] = [];
         if (needDirectoryEntries) {

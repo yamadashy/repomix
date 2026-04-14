@@ -51,7 +51,6 @@ const defaultDeps = {
   sortPaths,
   prefetchSortData,
   sortOutputFiles,
-  prefetchSortData,
   getGitDiffs,
   getGitLogs,
   getProcessConcurrency,
