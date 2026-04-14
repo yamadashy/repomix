@@ -130,11 +130,21 @@ export const runWatchAction = async (
   let shuttingDown = false;
 
   const scheduleRebuild = () => {
+    // Guard: don't schedule new work if shutdown has been initiated
+    if (shuttingDown) {
+      return;
+    }
+
     if (debounceTimer !== null) {
       clearTimeout(debounceTimer);
     }
     debounceTimer = setTimeout(async () => {
       debounceTimer = null;
+
+      // Re-check shutdown in case it was initiated while timer was pending
+      if (shuttingDown) {
+        return;
+      }
 
       if (isRebuilding) {
         pendingRebuild = true;
@@ -168,50 +178,58 @@ export const runWatchAction = async (
   watcher.on('add', scheduleRebuild);
   watcher.on('unlink', scheduleRebuild);
 
-  // Graceful shutdown — named handlers so they can be removed on cleanup
-  let keepAliveResolve: (() => void) | null = null;
+  // Graceful shutdown — shared cleanup promise that both signal and SIGINT/SIGTERM paths await
+  let cleanupResolve: (() => void) | null = null;
+  let cleanupStarted = false;
+  let cleanupDone = false;
 
   const cleanup = async () => {
+    // Prevent multiple cleanup calls
+    if (cleanupStarted) {
+      return;
+    }
+    cleanupStarted = true;
     shuttingDown = true;
+
     if (debounceTimer !== null) {
       clearTimeout(debounceTimer);
     }
     process.removeListener('SIGINT', onSigint);
     process.removeListener('SIGTERM', onSigterm);
-    // Close watcher before resolving keepAlive so callers don't see
+    // Close watcher before resolving so callers don't see
     // runWatchAction() resolve until shutdown is truly finished
     await watcher.close();
-    keepAliveResolve?.();
+    cleanupDone = true;
+    cleanupResolve?.();
   };
 
-  const onSigint = async () => {
-    await cleanup();
+  const onSigint = () => {
+    cleanup();
   };
-  const onSigterm = async () => {
-    await cleanup();
+  const onSigterm = () => {
+    cleanup();
   };
 
   if (resolvedDeps.signal) {
-    resolvedDeps.signal.addEventListener('abort', () => {
+    // Register abort listener with { once: true } to avoid duplicate calls
+    resolvedDeps.signal.addEventListener('abort', () => cleanup(), { once: true });
+
+    // Handle race condition: signal may already be aborted before listener was registered
+    if (resolvedDeps.signal.aborted) {
       cleanup();
-    });
+    }
   } else {
     process.on('SIGINT', onSigint);
     process.on('SIGTERM', onSigterm);
   }
 
-  // Keep alive — wait until signal is aborted (in tests) or cleanup resolves the promise
-  if (resolvedDeps.signal) {
-    await new Promise<void>((resolve) => {
-      if (resolvedDeps.signal?.aborted) {
-        resolve();
-        return;
-      }
-      resolvedDeps.signal?.addEventListener('abort', () => resolve());
-    });
-  } else {
-    await new Promise<void>((resolve) => {
-      keepAliveResolve = resolve;
-    });
-  }
+  // Keep alive — wait until cleanup is fully complete (including watcher.close())
+  // Check cleanupDone first in case cleanup finished before we got here
+  await new Promise<void>((resolve) => {
+    if (cleanupDone) {
+      resolve();
+      return;
+    }
+    cleanupResolve = resolve;
+  });
 };
