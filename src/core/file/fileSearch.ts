@@ -457,10 +457,7 @@ export const searchFiles = async (
     const isDefaultInclude = includePatterns.length === 1 && includePatterns[0] === '**/*';
     const needDirectoryEntries = config.output.includeEmptyDirectories;
     const canUseGitFastPath =
-      isDefaultInclude &&
-      !explicitFiles &&
-      config.ignore.useGitignore !== false &&
-      !config.ignore.useDotIgnore;
+      isDefaultInclude && !explicitFiles && config.ignore.useGitignore !== false && !config.ignore.useDotIgnore;
     if (canUseGitFastPath) {
       const gitFiles = tryGitLsFilesFastPath(rootDir, rawIgnorePatterns);
       if (gitFiles !== null) {
