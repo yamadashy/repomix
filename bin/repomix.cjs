@@ -58,6 +58,20 @@ function setupErrorHandlers() {
 
     const { run } = await import('../lib/cli/cliRun.js');
     await run();
+
+    // Explicitly exit after all work completes. Without this, Node.js spends
+    // ~30ms draining the event loop and running final GC during the shutdown
+    // sequence — waiting for worker thread handles to close, tinypool internals
+    // to settle, and WeakRef cleanup callbacks. All useful I/O (file writes,
+    // console output) has already been flushed by this point, so the cleanup
+    // is pure overhead for a CLI tool.
+    //
+    // Skip for MCP mode: the MCP server is a long-running stdio process that
+    // stays alive after server.connect() resolves. Its own SIGINT/SIGTERM
+    // handlers manage graceful shutdown.
+    if (!process.argv.includes('--mcp')) {
+      process.exit(EXIT_CODES.SUCCESS);
+    }
   } catch (error) {
     if (error instanceof Error) {
       console.error('Fatal Error:', {
