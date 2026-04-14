@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776186783304,
+  "lastUpdate": 1776194110507,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2520,6 +2520,51 @@ window.BENCHMARK_DATA = {
             "range": "±634",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1694ms, Q3: 2328ms\nAll times: 1482, 1575, 1637, 1643, 1683, 1694, 1727, 1745, 1796, 1851, 1924, 1980, 2128, 2297, 2297, 2328, 2384, 2440, 2668, 3123ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "3b5971ac1fd3cd4ba95f66db36edac92a081f080",
+          "message": "perf(metrics): Estimate token counts for small files to reduce worker IPC overhead (-5.6%)\n\nSkip BPE tokenization for files ≤ 2 KB and use a character-based estimate\n(chars / 3.5) on the main thread instead of dispatching to worker threads.\n\nWHY: The file metrics phase is the pipeline's critical-path bottleneck\n(~500ms). For a 1003-file repo, ~42% of files are ≤ 2 KB but only 11%\nof total content. Sending every file to workers via structured clone\nwastes IPC round-trips and serialization time on content that barely\naffects the total token count.\n\nDECISION: Use 3.5 chars/token (measured at 3.45 for small files on\no200k_base). This produces < 0.2% error on total token count — well\nwithin the inherent approximation of any single tokenizer encoding.\n\nCONSTRAINTS: Small files never appear in \"top files by token count\"\nrankings, so the per-file estimate inaccuracy has no user-visible\nimpact. Large files (> 2 KB) still get exact BPE counts.\n\nBenchmark (30 interleaved A/B pairs, pack() in-process):\n  Baseline:  trimmedMean=710.7ms, median=712.9ms\n  Proposed:  trimmedMean=671.0ms, median=666.2ms\n  Paired t-test: t=7.11, n=30, p ≪ 0.001\n  Improvement: −39.9ms (−5.6% wall)\n\nhttps://claude.ai/code/session_01XSj4sa5fKuRVvzNrnA8XAb",
+          "timestamp": "2026-04-14T19:13:15Z",
+          "tree_id": "4441da5d9154a41b837bddde9e8cbe1339e8e6f6",
+          "url": "https://github.com/yamadashy/repomix/commit/3b5971ac1fd3cd4ba95f66db36edac92a081f080"
+        },
+        "date": 1776194110108,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 677,
+            "range": "±145",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 625ms, Q3: 770ms\nAll times: 604, 608, 614, 615, 617, 624, 625, 625, 628, 631, 633, 638, 660, 673, 674, 677, 683, 700, 707, 714, 731, 769, 770, 785, 798, 798, 805, 806, 980, 1071ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 827,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 820ms, Q3: 835ms\nAll times: 807, 815, 818, 819, 820, 820, 823, 823, 824, 826, 827, 831, 832, 832, 832, 835, 836, 836, 846, 851ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1111,
+            "range": "±55",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1100ms, Q3: 1155ms\nAll times: 1073, 1077, 1080, 1088, 1096, 1100, 1105, 1105, 1106, 1108, 1111, 1111, 1130, 1133, 1150, 1155, 1156, 1162, 1202, 1250ms"
           }
         ]
       }
