@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776134648694,
+  "lastUpdate": 1776142200921,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2250,6 +2250,51 @@ window.BENCHMARK_DATA = {
             "range": "±20",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1248ms, Q3: 1268ms\nAll times: 1207, 1219, 1227, 1235, 1245, 1248, 1248, 1250, 1252, 1255, 1256, 1257, 1265, 1265, 1265, 1268, 1278, 1280, 1290, 1367ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "f975f1d0e68cd807318f6a7bc442a2e588dc25a9",
+          "message": "perf(search): Split file-level ignore patterns into fast post-filter (-4.7%)\n\nThe default ignore list contains 86 patterns. Directory patterns (e.g.\n`**/node_modules/**`) benefit from tinyglobby's fdir subtree pruning,\nbut file-level patterns (e.g. `**/*.log`, `**/package-lock.json`) only\nadd per-file picomatch regex overhead without enabling any directory\nskipping.\n\nSplit ignore patterns into two categories:\n- Directory patterns (44, ending with `/**`): passed to tinyglobby for\n  efficient subtree pruning via fdir\n- File-level patterns (31 `**/`-prefixed): applied as a fast post-filter\n  using Set<string> lookups for extensions and basenames instead of\n  per-file picomatch regex tests (~100× faster per test)\n- Root-level patterns (11, no `**/` prefix): kept in tinyglobby since\n  they're few and may reference directories\n\nPatterns that cannot be decomposed into simple extension/basename/prefix\nchecks (e.g. `**/*.py[cod]`) fall back to picomatch via tinyglobby.\n\nBenchmark: 30 sequential runs each, `node bin/repomix.cjs --quiet`\n  Baseline:  mean=855ms  median=854ms  stdev=28ms\n  Optimized: mean=815ms  median=811ms  stdev=20ms\n  Savings:   mean=−40ms (−4.7%)  median=−43ms (−5.0%)\n  Welch t=6.32 (p ≪ 0.001)\n\nhttps://claude.ai/code/session_01HnJFBWsHpKE87uWtvHCmtW",
+          "timestamp": "2026-04-14T04:45:05Z",
+          "tree_id": "5111e190f8fdbfe7064da5a04c9bd3604fc7858b",
+          "url": "https://github.com/yamadashy/repomix/commit/f975f1d0e68cd807318f6a7bc442a2e588dc25a9"
+        },
+        "date": 1776142200565,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 839,
+            "range": "±114",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 752ms, Q3: 866ms\nAll times: 707, 718, 722, 739, 743, 747, 750, 752, 774, 785, 792, 796, 809, 811, 834, 839, 839, 841, 842, 848, 855, 856, 866, 896, 899, 912, 945, 965, 1003, 1186ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 943,
+            "range": "±13",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 936ms, Q3: 949ms\nAll times: 923, 933, 934, 934, 935, 936, 938, 939, 941, 943, 943, 944, 944, 946, 947, 949, 953, 954, 964, 973ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1267,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1260ms, Q3: 1283ms\nAll times: 1233, 1243, 1245, 1252, 1258, 1260, 1263, 1264, 1265, 1265, 1267, 1272, 1273, 1275, 1278, 1283, 1293, 1313, 1320, 1328ms"
           }
         ]
       }
