@@ -36,11 +36,11 @@ const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
 
 describe('calculateFileMetrics', () => {
   it('should calculate metrics for large files via worker BPE tokenization', async () => {
-    // Files above the small-file threshold (2048 bytes) are sent to workers
+    // Files above the small-file threshold (4096 chars) are sent to workers
     const processedFiles: ProcessedFile[] = [
-      { path: 'large1.txt', content: 'a'.repeat(3000) },
-      { path: 'large2.txt', content: 'b'.repeat(4000) },
-      { path: 'large3.txt', content: 'c'.repeat(5000) },
+      { path: 'large1.txt', content: 'a'.repeat(5000) },
+      { path: 'large2.txt', content: 'b'.repeat(6000) },
+      { path: 'large3.txt', content: 'c'.repeat(7000) },
     ];
     const targetFilePaths = ['large1.txt', 'large3.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
@@ -50,21 +50,21 @@ describe('calculateFileMetrics', () => {
     });
 
     expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ path: 'large1.txt', charCount: 3000, tokenCount: expect.any(Number) });
-    expect(result[1]).toEqual({ path: 'large3.txt', charCount: 5000, tokenCount: expect.any(Number) });
+    expect(result[0]).toEqual({ path: 'large1.txt', charCount: 5000, tokenCount: expect.any(Number) });
+    expect(result[1]).toEqual({ path: 'large3.txt', charCount: 7000, tokenCount: expect.any(Number) });
     // BPE token counts should be reasonable (not char-based estimates)
     expect(result[0].tokenCount).toBeGreaterThan(0);
-    expect(result[0].tokenCount).toBeLessThan(3000);
+    expect(result[0].tokenCount).toBeLessThan(5000);
     expect(result[1].tokenCount).toBeGreaterThan(0);
-    expect(result[1].tokenCount).toBeLessThan(5000);
+    expect(result[1].tokenCount).toBeLessThan(7000);
   });
 
   it('should estimate metrics for small files without worker IPC', async () => {
-    // Files at or below the small-file threshold (2048 characters) are estimated
+    // Files at or below the small-file threshold (4096 characters) are estimated
     const processedFiles: ProcessedFile[] = [
       { path: 'small1.txt', content: 'a'.repeat(100) },
       { path: 'small2.txt', content: 'b'.repeat(500) },
-      { path: 'small3.txt', content: 'c'.repeat(2048) },
+      { path: 'small3.txt', content: 'c'.repeat(4096) },
     ];
     const targetFilePaths = ['small1.txt', 'small2.txt', 'small3.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
@@ -77,7 +77,7 @@ describe('calculateFileMetrics', () => {
     // Estimates use Math.ceil(charCount / 3.5) for o200k_base
     expect(result[0]).toEqual({ path: 'small1.txt', charCount: 100, tokenCount: Math.ceil(100 / 3.5) });
     expect(result[1]).toEqual({ path: 'small2.txt', charCount: 500, tokenCount: Math.ceil(500 / 3.5) });
-    expect(result[2]).toEqual({ path: 'small3.txt', charCount: 2048, tokenCount: Math.ceil(2048 / 3.5) });
+    expect(result[2]).toEqual({ path: 'small3.txt', charCount: 4096, tokenCount: Math.ceil(4096 / 3.5) });
   });
 
   it('should use encoding-specific chars/token ratio for estimates', async () => {
