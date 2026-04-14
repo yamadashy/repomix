@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776206032588,
+  "lastUpdate": 1776209733731,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2655,6 +2655,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 885ms, Q3: 904ms\nAll times: 867, 870, 872, 874, 883, 885, 885, 887, 889, 890, 892, 894, 898, 899, 902, 904, 912, 915, 918, 925ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "bad50d045e666c7f4b7dd5ed39023382f1cb0d65",
+          "message": "perf(metrics): Raise small-file estimation threshold from 8192 to 16384 chars (-16.7%)\n\nDoubles the character-count threshold below which files get a main-thread\ntoken estimate instead of being dispatched to worker threads for BPE\ntokenization. On the repomix repo (1003 files), this shifts 85 additional\nfiles (8–16 KB range, mostly TypeScript and Markdown) from worker BPE to\nmain-thread estimation, reducing worker batches from 3 to 1.\n\nWHY: The metrics worker phase (BPE tokenization via gpt-tokenizer) is the\nsingle largest item on the critical path at ~280 ms. Files in the 8–16 KB\nrange are well-served by per-extension chars/token ratios (code=4.0,\ndata=3.8, default=3.5 for o200k_base), keeping total token count error\nunder 0.5%. The estimation error actually improves from -0.53% to -0.23%\nat the higher threshold because ratio calibration is better for this\nfile-size segment.\n\nMEASUREMENT (15 interleaved runs, `node bin/repomix.cjs --quiet`):\n  Baseline (8192):  mean=933.5ms, median=921.0ms, stdev=43.7ms\n  Modified (16384): mean=777.9ms, median=767.0ms, stdev=38.8ms\n  Diff: -155.6ms mean / -154.0ms median (-16.7%)\n  Welch t=10.31 (p ≪ 0.001)\n  Modified P90 (835ms) < Baseline P10 (895ms): zero distribution overlap\n\nCONSTRAINTS:\n- Per-file estimation error can reach ~40% for individual files with\n  atypical content (e.g., CJK documentation, files with many code blocks)\n- Aggregate total token count error remains < 0.5% due to cancellation\n- Token counts are informational only; no functionality depends on exact values\n\nhttps://claude.ai/code/session_01SE9P8WnxmBSf2xEkFUVA9n",
+          "timestamp": "2026-04-14T23:32:07Z",
+          "tree_id": "a3f3d2b1bf4973fe47879389e1fb44f2bf9811e6",
+          "url": "https://github.com/yamadashy/repomix/commit/bad50d045e666c7f4b7dd5ed39023382f1cb0d65"
+        },
+        "date": 1776209733321,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 352,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 338ms, Q3: 369ms\nAll times: 326, 332, 332, 334, 334, 336, 337, 338, 338, 339, 340, 340, 342, 343, 349, 352, 352, 352, 352, 354, 356, 358, 369, 375, 390, 392, 406, 472, 479, 503ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 559,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 543ms, Q3: 576ms\nAll times: 527, 530, 533, 541, 543, 543, 544, 544, 549, 552, 559, 561, 565, 565, 568, 576, 644, 647, 668, 699ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 826,
+            "range": "±32",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 813ms, Q3: 845ms\nAll times: 807, 809, 811, 812, 813, 813, 815, 822, 825, 826, 826, 827, 827, 829, 831, 845, 849, 859, 869, 875ms"
           }
         ]
       }
