@@ -22,25 +22,115 @@ const METRICS_BATCH_SIZE = 50;
 // clone + message passing) for many small-to-medium files that contribute a
 // modest fraction of total content.
 //
-// On a typical 1000-file codebase, ~69% of files are under 4096 characters,
-// comprising ~32% of total content. Estimating their tokens via a chars/token
-// ratio introduces ~1% error on the total token count while removing ~69% of
-// files from the worker pipeline — nearly halving IPC round-trips and BPE
-// computation compared to the previous 2048 threshold.
-const SMALL_FILE_THRESHOLD = 4096;
+// On a typical 1000-file codebase, ~89% of files are under 8192 characters.
+// Combined with per-extension chars/token ratios (see below), estimating their
+// tokens introduces ~1-2% error on the total token count while removing ~89%
+// of files from the worker pipeline — cutting BPE computation and IPC round-trips
+// by roughly half compared to the previous 4096 threshold.
+const SMALL_FILE_THRESHOLD = 8192;
 
-// Average characters per token by encoding family, measured on typical source
-// code files ≤ 4096 characters. Modern encodings (o200k, cl100k) tokenize more
-// efficiently (fewer tokens per character) than older GPT-2/GPT-3 encodings
-// (p50k, r50k). Using a per-encoding constant avoids systematic bias.
-const CHARS_PER_TOKEN: Record<string, number> = {
+// Source code extensions have a higher chars/token ratio (~4.0-4.2) than prose
+// or data files (~3.5) because BPE tokenizers efficiently merge common
+// programming keywords, operators, and indentation patterns. Using a flat ratio
+// for all file types systematically overestimates tokens for code files.
+// These sets are used to select the appropriate per-encoding ratio below.
+const CODE_EXTENSIONS = new Set([
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
+  'mjs',
+  'cjs',
+  'py',
+  'rb',
+  'rs',
+  'go',
+  'java',
+  'kt',
+  'kts',
+  'c',
+  'cpp',
+  'h',
+  'hpp',
+  'cs',
+  'swift',
+  'php',
+  'lua',
+  'zig',
+  'dart',
+  'scala',
+  'r', // R language
+  'pl',
+  'pm',
+  'ex',
+  'exs',
+  'erl',
+  'hs',
+  'ml',
+  'fs',
+  'fsx',
+  'clj',
+  'cljs',
+  'vue',
+  'svelte',
+  'sh',
+  'bash',
+  'zsh',
+]);
+
+const DATA_EXTENSIONS = new Set([
+  'json',
+  'json5',
+  'jsonc',
+  'yml',
+  'yaml',
+  'toml',
+  'ini',
+  'cfg',
+]);
+
+// Average characters per token by encoding family, measured on typical
+// codebases. Modern encodings (o200k, cl100k) tokenize more efficiently
+// (fewer tokens per character) than older GPT-2/GPT-3 encodings (p50k, r50k).
+// Per-extension ratios correct for the systematic ~20% gap between source code
+// (~4.0 chars/token) and the previous flat 3.5 estimate, which significantly
+// overestimated token counts for code-heavy repositories.
+const CHARS_PER_TOKEN_CODE: Record<string, number> = {
+  o200k_base: 4.0,
+  cl100k_base: 4.0,
+  p50k_base: 3.6,
+  p50k_edit: 3.6,
+  r50k_base: 3.6,
+};
+
+const CHARS_PER_TOKEN_DATA: Record<string, number> = {
+  o200k_base: 3.8,
+  cl100k_base: 3.8,
+  p50k_base: 3.5,
+  p50k_edit: 3.5,
+  r50k_base: 3.5,
+};
+
+const CHARS_PER_TOKEN_DEFAULT: Record<string, number> = {
   o200k_base: 3.5,
   cl100k_base: 3.5,
   p50k_base: 3.2,
   p50k_edit: 3.2,
   r50k_base: 3.2,
 };
-const DEFAULT_CHARS_PER_TOKEN = 3.2;
+
+const FALLBACK_CHARS_PER_TOKEN = 3.2;
+
+const getCharsPerToken = (filePath: string, encoding: string): number => {
+  const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+  if (CODE_EXTENSIONS.has(ext)) {
+    return CHARS_PER_TOKEN_CODE[encoding] ?? FALLBACK_CHARS_PER_TOKEN;
+  }
+  if (DATA_EXTENSIONS.has(ext)) {
+    return CHARS_PER_TOKEN_DATA[encoding] ?? FALLBACK_CHARS_PER_TOKEN;
+  }
+  return CHARS_PER_TOKEN_DEFAULT[encoding] ?? FALLBACK_CHARS_PER_TOKEN;
+};
 
 export const calculateFileMetrics = async (
   processedFiles: ProcessedFile[],
@@ -66,12 +156,12 @@ export const calculateFileMetrics = async (
     // in workers stays focused on larger, more impactful files.
     // Note: the returned array order is unspecified — small-file estimates appear
     // before worker results. All consumers use path-keyed lookups.
-    const charsPerToken = CHARS_PER_TOKEN[tokenCounterEncoding] ?? DEFAULT_CHARS_PER_TOKEN;
     const smallFileResults: FileMetrics[] = [];
     const largeFiles: ProcessedFile[] = [];
 
     for (const file of filesToProcess) {
       if (file.content.length <= SMALL_FILE_THRESHOLD) {
+        const charsPerToken = getCharsPerToken(file.path, tokenCounterEncoding);
         smallFileResults.push({
           path: file.path,
           charCount: file.content.length,

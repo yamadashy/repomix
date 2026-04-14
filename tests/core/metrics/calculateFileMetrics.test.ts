@@ -36,11 +36,11 @@ const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
 
 describe('calculateFileMetrics', () => {
   it('should calculate metrics for large files via worker BPE tokenization', async () => {
-    // Files above the small-file threshold (4096 chars) are sent to workers
+    // Files above the small-file threshold (8192 chars) are sent to workers
     const processedFiles: ProcessedFile[] = [
-      { path: 'large1.txt', content: 'a'.repeat(5000) },
-      { path: 'large2.txt', content: 'b'.repeat(6000) },
-      { path: 'large3.txt', content: 'c'.repeat(7000) },
+      { path: 'large1.txt', content: 'a'.repeat(9000) },
+      { path: 'large2.txt', content: 'b'.repeat(10000) },
+      { path: 'large3.txt', content: 'c'.repeat(11000) },
     ];
     const targetFilePaths = ['large1.txt', 'large3.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
@@ -50,21 +50,22 @@ describe('calculateFileMetrics', () => {
     });
 
     expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ path: 'large1.txt', charCount: 5000, tokenCount: expect.any(Number) });
-    expect(result[1]).toEqual({ path: 'large3.txt', charCount: 7000, tokenCount: expect.any(Number) });
+    expect(result[0]).toEqual({ path: 'large1.txt', charCount: 9000, tokenCount: expect.any(Number) });
+    expect(result[1]).toEqual({ path: 'large3.txt', charCount: 11000, tokenCount: expect.any(Number) });
     // BPE token counts should be reasonable (not char-based estimates)
     expect(result[0].tokenCount).toBeGreaterThan(0);
-    expect(result[0].tokenCount).toBeLessThan(5000);
+    expect(result[0].tokenCount).toBeLessThan(9000);
     expect(result[1].tokenCount).toBeGreaterThan(0);
-    expect(result[1].tokenCount).toBeLessThan(7000);
+    expect(result[1].tokenCount).toBeLessThan(11000);
   });
 
   it('should estimate metrics for small files without worker IPC', async () => {
-    // Files at or below the small-file threshold (4096 characters) are estimated
+    // Files at or below the small-file threshold (8192 characters) are estimated
+    // .txt files use the default ratio (3.5 for o200k_base)
     const processedFiles: ProcessedFile[] = [
       { path: 'small1.txt', content: 'a'.repeat(100) },
       { path: 'small2.txt', content: 'b'.repeat(500) },
-      { path: 'small3.txt', content: 'c'.repeat(4096) },
+      { path: 'small3.txt', content: 'c'.repeat(8192) },
     ];
     const targetFilePaths = ['small1.txt', 'small2.txt', 'small3.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
@@ -74,23 +75,61 @@ describe('calculateFileMetrics', () => {
     });
 
     expect(result).toHaveLength(3);
-    // Estimates use Math.ceil(charCount / 3.5) for o200k_base
+    // Estimates use Math.ceil(charCount / ratio) where ratio depends on file extension
+    // .txt uses default 3.5 for o200k_base
     expect(result[0]).toEqual({ path: 'small1.txt', charCount: 100, tokenCount: Math.ceil(100 / 3.5) });
     expect(result[1]).toEqual({ path: 'small2.txt', charCount: 500, tokenCount: Math.ceil(500 / 3.5) });
-    expect(result[2]).toEqual({ path: 'small3.txt', charCount: 4096, tokenCount: Math.ceil(4096 / 3.5) });
+    expect(result[2]).toEqual({ path: 'small3.txt', charCount: 8192, tokenCount: Math.ceil(8192 / 3.5) });
+  });
+
+  it('should use extension-specific chars/token ratios for code files', async () => {
+    // Code files (.ts) use a higher chars/token ratio (4.0 for o200k_base)
+    // because BPE tokenizers efficiently merge programming patterns
+    const processedFiles: ProcessedFile[] = [
+      { path: 'src/app.ts', content: 'a'.repeat(4000) },
+      { path: 'data.json', content: 'b'.repeat(4000) },
+      { path: 'readme.md', content: 'c'.repeat(4000) },
+    ];
+    const targetFilePaths = ['src/app.ts', 'data.json', 'readme.md'];
+    const progressCallback: RepomixProgressCallback = vi.fn();
+
+    const result = await calculateFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback, {
+      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+    });
+
+    expect(result).toHaveLength(3);
+    // .ts (code) → 4.0 chars/token for o200k_base
+    expect(result[0]).toEqual({ path: 'src/app.ts', charCount: 4000, tokenCount: Math.ceil(4000 / 4.0) });
+    // .json (data) → 3.8 chars/token for o200k_base
+    expect(result[1]).toEqual({ path: 'data.json', charCount: 4000, tokenCount: Math.ceil(4000 / 3.8) });
+    // .md (default) → 3.5 chars/token for o200k_base
+    expect(result[2]).toEqual({ path: 'readme.md', charCount: 4000, tokenCount: Math.ceil(4000 / 3.5) });
   });
 
   it('should use encoding-specific chars/token ratio for estimates', async () => {
+    // .txt files use the default ratio; p50k_base default is 3.2
     const processedFiles: ProcessedFile[] = [{ path: 'small.txt', content: 'a'.repeat(100) }];
     const targetFilePaths = ['small.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    // p50k_base uses 3.2 chars/token
     const result = await calculateFileMetrics(processedFiles, targetFilePaths, 'p50k_base', progressCallback, {
       taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
     expect(result[0]).toEqual({ path: 'small.txt', charCount: 100, tokenCount: Math.ceil(100 / 3.2) });
+  });
+
+  it('should use encoding-specific code ratio for code files', async () => {
+    // .ts files use the code ratio; p50k_base code ratio is 3.6
+    const processedFiles: ProcessedFile[] = [{ path: 'app.ts', content: 'a'.repeat(100) }];
+    const targetFilePaths = ['app.ts'];
+    const progressCallback: RepomixProgressCallback = vi.fn();
+
+    const result = await calculateFileMetrics(processedFiles, targetFilePaths, 'p50k_base', progressCallback, {
+      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+    });
+
+    expect(result[0]).toEqual({ path: 'app.ts', charCount: 100, tokenCount: Math.ceil(100 / 3.6) });
   });
 
   it('should handle empty files correctly', async () => {
@@ -108,7 +147,7 @@ describe('calculateFileMetrics', () => {
   it('should handle mixed small and large files', async () => {
     const processedFiles: ProcessedFile[] = [
       { path: 'small.txt', content: 'a'.repeat(100) },
-      { path: 'large.txt', content: 'b'.repeat(5000) },
+      { path: 'large.txt', content: 'b'.repeat(9000) },
     ];
     const targetFilePaths = ['small.txt', 'large.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
@@ -118,13 +157,13 @@ describe('calculateFileMetrics', () => {
     });
 
     expect(result).toHaveLength(2);
-    // Small file gets estimate (o200k_base uses 3.5 chars/token)
+    // Small file gets estimate (.txt → default 3.5 chars/token for o200k_base)
     expect(result[0]).toEqual({ path: 'small.txt', charCount: 100, tokenCount: Math.ceil(100 / 3.5) });
     // Large file gets BPE count
     expect(result[1].path).toBe('large.txt');
-    expect(result[1].charCount).toBe(5000);
+    expect(result[1].charCount).toBe(9000);
     expect(result[1].tokenCount).toBeGreaterThan(0);
-    expect(result[1].tokenCount).toBeLessThan(5000);
+    expect(result[1].tokenCount).toBeLessThan(9000);
   });
 
   it('should return empty array when no target files match', async () => {
