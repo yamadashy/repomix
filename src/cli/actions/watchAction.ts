@@ -4,6 +4,7 @@ import type { ChokidarOptions, FSWatcher } from 'chokidar';
 import pc from 'picocolors';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import type { RepomixConfigCli, RepomixConfigFile, RepomixConfigMerged } from '../../config/configSchema.js';
+import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
@@ -46,13 +47,49 @@ const runPack = async (
   }
 };
 
+/**
+ * Builds ignore patterns for chokidar based on the packer's ignore configuration.
+ * This ensures watch mode ignores the same files/directories as the packer.
+ */
+const buildWatchIgnorePatterns = (cwd: string, config: RepomixConfigMerged): (string | RegExp)[] => {
+  const patterns: (string | RegExp)[] = [];
+
+  // Add default ignore patterns if enabled
+  if (config.ignore.useDefaultPatterns) {
+    for (const pattern of defaultIgnoreList) {
+      patterns.push(pattern);
+    }
+  }
+
+  // Add custom ignore patterns
+  if (config.ignore.customPatterns) {
+    for (const pattern of config.ignore.customPatterns) {
+      patterns.push(pattern);
+    }
+  }
+
+  // Add the output file path
+  if (config.output.filePath) {
+    patterns.push(path.resolve(cwd, config.output.filePath));
+  }
+
+  return patterns;
+};
+
 export const runWatchAction = async (
   directories: string[],
   cwd: string,
   cliOptions: CliOptions,
   deps?: Partial<WatchDeps>,
 ): Promise<void> => {
-  const resolvedDeps: WatchDeps = { ...(await resolveDefaultDeps()), ...deps };
+  // Early-return guard: if the signal is already aborted, do no work
+  // Must check before any await to prevent race conditions
+  if (deps?.signal?.aborted) {
+    return;
+  }
+
+  // Only load chokidar if no watch function is provided (enables faster tests)
+  const resolvedDeps: WatchDeps = deps?.watch ? (deps as WatchDeps) : { ...(await resolveDefaultDeps()), ...deps };
 
   logger.trace('Watch mode: loaded CLI options:', cliOptions);
 
@@ -78,16 +115,19 @@ export const runWatchAction = async (
   logger.log(pc.dim(`\nWatching ${packResult.safeFilePaths.length} files for changes... (Ctrl+C to stop)\n`));
 
   // Watch target directories instead of individual files so new files are detected
+  // Apply the same ignore patterns the packer uses to avoid unnecessary rebuilds
+  const watchIgnorePatterns = buildWatchIgnorePatterns(cwd, config);
   const watcher = resolvedDeps.watch(targetPaths, {
     ignoreInitial: true,
     awaitWriteFinish: { stabilityThreshold: 100 },
-    ignored: config.output.filePath ? path.resolve(cwd, config.output.filePath) : undefined,
+    ignored: watchIgnorePatterns,
   });
 
   // Rebuild guard — prevents concurrent packs and queues a follow-up if changes arrive mid-pack
   let isRebuilding = false;
   let pendingRebuild = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let shuttingDown = false;
 
   const scheduleRebuild = () => {
     if (debounceTimer !== null) {
@@ -113,7 +153,10 @@ export const runWatchAction = async (
         logger.error('Watch rebuild failed:', error);
       } finally {
         isRebuilding = false;
-        if (pendingRebuild) {
+        // Check if shutdown has been initiated before draining pendingRebuild
+        if (shuttingDown) {
+          pendingRebuild = false;
+        } else if (pendingRebuild) {
           pendingRebuild = false;
           scheduleRebuild();
         }
@@ -129,13 +172,16 @@ export const runWatchAction = async (
   let keepAliveResolve: (() => void) | null = null;
 
   const cleanup = async () => {
+    shuttingDown = true;
     if (debounceTimer !== null) {
       clearTimeout(debounceTimer);
     }
     process.removeListener('SIGINT', onSigint);
     process.removeListener('SIGTERM', onSigterm);
-    keepAliveResolve?.();
+    // Close watcher before resolving keepAlive so callers don't see
+    // runWatchAction() resolve until shutdown is truly finished
     await watcher.close();
+    keepAliveResolve?.();
   };
 
   const onSigint = async () => {
