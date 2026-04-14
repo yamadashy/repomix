@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776142868779,
+  "lastUpdate": 1776165602025,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2340,6 +2340,51 @@ window.BENCHMARK_DATA = {
             "range": "±41",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1278ms, Q3: 1319ms\nAll times: 1247, 1262, 1268, 1271, 1278, 1278, 1281, 1281, 1283, 1285, 1291, 1299, 1307, 1307, 1308, 1319, 1333, 1339, 1348, 1374ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "8d6ddef4b78a60ed7424957769a545e215fd8bb5",
+          "message": "perf(cli): Skip Node.js shutdown overhead with explicit process.exit (-3.2%)\n\nAfter all CLI work completes (pack, report, file write), Node.js spends\n~30ms in its shutdown sequence: draining the event loop, running final GC,\nwaiting for worker thread handles to close, tinypool internals to settle,\nand WeakRef cleanup callbacks. None of this work produces user-visible\noutput — all file writes and console output have already been flushed.\n\nAdd explicit process.exit(0) after run() completes in the CLI entry point.\nMCP mode is excluded because runMcpServer() resolves after connect() but\nthe server must stay alive for client interaction — it manages its own\nshutdown via SIGINT/SIGTERM handlers.\n\nThis is safe because:\n- All I/O (disk writes, clipboard, stdout) is already awaited in pack()\n- Worker pools are already cleaned up (unref'd + fire-and-forget destroy)\n- The error path already calls process.exit(1)\n- No process.on('exit') handlers exist that need the event loop drain\n\nBenchmark (30 runs each, node bin/repomix.cjs --quiet on repomix itself):\n  Before: 811ms median (813.6ms mean ±27.4)\n  After:  785ms median (785.0ms mean ±15.7)\n  Δ:     -26ms median (-3.2%), Welch t=4.97, p<0.005\n\nhttps://claude.ai/code/session_014iMQkL1zCdPgaGbiiwGkYo",
+          "timestamp": "2026-04-14T11:18:04Z",
+          "tree_id": "652de3d887275ccf1e8b96cf5be7e74dc7594f4b",
+          "url": "https://github.com/yamadashy/repomix/commit/8d6ddef4b78a60ed7424957769a545e215fd8bb5"
+        },
+        "date": 1776165601500,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 711,
+            "range": "±35",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 696ms, Q3: 731ms\nAll times: 666, 677, 683, 684, 685, 692, 693, 696, 698, 699, 701, 703, 704, 707, 707, 711, 713, 718, 719, 720, 720, 721, 731, 733, 733, 734, 788, 808, 815, 818ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 966,
+            "range": "±34",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 958ms, Q3: 992ms\nAll times: 940, 950, 951, 953, 955, 958, 960, 962, 965, 965, 966, 968, 968, 972, 981, 992, 1003, 1009, 1018, 1158ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1235,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1226ms, Q3: 1257ms\nAll times: 1204, 1208, 1212, 1219, 1219, 1226, 1226, 1228, 1232, 1235, 1235, 1238, 1243, 1246, 1252, 1257, 1262, 1263, 1265, 1267ms"
           }
         ]
       }
