@@ -15,6 +15,9 @@ export interface FileSearchResult {
   emptyDirPaths: string[];
 }
 
+// No per-directory ignore-pattern check is needed here. The `directories` array
+// comes from globby with the same `ignore` patterns (e.g. `dist/**`), which
+// excludes both the directory contents AND the directory entry itself.
 const findEmptyDirectories = async (rootDir: string, directories: string[]): Promise<string[]> => {
   const emptyDirs: string[] = [];
 
