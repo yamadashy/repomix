@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, type MockedFunction, vi } 
 import type { WatchDeps } from '../../../src/cli/actions/watchAction.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import * as configLoader from '../../../src/config/configLoad.js';
+import { defaultIgnoreList } from '../../../src/config/defaultIgnore.js';
 import * as packager from '../../../src/core/packager.js';
 import * as loggerModule from '../../../src/shared/logger.js';
 import { createMockConfig } from '../../testing/testUtils.js';
@@ -173,13 +174,12 @@ describe('watchAction', () => {
     const controller = new AbortController();
     const options: CliOptions = {};
 
-    const watchPromise = (async () => {
-      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
-      return runWatchAction(['.'], process.cwd(), options, {
-        watch: createMockWatch(mockWatcher),
-        signal: controller.signal,
-      });
-    })();
+    // Import separately to ensure runWatchAction is called before abort
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    const watchPromise = runWatchAction(['.'], process.cwd(), options, {
+      watch: createMockWatch(mockWatcher),
+      signal: controller.signal,
+    });
 
     // Let initial pack complete
     await vi.advanceTimersByTimeAsync(0);
@@ -212,11 +212,12 @@ describe('watchAction', () => {
     await watchPromise;
 
     const expectedTargetPaths = [path.resolve(cwd, '.')];
+    const expectedIgnorePatterns = [...defaultIgnoreList, path.resolve(cwd, 'repomix-output.xml')];
 
     expect(mockWatch).toHaveBeenCalledWith(expectedTargetPaths, {
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 100 },
-      ignored: path.resolve(cwd, 'repomix-output.xml'),
+      ignored: expectedIgnorePatterns,
     });
   });
 
@@ -241,7 +242,9 @@ describe('watchAction', () => {
 
     const watchCall = (mockWatch as ReturnType<typeof vi.fn>).mock.calls[0];
     const watchOptions = watchCall[1];
-    expect(watchOptions.ignored).toBe(path.resolve(cwd, 'repomix-output.xml'));
+    // The ignored option should be an array that includes the output file path
+    expect(Array.isArray(watchOptions.ignored)).toBe(true);
+    expect(watchOptions.ignored).toContain(path.resolve(cwd, 'repomix-output.xml'));
   });
 
   it('should re-pack on file change after debounce', async () => {
