@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776194110507,
+  "lastUpdate": 1776201541741,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2565,6 +2565,51 @@ window.BENCHMARK_DATA = {
             "range": "±55",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1100ms, Q3: 1155ms\nAll times: 1073, 1077, 1080, 1088, 1096, 1100, 1105, 1105, 1106, 1108, 1111, 1111, 1130, 1133, 1150, 1155, 1156, 1162, 1202, 1250ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "3cc41216015d2ec8e8410e23256825ab1a726d00",
+          "message": "perf(metrics): Raise small-file estimation threshold from 2048 to 4096 chars (-9.6%)\n\nIncrease SMALL_FILE_THRESHOLD from 2048 to 4096 characters. Files at or\nbelow this threshold get a cheap character-based token estimate on the\nmain thread instead of being dispatched to worker threads for BPE\ntokenization. On a typical 1000-file codebase this raises the estimated\nfraction from ~42% to ~69% of files (from ~11% to ~32% of total content),\nnearly halving the number of IPC round-trips and BPE computation that the\nworker pool must perform.\n\nThe total token count error increases from ~0.15% to ~1.07%, which is\nacceptable for a tool that reports approximate token counts.\n\nBenchmark (15 alternating A/B runs of `node bin/repomix.cjs --quiet` on\nthe repomix repo itself, 1003 files):\n\n  Baseline (2048):  mean=846.7ms  median=836.2ms  stdev=49.0\n  Modified (4096):  mean=765.6ms  median=759.9ms  stdev=24.6\n  Improvement:      −81.1ms mean (−9.6%)  −76.3ms median (−9.1%)\n  Welch t = 5.73  (n=15, p ≪ 0.001)\n\nIsolated file-metrics measurement (5 runs, workers already warm):\n\n  Threshold 2048:  median=201ms  (577 files → 12 batches)\n  Threshold 4096:  median= 92ms  (308 files →  7 batches)\n\nWHY: calculateFileMetrics is the single longest operation in the pack\npipeline (~40% of wall time). Reducing worker load by estimating more\nfiles on the main thread provides the highest leverage improvement\navailable at this stage of optimization.\n\nCONSTRAINT: Keep total token-count error under ~2% to avoid noticeably\ninaccurate reports. At 4096 threshold the measured error is 1.07%.\n\nhttps://claude.ai/code/session_01WuJA3KYWD14DkzPpz3nZRc",
+          "timestamp": "2026-04-14T21:17:18Z",
+          "tree_id": "004ceac79b915b19709e91e213653e0841fd4d81",
+          "url": "https://github.com/yamadashy/repomix/commit/3cc41216015d2ec8e8410e23256825ab1a726d00"
+        },
+        "date": 1776201541364,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 803,
+            "range": "±153",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 729ms, Q3: 882ms\nAll times: 610, 694, 699, 699, 716, 717, 727, 729, 735, 759, 762, 767, 773, 773, 797, 803, 807, 812, 828, 839, 851, 874, 882, 891, 915, 921, 942, 945, 1061, 1137ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 761,
+            "range": "±40",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 736ms, Q3: 776ms\nAll times: 732, 732, 733, 734, 736, 736, 736, 752, 755, 756, 761, 768, 768, 769, 775, 776, 778, 779, 795, 816ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1059,
+            "range": "±199",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1014ms, Q3: 1213ms\nAll times: 991, 992, 993, 993, 997, 1014, 1020, 1036, 1042, 1047, 1059, 1059, 1080, 1086, 1199, 1213, 1245, 1293, 1341, 3192ms"
           }
         ]
       }
