@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
+import { logger } from '../shared/logger.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
@@ -11,7 +12,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
-import { sortOutputFiles } from './output/outputSort.js';
+import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -44,6 +45,7 @@ const defaultDeps = {
   createMetricsTaskRunner,
   sortPaths,
   sortOutputFiles,
+  prefetchSortData,
   getGitDiffs,
   getGitLogs,
   // Lazy-load packSkill to defer importing the skill module chain
@@ -76,6 +78,12 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Pre-fetch git file-change counts for sortOutputFiles while search and
+  // collection are in flight, so the later sortOutputFiles call is a cache hit.
+  const sortDataPromise = deps.prefetchSortData(config).catch((error) => {
+    logger.trace('Failed to prefetch sort data:', error);
+  });
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -163,6 +171,7 @@ export const pack = async (
     // runs twice but is negligible (~1ms for 1000 files). This ordering is required by the
     // fast-path in `calculateMetrics`, which walks file contents through the output string
     // in order via `extractOutputWrapper`.
+    await sortDataPromise;
     const processedFiles = await deps.sortOutputFiles(filteredProcessedFiles, config);
 
     progressCallback('Generating output...');
