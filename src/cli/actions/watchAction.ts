@@ -123,11 +123,17 @@ export const runWatchAction = async (
     ignored: watchIgnorePatterns,
   });
 
+  // Handle watcher errors (EMFILE, EACCES, EPERM, etc.) to prevent uncaught exceptions
+  watcher.on('error', (error) => {
+    logger.error('File watcher error:', error);
+  });
+
   // Rebuild guard — prevents concurrent packs and queues a follow-up if changes arrive mid-pack
   let isRebuilding = false;
   let pendingRebuild = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let shuttingDown = false;
+  let activeRebuildPromise: Promise<void> | null = null;
 
   const scheduleRebuild = () => {
     // Guard: don't schedule new work if shutdown has been initiated
@@ -152,25 +158,30 @@ export const runWatchAction = async (
       }
 
       isRebuilding = true;
-      try {
-        const result = await runPack(targetPaths, config, cliOptions);
-        reportResults(cwd, result, config, cliOptions);
-        const now = new Date();
-        const timestamp = now.toLocaleTimeString('en-GB', { hour12: false });
-        logger.success(`Rebuilt at ${timestamp}`);
-        logger.log(pc.dim('Watching for changes...'));
-      } catch (error) {
-        logger.error('Watch rebuild failed:', error);
-      } finally {
-        isRebuilding = false;
-        // Check if shutdown has been initiated before draining pendingRebuild
-        if (shuttingDown) {
-          pendingRebuild = false;
-        } else if (pendingRebuild) {
-          pendingRebuild = false;
-          scheduleRebuild();
+      const rebuildWork = async () => {
+        try {
+          const result = await runPack(targetPaths, config, cliOptions);
+          reportResults(cwd, result, config, cliOptions);
+          const now = new Date();
+          const timestamp = now.toLocaleTimeString('en-GB', { hour12: false });
+          logger.success(`Rebuilt at ${timestamp}`);
+          logger.log(pc.dim('Watching for changes...'));
+        } catch (error) {
+          logger.error('Watch rebuild failed:', error);
+        } finally {
+          isRebuilding = false;
+          activeRebuildPromise = null;
+          // Check if shutdown has been initiated before draining pendingRebuild
+          if (shuttingDown) {
+            pendingRebuild = false;
+          } else if (pendingRebuild) {
+            pendingRebuild = false;
+            scheduleRebuild();
+          }
         }
-      }
+      };
+      activeRebuildPromise = rebuildWork();
+      await activeRebuildPromise;
     }, 300);
   };
 
@@ -194,13 +205,23 @@ export const runWatchAction = async (
     if (debounceTimer !== null) {
       clearTimeout(debounceTimer);
     }
+    pendingRebuild = false;
     process.removeListener('SIGINT', onSigint);
     process.removeListener('SIGTERM', onSigterm);
-    // Close watcher before resolving so callers don't see
-    // runWatchAction() resolve until shutdown is truly finished
-    await watcher.close();
-    cleanupDone = true;
-    cleanupResolve?.();
+
+    try {
+      // Close watcher before resolving so callers don't see
+      // runWatchAction() resolve until shutdown is truly finished
+      await watcher.close();
+      // Wait for any in-flight rebuild to complete before resolving
+      if (activeRebuildPromise) {
+        await activeRebuildPromise;
+      }
+    } finally {
+      // Always settle the keep-alive promise, even if watcher.close() or rebuild throws
+      cleanupDone = true;
+      cleanupResolve?.();
+    }
   };
 
   const onSigint = () => {
