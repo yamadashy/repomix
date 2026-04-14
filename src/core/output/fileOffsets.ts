@@ -93,7 +93,8 @@ export const computeFileLineOffsets = (output: string, style: RepomixOutputStyle
     }
   } else if (style === 'markdown') {
     const fileStarts: Array<{ path: string; line: number }> = [];
-    const totalLines = countLines(output);
+    // Default to end of output; narrowed to line before next top-level heading if one exists
+    let sectionEndLine = countLines(output);
 
     for (const { line, lineNum } of iterLines(output)) {
       if (lineNum < sectionStartLine) continue;
@@ -102,29 +103,39 @@ export const computeFileLineOffsets = (output: string, style: RepomixOutputStyle
       if (match) {
         fileStarts.push({ path: match[1].trim(), line: lineNum });
       } else if (line.startsWith('# ') && lineNum > sectionStartLine) {
-        // Hit the next top-level section — stop scanning
+        // Hit the next top-level section — record boundary and stop scanning
+        sectionEndLine = lineNum - 1;
         break;
       }
     }
 
     for (let j = 0; j < fileStarts.length; j++) {
       const { path, line } = fileStarts[j];
-      const endLine = j + 1 < fileStarts.length ? fileStarts[j + 1].line - 1 : totalLines;
+      const endLine = j + 1 < fileStarts.length ? fileStarts[j + 1].line - 1 : sectionEndLine;
       offsets[path] = { start: line, end: endLine };
     }
   } else if (style === 'plain') {
     // Plain format: "================" then "File: path" then "================" then content
     // End of content = line before next "================" separator
     // The short separator is exactly 16 '=' characters (matches PLAIN_SEPARATOR in plainStyle.ts)
+    // The long separator (64 '=') marks the end of the Files section (e.g. End of Codebase footer)
     const SEPARATOR = '================';
+    const LONG_SEPARATOR = '='.repeat(64);
     const fileHeaderLines: Array<{ path: string; line: number }> = [];
-    const totalLines = countLines(output);
+    // Default to end of output; narrowed when a long separator signals the next section
+    let sectionEndLine = countLines(output);
     let prevLine = '';
 
     for (const { line, lineNum } of iterLines(output)) {
       if (lineNum < sectionStartLine) {
         prevLine = line;
         continue;
+      }
+
+      // A long separator after at least one file entry signals the end of the Files section
+      if (line === LONG_SEPARATOR && fileHeaderLines.length > 0) {
+        sectionEndLine = lineNum - 1;
+        break;
       }
 
       if (prevLine === SEPARATOR && line.startsWith('File: ')) {
@@ -139,8 +150,8 @@ export const computeFileLineOffsets = (output: string, style: RepomixOutputStyle
       const { path, line } = fileHeaderLines[j];
       // Content starts after: separator → File: header → separator → content
       const contentStart = line + 3;
-      // Content ends before the next file separator, or at the last line
-      const nextSeparatorLine = j + 1 < fileHeaderLines.length ? fileHeaderLines[j + 1].line - 1 : totalLines;
+      // Content ends before the next file separator, or at the files section boundary
+      const nextSeparatorLine = j + 1 < fileHeaderLines.length ? fileHeaderLines[j + 1].line - 1 : sectionEndLine;
       offsets[path] = { start: contentStart, end: nextSeparatorLine };
     }
   }
