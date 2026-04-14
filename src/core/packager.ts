@@ -77,6 +77,14 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
+  // Start git operations immediately — they only need rootDirs and config, not
+  // searchFiles results. Launching them here overlaps the ~50-70ms git diff/log
+  // subprocesses with searchFiles and worker warm-up.
+  const gitDiffPromise = deps.getGitDiffs(rootDirs, config);
+  const gitLogPromise = deps.getGitLogs(rootDirs, config);
+  gitDiffPromise?.catch?.(() => {});
+  gitLogPromise?.catch?.(() => {});
+
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
@@ -113,10 +121,10 @@ export const pack = async (
   );
 
   try {
-    // Run file collection and git operations in parallel since they are independent:
-    // - collectFiles reads file contents from disk
-    // - getGitDiffs/getGitLogs spawn git subprocesses
-    // Neither depends on the other's results.
+    // Run file collection and await pre-started git operations in parallel.
+    // collectFiles reads file contents from disk; getGitDiffs/getGitLogs were
+    // started before searchFiles (see above) so their subprocesses have been
+    // running concurrently with the search and are likely already resolved.
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
       withMemoryLogging(
@@ -128,8 +136,8 @@ export const pack = async (
             ),
           ),
       ),
-      deps.getGitDiffs(rootDirs, config),
-      deps.getGitLogs(rootDirs, config),
+      gitDiffPromise,
+      gitLogPromise,
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
@@ -196,9 +204,6 @@ export const pack = async (
       rootLabel: path.basename(rootDir) || rootDir,
       files: filePaths,
     }));
-
-    // Ensure warm-up task completes before metrics calculation
-    await metricsWarmupPromise;
 
     // Generate and write output, overlapping with metrics calculation.
     // File and git metrics don't depend on the output, so they start immediately
