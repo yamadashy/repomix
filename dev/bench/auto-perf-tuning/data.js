@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776177980236,
+  "lastUpdate": 1776186267679,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2430,6 +2430,51 @@ window.BENCHMARK_DATA = {
             "range": "±35",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1179ms, Q3: 1214ms\nAll times: 1164, 1173, 1175, 1177, 1177, 1179, 1182, 1186, 1188, 1190, 1196, 1200, 1212, 1213, 1214, 1214, 1218, 1222, 1223, 1227ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "a791db1477fb64240a14ea0ba2a8727bfa5f3389",
+          "message": "perf(search): Enable git ls-files fast path for default config and optimize sort (-2%)\n\nEnable the git ls-files fast path when useDotIgnore is true (the default).\nPreviously, the fast path was blocked by the `!config.ignore.useDotIgnore`\ncondition, forcing all default runs through the 132ms tinyglobby/fdir\ndirectory traversal. Now the fast path handles root-level .ignore files\nas a post-filter (matching the existing .repomixignore approach), bringing\nfile enumeration from ~132ms to ~5ms.\n\nThe savings on the critical path are ~17ms (capped by parallel worker\nwarmup that runs concurrently with searchFiles). Additional changes:\n\n- Replace picomatch regex matching in the git fast path post-filter with\n  a fast directory matcher (buildFastDirectoryMatcher) that uses Set\n  lookups and string operations for ~50 simple patterns, falling back\n  to picomatch for only ~6 complex patterns with character classes.\n\n- Rewrite sortPaths to use an in-place comparator with lazy segment\n  extraction (indexOf + charCode) instead of decorating all paths with\n  split() arrays, eliminating N object + array allocations.\n\n- Remove duplicate prefetchSortData entry in packager defaultDeps.\n\nBenchmark (30-pair alternating A/B, `node bin/repomix.cjs --quiet`):\n  Before: 862.9ms (mean)\n  After:  846.2ms (mean)\n  Diff:   -16.7ms (-1.9%), paired t=4.86, p<0.001\n\nAll 1141 tests pass. Output file list and ordering are identical.\n\nhttps://claude.ai/code/session_01BwMTHeGj6edBaNvrWRntWg",
+          "timestamp": "2026-04-14T17:00:08Z",
+          "tree_id": "7c36148978333f465300a434b12b5258dba81056",
+          "url": "https://github.com/yamadashy/repomix/commit/a791db1477fb64240a14ea0ba2a8727bfa5f3389"
+        },
+        "date": 1776186267301,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1118,
+            "range": "±398",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 983ms, Q3: 1381ms\nAll times: 911, 956, 961, 972, 973, 976, 980, 983, 991, 1004, 1039, 1044, 1064, 1100, 1100, 1118, 1124, 1205, 1215, 1249, 1319, 1336, 1381, 1571, 1750, 1754, 1942, 2173, 2351, 2791ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 872,
+            "range": "±112",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 862ms, Q3: 974ms\nAll times: 845, 849, 850, 858, 858, 862, 866, 868, 868, 869, 872, 872, 874, 897, 916, 974, 1025, 1046, 1072, 1077ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1241,
+            "range": "±49",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1231ms, Q3: 1280ms\nAll times: 1200, 1201, 1215, 1227, 1229, 1231, 1232, 1233, 1237, 1239, 1241, 1241, 1242, 1252, 1259, 1280, 1288, 1288, 1295, 1307ms"
           }
         ]
       }
