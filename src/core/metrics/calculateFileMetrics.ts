@@ -78,16 +78,7 @@ const CODE_EXTENSIONS = new Set([
   'zsh',
 ]);
 
-const DATA_EXTENSIONS = new Set([
-  'json',
-  'json5',
-  'jsonc',
-  'yml',
-  'yaml',
-  'toml',
-  'ini',
-  'cfg',
-]);
+const DATA_EXTENSIONS = new Set(['json', 'json5', 'jsonc', 'yml', 'yaml', 'toml', 'ini', 'cfg']);
 
 // Average characters per token by encoding family, measured on typical
 // codebases. Modern encodings (o200k, cl100k) tokenize more efficiently
