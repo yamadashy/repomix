@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776123645199,
+  "lastUpdate": 1776134648694,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2205,6 +2205,51 @@ window.BENCHMARK_DATA = {
             "range": "±69",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1251ms, Q3: 1320ms\nAll times: 1229, 1234, 1248, 1248, 1249, 1251, 1251, 1252, 1255, 1263, 1281, 1282, 1301, 1306, 1318, 1320, 1329, 1338, 1342, 1408ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "cc47d236382457ea964691e19f7ef9be5ffd0060",
+          "message": "perf(metrics): Pre-build BPE rank data as JSON for faster worker initialization (-4.8%)\n\nReplace the gpt-tokenizer JS module import (~200ms per worker) with JSON.parse\nof a pre-built cache (~23ms per worker) for BPE rank loading.\n\nThe default o200k_base BPE rank module is a 2.2 MB JavaScript file containing\n~200K string literals that V8's JS parser evaluates at ~200ms. By pre-serializing\nthe same data as a 1.7 MB JSON file during `npm run build` and loading it with\nfs.readFileSync + JSON.parse at runtime, each worker thread's initialization\ndrops from ~200ms to ~145ms. This eliminates the warmup stall where the slowest\nworker extends the critical path by ~50ms beyond the batch dispatch point.\n\nThe optimization is transparent: when the JSON cache exists (post-build), workers\nuse the fast path; when it doesn't (development), they fall back to the original\nJS module import.\n\nA build-time script (scripts/generateBpeCache.mjs) generates JSON caches for all\nfour encoding types (o200k_base, cl100k_base, p50k_base, r50k_base) into\nlib/core/metrics/data/.\n\nBenchmark results (20 alternating A/B measurements):\n  Trimmed mean: −41.5ms (−4.8%)\n  Median: −37.0ms (−4.3%)\n  Paired t = 3.83 (n=20, p < 0.005)\n\nWorker warmup times (from verbose output):\n  Before: 178ms, 198ms, 221ms\n  After:  145ms, 148ms, 164ms\n\nAll 1141 tests pass. Token counts verified identical.\n\nhttps://claude.ai/code/session_01LG5shvuBFVQSgmiTc5V2b7",
+          "timestamp": "2026-04-14T02:42:21Z",
+          "tree_id": "b4fc1509320515170ccc537728d3f047193fe9e8",
+          "url": "https://github.com/yamadashy/repomix/commit/cc47d236382457ea964691e19f7ef9be5ffd0060"
+        },
+        "date": 1776134648022,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 656,
+            "range": "±61",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 638ms, Q3: 699ms\nAll times: 612, 615, 623, 623, 627, 627, 629, 638, 643, 644, 648, 649, 650, 652, 652, 656, 657, 657, 659, 669, 670, 696, 699, 709, 714, 729, 751, 754, 821, 851ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 920,
+            "range": "±11",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 915ms, Q3: 926ms\nAll times: 904, 905, 909, 911, 914, 915, 917, 917, 918, 919, 920, 920, 921, 922, 923, 926, 928, 956, 980, 1111ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1256,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1248ms, Q3: 1268ms\nAll times: 1207, 1219, 1227, 1235, 1245, 1248, 1248, 1250, 1252, 1255, 1256, 1257, 1265, 1265, 1265, 1268, 1278, 1280, 1290, 1367ms"
           }
         ]
       }
