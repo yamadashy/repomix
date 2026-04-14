@@ -209,19 +209,25 @@ export const runWatchAction = async (
     process.removeListener('SIGINT', onSigint);
     process.removeListener('SIGTERM', onSigterm);
 
+    // Use separate try/catch blocks so activeRebuildPromise is always awaited
+    // even if watcher.close() fails
     try {
-      // Close watcher before resolving so callers don't see
-      // runWatchAction() resolve until shutdown is truly finished
       await watcher.close();
-      // Wait for any in-flight rebuild to complete before resolving
+    } catch (error) {
+      logger.error('Error closing watcher:', error);
+    }
+
+    try {
       if (activeRebuildPromise) {
         await activeRebuildPromise;
       }
-    } finally {
-      // Always settle the keep-alive promise, even if watcher.close() or rebuild throws
-      cleanupDone = true;
-      cleanupResolve?.();
+    } catch (error) {
+      logger.error('Error waiting for rebuild to complete:', error);
     }
+
+    // Always settle the keep-alive promise
+    cleanupDone = true;
+    cleanupResolve?.();
   };
 
   const onSigint = () => {
