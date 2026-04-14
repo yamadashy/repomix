@@ -51,6 +51,7 @@ const defaultDeps = {
   sortPaths,
   prefetchSortData,
   sortOutputFiles,
+  prefetchSortData,
   getGitDiffs,
   getGitLogs,
   getProcessConcurrency,
@@ -259,6 +260,7 @@ export const pack = async (
     // runs twice but is negligible (~1ms for 1000 files). This ordering is required by the
     // fast-path in `calculateMetrics`, which walks file contents through the output string
     // in order via `extractOutputWrapper`.
+    await sortDataPromise;
     const processedFiles = await deps.sortOutputFiles(filteredProcessedFiles, config);
 
     progressCallback('Generating output...');

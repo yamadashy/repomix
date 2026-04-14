@@ -114,9 +114,7 @@ export const sortOutputFiles = async (
 /**
  * Pre-fetch git file change counts so that a later `sortOutputFiles` call
  * hits the in-memory cache instead of spawning git subprocesses on the
- * critical path. This is intended to be called early in the pipeline
- * (alongside collectFiles / git diff / git log) so that the ~15ms
- * subprocess cost overlaps with other I/O work.
+ * critical path.
  */
 export const prefetchSortData = async (
   config: RepomixConfigMerged,
