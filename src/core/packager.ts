@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
+import { logger } from '../shared/logger.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
@@ -80,7 +81,9 @@ export const pack = async (
 
   // Pre-fetch git file-change counts for sortOutputFiles while search and
   // collection are in flight, so the later sortOutputFiles call is a cache hit.
-  const sortDataPromise = deps.prefetchSortData(config).catch(() => {});
+  const sortDataPromise = deps.prefetchSortData(config).catch((error) => {
+    logger.trace('Failed to prefetch sort data:', error);
+  });
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
