@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776224289100,
+  "lastUpdate": 1776226068716,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2835,6 +2835,51 @@ window.BENCHMARK_DATA = {
             "range": "±51",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 730ms, Q3: 781ms\nAll times: 692, 713, 723, 725, 727, 730, 733, 736, 737, 743, 745, 751, 764, 765, 778, 781, 782, 790, 791, 793ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "4bee427da9e66c1738a6052b3937da8b150158f7",
+          "message": "Merge remote perf/auto-perf-tuning (pre-computed wrapper) into arithmetic estimation\n\nResolved conflict in calculateMetrics.ts: the arithmetic wrapper\nestimation supersedes the pre-computed wrapper approach. The\nprecomputedOutputWrapper dep is accepted but unused on the fast path,\nsince wrapper tokens are now estimated via chars/token ratio without\nneeding the wrapper string at all.\n\nhttps://claude.ai/code/session_01YJNhAXBrhTpzWPwrMJDPWu",
+          "timestamp": "2026-04-15T04:06:11Z",
+          "tree_id": "7c4e0292cc5e47d8549de4f5c387c47a08f23831",
+          "url": "https://github.com/yamadashy/repomix/commit/4bee427da9e66c1738a6052b3937da8b150158f7"
+        },
+        "date": 1776226067783,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 519,
+            "range": "±51",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 485ms, Q3: 536ms\nAll times: 442, 472, 481, 482, 483, 484, 484, 485, 486, 486, 498, 498, 508, 510, 519, 519, 521, 521, 527, 528, 529, 535, 536, 542, 565, 580, 588, 593, 608, 637ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 477,
+            "range": "±10",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 472ms, Q3: 482ms\nAll times: 434, 455, 456, 456, 463, 472, 473, 474, 476, 477, 477, 477, 479, 479, 481, 482, 485, 491, 491, 495ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 697,
+            "range": "±53",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 684ms, Q3: 737ms\nAll times: 671, 672, 673, 674, 676, 684, 686, 690, 693, 696, 697, 702, 706, 711, 724, 737, 754, 761, 773, 779ms"
           }
         ]
       }
