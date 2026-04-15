@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776235879414,
+  "lastUpdate": 1776238284857,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3060,6 +3060,51 @@ window.BENCHMARK_DATA = {
             "range": "±219",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 692ms, Q3: 911ms\nAll times: 668, 677, 680, 682, 689, 692, 692, 696, 699, 710, 741, 754, 889, 899, 909, 911, 916, 919, 920, 922ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "4fdb8c999af6c3e50d74bfa2b38574192b851621",
+          "message": "perf(core): Skip security worker pool for clean repos (-6.6% wall)\n\nSkip eager security worker pool creation in packager.ts. Previously,\na security worker thread was always spawned at pack() start when\nsecurity checks were enabled (default), loading secretlint modules\n(~97ms CPU) even though ~95% of repos have no suspect files.\n\nThe worker warmup ran concurrently with searchFiles and collectFiles,\ncreating CPU contention that inflated wall time — particularly for\nlarger repos where these phases do more work.\n\nNow, no security pool is created upfront. runSecurityCheck already\nhandles on-demand pool creation: it runs the SECRETLINT_PRESCAN\nregex on the main thread (~1-5ms), and only spawns worker threads\nif suspect files are found. For clean repos (95%+ of cases), no\nworker thread is ever spawned, eliminating the CPU contention\nentirely.\n\nThis follows the same pattern as commit 939f368 (skip metrics\nworker pool on fast path), which eliminated similar contention\nfrom the BPE tokenizer pool.\n\nBenchmark (interleaved 20-pair, 1729 .ts files):\n  Base: mean=806.5ms  median=808ms  stdev=44.9ms\n  Opt:  mean=753.1ms  median=748ms  stdev=28.9ms\n  Diff: mean=−53.3ms (−6.6%)  median=−59.5ms (−7.4%)\n  Welch t=4.47 (p < 0.001)\n\nTradeoff: for the ~5% of repos with suspect files, the pool is\ncreated on-demand after the prescan, adding ~97ms delay (no warmup\noverlap). This is acceptable since the security check is already\nnon-blocking (overlapped with output generation).\n\nhttps://claude.ai/code/session_01PFy93viSDZygGeKRniMpjm",
+          "timestamp": "2026-04-15T07:28:32Z",
+          "tree_id": "eb70391e334c2cbf59a74695bffc1522600089ad",
+          "url": "https://github.com/yamadashy/repomix/commit/4fdb8c999af6c3e50d74bfa2b38574192b851621"
+        },
+        "date": 1776238284257,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 596,
+            "range": "±93",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 539ms, Q3: 632ms\nAll times: 477, 490, 492, 499, 506, 508, 519, 539, 556, 565, 566, 574, 582, 585, 591, 596, 596, 596, 608, 627, 630, 630, 632, 637, 641, 657, 663, 794, 819, 1063ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 479,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 470ms, Q3: 486ms\nAll times: 463, 466, 469, 469, 469, 470, 471, 471, 474, 477, 479, 481, 481, 484, 486, 486, 486, 487, 491, 494ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 741,
+            "range": "±52",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 730ms, Q3: 782ms\nAll times: 697, 711, 714, 714, 719, 730, 735, 740, 741, 741, 741, 748, 773, 778, 781, 782, 788, 789, 793, 814ms"
           }
         ]
       }
