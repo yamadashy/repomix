@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776283447683,
+  "lastUpdate": 1776285164126,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3465,6 +3465,51 @@ window.BENCHMARK_DATA = {
             "range": "±70",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1877ms, Q3: 1947ms\nAll times: 1836, 1853, 1855, 1862, 1864, 1877, 1877, 1878, 1880, 1889, 1891, 1900, 1928, 1933, 1938, 1947, 1984, 1987, 1989, 2303ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "fabccaef0fb674ac431ac50a5f9af191932a67ff",
+          "message": "perf(core): Lazy-load Handlebars to defer ~30ms of module overhead from startup\n\nMove Handlebars and template style imports from top-level static imports to\ndynamic import() calls inside getCompiledTemplate(). This defers ~30ms of\nmodule parsing and V8 compilation from the CLI startup phase — where module\nloading is sequential and blocks the event loop — to the output generation\nphase, where it overlaps with concurrent worker-thread token counting.\n\nThe change is transparent: compiled templates are cached in\ncompiledTemplateCache after first use, so subsequent calls pay no import cost.\nNode.js module caching ensures the dynamic import() itself is a single-load\noperation.\n\nImport chain deferred:\n  outputGenerate.ts → handlebars (direct, removed)\n  outputGenerate.ts → markdownStyle.ts → outputStyleUtils.ts → handlebars\n\nBenchmark: node bin/repomix.cjs --quiet on repomix repo (~1019 files).\n30 interleaved A/B pairs:\n\n  | Metric       | Baseline | Patched | Delta              |\n  |--------------|----------|---------|--------------------|\n  | median       | 1425 ms  | 1380 ms | -45 ms (-3.2%)     |\n  | mean         | 1432 ms  | 1372 ms | -59 ms (-4.1%)     |\n  | trimmed mean | 1419 ms  | 1372 ms | -47 ms (-3.3%)     |\n  | positive     |          |         | 20/30 pairs better |\n\nWHY: Handlebars (~500KB, 15+ modules) was loaded unconditionally at startup\nbefore any pipeline work began. By deferring the load, the CLI starts the\nfile search/collection pipeline ~30ms sooner. The Handlebars import then\nhappens during output generation, where it overlaps with worker threads\nalready busy with token counting — effectively hiding the load cost.\n\nCONSTRAINT: getCompiledTemplate is now async, but its sole caller\n(generateHandlebarOutput) was already async, so no signature changes propagate.\n\nhttps://claude.ai/code/session_01BPt4ADBSAWLJwfVJqPCGyv",
+          "timestamp": "2026-04-15T20:30:37Z",
+          "tree_id": "3a93ead22a91711e7ec256f98d27ed052e885f3b",
+          "url": "https://github.com/yamadashy/repomix/commit/fabccaef0fb674ac431ac50a5f9af191932a67ff"
+        },
+        "date": 1776285163057,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 868,
+            "range": "±61",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 842ms, Q3: 903ms\nAll times: 797, 809, 816, 825, 830, 833, 841, 842, 846, 847, 850, 851, 858, 863, 867, 868, 868, 879, 881, 883, 893, 899, 903, 912, 925, 938, 952, 988, 1104, 1383ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1406,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1402ms, Q3: 1429ms\nAll times: 1344, 1357, 1383, 1392, 1401, 1402, 1403, 1403, 1405, 1406, 1406, 1411, 1415, 1418, 1425, 1429, 1438, 1486, 1692, 1701ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1878,
+            "range": "±288",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1798ms, Q3: 2086ms\nAll times: 1717, 1744, 1746, 1773, 1777, 1798, 1799, 1810, 1835, 1866, 1878, 1886, 1887, 1933, 2010, 2086, 2186, 2232, 2457, 2668ms"
           }
         ]
       }
