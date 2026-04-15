@@ -238,9 +238,7 @@ describe('runSecurityCheck', () => {
   });
 
   it('should use synchronously-created earlyPool when createWorkerPoolSync returns a pool', async () => {
-    const { createWorkerPoolSync, cleanupWorkerPool } = await import(
-      '../../../src/shared/processConcurrency.js'
-    );
+    const { createWorkerPoolSync, cleanupWorkerPool } = await import('../../../src/shared/processConcurrency.js');
 
     // Clear accumulated calls from prior tests, then make createWorkerPoolSync
     // return a mock pool so the earlyPool path is taken

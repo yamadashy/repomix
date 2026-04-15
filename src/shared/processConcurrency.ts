@@ -203,10 +203,7 @@ export const resolveTinypool = async (): Promise<TinypoolConstructor> => {
  * executes inline and worker threads begin loading their modules immediately —
  * even inside a tight synchronous loop on the main thread.
  */
-export const createWorkerPoolSync = (
-  TinypoolCtor: TinypoolConstructor,
-  options: WorkerOptions,
-): Tinypool => {
+export const createWorkerPoolSync = (TinypoolCtor: TinypoolConstructor, options: WorkerOptions): Tinypool => {
   const { workerPath, workerType, runtime, minThreads, maxThreads } = buildPoolOptions(options);
 
   logger.trace(
