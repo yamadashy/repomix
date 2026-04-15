@@ -58,13 +58,6 @@ describe('packager', () => {
         },
         warmupPromise: Promise.resolve(),
       }),
-      createSecurityTaskRunner: vi.fn().mockResolvedValue({
-        taskRunner: {
-          run: vi.fn().mockResolvedValue([]),
-          cleanup: vi.fn().mockResolvedValue(undefined),
-        },
-        warmupPromise: Promise.resolve(),
-      }),
       prefetchSortData: vi.fn().mockResolvedValue(undefined),
       getProcessConcurrency: vi.fn().mockReturnValue(4),
       calculateMetrics: vi.fn().mockResolvedValue({
@@ -90,10 +83,6 @@ describe('packager', () => {
 
     expect(mockDeps.searchFiles).toHaveBeenCalledWith('root', mockConfig, undefined);
     expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback);
-    // Pool creation uses estimatedTasks (getProcessConcurrency * 100) rather than
-    // the actual file count, since pools are created before searchFiles completes.
-    const estimatedTasks = 4 * 100; // getProcessConcurrency() * TASKS_PER_THREAD
-    expect(mockDeps.createSecurityTaskRunner).toHaveBeenCalledWith(estimatedTasks);
     expect(mockDeps.validateFileSafety).toHaveBeenCalled();
     expect(mockDeps.processFiles).toHaveBeenCalled();
     expect(mockDeps.produceOutput).toHaveBeenCalled();
@@ -106,7 +95,8 @@ describe('packager', () => {
       undefined,
       undefined,
       expect.objectContaining({
-        securityTaskRunner: expect.anything(),
+        runSecurityCheck: expect.anything(),
+        filterOutUntrustedFiles: expect.anything(),
       }),
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);

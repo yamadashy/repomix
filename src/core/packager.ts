@@ -22,7 +22,7 @@ import {
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { filterOutUntrustedFiles } from './security/filterOutUntrustedFiles.js';
-import { createSecurityTaskRunner, runSecurityCheck, type SuspiciousFileResult } from './security/securityCheck.js';
+import { runSecurityCheck, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -52,7 +52,6 @@ const defaultDeps = {
   calculateFileMetrics,
   calculateMetrics,
   createMetricsTaskRunner,
-  createSecurityTaskRunner,
   sortPaths,
   prefetchSortData,
   sortOutputFiles,
@@ -106,8 +105,6 @@ export const pack = async (
   // that awaits sortDataPromise (e.g., searchFiles throws).
   sortDataPromise.catch(() => {});
 
-  const securityEnabled = config.security.enableSecurityCheck;
-
   // Determine if the metrics worker pool is needed. For the default configuration
   // (XML/markdown/plain, no parsable, no split, no git diffs/logs), all file token
   // counts are estimated on the main thread (SMALL_FILE_THRESHOLD = 200000) and
@@ -150,8 +147,6 @@ export const pack = async (
         },
         warmupPromise: Promise.resolve(undefined),
       } as unknown as MetricsTaskRunnerWithWarmup);
-  const securityTaskRunnerPromise = securityEnabled ? deps.createSecurityTaskRunner(estimatedTasks) : undefined;
-
   // Start git operations immediately — they only need rootDirs and config, not
   // searchFiles results. Launching them here overlaps the ~50-70ms git diff/log
   // subprocesses with searchFiles (~135ms) and worker warm-up, hiding their cost
@@ -164,7 +159,6 @@ export const pack = async (
   gitDiffPromise?.catch?.(() => {});
   gitLogPromise?.catch?.(() => {});
   metricsTaskRunnerPromise.catch(() => {});
-  securityTaskRunnerPromise?.catch(() => {});
 
   try {
     progressCallback('Searching for files...');
@@ -180,7 +174,6 @@ export const pack = async (
     // Resolve pool creation promises — they ran in parallel with searchFiles and
     // are typically already settled (tinypool was pre-loaded during module evaluation).
     const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = await metricsTaskRunnerPromise;
-    const securityTaskRunnerWithWarmup = await (securityTaskRunnerPromise ?? Promise.resolve(undefined));
 
     // Deduplicate and sort empty directory paths for reuse during output generation,
     // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
@@ -264,24 +257,26 @@ export const pack = async (
     allFileMetricsPromise.catch(() => {});
 
     // Launch security check as a non-blocking promise so that output generation
-    // can start immediately without waiting for the ~55ms security scan to
-    // complete.  validateFileSafety only inspects rawFiles and does not depend
-    // on processedFiles or the output, so there is no data dependency between
+    // can start immediately without waiting for the security scan to complete.
+    // validateFileSafety only inspects rawFiles and does not depend on
+    // processedFiles or the output, so there is no data dependency between
     // the two phases.  In the common case (~95%+ of repos), no suspicious files
     // are found and the optimistically-generated output is used as-is.  In the
     // rare case, we re-filter and re-generate.
-    const securityPromise = (async () => {
-      if (securityTaskRunnerWithWarmup) {
-        await securityTaskRunnerWithWarmup.warmupPromise;
-      }
-      return withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
-          runSecurityCheck,
-          filterOutUntrustedFiles,
-          securityTaskRunner: securityTaskRunnerWithWarmup?.taskRunner,
-        }),
-      );
-    })();
+    //
+    // The security worker pool is NOT pre-created. runSecurityCheck first runs
+    // the SECRETLINT_PRESCAN regex on the main thread (~1-5ms) to filter files.
+    // For ~95% of repos, the prescan eliminates all items and returns immediately
+    // — no worker thread is ever spawned. This avoids the CPU contention that an
+    // eagerly-spawned security worker thread (~97ms module loading) would create
+    // with the main thread's searchFiles and collectFiles phases. For the rare
+    // repos with suspect files, runSecurityCheck creates the pool on-demand.
+    const securityPromise = withMemoryLogging('Security Check', () =>
+      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
+        runSecurityCheck,
+        filterOutUntrustedFiles,
+      }),
+    );
     securityPromise.catch(() => {});
 
     // Pre-sort all processed files optimistically (before security results are
@@ -457,14 +452,7 @@ export const pack = async (
     } catch {
       // Pool creation failed — nothing to clean up
     }
-    if (securityTaskRunnerPromise) {
-      try {
-        const secRunner = await securityTaskRunnerPromise;
-        await secRunner.warmupPromise.catch(() => {});
-        await secRunner.taskRunner.cleanup();
-      } catch {
-        // Pool creation failed — nothing to clean up
-      }
-    }
+    // Security pool cleanup is handled by runSecurityCheck itself (ownedTaskRunner
+    // path) — no external cleanup needed here.
   }
 };
