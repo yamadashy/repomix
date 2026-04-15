@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776280515710,
+  "lastUpdate": 1776283447683,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3420,6 +3420,51 @@ window.BENCHMARK_DATA = {
             "range": "±23",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1697ms, Q3: 1720ms\nAll times: 1687, 1688, 1689, 1690, 1696, 1697, 1697, 1702, 1702, 1708, 1709, 1709, 1709, 1713, 1714, 1720, 1728, 1738, 1739, 1769ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "382cd4642dfbdba5fae6760e97647f7cebe5329b",
+          "message": "perf(core): Overlap empty directory scan with file collection pipeline\n\nTwo optimizations that compound to a 4.4% improvement in end-to-end CLI time:\n\n1. Move empty directory search from searchFiles into packager.ts so it runs\n   concurrently with file collection, git diffs, and git logs — keeping the\n   ~100ms globby directory scan off the critical path.\n\n2. Reorder isBinaryFile check after TextDecoder in readRawFile — valid UTF-8\n   files (>99% of source code) skip the buffer content scan entirely, saving\n   ~16ms of main-thread CPU during file collection.\n\nBenchmark: `node bin/repomix.cjs --quiet` on the repomix repo (~1019 files,\ndefault config with includeEmptyDirectories, git diffs/logs, truncateBase64).\n30 interleaved A/B pairs:\n\n| Metric        | Baseline | This patch | Delta              |\n|---------------|----------|------------|--------------------|\n| median        | 1543 ms  | 1475 ms    | -68 ms (-4.4%)     |\n| mean          | 1535 ms  | 1484 ms    | -50 ms (-3.3%)     |\n| trimmed mean  | 1533 ms  | 1483 ms    | -50 ms (-3.3%)     |\n| positive      |          |            | 22/30 pairs        |\n\nCorrectness: all 1115 tests pass, lint clean, output file list identical\n(1027 files), tree structure byte-identical including empty directories.\n\nhttps://claude.ai/code/session_01E3qLxpYa9hEXP3uKj28tox",
+          "timestamp": "2026-04-15T20:01:52Z",
+          "tree_id": "33a1541834ab85fb6191691cbc1abd945b075d5c",
+          "url": "https://github.com/yamadashy/repomix/commit/382cd4642dfbdba5fae6760e97647f7cebe5329b"
+        },
+        "date": 1776283447223,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1193,
+            "range": "±187",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1114ms, Q3: 1301ms\nAll times: 947, 983, 1015, 1052, 1063, 1093, 1109, 1114, 1128, 1129, 1132, 1143, 1143, 1174, 1180, 1193, 1218, 1225, 1226, 1237, 1263, 1291, 1301, 1305, 1322, 1374, 1434, 1463, 1613, 1643ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1412,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1397ms, Q3: 1430ms\nAll times: 1371, 1380, 1391, 1395, 1397, 1397, 1397, 1402, 1402, 1408, 1412, 1414, 1421, 1425, 1429, 1430, 1433, 1449, 1456, 1467ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1891,
+            "range": "±70",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1877ms, Q3: 1947ms\nAll times: 1836, 1853, 1855, 1862, 1864, 1877, 1877, 1878, 1880, 1889, 1891, 1900, 1928, 1933, 1938, 1947, 1984, 1987, 1989, 2303ms"
           }
         ]
       }
