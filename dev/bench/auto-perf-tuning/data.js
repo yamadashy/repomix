@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776294767895,
+  "lastUpdate": 1776297582245,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3645,6 +3645,51 @@ window.BENCHMARK_DATA = {
             "range": "±52",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1725ms, Q3: 1777ms\nAll times: 1709, 1712, 1719, 1721, 1722, 1725, 1742, 1745, 1746, 1746, 1760, 1760, 1761, 1765, 1773, 1777, 1786, 1788, 1797, 1943ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "6226ae44fe865f9801188cd44c77e6c87c453b5c",
+          "message": "perf(core): Defer unused module initialization from CLI hot path\n\nLazy-load globby, minimatch, and break the configSchema→gpt-tokenizer\nimport chain to avoid loading ~25 transitive packages that are never\nused on the default CLI path (git ls-files fast path, ~90% of runs).\n\nChanges:\n- Extract TOKEN_ENCODINGS/TokenEncoding to standalone tokenEncodings.ts,\n  breaking the configSchema.ts → TokenCounter.ts → gpt-tokenizer chain\n  that eagerly loaded gpt-tokenizer during config parsing\n- Lazy-load globby via cached dynamic import — its 23-package transitive\n  closure is only needed when the git fast path is unavailable\n- Lazy-load minimatch inside the --include pattern conditional — only\n  needed when non-default include patterns are specified\n- Use path.join instead of path.resolve in collectFiles — rootDir is\n  always absolute and filePath always relative, avoiding unnecessary\n  process.cwd() checks\n\nBenchmark (`node bin/repomix.cjs --quiet` on repomix repo, ~1019 files):\n30 runs per variant, trimmed (drop top/bottom 5):\n\n  | Metric | Baseline   | This patch | Delta            |\n  |--------|------------|------------|------------------|\n  | median | 1247 ms    | 1221 ms    | -26 ms (-2.0%)   |\n  | mean   | 1239 ms    | 1224 ms    | -15 ms (-1.2%)   |\n  | stdev  | 26.6 ms    | 19.4 ms    | -7.2 ms          |\n\nWithout compile cache (cold start, CI-like conditions):\n  | median | 1295 ms    | 1257 ms    | -38 ms (-2.9%)   |\n\nWhy: configSchema.ts imported TOKEN_ENCODINGS from TokenCounter.ts,\nwhich has top-level `import { GptEncoding } from 'gpt-tokenizer/...'`.\nThis forced gpt-tokenizer to be parsed and executed during config\nloading — before any pipeline work begins. Similarly, globby's 23-module\ndependency tree was eagerly loaded even though the git ls-files fast\npath (used for all git repos) never calls globby at runtime.\n\nhttps://claude.ai/code/session_01A5JtLyU4dawn97adbBDAX2",
+          "timestamp": "2026-04-15T23:57:15Z",
+          "tree_id": "5c2cdbe8d4577adb6418c8e4602bb46aeff064c6",
+          "url": "https://github.com/yamadashy/repomix/commit/6226ae44fe865f9801188cd44c77e6c87c453b5c"
+        },
+        "date": 1776297581255,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 774,
+            "range": "±40",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 762ms, Q3: 802ms\nAll times: 737, 751, 751, 758, 759, 760, 761, 762, 764, 764, 765, 767, 768, 773, 774, 774, 776, 787, 789, 791, 796, 800, 802, 807, 816, 835, 842, 857, 929, 933ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1314,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1301ms, Q3: 1327ms\nAll times: 1264, 1268, 1286, 1286, 1295, 1301, 1301, 1302, 1308, 1310, 1314, 1315, 1316, 1317, 1323, 1327, 1337, 1339, 1346, 1393ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1759,
+            "range": "±49",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1742ms, Q3: 1791ms\nAll times: 1659, 1711, 1717, 1729, 1735, 1742, 1747, 1751, 1756, 1756, 1759, 1776, 1782, 1784, 1789, 1791, 1802, 1803, 1820, 1856ms"
           }
         ]
       }
