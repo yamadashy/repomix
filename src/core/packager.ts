@@ -312,6 +312,8 @@ export const pack = async (
     );
 
     const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
+    const outputWrapperPromise = outputPromise.then((r) => r.outputWrapper);
+    outputWrapperPromise.catch(() => {});
 
     // Extract pendingIO separately so we can await it even if Promise.all rejects.
     // The .catch(() => {}) in produceOutput prevents unhandled rejections, but we
@@ -322,6 +324,8 @@ export const pack = async (
     // Pass the early-started file metrics promise to calculateMetrics so it can
     // continue running concurrently with output generation. The suspicious file
     // filtering is done inside calculateMetrics when the promise resolves.
+    // The pre-computed outputWrapper (generated alongside the output) allows
+    // calculateMetrics to skip the extractOutputWrapper scan (~7ms).
     const [{ outputFiles }, metrics] = await Promise.all([
       outputPromise,
       withMemoryLogging('Calculate Metrics', async () => {
@@ -336,6 +340,7 @@ export const pack = async (
             taskRunner: metricsTaskRunner,
             precomputedFileMetrics: allFileMetricsPromise,
             suspiciousPathSet,
+            precomputedOutputWrapper: outputWrapperPromise,
           },
         );
       }),

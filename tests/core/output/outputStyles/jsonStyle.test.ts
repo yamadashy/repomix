@@ -69,9 +69,9 @@ describe('JSON Output Style', () => {
     const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
 
     // Should be valid JSON
-    expect(() => JSON.parse(result)).not.toThrow();
+    expect(() => JSON.parse(result.output)).not.toThrow();
 
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.output);
     expect(parsed).toBeDefined();
   });
 
@@ -86,7 +86,7 @@ describe('JSON Output Style', () => {
     const allFilePaths = processedFiles.map((f) => f.path);
 
     const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.output);
 
     expect(parsed.fileSummary).toBeDefined();
     expect(parsed.fileSummary.purpose).toBeDefined();
@@ -103,7 +103,7 @@ describe('JSON Output Style', () => {
     const allFilePaths = processedFiles.map((f) => f.path);
 
     const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.output);
 
     expect(parsed.fileSummary).toBeUndefined();
   });
@@ -119,7 +119,7 @@ describe('JSON Output Style', () => {
     const allFilePaths = processedFiles.map((f) => f.path);
 
     const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.output);
 
     expect(parsed.files).toBeDefined();
     expect(parsed.files['src/index.ts']).toBe('console.log("Hello");');
@@ -139,9 +139,9 @@ describe('JSON Output Style', () => {
     const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
 
     // Should be valid JSON
-    expect(() => JSON.parse(result)).not.toThrow();
+    expect(() => JSON.parse(result.output)).not.toThrow();
 
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(result.output);
     expect(parsed.files['test.js']).toBe('const str = "Hello "world"\nNew line\tTab";');
   });
 });

@@ -13,6 +13,7 @@ import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDi
 export interface ProduceOutputResult {
   outputFiles?: string[];
   outputForMetrics: string | string[];
+  outputWrapper?: string | null;
   pendingIO?: Promise<void>;
 }
 
@@ -147,7 +148,7 @@ const generateAndWriteSingleOutput = async (
   emptyDirPaths: string[] | undefined,
   deps: typeof defaultDeps,
 ): Promise<ProduceOutputResult> => {
-  const output = await withMemoryLogging('Generate Output', () =>
+  const { output, outputWrapper } = await withMemoryLogging('Generate Output', () =>
     deps.generateOutput(
       rootDirs,
       config,
@@ -175,6 +176,7 @@ const generateAndWriteSingleOutput = async (
 
   return {
     outputForMetrics: output,
+    outputWrapper,
     pendingIO,
   };
 };

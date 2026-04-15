@@ -77,6 +77,7 @@ const defaultDeps = {
   taskRunner: undefined as MetricsTaskRunner | undefined,
   precomputedFileMetrics: undefined as Promise<FileMetrics[]> | undefined,
   suspiciousPathSet: undefined as Set<string> | undefined,
+  precomputedOutputWrapper: undefined as Promise<string | null | undefined> | undefined,
 };
 
 export const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean => {
@@ -152,7 +153,16 @@ export const calculateMetrics = async (
     // for JSON/parsable-XML/split output where indexOf can't find verbatim content.
     const singleOutput = canUseFastOutputTokenPath(config) && outputParts.length === 1 ? outputParts[0] : null;
     const style = config.output.style as 'xml' | 'markdown' | 'plain';
-    const outputWrapper = singleOutput !== null ? extractOutputWrapper(singleOutput, processedFiles, style) : null;
+
+    // Use pre-computed wrapper from output generation when available, avoiding the
+    // ~7ms extractOutputWrapper scan through the full output string.
+    const precomputedWrapper = deps.precomputedOutputWrapper ? await deps.precomputedOutputWrapper : undefined;
+    const outputWrapper =
+      precomputedWrapper !== undefined && precomputedWrapper !== null
+        ? precomputedWrapper
+        : singleOutput !== null
+          ? extractOutputWrapper(singleOutput, processedFiles, style)
+          : null;
     if (singleOutput !== null && outputWrapper === null) {
       logger.trace('Fast-path unavailable, falling back to full output tokenization');
     }
