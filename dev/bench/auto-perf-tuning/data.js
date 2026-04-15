@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776251087341,
+  "lastUpdate": 1776253466589,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3285,6 +3285,51 @@ window.BENCHMARK_DATA = {
             "range": "±7",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 554ms, Q3: 561ms\nAll times: 548, 548, 548, 550, 552, 554, 555, 555, 556, 557, 557, 558, 559, 560, 560, 561, 566, 568, 571, 576ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "6804a8b13ddf6074db867f341a6ce7ea9fdd056c",
+          "message": "perf(security): Remove /i flag from SECRETLINT_PRESCAN regex (-2.1% wall)\n\nReplace the case-insensitive /i flag with case-specific matching:\n- Fixed-case patterns (AWS key prefixes, Slack/GitHub/API tokens) use their\n  canonical case directly — these tokens are always in a specific case per\n  their respective provider specs\n- Mixed-case patterns (SECRET_ACCESS_KEY, ACCOUNT, PRIVATE KEY) use explicit\n  [Aa][Bb] character classes for correct case-insensitive matching\n- Common prefixes grouped under shared prefix (A(?:KIA|GPA|...), sk-(?:...),\n  g(?:h[pousr]_|ithub_pat_), database URLs) for better V8 JIT trie optimization\n\nRemoving /i avoids V8's per-character case-folding overhead at every position\nin the content string. The case-folding adds ~28% overhead across the full\nalternation because V8 must normalize each character before comparison, even at\npositions where no alternative can match.\n\nSide benefit: eliminates false positives where common non-English words\n(e.g., \"anpa\" in German, \"asia\" in geographic text) matched case-insensitive\nAWS prefixes. These false positives sent clean files through the full secretlint\nworker pipeline unnecessarily.\n\nBenchmark (isolated regex, 855 files / 11.4MB):\n  Before: 45.1ms\n  After:  32.2ms\n  Saving: 12.9ms (-28.7%)\n\nBenchmark (end-to-end, 30 interleaved A/B pairs on repomix repo):\n  Before: median 468ms, mean 468.8ms\n  After:  median 458ms, mean 462.1ms\n  Saving: median 10ms (-2.1%), mean 6.7ms (-1.4%)\n  Welch t=1.89, df=51.6\n\nScaled benchmark (simulated 1s workload, 1710 files / 22.9MB):\n  Before: 91.2ms prescan\n  After:  64.6ms prescan\n  Saving: 26.5ms (-29.1%, ~2.7% of 1s wall time)\n\nAll 1148 tests pass. Zero behavioral regressions.\n\nhttps://claude.ai/code/session_015qBVFuDEMFBroVQyxLsMgz",
+          "timestamp": "2026-04-15T11:42:19Z",
+          "tree_id": "8ae5e4803fb2b35a7ad6cd2c41fff211824233a2",
+          "url": "https://github.com/yamadashy/repomix/commit/6804a8b13ddf6074db867f341a6ce7ea9fdd056c"
+        },
+        "date": 1776253466172,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 319,
+            "range": "±112",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 277ms, Q3: 389ms\nAll times: 225, 236, 242, 256, 260, 270, 276, 277, 287, 292, 301, 311, 315, 316, 317, 319, 332, 335, 340, 346, 347, 375, 389, 407, 413, 426, 428, 452, 465, 744ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 295,
+            "range": "±5",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 292ms, Q3: 297ms\nAll times: 280, 283, 287, 289, 291, 292, 294, 294, 295, 295, 295, 295, 295, 296, 296, 297, 298, 301, 321, 337ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 539,
+            "range": "±12",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 533ms, Q3: 545ms\nAll times: 517, 530, 531, 532, 532, 533, 533, 535, 535, 538, 539, 539, 543, 543, 543, 545, 545, 545, 546, 546ms"
           }
         ]
       }
