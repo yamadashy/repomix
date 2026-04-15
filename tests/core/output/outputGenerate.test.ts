@@ -44,9 +44,9 @@ describe('outputGenerate', () => {
       instruction: '',
       filesEnabled: true,
     });
-    mockDeps.generateDirectPlainOutput.mockReturnValue('mock output');
+    mockDeps.generateDirectPlainOutput.mockReturnValue({ output: 'mock output', outputWrapper: null });
 
-    const output = await generateOutput(
+    const result = await generateOutput(
       [process.cwd()],
       mockConfig,
       mockProcessedFiles,
@@ -68,7 +68,7 @@ describe('outputGenerate', () => {
       undefined,
       undefined,
     );
-    expect(output).toBe('mock output');
+    expect(result.output).toBe('mock output');
   });
 
   test('generateOutput should write correct content to file (plain style)', async () => {
@@ -87,13 +87,13 @@ describe('outputGenerate', () => {
       { path: 'dir/file2.txt', content: 'content2' },
     ];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const result = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
 
-    expect(output).toContain('File Summary');
-    expect(output).toContain('File: file1.txt');
-    expect(output).toContain('content1');
-    expect(output).toContain('File: dir/file2.txt');
-    expect(output).toContain('content2');
+    expect(result.output).toContain('File Summary');
+    expect(result.output).toContain('File: file1.txt');
+    expect(result.output).toContain('content1');
+    expect(result.output).toContain('File: dir/file2.txt');
+    expect(result.output).toContain('content2');
   });
 
   test('generateOutput should write correct content to file (parsable xml style)', async () => {
@@ -113,9 +113,9 @@ describe('outputGenerate', () => {
       { path: 'dir/file2.txt', content: 'if (a && b)' },
     ];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const result = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
 
-    const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
+    const doc = createStrictXmlParser().parseFromString(result.output, 'text/xml');
     const repomix = doc.documentElement;
     if (!repomix) throw new Error('documentElement is null');
 
@@ -146,13 +146,13 @@ describe('outputGenerate', () => {
       { path: 'dir/file2.txt', content: '```\ncontent2\n```' },
     ];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const result = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
 
-    expect(output).toContain('# File Summary');
-    expect(output).toContain('## File: file1.txt');
-    expect(output).toContain('````\ncontent1\n````');
-    expect(output).toContain('## File: dir/file2.txt');
-    expect(output).toContain('````\n```\ncontent2\n```\n````');
+    expect(result.output).toContain('# File Summary');
+    expect(result.output).toContain('## File: file1.txt');
+    expect(result.output).toContain('````\ncontent1\n````');
+    expect(result.output).toContain('## File: dir/file2.txt');
+    expect(result.output).toContain('````\n```\ncontent2\n```\n````');
   });
 
   test('generateOutput (txt) should omit generationHeader when fileSummaryEnabled is false, but always include headerText if provided', async () => {
@@ -165,9 +165,9 @@ describe('outputGenerate', () => {
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
-    expect(output).not.toContain('This file is a merged representation'); // generationHeader
-    expect(output).toContain('ALWAYS SHOW THIS HEADER');
+    const result = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    expect(result.output).not.toContain('This file is a merged representation'); // generationHeader
+    expect(result.output).toContain('ALWAYS SHOW THIS HEADER');
   });
 
   test('generateOutput (xml) omits generationHeader when fileSummaryEnabled is false, but always includes headerText', async () => {
@@ -181,8 +181,8 @@ describe('outputGenerate', () => {
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: '<div>foo</div>' }];
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
-    const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
+    const result = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const doc = createStrictXmlParser().parseFromString(result.output, 'text/xml');
     const repomix = doc.documentElement;
     if (!repomix) throw new Error('documentElement is null');
     expect(repomix.getElementsByTagName('file_summary').length).toBe(0);
@@ -201,9 +201,9 @@ describe('outputGenerate', () => {
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
-    expect(output).not.toContain('This file is a merged representation');
-    expect(output).toContain('MARKDOWN HEADER');
+    const result = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    expect(result.output).not.toContain('This file is a merged representation');
+    expect(result.output).toContain('MARKDOWN HEADER');
   });
 
   test('generateOutput should include git diffs when enabled', async () => {
@@ -220,11 +220,11 @@ describe('outputGenerate', () => {
       stagedDiffContent: 'diff --git b/staged.txt',
     };
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, [], mockGitDiffResult);
+    const result = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, [], mockGitDiffResult);
 
-    expect(output).toContain('Git Diffs');
-    expect(output).toContain('diff --git a/file.txt');
-    expect(output).toContain('diff --git b/staged.txt');
+    expect(result.output).toContain('Git Diffs');
+    expect(result.output).toContain('diff --git a/file.txt');
+    expect(result.output).toContain('diff --git b/staged.txt');
   });
 
   test('generateOutput should include git logs when enabled', async () => {
@@ -247,7 +247,7 @@ describe('outputGenerate', () => {
       ],
     };
 
-    const output = await generateOutput(
+    const result = await generateOutput(
       [process.cwd()],
       mockConfig,
       mockProcessedFiles,
@@ -256,9 +256,9 @@ describe('outputGenerate', () => {
       mockGitLogResult,
     );
 
-    expect(output).toContain('Git Logs');
-    expect(output).toContain('Initial commit');
-    expect(output).toContain('2024-01-01');
+    expect(result.output).toContain('Git Logs');
+    expect(result.output).toContain('Initial commit');
+    expect(result.output).toContain('2024-01-01');
   });
 
   test('generateOutput should write correct content to file (json style)', async () => {
@@ -273,9 +273,9 @@ describe('outputGenerate', () => {
       { path: 'file2.txt', content: 'content2' },
     ];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const result = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
 
-    const parsed = JSON.parse(output);
+    const parsed = JSON.parse(result.output);
     expect(parsed).toHaveProperty('files');
     expect(parsed.files).toHaveProperty('file1.txt');
     expect(parsed.files).toHaveProperty('file2.txt');
@@ -293,10 +293,10 @@ describe('outputGenerate', () => {
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+    const result = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
 
-    expect(output).not.toContain('File: file1.txt');
-    expect(output).not.toContain('content1');
+    expect(result.output).not.toContain('File: file1.txt');
+    expect(result.output).not.toContain('content1');
   });
 
   test('generateOutput should exclude directory structure when disabled', async () => {
@@ -309,8 +309,8 @@ describe('outputGenerate', () => {
     });
     const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
 
-    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, ['file1.txt']);
+    const result = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, ['file1.txt']);
 
-    expect(output).not.toContain('Directory Structure');
+    expect(result.output).not.toContain('Directory Structure');
   });
 });

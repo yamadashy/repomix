@@ -73,7 +73,7 @@ describe('outputSplit', () => {
       }) as Parameters<typeof generateSplitOutputParts>[0]['baseConfig'];
 
     const createMockDeps = (outputSize: number) => ({
-      generateOutput: async () => 'x'.repeat(outputSize),
+      generateOutput: async () => ({ output: 'x'.repeat(outputSize), outputWrapper: null }),
     });
 
     it('throws error when single root entry exceeds maxBytesPerPart', async () => {
@@ -157,7 +157,7 @@ describe('outputSplit', () => {
         // Generate output proportional to number of files + some base overhead
         const baseSize = 30;
         const perFileSize = 40;
-        return 'x'.repeat(baseSize + files.length * perFileSize);
+        return { output: 'x'.repeat(baseSize + files.length * perFileSize), outputWrapper: null };
       };
 
       const result = await generateSplitOutputParts({
@@ -227,7 +227,7 @@ describe('outputSplit', () => {
         });
 
         // Return size that forces split
-        return 'x'.repeat(100 + files.length * 50);
+        return { output: 'x'.repeat(100 + files.length * 50), outputWrapper: null };
       };
 
       await generateSplitOutputParts({

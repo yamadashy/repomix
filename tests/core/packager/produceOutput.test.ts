@@ -4,7 +4,7 @@ import { createMockConfig } from '../../testing/testUtils.js';
 
 describe('produceOutput', () => {
   const createMockDeps = () => ({
-    generateOutput: vi.fn().mockResolvedValue('generated output'),
+    generateOutput: vi.fn().mockResolvedValue({ output: 'generated output', outputWrapper: null }),
     writeOutputToDisk: vi.fn().mockResolvedValue(undefined),
     copyToClipboardIfEnabled: vi.fn().mockResolvedValue(undefined),
   });
@@ -106,7 +106,7 @@ describe('produceOutput', () => {
     it('generates and writes multiple output files', async () => {
       const mockDeps = createMockDeps();
       mockDeps.generateOutput.mockImplementation(async (_rootDirs, _config, files) => {
-        return `output for ${files.length} files`;
+        return { output: `output for ${files.length} files`, outputWrapper: null };
       });
 
       const mockConfig = createMockConfig({

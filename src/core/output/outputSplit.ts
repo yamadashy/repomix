@@ -108,7 +108,7 @@ const renderGroups = async (
   const chunkAllFilePaths = groupsToRender.flatMap((g) => g.allFilePaths);
   const chunkConfig = makeChunkConfig(baseConfig, partIndex);
 
-  return await generateOutput(
+  const result = await generateOutput(
     rootDirs,
     chunkConfig,
     chunkProcessedFiles,
@@ -118,6 +118,7 @@ const renderGroups = async (
     filePathsByRoot,
     emptyDirPaths,
   );
+  return result.output;
 };
 
 export const generateSplitOutputParts = async ({
