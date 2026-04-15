@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776238284857,
+  "lastUpdate": 1776246050715,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3105,6 +3105,51 @@ window.BENCHMARK_DATA = {
             "range": "±52",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 730ms, Q3: 782ms\nAll times: 697, 711, 714, 714, 719, 730, 735, 740, 741, 741, 741, 748, 773, 778, 781, 782, 788, 789, 793, 814ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "94de0d8740083314b03aa89fd6fa5dba276e64ad",
+          "message": "perf(core): Extend metrics worker skip to repos with git diffs/logs enabled (-24% wall)\n\nPreviously, `needsMetricsWorkers` was true whenever `config.output.git.includeDiffs`\nor `config.output.git.includeLogs` was enabled, forcing a full tinypool worker pool\nto be spawned solely for BPE-tokenizing a few KB of git diff/log content.  The\nworker warmup (loading 1.7 MB of BPE rank data via JSON.parse on each thread)\ncreated severe CPU contention with searchFiles and collectFiles on the main thread.\n\nThe lightweight stub taskRunner already handles single-content tasks via character-\nratio estimation (`Math.ceil(content.length / 3.5)`), which is exactly what\n`calculateGitDiffMetrics` and `calculateGitLogMetrics` dispatch through\n`runTokenCount`.  The accuracy loss is negligible:\n\n  - Total output tokens: unchanged (0.00% difference)\n  - Git log informational token count: ±3.6% (2865 BPE → 2763 estimated)\n\nThese git token counts are display-only metrics in the CLI report and are not used\nfor output generation or splitting decisions.\n\nBenchmark (interleaved 20-pair, repomix own repo with git diffs/logs enabled):\n  Base: 517.0 ± 12.6 ms\n  Opt:  392.7 ±  8.3 ms\n  Savings: 124.2 ms (−24.0%)\n  Welch t = 36.72, p < 0.001\n\nhttps://claude.ai/code/session_019WWyqnYmwGqdaxcz9PV2Xe",
+          "timestamp": "2026-04-15T09:39:17Z",
+          "tree_id": "4bf73681c9f650224047a06714b0febac4b75c73",
+          "url": "https://github.com/yamadashy/repomix/commit/94de0d8740083314b03aa89fd6fa5dba276e64ad"
+        },
+        "date": 1776246049706,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 239,
+            "range": "±44",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 226ms, Q3: 270ms\nAll times: 210, 211, 217, 217, 220, 222, 225, 226, 226, 227, 229, 231, 231, 232, 236, 239, 243, 250, 264, 266, 267, 268, 270, 271, 283, 298, 304, 336, 369, 604ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 318,
+            "range": "±14",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 315ms, Q3: 329ms\nAll times: 310, 310, 313, 313, 314, 315, 315, 316, 317, 318, 318, 320, 322, 325, 325, 329, 330, 351, 362, 381ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 620,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 617ms, Q3: 632ms\nAll times: 603, 607, 613, 616, 616, 617, 618, 619, 620, 620, 620, 623, 624, 624, 626, 632, 633, 635, 654, 667ms"
           }
         ]
       }
