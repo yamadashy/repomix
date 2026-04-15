@@ -263,41 +263,55 @@ export const pack = async (
     // Prevent unhandled rejection if security throws before we await this
     allFileMetricsPromise.catch(() => {});
 
-    // Ensure security workers are warmed up, then run security check concurrently
-    // with the already-running file metrics workers
-    if (securityTaskRunnerWithWarmup) {
-      await securityTaskRunnerWithWarmup.warmupPromise;
-    }
+    // Launch security check as a non-blocking promise so that output generation
+    // can start immediately without waiting for the ~55ms security scan to
+    // complete.  validateFileSafety only inspects rawFiles and does not depend
+    // on processedFiles or the output, so there is no data dependency between
+    // the two phases.  In the common case (~95%+ of repos), no suspicious files
+    // are found and the optimistically-generated output is used as-is.  In the
+    // rare case, we re-filter and re-generate.
+    const securityPromise = (async () => {
+      if (securityTaskRunnerWithWarmup) {
+        await securityTaskRunnerWithWarmup.warmupPromise;
+      }
+      return withMemoryLogging('Security Check', () =>
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
+          runSecurityCheck,
+          filterOutUntrustedFiles,
+          securityTaskRunner: securityTaskRunnerWithWarmup?.taskRunner,
+        }),
+      );
+    })();
+    securityPromise.catch(() => {});
 
-    const validationResult = await withMemoryLogging('Security Check', () =>
-      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
-        runSecurityCheck,
-        filterOutUntrustedFiles,
-        securityTaskRunner: securityTaskRunnerWithWarmup?.taskRunner,
-      }),
-    );
-
-    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-      validationResult;
-
-    // Filter processed files to exclude suspicious ones
-    const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
-    const filteredProcessedFiles =
-      suspiciousPathSet.size > 0 ? allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path)) : allProcessedFiles;
-
-    // Pre-sort processedFiles in the same order they will appear in the generated output.
-    // `generateOutput` internally calls `sortOutputFiles` as well; both share the same
-    // git-log subprocess result (cached via `fileChangeCountsCache`). The array sort itself
-    // runs twice but is negligible (~1ms for 1000 files). This ordering is required by the
-    // fast-path in `calculateMetrics`, which walks file contents through the output string
-    // in order via `extractOutputWrapper`.
+    // Pre-sort all processed files optimistically (before security results are
+    // available).  sortDataPromise was included in the earlier Promise.all and
+    // is already settled, so sortOutputFiles uses the cached git-log data.
     await sortDataPromise;
-    const processedFiles = await deps.sortOutputFiles(filteredProcessedFiles, config);
+    const optimisticProcessedFiles = await deps.sortOutputFiles(allProcessedFiles, config);
 
-    progressCallback('Generating output...');
+    // Build filePathsByRoot for multi-root tree generation — pure computation,
+    // no dependency on security results.
+    const filePathsByRoot: FilesByRoot[] = filePathsByDir.map(({ rootDir, filePaths }) => ({
+      rootLabel: path.basename(rootDir) || rootDir,
+      files: filePaths,
+    }));
 
-    // Skill generation path — metrics not needed, return early (worker pool cleaned up by finally)
+    // Skill generation path — needs security results for the return value,
+    // so await security before returning early (worker pool cleaned up by finally).
     if (config.skillGenerate !== undefined && options.skillDir) {
+      const validationResult = await securityPromise;
+      const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+        validationResult;
+      const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
+      const processedFiles =
+        suspiciousPathSet.size > 0
+          ? await deps.sortOutputFiles(
+              allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path)),
+              config,
+            )
+          : optimisticProcessedFiles;
+
       const result = await deps.packSkill({
         rootDirs,
         config,
@@ -318,23 +332,17 @@ export const pack = async (
       return result;
     }
 
-    // Build filePathsByRoot for multi-root tree generation
-    // Use directory basename as the label for each root
-    // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
-    const filePathsByRoot: FilesByRoot[] = filePathsByDir.map(({ rootDir, filePaths }) => ({
-      rootLabel: path.basename(rootDir) || rootDir,
-      files: filePaths,
-    }));
+    // Start output generation optimistically with ALL processed files while the
+    // security check is still running.  produceOutput does not need security
+    // results — it only needs processedFiles, config, and git data.  This
+    // overlaps ~17ms of output generation (XML string concat + disk write) with
+    // the ~55ms security scan, hiding output generation entirely.
+    progressCallback('Generating output...');
 
-    // Start output generation immediately — it does not need the metrics
-    // worker pool.  The metrics warmup promise is awaited inside the metrics
-    // branch only, so that output generation (lazy module import + XML string
-    // concat + disk write) can overlap with any remaining worker warm-up
-    // instead of stalling behind it.
-    const outputPromise = deps.produceOutput(
+    let outputPromise = deps.produceOutput(
       rootDirs,
       config,
-      processedFiles,
+      optimisticProcessedFiles,
       allFilePaths,
       gitDiffResult,
       gitLogResult,
@@ -342,6 +350,45 @@ export const pack = async (
       filePathsByRoot,
       emptyDirPaths,
     );
+    outputPromise.catch(() => {});
+
+    // Wait for security results while output generation runs in parallel
+    const validationResult = await securityPromise;
+
+    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+      validationResult;
+
+    const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
+
+    // Determine final processedFiles and output based on security results
+    let processedFiles: ProcessedFile[];
+    if (suspiciousPathSet.size > 0) {
+      // Rare case: suspicious files found — await the optimistic output's disk
+      // write before regenerating to prevent two concurrent fs.writeFile calls
+      // targeting the same path (which would race and could leave suspicious
+      // content in the output file).
+      const optimisticResult = await outputPromise;
+      if (optimisticResult.pendingIO) {
+        await optimisticResult.pendingIO;
+      }
+
+      const filteredProcessedFiles = allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path));
+      processedFiles = await deps.sortOutputFiles(filteredProcessedFiles, config);
+      outputPromise = deps.produceOutput(
+        rootDirs,
+        config,
+        processedFiles,
+        allFilePaths,
+        gitDiffResult,
+        gitLogResult,
+        progressCallback,
+        filePathsByRoot,
+        emptyDirPaths,
+      );
+    } else {
+      // Common case: no suspicious files — use the optimistic output as-is
+      processedFiles = optimisticProcessedFiles;
+    }
 
     const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
     const outputWrapperPromise = outputPromise.then((r) => r.outputWrapper);
