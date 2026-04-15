@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776253466589,
+  "lastUpdate": 1776274917579,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3330,6 +3330,51 @@ window.BENCHMARK_DATA = {
             "range": "±12",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 533ms, Q3: 545ms\nAll times: 517, 530, 531, 532, 532, 533, 533, 535, 535, 538, 539, 539, 543, 543, 543, 545, 545, 545, 546, 546ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "29ac8820293351795ed01ef0c214f298ffe86aaf",
+          "message": "perf(core): Use git ls-files for fast file search in git repositories\n\nReplace globby filesystem walk with git ls-files for file enumeration\nin git repositories, reducing search time from ~250ms to ~15ms (~94ms\nwall-clock improvement, 6.0% of total CLI time).\n\n## What changed\n\n- Added `searchFilesGitFastPath()` that reads from the pre-built git\n  index via `git ls-files --cached --others --exclude-standard`\n- Post-filters the result through the `ignore` package (for\n  default/custom/.repomixignore patterns) and `minimatch` (for include\n  patterns) to produce the same file set as globby\n- Falls back to globby when: not a git repo, useGitignore disabled,\n  stdin/explicit files mode, or git command failure\n- Added `rawIgnorePatterns` to `prepareIgnoreContext` to avoid the\n  `normalizeGlobPattern` transform that converts `**/file.ext` to\n  `**/file.ext/**` — correct for globby but breaks the `ignore`\n  package's gitignore-style matching\n\n## Why it works\n\nglobby walks the entire filesystem tree (~250ms for ~1000 files),\napplying .gitignore rules at each directory level. `git ls-files` reads\nfrom the pre-built index file in a single syscall (~5ms), producing\nthe same set of non-ignored files. The subsequent post-filtering with\nthe `ignore` package for repomix-specific patterns (defaultIgnoreList,\n.repomixignore) and symlink detection via lstatSync adds only ~10ms.\n\n## Benchmark\n\n`node bin/repomix.cjs --quiet --output repomix-output.xml` on the\nrepomix repo (~1019 files, default config). 20 interleaved A/B pairs:\n\n| Metric     | Baseline | This patch | Delta                |\n|------------|----------|------------|----------------------|\n| median     | 1573 ms  | 1475 ms    | −98 ms (−6.2%)       |\n| mean       | 1567 ms  | 1473 ms    | −94 ms (−6.0%)       |\n| positive   |          |            | 19/20 pairs improved |\n\n## Correctness\n\n- 1115 tests pass\n- Lint clean (0 new warnings)\n- Output file list is identical (1019 files, same paths)\n- Output content is byte-identical (verified with diff)\n- Empty directory detection unchanged (still uses globby)\n\nhttps://claude.ai/code/session_01DiePCbPAioXXYL9rGkNFsP",
+          "timestamp": "2026-04-15T17:39:55Z",
+          "tree_id": "53a8847b3d71b423eff29d86e68297a497996c1e",
+          "url": "https://github.com/yamadashy/repomix/commit/29ac8820293351795ed01ef0c214f298ffe86aaf"
+        },
+        "date": 1776274916545,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 884,
+            "range": "±62",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 869ms, Q3: 931ms\nAll times: 833, 840, 841, 850, 857, 866, 869, 869, 871, 871, 876, 877, 884, 884, 884, 884, 887, 890, 911, 919, 925, 925, 931, 931, 945, 953, 961, 983, 989, 993ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1354,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1341ms, Q3: 1364ms\nAll times: 1322, 1331, 1336, 1337, 1340, 1341, 1341, 1347, 1351, 1353, 1354, 1357, 1360, 1361, 1362, 1364, 1382, 1385, 1387, 1417ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1852,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1843ms, Q3: 1860ms\nAll times: 1824, 1824, 1831, 1832, 1833, 1843, 1846, 1846, 1847, 1847, 1852, 1855, 1855, 1858, 1858, 1860, 1862, 1868, 1880, 1896ms"
           }
         ]
       }
