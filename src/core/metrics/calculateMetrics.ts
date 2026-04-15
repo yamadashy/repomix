@@ -82,6 +82,10 @@ const defaultDeps = {
 export const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean => {
   if (config.output.splitOutput !== undefined) return false;
   if (config.output.parsableStyle) return false;
+  // When files are excluded from output (--no-files), the arithmetic
+  // wrapperChars = output.length - totalFileChars goes negative because
+  // processedFiles still contain content that isn't in the output.
+  if (config.output.files === false) return false;
   const style = config.output.style;
   return style === 'xml' || style === 'markdown' || style === 'plain';
 };
@@ -190,6 +194,11 @@ export const calculateMetrics = async (
             totalFileChars += file.content.length;
           }
           const wrapperChars = output.length - totalFileChars;
+          if (wrapperChars < 0) {
+            logger.warn(
+              `Wrapper chars negative (${wrapperChars}), output may have been transformed — falling back to 0`,
+            );
+          }
           const wrapperTokens =
             wrapperChars > 0 ? Math.ceil(wrapperChars / estimateWrapperCharsPerToken(config.tokenCount.encoding)) : 0;
           logger.trace(
