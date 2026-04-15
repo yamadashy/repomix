@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776230216135,
+  "lastUpdate": 1776235879414,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3015,6 +3015,51 @@ window.BENCHMARK_DATA = {
             "range": "±301",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 787ms, Q3: 1088ms\nAll times: 760, 761, 770, 770, 784, 787, 799, 803, 806, 817, 821, 824, 831, 856, 1049, 1088, 1103, 1178, 1305, 1680ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "e48405a52116f1fa16d14f62cd60440bdfe3d240",
+          "message": "perf(core): Overlap output generation with security check (-2.9% wall)\n\nStart produceOutput optimistically with all processed files while\nvalidateFileSafety runs concurrently, instead of waiting for security\nto complete before generating output. The two phases have no data\ndependency: produceOutput only needs processedFiles, config, and git\ndata, while validateFileSafety inspects rawFiles independently.\n\nIn the common case (~95%+ of repos), no suspicious files are found and\nthe optimistically-generated output is used as-is. In the rare case\nthat suspicious files are detected, the optimistic output's disk write\nis awaited first (to prevent concurrent fs.writeFile to the same path),\nthen output is regenerated with the filtered file list.\n\nThe savings come from overlapping ~18ms of sort + XML string\nconcatenation (synchronous main-thread work) with the ~30ms security\nworker IPC wait (async), which was previously idle main-thread time.\n\nBenchmark (sandwich Opt→Base→Opt, 20+20+20 runs, repomix self-pack):\n  Baseline: mean=515.8ms, median=520ms (n=20)\n  Optimized: mean=505.8ms, median=506ms (n=40)\n  Delta: -15ms median (-2.9%), -9.6ms trimmed mean (-1.9%)\n  Welch t=2.16 (p<0.035)\n\nAll 1147 tests pass. No functional change.\n\nhttps://claude.ai/code/session_015pZP76gNK63AExSyAzBk66",
+          "timestamp": "2026-04-15T06:49:33Z",
+          "tree_id": "d0f0f1eb08d1025bd666b61b439904f5134497ad",
+          "url": "https://github.com/yamadashy/repomix/commit/e48405a52116f1fa16d14f62cd60440bdfe3d240"
+        },
+        "date": 1776235878760,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 346,
+            "range": "±59",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 317ms, Q3: 376ms\nAll times: 263, 263, 280, 293, 308, 309, 316, 317, 319, 321, 322, 324, 335, 344, 345, 346, 348, 348, 349, 366, 370, 372, 376, 390, 391, 394, 403, 413, 451, 452ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 374,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 367ms, Q3: 395ms\nAll times: 343, 363, 364, 366, 367, 367, 369, 370, 373, 373, 374, 375, 377, 382, 390, 395, 401, 404, 463, 558ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 741,
+            "range": "±219",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 692ms, Q3: 911ms\nAll times: 668, 677, 680, 682, 689, 692, 692, 696, 699, 710, 741, 754, 889, 899, 909, 911, 916, 919, 920, 922ms"
           }
         ]
       }
