@@ -24,8 +24,9 @@ const METRICS_BATCH_SIZE = 50;
 // At 200000 (200KB), virtually all source code and documentation files are
 // estimated on the main thread. Combined with the arithmetic wrapper token
 // estimation in calculateMetrics, this eliminates all worker-based tokenization
-// from the metrics fast path — the worker pool is only used for git diff/log
-// tokenization (when enabled) and the slow output tokenization fallback.
+// from the metrics fast path — including git diff/log tokenization, which uses
+// the same character-ratio stub. Workers are only created for the slow output
+// tokenization fallback (JSON, parsable XML, split output).
 // Per-extension chars/token ratios (see below) keep the total token count error
 // under 1% even at this threshold.
 const SMALL_FILE_THRESHOLD = 200000;

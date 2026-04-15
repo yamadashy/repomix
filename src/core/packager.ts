@@ -106,18 +106,18 @@ export const pack = async (
   sortDataPromise.catch(() => {});
 
   // Determine if the metrics worker pool is needed. For the default configuration
-  // (XML/markdown/plain, no parsable, no split, no git diffs/logs), all file token
-  // counts are estimated on the main thread (SMALL_FILE_THRESHOLD = 200000) and
-  // output tokens are computed arithmetically via canUseFastOutputTokenPath. In this
-  // common case, no worker tasks are ever dispatched, but the worker warmup (loading
-  // 1.7MB BPE rank data via JSON.parse on each thread) creates severe CPU contention
-  // with the main thread's searchFiles and collectFiles phases, adding ~150ms of
-  // wall time. Skipping pool creation eliminates this contention entirely.
+  // (XML/markdown/plain, no parsable, no split), all file token counts are estimated
+  // on the main thread (SMALL_FILE_THRESHOLD = 200000) and output tokens are computed
+  // arithmetically via canUseFastOutputTokenPath. Git diff/log tokens are also
+  // estimated via the character-ratio stub — the accuracy loss (~±3%) is acceptable
+  // because these counts are informational (displayed in the CLI report), not used
+  // for output generation decisions. Spawning a worker pool solely for git diff/log
+  // tokenization creates severe CPU contention (~100ms of BPE rank parsing on each
+  // thread) that inflates wall time far more than the ~50 token accuracy improvement.
   //
-  // When workers ARE needed (JSON output, parsable XML, split output, git diffs/logs),
-  // the pool is created eagerly so warmup overlaps with searchFiles.
-  const needsMetricsWorkers =
-    !canUseFastOutputTokenPath(config) || config.output.git?.includeDiffs || config.output.git?.includeLogs;
+  // When workers ARE needed (JSON output, parsable XML, split output), the pool is
+  // created eagerly so warmup overlaps with searchFiles.
+  const needsMetricsWorkers = !canUseFastOutputTokenPath(config);
 
   const estimatedTasks = deps.getProcessConcurrency() * 100;
   // When no workers are needed, use a lightweight stub that estimates tokens
