@@ -1,7 +1,11 @@
+import { execFileSync } from 'node:child_process';
 import type { Stats } from 'node:fs';
+import { lstatSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { type Options as GlobbyOptions, globby } from 'globby';
+import ignore from 'ignore';
+import { Minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -85,6 +89,109 @@ export const normalizeGlobPattern = (pattern: string): string => {
   return pattern;
 };
 
+/**
+ * Fast file enumeration using `git ls-files` for git repositories.
+ *
+ * `git ls-files --cached --others --exclude-standard` reads from the
+ * pre-built git index (~5ms) instead of walking the filesystem (~250ms
+ * with globby). The result is then post-filtered through the `ignore`
+ * package (for default/custom/repomixignore patterns) and `picomatch`
+ * (for include patterns) to produce the same file set as globby.
+ *
+ * Returns `null` when the fast path is not applicable (not a git repo,
+ * `useGitignore` disabled, or git command failure), signalling the
+ * caller to fall back to globby.
+ */
+const searchFilesGitFastPath = async (
+  rootDir: string,
+  includePatterns: string[],
+  adjustedIgnorePatterns: string[],
+  ignoreFilePatterns: string[],
+): Promise<string[] | null> => {
+  // Run git ls-files to get all non-gitignored files.
+  // --cached: tracked files in the index
+  // --others: untracked files not in .gitignore
+  // --exclude-standard: apply .gitignore + .git/info/exclude + global gitignore
+  // -z: NUL-separated output (handles filenames with special chars)
+  let stdout: string;
+  try {
+    stdout = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], {
+      cwd: rootDir,
+      maxBuffer: 100 * 1024 * 1024,
+      encoding: 'utf-8',
+    });
+  } catch {
+    logger.trace('git ls-files failed, falling back to globby');
+    return null;
+  }
+
+  // Deduplicate: git ls-files can list a file multiple times during
+  // merge conflicts (one entry per conflict stage).
+  let files = [...new Set(stdout.split('\0').filter(Boolean))];
+  logger.trace(`git ls-files returned ${files.length} files`);
+
+  // Filter out symlinks and non-regular files.
+  // globby with followSymbolicLinks:false + onlyFiles:true uses lstat,
+  // which reports symlinks as non-files.
+  files = files.filter((f) => {
+    try {
+      return lstatSync(path.join(rootDir, f)).isFile();
+    } catch {
+      return false;
+    }
+  });
+
+  // Build an ignore filter combining default + custom patterns and
+  // patterns from .repomixignore / .ignore files.
+  const ig = ignore();
+  ig.add(adjustedIgnorePatterns);
+
+  // Read ignore file patterns (e.g., **/.repomixignore, **/.ignore).
+  // Find matching files from the git output, read their patterns,
+  // and apply them scoped to the file's directory.
+  for (const filePattern of ignoreFilePatterns) {
+    const fileName = filePattern.replace(/^\*\*\//, '');
+    const matchingFiles = files.filter((f) => f === fileName || f.endsWith(`/${fileName}`));
+
+    for (const ignoreFile of matchingFiles) {
+      try {
+        const content = await fs.readFile(path.join(rootDir, ignoreFile), 'utf-8');
+        const patterns = parseIgnoreContent(content);
+        const dir = path.dirname(ignoreFile);
+
+        if (dir === '.') {
+          // Root-level ignore file: patterns apply from root
+          ig.add(patterns);
+        } else {
+          // Nested ignore file: scope patterns to its directory.
+          // Prefix each pattern with the directory so the global
+          // ignore instance checks correctly against root-relative paths.
+          ig.add(
+            patterns.map((p) => {
+              if (p.startsWith('!')) return `!${dir}/${p.slice(1)}`;
+              if (p.startsWith('/')) return `${dir}${p}`;
+              return `${dir}/${p}`;
+            }),
+          );
+        }
+      } catch {
+        logger.trace(`Could not read ignore file: ${ignoreFile}`);
+      }
+    }
+  }
+
+  files = ig.filter(files);
+
+  // Apply include patterns (minimatch, same glob semantics as globby)
+  const isDefaultInclude = includePatterns.length === 1 && includePatterns[0] === '**/*';
+  if (!isDefaultInclude && includePatterns.length > 0) {
+    const matchers = includePatterns.map((p) => new Minimatch(p, { dot: true }));
+    files = files.filter((f) => matchers.some((m) => m.match(f)));
+  }
+
+  return files;
+};
+
 // Get all file paths considering the config
 export const searchFiles = async (
   rootDir: string,
@@ -139,7 +246,10 @@ export const searchFiles = async (
   }
 
   try {
-    const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+    const { adjustedIgnorePatterns, rawIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(
+      rootDir,
+      config,
+    );
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns:', ignoreFilePatterns);
@@ -179,26 +289,50 @@ export const searchFiles = async (
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns (for globby):', ignoreFilePatterns);
 
-    logger.debug('[globby] Starting file search...');
-    const globbyStartTime = Date.now();
+    // Try the git ls-files fast path first. It reads from the pre-built git
+    // index (~5ms) instead of walking the filesystem (~250ms with globby).
+    // Falls back to globby when:
+    // - not in a git repo
+    // - useGitignore is disabled (git ls-files relies on .gitignore)
+    // - explicit files are provided (stdin mode uses exact paths)
+    // - git command fails for any reason
+    const canUseGitFastPath = config.ignore.useGitignore && !explicitFiles;
+    let filePaths: string[] | null = null;
 
-    const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-      onlyFiles: true,
-    }).catch((error: unknown) => {
-      // Handle EPERM errors specifically
-      const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
-      if (code === 'EPERM' || code === 'EACCES') {
-        throw new PermissionError(
-          `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
-          rootDir,
-        );
+    if (canUseGitFastPath) {
+      const gitStartTime = Date.now();
+      // Use raw (unescaped) include patterns for the git fast path.
+      // escapeGlobPattern transforms `src/(foo)` → `src/\(foo\)` for globby,
+      // but Minimatch needs literal patterns that match actual file paths.
+      const rawIncludePatterns = config.include.length > 0 ? config.include : ['**/*'];
+      filePaths = await searchFilesGitFastPath(rootDir, rawIncludePatterns, rawIgnorePatterns, ignoreFilePatterns);
+      if (filePaths !== null) {
+        const gitElapsedTime = Date.now() - gitStartTime;
+        logger.debug(`[git ls-files] Completed in ${gitElapsedTime}ms, found ${filePaths.length} files`);
       }
-      throw error;
-    });
+    }
 
-    const globbyElapsedTime = Date.now() - globbyStartTime;
-    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+    if (filePaths === null) {
+      logger.debug('[globby] Starting file search...');
+      const globbyStartTime = Date.now();
+
+      filePaths = await globby(includePatterns, {
+        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+        onlyFiles: true,
+      }).catch((error: unknown) => {
+        const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
+        if (code === 'EPERM' || code === 'EACCES') {
+          throw new PermissionError(
+            `Permission denied while scanning directory. Please check folder access permissions for your terminal app. path: ${rootDir}`,
+            rootDir,
+          );
+        }
+        throw error;
+      });
+
+      const globbyElapsedTime = Date.now() - globbyStartTime;
+      logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+    }
 
     let emptyDirPaths: string[] = [];
     if (config.output.includeEmptyDirectories) {
@@ -265,7 +399,11 @@ export const parseIgnoreContent = (content: string): string[] => {
 const prepareIgnoreContext = async (
   rootDir: string,
   config: RepomixConfigMerged,
-): Promise<{ adjustedIgnorePatterns: string[]; ignoreFilePatterns: string[] }> => {
+): Promise<{
+  adjustedIgnorePatterns: string[];
+  rawIgnorePatterns: string[];
+  ignoreFilePatterns: string[];
+}> => {
   const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
     getIgnorePatterns(rootDir, config),
     getIgnoreFilePatterns(config),
@@ -289,7 +427,21 @@ const prepareIgnoreContext = async (
     }
   }
 
-  return { adjustedIgnorePatterns, ignoreFilePatterns };
+  // Raw (un-normalized) patterns are used by the git fast path where
+  // the `ignore` package applies gitignore semantics directly. The
+  // normalizeGlobPattern transform (e.g., `**/foo` → `**/foo/**`) is
+  // designed for globby and would break `ignore`-based matching for
+  // file-level patterns like `**/package-lock.json`.
+  const rawIgnorePatterns = [...ignorePatterns];
+  if (isWorktree) {
+    const gitIndex = rawIgnorePatterns.indexOf('.git/**');
+    if (gitIndex !== -1) {
+      rawIgnorePatterns.splice(gitIndex, 1);
+      rawIgnorePatterns.push('.git');
+    }
+  }
+
+  return { adjustedIgnorePatterns, rawIgnorePatterns, ignoreFilePatterns };
 };
 
 /**
