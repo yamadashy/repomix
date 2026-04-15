@@ -76,6 +76,7 @@ const defaultDeps = {
   taskRunner: undefined as MetricsTaskRunner | undefined,
   precomputedFileMetrics: undefined as Promise<FileMetrics[]> | undefined,
   suspiciousPathSet: undefined as Set<string> | undefined,
+  precomputedOutputWrapper: undefined as Promise<string | null | undefined> | undefined,
 };
 
 export const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean => {
@@ -168,9 +169,9 @@ export const calculateMetrics = async (
     // Fast path: reuse per-file token counts and estimate wrapper tokens via
     // character ratio instead of extracting the wrapper string and sending it
     // to a worker for BPE tokenization. This eliminates:
-    //   1. extractOutputWrapper() — tag search + string slicing (~1-5ms)
-    //   2. IPC structured-clone of the wrapper to a worker (~5-20ms)
-    //   3. Worker BPE tokenization of the wrapper (~10-30ms)
+    //   1. extractOutputWrapper() / precomputedOutputWrapper — string extraction
+    //   2. IPC structured-clone of the wrapper to a worker
+    //   3. Worker BPE tokenization of the wrapper
     // The wrapper consists of structural markup (XML tags, file-path headers,
     // directory tree, section separators) with a stable chars/token ratio.
     // Falls back to calculateOutputMetrics for JSON/parsable-XML/split output.

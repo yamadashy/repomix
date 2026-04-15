@@ -23,12 +23,12 @@ describe('xmlStyle', () => {
       },
     });
 
-    const output = await generateOutput([process.cwd()], mockConfig, [], []);
+    const result = await generateOutput([process.cwd()], mockConfig, [], []);
 
-    expect(output).toContain('file_summary');
-    expect(output).toContain('directory_structure');
-    expect(output).toContain('Custom header text');
-    expect(output).toContain('files');
+    expect(result.output).toContain('file_summary');
+    expect(result.output).toContain('directory_structure');
+    expect(result.output).toContain('Custom header text');
+    expect(result.output).toContain('files');
   });
 
   test('xml style: headerText always present, generationHeader only if fileSummaryEnabled', async () => {
@@ -41,8 +41,8 @@ describe('xmlStyle', () => {
         parsableStyle: false,
       },
     });
-    const output = await generateOutput([process.cwd()], mockConfig, [], []);
-    expect(output).not.toContain('This file is a merged representation');
-    expect(output).toContain('XML HEADER');
+    const result = await generateOutput([process.cwd()], mockConfig, [], []);
+    expect(result.output).not.toContain('This file is a merged representation');
+    expect(result.output).toContain('XML HEADER');
   });
 });

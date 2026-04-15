@@ -78,11 +78,14 @@ describe('Output Generation with Diffs', () => {
       expect(outputGeneratorContext.gitDiffResult?.workTreeDiffContent).toBe(sampleDiff);
 
       // Simulate the rendered output to check later
-      return `<diffs>${outputGeneratorContext.gitDiffResult?.workTreeDiffContent}</diffs>`;
+      return {
+        output: `<diffs>${outputGeneratorContext.gitDiffResult?.workTreeDiffContent}</diffs>`,
+        outputWrapper: null,
+      };
     });
 
     // Generate the output
-    const output = await generateOutput(
+    const result = await generateOutput(
       rootDirs,
       mockConfig,
       mockProcessedFiles,
@@ -95,9 +98,9 @@ describe('Output Generation with Diffs', () => {
     );
 
     // Verify the diffs are included in the output
-    expect(output).toContain('<diffs>');
-    expect(output).toContain(sampleDiff);
-    expect(output).toContain('</diffs>');
+    expect(result.output).toContain('<diffs>');
+    expect(result.output).toContain(sampleDiff);
+    expect(result.output).toContain('</diffs>');
 
     // Verify that the generateDirectXmlOutput function was called
     expect(mockDeps.generateDirectXmlOutput).toHaveBeenCalled();
@@ -114,11 +117,11 @@ describe('Output Generation with Diffs', () => {
       expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
 
       // Simulate the XML output
-      return `<repomix><diffs>${renderContext.gitDiffWorkTree}</diffs></repomix>`;
+      return Promise.resolve(`<repomix><diffs>${renderContext.gitDiffWorkTree}</diffs></repomix>`);
     });
 
     // Generate the output
-    const output = await generateOutput(
+    const result = await generateOutput(
       rootDirs,
       mockConfig,
       mockProcessedFiles,
@@ -131,9 +134,9 @@ describe('Output Generation with Diffs', () => {
     );
 
     // Verify the diffs are included in the output
-    expect(output).toContain('<repomix><diffs>');
-    expect(output).toContain(sampleDiff);
-    expect(output).toContain('</diffs></repomix>');
+    expect(result.output).toContain('<repomix><diffs>');
+    expect(result.output).toContain(sampleDiff);
+    expect(result.output).toContain('</diffs></repomix>');
 
     // Verify that the generateParsableXmlOutput function was called
     expect(mockDeps.generateParsableXmlOutput).toHaveBeenCalled();
@@ -150,11 +153,14 @@ describe('Output Generation with Diffs', () => {
       expect(outputGeneratorContext.gitDiffResult?.workTreeDiffContent).toBe(sampleDiff);
 
       // Simulate the markdown output
-      return `# Git Diffs\n\`\`\`diff\n${outputGeneratorContext.gitDiffResult?.workTreeDiffContent}\n\`\`\``;
+      return {
+        output: `# Git Diffs\n\`\`\`diff\n${outputGeneratorContext.gitDiffResult?.workTreeDiffContent}\n\`\`\``,
+        outputWrapper: null,
+      };
     });
 
     // Generate the output
-    const output = await generateOutput(
+    const result = await generateOutput(
       rootDirs,
       mockConfig,
       mockProcessedFiles,
@@ -167,10 +173,10 @@ describe('Output Generation with Diffs', () => {
     );
 
     // Verify the diffs are included in the output
-    expect(output).toContain('# Git Diffs');
-    expect(output).toContain('```diff');
-    expect(output).toContain(sampleDiff);
-    expect(output).toContain('```');
+    expect(result.output).toContain('# Git Diffs');
+    expect(result.output).toContain('```diff');
+    expect(result.output).toContain(sampleDiff);
+    expect(result.output).toContain('```');
 
     // Verify that the generateDirectMarkdownOutput function was called
     expect(mockDeps.generateDirectMarkdownOutput).toHaveBeenCalled();
@@ -186,11 +192,14 @@ describe('Output Generation with Diffs', () => {
       expect(outputGeneratorContext.gitDiffResult?.workTreeDiffContent).toBe(sampleDiff);
 
       // Simulate the plain text output
-      return `===============\nGit Diffs\n===============\n${outputGeneratorContext.gitDiffResult?.workTreeDiffContent}`;
+      return {
+        output: `===============\nGit Diffs\n===============\n${outputGeneratorContext.gitDiffResult?.workTreeDiffContent}`,
+        outputWrapper: null,
+      };
     });
 
     // Generate the output
-    const output = await generateOutput(
+    const result = await generateOutput(
       rootDirs,
       mockConfig,
       mockProcessedFiles,
@@ -203,8 +212,8 @@ describe('Output Generation with Diffs', () => {
     );
 
     // Verify the diffs are included in the output
-    expect(output).toContain('===============\nGit Diffs\n===============');
-    expect(output).toContain(sampleDiff);
+    expect(result.output).toContain('===============\nGit Diffs\n===============');
+    expect(result.output).toContain(sampleDiff);
 
     // Verify that the generateDirectPlainOutput function was called
     expect(mockDeps.generateDirectPlainOutput).toHaveBeenCalled();
@@ -236,11 +245,11 @@ describe('Output Generation with Diffs', () => {
       expect(outputGeneratorContext.gitDiffResult).toBeUndefined();
 
       // Simulate the output without diffs
-      return 'Output without diffs';
+      return { output: 'Output without diffs', outputWrapper: null };
     });
 
     // Generate the output
-    const output = await generateOutput(
+    const result = await generateOutput(
       rootDirs,
       mockConfig,
       mockProcessedFiles,
@@ -253,8 +262,8 @@ describe('Output Generation with Diffs', () => {
     );
 
     // Verify the diffs are not included in the output
-    expect(output).not.toContain('Git Diffs');
-    expect(output).not.toContain(sampleDiff);
+    expect(result.output).not.toContain('Git Diffs');
+    expect(result.output).not.toContain(sampleDiff);
 
     // Verify that the generateDirectXmlOutput function was called
     expect(mockDeps.generateDirectXmlOutput).toHaveBeenCalled();

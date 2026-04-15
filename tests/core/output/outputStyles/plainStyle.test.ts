@@ -23,12 +23,12 @@ describe('plainStyle', () => {
       },
     });
 
-    const output = await generateOutput([process.cwd()], mockConfig, [], []);
+    const result = await generateOutput([process.cwd()], mockConfig, [], []);
 
-    expect(output).toContain('File Summary');
-    expect(output).toContain('Directory Structure');
-    expect(output).toContain('Custom header text');
-    expect(output).toContain('Files');
+    expect(result.output).toContain('File Summary');
+    expect(result.output).toContain('Directory Structure');
+    expect(result.output).toContain('Custom header text');
+    expect(result.output).toContain('Files');
   });
 
   test('plain style: headerText always present, generationHeader only if fileSummaryEnabled', async () => {
@@ -40,8 +40,8 @@ describe('plainStyle', () => {
         headerText: 'PLAIN HEADER',
       },
     });
-    const output = await generateOutput([process.cwd()], mockConfig, [], []);
-    expect(output).not.toContain('This file is a merged representation');
-    expect(output).toContain('PLAIN HEADER');
+    const result = await generateOutput([process.cwd()], mockConfig, [], []);
+    expect(result.output).not.toContain('This file is a merged representation');
+    expect(result.output).toContain('PLAIN HEADER');
   });
 });

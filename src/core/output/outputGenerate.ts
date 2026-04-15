@@ -18,6 +18,27 @@ import {
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
 
+export interface OutputResult {
+  output: string;
+  outputWrapper: string | null;
+}
+
+/**
+ * Build the output wrapper (output minus file contents) from the parts array
+ * and tracked file content indices. This is O(n) in the number of parts and
+ * avoids scanning through the full output string via extractOutputWrapper.
+ */
+const buildWrapperFromParts = (parts: string[], fileContentIndices: number[]): string => {
+  const skipSet = new Set(fileContentIndices);
+  const wrapperParts: string[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (!skipSet.has(i)) {
+      wrapperParts.push(parts[i]);
+    }
+  }
+  return `${wrapperParts.join('').trimEnd()}\n`;
+};
+
 // Cache for compiled Handlebars templates to avoid recompilation on every call.
 // Uses a generic function type so that Handlebars types are not needed at the
 // module level (Handlebars is lazy-loaded only when a non-XML style is used).
@@ -237,7 +258,7 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
  * The output is byte-for-byte identical to the Handlebars XML template.
  * Keep in sync with getXmlTemplate() in outputStyles/xmlStyle.ts.
  */
-const generateDirectXmlOutput = (outputGeneratorContext: OutputGeneratorContext): string => {
+const generateDirectXmlOutput = (outputGeneratorContext: OutputGeneratorContext): OutputResult => {
   const config = outputGeneratorContext.config;
   const fileSummaryEnabled = config.output.fileSummary;
   const directoryStructureEnabled = config.output.directoryStructure;
@@ -252,6 +273,10 @@ const generateDirectXmlOutput = (outputGeneratorContext: OutputGeneratorContext)
   const summaryNotes = generateSummaryNotes(config);
 
   const parts: string[] = [];
+  // Track indices in `parts` that hold file content. After join, these positions
+  // are used to build the wrapper string (output minus file content) without
+  // scanning through the full output via extractOutputWrapper (~7ms saving).
+  const fileContentIndices: number[] = [];
 
   if (fileSummaryEnabled) {
     parts.push(
@@ -279,15 +304,13 @@ const generateDirectXmlOutput = (outputGeneratorContext: OutputGeneratorContext)
   if (filesEnabled) {
     parts.push("<files>\nThis section contains the contents of the repository's files.\n\n");
     for (const file of outputGeneratorContext.processedFiles) {
-      parts.push('<file path="', file.path, '">\n', file.content, '\n</file>\n\n');
+      parts.push('<file path="', file.path, '">\n');
+      fileContentIndices.push(parts.length);
+      parts.push(file.content, '\n</file>\n\n');
     }
     parts.push('</files>\n');
   }
 
-  // The Handlebars template has unconditional blank lines between the
-  // files/gitDiff, gitDiff/gitLog, and gitLog/instruction block boundaries.
-  // These blank lines sit outside any {{#if}} block, so Handlebars always
-  // preserves them regardless of which sections are enabled.
   parts.push('\n');
 
   if (gitDiffEnabled) {
@@ -328,7 +351,10 @@ const generateDirectXmlOutput = (outputGeneratorContext: OutputGeneratorContext)
     parts.push('<instruction>\n', outputGeneratorContext.instruction, '\n</instruction>\n');
   }
 
-  return `${parts.join('').trim()}\n`;
+  return {
+    output: `${parts.join('').trim()}\n`,
+    outputWrapper: fileContentIndices.length > 0 ? buildWrapperFromParts(parts, fileContentIndices) : null,
+  };
 };
 
 /**
@@ -339,7 +365,7 @@ const generateDirectXmlOutput = (outputGeneratorContext: OutputGeneratorContext)
  * that is byte-for-byte identical to the Handlebars markdown template.
  * Keep in sync with getMarkdownTemplate() in outputStyles/markdownStyle.ts.
  */
-const generateDirectMarkdownOutput = (outputGeneratorContext: OutputGeneratorContext): string => {
+const generateDirectMarkdownOutput = (outputGeneratorContext: OutputGeneratorContext): OutputResult => {
   const config = outputGeneratorContext.config;
   const fileSummaryEnabled = config.output.fileSummary;
   const directoryStructureEnabled = config.output.directoryStructure;
@@ -357,6 +383,7 @@ const generateDirectMarkdownOutput = (outputGeneratorContext: OutputGeneratorCon
   const delimiter = filesEnabled ? calculateMarkdownDelimiter(outputGeneratorContext.processedFiles) : '```';
 
   const parts: string[] = [];
+  const fileContentIndices: number[] = [];
 
   if (fileSummaryEnabled) {
     parts.push(
@@ -385,14 +412,12 @@ const generateDirectMarkdownOutput = (outputGeneratorContext: OutputGeneratorCon
     parts.push('# Files\n\n');
     for (const file of outputGeneratorContext.processedFiles) {
       const lang = getLanguageFromFilePath(file.path);
-      parts.push('## File: ', file.path, '\n', delimiter, lang, '\n', file.content, '\n', delimiter, '\n\n');
+      parts.push(`## File: ${file.path}\n${delimiter}${lang}\n`);
+      fileContentIndices.push(parts.length);
+      parts.push(file.content, `\n${delimiter}\n\n`);
     }
   }
 
-  // The Handlebars template has unconditional blank lines between the
-  // files/gitDiff, gitDiff/gitLog, and gitLog/instruction block boundaries.
-  // These blank lines sit outside any {{#if}} block, so Handlebars always
-  // preserves them regardless of which sections are enabled.
   parts.push('\n');
 
   if (gitDiffEnabled) {
@@ -426,7 +451,10 @@ const generateDirectMarkdownOutput = (outputGeneratorContext: OutputGeneratorCon
     parts.push('# Instruction\n', outputGeneratorContext.instruction, '\n');
   }
 
-  return `${parts.join('').trim()}\n`;
+  return {
+    output: `${parts.join('').trim()}\n`,
+    outputWrapper: fileContentIndices.length > 0 ? buildWrapperFromParts(parts, fileContentIndices) : null,
+  };
 };
 
 const PLAIN_SEPARATOR = '='.repeat(16);
@@ -440,7 +468,7 @@ const PLAIN_LONG_SEPARATOR = '='.repeat(64);
  * the Handlebars plain template.
  * Keep in sync with getPlainTemplate() in outputStyles/plainStyle.ts.
  */
-const generateDirectPlainOutput = (outputGeneratorContext: OutputGeneratorContext): string => {
+const generateDirectPlainOutput = (outputGeneratorContext: OutputGeneratorContext): OutputResult => {
   const config = outputGeneratorContext.config;
   const fileSummaryEnabled = config.output.fileSummary;
   const directoryStructureEnabled = config.output.directoryStructure;
@@ -455,6 +483,7 @@ const generateDirectPlainOutput = (outputGeneratorContext: OutputGeneratorContex
   const summaryNotes = generateSummaryNotes(config);
 
   const parts: string[] = [];
+  const fileContentIndices: number[] = [];
 
   if (fileSummaryEnabled) {
     parts.push(
@@ -475,8 +504,6 @@ const generateDirectPlainOutput = (outputGeneratorContext: OutputGeneratorContex
     );
   }
 
-  // The Handlebars template has an unconditional blank line between the
-  // fileSummary/headerText blocks. Replicate it here.
   parts.push('\n');
 
   if (config.output.headerText) {
@@ -504,7 +531,9 @@ const generateDirectPlainOutput = (outputGeneratorContext: OutputGeneratorContex
   if (filesEnabled) {
     parts.push(PLAIN_LONG_SEPARATOR, '\nFiles\n', PLAIN_LONG_SEPARATOR, '\n\n');
     for (const file of outputGeneratorContext.processedFiles) {
-      parts.push(PLAIN_SEPARATOR, '\nFile: ', file.path, '\n', PLAIN_SEPARATOR, '\n', file.content, '\n\n');
+      parts.push(`${PLAIN_SEPARATOR}\nFile: ${file.path}\n${PLAIN_SEPARATOR}\n`);
+      fileContentIndices.push(parts.length);
+      parts.push(file.content, '\n\n');
     }
   }
 
@@ -560,13 +589,13 @@ const generateDirectPlainOutput = (outputGeneratorContext: OutputGeneratorContex
     );
   }
 
-  // Unconditional blank line between instruction and End of Codebase,
-  // matching the blank line in the Handlebars template outside any {{#if}}.
   parts.push('\n');
-
   parts.push(PLAIN_LONG_SEPARATOR, '\nEnd of Codebase\n', PLAIN_LONG_SEPARATOR, '\n');
 
-  return `${parts.join('').trim()}\n`;
+  return {
+    output: `${parts.join('').trim()}\n`,
+    outputWrapper: fileContentIndices.length > 0 ? buildWrapperFromParts(parts, fileContentIndices) : null,
+  };
 };
 
 const generateHandlebarOutput = async (
@@ -623,7 +652,7 @@ export const generateOutput = async (
     generateParsableXmlOutput,
     generateParsableJsonOutput,
   },
-): Promise<string> => {
+): Promise<OutputResult> => {
   // processedFiles are already sorted by the caller (packager.ts) via
   // sortOutputFiles before invoking produceOutput. Sorting again here would
   // be redundant and waste ~20ms on a cached git-log lookup + O(n log n) sort.
@@ -642,6 +671,8 @@ export const generateOutput = async (
   // concatenation which is 10–15× faster than Handlebars for large outputs.
   // This path also skips createRenderContext (calculateMarkdownDelimiter,
   // calculateFileLineCounts) which add unnecessary overhead.
+  // These generators also return the output wrapper (output minus file content)
+  // which allows calculateMetrics to skip the extractOutputWrapper scan.
   if (!config.output.parsableStyle) {
     switch (config.output.style) {
       case 'xml':
@@ -655,17 +686,22 @@ export const generateOutput = async (
 
   const renderContext = createRenderContext(outputGeneratorContext);
 
+  let output: string;
   switch (config.output.style) {
     case 'xml':
-      return deps.generateParsableXmlOutput(renderContext);
+      output = await deps.generateParsableXmlOutput(renderContext);
+      break;
     case 'json':
-      return deps.generateParsableJsonOutput(renderContext);
+      output = await deps.generateParsableJsonOutput(renderContext);
+      break;
     case 'markdown':
     case 'plain':
-      return deps.generateHandlebarOutput(config, renderContext, processedFiles);
+      output = await deps.generateHandlebarOutput(config, renderContext, processedFiles);
+      break;
     default:
       throw new RepomixError(`Unsupported output style: ${config.output.style}`);
   }
+  return { output, outputWrapper: null };
 };
 
 export const buildOutputGeneratorContext = async (
