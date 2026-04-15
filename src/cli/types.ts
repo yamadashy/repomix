@@ -67,6 +67,9 @@ export interface CliOptions extends OptionValues {
   skillOutput?: string; // Output path for skill (skips location prompt)
   force?: boolean; // Skip all confirmation prompts
 
+  // Watch Mode
+  watch?: boolean;
+
   // Other Options
   topFilesLen?: number;
   verbose?: boolean;
