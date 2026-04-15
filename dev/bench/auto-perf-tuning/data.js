@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776218046989,
+  "lastUpdate": 1776218130036,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2745,6 +2745,51 @@ window.BENCHMARK_DATA = {
             "range": "±68",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 810ms, Q3: 878ms\nAll times: 749, 755, 762, 782, 801, 810, 841, 849, 852, 854, 862, 863, 866, 867, 875, 878, 880, 880, 948, 1118ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "bd8b967aad9c17e14e686ca06046aa35020438d8",
+          "message": "perf(metrics): Raise small-file estimation threshold from 16384 to 65536 chars and parallelize startup I/O (-10.6%)\n\nRaise SMALL_FILE_THRESHOLD from 16384 to 65536 characters. On a typical\n1000-file codebase, this pushes ~98.5% of files onto the main-thread\nestimation path (up from ~96%), eliminating the last worker batch for\nper-file token counting in most repositories. The output wrapper\ntokenization still uses workers, so the pool remains available for the\nrare files above this threshold.\n\nAdditionally parallelize two sequential I/O operations:\n- findConfigFile: check all 9 config path candidates via Promise.all\n  instead of serial await loop (collapses ~9 stat RTTs into one)\n- runMigrationAction: check all 7 old-repopack file paths via\n  Promise.all instead of 4 sequential + 1 parallel await\n\nBenchmark (interleaved A/B, 8 rounds each, self-hosting on repomix repo):\n  Baseline (16384): 0.570s trimmed mean\n  Optimized (65536): 0.510s trimmed mean\n  Improvement: 0.060s (-10.6%)\n\nToken count accuracy: 0.00% total token difference (the output total is\ncomputed via wrapper-extraction fast path, independent of per-file\nestimates).\n\nhttps://claude.ai/code/session_01Kwp6amw74r5a1NoD7BxaeJ",
+          "timestamp": "2026-04-15T01:51:43Z",
+          "tree_id": "9ce7b9423b4699b21495abcfb336f5149889412e",
+          "url": "https://github.com/yamadashy/repomix/commit/bd8b967aad9c17e14e686ca06046aa35020438d8"
+        },
+        "date": 1776218129488,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 293,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 278ms, Q3: 305ms\nAll times: 258, 259, 260, 262, 263, 271, 272, 278, 279, 280, 284, 286, 290, 290, 291, 293, 294, 295, 296, 302, 302, 303, 305, 306, 307, 308, 309, 316, 328, 330ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 486,
+            "range": "±88",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 479ms, Q3: 567ms\nAll times: 466, 471, 472, 478, 479, 479, 482, 483, 484, 485, 486, 493, 496, 499, 566, 567, 568, 576, 579, 587ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 736,
+            "range": "±53",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 722ms, Q3: 775ms\nAll times: 694, 702, 714, 718, 719, 722, 724, 727, 728, 731, 736, 738, 739, 758, 771, 775, 787, 787, 790, 797ms"
           }
         ]
       }
