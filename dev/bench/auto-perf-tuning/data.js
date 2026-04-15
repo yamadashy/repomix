@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776285164126,
+  "lastUpdate": 1776289343443,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3510,6 +3510,51 @@ window.BENCHMARK_DATA = {
             "range": "±288",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1798ms, Q3: 2086ms\nAll times: 1717, 1744, 1746, 1773, 1777, 1798, 1799, 1810, 1835, 1866, 1878, 1886, 1887, 1933, 2010, 2086, 2186, 2232, 2457, 2668ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "e6c83332791a2a6398ad717a4e91e3b58fc4531d",
+          "message": "perf(core): Increase metrics batch size to reduce IPC round-trips\n\nIncrease METRICS_BATCH_SIZE from 10 to 50 in calculateFileMetrics.ts.\n\nWith child_process runtime, each Tinypool IPC round-trip involves JSON\nserialization + pipe I/O + event-loop scheduling (~0.5ms overhead each).\nFor the repomix repo (~1019 files), batch=10 generates ~102 round-trips\nwhile batch=50 generates only ~21, saving ~40ms of IPC overhead.\n\nThe previous comment justified batch=10 to \"keep individual worker tasks\nsmall so that workers become available sooner, enabling overlap between\nfile metrics and output generation.\" In practice, all batches are\ndispatched simultaneously via Promise.all and Tinypool queues them\ninternally — workers don't become \"available sooner\" with smaller batches\nsince the first 4 start immediately regardless of total count.\n\nBatch=50 still provides adequate granularity for 4 worker threads\n(~5 batches per thread), and the coarser progress callback (every 50\nfiles vs every 10) is imperceptible to users.\n\nBenchmark: End-to-end CLI (node bin/repomix.cjs --quiet on repomix repo)\n30 interleaved A/B pairs:\n\n  Baseline:  median=1.303s  mean=1.304s  trimmed_mean=1.301s\n  Patched:   median=1.257s  mean=1.264s  trimmed_mean=1.263s\n  Delta:     median=-30ms   mean=-40ms   (-3.0%)\n  Positive:  21/30 pairs improved\n\nhttps://claude.ai/code/session_019UKESoDiiLYmpXnPqmnsoG",
+          "timestamp": "2026-04-15T21:39:31Z",
+          "tree_id": "33cd1411bab58bdc3d691ae6f8036a14406681dc",
+          "url": "https://github.com/yamadashy/repomix/commit/e6c83332791a2a6398ad717a4e91e3b58fc4531d"
+        },
+        "date": 1776289342433,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1116,
+            "range": "±131",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1053ms, Q3: 1184ms\nAll times: 937, 940, 944, 946, 972, 973, 1007, 1053, 1058, 1075, 1087, 1094, 1102, 1108, 1113, 1116, 1130, 1136, 1146, 1146, 1149, 1174, 1184, 1186, 1195, 1204, 1235, 1290, 1540, 1751ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1331,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1316ms, Q3: 1353ms\nAll times: 1294, 1295, 1310, 1310, 1315, 1316, 1318, 1326, 1328, 1328, 1331, 1334, 1341, 1342, 1349, 1353, 1376, 1391, 1400, 1412ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1801,
+            "range": "±45",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1767ms, Q3: 1812ms\nAll times: 1739, 1757, 1761, 1763, 1765, 1767, 1778, 1779, 1788, 1788, 1801, 1802, 1803, 1807, 1808, 1812, 1819, 1822, 1850, 1886ms"
           }
         ]
       }
