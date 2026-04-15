@@ -223,14 +223,15 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
   try {
     const paths = getMigrationPaths(rootDir);
 
-    // Check if migration is needed
-    const hasOldConfig = await fileExists(paths.oldConfigPath);
-    const hasOldIgnore = await fileExists(paths.oldIgnorePath);
-    const hasOldInstruction = await fileExists(paths.oldInstructionPath);
-    const hasOldGlobalConfig = await fileExists(paths.oldGlobalConfigPath);
-    const hasOldOutput = await Promise.all(paths.oldOutputPaths.map(fileExists)).then((results) =>
-      results.some((exists) => exists),
-    );
+    // Check if migration is needed — all stat calls are independent I/O,
+    // so run them in parallel to collapse ~4 sequential stat RTTs into one.
+    const [hasOldConfig, hasOldIgnore, hasOldInstruction, hasOldGlobalConfig, hasOldOutput] = await Promise.all([
+      fileExists(paths.oldConfigPath),
+      fileExists(paths.oldIgnorePath),
+      fileExists(paths.oldInstructionPath),
+      fileExists(paths.oldGlobalConfigPath),
+      Promise.all(paths.oldOutputPaths.map(fileExists)).then((results) => results.some((exists) => exists)),
+    ]);
 
     if (!hasOldConfig && !hasOldIgnore && !hasOldInstruction && !hasOldOutput && !hasOldGlobalConfig) {
       logger.debug('No Repopack files found to migrate.');

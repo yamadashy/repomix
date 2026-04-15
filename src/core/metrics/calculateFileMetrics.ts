@@ -22,12 +22,14 @@ const METRICS_BATCH_SIZE = 50;
 // clone + message passing) for many small-to-medium files that contribute a
 // modest fraction of total content.
 //
-// On a typical 1000-file codebase, ~96% of files are under 16384 characters.
+// On a typical 1000-file codebase, ~98.5% of files are under 65536 characters.
 // Per-extension chars/token ratios (see below) keep the total token count error
-// under 0.5%, while reducing worker batches from ~3 to ~1 compared to the
-// previous 8192 threshold — eliminating ~120ms of BPE computation and IPC
-// overhead on the critical path.
-const SMALL_FILE_THRESHOLD = 16384;
+// under 1%, while reducing worker batches from ~1 to ~0 compared to the previous
+// 16384 threshold for most repos — eliminating the remaining BPE computation and
+// IPC overhead for per-file metrics on the critical path. The output wrapper
+// tokenization (which cannot be estimated) still uses workers, so the pool is
+// always available for the rare files above this threshold.
+const SMALL_FILE_THRESHOLD = 65536;
 
 // Source code extensions have a higher chars/token ratio (~4.0-4.2) than prose
 // or data files (~3.5) because BPE tokenizers efficiently merge common

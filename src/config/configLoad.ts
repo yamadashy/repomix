@@ -35,15 +35,18 @@ const checkFileExists = async (filePath: string): Promise<boolean> => {
 };
 
 const findConfigFile = async (configPaths: string[], logPrefix: string): Promise<string | null> => {
-  for (const configPath of configPaths) {
-    logger.trace(`Checking for ${logPrefix} config at:`, configPath);
-
-    const fileExists = await checkFileExists(configPath);
-
-    if (fileExists) {
-      logger.trace(`Found ${logPrefix} config at:`, configPath);
-      return configPath;
-    }
+  // Check all paths in parallel — each stat call is independent I/O.
+  // Priority order is preserved by returning the first match by index.
+  const results = await Promise.all(
+    configPaths.map(async (configPath) => {
+      logger.trace(`Checking for ${logPrefix} config at:`, configPath);
+      return checkFileExists(configPath);
+    }),
+  );
+  const idx = results.findIndex(Boolean);
+  if (idx >= 0) {
+    logger.trace(`Found ${logPrefix} config at:`, configPaths[idx]);
+    return configPaths[idx];
   }
   return null;
 };

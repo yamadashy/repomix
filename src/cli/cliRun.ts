@@ -277,11 +277,11 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   }
 
   // Start loading the defaultAction module tree (packager, tinypool, tinyglobby,
-  // etc.) immediately so that its ~38ms of ESM compilation overlaps with the
-  // ~21ms getVersion() disk read below.  On the --init / --remote early exit
-  // paths the module is never awaited, so the only cost is a small amount of
-  // background compilation that V8 can reclaim.  Suppress unhandled rejection
-  // in case an early exit prevents us from awaiting the promise.
+  // etc.) immediately so that its ~38ms of ESM compilation overlaps with
+  // subsequent I/O.  On the --init / --remote early exit paths the module is
+  // never awaited, so the only cost is a small amount of background compilation
+  // that V8 can reclaim.  Suppress unhandled rejection in case an early exit
+  // prevents us from awaiting the promise.
   const defaultActionPromise = import('./actions/defaultAction.js');
   defaultActionPromise.catch(() => {});
 
