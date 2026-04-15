@@ -77,11 +77,7 @@ export const getWorkerThreadCount = (
 };
 
 export const createWorkerPool = async (options: WorkerOptions): Promise<Tinypool> => {
-  const { numOfTasks, workerType, runtime = 'child_process', maxWorkerThreads } = options;
-  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads);
-
-  // Get worker path - uses unified worker in bundled env, individual files otherwise
-  const workerPath = getWorkerPath(workerType);
+  const { workerPath, workerType, runtime, minThreads, maxThreads } = buildPoolOptions(options);
 
   logger.trace(
     `Initializing worker pool with min=${minThreads}, max=${maxThreads} threads, runtime=${runtime}. Worker type: ${workerType}`,
@@ -172,4 +168,61 @@ export const initTaskRunner = async <T, R>(options: WorkerOptions): Promise<Task
     run: (task: T) => pool.run(task),
     cleanup: () => cleanupWorkerPool(pool),
   };
+};
+
+/**
+ * Build the common Tinypool options shared by both {@link createWorkerPool}
+ * and {@link createWorkerPoolSync}.  Extracted to keep the two pool-creation
+ * paths in sync — any new option added here is automatically picked up by both.
+ */
+const buildPoolOptions = (options: WorkerOptions) => {
+  const { numOfTasks, workerType, runtime = 'child_process', maxWorkerThreads } = options;
+  const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads);
+  const workerPath = getWorkerPath(workerType);
+  return { workerPath, workerType, runtime, minThreads, maxThreads };
+};
+
+/** The resolved Tinypool constructor type. */
+export type TinypoolConstructor = typeof import('tinypool').Tinypool;
+
+/**
+ * Resolve the tinypool module ahead of time so that worker pools can be created
+ * synchronously via {@link createWorkerPoolSync}.  The returned constructor is
+ * the same one `createWorkerPool` uses internally, but without the `await`
+ * that would defer thread creation to the next microtask.
+ */
+export const resolveTinypool = async (): Promise<TinypoolConstructor> => {
+  const { Tinypool: TinypoolCtor } = await tinypoolPromise;
+  return TinypoolCtor;
+};
+
+/**
+ * Create a worker pool synchronously.  The caller must first `await
+ * resolveTinypool()` to obtain the Tinypool constructor, then pass it here.
+ * Because there is no `await` inside this function the `new Tinypool(…)` call
+ * executes inline and worker threads begin loading their modules immediately —
+ * even inside a tight synchronous loop on the main thread.
+ */
+export const createWorkerPoolSync = (
+  TinypoolCtor: TinypoolConstructor,
+  options: WorkerOptions,
+): Tinypool => {
+  const { workerPath, workerType, runtime, minThreads, maxThreads } = buildPoolOptions(options);
+
+  logger.trace(
+    `Sync-creating worker pool min=${minThreads}, max=${maxThreads}, runtime=${runtime}, type=${workerType}`,
+  );
+
+  return new TinypoolCtor({
+    filename: workerPath,
+    runtime,
+    minThreads,
+    maxThreads,
+    idleTimeout: 5000,
+    teardown: 'onWorkerTermination',
+    workerData: {
+      workerType,
+      logLevel: logger.getLogLevel(),
+    },
+  });
 };

@@ -25,6 +25,14 @@ vi.mock('../../../src/shared/processConcurrency', () => ({
     }),
     cleanup: vi.fn(),
   })),
+  resolveTinypool: vi.fn(async () => {
+    // Returns a truthy constructor mock.  createWorkerPoolSync is also mocked
+    // (returns undefined by default), so earlyPool stays null and the code
+    // falls through to deps.initTaskRunner in most tests.  Tests that exercise
+    // the earlyPool path override createWorkerPoolSync's return value.
+    return vi.fn();
+  }),
+  createWorkerPoolSync: vi.fn(),
 }));
 
 const mockFiles: RawFile[] = [
@@ -227,6 +235,46 @@ describe('runSecurityCheck', () => {
 
     // 2 files total, only test1.js passes prescan → 1 batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
+  });
+
+  it('should use synchronously-created earlyPool when createWorkerPoolSync returns a pool', async () => {
+    const { createWorkerPoolSync, cleanupWorkerPool } = await import(
+      '../../../src/shared/processConcurrency.js'
+    );
+
+    // Clear accumulated calls from prior tests, then make createWorkerPoolSync
+    // return a mock pool so the earlyPool path is taken
+    vi.mocked(createWorkerPoolSync).mockClear();
+    vi.mocked(cleanupWorkerPool).mockClear();
+    const mockRun = vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
+      return await securityCheckWorker(task);
+    });
+    const mockPool = {
+      run: mockRun,
+      threads: [],
+      destroy: vi.fn().mockResolvedValue(undefined),
+    };
+    vi.mocked(createWorkerPoolSync).mockReturnValue(mockPool as never);
+
+    const initTaskRunnerSpy = vi.fn();
+    const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
+      initTaskRunner: initTaskRunnerSpy as never,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
+
+    // earlyPool path should be used — initTaskRunner should NOT be called
+    expect(initTaskRunnerSpy).not.toHaveBeenCalled();
+    expect(createWorkerPoolSync).toHaveBeenCalledOnce();
+    // Pool's run method should have been invoked for the suspect batch
+    expect(mockRun).toHaveBeenCalled();
+    // cleanupWorkerPool should be called in the finally block
+    expect(cleanupWorkerPool).toHaveBeenCalledWith(mockPool);
+    // Functional result should be the same
+    expect(result).toHaveLength(1);
+    expect(result[0].filePath).toBe('test1.js');
+
+    // Reset to default for subsequent tests
+    vi.mocked(createWorkerPoolSync).mockReset();
   });
 
   it('should return empty array without calling worker when all items are skipped by prescan', async () => {

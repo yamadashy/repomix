@@ -1,8 +1,12 @@
 import pc from 'picocolors';
+import type { Tinypool } from 'tinypool';
 import { logger } from '../../shared/logger.js';
 import {
+  cleanupWorkerPool,
+  createWorkerPoolSync,
   getProcessConcurrency as defaultGetProcessConcurrency,
   initTaskRunner,
+  resolveTinypool,
   type TaskRunner,
 } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
@@ -128,27 +132,73 @@ export const runSecurityCheck = async (
     }
   }
 
-  const fileItems: SecurityCheckItem[] = rawFiles.map((file) => ({
-    filePath: file.path,
-    content: file.content,
-    type: 'file',
-  }));
-
-  // Combine all items, then pre-filter on the main thread using the same
-  // SECRETLINT_PRESCAN regex the worker uses. ~97% of items are eliminated,
-  // which with MAX_SECURITY_WORKERS=1 avoids ~19 unnecessary Tinypool IPC
-  // round-trips (~3.2ms scheduling overhead each). The main-thread prescan
-  // cost (~1-5ms for 1000 files) is negligible compared to the ~60ms saved.
-  const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
-  const totalItems = allItems.length;
+  const totalItems = rawFiles.length + gitDiffItems.length + gitLogItems.length;
 
   if (totalItems === 0) {
     return [];
   }
 
-  const suspectItems = allItems.filter((item) => SECRETLINT_PRESCAN.test(item.content));
+  // Pre-resolve the Tinypool constructor so that we can create a worker pool
+  // SYNCHRONOUSLY inside the prescan loop below.  `resolveTinypool()` returns
+  // almost instantly because the tinypool module was pre-loaded at ESM
+  // evaluation time (see processConcurrency.ts:12).  Resolving here — before
+  // the synchronous prescan loop — ensures that `new Tinypool(…)` can execute
+  // inline without yielding to the microtask queue.
+  const TinypoolCtor = deps.taskRunner ? null : await resolveTinypool();
+
+  // Pre-filter items on the main thread using SECRETLINT_PRESCAN. ~97% of
+  // items are eliminated, avoiding unnecessary Tinypool IPC round-trips.
+  //
+  // Key optimization: when the first suspect item is found, create the security
+  // worker pool SYNCHRONOUSLY via `createWorkerPoolSync`.  Because there is no
+  // `await` in the pool constructor, the OS thread is spawned immediately and
+  // begins loading secretlint modules (~90ms) in its own V8 isolate — truly in
+  // parallel with the remaining prescan regex work on the main thread (~20-25ms
+  // for the remaining files).  For repos with suspect files (docs mentioning
+  // API patterns, test files with mock secrets), this hides most of the worker
+  // cold-start behind the prescan.  For clean repos (~95%), no suspect is ever
+  // found and no worker is created.
+  const suspectItems: SecurityCheckItem[] = [];
+  let earlyPool: Tinypool | null = null;
+
+  for (let i = 0; i < rawFiles.length; i++) {
+    if (SECRETLINT_PRESCAN.test(rawFiles[i].content)) {
+      suspectItems.push({ filePath: rawFiles[i].path, content: rawFiles[i].content, type: 'file' });
+
+      // Create worker pool synchronously on first suspect.
+      // numOfTasks uses totalItems (not suspectItems.length) because we don't
+      // yet know the final suspect count — the prescan loop is still running.
+      // With MAX_SECURITY_WORKERS=1 this has no effect on thread count.
+      if (!earlyPool && TinypoolCtor) {
+        earlyPool = createWorkerPoolSync(TinypoolCtor, {
+          numOfTasks: totalItems,
+          workerType: 'securityCheck',
+          runtime: 'worker_threads',
+          maxWorkerThreads: Math.min(MAX_SECURITY_WORKERS, deps.getProcessConcurrency()),
+        });
+      }
+    }
+  }
+
+  // Also scan git diff/log items (typically 0-3 items, negligible cost).
+  // Note: earlyPool is NOT created here — the git-only suspect case is rare
+  // and falls through to the initTaskRunner fallback below.
+  for (const item of gitDiffItems) {
+    if (SECRETLINT_PRESCAN.test(item.content)) {
+      suspectItems.push(item);
+    }
+  }
+  for (const item of gitLogItems) {
+    if (SECRETLINT_PRESCAN.test(item.content)) {
+      suspectItems.push(item);
+    }
+  }
+
   const skippedCount = totalItems - suspectItems.length;
 
+  // Invariant: earlyPool is non-null ONLY when suspectItems is non-empty,
+  // because the pool is created inside the branch that also pushes to
+  // suspectItems.  This means the early-return below never leaks a pool.
   if (suspectItems.length === 0) {
     logger.trace(`Security pre-scan: all ${totalItems} items skipped (no patterns matched)`);
     return [];
@@ -156,19 +206,25 @@ export const runSecurityCheck = async (
 
   logger.trace(`Security pre-scan: ${skippedCount}/${totalItems} items skipped, ${suspectItems.length} items to check`);
 
-  // Use pre-warmed task runner if provided, otherwise create one on the spot
+  // Use pre-warmed task runner if provided, the early-created pool from the
+  // prescan loop, or create one as a final fallback.
+  // Capture earlyPool into a const so TypeScript narrows the type inside the
+  // closures below (mutable `let` variables are not narrowed in closures).
+  const resolvedPool = earlyPool;
   const ownedTaskRunner = !deps.taskRunner;
-  const taskRunner =
+  const taskRunner: SecurityTaskRunner =
     deps.taskRunner ??
-    (await (async () => {
-      const maxSecurityWorkers = Math.min(MAX_SECURITY_WORKERS, deps.getProcessConcurrency());
-      return deps.initTaskRunner<SecurityCheckTask, (WorkerSuspiciousFileResult | null)[]>({
-        numOfTasks: suspectItems.length,
-        workerType: 'securityCheck',
-        runtime: 'worker_threads',
-        maxWorkerThreads: maxSecurityWorkers,
-      });
-    })());
+    (resolvedPool
+      ? { run: (task: SecurityCheckTask) => resolvedPool.run(task), cleanup: () => cleanupWorkerPool(resolvedPool) }
+      : await (async () => {
+          const maxSecurityWorkers = Math.min(MAX_SECURITY_WORKERS, deps.getProcessConcurrency());
+          return deps.initTaskRunner<SecurityCheckTask, (WorkerSuspiciousFileResult | null)[]>({
+            numOfTasks: suspectItems.length,
+            workerType: 'securityCheck',
+            runtime: 'worker_threads',
+            maxWorkerThreads: maxSecurityWorkers,
+          });
+        })());
 
   // Batch the suspect items. Typically ~30 items -> 1 batch with BATCH_SIZE=50,
   // down from ~20 batches of 50 when all items were sent unfiltered.
