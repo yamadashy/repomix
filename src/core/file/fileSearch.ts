@@ -571,3 +571,22 @@ export const listFiles = async (rootDir: string, config: RepomixConfigMerged): P
 
   return sortPaths(files);
 };
+
+/**
+ * Searches for empty directories in the given root directory.
+ * Intended to be called separately from searchFiles so the caller can run it
+ * concurrently with file collection, keeping the empty-dir globby scan off the
+ * critical path of the main pipeline.
+ */
+export const searchEmptyDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
+  const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+  const includePatterns =
+    config.include.length > 0 ? config.include.map((pattern) => escapeGlobPattern(pattern)) : ['**/*'];
+
+  const directories = await globby(includePatterns, {
+    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    onlyDirectories: true,
+  });
+
+  return findEmptyDirectories(rootDir, directories);
+};

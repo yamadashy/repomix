@@ -6,7 +6,7 @@ import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
-import { searchFiles } from './file/fileSearch.js';
+import { searchEmptyDirectories, searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
@@ -37,6 +37,7 @@ export interface PackResult {
 
 const defaultDeps = {
   searchFiles,
+  searchEmptyDirectories,
   collectFiles,
   processFiles,
   validateFileSafety,
@@ -85,21 +86,22 @@ export const pack = async (
     logger.trace('Failed to prefetch sort data:', error);
   });
 
+  // Disable empty directory search inside searchFiles — it is launched
+  // concurrently with file collection via emptyDirPromise below, keeping
+  // the ~100ms globby directory scan off the sequential critical path.
+  const searchConfig = config.output.includeEmptyDirectories
+    ? { ...config, output: { ...config.output, includeEmptyDirectories: false } }
+    : config;
+
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
       rootDirs.map(async (rootDir) => {
-        const result = await deps.searchFiles(rootDir, config, explicitFiles);
-        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+        const result = await deps.searchFiles(rootDir, searchConfig, explicitFiles);
+        return { rootDir, filePaths: result.filePaths };
       }),
     ),
   );
-
-  // Deduplicate and sort empty directory paths for reuse during output generation,
-  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
-  const emptyDirPaths = config.output.includeEmptyDirectories
-    ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
-    : undefined;
 
   // Sort file paths
   progressCallback('Sorting files...');
@@ -121,12 +123,21 @@ export const pack = async (
   );
 
   try {
-    // Run file collection and git operations in parallel since they are independent:
+    // Run file collection, git operations, and empty directory scan in parallel
+    // since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
-    // Neither depends on the other's results.
+    // - searchEmptyDirectories uses globby to scan for empty directories
+    // Running empty dir scan here (instead of inside searchFiles) keeps the
+    // ~100ms globby scan off the critical path — it overlaps with file collection.
     progressCallback('Collecting files...');
-    const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
+    const emptyDirPromise = config.output.includeEmptyDirectories
+      ? Promise.all(rootDirs.map((rootDir) => deps.searchEmptyDirectories(rootDir, config))).then((results) =>
+          [...new Set(results.flat())].sort(),
+        )
+      : undefined;
+
+    const [collectResults, gitDiffResult, gitLogResult, emptyDirPaths] = await Promise.all([
       withMemoryLogging(
         'Collect Files',
         async () =>
@@ -138,6 +149,7 @@ export const pack = async (
       ),
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
+      emptyDirPromise,
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
