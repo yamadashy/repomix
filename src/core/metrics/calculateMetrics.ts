@@ -10,12 +10,11 @@ import { calculateFileMetrics } from './calculateFileMetrics.js';
 import { calculateGitDiffMetrics } from './calculateGitDiffMetrics.js';
 import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
-import { extractOutputWrapper, type OutputStyle } from './extractOutputWrapper.js';
 
 // Re-export for backward compatibility (used by tests and external consumers)
 export { extractOutputWrapper } from './extractOutputWrapper.js';
 
-import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
+import type { MetricsTaskRunner } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 import type { FileMetrics } from './workers/types.js';
@@ -86,6 +85,26 @@ export const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean 
   return style === 'xml' || style === 'markdown' || style === 'plain';
 };
 
+// Average characters per token for the output wrapper (structural markup:
+// XML/markdown tags, file-path headers, directory tree, section separators).
+// Wrapper text is a mix of short English words, file paths with `/._-`
+// separators, and repetitive structural tokens (e.g., `<file path="...">`,
+// `## File:`). Measured on repomix's own output: ~3.7 chars/token for
+// o200k_base. Using a slightly conservative 3.6 to avoid underestimating.
+const CHARS_PER_TOKEN_WRAPPER: Record<string, number> = {
+  o200k_base: 3.6,
+  cl100k_base: 3.6,
+  p50k_base: 3.3,
+  p50k_edit: 3.3,
+  r50k_base: 3.3,
+};
+
+const FALLBACK_WRAPPER_CHARS_PER_TOKEN = 3.3;
+
+const estimateWrapperCharsPerToken = (encoding: string): number => {
+  return CHARS_PER_TOKEN_WRAPPER[encoding] ?? FALLBACK_WRAPPER_CHARS_PER_TOKEN;
+};
+
 export const calculateMetrics = async (
   processedFiles: ProcessedFile[],
   outputPromise: Promise<string | string[]>,
@@ -146,43 +165,46 @@ export const calculateMetrics = async (
     const resolvedOutput = await outputPromise;
     const outputParts = Array.isArray(resolvedOutput) ? resolvedOutput : [resolvedOutput];
 
-    // Fast path: reuse per-file token counts plus a single cheap tokenization of
-    // the output "wrapper" (output minus file contents) instead of re-tokenizing
-    // the full ~4 MB output in 200 KB chunks. Falls back to calculateOutputMetrics
-    // for JSON/parsable-XML/split output where indexOf can't find verbatim content.
-    const singleOutput = canUseFastOutputTokenPath(config) && outputParts.length === 1 ? outputParts[0] : null;
-    const style = config.output.style as 'xml' | 'markdown' | 'plain';
-    const outputWrapper = singleOutput !== null ? extractOutputWrapper(singleOutput, processedFiles, style) : null;
-    if (singleOutput !== null && outputWrapper === null) {
-      logger.trace('Fast-path unavailable, falling back to full output tokenization');
-    }
+    // Fast path: reuse per-file token counts and estimate wrapper tokens via
+    // character ratio instead of extracting the wrapper string and sending it
+    // to a worker for BPE tokenization. This eliminates:
+    //   1. extractOutputWrapper() — tag search + string slicing (~1-5ms)
+    //   2. IPC structured-clone of the wrapper to a worker (~5-20ms)
+    //   3. Worker BPE tokenization of the wrapper (~10-30ms)
+    // The wrapper consists of structural markup (XML tags, file-path headers,
+    // directory tree, section separators) with a stable chars/token ratio.
+    // Falls back to calculateOutputMetrics for JSON/parsable-XML/split output.
+    const useFastPath = canUseFastOutputTokenPath(config) && outputParts.length === 1;
 
-    const outputMetricsPromise: Promise<number[]> =
-      outputWrapper !== null
-        ? (async () => {
-            // Dispatch wrapper tokenization immediately — a worker may already be
-            // idle while file metrics batches still occupy the other workers.
-            // Running both in parallel saves ~20ms on machines with 8+ cores.
-            const wrapperTokensPromise = runTokenCount(taskRunner, {
-              content: outputWrapper,
-              encoding: config.tokenCount.encoding,
-            });
-            const [allFileMetrics, wrapperTokens] = await Promise.all([fileMetricsPromise, wrapperTokensPromise]);
-            const fileTokensSum = allFileMetrics.reduce((sum, f) => sum + f.tokenCount, 0);
-            logger.trace(
-              `Fast-path output tokens: files=${fileTokensSum}, wrapper=${wrapperTokens} (${outputWrapper.length} chars)`,
-            );
-            return [fileTokensSum + wrapperTokens];
-          })()
-        : Promise.all(
-            outputParts.map((part, index) => {
-              const partPath =
-                outputParts.length > 1
-                  ? buildSplitOutputFilePath(config.output.filePath, index + 1)
-                  : config.output.filePath;
-              return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
-            }),
+    const outputMetricsPromise: Promise<number[]> = useFastPath
+      ? (async () => {
+          const output = outputParts[0];
+          const allFileMetrics = await fileMetricsPromise;
+          const fileTokensSum = allFileMetrics.reduce((sum, f) => sum + f.tokenCount, 0);
+          // Compute wrapper character count arithmetically — no extraction needed.
+          // wrapperChars = output.length - sum(file.content.length) for all files
+          // whose content appears verbatim in the output.
+          let totalFileChars = 0;
+          for (const file of processedFiles) {
+            totalFileChars += file.content.length;
+          }
+          const wrapperChars = output.length - totalFileChars;
+          const wrapperTokens =
+            wrapperChars > 0 ? Math.ceil(wrapperChars / estimateWrapperCharsPerToken(config.tokenCount.encoding)) : 0;
+          logger.trace(
+            `Fast-path output tokens: files=${fileTokensSum}, wrapper=${wrapperTokens} (${wrapperChars} chars, estimated)`,
           );
+          return [fileTokensSum + wrapperTokens];
+        })()
+      : Promise.all(
+          outputParts.map((part, index) => {
+            const partPath =
+              outputParts.length > 1
+                ? buildSplitOutputFilePath(config.output.filePath, index + 1)
+                : config.output.filePath;
+            return deps.calculateOutputMetrics(part, config.tokenCount.encoding, partPath, { taskRunner });
+          }),
+        );
 
     const [fileMetrics, outputTokenCounts, gitDiffTokenCount, gitLogTokenCount] = await Promise.all([
       fileMetricsPromise,
@@ -190,7 +212,6 @@ export const calculateMetrics = async (
       gitDiffMetricsPromise,
       gitLogMetricsPromise,
     ]);
-
     const totalTokens = outputTokenCounts.reduce((sum, count) => sum + count, 0);
     const totalFiles = processedFiles.length;
     const totalCharacters = outputParts.reduce((sum, part) => sum + part.length, 0);

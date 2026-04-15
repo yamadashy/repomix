@@ -100,10 +100,9 @@ describe('calculateMetrics', () => {
   });
 
   describe('output token fast path', () => {
-    // These tests drive `calculateMetrics` end-to-end through the wrapper-
-    // extraction fast path added in the previous commit. They exercise the
-    // currently-file-local helpers `canUseFastOutputTokenPath` and
-    // `extractOutputWrapper` through the public surface.
+    // These tests drive `calculateMetrics` end-to-end through the arithmetic
+    // wrapper estimation fast path. On the fast path, wrapper tokens are
+    // estimated via chars/token ratio (no extractOutputWrapper or worker IPC).
 
     const makeTaskRunner = (tokenForContent: (content: string) => number) => ({
       run: vi.fn(async (task: unknown): Promise<number | number[]> => {
@@ -155,19 +154,18 @@ describe('calculateMetrics', () => {
       return { result, mockCalculateOutputMetrics, taskRunner };
     };
 
-    it('uses the wrapper fast path when tokenCountTree is enabled, summing per-file tokens plus wrapper tokens', async () => {
+    it('uses the wrapper fast path when tokenCountTree is enabled, summing per-file tokens plus estimated wrapper tokens', async () => {
       const processedFiles: ProcessedFile[] = [
         { path: 'a.ts', content: 'const a = 1;' },
         { path: 'b.ts', content: 'const b = 2;' },
       ];
-      const wrapper = '<files>\n<file path="a.ts">\n\n</file>\n<file path="b.ts">\n\n</file>\n</files>';
       // Construct the output so each file's content appears verbatim between
       // its wrapper markers.
       const output = `<files>\n<file path="a.ts">\n${processedFiles[0].content}\n</file>\n<file path="b.ts">\n${processedFiles[1].content}\n</file>\n</files>`;
 
-      // Token counter: files already counted by selective (5 + 7). Wrapper gets
-      // a stable mock value derived from its length so we can assert.
-      const { result, mockCalculateOutputMetrics, taskRunner } = await runWithConfig(
+      // Token counter: files already counted by selective (5 + 7). Wrapper tokens
+      // are estimated arithmetically from the character difference.
+      const { result, mockCalculateOutputMetrics } = await runWithConfig(
         {
           processedFiles,
           fileMetrics: [
@@ -182,12 +180,12 @@ describe('calculateMetrics', () => {
 
       // Fast path must NOT call calculateOutputMetrics (the slow path).
       expect(mockCalculateOutputMetrics).not.toHaveBeenCalled();
-      // Exactly one worker call — for the wrapper.
-      expect(taskRunner.run).toHaveBeenCalledTimes(1);
-      const runArg = (taskRunner.run as unknown as Mock).mock.calls[0][0] as { content: string };
-      expect(runArg.content).toBe(wrapper);
-      // Result = per-file token sum (5 + 7 = 12) + wrapper length (mock tokens).
-      expect(result.totalTokens).toBe(5 + 7 + wrapper.length);
+      // Wrapper tokens are estimated via arithmetic — no worker call needed.
+      // wrapperChars = output.length - totalFileChars = output.length - 24
+      const wrapperChars = output.length - 24;
+      // Default encoding is o200k_base → 3.6 chars/token for wrapper.
+      const expectedWrapperTokens = Math.ceil(wrapperChars / 3.6);
+      expect(result.totalTokens).toBe(5 + 7 + expectedWrapperTokens);
     });
 
     it('still uses the wrapper fast path even when tokenCountTree is disabled', async () => {
@@ -196,7 +194,7 @@ describe('calculateMetrics', () => {
       const processedFiles: ProcessedFile[] = [{ path: 'a.ts', content: 'const a = 1;' }];
       const output = `<file path="a.ts">\n${processedFiles[0].content}\n</file>`;
 
-      const { mockCalculateOutputMetrics, taskRunner } = await runWithConfig(
+      const { mockCalculateOutputMetrics } = await runWithConfig(
         {
           processedFiles,
           fileMetrics: [{ path: 'a.ts', charCount: 12, tokenCount: 5 }],
@@ -207,9 +205,8 @@ describe('calculateMetrics', () => {
       );
 
       // Fast path is used — calculateOutputMetrics is NOT called.
+      // Wrapper tokens are estimated arithmetically, no worker call needed.
       expect(mockCalculateOutputMetrics).not.toHaveBeenCalled();
-      // One worker call for the wrapper.
-      expect(taskRunner.run).toHaveBeenCalledTimes(1);
     });
 
     it('falls back when parsableStyle is true (content is XML-escaped)', async () => {
@@ -240,21 +237,22 @@ describe('calculateMetrics', () => {
       expect(mockCalculateOutputMetrics).toHaveBeenCalledTimes(1);
     });
 
-    it('falls back transparently when a file content is not found in the output', async () => {
-      // The file content is not present verbatim in the output — the fast
-      // path should fail extraction and defer to calculateOutputMetrics.
+    it('uses arithmetic estimation even when file content differs from output', async () => {
+      // The arithmetic fast path computes wrapper chars as output.length minus
+      // the sum of processedFile content lengths — it doesn't search for file
+      // content in the output. This succeeds regardless of content mismatch.
       const processedFiles: ProcessedFile[] = [{ path: 'a.ts', content: 'const a = 1;' }];
       const output = '<file path="a.ts">\nconst b = 2;\n</file>';
 
-      const { mockCalculateOutputMetrics, taskRunner } = await runWithConfig({
+      const { mockCalculateOutputMetrics } = await runWithConfig({
         processedFiles,
         fileMetrics: [{ path: 'a.ts', charCount: 12, tokenCount: 5 }],
         output,
         configOverrides: { tokenCountTree: true, style: 'xml' },
       });
 
-      expect(mockCalculateOutputMetrics).toHaveBeenCalledTimes(1);
-      expect(taskRunner.run).not.toHaveBeenCalled();
+      // Fast path succeeds — no fallback to calculateOutputMetrics.
+      expect(mockCalculateOutputMetrics).not.toHaveBeenCalled();
     });
 
     it('handles empty files in the middle of the file list', async () => {
@@ -265,7 +263,7 @@ describe('calculateMetrics', () => {
       ];
       const output = `<file path="a.ts">\n${processedFiles[0].content}\n</file>\n<file path="empty.ts">\n\n</file>\n<file path="b.ts">\n${processedFiles[2].content}\n</file>`;
 
-      const { result, taskRunner } = await runWithConfig(
+      const { result } = await runWithConfig(
         {
           processedFiles,
           fileMetrics: [
@@ -279,27 +277,21 @@ describe('calculateMetrics', () => {
         (content) => content.length,
       );
 
-      // Fast path engaged — exactly one worker call for the wrapper.
-      expect(taskRunner.run).toHaveBeenCalledTimes(1);
-      const runArg = (taskRunner.run as unknown as Mock).mock.calls[0][0] as { content: string };
-      // Wrapper should not contain either non-empty file body.
-      expect(runArg.content).not.toContain('const a = 1;');
-      expect(runArg.content).not.toContain('const b = 2;');
-      // Total = 5 (a) + 0 (empty) + 7 (b) + wrapper length.
-      expect(result.totalTokens).toBe(5 + 0 + 7 + runArg.content.length);
+      // Wrapper tokens estimated arithmetically: wrapperChars = output.length - (12 + 0 + 12)
+      const wrapperChars = output.length - 24;
+      const expectedWrapperTokens = Math.ceil(wrapperChars / 3.6);
+      // Total = 5 (a) + 0 (empty) + 7 (b) + estimated wrapper tokens.
+      expect(result.totalTokens).toBe(5 + 0 + 7 + expectedWrapperTokens);
     });
 
     it('correctly handles duplicate content where one file appears as a substring of another', async () => {
-      // File A has the full block; file B's content is a substring of A's.
-      // Monotonic cursor advance guarantees B is matched after A's end, not
-      // at the false occurrence inside A.
       const processedFiles: ProcessedFile[] = [
         { path: 'a.ts', content: 'prefix-marker-suffix' },
         { path: 'b.ts', content: 'marker' },
       ];
       const output = `<file path="a.ts">\n${processedFiles[0].content}\n</file>\n<file path="b.ts">\n${processedFiles[1].content}\n</file>`;
 
-      const { result, taskRunner } = await runWithConfig(
+      const { result } = await runWithConfig(
         {
           processedFiles,
           fileMetrics: [
@@ -312,13 +304,10 @@ describe('calculateMetrics', () => {
         (content) => content.length,
       );
 
-      expect(taskRunner.run).toHaveBeenCalledTimes(1);
-      const runArg = (taskRunner.run as unknown as Mock).mock.calls[0][0] as { content: string };
-      // Both file bodies must be sliced out of the wrapper, including the
-      // full containing block of A. The leftover wrapper contains only the
-      // tag scaffolding.
-      expect(runArg.content).not.toContain('prefix-marker-suffix');
-      expect(result.totalTokens).toBe(9 + 2 + runArg.content.length);
+      // Wrapper tokens estimated arithmetically: wrapperChars = output.length - (20 + 6)
+      const wrapperChars = output.length - 26;
+      const expectedWrapperTokens = Math.ceil(wrapperChars / 3.6);
+      expect(result.totalTokens).toBe(9 + 2 + expectedWrapperTokens);
     });
 
     it('falls back for split output (multiple parts)', async () => {

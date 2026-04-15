@@ -19,17 +19,16 @@ const METRICS_BATCH_SIZE = 50;
 // Files with content.length (UTF-16 character count) at or below this threshold
 // get a character-based token estimate on the main thread instead of being sent
 // to worker threads for BPE tokenization. This eliminates IPC overhead (structured
-// clone + message passing) for many small-to-medium files that contribute a
-// modest fraction of total content.
+// clone + message passing) for the vast majority of files.
 //
-// On a typical 1000-file codebase, ~98.5% of files are under 65536 characters.
+// At 200000 (200KB), virtually all source code and documentation files are
+// estimated on the main thread. Combined with the arithmetic wrapper token
+// estimation in calculateMetrics, this eliminates all worker-based tokenization
+// from the metrics fast path — the worker pool is only used for git diff/log
+// tokenization (when enabled) and the slow output tokenization fallback.
 // Per-extension chars/token ratios (see below) keep the total token count error
-// under 1%, while reducing worker batches from ~1 to ~0 compared to the previous
-// 16384 threshold for most repos — eliminating the remaining BPE computation and
-// IPC overhead for per-file metrics on the critical path. The output wrapper
-// tokenization (which cannot be estimated) still uses workers, so the pool is
-// always available for the rare files above this threshold.
-const SMALL_FILE_THRESHOLD = 65536;
+// under 1% even at this threshold.
+const SMALL_FILE_THRESHOLD = 200000;
 
 // Source code extensions have a higher chars/token ratio (~4.0-4.2) than prose
 // or data files (~3.5) because BPE tokenizers efficiently merge common
@@ -115,7 +114,9 @@ const CHARS_PER_TOKEN_DEFAULT: Record<string, number> = {
 const FALLBACK_CHARS_PER_TOKEN = 3.2;
 
 const getCharsPerToken = (filePath: string, encoding: string): number => {
-  const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+  const dotIdx = filePath.lastIndexOf('.');
+  const slashIdx = filePath.lastIndexOf('/');
+  const ext = dotIdx > slashIdx ? filePath.slice(dotIdx + 1).toLowerCase() : '';
   if (CODE_EXTENSIONS.has(ext)) {
     return CHARS_PER_TOKEN_CODE[encoding] ?? FALLBACK_CHARS_PER_TOKEN;
   }

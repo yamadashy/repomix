@@ -35,37 +35,46 @@ const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
 };
 
 describe('calculateFileMetrics', () => {
-  it('should calculate metrics for large files via worker BPE tokenization', async () => {
-    // Files above the small-file threshold (65536 chars) are sent to workers
+  it('should send large files to worker for BPE tokenization', async () => {
+    // Files above the small-file threshold (200000 chars) are sent to workers.
+    // Use a lightweight mock to avoid slow real BPE in tests.
     const processedFiles: ProcessedFile[] = [
-      { path: 'large1.txt', content: 'a'.repeat(70000) },
-      { path: 'large2.txt', content: 'b'.repeat(80000) },
-      { path: 'large3.txt', content: 'c'.repeat(100000) },
+      { path: 'large1.txt', content: 'a'.repeat(200001) },
+      { path: 'large2.txt', content: 'b'.repeat(200002) },
+      { path: 'large3.txt', content: 'c'.repeat(200003) },
     ];
     const targetFilePaths = ['large1.txt', 'large3.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
 
+    // Mock task runner that returns a fixed token count per item
+    const fastMockRunner: MetricsTaskRunner = {
+      run: async (task: MetricsWorkerTask) => {
+        if ('items' in task) {
+          const batchTask = task as TokenCountBatchTask;
+          return batchTask.items.map((item) => Math.ceil(item.content.length / 4));
+        }
+        const t = task as TokenCountTask;
+        return Math.ceil(t.content.length / 4);
+      },
+      cleanup: async () => {},
+    };
+
     const result = await calculateFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback, {
-      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+      taskRunner: fastMockRunner,
     });
 
     expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ path: 'large1.txt', charCount: 70000, tokenCount: expect.any(Number) });
-    expect(result[1]).toEqual({ path: 'large3.txt', charCount: 100000, tokenCount: expect.any(Number) });
-    // BPE token counts should be reasonable (not char-based estimates)
-    expect(result[0].tokenCount).toBeGreaterThan(0);
-    expect(result[0].tokenCount).toBeLessThan(70000);
-    expect(result[1].tokenCount).toBeGreaterThan(0);
-    expect(result[1].tokenCount).toBeLessThan(100000);
+    expect(result[0]).toEqual({ path: 'large1.txt', charCount: 200001, tokenCount: Math.ceil(200001 / 4) });
+    expect(result[1]).toEqual({ path: 'large3.txt', charCount: 200003, tokenCount: Math.ceil(200003 / 4) });
   });
 
   it('should estimate metrics for small files without worker IPC', async () => {
-    // Files at or below the small-file threshold (65536 characters) are estimated
+    // Files at or below the small-file threshold (200000 characters) are estimated
     // .txt files use the default ratio (3.5 for o200k_base)
     const processedFiles: ProcessedFile[] = [
       { path: 'small1.txt', content: 'a'.repeat(100) },
       { path: 'small2.txt', content: 'b'.repeat(500) },
-      { path: 'small3.txt', content: 'c'.repeat(65536) },
+      { path: 'small3.txt', content: 'c'.repeat(200000) },
     ];
     const targetFilePaths = ['small1.txt', 'small2.txt', 'small3.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
@@ -79,7 +88,7 @@ describe('calculateFileMetrics', () => {
     // .txt uses default 3.5 for o200k_base
     expect(result[0]).toEqual({ path: 'small1.txt', charCount: 100, tokenCount: Math.ceil(100 / 3.5) });
     expect(result[1]).toEqual({ path: 'small2.txt', charCount: 500, tokenCount: Math.ceil(500 / 3.5) });
-    expect(result[2]).toEqual({ path: 'small3.txt', charCount: 65536, tokenCount: Math.ceil(65536 / 3.5) });
+    expect(result[2]).toEqual({ path: 'small3.txt', charCount: 200000, tokenCount: Math.ceil(200000 / 3.5) });
   });
 
   it('should use extension-specific chars/token ratios for code files', async () => {
@@ -147,23 +156,33 @@ describe('calculateFileMetrics', () => {
   it('should handle mixed small and large files', async () => {
     const processedFiles: ProcessedFile[] = [
       { path: 'small.txt', content: 'a'.repeat(100) },
-      { path: 'large.txt', content: 'b'.repeat(70000) },
+      { path: 'large.txt', content: 'b'.repeat(200001) },
     ];
     const targetFilePaths = ['small.txt', 'large.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
 
+    // Mock task runner that returns fixed token counts for large files
+    const fastMockRunner: MetricsTaskRunner = {
+      run: async (task: MetricsWorkerTask) => {
+        if ('items' in task) {
+          const batchTask = task as TokenCountBatchTask;
+          return batchTask.items.map((item) => Math.ceil(item.content.length / 4));
+        }
+        const t = task as TokenCountTask;
+        return Math.ceil(t.content.length / 4);
+      },
+      cleanup: async () => {},
+    };
+
     const result = await calculateFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback, {
-      taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
+      taskRunner: fastMockRunner,
     });
 
     expect(result).toHaveLength(2);
     // Small file gets estimate (.txt → default 3.5 chars/token for o200k_base)
     expect(result[0]).toEqual({ path: 'small.txt', charCount: 100, tokenCount: Math.ceil(100 / 3.5) });
-    // Large file gets BPE count
-    expect(result[1].path).toBe('large.txt');
-    expect(result[1].charCount).toBe(70000);
-    expect(result[1].tokenCount).toBeGreaterThan(0);
-    expect(result[1].tokenCount).toBeLessThan(70000);
+    // Large file (>200000 chars) goes to worker
+    expect(result[1]).toEqual({ path: 'large.txt', charCount: 200001, tokenCount: Math.ceil(200001 / 4) });
   });
 
   it('should return empty array when no target files match', async () => {
