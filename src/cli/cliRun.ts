@@ -215,11 +215,30 @@ export const run = async () => {
     });
 
     await program.parseAsync(process.argv);
+
+    // Exit explicitly after all CLI work completes. Worker pool cleanup is
+    // non-blocking (threads are unref'd, destroy is fire-and-forget), but
+    // Tinypool's internal MessagePort references keep the event loop alive.
+    // Without this, the process hangs until pool.destroy() completes
+    // (~70-80ms). Skip for MCP mode which keeps a long-lived server
+    // running via stdin/stdout streams on the event loop.
+    if (!mcpModeActive) {
+      // Flush stdout before exiting to prevent data truncation when
+      // output is piped (e.g. repomix --stdout | other-command).
+      if (process.stdout.writableNeedDrain) {
+        await new Promise<void>((resolve) => process.stdout.once('drain', resolve));
+      }
+      process.exit(0);
+    }
   } catch (error) {
     handleError(error);
     process.exit(1);
   }
 };
+
+// Flag to track MCP mode — the MCP server keeps a long-lived event loop
+// via stdin/stdout streams, so process.exit() must not fire after parseAsync.
+let mcpModeActive = false;
 
 const commanderActionEndpoint = async (directories: string[], options: CliOptions = {}) => {
   await runCli(directories, process.cwd(), options);
@@ -252,6 +271,7 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   logger.trace('options:', options);
 
   if (options.mcp) {
+    mcpModeActive = true;
     const { runMcpAction } = await import('./actions/mcpAction.js');
     return await runMcpAction();
   }

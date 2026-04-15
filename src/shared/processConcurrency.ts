@@ -129,11 +129,24 @@ export const cleanupWorkerPool = async (pool: Tinypool): Promise<void> => {
       // If running in Bun, we cannot use Tinypool's destroy method
       logger.debug('Running in Bun environment, skipping Tinypool destroy method');
     } else {
-      // Standard Node.js cleanup
-      await pool.destroy();
+      // Non-blocking cleanup: unref worker threads so they don't prevent
+      // process exit, then initiate destruction without awaiting. This
+      // saves ~70-80ms per pool that was previously spent synchronously
+      // waiting for each thread to acknowledge SIGTERM. The CLI calls
+      // process.exit() after all work completes, so the pending destroy
+      // is cleaned up on exit. For long-lived processes (MCP server),
+      // Tinypool's idleTimeout handles worker recycling independently.
+      for (const thread of pool.threads) {
+        if (thread && typeof thread.unref === 'function') {
+          thread.unref();
+        }
+      }
+      pool.destroy().catch((error) => {
+        logger.debug('Error during worker pool destroy:', error);
+      });
     }
 
-    logger.debug('Worker pool cleaned up successfully');
+    logger.debug('Worker pool cleanup initiated');
   } catch (error) {
     logger.debug('Error during worker pool cleanup:', error);
   }
