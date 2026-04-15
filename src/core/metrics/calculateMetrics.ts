@@ -82,6 +82,10 @@ const defaultDeps = {
 export const canUseFastOutputTokenPath = (config: RepomixConfigMerged): boolean => {
   if (config.output.splitOutput !== undefined) return false;
   if (config.output.parsableStyle) return false;
+  // When files are excluded from output (--no-files), the arithmetic
+  // wrapperChars = output.length - totalFileChars goes negative because
+  // processedFiles still contain content that isn't in the output.
+  if (config.output.files === false) return false;
   const style = config.output.style;
   return style === 'xml' || style === 'markdown' || style === 'plain';
 };
