@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776218130036,
+  "lastUpdate": 1776224289100,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2790,6 +2790,51 @@ window.BENCHMARK_DATA = {
             "range": "±53",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 722ms, Q3: 775ms\nAll times: 694, 702, 714, 718, 719, 722, 724, 727, 728, 731, 736, 738, 739, 758, 771, 775, 787, 787, 790, 797ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "de99a4fc49ad59c77466e7a71ec4d05e728c164a",
+          "message": "perf(metrics): Pre-compute output wrapper during generation, skip extractOutputWrapper (-2.5%)\n\nGenerate the output wrapper (output minus file contents) alongside the output\nstring in the direct XML/Markdown/Plain generators, eliminating the post-hoc\nextractOutputWrapper scan through the full output.\n\nPreviously, calculateMetrics called extractOutputWrapper which performed N\nindexOf calls on the full output string (~4MB) to locate each file's content\nboundaries and build the wrapper by slicing. This cold-call cost ~7.5ms on a\n1000-file repo and scales to ~25ms on 5000-file repos.\n\nNow, each direct output generator tracks which parts-array indices hold file\ncontent via fileContentIndices. After parts.join(), buildWrapperFromParts\niterates the parts array once (O(n) in parts count, not output size), skipping\nfile-content indices, to produce the identical wrapper string. The wrapper is\npassed through produceOutput → packager → calculateMetrics via a new\nprecomputedOutputWrapper promise, where it bypasses extractOutputWrapper\nentirely.\n\nThe wrapper string is verified byte-for-byte identical to the one produced by\nextractOutputWrapper (same trimEnd + \\n behavior). Token counts are unchanged.\n\nBenchmark (interleaved A/B, 12 rounds, repomix repo ~1000 files):\n  Trimmed mean: -7.5ms (-2.5%)\n  Median:       -5.7ms (-1.9%)\n\nextractOutputWrapper cold-call scaling (eliminated cost):\n  1000 files (3.9MB):  4.6ms\n  2000 files (7.7MB):  8.4ms\n  5000 files (19.4MB): 25.0ms\n\nhttps://claude.ai/code/session_01EHSzZeyCYszMGXwnxWSp6w",
+          "timestamp": "2026-04-15T03:36:39Z",
+          "tree_id": "e83a39b6ba6f68db67b98736d1563f43404b76f6",
+          "url": "https://github.com/yamadashy/repomix/commit/de99a4fc49ad59c77466e7a71ec4d05e728c164a"
+        },
+        "date": 1776224288151,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 400,
+            "range": "±98",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 369ms, Q3: 467ms\nAll times: 311, 352, 360, 360, 366, 368, 368, 369, 369, 374, 375, 380, 391, 396, 399, 400, 402, 402, 417, 443, 450, 459, 467, 470, 473, 483, 493, 604, 620, 693ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 423,
+            "range": "±88",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 415ms, Q3: 503ms\nAll times: 393, 396, 399, 400, 415, 415, 415, 421, 421, 421, 423, 431, 437, 442, 475, 503, 504, 506, 521, 628ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 745,
+            "range": "±51",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 730ms, Q3: 781ms\nAll times: 692, 713, 723, 725, 727, 730, 733, 736, 737, 743, 745, 751, 764, 765, 778, 781, 782, 790, 791, 793ms"
           }
         ]
       }
