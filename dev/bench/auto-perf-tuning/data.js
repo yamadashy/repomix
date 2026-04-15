@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776294536123,
+  "lastUpdate": 1776294767895,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3600,6 +3600,51 @@ window.BENCHMARK_DATA = {
             "range": "±147",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1715ms, Q3: 1862ms\nAll times: 1677, 1678, 1681, 1698, 1709, 1715, 1717, 1719, 1723, 1726, 1736, 1743, 1744, 1829, 1844, 1862, 1864, 1932, 1942, 2004ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "5055c86bc70039015948f8df6280786106b09adc",
+          "message": "perf(core): Non-blocking worker pool cleanup and skip unused content scans\n\nTwo targeted optimizations that reduce CLI wall time by ~3.5%:\n\n1. Non-blocking worker pool cleanup (processConcurrency.ts, cliRun.ts):\n   - Unref worker threads and fire-and-forget pool.destroy() instead of\n     awaiting thread termination (~70-80ms per pool)\n   - Add explicit process.exit(0) in the CLI path to handle Tinypool's\n     internal idle timers that would otherwise keep the event loop alive\n   - MCP mode is excluded via a flag — the MCP server keeps a long-lived\n     event loop via stdin/stdout streams\n\n2. Skip unused content scans in createRenderContext (outputGenerate.ts):\n   - Skip calculateFileLineCounts for non-skill output (only skill\n     generation uses line counts; standard templates do not)\n   - Skip calculateMarkdownDelimiter for XML/JSON output (only\n     markdown/plain templates reference the delimiter)\n   - Together these skip ~35ms of per-file regex scanning for the\n     default XML output path\n\nBenchmark: node bin/repomix.cjs --quiet on the repomix repo (~1019 files)\n30 runs per variant, trimmed (drop top/bottom 3):\n\n| Metric | Baseline | This patch | Delta |\n|---|---|---|---|\n| median | 1259 ms | 1216 ms | −44 ms (−3.5%) |\n| mean | 1259 ms | 1213 ms | −46 ms (−3.7%) |\n\nDECIDED: pool.destroy() await → fire-and-forget because all tasks complete\nbefore cleanup runs; the CLI is about to exit anyway. For MCP (long-lived),\nTinypool's idleTimeout handles worker recycling independently.\n\nDECIDED: process.exit(0) guarded by mcpModeActive flag — MCP server keeps\nthe event loop alive via stdin/stdout streams and must not be terminated.\n\nhttps://claude.ai/code/session_01VzkV17zThe6b7B1hrtvghG",
+          "timestamp": "2026-04-15T23:10:42Z",
+          "tree_id": "092c1e1fba47d661cd44e7368c599f6100b447d4",
+          "url": "https://github.com/yamadashy/repomix/commit/5055c86bc70039015948f8df6280786106b09adc"
+        },
+        "date": 1776294767513,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1347,
+            "range": "±251",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1231ms, Q3: 1482ms\nAll times: 910, 910, 982, 1144, 1179, 1205, 1210, 1231, 1236, 1262, 1279, 1289, 1299, 1301, 1316, 1347, 1371, 1372, 1382, 1404, 1405, 1476, 1482, 1486, 1537, 1555, 1585, 1595, 1862, 1960ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1300,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1292ms, Q3: 1313ms\nAll times: 1243, 1265, 1284, 1289, 1292, 1292, 1292, 1296, 1296, 1299, 1300, 1301, 1302, 1303, 1305, 1313, 1372, 1522, 1552, 1557ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1760,
+            "range": "±52",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1725ms, Q3: 1777ms\nAll times: 1709, 1712, 1719, 1721, 1722, 1725, 1742, 1745, 1746, 1746, 1760, 1760, 1761, 1765, 1773, 1777, 1786, 1788, 1797, 1943ms"
           }
         ]
       }
