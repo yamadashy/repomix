@@ -191,7 +191,9 @@ export const calculateMetrics = async (
           }
           const wrapperChars = output.length - totalFileChars;
           if (wrapperChars < 0) {
-            logger.warn(`Wrapper chars negative (${wrapperChars}), output may have been transformed — falling back to 0`);
+            logger.warn(
+              `Wrapper chars negative (${wrapperChars}), output may have been transformed — falling back to 0`,
+            );
           }
           const wrapperTokens =
             wrapperChars > 0 ? Math.ceil(wrapperChars / estimateWrapperCharsPerToken(config.tokenCount.encoding)) : 0;
