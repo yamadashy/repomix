@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776274917579,
+  "lastUpdate": 1776280515710,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3375,6 +3375,51 @@ window.BENCHMARK_DATA = {
             "range": "±17",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1843ms, Q3: 1860ms\nAll times: 1824, 1824, 1831, 1832, 1833, 1843, 1846, 1846, 1847, 1847, 1852, 1855, 1855, 1858, 1858, 1860, 1862, 1868, 1880, 1896ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "4f3e5c45c2245d8fa568af8e72ca4877506c7522",
+          "message": "perf(core): Add fast-reject precheck for base64 truncation regex\n\nThe standalone base64 regex `[A-Za-z0-9+/]{256,}` is unanchored and\nmust try matching at every position in every file's content. CPU profiling\nshowed this consuming ~128ms (6.4%) of a typical CLI run on the repomix\nrepo with `truncateBase64: true`.\n\nAdd a two-phase fast pre-scan (`hasLongBase64Run`) that avoids the\nexpensive regex entirely for files without 256+ consecutive base64\ncharacters:\n\n1. Line-length check via indexOf('\\n') — most source code lines are\n   <80 chars, so this skips ~80% of content with cheap string ops.\n2. CharCode scan with Uint8Array lookup table — only runs on the\n   ~19% of lines that are ≥256 chars.\n\nAlso skip the data URI regex for files not containing \"data:\" (the\ncommon case), avoiding a redundant global regex pass.\n\n## Benchmark\n\n`truncateBase64Content` across all 1043 git-tracked files (6.8 MB):\n\n| Metric | Baseline | This patch | Delta |\n|---|---|---|---|\n| median | 202 ms | 27 ms | **−175 ms (−87%)** |\n\nEnd-to-end `node bin/repomix.cjs --quiet` on the repomix repo\n(with repo config: truncateBase64=true, git diffs/logs, tokenCountTree).\n30 interleaved A/B pairs:\n\n| Metric | Baseline | This patch | Delta |\n|---|---|---|---|\n| median | 1963 ms | 1926 ms | **−37 ms (−1.9%)** |\n| mean | 1961 ms | 1932 ms | **−29 ms (−1.5%)** |\n| trimmed mean | 1959 ms | 1927 ms | **−32 ms (−1.6%)** |\n| positive | | | **18/30 pairs** |\n\nThe macro improvement is bounded by the security check stage (183 ms)\nwhich runs concurrently with file processing — once truncateBase64 is\nno longer the bottleneck, security check becomes the limiting factor.\n\n## Correctness\n\n- All 1115 tests pass\n- Lint and TypeScript clean\n- Output is byte-identical to baseline\n\nhttps://claude.ai/code/session_01Y4pjtFV8FzV8bhyjZvWfXm",
+          "timestamp": "2026-04-15T19:13:27Z",
+          "tree_id": "0bebe974c67b2062f46ca4a85435ab021b07da18",
+          "url": "https://github.com/yamadashy/repomix/commit/4f3e5c45c2245d8fa568af8e72ca4877506c7522"
+        },
+        "date": 1776280515105,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 970,
+            "range": "±157",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 882ms, Q3: 1039ms\nAll times: 817, 841, 859, 873, 878, 879, 880, 882, 885, 905, 928, 928, 940, 941, 957, 970, 984, 989, 1000, 1011, 1018, 1034, 1039, 1048, 1067, 1068, 1069, 1094, 1097, 1135ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1462,
+            "range": "±50",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1438ms, Q3: 1488ms\nAll times: 1413, 1414, 1415, 1419, 1432, 1438, 1444, 1452, 1452, 1453, 1462, 1464, 1465, 1484, 1486, 1488, 1488, 1497, 1526, 1650ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1709,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1697ms, Q3: 1720ms\nAll times: 1687, 1688, 1689, 1690, 1696, 1697, 1697, 1702, 1702, 1708, 1709, 1709, 1709, 1713, 1714, 1720, 1728, 1738, 1739, 1769ms"
           }
         ]
       }
