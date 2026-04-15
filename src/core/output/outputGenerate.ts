@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -18,37 +17,42 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
-import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { getXmlTemplate } from './outputStyles/xmlStyle.js';
 
-// Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
+// Lazy-load Handlebars and template styles to defer ~30ms of module parsing
+// and compilation from CLI startup to the output generation phase, so the
+// file-search/collection pipeline can start sooner.
+// Caching the Promise (not the resolved value) guarantees exactly one import
+// regardless of how many concurrent calls hit the cold path.
+const _compiledTemplatePromises = new Map<string, Promise<(context: unknown) => string>>();
 
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
-  const cached = compiledTemplateCache.get(style);
-  if (cached) {
-    return cached;
+const getCompiledTemplate = (style: string): Promise<(context: unknown) => string> => {
+  let promise = _compiledTemplatePromises.get(style);
+  if (!promise) {
+    promise = loadAndCompileTemplate(style);
+    _compiledTemplatePromises.set(style, promise);
   }
+  return promise;
+};
 
-  let template: string;
+const loadAndCompileTemplate = async (style: string): Promise<(context: unknown) => string> => {
+  let templatePromise: Promise<string>;
   switch (style) {
     case 'xml':
-      template = getXmlTemplate();
+      templatePromise = import('./outputStyles/xmlStyle.js').then((m) => m.getXmlTemplate());
       break;
     case 'markdown':
-      template = getMarkdownTemplate();
+      templatePromise = import('./outputStyles/markdownStyle.js').then((m) => m.getMarkdownTemplate());
       break;
     case 'plain':
-      template = getPlainTemplate();
+      templatePromise = import('./outputStyles/plainStyle.js').then((m) => m.getPlainTemplate());
       break;
     default:
       throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
   }
 
-  const compiled = Handlebars.compile(template);
-  compiledTemplateCache.set(style, compiled);
-  return compiled;
+  // Load template and Handlebars in parallel
+  const [template, { default: Handlebars }] = await Promise.all([templatePromise, import('handlebars')]);
+  return Handlebars.compile(template);
 };
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
@@ -221,7 +225,7 @@ const generateHandlebarOutput = async (
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
   try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
+    const compiledTemplate = await getCompiledTemplate(config.output.style);
     return `${compiledTemplate(renderContext).trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
