@@ -13,7 +13,12 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateFileMetrics } from './metrics/calculateFileMetrics.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import {
+  calculateMetrics,
+  canUseFastOutputTokenPath,
+  createMetricsTaskRunner,
+  type MetricsTaskRunnerWithWarmup,
+} from './metrics/calculateMetrics.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { filterOutUntrustedFiles } from './security/filterOutUntrustedFiles.js';
@@ -103,21 +108,48 @@ export const pack = async (
 
   const securityEnabled = config.security.enableSecurityCheck;
 
-  // Pre-initialize worker pools BEFORE searchFiles so that warm-up (gpt-tokenizer
-  // ~150ms, secretlint ~97ms) overlaps with both searchFiles (~135ms) and
-  // collectFiles (~20ms with sync I/O). The exact file count is unknown before
-  // searchFiles, so we use getProcessConcurrency() × TASKS_PER_THREAD as the
-  // task estimate — this guarantees maxThreads = processConcurrency for any repo
-  // large enough to benefit from parallelism (≥ 400 files). For smaller repos the
-  // extra threads are harmless: they share the same warm-up wall-time and sit idle
-  // during the metrics phase if there aren't enough batches to fill them.
+  // Determine if the metrics worker pool is needed. For the default configuration
+  // (XML/markdown/plain, no parsable, no split, no git diffs/logs), all file token
+  // counts are estimated on the main thread (SMALL_FILE_THRESHOLD = 200000) and
+  // output tokens are computed arithmetically via canUseFastOutputTokenPath. In this
+  // common case, no worker tasks are ever dispatched, but the worker warmup (loading
+  // 1.7MB BPE rank data via JSON.parse on each thread) creates severe CPU contention
+  // with the main thread's searchFiles and collectFiles phases, adding ~150ms of
+  // wall time. Skipping pool creation eliminates this contention entirely.
   //
-  // Pool creation is async (tinypool loaded via dynamic import to avoid blocking
-  // the ESM module chain), so fire both pools in parallel alongside git operations
-  // and searchFiles — the tinypool module is already cached from the preload
-  // started during module evaluation, so the await resolves near-instantly.
+  // When workers ARE needed (JSON output, parsable XML, split output, git diffs/logs),
+  // the pool is created eagerly so warmup overlaps with searchFiles.
+  const needsMetricsWorkers =
+    !canUseFastOutputTokenPath(config) || config.output.git?.includeDiffs || config.output.git?.includeLogs;
+
   const estimatedTasks = deps.getProcessConcurrency() * 100;
-  const metricsTaskRunnerPromise = deps.createMetricsTaskRunner(estimatedTasks, config.tokenCount.encoding);
+  // When no workers are needed, use a lightweight stub that estimates tokens
+  // on the main thread using the same character-ratio heuristic as the small-file
+  // path. This handles the rare edge case of files >200KB (SMALL_FILE_THRESHOLD)
+  // that would normally be dispatched to workers — falling back to estimation
+  // is acceptable because the accuracy loss is <1% and avoids spawning threads.
+  const FALLBACK_CHARS_PER_TOKEN = 3.5;
+  const metricsTaskRunnerPromise: Promise<MetricsTaskRunnerWithWarmup> = needsMetricsWorkers
+    ? deps.createMetricsTaskRunner(estimatedTasks, config.tokenCount.encoding)
+    : Promise.resolve({
+        taskRunner: {
+          run: async (task: Record<string, unknown>) => {
+            // Batch task (from calculateFileMetrics for files >200KB)
+            if ('items' in task && Array.isArray(task.items)) {
+              return (task.items as { content: string }[]).map((item) =>
+                Math.ceil(item.content.length / FALLBACK_CHARS_PER_TOKEN),
+              );
+            }
+            // Single task (from calculateOutputMetrics / calculateGitDiffMetrics)
+            if ('content' in task && typeof task.content === 'string') {
+              return Math.ceil((task.content as string).length / FALLBACK_CHARS_PER_TOKEN);
+            }
+            return 0;
+          },
+          cleanup: async () => {},
+        },
+        warmupPromise: Promise.resolve(undefined),
+      } as unknown as MetricsTaskRunnerWithWarmup);
   const securityTaskRunnerPromise = securityEnabled ? deps.createSecurityTaskRunner(estimatedTasks) : undefined;
 
   // Start git operations immediately — they only need rootDirs and config, not
