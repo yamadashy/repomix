@@ -3,9 +3,8 @@ import type { Stats } from 'node:fs';
 import { lstatSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { type Options as GlobbyOptions, globby } from 'globby';
+import type { Options as GlobbyOptions } from 'globby';
 import ignore from 'ignore';
-import { Minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -13,6 +12,14 @@ import { logger } from '../../shared/logger.js';
 import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
+
+// Lazy-load globby: its 23-package transitive closure (~20-35ms cold, ~8-15ms warm)
+// is never needed when the git ls-files fast path runs (~90% of invocations).
+let _globbyPromise: Promise<typeof import('globby')> | null = null;
+const getGlobby = (): Promise<typeof import('globby')> => {
+  _globbyPromise ??= import('globby');
+  return _globbyPromise;
+};
 
 export interface FileSearchResult {
   filePaths: string[];
@@ -185,6 +192,7 @@ const searchFilesGitFastPath = async (
   // Apply include patterns (minimatch, same glob semantics as globby)
   const isDefaultInclude = includePatterns.length === 1 && includePatterns[0] === '**/*';
   if (!isDefaultInclude && includePatterns.length > 0) {
+    const { Minimatch } = await import('minimatch');
     const matchers = includePatterns.map((p) => new Minimatch(p, { dot: true }));
     files = files.filter((f) => matchers.some((m) => m.match(f)));
   }
@@ -316,6 +324,7 @@ export const searchFiles = async (
       logger.debug('[globby] Starting file search...');
       const globbyStartTime = Date.now();
 
+      const { globby } = await getGlobby();
       filePaths = await globby(includePatterns, {
         ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
         onlyFiles: true,
@@ -339,6 +348,7 @@ export const searchFiles = async (
       logger.debug('[empty dirs] Searching for empty directories...');
       const emptyDirStartTime = Date.now();
 
+      const { globby } = await getGlobby();
       const directories = await globby(includePatterns, {
         ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
         onlyDirectories: true,
@@ -545,6 +555,7 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
+  const { globby } = await getGlobby();
   const directories = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
@@ -564,6 +575,7 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
 export const listFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
+  const { globby } = await getGlobby();
   const files = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,
@@ -583,6 +595,7 @@ export const searchEmptyDirectories = async (rootDir: string, config: RepomixCon
   const includePatterns =
     config.include.length > 0 ? config.include.map((pattern) => escapeGlobPattern(pattern)) : ['**/*'];
 
+  const { globby } = await getGlobby();
   const directories = await globby(includePatterns, {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
