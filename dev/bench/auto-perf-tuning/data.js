@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776226304263,
+  "lastUpdate": 1776226428221,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -2925,6 +2925,51 @@ window.BENCHMARK_DATA = {
             "range": "±53",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 670ms, Q3: 723ms\nAll times: 658, 660, 662, 662, 664, 670, 677, 683, 684, 686, 695, 703, 709, 715, 717, 723, 724, 730, 730, 749ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "47399ff6766fa9eb2e874780b7607a16a49ea4d7",
+          "message": "fix(metrics): Guard fast path against --no-files mode\n\nWhen config.output.files is false, file content is not included in the\noutput but processedFiles still hold all content. The arithmetic\nwrapperChars = output.length - totalFileChars goes deeply negative,\nproducing incorrect totalTokens. Disable the fast path for this case\nso calculateOutputMetrics (full BPE) handles it correctly.\n\nFound during local code review.\n\nhttps://claude.ai/code/session_01YJNhAXBrhTpzWPwrMJDPWu",
+          "timestamp": "2026-04-15T04:11:46Z",
+          "tree_id": "33d2f44819d818ed09d9c570c55feb4225097821",
+          "url": "https://github.com/yamadashy/repomix/commit/47399ff6766fa9eb2e874780b7607a16a49ea4d7"
+        },
+        "date": 1776226427846,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 397,
+            "range": "±51",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 368ms, Q3: 419ms\nAll times: 273, 328, 331, 354, 359, 361, 366, 368, 377, 378, 380, 386, 388, 390, 396, 397, 398, 401, 403, 413, 417, 418, 419, 423, 423, 467, 477, 597, 611, 642ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 456,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 449ms, Q3: 465ms\nAll times: 442, 442, 445, 447, 449, 449, 450, 450, 453, 456, 456, 456, 457, 457, 464, 465, 465, 468, 476, 480ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 689,
+            "range": "±62",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 666ms, Q3: 728ms\nAll times: 653, 655, 657, 659, 666, 666, 670, 673, 677, 687, 689, 699, 701, 714, 727, 728, 739, 743, 761, 763ms"
           }
         ]
       }
