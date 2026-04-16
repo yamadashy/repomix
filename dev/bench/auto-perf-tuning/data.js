@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776375747739,
+  "lastUpdate": 1776380319891,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4545,6 +4545,51 @@ window.BENCHMARK_DATA = {
             "range": "±33",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1749ms, Q3: 1782ms\nAll times: 1720, 1721, 1740, 1741, 1745, 1749, 1750, 1751, 1753, 1755, 1758, 1762, 1762, 1769, 1770, 1782, 1787, 1789, 1795, 1829ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "965151fb0f63a2c71cce724c5b0a2609e396a865",
+          "message": "perf(config): Defer zod loading to eliminate ~142ms from CLI startup\n\nMove defaultConfig and defaultFilePathMap to a new configDefaults.ts module\nthat has no zod dependency. Remove redundant zod schema validation from\nmergeConfigs() and buildCliConfig() — inputs are already validated at their\nrespective boundaries (Commander for CLI, zod in loadAndValidateConfig for\nconfig files). Lazy-load configSchema.ts (which imports zod) only when a\nconfig file actually needs validation.\n\nAdd speculative preload in cliRun.ts: when common config files (json/json5/\njsonc) are detected via fs.access, start loading configSchema.js concurrently\nwith the defaultAction import chain so zod is ready by the time validation\nruns. This prevents regression for repos with config files.\n\nBefore: zod (~145ms) was always loaded as a static dependency of\nconfigSchema.ts, blocking the module import phase on every CLI invocation\nregardless of whether validation was needed.\n\nAfter: zod is only loaded when a config file exists and needs validation.\nWhen no config file is present (common for many users), zod is never loaded.\n\nBenchmark (repomix CLI on its own repo, ~1000 files, interleaved A/B, 10 pairs):\n\nWithout config file:\n| Metric | Before | After | Delta |\n|--------|--------|-------|-------|\n| Median | 1529ms | 1387ms | -142ms (-9.3%) |\n| Mean   | 1533ms | 1386ms | -147ms (-9.6%) |\n\nWith config file (repomix.config.json present):\n| Metric | Before | After | Delta |\n|--------|--------|-------|-------|\n| Median | 1660ms | 1674ms | ~0ms (neutral) |\n\nThe ~142ms saving matches the measured zod module load time (145ms).\n\nhttps://claude.ai/code/session_014tgmURJurRwvdZM9LKAJnH",
+          "timestamp": "2026-04-16T22:52:27Z",
+          "tree_id": "3eb2c079c36c980b12a9f52c5ad62914679d3e38",
+          "url": "https://github.com/yamadashy/repomix/commit/965151fb0f63a2c71cce724c5b0a2609e396a865"
+        },
+        "date": 1776380318929,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1164,
+            "range": "±291",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1031ms, Q3: 1322ms\nAll times: 941, 961, 970, 983, 995, 1001, 1013, 1031, 1037, 1039, 1040, 1091, 1108, 1109, 1142, 1164, 1194, 1195, 1207, 1253, 1269, 1305, 1322, 1343, 1420, 1580, 1824, 1944, 1948, 2448ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1115,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1106ms, Q3: 1123ms\nAll times: 1089, 1093, 1094, 1094, 1101, 1106, 1107, 1110, 1112, 1114, 1115, 1115, 1117, 1119, 1120, 1123, 1125, 1140, 1156, 1183ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1490,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1474ms, Q3: 1499ms\nAll times: 1445, 1450, 1452, 1466, 1471, 1474, 1479, 1480, 1482, 1489, 1490, 1491, 1492, 1497, 1498, 1499, 1506, 1507, 1517, 1524ms"
           }
         ]
       }
