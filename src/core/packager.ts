@@ -229,8 +229,15 @@ export const pack = async (
     // suspicious-file fallback path.
     const produceOutputAndMetrics = async (files: ProcessedFile[]) => {
       const outPromise = deps.produceOutput(
-        rootDirs, config, files, allFilePaths, gitDiffResult, gitLogResult,
-        progressCallback, filePathsByRoot, emptyDirPaths,
+        rootDirs,
+        config,
+        files,
+        allFilePaths,
+        gitDiffResult,
+        gitLogResult,
+        progressCallback,
+        filePathsByRoot,
+        emptyDirPaths,
       );
       const outForMetrics = outPromise.then((r) => r.outputForMetrics);
       const [{ outputFiles: outFiles }, outMetrics] = await Promise.all([
