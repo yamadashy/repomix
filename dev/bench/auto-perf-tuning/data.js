@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776368446360,
+  "lastUpdate": 1776368560656,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4365,6 +4365,51 @@ window.BENCHMARK_DATA = {
             "range": "±37",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1450ms, Q3: 1487ms\nAll times: 1425, 1444, 1447, 1448, 1449, 1450, 1453, 1459, 1460, 1461, 1466, 1472, 1476, 1486, 1486, 1487, 1492, 1497, 1531, 1717ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "fb9bcab7b6b448673504473d1da90988ca07d90b",
+          "message": "perf(core): Use git mode bits to eliminate lstat syscalls in file search\n\nReplace the single `git ls-files --cached --others` command with two\nconcurrent commands:\n  1. `git ls-files --cached --stage -z` — returns tracked files WITH mode\n     bits, allowing us to identify regular files (100644/100755) vs\n     symlinks (120000) and submodules (160000) without any filesystem I/O.\n  2. `git ls-files --others --exclude-standard -z` — returns untracked\n     files (typically 0-10 in a clean repo), which still need lstat.\n\nPreviously, ALL ~1000 files went through `lstatFilterFiles` (batched\nasync lstat in groups of 512) to distinguish regular files from symlinks.\nThis added ~80-400ms depending on disk I/O speed. Now, only the handful\nof untracked files need lstat — tracked files are verified purely from\nthe git index's mode field.\n\nBenchmark (`pack()` on repomix repo, ~1001 files, 20 runs after 3 warmup):\n\n| Metric       | Baseline | This patch | Delta            |\n|------------- |----------|------------|------------------|\n| median       | 1645 ms  | 1568 ms    | −77 ms (−4.7%)   |\n| trimmed mean | 1648 ms  | 1564 ms    | −84 ms (−5.1%)   |\n\nA/B verification (reversed order, 15 runs):\n\n| Metric       | Baseline | This patch | Delta            |\n|------------- |----------|------------|------------------|\n| median       | 1778 ms  | 1735 ms    | −43 ms (−2.4%)   |\n| trimmed mean | 1776 ms  | 1737 ms    | −39 ms (−2.2%)   |\n\n- All 1115 tests pass\n- Lint clean (0 new warnings)\n- File count verified identical (1001 files)\n- Globby fallback path unchanged (non-git repos still work)\n\nhttps://claude.ai/code/session_01VMDapJYUkRFYme8gWpsFHR",
+          "timestamp": "2026-04-16T19:39:42Z",
+          "tree_id": "4dd1682cb55691d6d8593bed133608dbca2b96a2",
+          "url": "https://github.com/yamadashy/repomix/commit/fb9bcab7b6b448673504473d1da90988ca07d90b"
+        },
+        "date": 1776368560183,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 667,
+            "range": "±75",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 638ms, Q3: 713ms\nAll times: 615, 622, 626, 629, 635, 636, 638, 638, 639, 642, 646, 646, 654, 657, 665, 667, 668, 668, 685, 687, 692, 697, 713, 729, 731, 751, 824, 876, 987, 990ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1060,
+            "range": "±169",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1048ms, Q3: 1217ms\nAll times: 1023, 1035, 1040, 1040, 1044, 1048, 1054, 1054, 1057, 1058, 1060, 1063, 1064, 1099, 1145, 1217, 1254, 1270, 1278, 1288ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1500,
+            "range": "±103",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1455ms, Q3: 1558ms\nAll times: 1414, 1433, 1446, 1447, 1451, 1455, 1457, 1466, 1471, 1474, 1500, 1505, 1507, 1512, 1530, 1558, 1622, 1638, 1724, 1783ms"
           }
         ]
       }
