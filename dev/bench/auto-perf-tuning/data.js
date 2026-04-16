@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776360862188,
+  "lastUpdate": 1776366205235,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4230,6 +4230,51 @@ window.BENCHMARK_DATA = {
             "range": "±21",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1390ms, Q3: 1411ms\nAll times: 1382, 1382, 1386, 1388, 1389, 1390, 1390, 1391, 1391, 1397, 1401, 1403, 1405, 1406, 1407, 1411, 1425, 1427, 1432, 1493ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "f9ee5225cf161d865de96a0098adb57142ba52e1",
+          "message": "perf(core): Overlap I/O operations across search, config, and output pipeline\n\nThree targeted parallelization improvements that together reduce pack() wall\ntime by ~31ms (−2.1%):\n\n1. searchFiles: overlap permission check + ignore context preparation + git\n   ls-files execution as a single Promise.all instead of sequential awaits.\n   Additionally, overlap lstat filtering with ignore instance building inside\n   the git fast path — both need only the raw git file list, not each other's\n   results.\n\n2. configLoad: parallelize config file discovery (9 sequential fs.stat probes\n   replaced with Promise.all), and lazy-load JSON5 so the module is only\n   imported when a config file is actually parsed (not at module load time).\n\n3. packager/produceOutput: return the output string immediately for metrics\n   calculation while the disk write continues in the background. The caller\n   awaits finalize() after metrics are done, overlapping ~250ms of file I/O\n   with token counting in worker threads.\n\nBenchmark (20 runs, repomix repo ~1020 files):\n\n| Metric       | Baseline | This patch | Delta          |\n|--------------|----------|------------|----------------|\n| median       | 1509 ms  | 1478 ms    | −31 ms (−2.1%) |\n| trimmed mean | 1507 ms  | 1480 ms    | −27 ms (−1.8%) |\n\nhttps://claude.ai/code/session_01F9QekV5zimrLSPtrEd2ydM",
+          "timestamp": "2026-04-16T19:01:35Z",
+          "tree_id": "2d6a930f9c6a6e14c068633c2e3940e8ccfa3be9",
+          "url": "https://github.com/yamadashy/repomix/commit/f9ee5225cf161d865de96a0098adb57142ba52e1"
+        },
+        "date": 1776366204198,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 857,
+            "range": "±192",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 770ms, Q3: 962ms\nAll times: 669, 676, 692, 701, 712, 730, 738, 770, 772, 786, 803, 804, 821, 824, 850, 857, 881, 904, 905, 918, 922, 935, 962, 964, 1005, 1007, 1013, 1015, 1339, 1595ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1067,
+            "range": "±12",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1060ms, Q3: 1072ms\nAll times: 1049, 1053, 1055, 1057, 1059, 1060, 1061, 1061, 1064, 1065, 1067, 1069, 1069, 1070, 1070, 1072, 1076, 1077, 1083, 1103ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1468,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1459ms, Q3: 1478ms\nAll times: 1434, 1451, 1451, 1456, 1458, 1459, 1460, 1460, 1461, 1464, 1468, 1470, 1470, 1473, 1473, 1478, 1493, 1503, 1509, 1511ms"
           }
         ]
       }
