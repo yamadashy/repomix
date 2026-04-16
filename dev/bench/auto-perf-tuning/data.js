@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776297582245,
+  "lastUpdate": 1776301508793,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3690,6 +3690,51 @@ window.BENCHMARK_DATA = {
             "range": "±49",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1742ms, Q3: 1791ms\nAll times: 1659, 1711, 1717, 1729, 1735, 1742, 1747, 1751, 1756, 1756, 1759, 1776, 1782, 1784, 1789, 1791, 1802, 1803, 1820, 1856ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "ef48e830814ca4e5fc8ae5efe004cd4e041fd882",
+          "message": "perf(core): Overlap security check with output generation and metrics\n\nMove the security check to run concurrently with the output generation +\nmetrics calculation pipeline instead of sequentially before it.\n\nPreviously the pipeline was:\n  processFiles → [security(162ms) | processFiles(11ms)] → [output | metrics(398ms)]\n\nNow it is:\n  processFiles(11ms) → [output | metrics | security] (all overlapped)\n\nThe security check's ~162ms wall time is now hidden behind the metrics\ncalculation (~398ms), which is the longest phase. When suspicious files\nare found (rare — secrets in source code), the output is regenerated\nwith the filtered file set as a fallback path.\n\nBenchmark: `node bin/repomix.cjs --quiet` on the repomix repo (~1000 files),\n30 interleaved A/B runs (trimmed: drop top/bottom 5):\n\n| Metric | Baseline | This patch | Delta |\n|---|---|---|---|\n| median | 1500 ms | 1440 ms | **−59 ms (−3.9%)** |\n| mean | 1496 ms | 1437 ms | **−58 ms (−3.9%)** |\n| stdev | 24 ms | 30 ms | +6 ms |\n\nSecurity check wall time increases from ~162ms to ~338ms due to CPU\ncontention with metrics worker threads (6 worker threads on 4 cores),\nbut this is fully hidden behind the metrics phase (408ms). The metrics\ncalculation itself only slows by ~10ms (387→408ms).\n\nThe fallback path (regenerate on suspicious files) adds latency for the\nrare case, but the common case (0 suspicious files, >99% of repos) gets\nthe full benefit of the overlap.\n\nhttps://claude.ai/code/session_01DYueuMrdpGXXiKWwntvP3b",
+          "timestamp": "2026-04-16T01:02:37Z",
+          "tree_id": "e6590553dd27cd7eeff5107806cf495e6222b5da",
+          "url": "https://github.com/yamadashy/repomix/commit/ef48e830814ca4e5fc8ae5efe004cd4e041fd882"
+        },
+        "date": 1776301508070,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 928,
+            "range": "±77",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 880ms, Q3: 957ms\nAll times: 786, 793, 801, 803, 841, 859, 872, 880, 894, 902, 910, 912, 913, 913, 922, 928, 930, 934, 934, 940, 950, 952, 957, 960, 970, 978, 999, 1042, 1127, 1141ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1308,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1290ms, Q3: 1318ms\nAll times: 1273, 1276, 1280, 1284, 1287, 1290, 1291, 1291, 1308, 1308, 1308, 1312, 1314, 1314, 1318, 1318, 1321, 1325, 1357, 1359ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1617,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1607ms, Q3: 1635ms\nAll times: 1581, 1591, 1598, 1599, 1605, 1607, 1609, 1610, 1612, 1616, 1617, 1620, 1621, 1623, 1635, 1635, 1639, 1640, 1641, 1661ms"
           }
         ]
       }
