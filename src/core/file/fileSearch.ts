@@ -589,17 +589,126 @@ export const listFiles = async (rootDir: string, config: RepomixConfigMerged): P
  * Intended to be called separately from searchFiles so the caller can run it
  * concurrently with file collection, keeping the empty-dir globby scan off the
  * critical path of the main pipeline.
+ *
+ * Uses a lightweight recursive fs.readdir walk with the `ignore` package
+ * instead of globby. This avoids loading globby's 23-package module graph
+ * (~35ms cold import) and the slower fast-glob filesystem walk, reducing
+ * wall time from ~140ms to ~20ms for a 1000-file repository.
+ *
+ * Falls back to globby when include patterns are specified (non-default),
+ * since glob matching for include patterns requires picomatch/minimatch
+ * semantics that `ignore` doesn't provide for positive matching.
  */
 export const searchEmptyDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
-  const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
-  const includePatterns =
-    config.include.length > 0 ? config.include.map((pattern) => escapeGlobPattern(pattern)) : ['**/*'];
+  const { adjustedIgnorePatterns, rawIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
-  const { globby } = await getGlobby();
-  const directories = await globby(includePatterns, {
-    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-    onlyDirectories: true,
-  });
+  // Fall back to globby when include patterns are specified, since the fast
+  // path only handles the default "all files" case.
+  const hasIncludePatterns = config.include.length > 0;
+  if (hasIncludePatterns) {
+    const includePatterns = config.include.map((pattern) => escapeGlobPattern(pattern));
+    const { globby } = await getGlobby();
+    const directories = await globby(includePatterns, {
+      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+      onlyDirectories: true,
+    });
+    return findEmptyDirectories(rootDir, directories);
+  }
 
-  return findEmptyDirectories(rootDir, directories);
+  // Build the list of ignore file names to read during the walk.
+  // When useGitignore is enabled, also read .gitignore files so the fast
+  // path matches globby's gitignore enforcement (globby reads .gitignore
+  // via its `gitignore: true` option, which the fast path doesn't use).
+  const walkIgnoreFileNames = ignoreFilePatterns.map((p) => p.replace(/^\*\*\//, ''));
+  if (config.ignore.useGitignore) {
+    walkIgnoreFileNames.push('.gitignore');
+  }
+
+  return searchEmptyDirectoriesFast(rootDir, rawIgnorePatterns, walkIgnoreFileNames);
+};
+
+/**
+ * Fast empty directory scan using recursive fs.readdir + the `ignore` package.
+ *
+ * Walks the directory tree in parallel (Promise.all at each level), skipping
+ * ignored directories. At each directory, checks if any entry is non-hidden
+ * (same logic as findEmptyDirectories). Reads .gitignore / .repomixignore /
+ * .ignore files encountered during the walk and adds their patterns scoped
+ * to the directory, matching globby's ignore file semantics.
+ */
+const searchEmptyDirectoriesFast = async (
+  rootDir: string,
+  ignorePatterns: string[],
+  ignoreFileNames: string[],
+): Promise<string[]> => {
+  const ig = ignore();
+  ig.add(ignorePatterns);
+
+  const emptyDirs: string[] = [];
+
+  const walkDir = async (relPath: string): Promise<void> => {
+    // Check if this directory path is ignored
+    if (relPath && ig.ignores(`${relPath}/`)) return;
+
+    const fullPath = relPath ? path.join(rootDir, relPath) : rootDir;
+    let entries: import('node:fs').Dirent[];
+    try {
+      entries = await fs.readdir(fullPath, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    // Read any ignore files (.repomixignore, .ignore) present in this directory
+    // and add their patterns scoped to this directory path.
+    for (const ignoreFileName of ignoreFileNames) {
+      if (entries.some((e) => e.name === ignoreFileName && !e.isDirectory())) {
+        try {
+          const content = await fs.readFile(path.join(fullPath, ignoreFileName), 'utf-8');
+          const patterns = parseIgnoreContent(content);
+          if (patterns.length > 0) {
+            if (!relPath) {
+              // Root-level ignore file: patterns apply from root
+              ig.add(patterns);
+            } else {
+              // Nested ignore file: scope patterns to its directory
+              ig.add(
+                patterns.map((p) => {
+                  const isNegated = p.startsWith('!');
+                  const pattern = isNegated ? p.slice(1) : p;
+                  const prefix = isNegated ? '!' : '';
+                  if (pattern.startsWith('/')) return `${prefix}${relPath}${pattern}`;
+                  return `${prefix}${relPath}/${pattern}`;
+                }),
+              );
+            }
+          }
+        } catch {
+          // Ignore file unreadable — skip silently
+        }
+      }
+    }
+
+    // A directory is "empty" if it has no non-hidden entries
+    const hasVisibleContent = entries.some((e) => !e.name.startsWith('.'));
+    if (!hasVisibleContent && relPath) {
+      emptyDirs.push(relPath);
+    }
+
+    // Recurse into subdirectories in parallel.
+    // Include hidden directories (e.g., .claude/) since they may contain
+    // empty subdirectories that should appear in the tree.
+    const subdirPromises: Promise<void>[] = [];
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const childPath = relPath ? `${relPath}/${entry.name}` : entry.name;
+        subdirPromises.push(walkDir(childPath));
+      }
+    }
+    if (subdirPromises.length > 0) {
+      await Promise.all(subdirPromises);
+    }
+  };
+
+  await walkDir('');
+  return emptyDirs.sort();
 };
