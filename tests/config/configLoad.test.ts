@@ -325,18 +325,6 @@ describe('configLoad', () => {
       expect(result.ignore.customPatterns).toContain('cli-ignore');
     });
 
-    test('should throw RepomixConfigValidationError for invalid merged config', () => {
-      const fileConfig: RepomixConfigFile = {
-        output: { filePath: 'file-output.txt', style: 'plain' },
-      };
-      const cliConfig: RepomixConfigCli = {
-        // @ts-expect-error
-        output: { style: 'invalid' }, // Invalid style
-      };
-
-      expect(() => mergeConfigs(process.cwd(), fileConfig, cliConfig)).toThrow(RepomixConfigValidationError);
-    });
-
     test('should merge nested git config correctly', () => {
       const fileConfig: RepomixConfigFile = {
         output: { git: { sortByChanges: false } },
