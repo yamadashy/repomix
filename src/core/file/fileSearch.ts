@@ -1,9 +1,13 @@
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import type { Stats } from 'node:fs';
 import { lstatSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import type { Options as GlobbyOptions } from 'globby';
+
+const execFileAsync = promisify(execFile);
+
 import ignore from 'ignore';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
@@ -161,13 +165,18 @@ const searchFilesGitFastPath = async (
   // --others: untracked files not in .gitignore
   // --exclude-standard: apply .gitignore + .git/info/exclude + global gitignore
   // -z: NUL-separated output (handles filenames with special chars)
+  //
+  // Uses async execFile to keep the event loop free during the git execution,
+  // allowing concurrent async work (metrics warmup, prefetch sort data, git
+  // diff/log subprocesses) to make progress.
   let stdout: string;
   try {
-    stdout = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], {
+    const result = await execFileAsync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], {
       cwd: rootDir,
       maxBuffer: 100 * 1024 * 1024,
       encoding: 'utf-8',
     });
+    stdout = result.stdout;
   } catch {
     logger.trace('git ls-files failed, falling back to globby');
     return null;
@@ -178,9 +187,8 @@ const searchFilesGitFastPath = async (
   let files = [...new Set(stdout.split('\0').filter(Boolean))];
   logger.trace(`git ls-files returned ${files.length} files`);
 
-  // Filter out symlinks and non-regular files.
-  // globby with followSymbolicLinks:false + onlyFiles:true uses lstat,
-  // which reports symlinks as non-files.
+  // Filter out symlinks and non-regular files to match globby's behavior
+  // (followSymbolicLinks:false + onlyFiles:true reports symlinks as non-files).
   files = files.filter((f) => {
     try {
       return lstatSync(path.join(rootDir, f)).isFile();

@@ -114,6 +114,25 @@ export const pack = async (
       ? { ...config, output: { ...config.output, includeEmptyDirectories: false } }
       : config;
 
+    // Start git operations and empty directory scan before searchFiles.
+    // These only need rootDirs and config (not the search results), so they
+    // can run concurrently with searchFiles. Since searchFiles now uses async
+    // execFile (non-blocking), the event loop processes git subprocess
+    // completions during the ~17ms git ls-files wait, giving the git diff/log
+    // subprocesses a head start before the collect phase.
+    const gitDiffPromise = deps.getGitDiffs(rootDirs, config);
+    const gitLogPromise = deps.getGitLogs(rootDirs, config);
+    // Suppress unhandled rejection if searchFiles throws before Promise.all
+    // consumes these promises. The original promise is still awaited in
+    // Promise.all — .catch() only prevents the "unhandled rejection" signal.
+    Promise.resolve(gitDiffPromise).catch(() => {});
+    Promise.resolve(gitLogPromise).catch(() => {});
+    const emptyDirPromise = config.output.includeEmptyDirectories
+      ? Promise.all(rootDirs.map((rootDir) => deps.searchEmptyDirectories(rootDir, config))).then((results) =>
+          [...new Set(results.flat())].sort(),
+        )
+      : undefined;
+
     progressCallback('Searching for files...');
     const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
       Promise.all(
@@ -135,20 +154,11 @@ export const pack = async (
       rootDir,
       filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
     }));
-    // Run file collection, git operations, and empty directory scan in parallel
-    // since they are independent:
-    // - collectFiles reads file contents from disk
-    // - getGitDiffs/getGitLogs spawn git subprocesses
-    // - searchEmptyDirectories uses globby to scan for empty directories
-    // Running empty dir scan here (instead of inside searchFiles) keeps the
-    // ~100ms globby scan off the critical path — it overlaps with file collection.
-    progressCallback('Collecting files...');
-    const emptyDirPromise = config.output.includeEmptyDirectories
-      ? Promise.all(rootDirs.map((rootDir) => deps.searchEmptyDirectories(rootDir, config))).then((results) =>
-          [...new Set(results.flat())].sort(),
-        )
-      : undefined;
 
+    // Collect files and wait for git/empty-dir operations that started earlier.
+    // Git operations have had a head start during searchFiles, so they may
+    // already be complete or close to it.
+    progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult, emptyDirPaths] = await Promise.all([
       withMemoryLogging(
         'Collect Files',
@@ -159,8 +169,8 @@ export const pack = async (
             ),
           ),
       ),
-      deps.getGitDiffs(rootDirs, config),
-      deps.getGitLogs(rootDirs, config),
+      gitDiffPromise,
+      gitLogPromise,
       emptyDirPromise,
     ]);
 
