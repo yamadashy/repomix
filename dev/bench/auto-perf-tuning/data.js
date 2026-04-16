@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776368560656,
+  "lastUpdate": 1776373082930,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4410,6 +4410,51 @@ window.BENCHMARK_DATA = {
             "range": "±103",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1455ms, Q3: 1558ms\nAll times: 1414, 1433, 1446, 1447, 1451, 1455, 1457, 1466, 1471, 1474, 1500, 1505, 1507, 1512, 1530, 1558, 1622, 1638, 1724, 1783ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "a006d4a74a08a7ce757e43e015b2831739c6c4d0",
+          "message": "perf(core): Cap metrics worker pool to reduce BPE warmup CPU contention\n\naction: capped metrics worker thread count at max(4, ceil(cpuCount/4))\nreason: the pool was sized at full processConcurrency (16 on this machine)\n  via numOfTasks=MAX_SAFE_INTEGER, causing 16 workers to each spend ~290ms\n  initializing gpt-tokenizer's BPE encoder — 4640ms total CPU time that\n  competed with the security worker pool and main thread\ncontext: with METRICS_BATCH_SIZE=50 and ~1000 files, only 20 batch tasks\n  exist; 16 workers meant most got 1-2 tasks after expensive warmup\n\nBenchmark (10 runs each, repomix on its own repo, ~1020 files):\n  Before: median 2.423s, mean 2.419s (max=16 workers, user 11.4s)\n  After:  median 1.658s, mean 1.646s (max=4 workers, user 4.67s)\n  Wall time improvement: ~765ms median (31.6%)\n  CPU time reduction:    ~59% (11.4s → 4.67s user time)\n  Memory reduction:      ~61% (1374MB → 534MB RSS)\n\nThe cascading effect of reduced CPU contention also speeds up:\n  - Per-worker BPE init: 290ms → 165ms (workers get more CPU time)\n  - Security check: 548ms → 358ms (security worker gets more CPU)\n  - File metrics: 598ms → 474ms (less thread scheduling overhead)\n\nhttps://claude.ai/code/session_01LcPzsyoq2sq261mhmjnVYK",
+          "timestamp": "2026-04-16T20:56:07Z",
+          "tree_id": "d0f91655b639a5613e571a12778dc0164f208b27",
+          "url": "https://github.com/yamadashy/repomix/commit/a006d4a74a08a7ce757e43e015b2831739c6c4d0"
+        },
+        "date": 1776373082527,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 737,
+            "range": "±90",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 690ms, Q3: 780ms\nAll times: 647, 660, 671, 675, 681, 682, 684, 690, 690, 692, 701, 707, 729, 734, 737, 737, 742, 747, 753, 764, 772, 776, 780, 803, 818, 829, 862, 927, 956, 960ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1051,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1044ms, Q3: 1059ms\nAll times: 1031, 1036, 1039, 1042, 1043, 1044, 1045, 1046, 1050, 1050, 1051, 1052, 1054, 1058, 1058, 1059, 1062, 1066, 1128, 1267ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1783,
+            "range": "±32",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1771ms, Q3: 1803ms\nAll times: 1718, 1748, 1753, 1758, 1770, 1771, 1775, 1780, 1781, 1781, 1783, 1786, 1788, 1799, 1799, 1803, 1806, 1813, 1815, 1820ms"
           }
         ]
       }
