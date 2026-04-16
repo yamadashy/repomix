@@ -1,9 +1,6 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import {
-  getProcessConcurrency as defaultGetProcessConcurrency,
-  initTaskRunner,
-} from '../../shared/processConcurrency.js';
+import { initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -34,7 +31,6 @@ export const runSecurityCheck = async (
   gitLogResult?: GitLogResult,
   deps = {
     initTaskRunner,
-    getProcessConcurrency: defaultGetProcessConcurrency,
   },
 ): Promise<SuspiciousFileResult[]> => {
   const gitDiffItems: SecurityCheckItem[] = [];
@@ -84,10 +80,14 @@ export const runSecurityCheck = async (
     return [];
   }
 
-  // Cap security workers at 2 to reduce contention with the metrics worker pool that
-  // runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
-  // so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
-  const maxSecurityWorkers = Math.min(2, deps.getProcessConcurrency());
+  // Use a single security worker to minimize CPU contention with the metrics
+  // worker pool (up to processConcurrency threads) that runs concurrently.
+  // With 2 security workers on a 4-core machine, 6 threads compete for 4 cores,
+  // causing ~117ms of contention overhead that slows the metrics critical path
+  // more than the extra security parallelism saves. A single worker processes
+  // all batches sequentially, but the reduced contention lets the metrics
+  // workers run at near-full speed, improving overall wall time.
+  const maxSecurityWorkers = 1;
 
   // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
