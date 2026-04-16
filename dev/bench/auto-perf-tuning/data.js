@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776327443560,
+  "lastUpdate": 1776360862188,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4185,6 +4185,51 @@ window.BENCHMARK_DATA = {
             "range": "±54",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1778ms, Q3: 1832ms\nAll times: 1750, 1760, 1760, 1771, 1775, 1778, 1781, 1790, 1791, 1796, 1797, 1797, 1812, 1820, 1822, 1832, 1836, 1842, 1848, 1849ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "f3d55e4cab03ac7c19298a0cf8546817a7265e28",
+          "message": "perf(core): Replace synchronous lstatSync loop with concurrent async lstat\n\nProblem: searchFilesGitFastPath filters symlinks/non-regular files by\ncalling lstatSync once per file returned by git ls-files. For a ~1000-file\nrepo this means ~1000 sequential blocking syscalls on the main thread,\neach costing ~0.05-0.1ms. The total wall time is 50-100ms of event-loop\nblocking that prevents concurrent async work (metrics warmup, git\ndiff/log subprocesses) from making progress.\n\nSolution: Replace the synchronous filter with batched Promise.all over\nasync fs.lstat calls (512 files per batch). The kernel can batch the stat\nsyscalls and the event loop remains free for other work during I/O wait.\nBatching keeps concurrent operations bounded for very large repos.\n\nBenchmark: node bin/repomix.cjs --quiet on the repomix repo (~1020 files).\n20 interleaved A/B runs:\n\n| Metric       | Baseline | This patch | Delta           |\n|--------------|----------|------------|-----------------|\n| median       | 2545 ms  | 2445 ms    | −100 ms (−3.9%) |\n| trimmed mean | 2564 ms  | 2454 ms    | −110 ms (−4.3%) |\n\nhttps://claude.ai/code/session_012DuaSwbPvkkMnt4e5tsqsa",
+          "timestamp": "2026-04-16T17:32:30Z",
+          "tree_id": "432e3a23a8abd2b0cf15274f9f1c3b17d0112c2d",
+          "url": "https://github.com/yamadashy/repomix/commit/f3d55e4cab03ac7c19298a0cf8546817a7265e28"
+        },
+        "date": 1776360860832,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 721,
+            "range": "±61",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 706ms, Q3: 767ms\nAll times: 669, 671, 688, 693, 697, 698, 705, 706, 706, 710, 711, 715, 718, 719, 721, 721, 727, 733, 734, 741, 742, 745, 767, 786, 788, 800, 804, 846, 886, 1329ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 875,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 861ms, Q3: 888ms\nAll times: 853, 855, 855, 859, 859, 861, 862, 864, 870, 875, 875, 876, 877, 877, 881, 888, 898, 1010, 1100, 1211ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1401,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1390ms, Q3: 1411ms\nAll times: 1382, 1382, 1386, 1388, 1389, 1390, 1390, 1391, 1391, 1397, 1401, 1403, 1405, 1406, 1407, 1411, 1425, 1427, 1432, 1493ms"
           }
         ]
       }
