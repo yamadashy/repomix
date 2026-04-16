@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776301764354,
+  "lastUpdate": 1776303643465,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3780,6 +3780,51 @@ window.BENCHMARK_DATA = {
             "range": "±36",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1632ms, Q3: 1668ms\nAll times: 1593, 1598, 1609, 1623, 1630, 1632, 1632, 1634, 1647, 1653, 1655, 1656, 1656, 1660, 1667, 1668, 1670, 1679, 1685, 1687ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "c1a9e1df03954b35793d07de09bbd62a0302752e",
+          "message": "perf(core): Replace globby with recursive readdir for empty directory scan\n\nReplace the globby-based empty directory scan with a lightweight recursive\nfs.readdir walk using the `ignore` package for pattern filtering.\n\n## Problem\n\nThe `searchEmptyDirectories` function ran concurrently with file collection\nin the pipeline's parallel group. However, its globby dependency required\nloading a 23-package module graph (~35ms cold import) plus a full\nfilesystem walk (~125ms), totalling ~160-250ms. This consistently exceeded\nthe file collection time (~130-170ms), making the empty directory scan the\nbottleneck of the parallel group and adding ~70-100ms to the critical path.\n\n## Solution\n\nImplement `searchEmptyDirectoriesFast` that:\n- Walks the directory tree using `fs.readdir` with `{withFileTypes: true}`\n- Uses the `ignore` package (already loaded for git fast path) for\n  directory filtering instead of globby's built-in pattern matching\n- Reads `.repomixignore` and `.ignore` files during the walk, scoping\n  their patterns to the containing directory (matching globby semantics)\n- Parallelizes subdirectory traversal with `Promise.all` at each level\n- Falls back to globby when include patterns are specified (non-default)\n\n## Benchmark\n\n`node bin/repomix.cjs --quiet` on the repomix repo (~1000 files). 15 interleaved\nA/B runs, trimmed (drop top/bottom 2):\n\n| Metric   | Baseline   | This patch | Delta               |\n|----------|------------|------------|---------------------|\n| median   | 1391 ms    | 1252 ms    | **−139 ms (−10.0%)** |\n| mean     | 1383 ms    | 1268 ms    | **−114 ms (−8.3%)**  |\n\nPipeline parallel group timing (single run):\n- searchEmptyDirs: 237ms → 42ms (−82%)\n- collectFiles: 169ms → 169ms (unchanged, now the bottleneck)\n- Parallel group total: 245ms → 145ms (−41%)\n\nhttps://claude.ai/code/session_018uZdPCdNevhkDcfDx3Zmf4",
+          "timestamp": "2026-04-16T01:37:40Z",
+          "tree_id": "2e7378ef8b861e2e6cc6192669aef03ce37a7969",
+          "url": "https://github.com/yamadashy/repomix/commit/c1a9e1df03954b35793d07de09bbd62a0302752e"
+        },
+        "date": 1776303643050,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1193,
+            "range": "±155",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1114ms, Q3: 1269ms\nAll times: 985, 1026, 1044, 1053, 1069, 1087, 1104, 1114, 1117, 1149, 1156, 1163, 1174, 1180, 1180, 1193, 1205, 1212, 1215, 1221, 1226, 1256, 1269, 1299, 1311, 1331, 1331, 1360, 1379, 1423ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1231,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1222ms, Q3: 1240ms\nAll times: 1201, 1213, 1216, 1218, 1220, 1222, 1223, 1223, 1224, 1231, 1231, 1233, 1233, 1236, 1237, 1240, 1241, 1271, 1294, 1320ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2015,
+            "range": "±85",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1972ms, Q3: 2057ms\nAll times: 1577, 1928, 1935, 1953, 1970, 1972, 1983, 1987, 1996, 2008, 2015, 2017, 2034, 2035, 2046, 2057, 2080, 2111, 2118, 2129ms"
           }
         ]
       }
