@@ -121,10 +121,17 @@ export const pack = async (
   );
 
   try {
-    // Run file collection and git operations in parallel since they are independent:
-    // - collectFiles reads file contents from disk
-    // - getGitDiffs/getGitLogs spawn git subprocesses
-    // Neither depends on the other's results.
+    // Start git operations early (before file collection) so their subprocesses
+    // run concurrently with collectFiles. Since searchFiles uses async execFile
+    // for `git ls-files` (non-blocking), the event loop is free to make progress
+    // on these git diff/log subprocesses during any I/O wait.
+    const gitDiffPromise = deps.getGitDiffs(rootDirs, config);
+    const gitLogPromise = deps.getGitLogs(rootDirs, config);
+    // Suppress unhandled rejection if collectFiles throws before Promise.all
+    // consumes these promises. The original promises are still awaited below.
+    Promise.resolve(gitDiffPromise).catch(() => {});
+    Promise.resolve(gitLogPromise).catch(() => {});
+
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult] = await Promise.all([
       withMemoryLogging(
@@ -136,8 +143,8 @@ export const pack = async (
             ),
           ),
       ),
-      deps.getGitDiffs(rootDirs, config),
-      deps.getGitLogs(rootDirs, config),
+      gitDiffPromise,
+      gitLogPromise,
     ]);
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
