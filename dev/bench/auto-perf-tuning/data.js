@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776308202311,
+  "lastUpdate": 1776308540418,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3870,6 +3870,51 @@ window.BENCHMARK_DATA = {
             "range": "±56",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1527ms, Q3: 1583ms\nAll times: 1479, 1490, 1499, 1504, 1510, 1527, 1528, 1534, 1536, 1541, 1545, 1547, 1554, 1563, 1581, 1583, 1753, 1781, 1880, 1942ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "e7714d2e4fb4f021988dc1ed290eea33795e6502",
+          "message": "perf(core): Sync file reads and early non-blocking metrics warmup\n\nEliminate async overhead in the file collection pipeline and remove a\ncritical-path blocking await on metrics worker warmup, together saving\n~91ms (−8.1%) of CLI wall time.\n\n## Changes\n\n### 1. Synchronous file reads for UTF-8 fast path (fileRead.ts, fileCollect.ts)\n\nReplace the async promise pool (concurrency=50) with a synchronous\nreadFileSync loop for the ~99% of source files that are valid UTF-8.\nThis eliminates per-file Promise allocation, libuv thread pool\nscheduling, and microtask/event-loop overhead that dominated the file\ncollection phase.\n\n- Add `readRawFileSync()` that handles binary-extension check, size\n  limit, and UTF-8 decode synchronously\n- Cache the TextDecoder instance at module level (stateless per WHATWG\n  spec) instead of creating one per file\n- Files that fail UTF-8 decode (~1%) fall back to async `readRawFile`\n  with jschardet/iconv-lite encoding detection\n- Remove the generic `promisePool` helper (no longer needed)\n\n### 2. Early non-blocking metrics warmup (packager.ts)\n\nMove `createMetricsTaskRunner()` from after searchFiles to the very\nstart of pack(), giving gpt-tokenizer ~62ms more time to load in\nworker threads (overlapping with the file search phase).\n\nRemove the explicit `await metricsWarmupPromise` that blocked for\n0–303ms when file collection completed before warmup finished.\nWarmup tasks were dispatched first into each worker's FIFO queue,\nguaranteeing they complete before any real metrics tasks on the same\nworker. The finally block still properly awaits warmup for cleanup.\n\n## Benchmark\n\n`node bin/repomix.cjs --quiet` on the repomix repo (~1019 files,\ndefault config). 15 sequential runs per variant:\n\n| Metric | Baseline | This patch | Delta |\n|---|---|---|---|\n| median | 1126 ms | 1035 ms | **−91 ms (−8.1%)** |\n| trimmed mean | 1128 ms | 1037 ms | **−91 ms (−8.1%)** |\n| Welch t-statistic | — | — | **9.61 (p < 0.001)** |\n\n## Correctness\n\n- All 1115 tests pass\n- Lint clean (0 new warnings)\n- Sync read produces identical FileReadResult as async for UTF-8 files\n- Worker FIFO ordering guarantees warmup before real tasks\n\nhttps://claude.ai/code/session_0183suJ4nFGFZhdo6V1sY1AR",
+          "timestamp": "2026-04-16T03:00:44Z",
+          "tree_id": "07608a75a340f91e7e22a18a34392e244e8fb16e",
+          "url": "https://github.com/yamadashy/repomix/commit/e7714d2e4fb4f021988dc1ed290eea33795e6502"
+        },
+        "date": 1776308540022,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 708,
+            "range": "±42",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 694ms, Q3: 736ms\nAll times: 676, 677, 680, 685, 685, 686, 691, 694, 697, 699, 702, 703, 705, 706, 706, 708, 708, 711, 714, 716, 718, 722, 736, 767, 770, 782, 784, 804, 837, 881ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1093,
+            "range": "±87",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1083ms, Q3: 1170ms\nAll times: 1067, 1067, 1070, 1072, 1073, 1083, 1089, 1089, 1089, 1093, 1093, 1105, 1115, 1134, 1145, 1170, 1289, 1319, 1320, 1327ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1468,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1450ms, Q3: 1479ms\nAll times: 1425, 1428, 1435, 1443, 1447, 1450, 1455, 1460, 1466, 1467, 1468, 1468, 1470, 1470, 1475, 1479, 1481, 1487, 1488, 1500ms"
           }
         ]
       }
