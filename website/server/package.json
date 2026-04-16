@@ -18,7 +18,7 @@
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
     "fflate": "^0.8.2",
-    "hono": "^4.12.12",
+    "hono": "^4.12.14",
     "isbot": "^5.1.37",
     "repomix": "github:yamadashy/repomix#main",
     "winston": "^3.19.0",
