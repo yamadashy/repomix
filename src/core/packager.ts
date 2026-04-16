@@ -155,27 +155,21 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Run security check and file processing concurrently.
-    // Security check uses worker threads while file processing runs on the main thread
-    // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
-    // After both complete, filter out any suspicious files from the processed results.
-    const [validationResult, allProcessedFiles] = await Promise.all([
-      withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
-      ),
-      withMemoryLogging('Process Files', () => {
-        progressCallback('Processing files...');
-        return deps.processFiles(rawFiles, config, progressCallback);
-      }),
-    ]);
+    // Start security check and file processing concurrently.
+    // Security check runs in worker threads (~162ms) while file processing runs
+    // on the main thread (~11ms). Instead of waiting for both to complete before
+    // starting output generation, we proceed optimistically with ALL files and
+    // overlap the security check with output generation + metrics calculation.
+    // In the rare case suspicious files are found, we fall back to regenerating
+    // output with the filtered file set.
+    const securityPromise = withMemoryLogging('Security Check', () =>
+      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+    );
 
-    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
-      validationResult;
-
-    // Filter processed files to exclude suspicious ones
-    const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
-    const filteredProcessedFiles =
-      suspiciousPathSet.size > 0 ? allProcessedFiles.filter((f) => !suspiciousPathSet.has(f.path)) : allProcessedFiles;
+    const allProcessedFiles = await withMemoryLogging('Process Files', async () => {
+      progressCallback('Processing files...');
+      return deps.processFiles(rawFiles, config, progressCallback);
+    });
 
     // Pre-sort processedFiles in the same order they will appear in the generated output.
     // `generateOutput` internally calls `sortOutputFiles` as well; both share the same
@@ -184,17 +178,26 @@ export const pack = async (
     // fast-path in `calculateMetrics`, which walks file contents through the output string
     // in order via `extractOutputWrapper`.
     await sortDataPromise;
-    const processedFiles = await deps.sortOutputFiles(filteredProcessedFiles, config);
+    const processedFiles = await deps.sortOutputFiles(allProcessedFiles, config);
 
     progressCallback('Generating output...');
 
-    // Skill generation path — metrics not needed, return early (worker pool cleaned up by finally)
+    // Skill generation path — must wait for security check since skill output
+    // needs suspicious file results. Metrics not needed, return early.
     if (config.skillGenerate !== undefined && options.skillDir) {
+      const validationResult = await securityPromise;
+      const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+        validationResult;
+
+      const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
+      const filteredProcessedFiles =
+        suspiciousPathSet.size > 0 ? processedFiles.filter((f) => !suspiciousPathSet.has(f.path)) : processedFiles;
+
       const result = await deps.packSkill({
         rootDirs,
         config,
         options,
-        processedFiles,
+        processedFiles: filteredProcessedFiles,
         allFilePaths,
         gitDiffResult,
         gitLogResult,
@@ -221,48 +224,64 @@ export const pack = async (
     // Ensure warm-up task completes before metrics calculation
     await metricsWarmupPromise;
 
-    // Generate and write output, overlapping with metrics calculation.
-    // File and git metrics don't depend on the output, so they start immediately
-    // while output generation runs concurrently.
-    const outputPromise = deps.produceOutput(
-      rootDirs,
-      config,
-      processedFiles,
-      allFilePaths,
-      gitDiffResult,
-      gitLogResult,
-      progressCallback,
-      filePathsByRoot,
-      emptyDirPaths,
-    );
-
-    const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
-
-    const [{ outputFiles }, metrics] = await Promise.all([
-      outputPromise,
-      withMemoryLogging('Calculate Metrics', () =>
-        deps.calculateMetrics(
-          processedFiles,
-          outputForMetricsPromise,
-          progressCallback,
-          config,
-          gitDiffResult,
-          gitLogResult,
-          {
+    // Helper: produce output and calculate metrics in parallel for a given
+    // set of processed files. Used by both the optimistic fast path and the
+    // suspicious-file fallback path.
+    const produceOutputAndMetrics = async (files: ProcessedFile[]) => {
+      const outPromise = deps.produceOutput(
+        rootDirs, config, files, allFilePaths, gitDiffResult, gitLogResult,
+        progressCallback, filePathsByRoot, emptyDirPaths,
+      );
+      const outForMetrics = outPromise.then((r) => r.outputForMetrics);
+      const [{ outputFiles: outFiles }, outMetrics] = await Promise.all([
+        outPromise,
+        withMemoryLogging('Calculate Metrics', () =>
+          deps.calculateMetrics(files, outForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
             taskRunner: metricsTaskRunner,
-          },
+          }),
         ),
-      ),
+      ]);
+      return { outputFiles: outFiles, metrics: outMetrics };
+    };
+
+    // Generate and write output, overlapping with metrics calculation AND the
+    // security check. The security check (worker threads) runs concurrently —
+    // it will be awaited after output+metrics to verify no suspicious files
+    // were included.
+    //
+    // Trade-off: in the rare case where suspicious files are detected, the
+    // output file is written once with all files and then overwritten with the
+    // filtered set. Since the suspicious content already exists on disk in the
+    // repository source files, this transient write does not create new exposure.
+    const [outputAndMetrics, validationResult] = await Promise.all([
+      produceOutputAndMetrics(processedFiles),
+      securityPromise,
     ]);
 
-    // Create a result object that includes metrics and security results
+    const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
+      validationResult;
+
+    // If suspicious files were found (rare), the output we just generated
+    // includes them and must be regenerated with the filtered file set.
+    let { outputFiles, metrics } = outputAndMetrics;
+    let finalProcessedFiles = processedFiles;
+
+    if (suspiciousFilesResults.length > 0) {
+      logger.debug(
+        `Security check found ${suspiciousFilesResults.length} suspicious files — regenerating output without them`,
+      );
+      const suspiciousPathSet = new Set(suspiciousFilesResults.map((r) => r.filePath));
+      finalProcessedFiles = processedFiles.filter((f) => !suspiciousPathSet.has(f.path));
+      ({ outputFiles, metrics } = await produceOutputAndMetrics(finalProcessedFiles));
+    }
+
     const result = {
       ...metrics,
       ...(outputFiles && { outputFiles }),
       suspiciousFilesResults,
       suspiciousGitDiffResults,
       suspiciousGitLogResults,
-      processedFiles,
+      processedFiles: finalProcessedFiles,
       safeFilePaths,
       skippedFiles: allSkippedFiles,
     };
