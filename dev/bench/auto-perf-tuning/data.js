@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776315802442,
+  "lastUpdate": 1776319615267,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -3960,6 +3960,51 @@ window.BENCHMARK_DATA = {
             "range": "±44",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1159ms, Q3: 1203ms\nAll times: 1151, 1152, 1154, 1155, 1158, 1159, 1173, 1176, 1178, 1183, 1185, 1185, 1192, 1193, 1196, 1203, 1207, 1210, 1211, 1237ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "a523de921b7df05287f61cdc8411dcff0faf207d",
+          "message": "perf(core): Async git ls-files and overlap git ops with file search\n\nTwo changes that compound to a 2.4% (−31ms) CLI wall-time improvement:\n\n1. Convert execFileSync → async execFile for git ls-files\n   The git ls-files call takes ~5-17ms. execFileSync blocked the Node.js\n   event loop during this time, preventing any concurrent async work from\n   progressing (metrics warmup, prefetch sort data, etc.). Using the async\n   execFile via promisify frees the event loop, allowing these background\n   operations to make progress during the git wait.\n\n2. Start git diff/log and empty dir scan before searchFiles\n   getGitDiffs, getGitLogs, and searchEmptyDirectories only need rootDirs\n   and config — they don't depend on search results. Previously they ran\n   in the collect phase (after searchFiles completed). Moving them to fire\n   before searchFiles gives their git subprocesses a head start. Combined\n   with the async execFile change, the event loop processes git subprocess\n   completions during the git ls-files await, so by the time the collect\n   phase starts, the git operations may already be complete.\n\nBenchmark: `node bin/repomix.cjs --quiet` on the repomix repo (~1020 files).\n20 interleaved A/B runs:\n\n| Metric       | Baseline | This patch | Delta           |\n|--------------|----------|------------|-----------------|\n| median       | 1308 ms  | 1277 ms    | −31 ms (−2.4%)  |\n| trimmed mean | 1310 ms  | 1279 ms    | −31 ms (−2.4%)  |\n\nAll 1115 tests pass, lint clean.\n\nhttps://claude.ai/code/session_01SkQSWcbnFJE9czCTzS6qcV",
+          "timestamp": "2026-04-16T06:05:10Z",
+          "tree_id": "57a807ed80f63f0b65d234b77e966d2763645cba",
+          "url": "https://github.com/yamadashy/repomix/commit/a523de921b7df05287f61cdc8411dcff0faf207d"
+        },
+        "date": 1776319614662,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 933,
+            "range": "±105",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 876ms, Q3: 981ms\nAll times: 699, 733, 756, 761, 797, 822, 825, 876, 883, 884, 894, 906, 909, 915, 926, 933, 942, 945, 952, 961, 970, 975, 981, 984, 1040, 1050, 1052, 1060, 1062, 1063ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1112,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1103ms, Q3: 1140ms\nAll times: 1099, 1099, 1099, 1101, 1102, 1103, 1103, 1104, 1109, 1112, 1112, 1116, 1120, 1127, 1134, 1140, 1140, 1154, 1195, 1282ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1500,
+            "range": "±167",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1475ms, Q3: 1642ms\nAll times: 1440, 1442, 1445, 1470, 1473, 1475, 1481, 1485, 1493, 1493, 1500, 1550, 1598, 1598, 1612, 1642, 1728, 1729, 1868, 2409ms"
           }
         ]
       }
