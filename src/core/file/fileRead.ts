@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import isBinaryPath from 'is-binary-path';
 import { isBinaryFile } from 'isbinaryfile';
@@ -97,47 +96,3 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
   }
 };
 
-/**
- * Synchronous file read for the common UTF-8 fast path.
- *
- * Returns a FileReadResult for files that are:
- * - Binary by extension (skipped)
- * - Over size limit (skipped)
- * - Valid UTF-8 text (content returned)
- * - Read errors (skipped)
- *
- * Returns `null` when the file is not valid UTF-8, signaling the caller
- * to fall back to the async `readRawFile` which handles encoding detection
- * via jschardet/iconv-lite (~1% of source files).
- *
- * Using readFileSync eliminates per-file Promise allocation, libuv thread
- * pool scheduling, and microtask overhead. For ~1000 files served from the
- * OS page cache, this reduces collection time from ~150ms to ~30ms.
- */
-export const readRawFileSync = (filePath: string, maxFileSize: number): FileReadResult | null => {
-  try {
-    if (isBinaryPath(filePath)) {
-      return { content: null, skippedReason: 'binary-extension' };
-    }
-
-    const buffer = readFileSync(filePath);
-
-    if (buffer.length > maxFileSize) {
-      return { content: null, skippedReason: 'size-limit' };
-    }
-
-    try {
-      let content = utf8Decoder.decode(buffer);
-      if (content.charCodeAt(0) === 0xfeff) {
-        content = content.slice(1);
-      }
-      return { content };
-    } catch {
-      // Not valid UTF-8 — caller should use async readRawFile for encoding detection
-      return null;
-    }
-  } catch (error) {
-    logger.warn(`Failed to read file: ${filePath}`, error);
-    return { content: null, skippedReason: 'encoding-error' };
-  }
-};

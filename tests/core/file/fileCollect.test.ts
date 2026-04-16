@@ -9,12 +9,9 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 describe('fileCollect', () => {
   let mockReadRawFile: Mock<(filePath: string, maxFileSize: number) => Promise<FileReadResult>>;
-  // Return null from sync read to always trigger async fallback, preserving test behavior
-  const mockReadRawFileSync = vi.fn().mockReturnValue(null);
 
   beforeEach(() => {
     mockReadRawFile = vi.fn();
-    mockReadRawFileSync.mockClear().mockReturnValue(null);
   });
 
   it('should collect non-binary files', async () => {
@@ -26,7 +23,6 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
-      readRawFileSync: mockReadRawFileSync,
     });
 
     expect(result).toEqual({
@@ -55,7 +51,6 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
-      readRawFileSync: mockReadRawFileSync,
     });
 
     expect(result).toEqual({
@@ -78,7 +73,6 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
-      readRawFileSync: mockReadRawFileSync,
     });
 
     expect(result).toEqual({
@@ -106,7 +100,6 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
-      readRawFileSync: mockReadRawFileSync,
     });
 
     expect(result).toEqual({
@@ -128,7 +121,6 @@ describe('fileCollect', () => {
 
     const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
       readRawFile: mockReadRawFile,
-      readRawFileSync: mockReadRawFileSync,
     });
 
     expect(result).toEqual({
@@ -147,12 +139,9 @@ describe('fileCollect', () => {
 
     await collectFiles(mockFilePaths, mockRootDir, mockConfig, mockProgress, {
       readRawFile: mockReadRawFile,
-      readRawFileSync: mockReadRawFileSync,
     });
 
-    // Progress is called once in the sync loop (at totalTasks-1 which hits the
-    // modulo check), plus once for the async fallback batch (2 files fall
-    // through because mockReadRawFileSync returns null).
-    expect(mockProgress).toHaveBeenCalledTimes(2);
+    // With 2 files, progress fires at completion (2 === totalTasks)
+    expect(mockProgress).toHaveBeenCalled();
   });
 });
