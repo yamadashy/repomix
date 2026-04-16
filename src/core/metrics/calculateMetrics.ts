@@ -1,6 +1,6 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -34,15 +34,24 @@ export interface MetricsTaskRunnerWithWarmup {
  * gpt-tokenizer initialization in parallel. This allows the expensive module
  * loading to overlap with other pipeline stages (security check, file processing,
  * output generation).
+ *
+ * Worker count is capped to avoid excessive BPE warmup CPU cost. Each worker
+ * needs ~290ms to initialize gpt-tokenizer's BPE encoder. With the default
+ * METRICS_BATCH_SIZE of 50, a 1000-file repo produces ~20 batch tasks — more
+ * workers than that just waste CPU on warmup while competing with the security
+ * worker pool and main thread for execution time.
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+  const maxWorkerThreads = Math.max(4, Math.ceil(getProcessConcurrency() / 4));
+
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    maxWorkerThreads,
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads);
   const warmupPromise = Promise.all(
     Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
@@ -112,12 +121,14 @@ export const calculateMetrics = async (
   progressCallback('Calculating metrics...');
 
   // Initialize a single task runner for all metrics calculations
+  const maxWorkerThreads = Math.max(4, Math.ceil(getProcessConcurrency() / 4));
   const taskRunner =
     deps.taskRunner ??
     initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
+      maxWorkerThreads,
     });
 
   try {
