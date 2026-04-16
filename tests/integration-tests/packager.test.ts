@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
 import type { RepomixConfigFile, RepomixConfigMerged, RepomixOutputStyle } from '../../src/config/configSchema.js';
 import { collectFiles } from '../../src/core/file/fileCollect.js';
-import { readRawFile } from '../../src/core/file/fileRead.js';
+
 import { searchFiles } from '../../src/core/file/fileSearch.js';
 import type { ProcessedFile } from '../../src/core/file/fileTypes.js';
 import fileProcessWorker from '../../src/core/file/workers/fileProcessWorker.js';
@@ -93,9 +93,7 @@ describe.runIf(!isWindows)('packager integration', () => {
         searchFiles,
         sortPaths: (filePaths) => filePaths,
         collectFiles: (filePaths, rootDir, config, progressCallback) => {
-          return collectFiles(filePaths, rootDir, config, progressCallback, {
-            readRawFile,
-          });
+          return collectFiles(filePaths, rootDir, config, progressCallback);
         },
         processFiles: async (rawFiles, config, _progressCallback) => {
           const processedFiles: ProcessedFile[] = [];

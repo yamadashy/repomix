@@ -80,49 +80,61 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Pre-fetch git file-change counts for sortOutputFiles while search and
-  // collection are in flight, so the later sortOutputFiles call is a cache hit.
-  const sortDataPromise = deps.prefetchSortData(config).catch((error) => {
-    logger.trace('Failed to prefetch sort data:', error);
-  });
-
-  // Disable empty directory search inside searchFiles — it is launched
-  // concurrently with file collection via emptyDirPromise below, keeping
-  // the ~100ms globby directory scan off the sequential critical path.
-  const searchConfig = config.output.includeEmptyDirectories
-    ? { ...config, output: { ...config.output, includeEmptyDirectories: false } }
-    : config;
-
-  progressCallback('Searching for files...');
-  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
-    Promise.all(
-      rootDirs.map(async (rootDir) => {
-        const result = await deps.searchFiles(rootDir, searchConfig, explicitFiles);
-        return { rootDir, filePaths: result.filePaths };
-      }),
-    ),
-  );
-
-  // Sort file paths
-  progressCallback('Sorting files...');
-  const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
-
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
-    rootDir,
-    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
-  }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
+  // Pre-initialize metrics worker pool as early as possible to maximize the
+  // overlap of gpt-tokenizer loading (~350-450ms) with the rest of the pipeline
+  // (search, collection, processing, security check, output generation).
+  // Previously this was created after searchFiles and then explicitly awaited
+  // before the parallel output+metrics section, blocking for 0-303ms depending
+  // on how fast file collection completed. By starting warmup before searchFiles
+  // and removing the blocking await, the warmup time is fully absorbed into the
+  // concurrent pipeline stages.
+  //
+  // numOfTasks is set to a large value because the actual file count isn't known
+  // until after searchFiles. Pool size is capped by CPU count regardless, so this
+  // just ensures maximum thread utilization.
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
+    Number.MAX_SAFE_INTEGER,
     config.tokenCount.encoding,
   );
+  // Suppress unhandled rejection — warmup completes naturally in worker FIFO
+  // queues before any real tasks, and is properly awaited in the finally block.
+  metricsWarmupPromise.catch(() => {});
 
   try {
+    // Pre-fetch git file-change counts for sortOutputFiles while search and
+    // collection are in flight, so the later sortOutputFiles call is a cache hit.
+    const sortDataPromise = deps.prefetchSortData(config).catch((error) => {
+      logger.trace('Failed to prefetch sort data:', error);
+    });
+
+    // Disable empty directory search inside searchFiles — it is launched
+    // concurrently with file collection via emptyDirPromise below, keeping
+    // the ~100ms globby directory scan off the sequential critical path.
+    const searchConfig = config.output.includeEmptyDirectories
+      ? { ...config, output: { ...config.output, includeEmptyDirectories: false } }
+      : config;
+
+    progressCallback('Searching for files...');
+    const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
+      Promise.all(
+        rootDirs.map(async (rootDir) => {
+          const result = await deps.searchFiles(rootDir, searchConfig, explicitFiles);
+          return { rootDir, filePaths: result.filePaths };
+        }),
+      ),
+    );
+
+    // Sort file paths
+    progressCallback('Sorting files...');
+    const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
+    const sortedFilePaths = deps.sortPaths(allFilePaths);
+
+    // Regroup sorted file paths by rootDir using Set for O(1) membership checks
+    const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
+    const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+      rootDir,
+      filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+    }));
     // Run file collection, git operations, and empty directory scan in parallel
     // since they are independent:
     // - collectFiles reads file contents from disk
@@ -221,8 +233,11 @@ export const pack = async (
       files: filePaths,
     }));
 
-    // Ensure warm-up task completes before metrics calculation
-    await metricsWarmupPromise;
+    // No explicit warmup await here — warmup tasks were dispatched first into
+    // each worker's FIFO queue (at pool creation time, before searchFiles),
+    // guaranteeing they complete before any real metrics tasks on the same worker.
+    // Removing this await eliminates 0-303ms of critical-path blocking that
+    // occurred when file collection finished before worker warmup completed.
 
     // Helper: produce output and calculate metrics in parallel for a given
     // set of processed files. Used by both the optimistic fast path and the
