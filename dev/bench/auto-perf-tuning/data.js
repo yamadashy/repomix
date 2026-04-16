@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776373082930,
+  "lastUpdate": 1776375561052,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4455,6 +4455,51 @@ window.BENCHMARK_DATA = {
             "range": "±32",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1771ms, Q3: 1803ms\nAll times: 1718, 1748, 1753, 1758, 1770, 1771, 1775, 1780, 1781, 1781, 1783, 1786, 1788, 1799, 1799, 1803, 1806, 1813, 1815, 1820ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "798ea6417d252b9f843f6603dc98c32c7cb367f3",
+          "message": "perf(core): Replace synchronous file reads with concurrent async I/O\n\nReplace the sequential readFileSync loop in collectFiles with concurrent\nasync readFile via Promise.all. The sync approach blocked the event loop\nfor ~250ms reading ~1000 files sequentially, preventing concurrent git\noperations from completing. The async approach dispatches all reads to\nlibuv's thread pool, enabling true I/O parallelism and freeing the event\nloop to process git diff/log completions during file reading.\n\naction: replaced sync two-phase read (readFileSync + async fallback)\n        with single-phase concurrent readRawFile via Promise.all\nreason: readFileSync serializes 1000+ open/read/close syscalls on the\n        main thread; libuv's 4-thread pool parallelizes them with async\nconstraint: readRawFile already handles UTF-8 fast path (~99% of files)\n            and lazy-loads encoding detection only for non-UTF-8 files\n\nBenchmark (repomix CLI on its own repo, ~1000 files, 10 interleaved A/B runs):\n\n| Metric | Before | After | Delta |\n|---|---|---|---|\n| Wall time (median) | 2013ms | 1768ms | -245ms (-12.2%) |\n| Wall time (mean) | 2005ms | 1763ms | -242ms (-12.1%) |\n\nPhase-level improvement:\n| Phase | Before | After | Delta |\n|---|---|---|---|\n| collectFiles | ~250ms | ~115ms | -135ms (-54%) |\n\nhttps://claude.ai/code/session_01G5t5dGkiwwf1jS5bNAa6vi",
+          "timestamp": "2026-04-16T21:36:21Z",
+          "tree_id": "7ff70cf436367c175ad4e4f6c244ba7a6fd1aa5a",
+          "url": "https://github.com/yamadashy/repomix/commit/798ea6417d252b9f843f6603dc98c32c7cb367f3"
+        },
+        "date": 1776375559908,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 770,
+            "range": "±107",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 716ms, Q3: 823ms\nAll times: 682, 684, 686, 687, 696, 701, 710, 716, 723, 733, 736, 739, 741, 762, 762, 770, 777, 777, 778, 783, 806, 822, 823, 824, 855, 857, 859, 859, 889, 898ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1129,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1126ms, Q3: 1145ms\nAll times: 1101, 1110, 1111, 1120, 1123, 1126, 1126, 1127, 1129, 1129, 1129, 1129, 1133, 1133, 1139, 1145, 1153, 1157, 1174, 1175ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1818,
+            "range": "±330",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1558ms, Q3: 1888ms\nAll times: 1497, 1514, 1539, 1539, 1555, 1558, 1585, 1586, 1690, 1775, 1818, 1835, 1852, 1865, 1875, 1888, 1902, 1977, 2046, 2773ms"
           }
         ]
       }
