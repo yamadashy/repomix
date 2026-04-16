@@ -1,6 +1,5 @@
 import { execFileSync } from 'node:child_process';
 import type { Stats } from 'node:fs';
-import { lstatSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { type Options as GlobbyOptions, globby } from 'globby';
@@ -130,16 +129,27 @@ const searchFilesGitFastPath = async (
   let files = [...new Set(stdout.split('\0').filter(Boolean))];
   logger.trace(`git ls-files returned ${files.length} files`);
 
-  // Filter out symlinks and non-regular files.
-  // globby with followSymbolicLinks:false + onlyFiles:true uses lstat,
-  // which reports symlinks as non-files.
-  files = files.filter((f) => {
-    try {
-      return lstatSync(path.join(rootDir, f)).isFile();
-    } catch {
-      return false;
-    }
-  });
+  // Filter out symlinks and non-regular files to match globby's behavior
+  // (followSymbolicLinks:false + onlyFiles:true reports symlinks as non-files).
+  // Uses concurrent async lstat in batches to avoid blocking the event loop
+  // with 1000+ sequential synchronous syscalls.
+  const LSTAT_BATCH = 512;
+  const isFileResults: boolean[] = [];
+  for (let i = 0; i < files.length; i += LSTAT_BATCH) {
+    const batch = files.slice(i, i + LSTAT_BATCH);
+    const results = await Promise.all(
+      batch.map(async (f) => {
+        try {
+          const stat = await fs.lstat(path.join(rootDir, f));
+          return stat.isFile();
+        } catch {
+          return false;
+        }
+      }),
+    );
+    isFileResults.push(...results);
+  }
+  files = files.filter((_, i) => isFileResults[i]);
 
   // Build an ignore filter combining default + custom patterns and
   // patterns from .repomixignore / .ignore files.
