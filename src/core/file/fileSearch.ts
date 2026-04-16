@@ -124,7 +124,10 @@ const preFilterIgnorePatterns = (patterns: string[], files: string[]): string[] 
     }
 
     // Extract literal path segments (skip wildcards, char classes, braces)
-    const cleaned = pattern.replace(/^\*\*\//, '').replace(/\/\*\*$/, '').replace(/\/\*\*\//g, '/');
+    const cleaned = pattern
+      .replace(/^\*\*\//, '')
+      .replace(/\/\*\*$/, '')
+      .replace(/\/\*\*\//g, '/');
     const segments = cleaned
       .split('/')
       .filter((s) => !s.includes('*') && !s.includes('[') && !s.includes('{') && s.length > 0);
