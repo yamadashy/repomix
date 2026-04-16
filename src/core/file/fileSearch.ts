@@ -140,27 +140,41 @@ const preFilterIgnorePatterns = (patterns: string[], files: string[]): string[] 
   });
 };
 
+interface GitLsFilesResult {
+  /** Regular files (mode 100644/100755) from the git index — already verified, no lstat needed. */
+  trackedFiles: string[];
+  /** Untracked files — still need lstat to verify they are regular files. */
+  untrackedFiles: string[];
+}
+
 /**
- * Fast file enumeration using `git ls-files` for git repositories.
- *
- * `git ls-files --cached --others --exclude-standard` reads from the
- * pre-built git index (~5ms) instead of walking the filesystem (~250ms
- * with globby). The result is then post-filtered through the `ignore`
- * package (for default/custom/repomixignore patterns) and `picomatch`
- * (for include patterns) to produce the same file set as globby.
- *
- * Returns `null` when the fast path is not applicable (not a git repo,
- * `useGitignore` disabled, or git command failure), signalling the
- * caller to fall back to globby.
+ * Fast file enumeration via two concurrent git commands: `--cached --stage`
+ * (tracked files with mode bits) and `--others --exclude-standard` (untracked).
+ * Mode bits let us filter symlinks/submodules without lstat syscalls.
+ * Returns `null` on failure, signalling the caller to fall back to globby.
  */
-const runGitLsFiles = async (rootDir: string): Promise<string | null> => {
+const runGitLsFiles = async (rootDir: string): Promise<GitLsFilesResult | null> => {
   try {
-    const result = await execFileAsync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], {
-      cwd: rootDir,
-      maxBuffer: 100 * 1024 * 1024,
-      encoding: 'utf-8',
-    });
-    return result.stdout;
+    const execOpts = { cwd: rootDir, maxBuffer: 100 * 1024 * 1024, encoding: 'utf-8' as const };
+    const [stagedResult, untrackedResult] = await Promise.all([
+      execFileAsync('git', ['ls-files', '--cached', '--stage', '-z'], execOpts),
+      execFileAsync('git', ['ls-files', '--others', '--exclude-standard', '-z'], execOpts),
+    ]);
+
+    const trackedFiles: string[] = [];
+    for (const entry of stagedResult.stdout.split('\0')) {
+      if (!entry) continue;
+      const tabIdx = entry.indexOf('\t');
+      if (tabIdx === -1) continue;
+      const mode = entry.slice(0, 6);
+      if (mode === '100644' || mode === '100755') {
+        trackedFiles.push(entry.slice(tabIdx + 1));
+      }
+    }
+
+    const untrackedFiles = untrackedResult.stdout.split('\0').filter(Boolean);
+
+    return { trackedFiles, untrackedFiles };
   } catch {
     logger.trace('git ls-files failed, falling back to globby');
     return null;
@@ -229,24 +243,24 @@ const buildIgnoreInstance = async (
 
 const processGitOutput = async (
   rootDir: string,
-  stdout: string,
+  gitResult: GitLsFilesResult,
   includePatterns: string[],
   adjustedIgnorePatterns: string[],
   ignoreFilePatterns: string[],
 ): Promise<string[]> => {
-  let files = [...new Set(stdout.split('\0').filter(Boolean))];
+  // Tracked and untracked are mutually exclusive by git definition — no dedup needed.
+  let files = [...gitResult.trackedFiles, ...gitResult.untrackedFiles];
   logger.trace(`git ls-files returned ${files.length} files`);
 
-  // Run lstat and ignore-instance building concurrently.
-  // Both need only the raw git file list, not each other's results.
-  // Lstat filters symlinks (~121ms I/O) while ignore building reads
-  // nested ignore files and pre-filters patterns (~25ms I/O+CPU).
-  const [isFileResults, ig] = await Promise.all([
-    lstatFilterFiles(rootDir, files),
+  const [untrackedIsFile, ig] = await Promise.all([
+    lstatFilterFiles(rootDir, gitResult.untrackedFiles),
     buildIgnoreInstance(rootDir, files, adjustedIgnorePatterns, ignoreFilePatterns),
   ]);
 
-  files = files.filter((_, i) => isFileResults[i]);
+  const excludedUntracked = new Set(gitResult.untrackedFiles.filter((_, i) => !untrackedIsFile[i]));
+  if (excludedUntracked.size > 0) {
+    files = files.filter((f) => !excludedUntracked.has(f));
+  }
   files = ig.filter(files);
 
   const isDefaultInclude = includePatterns.length === 1 && includePatterns[0] === '**/*';
@@ -305,7 +319,7 @@ export const searchFiles = async (
   // of avoidable wait). Git ls-files reads the pre-built index (~113ms) while
   // prepareIgnoreContext reads .git/info/exclude and checks for worktrees (~50-100ms).
   const canUseGitFastPath = config.ignore.useGitignore && !explicitFiles;
-  const [permissionCheck, ignoreContext, gitStdout] = await Promise.all([
+  const [permissionCheck, ignoreContext, gitResult] = await Promise.all([
     checkDirectoryPermissions(rootDir),
     prepareIgnoreContext(rootDir, config),
     canUseGitFastPath ? runGitLsFiles(rootDir) : Promise.resolve(null),
@@ -359,10 +373,10 @@ export const searchFiles = async (
 
     let filePaths: string[] | null = null;
 
-    if (gitStdout !== null) {
+    if (gitResult !== null) {
       const gitStartTime = Date.now();
       const rawIncludePatterns = config.include.length > 0 ? config.include : ['**/*'];
-      filePaths = await processGitOutput(rootDir, gitStdout, rawIncludePatterns, rawIgnorePatterns, ignoreFilePatterns);
+      filePaths = await processGitOutput(rootDir, gitResult, rawIncludePatterns, rawIgnorePatterns, ignoreFilePatterns);
       if (filePaths !== null) {
         const gitElapsedTime = Date.now() - gitStartTime;
         logger.debug(`[git ls-files] Completed in ${gitElapsedTime}ms, found ${filePaths.length} files`);
