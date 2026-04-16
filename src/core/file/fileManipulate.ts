@@ -1,8 +1,7 @@
 import path from 'node:path';
-import strip from '@repomix/strip-comments';
 
 export interface FileManipulator {
-  removeComments(content: string): string;
+  removeComments(content: string): string | Promise<string>;
   removeEmptyLines(content: string): string;
 }
 
@@ -12,8 +11,28 @@ const rtrimLines = (content: string): string =>
     .map((line) => line.trimEnd())
     .join('\n');
 
+type StripFn = (content: string, options: { language: string; preserveNewlines: boolean }) => string;
+let _stripModule: StripFn | null = null;
+let _stripPromise: Promise<StripFn> | null = null;
+
+const loadStrip = (): Promise<StripFn> => {
+  if (_stripModule) return Promise.resolve(_stripModule);
+  if (!_stripPromise) {
+    _stripPromise = import('@repomix/strip-comments')
+      .then((m) => {
+        _stripModule = m.default as StripFn;
+        return _stripModule;
+      })
+      .catch((err) => {
+        _stripPromise = null;
+        throw err;
+      });
+  }
+  return _stripPromise;
+};
+
 class BaseManipulator implements FileManipulator {
-  removeComments(content: string): string {
+  removeComments(content: string): string | Promise<string> {
     return content;
   }
 
@@ -33,7 +52,8 @@ class StripCommentsManipulator extends BaseManipulator {
     this.language = language;
   }
 
-  removeComments(content: string): string {
+  async removeComments(content: string): Promise<string> {
+    const strip = await loadStrip();
     const result = strip(content, {
       language: this.language,
       preserveNewlines: true,
@@ -50,8 +70,12 @@ class CompositeManipulator extends BaseManipulator {
     this.manipulators = manipulators;
   }
 
-  removeComments(content: string): string {
-    return this.manipulators.reduce((acc, manipulator) => manipulator.removeComments(acc), content);
+  async removeComments(content: string): Promise<string> {
+    let result = content;
+    for (const manipulator of this.manipulators) {
+      result = await manipulator.removeComments(result);
+    }
+    return result;
   }
 }
 
