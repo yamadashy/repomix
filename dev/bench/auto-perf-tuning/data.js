@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776380479933,
+  "lastUpdate": 1776383627882,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4635,6 +4635,51 @@ window.BENCHMARK_DATA = {
             "range": "±15",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1464ms, Q3: 1479ms\nAll times: 1433, 1447, 1449, 1460, 1462, 1464, 1467, 1472, 1472, 1474, 1475, 1476, 1477, 1477, 1478, 1479, 1482, 1493, 1497, 1503ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "0b383fb7b57e65faef852c52070fa09f50220cf1",
+          "message": "perf(core): Lazy-load @repomix/strip-comments to reduce import chain by ~19ms\n\nReplace the static `import strip from '@repomix/strip-comments'` with a\ncached dynamic import inside `StripCommentsManipulator.removeComments()`.\n\nThe `@repomix/strip-comments` module (~20ms to load) was imported eagerly\nvia the chain: defaultAction → packager → fileProcess → fileManipulate.\nThis module is only needed when `--remove-comments` is active (non-default:\n`removeComments: false`), but its import cost was paid on every CLI run.\n\nChanges:\n- `fileManipulate.ts`: Replace static import with `loadStrip()` helper\n  using a cached dynamic import. First call loads the module; subsequent\n  calls return the cached reference. `FileManipulator.removeComments()`\n  return type changed to `string | Promise<string>`.\n- `fileProcessContent.ts`: Add `await` to `removeComments()` call (the\n  containing `processContent` function was already async).\n- `fileManipulate.test.ts`: Updated tests to `await` the async result.\n\nBenchmark — packager import chain (20 samples each, `node -e`):\n\n| Metric | Before    | After     | Delta             |\n|--------|-----------|-----------|-------------------|\n| Median | 186.6ms   | 167.2ms   | **−19.4ms (−10.4%)** |\n| Mean   | 188.4ms   | 167.1ms   | **−21.3ms (−11.3%)** |\n\nThe ~19ms saving is consistent with the standalone module load time (~20ms).\nIn full CLI runs (~145ms in this fast environment), the saving is absorbed\nby concurrent pipeline overlap, but on typical user hardware (1–2s runs)\nit maps to ~1.3–2% wall-time improvement.\n\nCorrectness:\n- All 1114 tests pass\n- Lint clean (0 new errors)\n- `removeComments()` behavior unchanged — only the module loading is deferred\n- Cached import ensures the module is loaded exactly once\n\nhttps://claude.ai/code/session_01DCDYAXykPS1nJWQtwwqs5n",
+          "timestamp": "2026-04-16T23:50:55Z",
+          "tree_id": "84f6e8b90573f831ead6b05bb4932faf6d1c283f",
+          "url": "https://github.com/yamadashy/repomix/commit/0b383fb7b57e65faef852c52070fa09f50220cf1"
+        },
+        "date": 1776383627487,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 799,
+            "range": "±133",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 727ms, Q3: 860ms\nAll times: 675, 686, 709, 712, 715, 724, 727, 727, 733, 734, 739, 752, 755, 781, 784, 799, 827, 831, 833, 847, 854, 859, 860, 864, 871, 886, 914, 938, 952, 1060ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1156,
+            "range": "±88",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1147ms, Q3: 1235ms\nAll times: 1112, 1125, 1130, 1133, 1134, 1147, 1147, 1150, 1150, 1152, 1156, 1156, 1161, 1169, 1218, 1235, 1281, 1358, 1394, 1398ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1488,
+            "range": "±75",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1444ms, Q3: 1519ms\nAll times: 1416, 1426, 1426, 1429, 1431, 1444, 1446, 1452, 1459, 1461, 1488, 1488, 1490, 1491, 1499, 1519, 1531, 1607, 1856, 1925ms"
           }
         ]
       }
