@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776380319891,
+  "lastUpdate": 1776380479933,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4590,6 +4590,51 @@ window.BENCHMARK_DATA = {
             "range": "±25",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1474ms, Q3: 1499ms\nAll times: 1445, 1450, 1452, 1466, 1471, 1474, 1479, 1480, 1482, 1489, 1490, 1491, 1492, 1497, 1498, 1499, 1506, 1507, 1517, 1524ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "5c752188226565a632338b194ba5902388d8d8e3",
+          "message": "perf(config): Defer zod loading to eliminate ~142ms from CLI startup\n\nMove defaultConfig and defaultFilePathMap to a new configDefaults.ts module\nthat has no zod dependency. Remove redundant zod schema validation from\nmergeConfigs() and buildCliConfig() — inputs are already validated at their\nrespective boundaries (Commander for CLI, zod in loadAndValidateConfig for\nconfig files). Lazy-load configSchema.ts (which imports zod) only when a\nconfig file actually needs validation.\n\nAdd speculative preload in cliRun.ts: when common config files (json/json5/\njsonc) are detected via fs.access, start loading configSchema.js concurrently\nwith the defaultAction import chain so zod is ready by the time validation\nruns. This prevents regression for repos with config files.\n\nBefore: zod (~145ms) was always loaded as a static dependency of\nconfigSchema.ts, blocking the module import phase on every CLI invocation\nregardless of whether validation was needed.\n\nAfter: zod is only loaded when a config file exists and needs validation.\nWhen no config file is present (common for many users), zod is never loaded.\n\nBenchmark (repomix CLI on its own repo, ~1000 files, interleaved A/B, 10 pairs):\n\nWithout config file:\n| Metric | Before | After | Delta |\n|--------|--------|-------|-------|\n| Median | 1529ms | 1387ms | -142ms (-9.3%) |\n| Mean   | 1533ms | 1386ms | -147ms (-9.6%) |\n\nWith config file (repomix.config.json present):\n| Metric | Before | After | Delta |\n|--------|--------|-------|-------|\n| Median | 1660ms | 1674ms | ~0ms (neutral) |\n\nThe ~142ms saving matches the measured zod module load time (145ms).\n\nhttps://claude.ai/code/session_014tgmURJurRwvdZM9LKAJnH",
+          "timestamp": "2026-04-16T22:59:35Z",
+          "tree_id": "d0f1a91a4b9ef9ae598ad3eaf0561c690e0c3165",
+          "url": "https://github.com/yamadashy/repomix/commit/5c752188226565a632338b194ba5902388d8d8e3"
+        },
+        "date": 1776380479507,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 725,
+            "range": "±44",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 706ms, Q3: 750ms\nAll times: 688, 689, 691, 693, 695, 699, 705, 706, 707, 711, 712, 713, 717, 721, 724, 725, 725, 725, 739, 741, 745, 745, 750, 779, 802, 805, 808, 849, 879, 1065ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 863,
+            "range": "±90",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 857ms, Q3: 947ms\nAll times: 830, 837, 842, 850, 853, 857, 859, 859, 859, 861, 863, 864, 878, 883, 892, 947, 982, 1006, 1013, 1029ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1475,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1464ms, Q3: 1479ms\nAll times: 1433, 1447, 1449, 1460, 1462, 1464, 1467, 1472, 1472, 1474, 1475, 1476, 1477, 1477, 1478, 1479, 1482, 1493, 1497, 1503ms"
           }
         ]
       }
