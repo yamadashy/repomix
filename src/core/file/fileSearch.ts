@@ -97,6 +97,44 @@ export const normalizeGlobPattern = (pattern: string): string => {
 };
 
 /**
+ * Skip ignore patterns that cannot match any file in the git ls-files output.
+ * Since git already applies .gitignore, most default patterns are redundant.
+ */
+const preFilterIgnorePatterns = (patterns: string[], files: string[]): string[] => {
+  const pathSegments = new Set<string>();
+  const fileExtensions = new Set<string>();
+  for (const f of files) {
+    for (const p of f.split('/')) {
+      pathSegments.add(p);
+    }
+    const fileName = f.slice(f.lastIndexOf('/') + 1);
+    const dotIdx = fileName.lastIndexOf('.');
+    if (dotIdx >= 0) {
+      fileExtensions.add(fileName.slice(dotIdx + 1));
+    }
+  }
+
+  return patterns.filter((pattern) => {
+    if (pattern.startsWith('!')) return true;
+
+    // Simple extension globs like **/*.log or *.pid → O(1) set check
+    const extMatch = pattern.match(/^(?:\*\*\/)?\*\.([a-zA-Z0-9]+)$/);
+    if (extMatch) {
+      return fileExtensions.has(extMatch[1]);
+    }
+
+    // Extract literal path segments (skip wildcards, char classes, braces)
+    const cleaned = pattern.replace(/^\*\*\//, '').replace(/\/\*\*$/, '').replace(/\/\*\*\//g, '/');
+    const segments = cleaned
+      .split('/')
+      .filter((s) => !s.includes('*') && !s.includes('[') && !s.includes('{') && s.length > 0);
+
+    if (segments.length === 0) return true;
+    return segments.some((s) => pathSegments.has(s));
+  });
+};
+
+/**
  * Fast file enumeration using `git ls-files` for git repositories.
  *
  * `git ls-files --cached --others --exclude-standard` reads from the
@@ -148,10 +186,11 @@ const searchFilesGitFastPath = async (
     }
   });
 
-  // Build an ignore filter combining default + custom patterns and
-  // patterns from .repomixignore / .ignore files.
+  // Build an ignore filter with only the patterns that could match files
+  // in the git output (most default patterns are already handled by .gitignore).
+  const relevantPatterns = preFilterIgnorePatterns(adjustedIgnorePatterns, files);
   const ig = ignore();
-  ig.add(adjustedIgnorePatterns);
+  ig.add(relevantPatterns);
 
   // Read ignore file patterns (e.g., **/.repomixignore, **/.ignore).
   // Find matching files from the git output, read their patterns,

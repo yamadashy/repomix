@@ -1,8 +1,15 @@
 import { spawn } from 'node:child_process';
-import * as clipboard from 'tinyclip';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
+
+// Lazy-load tinyclip: it is only needed when --copy is active (off by default).
+// Deferring the import avoids ~14ms of module parsing on every CLI invocation.
+let _tinyclipPromise: Promise<typeof import('tinyclip')> | null = null;
+const getTinyclip = (): Promise<typeof import('tinyclip')> => {
+  _tinyclipPromise ??= import('tinyclip');
+  return _tinyclipPromise;
+};
 
 export const copyToClipboardIfEnabled = async (
   output: string,
@@ -31,6 +38,7 @@ export const copyToClipboardIfEnabled = async (
 
   try {
     logger.trace('Using tinyclip.');
+    const clipboard = await getTinyclip();
     await clipboard.writeText(output);
     logger.trace('Copied using tinyclip.');
   } catch (err: unknown) {
