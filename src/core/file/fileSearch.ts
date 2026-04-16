@@ -1,6 +1,5 @@
 import { execFile } from 'node:child_process';
 import type { Stats } from 'node:fs';
-import { lstatSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -189,13 +188,25 @@ const searchFilesGitFastPath = async (
 
   // Filter out symlinks and non-regular files to match globby's behavior
   // (followSymbolicLinks:false + onlyFiles:true reports symlinks as non-files).
-  files = files.filter((f) => {
-    try {
-      return lstatSync(path.join(rootDir, f)).isFile();
-    } catch {
-      return false;
-    }
-  });
+  // Uses concurrent async lstat in batches to avoid blocking the event loop
+  // with 1000+ sequential synchronous syscalls.
+  const LSTAT_BATCH = 512;
+  const isFileResults: boolean[] = [];
+  for (let i = 0; i < files.length; i += LSTAT_BATCH) {
+    const batch = files.slice(i, i + LSTAT_BATCH);
+    const results = await Promise.all(
+      batch.map(async (f) => {
+        try {
+          const stat = await fs.lstat(path.join(rootDir, f));
+          return stat.isFile();
+        } catch {
+          return false;
+        }
+      }),
+    );
+    isFileResults.push(...results);
+  }
+  files = files.filter((_, i) => isFileResults[i]);
 
   // Build an ignore filter with only the patterns that could match files
   // in the git output (most default patterns are already handled by .gitignore).
