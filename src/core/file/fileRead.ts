@@ -95,4 +95,3 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     return { content: null, skippedReason: 'encoding-error' };
   }
 };
-
