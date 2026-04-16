@@ -4,15 +4,8 @@ import { pathToFileURL } from 'node:url';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
-import {
-  defaultConfig,
-  defaultFilePathMap,
-  type RepomixConfigCli,
-  type RepomixConfigFile,
-  type RepomixConfigMerged,
-  repomixConfigFileSchema,
-  repomixConfigMergedSchema,
-} from './configSchema.js';
+import { defaultConfig, defaultFilePathMap } from './configDefaults.js';
+import type { RepomixConfigCli, RepomixConfigFile, RepomixConfigMerged } from './configSchema.js';
 import { getGlobalDirectory } from './globalDirectory.js';
 
 const defaultConfigPaths = [
@@ -161,6 +154,7 @@ const loadAndValidateConfig = async (
         throw new RepomixError(`Unsupported config file format: ${filePath}`);
     }
 
+    const { repomixConfigFileSchema } = await import('./configSchema.js');
     return repomixConfigFileSchema.parse(config);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');
@@ -241,10 +235,5 @@ export const mergeConfigs = (
     ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
   };
 
-  try {
-    return repomixConfigMergedSchema.parse(mergedConfig);
-  } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid merged config');
-    throw error;
-  }
+  return mergedConfig as RepomixConfigMerged;
 };

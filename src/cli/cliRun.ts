@@ -1,3 +1,5 @@
+import * as fs from 'node:fs/promises';
+import path from 'node:path';
 import process from 'node:process';
 import { Option, program } from 'commander';
 import pc from 'picocolors';
@@ -304,6 +306,19 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
     const { runRemoteAction } = await import('./actions/remoteAction.js');
     return await runRemoteAction(directories[0], options);
+  }
+
+  // Speculatively preload configSchema (which imports zod, ~145ms) when a config
+  // file likely exists. The preload runs concurrently with the defaultAction import
+  // chain (~115ms), so zod is ready by the time loadAndValidateConfig needs it.
+  // When no config file exists, zod is never loaded — saving ~145ms.
+  const configCheckNames = ['repomix.config.json', 'repomix.config.json5', 'repomix.config.jsonc'];
+  if (options.config) {
+    import('../config/configSchema.js').catch(() => {});
+  } else {
+    Promise.any(configCheckNames.map((name) => fs.access(path.join(cwd, name))))
+      .then(() => import('../config/configSchema.js'))
+      .catch(() => {});
   }
 
   const { runDefaultAction } = await import('./actions/defaultAction.js');
