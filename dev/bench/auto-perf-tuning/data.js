@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776319615267,
+  "lastUpdate": 1776323133305,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4005,6 +4005,51 @@ window.BENCHMARK_DATA = {
             "range": "±167",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1475ms, Q3: 1642ms\nAll times: 1440, 1442, 1445, 1470, 1473, 1475, 1481, 1485, 1493, 1493, 1500, 1550, 1598, 1598, 1612, 1642, 1728, 1729, 1868, 2409ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "991d65a9f1dee863c673252734d9a1cb03956370",
+          "message": "perf(security): Reduce security worker count to eliminate CPU contention\n\nUse a single security worker thread instead of 2 to minimize CPU\ncontention with the metrics worker pool that runs concurrently.\n\nWHY: On a 4-core machine, the metrics pool uses 4 worker threads\n(loading gpt-tokenizer ~300ms, then processing ~280ms). Adding 2\nsecurity workers creates 6 threads competing for 4 cores, causing\n~117ms of contention overhead that slows the metrics critical path\n(the overall bottleneck) more than the security parallelism saves.\n\nWHAT CHANGED: `maxSecurityWorkers` from `Math.min(2, processConcurrency)`\nto a fixed `1`. Security check still processes all files in batches\nof 50 via Tinypool, just with a single worker thread instead of two.\n\nTRADEOFF: Security check itself takes ~180ms with 1 worker vs ~108ms\nwith 2 workers (~72ms slower). But the reduced contention lets the\n4 metrics workers run at near-full speed, saving ~117ms off the\noverall pipeline wall time. Net improvement: ~30-32ms (~3%).\n\nBenchmark (`node bin/repomix.cjs --quiet` on repomix repo, ~1020 files):\n20 interleaved A/B runs:\n\n| Metric       | Baseline | This patch | Delta              |\n|--------------|----------|------------|--------------------|\n| median       | 986 ms   | 956 ms     | −30 ms (−3.0%)     |\n| trimmed mean | 988 ms   | 957 ms     | −32 ms (−3.2%)     |\n\nVerification:\n- All 1115 tests pass\n- Lint clean (0 new warnings)\n- Functional behavior unchanged (same security results)\n\nCONSTRAINTS:\n- On machines with more cores (8+), 2 security workers would fit\n  without contention. But the repomix benchmark target is 4-core\n  machines where this tradeoff clearly favors 1 worker.\n- Security check runs overlapped with metrics+output, so it never\n  extends the critical path (it finishes before metrics).\n\nhttps://claude.ai/code/session_01JnkEKAxVwoKAstFcrY938Z",
+          "timestamp": "2026-04-16T07:03:39Z",
+          "tree_id": "341dc86cca6fb6ac82667ea9bcbd07fc9b64d2f8",
+          "url": "https://github.com/yamadashy/repomix/commit/991d65a9f1dee863c673252734d9a1cb03956370"
+        },
+        "date": 1776323132368,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1077,
+            "range": "±118",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1015ms, Q3: 1133ms\nAll times: 943, 962, 980, 984, 1001, 1013, 1013, 1015, 1026, 1033, 1045, 1050, 1054, 1064, 1076, 1077, 1089, 1090, 1100, 1101, 1105, 1125, 1133, 1140, 1160, 1184, 1224, 1249, 1282, 1487ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1092,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1084ms, Q3: 1100ms\nAll times: 1077, 1077, 1077, 1079, 1081, 1084, 1085, 1085, 1087, 1088, 1092, 1092, 1095, 1096, 1100, 1100, 1118, 1176, 1328, 1336ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1785,
+            "range": "±390",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1451ms, Q3: 1841ms\nAll times: 1424, 1433, 1433, 1448, 1450, 1451, 1463, 1475, 1480, 1485, 1785, 1792, 1819, 1821, 1832, 1841, 1867, 1887, 1913, 1990ms"
           }
         ]
       }
