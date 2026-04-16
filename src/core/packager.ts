@@ -249,9 +249,6 @@ export const pack = async (
     // Removing this await eliminates 0-303ms of critical-path blocking that
     // occurred when file collection finished before worker warmup completed.
 
-    // Helper: produce output and calculate metrics in parallel for a given
-    // set of processed files. Used by both the optimistic fast path and the
-    // suspicious-file fallback path.
     const produceOutputAndMetrics = async (files: ProcessedFile[]) => {
       const outPromise = deps.produceOutput(
         rootDirs,
@@ -264,8 +261,11 @@ export const pack = async (
         filePathsByRoot,
         emptyDirPaths,
       );
+      // Start metrics as soon as the output STRING is ready — before the
+      // disk write completes. This overlaps ~250ms of file I/O with ~300ms
+      // of token counting in worker threads.
       const outForMetrics = outPromise.then((r) => r.outputForMetrics);
-      const [{ outputFiles: outFiles }, outMetrics] = await Promise.all([
+      const [outResult, outMetrics] = await Promise.all([
         outPromise,
         withMemoryLogging('Calculate Metrics', () =>
           deps.calculateMetrics(files, outForMetrics, progressCallback, config, gitDiffResult, gitLogResult, {
@@ -273,7 +273,11 @@ export const pack = async (
           }),
         ),
       ]);
-      return { outputFiles: outFiles, metrics: outMetrics };
+      // Ensure disk write and clipboard copy are complete before returning
+      if (outResult.finalize) {
+        await outResult.finalize();
+      }
+      return { outputFiles: outResult.outputFiles, metrics: outMetrics };
     };
 
     // Generate and write output, overlapping with metrics calculation AND the
