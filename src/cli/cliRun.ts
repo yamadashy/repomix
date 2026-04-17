@@ -284,19 +284,23 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     return;
   }
 
-  // Skip version header in stdin mode to avoid interfering with piped output from interactive tools like fzf
-  if (!options.stdin) {
-    const version = await getVersion();
-    logger.log(pc.dim(`\n📦 Repomix v${version}\n`));
-  }
+  // Start version fetch non-blocking so it can overlap with other I/O.
+  // Version header is logged before any action-specific output.
+  const versionPromise = options.stdin ? null : getVersion();
 
   if (options.init) {
+    if (versionPromise) {
+      logger.log(pc.dim(`\n📦 Repomix v${await versionPromise}\n`));
+    }
     const { runInitAction } = await import('./actions/initAction.js');
     await runInitAction(cwd, options.global || false);
     return;
   }
 
   if (options.remote) {
+    if (versionPromise) {
+      logger.log(pc.dim(`\n📦 Repomix v${await versionPromise}\n`));
+    }
     const { runRemoteAction } = await import('./actions/remoteAction.js');
     return await runRemoteAction(options.remote, options);
   }
@@ -304,14 +308,17 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
   if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
     logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
+    if (versionPromise) {
+      logger.log(pc.dim(`\n📦 Repomix v${await versionPromise}\n`));
+    }
     const { runRemoteAction } = await import('./actions/remoteAction.js');
     return await runRemoteAction(directories[0], options);
   }
 
-  // Speculatively preload configSchema (which imports zod, ~145ms) when a config
-  // file likely exists. The preload runs concurrently with the defaultAction import
-  // chain (~115ms), so zod is ready by the time loadAndValidateConfig needs it.
-  // When no config file exists, zod is never loaded — saving ~145ms.
+  // Default action path: overlap version I/O, config schema preload, and
+  // defaultAction import chain. Previously getVersion() (~30ms file read)
+  // blocked before the speculative preload, delaying zod loading and the
+  // entire downstream pipeline. Now all three run concurrently.
   const configCheckNames = ['repomix.config.json', 'repomix.config.json5', 'repomix.config.jsonc'];
   if (options.config) {
     import('../config/configSchema.js').catch(() => {});
@@ -321,6 +328,11 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
       .catch(() => {});
   }
 
-  const { runDefaultAction } = await import('./actions/defaultAction.js');
+  const [{ runDefaultAction }, version] = await Promise.all([import('./actions/defaultAction.js'), versionPromise]);
+
+  if (version) {
+    logger.log(pc.dim(`\n📦 Repomix v${version}\n`));
+  }
+
   return await runDefaultAction(directories, cwd, options);
 };
