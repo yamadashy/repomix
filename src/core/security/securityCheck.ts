@@ -27,6 +27,30 @@ export interface SuspiciousFileResult {
 // is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
 const BATCH_SIZE = 50;
 
+type SecurityCheckTaskRunner = ReturnType<typeof initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>>;
+
+// Module-level slot for a pre-started worker pool. When non-null, the pool is
+// already initializing in a worker thread (loading secretlint, etc.) so that
+// subsequent runSecurityCheck calls can skip the pool startup latency.
+let _warmupTaskRunner: SecurityCheckTaskRunner | null = null;
+
+export const warmupSecurityWorkerPool = (
+  deps = {
+    initTaskRunner,
+    getProcessConcurrency: defaultGetProcessConcurrency,
+  },
+) => {
+  // Match the worker count used by runSecurityCheck so the warmed-up pool is
+  // sized correctly for actual use.
+  const maxSecurityWorkers = Math.min(2, deps.getProcessConcurrency());
+  _warmupTaskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+    numOfTasks: Number.MAX_SAFE_INTEGER,
+    workerType: 'securityCheck',
+    runtime: 'worker_threads',
+    maxWorkerThreads: maxSecurityWorkers,
+  });
+};
+
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
   progressCallback: RepomixProgressCallback = () => {},
@@ -89,13 +113,19 @@ export const runSecurityCheck = async (
   // so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
   const maxSecurityWorkers = Math.min(2, deps.getProcessConcurrency());
 
-  // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-    numOfTasks: totalItems,
-    workerType: 'securityCheck',
-    runtime: 'worker_threads',
-    maxWorkerThreads: maxSecurityWorkers,
-  });
+  // Reuse the pre-started worker pool when available (warmupSecurityWorkerPool).
+  // This skips the secretlint module load latency on the critical path.
+  let taskRunner = _warmupTaskRunner;
+  _warmupTaskRunner = null;
+  if (!taskRunner) {
+    // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
+    taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+      numOfTasks: totalItems,
+      workerType: 'securityCheck',
+      runtime: 'worker_threads',
+      maxWorkerThreads: maxSecurityWorkers,
+    });
+  }
 
   // Split items into batches to reduce IPC round-trips
   const batches: SecurityCheckItem[][] = [];

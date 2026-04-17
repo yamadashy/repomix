@@ -14,7 +14,7 @@ import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { type SuspiciousFileResult, warmupSecurityWorkerPool } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -84,6 +84,13 @@ export const pack = async (
   const sortDataPromise = deps.prefetchSortData(config).catch((error) => {
     logger.trace('Failed to prefetch sort data:', error);
   });
+
+  // Pre-start the security worker pool so secretlint module loading (~100-150ms)
+  // overlaps with file search, collection, and processing instead of running
+  // sequentially after file collection completes.
+  if (config.security.enableSecurityCheck && !overrideDeps.validateFileSafety) {
+    warmupSecurityWorkerPool();
+  }
 
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
