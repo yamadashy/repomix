@@ -2,6 +2,7 @@ import path from 'node:path';
 import { OUTPUT_STYLES, type RepomixOutputStyle } from '../../config/configDefaults.js';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import type { RepomixConfigCli, RepomixConfigFile, RepomixConfigMerged } from '../../config/configSchema.js';
+import { preloadGitLsFiles } from '../../core/file/fileSearch.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
@@ -27,6 +28,12 @@ export const runDefaultAction = async (
   progressCallback?: RepomixProgressCallback,
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', cliOptions);
+
+  if (!cliOptions.stdin) {
+    for (const directory of directories) {
+      preloadGitLsFiles(path.resolve(cwd, directory));
+    }
+  }
 
   // Run migration before loading config
   await runMigrationAction(cwd);

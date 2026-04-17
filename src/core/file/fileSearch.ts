@@ -193,6 +193,18 @@ const runGitLsFiles = async (rootDir: string): Promise<GitLsFilesResult | null> 
   }
 };
 
+// Preload cache for git ls-files results. Allows the CLI to start the git
+// subprocess before migration + config loading, so the I/O overlaps with
+// the sequential startup work. Each entry is consumed once by searchFiles.
+const _gitLsFilesCache = new Map<string, Promise<GitLsFilesResult | null>>();
+
+export const preloadGitLsFiles = (rootDir: string): void => {
+  const resolved = path.resolve(rootDir);
+  if (!_gitLsFilesCache.has(resolved)) {
+    _gitLsFilesCache.set(resolved, runGitLsFiles(resolved).catch((): null => null));
+  }
+};
+
 const lstatFilterFiles = async (rootDir: string, files: string[]): Promise<boolean[]> => {
   const LSTAT_BATCH = 512;
   const isFileResults: boolean[] = [];
@@ -336,10 +348,13 @@ export const searchFiles = async (
   // of avoidable wait). Git ls-files reads the pre-built index (~113ms) while
   // prepareIgnoreContext reads .git/info/exclude and checks for worktrees (~50-100ms).
   const canUseGitFastPath = config.ignore.useGitignore && !explicitFiles;
+  const resolvedRoot = path.resolve(rootDir);
+  const preloaded = _gitLsFilesCache.get(resolvedRoot);
+  _gitLsFilesCache.delete(resolvedRoot);
   const [permissionCheck, ignoreContext, gitResult] = await Promise.all([
     checkDirectoryPermissions(rootDir),
     prepareIgnoreContext(rootDir, config),
-    canUseGitFastPath ? runGitLsFiles(rootDir) : Promise.resolve(null),
+    canUseGitFastPath ? (preloaded ?? runGitLsFiles(rootDir)) : Promise.resolve(null),
   ]);
 
   if (permissionCheck.details?.read !== true) {
