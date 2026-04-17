@@ -79,7 +79,12 @@ describe('packager', () => {
     const progressCallback = vi.fn();
     const result = await pack(['root'], mockConfig, progressCallback, mockDeps);
 
-    expect(mockDeps.searchFiles).toHaveBeenCalledWith('root', mockConfig, undefined, expect.objectContaining({ onPreFilterCandidates: expect.any(Function) }));
+    expect(mockDeps.searchFiles).toHaveBeenCalledWith(
+      'root',
+      mockConfig,
+      undefined,
+      expect.objectContaining({ onPreFilterCandidates: expect.any(Function) }),
+    );
     expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback);
     expect(mockDeps.validateFileSafety).toHaveBeenCalled();
     expect(mockDeps.processFiles).toHaveBeenCalled();
