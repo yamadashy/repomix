@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776463429767,
+  "lastUpdate": 1776466484288,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5310,6 +5310,51 @@ window.BENCHMARK_DATA = {
             "range": "±46",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1358ms, Q3: 1404ms\nAll times: 1348, 1352, 1354, 1357, 1358, 1358, 1370, 1372, 1374, 1374, 1375, 1379, 1380, 1381, 1396, 1404, 1408, 1409, 1411, 1415ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "ae5a9238f86db7ddb025fb43b5ef51603423645a",
+          "message": "Merge remote-tracking branch 'origin/perf/auto-perf-tuning' into perf/auto-perf-tuning\n\nResolve conflict in truncateBase64.ts by combining both approaches:\n- Remote's hasLongBase64Run fast-reject pre-filter\n- Remote's data: includes check for data URI regex\n- Local's replaceStandaloneBase64 manual scanner (replaces regex)\n\nhttps://claude.ai/code/session_01TDi2mTcYbQRSFdgqAzbrdD",
+          "timestamp": "2026-04-17T22:52:31Z",
+          "tree_id": "b5ce8efe0838c9c82a74a5825852a46c1b9dba27",
+          "url": "https://github.com/yamadashy/repomix/commit/ae5a9238f86db7ddb025fb43b5ef51603423645a"
+        },
+        "date": 1776466483876,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 775,
+            "range": "±147",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 705ms, Q3: 852ms\nAll times: 672, 679, 680, 687, 693, 694, 700, 705, 708, 708, 726, 735, 736, 743, 758, 775, 799, 803, 806, 830, 832, 843, 852, 860, 861, 867, 900, 930, 950, 1030ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1072,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1062ms, Q3: 1077ms\nAll times: 1045, 1052, 1052, 1054, 1056, 1062, 1063, 1063, 1063, 1069, 1072, 1073, 1076, 1076, 1076, 1077, 1080, 1101, 1113, 1118ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1519,
+            "range": "±73",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1474ms, Q3: 1547ms\nAll times: 1438, 1455, 1458, 1463, 1471, 1474, 1477, 1483, 1503, 1514, 1519, 1526, 1534, 1534, 1546, 1547, 1624, 1673, 1703, 1752ms"
           }
         ]
       }
