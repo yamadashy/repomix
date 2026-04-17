@@ -1,76 +1,99 @@
-// Constants for base64 detection and truncation
 const MIN_BASE64_LENGTH_DATA_URI = 40;
 const MIN_BASE64_LENGTH_STANDALONE = 256;
 const TRUNCATION_LENGTH = 32;
 const MIN_CHAR_DIVERSITY = 10;
 const MIN_CHAR_TYPE_COUNT = 3;
+const EQUALS_CHAR_CODE = 61;
 
-// Pre-compiled regex patterns (avoid re-creation per file)
+// Avoid re-creation per call
 const dataUriPattern = new RegExp(
   `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
   'g',
 );
-const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
+
+const isBase64CharCode = (c: number): boolean => {
+  return (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47;
+};
+
+const replaceStandaloneBase64 = (content: string): string => {
+  if (content.length < MIN_BASE64_LENGTH_STANDALONE) {
+    return content;
+  }
+
+  const parts: string[] = [];
+  let lastEnd = 0;
+  let runStart = -1;
+
+  for (let i = 0; i <= content.length; i++) {
+    if (i < content.length && isBase64CharCode(content.charCodeAt(i))) {
+      if (runStart === -1) {
+        runStart = i;
+      }
+    } else if (runStart !== -1) {
+      const runLen = i - runStart;
+      if (runLen >= MIN_BASE64_LENGTH_STANDALONE) {
+        let matchEnd = i;
+        if (matchEnd < content.length && content.charCodeAt(matchEnd) === EQUALS_CHAR_CODE) {
+          matchEnd++;
+          if (matchEnd < content.length && content.charCodeAt(matchEnd) === EQUALS_CHAR_CODE) {
+            matchEnd++;
+          }
+        }
+        const base64String = content.substring(runStart, matchEnd);
+        if (isLikelyBase64(base64String)) {
+          parts.push(content.substring(lastEnd, runStart));
+          parts.push(`${base64String.substring(0, TRUNCATION_LENGTH)}...`);
+          lastEnd = matchEnd;
+          i = matchEnd - 1;
+        }
+      }
+      runStart = -1;
+    }
+  }
+
+  if (lastEnd === 0) {
+    return content;
+  }
+
+  parts.push(content.substring(lastEnd));
+  return parts.join('');
+};
 
 /**
- * Truncates base64 encoded data in content to reduce file size
- * Detects common base64 patterns like data URIs and standalone base64 strings
- *
- * @param content The content to process
- * @returns Content with base64 data truncated
+ * Truncates base64 encoded data in content to reduce file size.
+ * Detects data URIs and standalone base64 strings.
  */
 export const truncateBase64Content = (content: string): string => {
   // Reset lastIndex since patterns are global and reused across calls
   dataUriPattern.lastIndex = 0;
-  standaloneBase64Pattern.lastIndex = 0;
 
   let processedContent = content;
 
-  // Replace data URIs
   processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
     const preview = base64Data.substring(0, TRUNCATION_LENGTH);
     return `data:${mimeType}${params || ''};base64,${preview}...`;
   });
 
-  // Replace standalone base64 strings
-  processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
-    // Check if this looks like actual base64 (not just a long string)
-    if (isLikelyBase64(base64String)) {
-      const preview = base64String.substring(0, TRUNCATION_LENGTH);
-      return `${preview}...`;
-    }
-    return match;
-  });
+  processedContent = replaceStandaloneBase64(processedContent);
 
   return processedContent;
 };
 
-/**
- * Checks if a string is likely to be base64 encoded data
- *
- * @param str The string to check
- * @returns True if the string appears to be base64 encoded
- */
-function isLikelyBase64(str: string): boolean {
-  // Check for valid base64 characters only
+const isLikelyBase64 = (str: string): boolean => {
   if (!/^[A-Za-z0-9+/]+=*$/.test(str)) {
     return false;
   }
 
-  // Check for reasonable distribution of characters (not all same char)
   const charSet = new Set(str);
   if (charSet.size < MIN_CHAR_DIVERSITY) {
     return false;
   }
 
-  // Additional check: base64 encoded binary data typically has good character distribution
-  // Must have at least MIN_CHAR_TYPE_COUNT of the 4 character types (numbers, uppercase, lowercase, special)
   const hasNumbers = /[0-9]/.test(str);
   const hasUpperCase = /[A-Z]/.test(str);
   const hasLowerCase = /[a-z]/.test(str);
   const hasSpecialChars = /[+/]/.test(str);
 
-  // Real base64 encoded binary data virtually always contains digits
   if (!hasNumbers) {
     return false;
   }
@@ -78,4 +101,4 @@ function isLikelyBase64(str: string): boolean {
   const charTypeCount = [hasNumbers, hasUpperCase, hasLowerCase, hasSpecialChars].filter(Boolean).length;
 
   return charTypeCount >= MIN_CHAR_TYPE_COUNT;
-}
+};
