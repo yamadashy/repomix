@@ -13,6 +13,7 @@ import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDi
 export interface ProduceOutputResult {
   outputFiles?: string[];
   outputForMetrics: string | string[];
+  finalize?: () => Promise<void>;
 }
 
 const defaultDeps = {
@@ -147,11 +148,18 @@ const generateAndWriteSingleOutput = async (
   );
 
   progressCallback('Writing output file...');
-  await withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
 
-  await deps.copyToClipboardIfEnabled(output, progressCallback, config);
+  // Start write and clipboard copy without awaiting — the caller can overlap
+  // metrics calculation with the disk I/O (~250ms) by awaiting `finalize()`
+  // after metrics are done.
+  const writePromise = withMemoryLogging('Write Output', () => deps.writeOutputToDisk(output, config));
+  const clipboardPromise = deps.copyToClipboardIfEnabled(output, progressCallback, config);
 
   return {
     outputForMetrics: output,
+    finalize: async () => {
+      await writePromise;
+      await clipboardPromise;
+    },
   };
 };

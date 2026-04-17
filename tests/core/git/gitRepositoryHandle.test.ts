@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { getFileChangeCount, isGitInstalled, isGitRepository } from '../../../src/core/git/gitRepositoryHandle.js';
+import {
+  _resetCacheForTesting,
+  getFileChangeCount,
+  isGitInstalled,
+  isGitRepository,
+} from '../../../src/core/git/gitRepositoryHandle.js';
 import { logger } from '../../../src/shared/logger.js';
 
 vi.mock('../../../src/shared/logger');
@@ -7,6 +12,7 @@ vi.mock('../../../src/shared/logger');
 describe('gitRepositoryHandle', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    _resetCacheForTesting();
   });
 
   describe('getFileChangeCount', () => {

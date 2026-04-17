@@ -1,17 +1,12 @@
 import { z } from 'zod';
-import { TOKEN_ENCODINGS } from '../core/metrics/TokenCounter.js';
+import { TOKEN_ENCODINGS } from '../core/metrics/tokenEncodings.js';
+import { defaultFilePathMap, OUTPUT_STYLES } from './configDefaults.js';
+
+export type { RepomixOutputStyle } from './configDefaults.js';
+export { defaultFilePathMap };
 
 // Output style enum
-export const repomixOutputStyleSchema = z.enum(['xml', 'markdown', 'json', 'plain']);
-export type RepomixOutputStyle = z.infer<typeof repomixOutputStyleSchema>;
-
-// Default values map
-export const defaultFilePathMap: Record<RepomixOutputStyle, string> = {
-  xml: 'repomix-output.xml',
-  markdown: 'repomix-output.md',
-  plain: 'repomix-output.txt',
-  json: 'repomix-output.json',
-} as const;
+export const repomixOutputStyleSchema = z.enum(OUTPUT_STYLES);
 
 // Base config schema
 export const repomixConfigBaseSchema = z.object({
@@ -156,17 +151,7 @@ export type RepomixConfigFile = z.infer<typeof repomixConfigFileSchema>;
 export type RepomixConfigCli = z.infer<typeof repomixConfigCliSchema>;
 export type RepomixConfigMerged = z.infer<typeof repomixConfigMergedSchema>;
 
-// Pass empty objects to let Zod apply all default values
-// Zod v4 requires explicit nested objects since we removed outer .default({})
-export const defaultConfig = repomixConfigDefaultSchema.parse({
-  input: {},
-  output: {
-    git: {},
-  },
-  ignore: {},
-  security: {},
-  tokenCount: {},
-});
+export { defaultConfig } from './configDefaults.js';
 
 // Helper function for type-safe config definition
 export const defineConfig = (config: RepomixConfigFile): RepomixConfigFile => config;

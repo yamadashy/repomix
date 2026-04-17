@@ -1,19 +1,11 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import JSON5 from 'json5';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
-import {
-  defaultConfig,
-  defaultFilePathMap,
-  type RepomixConfigCli,
-  type RepomixConfigFile,
-  type RepomixConfigMerged,
-  repomixConfigFileSchema,
-  repomixConfigMergedSchema,
-} from './configSchema.js';
+import { defaultConfig, defaultFilePathMap } from './configDefaults.js';
+import type { RepomixConfigCli, RepomixConfigFile, RepomixConfigMerged } from './configSchema.js';
 import { getGlobalDirectory } from './globalDirectory.js';
 
 const defaultConfigPaths = [
@@ -43,15 +35,11 @@ const checkFileExists = async (filePath: string): Promise<boolean> => {
 };
 
 const findConfigFile = async (configPaths: string[], logPrefix: string): Promise<string | null> => {
-  for (const configPath of configPaths) {
-    logger.trace(`Checking for ${logPrefix} config at:`, configPath);
-
-    const fileExists = await checkFileExists(configPath);
-
-    if (fileExists) {
-      logger.trace(`Found ${logPrefix} config at:`, configPath);
-      return configPath;
-    }
+  const results = await Promise.all(configPaths.map((p) => checkFileExists(p)));
+  const idx = results.findIndex(Boolean);
+  if (idx !== -1) {
+    logger.trace(`Found ${logPrefix} config at:`, configPaths[idx]);
+    return configPaths[idx];
   }
   return null;
 };
@@ -156,8 +144,8 @@ const loadAndValidateConfig = async (
       case 'json5':
       case 'jsonc':
       case 'json': {
-        // Use JSON5 for JSON/JSON5/JSONC files
         const fileContent = await fs.readFile(filePath, 'utf-8');
+        const { default: JSON5 } = await import('json5');
         config = JSON5.parse(fileContent);
         break;
       }
@@ -166,6 +154,7 @@ const loadAndValidateConfig = async (
         throw new RepomixError(`Unsupported config file format: ${filePath}`);
     }
 
+    const { repomixConfigFileSchema } = await import('./configSchema.js');
     return repomixConfigFileSchema.parse(config);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');
@@ -246,10 +235,5 @@ export const mergeConfigs = (
     ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
   };
 
-  try {
-    return repomixConfigMergedSchema.parse(mergedConfig);
-  } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid merged config');
-    throw error;
-  }
+  return mergedConfig as RepomixConfigMerged;
 };

@@ -21,7 +21,7 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
   logger.trace(`Processing file: ${rawFile.path}`);
 
   if (manipulator && config.output.removeComments) {
-    processedContent = manipulator.removeComments(processedContent);
+    processedContent = await manipulator.removeComments(processedContent);
   }
 
   if (config.output.compress) {

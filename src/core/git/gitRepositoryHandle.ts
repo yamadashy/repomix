@@ -1,6 +1,9 @@
 import { logger } from '../../shared/logger.js';
 import { execGitLogFilenames, execGitRevParse, execGitVersion } from './gitCommand.js';
 
+const isGitRepoCache = new Map<string, Promise<boolean>>();
+let isGitInstalledCache: Promise<boolean> | null = null;
+
 export const getFileChangeCount = async (
   directory: string,
   maxCommits = 100,
@@ -30,12 +33,23 @@ export const isGitRepository = async (
     execGitRevParse,
   },
 ): Promise<boolean> => {
-  try {
-    await deps.execGitRevParse(directory);
-    return true;
-  } catch {
-    return false;
+  const useCache = deps.execGitRevParse === execGitRevParse;
+
+  if (useCache) {
+    const cached = isGitRepoCache.get(directory);
+    if (cached !== undefined) return cached;
   }
+
+  const result = deps
+    .execGitRevParse(directory)
+    .then(() => true)
+    .catch(() => false);
+
+  if (useCache) {
+    isGitRepoCache.set(directory, result);
+  }
+
+  return result;
 };
 
 export const isGitInstalled = async (
@@ -43,11 +57,28 @@ export const isGitInstalled = async (
     execGitVersion,
   },
 ): Promise<boolean> => {
-  try {
-    const result = await deps.execGitVersion();
-    return !result.includes('error') && result.includes('git version');
-  } catch (error) {
-    logger.trace('Git is not installed:', (error as Error).message);
-    return false;
+  const useCache = deps.execGitVersion === execGitVersion;
+
+  if (useCache && isGitInstalledCache !== null) {
+    return isGitInstalledCache;
   }
+
+  const result = deps
+    .execGitVersion()
+    .then((output) => !output.includes('error') && output.includes('git version'))
+    .catch((error) => {
+      logger.trace('Git is not installed:', (error as Error).message);
+      return false;
+    });
+
+  if (useCache) {
+    isGitInstalledCache = result;
+  }
+
+  return result;
+};
+
+export const _resetCacheForTesting = (): void => {
+  isGitRepoCache.clear();
+  isGitInstalledCache = null;
 };

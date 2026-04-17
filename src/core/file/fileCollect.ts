@@ -6,10 +6,6 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import { readRawFile as defaultReadRawFile, type FileSkipReason } from './fileRead.js';
 import type { RawFile } from './fileTypes.js';
 
-// Concurrency limit for parallel file reads on the main thread.
-// 50 balances I/O throughput with FD/memory safety across different machines.
-const FILE_COLLECT_CONCURRENCY = 50;
-
 export interface SkippedFileInfo {
   path: string;
   reason: FileSkipReason;
@@ -19,22 +15,6 @@ export interface FileCollectResults {
   rawFiles: RawFile[];
   skippedFiles: SkippedFileInfo[];
 }
-
-const promisePool = async <T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> => {
-  const results: R[] = Array.from({ length: items.length });
-  let nextIndex = 0;
-
-  const worker = async () => {
-    while (nextIndex < items.length) {
-      const i = nextIndex++;
-      results[i] = await fn(items[i]);
-    }
-  };
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
-
-  return results;
-};
 
 export const collectFiles = async (
   filePaths: string[],
@@ -48,24 +28,24 @@ export const collectFiles = async (
   const startTime = process.hrtime.bigint();
   logger.trace(`Starting file collection for ${filePaths.length} files`);
 
-  let completedTasks = 0;
   const totalTasks = filePaths.length;
   const maxFileSize = config.input.maxFileSize;
 
-  const results = await promisePool(filePaths, FILE_COLLECT_CONCURRENCY, async (filePath) => {
-    const fullPath = path.resolve(rootDir, filePath);
-    const result = await deps.readRawFile(fullPath, maxFileSize);
-
-    completedTasks++;
-    progressCallback(`Collect file... (${completedTasks}/${totalTasks}) ${pc.dim(filePath)}`);
-    logger.trace(`Collect files... (${completedTasks}/${totalTasks}) ${filePath}`);
-
-    return { filePath, result };
-  });
+  let completed = 0;
+  const results = await Promise.all(
+    filePaths.map(async (filePath) => {
+      const fullPath = path.resolve(rootDir, filePath);
+      const result = await deps.readRawFile(fullPath, maxFileSize);
+      completed++;
+      if (completed % 200 === 0 || completed === totalTasks) {
+        progressCallback(`Collect file... (${completed}/${totalTasks}) ${pc.dim(filePath)}`);
+      }
+      return { filePath, result };
+    }),
+  );
 
   const rawFiles: RawFile[] = [];
   const skippedFiles: SkippedFileInfo[] = [];
-
   for (const { filePath, result } of results) {
     if (result.content !== null) {
       rawFiles.push({ path: filePath, content: result.content });

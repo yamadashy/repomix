@@ -1,3 +1,5 @@
+import * as fs from 'node:fs/promises';
+import path from 'node:path';
 import process from 'node:process';
 import { Option, program } from 'commander';
 import pc from 'picocolors';
@@ -215,11 +217,30 @@ export const run = async () => {
     });
 
     await program.parseAsync(process.argv);
+
+    // Exit explicitly after all CLI work completes. Worker pool cleanup is
+    // non-blocking (threads are unref'd, destroy is fire-and-forget), but
+    // Tinypool's internal MessagePort references keep the event loop alive.
+    // Without this, the process hangs until pool.destroy() completes
+    // (~70-80ms). Skip for MCP mode which keeps a long-lived server
+    // running via stdin/stdout streams on the event loop.
+    if (!mcpModeActive) {
+      // Flush stdout before exiting to prevent data truncation when
+      // output is piped (e.g. repomix --stdout | other-command).
+      if (process.stdout.writableNeedDrain) {
+        await new Promise<void>((resolve) => process.stdout.once('drain', resolve));
+      }
+      process.exit(0);
+    }
   } catch (error) {
     handleError(error);
     process.exit(1);
   }
 };
+
+// Flag to track MCP mode — the MCP server keeps a long-lived event loop
+// via stdin/stdout streams, so process.exit() must not fire after parseAsync.
+let mcpModeActive = false;
 
 const commanderActionEndpoint = async (directories: string[], options: CliOptions = {}) => {
   await runCli(directories, process.cwd(), options);
@@ -252,6 +273,7 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   logger.trace('options:', options);
 
   if (options.mcp) {
+    mcpModeActive = true;
     const { runMcpAction } = await import('./actions/mcpAction.js');
     return await runMcpAction();
   }
@@ -262,19 +284,23 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     return;
   }
 
-  // Skip version header in stdin mode to avoid interfering with piped output from interactive tools like fzf
-  if (!options.stdin) {
-    const version = await getVersion();
-    logger.log(pc.dim(`\n📦 Repomix v${version}\n`));
-  }
+  // Start version fetch non-blocking so it can overlap with other I/O.
+  // Version header is logged before any action-specific output.
+  const versionPromise = options.stdin ? null : getVersion();
 
   if (options.init) {
+    if (versionPromise) {
+      logger.log(pc.dim(`\n📦 Repomix v${await versionPromise}\n`));
+    }
     const { runInitAction } = await import('./actions/initAction.js');
     await runInitAction(cwd, options.global || false);
     return;
   }
 
   if (options.remote) {
+    if (versionPromise) {
+      logger.log(pc.dim(`\n📦 Repomix v${await versionPromise}\n`));
+    }
     const { runRemoteAction } = await import('./actions/remoteAction.js');
     return await runRemoteAction(options.remote, options);
   }
@@ -282,10 +308,31 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
   if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
     logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
+    if (versionPromise) {
+      logger.log(pc.dim(`\n📦 Repomix v${await versionPromise}\n`));
+    }
     const { runRemoteAction } = await import('./actions/remoteAction.js');
     return await runRemoteAction(directories[0], options);
   }
 
-  const { runDefaultAction } = await import('./actions/defaultAction.js');
+  // Default action path: overlap version I/O, config schema preload, and
+  // defaultAction import chain. Previously getVersion() (~30ms file read)
+  // blocked before the speculative preload, delaying zod loading and the
+  // entire downstream pipeline. Now all three run concurrently.
+  const configCheckNames = ['repomix.config.json', 'repomix.config.json5', 'repomix.config.jsonc'];
+  if (options.config) {
+    import('../config/configSchema.js').catch(() => {});
+  } else {
+    Promise.any(configCheckNames.map((name) => fs.access(path.join(cwd, name))))
+      .then(() => import('../config/configSchema.js'))
+      .catch(() => {});
+  }
+
+  const [{ runDefaultAction }, version] = await Promise.all([import('./actions/defaultAction.js'), versionPromise]);
+
+  if (version) {
+    logger.log(pc.dim(`\n📦 Repomix v${version}\n`));
+  }
+
   return await runDefaultAction(directories, cwd, options);
 };

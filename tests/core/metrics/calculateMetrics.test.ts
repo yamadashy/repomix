@@ -10,10 +10,10 @@ vi.mock('../../../src/shared/processConcurrency.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../../src/shared/processConcurrency.js')>();
   return {
     ...original,
-    initTaskRunner: vi.fn(() => ({
+    initTaskRunner: vi.fn().mockResolvedValue({
       run: vi.fn().mockResolvedValue(0),
       cleanup: vi.fn().mockResolvedValue(undefined),
-    })),
+    }),
   };
 });
 vi.mock('../../../src/core/metrics/TokenCounter.js', () => {
@@ -102,7 +102,7 @@ describe('calculateMetrics', () => {
 
 describe('createMetricsTaskRunner', () => {
   it('should return a taskRunner and warmupPromise', async () => {
-    const result = createMetricsTaskRunner(100, 'o200k_base');
+    const result = await createMetricsTaskRunner(100, 'o200k_base');
 
     expect(result).toHaveProperty('taskRunner');
     expect(result).toHaveProperty('warmupPromise');
@@ -114,7 +114,7 @@ describe('createMetricsTaskRunner', () => {
   });
 
   it('should fire a warmup task with empty content', async () => {
-    const result = createMetricsTaskRunner(50, 'cl100k_base');
+    const result = await createMetricsTaskRunner(50, 'cl100k_base');
 
     await result.warmupPromise;
 
@@ -123,12 +123,12 @@ describe('createMetricsTaskRunner', () => {
 
   it('should swallow warmup task errors', async () => {
     const { initTaskRunner } = await import('../../../src/shared/processConcurrency.js');
-    (initTaskRunner as Mock).mockReturnValueOnce({
+    (initTaskRunner as Mock).mockResolvedValueOnce({
       run: vi.fn().mockRejectedValue(new Error('init failed')),
       cleanup: vi.fn(),
     });
 
-    const result = createMetricsTaskRunner(10, 'o200k_base');
+    const result = await createMetricsTaskRunner(10, 'o200k_base');
 
     // warmupPromise should resolve (errors swallowed by .catch on each task)
     const resolved = await result.warmupPromise;

@@ -51,7 +51,7 @@ describe('packager', () => {
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
       }),
-      createMetricsTaskRunner: vi.fn().mockReturnValue({
+      createMetricsTaskRunner: vi.fn().mockResolvedValue({
         taskRunner: {
           run: vi.fn().mockResolvedValue(0),
           cleanup: vi.fn().mockResolvedValue(undefined),
@@ -79,7 +79,12 @@ describe('packager', () => {
     const progressCallback = vi.fn();
     const result = await pack(['root'], mockConfig, progressCallback, mockDeps);
 
-    expect(mockDeps.searchFiles).toHaveBeenCalledWith('root', mockConfig, undefined);
+    expect(mockDeps.searchFiles).toHaveBeenCalledWith(
+      'root',
+      mockConfig,
+      undefined,
+      expect.objectContaining({ onPreFilterCandidates: expect.any(Function) }),
+    );
     expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback);
     expect(mockDeps.validateFileSafety).toHaveBeenCalled();
     expect(mockDeps.processFiles).toHaveBeenCalled();

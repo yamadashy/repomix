@@ -16,12 +16,11 @@ const createStrictXmlParser = () => {
 describe('outputGenerate', () => {
   const mockDeps = {
     buildOutputGeneratorContext: vi.fn(),
-    generateHandlebarOutput: vi.fn(),
+    buildDirectOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
-    sortOutputFiles: vi.fn(),
   };
-  test('generateOutput should use sortOutputFiles before generating content', async () => {
+  test('generateOutput should pass processedFiles directly to buildOutputGeneratorContext (caller pre-sorts)', async () => {
     const mockConfig = createMockConfig({
       output: {
         filePath: 'output.txt',
@@ -30,24 +29,19 @@ describe('outputGenerate', () => {
       },
     });
     const mockProcessedFiles: ProcessedFile[] = [
-      { path: 'file1.txt', content: 'content1' },
-      { path: 'file2.txt', content: 'content2' },
-    ];
-    const sortedFiles = [
       { path: 'file2.txt', content: 'content2' },
       { path: 'file1.txt', content: 'content1' },
     ];
 
-    mockDeps.sortOutputFiles.mockResolvedValue(sortedFiles);
     mockDeps.buildOutputGeneratorContext.mockResolvedValue({
-      processedFiles: sortedFiles,
+      processedFiles: mockProcessedFiles,
       config: mockConfig,
       treeString: '',
       generationDate: new Date().toISOString(),
       instruction: '',
       filesEnabled: true,
     });
-    mockDeps.generateHandlebarOutput.mockResolvedValue('mock output');
+    mockDeps.buildDirectOutput.mockReturnValue('mock output');
 
     const output = await generateOutput(
       [process.cwd()],
@@ -61,12 +55,11 @@ describe('outputGenerate', () => {
       mockDeps,
     );
 
-    expect(mockDeps.sortOutputFiles).toHaveBeenCalledWith(mockProcessedFiles, mockConfig);
     expect(mockDeps.buildOutputGeneratorContext).toHaveBeenCalledWith(
       [process.cwd()],
       mockConfig,
       [],
-      sortedFiles,
+      mockProcessedFiles,
       undefined,
       undefined,
       undefined,

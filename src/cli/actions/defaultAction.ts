@@ -1,16 +1,12 @@
 import path from 'node:path';
+import { OUTPUT_STYLES, type RepomixOutputStyle } from '../../config/configDefaults.js';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
-import {
-  type RepomixConfigCli,
-  type RepomixConfigFile,
-  type RepomixConfigMerged,
-  type RepomixOutputStyle,
-  repomixConfigCliSchema,
-} from '../../config/configSchema.js';
+import type { RepomixConfigCli, RepomixConfigFile, RepomixConfigMerged } from '../../config/configSchema.js';
+import { preloadGitLsFiles } from '../../core/file/fileSearch.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
-import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
+import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
@@ -32,6 +28,12 @@ export const runDefaultAction = async (
   progressCallback?: RepomixProgressCallback,
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', cliOptions);
+
+  if (!cliOptions.stdin) {
+    for (const directory of directories) {
+      preloadGitLsFiles(path.resolve(cwd, directory));
+    }
+  }
 
   // Run migration before loading config
   await runMigrationAction(cwd);
@@ -197,9 +199,13 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.output = { ...cliConfig.output, copyToClipboard: options.copy };
   }
   if (options.style) {
+    const style = options.style.toLowerCase();
+    if (!(OUTPUT_STYLES as readonly string[]).includes(style)) {
+      throw new RepomixError(`Invalid output style: '${options.style}'. Valid styles: ${OUTPUT_STYLES.join(', ')}`);
+    }
     cliConfig.output = {
       ...cliConfig.output,
-      style: options.style.toLowerCase() as RepomixOutputStyle,
+      style: style as RepomixOutputStyle,
     };
   }
   if (options.parsableStyle !== undefined) {
@@ -342,12 +348,7 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.skillGenerate = options.skillGenerate;
   }
 
-  try {
-    return repomixConfigCliSchema.parse(cliConfig);
-  } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid cli arguments');
-    throw error;
-  }
+  return cliConfig as RepomixConfigCli;
 };
 
 /**

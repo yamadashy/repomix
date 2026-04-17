@@ -1,7 +1,14 @@
 import * as fs from 'node:fs/promises';
 import isBinaryPath from 'is-binary-path';
-import { isBinaryFile } from 'isbinaryfile';
 import { logger } from '../../shared/logger.js';
+
+// Lazy-load isbinaryfile (~5ms parse). Only needed when a file fails UTF-8
+// decoding (~1% of source code files), so most runs never trigger the import.
+let _isBinaryFilePromise: Promise<typeof import('isbinaryfile')> | null = null;
+const getIsBinaryFile = () => {
+  _isBinaryFilePromise ??= import('isbinaryfile');
+  return _isBinaryFilePromise;
+};
 
 // Lazy-load encoding detection libraries to avoid their ~25ms combined import cost.
 // The fast UTF-8 path (covers ~99% of source code files) never needs these;
@@ -16,6 +23,10 @@ const getEncodingDeps = () => {
   }));
   return _encodingDepsPromise;
 };
+
+// Reuse a single TextDecoder instance across all file reads.
+// TextDecoder.decode() is stateless — each call is independent per the WHATWG spec.
+const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
 
 export type FileSkipReason = 'binary-extension' | 'binary-content' | 'size-limit' | 'encoding-error';
 
@@ -52,22 +63,26 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
       return { content: null, skippedReason: 'size-limit' };
     }
 
-    if (await isBinaryFile(buffer)) {
-      logger.debug(`Skipping binary file (content check): ${filePath}`);
-      return { content: null, skippedReason: 'binary-content' };
-    }
-
-    // Fast path: Try UTF-8 decoding first (covers ~99% of source code files)
-    // This skips the expensive jschardet.detect() which scans the entire buffer
-    // through multiple encoding probers with frequency table lookups
+    // Fast path: Try UTF-8 decoding first (covers ~99% of source code files).
+    // Valid UTF-8 files are guaranteed to be text, so we skip the isBinaryFile
+    // buffer scan entirely (~16ms saved across ~1000 files).
     try {
-      let content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+      let content = utf8Decoder.decode(buffer);
       if (content.charCodeAt(0) === 0xfeff) {
         content = content.slice(1); // strip UTF-8 BOM
       }
       return { content };
     } catch {
-      // Not valid UTF-8, fall through to encoding detection
+      // Not valid UTF-8, fall through to binary check + encoding detection
+    }
+
+    // Only check binary content for files that failed UTF-8 decoding.
+    // This avoids the isBinaryFile buffer scan for the vast majority of
+    // source code files that are valid UTF-8.
+    const { isBinaryFile } = await getIsBinaryFile();
+    if (await isBinaryFile(buffer)) {
+      logger.debug(`Skipping binary file (content check): ${filePath}`);
+      return { content: null, skippedReason: 'binary-content' };
     }
 
     // Slow path: Detect encoding with jschardet for non-UTF-8 files (e.g., Shift-JIS, EUC-KR)

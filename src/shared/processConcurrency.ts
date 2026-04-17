@@ -1,9 +1,15 @@
 import os from 'node:os';
-import { type Options, Tinypool } from 'tinypool';
+import type { Options, Tinypool } from 'tinypool';
 import { logger } from './logger.js';
 import type { WorkerType } from './unifiedWorker.js';
 
 export type WorkerRuntime = NonNullable<Options['runtime']>;
+
+let _tinypoolModule: Promise<typeof import('tinypool')> | null = null;
+const loadTinypool = (): Promise<typeof import('tinypool')> => {
+  _tinypoolModule ??= import('tinypool');
+  return _tinypoolModule;
+};
 
 // Re-export WorkerType for external consumers
 export type { WorkerType } from './unifiedWorker.js';
@@ -67,7 +73,7 @@ export const getWorkerThreadCount = (
   };
 };
 
-export const createWorkerPool = (options: WorkerOptions): Tinypool => {
+export const createWorkerPool = async (options: WorkerOptions): Promise<Tinypool> => {
   const { numOfTasks, workerType, runtime = 'child_process', maxWorkerThreads } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads);
 
@@ -80,6 +86,7 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
 
   const startTime = process.hrtime.bigint();
 
+  const { Tinypool } = await loadTinypool();
   const pool = new Tinypool({
     filename: workerPath,
     runtime,
@@ -129,11 +136,24 @@ export const cleanupWorkerPool = async (pool: Tinypool): Promise<void> => {
       // If running in Bun, we cannot use Tinypool's destroy method
       logger.debug('Running in Bun environment, skipping Tinypool destroy method');
     } else {
-      // Standard Node.js cleanup
-      await pool.destroy();
+      // Non-blocking cleanup: unref worker threads so they don't prevent
+      // process exit, then initiate destruction without awaiting. This
+      // saves ~70-80ms per pool that was previously spent synchronously
+      // waiting for each thread to acknowledge SIGTERM. The CLI calls
+      // process.exit() after all work completes, so the pending destroy
+      // is cleaned up on exit. For long-lived processes (MCP server),
+      // Tinypool's idleTimeout handles worker recycling independently.
+      for (const thread of pool.threads) {
+        if (thread && typeof thread.unref === 'function') {
+          thread.unref();
+        }
+      }
+      pool.destroy().catch((error) => {
+        logger.debug('Error during worker pool destroy:', error);
+      });
     }
 
-    logger.debug('Worker pool cleaned up successfully');
+    logger.debug('Worker pool cleanup initiated');
   } catch (error) {
     logger.debug('Error during worker pool cleanup:', error);
   }
@@ -144,8 +164,8 @@ export interface TaskRunner<T, R> {
   cleanup: () => Promise<void>;
 }
 
-export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> => {
-  const pool = createWorkerPool(options);
+export const initTaskRunner = async <T, R>(options: WorkerOptions): Promise<TaskRunner<T, R>> => {
+  const pool = await createWorkerPool(options);
   return {
     run: (task: T) => pool.run(task),
     cleanup: () => cleanupWorkerPool(pool),

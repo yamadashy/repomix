@@ -1,9 +1,6 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import {
-  getProcessConcurrency as defaultGetProcessConcurrency,
-  initTaskRunner,
-} from '../../shared/processConcurrency.js';
+import { initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -18,14 +15,22 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
-// Batch size for grouping files into worker tasks to reduce IPC overhead.
-// Each batch is sent as a single message to a worker thread, avoiding
-// per-file round-trip costs that dominate when processing many files.
-// Security check always processes all files (~1000 in a typical repo), so a batch size of 50
-// already produces ~20 batches — enough to distribute well across available CPU cores.
-// (Unlike metrics, which may process only a small number of top files when tokenCountTree
-// is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
 const BATCH_SIZE = 50;
+
+type SecurityCheckTaskRunner = ReturnType<typeof initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>>;
+
+let _warmupTaskRunnerPromise: SecurityCheckTaskRunner | null = null;
+
+export const warmupSecurityWorkerPool = () => {
+  const p = initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+    numOfTasks: Number.MAX_SAFE_INTEGER,
+    workerType: 'securityCheck',
+    runtime: 'worker_threads',
+    maxWorkerThreads: 1,
+  });
+  p.catch(() => {});
+  _warmupTaskRunnerPromise = p;
+};
 
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
@@ -34,7 +39,6 @@ export const runSecurityCheck = async (
   gitLogResult?: GitLogResult,
   deps = {
     initTaskRunner,
-    getProcessConcurrency: defaultGetProcessConcurrency,
   },
 ): Promise<SuspiciousFileResult[]> => {
   const gitDiffItems: SecurityCheckItem[] = [];
@@ -84,18 +88,16 @@ export const runSecurityCheck = async (
     return [];
   }
 
-  // Cap security workers at 2 to reduce contention with the metrics worker pool that
-  // runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
-  // so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
-  const maxSecurityWorkers = Math.min(2, deps.getProcessConcurrency());
-
-  // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-    numOfTasks: totalItems,
-    workerType: 'securityCheck',
-    runtime: 'worker_threads',
-    maxWorkerThreads: maxSecurityWorkers,
-  });
+  const warmedUp = _warmupTaskRunnerPromise;
+  _warmupTaskRunnerPromise = null;
+  const taskRunner = warmedUp
+    ? await warmedUp
+    : await deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+        numOfTasks: totalItems,
+        workerType: 'securityCheck',
+        runtime: 'worker_threads',
+        maxWorkerThreads: 1,
+      });
 
   // Split items into batches to reduce IPC round-trips
   const batches: SecurityCheckItem[][] = [];

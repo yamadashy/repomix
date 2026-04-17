@@ -115,8 +115,6 @@ index 123..456 100644
       return '<xml>parsable output with diffs object</xml>';
     });
 
-    const mockSortOutputFiles = vi.fn().mockImplementation((files) => Promise.resolve(files));
-
     const gitDiffResult: GitDiffResult = {
       workTreeDiffContent: sampleDiff,
       stagedDiffContent: '',
@@ -134,17 +132,16 @@ index 123..456 100644
       undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
-        generateHandlebarOutput: mockGenerateHandlebarOutput,
+        buildDirectOutput: mockGenerateHandlebarOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
-        sortOutputFiles: mockSortOutputFiles,
       },
     );
 
     // Check that the output was generated with the correct template
     expect(mockBuildOutputGeneratorContext).toHaveBeenCalled();
 
-    // For non-parsable XML, should use Handlebars
+    // For non-parsable XML, should use direct string builder
     if (!mockConfig.output.parsableStyle) {
       expect(mockGenerateHandlebarOutput).toHaveBeenCalled();
     } else {
@@ -190,7 +187,6 @@ index 123..456 100644
     });
 
     const mockGenerateParsableXmlOutput = vi.fn();
-    const mockSortOutputFiles = vi.fn().mockImplementation((files) => Promise.resolve(files));
     const gitDiffResult: GitDiffResult = {
       workTreeDiffContent: sampleDiff,
       stagedDiffContent: '',
@@ -208,14 +204,13 @@ index 123..456 100644
       undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
-        generateHandlebarOutput: mockGenerateHandlebarOutput,
+        buildDirectOutput: mockGenerateHandlebarOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
-        sortOutputFiles: mockSortOutputFiles,
       },
     );
 
-    // For markdown output, should use Handlebars
+    // For markdown output, should use direct string builder
     expect(mockGenerateHandlebarOutput).toHaveBeenCalled();
 
     // XML generator should not be called for markdown

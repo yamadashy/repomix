@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -9,7 +8,7 @@ import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
-import { sortOutputFiles } from './outputSort.js';
+import { buildDirectOutput } from './outputStyleBuild.js';
 import {
   generateHeader,
   generateSummaryFileFormat,
@@ -18,38 +17,6 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
-import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { getXmlTemplate } from './outputStyles/xmlStyle.js';
-
-// Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
-
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
-  const cached = compiledTemplateCache.get(style);
-  if (cached) {
-    return cached;
-  }
-
-  let template: string;
-  switch (style) {
-    case 'xml':
-      template = getXmlTemplate();
-      break;
-    case 'markdown':
-      template = getMarkdownTemplate();
-      break;
-    case 'plain':
-      template = getPlainTemplate();
-      break;
-    default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
-  }
-
-  const compiled = Handlebars.compile(template);
-  compiledTemplateCache.set(style, compiled);
-  return compiled;
-};
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
   const maxBackticks = files
@@ -76,6 +43,22 @@ const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  const style = outputGeneratorContext.config.output.style;
+  const isSkillGeneration = outputGeneratorContext.config.skillGenerate !== undefined;
+
+  // fileLineCounts: only needed for skill generation (tree with line counts, statistics).
+  // Standard output templates (XML, markdown, plain, JSON) do not use line counts,
+  // so skip the per-file newline scan (~20ms for 1000 files).
+  const fileLineCounts = isSkillGeneration ? calculateFileLineCounts(outputGeneratorContext.processedFiles) : {};
+
+  // markdownCodeBlockDelimiter: only needed for markdown/plain templates and skill generation.
+  // XML and JSON outputs never reference this value, so skip the per-file backtick scan
+  // (~15ms for 1000 files).
+  const needsDelimiter = style === 'markdown' || style === 'plain' || isSkillGeneration;
+  const markdownCodeBlockDelimiter = needsDelimiter
+    ? calculateMarkdownDelimiter(outputGeneratorContext.processedFiles)
+    : '```';
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -89,12 +72,12 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    fileLineCounts,
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    markdownCodeBlockDelimiter,
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
@@ -215,42 +198,6 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
   }
 };
 
-const generateHandlebarOutput = async (
-  config: RepomixConfigMerged,
-  renderContext: RenderContext,
-  processedFiles?: ProcessedFile[],
-): Promise<string> => {
-  try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
-    return `${compiledTemplate(renderContext).trim()}\n`;
-  } catch (error) {
-    if (error instanceof RangeError && error.message === 'Invalid string length') {
-      let largeFilesInfo = '';
-      if (processedFiles && processedFiles.length > 0) {
-        const topFiles = processedFiles
-          .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, 5)
-          .map((f) => `  - ${f.path} (${(f.content.length / 1024 / 1024).toFixed(1)} MB)`)
-          .join('\n');
-        largeFilesInfo = `\n\nLargest files in this repository:\n${topFiles}`;
-      }
-
-      throw new RepomixError(
-        `Output size exceeds JavaScript string limit. The repository contains files that are too large to process.
-Please try:
-  - Use --ignore to exclude large files (e.g., --ignore "docs/**" or --ignore "*.html")
-  - Use --include to process only specific files
-  - Process smaller portions of the repository at a time${largeFilesInfo}`,
-        { cause: error },
-      );
-    }
-    throw new RepomixError(
-      `Failed to compile template: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      error instanceof Error ? { cause: error } : undefined,
-    );
-  }
-};
-
 export const generateOutput = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
@@ -262,20 +209,18 @@ export const generateOutput = async (
   emptyDirPaths?: string[],
   deps = {
     buildOutputGeneratorContext,
-    generateHandlebarOutput,
+    buildDirectOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
-    sortOutputFiles,
   },
 ): Promise<string> => {
-  // Sort processed files by git change count if enabled
-  const sortedProcessedFiles = await deps.sortOutputFiles(processedFiles, config);
-
+  // processedFiles are already sorted by the caller (packager.ts pre-sorts
+  // via sortOutputFiles before invoking produceOutput).
   const outputGeneratorContext = await deps.buildOutputGeneratorContext(
     rootDirs,
     config,
     allFilePaths,
-    sortedProcessedFiles,
+    processedFiles,
     gitDiffResult,
     gitLogResult,
     filePathsByRoot,
@@ -287,12 +232,12 @@ export const generateOutput = async (
     case 'xml':
       return config.output.parsableStyle
         ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+        : deps.buildDirectOutput(config.output.style, renderContext, processedFiles);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':
     case 'plain':
-      return deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+      return deps.buildDirectOutput(config.output.style, renderContext, processedFiles);
     default:
       throw new RepomixError(`Unsupported output style: ${config.output.style}`);
   }

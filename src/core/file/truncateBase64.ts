@@ -11,9 +11,14 @@ const dataUriPattern = new RegExp(
   'g',
 );
 
-const isBase64CharCode = (c: number): boolean => {
-  return (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47;
-};
+// Lookup table for base64 alphabet characters (A-Z, a-z, 0-9, +, /)
+// Using a Uint8Array for cache-friendly O(1) lookups in the hot loop.
+const isBase64Char = new Uint8Array(128);
+for (let c = 48; c <= 57; c++) isBase64Char[c] = 1; // 0-9
+for (let c = 65; c <= 90; c++) isBase64Char[c] = 1; // A-Z
+for (let c = 97; c <= 122; c++) isBase64Char[c] = 1; // a-z
+isBase64Char[43] = 1; // +
+isBase64Char[47] = 1; // /
 
 const replaceStandaloneBase64 = (content: string): string => {
   if (content.length < MIN_BASE64_LENGTH_STANDALONE) {
@@ -25,7 +30,8 @@ const replaceStandaloneBase64 = (content: string): string => {
   let runStart = -1;
 
   for (let i = 0; i <= content.length; i++) {
-    if (i < content.length && isBase64CharCode(content.charCodeAt(i))) {
+    const c = i < content.length ? content.charCodeAt(i) : -1;
+    if (c >= 0 && c < 128 && isBase64Char[c]) {
       if (runStart === -1) {
         runStart = i;
       }
@@ -60,19 +66,65 @@ const replaceStandaloneBase64 = (content: string): string => {
 };
 
 /**
+ * Fast pre-scan: check if content contains any run of base64 characters
+ * at least MIN_BASE64_LENGTH_STANDALONE long.
+ *
+ * Two-phase approach:
+ * 1. Find lines >= 256 chars via indexOf('\n') — most source code lines are
+ *    well under 256 chars, so this skips the majority of content cheaply.
+ * 2. Only scan the long lines with charCode checks for base64 characters.
+ */
+const hasLongBase64Run = (content: string): boolean => {
+  if (content.length < MIN_BASE64_LENGTH_STANDALONE) return false;
+
+  let lineStart = 0;
+  let pos: number;
+
+  // biome-ignore lint/suspicious/noAssignInExpressions: tight loop
+  while ((pos = content.indexOf('\n', lineStart)) !== -1) {
+    if (pos - lineStart >= MIN_BASE64_LENGTH_STANDALONE) {
+      if (scanLineForBase64(content, lineStart, pos)) return true;
+    }
+    lineStart = pos + 1;
+  }
+
+  if (content.length - lineStart >= MIN_BASE64_LENGTH_STANDALONE) {
+    if (scanLineForBase64(content, lineStart, content.length)) return true;
+  }
+
+  return false;
+};
+
+const scanLineForBase64 = (content: string, start: number, end: number): boolean => {
+  let run = 0;
+  for (let i = start; i < end; i++) {
+    const c = content.charCodeAt(i);
+    if (c < 128 && isBase64Char[c]) {
+      if (++run >= MIN_BASE64_LENGTH_STANDALONE) return true;
+    } else {
+      run = 0;
+    }
+  }
+  return false;
+};
+
+/**
  * Truncates base64 encoded data in content to reduce file size.
  * Detects data URIs and standalone base64 strings.
  */
 export const truncateBase64Content = (content: string): string => {
-  // Reset lastIndex since patterns are global and reused across calls
-  dataUriPattern.lastIndex = 0;
-
   let processedContent = content;
+  if (content.includes('data:')) {
+    dataUriPattern.lastIndex = 0;
+    processedContent = content.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
+      const preview = base64Data.substring(0, TRUNCATION_LENGTH);
+      return `data:${mimeType}${params || ''};base64,${preview}...`;
+    });
+  }
 
-  processedContent = processedContent.replace(dataUriPattern, (_match, mimeType, params, base64Data) => {
-    const preview = base64Data.substring(0, TRUNCATION_LENGTH);
-    return `data:${mimeType}${params || ''};base64,${preview}...`;
-  });
+  if (!hasLongBase64Run(processedContent)) {
+    return processedContent;
+  }
 
   processedContent = replaceStandaloneBase64(processedContent);
 
