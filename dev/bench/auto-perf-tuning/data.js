@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776459450429,
+  "lastUpdate": 1776459743875,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5220,6 +5220,51 @@ window.BENCHMARK_DATA = {
             "range": "±54",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1832ms, Q3: 1886ms\nAll times: 1813, 1819, 1820, 1823, 1826, 1832, 1833, 1848, 1849, 1850, 1853, 1870, 1880, 1880, 1884, 1886, 1887, 1896, 1913, 1918ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "70e34a02221aece314a949c3f941045ea446ea6a",
+          "message": "chore: Clean up stale comment and dead test variables\n\n- Update packager.ts comment to reflect that generateOutput no longer\n  calls sortOutputFiles internally (removed in d8609ba)\n- Remove unused mockSortOutputFiles variables from diffsInOutput.test.ts\n\nhttps://claude.ai/code/session_01PuZdEctRrAdwmCesn2RTxB",
+          "timestamp": "2026-04-17T21:00:26Z",
+          "tree_id": "608d9e861e60fcce452b850a8aebd93896ce5117",
+          "url": "https://github.com/yamadashy/repomix/commit/70e34a02221aece314a949c3f941045ea446ea6a"
+        },
+        "date": 1776459743115,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 665,
+            "range": "±50",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 647ms, Q3: 697ms\nAll times: 623, 631, 639, 639, 641, 643, 644, 647, 648, 648, 649, 653, 658, 660, 660, 665, 667, 669, 674, 675, 685, 691, 697, 698, 707, 710, 727, 743, 747, 759ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1041,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1027ms, Q3: 1060ms\nAll times: 1008, 1012, 1023, 1024, 1026, 1027, 1032, 1033, 1036, 1037, 1041, 1041, 1049, 1053, 1055, 1060, 1063, 1066, 1067, 1074ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1799,
+            "range": "±56",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1761ms, Q3: 1817ms\nAll times: 1738, 1751, 1752, 1754, 1755, 1761, 1771, 1774, 1777, 1788, 1799, 1800, 1802, 1802, 1803, 1817, 1820, 1822, 1826, 1832ms"
           }
         ]
       }
