@@ -137,7 +137,6 @@ index 123..456 100644
         buildDirectOutput: mockGenerateHandlebarOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
-        sortOutputFiles: mockSortOutputFiles,
       },
     );
 
@@ -211,7 +210,6 @@ index 123..456 100644
         buildDirectOutput: mockGenerateHandlebarOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
-        sortOutputFiles: mockSortOutputFiles,
       },
     );
 

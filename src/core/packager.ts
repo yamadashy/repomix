@@ -140,10 +140,11 @@ export const pack = async (
       ),
     );
 
-    // Sort file paths
+    // Sort file paths — skip re-sort for the common single-root case
+    // because searchFiles already returns sorted paths.
     progressCallback('Sorting files...');
     const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-    const sortedFilePaths = deps.sortPaths(allFilePaths);
+    const sortedFilePaths = searchResultsByDir.length === 1 ? allFilePaths : deps.sortPaths(allFilePaths);
 
     // Regroup sorted file paths by rootDir using Set for O(1) membership checks
     const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
