@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776383736916,
+  "lastUpdate": 1776390806223,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4725,6 +4725,51 @@ window.BENCHMARK_DATA = {
             "range": "±33",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1394ms, Q3: 1427ms\nAll times: 1356, 1377, 1385, 1389, 1391, 1394, 1395, 1397, 1398, 1400, 1405, 1412, 1413, 1418, 1426, 1427, 1427, 1436, 1436, 1474ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "100e49fce97af2d47dd88e5a298a8659cf03f8e7",
+          "message": "perf(git): Cache isGitRepository and isGitInstalled to eliminate redundant child process spawns\n\nCache the result (as a Promise) of `isGitRepository` per directory\nand `isGitInstalled` globally to avoid spawning duplicate `git rev-parse`\nand `git --version` child processes.\n\nIn the pack() pipeline, `isGitRepository` is called 3 times for the\nsame directory: twice by `getGitDiffs` (once for work-tree diff, once\nfor staged diff via `getDiff → isGitRepository`) and once by\n`getGitLogs`. Each call spawns a `git rev-parse --is-inside-work-tree`\nchild process costing ~15ms of synchronous overhead.\n\nSimilarly, `isGitInstalled` spawns `git --version` and is called by\n`outputSort.ts → checkGitAvailability`.\n\nBy caching the Promise (not the resolved value), concurrent in-flight\ncalls to the same directory share a single child process. Subsequent\ncalls return the cached Promise instantly.\n\nCache is only active with default deps (production code). Tests that\ninject mock deps via the `deps` parameter bypass the cache, ensuring\ntest isolation.\n\nBenchmark (20 samples, 3 warmup, ~1018 files):\n\n| Metric | Before   | After    | Delta               |\n|--------|----------|----------|---------------------|\n| Median | 1012.4ms | 925.9ms  | −86.5ms (−8.5%)     |\n| Mean   | 1006.8ms | 929.7ms  | −77.1ms (−7.7%)     |\n| P10    | 983.6ms  | 909.0ms  | −74.6ms             |\n| P90    | 1044.6ms | 955.2ms  | −89.4ms             |\n\nThe saving comes from eliminating 2 redundant `git rev-parse` spawns\n(~30ms) and 1 `git --version` spawn (~15ms), plus reduced CPU\ncontention from fewer concurrent child processes competing with the\nmetrics and security worker pools during the pipeline startup phase.\n\nhttps://claude.ai/code/session_01A6R14jBHC4ugeKWHFcTpEZ",
+          "timestamp": "2026-04-17T01:51:32Z",
+          "tree_id": "33aff026aaa02c7fc9d9df374b97b54930627b0b",
+          "url": "https://github.com/yamadashy/repomix/commit/100e49fce97af2d47dd88e5a298a8659cf03f8e7"
+        },
+        "date": 1776390805464,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 884,
+            "range": "±113",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 860ms, Q3: 973ms\nAll times: 749, 807, 821, 825, 842, 844, 846, 860, 867, 872, 872, 878, 879, 883, 883, 884, 884, 887, 898, 903, 928, 967, 973, 998, 1009, 1028, 1036, 1043, 1088, 1269ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1054,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1047ms, Q3: 1067ms\nAll times: 1031, 1038, 1040, 1043, 1043, 1047, 1050, 1051, 1053, 1054, 1054, 1058, 1059, 1060, 1067, 1067, 1069, 1069, 1080, 1101ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1357,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1349ms, Q3: 1377ms\nAll times: 1304, 1324, 1325, 1329, 1333, 1349, 1350, 1350, 1350, 1356, 1357, 1362, 1366, 1367, 1369, 1377, 1393, 1397, 1407, 1414ms"
           }
         ]
       }
