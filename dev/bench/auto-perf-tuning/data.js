@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776401632744,
+  "lastUpdate": 1776406351560,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4905,6 +4905,51 @@ window.BENCHMARK_DATA = {
             "range": "±36",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1371ms, Q3: 1407ms\nAll times: 1334, 1347, 1347, 1358, 1361, 1371, 1376, 1378, 1382, 1384, 1385, 1386, 1388, 1395, 1395, 1407, 1412, 1422, 1437, 1445ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "33cccf1b780faa443011209d106110d9cc3e59a3",
+          "message": "fix(test): Remove invalid getProcessConcurrency from security check test deps\n\nThe securityCheck.ts deps parameter only accepts { initTaskRunner },\nbut tests were passing { initTaskRunner, getProcessConcurrency } which\ncaused TypeScript errors. Remove the extra property and the unused\nmockGetProcessConcurrency variable.\n\nhttps://claude.ai/code/session_01WLFwZPssTvzYEYNWNfWizx",
+          "timestamp": "2026-04-17T06:10:37Z",
+          "tree_id": "fc3b96b2c700cfe66c00f0e31dac33ae8bccf9f7",
+          "url": "https://github.com/yamadashy/repomix/commit/33cccf1b780faa443011209d106110d9cc3e59a3"
+        },
+        "date": 1776406351137,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1369,
+            "range": "±353",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1173ms, Q3: 1526ms\nAll times: 888, 897, 927, 940, 945, 993, 1041, 1173, 1224, 1265, 1270, 1286, 1308, 1310, 1334, 1369, 1392, 1397, 1401, 1405, 1510, 1515, 1526, 1531, 1533, 1557, 1698, 1713, 1777, 1952ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1125,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1112ms, Q3: 1145ms\nAll times: 1088, 1100, 1104, 1106, 1111, 1112, 1113, 1118, 1121, 1122, 1125, 1128, 1139, 1140, 1141, 1145, 1156, 1161, 1173, 1271ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1436,
+            "range": "±49",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1416ms, Q3: 1465ms\nAll times: 1389, 1402, 1405, 1407, 1413, 1416, 1417, 1431, 1433, 1434, 1436, 1443, 1446, 1450, 1458, 1465, 1473, 1478, 1490, 1500ms"
           }
         ]
       }
