@@ -37,6 +37,10 @@ export interface FileSearchResult {
   emptyDirPaths: string[];
 }
 
+export interface SearchFilesOptions {
+  onPreFilterCandidates?: (candidates: string[]) => void;
+}
+
 // No per-directory ignore-pattern check is needed here. The `directories` array
 // comes from globby with the same `ignore` patterns (e.g. `dist/**`), which
 // excludes both the directory contents AND the directory entry itself.
@@ -287,6 +291,7 @@ export const searchFiles = async (
   rootDir: string,
   config: RepomixConfigMerged,
   explicitFiles?: string[],
+  options?: SearchFilesOptions,
 ): Promise<FileSearchResult> => {
   // Check if the path exists and get its type
   let pathStats: Stats;
@@ -386,6 +391,11 @@ export const searchFiles = async (
     let filePaths: string[] | null = null;
 
     if (gitResult !== null) {
+      // Fires before ignore/include filtering — callers must intersect with the final filePaths.
+      if (options?.onPreFilterCandidates) {
+        options.onPreFilterCandidates([...gitResult.trackedFiles, ...gitResult.untrackedFiles]);
+      }
+
       const gitStartTime = Date.now();
       const rawIncludePatterns = config.include.length > 0 ? config.include : ['**/*'];
       filePaths = await processGitOutput(rootDir, gitResult, rawIncludePatterns, rawIgnorePatterns, ignoreFilePatterns);

@@ -3,7 +3,7 @@ import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logger } from '../shared/logger.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
-import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
+import { collectFiles, type FileCollectResults, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
 import { searchEmptyDirectories, searchFiles } from './file/fileSearch.js';
@@ -133,11 +133,22 @@ export const pack = async (
         )
       : undefined;
 
+    // Start file collection as soon as git ls-files returns (before ignore
+    // filtering completes), allowing collectFiles I/O to overlap with the
+    // ignore-pattern filtering. Falls back to sequential collection when
+    // the git fast-path is not used (globby, explicit files, non-git repos).
+    const earlyCollectPromises = new Map<string, Promise<FileCollectResults>>();
+
     progressCallback('Searching for files...');
     const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
       Promise.all(
         rootDirs.map(async (rootDir) => {
-          const result = await deps.searchFiles(rootDir, searchConfig, explicitFiles);
+          const result = await deps.searchFiles(rootDir, searchConfig, explicitFiles, {
+            onPreFilterCandidates: (candidates) => {
+              progressCallback('Collecting files...');
+              earlyCollectPromises.set(rootDir, deps.collectFiles(candidates, rootDir, config, progressCallback));
+            },
+          });
           return { rootDir, filePaths: result.filePaths };
         }),
       ),
@@ -155,17 +166,17 @@ export const pack = async (
       filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
     }));
 
-    // Collect files and wait for git/empty-dir operations that started earlier.
-    // Git operations have had a head start during searchFiles, so they may
-    // already be complete or close to it.
+    // Wait for file collection + git operations. If early collection was started
+    // via onPreFilterCandidates, it's already in flight; otherwise start it now.
     progressCallback('Collecting files...');
     const [collectResults, gitDiffResult, gitLogResult, emptyDirPaths] = await Promise.all([
       withMemoryLogging(
         'Collect Files',
         async () =>
           await Promise.all(
-            sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-              deps.collectFiles(filePaths, rootDir, config, progressCallback),
+            sortedFilePathsByDir.map(
+              ({ rootDir, filePaths }) =>
+                earlyCollectPromises.get(rootDir) ?? deps.collectFiles(filePaths, rootDir, config, progressCallback),
             ),
           ),
       ),
@@ -174,8 +185,21 @@ export const pack = async (
       emptyDirPromise,
     ]);
 
-    const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
-    const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
+    // When early collection was used, collected files may include candidates
+    // that were later filtered out. Filter per-rootDir to avoid cross-root
+    // path aliasing in multi-root scenarios.
+    const allRawFiles = collectResults.flatMap((result, i) => {
+      const rootDir = sortedFilePathsByDir[i].rootDir;
+      if (!earlyCollectPromises.has(rootDir)) return result.rawFiles;
+      const allowed = filePathSetByDir.get(rootDir)!;
+      return result.rawFiles.filter((f) => allowed.has(f.path));
+    });
+    const allSkippedFiles = collectResults.flatMap((result, i) => {
+      const rootDir = sortedFilePathsByDir[i].rootDir;
+      if (!earlyCollectPromises.has(rootDir)) return result.skippedFiles;
+      const allowed = filePathSetByDir.get(rootDir)!;
+      return result.skippedFiles.filter((f) => allowed.has(f.path));
+    });
 
     // Start security check and file processing concurrently.
     // Security check runs in worker threads (~162ms) while file processing runs
@@ -185,12 +209,12 @@ export const pack = async (
     // In the rare case suspicious files are found, we fall back to regenerating
     // output with the filtered file set.
     const securityPromise = withMemoryLogging('Security Check', () =>
-      deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+      deps.validateFileSafety(allRawFiles, progressCallback, config, gitDiffResult, gitLogResult),
     );
 
     const allProcessedFiles = await withMemoryLogging('Process Files', async () => {
       progressCallback('Processing files...');
-      return deps.processFiles(rawFiles, config, progressCallback);
+      return deps.processFiles(allRawFiles, config, progressCallback);
     });
 
     // Pre-sort processedFiles in the same order they will appear in the generated output.
