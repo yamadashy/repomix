@@ -40,8 +40,6 @@ const mockFiles: RawFile[] = [
   },
 ];
 
-const mockGetProcessConcurrency = () => 4;
-
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
@@ -57,7 +55,6 @@ describe('runSecurityCheck', () => {
   it('should identify files with security issues', async () => {
     const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
-      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     expect(result).toHaveLength(1);
@@ -70,7 +67,6 @@ describe('runSecurityCheck', () => {
 
     await runSecurityCheck(mockFiles, progressCallback, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
-      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     // With 2 files and batch size 50, all files are in a single batch
@@ -96,7 +92,6 @@ describe('runSecurityCheck', () => {
     await expect(
       runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
         initTaskRunner: mockErrorTaskRunner,
-        getProcessConcurrency: mockGetProcessConcurrency,
       }),
     ).rejects.toThrow('Worker error');
 
@@ -106,7 +101,6 @@ describe('runSecurityCheck', () => {
   it('should handle empty file list', async () => {
     const result = await runSecurityCheck([], () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
-      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     expect(result).toEqual([]);
@@ -115,7 +109,6 @@ describe('runSecurityCheck', () => {
   it('should log performance metrics in trace mode', async () => {
     await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
-      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining('Starting security check for'));
@@ -127,7 +120,6 @@ describe('runSecurityCheck', () => {
 
     await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
-      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     const endTime = Date.now();
@@ -142,7 +134,6 @@ describe('runSecurityCheck', () => {
 
     await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
-      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     expect(mockFiles).toEqual(originalFiles);
@@ -169,7 +160,6 @@ describe('runSecurityCheck', () => {
     const progressCallback = vi.fn();
     const result = await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
-      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     // With batch size 50 and 4 items (2 files + 2 git diffs), all in a single batch
@@ -188,7 +178,6 @@ describe('runSecurityCheck', () => {
     const progressCallback = vi.fn();
     await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
-      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     // With batch size 50 and 3 items (2 files + 1 git diff), all in a single batch
@@ -204,7 +193,6 @@ describe('runSecurityCheck', () => {
     const progressCallback = vi.fn();
     await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
-      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     // With batch size 50 and 3 items (2 files + 1 git diff), all in a single batch
@@ -220,7 +208,6 @@ describe('runSecurityCheck', () => {
     const progressCallback = vi.fn();
     await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
-      getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     // Should process only 2 files, no git diff content because both are empty strings (falsy)
