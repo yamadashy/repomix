@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776453599233,
+  "lastUpdate": 1776456435199,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5130,6 +5130,51 @@ window.BENCHMARK_DATA = {
             "range": "±49",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1365ms, Q3: 1414ms\nAll times: 1350, 1358, 1361, 1362, 1365, 1365, 1365, 1368, 1379, 1382, 1386, 1389, 1390, 1394, 1405, 1414, 1433, 1436, 1442, 1442ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "9f3cdc720fc821e87fdae11983eff89dbbe1464d",
+          "message": "perf(security): Pre-start security worker pool to overlap initialization with file pipeline\n\nStart the security check worker thread at the beginning of pack(), so\nsecretlint module loading (~100-150ms) runs concurrently with file search,\ncollection, and processing. Previously the worker was created only when\nthe security check began, adding its initialization time to the critical\npath after file collection completed.\n\nThe warmup uses a module-level promise consumed by runSecurityCheck on\nfirst call. Tests that override validateFileSafety skip the warmup to\navoid spawning real workers in the test environment.\n\nBenchmark (repomix CLI on 2025-file repo, 25 runs each):\n\n| Metric | Before   | After    | Delta              |\n|--------|----------|----------|--------------------|\n| Median | 1196ms   | 1138ms   | -58ms (-4.8%)      |\n| Mean   | 1197ms   | 1134ms   | -63ms (-5.3%)      |\n| P90    | 1237ms   | 1178ms   | -59ms (-4.8%)      |\n\nhttps://claude.ai/code/session_01Mifn83tDGYopUUSzGZggoR",
+          "timestamp": "2026-04-17T20:04:42Z",
+          "tree_id": "25d4a41a8838718b1ccdfcaa7fee5499cb963e4f",
+          "url": "https://github.com/yamadashy/repomix/commit/9f3cdc720fc821e87fdae11983eff89dbbe1464d"
+        },
+        "date": 1776456434063,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 751,
+            "range": "±118",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 696ms, Q3: 814ms\nAll times: 656, 659, 674, 684, 689, 690, 695, 696, 709, 711, 714, 715, 716, 720, 728, 751, 754, 762, 771, 778, 782, 792, 814, 827, 833, 862, 908, 919, 936, 956ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1095,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1091ms, Q3: 1107ms\nAll times: 1073, 1076, 1077, 1077, 1077, 1091, 1091, 1092, 1094, 1094, 1095, 1102, 1103, 1106, 1107, 1107, 1108, 1132, 1260, 1284ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1794,
+            "range": "±57",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1777ms, Q3: 1834ms\nAll times: 1696, 1733, 1735, 1753, 1763, 1777, 1779, 1780, 1781, 1792, 1794, 1795, 1800, 1800, 1817, 1834, 1836, 1837, 1837, 1854ms"
           }
         ]
       }
