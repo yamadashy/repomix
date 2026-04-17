@@ -14,7 +14,7 @@ import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { type SuspiciousFileResult, warmupSecurityWorkerPool } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -85,6 +85,10 @@ export const pack = async (
   // below. The pool is awaited just before metrics calculation begins.
   const metricsSetupPromise = deps.createMetricsTaskRunner(Number.MAX_SAFE_INTEGER, config.tokenCount.encoding);
   metricsSetupPromise.catch(() => {});
+
+  if (config.security.enableSecurityCheck && !overrideDeps.validateFileSafety) {
+    warmupSecurityWorkerPool();
+  }
 
   try {
     // Pre-fetch git file-change counts for sortOutputFiles while search and

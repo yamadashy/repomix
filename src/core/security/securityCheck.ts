@@ -15,14 +15,22 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
-// Batch size for grouping files into worker tasks to reduce IPC overhead.
-// Each batch is sent as a single message to a worker thread, avoiding
-// per-file round-trip costs that dominate when processing many files.
-// Security check always processes all files (~1000 in a typical repo), so a batch size of 50
-// already produces ~20 batches — enough to distribute well across available CPU cores.
-// (Unlike metrics, which may process only a small number of top files when tokenCountTree
-// is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
 const BATCH_SIZE = 50;
+
+type SecurityCheckTaskRunner = ReturnType<typeof initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>>;
+
+let _warmupTaskRunnerPromise: SecurityCheckTaskRunner | null = null;
+
+export const warmupSecurityWorkerPool = () => {
+  const p = initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+    numOfTasks: Number.MAX_SAFE_INTEGER,
+    workerType: 'securityCheck',
+    runtime: 'worker_threads',
+    maxWorkerThreads: 1,
+  });
+  p.catch(() => {});
+  _warmupTaskRunnerPromise = p;
+};
 
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
@@ -80,22 +88,16 @@ export const runSecurityCheck = async (
     return [];
   }
 
-  // Use a single security worker to minimize CPU contention with the metrics
-  // worker pool (up to processConcurrency threads) that runs concurrently.
-  // With 2 security workers on a 4-core machine, 6 threads compete for 4 cores,
-  // causing ~117ms of contention overhead that slows the metrics critical path
-  // more than the extra security parallelism saves. A single worker processes
-  // all batches sequentially, but the reduced contention lets the metrics
-  // workers run at near-full speed, improving overall wall time.
-  const maxSecurityWorkers = 1;
-
-  // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
-  const taskRunner = await deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-    numOfTasks: totalItems,
-    workerType: 'securityCheck',
-    runtime: 'worker_threads',
-    maxWorkerThreads: maxSecurityWorkers,
-  });
+  const warmedUp = _warmupTaskRunnerPromise;
+  _warmupTaskRunnerPromise = null;
+  const taskRunner = warmedUp
+    ? await warmedUp
+    : await deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+        numOfTasks: totalItems,
+        workerType: 'securityCheck',
+        runtime: 'worker_threads',
+        maxWorkerThreads: 1,
+      });
 
   // Split items into batches to reduce IPC round-trips
   const batches: SecurityCheckItem[][] = [];
