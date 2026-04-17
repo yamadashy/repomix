@@ -1,7 +1,14 @@
 import * as fs from 'node:fs/promises';
 import isBinaryPath from 'is-binary-path';
-import { isBinaryFile } from 'isbinaryfile';
 import { logger } from '../../shared/logger.js';
+
+// Lazy-load isbinaryfile (~5ms parse). Only needed when a file fails UTF-8
+// decoding (~1% of source code files), so most runs never trigger the import.
+let _isBinaryFilePromise: Promise<typeof import('isbinaryfile')> | null = null;
+const getIsBinaryFile = () => {
+  _isBinaryFilePromise ??= import('isbinaryfile');
+  return _isBinaryFilePromise;
+};
 
 // Lazy-load encoding detection libraries to avoid their ~25ms combined import cost.
 // The fast UTF-8 path (covers ~99% of source code files) never needs these;
@@ -72,6 +79,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     // Only check binary content for files that failed UTF-8 decoding.
     // This avoids the isBinaryFile buffer scan for the vast majority of
     // source code files that are valid UTF-8.
+    const { isBinaryFile } = await getIsBinaryFile();
     if (await isBinaryFile(buffer)) {
       logger.debug(`Skipping binary file (content check): ${filePath}`);
       return { content: null, skippedReason: 'binary-content' };

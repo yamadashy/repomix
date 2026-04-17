@@ -4,10 +4,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import type { Options as GlobbyOptions } from 'globby';
+import type ignore from 'ignore';
 
 const execFileAsync = promisify(execFile);
 
-import ignore from 'ignore';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -22,6 +22,14 @@ let _globbyPromise: Promise<typeof import('globby')> | null = null;
 const getGlobby = (): Promise<typeof import('globby')> => {
   _globbyPromise ??= import('globby');
   return _globbyPromise;
+};
+
+// Lazy-load the `ignore` package (~10ms parse) so its cost is absorbed into
+// the git ls-files I/O wait rather than blocking the module import chain.
+let _ignorePromise: Promise<typeof ignore> | null = null;
+const getIgnore = (): Promise<typeof ignore> => {
+  _ignorePromise ??= import('ignore').then((m) => m.default);
+  return _ignorePromise;
 };
 
 export interface FileSearchResult {
@@ -206,9 +214,10 @@ const buildIgnoreInstance = async (
   files: string[],
   adjustedIgnorePatterns: string[],
   ignoreFilePatterns: string[],
-): Promise<ReturnType<typeof ignore>> => {
+) => {
   const relevantPatterns = preFilterIgnorePatterns(adjustedIgnorePatterns, files);
-  const ig = ignore();
+  const ignoreFactory = await getIgnore();
+  const ig = ignoreFactory();
   ig.add(relevantPatterns);
 
   for (const filePattern of ignoreFilePatterns) {
@@ -313,6 +322,9 @@ export const searchFiles = async (
       `Target path is not a directory: ${rootDir}. Please specify a directory path, not a file path.`,
     );
   }
+
+  // Start loading the `ignore` package during the git I/O wait below.
+  getIgnore();
 
   // Run permission check, ignore context preparation, and git ls-files concurrently.
   // These are independent I/O operations that were previously sequential (~100-200ms
@@ -704,7 +716,8 @@ const searchEmptyDirectoriesFast = async (
   ignorePatterns: string[],
   ignoreFileNames: string[],
 ): Promise<string[]> => {
-  const ig = ignore();
+  const ignoreFactory = await getIgnore();
+  const ig = ignoreFactory();
   ig.add(ignorePatterns);
 
   const emptyDirs: string[] = [];
