@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776406351560,
+  "lastUpdate": 1776411872233,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4950,6 +4950,51 @@ window.BENCHMARK_DATA = {
             "range": "±49",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1416ms, Q3: 1465ms\nAll times: 1389, 1402, 1405, 1407, 1413, 1416, 1417, 1431, 1433, 1434, 1436, 1443, 1446, 1450, 1458, 1465, 1473, 1478, 1490, 1500ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "c386c32f4c5e998d97d9cb0a3f2f45d683e72d10",
+          "message": "perf(core): Lazy-load tinypool to defer ~34ms module parse from startup\n\nReplace the static `import { Tinypool } from 'tinypool'` in\nprocessConcurrency.ts with a lazy `import('tinypool')` that runs\nconcurrently with the pack pipeline.\n\nPreviously, tinypool was loaded as part of the defaultAction.ts\nstatic import chain (via packager.ts → processConcurrency.ts),\nblocking the CLI startup by ~34ms before any work could begin.\n\nNow, createWorkerPool/initTaskRunner are async and tinypool is\nloaded on first pool creation. In packager.ts, the metrics pool\nsetup is started as a non-blocking promise at the top of pack(),\noverlapping the tinypool import + pool creation + BPE warmup with\nthe search/collect/process pipeline (~340ms). The pool is awaited\nonly when metrics calculation begins, by which time it has long\nsince resolved.\n\nAction: lazy-load tinypool via dynamic import() with module-level cache\nConstraint: createWorkerPool and initTaskRunner become async\nMeasured: 15-run median 1161ms → 1125ms = -36ms (3.1% improvement)\n\nBenchmark (15 runs each, repomix self-pack ~1000 files):\n  Baseline — median: 1161ms, mean: 1161ms, P10: 1105ms, P90: 1212ms\n  Patched  — median: 1125ms, mean: 1126ms, P10: 1073ms, P90: 1177ms\n\nAll 1114 tests pass. Build and lint clean.\n\nhttps://claude.ai/code/session_015UJ1bPDFVapv9hhCH3FrRe",
+          "timestamp": "2026-04-17T07:39:41Z",
+          "tree_id": "19c1c790d0386aac0a9803e16ff489adfc019e61",
+          "url": "https://github.com/yamadashy/repomix/commit/c386c32f4c5e998d97d9cb0a3f2f45d683e72d10"
+        },
+        "date": 1776411871140,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1075,
+            "range": "±113",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1016ms, Q3: 1129ms\nAll times: 958, 969, 970, 970, 978, 989, 1006, 1016, 1017, 1029, 1035, 1043, 1053, 1057, 1062, 1075, 1090, 1096, 1104, 1109, 1126, 1129, 1129, 1151, 1177, 1190, 1245, 1266, 1337, 1772ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1125,
+            "range": "±30",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1101ms, Q3: 1131ms\nAll times: 1098, 1098, 1098, 1099, 1101, 1101, 1106, 1112, 1116, 1118, 1125, 1126, 1126, 1127, 1131, 1131, 1135, 1137, 1201, 1274ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1467,
+            "range": "±43",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1453ms, Q3: 1496ms\nAll times: 1423, 1439, 1445, 1450, 1450, 1453, 1454, 1457, 1457, 1467, 1467, 1467, 1472, 1475, 1479, 1496, 1503, 1505, 1514, 1548ms"
           }
         ]
       }
