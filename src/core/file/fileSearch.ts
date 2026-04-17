@@ -201,7 +201,10 @@ const _gitLsFilesCache = new Map<string, Promise<GitLsFilesResult | null>>();
 export const preloadGitLsFiles = (rootDir: string): void => {
   const resolved = path.resolve(rootDir);
   if (!_gitLsFilesCache.has(resolved)) {
-    _gitLsFilesCache.set(resolved, runGitLsFiles(resolved).catch((): null => null));
+    _gitLsFilesCache.set(
+      resolved,
+      runGitLsFiles(resolved).catch((): null => null),
+    );
   }
 };
 
