@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776390806223,
+  "lastUpdate": 1776395934640,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4770,6 +4770,51 @@ window.BENCHMARK_DATA = {
             "range": "±28",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1349ms, Q3: 1377ms\nAll times: 1304, 1324, 1325, 1329, 1333, 1349, 1350, 1350, 1350, 1356, 1357, 1362, 1366, 1367, 1369, 1377, 1393, 1397, 1407, 1414ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "7bb75c56b31476150ffe8352c5b67b1ac1534b79",
+          "message": "perf(core): Lazy-load ignore and isbinaryfile to reduce module import chain\n\nDefer loading of `ignore` (~10ms) and `isbinaryfile` (~5ms) packages from the\nstatic import chain to dynamic imports at point of use. This removes ~15ms of\nmodule parse/compile time from the critical startup path.\n\n- `ignore` in fileSearch.ts: Loaded via fire-and-forget `loadIgnore()` at the\n  start of `searchFiles`, overlapping with the git ls-files I/O wait (~88ms).\n  By the time `processGitOutput` → `buildIgnoreInstance` needs it, the module\n  is already cached. Follows the existing `globby` lazy-load pattern.\n\n- `isbinaryfile` in fileRead.ts: Only needed when a file fails UTF-8 decoding\n  (~1% of source files). Lazy-loaded on the slow path, so most runs never\n  trigger the import at all.\n\nBenchmark (module loading, packager import chain, 5 samples each):\n  Before: median 148.2ms\n  After:  median 137.5ms  (−10.7ms, −7.2%)\n\nFull CLI benchmark (30 samples, 3 warmup, self-on-self):\n  Before: median 1524ms, mean 1527ms\n  After:  median 1521ms, mean 1518ms  (−3ms median, −9ms mean)\n\nThe CLI improvement is within measurement noise due to system-level variance\n(~50ms IQR), but the module loading reduction is consistent and verified.\n\nInvestigation context: After 22 prior optimization commits, CPU profiling\nshows remaining time is dominated by Node.js internals — ESM module stat()\nresolution (123ms/9.7%), GC (63ms/5%), child process spawning (47ms/3.7%),\nand V8 bytecode compilation (57ms/4.5%). Application-level code accounts for\n<15% of wall time, limiting further user-space optimization opportunities.\n\nhttps://claude.ai/code/session_01VpF8DX8T7fPc34dkGzsX3i",
+          "timestamp": "2026-04-17T03:16:04Z",
+          "tree_id": "8df6b8a4dcde7dc3eefbb40dffb24b08944d257b",
+          "url": "https://github.com/yamadashy/repomix/commit/7bb75c56b31476150ffe8352c5b67b1ac1534b79"
+        },
+        "date": 1776395934041,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 708,
+            "range": "±94",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 681ms, Q3: 775ms\nAll times: 654, 654, 671, 672, 673, 675, 678, 681, 682, 687, 695, 697, 698, 699, 700, 708, 708, 714, 719, 724, 731, 745, 775, 783, 798, 813, 832, 864, 875, 966ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1035,
+            "range": "±41",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1029ms, Q3: 1070ms\nAll times: 1010, 1022, 1023, 1025, 1025, 1029, 1030, 1030, 1031, 1031, 1035, 1039, 1040, 1041, 1051, 1070, 1077, 1081, 1089, 1258ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1414,
+            "range": "±34",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1409ms, Q3: 1443ms\nAll times: 1396, 1400, 1402, 1403, 1405, 1409, 1410, 1411, 1413, 1413, 1414, 1421, 1427, 1428, 1442, 1443, 1445, 1484, 1490, 1506ms"
           }
         ]
       }
