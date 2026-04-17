@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776411872233,
+  "lastUpdate": 1776412466522,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -4995,6 +4995,51 @@ window.BENCHMARK_DATA = {
             "range": "±43",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1453ms, Q3: 1496ms\nAll times: 1423, 1439, 1445, 1450, 1450, 1453, 1454, 1457, 1457, 1467, 1467, 1467, 1472, 1475, 1479, 1496, 1503, 1505, 1514, 1548ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "a0af3e05eade92cdbd15fefa1c68d32ef6575662",
+          "message": "perf(cli): Overlap version fetch with config preload and module imports\n\nPreviously, `getVersion()` (~30ms file read for package.json) was awaited\nsequentially before the speculative configSchema preload and the\n`defaultAction.js` dynamic import. This blocked the entire downstream\npipeline by ~30ms.\n\nNow `getVersion()` fires non-blocking at the start and runs concurrently\nwith the configSchema speculative preload (zod ~145ms) and the\ndefaultAction import chain (~115ms) via `Promise.all`. The version header\nis logged as soon as the promise resolves, before any action-specific\noutput.\n\nFor --init, --remote, and auto-detected remote URL paths, the version\nis awaited inline before those actions (preserving existing behavior).\n\nBenchmark (12 runs, warm compile cache, local):\n  Before: median 1426ms, mean 1414ms\n  After:  median 1380ms, mean 1372ms\n  Improvement: -46ms (-3.3%)\n\nhttps://claude.ai/code/session_01XnNvE5vHVqyyvSkL5v4Yxf",
+          "timestamp": "2026-04-17T07:52:02Z",
+          "tree_id": "8d8893e773e33fb340cc01a5e3f3c0ec50336c74",
+          "url": "https://github.com/yamadashy/repomix/commit/a0af3e05eade92cdbd15fefa1c68d32ef6575662"
+        },
+        "date": 1776412466041,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 793,
+            "range": "±113",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 731ms, Q3: 844ms\nAll times: 693, 701, 704, 710, 712, 714, 729, 731, 737, 743, 743, 745, 755, 769, 773, 793, 799, 807, 811, 811, 815, 816, 844, 854, 896, 925, 941, 945, 1004, 1061ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1129,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1118ms, Q3: 1142ms\nAll times: 1110, 1111, 1112, 1113, 1118, 1118, 1120, 1121, 1123, 1127, 1129, 1131, 1139, 1139, 1142, 1142, 1146, 1148, 1158, 1217ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1535,
+            "range": "±110",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1515ms, Q3: 1625ms\nAll times: 1502, 1503, 1504, 1513, 1513, 1515, 1519, 1526, 1527, 1532, 1535, 1555, 1588, 1608, 1612, 1625, 1643, 1678, 1759, 1849ms"
           }
         ]
       }
