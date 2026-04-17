@@ -91,7 +91,7 @@ export const processFiles = async (
     // Phase 1: Heavy processing via workers (removeComments, compress)
     logger.trace(`Starting file processing for ${rawFiles.length} files using worker pool`);
 
-    const taskRunner = deps.initTaskRunner<FileProcessTask, ProcessedFile>({
+    const taskRunner = await deps.initTaskRunner<FileProcessTask, ProcessedFile>({
       numOfTasks: rawFiles.length,
       workerType: 'fileProcess',
       runtime: 'worker_threads',

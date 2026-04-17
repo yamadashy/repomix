@@ -41,10 +41,13 @@ export interface MetricsTaskRunnerWithWarmup {
  * workers than that just waste CPU on warmup while competing with the security
  * worker pool and main thread for execution time.
  */
-export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+export const createMetricsTaskRunner = async (
+  numOfTasks: number,
+  encoding: TokenEncoding,
+): Promise<MetricsTaskRunnerWithWarmup> => {
   const maxWorkerThreads = Math.max(4, Math.ceil(getProcessConcurrency() / 4));
 
-  const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
+  const taskRunner = await initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
@@ -124,12 +127,12 @@ export const calculateMetrics = async (
   const maxWorkerThreads = Math.max(4, Math.ceil(getProcessConcurrency() / 4));
   const taskRunner =
     deps.taskRunner ??
-    initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
+    (await initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
       maxWorkerThreads,
-    });
+    }));
 
   try {
     const metricsTargetPaths = processedFiles.map((file) => file.path);

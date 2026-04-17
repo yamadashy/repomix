@@ -90,7 +90,7 @@ export const runSecurityCheck = async (
   const maxSecurityWorkers = 1;
 
   // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+  const taskRunner = await deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
     numOfTasks: totalItems,
     workerType: 'securityCheck',
     runtime: 'worker_threads',

@@ -80,25 +80,11 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Pre-initialize metrics worker pool as early as possible to maximize the
-  // overlap of gpt-tokenizer loading (~350-450ms) with the rest of the pipeline
-  // (search, collection, processing, security check, output generation).
-  // Previously this was created after searchFiles and then explicitly awaited
-  // before the parallel output+metrics section, blocking for 0-303ms depending
-  // on how fast file collection completed. By starting warmup before searchFiles
-  // and removing the blocking await, the warmup time is fully absorbed into the
-  // concurrent pipeline stages.
-  //
-  // numOfTasks is set to a large value because the actual file count isn't known
-  // until after searchFiles. Pool size is capped by CPU count regardless, so this
-  // just ensures maximum thread utilization.
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    Number.MAX_SAFE_INTEGER,
-    config.tokenCount.encoding,
-  );
-  // Suppress unhandled rejection — warmup completes naturally in worker FIFO
-  // queues before any real tasks, and is properly awaited in the finally block.
-  metricsWarmupPromise.catch(() => {});
+  // Start metrics worker pool creation + warmup as a non-blocking promise.
+  // The tinypool module is lazy-loaded (~34ms), overlapping with the pipeline
+  // below. The pool is awaited just before metrics calculation begins.
+  const metricsSetupPromise = deps.createMetricsTaskRunner(Number.MAX_SAFE_INTEGER, config.tokenCount.encoding);
+  metricsSetupPromise.catch(() => {});
 
   try {
     // Pre-fetch git file-change counts for sortOutputFiles while search and
@@ -267,11 +253,10 @@ export const pack = async (
       files: filePaths,
     }));
 
-    // No explicit warmup await here — warmup tasks were dispatched first into
-    // each worker's FIFO queue (at pool creation time, before searchFiles),
-    // guaranteeing they complete before any real metrics tasks on the same worker.
-    // Removing this await eliminates 0-303ms of critical-path blocking that
-    // occurred when file collection finished before worker warmup completed.
+    // Await the metrics pool + warmup started at the top of pack(). By now
+    // the tinypool import (~34ms), pool creation, and BPE warmup (~300ms)
+    // have run concurrently with search + collect + process (~340ms).
+    const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = await metricsSetupPromise;
 
     const produceOutputAndMetrics = async (files: ProcessedFile[]) => {
       const outPromise = deps.produceOutput(
@@ -285,9 +270,6 @@ export const pack = async (
         filePathsByRoot,
         emptyDirPaths,
       );
-      // Start metrics as soon as the output STRING is ready — before the
-      // disk write completes. This overlaps ~250ms of file I/O with ~300ms
-      // of token counting in worker threads.
       const outForMetrics = outPromise.then((r) => r.outputForMetrics);
       const [outResult, outMetrics] = await Promise.all([
         outPromise,
@@ -350,7 +332,10 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsWarmupPromise.catch(() => {});
-    await metricsTaskRunner.cleanup();
+    const setup = await metricsSetupPromise.catch(() => null);
+    if (setup) {
+      await setup.warmupPromise.catch(() => {});
+      await setup.taskRunner.cleanup();
+    }
   }
 };

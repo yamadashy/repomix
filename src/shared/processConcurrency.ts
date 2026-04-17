@@ -1,9 +1,15 @@
 import os from 'node:os';
-import { type Options, Tinypool } from 'tinypool';
+import type { Options, Tinypool } from 'tinypool';
 import { logger } from './logger.js';
 import type { WorkerType } from './unifiedWorker.js';
 
 export type WorkerRuntime = NonNullable<Options['runtime']>;
+
+let _tinypoolModule: Promise<typeof import('tinypool')> | null = null;
+const loadTinypool = (): Promise<typeof import('tinypool')> => {
+  _tinypoolModule ??= import('tinypool');
+  return _tinypoolModule;
+};
 
 // Re-export WorkerType for external consumers
 export type { WorkerType } from './unifiedWorker.js';
@@ -67,7 +73,7 @@ export const getWorkerThreadCount = (
   };
 };
 
-export const createWorkerPool = (options: WorkerOptions): Tinypool => {
+export const createWorkerPool = async (options: WorkerOptions): Promise<Tinypool> => {
   const { numOfTasks, workerType, runtime = 'child_process', maxWorkerThreads } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads);
 
@@ -80,6 +86,7 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
 
   const startTime = process.hrtime.bigint();
 
+  const { Tinypool } = await loadTinypool();
   const pool = new Tinypool({
     filename: workerPath,
     runtime,
@@ -157,8 +164,8 @@ export interface TaskRunner<T, R> {
   cleanup: () => Promise<void>;
 }
 
-export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> => {
-  const pool = createWorkerPool(options);
+export const initTaskRunner = async <T, R>(options: WorkerOptions): Promise<TaskRunner<T, R>> => {
+  const pool = await createWorkerPool(options);
   return {
     run: (task: T) => pool.run(task),
     cleanup: () => cleanupWorkerPool(pool),
