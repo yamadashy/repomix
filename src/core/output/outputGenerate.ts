@@ -9,6 +9,7 @@ import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
 import { sortOutputFiles } from './outputSort.js';
+import { buildDirectOutput } from './outputStyleBuild.js';
 import {
   generateHeader,
   generateSummaryFileFormat,
@@ -17,43 +18,6 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-
-// Lazy-load Handlebars and template styles to defer ~30ms of module parsing
-// and compilation from CLI startup to the output generation phase, so the
-// file-search/collection pipeline can start sooner.
-// Caching the Promise (not the resolved value) guarantees exactly one import
-// regardless of how many concurrent calls hit the cold path.
-const _compiledTemplatePromises = new Map<string, Promise<(context: unknown) => string>>();
-
-const getCompiledTemplate = (style: string): Promise<(context: unknown) => string> => {
-  let promise = _compiledTemplatePromises.get(style);
-  if (!promise) {
-    promise = loadAndCompileTemplate(style);
-    _compiledTemplatePromises.set(style, promise);
-  }
-  return promise;
-};
-
-const loadAndCompileTemplate = async (style: string): Promise<(context: unknown) => string> => {
-  let templatePromise: Promise<string>;
-  switch (style) {
-    case 'xml':
-      templatePromise = import('./outputStyles/xmlStyle.js').then((m) => m.getXmlTemplate());
-      break;
-    case 'markdown':
-      templatePromise = import('./outputStyles/markdownStyle.js').then((m) => m.getMarkdownTemplate());
-      break;
-    case 'plain':
-      templatePromise = import('./outputStyles/plainStyle.js').then((m) => m.getPlainTemplate());
-      break;
-    default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
-  }
-
-  // Load template and Handlebars in parallel
-  const [template, { default: Handlebars }] = await Promise.all([templatePromise, import('handlebars')]);
-  return Handlebars.compile(template);
-};
 
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
   const maxBackticks = files
@@ -235,42 +199,6 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
   }
 };
 
-const generateHandlebarOutput = async (
-  config: RepomixConfigMerged,
-  renderContext: RenderContext,
-  processedFiles?: ProcessedFile[],
-): Promise<string> => {
-  try {
-    const compiledTemplate = await getCompiledTemplate(config.output.style);
-    return `${compiledTemplate(renderContext).trim()}\n`;
-  } catch (error) {
-    if (error instanceof RangeError && error.message === 'Invalid string length') {
-      let largeFilesInfo = '';
-      if (processedFiles && processedFiles.length > 0) {
-        const topFiles = processedFiles
-          .sort((a, b) => b.content.length - a.content.length)
-          .slice(0, 5)
-          .map((f) => `  - ${f.path} (${(f.content.length / 1024 / 1024).toFixed(1)} MB)`)
-          .join('\n');
-        largeFilesInfo = `\n\nLargest files in this repository:\n${topFiles}`;
-      }
-
-      throw new RepomixError(
-        `Output size exceeds JavaScript string limit. The repository contains files that are too large to process.
-Please try:
-  - Use --ignore to exclude large files (e.g., --ignore "docs/**" or --ignore "*.html")
-  - Use --include to process only specific files
-  - Process smaller portions of the repository at a time${largeFilesInfo}`,
-        { cause: error },
-      );
-    }
-    throw new RepomixError(
-      `Failed to compile template: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      error instanceof Error ? { cause: error } : undefined,
-    );
-  }
-};
-
 export const generateOutput = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
@@ -282,7 +210,7 @@ export const generateOutput = async (
   emptyDirPaths?: string[],
   deps = {
     buildOutputGeneratorContext,
-    generateHandlebarOutput,
+    buildDirectOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
     sortOutputFiles,
@@ -307,12 +235,12 @@ export const generateOutput = async (
     case 'xml':
       return config.output.parsableStyle
         ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+        : deps.buildDirectOutput(config.output.style, renderContext, sortedProcessedFiles);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':
     case 'plain':
-      return deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+      return deps.buildDirectOutput(config.output.style, renderContext, sortedProcessedFiles);
     default:
       throw new RepomixError(`Unsupported output style: ${config.output.style}`);
   }

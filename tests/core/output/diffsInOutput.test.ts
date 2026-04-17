@@ -134,7 +134,7 @@ index 123..456 100644
       undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
-        generateHandlebarOutput: mockGenerateHandlebarOutput,
+        buildDirectOutput: mockGenerateHandlebarOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
         sortOutputFiles: mockSortOutputFiles,
@@ -144,7 +144,7 @@ index 123..456 100644
     // Check that the output was generated with the correct template
     expect(mockBuildOutputGeneratorContext).toHaveBeenCalled();
 
-    // For non-parsable XML, should use Handlebars
+    // For non-parsable XML, should use direct string builder
     if (!mockConfig.output.parsableStyle) {
       expect(mockGenerateHandlebarOutput).toHaveBeenCalled();
     } else {
@@ -208,14 +208,14 @@ index 123..456 100644
       undefined,
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
-        generateHandlebarOutput: mockGenerateHandlebarOutput,
+        buildDirectOutput: mockGenerateHandlebarOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
         sortOutputFiles: mockSortOutputFiles,
       },
     );
 
-    // For markdown output, should use Handlebars
+    // For markdown output, should use direct string builder
     expect(mockGenerateHandlebarOutput).toHaveBeenCalled();
 
     // XML generator should not be called for markdown
