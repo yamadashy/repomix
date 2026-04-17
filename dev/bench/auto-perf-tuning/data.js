@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776412466522,
+  "lastUpdate": 1776452988368,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5040,6 +5040,51 @@ window.BENCHMARK_DATA = {
             "range": "±110",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1515ms, Q3: 1625ms\nAll times: 1502, 1503, 1504, 1513, 1513, 1515, 1519, 1526, 1527, 1532, 1535, 1555, 1588, 1608, 1612, 1625, 1643, 1678, 1759, 1849ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "1ffc78d5a2c56c24a4242ee5ccb482975955b2e8",
+          "message": "perf(output): Replace Handlebars with direct string builders for output generation\n\nEliminate the ~140ms Handlebars module import + template compilation that\nblocked the output generation critical path. Replace with zero-overhead\ndirect string builder functions for XML, Markdown, and Plain styles.\n\nWhy: Handlebars (350KB of JavaScript) takes ~140ms to parse, compile, and\ninitialize on every cold CLI invocation. This cost sat on the output\ngeneration critical path, which is the longest-running phase of pack().\nDirect string building using array push + join produces identical output\nwith no module loading overhead.\n\nChanges:\n- Add buildXmlOutput, buildMarkdownOutput, buildPlainOutput functions\n  that directly construct output strings without template engines\n- Extract extensionToLanguageMap to outputFileLanguage.ts (Handlebars-free)\n  so the markdown builder can resolve language hints without importing\n  Handlebars through outputStyleUtils.ts\n- Keep Handlebars templates intact for skill generation path and tests\n- Update test mocks from generateHandlebarOutput to buildDirectOutput\n\nBenchmark (1000 files, cold-start, 5 runs trimmed mean):\n  Before: ~1368ms (median 1362ms, range 1319–1413ms)\n  After:  ~1249ms (median 1243ms, range 1237–1278ms)\n  Improvement: ~120ms = 8.7% of total CLI wall time\n\nhttps://claude.ai/code/session_015wX7m2cigo1rZiuPXoDgBn",
+          "timestamp": "2026-04-17T19:07:30Z",
+          "tree_id": "c755bc6e381d366850531dcead01d1303b858498",
+          "url": "https://github.com/yamadashy/repomix/commit/1ffc78d5a2c56c24a4242ee5ccb482975955b2e8"
+        },
+        "date": 1776452987664,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1036,
+            "range": "±362",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 899ms, Q3: 1261ms\nAll times: 822, 841, 856, 868, 875, 879, 898, 899, 911, 930, 940, 978, 984, 989, 993, 1036, 1066, 1153, 1206, 1212, 1249, 1250, 1261, 1422, 1492, 1530, 1556, 1603, 1779, 2233ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1126,
+            "range": "±61",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1099ms, Q3: 1160ms\nAll times: 1080, 1089, 1090, 1094, 1095, 1099, 1101, 1104, 1106, 1110, 1126, 1131, 1132, 1137, 1156, 1160, 1276, 1291, 1311, 1311ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1454,
+            "range": "±75",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1434ms, Q3: 1509ms\nAll times: 1388, 1407, 1409, 1419, 1427, 1434, 1439, 1444, 1446, 1453, 1454, 1465, 1465, 1466, 1487, 1509, 1719, 1774, 1789, 1830ms"
           }
         ]
       }
