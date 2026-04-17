@@ -115,8 +115,6 @@ index 123..456 100644
       return '<xml>parsable output with diffs object</xml>';
     });
 
-    const mockSortOutputFiles = vi.fn().mockImplementation((files) => Promise.resolve(files));
-
     const gitDiffResult: GitDiffResult = {
       workTreeDiffContent: sampleDiff,
       stagedDiffContent: '',
@@ -189,7 +187,6 @@ index 123..456 100644
     });
 
     const mockGenerateParsableXmlOutput = vi.fn();
-    const mockSortOutputFiles = vi.fn().mockImplementation((files) => Promise.resolve(files));
     const gitDiffResult: GitDiffResult = {
       workTreeDiffContent: sampleDiff,
       stagedDiffContent: '',

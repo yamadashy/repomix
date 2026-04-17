@@ -209,11 +209,10 @@ export const pack = async (
     });
 
     // Pre-sort processedFiles in the same order they will appear in the generated output.
-    // `generateOutput` internally calls `sortOutputFiles` as well; both share the same
-    // git-log subprocess result (cached via `fileChangeCountsCache`). The array sort itself
-    // runs twice but is negligible (~1ms for 1000 files). This ordering is required by the
-    // fast-path in `calculateMetrics`, which walks file contents through the output string
-    // in order via `extractOutputWrapper`.
+    // This is the single authoritative sort — generateOutput trusts that its input is
+    // already sorted and does not re-sort. The ordering is required by the fast-path in
+    // `calculateMetrics`, which walks file contents through the output string in order
+    // via `extractOutputWrapper`.
     await sortDataPromise;
     const processedFiles = await deps.sortOutputFiles(allProcessedFiles, config);
 
