@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776482298149,
+  "lastUpdate": 1776485358799,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -3330,6 +3330,51 @@ window.BENCHMARK_DATA = {
             "range": "±37",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1777ms, Q3: 1814ms\nAll times: 1760, 1766, 1766, 1768, 1771, 1777, 1777, 1780, 1781, 1791, 1792, 1794, 1798, 1812, 1812, 1814, 1814, 1816, 1823, 1870ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "39812feecc09da9368f6c45a1424ef96321e25dc",
+          "message": "Merge pull request #1486 from yamadashy/renovate/docker-login-action-4.x\n\nchore(deps): update docker/login-action action to v4.1.0",
+          "timestamp": "2026-04-18T13:05:01+09:00",
+          "tree_id": "2fcb3ca4b8b6b8727f12a242539d746f500c6cf7",
+          "url": "https://github.com/yamadashy/repomix/commit/39812feecc09da9368f6c45a1424ef96321e25dc"
+        },
+        "date": 1776485357826,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1252,
+            "range": "±128",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1150ms, Q3: 1278ms\nAll times: 1083, 1106, 1116, 1117, 1121, 1130, 1139, 1150, 1179, 1185, 1188, 1193, 1214, 1238, 1242, 1252, 1252, 1262, 1264, 1265, 1271, 1273, 1278, 1279, 1281, 1287, 1291, 1324, 1335, 1863ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1533,
+            "range": "±38",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1506ms, Q3: 1544ms\nAll times: 1491, 1495, 1495, 1504, 1504, 1506, 1519, 1520, 1528, 1531, 1533, 1535, 1535, 1536, 1543, 1544, 1547, 1548, 1550, 1652ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1879,
+            "range": "±55",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1856ms, Q3: 1911ms\nAll times: 1830, 1832, 1836, 1838, 1852, 1856, 1869, 1870, 1873, 1876, 1879, 1889, 1895, 1907, 1908, 1911, 1917, 1918, 1982, 2033ms"
           }
         ]
       }
