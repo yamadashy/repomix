@@ -138,7 +138,11 @@ export const repomixConfigCliSchema = v.intersect([
   }),
 ]);
 
-// Merged schema for all configurations
+// Merged schema for all configurations.
+// `v.intersect` is intentional: it layers the default schema (required fields
+// with applied defaults) over the file and CLI schemas (all fields optional).
+// Flattening to a single object via spread would silently demote the
+// required-with-default fields to optional and change merge semantics.
 export const repomixConfigMergedSchema = v.intersect([
   repomixConfigDefaultSchema,
   repomixConfigFileSchema,
