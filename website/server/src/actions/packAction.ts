@@ -32,15 +32,21 @@ export const packAction = async (c: Context) => {
     let options: unknown = {};
     try {
       options = optionsRaw ? JSON.parse(optionsRaw) : {};
-    } catch {
-      const jsonError = new Error('Invalid JSON in options');
-      logError('Pack validation failed', jsonError, {
-        event: PACK_EVENT,
-        outcome: 'validation_error' satisfies PackOutcome,
-        rejectReason: classifyRejectReason(jsonError),
-        requestId: c.get('requestId'),
-        source: clientInfo.source,
-      });
+    } catch (jsonError) {
+      // Preserve the original SyntaxError so the log has position / token
+      // context — just the invalid_json count without the cause makes the
+      // invalid_json bucket unactionable when it spikes.
+      logError(
+        'Pack validation failed',
+        jsonError instanceof Error ? jsonError : new Error('Invalid JSON in options'),
+        {
+          event: PACK_EVENT,
+          outcome: 'validation_error' satisfies PackOutcome,
+          rejectReason: 'invalid_json',
+          requestId: c.get('requestId'),
+          source: clientInfo.source,
+        },
+      );
       return c.json(createErrorResponse('Invalid JSON in options', c.get('requestId')), 400);
     }
     const file = formData.get('file') as File | null;

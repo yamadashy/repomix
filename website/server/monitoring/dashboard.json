@@ -460,10 +460,10 @@
       {
         "xPos": 0,
         "yPos": 24,
-        "width": 6,
+        "width": 3,
         "height": 4,
         "widget": {
-          "title": "Option usage — compress (Tree-sitter)",
+          "title": "Option usage — compress",
           "xyChart": {
             "dataSets": [
               {
@@ -488,9 +488,99 @@
         }
       },
       {
+        "xPos": 3,
+        "yPos": 24,
+        "width": 3,
+        "height": 4,
+        "widget": {
+          "title": "Option usage — removeComments",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/pack_options_usage\"",
+                    "aggregation": {
+                      "alignmentPeriod": "300s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.label.remove_comments"]
+                    }
+                  }
+                },
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1",
+                "legendTemplate": "removeComments=${metric.label.remove_comments}"
+              }
+            ],
+            "yAxis": { "label": "count / 5min", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
         "xPos": 6,
         "yPos": 24,
-        "width": 6,
+        "width": 3,
+        "height": 4,
+        "widget": {
+          "title": "Option usage — outputParsable",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/pack_options_usage\"",
+                    "aggregation": {
+                      "alignmentPeriod": "300s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.label.output_parsable"]
+                    }
+                  }
+                },
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1",
+                "legendTemplate": "outputParsable=${metric.label.output_parsable}"
+              }
+            ],
+            "yAxis": { "label": "count / 5min", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 9,
+        "yPos": 24,
+        "width": 3,
+        "height": 4,
+        "widget": {
+          "title": "Option usage — include patterns",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/pack_options_usage\"",
+                    "aggregation": {
+                      "alignmentPeriod": "300s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.label.has_include_patterns"]
+                    }
+                  }
+                },
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1",
+                "legendTemplate": "hasIncludePatterns=${metric.label.has_include_patterns}"
+              }
+            ],
+            "yAxis": { "label": "count / 5min", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 28,
+        "width": 12,
         "height": 4,
         "widget": {
           "title": "Validation rejections (by reason)",

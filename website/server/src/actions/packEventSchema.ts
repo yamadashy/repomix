@@ -28,17 +28,22 @@ export function getRepoHost(input: { file?: unknown; url?: string }): string {
 }
 
 // Map a validation error to a stable `rejectReason` label for log-based metrics.
-// Matches against the zod issue message (strings are stable because they are
-// defined in this project's schema). Falls back to 'other' for unmapped paths
-// so a sudden jump in `other` surfaces unknown failure modes in the dashboard.
+// Matches against the first zod issue's message (strings are stable because
+// they are defined in this project's schema — see packRequestSchema.ts). Falls
+// back to 'other' for unmapped paths so a sudden jump in `other` surfaces
+// unknown failure modes in the dashboard. NOTE: only the first issue is
+// classified — a request failing multiple validations (e.g. both URL and
+// options) gets bucketed by whichever zod surfaces first.
+//
+// `validateRequest` wraps ZodError in AppError, so the original issues live on
+// `error.cause`. We check both so callers don't need to know which layer is
+// responsible for wrapping.
 export function classifyRejectReason(error: unknown): string {
   if (error instanceof Error && error.message === 'Invalid JSON in options') {
     return 'invalid_json';
   }
-  if (!error || typeof error !== 'object') return 'unknown';
-
-  const issues = (error as { issues?: Array<{ message?: string; path?: Array<string | number> }> }).issues;
-  if (!Array.isArray(issues) || issues.length === 0) return 'unknown';
+  const issues = extractZodIssues(error);
+  if (!issues || issues.length === 0) return 'unknown';
 
   const first = issues[0];
   const msg = first?.message ?? '';
@@ -69,4 +74,20 @@ export function classifyRejectReason(error: unknown): string {
   const path = Array.isArray(first?.path) ? first.path.join('.') : '';
   if (path === 'format') return 'invalid_format';
   return 'other';
+}
+
+type ZodIssueShape = { message?: string; path?: Array<string | number> };
+
+// Pull `.issues` from either the error itself (raw ZodError) or the wrapped
+// `.cause` (AppError wrapping). Shallow — doesn't walk the cause chain further.
+function extractZodIssues(error: unknown): ZodIssueShape[] | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  const direct = (error as { issues?: unknown }).issues;
+  if (Array.isArray(direct)) return direct as ZodIssueShape[];
+  const cause = (error as { cause?: unknown }).cause;
+  if (cause && typeof cause === 'object') {
+    const causeIssues = (cause as { issues?: unknown }).issues;
+    if (Array.isArray(causeIssues)) return causeIssues as ZodIssueShape[];
+  }
+  return undefined;
 }
