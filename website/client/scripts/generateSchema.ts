@@ -2,37 +2,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { toJsonSchema } from '@valibot/to-json-schema';
 import { repomixConfigFileSchema } from '../../../src/config/configSchema.js';
+import { normalizeObjectNode } from './normalizeJsonSchema.js';
 
 const getPackageVersion = async (): Promise<string> => {
   const packageJsonPath = path.resolve('./package.json');
   const packageJsonContent = await fs.readFile(packageJsonPath, 'utf-8');
   const packageJson = JSON.parse(packageJsonContent);
   return packageJson.version;
-};
-
-// @valibot/to-json-schema quirks:
-// - Does not emit `additionalProperties: false` for `v.object`, even though
-//   Valibot strips unknown keys at runtime. We add it so editors flag typos.
-// - Emits an empty `required: []` on every object node, which is valid but noisy.
-//   We strip empty arrays to match the previous zod-generated output.
-// Mutates the tree in place — the caller passes the root schema and discards
-// the return value.
-const normalizeObjectNode = (node: unknown): void => {
-  if (!node || typeof node !== 'object') return;
-  if (Array.isArray(node)) {
-    for (const item of node) normalizeObjectNode(item);
-    return;
-  }
-  const obj = node as Record<string, unknown>;
-  if (obj.type === 'object' && obj.properties && typeof obj.properties === 'object') {
-    if (!('additionalProperties' in obj)) {
-      obj.additionalProperties = false;
-    }
-    if (Array.isArray(obj.required) && obj.required.length === 0) {
-      delete obj.required;
-    }
-  }
-  for (const value of Object.values(obj)) normalizeObjectNode(value);
 };
 
 const generateSchema = async () => {
