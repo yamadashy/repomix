@@ -157,6 +157,9 @@ const loadAndValidateConfig = async (
         // (both ESM Module namespaces and jiti's TS interop). Unwrap only when
         // `default` is itself an object — this preserves a CJS config that
         // legitimately exports `{ default: 'plain', ...rest }` as-is.
+        // Known limitation: a CJS module exporting `{ default: { ... }, otherKey: ... }`
+        // would still be treated as an ESM wrapper and `otherKey` would be discarded.
+        // No known user hits this pattern; RepomixConfig has no `default` field.
         const defaultExport =
           imported && typeof imported === 'object' && 'default' in imported
             ? (imported as { default: unknown }).default

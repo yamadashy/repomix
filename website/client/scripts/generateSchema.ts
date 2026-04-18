@@ -15,6 +15,8 @@ const getPackageVersion = async (): Promise<string> => {
 //   Valibot strips unknown keys at runtime. We add it so editors flag typos.
 // - Emits an empty `required: []` on every object node, which is valid but noisy.
 //   We strip empty arrays to match the previous zod-generated output.
+// Mutates the tree in place — the caller passes the root schema and discards
+// the return value.
 const normalizeObjectNode = (node: unknown): void => {
   if (!node || typeof node !== 'object') return;
   if (Array.isArray(node)) {
