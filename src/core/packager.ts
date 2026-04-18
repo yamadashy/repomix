@@ -16,7 +16,7 @@ import {
   createMetricsTaskRunner,
   type MetricsTaskRunnerWithWarmup,
 } from './metrics/calculateMetrics.js';
-import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
+import { populateSortDataFromCommits, prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { type SuspiciousFileResult, warmupSecurityWorkerPool } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
@@ -96,11 +96,14 @@ export const pack = async (
   }
 
   try {
-    // Pre-fetch git file-change counts for sortOutputFiles while search and
-    // collection are in flight, so the later sortOutputFiles call is a cache hit.
-    const sortDataPromise = deps.prefetchSortData(config).catch((error) => {
-      logger.trace('Failed to prefetch sort data:', error);
-    });
+    // When includeLogs is enabled, getGitLogs fetches enough commits for both
+    // display and sort-by-changes, eliminating a redundant git log process.
+    const gitLogProvidesSortData = config.output.git?.sortByChanges && config.output.git?.includeLogs;
+    const sortDataPromise = gitLogProvidesSortData
+      ? Promise.resolve()
+      : deps.prefetchSortData(config).catch((error) => {
+          logger.trace('Failed to prefetch sort data:', error);
+        });
 
     // Disable empty directory search inside searchFiles — it is launched
     // concurrently with file collection via emptyDirPromise below, keeping
@@ -212,6 +215,14 @@ export const pack = async (
       progressCallback('Processing files...');
       return deps.processFiles(allRawFiles, config, progressCallback);
     });
+
+    // When git log provides sort data, populate the cache before sortOutputFiles.
+    if (gitLogProvidesSortData && gitLogResult?.allCommits) {
+      const sortMax = config.output.git?.sortByChangesMaxCommits ?? 100;
+      const sortCommits =
+        gitLogResult.allCommits.length > sortMax ? gitLogResult.allCommits.slice(0, sortMax) : gitLogResult.allCommits;
+      populateSortDataFromCommits(config.cwd, sortMax, sortCommits);
+    }
 
     // Pre-sort processedFiles in the same order they will appear in the generated output.
     // This is the single authoritative sort — generateOutput trusts that its input is

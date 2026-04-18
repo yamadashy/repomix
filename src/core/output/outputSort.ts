@@ -129,6 +129,21 @@ export const prefetchSortData = async (
   await getFileChangeCounts(config.cwd, config.output.git?.sortByChangesMaxCommits, deps);
 };
 
+export const populateSortDataFromCommits = (
+  cwd: string,
+  maxCommits: number | undefined,
+  commits: { files: string[] }[],
+): void => {
+  const fileChangeCounts: Record<string, number> = {};
+  for (const commit of commits) {
+    for (const file of commit.files) {
+      fileChangeCounts[file] = (fileChangeCounts[file] || 0) + 1;
+    }
+  }
+  const cacheKey = buildCacheKey(cwd, maxCommits);
+  fileChangeCountsCache.set(cacheKey, fileChangeCounts);
+};
+
 const sortFilesByChangeCounts = (files: ProcessedFile[], fileChangeCounts: Record<string, number>): ProcessedFile[] => {
   // Sort files by change count (files with more changes go to the bottom)
   return [...files].sort((a, b) => {

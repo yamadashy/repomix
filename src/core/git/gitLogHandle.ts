@@ -21,6 +21,7 @@ export interface GitLogCommit {
 export interface GitLogResult {
   logContent: string;
   commits: GitLogCommit[];
+  allCommits?: GitLogCommit[];
 }
 
 const parseGitLog = (rawLogOutput: string, recordSeparator = GIT_LOG_RECORD_SEPARATOR): GitLogCommit[] => {
@@ -87,28 +88,35 @@ export const getGitLogs = async (
     getGitLog,
   },
 ): Promise<GitLogResult | undefined> => {
-  // Get git logs if enabled
-  let gitLogResult: GitLogResult | undefined;
-
-  if (config.output.git?.includeLogs) {
-    try {
-      // Use the first directory as the git repository root
-      // Usually this would be the root of the project
-      const gitRoot = rootDirs[0] || config.cwd;
-      const maxCommits = config.output.git?.includeLogsCount || 50;
-      const logContent = await deps.getGitLog(gitRoot, maxCommits);
-
-      // Parse the raw log content into structured commits
-      const commits = parseGitLog(logContent);
-
-      gitLogResult = {
-        logContent,
-        commits,
-      };
-    } catch (error) {
-      throw new RepomixError(`Failed to get git logs: ${(error as Error).message}`, { cause: error });
-    }
+  if (!config.output.git?.includeLogs) {
+    return undefined;
   }
 
-  return gitLogResult;
+  try {
+    const gitRoot = rootDirs[0] || config.cwd;
+    const logMaxCommits = config.output.git?.includeLogsCount || 50;
+
+    // When sortByChanges is also enabled, fetch enough commits for both
+    // features from a single git process instead of spawning two.
+    const sortMaxCommits = config.output.git?.sortByChangesMaxCommits ?? 100;
+    const fetchMaxCommits = config.output.git?.sortByChanges ? Math.max(logMaxCommits, sortMaxCommits) : logMaxCommits;
+
+    const fullLogContent = await deps.getGitLog(gitRoot, fetchMaxCommits);
+    const allCommits = parseGitLog(fullLogContent);
+
+    if (fetchMaxCommits <= logMaxCommits || allCommits.length <= logMaxCommits) {
+      return { logContent: fullLogContent, commits: allCommits };
+    }
+
+    const commits = allCommits.slice(0, logMaxCommits);
+    const records = fullLogContent.split(GIT_LOG_RECORD_SEPARATOR).filter(Boolean);
+    const logContent =
+      records.length > logMaxCommits
+        ? GIT_LOG_RECORD_SEPARATOR + records.slice(0, logMaxCommits).join(GIT_LOG_RECORD_SEPARATOR)
+        : fullLogContent;
+
+    return { logContent, commits, allCommits };
+  } catch (error) {
+    throw new RepomixError(`Failed to get git logs: ${(error as Error).message}`, { cause: error });
+  }
 };
