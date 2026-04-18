@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776554609191,
+  "lastUpdate": 1776554722191,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5670,6 +5670,51 @@ window.BENCHMARK_DATA = {
             "range": "±165",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1806ms, Q3: 1971ms\nAll times: 1767, 1767, 1783, 1789, 1795, 1806, 1809, 1811, 1820, 1828, 1836, 1865, 1876, 1879, 1965, 1971, 1991, 2166, 2254, 2499ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "04e4d32838fe7d9d135a460b784b725b7473c4ef",
+          "message": "perf(core): Start metrics worker warmup before searchFiles\n\nMove `createMetricsTaskRunner` in `pack()` from after searchFiles+sortPaths\nto immediately after `logMemoryUsage('Pack - Start')`, and widen the outer\n`try`/`finally` to cover the whole pack pipeline so pool cleanup always runs\neven if an early stage (`searchFiles`, `sortPaths`, etc.) throws.\n\n`numOfTasks` is a fixed `200` estimate because the actual file count is not\nyet known; with `TASKS_PER_THREAD=100` this maps to `maxThreads=2`. The pool\nis reused by `calculateMetrics` (it does not re-create it), so that is the\nfinal thread cap. Benchmarks on the gpt-tokenizer workload show 2 workers\noutperform higher thread counts — per-file batches are ~10 files and IPC\noverhead dominates tokenization time.\n\nWithout the early start, warmup fired ~360 ms into the pack pipeline (after\n`searchFiles` + `sortPaths`) and its ~500 ms gpt-tokenizer BPE load still\nblocked `await metricsWarmupPromise` at the metrics boundary for ~250 ms.\nLaunching the warmup before `searchFiles` lets that BPE load overlap with\nsearchFiles, securityCheck, fileProcess, and sortOutputFiles, collapsing\nthe later await to a near no-op. Output is byte-identical; 1137 tests pass.\n\nBenchmark (node bin/repomix.cjs ... --quiet, interleaved A/B, same machine):\n\n| workload                        | n  | baseline median | patched median | delta           |\n|---------------------------------|---:|----------------:|---------------:|----------------:|\n| `--include 'src/**'` (~127 files)| 40 |        1878 ms |        1814 ms |   -64 ms (-3.4%) |\n| `--include 'src,tests'`          | 20 |        2000 ms |        1928 ms |   -72 ms (-3.6%) |\n| full repo (no filter, CI-like)   | 20 |        3528 ms |        3301 ms |  -227 ms (-6.4%) |",
+          "timestamp": "2026-04-18T23:21:41Z",
+          "tree_id": "6d499f42fac8c213e41ff1b65b95da222e7d0d86",
+          "url": "https://github.com/yamadashy/repomix/commit/04e4d32838fe7d9d135a460b784b725b7473c4ef"
+        },
+        "date": 1776554721317,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 903,
+            "range": "±59",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 872ms, Q3: 931ms\nAll times: 828, 846, 857, 863, 870, 870, 871, 872, 877, 879, 889, 890, 892, 893, 895, 903, 914, 914, 918, 918, 921, 925, 931, 945, 948, 981, 993, 1050, 1068, 1108ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1372,
+            "range": "±34",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1356ms, Q3: 1390ms\nAll times: 1342, 1346, 1346, 1349, 1354, 1356, 1359, 1360, 1362, 1363, 1372, 1377, 1382, 1384, 1386, 1390, 1399, 1416, 1423, 1448ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1727,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1712ms, Q3: 1749ms\nAll times: 1672, 1673, 1676, 1697, 1711, 1712, 1713, 1714, 1715, 1716, 1727, 1727, 1732, 1735, 1743, 1749, 1749, 1750, 1792, 1850ms"
           }
         ]
       }
