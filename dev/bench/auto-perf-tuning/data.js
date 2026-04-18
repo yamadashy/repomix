@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776550645047,
+  "lastUpdate": 1776554609191,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5625,6 +5625,51 @@ window.BENCHMARK_DATA = {
             "range": "±43",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1827ms, Q3: 1870ms\nAll times: 1809, 1810, 1813, 1817, 1822, 1827, 1830, 1832, 1832, 1837, 1843, 1849, 1853, 1856, 1857, 1870, 1871, 2041, 2044, 2131ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "187506f3975061fae1fac655d39e50a29767fbf8",
+          "message": "perf(core): Start metrics worker warmup before searchFiles\n\nMove `createMetricsTaskRunner` in `pack()` from after searchFiles+sortPaths\nto immediately after `logMemoryUsage('Pack - Start')`. Replace the\n`allFilePaths.length` argument with a fixed `200` estimate so the pool can be\nsized before file search completes; the pool is still re-used by\n`calculateMetrics`, so final worker count for very large repos is unchanged.\n\nWithout the early start, the gpt-tokenizer worker warmup fires ~360ms into\nthe pack pipeline (after searchFiles + sortPaths) and its ~500ms BPE load\nstill blocks the `await metricsWarmupPromise` at the metrics boundary for\n~250ms. Launching the warmup before searchFiles lets that BPE load fully\noverlap with searchFiles, securityCheck, fileProcess, and sortOutputFiles,\ncollapsing the later await to a near-no-op.\n\nThe `numOfTasks=200` estimate keeps `maxThreads=2` for small repos (same as\nbefore) and the actual file count is not needed to size the pool — for\nrepos with <100 files the extra idle worker's warmup is absorbed anyway.\nOutput is byte-identical; all 1137 tests pass.\n\nBenchmark (node bin/repomix.cjs ... --quiet, interleaved A/B, n=40 each,\nsame machine):\n\n| workload                        | baseline median | patched median | delta          |\n|---------------------------------|----------------:|---------------:|---------------:|\n| `--include 'src/**'` (127 files)|         1878 ms |        1814 ms |  -64 ms (-3.4%)|\n| `--include 'src,tests'`         |         2000 ms |        1928 ms |  -72 ms (-3.6%)|\n| full repo (no filter, CI-like)  |         3528 ms |        3301 ms | -227 ms (-6.4%)|",
+          "timestamp": "2026-04-18T23:20:43Z",
+          "tree_id": "6d499f42fac8c213e41ff1b65b95da222e7d0d86",
+          "url": "https://github.com/yamadashy/repomix/commit/187506f3975061fae1fac655d39e50a29767fbf8"
+        },
+        "date": 1776554608116,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1340,
+            "range": "±164",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1261ms, Q3: 1425ms\nAll times: 1035, 1112, 1142, 1152, 1224, 1241, 1260, 1261, 1270, 1298, 1299, 1311, 1315, 1315, 1328, 1340, 1343, 1349, 1387, 1394, 1395, 1404, 1425, 1487, 1504, 1562, 1609, 1617, 1702, 1712ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1335,
+            "range": "±48",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1321ms, Q3: 1369ms\nAll times: 1286, 1293, 1296, 1298, 1309, 1321, 1322, 1323, 1323, 1326, 1335, 1351, 1353, 1359, 1362, 1369, 1372, 1388, 1541, 1664ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1836,
+            "range": "±165",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1806ms, Q3: 1971ms\nAll times: 1767, 1767, 1783, 1789, 1795, 1806, 1809, 1811, 1820, 1828, 1836, 1865, 1876, 1879, 1965, 1971, 1991, 2166, 2254, 2499ms"
           }
         ]
       }
