@@ -9,7 +9,9 @@
       "type": "object",
       "properties": {
         "maxFileSize": {
-          "type": "number"
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
         }
       },
       "additionalProperties": false
@@ -57,7 +59,9 @@
           "type": "boolean"
         },
         "topFilesLength": {
-          "type": "number"
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "showLineNumbers": {
           "type": "boolean"
@@ -99,7 +103,9 @@
               "type": "boolean"
             },
             "sortByChangesMaxCommits": {
-              "type": "number"
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
             },
             "includeDiffs": {
               "type": "boolean"
@@ -108,7 +114,9 @@
               "type": "boolean"
             },
             "includeLogsCount": {
-              "type": "number"
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
             }
           },
           "additionalProperties": false
@@ -156,7 +164,14 @@
       "type": "object",
       "properties": {
         "encoding": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "o200k_base",
+            "cl100k_base",
+            "p50k_base",
+            "p50k_edit",
+            "r50k_base"
+          ]
         }
       },
       "additionalProperties": false
