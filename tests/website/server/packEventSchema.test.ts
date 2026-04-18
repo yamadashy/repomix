@@ -1,41 +1,45 @@
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 import { classifyRejectReason, getRepoHost } from '../../../website/server/src/actions/packEventSchema.js';
+import { MESSAGES } from '../../../website/server/src/actions/packRequestMessages.js';
 
-// Classifier drift test. Messages below MUST match those defined in
-// `website/server/src/actions/packRequestSchema.ts`. If a schema message is
-// edited without updating this file, the classifier falls back to `'other'`
-// and dashboards quietly mislabel — but that drift is not caught here
-// (the test deliberately avoids importing the schema to keep this file's
-// module graph free of server-only packages like `repomix` and `hono` that
-// the root vitest harness doesn't install). For true schema drift catching,
-// the schema and classifier would need to share a constants module.
+// Classifier drift test — imports MESSAGES from the same shared module that
+// packRequestSchema uses. This means a message-text rewrite automatically
+// propagates to the schema (producer), the classifier (consumer), AND the
+// test's expected values, so schema/classifier drift is impossible by
+// construction. The test's value is catching classifier-logic drift: if the
+// classifier's MESSAGE_TO_REASON map loses a key (or maps it to the wrong
+// label), the corresponding case here fails.
+//
+// Deliberately avoids importing packRequestSchema itself — that file
+// transitively depends on `repomix`, which the root vitest harness can't
+// resolve because repomix IS this repo.
 
-// Construct a ZodError with a single issue whose message matches the one the
-// schema would produce. classifyRejectReason only reads `.message` and
-// `.path` from the first issue.
+// Construct a ZodError with a single issue whose message matches the shared
+// constant. classifyRejectReason only reads `.message` and `.path` from the
+// first issue.
 const zodErrorWith = (message: string, path: (string | number)[] = []) =>
   new z.ZodError([{ code: 'custom', message, path, input: undefined }]);
 
 // Mimic the AppError-with-cause wrapping that `validateRequest` does in
 // production — native Error with `cause` is enough to exercise the
-// cause-chain path in classifyRejectReason, no AppError import needed.
+// cause-chain path in classifyRejectReason.
 const wrapped = (message: string, path: (string | number)[] = []) =>
   new Error(`Invalid request: ${message}`, { cause: zodErrorWith(message, path) });
 
 describe('classifyRejectReason', () => {
   test.each([
-    ['missing_input', 'Either URL or file must be provided'],
-    ['both_provided', 'Cannot provide both URL and file'],
-    ['invalid_url', 'Invalid repository URL'],
-    ['url_too_long', 'Repository URL is too long'],
-    ['url_empty', 'Repository URL is required'],
-    ['invalid_file', 'Invalid file format'],
-    ['not_zip', 'Only ZIP files are allowed'],
-    ['file_too_large', 'File size must be less than 10MB'],
-    ['invalid_ignore_chars', 'Invalid characters in ignore patterns'],
-    ['include_too_long', 'Include patterns too long'],
-    ['ignore_too_long', 'Ignore patterns too long'],
+    ['missing_input', MESSAGES.MISSING_INPUT],
+    ['both_provided', MESSAGES.BOTH_PROVIDED],
+    ['invalid_url', MESSAGES.INVALID_URL],
+    ['url_too_long', MESSAGES.URL_TOO_LONG],
+    ['url_empty', MESSAGES.URL_REQUIRED],
+    ['invalid_file', MESSAGES.INVALID_FILE],
+    ['not_zip', MESSAGES.NOT_ZIP],
+    ['file_too_large', MESSAGES.FILE_TOO_LARGE],
+    ['invalid_ignore_chars', MESSAGES.INVALID_IGNORE_CHARS],
+    ['include_too_long', MESSAGES.INCLUDE_TOO_LONG],
+    ['ignore_too_long', MESSAGES.IGNORE_TOO_LONG],
   ])('%s — classifies "%s"', (expected, message) => {
     expect(classifyRejectReason(zodErrorWith(message))).toBe(expected);
     // Wrapped via AppError.cause (the real production path)
