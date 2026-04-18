@@ -197,6 +197,10 @@ export const mergeConfigs = async (
 
   const baseConfig = defaultConfig;
 
+  // `satisfies RepomixConfigMerged` gives a compile-time guarantee that the
+  // manual merge logic structurally matches the schema-derived type. Without
+  // it, future schema additions could silently drift from this object because
+  // the `validate: false` path returns it via `as RepomixConfigMerged`.
   const mergedConfig = {
     cwd,
     input: {
@@ -253,10 +257,10 @@ export const mergeConfigs = async (
     },
     // Skill generation (CLI only)
     ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
-  };
+  } satisfies RepomixConfigMerged;
 
   if (!validate) {
-    return mergedConfig as RepomixConfigMerged;
+    return mergedConfig;
   }
 
   try {

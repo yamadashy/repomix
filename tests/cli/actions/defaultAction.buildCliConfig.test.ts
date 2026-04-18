@@ -42,21 +42,29 @@ describe('buildCliConfig', () => {
       // The style enum is checked manually inside buildCliConfig because
       // Commander does not constrain --style to a fixed enum. So the rejection
       // happens regardless of the `validate` option.
-      const optionsWithInvalidStyle = {
-        // @ts-expect-error: intentionally invalid to verify the manual check rejects it
-        style: 'bogus',
-      } as CliOptions;
+      // Cast via `unknown` because `'bogus'` is intentionally outside the
+      // RepomixOutputStyle enum and would otherwise fail the type check.
+      const optionsWithInvalidStyle = { style: 'bogus' } as unknown as CliOptions;
       await expect(buildCliConfig(optionsWithInvalidStyle, { validate: false })).rejects.toThrow(
         /Invalid output style/,
       );
     });
 
     it('skips zod validation when validate: false', async () => {
-      // Without zod validation, an out-of-range topFilesLength passes through
-      // (Commander already enforces the integer parse, but does not enforce
-      // the >=0 schema constraint). When validate: true, zod would catch it.
-      const result = await buildCliConfig({ topFilesLen: 5 }, { validate: false });
-      expect(result.output?.topFilesLength).toBe(5);
+      // Pass a value that zod would reject (`topFilesLength` is constrained to
+      // `int().min(0)` in repomixConfigDefaultSchema). With `validate: true`,
+      // zod's enum/range checks would throw RepomixConfigValidationError.
+      // With `validate: false` the value passes through unchecked, proving
+      // that zod is genuinely skipped.
+      const result = await buildCliConfig({ topFilesLen: -1 }, { validate: false });
+      expect(result.output?.topFilesLength).toBe(-1);
+    });
+
+    it('runs zod validation by default and rejects out-of-range topFilesLength', async () => {
+      // Companion to the above: with the default `validate: true`, the same
+      // out-of-range value is caught by zod (proves the validate option flips
+      // the behavior, not just that one specific path skips validation).
+      await expect(buildCliConfig({ topFilesLen: -1 })).rejects.toThrow();
     });
   });
 });

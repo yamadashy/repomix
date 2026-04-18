@@ -3,6 +3,7 @@ import { OUTPUT_STYLES, type RepomixOutputStyle } from '../../config/configDefau
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import type { RepomixConfigCli, RepomixConfigFile, RepomixConfigMerged } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
+import { TOKEN_ENCODINGS, type TokenEncoding } from '../../core/metrics/TokenCounter.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
@@ -45,9 +46,13 @@ export const runDefaultAction = async (
   const cliConfig: RepomixConfigCli = await buildCliConfig(cliOptions, { validate: false });
   logger.trace('CLI config:', cliConfig);
 
-  // Merge default, file, and CLI configs. Skip merge-time validation for the
-  // same reason: file config is validated by loadAndValidateConfig and CLI
-  // config by buildCliConfig + Commander.
+  // Merge default, file, and CLI configs. Skip merge-time validation because:
+  //   - When a config file exists, loadAndValidateConfig has already validated
+  //     it against repomixConfigBaseSchema (which mirrors the merged schema's
+  //     numeric/enum constraints, so file-level validation is sufficient).
+  //   - When no config file exists, fileConfig is `{}` and the merged result
+  //     comes from defaultConfig + cliConfig — both already trusted.
+  //   - CLI config is validated by Commander argParsers + buildCliConfig.
   const config: RepomixConfigMerged = await mergeConfigs(cwd, fileConfig, cliConfig, { validate: false });
   logger.trace('Merged config:', config);
 
@@ -288,7 +293,15 @@ export const buildCliConfig = async (
   }
 
   if (options.tokenCountEncoding) {
-    cliConfig.tokenCount = { encoding: options.tokenCountEncoding };
+    // Validate the encoding enum here (instead of only via zod). When
+    // validate=false is requested by the CLI hot path, we still need to reject
+    // invalid values because Commander does not constrain --token-count-encoding.
+    if (!(TOKEN_ENCODINGS as readonly string[]).includes(options.tokenCountEncoding)) {
+      throw new RepomixError(
+        `Invalid token count encoding: '${options.tokenCountEncoding}'. Valid encodings are: ${TOKEN_ENCODINGS.join(', ')}`,
+      );
+    }
+    cliConfig.tokenCount = { encoding: options.tokenCountEncoding as TokenEncoding };
   }
   if (options.instructionFilePath) {
     cliConfig.output = {

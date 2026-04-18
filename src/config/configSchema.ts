@@ -9,12 +9,18 @@ export { defaultFilePathMap };
 // Output style enum
 export const repomixOutputStyleSchema = z.enum(OUTPUT_STYLES);
 
-// Base config schema
+// Base config schema.
+//
+// Numeric and enum constraints (e.g., `int().min(N)`, `z.enum(...)`) are kept
+// in sync with `repomixConfigDefaultSchema` so file-level validation
+// (`loadAndValidateConfig`) catches the same shape errors that merge-time
+// validation would. Required because the CLI hot path skips merge-time
+// validation via `mergeConfigs(..., { validate: false })`.
 export const repomixConfigBaseSchema = z.object({
   $schema: z.string().optional(),
   input: z
     .object({
-      maxFileSize: z.number().optional(),
+      maxFileSize: z.number().int().min(1).optional(),
     })
     .optional(),
   output: z
@@ -30,7 +36,7 @@ export const repomixConfigBaseSchema = z.object({
       removeComments: z.boolean().optional(),
       removeEmptyLines: z.boolean().optional(),
       compress: z.boolean().optional(),
-      topFilesLength: z.number().optional(),
+      topFilesLength: z.number().int().min(0).optional(),
       showLineNumbers: z.boolean().optional(),
       truncateBase64: z.boolean().optional(),
       copyToClipboard: z.boolean().optional(),
@@ -41,10 +47,10 @@ export const repomixConfigBaseSchema = z.object({
       git: z
         .object({
           sortByChanges: z.boolean().optional(),
-          sortByChangesMaxCommits: z.number().optional(),
+          sortByChangesMaxCommits: z.number().int().min(1).optional(),
           includeDiffs: z.boolean().optional(),
           includeLogs: z.boolean().optional(),
-          includeLogsCount: z.number().optional(),
+          includeLogsCount: z.number().int().min(1).optional(),
         })
         .optional(),
     })
@@ -65,7 +71,7 @@ export const repomixConfigBaseSchema = z.object({
     .optional(),
   tokenCount: z
     .object({
-      encoding: z.string().optional(),
+      encoding: z.enum(TOKEN_ENCODINGS).optional(),
     })
     .optional(),
 });
