@@ -3,6 +3,11 @@
 // log-based metric filters and outcome labels stay in sync between the two
 // emitters. If this file and the GCP metric definitions drift, the
 // `pack_requests` metric will silently mislabel rows.
+//
+// Named `pack_completed` as a lifecycle event — it covers all pack-request
+// terminal outcomes (success / validation_error / pack_error / rate_limited),
+// not just successful packs. The alternative of per-outcome event names would
+// require N metric filters instead of one filter + outcome label.
 export const PACK_EVENT = 'pack_completed';
 
 export type PackOutcome = 'success' | 'validation_error' | 'pack_error' | 'rate_limited';

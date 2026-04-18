@@ -119,6 +119,8 @@ export async function processZipFile(
       totalTokens: packResult.totalTokens,
     });
 
+    // Uploaded ZIPs are never cached — each upload is a unique payload, unlike
+    // remote repos where URL + options form a cache key.
     return { result: packResultData, cached: false };
   } catch (error) {
     console.error('Error processing uploaded file:', error);
