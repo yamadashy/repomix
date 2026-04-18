@@ -79,48 +79,60 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Pre-fetch git file-change counts for sortOutputFiles while search and
-  // collection are in flight, so the later sortOutputFiles call is a cache hit.
-  const sortDataPromise = deps.prefetchSortData(config).catch((error) => {
-    logger.trace('Failed to prefetch sort data:', error);
-  });
-
-  progressCallback('Searching for files...');
-  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
-    Promise.all(
-      rootDirs.map(async (rootDir) => {
-        const result = await deps.searchFiles(rootDir, config, explicitFiles);
-        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
-      }),
-    ),
-  );
-
-  // Deduplicate and sort empty directory paths for reuse during output generation,
-  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
-  const emptyDirPaths = config.output.includeEmptyDirectories
-    ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
-    : undefined;
-
-  // Sort file paths
-  progressCallback('Sorting files...');
-  const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
-
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
-    rootDir,
-    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
-  }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
+  // Pre-initialize the metrics worker pool BEFORE searchFiles to maximise warmup overlap.
+  // Previously, warmup began after searchFiles + sortPaths and its ~500ms gpt-tokenizer
+  // BPE load still blocked the later `await metricsWarmupPromise` for ~250ms on the
+  // critical path. Launching here lets that load overlap with searchFiles, security
+  // check, fileProcess, and sortOutputFiles, collapsing the later await to a near no-op.
+  //
+  // `numOfTasks` is a fixed estimate (actual file count is not yet known) — with
+  // TASKS_PER_THREAD=100 in processConcurrency.ts this maps to `maxThreads=2`. Benchmarks
+  // on the gpt-tokenizer workload show 2 workers outperform higher thread counts because
+  // per-file batches are small (~10 files) and IPC overhead dominates tokenization time.
+  // The pool is reused by `calculateMetrics` (which does not re-create it), so this is
+  // the final thread cap — it intentionally stays small across repo sizes.
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
+    200,
     config.tokenCount.encoding,
   );
 
+  // Place the pool inside the outer try/finally below to guarantee cleanup if any
+  // pre-collect step (searchFiles, sortPaths, etc.) throws before the inner work.
   try {
+    // Pre-fetch git file-change counts for sortOutputFiles while search and
+    // collection are in flight, so the later sortOutputFiles call is a cache hit.
+    const sortDataPromise = deps.prefetchSortData(config).catch((error) => {
+      logger.trace('Failed to prefetch sort data:', error);
+    });
+
+    progressCallback('Searching for files...');
+    const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
+      Promise.all(
+        rootDirs.map(async (rootDir) => {
+          const result = await deps.searchFiles(rootDir, config, explicitFiles);
+          return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+        }),
+      ),
+    );
+
+    // Deduplicate and sort empty directory paths for reuse during output generation,
+    // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
+    const emptyDirPaths = config.output.includeEmptyDirectories
+      ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
+      : undefined;
+
+    // Sort file paths
+    progressCallback('Sorting files...');
+    const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
+    const sortedFilePaths = deps.sortPaths(allFilePaths);
+
+    // Regroup sorted file paths by rootDir using Set for O(1) membership checks
+    const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
+    const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+      rootDir,
+      filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+    }));
+
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
