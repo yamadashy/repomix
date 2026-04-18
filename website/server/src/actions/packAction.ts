@@ -85,6 +85,22 @@ export const packAction = async (c: Context) => {
   const requestId = c.get('requestId');
   const inputType: 'file' | 'url' = validatedData.file ? 'file' : 'url';
   const repoHost = getRepoHost({ file: validatedData.file, url: validatedData.url });
+  // Booleans flattened for log-based metric extraction. Patterns are logged
+  // as presence-only booleans to avoid high cardinality and user input leakage.
+  // Computed once so both success and pack_error logs can include it — OOMs
+  // typically land in pack_error, so logging options only on success would
+  // create survivorship bias for OOM investigation.
+  const packOptions = {
+    compress: Boolean(validatedData.options.compress),
+    removeComments: Boolean(validatedData.options.removeComments),
+    removeEmptyLines: Boolean(validatedData.options.removeEmptyLines),
+    showLineNumbers: Boolean(validatedData.options.showLineNumbers),
+    fileSummary: Boolean(validatedData.options.fileSummary),
+    directoryStructure: Boolean(validatedData.options.directoryStructure),
+    outputParsable: Boolean(validatedData.options.outputParsable),
+    hasIncludePatterns: Boolean(validatedData.options.includePatterns),
+    hasIgnorePatterns: Boolean(validatedData.options.ignorePatterns),
+  };
 
   // Stream NDJSON with per-line gzip flush. Bypasses hono/compress (which uses
   // Web CompressionStream and cannot flush mid-stream) by pre-setting
@@ -180,20 +196,7 @@ export const packAction = async (c: Context) => {
         durationMs: Date.now() - startTime,
         repository: result.metadata.repository,
         duration: formatLatencyForDisplay(startTime),
-        // Booleans flattened for log-based metric extraction. Patterns are
-        // logged as presence-only booleans to avoid high cardinality and user
-        // input leakage.
-        packOptions: {
-          compress: Boolean(validatedData.options.compress),
-          removeComments: Boolean(validatedData.options.removeComments),
-          removeEmptyLines: Boolean(validatedData.options.removeEmptyLines),
-          showLineNumbers: Boolean(validatedData.options.showLineNumbers),
-          fileSummary: Boolean(validatedData.options.fileSummary),
-          directoryStructure: Boolean(validatedData.options.directoryStructure),
-          outputParsable: Boolean(validatedData.options.outputParsable),
-          hasIncludePatterns: Boolean(validatedData.options.includePatterns),
-          hasIgnorePatterns: Boolean(validatedData.options.ignorePatterns),
-        },
+        packOptions,
         clientInfo: {
           ip: clientInfo.ip,
           userAgent: clientInfo.userAgent,
@@ -222,6 +225,7 @@ export const packAction = async (c: Context) => {
         repoHost,
         source: clientInfo.source,
         durationMs: Date.now() - startTime,
+        packOptions,
       });
 
       const { handlePackError } = await import('../utils/errorHandler.js');

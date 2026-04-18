@@ -4,7 +4,7 @@ export class AppError extends Error {
   constructor(
     message: string,
     public readonly statusCode: ContentfulStatusCode = 500,
-    options?: { cause?: unknown },
+    options?: ErrorOptions,
   ) {
     super(message, options);
     this.name = 'AppError';

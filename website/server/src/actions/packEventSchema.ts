@@ -38,10 +38,11 @@ export function getRepoHost(input: { file?: unknown; url?: string }): string {
 // `validateRequest` wraps ZodError in AppError, so the original issues live on
 // `error.cause`. We check both so callers don't need to know which layer is
 // responsible for wrapping.
+//
+// Pre-zod paths (e.g. the JSON.parse failure in packAction) set
+// `rejectReason: 'invalid_json'` directly at the call site since the label is
+// statically known — no synthetic error needs to be routed through here.
 export function classifyRejectReason(error: unknown): string {
-  if (error instanceof Error && error.message === 'Invalid JSON in options') {
-    return 'invalid_json';
-  }
   const issues = extractZodIssues(error);
   if (!issues || issues.length === 0) return 'unknown';
 
