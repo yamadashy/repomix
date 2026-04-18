@@ -33,14 +33,14 @@
   "author": "yamadashy",
   "license": "MIT",
   "devDependencies": {
-    "@types/chrome": "^0.1.39",
+    "@types/chrome": "^0.1.40",
     "@types/node": "^24.12.2",
-    "@typescript/native-preview": "^7.0.0-dev.20260403.1",
-    "jsdom": "^29.0.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260410.1",
+    "jsdom": "^29.0.2",
     "sharp": "^0.34.5",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.2",
+    "vitest": "^4.1.4",
     "wxt": "^0.20.20"
   },
   "engines": {
