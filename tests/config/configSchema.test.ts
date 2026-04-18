@@ -293,6 +293,21 @@ describe('configSchema', () => {
       };
       expect(() => v.parse(repomixConfigCliSchema, invalidConfig)).toThrow(v.ValiError);
     });
+
+    it('should preserve base output fields alongside CLI-only stdout via intersect', () => {
+      // `buildCliConfig` parses against this schema before mergeConfigs, so the
+      // intersect must keep both the base-schema `filePath` and the CLI-only
+      // `stdout`. The base schema's `output` does not declare `stdout`; valibot
+      // would strip it without the intersect re-merging from the CLI member.
+      const cliConfig = {
+        output: { filePath: 'out.xml', stdout: true },
+        skillGenerate: true,
+      };
+      const result = v.parse(repomixConfigCliSchema, cliConfig) as typeof cliConfig;
+      expect(result.output.filePath).toBe('out.xml');
+      expect(result.output.stdout).toBe(true);
+      expect(result.skillGenerate).toBe(true);
+    });
   });
 
   describe('repomixConfigMergedSchema', () => {
