@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776466484288,
+  "lastUpdate": 1776478902624,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5355,6 +5355,51 @@ window.BENCHMARK_DATA = {
             "range": "±73",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1474ms, Q3: 1547ms\nAll times: 1438, 1455, 1458, 1463, 1471, 1474, 1477, 1483, 1503, 1514, 1519, 1526, 1534, 1534, 1546, 1547, 1624, 1673, 1703, 1752ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "0cbae4c1ce903872f5cd4ce63390300c6eb3454a",
+          "message": "perf(core): Pre-start metrics worker pool during config loading\n\nStart BPE worker warmup speculatively during migration check and config\nloading, overlapping ~300ms of worker initialization with ~20-30ms of\nsequential filesystem I/O that was previously dead time. When pack()\nbegins, the workers have a head start on BPE rank loading, reducing\nwall-clock time by moving worker startup off the critical path.\n\nAlso streamlines the metrics calculation pipeline:\n- Remove no-op targetFilePaths filter in calculateFileMetrics (was\n  always identity — allocated Set + filtered array for no purpose)\n- Gate process.hrtime.bigint() in workers behind debug log level\n  (avoids BigInt allocation on every batch at INFO level)\n- Remove unused charCount field from FileMetrics interface\n- Remove path from IPC batch items (only used for error logging,\n  now logged on the main thread side)\n- Use short prefix for extractOutputWrapper indexOf (64-byte key\n  instead of full ~4KB content — reduces V8 BMH preprocessing)\n- Pre-size wrapperSegments array to avoid repeated resizing\n\nBenchmark (20 runs each, this repository ~1002 files):\n  Baseline:  avg=1170.7ms  med=1171.5ms  std=20.6ms\n  Optimized: avg=1133.5ms  med=1137.5ms  std=13.8ms\n  Delta avg: -37.1ms (3.2%)\n  Delta med: -34.0ms (2.9%)\n\nAll 1114 tests pass, lint clean, build clean.\n\nhttps://claude.ai/code/session_01HfSJZGnoJ3aWF3ojdMRsGS",
+          "timestamp": "2026-04-18T02:20:02Z",
+          "tree_id": "a4818fe59938a49c3720f27538c6fa7286e916ed",
+          "url": "https://github.com/yamadashy/repomix/commit/0cbae4c1ce903872f5cd4ce63390300c6eb3454a"
+        },
+        "date": 1776478902217,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 644,
+            "range": "±36",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 632ms, Q3: 668ms\nAll times: 619, 621, 625, 628, 629, 630, 631, 632, 632, 632, 633, 633, 636, 638, 642, 644, 645, 649, 650, 651, 657, 666, 668, 683, 686, 686, 698, 724, 769, 804ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1101,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1085ms, Q3: 1109ms\nAll times: 1071, 1075, 1080, 1081, 1081, 1085, 1088, 1090, 1093, 1095, 1101, 1103, 1104, 1108, 1109, 1109, 1111, 1121, 1122, 1184ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1450,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1437ms, Q3: 1459ms\nAll times: 1410, 1412, 1424, 1425, 1437, 1437, 1442, 1444, 1444, 1449, 1450, 1453, 1453, 1455, 1455, 1459, 1465, 1468, 1484, 1526ms"
           }
         ]
       }
