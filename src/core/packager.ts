@@ -11,7 +11,11 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import {
+  calculateMetrics,
+  createMetricsTaskRunner,
+  type MetricsTaskRunnerWithWarmup,
+} from './metrics/calculateMetrics.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { type SuspiciousFileResult, warmupSecurityWorkerPool } from './security/securityCheck.js';
@@ -63,6 +67,7 @@ export interface PackOptions {
   skillDir?: string;
   skillProjectName?: string;
   skillSourceUrl?: string;
+  metricsSetupPromise?: Promise<MetricsTaskRunnerWithWarmup>;
 }
 
 export const pack = async (
@@ -80,10 +85,10 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Start metrics worker pool creation + warmup as a non-blocking promise.
-  // The tinypool module is lazy-loaded (~34ms), overlapping with the pipeline
-  // below. The pool is awaited just before metrics calculation begins.
-  const metricsSetupPromise = deps.createMetricsTaskRunner(Number.MAX_SAFE_INTEGER, config.tokenCount.encoding);
+  // Use pre-started metrics worker pool if available (started speculatively
+  // during migration/config loading), otherwise start one now.
+  const metricsSetupPromise =
+    options.metricsSetupPromise ?? deps.createMetricsTaskRunner(Number.MAX_SAFE_INTEGER, config.tokenCount.encoding);
   metricsSetupPromise.catch(() => {});
 
   if (config.security.enableSecurityCheck && !overrideDeps.validateFileSafety) {

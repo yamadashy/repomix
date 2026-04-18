@@ -1,5 +1,5 @@
 import pc from 'picocolors';
-import { logger } from '../../shared/logger.js';
+import { logger, repomixLogLevels } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import { type MetricsTaskRunner, runBatchTokenCount } from './metricsWorkerRunner.js';
@@ -16,51 +16,47 @@ const METRICS_BATCH_SIZE = 100;
 
 export const calculateFileMetrics = async (
   processedFiles: ProcessedFile[],
-  targetFilePaths: string[],
   tokenCounterEncoding: TokenEncoding,
   progressCallback: RepomixProgressCallback,
   deps: { taskRunner: MetricsTaskRunner },
 ): Promise<FileMetrics[]> => {
-  const targetFileSet = new Set(targetFilePaths);
-  const filesToProcess = processedFiles.filter((file) => targetFileSet.has(file.path));
-
-  if (filesToProcess.length === 0) {
+  if (processedFiles.length === 0) {
     return [];
   }
 
   try {
-    const startTime = process.hrtime.bigint();
-    logger.trace(`Starting file metrics calculation for ${filesToProcess.length} files using worker pool`);
+    const isDebug = logger.getLogLevel() >= repomixLogLevels.DEBUG;
+    const startTime = isDebug ? process.hrtime.bigint() : 0n;
+    logger.trace(`Starting file metrics calculation for ${processedFiles.length} files using worker pool`);
 
     // Split files into batches to reduce IPC round-trips
     const batches: ProcessedFile[][] = [];
-    for (let i = 0; i < filesToProcess.length; i += METRICS_BATCH_SIZE) {
-      batches.push(filesToProcess.slice(i, i + METRICS_BATCH_SIZE));
+    for (let i = 0; i < processedFiles.length; i += METRICS_BATCH_SIZE) {
+      batches.push(processedFiles.slice(i, i + METRICS_BATCH_SIZE));
     }
 
-    logger.trace(`Split ${filesToProcess.length} files into ${batches.length} batches for token counting`);
+    logger.trace(`Split ${processedFiles.length} files into ${batches.length} batches for token counting`);
 
     let completedItems = 0;
 
     const batchResults = await Promise.all(
       batches.map(async (batch) => {
         const tokenCounts = await runBatchTokenCount(deps.taskRunner, {
-          items: batch.map((file) => ({ content: file.content, path: file.path })),
+          items: batch.map((file) => ({ content: file.content })),
           encoding: tokenCounterEncoding,
         });
 
         const results: FileMetrics[] = batch.map((file, index) => ({
           path: file.path,
-          charCount: file.content.length,
           tokenCount: tokenCounts[index],
         }));
 
         completedItems += batch.length;
         const lastFile = batch[batch.length - 1];
         progressCallback(
-          `Calculating metrics... (${completedItems}/${filesToProcess.length}) ${pc.dim(lastFile.path)}`,
+          `Calculating metrics... (${completedItems}/${processedFiles.length}) ${pc.dim(lastFile.path)}`,
         );
-        logger.trace(`Calculating metrics... (${completedItems}/${filesToProcess.length}) ${lastFile.path}`);
+        logger.trace(`Calculating metrics... (${completedItems}/${processedFiles.length}) ${lastFile.path}`);
 
         return results;
       }),
@@ -68,9 +64,10 @@ export const calculateFileMetrics = async (
 
     const allResults = batchResults.flat();
 
-    const endTime = process.hrtime.bigint();
-    const duration = Number(endTime - startTime) / 1e6;
-    logger.trace(`File metrics calculation completed in ${duration.toFixed(2)}ms`);
+    if (isDebug) {
+      const duration = Number(process.hrtime.bigint() - startTime) / 1e6;
+      logger.trace(`File metrics calculation completed in ${duration.toFixed(2)}ms`);
+    }
 
     return allResults;
   } catch (error) {

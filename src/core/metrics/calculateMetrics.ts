@@ -88,8 +88,6 @@ export const extractOutputWrapper = (
   const wrapperSegments: string[] = [];
   let cursor = 0;
   for (const file of processedFilesInOutputOrder) {
-    // Empty file contents produce no occurrence in the output, so skip them
-    // (their contribution to sum-of-file-tokens is zero anyway).
     if (file.content.length === 0) continue;
 
     const idx = output.indexOf(file.content, cursor);
@@ -135,17 +133,11 @@ export const calculateMetrics = async (
     }));
 
   try {
-    const metricsTargetPaths = processedFiles.map((file) => file.path);
-
     // Start output-independent metrics immediately so they can overlap with output generation
     // when output is passed as a promise
-    const fileMetricsPromise = deps.calculateFileMetrics(
-      processedFiles,
-      metricsTargetPaths,
-      config.tokenCount.encoding,
-      progressCallback,
-      { taskRunner },
-    );
+    const fileMetricsPromise = deps.calculateFileMetrics(processedFiles, config.tokenCount.encoding, progressCallback, {
+      taskRunner,
+    });
     const gitDiffMetricsPromise = deps.calculateGitDiffMetrics(config, gitDiffResult, { taskRunner });
     const gitLogMetricsPromise = deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner });
 

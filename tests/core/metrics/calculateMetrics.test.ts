@@ -40,8 +40,8 @@ describe('calculateMetrics', () => {
     const progressCallback: RepomixProgressCallback = vi.fn();
 
     const fileMetrics = [
-      { path: 'file1.txt', charCount: 100, tokenCount: 10 },
-      { path: 'file2.txt', charCount: 200, tokenCount: 20 },
+      { path: 'file1.txt', tokenCount: 10 },
+      { path: 'file2.txt', tokenCount: 20 },
     ];
     (calculateFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
 
@@ -89,7 +89,6 @@ describe('calculateMetrics', () => {
     expect(progressCallback).toHaveBeenCalledWith('Calculating metrics...');
     expect(calculateFileMetrics).toHaveBeenCalledWith(
       processedFiles,
-      ['file1.txt', 'file2.txt'],
       'o200k_base',
       progressCallback,
       expect.objectContaining({

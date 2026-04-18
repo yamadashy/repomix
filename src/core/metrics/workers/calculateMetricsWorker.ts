@@ -1,4 +1,4 @@
-import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
+import { logger, repomixLogLevels, setLogLevelByWorkerData } from '../../../shared/logger.js';
 import type { TokenEncoding } from '../TokenCounter.js';
 import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 
@@ -22,7 +22,6 @@ export interface TokenCountTask {
 
 export interface TokenCountBatchItem {
   content: string;
-  path?: string;
 }
 
 export interface TokenCountBatchTask {
@@ -33,14 +32,18 @@ export interface TokenCountBatchTask {
 export type MetricsWorkerTask = TokenCountTask | TokenCountBatchTask;
 export type MetricsWorkerResult = number | number[];
 
+const isDebug = logger.getLogLevel() >= repomixLogLevels.DEBUG;
+
 export const countTokens = async (task: TokenCountTask): Promise<number> => {
-  const processStartAt = process.hrtime.bigint();
+  const processStartAt = isDebug ? process.hrtime.bigint() : 0n;
 
   try {
     const counter = await getTokenCounter(task.encoding);
     const tokenCount = counter.countTokens(task.content, task.path);
 
-    logger.trace(`Counted tokens. Count: ${tokenCount}. Took: ${getProcessDuration(processStartAt)}ms`);
+    if (isDebug) {
+      logger.trace(`Counted tokens. Count: ${tokenCount}. Took: ${getProcessDuration(processStartAt)}ms`);
+    }
     return tokenCount;
   } catch (error) {
     logger.error('Error in token counting worker:', error);
@@ -49,13 +52,15 @@ export const countTokens = async (task: TokenCountTask): Promise<number> => {
 };
 
 const countTokensBatch = async (task: TokenCountBatchTask): Promise<number[]> => {
-  const processStartAt = process.hrtime.bigint();
+  const processStartAt = isDebug ? process.hrtime.bigint() : 0n;
 
   try {
     const counter = await getTokenCounter(task.encoding);
-    const results = task.items.map((item) => counter.countTokens(item.content, item.path));
+    const results = task.items.map((item) => counter.countTokens(item.content));
 
-    logger.trace(`Counted tokens for ${task.items.length} items. Took: ${getProcessDuration(processStartAt)}ms`);
+    if (isDebug) {
+      logger.trace(`Counted tokens for ${task.items.length} items. Took: ${getProcessDuration(processStartAt)}ms`);
+    }
     return results;
   } catch (error) {
     logger.error('Error in batch token counting worker:', error);

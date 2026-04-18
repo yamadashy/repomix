@@ -21,9 +21,7 @@ const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
       if ('items' in task) {
         const batchTask = task as TokenCountBatchTask;
         return Promise.all(
-          batchTask.items.map((item) =>
-            countTokens({ content: item.content, encoding: batchTask.encoding, path: item.path }),
-          ),
+          batchTask.items.map((item) => countTokens({ content: item.content, encoding: batchTask.encoding })),
         );
       }
       return countTokens(task as TokenCountTask);
@@ -35,31 +33,30 @@ const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
 };
 
 describe('calculateFileMetrics', () => {
-  it('should calculate metrics for target files', async () => {
+  it('should calculate metrics for all files', async () => {
     const processedFiles: ProcessedFile[] = [
       { path: 'file1.txt', content: 'a'.repeat(100) },
       { path: 'file2.txt', content: 'b'.repeat(200) },
       { path: 'file3.txt', content: 'c'.repeat(300) },
     ];
-    const targetFilePaths = ['file1.txt', 'file3.txt'];
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    const result = await calculateFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback, {
+    const result = await calculateFileMetrics(processedFiles, 'o200k_base', progressCallback, {
       taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
     expect(result).toEqual([
-      { path: 'file1.txt', charCount: 100, tokenCount: 13 },
-      { path: 'file3.txt', charCount: 300, tokenCount: 75 },
+      { path: 'file1.txt', tokenCount: 13 },
+      { path: 'file2.txt', tokenCount: 50 },
+      { path: 'file3.txt', tokenCount: 75 },
     ]);
   });
 
-  it('should return empty array when no target files match', async () => {
-    const processedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'a'.repeat(100) }];
-    const targetFilePaths = ['nonexistent.txt'];
+  it('should return empty array when no files provided', async () => {
+    const processedFiles: ProcessedFile[] = [];
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    const result = await calculateFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback, {
+    const result = await calculateFileMetrics(processedFiles, 'o200k_base', progressCallback, {
       taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
