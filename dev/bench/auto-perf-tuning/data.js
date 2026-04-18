@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776544649137,
+  "lastUpdate": 1776550645047,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5580,6 +5580,51 @@ window.BENCHMARK_DATA = {
             "range": "±33",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1951ms, Q3: 1984ms\nAll times: 1921, 1929, 1945, 1946, 1951, 1951, 1957, 1964, 1968, 1974, 1975, 1975, 1976, 1978, 1982, 1984, 1986, 1988, 1996, 2005ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "8e839a4e4a4d931cf14d29ffdfafda6dc137a491",
+          "message": "perf(file): Parallelize findEmptyDirectories readdir calls\n\nwhy\n  `searchFiles` calls `findEmptyDirectories` after globby returns, to\n  identify directories with no visible contents for the directory-tree\n  section of the output (when `includeEmptyDirectories` is enabled —\n  which repomix's own `repomix.config.json` sets true, so it runs on\n  every CI benchmark). The function looped over ~247 directories with\n  a sequential `for..of` + `await fs.readdir`, forcing the kernel to\n  service one directory lookup at a time rather than overlapping them.\n\nwhat\n  Replace the sequential loop with `Promise.all(directories.map(...))`.\n  Each iteration is independent (no shared state across iterations, just\n  `emptyDirs.push`), so it's safe to parallelize. Each returned entry is\n  either the directory path (when it contains nothing visible) or null;\n  a final `filter` narrows the result back to `string[]`, preserving the\n  original return type.\n\n  Observable behaviour — return value, error handling, log output,\n  ordering — is unchanged (verified by byte-identical output when packing\n  this repo against main).\n\nbenchmark\n  Function-level measurement (verbose log, 1025 files, 247 dirs):\n\n    before: `findEmptyDirectories` ~57ms\n    after : `findEmptyDirectories` ~13ms   (−44ms / −77%)\n\n  Whole-pack wall-clock on a 2-core taskset (emulating the Ubuntu CI\n  runner), 120 interleaved runs via `.github/scripts/perf-benchmark/\n  bench-run.mjs`:\n\n    main : median 2184ms (±44ms IQR)\n    PR   : median 2144ms (±44ms IQR)\n    delta: −40ms (−1.8% on this 2.2s local baseline)\n\n  The −40ms absolute saving sits on the critical path (searchFiles runs\n  before collectFiles), so the same absolute delta should show up on the\n  smaller ~1.37s Ubuntu CI baseline as a larger relative share (roughly\n  ~2.9% if it translates cleanly, but actual CI numbers will vary with\n  disk and scheduler behaviour).\n\nverify\n  npm run lint  ✔ (no new warnings)\n  npm run test  ✔ 115 files / 1137 tests passing\n  Pack output  ✔ byte-identical to main's output on this repo\n\nhttps://claude.ai/code/session_01SQQbw5yV2AkgRw7M2jok2B",
+          "timestamp": "2026-04-18T22:15:20Z",
+          "tree_id": "77c1e9ce3f1a939a2f6bc37722d96edcaf71d3f1",
+          "url": "https://github.com/yamadashy/repomix/commit/8e839a4e4a4d931cf14d29ffdfafda6dc137a491"
+        },
+        "date": 1776550644579,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 885,
+            "range": "±30",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 878ms, Q3: 908ms\nAll times: 856, 865, 867, 870, 871, 873, 876, 878, 880, 881, 881, 881, 881, 884, 884, 885, 886, 886, 889, 892, 893, 899, 908, 918, 933, 973, 1000, 1079, 1088, 1089ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1531,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1516ms, Q3: 1539ms\nAll times: 1496, 1499, 1503, 1507, 1507, 1516, 1518, 1519, 1520, 1526, 1531, 1534, 1536, 1536, 1538, 1539, 1542, 1550, 1580, 1581ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1843,
+            "range": "±43",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1827ms, Q3: 1870ms\nAll times: 1809, 1810, 1813, 1817, 1822, 1827, 1830, 1832, 1832, 1837, 1843, 1849, 1853, 1856, 1857, 1870, 1871, 2041, 2044, 2131ms"
           }
         ]
       }
