@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { z } from 'zod';
+import { toJsonSchema } from '@valibot/to-json-schema';
 import { repomixConfigFileSchema } from '../../../src/config/configSchema.js';
 
 const getPackageVersion = async (): Promise<string> => {
@@ -10,15 +10,36 @@ const getPackageVersion = async (): Promise<string> => {
   return packageJson.version;
 };
 
+// @valibot/to-json-schema does not emit `additionalProperties: false` for `v.object`,
+// even though Valibot strips unknown keys at runtime. Walk the tree and add it so
+// editors (VSCode etc.) still flag typos in repomix.config.json.
+const addAdditionalPropertiesFalse = (node: unknown): void => {
+  if (!node || typeof node !== 'object') return;
+  if (Array.isArray(node)) {
+    for (const item of node) addAdditionalPropertiesFalse(item);
+    return;
+  }
+  const obj = node as Record<string, unknown>;
+  if (
+    obj.type === 'object' &&
+    obj.properties &&
+    typeof obj.properties === 'object' &&
+    !('additionalProperties' in obj)
+  ) {
+    obj.additionalProperties = false;
+  }
+  for (const value of Object.values(obj)) addAdditionalPropertiesFalse(value);
+};
+
 const generateSchema = async () => {
   const version = await getPackageVersion();
   const versionParts = version.split('.');
   const majorMinorVersion = `${versionParts[0]}.${versionParts[1]}.${versionParts[2]}`;
 
-  // Use Zod v4's built-in JSON Schema generation
-  const jsonSchema = z.toJSONSchema(repomixConfigFileSchema, {
-    target: 'draft-7',
+  const jsonSchema = toJsonSchema(repomixConfigFileSchema, {
+    target: 'draft-07',
   });
+  addAdditionalPropertiesFalse(jsonSchema);
 
   const schemaWithMeta = {
     $schema: 'http://json-schema.org/draft-07/schema#',
