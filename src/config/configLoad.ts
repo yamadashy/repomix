@@ -3,7 +3,8 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSON5 from 'json5';
 import pc from 'picocolors';
-import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
+import * as v from 'valibot';
+import { RepomixError, rethrowValidationErrorIfSchemaError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
 import {
   defaultConfig,
@@ -149,7 +150,13 @@ const loadAndValidateConfig = async (
       case 'cjs': {
         // Use jiti for TypeScript and JavaScript files
         // This provides consistent behavior and avoids Node.js module cache issues
-        config = await deps.jitiImport(pathToFileURL(filePath).href);
+        const imported = await deps.jitiImport(pathToFileURL(filePath).href);
+        // jiti.import returns an ESM Module namespace for `export default {...}` even
+        // with `interopDefault: true`. Unwrap it so the schema sees the user's config.
+        config =
+          imported && typeof imported === 'object' && 'default' in imported
+            ? (imported as { default: unknown }).default
+            : imported;
         break;
       }
 
@@ -166,9 +173,9 @@ const loadAndValidateConfig = async (
         throw new RepomixError(`Unsupported config file format: ${filePath}`);
     }
 
-    return repomixConfigFileSchema.parse(config);
+    return v.parse(repomixConfigFileSchema, config);
   } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid config schema');
+    rethrowValidationErrorIfSchemaError(error, 'Invalid config schema');
     if (error instanceof SyntaxError) {
       throw new RepomixError(`Invalid syntax in config file ${filePath}: ${error.message}`);
     }
@@ -247,9 +254,9 @@ export const mergeConfigs = (
   };
 
   try {
-    return repomixConfigMergedSchema.parse(mergedConfig);
+    return v.parse(repomixConfigMergedSchema, mergedConfig);
   } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid merged config');
+    rethrowValidationErrorIfSchemaError(error, 'Invalid merged config');
     throw error;
   }
 };

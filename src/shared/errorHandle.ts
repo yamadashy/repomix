@@ -115,20 +115,38 @@ const isRepomixError = (error: unknown): error is RepomixError => {
 };
 
 /**
- * Checks if an error is a ZodError using duck typing to avoid eagerly importing Zod.
- * ZodErrors have a `name` of 'ZodError' and an `issues` array.
+ * Rethrows schema validation errors (Zod or Valibot) as RepomixConfigValidationError
+ * using duck typing to avoid eagerly importing either library.
+ *
+ * - ZodError: `name === 'ZodError'`, `issues[].path` is `Array<string | number>`
+ * - ValiError: `name === 'ValiError'`, `issues[].path` is `Array<{ key: string | number | symbol }>`
  */
-export const rethrowValidationErrorIfZodError = (error: unknown, message: string): void => {
+export const rethrowValidationErrorIfSchemaError = (error: unknown, message: string): void => {
   if (
-    error instanceof Error &&
-    error.name === 'ZodError' &&
-    'issues' in error &&
-    Array.isArray((error as { issues: unknown[] }).issues)
+    !(error instanceof Error) ||
+    (error.name !== 'ZodError' && error.name !== 'ValiError') ||
+    !('issues' in error) ||
+    !Array.isArray((error as { issues: unknown[] }).issues)
   ) {
-    const issues = (error as { issues: Array<{ path: string[]; message: string }> }).issues;
-    const zodErrorText = issues.map((err) => `[${err.path.join('.')}] ${err.message}`).join('\n  ');
-    throw new RepomixConfigValidationError(
-      `${message}\n\n  ${zodErrorText}\n\n  Please check the config file and try again.`,
-    );
+    return;
   }
+
+  const issues = (error as { issues: Array<{ path?: unknown; message: string }> }).issues;
+  const errorText = issues
+    .map((issue) => {
+      const segments = Array.isArray(issue.path)
+        ? (issue.path as unknown[]).map((segment) => {
+            // Zod: path segments are primitives. Valibot: { key } objects.
+            if (segment && typeof segment === 'object' && 'key' in segment) {
+              return String((segment as { key: unknown }).key);
+            }
+            return String(segment);
+          })
+        : [];
+      return `[${segments.join('.')}] ${issue.message}`;
+    })
+    .join('\n  ');
+  throw new RepomixConfigValidationError(
+    `${message}\n\n  ${errorText}\n\n  Please check the config file and try again.`,
+  );
 };

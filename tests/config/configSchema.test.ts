@@ -1,5 +1,5 @@
+import * as v from 'valibot';
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
 import {
   repomixConfigBaseSchema,
   repomixConfigCliSchema,
@@ -12,12 +12,12 @@ import {
 describe('configSchema', () => {
   describe('repomixOutputStyleSchema', () => {
     it('should accept valid output styles', () => {
-      expect(repomixOutputStyleSchema.parse('plain')).toBe('plain');
-      expect(repomixOutputStyleSchema.parse('xml')).toBe('xml');
+      expect(v.parse(repomixOutputStyleSchema, 'plain')).toBe('plain');
+      expect(v.parse(repomixOutputStyleSchema, 'xml')).toBe('xml');
     });
 
     it('should reject invalid output styles', () => {
-      expect(() => repomixOutputStyleSchema.parse('invalid')).toThrow(z.ZodError);
+      expect(() => v.parse(repomixOutputStyleSchema, 'invalid')).toThrow(v.ValiError);
     });
   });
 
@@ -33,8 +33,8 @@ describe('configSchema', () => {
           tokenCountTree: false,
         },
       };
-      expect(repomixConfigBaseSchema.parse(configWithBooleanTrue)).toEqual(configWithBooleanTrue);
-      expect(repomixConfigBaseSchema.parse(configWithBooleanFalse)).toEqual(configWithBooleanFalse);
+      expect(v.parse(repomixConfigBaseSchema, configWithBooleanTrue)).toEqual(configWithBooleanTrue);
+      expect(v.parse(repomixConfigBaseSchema, configWithBooleanFalse)).toEqual(configWithBooleanFalse);
     });
 
     it('should accept string values for tokenCountTree', () => {
@@ -43,7 +43,7 @@ describe('configSchema', () => {
           tokenCountTree: '100',
         },
       };
-      expect(repomixConfigBaseSchema.parse(configWithString)).toEqual(configWithString);
+      expect(v.parse(repomixConfigBaseSchema, configWithString)).toEqual(configWithString);
     });
 
     it('should reject invalid types for tokenCountTree', () => {
@@ -52,7 +52,7 @@ describe('configSchema', () => {
           tokenCountTree: [], // Should be boolean, number, or string
         },
       };
-      expect(() => repomixConfigBaseSchema.parse(configWithInvalidType)).toThrow(z.ZodError);
+      expect(() => v.parse(repomixConfigBaseSchema, configWithInvalidType)).toThrow(v.ValiError);
     });
   });
 
@@ -74,11 +74,11 @@ describe('configSchema', () => {
           enableSecurityCheck: true,
         },
       };
-      expect(repomixConfigBaseSchema.parse(validConfig)).toEqual(validConfig);
+      expect(v.parse(repomixConfigBaseSchema, validConfig)).toEqual(validConfig);
     });
 
     it('should accept empty object', () => {
-      expect(repomixConfigBaseSchema.parse({})).toEqual({});
+      expect(v.parse(repomixConfigBaseSchema, {})).toEqual({});
     });
 
     it('should reject invalid types', () => {
@@ -89,7 +89,7 @@ describe('configSchema', () => {
         },
         include: 'not-an-array', // Should be an array
       };
-      expect(() => repomixConfigBaseSchema.parse(invalidConfig)).toThrow(z.ZodError);
+      expect(() => v.parse(repomixConfigBaseSchema, invalidConfig)).toThrow(v.ValiError);
     });
   });
 
@@ -137,17 +137,17 @@ describe('configSchema', () => {
           encoding: 'o200k_base',
         },
       };
-      expect(repomixConfigDefaultSchema.parse(validConfig)).toEqual(validConfig);
+      expect(v.parse(repomixConfigDefaultSchema, validConfig)).toEqual(validConfig);
     });
 
     it('should reject incomplete config', () => {
       const invalidConfig = {};
-      expect(() => repomixConfigDefaultSchema.parse(invalidConfig)).toThrow();
+      expect(() => v.parse(repomixConfigDefaultSchema, invalidConfig)).toThrow();
     });
 
     it('should provide helpful error for missing required fields', () => {
       const invalidConfig = {};
-      expect(() => repomixConfigDefaultSchema.parse(invalidConfig)).toThrow(/expected object/i);
+      expect(() => v.parse(repomixConfigDefaultSchema, invalidConfig)).toThrow(/expected|invalid/i);
     });
   });
 
@@ -162,7 +162,7 @@ describe('configSchema', () => {
           customPatterns: ['*.log'],
         },
       };
-      expect(repomixConfigFileSchema.parse(validConfig)).toEqual(validConfig);
+      expect(v.parse(repomixConfigFileSchema, validConfig)).toEqual(validConfig);
     });
 
     it('should accept partial config', () => {
@@ -171,7 +171,7 @@ describe('configSchema', () => {
           filePath: 'partial-output.txt',
         },
       };
-      expect(repomixConfigFileSchema.parse(partialConfig)).toEqual(partialConfig);
+      expect(v.parse(repomixConfigFileSchema, partialConfig)).toEqual(partialConfig);
     });
   });
 
@@ -184,7 +184,7 @@ describe('configSchema', () => {
         },
         include: ['src/**/*.ts'],
       };
-      expect(repomixConfigCliSchema.parse(validConfig)).toEqual(validConfig);
+      expect(v.parse(repomixConfigCliSchema, validConfig)).toEqual(validConfig);
     });
 
     it('should reject invalid CLI options', () => {
@@ -193,7 +193,7 @@ describe('configSchema', () => {
           filePath: 123, // Should be string
         },
       };
-      expect(() => repomixConfigCliSchema.parse(invalidConfig)).toThrow(z.ZodError);
+      expect(() => v.parse(repomixConfigCliSchema, invalidConfig)).toThrow(v.ValiError);
     });
   });
 
@@ -242,7 +242,7 @@ describe('configSchema', () => {
           encoding: 'o200k_base',
         },
       };
-      expect(repomixConfigMergedSchema.parse(validConfig)).toEqual(validConfig);
+      expect(v.parse(repomixConfigMergedSchema, validConfig)).toEqual(validConfig);
     });
 
     it('should reject merged config missing required fields', () => {
@@ -252,7 +252,7 @@ describe('configSchema', () => {
           // Missing required fields
         },
       };
-      expect(() => repomixConfigMergedSchema.parse(invalidConfig)).toThrow(z.ZodError);
+      expect(() => v.parse(repomixConfigMergedSchema, invalidConfig)).toThrow(v.ValiError);
     });
 
     it('should reject merged config with invalid types', () => {
@@ -276,7 +276,7 @@ describe('configSchema', () => {
           enableSecurityCheck: true,
         },
       };
-      expect(() => repomixConfigMergedSchema.parse(invalidConfig)).toThrow(z.ZodError);
+      expect(() => v.parse(repomixConfigMergedSchema, invalidConfig)).toThrow(v.ValiError);
     });
   });
 });
