@@ -1,87 +1,55 @@
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 import { classifyRejectReason, getRepoHost } from '../../../website/server/src/actions/packEventSchema.js';
-import { packRequestSchema } from '../../../website/server/src/actions/packRequestSchema.js';
-import { validateRequest } from '../../../website/server/src/utils/validation.js';
 
-// Exercise each rejection path through the real schema + validateRequest so
-// that if a zod message in packRequestSchema changes, the classifier falling
-// back to `'other'` fails the test in CI rather than quietly mislabeling a
-// dashboard bucket in production.
+// Classifier drift test. Messages below MUST match those defined in
+// `website/server/src/actions/packRequestSchema.ts`. If a schema message is
+// edited without updating this file, the classifier falls back to `'other'`
+// and dashboards quietly mislabel — but that drift is not caught here
+// (the test deliberately avoids importing the schema to keep this file's
+// module graph free of server-only packages like `repomix` and `hono` that
+// the root vitest harness doesn't install). For true schema drift catching,
+// the schema and classifier would need to share a constants module.
+
+// Construct a ZodError with a single issue whose message matches the one the
+// schema would produce. classifyRejectReason only reads `.message` and
+// `.path` from the first issue.
+const zodErrorWith = (message: string, path: (string | number)[] = []) =>
+  new z.ZodError([{ code: 'custom', message, path, input: undefined }]);
+
+// Mimic the AppError-with-cause wrapping that `validateRequest` does in
+// production — native Error with `cause` is enough to exercise the
+// cause-chain path in classifyRejectReason, no AppError import needed.
+const wrapped = (message: string, path: (string | number)[] = []) =>
+  new Error(`Invalid request: ${message}`, { cause: zodErrorWith(message, path) });
+
 describe('classifyRejectReason', () => {
-  const baseOptions = {
-    removeComments: false,
-    removeEmptyLines: false,
-    showLineNumbers: false,
-    fileSummary: false,
-    directoryStructure: false,
-    outputParsable: false,
-    compress: false,
-  };
-
-  const expectRejectReason = (input: unknown, expected: string) => {
-    let caught: unknown;
-    try {
-      validateRequest(packRequestSchema, input);
-    } catch (e) {
-      caught = e;
-    }
-    expect(caught).toBeDefined();
-    expect(classifyRejectReason(caught)).toBe(expected);
-  };
-
-  test('missing_input — neither url nor file', () => {
-    expectRejectReason({ format: 'xml', options: baseOptions }, 'missing_input');
+  test.each([
+    ['missing_input', 'Either URL or file must be provided'],
+    ['both_provided', 'Cannot provide both URL and file'],
+    ['invalid_url', 'Invalid repository URL'],
+    ['url_too_long', 'Repository URL is too long'],
+    ['url_empty', 'Repository URL is required'],
+    ['invalid_file', 'Invalid file format'],
+    ['not_zip', 'Only ZIP files are allowed'],
+    ['file_too_large', 'File size must be less than 10MB'],
+    ['invalid_ignore_chars', 'Invalid characters in ignore patterns'],
+    ['include_too_long', 'Include patterns too long'],
+    ['ignore_too_long', 'Ignore patterns too long'],
+  ])('%s — classifies "%s"', (expected, message) => {
+    expect(classifyRejectReason(zodErrorWith(message))).toBe(expected);
+    // Wrapped via AppError.cause (the real production path)
+    expect(classifyRejectReason(wrapped(message))).toBe(expected);
   });
 
-  test('invalid_url — URL fails isValidRemoteValue refine', () => {
-    expectRejectReason({ url: 'not-a-repo', format: 'xml', options: baseOptions }, 'invalid_url');
+  test('invalid_format — path "format" maps regardless of message text', () => {
+    const err = zodErrorWith('any zod message', ['format']);
+    expect(classifyRejectReason(err)).toBe('invalid_format');
   });
 
-  test('url_too_long — URL exceeds 200 chars', () => {
-    const longUrl = `https://github.com/${'a'.repeat(201)}`;
-    expectRejectReason({ url: longUrl, format: 'xml', options: baseOptions }, 'url_too_long');
-  });
-
-  test('url_empty — URL is empty string', () => {
-    expectRejectReason({ url: '', format: 'xml', options: baseOptions }, 'url_empty');
-  });
-
-  test('invalid_format — format not in enum', () => {
-    expectRejectReason({ url: 'yamadashy/repomix', format: 'json', options: baseOptions }, 'invalid_format');
-  });
-
-  test('invalid_ignore_chars — ignorePatterns fails regex', () => {
-    expectRejectReason(
-      {
-        url: 'yamadashy/repomix',
-        format: 'xml',
-        options: { ...baseOptions, ignorePatterns: 'evil;rm -rf' },
-      },
-      'invalid_ignore_chars',
-    );
-  });
-
-  test('include_too_long — includePatterns exceeds 100_000 chars', () => {
-    expectRejectReason(
-      {
-        url: 'yamadashy/repomix',
-        format: 'xml',
-        options: { ...baseOptions, includePatterns: 'a'.repeat(100_001) },
-      },
-      'include_too_long',
-    );
-  });
-
-  test('ignore_too_long — ignorePatterns exceeds 1_000 chars', () => {
-    expectRejectReason(
-      {
-        url: 'yamadashy/repomix',
-        format: 'xml',
-        options: { ...baseOptions, ignorePatterns: 'a'.repeat(1_001) },
-      },
-      'ignore_too_long',
-    );
+  test('other — unmapped message + unmapped path', () => {
+    const err = zodErrorWith('some never-seen message', ['options', 'compress']);
+    expect(classifyRejectReason(err)).toBe('other');
   });
 
   test('unknown — non-error input', () => {
@@ -91,22 +59,17 @@ describe('classifyRejectReason', () => {
   });
 
   test('unknown — ZodError with empty issues', () => {
-    const empty = new z.ZodError([]);
-    expect(classifyRejectReason(empty)).toBe('unknown');
+    expect(classifyRejectReason(new z.ZodError([]))).toBe('unknown');
   });
 
-  test('cause-chain extraction — issues live on error.cause', () => {
-    // validateRequest wraps ZodError in AppError with cause, so the classifier
-    // must read .cause to find the original issues.
-    let caught: unknown;
-    try {
-      validateRequest(packRequestSchema, { format: 'xml', options: baseOptions });
-    } catch (e) {
-      caught = e;
-    }
-    expect(caught).toBeInstanceOf(Error);
-    expect((caught as Error).cause).toBeInstanceOf(z.ZodError);
-    expect(classifyRejectReason(caught)).toBe('missing_input');
+  test('unknown — plain Error without issues', () => {
+    expect(classifyRejectReason(new Error('bare error'))).toBe('unknown');
+  });
+
+  test('cause-chain extraction — issues live on error.cause (AppError path)', () => {
+    const wrappedErr = wrapped('Either URL or file must be provided');
+    expect(wrappedErr.cause).toBeInstanceOf(z.ZodError);
+    expect(classifyRejectReason(wrappedErr)).toBe('missing_input');
   });
 });
 
