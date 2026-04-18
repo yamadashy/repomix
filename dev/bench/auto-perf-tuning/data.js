@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776485486617,
+  "lastUpdate": 1776544649137,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5535,6 +5535,51 @@ window.BENCHMARK_DATA = {
             "range": "±44",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1404ms, Q3: 1448ms\nAll times: 1396, 1397, 1398, 1400, 1402, 1404, 1406, 1410, 1410, 1418, 1419, 1420, 1430, 1431, 1433, 1448, 1465, 1470, 1502, 1662ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "d104de6366774ca7838d93fc4067e9eb8201c29d",
+          "message": "perf(core): Lazy-load globby to defer 190ms module-load off critical path\n\nwhy\n  `fileSearch` statically imports `globby`, which pulls in `fast-glob` and\n  evaluates ~190ms worth of module code during Node's module-load phase.\n  Because `packager` → `fileSearch` is on the critical path of every pack\n  run, this cost was paid serially before `pack()` could start any async\n  work (git subprocess spawns, worker pool warmup, etc.).\n\nwhat\n  Replace the eager value import with a `import type` declaration plus a\n  cached dynamic `import('globby')` promise (`loadGlobby`). The three call\n  sites (`searchFiles`, `listDirectories`, `listFiles`, plus the\n  empty-directory scan) now `await loadGlobby()` at call time. The first\n  pack run resolves the module once; subsequent calls reuse the cached\n  promise.\n\n  Deferring globby's evaluation lets the pack pipeline enter earlier and\n  lets globby's CPU parse overlap with the git subprocess kicked off by\n  `prefetchSortData`. Behaviour is unchanged — only the load timing\n  shifts.\n\nbenchmark\n  node bin/repomix.cjs --include 'src/**' --quiet -o /tmp/out.txt\n  warmup=5 runs=25, same machine, back-to-back builds:\n\n  before: min=691ms median=719ms mean=724ms max=766ms\n  after : min=541ms median=576ms mean=576ms max=617ms\n  delta : median −143ms (−19.9%)\n\n  Verified across scopes:\n  - src/shared/** (small): median 573ms\n  - src/**,tests/** (large): median 1615ms\n  Both show the same absolute ~140ms savings from the deferred module load.\n\nverify\n  npm run lint  ✔ (no new warnings introduced by this change)\n  npm run test  ✔ 115 files / 1137 tests passing\n\nhttps://claude.ai/code/session_01SQQbw5yV2AkgRw7M2jok2B",
+          "timestamp": "2026-04-18T20:35:05Z",
+          "tree_id": "7a94deee62f6669fe76610b288347e79c7770392",
+          "url": "https://github.com/yamadashy/repomix/commit/d104de6366774ca7838d93fc4067e9eb8201c29d"
+        },
+        "date": 1776544648544,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 939,
+            "range": "±70",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 886ms, Q3: 956ms\nAll times: 849, 859, 862, 868, 877, 878, 880, 886, 890, 892, 897, 900, 905, 917, 926, 939, 940, 945, 945, 953, 954, 954, 956, 981, 992, 997, 1022, 1025, 1111, 1173ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1459,
+            "range": "±83",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1444ms, Q3: 1527ms\nAll times: 1429, 1431, 1432, 1436, 1441, 1444, 1451, 1454, 1456, 1457, 1459, 1467, 1483, 1511, 1513, 1527, 1550, 1578, 1733, 1747ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1975,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1951ms, Q3: 1984ms\nAll times: 1921, 1929, 1945, 1946, 1951, 1951, 1957, 1964, 1968, 1974, 1975, 1975, 1976, 1978, 1982, 1984, 1986, 1988, 1996, 2005ms"
           }
         ]
       }
