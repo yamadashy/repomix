@@ -1,8 +1,0 @@
-description: |
-  Cloud Run OOM termination count. Cloud Run emits this textPayload when a
-  container exceeds its memory limit. Alert on any non-zero rate — pack
-  requests that triggered the OOM failed mid-flight from the user's perspective.
-filter: |
-  resource.type="cloud_run_revision"
-  resource.labels.service_name="repomix-server-us"
-  textPayload=~"Memory limit of .* exceeded"
