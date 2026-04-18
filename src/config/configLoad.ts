@@ -197,10 +197,6 @@ export const mergeConfigs = async (
 
   const baseConfig = defaultConfig;
 
-  // `satisfies RepomixConfigMerged` gives a compile-time guarantee that the
-  // manual merge logic structurally matches the schema-derived type. Without
-  // it, future schema additions could silently drift from this object because
-  // the `validate: false` path returns it via `as RepomixConfigMerged`.
   const mergedConfig = {
     cwd,
     input: {
@@ -257,10 +253,15 @@ export const mergeConfigs = async (
     },
     // Skill generation (CLI only)
     ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
-  } satisfies RepomixConfigMerged;
+  };
 
   if (!validate) {
-    return mergedConfig;
+    // `as` cast is necessary because file/cli configs have looser types
+    // (e.g. encoding: string) than the merged schema (encoding: TokenEncoding).
+    // Safety: callers pass `validate: false` only when inputs were already
+    // validated at their boundaries (loadAndValidateConfig for file config,
+    // buildCliConfig + Commander for CLI), so the merged result is sound.
+    return mergedConfig as RepomixConfigMerged;
   }
 
   try {

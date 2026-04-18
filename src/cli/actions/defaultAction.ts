@@ -38,22 +38,24 @@ export const runDefaultAction = async (
   });
   logger.trace('Loaded file config:', fileConfig);
 
-  // Parse the CLI options into a config. Skip zod validation here because:
-  //   - Each numeric/string CLI option already has a Commander argParser that
-  //     enforces format (e.g., `--top-files-len` rejects non-integers).
-  //   - The output style enum is validated explicitly below in buildCliConfig.
-  // Avoiding zod here is what unlocks the cold-start savings.
-  const cliConfig: RepomixConfigCli = await buildCliConfig(cliOptions, { validate: false });
+  // Did we actually load a config file? `loadFileConfig` returns `{}` when
+  // no config file is found. We use this to decide whether to run zod
+  // validation in the steps below — when no config file exists we can skip
+  // it entirely (zod never loads, saving ~145ms cold start). When a config
+  // file is present, zod was already loaded for `loadAndValidateConfig`, so
+  // running merge-time validation costs nothing extra (cached module).
+  const hasFileConfig = Object.keys(fileConfig).length > 0;
+
+  // Parse the CLI options into a config. Skip zod when there's no file config:
+  //   - Numeric CLI options have Commander argParsers that enforce format.
+  //   - Enum options (--style, --token-count-encoding) are validated below
+  //     in buildCliConfig with explicit OUTPUT_STYLES / TOKEN_ENCODINGS checks.
+  const cliConfig: RepomixConfigCli = await buildCliConfig(cliOptions, { validate: hasFileConfig });
   logger.trace('CLI config:', cliConfig);
 
-  // Merge default, file, and CLI configs. Skip merge-time validation because:
-  //   - When a config file exists, loadAndValidateConfig has already validated
-  //     it against repomixConfigBaseSchema (which mirrors the merged schema's
-  //     numeric/enum constraints, so file-level validation is sufficient).
-  //   - When no config file exists, fileConfig is `{}` and the merged result
-  //     comes from defaultConfig + cliConfig — both already trusted.
-  //   - CLI config is validated by Commander argParsers + buildCliConfig.
-  const config: RepomixConfigMerged = await mergeConfigs(cwd, fileConfig, cliConfig, { validate: false });
+  // Merge default, file, and CLI configs. Validate when we have a file config
+  // (zod is already loaded then), skip otherwise.
+  const config: RepomixConfigMerged = await mergeConfigs(cwd, fileConfig, cliConfig, { validate: hasFileConfig });
   logger.trace('Merged config:', config);
 
   // Validate conflicting options

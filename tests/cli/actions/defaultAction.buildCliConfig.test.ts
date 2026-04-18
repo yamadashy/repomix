@@ -51,20 +51,19 @@ describe('buildCliConfig', () => {
     });
 
     it('skips zod validation when validate: false', async () => {
-      // Pass a value that zod would reject (`topFilesLength` is constrained to
-      // `int().min(0)` in repomixConfigDefaultSchema). With `validate: true`,
-      // zod's enum/range checks would throw RepomixConfigValidationError.
-      // With `validate: false` the value passes through unchecked, proving
-      // that zod is genuinely skipped.
-      const result = await buildCliConfig({ topFilesLen: -1 }, { validate: false });
-      expect(result.output?.topFilesLength).toBe(-1);
+      // `splitOutput` is constrained to `int().min(1)` in
+      // repomixConfigBaseSchema (and thus repomixConfigCliSchema). With
+      // validate=true zod rejects 0; with validate=false it passes through
+      // unchecked, proving zod is genuinely skipped.
+      const result = await buildCliConfig({ splitOutput: 0 }, { validate: false });
+      expect(result.output?.splitOutput).toBe(0);
     });
 
-    it('runs zod validation by default and rejects out-of-range topFilesLength', async () => {
-      // Companion to the above: with the default `validate: true`, the same
-      // out-of-range value is caught by zod (proves the validate option flips
-      // the behavior, not just that one specific path skips validation).
-      await expect(buildCliConfig({ topFilesLen: -1 })).rejects.toThrow();
+    it('runs zod validation by default and rejects out-of-range splitOutput', async () => {
+      // Companion to the above: with the default validate=true the same
+      // out-of-range value is caught by zod, proving the option flips the
+      // behavior rather than just one specific path skipping validation.
+      await expect(buildCliConfig({ splitOutput: 0 })).rejects.toThrow();
     });
   });
 });
