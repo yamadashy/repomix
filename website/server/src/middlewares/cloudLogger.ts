@@ -1,18 +1,8 @@
 import type { Context, Next } from 'hono';
-import { type ClientInfo, getClientInfo } from '../utils/clientInfo.js';
-import { logger } from '../utils/logger.js';
+import { getClientInfo } from '../utils/clientInfo.js';
+import { buildCfLogField, logger } from '../utils/logger.js';
 import { formatMemoryUsage, getMemoryUsage } from '../utils/memory.js';
 import { calculateLatency } from '../utils/time.js';
-
-// Build a `cf` log field from Cloudflare-injected headers, omitting undefined
-// values so direct-to-origin requests don't emit empty objects.
-function buildCfLogField(clientInfo: ClientInfo): Record<string, string> | undefined {
-  const cf: Record<string, string> = {};
-  if (clientInfo.cfRay) cf.ray = clientInfo.cfRay;
-  if (clientInfo.cfCountry) cf.country = clientInfo.cfCountry;
-  if (clientInfo.cfAsn) cf.asn = clientInfo.cfAsn;
-  return Object.keys(cf).length > 0 ? cf : undefined;
-}
 
 // Augment Hono's context type
 declare module 'hono' {

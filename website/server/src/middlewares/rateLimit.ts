@@ -1,14 +1,10 @@
 import type { Context, Next } from 'hono';
+import { PACK_EVENT, type PackOutcome } from '../actions/packEventSchema.js';
 import { rateLimiter } from '../domains/pack/utils/sharedInstance.js';
 import { getClientInfo } from '../utils/clientInfo.js';
 import { dailyRateLimiter } from '../utils/dailyRateLimit.js';
 import { createErrorResponse } from '../utils/http.js';
-import { logInfo, logWarning } from '../utils/logger.js';
-
-// Matches the unified log schema in packAction so all terminal pack-request
-// outcomes (success/validation_error/pack_error/rate_limited) land under one
-// event name for log-based metrics.
-const PACK_EVENT = 'pack_completed';
+import { buildCfLogField, logInfo, logWarning } from '../utils/logger.js';
 
 let lastDailyRateLimitErrorLogAt = 0;
 const ERROR_LOG_INTERVAL_MS = 60_000;
@@ -17,6 +13,10 @@ export function rateLimitMiddleware() {
   return async function rateLimitMiddleware(c: Context, next: Next) {
     const clientInfo = getClientInfo(c);
     const requestId = c.get('requestId');
+    // Cloudflare metadata is most valuable on rate-limit hits — bots are the
+    // primary population that hits the limit, so country/ASN is exactly what
+    // we want for triage.
+    const cf = buildCfLogField(clientInfo);
 
     // Check short-term rate limit first (in-memory, saves Upstash commands for burst traffic)
     if (!rateLimiter.isAllowed(clientInfo.ip)) {
@@ -24,10 +24,11 @@ export function rateLimitMiddleware() {
       const message = `Rate limit exceeded.\nPlease try again in ${remainingTime} seconds.`;
       logInfo('Pack request rate limited', {
         event: PACK_EVENT,
-        outcome: 'rate_limited',
+        outcome: 'rate_limited' satisfies PackOutcome,
         limitKind: 'short_term',
         requestId,
         source: clientInfo.source,
+        ...(cf && { cf }),
       });
       return c.json(createErrorResponse(message, requestId), 429);
     }
@@ -42,10 +43,11 @@ export function rateLimitMiddleware() {
           const message = `Daily pack limit reached.\nPlease try again in ${hours} hour${hours > 1 ? 's' : ''}.`;
           logInfo('Pack request rate limited', {
             event: PACK_EVENT,
-            outcome: 'rate_limited',
+            outcome: 'rate_limited' satisfies PackOutcome,
             limitKind: 'daily',
             requestId,
             source: clientInfo.source,
+            ...(cf && { cf }),
           });
           return c.json(createErrorResponse(message, requestId), 429);
         }

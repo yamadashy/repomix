@@ -30,6 +30,12 @@ export function getClientInfo(c: Context): ClientInfo {
   // `cf-asn` is not added by default — enable it via a Cloudflare Transform
   // Rule (`HTTP Request Header Modification`) that sets `cf-asn` from
   // `ip.src.asnum`.
+  //
+  // NOTE: These fields are a heuristic for log triage only. Any client hitting
+  // the origin directly can set `cf-ray` / `cf-ipcountry` / `cf-asn` to
+  // arbitrary values, so `source` and the `cf.*` values must never be used for
+  // auth, rate-limiting, or any access-control decision. Trust is anchored by
+  // `cloudflareGuardMiddleware` + `CLOUDFLARE_ORIGIN_SECRET`, not by these.
   const cfRay = c.req.header('cf-ray');
   const cfCountry = c.req.header('cf-ipcountry');
   const cfAsn = c.req.header('cf-asn');
