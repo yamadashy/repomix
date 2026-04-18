@@ -246,6 +246,33 @@ describe('configSchema', () => {
         };
         expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
       });
+
+      it('rejects non-integer topFilesLength', () => {
+        const cfg = { ...baseDefaults, output: { ...baseDefaults.output, topFilesLength: 1.5 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects non-integer sortByChangesMaxCommits', () => {
+        const cfg = {
+          ...baseDefaults,
+          output: {
+            ...baseDefaults.output,
+            git: { ...baseDefaults.output.git, sortByChangesMaxCommits: 1.5 },
+          },
+        };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects non-integer includeLogsCount', () => {
+        const cfg = {
+          ...baseDefaults,
+          output: {
+            ...baseDefaults.output,
+            git: { ...baseDefaults.output.git, includeLogsCount: 1.5 },
+          },
+        };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
     });
   });
 
