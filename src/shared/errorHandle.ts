@@ -122,23 +122,24 @@ const isRepomixError = (error: unknown): error is RepomixError => {
  * - ValiError: `name === 'ValiError'`, `issues[].path` is `Array<{ key: string | number | symbol }>`
  */
 export const rethrowValidationErrorIfSchemaError = (error: unknown, message: string): void => {
-  if (
-    !(error instanceof Error) ||
-    (error.name !== 'ZodError' && error.name !== 'ValiError') ||
-    !('issues' in error) ||
-    !Array.isArray((error as { issues: unknown[] }).issues)
-  ) {
+  // Duck-type instead of `instanceof Error` so errors round-tripped through
+  // worker boundaries (which keep only plain { name, message, issues }) are
+  // still recognized. Aligns with isError / isRepomixError above.
+  if (!error || typeof error !== 'object') return;
+  const err = error as { name?: unknown; issues?: unknown };
+  if ((err.name !== 'ZodError' && err.name !== 'ValiError') || !Array.isArray(err.issues)) {
     return;
   }
 
-  const issues = (error as { issues: Array<{ path?: unknown; message: string }> }).issues;
+  const issues = err.issues as Array<{ path?: unknown; message: string }>;
   const errorText = issues
     .map((issue) => {
       const segments = Array.isArray(issue.path)
         ? (issue.path as unknown[]).map((segment) => {
             // Zod: path segments are primitives. Valibot: { key } objects.
-            if (segment && typeof segment === 'object' && 'key' in segment) {
-              return String((segment as { key: unknown }).key);
+            if (segment && typeof segment === 'object') {
+              if ('key' in segment) return String((segment as { key: unknown }).key);
+              return '';
             }
             return String(segment);
           })

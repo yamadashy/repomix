@@ -40,7 +40,7 @@ export const repomixConfigBaseSchema = v.object({
       copyToClipboard: v.optional(v.boolean()),
       includeEmptyDirectories: v.optional(v.boolean()),
       includeFullDirectoryStructure: v.optional(v.boolean()),
-      splitOutput: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1))),
+      splitOutput: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(Number.MAX_SAFE_INTEGER))),
       tokenCountTree: v.optional(v.union([v.boolean(), v.number(), v.string()])),
       git: v.optional(
         v.object({

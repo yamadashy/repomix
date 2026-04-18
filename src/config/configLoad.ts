@@ -151,12 +151,15 @@ const loadAndValidateConfig = async (
         // Use jiti for TypeScript and JavaScript files
         // This provides consistent behavior and avoids Node.js module cache issues
         const imported = await deps.jitiImport(pathToFileURL(filePath).href);
-        // jiti.import returns an ESM Module namespace for `export default {...}` even
-        // with `interopDefault: true`. Unwrap it so the schema sees the user's config.
-        config =
+        // jiti.import returns a `{ default: ... }` wrapper for `export default {...}`
+        // (both ESM Module namespaces and jiti's TS interop). Unwrap only when
+        // `default` is itself an object — this preserves a CJS config that
+        // legitimately exports `{ default: 'plain', ...rest }` as-is.
+        const defaultExport =
           imported && typeof imported === 'object' && 'default' in imported
             ? (imported as { default: unknown }).default
-            : imported;
+            : undefined;
+        config = defaultExport && typeof defaultExport === 'object' ? defaultExport : imported;
         break;
       }
 

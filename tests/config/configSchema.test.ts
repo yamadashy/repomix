@@ -142,12 +142,19 @@ describe('configSchema', () => {
 
     it('should reject incomplete config', () => {
       const invalidConfig = {};
-      expect(() => v.parse(repomixConfigDefaultSchema, invalidConfig)).toThrow();
+      expect(() => v.parse(repomixConfigDefaultSchema, invalidConfig)).toThrow(v.ValiError);
     });
 
     it('should provide helpful error for missing required fields', () => {
       const invalidConfig = {};
-      expect(() => v.parse(repomixConfigDefaultSchema, invalidConfig)).toThrow(/expected|invalid/i);
+      try {
+        v.parse(repomixConfigDefaultSchema, invalidConfig);
+        expect.fail('Expected ValiError to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(v.ValiError);
+        const valiError = error as v.ValiError<typeof repomixConfigDefaultSchema>;
+        expect(valiError.issues[0].message).toMatch(/invalid (type|key)/i);
+      }
     });
   });
 
