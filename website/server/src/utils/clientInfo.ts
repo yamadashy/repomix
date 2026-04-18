@@ -12,7 +12,26 @@ export interface ClientInfo {
   source: RequestSource;
 }
 
+// Stash the resolved ClientInfo on the Hono context so cloudLogger, rateLimit,
+// cloudflareGuard, and packAction don't each re-run the ~7 header lookups per
+// request.
+declare module 'hono' {
+  interface ContextVariableMap {
+    clientInfo: ClientInfo;
+  }
+}
+
 export function getClientInfo(c: Context): ClientInfo {
+  // Lazy memoization: the first caller on this request populates the context;
+  // every subsequent getClientInfo() returns the cached object.
+  const cached = c.get('clientInfo');
+  if (cached) return cached;
+  const fresh = resolveClientInfo(c);
+  c.set('clientInfo', fresh);
+  return fresh;
+}
+
+function resolveClientInfo(c: Context): ClientInfo {
   // Get client IP from various headers (prioritized order)
   const ip =
     c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ||
