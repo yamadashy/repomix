@@ -1,10 +1,14 @@
 // src/core/security/securityCheck.test.ts
 
 import pc from 'picocolors';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
-import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
+import {
+  cleanupWarmupSecurityWorkerPool,
+  runSecurityCheck,
+  warmupSecurityWorkerPool,
+} from '../../../src/core/security/securityCheck.js';
 import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
@@ -54,6 +58,11 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
 };
 
 describe('runSecurityCheck', () => {
+  // Ensure module-level warmup slot doesn't leak between tests.
+  afterEach(async () => {
+    await cleanupWarmupSecurityWorkerPool();
+  });
+
   it('should identify files with security issues', async () => {
     const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
@@ -209,6 +218,88 @@ describe('runSecurityCheck', () => {
 
     // With batch size 50 and 3 items (2 files + 1 git diff), all in a single batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
+  });
+
+  it('should reuse the pre-warmed task runner exactly once', async () => {
+    const cleanup = vi.fn();
+    const run = vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
+      return await securityCheckWorker(task);
+    });
+    const initSpy = vi.fn(() => ({ run, cleanup }));
+
+    warmupSecurityWorkerPool({
+      initTaskRunner: initSpy as unknown as typeof mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
+    expect(initSpy).toHaveBeenCalledTimes(1);
+
+    const fallbackInit = vi.fn(mockInitTaskRunner);
+    await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
+      initTaskRunner: fallbackInit as unknown as typeof mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
+
+    // Warmed runner consumed; fallback initTaskRunner not invoked
+    expect(fallbackInit).not.toHaveBeenCalled();
+    expect(cleanup).toHaveBeenCalledTimes(1);
+
+    // Second call falls through to the provided init since warmup slot was consumed
+    await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
+      initTaskRunner: fallbackInit as unknown as typeof mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
+    expect(fallbackInit).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not overwrite an existing warmed runner', async () => {
+    const initSpy = vi.fn(mockInitTaskRunner);
+
+    warmupSecurityWorkerPool({
+      initTaskRunner: initSpy as unknown as typeof mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
+    warmupSecurityWorkerPool({
+      initTaskRunner: initSpy as unknown as typeof mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
+
+    expect(initSpy).toHaveBeenCalledTimes(1);
+    await cleanupWarmupSecurityWorkerPool();
+  });
+
+  it('should clean up warmed runner on empty input early return', async () => {
+    const cleanup = vi.fn();
+    const initSpy = vi.fn(() => ({ run: vi.fn(), cleanup }));
+
+    warmupSecurityWorkerPool({
+      initTaskRunner: initSpy as unknown as typeof mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
+
+    const result = await runSecurityCheck([], () => {}, undefined, undefined, {
+      initTaskRunner: mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
+
+    expect(result).toEqual([]);
+    expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it('cleanupWarmupSecurityWorkerPool drains a warmed runner and is a no-op otherwise', async () => {
+    const cleanup = vi.fn();
+    const initSpy = vi.fn(() => ({ run: vi.fn(), cleanup }));
+
+    warmupSecurityWorkerPool({
+      initTaskRunner: initSpy as unknown as typeof mockInitTaskRunner,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
+
+    await cleanupWarmupSecurityWorkerPool();
+    expect(cleanup).toHaveBeenCalledTimes(1);
+
+    // Calling again with nothing warmed must not throw.
+    await expect(cleanupWarmupSecurityWorkerPool()).resolves.toBeUndefined();
+    expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
   it('should handle gitDiffResult with no diff content', async () => {

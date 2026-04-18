@@ -14,7 +14,11 @@ import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import { type SuspiciousFileResult, warmupSecurityWorkerPool } from './security/securityCheck.js';
+import {
+  cleanupWarmupSecurityWorkerPool,
+  type SuspiciousFileResult,
+  warmupSecurityWorkerPool,
+} from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -87,9 +91,15 @@ export const pack = async (
 
   // Pre-start the security worker pool so secretlint module loading (~100-150ms)
   // overlaps with file search, collection, and processing instead of running
-  // sequentially after file collection completes.
+  // sequentially after file collection completes. Wrapped in try/catch so a
+  // worker spawn failure does not abort pack() — runSecurityCheck will fall
+  // back to on-demand initialization.
   if (config.security.enableSecurityCheck && !overrideDeps.validateFileSafety) {
-    warmupSecurityWorkerPool();
+    try {
+      warmupSecurityWorkerPool();
+    } catch (error) {
+      logger.trace('Failed to warmup security worker pool:', error);
+    }
   }
 
   progressCallback('Searching for files...');
@@ -268,5 +278,8 @@ export const pack = async (
   } finally {
     await metricsWarmupPromise.catch(() => {});
     await metricsTaskRunner.cleanup();
+    // Drain any warmed security pool that wasn't consumed (e.g. error before
+    // runSecurityCheck, or empty input that triggered its early return).
+    await cleanupWarmupSecurityWorkerPool().catch(() => {});
   }
 };

@@ -40,6 +40,11 @@ export const warmupSecurityWorkerPool = (
     getProcessConcurrency: defaultGetProcessConcurrency,
   },
 ) => {
+  // Guard against double-warmup so an existing pool is not orphaned by
+  // overlapping pack() invocations or repeated calls.
+  if (_warmupTaskRunner) {
+    return;
+  }
   // Match the worker count used by runSecurityCheck so the warmed-up pool is
   // sized correctly for actual use.
   const maxSecurityWorkers = Math.min(2, deps.getProcessConcurrency());
@@ -49,6 +54,17 @@ export const warmupSecurityWorkerPool = (
     runtime: 'worker_threads',
     maxWorkerThreads: maxSecurityWorkers,
   });
+};
+
+// Drain any warmed-up pool that was never consumed by runSecurityCheck (e.g. when
+// pack() throws before reaching the security check, or when there are no items to
+// scan and runSecurityCheck returns early). Safe to call when no pool is warmed.
+export const cleanupWarmupSecurityWorkerPool = async () => {
+  const runner = _warmupTaskRunner;
+  _warmupTaskRunner = null;
+  if (runner) {
+    await runner.cleanup();
+  }
 };
 
 export const runSecurityCheck = async (
@@ -105,6 +121,8 @@ export const runSecurityCheck = async (
   const totalItems = allItems.length;
 
   if (totalItems === 0) {
+    // Drain any pre-warmed pool so its worker threads don't keep the process alive.
+    await cleanupWarmupSecurityWorkerPool();
     return [];
   }
 
