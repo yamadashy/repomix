@@ -11,7 +11,7 @@ import { logError, logInfo } from '../utils/logger.js';
 import { calculateMemoryDiff, getMemoryUsage } from '../utils/memory.js';
 import { formatLatencyForDisplay } from '../utils/time.js';
 import { validateRequest } from '../utils/validation.js';
-import { getRepoHost, PACK_EVENT, type PackOutcome } from './packEventSchema.js';
+import { classifyRejectReason, getRepoHost, PACK_EVENT, type PackOutcome } from './packEventSchema.js';
 import { type PackRequest, packRequestSchema } from './packRequestSchema.js';
 
 export const packAction = async (c: Context) => {
@@ -32,7 +32,21 @@ export const packAction = async (c: Context) => {
     let options: unknown = {};
     try {
       options = optionsRaw ? JSON.parse(optionsRaw) : {};
-    } catch {
+    } catch (jsonError) {
+      // Preserve the original SyntaxError so the log has position / token
+      // context — just the invalid_json count without the cause makes the
+      // invalid_json bucket unactionable when it spikes.
+      logError(
+        'Pack validation failed',
+        jsonError instanceof Error ? jsonError : new Error('Invalid JSON in options'),
+        {
+          event: PACK_EVENT,
+          outcome: 'validation_error' satisfies PackOutcome,
+          rejectReason: 'invalid_json',
+          requestId: c.get('requestId'),
+          source: clientInfo.source,
+        },
+      );
       return c.json(createErrorResponse('Invalid JSON in options', c.get('requestId')), 400);
     }
     const file = formData.get('file') as File | null;
@@ -58,6 +72,7 @@ export const packAction = async (c: Context) => {
     logError('Pack validation failed', error instanceof Error ? error : new Error('Unknown error'), {
       event: PACK_EVENT,
       outcome: 'validation_error' satisfies PackOutcome,
+      rejectReason: classifyRejectReason(error),
       requestId: c.get('requestId'),
       source: clientInfo.source,
     });
@@ -70,6 +85,27 @@ export const packAction = async (c: Context) => {
   const requestId = c.get('requestId');
   const inputType: 'file' | 'url' = validatedData.file ? 'file' : 'url';
   const repoHost = getRepoHost({ file: validatedData.file, url: validatedData.url });
+  // Booleans flattened for log-based metric extraction. Patterns are logged
+  // as presence-only booleans to avoid high cardinality and user input leakage.
+  // Computed once so both success and pack_error logs can include it — OOMs
+  // typically land in pack_error, so logging options only on success would
+  // create survivorship bias for OOM investigation.
+  //
+  // `Boolean()` intentionally collapses `undefined` (user didn't send the
+  // field) into `false`. The metric is designed to answer "what % of packs
+  // had compress enabled" — both "user disabled" and "user didn't send"
+  // mean the feature wasn't active, which is the signal we want.
+  const packOptions = {
+    compress: Boolean(validatedData.options.compress),
+    removeComments: Boolean(validatedData.options.removeComments),
+    removeEmptyLines: Boolean(validatedData.options.removeEmptyLines),
+    showLineNumbers: Boolean(validatedData.options.showLineNumbers),
+    fileSummary: Boolean(validatedData.options.fileSummary),
+    directoryStructure: Boolean(validatedData.options.directoryStructure),
+    outputParsable: Boolean(validatedData.options.outputParsable),
+    hasIncludePatterns: Boolean(validatedData.options.includePatterns),
+    hasIgnorePatterns: Boolean(validatedData.options.ignorePatterns),
+  };
 
   // Stream NDJSON with per-line gzip flush. Bypasses hono/compress (which uses
   // Web CompressionStream and cannot flush mid-stream) by pre-setting
@@ -165,6 +201,7 @@ export const packAction = async (c: Context) => {
         durationMs: Date.now() - startTime,
         repository: result.metadata.repository,
         duration: formatLatencyForDisplay(startTime),
+        packOptions,
         clientInfo: {
           ip: clientInfo.ip,
           userAgent: clientInfo.userAgent,
@@ -193,6 +230,7 @@ export const packAction = async (c: Context) => {
         repoHost,
         source: clientInfo.source,
         durationMs: Date.now() - startTime,
+        packOptions,
       });
 
       const { handlePackError } = await import('../utils/errorHandler.js');
