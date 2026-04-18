@@ -376,5 +376,48 @@ describe('configSchema', () => {
       };
       expect(() => v.parse(repomixConfigMergedSchema, invalidConfig)).toThrow(v.ValiError);
     });
+
+    it('should preserve CLI-only fields (stdout, skillGenerate) through v.intersect', () => {
+      // Regression guard: repomixConfigDefaultSchema's output is strict and does not
+      // declare `stdout`; if intersect ever stopped merging per-schema outputs, the CLI
+      // `--stdout` flag would silently disappear after mergeConfigs validates the result.
+      const merged = {
+        cwd: '/path/to/project',
+        input: { maxFileSize: 1024 },
+        output: {
+          filePath: 'output.xml',
+          style: 'xml',
+          parsableStyle: false,
+          fileSummary: true,
+          directoryStructure: true,
+          files: true,
+          removeComments: false,
+          removeEmptyLines: false,
+          compress: false,
+          topFilesLength: 5,
+          showLineNumbers: false,
+          truncateBase64: false,
+          copyToClipboard: false,
+          includeFullDirectoryStructure: false,
+          tokenCountTree: false,
+          stdout: true,
+          git: {
+            sortByChanges: true,
+            sortByChangesMaxCommits: 100,
+            includeDiffs: false,
+            includeLogs: false,
+            includeLogsCount: 50,
+          },
+        },
+        include: [],
+        ignore: { useGitignore: true, useDotIgnore: true, useDefaultPatterns: true, customPatterns: [] },
+        security: { enableSecurityCheck: true },
+        tokenCount: { encoding: 'o200k_base' },
+        skillGenerate: 'my-skill',
+      };
+      const result = v.parse(repomixConfigMergedSchema, merged) as typeof merged;
+      expect(result.output.stdout).toBe(true);
+      expect(result.skillGenerate).toBe('my-skill');
+    });
   });
 });
