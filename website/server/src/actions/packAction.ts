@@ -90,6 +90,11 @@ export const packAction = async (c: Context) => {
   // Computed once so both success and pack_error logs can include it — OOMs
   // typically land in pack_error, so logging options only on success would
   // create survivorship bias for OOM investigation.
+  //
+  // `Boolean()` intentionally collapses `undefined` (user didn't send the
+  // field) into `false`. The metric is designed to answer "what % of packs
+  // had compress enabled" — both "user disabled" and "user didn't send"
+  // mean the feature wasn't active, which is the signal we want.
   const packOptions = {
     compress: Boolean(validatedData.options.compress),
     removeComments: Boolean(validatedData.options.removeComments),
