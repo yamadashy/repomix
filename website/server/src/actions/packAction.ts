@@ -210,12 +210,7 @@ export const packAction = async (c: Context) => {
       // Process file or repository with progress reporting
       let processResult: ProcessPackResult;
       if (validatedData.file) {
-        processResult = await processZipFile(
-          validatedData.file,
-          validatedData.format,
-          sanitizedOptions,
-          sendProgress,
-        );
+        processResult = await processZipFile(validatedData.file, validatedData.format, sanitizedOptions, sendProgress);
       } else {
         processResult = await processRemoteRepo(
           validatedData.url as string,
