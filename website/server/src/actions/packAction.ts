@@ -111,6 +111,9 @@ export const packAction = async (c: Context) => {
       await writeChain;
     };
 
+    // Declared outside the try so the catch path can also report durationMs.
+    const startTime = Date.now();
+
     try {
       const THROTTLE_MS = 200;
       let lastProgressTime = 0;
@@ -130,7 +133,6 @@ export const packAction = async (c: Context) => {
         await writeLine({ type: 'progress', stage, ...(message && { message }) });
       };
 
-      const startTime = Date.now();
       const beforeMemory = getMemoryUsage();
 
       // Process file or repository with progress reporting
@@ -190,6 +192,7 @@ export const packAction = async (c: Context) => {
         inputType,
         repoHost,
         source: clientInfo.source,
+        durationMs: Date.now() - startTime,
       });
 
       const { handlePackError } = await import('../utils/errorHandler.js');
