@@ -118,7 +118,7 @@
     "secretlint": "^11.4.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1",
+    "vite": "^8.0.8",
     "vitest": "^4.1.2"
   },
   "engines": {
