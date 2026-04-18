@@ -279,4 +279,58 @@ describe('configSchema', () => {
       expect(() => repomixConfigMergedSchema.parse(invalidConfig)).toThrow(z.ZodError);
     });
   });
+
+  // Drift-detection: when the CLI hot path skips merge-time validation
+  // (`mergeConfigs(..., { validate: false })`), file-level validation must
+  // catch the same shape errors. This is only true if base schema and merged
+  // schema share the same constraints for the constrained fields. Both
+  // schemas derive their constraints from `fieldSchemas` in configSchema.ts,
+  // so this test asserts the wiring is intact for every field listed there.
+  // If a future schema gains a new constrained field but only one of the two
+  // schemas is updated, this test fails.
+  describe('shared constraints (file vs merged schema)', () => {
+    type InvalidCase = { path: string; invalid: unknown; description: string };
+    const invalidCases: InvalidCase[] = [
+      { path: 'input.maxFileSize', invalid: 0, description: 'maxFileSize must be >= 1' },
+      { path: 'output.topFilesLength', invalid: -1, description: 'topFilesLength must be >= 0' },
+      { path: 'output.splitOutput', invalid: 0, description: 'splitOutput must be >= 1' },
+      {
+        path: 'output.git.sortByChangesMaxCommits',
+        invalid: 0,
+        description: 'sortByChangesMaxCommits must be >= 1',
+      },
+      { path: 'output.git.includeLogsCount', invalid: 0, description: 'includeLogsCount must be >= 1' },
+      { path: 'output.style', invalid: 'bogus', description: 'style must be a valid OUTPUT_STYLES enum value' },
+      {
+        path: 'tokenCount.encoding',
+        invalid: 'bogus-encoding',
+        description: 'encoding must be a valid TOKEN_ENCODINGS enum value',
+      },
+    ];
+
+    // Build a nested object from a dot-separated path and a leaf value.
+    // setPath('output.git.includeLogsCount', 0) -> { output: { git: { includeLogsCount: 0 } } }
+    const setPath = (path: string, value: unknown): Record<string, unknown> => {
+      const segments = path.split('.');
+      const root: Record<string, unknown> = {};
+      let cursor = root;
+      for (let i = 0; i < segments.length - 1; i += 1) {
+        const next: Record<string, unknown> = {};
+        cursor[segments[i]] = next;
+        cursor = next;
+      }
+      cursor[segments[segments.length - 1]] = value;
+      return root;
+    };
+
+    for (const { path, invalid, description } of invalidCases) {
+      it(`base schema and merged schema both reject ${description} (${path})`, () => {
+        const config = setPath(path, invalid);
+        // The merged schema needs `cwd`; merge it in for that schema only.
+        const mergedConfig = { ...config, cwd: '/tmp' };
+        expect(() => repomixConfigBaseSchema.parse(config), 'base schema should reject').toThrow(z.ZodError);
+        expect(() => repomixConfigMergedSchema.parse(mergedConfig), 'merged schema should reject').toThrow(z.ZodError);
+      });
+    }
+  });
 });

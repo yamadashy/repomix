@@ -9,24 +9,47 @@ export { defaultFilePathMap };
 // Output style enum
 export const repomixOutputStyleSchema = z.enum(OUTPUT_STYLES);
 
-// Base config schema.
+// ---------------------------------------------------------------------------
+// Field schemas (single source of truth for constraints)
 //
-// Numeric and enum constraints (e.g., `int().min(N)`, `z.enum(...)`) are kept
-// in sync with `repomixConfigDefaultSchema` so file-level validation
-// (`loadAndValidateConfig`) catches the same shape errors that merge-time
-// validation would. Required because the CLI hot path skips merge-time
-// validation via `mergeConfigs(..., { validate: false })`.
+// Each entry returns a fresh zod schema with the field's type + range + enum
+// constraint. The base (file) schema wraps these with `.optional()` and the
+// default (merged) schema wraps them with `.default(X)` — so the underlying
+// `int().min(N)` / `enum(...)` rules live in exactly one place. Changing
+// `min(1)` to `min(2)` here automatically applies to both schemas.
+//
+// `tests/config/configSchema.test.ts` asserts that the file schema and merged
+// schema reject the same set of invalid values for these fields, catching
+// drift if a future field is added without going through this object.
+// ---------------------------------------------------------------------------
+export const fieldSchemas = {
+  maxFileSize: () => z.number().int().min(1),
+  topFilesLength: () => z.number().int().min(0),
+  splitOutput: () => z.number().int().min(1),
+  sortByChangesMaxCommits: () => z.number().int().min(1),
+  includeLogsCount: () => z.number().int().min(1),
+  encoding: () => z.enum(TOKEN_ENCODINGS),
+  style: () => repomixOutputStyleSchema,
+  tokenCountTree: () => z.union([z.boolean(), z.number(), z.string()]),
+} as const;
+
+// Base config schema (used for file-level validation).
+//
+// Constraints are derived from `fieldSchemas` so the rules stay in sync with
+// `repomixConfigDefaultSchema`. Required because the CLI hot path skips
+// merge-time validation via `mergeConfigs(..., { validate: false })`, so file
+// validation must catch what merge validation would have caught.
 export const repomixConfigBaseSchema = z.object({
   $schema: z.string().optional(),
   input: z
     .object({
-      maxFileSize: z.number().int().min(1).optional(),
+      maxFileSize: fieldSchemas.maxFileSize().optional(),
     })
     .optional(),
   output: z
     .object({
       filePath: z.string().optional(),
-      style: repomixOutputStyleSchema.optional(),
+      style: fieldSchemas.style().optional(),
       parsableStyle: z.boolean().optional(),
       headerText: z.string().optional(),
       instructionFilePath: z.string().optional(),
@@ -36,21 +59,21 @@ export const repomixConfigBaseSchema = z.object({
       removeComments: z.boolean().optional(),
       removeEmptyLines: z.boolean().optional(),
       compress: z.boolean().optional(),
-      topFilesLength: z.number().int().min(0).optional(),
+      topFilesLength: fieldSchemas.topFilesLength().optional(),
       showLineNumbers: z.boolean().optional(),
       truncateBase64: z.boolean().optional(),
       copyToClipboard: z.boolean().optional(),
       includeEmptyDirectories: z.boolean().optional(),
       includeFullDirectoryStructure: z.boolean().optional(),
-      splitOutput: z.number().int().min(1).optional(),
-      tokenCountTree: z.union([z.boolean(), z.number(), z.string()]).optional(),
+      splitOutput: fieldSchemas.splitOutput().optional(),
+      tokenCountTree: fieldSchemas.tokenCountTree().optional(),
       git: z
         .object({
           sortByChanges: z.boolean().optional(),
-          sortByChangesMaxCommits: z.number().int().min(1).optional(),
+          sortByChangesMaxCommits: fieldSchemas.sortByChangesMaxCommits().optional(),
           includeDiffs: z.boolean().optional(),
           includeLogs: z.boolean().optional(),
-          includeLogsCount: z.number().int().min(1).optional(),
+          includeLogsCount: fieldSchemas.includeLogsCount().optional(),
         })
         .optional(),
     })
@@ -71,23 +94,22 @@ export const repomixConfigBaseSchema = z.object({
     .optional(),
   tokenCount: z
     .object({
-      encoding: z.enum(TOKEN_ENCODINGS).optional(),
+      encoding: fieldSchemas.encoding().optional(),
     })
     .optional(),
 });
 
-// Default config schema with default values
+// Default config schema with default values.
+//
+// The constrained fields (numeric ranges, enums) come from `fieldSchemas` —
+// see the comment on `fieldSchemas` for the rationale.
 export const repomixConfigDefaultSchema = z.object({
   input: z.object({
-    maxFileSize: z
-      .number()
-      .int()
-      .min(1)
-      .default(50 * 1024 * 1024), // Default: 50MB
+    maxFileSize: fieldSchemas.maxFileSize().default(50 * 1024 * 1024), // Default: 50MB
   }),
   output: z.object({
     filePath: z.string().default(defaultFilePathMap.xml),
-    style: repomixOutputStyleSchema.default('xml'),
+    style: fieldSchemas.style().default('xml'),
     parsableStyle: z.boolean().default(false),
     headerText: z.string().optional(),
     instructionFilePath: z.string().optional(),
@@ -97,20 +119,20 @@ export const repomixConfigDefaultSchema = z.object({
     removeComments: z.boolean().default(false),
     removeEmptyLines: z.boolean().default(false),
     compress: z.boolean().default(false),
-    topFilesLength: z.number().int().min(0).default(5),
+    topFilesLength: fieldSchemas.topFilesLength().default(5),
     showLineNumbers: z.boolean().default(false),
     truncateBase64: z.boolean().default(false),
     copyToClipboard: z.boolean().default(false),
     includeEmptyDirectories: z.boolean().optional(),
     includeFullDirectoryStructure: z.boolean().default(false),
-    splitOutput: z.number().int().min(1).optional(),
-    tokenCountTree: z.union([z.boolean(), z.number(), z.string()]).default(false),
+    splitOutput: fieldSchemas.splitOutput().optional(),
+    tokenCountTree: fieldSchemas.tokenCountTree().default(false),
     git: z.object({
       sortByChanges: z.boolean().default(true),
-      sortByChangesMaxCommits: z.number().int().min(1).default(100),
+      sortByChangesMaxCommits: fieldSchemas.sortByChangesMaxCommits().default(100),
       includeDiffs: z.boolean().default(false),
       includeLogs: z.boolean().default(false),
-      includeLogsCount: z.number().int().min(1).default(50),
+      includeLogsCount: fieldSchemas.includeLogsCount().default(50),
     }),
   }),
   include: z.array(z.string()).default([]),
@@ -124,7 +146,7 @@ export const repomixConfigDefaultSchema = z.object({
     enableSecurityCheck: z.boolean().default(true),
   }),
   tokenCount: z.object({
-    encoding: z.enum(TOKEN_ENCODINGS).default('o200k_base'),
+    encoding: fieldSchemas.encoding().default('o200k_base'),
   }),
 });
 
