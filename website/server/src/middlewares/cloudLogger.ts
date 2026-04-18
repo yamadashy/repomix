@@ -1,8 +1,18 @@
 import type { Context, Next } from 'hono';
-import { getClientInfo } from '../utils/clientInfo.js';
+import { type ClientInfo, getClientInfo } from '../utils/clientInfo.js';
 import { logger } from '../utils/logger.js';
 import { formatMemoryUsage, getMemoryUsage } from '../utils/memory.js';
 import { calculateLatency } from '../utils/time.js';
+
+// Build a `cf` log field from Cloudflare-injected headers, omitting undefined
+// values so direct-to-origin requests don't emit empty objects.
+function buildCfLogField(clientInfo: ClientInfo): Record<string, string> | undefined {
+  const cf: Record<string, string> = {};
+  if (clientInfo.cfRay) cf.ray = clientInfo.cfRay;
+  if (clientInfo.cfCountry) cf.country = clientInfo.cfCountry;
+  if (clientInfo.cfAsn) cf.asn = clientInfo.cfAsn;
+  return Object.keys(cf).length > 0 ? cf : undefined;
+}
 
 // Augment Hono's context type
 declare module 'hono' {
@@ -51,6 +61,8 @@ export function cloudLoggerMiddleware() {
     // Extract trace context for Cloud Run distributed tracing
     const traceContext = extractTraceContext(c);
 
+    const cf = buildCfLogField(clientInfo);
+
     // Log request start
     logger.info({
       message: `${method} ${url.pathname} started`,
@@ -58,6 +70,8 @@ export function cloudLoggerMiddleware() {
       // Cloud Logging trace correlation field
       ...(traceContext.trace && { 'logging.googleapis.com/trace': traceContext.trace }),
       ...(traceContext.spanId && { 'logging.googleapis.com/spanId': traceContext.spanId }),
+      source: clientInfo.source,
+      ...(cf && { cf }),
       httpRequest: {
         requestMethod: method,
         requestUrl: url.toString(),
@@ -81,6 +95,8 @@ export function cloudLoggerMiddleware() {
         requestId,
         ...(traceContext.trace && { 'logging.googleapis.com/trace': traceContext.trace }),
         ...(traceContext.spanId && { 'logging.googleapis.com/spanId': traceContext.spanId }),
+        source: clientInfo.source,
+        ...(cf && { cf }),
         httpRequest: {
           requestMethod: method,
           requestUrl: url.toString(),
@@ -104,6 +120,8 @@ export function cloudLoggerMiddleware() {
         requestId,
         ...(traceContext.trace && { 'logging.googleapis.com/trace': traceContext.trace }),
         ...(traceContext.spanId && { 'logging.googleapis.com/spanId': traceContext.spanId }),
+        source: clientInfo.source,
+        ...(cf && { cf }),
         error: {
           message: error instanceof Error ? error.message : 'Unknown error',
           stack: error instanceof Error ? error.stack : undefined,
