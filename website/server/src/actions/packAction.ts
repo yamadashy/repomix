@@ -7,13 +7,34 @@ import { processZipFile } from '../domains/pack/processZipFile.js';
 import { processRemoteRepo } from '../domains/pack/remoteRepo.js';
 import { FILE_SIZE_LIMITS } from '../domains/pack/utils/fileUtils.js';
 import { sanitizePattern } from '../domains/pack/utils/validation.js';
-import type { PackProgressStage, PackResult } from '../types.js';
+import type { PackProgressStage, ProcessPackResult } from '../types.js';
 import { getClientInfo } from '../utils/clientInfo.js';
 import { createErrorResponse } from '../utils/http.js';
 import { logError, logInfo } from '../utils/logger.js';
 import { calculateMemoryDiff, getMemoryUsage } from '../utils/memory.js';
 import { formatLatencyForDisplay } from '../utils/time.js';
 import { validateRequest } from '../utils/validation.js';
+
+// Unified event name for log-based metrics — every terminal pack-request log
+// carries this field so counts/distributions can be aggregated by `outcome`.
+const PACK_EVENT = 'pack_completed';
+
+type PackOutcome = 'success' | 'validation_error' | 'pack_error';
+
+// Extract a stable `repoHost` label for log-based metrics (e.g. 'github.com',
+// 'gitlab.com', 'upload'). Repomix accepts shorthand like 'owner/repo' which
+// isn't a parseable URL — default those to 'github.com' since that's the
+// shorthand target.
+function getRepoHost(input: { file?: unknown; url?: string }): string {
+  if (input.file) return 'upload';
+  const url = input.url;
+  if (!url) return 'unknown';
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return 'github.com';
+  }
+}
 
 const packRequestSchema = z
   .object({
@@ -109,6 +130,8 @@ export const packAction = async (c: Context) => {
     };
   } catch (error) {
     logError('Pack validation failed', error instanceof Error ? error : new Error('Unknown error'), {
+      event: PACK_EVENT,
+      outcome: 'validation_error' satisfies PackOutcome,
       requestId: c.get('requestId'),
     });
 
@@ -119,6 +142,8 @@ export const packAction = async (c: Context) => {
 
   const requestId = c.get('requestId');
   const clientInfo = getClientInfo(c);
+  const inputType: 'file' | 'url' = validatedData.file ? 'file' : 'url';
+  const repoHost = getRepoHost({ file: validatedData.file, url: validatedData.url });
 
   // Stream NDJSON with per-line gzip flush. Bypasses hono/compress (which uses
   // Web CompressionStream and cannot flush mid-stream) by pre-setting
@@ -183,28 +208,39 @@ export const packAction = async (c: Context) => {
       const beforeMemory = getMemoryUsage();
 
       // Process file or repository with progress reporting
-      let result: PackResult;
+      let processResult: ProcessPackResult;
       if (validatedData.file) {
-        result = await processZipFile(validatedData.file, validatedData.format, sanitizedOptions, sendProgress);
+        processResult = await processZipFile(
+          validatedData.file,
+          validatedData.format,
+          sanitizedOptions,
+          sendProgress,
+        );
       } else {
-        result = await processRemoteRepo(
+        processResult = await processRemoteRepo(
           validatedData.url as string,
           validatedData.format,
           sanitizedOptions,
           sendProgress,
         );
       }
+      const { result, cached } = processResult;
 
       // Log operation result with memory usage
       const afterMemory = getMemoryUsage();
       const memoryDiff = calculateMemoryDiff(beforeMemory, afterMemory);
 
       logInfo('Pack operation completed', {
+        event: PACK_EVENT,
+        outcome: 'success' satisfies PackOutcome,
         requestId,
         format: validatedData.format,
+        inputType,
+        repoHost,
+        cached,
+        durationMs: Date.now() - startTime,
         repository: result.metadata.repository,
         duration: formatLatencyForDisplay(startTime),
-        inputType: validatedData.file ? 'file' : validatedData.url ? 'url' : 'unknown',
         clientInfo: {
           ip: clientInfo.ip,
           userAgent: clientInfo.userAgent,
@@ -225,7 +261,12 @@ export const packAction = async (c: Context) => {
       await writeLine({ type: 'result', data: result });
     } catch (error) {
       logError('Pack operation failed', error instanceof Error ? error : new Error('Unknown error'), {
+        event: PACK_EVENT,
+        outcome: 'pack_error' satisfies PackOutcome,
         requestId,
+        format: validatedData.format,
+        inputType,
+        repoHost,
       });
 
       const { handlePackError } = await import('../utils/errorHandler.js');
