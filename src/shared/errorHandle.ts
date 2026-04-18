@@ -146,7 +146,9 @@ export const rethrowValidationErrorIfSchemaError = (error: unknown, message: str
             })
             .filter((segment) => segment !== '')
         : [];
-      return `[${segments.join('.')}] ${issue.message}`;
+      // Omit the bracketed path entirely when there are no usable segments, so
+      // a root-level / path-less issue reads as `message` instead of `[] message`.
+      return segments.length === 0 ? issue.message : `[${segments.join('.')}] ${issue.message}`;
     })
     .join('\n  ');
   throw new RepomixConfigValidationError(

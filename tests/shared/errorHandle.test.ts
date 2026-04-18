@@ -83,4 +83,23 @@ describe('rethrowValidationErrorIfSchemaError', () => {
       expect((error as Error).message).not.toContain('..');
     }
   });
+
+  it('omits the bracketed path when a schema issue has no path', () => {
+    // Root-level issues carry no path; the formatted message should read as
+    // `message` rather than `[] message`.
+    const rootIssue = {
+      name: 'ValiError',
+      message: 'Root-level failure',
+      issues: [{ path: [] as unknown[], message: 'Expected object' }],
+    };
+
+    try {
+      rethrowValidationErrorIfSchemaError(rootIssue, 'Invalid config');
+      expect.fail('Expected RepomixConfigValidationError to be thrown');
+    } catch (error) {
+      const msg = (error as Error).message;
+      expect(msg).toContain('Expected object');
+      expect(msg).not.toContain('[]');
+    }
+  });
 });
