@@ -60,4 +60,27 @@ describe('rethrowValidationErrorIfSchemaError', () => {
     expect(() => rethrowValidationErrorIfSchemaError('string', 'msg')).not.toThrow();
     expect(() => rethrowValidationErrorIfSchemaError({ name: 'Other', issues: [] }, 'msg')).not.toThrow();
   });
+
+  it('filters out empty path segments so the joined path stays clean', () => {
+    // A malformed path item (object without `key`) should drop out instead of
+    // producing a double-dot like `[output..style]`.
+    const malformed = {
+      name: 'ValiError',
+      message: 'Invalid type',
+      issues: [
+        {
+          path: [{ key: 'output' }, { type: 'object' }, { key: 'style' }],
+          message: 'Invalid type',
+        },
+      ],
+    };
+
+    try {
+      rethrowValidationErrorIfSchemaError(malformed, 'Invalid config');
+      expect.fail('Expected RepomixConfigValidationError to be thrown');
+    } catch (error) {
+      expect((error as Error).message).toContain('[output.style]');
+      expect((error as Error).message).not.toContain('..');
+    }
+  });
 });

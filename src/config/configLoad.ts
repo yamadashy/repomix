@@ -59,12 +59,14 @@ const findConfigFile = async (configPaths: string[], logPrefix: string): Promise
 
 // Default jiti import implementation for loading JS/TS config files
 // Lazy-loads jiti to avoid importing its heavy TypeScript toolchain
-// when using JSON/JSON5 config files or default config (the common case)
+// when using JSON/JSON5 config files or default config (the common case).
+// We deliberately do not pass `interopDefault`; the call site below handles
+// the ESM namespace `{ default: config }` unwrap explicitly so the behavior
+// is the same for .ts / .mts / .js / .mjs / .cjs inputs.
 const defaultJitiImport = async (fileUrl: string): Promise<unknown> => {
   const { createJiti } = await import('jiti');
   const jiti = createJiti(import.meta.url, {
     moduleCache: false, // Disable cache to ensure fresh config loads
-    interopDefault: true, // Automatically use default export
   });
   return await jiti.import(fileUrl);
 };

@@ -135,14 +135,16 @@ export const rethrowValidationErrorIfSchemaError = (error: unknown, message: str
   const errorText = issues
     .map((issue) => {
       const segments = Array.isArray(issue.path)
-        ? (issue.path as unknown[]).map((segment) => {
-            // Zod: path segments are primitives. Valibot: { key } objects.
-            if (segment && typeof segment === 'object') {
-              if ('key' in segment) return String((segment as { key: unknown }).key);
-              return '';
-            }
-            return String(segment);
-          })
+        ? (issue.path as unknown[])
+            .map((segment) => {
+              // Zod: path segments are primitives. Valibot: { key } objects.
+              if (segment && typeof segment === 'object') {
+                if ('key' in segment) return String((segment as { key: unknown }).key);
+                return '';
+              }
+              return String(segment);
+            })
+            .filter((segment) => segment !== '')
         : [];
       return `[${segments.join('.')}] ${issue.message}`;
     })
