@@ -1,0 +1,27 @@
+description: |
+  Distribution of pack durations (ms) for successful packs. Use for latency
+  SLIs (P50/P95/P99) and cache hit speedup analysis.
+filter: |
+  resource.type="cloud_run_revision"
+  resource.labels.service_name="repomix-server-us"
+  jsonPayload.event="pack_completed"
+  jsonPayload.outcome="success"
+  jsonPayload.durationMs>=0
+valueExtractor: EXTRACT(jsonPayload.durationMs)
+labelExtractors:
+  input_type: EXTRACT(jsonPayload.inputType)
+  cached: EXTRACT(jsonPayload.cached)
+metricDescriptor:
+  metricKind: DELTA
+  valueType: DISTRIBUTION
+  unit: ms
+  labels:
+    - key: input_type
+      valueType: STRING
+    - key: cached
+      valueType: STRING
+bucketOptions:
+  exponentialBuckets:
+    numFiniteBuckets: 20
+    growthFactor: 2
+    scale: 10

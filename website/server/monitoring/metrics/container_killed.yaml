@@ -1,0 +1,8 @@
+description: |
+  Cloud Run containers killed by the platform for using too much memory.
+  Related to but distinct from `oom_terminations` — this one fires on the
+  runtime-detected kill path.
+filter: |
+  resource.type="cloud_run_revision"
+  resource.labels.service_name="repomix-server-us"
+  textPayload=~"container instance was found to be using too much memory"
