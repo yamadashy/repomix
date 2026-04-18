@@ -45,140 +45,131 @@ export const runDefaultAction = async (
   const speculativeMetricsPromise = createMetricsTaskRunner(Number.MAX_SAFE_INTEGER, speculativeEncoding);
   speculativeMetricsPromise.catch(() => {});
 
-  const cleanupSpeculativePool = () => {
-    speculativeMetricsPromise
-      .then((setup) => {
-        setup.warmupPromise.catch(() => {});
-        setup.taskRunner.cleanup();
-      })
-      .catch(() => {});
-  };
+  // Run migration before loading config
+  await runMigrationAction(cwd);
+
+  // Load the config file in main process
+  const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, {
+    skipLocalConfig: cliOptions.skipLocalConfig,
+  });
+  logger.trace('Loaded file config:', fileConfig);
+
+  // Parse the CLI options into a config
+  const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);
+  logger.trace('CLI config:', cliConfig);
+
+  // Merge default, file, and CLI configs
+  const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
+  logger.trace('Merged config:', config);
+
+  // Validate conflicting options
+  validateConflictingOptions(config);
+
+  // Validate --skill-output and --force require --skill-generate
+  if (cliOptions.skillOutput && config.skillGenerate === undefined) {
+    throw new RepomixError('--skill-output can only be used with --skill-generate');
+  }
+  if (cliOptions.force && config.skillGenerate === undefined) {
+    throw new RepomixError('--force can only be used with --skill-generate');
+  }
+
+  // Validate --skill-output is not empty or whitespace only
+  if (cliOptions.skillOutput !== undefined && !cliOptions.skillOutput.trim()) {
+    throw new RepomixError('--skill-output path cannot be empty');
+  }
+
+  // Validate skill generation options and prompt for location
+  if (config.skillGenerate !== undefined) {
+    // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
+    cliOptions.skillName ??=
+      typeof config.skillGenerate === 'string'
+        ? config.skillGenerate
+        : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
+
+    // Determine skill directory
+    if (cliOptions.skillOutput && !cliOptions.skillDir) {
+      // Non-interactive mode: use provided path directly
+      cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
+    } else if (!cliOptions.skillDir) {
+      // Interactive mode: prompt for skill location
+      const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
+      cliOptions.skillDir = promptResult.skillDir;
+    }
+  }
+
+  // Handle stdin processing
+  let stdinFilePaths: string[] | undefined;
+  if (cliOptions.stdin) {
+    // Validate directory arguments for stdin mode
+    const firstDir = directories[0] ?? '.';
+    if (directories.length > 1 || firstDir !== '.') {
+      throw new RepomixError(
+        'When using --stdin, do not specify directory arguments. File paths will be read from stdin.',
+      );
+    }
+
+    const stdinResult = await readFilePathsFromStdin(cwd);
+    stdinFilePaths = stdinResult.filePaths;
+    logger.trace(`Read ${stdinFilePaths.length} file paths from stdin`);
+  }
+
+  // Run pack() directly in the main process instead of spawning a child process.
+  // The child process startup cost (~250ms for Node.js init + module re-loading) was
+  // pure overhead since the spinner and pack ran in the same child process anyway.
+  const spinner = new Spinner('Initializing...', cliOptions);
+  spinner.start();
+
+  let packResult: PackResult;
 
   try {
-    // Run migration before loading config
-    await runMigrationAction(cwd);
-
-    // Load the config file in main process
-    const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, {
-      skipLocalConfig: cliOptions.skipLocalConfig,
-    });
-    logger.trace('Loaded file config:', fileConfig);
-
-    // Parse the CLI options into a config
-    const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);
-    logger.trace('CLI config:', cliConfig);
-
-    // Merge default, file, and CLI configs
-    const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
-    logger.trace('Merged config:', config);
-
-    // Validate conflicting options
-    validateConflictingOptions(config);
-
-    // Validate --skill-output and --force require --skill-generate
-    if (cliOptions.skillOutput && config.skillGenerate === undefined) {
-      throw new RepomixError('--skill-output can only be used with --skill-generate');
+    const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
+    const useSpeculativePool = config.tokenCount.encoding === speculativeEncoding;
+    if (!useSpeculativePool) {
+      speculativeMetricsPromise
+        .then((setup) => {
+          setup.warmupPromise.catch(() => {});
+          setup.taskRunner.cleanup();
+        })
+        .catch(() => {});
     }
-    if (cliOptions.force && config.skillGenerate === undefined) {
-      throw new RepomixError('--force can only be used with --skill-generate');
-    }
-
-    // Validate --skill-output is not empty or whitespace only
-    if (cliOptions.skillOutput !== undefined && !cliOptions.skillOutput.trim()) {
-      throw new RepomixError('--skill-output path cannot be empty');
-    }
-
-    // Validate skill generation options and prompt for location
-    if (config.skillGenerate !== undefined) {
-      // Resolve skill name: use pre-computed name (from remoteAction) or generate from directory
-      cliOptions.skillName ??=
-        typeof config.skillGenerate === 'string'
-          ? config.skillGenerate
-          : generateDefaultSkillName(directories.map((d) => path.resolve(cwd, d)));
-
-      // Determine skill directory
-      if (cliOptions.skillOutput && !cliOptions.skillDir) {
-        // Non-interactive mode: use provided path directly
-        cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
-      } else if (!cliOptions.skillDir) {
-        // Interactive mode: prompt for skill location
-        const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
-        cliOptions.skillDir = promptResult.skillDir;
-      }
-    }
-
-    // Handle stdin processing
-    let stdinFilePaths: string[] | undefined;
-    if (cliOptions.stdin) {
-      // Validate directory arguments for stdin mode
-      const firstDir = directories[0] ?? '.';
-      if (directories.length > 1 || firstDir !== '.') {
-        throw new RepomixError(
-          'When using --stdin, do not specify directory arguments. File paths will be read from stdin.',
-        );
-      }
-
-      const stdinResult = await readFilePathsFromStdin(cwd);
-      stdinFilePaths = stdinResult.filePaths;
-      logger.trace(`Read ${stdinFilePaths.length} file paths from stdin`);
-    }
-
-    // Run pack() directly in the main process instead of spawning a child process.
-    // The child process startup cost (~250ms for Node.js init + module re-loading) was
-    // pure overhead since the spinner and pack ran in the same child process anyway.
-    const spinner = new Spinner('Initializing...', cliOptions);
-    spinner.start();
-
-    let packResult: PackResult;
-
-    try {
-      const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
-      const useSpeculativePool = config.tokenCount.encoding === speculativeEncoding;
-      if (!useSpeculativePool) {
-        cleanupSpeculativePool();
-      }
-      const packOptions = {
-        skillName,
-        skillDir,
-        skillProjectName,
-        skillSourceUrl,
-        ...(useSpeculativePool ? { metricsSetupPromise: speculativeMetricsPromise } : {}),
-      };
-
-      const targetPaths = stdinFilePaths ? [cwd] : directories.map((directory) => path.resolve(cwd, directory));
-
-      const handleProgress: RepomixProgressCallback = (message) => {
-        spinner.update(message);
-        if (progressCallback) {
-          try {
-            Promise.resolve(progressCallback(message)).catch((error) => {
-              logger.trace('progressCallback error:', error);
-            });
-          } catch (error) {
-            logger.trace('progressCallback error:', error);
-          }
-        }
-      };
-
-      packResult = await pack(targetPaths, config, handleProgress, {}, stdinFilePaths, packOptions);
-
-      spinner.succeed('Packing completed successfully!');
-    } catch (error) {
-      spinner.fail('Error during packing');
-      throw error;
-    }
-
-    // Report results
-    reportResults(cwd, packResult, config, cliOptions);
-
-    return {
-      packResult,
-      config,
+    const packOptions = {
+      skillName,
+      skillDir,
+      skillProjectName,
+      skillSourceUrl,
+      ...(useSpeculativePool ? { metricsSetupPromise: speculativeMetricsPromise } : {}),
     };
+
+    const targetPaths = stdinFilePaths ? [cwd] : directories.map((directory) => path.resolve(cwd, directory));
+
+    const handleProgress: RepomixProgressCallback = (message) => {
+      spinner.update(message);
+      if (progressCallback) {
+        try {
+          Promise.resolve(progressCallback(message)).catch((error) => {
+            logger.trace('progressCallback error:', error);
+          });
+        } catch (error) {
+          logger.trace('progressCallback error:', error);
+        }
+      }
+    };
+
+    packResult = await pack(targetPaths, config, handleProgress, {}, stdinFilePaths, packOptions);
+
+    spinner.succeed('Packing completed successfully!');
   } catch (error) {
-    cleanupSpeculativePool();
+    spinner.fail('Error during packing');
     throw error;
   }
+
+  // Report results
+  reportResults(cwd, packResult, config, cliOptions);
+
+  return {
+    packResult,
+    config,
+  };
 };
 
 /**
