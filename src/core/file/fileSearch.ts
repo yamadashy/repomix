@@ -31,24 +31,27 @@ export interface FileSearchResult {
 // No per-directory ignore-pattern check is needed here. The `directories` array
 // comes from globby with the same `ignore` patterns (e.g. `dist/**`), which
 // excludes both the directory contents AND the directory entry itself.
+//
+// `readdir` calls are issued in parallel so the kernel can overlap the per-entry
+// directory lookups instead of serializing them behind `await`. Each call is
+// independent and holds an FD only for the duration of the syscall, so even
+// several hundred concurrent probes stay well within the process FD limit.
 const findEmptyDirectories = async (rootDir: string, directories: string[]): Promise<string[]> => {
-  const emptyDirs: string[] = [];
-
-  for (const dir of directories) {
-    const fullPath = path.join(rootDir, dir);
-    try {
-      const entries = await fs.readdir(fullPath);
-      const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
-
-      if (!hasVisibleContents) {
-        emptyDirs.push(dir);
+  const results = await Promise.all(
+    directories.map(async (dir) => {
+      const fullPath = path.join(rootDir, dir);
+      try {
+        const entries = await fs.readdir(fullPath);
+        const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
+        return hasVisibleContents ? null : dir;
+      } catch (error) {
+        logger.debug(`Error checking directory ${dir}:`, error);
+        return null;
       }
-    } catch (error) {
-      logger.debug(`Error checking directory ${dir}:`, error);
-    }
-  }
+    }),
+  );
 
-  return emptyDirs;
+  return results.filter((dir): dir is string => dir !== null);
 };
 
 // Check if a path is a git worktree reference file
