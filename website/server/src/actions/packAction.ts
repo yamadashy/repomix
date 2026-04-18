@@ -11,7 +11,7 @@ import { logError, logInfo } from '../utils/logger.js';
 import { calculateMemoryDiff, getMemoryUsage } from '../utils/memory.js';
 import { formatLatencyForDisplay } from '../utils/time.js';
 import { validateRequest } from '../utils/validation.js';
-import { getRepoHost, PACK_EVENT, type PackOutcome } from './packEventSchema.js';
+import { classifyRejectReason, getRepoHost, PACK_EVENT, type PackOutcome } from './packEventSchema.js';
 import { type PackRequest, packRequestSchema } from './packRequestSchema.js';
 
 export const packAction = async (c: Context) => {
@@ -33,6 +33,14 @@ export const packAction = async (c: Context) => {
     try {
       options = optionsRaw ? JSON.parse(optionsRaw) : {};
     } catch {
+      const jsonError = new Error('Invalid JSON in options');
+      logError('Pack validation failed', jsonError, {
+        event: PACK_EVENT,
+        outcome: 'validation_error' satisfies PackOutcome,
+        rejectReason: classifyRejectReason(jsonError),
+        requestId: c.get('requestId'),
+        source: clientInfo.source,
+      });
       return c.json(createErrorResponse('Invalid JSON in options', c.get('requestId')), 400);
     }
     const file = formData.get('file') as File | null;
@@ -58,6 +66,7 @@ export const packAction = async (c: Context) => {
     logError('Pack validation failed', error instanceof Error ? error : new Error('Unknown error'), {
       event: PACK_EVENT,
       outcome: 'validation_error' satisfies PackOutcome,
+      rejectReason: classifyRejectReason(error),
       requestId: c.get('requestId'),
       source: clientInfo.source,
     });
@@ -165,6 +174,20 @@ export const packAction = async (c: Context) => {
         durationMs: Date.now() - startTime,
         repository: result.metadata.repository,
         duration: formatLatencyForDisplay(startTime),
+        // Booleans flattened for log-based metric extraction. Patterns are
+        // logged as presence-only booleans to avoid high cardinality and user
+        // input leakage.
+        packOptions: {
+          compress: Boolean(validatedData.options.compress),
+          removeComments: Boolean(validatedData.options.removeComments),
+          removeEmptyLines: Boolean(validatedData.options.removeEmptyLines),
+          showLineNumbers: Boolean(validatedData.options.showLineNumbers),
+          fileSummary: Boolean(validatedData.options.fileSummary),
+          directoryStructure: Boolean(validatedData.options.directoryStructure),
+          outputParsable: Boolean(validatedData.options.outputParsable),
+          hasIncludePatterns: Boolean(validatedData.options.includePatterns),
+          hasIgnorePatterns: Boolean(validatedData.options.ignorePatterns),
+        },
         clientInfo: {
           ip: clientInfo.ip,
           userAgent: clientInfo.userAgent,
