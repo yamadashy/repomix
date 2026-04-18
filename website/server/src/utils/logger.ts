@@ -1,4 +1,5 @@
 import winston from 'winston';
+import type { ClientInfo } from './clientInfo.js';
 import { formatMemoryUsage, getMemoryUsage } from './memory.js';
 
 // Map winston levels to Cloud Logging severity levels
@@ -70,6 +71,21 @@ export function logError(message: string, error?: Error, context?: Record<string
       : undefined,
     ...context,
   });
+}
+
+/**
+ * Build a `cf` log field from Cloudflare-injected headers. Returns `undefined`
+ * when none are present so direct-to-origin requests don't emit empty `cf: {}`.
+ * Shared across middlewares that want to attach Cloudflare context to their
+ * logs (cloudLogger request lifecycle, rateLimit 429 events).
+ */
+export function buildCfLogField(clientInfo: ClientInfo): Record<string, string> | undefined {
+  if (!clientInfo.cfRay && !clientInfo.cfCountry && !clientInfo.cfAsn) return undefined;
+  const cf: Record<string, string> = {};
+  if (clientInfo.cfRay) cf.ray = clientInfo.cfRay;
+  if (clientInfo.cfCountry) cf.country = clientInfo.cfCountry;
+  if (clientInfo.cfAsn) cf.asn = clientInfo.cfAsn;
+  return cf;
 }
 
 /**
