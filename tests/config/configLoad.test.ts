@@ -307,7 +307,7 @@ describe('configLoad', () => {
   });
 
   describe('mergeConfigs', () => {
-    test('should correctly merge configs', () => {
+    test('should correctly merge configs', async () => {
       const fileConfig: RepomixConfigFile = {
         output: { filePath: 'file-output.txt' },
         ignore: { useDefaultPatterns: true, customPatterns: ['file-ignore'] },
@@ -317,7 +317,7 @@ describe('configLoad', () => {
         ignore: { customPatterns: ['cli-ignore'] },
       };
 
-      const result = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+      const result = await mergeConfigs(process.cwd(), fileConfig, cliConfig);
 
       expect(result.output.filePath).toBe('cli-output.txt');
       expect(result.ignore.useDefaultPatterns).toBe(true);
@@ -325,7 +325,7 @@ describe('configLoad', () => {
       expect(result.ignore.customPatterns).toContain('cli-ignore');
     });
 
-    test('should throw RepomixConfigValidationError for invalid merged config', () => {
+    test('should throw RepomixConfigValidationError for invalid merged config', async () => {
       const fileConfig: RepomixConfigFile = {
         output: { filePath: 'file-output.txt', style: 'plain' },
       };
@@ -334,17 +334,31 @@ describe('configLoad', () => {
         output: { style: 'invalid' }, // Invalid style
       };
 
-      expect(() => mergeConfigs(process.cwd(), fileConfig, cliConfig)).toThrow(RepomixConfigValidationError);
+      await expect(mergeConfigs(process.cwd(), fileConfig, cliConfig)).rejects.toThrow(RepomixConfigValidationError);
     });
 
-    test('should merge nested git config correctly', () => {
+    test('should not validate when { validate: false } is passed', async () => {
+      const fileConfig: RepomixConfigFile = {
+        output: { filePath: 'file-output.txt', style: 'plain' },
+      };
+      const cliConfig: RepomixConfigCli = {
+        // @ts-expect-error: intentionally invalid to verify validation is skipped
+        output: { style: 'invalid' },
+      };
+
+      const merged = await mergeConfigs(process.cwd(), fileConfig, cliConfig, { validate: false });
+      // Without validation, the bogus style passes through verbatim instead of throwing.
+      expect(merged.output?.style).toBe('invalid');
+    });
+
+    test('should merge nested git config correctly', async () => {
       const fileConfig: RepomixConfigFile = {
         output: { git: { sortByChanges: false } },
       };
       const cliConfig: RepomixConfigCli = {
         output: { git: { includeDiffs: true } },
       };
-      const merged = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+      const merged = await mergeConfigs(process.cwd(), fileConfig, cliConfig);
 
       // Both configs should be applied
       expect(merged.output.git.sortByChanges).toBe(false);
@@ -353,41 +367,45 @@ describe('configLoad', () => {
       expect(merged.output.git.sortByChangesMaxCommits).toBe(100);
     });
 
-    test('should not mutate defaultConfig', () => {
+    test('should not mutate defaultConfig', async () => {
       const originalFilePath = defaultConfig.output.filePath;
       const fileConfig: RepomixConfigFile = {
         output: { style: 'markdown' },
       };
 
-      mergeConfigs(process.cwd(), fileConfig, {});
+      await mergeConfigs(process.cwd(), fileConfig, {});
 
       // defaultConfig should remain unchanged
       expect(defaultConfig.output.filePath).toBe(originalFilePath);
     });
 
-    test('should merge tokenCount config correctly', () => {
+    test('should merge tokenCount config correctly', async () => {
       const fileConfig: RepomixConfigFile = {
         tokenCount: { encoding: 'cl100k_base' },
       };
-      const merged = mergeConfigs(process.cwd(), fileConfig, {});
+      const merged = await mergeConfigs(process.cwd(), fileConfig, {});
 
       expect(merged.tokenCount.encoding).toBe('cl100k_base');
     });
 
-    test('should map default filename to style when only style is provided via CLI', () => {
-      const merged = mergeConfigs(process.cwd(), {}, { output: { style: 'markdown' } });
+    test('should map default filename to style when only style is provided via CLI', async () => {
+      const merged = await mergeConfigs(process.cwd(), {}, { output: { style: 'markdown' } });
       expect(merged.output.filePath).toBe('repomix-output.md');
       expect(merged.output.style).toBe('markdown');
     });
 
-    test('should keep explicit CLI output filePath even when style is provided', () => {
-      const merged = mergeConfigs(process.cwd(), {}, { output: { style: 'markdown', filePath: 'custom-output.any' } });
+    test('should keep explicit CLI output filePath even when style is provided', async () => {
+      const merged = await mergeConfigs(
+        process.cwd(),
+        {},
+        { output: { style: 'markdown', filePath: 'custom-output.any' } },
+      );
       expect(merged.output.filePath).toBe('custom-output.any');
       expect(merged.output.style).toBe('markdown');
     });
 
-    test('should keep explicit file config filePath even when style is provided via CLI', () => {
-      const merged = mergeConfigs(
+    test('should keep explicit file config filePath even when style is provided via CLI', async () => {
+      const merged = await mergeConfigs(
         process.cwd(),
         { output: { filePath: 'from-file.txt' } },
         { output: { style: 'markdown' } },
@@ -396,31 +414,31 @@ describe('configLoad', () => {
       expect(merged.output.style).toBe('markdown');
     });
 
-    test('should map default filename when style provided in file config and no filePath anywhere', () => {
-      const merged = mergeConfigs(process.cwd(), { output: { style: 'plain' } }, {});
+    test('should map default filename when style provided in file config and no filePath anywhere', async () => {
+      const merged = await mergeConfigs(process.cwd(), { output: { style: 'plain' } }, {});
       expect(merged.output.filePath).toBe('repomix-output.txt');
       expect(merged.output.style).toBe('plain');
     });
 
-    test('should merge skillGenerate boolean from CLI config', () => {
-      const merged = mergeConfigs(process.cwd(), {}, { skillGenerate: true });
+    test('should merge skillGenerate boolean from CLI config', async () => {
+      const merged = await mergeConfigs(process.cwd(), {}, { skillGenerate: true });
       expect(merged.skillGenerate).toBe(true);
     });
 
-    test('should merge skillGenerate string from CLI config', () => {
-      const merged = mergeConfigs(process.cwd(), {}, { skillGenerate: 'my-custom-skill' });
+    test('should merge skillGenerate string from CLI config', async () => {
+      const merged = await mergeConfigs(process.cwd(), {}, { skillGenerate: 'my-custom-skill' });
       expect(merged.skillGenerate).toBe('my-custom-skill');
     });
 
-    test('should not include skillGenerate in merged config when undefined', () => {
-      const merged = mergeConfigs(process.cwd(), {}, {});
+    test('should not include skillGenerate in merged config when undefined', async () => {
+      const merged = await mergeConfigs(process.cwd(), {}, {});
       expect(merged.skillGenerate).toBeUndefined();
     });
 
-    test('should not allow skillGenerate from file config (CLI-only option)', () => {
+    test('should not allow skillGenerate from file config (CLI-only option)', async () => {
       // File config should not have skillGenerate - it's CLI-only
       // This test verifies that even if somehow passed, file config doesn't affect it
-      const merged = mergeConfigs(process.cwd(), {}, { skillGenerate: 'from-cli' });
+      const merged = await mergeConfigs(process.cwd(), {}, { skillGenerate: 'from-cli' });
       expect(merged.skillGenerate).toBe('from-cli');
     });
   });

@@ -1,12 +1,7 @@
 import path from 'node:path';
+import { OUTPUT_STYLES, type RepomixOutputStyle } from '../../config/configDefaults.js';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
-import {
-  type RepomixConfigCli,
-  type RepomixConfigFile,
-  type RepomixConfigMerged,
-  type RepomixOutputStyle,
-  repomixConfigCliSchema,
-} from '../../config/configSchema.js';
+import type { RepomixConfigCli, RepomixConfigFile, RepomixConfigMerged } from '../../config/configSchema.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
@@ -42,12 +37,18 @@ export const runDefaultAction = async (
   });
   logger.trace('Loaded file config:', fileConfig);
 
-  // Parse the CLI options into a config
-  const cliConfig: RepomixConfigCli = buildCliConfig(cliOptions);
+  // Parse the CLI options into a config. Skip zod validation here because:
+  //   - Each numeric/string CLI option already has a Commander argParser that
+  //     enforces format (e.g., `--top-files-len` rejects non-integers).
+  //   - The output style enum is validated explicitly below in buildCliConfig.
+  // Avoiding zod here is what unlocks the cold-start savings.
+  const cliConfig: RepomixConfigCli = await buildCliConfig(cliOptions, { validate: false });
   logger.trace('CLI config:', cliConfig);
 
-  // Merge default, file, and CLI configs
-  const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
+  // Merge default, file, and CLI configs. Skip merge-time validation for the
+  // same reason: file config is validated by loadAndValidateConfig and CLI
+  // config by buildCliConfig + Commander.
+  const config: RepomixConfigMerged = await mergeConfigs(cwd, fileConfig, cliConfig, { validate: false });
   logger.trace('Merged config:', config);
 
   // Validate conflicting options
@@ -154,7 +155,21 @@ export const runDefaultAction = async (
  * - For --no-* flags, we only apply the setting when it's explicitly false to respect config file values
  * - This allows the config file to maintain control unless explicitly overridden by CLI
  */
-export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
+export interface BuildCliConfigOptions {
+  /**
+   * When true (the default), the resulting config is validated against
+   * `repomixConfigCliSchema` (which loads zod). Pass `false` to skip validation
+   * when CLI inputs come from Commander (which already enforces type/format via
+   * its argParsers) — skipping avoids loading zod (~145ms) on cold starts.
+   */
+  validate?: boolean;
+}
+
+export const buildCliConfig = async (
+  options: CliOptions,
+  buildOptions: BuildCliConfigOptions = {},
+): Promise<RepomixConfigCli> => {
+  const { validate = true } = buildOptions;
   const cliConfig: RepomixConfigCli = {};
 
   if (options.output) {
@@ -197,9 +212,16 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.output = { ...cliConfig.output, copyToClipboard: options.copy };
   }
   if (options.style) {
+    // Validate the style enum here (instead of only via zod). When validate=false
+    // is requested by the CLI hot path, we still need to reject invalid values
+    // because Commander does not constrain --style to a fixed enum.
+    const style = options.style.toLowerCase();
+    if (!(OUTPUT_STYLES as readonly string[]).includes(style)) {
+      throw new RepomixError(`Invalid output style: '${options.style}'. Valid styles are: ${OUTPUT_STYLES.join(', ')}`);
+    }
     cliConfig.output = {
       ...cliConfig.output,
-      style: options.style.toLowerCase() as RepomixOutputStyle,
+      style: style as RepomixOutputStyle,
     };
   }
   if (options.parsableStyle !== undefined) {
@@ -342,7 +364,13 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.skillGenerate = options.skillGenerate;
   }
 
+  if (!validate) {
+    return cliConfig;
+  }
+
   try {
+    // Lazy-load configSchema only when validation is opted in.
+    const { repomixConfigCliSchema } = await import('../../config/configSchema.js');
     return repomixConfigCliSchema.parse(cliConfig);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid cli arguments');

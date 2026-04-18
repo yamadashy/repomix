@@ -40,7 +40,7 @@ describe('defaultAction with tokenCountTree', () => {
 
     // Setup default mocks
     mockLoadFileConfig.mockResolvedValue({});
-    mockMergeConfigs.mockReturnValue({
+    mockMergeConfigs.mockResolvedValue({
       output: {
         filePath: 'output.xml',
         topFilesLength: 5,
@@ -73,7 +73,7 @@ describe('defaultAction with tokenCountTree', () => {
     };
 
     // Mock config to have tokenCountTree enabled
-    mockMergeConfigs.mockReturnValue({
+    mockMergeConfigs.mockResolvedValue({
       output: {
         filePath: 'output.xml',
         topFilesLength: 5,
@@ -127,7 +127,7 @@ describe('defaultAction with tokenCountTree', () => {
     };
 
     // Mock config to have tokenCountTree enabled
-    mockMergeConfigs.mockReturnValue({
+    mockMergeConfigs.mockResolvedValue({
       output: {
         filePath: 'output.xml',
         topFilesLength: 5,
@@ -158,7 +158,7 @@ describe('defaultAction with tokenCountTree', () => {
     };
 
     // Mock config to have tokenCountTree enabled with threshold
-    mockMergeConfigs.mockReturnValue({
+    mockMergeConfigs.mockResolvedValue({
       output: {
         filePath: 'output.xml',
         topFilesLength: 5,

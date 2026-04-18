@@ -80,7 +80,7 @@ describe.runIf(!isWindows)('packager integration', () => {
       const actualOutputPath = path.join(tempDir, output);
 
       const fileConfig: RepomixConfigFile = await loadFileConfig(inputDir, null);
-      const mergedConfig: RepomixConfigMerged = mergeConfigs(process.cwd(), fileConfig, {
+      const mergedConfig: RepomixConfigMerged = await mergeConfigs(process.cwd(), fileConfig, {
         output: {
           filePath: actualOutputPath,
           style: (config.output?.style || 'plain') as RepomixOutputStyle,

@@ -5,15 +5,8 @@ import JSON5 from 'json5';
 import pc from 'picocolors';
 import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
-import {
-  defaultConfig,
-  defaultFilePathMap,
-  type RepomixConfigCli,
-  type RepomixConfigFile,
-  type RepomixConfigMerged,
-  repomixConfigFileSchema,
-  repomixConfigMergedSchema,
-} from './configSchema.js';
+import { defaultConfig, defaultFilePathMap } from './configDefaults.js';
+import type { RepomixConfigCli, RepomixConfigFile, RepomixConfigMerged } from './configSchema.js';
 import { getGlobalDirectory } from './globalDirectory.js';
 
 const defaultConfigPaths = [
@@ -166,6 +159,9 @@ const loadAndValidateConfig = async (
         throw new RepomixError(`Unsupported config file format: ${filePath}`);
     }
 
+    // Lazy-load configSchema (and its zod dependency) only when a config file
+    // actually needs validation. CLI runs without a config file skip this entirely.
+    const { repomixConfigFileSchema } = await import('./configSchema.js');
     return repomixConfigFileSchema.parse(config);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid config schema');
@@ -179,11 +175,24 @@ const loadAndValidateConfig = async (
   }
 };
 
-export const mergeConfigs = (
+export interface MergeConfigsOptions {
+  /**
+   * When true (the default), the merged config is validated against
+   * `repomixConfigMergedSchema` (which loads zod). Pass `false` to skip
+   * validation when inputs have already been validated at their boundaries
+   * (e.g., the CLI uses Commander argParsers + loadAndValidateConfig). Skipping
+   * validation avoids loading zod (~145ms) on cold starts.
+   */
+  validate?: boolean;
+}
+
+export const mergeConfigs = async (
   cwd: string,
   fileConfig: RepomixConfigFile,
   cliConfig: RepomixConfigCli,
-): RepomixConfigMerged => {
+  options: MergeConfigsOptions = {},
+): Promise<RepomixConfigMerged> => {
+  const { validate = true } = options;
   logger.trace('Default config:', defaultConfig);
 
   const baseConfig = defaultConfig;
@@ -246,7 +255,13 @@ export const mergeConfigs = (
     ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
   };
 
+  if (!validate) {
+    return mergedConfig as RepomixConfigMerged;
+  }
+
   try {
+    // Lazy-load configSchema only when validation is opted in.
+    const { repomixConfigMergedSchema } = await import('./configSchema.js');
     return repomixConfigMergedSchema.parse(mergedConfig);
   } catch (error) {
     rethrowValidationErrorIfZodError(error, 'Invalid merged config');
