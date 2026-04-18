@@ -97,7 +97,7 @@ export const repomixConfigDefaultSchema = v.object({
     copyToClipboard: v.optional(v.boolean(), false),
     includeEmptyDirectories: v.optional(v.boolean()),
     includeFullDirectoryStructure: v.optional(v.boolean(), false),
-    splitOutput: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1))),
+    splitOutput: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(Number.MAX_SAFE_INTEGER))),
     tokenCountTree: v.optional(v.union([v.boolean(), v.number(), v.string()]), false),
     git: v.object({
       sortByChanges: v.optional(v.boolean(), true),

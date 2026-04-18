@@ -156,6 +156,97 @@ describe('configSchema', () => {
         expect(valiError.issues[0].message).toMatch(/invalid (type|key)/i);
       }
     });
+
+    describe('numeric constraint enforcement', () => {
+      // The Valibot pipes (integer / minValue / maxValue) need behavioral coverage,
+      // not just structural equivalence to the previous Zod schema.
+      const baseDefaults = {
+        input: { maxFileSize: 50 * 1024 * 1024 },
+        output: {
+          filePath: 'output.xml',
+          style: 'xml',
+          parsableStyle: false,
+          fileSummary: true,
+          directoryStructure: true,
+          files: true,
+          removeComments: false,
+          removeEmptyLines: false,
+          compress: false,
+          topFilesLength: 5,
+          showLineNumbers: false,
+          truncateBase64: false,
+          copyToClipboard: false,
+          includeFullDirectoryStructure: false,
+          tokenCountTree: false,
+          git: {
+            sortByChanges: true,
+            sortByChangesMaxCommits: 100,
+            includeDiffs: false,
+            includeLogs: false,
+            includeLogsCount: 50,
+          },
+        },
+        include: [] as string[],
+        ignore: { useGitignore: true, useDotIgnore: true, useDefaultPatterns: true, customPatterns: [] as string[] },
+        security: { enableSecurityCheck: true },
+        tokenCount: { encoding: 'o200k_base' as const },
+      };
+
+      it('rejects non-integer maxFileSize', () => {
+        const cfg = { ...baseDefaults, input: { maxFileSize: 1.5 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects maxFileSize below 1', () => {
+        const cfg = { ...baseDefaults, input: { maxFileSize: 0 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects negative topFilesLength', () => {
+        const cfg = { ...baseDefaults, output: { ...baseDefaults.output, topFilesLength: -1 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects splitOutput below 1', () => {
+        const cfg = { ...baseDefaults, output: { ...baseDefaults.output, splitOutput: 0 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects non-integer splitOutput', () => {
+        const cfg = { ...baseDefaults, output: { ...baseDefaults.output, splitOutput: 1.5 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects splitOutput above Number.MAX_SAFE_INTEGER', () => {
+        const cfg = {
+          ...baseDefaults,
+          output: { ...baseDefaults.output, splitOutput: Number.MAX_SAFE_INTEGER + 1 },
+        };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects sortByChangesMaxCommits below 1', () => {
+        const cfg = {
+          ...baseDefaults,
+          output: {
+            ...baseDefaults.output,
+            git: { ...baseDefaults.output.git, sortByChangesMaxCommits: 0 },
+          },
+        };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects includeLogsCount below 1', () => {
+        const cfg = {
+          ...baseDefaults,
+          output: {
+            ...baseDefaults.output,
+            git: { ...baseDefaults.output.git, includeLogsCount: 0 },
+          },
+        };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+    });
   });
 
   describe('repomixConfigFileSchema', () => {
