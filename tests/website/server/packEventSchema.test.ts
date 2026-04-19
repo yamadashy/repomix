@@ -73,7 +73,7 @@ describe('classifyRejectReason', () => {
   });
 
   test('cause-chain extraction — issues live on error.cause (AppError path)', () => {
-    const wrappedErr = wrapped('Either URL or file must be provided');
+    const wrappedErr = wrapped(MESSAGES.MISSING_INPUT);
     // Cause is the raw schema-error shape, carried through AppError wrapping.
     expect((wrappedErr.cause as { issues: unknown[] }).issues).toHaveLength(1);
     expect(classifyRejectReason(wrappedErr)).toBe('missing_input');
