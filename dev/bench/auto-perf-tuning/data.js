@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776565115537,
+  "lastUpdate": 1776567208199,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5760,6 +5760,51 @@ window.BENCHMARK_DATA = {
             "range": "±95",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1749ms, Q3: 1844ms\nAll times: 1708, 1722, 1733, 1738, 1745, 1749, 1760, 1773, 1774, 1774, 1795, 1801, 1801, 1803, 1822, 1844, 1922, 2002, 2140, 2174ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "a57498d2d0d9e8f20e5f0466795bfc91584844e3",
+          "message": "perf(security): Pre-warm security worker pool before searchFiles\n\nMove the `securityCheck` Tinypool construction in `pack()` from its lazy\npoint inside `runSecurityCheck` (post-collectFiles) to the pack-start\nblock immediately after `createMetricsTaskRunner`, and fire one warmup\ntask per worker so `@secretlint/core` + the recommended rule preset load\ninside the workers in parallel with the rest of the pack pipeline.\n\nBefore, Tinypool's `minThreads=1` spawned the worker only when\n`runSecurityCheck` was called, and the ~150ms secretlint load that runs\ninside the freshly-spawned thread sat on the critical path between\n`collectFiles` and the Security Check promise resolving. With pre-warm\nthat load fully overlaps `searchFiles` (~360ms globby), `collectFiles`,\nand `processFiles`, so by the time the real batches arrive the workers\nare hot and the Security Check phase drops to just the per-batch scan\ntime (~40ms total for the src/** workload).\n\nThe new `createSecurityTaskRunner(numOfTasks)` mirrors\n`createMetricsTaskRunner` exactly: it owns the Tinypool, fires\n`maxSecurityWorkers` no-op warmup tasks (empty `items` arrays), and\nreturns `{ taskRunner, warmupPromise }`. `runSecurityCheck` takes an\noptional `taskRunner` via its existing `deps` object (other deps fall\nback to defaults via `??`), and `validateFileSafety` adds a\n`securityTaskRunner` field to its own `deps` so `pack()` can forward\nthe pre-warmed runner cleanly without leaking `processConcurrency`\nimports into the safety layer. Pre-warm is gated on\n`config.security.enableSecurityCheck` so `--no-security-check` pays\nnone of this cost.\n\nPool creation is placed inside the outer `try`/`finally` with null\ninitialisers, so a throw from either `createXxxTaskRunner` still hits\n`finally` — whichever pool had been constructed gets disposed (prevents\na worker-thread leak the previous inline-creation pattern exposed).\n\n`numOfTasks=200` mirrors the metrics pool: with `TASKS_PER_THREAD=100`\nit maps to `maxThreads=2`, matching the internal cap\n`runSecurityCheck` already applied.\n\nBenchmark\n---------\n\n`node bin/repomix.cjs ... --quiet`, interleaved A/B on the same\nmachine, with lib copies held outside the repo so they are not scanned:\n\n| workload                           |  n | baseline median | patched median | delta             |\n|------------------------------------|---:|----------------:|---------------:|------------------:|\n| `--include 'src/**'` (~127 files)  | 60 |         1953 ms |        1793 ms | -159 ms ( -8.2%)  |\n| `--include 'src,tests'`            | 25 |         2007 ms |        1936 ms |  -71 ms ( -3.5%)  |\n| full repo (no filter)              | 25 |         3052 ms |        3047 ms |   -5 ms ( -0.2%)  |\n\nThe `src/**` and `src,tests` workloads are well above the 2% threshold.\nThe full-repo workload is within noise on this machine; the signal is\ndominated by ~225 ms run-to-run stdev and the security phase's share\nof the total shrinks as repo size grows (more files → more actual\nlinting work relative to the fixed ~150 ms worker-spawn cost). CI's\ndedicated benchmark runners (Ubuntu/macOS/Windows) should see a\ncleaner measurement on all three workloads.\n\nOutput is byte-identical to baseline across `src/**`, `src,tests`, and\nfull-repo packs (verified via md5sum).\n\nTest plan\n---------\n- `npm run lint` — no new warnings\n- `npm run test` — 117 files / 1166 tests passing\n- Packed `src/**`, `src,tests`, and the full repo; each output file is\n  byte-identical to the baseline\n- Reviewed by three local reviewers (correctness / quality / risk);\n  feedback on dead imports, positional param, and constructor-throw\n  pool leak has been folded in; an amended-commit reviewer confirmed\n  all three fixes land cleanly with no new issues.",
+          "timestamp": "2026-04-19T02:51:36Z",
+          "tree_id": "57a92e7d89575e212f031a36c752b61dc10d01a5",
+          "url": "https://github.com/yamadashy/repomix/commit/a57498d2d0d9e8f20e5f0466795bfc91584844e3"
+        },
+        "date": 1776567207149,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 891,
+            "range": "±58",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 869ms, Q3: 927ms\nAll times: 854, 859, 860, 864, 865, 868, 869, 869, 873, 874, 876, 882, 883, 888, 890, 891, 895, 900, 908, 908, 912, 915, 927, 936, 936, 940, 942, 963, 998, 1156ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1388,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1372ms, Q3: 1403ms\nAll times: 1340, 1348, 1354, 1359, 1371, 1372, 1380, 1380, 1384, 1384, 1388, 1395, 1396, 1397, 1400, 1403, 1409, 1410, 1430, 1440ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1784,
+            "range": "±65",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1753ms, Q3: 1818ms\nAll times: 1718, 1725, 1736, 1750, 1752, 1753, 1770, 1771, 1778, 1782, 1784, 1792, 1798, 1803, 1812, 1818, 1827, 1828, 1836, 1853ms"
           }
         ]
       }
