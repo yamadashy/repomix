@@ -60,7 +60,11 @@ describe('validateRequest', () => {
     } catch (error) {
       const message = (error as AppError).message;
       expect(message).toContain('Count must be non-negative');
-      expect(message).not.toContain(': : ');
+      // Anchor on the specific defect shape: `Invalid request: : <rest>` with
+      // an empty path between the two colons. A plain `not.toContain(': : ')`
+      // also works today, but the anchored regex documents the exact failure
+      // mode we're guarding against.
+      expect(message).not.toMatch(/^Invalid request: : /);
     }
   });
 
