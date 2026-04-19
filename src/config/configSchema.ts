@@ -1,9 +1,9 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 import { TOKEN_ENCODINGS } from '../core/metrics/TokenCounter.js';
 
 // Output style enum
-export const repomixOutputStyleSchema = z.enum(['xml', 'markdown', 'json', 'plain']);
-export type RepomixOutputStyle = z.infer<typeof repomixOutputStyleSchema>;
+export const repomixOutputStyleSchema = v.picklist(['xml', 'markdown', 'json', 'plain']);
+export type RepomixOutputStyle = v.InferOutput<typeof repomixOutputStyleSchema>;
 
 // Default values map
 export const defaultFilePathMap: Record<RepomixOutputStyle, string> = {
@@ -14,115 +14,111 @@ export const defaultFilePathMap: Record<RepomixOutputStyle, string> = {
 } as const;
 
 // Base config schema
-export const repomixConfigBaseSchema = z.object({
-  $schema: z.string().optional(),
-  input: z
-    .object({
-      maxFileSize: z.number().optional(),
-    })
-    .optional(),
-  output: z
-    .object({
-      filePath: z.string().optional(),
-      style: repomixOutputStyleSchema.optional(),
-      parsableStyle: z.boolean().optional(),
-      headerText: z.string().optional(),
-      instructionFilePath: z.string().optional(),
-      fileSummary: z.boolean().optional(),
-      directoryStructure: z.boolean().optional(),
-      files: z.boolean().optional(),
-      removeComments: z.boolean().optional(),
-      removeEmptyLines: z.boolean().optional(),
-      compress: z.boolean().optional(),
-      topFilesLength: z.number().optional(),
-      showLineNumbers: z.boolean().optional(),
-      truncateBase64: z.boolean().optional(),
-      copyToClipboard: z.boolean().optional(),
-      includeEmptyDirectories: z.boolean().optional(),
-      includeFullDirectoryStructure: z.boolean().optional(),
-      splitOutput: z.number().int().min(1).optional(),
-      tokenCountTree: z.union([z.boolean(), z.number(), z.string()]).optional(),
-      git: z
-        .object({
-          sortByChanges: z.boolean().optional(),
-          sortByChangesMaxCommits: z.number().optional(),
-          includeDiffs: z.boolean().optional(),
-          includeLogs: z.boolean().optional(),
-          includeLogsCount: z.number().optional(),
-        })
-        .optional(),
-    })
-    .optional(),
-  include: z.array(z.string()).optional(),
-  ignore: z
-    .object({
-      useGitignore: z.boolean().optional(),
-      useDotIgnore: z.boolean().optional(),
-      useDefaultPatterns: z.boolean().optional(),
-      customPatterns: z.array(z.string()).optional(),
-    })
-    .optional(),
-  security: z
-    .object({
-      enableSecurityCheck: z.boolean().optional(),
-    })
-    .optional(),
-  tokenCount: z
-    .object({
-      encoding: z.string().optional(),
-    })
-    .optional(),
+export const repomixConfigBaseSchema = v.object({
+  $schema: v.optional(v.string()),
+  input: v.optional(
+    v.object({
+      maxFileSize: v.optional(v.number()),
+    }),
+  ),
+  output: v.optional(
+    v.object({
+      filePath: v.optional(v.string()),
+      style: v.optional(repomixOutputStyleSchema),
+      parsableStyle: v.optional(v.boolean()),
+      headerText: v.optional(v.string()),
+      instructionFilePath: v.optional(v.string()),
+      fileSummary: v.optional(v.boolean()),
+      directoryStructure: v.optional(v.boolean()),
+      files: v.optional(v.boolean()),
+      removeComments: v.optional(v.boolean()),
+      removeEmptyLines: v.optional(v.boolean()),
+      compress: v.optional(v.boolean()),
+      topFilesLength: v.optional(v.number()),
+      showLineNumbers: v.optional(v.boolean()),
+      truncateBase64: v.optional(v.boolean()),
+      copyToClipboard: v.optional(v.boolean()),
+      includeEmptyDirectories: v.optional(v.boolean()),
+      includeFullDirectoryStructure: v.optional(v.boolean()),
+      splitOutput: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(Number.MAX_SAFE_INTEGER))),
+      tokenCountTree: v.optional(v.union([v.boolean(), v.number(), v.string()])),
+      git: v.optional(
+        v.object({
+          sortByChanges: v.optional(v.boolean()),
+          sortByChangesMaxCommits: v.optional(v.number()),
+          includeDiffs: v.optional(v.boolean()),
+          includeLogs: v.optional(v.boolean()),
+          includeLogsCount: v.optional(v.number()),
+        }),
+      ),
+    }),
+  ),
+  include: v.optional(v.array(v.string())),
+  ignore: v.optional(
+    v.object({
+      useGitignore: v.optional(v.boolean()),
+      useDotIgnore: v.optional(v.boolean()),
+      useDefaultPatterns: v.optional(v.boolean()),
+      customPatterns: v.optional(v.array(v.string())),
+    }),
+  ),
+  security: v.optional(
+    v.object({
+      enableSecurityCheck: v.optional(v.boolean()),
+    }),
+  ),
+  tokenCount: v.optional(
+    v.object({
+      encoding: v.optional(v.string()),
+    }),
+  ),
 });
 
 // Default config schema with default values
-export const repomixConfigDefaultSchema = z.object({
-  input: z.object({
-    maxFileSize: z
-      .number()
-      .int()
-      .min(1)
-      .default(50 * 1024 * 1024), // Default: 50MB
+export const repomixConfigDefaultSchema = v.object({
+  input: v.object({
+    maxFileSize: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1)), 50 * 1024 * 1024), // Default: 50MB
   }),
-  output: z.object({
-    filePath: z.string().default(defaultFilePathMap.xml),
-    style: repomixOutputStyleSchema.default('xml'),
-    parsableStyle: z.boolean().default(false),
-    headerText: z.string().optional(),
-    instructionFilePath: z.string().optional(),
-    fileSummary: z.boolean().default(true),
-    directoryStructure: z.boolean().default(true),
-    files: z.boolean().default(true),
-    removeComments: z.boolean().default(false),
-    removeEmptyLines: z.boolean().default(false),
-    compress: z.boolean().default(false),
-    topFilesLength: z.number().int().min(0).default(5),
-    showLineNumbers: z.boolean().default(false),
-    truncateBase64: z.boolean().default(false),
-    copyToClipboard: z.boolean().default(false),
-    includeEmptyDirectories: z.boolean().optional(),
-    includeFullDirectoryStructure: z.boolean().default(false),
-    splitOutput: z.number().int().min(1).optional(),
-    tokenCountTree: z.union([z.boolean(), z.number(), z.string()]).default(false),
-    git: z.object({
-      sortByChanges: z.boolean().default(true),
-      sortByChangesMaxCommits: z.number().int().min(1).default(100),
-      includeDiffs: z.boolean().default(false),
-      includeLogs: z.boolean().default(false),
-      includeLogsCount: z.number().int().min(1).default(50),
+  output: v.object({
+    filePath: v.optional(v.string(), defaultFilePathMap.xml),
+    style: v.optional(repomixOutputStyleSchema, 'xml'),
+    parsableStyle: v.optional(v.boolean(), false),
+    headerText: v.optional(v.string()),
+    instructionFilePath: v.optional(v.string()),
+    fileSummary: v.optional(v.boolean(), true),
+    directoryStructure: v.optional(v.boolean(), true),
+    files: v.optional(v.boolean(), true),
+    removeComments: v.optional(v.boolean(), false),
+    removeEmptyLines: v.optional(v.boolean(), false),
+    compress: v.optional(v.boolean(), false),
+    topFilesLength: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0)), 5),
+    showLineNumbers: v.optional(v.boolean(), false),
+    truncateBase64: v.optional(v.boolean(), false),
+    copyToClipboard: v.optional(v.boolean(), false),
+    includeEmptyDirectories: v.optional(v.boolean()),
+    includeFullDirectoryStructure: v.optional(v.boolean(), false),
+    splitOutput: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(Number.MAX_SAFE_INTEGER))),
+    tokenCountTree: v.optional(v.union([v.boolean(), v.number(), v.string()]), false),
+    git: v.object({
+      sortByChanges: v.optional(v.boolean(), true),
+      sortByChangesMaxCommits: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1)), 100),
+      includeDiffs: v.optional(v.boolean(), false),
+      includeLogs: v.optional(v.boolean(), false),
+      includeLogsCount: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1)), 50),
     }),
   }),
-  include: z.array(z.string()).default([]),
-  ignore: z.object({
-    useGitignore: z.boolean().default(true),
-    useDotIgnore: z.boolean().default(true),
-    useDefaultPatterns: z.boolean().default(true),
-    customPatterns: z.array(z.string()).default([]),
+  include: v.optional(v.array(v.string()), () => []),
+  ignore: v.object({
+    useGitignore: v.optional(v.boolean(), true),
+    useDotIgnore: v.optional(v.boolean(), true),
+    useDefaultPatterns: v.optional(v.boolean(), true),
+    customPatterns: v.optional(v.array(v.string()), () => []),
   }),
-  security: z.object({
-    enableSecurityCheck: z.boolean().default(true),
+  security: v.object({
+    enableSecurityCheck: v.optional(v.boolean(), true),
   }),
-  tokenCount: z.object({
-    encoding: z.enum(TOKEN_ENCODINGS).default('o200k_base'),
+  tokenCount: v.object({
+    encoding: v.optional(v.picklist(TOKEN_ENCODINGS), 'o200k_base'),
   }),
 });
 
@@ -130,35 +126,41 @@ export const repomixConfigDefaultSchema = z.object({
 export const repomixConfigFileSchema = repomixConfigBaseSchema;
 
 // CLI-specific schema. Add options for standard output mode and skill generation
-export const repomixConfigCliSchema = repomixConfigBaseSchema.and(
-  z.object({
-    output: z
-      .object({
-        stdout: z.boolean().optional(),
-      })
-      .optional(),
-    skillGenerate: z.union([z.string(), z.boolean()]).optional(),
+export const repomixConfigCliSchema = v.intersect([
+  repomixConfigBaseSchema,
+  v.object({
+    output: v.optional(
+      v.object({
+        stdout: v.optional(v.boolean()),
+      }),
+    ),
+    skillGenerate: v.optional(v.union([v.string(), v.boolean()])),
   }),
-);
+]);
 
-// Merged schema for all configurations
-export const repomixConfigMergedSchema = repomixConfigDefaultSchema
-  .and(repomixConfigFileSchema)
-  .and(repomixConfigCliSchema)
-  .and(
-    z.object({
-      cwd: z.string(),
-    }),
-  );
+// Merged schema for all configurations.
+// `v.intersect` is intentional: it layers the default schema (required fields
+// with applied defaults) over the file and CLI schemas (all fields optional).
+// Flattening to a single object via spread would silently demote the
+// required-with-default fields to optional and change merge semantics.
+export const repomixConfigMergedSchema = v.intersect([
+  repomixConfigDefaultSchema,
+  repomixConfigFileSchema,
+  repomixConfigCliSchema,
+  v.object({
+    cwd: v.string(),
+  }),
+]);
 
-export type RepomixConfigDefault = z.infer<typeof repomixConfigDefaultSchema>;
-export type RepomixConfigFile = z.infer<typeof repomixConfigFileSchema>;
-export type RepomixConfigCli = z.infer<typeof repomixConfigCliSchema>;
-export type RepomixConfigMerged = z.infer<typeof repomixConfigMergedSchema>;
+export type RepomixConfigDefault = v.InferOutput<typeof repomixConfigDefaultSchema>;
+export type RepomixConfigFile = v.InferOutput<typeof repomixConfigFileSchema>;
+export type RepomixConfigCli = v.InferOutput<typeof repomixConfigCliSchema>;
+export type RepomixConfigMerged = v.InferOutput<typeof repomixConfigMergedSchema>;
 
-// Pass empty objects to let Zod apply all default values
-// Zod v4 requires explicit nested objects since we removed outer .default({})
-export const defaultConfig = repomixConfigDefaultSchema.parse({
+// Pass empty objects to let Valibot apply all default values.
+// Explicit nested objects are required because we do not wrap the outer schema
+// in v.optional with a default.
+export const defaultConfig = v.parse(repomixConfigDefaultSchema, {
   input: {},
   output: {
     git: {},
