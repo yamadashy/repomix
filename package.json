@@ -110,7 +110,7 @@
     "@secretlint/types": "^11.6.0",
     "@types/node": "^24.12.2",
     "@types/strip-comments": "^2.0.4",
-    "@typescript/native-preview": "^7.0.0-dev.20260410.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260412.1",
     "@valibot/to-json-schema": "^1.6.0",
     "@vitest/coverage-v8": "^4.1.4",
     "@xmldom/xmldom": "^0.9.9",
