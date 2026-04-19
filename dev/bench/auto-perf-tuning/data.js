@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776637686214,
+  "lastUpdate": 1776642420101,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5985,6 +5985,51 @@ window.BENCHMARK_DATA = {
             "range": "±26",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1645ms, Q3: 1671ms\nAll times: 1626, 1628, 1635, 1639, 1645, 1645, 1646, 1646, 1649, 1654, 1662, 1667, 1667, 1668, 1671, 1671, 1674, 1675, 1703, 1708ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "757e24d0c49c950782db4664a524fc8f606513aa",
+          "message": "perf(metrics): Bump metrics worker pool from 2 to 4 to unblock git-log token count\n\nThe metrics taskRunner was created with `numOfTasks=200`, which mapped to\n`maxThreads=2` via `getWorkerThreadCount` (TASKS_PER_THREAD=100). When\n`output.git.includeLogs` is enabled (this repo's own config and the standard\nbenchmark workload), `calculateGitLogMetrics` dispatches a single ~600 ms\ntokenization that holds one of the two workers for the entire metrics phase,\nleaving file-metrics batches to drain on the remaining single worker.\n\nBump `numOfTasks=400` so the pool warms `maxThreads=4` on hosts with ≥4 logical\nCPUs (still capped at `availableParallelism`, so a 2-CPU runner is unchanged).\nThe git-log task now occupies one tokenizer while the remaining three drain\nthe file-metrics queue concurrently, halving the metrics-phase wall time. The\npre-warm window before searchFiles already overlaps the extra ~250 ms BPE\nloads, so the additional workers add no critical-path cost.\n\nWhy stop at four (not six or eight): on a 16-CPU host, six workers regressed\nslightly versus four (1.892 s vs 1.866 s median over 8 runs each) and eight\nregressed further. Each extra worker carries a ~70 MB BPE table and the added\nscheduling/IPC overhead outweighs the marginal parallelism gain past four.\n\nVerbose log diff (single representative run, this repo, default config):\n\n    File metrics calculation completed in 604 ms → 367 ms (-237 ms)\n    Git log token calculation completed in 615 ms → 360 ms (-255 ms)\n\nBoth metrics tasks now finish near 360 ms instead of ~600 ms, so the\nmetrics-phase ceiling drops by ~240 ms. The end-to-end CLI saving is bounded\nby the parallel `produceOutput` + write phases, but is still measurable:\n\n    `node bin/repomix.cjs --quiet -o /tmp/out.xml`, n=20 each, interleaved A/B\n    on a 16-CPU host with warmup=2:\n\n    | metric  | baseline | patched | delta             |\n    |---------|---------:|--------:|------------------:|\n    | mean    |  2056 ms | 1891 ms | -166 ms (-8.06%)  |\n    | median  |  2057 ms | 1885 ms | -172 ms (-8.36%)  |\n    | stdev   |    33 ms |   28 ms |                   |\n\nStdev is small relative to the delta, so the regression risk is low. The\n2-CPU path is unchanged because `getWorkerThreadCount` still caps at\n`availableParallelism`. No behavioural change: the extra workers process the\nsame task set with the same encoder, only in parallel.",
+          "timestamp": "2026-04-19T23:44:39Z",
+          "tree_id": "1918dbd6c794b0e7f06056081e7bc96da778041a",
+          "url": "https://github.com/yamadashy/repomix/commit/757e24d0c49c950782db4664a524fc8f606513aa"
+        },
+        "date": 1776642419618,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1043,
+            "range": "±197",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 966ms, Q3: 1163ms\nAll times: 851, 877, 882, 909, 917, 936, 936, 966, 968, 994, 998, 1003, 1013, 1030, 1043, 1043, 1047, 1055, 1064, 1090, 1117, 1131, 1163, 1174, 1180, 1225, 1255, 1258, 1318, 1400ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1546,
+            "range": "±55",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1512ms, Q3: 1567ms\nAll times: 1479, 1482, 1486, 1487, 1494, 1512, 1521, 1523, 1534, 1535, 1546, 1547, 1549, 1554, 1563, 1567, 1569, 1573, 1602, 1612ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1757,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1747ms, Q3: 1784ms\nAll times: 1733, 1734, 1734, 1743, 1745, 1747, 1747, 1751, 1754, 1754, 1757, 1757, 1772, 1773, 1783, 1784, 1786, 1794, 1802, 1805ms"
           }
         ]
       }
