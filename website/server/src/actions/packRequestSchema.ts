@@ -10,7 +10,7 @@ export const packRequestSchema = v.pipe(
         v.string(),
         v.minLength(1, MESSAGES.URL_REQUIRED),
         v.maxLength(200, MESSAGES.URL_TOO_LONG),
-        v.transform((val) => val.trim()),
+        v.trim(),
         v.check((val) => isValidRemoteValue(val), MESSAGES.INVALID_URL),
       ),
     ),
@@ -29,13 +29,7 @@ export const packRequestSchema = v.pipe(
       showLineNumbers: v.optional(v.boolean()),
       fileSummary: v.optional(v.boolean()),
       directoryStructure: v.optional(v.boolean()),
-      includePatterns: v.optional(
-        v.pipe(
-          v.string(),
-          v.maxLength(100_000, MESSAGES.INCLUDE_TOO_LONG),
-          v.transform((val) => val.trim()),
-        ),
-      ),
+      includePatterns: v.optional(v.pipe(v.string(), v.maxLength(100_000, MESSAGES.INCLUDE_TOO_LONG), v.trim())),
       ignorePatterns: v.optional(
         v.pipe(
           v.string(),
@@ -43,7 +37,7 @@ export const packRequestSchema = v.pipe(
           // Allowed characters: alphanumeric, *, ?, /, -, _, ., !, (, ), space, comma
           v.regex(/^[a-zA-Z0-9*?/\-_.,!()\s]*$/, MESSAGES.INVALID_IGNORE_CHARS),
           v.maxLength(1000, MESSAGES.IGNORE_TOO_LONG),
-          v.transform((val) => val.trim()),
+          v.trim(),
         ),
       ),
       outputParsable: v.optional(v.boolean()),
