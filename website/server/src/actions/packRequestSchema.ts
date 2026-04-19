@@ -1,62 +1,51 @@
 import { isValidRemoteValue } from 'repomix';
-import { z } from 'zod';
+import * as v from 'valibot';
 import { FILE_SIZE_LIMITS } from '../domains/pack/utils/fileUtils.js';
 import { MESSAGES } from './packRequestMessages.js';
 
-export const packRequestSchema = z
-  .object({
-    url: z
-      .string()
-      .min(1, MESSAGES.URL_REQUIRED)
-      .max(200, MESSAGES.URL_TOO_LONG)
-      .transform((val) => val.trim())
-      .refine((val) => isValidRemoteValue(val), { message: MESSAGES.INVALID_URL })
-      .optional(),
-    file: z
-      .custom<File>()
-      .refine((file) => file instanceof File, {
-        message: MESSAGES.INVALID_FILE,
-      })
-      .refine((file) => file.type === 'application/zip' || file.name.endsWith('.zip'), {
-        message: MESSAGES.NOT_ZIP,
-      })
-      .refine((file) => file.size <= FILE_SIZE_LIMITS.MAX_ZIP_SIZE, {
+export const packRequestSchema = v.pipe(
+  v.strictObject({
+    url: v.optional(
+      v.pipe(
+        v.string(),
+        v.minLength(1, MESSAGES.URL_REQUIRED),
+        v.maxLength(200, MESSAGES.URL_TOO_LONG),
+        v.trim(),
+        v.check((val) => isValidRemoteValue(val), MESSAGES.INVALID_URL),
+      ),
+    ),
+    file: v.optional(
+      v.pipe(
+        v.custom<File>((f) => f instanceof File, MESSAGES.INVALID_FILE),
+        v.check((f) => f.type === 'application/zip' || f.name.endsWith('.zip'), MESSAGES.NOT_ZIP),
         // 10MB limit
-        message: MESSAGES.FILE_TOO_LARGE,
-      })
-      .optional(),
-    format: z.enum(['xml', 'markdown', 'plain']),
-    options: z
-      .object({
-        removeComments: z.boolean().optional(),
-        removeEmptyLines: z.boolean().optional(),
-        showLineNumbers: z.boolean().optional(),
-        fileSummary: z.boolean().optional(),
-        directoryStructure: z.boolean().optional(),
-        includePatterns: z
-          .string()
-          .max(100_000, MESSAGES.INCLUDE_TOO_LONG)
-          .optional()
-          .transform((val) => val?.trim()),
-        ignorePatterns: z
-          .string()
+        v.check((f) => f.size <= FILE_SIZE_LIMITS.MAX_ZIP_SIZE, MESSAGES.FILE_TOO_LARGE),
+      ),
+    ),
+    format: v.picklist(['xml', 'markdown', 'plain']),
+    options: v.strictObject({
+      removeComments: v.optional(v.boolean()),
+      removeEmptyLines: v.optional(v.boolean()),
+      showLineNumbers: v.optional(v.boolean()),
+      fileSummary: v.optional(v.boolean()),
+      directoryStructure: v.optional(v.boolean()),
+      includePatterns: v.optional(v.pipe(v.string(), v.maxLength(100_000, MESSAGES.INCLUDE_TOO_LONG), v.trim())),
+      ignorePatterns: v.optional(
+        v.pipe(
+          v.string(),
           // Regular expression to validate ignore patterns
           // Allowed characters: alphanumeric, *, ?, /, -, _, ., !, (, ), space, comma
-          .regex(/^[a-zA-Z0-9*?/\-_.,!()\s]*$/, MESSAGES.INVALID_IGNORE_CHARS)
-          .max(1000, MESSAGES.IGNORE_TOO_LONG)
-          .optional()
-          .transform((val) => val?.trim()),
-        outputParsable: z.boolean().optional(),
-        compress: z.boolean().optional(),
-      })
-      .strict(),
-  })
-  .strict()
-  .refine((data) => data.url || data.file, {
-    message: MESSAGES.MISSING_INPUT,
-  })
-  .refine((data) => !(data.url && data.file), {
-    message: MESSAGES.BOTH_PROVIDED,
-  });
+          v.regex(/^[a-zA-Z0-9*?/\-_.,!()\s]*$/, MESSAGES.INVALID_IGNORE_CHARS),
+          v.maxLength(1000, MESSAGES.IGNORE_TOO_LONG),
+          v.trim(),
+        ),
+      ),
+      outputParsable: v.optional(v.boolean()),
+      compress: v.optional(v.boolean()),
+    }),
+  }),
+  v.check((data) => Boolean(data.url || data.file), MESSAGES.MISSING_INPUT),
+  v.check((data) => !(data.url && data.file), MESSAGES.BOTH_PROVIDED),
+);
 
-export type PackRequest = z.infer<typeof packRequestSchema>;
+export type PackRequest = v.InferOutput<typeof packRequestSchema>;
