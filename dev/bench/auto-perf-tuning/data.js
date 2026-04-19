@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776567208199,
+  "lastUpdate": 1776575379188,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5805,6 +5805,51 @@ window.BENCHMARK_DATA = {
             "range": "±65",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1753ms, Q3: 1818ms\nAll times: 1718, 1725, 1736, 1750, 1752, 1753, 1770, 1771, 1778, 1782, 1784, 1792, 1798, 1803, 1812, 1818, 1827, 1828, 1836, 1853ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "f7a1b75af5831d69a2d72546df8899d182615b51",
+          "message": "perf(config): Extract TOKEN_ENCODINGS to avoid gpt-tokenizer load at startup\n\nMove the `TOKEN_ENCODINGS` constant and `TokenEncoding` type out of\n`TokenCounter.ts` into a tiny new module `src/core/metrics/tokenEncodings.ts`,\nand point `configSchema.ts` at that new module. `TokenCounter.ts` re-exports\nboth names so library consumers and existing test mocks keep working.\n\n## Why\n\n`configSchema.ts` sits on the startup critical path: it is pulled in by\n`configLoad.ts` during `runDefaultAction`, before `pack()` runs. Its only\nexternal value import was `TOKEN_ENCODINGS` (a 5-element string array used by\n`v.picklist`) — but that import forced the transitive load of\n`gpt-tokenizer/GptEncoding` + `resolveEncodingAsync`, which cost ~35ms warm\n(measured in isolation, ~45-50ms as observed in packaged runs once BPE rank\nmodelParams + recommended-encoding loaders are resolved).\n\nOn the main thread that load is pure overhead: the actual tokenizer runs\ninside the metrics worker pool via `tokenCounterFactory`, which the main\nthread never touches. The library export in `src/index.ts` keeps working\nvia the re-export. Extracting the constant defers gpt-tokenizer's entire\nmodule graph to first worker spawn, where it already overlaps with\n`searchFiles`/`collectFiles` thanks to the pre-warmup landed earlier in\nthis branch.\n\n## Benchmark\n\nInterleaved A/B on this machine, same source tree, `--include 'src/**'`,\nwarmup=3, then n=40 interleaved measurement runs (median in ms):\n\n| workload                  |  n | baseline median | patched median | delta            |\n|---------------------------|---:|----------------:|---------------:|-----------------:|\n| `--include 'src/**'`      | 40 |         1095 ms |        1066 ms | -29 ms ( -2.65%) |\n| `--include 'src/**'`      | 30 |         1089 ms |        1058 ms | -31 ms ( -2.85%) |\n| `--include 'src,tests'`   | 20 |         1187 ms |        1167 ms | -20 ms ( -1.68%) |\n\nMean delta on the primary `src/**` workload is -33 ms (-3.00%) across 40\nsamples — clearly above the 2% threshold. The `src,tests` workload has\nmore per-file work that dilutes the fixed ~30 ms startup saving to 1.7%,\nso the percentage shrinks as the wall-clock grows; the absolute saving\nis unchanged.\n\nOutput is byte-identical between baseline and patched on the same source\ntree (`diff -q` on the full packed output of `src/**`).\n\n## Verification\n\n- `npm run lint` passes (only 2 pre-existing warnings in unrelated files)\n- `npm run test` — 117 test files / 1166 tests passing\n- Byte-identical pack output confirmed for `--include 'src/**'`",
+          "timestamp": "2026-04-19T05:07:25Z",
+          "tree_id": "ca5bdead6117332613627a40d19d2012a2716451",
+          "url": "https://github.com/yamadashy/repomix/commit/f7a1b75af5831d69a2d72546df8899d182615b51"
+        },
+        "date": 1776575377997,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 935,
+            "range": "±76",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 910ms, Q3: 986ms\nAll times: 865, 886, 889, 895, 895, 903, 903, 910, 910, 910, 911, 917, 928, 928, 933, 935, 937, 945, 954, 955, 960, 983, 986, 993, 1004, 1008, 1024, 1037, 1045, 1071ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1372,
+            "range": "±60",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1365ms, Q3: 1425ms\nAll times: 1335, 1345, 1353, 1356, 1357, 1365, 1369, 1369, 1371, 1371, 1372, 1374, 1390, 1393, 1397, 1425, 1440, 1527, 1544, 1580ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1991,
+            "range": "±104",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1941ms, Q3: 2045ms\nAll times: 1618, 1699, 1923, 1928, 1933, 1941, 1943, 1961, 1964, 1979, 1991, 1991, 2006, 2014, 2015, 2045, 2051, 2099, 2105, 2139ms"
           }
         ]
       }
