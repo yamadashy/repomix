@@ -215,7 +215,7 @@
                 },
                 "plotType": "STACKED_AREA",
                 "targetAxis": "Y1",
-                "legendTemplate": "cached=${metric.label.cached}"
+                "legendTemplate": "cached=${metric.labels.cached}"
               }
             ],
             "yAxis": { "label": "count / 5min", "scale": "LINEAR" }
@@ -480,7 +480,7 @@
                 },
                 "plotType": "STACKED_AREA",
                 "targetAxis": "Y1",
-                "legendTemplate": "compress=${metric.label.compress}"
+                "legendTemplate": "compress=${metric.labels.compress}"
               }
             ],
             "yAxis": { "label": "count / 5min", "scale": "LINEAR" }
@@ -510,7 +510,7 @@
                 },
                 "plotType": "STACKED_AREA",
                 "targetAxis": "Y1",
-                "legendTemplate": "removeComments=${metric.label.remove_comments}"
+                "legendTemplate": "removeComments=${metric.labels.remove_comments}"
               }
             ],
             "yAxis": { "label": "count / 5min", "scale": "LINEAR" }
@@ -540,7 +540,7 @@
                 },
                 "plotType": "STACKED_AREA",
                 "targetAxis": "Y1",
-                "legendTemplate": "outputParsable=${metric.label.output_parsable}"
+                "legendTemplate": "outputParsable=${metric.labels.output_parsable}"
               }
             ],
             "yAxis": { "label": "count / 5min", "scale": "LINEAR" }
@@ -570,7 +570,7 @@
                 },
                 "plotType": "STACKED_AREA",
                 "targetAxis": "Y1",
-                "legendTemplate": "hasIncludePatterns=${metric.label.has_include_patterns}"
+                "legendTemplate": "hasIncludePatterns=${metric.labels.has_include_patterns}"
               }
             ],
             "yAxis": { "label": "count / 5min", "scale": "LINEAR" }
