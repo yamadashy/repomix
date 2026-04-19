@@ -30,18 +30,18 @@ export function getRepoHost(input: { file?: unknown; url?: string }): string {
 }
 
 // Map a validation error to a stable `rejectReason` label for log-based metrics.
-// Matches against the first zod issue's message — strings come from the
+// Matches against the first schema issue's message — strings come from the
 // shared MESSAGES module so schema and classifier cannot drift out of sync.
 // Falls back to 'other' for unmapped paths so a sudden jump in `other`
 // surfaces unknown failure modes in the dashboard. NOTE: only the first issue
 // is classified — a request failing multiple validations (e.g. both URL and
-// options) gets bucketed by whichever zod surfaces first.
+// options) gets bucketed by whichever valibot surfaces first.
 //
-// `validateRequest` wraps ZodError in AppError, so the original issues live on
+// `validateRequest` wraps ValiError in AppError, so the original issues live on
 // `error.cause`. We check both so callers don't need to know which layer is
 // responsible for wrapping.
 //
-// Pre-zod paths (e.g. the JSON.parse failure in packAction) set
+// Pre-schema paths (e.g. the JSON.parse failure in packAction) set
 // `rejectReason: 'invalid_json'` directly at the call site since the label is
 // statically known — no synthetic error needs to be routed through here.
 const MESSAGE_TO_REASON: Record<string, string> = {
@@ -59,7 +59,7 @@ const MESSAGE_TO_REASON: Record<string, string> = {
 };
 
 export function classifyRejectReason(error: unknown): string {
-  const issues = extractZodIssues(error);
+  const issues = extractSchemaIssues(error);
   if (!issues || issues.length === 0) return 'unknown';
 
   const first = issues[0];
@@ -67,23 +67,30 @@ export function classifyRejectReason(error: unknown): string {
   const byMessage = MESSAGE_TO_REASON[msg];
   if (byMessage) return byMessage;
 
-  const path = Array.isArray(first?.path) ? first.path.join('.') : '';
+  // Valibot path segments are `{ key, ... }` objects — extract the `key` field
+  // to reconstruct the dotted path zod used to expose directly.
+  const path = Array.isArray(first?.path)
+    ? first.path
+        .map((segment) => (segment && typeof segment === 'object' && 'key' in segment ? String(segment.key) : ''))
+        .filter((segment) => segment !== '')
+        .join('.')
+    : '';
   if (path === 'format') return 'invalid_format';
   return 'other';
 }
 
-type ZodIssueShape = { message?: string; path?: Array<string | number> };
+type SchemaIssueShape = { message?: string; path?: Array<{ key?: unknown }> };
 
-// Pull `.issues` from either the error itself (raw ZodError) or the wrapped
+// Pull `.issues` from either the error itself (raw ValiError) or the wrapped
 // `.cause` (AppError wrapping). Shallow — doesn't walk the cause chain further.
-function extractZodIssues(error: unknown): ZodIssueShape[] | undefined {
+function extractSchemaIssues(error: unknown): SchemaIssueShape[] | undefined {
   if (!error || typeof error !== 'object') return undefined;
   const direct = (error as { issues?: unknown }).issues;
-  if (Array.isArray(direct)) return direct as ZodIssueShape[];
+  if (Array.isArray(direct)) return direct as SchemaIssueShape[];
   const cause = (error as { cause?: unknown }).cause;
   if (cause && typeof cause === 'object') {
     const causeIssues = (cause as { issues?: unknown }).issues;
-    if (Array.isArray(causeIssues)) return causeIssues as ZodIssueShape[];
+    if (Array.isArray(causeIssues)) return causeIssues as SchemaIssueShape[];
   }
   return undefined;
 }
