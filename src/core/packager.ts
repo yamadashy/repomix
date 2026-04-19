@@ -85,42 +85,53 @@ export const pack = async (
     logger.trace('Failed to prefetch sort data:', error);
   });
 
-  progressCallback('Searching for files...');
-  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
-    Promise.all(
-      rootDirs.map(async (rootDir) => {
-        const result = await deps.searchFiles(rootDir, config, explicitFiles);
-        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
-      }),
-    ),
-  );
-
-  // Deduplicate and sort empty directory paths for reuse during output generation,
-  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
-  const emptyDirPaths = config.output.includeEmptyDirectories
-    ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
-    : undefined;
-
-  // Sort file paths
-  progressCallback('Sorting files...');
-  const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
-
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
-    rootDir,
-    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
-  }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
+  // Pre-initialize the metrics worker pool BEFORE searchFiles so gpt-tokenizer
+  // loading (~400ms per worker) overlaps with the entire downstream pipeline —
+  // search, collection, security check, and processing — instead of starting
+  // only after search completes. Without this, the main thread stalls at
+  // `await metricsWarmupPromise` for ~100-200ms while workers finish warming up.
+  //
+  // We don't yet know the real file count here, so we size the pool with a
+  // fixed estimate of TASKS_PER_THREAD * 2 = 200, which yields 2 worker threads.
+  // This matches the common case (repos with <= ~200 files). Spawning a larger
+  // pool speculatively was measured to be significantly slower — warmup of many
+  // worker threads contends for CPU while the rest of the pipeline is still
+  // active on the main thread.
+  const METRICS_WARMUP_TASK_ESTIMATE = 200;
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
+    METRICS_WARMUP_TASK_ESTIMATE,
     config.tokenCount.encoding,
   );
 
   try {
+    progressCallback('Searching for files...');
+    const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
+      Promise.all(
+        rootDirs.map(async (rootDir) => {
+          const result = await deps.searchFiles(rootDir, config, explicitFiles);
+          return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+        }),
+      ),
+    );
+
+    // Deduplicate and sort empty directory paths for reuse during output generation,
+    // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
+    const emptyDirPaths = config.output.includeEmptyDirectories
+      ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
+      : undefined;
+
+    // Sort file paths
+    progressCallback('Sorting files...');
+    const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
+    const sortedFilePaths = deps.sortPaths(allFilePaths);
+
+    // Regroup sorted file paths by rootDir using Set for O(1) membership checks
+    const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
+    const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+      rootDir,
+      filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+    }));
+
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
