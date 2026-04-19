@@ -1,7 +1,7 @@
 import * as v from 'valibot';
 import { describe, expect, test } from 'vitest';
-import { AppError } from '../../../website/server/src/utils/errorHandler.js';
-import { validateRequest } from '../../../website/server/src/utils/validation.js';
+import { AppError } from '../src/utils/errorHandler.js';
+import { validateRequest } from '../src/utils/validation.js';
 
 // Covers the three distinct paths through validateRequest:
 //   1. successful parse → returns typed output
@@ -9,8 +9,8 @@ import { validateRequest } from '../../../website/server/src/utils/validation.js
 //      on `.cause` (the exact contract classifyRejectReason relies on)
 //   3. anything else → re-thrown unchanged
 //
-// Keeps schemas tiny and self-contained instead of importing packRequestSchema,
-// which pulls in `repomix` (the current repo) and can't be resolved here.
+// Tiny self-contained schemas keep the test focused — packRequestSchema's own
+// behavior is covered indirectly through classifyRejectReason's drift tests.
 describe('validateRequest', () => {
   const schema = v.pipe(
     v.strictObject({
@@ -39,19 +39,15 @@ describe('validateRequest', () => {
   });
 
   test('preserves original ValiError on `.cause` so classifyRejectReason can read `.issues`', () => {
-    // This is the load-bearing contract: dropping `cause` here would silently
-    // break pack_completed.rejectReason labeling in production. Duck-typed
-    // rather than instanceof — the test harness and website/server resolve
-    // valibot from different node_modules paths, so `instanceof` wouldn't
-    // match even when the object is a genuine ValiError.
-    expect.assertions(3);
+    // Load-bearing contract: dropping `cause` here would silently break
+    // pack_completed.rejectReason labeling in production.
+    expect.assertions(2);
     try {
       validateRequest(schema, { name: '' });
     } catch (error) {
-      const cause = (error as AppError).cause as { name: string; issues: unknown[] };
-      expect(cause.name).toBe('ValiError');
-      expect(Array.isArray(cause.issues)).toBe(true);
-      expect(cause.issues.length).toBeGreaterThan(0);
+      const cause = (error as AppError).cause;
+      expect(cause).toBeInstanceOf(v.ValiError);
+      expect((cause as v.ValiError<typeof schema>).issues.length).toBeGreaterThan(0);
     }
   });
 

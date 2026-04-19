@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { classifyRejectReason, getRepoHost } from '../../../website/server/src/actions/packEventSchema.js';
-import { MESSAGES } from '../../../website/server/src/actions/packRequestMessages.js';
+import { classifyRejectReason, getRepoHost } from '../src/actions/packEventSchema.js';
+import { MESSAGES } from '../src/actions/packRequestMessages.js';
 
 // Classifier drift test — imports MESSAGES from the same shared module that
 // packRequestSchema uses. This means a message-text rewrite automatically
@@ -9,10 +9,6 @@ import { MESSAGES } from '../../../website/server/src/actions/packRequestMessage
 // construction. The test's value is catching classifier-logic drift: if the
 // classifier's MESSAGE_TO_REASON map loses a key (or maps it to the wrong
 // label), the corresponding case here fails.
-//
-// Deliberately avoids importing packRequestSchema itself — that file
-// transitively depends on `repomix`, which the root vitest harness can't
-// resolve because repomix IS this repo.
 
 // Construct a minimal valibot-shaped issue. classifyRejectReason only reads
 // `.message` and `.path` from the first issue, so a plain object is enough —
