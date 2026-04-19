@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776575379188,
+  "lastUpdate": 1776585055119,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5850,6 +5850,51 @@ window.BENCHMARK_DATA = {
             "range": "±104",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1941ms, Q3: 2045ms\nAll times: 1618, 1699, 1923, 1928, 1933, 1941, 1943, 1961, 1964, 1979, 1991, 1991, 2006, 2014, 2015, 2045, 2051, 2099, 2105, 2139ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "242680b59f17250f17498c0c17609c1c7ad7b6ca",
+          "message": "perf(git): Memoize isGitRepository to dedupe rev-parse subprocess spawns\n\nwhy\n  In pack runs with `git.includeDiffs` and `git.includeLogs` enabled\n  (repomix's own repo config, and a common combo for AI prompt use),\n  `isGitRepository(rootDir)` is invoked three times concurrently via\n  `Promise.all` — once each from the work-tree diff, staged diff, and git\n  log paths. Each call spawns its own `git rev-parse --is-inside-work-tree`\n  subprocess at ~30 ms apiece.\n\n  Tracing `child_process.execFile` on `--include 'src/**' --quiet` showed\n  the three rev-parse spawns firing at t+963 / t+993 / t+1013 ms, with the\n  diff/log spawns chained behind them. Node's child_process queue\n  serializes fork+exec under event-loop contention from concurrent\n  file-collection I/O, so the three are not fully parallel in practice —\n  they spread ~50 ms across the critical path before the real diff/log\n  work can begin.\n\nwhat\n  Share in-flight rev-parse promises via a module-level Map keyed by\n  directory. The first caller spawns; concurrent callers await the same\n  promise. Bypassed when `deps.execGitRevParse` differs from the module's\n  imported reference, so existing tests that mock the command retain\n  exact call-count semantics without needing per-test reset.\n\n  Export `clearIsGitRepositoryCache()` for tests that exercise the\n  default-deps cache path. The test suite's `beforeEach` now clears it\n  alongside `vi.resetAllMocks()` so stale entries cannot leak across\n  cases. Two new tests cover the dedup path and the cache-reset contract.\n\n  Same boolean result, same error-swallowing on rev-parse failure. Cache\n  scope is the process lifetime; for a single `pack()` run the `.git`\n  state is stable. Long-running library consumers that `git init` a\n  directory between pack calls would observe a cached `false`, which is\n  an explicit trade-off of process-lifetime caching.\n\nbenchmark\n  node bin/repomix.cjs --include 'src/**' --quiet -o /tmp/out.xml\n  interleaved A/B, warmup=3, runs=25:\n\n  before: median=1520ms mean=1528ms stdev=57ms min=1434ms\n  after : median=1482ms mean=1484ms stdev=45ms min=1405ms\n  delta : median -38ms (-2.47%), mean -2.90%\n\n  execFile trace confirms: rev-parse spawn count 3 → 1 for a default\n  pack of repomix itself, total end-to-end spawn count 7 → 5. Git log\n  now starts ~70 ms earlier (t+1021 vs t+1093).\n\nverify\n  npm run lint  ✔ 2 pre-existing warnings in unrelated files, no new\n  npm run test  ✔ 117 files / 1168 tests passing (2 new tests for the\n                   cache dedup and reset paths)\n\nhttps://claude.ai/code/session_01SQQbw5yV2AkgRw7M2jok2B",
+          "timestamp": "2026-04-19T07:48:53Z",
+          "tree_id": "e0961d7153c2849250429ad60d2458b1d69d91c5",
+          "url": "https://github.com/yamadashy/repomix/commit/242680b59f17250f17498c0c17609c1c7ad7b6ca"
+        },
+        "date": 1776585054273,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 910,
+            "range": "±66",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 894ms, Q3: 960ms\nAll times: 873, 876, 877, 878, 878, 890, 893, 894, 895, 898, 903, 903, 907, 909, 909, 910, 915, 928, 930, 930, 939, 952, 960, 974, 986, 991, 1002, 1017, 1018, 1028ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1348,
+            "range": "±36",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1334ms, Q3: 1370ms\nAll times: 1326, 1327, 1332, 1333, 1334, 1334, 1336, 1338, 1341, 1343, 1348, 1353, 1354, 1358, 1359, 1370, 1385, 1388, 1419, 1424ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1863,
+            "range": "±115",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1818ms, Q3: 1933ms\nAll times: 1796, 1800, 1802, 1803, 1812, 1818, 1832, 1835, 1840, 1844, 1863, 1867, 1870, 1877, 1879, 1933, 1962, 2032, 2062, 2081ms"
           }
         ]
       }
