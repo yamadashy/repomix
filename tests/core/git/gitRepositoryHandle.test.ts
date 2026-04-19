@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { getFileChangeCount, isGitInstalled, isGitRepository } from '../../../src/core/git/gitRepositoryHandle.js';
+import * as gitCommand from '../../../src/core/git/gitCommand.js';
+import {
+  clearIsGitRepositoryCache,
+  getFileChangeCount,
+  isGitInstalled,
+  isGitRepository,
+} from '../../../src/core/git/gitRepositoryHandle.js';
 import { logger } from '../../../src/shared/logger.js';
 
 vi.mock('../../../src/shared/logger');
@@ -7,6 +13,9 @@ vi.mock('../../../src/shared/logger');
 describe('gitRepositoryHandle', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // Default-deps callers share a module-level cache; reset between tests
+    // so stale entries never leak across cases.
+    clearIsGitRepositoryCache();
   });
 
   describe('getFileChangeCount', () => {
@@ -71,6 +80,35 @@ describe('gitRepositoryHandle', () => {
 
       expect(result).toBe(false);
       expect(mockExecGitRevParse).toHaveBeenCalledWith('/test/dir');
+    });
+
+    test('should dedupe concurrent default-deps calls for the same directory', async () => {
+      // Spy on the real `execGitRevParse` so the default-deps path hits the
+      // cache. Each invocation would otherwise spawn its own subprocess.
+      const spy = vi.spyOn(gitCommand, 'execGitRevParse').mockResolvedValue('true');
+
+      const [r1, r2, r3] = await Promise.all([
+        isGitRepository('/cached/dir'),
+        isGitRepository('/cached/dir'),
+        isGitRepository('/cached/dir'),
+      ]);
+
+      expect([r1, r2, r3]).toEqual([true, true, true]);
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      spy.mockRestore();
+    });
+
+    test('clearIsGitRepositoryCache forces the next default-deps call to re-run', async () => {
+      const spy = vi.spyOn(gitCommand, 'execGitRevParse').mockResolvedValue('true');
+
+      await isGitRepository('/reset/dir');
+      clearIsGitRepositoryCache();
+      await isGitRepository('/reset/dir');
+
+      expect(spy).toHaveBeenCalledTimes(2);
+
+      spy.mockRestore();
     });
   });
 

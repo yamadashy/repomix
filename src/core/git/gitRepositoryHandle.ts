@@ -24,18 +24,45 @@ export const getFileChangeCount = async (
   }
 };
 
-export const isGitRepository = async (
+// Share in-flight rev-parse promises so concurrent callers against the same
+// directory await one subprocess spawn instead of racing their own. Bypassed
+// for non-default `deps` so test mocks keep exact call-count semantics.
+const isGitRepositoryCache = new Map<string, Promise<boolean>>();
+
+export const clearIsGitRepositoryCache = (): void => {
+  isGitRepositoryCache.clear();
+};
+
+export const isGitRepository = (
   directory: string,
   deps = {
     execGitRevParse,
   },
 ): Promise<boolean> => {
-  try {
-    await deps.execGitRevParse(directory);
-    return true;
-  } catch {
-    return false;
+  const execRevParse = deps.execGitRevParse;
+  const runCheck = async (): Promise<boolean> => {
+    try {
+      await execRevParse(directory);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Non-default deps means a test mock — bypass cache to keep call-count
+  // assertions stable.
+  if (execRevParse !== execGitRevParse) {
+    return runCheck();
   }
+
+  const cached = isGitRepositoryCache.get(directory);
+  if (cached) {
+    return cached;
+  }
+
+  const pending = runCheck();
+  isGitRepositoryCache.set(directory, pending);
+  return pending;
 };
 
 export const isGitInstalled = async (
