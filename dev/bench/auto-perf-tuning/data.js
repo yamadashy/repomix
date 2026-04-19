@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776626167261,
+  "lastUpdate": 1776637686214,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -5940,6 +5940,51 @@ window.BENCHMARK_DATA = {
             "range": "±33",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1724ms, Q3: 1757ms\nAll times: 1706, 1706, 1707, 1712, 1717, 1724, 1725, 1729, 1731, 1733, 1739, 1740, 1745, 1748, 1749, 1757, 1761, 1770, 1774, 1828ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "a9f31c2901e9020a7e424e862fdc91eeeb795245",
+          "message": "perf(file): Collapse globby files+dirs into a single scan in searchFiles\n\nWhen `output.includeEmptyDirectories` is enabled (required by the default\n`<directory_structure>` output that lists empty directory nodes), the\nprevious `searchFiles` issued two back-to-back `globby()` calls over the\nsame tree with identical ignore patterns: one with `onlyFiles: true`,\nthen one with `onlyDirectories: true`. Each scan repeats the full\nrecursive walk and the per-pattern micromatch evaluation.\n\nReplace the pair with a single scan that sets `onlyFiles: false` and\n`objectMode: true`. Globby then yields `{path, dirent}` entries so the\ncaller partitions them by `dirent.isFile()` / `dirent.isDirectory()` in\none pass — matching the two predicates the old `onlyFiles` /\n`onlyDirectories` filters used internally, including the symlink case\n(dirent reports `isSymbolicLink()` true and both `isFile()` and\n`isDirectory()` false under `followSymbolicLinks: false`, so symlinks\nare excluded from both result arrays, as before). The flag-off path\n(default for users without a config that enables empty dirs) is\nunchanged — it still runs one `onlyFiles: true` string-mode scan.\n\nBehaviour preserved:\n- File list is identical to the old `onlyFiles: true` scan (confirmed\n  byte-for-byte on `--include 'src/**'`; the only output delta is\n  fileSearch.ts's own content).\n- Directory list is identical to the old `onlyDirectories: true` scan\n  (tests assert `emptyDirPaths` sort-equivalent).\n- Symlinks to files or directories are still excluded from both arrays\n  under `followSymbolicLinks: false`, verified by a new unit test.\n- EPERM/EACCES is still surfaced as the same `PermissionError` with the\n  same message. The `try/catch` is now wider than before (catches the\n  combined-scan branch as well as the files-only branch), but both\n  branches throw identical errors on the same root cause so the wider\n  catch is a strict improvement — the directory-scan call in the old\n  code had no catch at all and would surface as an unhandled rejection.\n- `includeEmptyDirectories: false` callers keep the original single\n  `onlyFiles: true` scan and still see `emptyDirPaths: []`.\n\n## Benchmark\n\n`node bin/repomix.cjs --include 'src/**' --quiet -o /tmp/out.xml` on\nrepomix itself (which sets `includeEmptyDirectories: true`), interleaved\nA/B with warmup=10:\n\n| workload            | runs | baseline mean | patched mean  | delta              |\n|---------------------|-----:|--------------:|--------------:|-------------------:|\n| `--include 'src/**'`|   60 |       1087 ms |       1050 ms | -37 ms (-3.38%)    |\n| `--include 'src/**'`|   60 |       1085 ms*|       1043 ms*| -42 ms (-3.87%)*   |\n\n*median\n\nDebug trace confirms the mechanism: the empty-dir scan previously logged\n`[empty dirs] Found 26 directories in 43ms`; with the patch the combined\nscan absorbs that work, and the `[globby]` log now reports files and\ndirectory counts together.\n\nThe optimisation is zero-cost for `includeEmptyDirectories: false`\ncallers and clears the 2% threshold on the enabled path.\n\n## Tests\n\n- `npm run test` — 116 files / **1147** tests (+3 new: combined-scan\n  mock shape, single-call count assertion, and symlink-exclusion\n  coverage). Existing consistency test and stale comment updated to\n  reflect the single-call behaviour.\n- `npm run lint` — only 2 pre-existing warnings in unrelated files.\n- Reviewed by three local reviewers (correctness / code-quality /\n  regression-risk). Correctness reviewer flagged a symlink-to-directory\n  regression under the initial `markDirectories: true` approach, which\n  was addressed by switching to `objectMode: true` + explicit dirent\n  predicates. Code-quality nits (over-long comment block, stale\n  `needDirectories` variable name, dropped timing context in a debug\n  log) also addressed in this amend.",
+          "timestamp": "2026-04-19T22:26:13Z",
+          "tree_id": "177e5ddd93fe43907952cf14990643fe299f5d01",
+          "url": "https://github.com/yamadashy/repomix/commit/a9f31c2901e9020a7e424e862fdc91eeeb795245"
+        },
+        "date": 1776637685545,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 893,
+            "range": "±49",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 873ms, Q3: 922ms\nAll times: 829, 846, 846, 855, 863, 865, 873, 873, 874, 875, 880, 880, 884, 888, 888, 893, 902, 902, 904, 905, 910, 917, 922, 929, 963, 965, 974, 975, 1021, 1074ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1364,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1349ms, Q3: 1376ms\nAll times: 1327, 1340, 1342, 1347, 1349, 1349, 1350, 1352, 1358, 1362, 1364, 1366, 1369, 1370, 1374, 1376, 1377, 1382, 1393, 1416ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1662,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1645ms, Q3: 1671ms\nAll times: 1626, 1628, 1635, 1639, 1645, 1645, 1646, 1646, 1649, 1654, 1662, 1667, 1667, 1668, 1671, 1671, 1674, 1675, 1703, 1708ms"
           }
         ]
       }
