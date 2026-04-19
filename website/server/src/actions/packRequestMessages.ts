@@ -1,9 +1,9 @@
 // Shared validation-error message strings used by both packRequestSchema (the
-// producer — zod issues) and packEventSchema.classifyRejectReason (the consumer
-// — maps message back to a metric label). Keeping these in one module makes
-// drift impossible by construction: a message rewrite propagates to both
-// sides automatically, and the reject-reason bucket on the dashboard stays
-// aligned with what zod actually emits.
+// producer — valibot issues) and packEventSchema.classifyRejectReason (the
+// consumer — maps message back to a metric label). Keeping these in one
+// module makes drift impossible by construction: a message rewrite propagates
+// to both sides automatically, and the reject-reason bucket on the dashboard
+// stays aligned with what valibot actually emits.
 //
 // Tests import the same constants, so there is no third copy to keep in sync.
 
