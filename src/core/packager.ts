@@ -95,14 +95,17 @@ export const pack = async (
     // critical path. Launching here lets that load overlap with searchFiles, security
     // check, fileProcess, and sortOutputFiles, collapsing the later await to a near no-op.
     //
-    // `numOfTasks` is a fixed estimate (actual file count is not yet known) — with
-    // TASKS_PER_THREAD=100 in processConcurrency.ts this maps to `maxThreads=2`. Benchmarks
-    // on the gpt-tokenizer workload show 2 workers outperform higher thread counts because
-    // per-file batches are small (~10 files) and IPC overhead dominates tokenization time.
-    // The pool is reused by `calculateMetrics` (which does not re-create it), so this is
-    // the final thread cap — it intentionally stays small across repo sizes.
+    // `numOfTasks=400` is a fixed estimate (actual file count is not yet known) — with
+    // TASKS_PER_THREAD=100 in processConcurrency.ts this maps to `maxThreads=4` on machines
+    // with ≥4 logical CPUs (capped at `availableParallelism` on smaller hosts, so a
+    // 2-CPU runner still gets 2 workers). Two workers leave one tokenizer fully blocked
+    // by the ~600ms git-log token count whenever `output.git.includeLogs` is enabled,
+    // starving file-metrics batches of parallelism. Bumping to four lets the git-log task
+    // own one tokenizer while the remaining three drain the file-metrics queue, halving
+    // the metrics-phase wall time. The pool is reused by `calculateMetrics` (which does
+    // not re-create it), so this is the final thread cap.
     ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-      200,
+      400,
       config.tokenCount.encoding,
     ));
 
@@ -113,8 +116,10 @@ export const pack = async (
     // parallel with searchFiles, collectFiles, and processFiles. Skipped when the user
     // disables the security check so `--no-security-check` pays none of this cost.
     //
-    // `numOfTasks=200` mirrors the metrics pool: with TASKS_PER_THREAD=100 it maps to
-    // `maxThreads=2`, the same cap `runSecurityCheck` applies internally.
+    // `numOfTasks=200` matches the cap `runSecurityCheck` applies internally
+    // (`MAX_SECURITY_WORKERS=2`): with TASKS_PER_THREAD=100 this maps to `maxThreads=2`.
+    // Kept lower than the metrics pool because secretlint batches are CPU-cheap and
+    // extra workers would only duplicate the ~150ms preset load with no parallelism win.
     if (config.security.enableSecurityCheck) {
       securityRunnerWithWarmup = deps.createSecurityTaskRunner(200);
     }
