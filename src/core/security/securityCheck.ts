@@ -3,6 +3,7 @@ import { logger } from '../../shared/logger.js';
 import {
   getProcessConcurrency as defaultGetProcessConcurrency,
   initTaskRunner,
+  type TaskRunner,
 } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
@@ -18,6 +19,13 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
+export type SecurityCheckTaskRunner = TaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>;
+
+export interface SecurityTaskRunnerWithWarmup {
+  taskRunner: SecurityCheckTaskRunner;
+  warmupPromise: Promise<unknown>;
+}
+
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
 // Each batch is sent as a single message to a worker thread, avoiding
 // per-file round-trip costs that dominate when processing many files.
@@ -27,16 +35,56 @@ export interface SuspiciousFileResult {
 // is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
 const BATCH_SIZE = 50;
 
+// Cap security workers at 2 to reduce contention with the metrics worker pool that
+// runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
+// so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
+const MAX_SECURITY_WORKERS = 2;
+
+// Create a security worker task runner and fire a no-op warmup task per worker
+// so `@secretlint/core` and its rule preset load in parallel with the rest of
+// the pack pipeline (searchFiles, collectFiles, fileProcess), removing the
+// ~150ms worker-spawn + secretlint module-load cost from the critical path.
+// Mirrors `createMetricsTaskRunner` in shape.
+export const createSecurityTaskRunner = (
+  numOfTasks: number,
+  deps = {
+    initTaskRunner,
+    getProcessConcurrency: defaultGetProcessConcurrency,
+  },
+): SecurityTaskRunnerWithWarmup => {
+  const maxSecurityWorkers = Math.min(MAX_SECURITY_WORKERS, deps.getProcessConcurrency());
+  const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+    numOfTasks,
+    workerType: 'securityCheck',
+    runtime: 'worker_threads',
+    maxWorkerThreads: maxSecurityWorkers,
+  });
+
+  // Each warmup task has an empty `items` array, so the worker's file loop is
+  // a no-op — only the module load cost is paid, once per worker.
+  const warmupPromise = Promise.all(
+    Array.from({ length: maxSecurityWorkers }, () => taskRunner.run({ items: [] }).catch(() => [])),
+  );
+
+  return { taskRunner, warmupPromise };
+};
+
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
   progressCallback: RepomixProgressCallback = () => {},
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
-  deps = {
-    initTaskRunner,
-    getProcessConcurrency: defaultGetProcessConcurrency,
-  },
+  deps: {
+    initTaskRunner?: typeof initTaskRunner;
+    getProcessConcurrency?: typeof defaultGetProcessConcurrency;
+    // Pre-warmed task runner from `createSecurityTaskRunner`. When supplied
+    // the inner cleanup is skipped so the caller retains ownership of the
+    // pool (cleaned up in `pack()`'s outer `finally`).
+    taskRunner?: SecurityCheckTaskRunner;
+  } = {},
 ): Promise<SuspiciousFileResult[]> => {
+  const initTaskRunnerFn = deps.initTaskRunner ?? initTaskRunner;
+  const getProcessConcurrencyFn = deps.getProcessConcurrency ?? defaultGetProcessConcurrency;
   const gitDiffItems: SecurityCheckItem[] = [];
   const gitLogItems: SecurityCheckItem[] = [];
 
@@ -84,18 +132,18 @@ export const runSecurityCheck = async (
     return [];
   }
 
-  // Cap security workers at 2 to reduce contention with the metrics worker pool that
-  // runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
-  // so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
-  const maxSecurityWorkers = Math.min(2, deps.getProcessConcurrency());
-
+  // Reuse a pre-warmed task runner when provided by `pack()` via
+  // `createSecurityTaskRunner`; the caller then owns the pool lifecycle.
+  const ownedTaskRunner = deps.taskRunner ?? null;
   // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-    numOfTasks: totalItems,
-    workerType: 'securityCheck',
-    runtime: 'worker_threads',
-    maxWorkerThreads: maxSecurityWorkers,
-  });
+  const taskRunner =
+    ownedTaskRunner ??
+    initTaskRunnerFn<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
+      numOfTasks: totalItems,
+      workerType: 'securityCheck',
+      runtime: 'worker_threads',
+      maxWorkerThreads: Math.min(MAX_SECURITY_WORKERS, getProcessConcurrencyFn()),
+    });
 
   // Split items into batches to reduce IPC round-trips
   const batches: SecurityCheckItem[][] = [];
@@ -131,6 +179,10 @@ export const runSecurityCheck = async (
     logger.error('Error during security check:', error);
     throw error;
   } finally {
-    await taskRunner.cleanup();
+    // Only dispose of the pool when we created it ourselves. An externally
+    // owned pool (pre-warmed by `pack()`) is cleaned up by the caller.
+    if (!ownedTaskRunner) {
+      await taskRunner.cleanup();
+    }
   }
 };

@@ -5,7 +5,7 @@ import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import { filterOutUntrustedFiles } from './filterOutUntrustedFiles.js';
-import { runSecurityCheck, type SuspiciousFileResult } from './securityCheck.js';
+import { runSecurityCheck, type SecurityCheckTaskRunner, type SuspiciousFileResult } from './securityCheck.js';
 
 // Marks which files are suspicious and which are safe
 // Returns Git diff results separately so they can be included in the output
@@ -16,18 +16,32 @@ export const validateFileSafety = async (
   config: RepomixConfigMerged,
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
-  deps = {
-    runSecurityCheck,
-    filterOutUntrustedFiles,
-  },
+  deps: {
+    runSecurityCheck?: typeof runSecurityCheck;
+    filterOutUntrustedFiles?: typeof filterOutUntrustedFiles;
+    // Pre-warmed security worker pool supplied by `pack()` via
+    // `createSecurityTaskRunner`. When present we pass it through to
+    // `runSecurityCheck` so secretlint loading overlaps with the rest of the
+    // pack pipeline instead of blocking between collect and security.
+    securityTaskRunner?: SecurityCheckTaskRunner;
+  } = {},
 ) => {
+  const runSecurityCheckFn = deps.runSecurityCheck ?? runSecurityCheck;
+  const filterOutUntrustedFilesFn = deps.filterOutUntrustedFiles ?? filterOutUntrustedFiles;
+
   let suspiciousFilesResults: SuspiciousFileResult[] = [];
   let suspiciousGitDiffResults: SuspiciousFileResult[] = [];
   let suspiciousGitLogResults: SuspiciousFileResult[] = [];
 
   if (config.security.enableSecurityCheck) {
     progressCallback('Running security check...');
-    const allResults = await deps.runSecurityCheck(rawFiles, progressCallback, gitDiffResult, gitLogResult);
+    const allResults = await runSecurityCheckFn(
+      rawFiles,
+      progressCallback,
+      gitDiffResult,
+      gitLogResult,
+      deps.securityTaskRunner ? { taskRunner: deps.securityTaskRunner } : undefined,
+    );
 
     // Separate Git diff and Git log results from regular file results
     suspiciousFilesResults = allResults.filter((result) => result.type === 'file');
@@ -38,7 +52,7 @@ export const validateFileSafety = async (
     logSuspiciousContentWarning('Git logs', suspiciousGitLogResults);
   }
 
-  const safeRawFiles = deps.filterOutUntrustedFiles(rawFiles, suspiciousFilesResults);
+  const safeRawFiles = filterOutUntrustedFilesFn(rawFiles, suspiciousFilesResults);
   const safeFilePaths = safeRawFiles.map((file) => file.path);
   logger.trace('Safe files count:', safeRawFiles.length);
 

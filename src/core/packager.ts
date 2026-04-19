@@ -14,7 +14,7 @@ import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -43,6 +43,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityTaskRunner,
   sortPaths,
   sortOutputFiles,
   prefetchSortData,
@@ -79,26 +80,45 @@ export const pack = async (
 
   logMemoryUsage('Pack - Start');
 
-  // Pre-initialize the metrics worker pool BEFORE searchFiles to maximise warmup overlap.
-  // Previously, warmup began after searchFiles + sortPaths and its ~500ms gpt-tokenizer
-  // BPE load still blocked the later `await metricsWarmupPromise` for ~250ms on the
-  // critical path. Launching here lets that load overlap with searchFiles, security
-  // check, fileProcess, and sortOutputFiles, collapsing the later await to a near no-op.
-  //
-  // `numOfTasks` is a fixed estimate (actual file count is not yet known) — with
-  // TASKS_PER_THREAD=100 in processConcurrency.ts this maps to `maxThreads=2`. Benchmarks
-  // on the gpt-tokenizer workload show 2 workers outperform higher thread counts because
-  // per-file batches are small (~10 files) and IPC overhead dominates tokenization time.
-  // The pool is reused by `calculateMetrics` (which does not re-create it), so this is
-  // the final thread cap — it intentionally stays small across repo sizes.
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    200,
-    config.tokenCount.encoding,
-  );
+  // Pools are declared here and assigned inside the `try` so that a throw from
+  // either `createXxxTaskRunner` constructor (e.g. Tinypool failing to spawn a
+  // worker) still hits the `finally` block and disposes of whichever pool was
+  // successfully created.
+  let metricsTaskRunner: Awaited<ReturnType<typeof deps.createMetricsTaskRunner>>['taskRunner'] | null = null;
+  let metricsWarmupPromise: Awaited<ReturnType<typeof deps.createMetricsTaskRunner>>['warmupPromise'] | null = null;
+  let securityRunnerWithWarmup: ReturnType<typeof deps.createSecurityTaskRunner> | null = null;
 
-  // Place the pool inside the outer try/finally below to guarantee cleanup if any
-  // pre-collect step (searchFiles, sortPaths, etc.) throws before the inner work.
   try {
+    // Pre-initialize the metrics worker pool BEFORE searchFiles to maximise warmup overlap.
+    // Previously, warmup began after searchFiles + sortPaths and its ~500ms gpt-tokenizer
+    // BPE load still blocked the later `await metricsWarmupPromise` for ~250ms on the
+    // critical path. Launching here lets that load overlap with searchFiles, security
+    // check, fileProcess, and sortOutputFiles, collapsing the later await to a near no-op.
+    //
+    // `numOfTasks` is a fixed estimate (actual file count is not yet known) — with
+    // TASKS_PER_THREAD=100 in processConcurrency.ts this maps to `maxThreads=2`. Benchmarks
+    // on the gpt-tokenizer workload show 2 workers outperform higher thread counts because
+    // per-file batches are small (~10 files) and IPC overhead dominates tokenization time.
+    // The pool is reused by `calculateMetrics` (which does not re-create it), so this is
+    // the final thread cap — it intentionally stays small across repo sizes.
+    ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+      200,
+      config.tokenCount.encoding,
+    ));
+
+    // Pre-initialize the security worker pool for the same reason as the metrics warmup:
+    // `@secretlint/core` + its recommended rule preset take ~150ms to load inside the
+    // worker, and without a pre-warmup that load sits on the critical path between
+    // `collectFiles` and the security result. Launching here lets secretlint load in
+    // parallel with searchFiles, collectFiles, and processFiles. Skipped when the user
+    // disables the security check so `--no-security-check` pays none of this cost.
+    //
+    // `numOfTasks=200` mirrors the metrics pool: with TASKS_PER_THREAD=100 it maps to
+    // `maxThreads=2`, the same cap `runSecurityCheck` applies internally.
+    if (config.security.enableSecurityCheck) {
+      securityRunnerWithWarmup = deps.createSecurityTaskRunner(200);
+    }
+
     // Pre-fetch git file-change counts for sortOutputFiles while search and
     // collection are in flight, so the later sortOutputFiles call is a cache hit.
     const sortDataPromise = deps.prefetchSortData(config).catch((error) => {
@@ -161,7 +181,9 @@ export const pack = async (
     // After both complete, filter out any suspicious files from the processed results.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
+          securityTaskRunner: securityRunnerWithWarmup?.taskRunner,
+        }),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
@@ -249,7 +271,10 @@ export const pack = async (
           gitDiffResult,
           gitLogResult,
           {
-            taskRunner: metricsTaskRunner,
+            // Non-null: if the pool constructor had failed, the throw would
+            // have bypassed this point and gone straight to `finally`.
+            // biome-ignore lint/style/noNonNullAssertion: see comment above
+            taskRunner: metricsTaskRunner!,
           },
         ),
       ),
@@ -271,7 +296,17 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsWarmupPromise.catch(() => {});
-    await metricsTaskRunner.cleanup();
+    // Null checks guard against `createXxxTaskRunner` having thrown before
+    // assignment — in that case there's nothing to await or dispose.
+    if (metricsWarmupPromise) {
+      await metricsWarmupPromise.catch(() => {});
+    }
+    if (metricsTaskRunner) {
+      await metricsTaskRunner.cleanup();
+    }
+    if (securityRunnerWithWarmup) {
+      await securityRunnerWithWarmup.warmupPromise.catch(() => {});
+      await securityRunnerWithWarmup.taskRunner.cleanup();
+    }
   }
 };
