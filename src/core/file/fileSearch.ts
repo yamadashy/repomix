@@ -199,11 +199,42 @@ export const searchFiles = async (
     const globbyStartTime = Date.now();
 
     const globby = await loadGlobby();
-    const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-      onlyFiles: true,
-    }).catch((error: unknown) => {
-      // Handle EPERM errors specifically
+    const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+    const collectDirectories = config.output.includeEmptyDirectories === true;
+
+    // When empty-directory tracking is on, fold the files-and-directories query
+    // into a single globby scan: `objectMode` gives us each `Dirent` so we can
+    // partition by type without a second tree walk + micromatch pass. The
+    // `isFile()` / `isDirectory()` predicates produce the same file and
+    // directory sets that the previous `onlyFiles: true` and
+    // `onlyDirectories: true` scans did. Entries for which both predicates
+    // return false (symlinks under `followSymbolicLinks: false`, sockets,
+    // FIFOs, etc.) are dropped from both output arrays — matching the old
+    // behaviour, since neither of the old scans would have emitted them.
+    let filePaths: string[];
+    const directories: string[] = [];
+    try {
+      if (collectDirectories) {
+        const entries = await globby(includePatterns, {
+          ...baseGlobbyOptions,
+          onlyFiles: false,
+          objectMode: true,
+        });
+        filePaths = [];
+        for (const entry of entries) {
+          if (entry.dirent.isFile()) {
+            filePaths.push(entry.path);
+          } else if (entry.dirent.isDirectory()) {
+            directories.push(entry.path);
+          }
+        }
+      } else {
+        filePaths = await globby(includePatterns, {
+          ...baseGlobbyOptions,
+          onlyFiles: true,
+        });
+      }
+    } catch (error: unknown) {
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
       if (code === 'EPERM' || code === 'EACCES') {
         throw new PermissionError(
@@ -212,24 +243,16 @@ export const searchFiles = async (
         );
       }
       throw error;
-    });
+    }
 
     const globbyElapsedTime = Date.now() - globbyStartTime;
-    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+    logger.debug(
+      `[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files` +
+        (collectDirectories ? ` and ${directories.length} directories` : ''),
+    );
 
     let emptyDirPaths: string[] = [];
-    if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories...');
-      const emptyDirStartTime = Date.now();
-
-      const directories = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyDirectories: true,
-      });
-
-      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
-
+    if (collectDirectories) {
       const filterStartTime = Date.now();
       emptyDirPaths = await findEmptyDirectories(rootDir, directories);
       const filterTime = Date.now() - filterStartTime;

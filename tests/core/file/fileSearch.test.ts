@@ -109,9 +109,25 @@ describe('fileSearch', () => {
       const mockFilePaths = ['src/file1.js', 'src/file2.js'];
       const mockEmptyDirs = ['src/empty', 'empty-root'];
 
+      // A single combined scan (`objectMode: true`) returns `GlobEntry`-shaped
+      // objects so the caller can partition by `dirent.isFile()` /
+      // `dirent.isDirectory()` without a second walk.
+      const makeEntry = (path: string, type: 'file' | 'dir') => ({
+        path,
+        name: path,
+        dirent: {
+          isFile: () => type === 'file',
+          isDirectory: () => type === 'dir',
+          isSymbolicLink: () => false,
+        },
+      });
       vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
-        if ((options as Record<string, unknown>)?.onlyDirectories) {
-          return mockEmptyDirs;
+        const opts = options as Record<string, unknown>;
+        if (opts?.objectMode === true) {
+          return [
+            ...mockFilePaths.map((p) => makeEntry(p, 'file')),
+            ...mockEmptyDirs.map((p) => makeEntry(p, 'dir')),
+          ] as unknown as string[];
         }
         return mockFilePaths;
       });
@@ -122,6 +138,8 @@ describe('fileSearch', () => {
 
       expect(result.filePaths).toEqual(mockFilePaths);
       expect(result.emptyDirPaths.sort()).toEqual(mockEmptyDirs.sort());
+      // Single combined scan rather than two back-to-back globby calls.
+      expect(globby).toHaveBeenCalledTimes(1);
     });
 
     test('should not collect empty directories when disabled', async () => {
@@ -134,7 +152,8 @@ describe('fileSearch', () => {
       const mockFilePaths = ['src/file1.js', 'src/file2.js'];
 
       vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
-        if ((options as Record<string, unknown>)?.onlyDirectories) {
+        const opts = options as Record<string, unknown>;
+        if (opts?.onlyDirectories === true || opts?.objectMode === true) {
           throw new Error('Should not search for directories when disabled');
         }
         return mockFilePaths;
@@ -145,6 +164,47 @@ describe('fileSearch', () => {
       expect(result.filePaths).toEqual(mockFilePaths);
       expect(result.emptyDirPaths).toEqual([]);
       expect(globby).toHaveBeenCalledTimes(1);
+    });
+
+    test('should exclude symlinks (to files or directories) from both results', async () => {
+      const mockConfig = createMockConfig({
+        output: {
+          includeEmptyDirectories: true,
+        },
+      });
+
+      // Simulates globby's behaviour under `followSymbolicLinks: false`:
+      // symlink dirents report neither isFile() nor isDirectory() as true.
+      // Those entries must not appear in either the files or directories list.
+      vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
+        const opts = options as Record<string, unknown>;
+        if (opts?.objectMode === true) {
+          return [
+            {
+              path: 'src/file.js',
+              name: 'file.js',
+              dirent: { isFile: () => true, isDirectory: () => false, isSymbolicLink: () => false },
+            },
+            {
+              path: 'src/empty',
+              name: 'empty',
+              dirent: { isFile: () => false, isDirectory: () => true, isSymbolicLink: () => false },
+            },
+            {
+              path: 'src/link-to-dir',
+              name: 'link-to-dir',
+              dirent: { isFile: () => false, isDirectory: () => false, isSymbolicLink: () => true },
+            },
+          ] as unknown as string[];
+        }
+        return [] as string[];
+      });
+      vi.mocked(fs.readdir).mockResolvedValue([]);
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      expect(result.filePaths).toEqual(['src/file.js']);
+      expect(result.emptyDirPaths).toEqual(['src/empty']);
     });
   });
 
@@ -928,9 +988,9 @@ node_modules
       await listDirectories('/test/root', mockConfig);
       await listFiles('/test/root', mockConfig);
 
-      // searchFiles calls globby twice (files + directories if includeEmptyDirectories is true)
-      // listDirectories calls globby once
-      // listFiles calls globby once
+      // searchFiles, listDirectories, and listFiles each issue one globby call
+      // with the default config here (no `includeEmptyDirectories`, so
+      // searchFiles takes the `onlyFiles: true` branch).
       const calls = vi.mocked(globby).mock.calls;
 
       // Verify all calls have consistent base options
