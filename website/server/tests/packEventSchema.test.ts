@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { describe, expect, test } from 'vitest';
 import { classifyRejectReason, getRepoHost } from '../src/actions/packEventSchema.js';
 import { MESSAGES } from '../src/actions/packRequestMessages.js';
@@ -73,6 +74,20 @@ describe('classifyRejectReason', () => {
     // Cause is the raw schema-error shape, carried through AppError wrapping.
     expect((wrappedErr.cause as { issues: unknown[] }).issues).toHaveLength(1);
     expect(classifyRejectReason(wrappedErr)).toBe('missing_input');
+  });
+
+  test('real valibot issues — guards against PathItem shape drift', () => {
+    // The other tests in this file use a hand-rolled `schemaErrorWith` fixture.
+    // That's fine for exercising classifier logic, but if valibot ever changes
+    // its internal PathItem shape the fixture would silently lie — green tests,
+    // red production. This test runs v.safeParse so the classifier sees a real
+    // valibot-emitted issue; if the shape drifts, `v.getDotPath` here returns
+    // something other than `'format'` and `invalid_format` bucketing breaks.
+    const schema = v.object({ format: v.picklist(['xml', 'markdown']) });
+    const result = v.safeParse(schema, { format: 'yaml' });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(classifyRejectReason({ name: 'ValiError', issues: result.issues })).toBe('invalid_format');
   });
 });
 
