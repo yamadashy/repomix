@@ -11,15 +11,11 @@ export function validateRequest<TSchema extends v.GenericSchema>(
     if (error instanceof v.ValiError) {
       const messages = error.issues
         .map((issue) => {
-          const path = Array.isArray(issue.path)
-            ? issue.path
-                .map((segment: { key?: unknown }) =>
-                  segment && typeof segment === 'object' && 'key' in segment ? String(segment.key) : '',
-                )
-                .filter((segment: string) => segment !== '')
-                .join('.')
-            : '';
-          return `${path}: ${issue.message}`;
+          // Top-level issues (e.g. the MISSING_INPUT / BOTH_PROVIDED checks)
+          // have no path — skip the prefix so the message doesn't start with
+          // a stray `": "`.
+          const path = v.getDotPath(issue) ?? '';
+          return path ? `${path}: ${issue.message}` : issue.message;
         })
         .join(', ');
       // Preserve the original ValiError via `cause` so downstream log classifiers

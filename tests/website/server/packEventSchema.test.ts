@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'vitest';
-import { z } from 'zod';
 import { classifyRejectReason, getRepoHost } from '../../../website/server/src/actions/packEventSchema.js';
 import { MESSAGES } from '../../../website/server/src/actions/packRequestMessages.js';
 
@@ -15,17 +14,20 @@ import { MESSAGES } from '../../../website/server/src/actions/packRequestMessage
 // transitively depends on `repomix`, which the root vitest harness can't
 // resolve because repomix IS this repo.
 
-// Construct a ZodError with a single issue whose message matches the shared
-// constant. classifyRejectReason only reads `.message` and `.path` from the
-// first issue.
-const zodErrorWith = (message: string, path: (string | number)[] = []) =>
-  new z.ZodError([{ code: 'custom', message, path, input: undefined }]);
+// Construct a minimal valibot-shaped issue. classifyRejectReason only reads
+// `.message` and `.path` from the first issue, so a plain object is enough —
+// instantiating v.ValiError here would require synthesizing a full BaseIssue
+// (kind/type/input/expected/received) that the classifier never touches.
+const schemaErrorWith = (message: string, path: readonly (string | number)[] = []) => ({
+  name: 'ValiError',
+  issues: [{ message, path: path.map((key) => ({ key })) }],
+});
 
 // Mimic the AppError-with-cause wrapping that `validateRequest` does in
 // production — native Error with `cause` is enough to exercise the
 // cause-chain path in classifyRejectReason.
-const wrapped = (message: string, path: (string | number)[] = []) =>
-  new Error(`Invalid request: ${message}`, { cause: zodErrorWith(message, path) });
+const wrapped = (message: string, path: readonly (string | number)[] = []) =>
+  new Error(`Invalid request: ${message}`, { cause: schemaErrorWith(message, path) });
 
 describe('classifyRejectReason', () => {
   test.each([
@@ -41,18 +43,18 @@ describe('classifyRejectReason', () => {
     ['include_too_long', MESSAGES.INCLUDE_TOO_LONG],
     ['ignore_too_long', MESSAGES.IGNORE_TOO_LONG],
   ])('%s — classifies "%s"', (expected, message) => {
-    expect(classifyRejectReason(zodErrorWith(message))).toBe(expected);
+    expect(classifyRejectReason(schemaErrorWith(message))).toBe(expected);
     // Wrapped via AppError.cause (the real production path)
     expect(classifyRejectReason(wrapped(message))).toBe(expected);
   });
 
   test('invalid_format — path "format" maps regardless of message text', () => {
-    const err = zodErrorWith('any zod message', ['format']);
+    const err = schemaErrorWith('any schema message', ['format']);
     expect(classifyRejectReason(err)).toBe('invalid_format');
   });
 
   test('other — unmapped message + unmapped path', () => {
-    const err = zodErrorWith('some never-seen message', ['options', 'compress']);
+    const err = schemaErrorWith('some never-seen message', ['options', 'compress']);
     expect(classifyRejectReason(err)).toBe('other');
   });
 
@@ -62,8 +64,8 @@ describe('classifyRejectReason', () => {
     expect(classifyRejectReason('string error')).toBe('unknown');
   });
 
-  test('unknown — ZodError with empty issues', () => {
-    expect(classifyRejectReason(new z.ZodError([]))).toBe('unknown');
+  test('unknown — schema error with empty issues', () => {
+    expect(classifyRejectReason({ name: 'ValiError', issues: [] })).toBe('unknown');
   });
 
   test('unknown — plain Error without issues', () => {
@@ -72,7 +74,8 @@ describe('classifyRejectReason', () => {
 
   test('cause-chain extraction — issues live on error.cause (AppError path)', () => {
     const wrappedErr = wrapped('Either URL or file must be provided');
-    expect(wrappedErr.cause).toBeInstanceOf(z.ZodError);
+    // Cause is the raw schema-error shape, carried through AppError wrapping.
+    expect((wrappedErr.cause as { issues: unknown[] }).issues).toHaveLength(1);
     expect(classifyRejectReason(wrappedErr)).toBe('missing_input');
   });
 });

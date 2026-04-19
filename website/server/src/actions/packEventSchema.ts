@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { MESSAGES } from './packRequestMessages.js';
 
 // Shared log schema for `pack_completed` events. Used by packAction (success /
@@ -67,14 +68,11 @@ export function classifyRejectReason(error: unknown): string {
   const byMessage = MESSAGE_TO_REASON[msg];
   if (byMessage) return byMessage;
 
-  // Valibot path segments are `{ key, ... }` objects — extract the `key` field
-  // to reconstruct the dotted path zod used to expose directly.
-  const path = Array.isArray(first?.path)
-    ? first.path
-        .map((segment) => (segment && typeof segment === 'object' && 'key' in segment ? String(segment.key) : ''))
-        .filter((segment) => segment !== '')
-        .join('.')
-    : '';
+  // v.getDotPath collapses valibot's PathItem[] into a dotted string. Using
+  // the library's own utility keeps this and validation.ts from drifting on
+  // path formatting, and returns null when segment keys aren't string/number
+  // (which we treat the same as 'no path').
+  const path = first ? (v.getDotPath(first as v.BaseIssue<unknown>) ?? '') : '';
   if (path === 'format') return 'invalid_format';
   return 'other';
 }
