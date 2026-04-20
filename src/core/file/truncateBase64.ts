@@ -32,17 +32,39 @@ export const truncateBase64Content = (content: string): string => {
     return `data:${mimeType}${params || ''};base64,${preview}...`;
   });
 
-  // Replace standalone base64 strings
-  processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
-    // Check if this looks like actual base64 (not just a long string)
-    if (isLikelyBase64(base64String)) {
-      const preview = base64String.substring(0, TRUNCATION_LENGTH);
-      return `${preview}...`;
-    }
-    return match;
-  });
+  // Standalone base64 detection requires a run of ≥MIN_BASE64_LENGTH_STANDALONE chars in
+  // [A-Za-z0-9+/]. Any newline breaks that run, so if no single line reaches that length
+  // the regex cannot possibly match. Source-code repositories overwhelmingly consist of
+  // short lines, so this cheap pre-scan lets the vast majority of files skip an O(n) regex
+  // scan whose replace() also allocates a fresh string per call.
+  if (hasLineAtLeast(processedContent, MIN_BASE64_LENGTH_STANDALONE)) {
+    processedContent = processedContent.replace(standaloneBase64Pattern, (match, base64String) => {
+      // Check if this looks like actual base64 (not just a long string)
+      if (isLikelyBase64(base64String)) {
+        const preview = base64String.substring(0, TRUNCATION_LENGTH);
+        return `${preview}...`;
+      }
+      return match;
+    });
+  }
 
   return processedContent;
+};
+
+const hasLineAtLeast = (content: string, minLen: number): boolean => {
+  if (content.length < minLen) return false;
+  let start = 0;
+  while (start <= content.length - minLen) {
+    const nl = content.indexOf('\n', start);
+    if (nl === -1) {
+      return content.length - start >= minLen;
+    }
+    if (nl - start >= minLen) {
+      return true;
+    }
+    start = nl + 1;
+  }
+  return false;
 };
 
 /**
