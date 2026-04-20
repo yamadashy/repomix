@@ -12,6 +12,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { METRICS_POOL_SIZING_ESTIMATE } from './metrics/metricsPoolConfig.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
@@ -105,7 +106,7 @@ export const pack = async (
     // the metrics-phase wall time. The pool is reused by `calculateMetrics` (which does
     // not re-create it), so this is the final thread cap.
     ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-      400,
+      METRICS_POOL_SIZING_ESTIMATE,
       config.tokenCount.encoding,
     ));
 

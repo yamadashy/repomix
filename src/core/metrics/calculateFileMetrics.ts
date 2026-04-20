@@ -1,17 +1,23 @@
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
+import { getWorkerThreadCount } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
+import { METRICS_POOL_SIZING_ESTIMATE } from './metricsPoolConfig.js';
 import { type MetricsTaskRunner, runBatchTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { FileMetrics } from './workers/types.js';
 
-// Batch size for grouping files into worker tasks to reduce IPC overhead.
-// Each batch is sent as a single message to a worker thread, avoiding
-// per-file round-trip costs (~0.5ms each) that dominate when processing many files.
-// A size of 10 keeps individual worker tasks small so that workers become available sooner,
-// enabling overlap between file metrics and output generation.
-const METRICS_BATCH_SIZE = 10;
+// Floor on batch size so IPC overhead stays amortised across multiple files
+// per round-trip, even on small repos.
+const MIN_METRICS_BATCH_SIZE = 50;
+
+// Target batches per worker. Trades off IPC overhead (fewer, bigger batches)
+// against load balance when file sizes vary (more, smaller batches). Empirically
+// ~8 keeps structured-clone + futex wake-ups under 10% of the file-metrics
+// stage while letting idle workers pick up single-shot tasks (git diff / git
+// log tokenization) scheduled on the same pool.
+const TARGET_BATCHES_PER_WORKER = 8;
 
 export const calculateFileMetrics = async (
   processedFiles: ProcessedFile[],
@@ -31,10 +37,16 @@ export const calculateFileMetrics = async (
     const startTime = process.hrtime.bigint();
     logger.trace(`Starting file metrics calculation for ${filesToProcess.length} files using worker pool`);
 
+    const { maxThreads } = getWorkerThreadCount(METRICS_POOL_SIZING_ESTIMATE);
+    const batchSize = Math.max(
+      MIN_METRICS_BATCH_SIZE,
+      Math.ceil(filesToProcess.length / (maxThreads * TARGET_BATCHES_PER_WORKER)),
+    );
+
     // Split files into batches to reduce IPC round-trips
     const batches: ProcessedFile[][] = [];
-    for (let i = 0; i < filesToProcess.length; i += METRICS_BATCH_SIZE) {
-      batches.push(filesToProcess.slice(i, i + METRICS_BATCH_SIZE));
+    for (let i = 0; i < filesToProcess.length; i += batchSize) {
+      batches.push(filesToProcess.slice(i, i + batchSize));
     }
 
     logger.trace(`Split ${filesToProcess.length} files into ${batches.length} batches for token counting`);
