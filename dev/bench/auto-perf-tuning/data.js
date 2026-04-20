@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776647984405,
+  "lastUpdate": 1776648146017,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6075,6 +6075,51 @@ window.BENCHMARK_DATA = {
             "range": "±27",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 1726ms, Q3: 1753ms\nAll times: 1712, 1716, 1721, 1725, 1726, 1727, 1734, 1735, 1736, 1739, 1740, 1740, 1741, 1750, 1753, 1768, 1780, 1781, 1850ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "2dbcc03d7bd7370de3e89ab91b42cd30d60a3f30",
+          "message": "perf(file): Drop per-file async/allocation overhead from readRawFile\n\n`readRawFile` is called once per included file. On this repo (1011 files),\nthe hot path paid two kinds of per-call overhead that were pure noise:\n\n1. `isBinaryFile(buffer)` from `isbinaryfile` wraps `isBinaryCheck` in\n   `__awaiter`, which allocates a Promise and schedules a microtask tick\n   even though the Buffer branch does zero I/O. `isBinaryFileSync(buffer)`\n   is the identical function minus the async wrapper — both call\n   `isBinaryCheck(file, size)` with the same arguments when given a\n   Buffer, so the switch is a pure overhead trim.\n\n2. `new TextDecoder('utf-8', { fatal: true })` built a fresh decoder per\n   call. The decoder is stateless for our usage (we only invoke `.decode`\n   on a full buffer; no streaming state is carried across calls), so a\n   module-level singleton is safe and avoids ~1000 allocations per pack.\n\nTogether these remove one microtask tick per file from the 50-concurrency\n`promisePool`, letting each slot recycle ~20 µs faster; at 1000+ files\nthis compounds into a measurable wall-time drop in the collect phase.\n\n## Benchmark\n\n`node bin/repomix.cjs --quiet -o /tmp/out.xml`, 50 runs each, interleaved\nA/B on this repo (default config, `includeLogs` + `includeDiffs` enabled):\n\n| metric | baseline | patched | delta             |\n|--------|---------:|--------:|------------------:|\n| mean   |  1748 ms | 1710 ms | -38 ms (-2.2%)    |\n| median |  1747 ms | 1712 ms | -35 ms (-2.0%)    |\n| stdev  |    43 ms |   34 ms |                   |\n\nIsolated \"File collection\" phase (verbose log, 8 runs each):\n\n    baseline: 347-363 ms (median ~356 ms)\n    patched:  330-341 ms (median ~337 ms)\n    delta:    -19 ms on the collect phase itself\n\nThe rest of the wall-time savings comes from the hoisted TextDecoder\navoiding per-call allocation pressure on the main thread during the\ncollect + output-generation overlap.\n\n## Correctness\n\n`isBinaryFileSync(buffer)` and `isBinaryFile(buffer)` dispatch to the\nsame `isBinaryCheck(file, size)` — verified in\n`node_modules/isbinaryfile/lib/index.js` (lines 98-146). The only code\npath that differs is `isBinaryFile(string)`, which opens a file\ndescriptor; `readRawFile` never passes a string here.\n\n`TextDecoder` with `{ fatal: true }` has no per-call state for one-shot\n`.decode(buffer)` usage; the singleton is reused safely.\n\n## Test plan\n\n- [x] `npm run lint` — 2 pre-existing warnings in unrelated files only\n- [x] `npm run test` — 116 files / 1147 tests passing\n- [x] `tests/core/file/fileRead.test.ts` — 9 tests passing",
+          "timestamp": "2026-04-20T01:19:35Z",
+          "tree_id": "f0d35cfee426b9e1c00d6ecc7d80d94f9c135b82",
+          "url": "https://github.com/yamadashy/repomix/commit/2dbcc03d7bd7370de3e89ab91b42cd30d60a3f30"
+        },
+        "date": 1776648144963,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 873,
+            "range": "±58",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 843ms, Q3: 901ms\nAll times: 827, 835, 836, 836, 836, 839, 841, 843, 844, 847, 851, 852, 860, 865, 866, 873, 874, 881, 885, 885, 895, 898, 901, 902, 912, 914, 929, 932, 956, 1029ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1437,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1422ms, Q3: 1443ms\nAll times: 1395, 1399, 1401, 1414, 1420, 1422, 1423, 1436, 1437, 1437, 1437, 1439, 1441, 1441, 1443, 1443, 1466, 1471, 1477, 1484ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1743,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1723ms, Q3: 1756ms\nAll times: 1689, 1704, 1708, 1708, 1717, 1723, 1733, 1735, 1737, 1740, 1743, 1748, 1750, 1753, 1753, 1756, 1763, 1771, 1790, 1818ms"
           }
         ]
       }
