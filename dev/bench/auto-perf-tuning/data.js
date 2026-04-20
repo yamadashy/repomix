@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776662648715,
+  "lastUpdate": 1776723172482,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6210,6 +6210,51 @@ window.BENCHMARK_DATA = {
             "range": "±269",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1747ms, Q3: 2016ms\nAll times: 1709, 1721, 1723, 1734, 1742, 1747, 1754, 1756, 1767, 1772, 1830, 1861, 1880, 1900, 2013, 2016, 2074, 2285, 2354, 2577ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "8aeef580df5ce6d69474ee91ea44072b4c0a194e",
+          "message": "perf(core): Lazy-load outputGenerate to defer Handlebars off startup path\n\n`import('./cli/actions/defaultAction.js')` sits on the cliRun critical\npath before any I/O starts. Its static chain reaches `produceOutput ->\noutputGenerate -> handlebars`, and handlebars is a CJS bundle that pulls\nin `source-map`, `neo-async`, and `wordwrap`. Node spends ~175 ms just\nparsing/evaluating those modules even with the compile cache warm, and\nthat time is fully blocking — `searchFiles`, `collectFiles`, and the\nmetrics/security warmup kicks that pack.ts fires can't run until the\nimport graph resolves.\n\nWrap the default `generateOutput` in a lazy async wrapper that calls\n`await import('../output/outputGenerate.js')` on first use, mirroring\nthe pattern already used for `packSkill` in `packager.ts`. The\ndynamic import is deferred to `produceOutput` time; by then the pack\npipeline is running `produceOutput` and `calculateMetrics` in parallel,\nand the metrics phase (~360 ms) fully overlaps the deferred parse, so\nthe handlebars load is paid off the wall clock instead of the cold\nstartup critical path.\n\nImport of `defaultAction.js` (n=6 each, compile-cache warm, cold process):\n\n| variant | mean   | min    | max    |\n|---------|-------:|-------:|-------:|\n| before  | 403 ms | 392 ms | 445 ms |\n| after   | 267 ms | 244 ms | 320 ms |\n\n-> ~136 ms shaved from the import chain. With compile cache disabled\nthe gap widens to ~162 ms (400 ms -> 238 ms).\n\nEnd-to-end `time node bin/repomix.cjs --quiet -o /tmp/out.xml` on this\nrepo's own config (1011 files, xml output, includeDiffs/includeLogs/\nsortByChanges all enabled), interleaved A/B with 3 warmup pairs per\nvariant, n=40 pairs:\n\n| metric        | baseline | patched | delta              |\n|---------------|---------:|--------:|-------------------:|\n| mean          |  2041 ms | 2014 ms | -26 ms (-1.30%)    |\n| paired mean   |          |         | -26 ms             |\n| paired median |          |         | -37 ms             |\n| stdev         |    93 ms |   72 ms |                    |\n| pairs faster  |          |         | 24/40              |\n\nThe end-to-end signal is ~1.3-1.8% on this machine and dominated by\nsystem noise (stdev ~90 ms vs mean delta of 26-37 ms). The underlying\nmodule-load saving of ~136 ms is deterministic and ~6.7% of baseline;\nthe gap between that and the end-to-end delta is absorbed by the\ndeferred handlebars parse running inside the produceOutput window\n(which `calculateMetrics` would otherwise hold for ~360 ms anyway).\n\n## Correctness\n\n- All 1147 tests across 116 files pass.\n- Lint passes (2 pre-existing warnings in unrelated files).\n- `tests/core/packager/produceOutput.test.ts` already mocks\n  `generateOutput` via deps injection, so the test doubles bypass the\n  lazy wrapper and the existing assertions hold unchanged.\n- `generateOutput`'s public signature is unchanged; the wrapper returns\n  the same `Promise<string>`. Handlebars template compilation and its\n  `compiledTemplateCache` module-level state all live inside\n  `outputGenerate.js` and persist across calls once loaded.\n- `outputSplit.ts` already takes `generateOutput` via a deps argument\n  (type-only import), so its path is unaffected by the lazy swap.\n- The skill path (`packSkill`) imports `outputGenerate` directly inside\n  its own already-lazy chain, so it pays the handlebars parse once in\n  either direction with no new overhead.",
+          "timestamp": "2026-04-20T22:10:50Z",
+          "tree_id": "6492831b558693e6bc14ea697ff59bc3c4e6a01e",
+          "url": "https://github.com/yamadashy/repomix/commit/8aeef580df5ce6d69474ee91ea44072b4c0a194e"
+        },
+        "date": 1776723171242,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 840,
+            "range": "±92",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 792ms, Q3: 884ms\nAll times: 758, 771, 774, 781, 787, 790, 791, 792, 794, 799, 800, 803, 807, 834, 835, 840, 849, 861, 865, 867, 871, 873, 884, 887, 908, 909, 930, 946, 995, 1591ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1261,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1252ms, Q3: 1272ms\nAll times: 1245, 1247, 1247, 1250, 1251, 1252, 1252, 1254, 1260, 1261, 1261, 1262, 1264, 1265, 1267, 1272, 1274, 1275, 1294, 1395ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1633,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1618ms, Q3: 1638ms\nAll times: 1593, 1608, 1612, 1615, 1617, 1618, 1618, 1624, 1625, 1632, 1633, 1634, 1636, 1637, 1637, 1638, 1640, 1649, 1650, 1675ms"
           }
         ]
       }
