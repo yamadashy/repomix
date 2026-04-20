@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776648146017,
+  "lastUpdate": 1776650163389,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6120,6 +6120,51 @@ window.BENCHMARK_DATA = {
             "range": "±33",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1723ms, Q3: 1756ms\nAll times: 1689, 1704, 1708, 1708, 1717, 1723, 1733, 1735, 1737, 1740, 1743, 1748, 1750, 1753, 1753, 1756, 1763, 1771, 1790, 1818ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "d055c06fe6db091f42cdb1b730adb4e3a767b849",
+          "message": "perf(file): Skip standalone-base64 regex scan for short-line files\n\n`truncateBase64Content` runs on every processed file when\n`output.truncateBase64` is enabled (repomix's own config turns it on,\nand the feature is commonly used when packing binary-heavy repos). For\neach file, `standaloneBase64Pattern` (`/([A-Za-z0-9+/]{256,}={0,2})/g`)\ndoes a full-string scan followed by an allocating `String.prototype\n.replace`. The pattern requires a run of ≥256 consecutive chars in\n[A-Za-z0-9+/]; any newline breaks that run, so the regex cannot match\nany file whose longest line is shorter than 256 chars. Source-code\nrepositories overwhelmingly fall into that category — on this repo,\nonly 3 / 1301 files have any line that long — yet every file was\npaying the scan + replace allocation.\n\nAdd a cheap `indexOf('\\n')` pre-scan (`hasLineAtLeast`) that walks\nthe string once without splitting/allocating and short-circuits as\nsoon as a single line crosses the threshold. Files that fail the\npre-scan skip the regex entirely; files that pass still run the\nexisting regex and `isLikelyBase64` filter, so truncation behaviour is\nunchanged. The data-URI regex (which matches inline on short-ish\n`data:...;base64,...` strings) continues to run for every file since\nits matches are not line-bounded.\n\nCorrectness:\n- `[A-Za-z0-9+/]` does not include `\\n`/`\\r`, so a newline always\n  terminates a potential match. CRLF has `\\r` immediately before `\\n`;\n  any `\\r` in the middle of a would-be match also breaks the run, so\n  scanning by `\\n` alone is a safe over-approximation (we never skip a\n  file that could have matched).\n- Files ≥256 chars with a ≥256-char line still enter the regex path\n  and produce the exact same output as before.\n- All 13 existing `truncateBase64.test.ts` cases pass unchanged.\n\nBenchmark (this repo, repomix.config.json with truncateBase64=true,\ndefault xml output, n=30 interleaved pairs, separate worktrees to\navoid filesystem-cache bias, 4 warmup pairs):\n\n    metric  | baseline | patched | delta\n    --------|---------:|--------:|------------------:\n    mean    |  1676 ms | 1630 ms | -46 ms (-2.74%)\n    median  |  1678 ms | 1642 ms | -36 ms (-2.12%)\n    stdev   |    50 ms |   46 ms |\n    min     |  1596 ms | 1527 ms | -68 ms\n    max     |  1790 ms | 1709 ms | -81 ms\n\nA second independent 20-pair run reproduced the signal at\n-51 ms median (-3.03%), with patched min/max both below baseline\nmin/max, so the delta is larger than run-to-run noise.\n\n- [x] `npm run lint` — only 2 pre-existing warnings in unrelated files.\n- [x] `npm run test` — 116 files / 1147 tests passing (13 targeted\n      `truncateBase64` tests all green; see `tests/core/file/\n      truncateBase64.test.ts`).",
+          "timestamp": "2026-04-20T01:53:59Z",
+          "tree_id": "be6af94d49bc8b3406e2ec21c66097cac058e93a",
+          "url": "https://github.com/yamadashy/repomix/commit/d055c06fe6db091f42cdb1b730adb4e3a767b849"
+        },
+        "date": 1776650162948,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 925,
+            "range": "±107",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 875ms, Q3: 982ms\nAll times: 813, 827, 855, 859, 866, 870, 873, 875, 878, 892, 893, 894, 901, 906, 922, 925, 926, 943, 944, 958, 968, 972, 982, 999, 1015, 1038, 1050, 1052, 1160, 1176ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1375,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1366ms, Q3: 1391ms\nAll times: 1350, 1359, 1362, 1362, 1366, 1366, 1369, 1371, 1372, 1374, 1375, 1375, 1376, 1380, 1391, 1391, 1399, 1416, 1420, 1423ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1310,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1296ms, Q3: 1315ms\nAll times: 1280, 1286, 1291, 1293, 1293, 1296, 1300, 1302, 1306, 1309, 1310, 1310, 1312, 1314, 1314, 1315, 1316, 1317, 1318, 1343ms"
           }
         ]
       }
