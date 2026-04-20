@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776650163389,
+  "lastUpdate": 1776662648715,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6165,6 +6165,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1296ms, Q3: 1315ms\nAll times: 1280, 1286, 1291, 1293, 1293, 1296, 1300, 1302, 1306, 1309, 1310, 1310, 1312, 1314, 1314, 1315, 1316, 1317, 1318, 1343ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "5472e4f2a51b76fca34fb58459c6647d62588c6c",
+          "message": "perf(metrics): Size file-metrics batches to fill the worker pool\n\n`calculateFileMetrics` previously split files into fixed 10-file batches,\nproducing ~100 tasks for a 1000-file repo. Each task round-trips a\nstructured-clone payload + futex wake-up (~1ms each), and all single-shot\ntasks running on the same `calculateMetrics` pool (git-diff/git-log\ntokenization, wrapper tokenization) queue up behind those batches. On a\n4-worker pool each worker gets ~25 batches serialized, burning the\n~100ms of IPC-CPU end-to-end and keeping diff/log tasks stalled until\nthe queue drains.\n\nDerive batch size from the worker count the pool was sized for\n(`getWorkerThreadCount(400)` — the same estimate `createMetricsTaskRunner`\nuses in packager.ts:107), targeting ~8 batches per worker with a floor\nof 50 files per batch. For a 1000-file / 4-worker repo this maps to 21\nbatches (batchSize=50), which empirically cuts File Metrics wall time\nfrom ~382ms to ~337ms and — more importantly — frees a worker for\ngit-diff / git-log tokenization ~140ms sooner. The actual tokenization\nwork (per-file counter.countTokens calls) is unchanged; the MIN floor\npreserves a reasonable per-batch payload on very small repos.\n\nCorrectness:\n- Existing metrics tests (73) pass unchanged.\n- Full test suite (1147 tests / 116 files) passes.\n- Lint passes with no new warnings.\n- Batch boundaries and progress-callback granularity behave identically\n  modulo batch count; callbacks now fire every 50 files on typical repos\n  (was every 10), still plenty for a sub-second pipeline stage.\n- Load balance: files arrive pre-sorted by path (no size correlation),\n  and 8 batches per worker gives finished workers room to steal\n  remaining batches before idling.\n\nBenchmark\n---------\n\n`time node bin/repomix.cjs --quiet -o /tmp/out.xml` on this repo's own\nconfig (1011 files, xml output, includeDiffs/includeLogs/sortByChanges\nall enabled — i.e. all worker-pool consumers active), n=30 interleaved\nA/B pairs run from a shared worktree, 6 warmup pairs (3 per variant):\n\n| metric  | baseline | patched | delta              |\n|---------|---------:|--------:|-------------------:|\n| mean    |  2018 ms | 1953 ms | -65 ms (-3.24%)    |\n| median  |  2020 ms | 1952 ms | -68 ms (-3.37%)    |\n| stdev   |    46 ms |   49 ms |                    |\n| min     |  1913 ms | 1880 ms | -33 ms             |\n| max     |  2089 ms | 2109 ms |                    |\n\nPaired diff: median -74 ms, 27/30 pairs faster, 3/30 slower — the\neffect holds across the full distribution, not just the mean.\n\nPer-stage verbose trace (single representative run):\n\n| stage                       | baseline | patched | delta   |\n|-----------------------------|---------:|--------:|--------:|\n| file-metrics tokenization   |  382 ms  | 337 ms  | -45 ms  |\n| git-diff tokenization       |  372 ms  | 322 ms  | -50 ms  |\n| git-log tokenization        |  374 ms  | 325 ms  | -49 ms  |\n| batches for 1011 files      |  102     |  21     |         |\n\nBoth well above the 2% / 50 ms CLI-runtime target.",
+          "timestamp": "2026-04-20T05:21:56Z",
+          "tree_id": "e6d8fccdfefabf825f8113675bef2c53a2f7ab74",
+          "url": "https://github.com/yamadashy/repomix/commit/5472e4f2a51b76fca34fb58459c6647d62588c6c"
+        },
+        "date": 1776662648003,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1028,
+            "range": "±187",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 980ms, Q3: 1167ms\nAll times: 847, 869, 894, 925, 931, 938, 967, 980, 986, 986, 989, 989, 995, 995, 1022, 1028, 1037, 1053, 1078, 1096, 1125, 1136, 1167, 1175, 1175, 1191, 1343, 1406, 1562, 1672ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1315,
+            "range": "±35",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1299ms, Q3: 1334ms\nAll times: 1269, 1274, 1283, 1290, 1296, 1299, 1307, 1309, 1310, 1315, 1315, 1316, 1321, 1329, 1331, 1334, 1334, 1336, 1337, 1402ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1830,
+            "range": "±269",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1747ms, Q3: 2016ms\nAll times: 1709, 1721, 1723, 1734, 1742, 1747, 1754, 1756, 1767, 1772, 1830, 1861, 1880, 1900, 2013, 2016, 2074, 2285, 2354, 2577ms"
           }
         ]
       }
