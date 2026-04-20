@@ -5,7 +5,7 @@ import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import { generateOutput as generateOutputDefault } from '../output/outputGenerate.js';
+import type { generateOutput as generateOutputType } from '../output/outputGenerate.js';
 import { generateSplitOutputParts } from '../output/outputSplit.js';
 import { copyToClipboardIfEnabled as copyToClipboardIfEnabledDefault } from './copyToClipboardIfEnabled.js';
 import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDisk.js';
@@ -15,8 +15,19 @@ export interface ProduceOutputResult {
   outputForMetrics: string | string[];
 }
 
+// Lazy-load outputGenerate to keep its Handlebars dependency off the
+// `import(defaultAction)` static chain. Handlebars is only needed at output
+// time; `pack()` runs produceOutput in parallel with calculateMetrics, so the
+// deferred parse overlaps with the metrics phase rather than extending the
+// cold-start critical path before searchFiles begins. Mirrors the lazy-load
+// pattern used for packSkill in packager.ts.
+const defaultGenerateOutput: typeof generateOutputType = async (...args) => {
+  const { generateOutput } = await import('../output/outputGenerate.js');
+  return generateOutput(...args);
+};
+
 const defaultDeps = {
-  generateOutput: generateOutputDefault,
+  generateOutput: defaultGenerateOutput,
   writeOutputToDisk: writeOutputToDiskDefault,
   copyToClipboardIfEnabled: copyToClipboardIfEnabledDefault,
 };
