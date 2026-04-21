@@ -117,12 +117,14 @@ export const pack = async (
     // parallel with searchFiles, collectFiles, and processFiles. Skipped when the user
     // disables the security check so `--no-security-check` pays none of this cost.
     //
-    // `numOfTasks=200` matches the cap `runSecurityCheck` applies internally
-    // (`MAX_SECURITY_WORKERS=2`): with TASKS_PER_THREAD=100 this maps to `maxThreads=2`.
-    // Kept lower than the metrics pool because secretlint batches are CPU-cheap and
-    // extra workers would only duplicate the ~150ms preset load with no parallelism win.
+    // `numOfTasks=400` matches the cap `runSecurityCheck` applies internally
+    // (`MAX_SECURITY_WORKERS=4`): with TASKS_PER_THREAD=100 this maps to `maxThreads=4` on
+    // machines with ≥4 logical CPUs (capped at `availableParallelism` on smaller hosts, so
+    // a 2-CPU runner still gets 2 workers). Going from 2 to 4 workers roughly halves the
+    // secretlint wall time for a ~1000-file repo; the security pool runs during Phase 3
+    // while the metrics pool is idle, so the extra threads cost nothing.
     if (config.security.enableSecurityCheck) {
-      securityRunnerWithWarmup = deps.createSecurityTaskRunner(200);
+      securityRunnerWithWarmup = deps.createSecurityTaskRunner(400);
     }
 
     // Pre-fetch git file-change counts for sortOutputFiles while search and

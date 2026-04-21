@@ -35,10 +35,16 @@ export interface SecurityTaskRunnerWithWarmup {
 // is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
 const BATCH_SIZE = 50;
 
-// Cap security workers at 2 to reduce contention with the metrics worker pool that
-// runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
-// so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
-const MAX_SECURITY_WORKERS = 2;
+// Cap security workers at 4. Earlier the cap was 2 to "reduce contention with the metrics
+// worker pool", but on the default pack path the two pools execute in sequential phases
+// — security inside `Promise.all([validateFileSafety, processFiles])`, and metrics inside
+// `Promise.all([produceOutput, calculateMetrics])` after `sortOutputFiles` — so the metrics
+// pool is idle during the security phase. (The `--skill-generate` path returns early before
+// the metrics pool runs, so still no concurrent use there.) Claiming 4 cores for secretlint
+// roughly halves security wall time on a ~1000-file repo. `getWorkerThreadCount` clips to
+// `availableParallelism`, so a 2-CPU host still gets 2 workers — no regression on
+// resource-constrained machines.
+const MAX_SECURITY_WORKERS = 4;
 
 // Create a security worker task runner and fire a no-op warmup task per worker
 // so `@secretlint/core` and its rule preset load in parallel with the rest of
