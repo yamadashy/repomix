@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776752446755,
+  "lastUpdate": 1776763813625,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6300,6 +6300,51 @@ window.BENCHMARK_DATA = {
             "range": "±59",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 2040ms, Q3: 2099ms\nAll times: 1642, 1673, 1673, 1727, 1966, 2040, 2068, 2075, 2081, 2082, 2086, 2088, 2088, 2094, 2097, 2099, 2112, 2113, 2150, 2158ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "ecf9412992d7fbef3a843df04cf05bcf08826a93",
+          "message": "perf(file): Pre-warm globby import at searchFiles entry to overlap module load\n\nAction: Fire `loadGlobby().catch(() => {})` at the top of `searchFiles`,\nbefore the stat / permission-check / prepare-ignore-context awaits. The\nlater `await loadGlobby()` call site re-awaits the cached promise.\n\nProblem: `loadGlobby()` previously ran only at line 208 of `searchFiles`,\nafter `fs.stat(rootDir)`, `checkDirectoryPermissions(rootDir)`, and\n`prepareIgnoreContext(rootDir, config)` each awaited. The `import('globby')`\nchain — globby → fast-glob → micromatch → picomatch → braces → @nodelib/fs.*\n— is a ~200ms main-thread module-compile, and starting it only after those\nI/O awaits means it bleeds into the globby phase instead of overlapping with\nthem.\n\nFix: One line at the top of `searchFiles`. The cached singleton in\n`loadGlobby` makes the later `await loadGlobby()` resolve immediately when\nthe compile has already completed, or wait out only the remainder when it\nhasn't. `.catch(() => {})` matches the fire-and-forget convention used in\n`calculateMetrics.ts:139-141`; the rejection is re-raised and handled at\nthe `await` inside the outer try/catch.\n\nBenchmark — phase-internal `[globby] Completed in Nms` timer on this repo\n(1012 files, xml output, includeDiffs / includeLogs / sortByChanges all on),\n16-CPU Linux host, n=30 paired interleaved runs with 5 warmup pairs:\n\n| variant            | globby phase mean | median delta |\n|--------------------|------------------:|-------------:|\n| baseline           | 757 ms            |              |\n| prewarm (patched)  | 367 ms            | -404 ms      |\n\nThe timer window runs from just before `await loadGlobby()` to after the\nscan. In the baseline it captures both the module compile and the scan; in\nthe patched build the compile has already completed during the earlier\nstat + perm + prepareIgnoreContext awaits, so the timer measures only the\nscan itself.\n\nEnd-to-end wall time via `time node bin/repomix.cjs --quiet -o /tmp/out.xml`\nis dominated by measurement noise on this host (per-run stdev ~300ms from\nfile-cache warmth and kernel scheduling). The true end-to-end saving is\nbounded by how much of the ~200ms module compile overlaps with the\npreceding async-I/O awaits — at best ~200ms on slow-ignore-context repos,\nless on fast-ignore repos. The phase-internal timer is the reliable signal;\nthe change is a strict improvement or no-op, never a regression.\n\nCorrectness: unchanged. Same `loadGlobby()` function, same cached promise,\nsame rejection path. `tests/core/file/fileSearch.test.ts` mocks globby at\nthe named export, which resolves through `loadGlobby()` identically. 1147\ntests pass, lint clean.",
+          "timestamp": "2026-04-21T09:26:40Z",
+          "tree_id": "dfba1b3ec6f35e7ce4a27f9db2e32bd6dea1b396",
+          "url": "https://github.com/yamadashy/repomix/commit/ecf9412992d7fbef3a843df04cf05bcf08826a93"
+        },
+        "date": 1776763813081,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1108,
+            "range": "±273",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 967ms, Q3: 1240ms\nAll times: 901, 903, 923, 938, 946, 961, 965, 967, 978, 990, 1017, 1072, 1082, 1099, 1102, 1108, 1109, 1112, 1168, 1170, 1172, 1233, 1240, 1242, 1276, 1276, 1314, 1539, 1546, 1610ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1394,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1387ms, Q3: 1408ms\nAll times: 1359, 1360, 1372, 1374, 1386, 1387, 1389, 1390, 1392, 1393, 1394, 1397, 1399, 1401, 1404, 1408, 1414, 1414, 1424, 1430ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1867,
+            "range": "±128",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1798ms, Q3: 1926ms\nAll times: 1764, 1780, 1788, 1790, 1795, 1798, 1801, 1817, 1820, 1854, 1867, 1898, 1900, 1917, 1919, 1926, 1968, 1988, 2056, 2701ms"
           }
         ]
       }
