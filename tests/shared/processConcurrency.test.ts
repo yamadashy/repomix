@@ -54,7 +54,7 @@ describe('processConcurrency', () => {
       const { minThreads, maxThreads } = getWorkerThreadCount(1000);
 
       expect(minThreads).toBe(1);
-      expect(maxThreads).toBe(8); // Limited by CPU count: Math.min(8, 1000/100) = 8
+      expect(maxThreads).toBe(4); // Limited by task count: Math.min(8, ceil(1000/300)) = 4
     });
 
     it('should scale max threads based on task count', () => {
@@ -68,7 +68,7 @@ describe('processConcurrency', () => {
       const { minThreads, maxThreads } = getWorkerThreadCount(10000);
 
       expect(minThreads).toBe(1);
-      expect(maxThreads).toBe(8); // Limited by CPU count: Math.min(8, 10000/100) = 8
+      expect(maxThreads).toBe(8); // Limited by CPU count: Math.min(8, ceil(10000/300)) = 8
     });
 
     it('should handle zero tasks', () => {
@@ -79,21 +79,21 @@ describe('processConcurrency', () => {
     });
 
     it('should cap max threads when maxWorkerThreads is provided', () => {
-      // CPU has 8 cores, 1000 tasks would normally give 8 threads
+      // CPU has 8 cores, 1000 tasks would normally give ceil(1000/300)=4 threads
       const { maxThreads } = getWorkerThreadCount(1000, 3);
 
       expect(maxThreads).toBe(3);
     });
 
     it('should not exceed task-based limit even with higher maxWorkerThreads', () => {
-      // 200 tasks → ceil(200/100) = 2 threads, maxWorkerThreads=6 should not increase it
-      const { maxThreads } = getWorkerThreadCount(200, 6);
+      // 600 tasks → ceil(600/300) = 2 threads, maxWorkerThreads=6 should not increase it
+      const { maxThreads } = getWorkerThreadCount(600, 6);
 
       expect(maxThreads).toBe(2);
     });
 
     it('should ignore maxWorkerThreads when undefined', () => {
-      const { maxThreads } = getWorkerThreadCount(1000, undefined);
+      const { maxThreads } = getWorkerThreadCount(10000, undefined);
 
       expect(maxThreads).toBe(8);
     });
@@ -111,13 +111,13 @@ describe('processConcurrency', () => {
     });
 
     it('should initialize Tinypool with correct configuration', () => {
-      const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'fileProcess', runtime: 'child_process' });
+      const tinypool = createWorkerPool({ numOfTasks: 1500, workerType: 'fileProcess', runtime: 'child_process' });
 
       expect(Tinypool).toHaveBeenCalledWith({
         filename: expect.stringContaining('fileProcessWorker.js'),
         runtime: 'child_process',
         minThreads: 1,
-        maxThreads: 4, // Math.min(4, 500/100) = 4
+        maxThreads: 4, // Math.min(4, ceil(1500/300)) = 4
         idleTimeout: 5000,
         teardown: 'onWorkerTermination',
         workerData: {
@@ -134,13 +134,13 @@ describe('processConcurrency', () => {
     });
 
     it('should initialize Tinypool with worker_threads runtime when specified', () => {
-      const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'securityCheck', runtime: 'worker_threads' });
+      const tinypool = createWorkerPool({ numOfTasks: 1500, workerType: 'securityCheck', runtime: 'worker_threads' });
 
       expect(Tinypool).toHaveBeenCalledWith({
         filename: expect.stringContaining('securityCheckWorker.js'),
         runtime: 'worker_threads',
         minThreads: 1,
-        maxThreads: 4, // Math.min(4, 500/100) = 4
+        maxThreads: 4, // Math.min(4, ceil(1500/300)) = 4
         idleTimeout: 5000,
         teardown: 'onWorkerTermination',
         workerData: {

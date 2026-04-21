@@ -39,8 +39,13 @@ const getWorkerPath = (workerType: WorkerType): string => {
   }
 };
 
-// Worker initialization is expensive, so we prefer fewer threads unless there are many files
-const TASKS_PER_THREAD = 100;
+// Worker initialization is expensive (each metrics worker synchronously loads
+// gpt-tokenizer's ~2MB BPE-ranks file, ~290ms of CPU per worker). The bundled-up
+// parallel CPU time of many warm-up threads contends with file collection on the
+// main thread, which dominates wall time on repos of ~1000 files. Prefer a
+// smaller pool so fewer workers need to warm up; metrics work runs in parallel
+// with output generation, so the extra work per worker rarely extends the tail.
+const TASKS_PER_THREAD = 300;
 
 export const getProcessConcurrency = (): number => {
   return typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length;
