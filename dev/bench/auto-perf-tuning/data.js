@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776723172482,
+  "lastUpdate": 1776752446755,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6255,6 +6255,51 @@ window.BENCHMARK_DATA = {
             "range": "±20",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1618ms, Q3: 1638ms\nAll times: 1593, 1608, 1612, 1615, 1617, 1618, 1618, 1624, 1625, 1632, 1633, 1634, 1636, 1637, 1637, 1638, 1640, 1649, 1650, 1675ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "ea7980241a8558042e1017164228276154cfbfaf",
+          "message": "perf(security): Bump security worker pool from 2 to 4 to halve secretlint wall time\n\nThe security worker pool was capped at 2 threads on the assumption that it would\ncontend with the metrics pool that \"runs concurrently.\" On the default pack path\nit does not.\n\n`pack()` runs the two pools in distinct phases, separated by `sortOutputFiles`:\n\n- Phase 3: `Promise.all([validateFileSafety, processFiles])`\n- Phase 5: `Promise.all([produceOutput, calculateMetrics])`\n\nThe metrics pool's threads are idle during the entire security phase, so\nclaiming up to 4 cores for secretlint is free on a ≥4-CPU host and clipped to\n`availableParallelism` on smaller hosts (a 2-CPU runner still gets 2 workers,\nunchanged from today). The `--skill-generate` path returns early before the\nmetrics pool runs, so the two pools still don't contend on the skill path.\n\nThe change is two lines that need to land together:\n\n- `MAX_SECURITY_WORKERS`: 2 → 4\n  Lifts the upper bound the security pool will allocate.\n- `createSecurityTaskRunner(200)` → `createSecurityTaskRunner(400)` in\n  `packager.ts`. Required because `getWorkerThreadCount` derives `maxThreads`\n  as `min(maxWorkerThreads, ceil(numOfTasks / TASKS_PER_THREAD))`. With\n  `numOfTasks=200` and `TASKS_PER_THREAD=100`, `ceil(200/100)=2` clamps the\n  result back to 2 regardless of the cap. Bumping `numOfTasks` to 400 lets the\n  pool scale to 4. The same pool is reused by `runSecurityCheck` (which sees\n  `totalItems` ≈ files + git diffs/logs ≈ 1014 and would itself ask for 4\n  threads via the internal cap), so this does not over-size the pool.\n\nThe pre-warm path also fires one extra warmup task per worker, so 4 secretlint\npreset loads happen in parallel during Phase 1 (searchFiles) instead of 2.\nOn a 16-core machine the additional parallel loads add no wall time to the\nwarmup window.\n\n# Benchmark\n\n`node bin/repomix.cjs --quiet -o /tmp/out.xml` on this repo (1012 files, xml\noutput, includeDiffs/includeLogs/sortByChanges all on), 16-CPU Linux host,\ninterleaved A/B with 5 warmup pairs per variant, n=30 paired runs:\n\n| metric            | baseline | patched | delta              |\n|-------------------|---------:|--------:|-------------------:|\n| mean              |  2556 ms | 2486 ms | -71 ms (-2.77%)    |\n| paired median     |          |         | -77 ms             |\n| stdev (per side)  |    88 ms |  105 ms |                    |\n| paired-delta CI95 |          |         | [-116, -26] ms     |\n| pairs faster      |          |         | 21/30              |\n\nThe 95% CI on the paired delta is entirely negative, so the regression\ndirection is statistically significant. Phase-internal verbose timings on\nthree consecutive runs:\n\n| variant | security check | runs |\n|---------|---------------:|-----:|\n| 2 workers (baseline) | 164 ms | 1 |\n| 4 workers (patched)  | 117 ms / 118 ms / 118 ms | 3 |\n\nWall time inside `runSecurityCheck` shrinks from ~164 ms to ~118 ms (-46 ms),\nand Phase 3's `Promise.all([security, processFiles])` was security-bound\n(processFiles in default config is ~46 ms on the main thread). The end-to-end\ndelta lands close to the in-phase saving because Phase 3 sits squarely on the\ncritical path between collectFiles and sortOutputFiles.\n\n# Correctness\n\n- All 1147 tests across 116 files pass.\n- Lint passes (2 pre-existing warnings in unrelated files).\n- `tests/core/security/securityCheck.test.ts` mocks `initTaskRunner` and\n  `getProcessConcurrency`, so the worker-count change has no effect on\n  test behavior.\n- `tests/core/packager.test.ts` mocks `createSecurityTaskRunner` directly,\n  so the pre-warm and `numOfTasks` change are bypassed.\n- Behavior unchanged: same secretlint config, same files inspected, same\n  results returned. Only the parallelism upper bound moves.\n- Resource-constrained safety preserved: `getWorkerThreadCount` clips\n  `maxThreads` to `min(availableParallelism, maxWorkerThreads)`, so a\n  2-CPU host still gets 2 workers — no regression for small machines.\n- Reviewed by three local reviewers in parallel\n  (correctness / code-quality / perf-claim-robustness):\n  - **Correctness reviewer** confirmed worker state isolation, identical\n    `SuspiciousFileResult[]` regardless of worker count, no race conditions\n    in secretlint, and that the warmup fan-out works for any worker count.\n  - **Code-quality reviewer** flagged a stale \"~80ms\" figure and a \"measured\n    on this branch\" task-reference embedded in source comments. Both inline\n    comments were trimmed to keep only the structural rationale; absolute\n    benchmark numbers live in this commit body, not in the source.\n  - **Perf-claim reviewer** noted the original \"two pools never run\n    concurrently\" claim was overstated for the `--skill-generate` path,\n    where the metrics warmup is still loading when security runs. The\n    securityCheck.ts comment now qualifies the claim: on the default pack\n    path the pools run in sequential phases, and the skill path returns\n    early before the metrics pool would otherwise execute, so the security\n    bump is free on both paths.",
+          "timestamp": "2026-04-21T06:18:03Z",
+          "tree_id": "e458466ce7b549282890b64bb9825ced5fdf4301",
+          "url": "https://github.com/yamadashy/repomix/commit/ea7980241a8558042e1017164228276154cfbfaf"
+        },
+        "date": 1776752445627,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1165,
+            "range": "±311",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 976ms, Q3: 1287ms\nAll times: 867, 911, 913, 937, 953, 954, 961, 976, 982, 989, 1004, 1007, 1048, 1058, 1134, 1165, 1181, 1186, 1231, 1232, 1247, 1260, 1287, 1288, 1299, 1313, 1389, 1449, 1513, 1617ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1436,
+            "range": "±39",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1425ms, Q3: 1464ms\nAll times: 1351, 1356, 1372, 1420, 1420, 1425, 1426, 1428, 1432, 1432, 1436, 1438, 1450, 1453, 1458, 1464, 1475, 1483, 1504, 1529ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2086,
+            "range": "±59",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2040ms, Q3: 2099ms\nAll times: 1642, 1673, 1673, 1727, 1966, 2040, 2068, 2075, 2081, 2082, 2086, 2088, 2088, 2094, 2097, 2099, 2112, 2113, 2150, 2158ms"
           }
         ]
       }
