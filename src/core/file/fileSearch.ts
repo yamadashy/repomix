@@ -107,6 +107,12 @@ export const searchFiles = async (
   config: RepomixConfigMerged,
   explicitFiles?: string[],
 ): Promise<FileSearchResult> => {
+  // Pre-warm the globby dynamic import so its module-compile overlaps with the
+  // stat / permission / ignore-context awaits below, instead of running only at
+  // the `await loadGlobby()` call site later. `loadGlobby` caches its promise,
+  // so any rejection is re-thrown from the later await inside the outer try.
+  loadGlobby().catch(() => {});
+
   // Check if the path exists and get its type
   let pathStats: Stats;
   try {
