@@ -29,6 +29,10 @@ export interface MetricsTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
+// Capping at 4 bounds the `pool.destroy()` cost awaited in `pack()`'s finally
+// block, which scales linearly with thread count and sits on the exit path.
+const MAX_WORKER_THREADS = 4;
+
 /**
  * Create a metrics task runner and warm up all worker threads by triggering
  * gpt-tokenizer initialization in parallel. This allows the expensive module
@@ -40,9 +44,10 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    maxWorkerThreads: MAX_WORKER_THREADS,
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { maxThreads } = getWorkerThreadCount(numOfTasks, MAX_WORKER_THREADS);
   const warmupPromise = Promise.all(
     Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
@@ -118,6 +123,7 @@ export const calculateMetrics = async (
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
+      maxWorkerThreads: MAX_WORKER_THREADS,
     });
 
   try {

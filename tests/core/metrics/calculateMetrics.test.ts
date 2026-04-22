@@ -135,4 +135,13 @@ describe('createMetricsTaskRunner', () => {
     expect(Array.isArray(resolved)).toBe(true);
     expect((resolved as number[]).every((v) => v === 0)).toBe(true);
   });
+
+  it('should cap the worker pool at 4 threads', async () => {
+    const { initTaskRunner } = await import('../../../src/shared/processConcurrency.js');
+    (initTaskRunner as Mock).mockClear();
+
+    createMetricsTaskRunner(10000, 'o200k_base');
+
+    expect(initTaskRunner).toHaveBeenCalledWith(expect.objectContaining({ maxWorkerThreads: 4 }));
+  });
 });
