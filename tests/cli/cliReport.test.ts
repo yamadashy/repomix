@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { reportCompletion, reportSecurityCheck, reportSummary, reportTopFiles } from '../../src/cli/cliReport.js';
+import { reportCompletion, reportSecurityCheck, reportSummary, reportTopFiles, resolveOutputPath } from '../../src/cli/cliReport.js';
 import type { SuspiciousFileResult } from '../../src/core/security/securityCheck.js';
 import type { PackResult } from '../../src/index.js';
 import { logger } from '../../src/shared/logger.js';
@@ -15,6 +15,7 @@ vi.mock('picocolors', () => ({
     red: (str: string) => `RED:${str}`,
     cyan: (str: string) => `CYAN:${str}`,
     underline: (str: string) => `UNDERLINE:${str}`,
+    bold: (str: string) => `BOLD:${str}`,
   },
 }));
 
@@ -188,6 +189,88 @@ describe('cliReport', () => {
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Security check disabled'));
     });
+
+    test('should print absolute path for single file output', () => {
+      const config = createMockConfig({
+        output: { filePath: 'repomix-output.xml' },
+        security: { enableSecurityCheck: false },
+      });
+      const packResult: PackResult = {
+        totalFiles: 1,
+        totalCharacters: 100,
+        totalTokens: 20,
+        fileCharCounts: {},
+        fileTokenCounts: {},
+        suspiciousFilesResults: [],
+        suspiciousGitDiffResults: [],
+        suspiciousGitLogResults: [],
+        processedFiles: [],
+        safeFilePaths: [],
+        gitDiffTokenCount: 0,
+        gitLogTokenCount: 0,
+        skippedFiles: [],
+      };
+
+      reportSummary('/test/project', packResult, config);
+
+      expect(logger.log).toHaveBeenCalledWith(`       Output: ${path.resolve('/test/project', 'repomix-output.xml')}`);
+    });
+
+    test('should print single path when outputFiles has one entry', () => {
+      const config = createMockConfig({
+        security: { enableSecurityCheck: false },
+      });
+      const packResult: PackResult = {
+        totalFiles: 1,
+        totalCharacters: 100,
+        totalTokens: 20,
+        fileCharCounts: {},
+        fileTokenCounts: {},
+        suspiciousFilesResults: [],
+        suspiciousGitDiffResults: [],
+        suspiciousGitLogResults: [],
+        processedFiles: [],
+        safeFilePaths: [],
+        outputFiles: ['repomix-output.xml'],
+        gitDiffTokenCount: 0,
+        gitLogTokenCount: 0,
+        skippedFiles: [],
+      };
+
+      reportSummary('/test/project', packResult, config);
+
+      expect(logger.log).toHaveBeenCalledWith(`       Output: ${path.resolve('/test/project', 'repomix-output.xml')}`);
+      expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('parts'));
+    });
+
+    test('should print range display for multi-part output', () => {
+      const config = createMockConfig({
+        security: { enableSecurityCheck: false },
+      });
+      const packResult: PackResult = {
+        totalFiles: 2,
+        totalCharacters: 200,
+        totalTokens: 40,
+        fileCharCounts: {},
+        fileTokenCounts: {},
+        suspiciousFilesResults: [],
+        suspiciousGitDiffResults: [],
+        suspiciousGitLogResults: [],
+        processedFiles: [],
+        safeFilePaths: [],
+        outputFiles: ['repomix-output-1.xml', 'repomix-output-2.xml'],
+        gitDiffTokenCount: 0,
+        gitLogTokenCount: 0,
+        skippedFiles: [],
+      };
+
+      reportSummary('/test/project', packResult, config);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining(path.resolve('/test/project', 'repomix-output-1.xml')),
+      );
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('(2 parts)'));
+    });
   });
 
   describe('reportSecurityCheck', () => {
@@ -323,11 +406,81 @@ describe('cliReport', () => {
   });
 
   describe('reportCompletion', () => {
-    test('should print completion message', () => {
-      reportCompletion();
+    test('should print completion message with output path', () => {
+      reportCompletion('/home/user/project/repomix-output.xml');
 
       expect(logger.log).toHaveBeenCalledWith('GREEN:🎉 All Done!');
       expect(logger.log).toHaveBeenCalledWith('Your repository has been successfully packed.');
+      expect(logger.log).toHaveBeenCalledWith('📁 Output generated at:');
+      expect(logger.log).toHaveBeenCalledWith(
+        '   BOLD:CYAN:UNDERLINE:/home/user/project/repomix-output.xml',
+      );
+    });
+  });
+
+  describe('resolveOutputPath', () => {
+    const cwd = '/project';
+
+    const basePackResult: PackResult = {
+      totalFiles: 0,
+      totalCharacters: 0,
+      totalTokens: 0,
+      fileCharCounts: {},
+      fileTokenCounts: {},
+      suspiciousFilesResults: [],
+      suspiciousGitDiffResults: [],
+      suspiciousGitLogResults: [],
+      processedFiles: [],
+      safeFilePaths: [],
+      gitDiffTokenCount: 0,
+      gitLogTokenCount: 0,
+      skippedFiles: [],
+    };
+
+    test('should return skillDir path when in skill-generate mode', () => {
+      const config = createMockConfig({ skillGenerate: 'my-skill' });
+      const packResult: PackResult = {
+        ...basePackResult,
+        outputFiles: ['repomix-output.xml'],
+      };
+
+      const result = resolveOutputPath(cwd, packResult, config, { skillDir: '/project/skills' });
+
+      expect(result).toBe(path.resolve(cwd, '/project/skills'));
+    });
+
+    test('should return first outputFile path when outputFiles is present', () => {
+      const config = createMockConfig({ output: { filePath: 'fallback.xml' } });
+      const packResult: PackResult = {
+        ...basePackResult,
+        outputFiles: ['repomix-output-1.xml', 'repomix-output-2.xml'],
+      };
+
+      const result = resolveOutputPath(cwd, packResult, config, {});
+
+      expect(result).toBe(path.resolve(cwd, 'repomix-output-1.xml'));
+    });
+
+    test('should fall back to config.output.filePath when no outputFiles', () => {
+      const config = createMockConfig({ output: { filePath: 'repomix-output.xml' } });
+      const packResult: PackResult = { ...basePackResult };
+
+      const result = resolveOutputPath(cwd, packResult, config, {});
+
+      expect(result).toBe(path.resolve(cwd, 'repomix-output.xml'));
+    });
+
+    test('should prefer outputFiles over config.output.filePath when no skill mode', () => {
+      const config = createMockConfig({ output: { filePath: 'should-not-be-used.xml' } });
+      const packResult: PackResult = {
+        ...basePackResult,
+        outputFiles: ['actual-output.xml'],
+      };
+
+      const result = resolveOutputPath(cwd, packResult, config, {});
+
+      expect(result).toBe(path.resolve(cwd, 'actual-output.xml'));
+      expect(result).not.toContain('should-not-be-used');
     });
   });
 });
