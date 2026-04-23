@@ -15,11 +15,33 @@ import { RepomixError, rethrowValidationErrorIfSchemaError } from '../../shared/
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
-import { reportResults } from '../cliReport.js';
+import type { reportResults as reportResultsType } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
-import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
+import type {
+  promptSkillLocation as promptSkillLocationType,
+  resolveAndPrepareSkillDir as resolveAndPrepareSkillDirType,
+} from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
+
+// Lazy-load cliReport to keep its tokenCountTreeReporter chain off the static
+// import graph. Fired early and awaited just before reportResults so the
+// parse overlaps with pack().
+let _cliReportPromise: Promise<{ reportResults: typeof reportResultsType }> | null = null;
+const loadCliReport = () => {
+  _cliReportPromise ??= import('../cliReport.js');
+  return _cliReportPromise;
+};
+
+// skillPrompts is only reached on --skill-generate.
+let _skillPromptsPromise: Promise<{
+  promptSkillLocation: typeof promptSkillLocationType;
+  resolveAndPrepareSkillDir: typeof resolveAndPrepareSkillDirType;
+}> | null = null;
+const loadSkillPrompts = () => {
+  _skillPromptsPromise ??= import('../prompts/skillPrompts.js');
+  return _skillPromptsPromise;
+};
 
 export interface DefaultActionRunnerResult {
   packResult: PackResult;
@@ -33,6 +55,10 @@ export const runDefaultAction = async (
   progressCallback?: RepomixProgressCallback,
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', cliOptions);
+
+  // Kick off cliReport load in parallel with pack(); awaited just before the call.
+  const reportPromise = loadCliReport();
+  reportPromise.catch(() => {});
 
   // Run migration before loading config
   await runMigrationAction(cwd);
@@ -78,9 +104,11 @@ export const runDefaultAction = async (
     // Determine skill directory
     if (cliOptions.skillOutput && !cliOptions.skillDir) {
       // Non-interactive mode: use provided path directly
+      const { resolveAndPrepareSkillDir } = await loadSkillPrompts();
       cliOptions.skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, cwd, cliOptions.force ?? false);
     } else if (!cliOptions.skillDir) {
       // Interactive mode: prompt for skill location
+      const { promptSkillLocation } = await loadSkillPrompts();
       const promptResult = await promptSkillLocation(cliOptions.skillName, cwd);
       cliOptions.skillDir = promptResult.skillDir;
     }
@@ -138,6 +166,7 @@ export const runDefaultAction = async (
   }
 
   // Report results
+  const { reportResults } = await reportPromise;
   reportResults(cwd, packResult, config, cliOptions);
 
   return {

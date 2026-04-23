@@ -3,12 +3,21 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import { initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
-import { type FileManipulator, getFileManipulator } from './fileManipulate.js';
+import type { FileManipulator, getFileManipulator as getFileManipulatorType } from './fileManipulate.js';
 import type { ProcessedFile, RawFile } from './fileTypes.js';
 import { truncateBase64Content } from './truncateBase64.js';
 import type { FileProcessTask } from './workers/fileProcessWorker.js';
 
 type GetFileManipulator = (filePath: string) => FileManipulator | null;
+
+// fileManipulate pulls in @repomix/strip-comments plus the per-language
+// manipulators. Main-thread code only needs it for removeEmptyLines; the
+// worker path has its own static import inside fileProcessContent.ts.
+let _fileManipulatePromise: Promise<typeof import('./fileManipulate.js')> | null = null;
+const loadFileManipulate = () => {
+  _fileManipulatePromise ??= import('./fileManipulate.js');
+  return _fileManipulatePromise;
+};
 
 /**
  * Apply lightweight transforms on the main thread after worker processing.
@@ -76,9 +85,11 @@ export const processFiles = async (
   rawFiles: RawFile[],
   config: RepomixConfigMerged,
   progressCallback: RepomixProgressCallback,
-  deps = {
+  deps: {
+    initTaskRunner: typeof initTaskRunner;
+    getFileManipulator?: typeof getFileManipulatorType;
+  } = {
     initTaskRunner,
-    getFileManipulator,
   },
 ): Promise<ProcessedFile[]> => {
   const startTime = process.hrtime.bigint();
@@ -86,6 +97,12 @@ export const processFiles = async (
 
   // Only compress (tree-sitter) and removeComments (AST manipulation) justify worker thread overhead
   const useWorkers = config.output.compress || config.output.removeComments;
+
+  // applyLightweightTransforms only calls getFileManipulator when
+  // removeEmptyLines is set, so gate the main-thread module load on that flag.
+  const resolvedGetFileManipulator: typeof getFileManipulatorType =
+    deps.getFileManipulator ??
+    (config.output.removeEmptyLines ? (await loadFileManipulate()).getFileManipulator : () => null);
 
   if (useWorkers) {
     // Phase 1: Heavy processing via workers (removeComments, compress)
@@ -127,12 +144,14 @@ export const processFiles = async (
     }
 
     // Phase 2: Lightweight transforms (no progress - already reported by workers)
-    files = applyLightweightTransforms(files, config, () => {}, deps);
+    files = applyLightweightTransforms(files, config, () => {}, { getFileManipulator: resolvedGetFileManipulator });
   } else {
     // No heavy processing needed - apply lightweight transforms directly
     logger.trace(`Starting file processing for ${rawFiles.length} files in main thread (lightweight mode)`);
     const inputFiles = rawFiles.map((rawFile) => ({ path: rawFile.path, content: rawFile.content }));
-    files = applyLightweightTransforms(inputFiles, config, progressCallback, deps);
+    files = applyLightweightTransforms(inputFiles, config, progressCallback, {
+      getFileManipulator: resolvedGetFileManipulator,
+    });
   }
 
   const endTime = process.hrtime.bigint();
