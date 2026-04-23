@@ -911,6 +911,32 @@ node_modules
   });
 
   describe('createBaseGlobbyOptions consistency', () => {
+    test('should use case-sensitive matching for ignore patterns', async () => {
+      // This test verifies that caseSensitiveMatch: true is set to prevent
+      // incorrect matches on case-insensitive file systems (e.g., macOS).
+      // See issue #980: BUILD files incorrectly ignored due to 'build/**' pattern
+      const mockConfig = createMockConfig({
+        include: ['**/*'],
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: true, // Enable default patterns which include 'build/**'
+          customPatterns: [],
+        },
+      });
+
+      vi.mocked(globby).mockResolvedValue(['BUILD', 'src/BUILD', 'build/output.js']);
+
+      await searchFiles('/test/root', mockConfig);
+
+      const call = vi.mocked(globby).mock.calls[0];
+      const options = call[1];
+
+      expect(options).toBeDefined();
+      if (options) {
+        expect(options.caseSensitiveMatch).toBe(true);
+      }
+    });
+
     test('should use consistent base options across all globby calls', async () => {
       const mockConfig = createMockConfig({
         include: ['**/*.ts'],

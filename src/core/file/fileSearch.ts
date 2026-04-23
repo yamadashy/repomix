@@ -309,6 +309,7 @@ const createBaseGlobbyOptions = (
   absolute: false,
   dot: true,
   followSymbolicLinks: false,
+  caseSensitiveMatch: true,
 });
 
 export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promise<string[]> => {
