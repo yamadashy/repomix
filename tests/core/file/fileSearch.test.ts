@@ -110,8 +110,20 @@ describe('fileSearch', () => {
       const mockEmptyDirs = ['src/empty', 'empty-root'];
 
       vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
-        if ((options as Record<string, unknown>)?.onlyDirectories) {
-          return mockEmptyDirs;
+        const opts = options as Record<string, unknown>;
+        // New single-call path: files and directories are returned together in objectMode
+        if (opts?.objectMode) {
+          const fileEntries = mockFilePaths.map((p) => ({
+            path: p,
+            name: p.split('/').pop() ?? p,
+            dirent: { isFile: () => true, isDirectory: () => false } as unknown,
+          }));
+          const dirEntries = mockEmptyDirs.map((p) => ({
+            path: p,
+            name: p.split('/').pop() ?? p,
+            dirent: { isFile: () => false, isDirectory: () => true } as unknown,
+          }));
+          return [...fileEntries, ...dirEntries] as never;
         }
         return mockFilePaths;
       });
@@ -122,6 +134,11 @@ describe('fileSearch', () => {
 
       expect(result.filePaths).toEqual(mockFilePaths);
       expect(result.emptyDirPaths.sort()).toEqual(mockEmptyDirs.sort());
+      // One globby call (objectMode) returns files+directories together.
+      expect(globby).toHaveBeenCalledTimes(1);
+      const callOptions = vi.mocked(globby).mock.calls[0][1] as Record<string, unknown>;
+      expect(callOptions.objectMode).toBe(true);
+      expect(callOptions.onlyFiles).toBe(false);
     });
 
     test('should not collect empty directories when disabled', async () => {
@@ -928,9 +945,11 @@ node_modules
       await listDirectories('/test/root', mockConfig);
       await listFiles('/test/root', mockConfig);
 
-      // searchFiles calls globby twice (files + directories if includeEmptyDirectories is true)
-      // listDirectories calls globby once
-      // listFiles calls globby once
+      // searchFiles calls globby once: `onlyFiles: true` when `includeEmptyDirectories` is
+      // disabled (the case here), or `onlyFiles: false, objectMode: true` when enabled to
+      // return files and directories in a single traversal.
+      // listDirectories calls globby once (onlyDirectories: true)
+      // listFiles calls globby once (onlyFiles: true)
       const calls = vi.mocked(globby).mock.calls;
 
       // Verify all calls have consistent base options
@@ -951,13 +970,14 @@ node_modules
           followSymbolicLinks: false,
         });
 
-        // Each call should have either onlyFiles or onlyDirectories, but not both
-        if (options) {
-          const hasOnlyFiles = 'onlyFiles' in options && options.onlyFiles === true;
-          const hasOnlyDirectories = 'onlyDirectories' in options && options.onlyDirectories === true;
-          expect(hasOnlyFiles || hasOnlyDirectories).toBe(true);
-          expect(hasOnlyFiles && hasOnlyDirectories).toBe(false);
-        }
+        // A call must target a recognised entry kind: onlyFiles, onlyDirectories,
+        // or objectMode (the combined files+directories path). A call may not
+        // set both onlyFiles and onlyDirectories.
+        const hasOnlyFiles = 'onlyFiles' in options && options.onlyFiles === true;
+        const hasOnlyDirectories = 'onlyDirectories' in options && options.onlyDirectories === true;
+        const hasObjectMode = 'objectMode' in options && options.objectMode === true;
+        expect(hasOnlyFiles || hasOnlyDirectories || hasObjectMode).toBe(true);
+        expect(hasOnlyFiles && hasOnlyDirectories).toBe(false);
       }
     });
 
