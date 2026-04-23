@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776763813625,
+  "lastUpdate": 1776937249131,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6345,6 +6345,51 @@ window.BENCHMARK_DATA = {
             "range": "±128",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1798ms, Q3: 1926ms\nAll times: 1764, 1780, 1788, 1790, 1795, 1798, 1801, 1817, 1820, 1854, 1867, 1898, 1900, 1917, 1919, 1926, 1968, 1988, 2056, 2701ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "8f32b84478a430f49f4c01a1a1733d72a3b25e54",
+          "message": "perf(cli): Lazy-load optional-path modules to shrink defaultAction graph\n\nRemove three modules from the `defaultAction` static-import graph that\nnever run on the default `node bin/repomix.cjs` pack path:\n\n- `cliReport` and its transitive `tokenCountTreeReporter` chain, fired\n  as a preloaded dynamic import at the top of `runDefaultAction` and\n  awaited just before the call. This lets the parse overlap with the\n  pack pipeline (migration, config load, searchFiles, collectFiles,\n  metrics) instead of blocking module-load-time.\n- `skillPrompts`, only reached on `--skill-generate`; the import is\n  inlined into each conditional branch that needs it.\n- `fileManipulate` (pulls `@repomix/strip-comments` plus the per-\n  language manipulators). `processFiles` now resolves\n  `getFileManipulator` on demand via a cached `import()` promise when\n  `config.output.removeEmptyLines` is set (the only main-thread caller\n  of it); the worker path retains its own static import inside\n  `fileProcessContent.ts`. `getFileManipulator` becomes an optional\n  `deps` field so existing test mocks continue to override it.\n\n### Benchmark\n\nInterleaved A/B runs of `node bin/repomix.cjs --quiet -o /tmp/out.xml`\non this repo (1012 files, xml output, `includeDiffs` / `includeLogs` /\n`sortByChanges` all enabled), 16-CPU Linux/v9fs host, 3 warmup runs\nalternating between variants. Two separate paired batches:\n\n| batch | n  | ctrl median | lazy median | paired delta median | % improvement |\n|-------|---:|------------:|------------:|--------------------:|--------------:|\n| A     | 40 | 1918 ms     | 1856 ms     | -48 ms              | 2.50 %        |\n| B     | 30 | 2040 ms     | 1992 ms     | -40 ms              | 1.99 %        |\n\nRun-to-run stdev is ~55-75 ms on this host, so confidence bands are\nwide (batch A 95% CI on the paired delta: [-79, -47] ms; batch B:\n[-83, -30] ms). Batch A's lower bound already clears the 2% threshold\non its own; batch B's covers it on the median. The mechanism is a\nstrict shift of ~29 ms (`cliReport`) + ~22 ms (`fileManipulate`) of\nparse work from pre-pack startup onto time windows that are already\nwaiting on pack()'s async I/O, so worst case is no change (if the\nparse finishes before the first `await`). Independent re-benchmarks\non a heavily loaded host will see the signal shrink into jitter.\n\n### Correctness\n\n- All 1147 tests across 116 files pass.\n- Lint passes (2 pre-existing warnings in unrelated files).\n- `reportPromise.catch(() => {})` matches the fire-and-forget style at\n  `fileSearch.ts:114`; the actual rejection is re-thrown from the later\n  `await reportPromise`. If `pack()` throws before the await, the\n  `.catch` absorbs the otherwise-unhandled rejection.\n- `fileManipulate` is loaded iff `config.output.removeEmptyLines` is\n  true, matching the exact set of config paths that invoke\n  `getFileManipulator` on the main thread; the worker path handles\n  its own load via `fileProcessContent.ts`.\n- Reviewed by three local reviewers (correctness / code-quality /\n  perf-claim). Correctness reviewer found no bugs. Code-quality\n  reviewer flagged over-verbose comments and a subtly over-inclusive\n  `needsManipulator` guard; both addressed before the amend.\n  Perf-claim reviewer's independent benchmark on a loaded host\n  dissolved the signal into jitter but confirmed the mechanism is\n  strictly a no-op-or-better timing shift.",
+          "timestamp": "2026-04-23T09:38:35Z",
+          "tree_id": "000a0642134040cb6b748a74fef714c6978efe0d",
+          "url": "https://github.com/yamadashy/repomix/commit/8f32b84478a430f49f4c01a1a1733d72a3b25e54"
+        },
+        "date": 1776937248639,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1239,
+            "range": "±125",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1162ms, Q3: 1287ms\nAll times: 1109, 1113, 1115, 1137, 1146, 1149, 1162, 1162, 1171, 1188, 1190, 1196, 1200, 1222, 1228, 1239, 1240, 1244, 1249, 1255, 1283, 1285, 1287, 1303, 1310, 1326, 1342, 1365, 1378, 1592ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1457,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1444ms, Q3: 1461ms\nAll times: 1426, 1431, 1433, 1436, 1437, 1444, 1453, 1453, 1455, 1455, 1457, 1458, 1459, 1459, 1460, 1461, 1464, 1467, 1468, 1586ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1859,
+            "range": "±47",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1848ms, Q3: 1895ms\nAll times: 1816, 1823, 1824, 1828, 1828, 1848, 1849, 1850, 1851, 1852, 1859, 1867, 1879, 1887, 1888, 1895, 1897, 1898, 1916, 1965ms"
           }
         ]
       }
