@@ -19,23 +19,21 @@ export interface FileSearchResult {
 // comes from globby with the same `ignore` patterns (e.g. `dist/**`), which
 // excludes both the directory contents AND the directory entry itself.
 const findEmptyDirectories = async (rootDir: string, directories: string[]): Promise<string[]> => {
-  const emptyDirs: string[] = [];
-
-  for (const dir of directories) {
-    const fullPath = path.join(rootDir, dir);
-    try {
-      const entries = await fs.readdir(fullPath);
-      const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
-
-      if (!hasVisibleContents) {
-        emptyDirs.push(dir);
+  const results = await Promise.all(
+    directories.map(async (dir) => {
+      const fullPath = path.join(rootDir, dir);
+      try {
+        const entries = await fs.readdir(fullPath);
+        const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
+        return hasVisibleContents ? null : dir;
+      } catch (error) {
+        logger.debug(`Error checking directory ${dir}:`, error);
+        return null;
       }
-    } catch (error) {
-      logger.debug(`Error checking directory ${dir}:`, error);
-    }
-  }
+    }),
+  );
 
-  return emptyDirs;
+  return results.filter((dir): dir is string => dir !== null);
 };
 
 // Check if a path is a git worktree reference file
@@ -182,8 +180,12 @@ export const searchFiles = async (
     logger.debug('[globby] Starting file search...');
     const globbyStartTime = Date.now();
 
-    const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+
+    // Run the files and directories globby passes concurrently so the second
+    // traversal overlaps with the first instead of starting after it.
+    const filesPromise = globby(includePatterns, {
+      ...baseGlobbyOptions,
       onlyFiles: true,
     }).catch((error: unknown) => {
       // Handle EPERM errors specifically
@@ -197,21 +199,21 @@ export const searchFiles = async (
       throw error;
     });
 
+    const directoriesPromise = config.output.includeEmptyDirectories
+      ? globby(includePatterns, {
+          ...baseGlobbyOptions,
+          onlyDirectories: true,
+        })
+      : Promise.resolve<string[]>([]);
+
+    const [filePaths, directories] = await Promise.all([filesPromise, directoriesPromise]);
+
     const globbyElapsedTime = Date.now() - globbyStartTime;
     logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
 
     let emptyDirPaths: string[] = [];
     if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories...');
-      const emptyDirStartTime = Date.now();
-
-      const directories = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyDirectories: true,
-      });
-
-      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
+      logger.debug(`[empty dirs] Found ${directories.length} directories`);
 
       const filterStartTime = Date.now();
       emptyDirPaths = await findEmptyDirectories(rootDir, directories);
