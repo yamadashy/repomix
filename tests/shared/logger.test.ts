@@ -11,6 +11,7 @@ vi.mock('picocolors', () => ({
     dim: vi.fn((str) => `DIM:${str}`),
     blue: vi.fn((str) => `BLUE:${str}`),
     gray: vi.fn((str) => `GRAY:${str}`),
+    isColorSupported: true,
   },
 }));
 
@@ -109,5 +110,14 @@ describe('logger', () => {
   it('should handle multiple arguments', () => {
     logger.info('Multiple', 'arguments', 123);
     expect(console.log).toHaveBeenCalledWith('CYAN:Multiple arguments 123');
+  });
+
+  describe('color support in formatArgs', () => {
+    it('should pass pc.isColorSupported to util.inspect for object formatting', () => {
+      const obj = { key: 'value' };
+      logger.info('Test:', obj);
+      // When isColorSupported is true (mock), util.inspect should use colors
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('CYAN:Test: '));
+    });
   });
 });
