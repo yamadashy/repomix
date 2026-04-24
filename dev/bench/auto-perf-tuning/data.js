@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777007897608,
+  "lastUpdate": 1777071897952,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6480,6 +6480,51 @@ window.BENCHMARK_DATA = {
             "range": "±34",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1875ms, Q3: 1909ms\nAll times: 1850, 1851, 1866, 1871, 1874, 1875, 1877, 1884, 1885, 1899, 1900, 1901, 1906, 1908, 1908, 1909, 1916, 1956, 1986, 2004ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "bbeea55caf0ade31cf4a49503e4bdd1386e6aa26",
+          "message": "perf(file): Raise file-collect concurrency from 50 to 128\n\n`collectFiles` reads file contents through a `promisePool` with a\nconcurrency cap. The cap was set to 50, far below what a modern\nruntime can sustain on 1k files of typical source code. A 1,024-file\n`fs.readFile` micro-benchmark on this repo showed the I/O phase\nplateau between 100 and 128 — 50→97 ms, 100→79 ms, 128→78 ms,\n200→71 ms — so 128 captures the bulk of the available speedup\nwithout pushing the in-flight FD count past the typical\n`ulimit -n` of 1024. Memory remains negligible: at ~5 KB average\nper file, 128 in-flight reads peak around 640 KB.\n\nThe promisePool implementation already handles backpressure\ncorrectly; only the constant changes. Output is byte-identical\n(md5 verified across 60 paired runs).\n\n## Benchmark\n\nInterleaved A/B `node bin/repomix.cjs --quiet -o /tmp/out.xml`\non this repo (1041 files, default xml output, includeDiffs/\nincludeLogs/sortByChanges enabled), 16-CPU Linux/v9fs host,\n5 warmup runs + 60 measured runs per side, hyperfine\n`--shell=none`:\n\n| n  | base mean | patch mean | delta   | improvement |\n|---:|----------:|-----------:|--------:|------------:|\n| 60 | 2.454 s   | 2.339 s    | -115 ms | 4.69 %      |\n\nHyperfine ratio: patched ran 1.05 ± 0.08× faster than baseline.\nMean delta SE ≈ 24 ms (60 paired samples), t ≈ 4.8, well above\nthe 2 % / ~49 ms acceptance bar. Min/max also shifted favorably\n(2.147→2.138 min, 2.801→2.560 max).\n\n## Test plan\n\n- [x] `npm run lint` — only 2 pre-existing warnings in unrelated files\n- [x] `npm run test` — 116 files / **1147** tests passing, no\n      changes required\n- [x] Output byte-equivalence: md5 matches on the generated 4.4 MB\n      XML across both variants\n- [x] 60-run interleaved A/B benchmark; statistically significant\n      delta (t ≈ 4.8, p < 0.001)",
+          "timestamp": "2026-04-24T23:02:58Z",
+          "tree_id": "0df72680f854f33e3023eca0efbadf752d5ca0b7",
+          "url": "https://github.com/yamadashy/repomix/commit/bbeea55caf0ade31cf4a49503e4bdd1386e6aa26"
+        },
+        "date": 1777071897450,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 798,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 787ms, Q3: 818ms\nAll times: 740, 760, 771, 772, 777, 783, 785, 787, 792, 792, 793, 794, 795, 795, 795, 798, 798, 798, 808, 810, 812, 816, 818, 819, 837, 840, 845, 877, 918, 931ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1436,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1426ms, Q3: 1451ms\nAll times: 1413, 1417, 1419, 1423, 1426, 1426, 1428, 1430, 1432, 1434, 1436, 1437, 1438, 1445, 1448, 1451, 1453, 1460, 1468, 1481ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1794,
+            "range": "±40",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1768ms, Q3: 1808ms\nAll times: 1743, 1753, 1755, 1759, 1764, 1768, 1781, 1782, 1785, 1793, 1794, 1794, 1801, 1803, 1805, 1808, 1809, 1816, 1821, 1830ms"
           }
         ]
       }
