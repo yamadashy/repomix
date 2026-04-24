@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776986797956,
+  "lastUpdate": 1777007897608,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6435,6 +6435,51 @@ window.BENCHMARK_DATA = {
             "range": "±38",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1643ms, Q3: 1681ms\nAll times: 1626, 1629, 1634, 1639, 1642, 1643, 1644, 1646, 1650, 1654, 1654, 1656, 1658, 1659, 1681, 1681, 1685, 1686, 1794, 1796ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "7be9f0fb832afa2eb462bdd4b616db6eb3b3b9a5",
+          "message": "perf(metrics): Sort file-metrics batches largest-first to drain workers evenly\n\nSort `filesToProcess` by content length descending before splitting into\nbatches in `calculateFileMetrics`. Files were previously batched in\nalphabetical/directory order, so a cluster of large alphabetically-late\nfiles (e.g. `package-lock.json`, `website/server/.../packEventSchema.ts`)\nlanded in the last batch and ran ~3-4x longer than the early batches.\nWith Tinypool's FIFO queue, the file-metrics phase ended with one worker\nholding that straggler batch while the other three sat idle — a classic\nload-imbalance straggler.\n\nSorting biggest-first means workers begin on the slow batches immediately,\nso all four finish at roughly the same wall-clock instant. The sort is\nin-place on a fresh array (the `.filter()` above already returned a new\narray) and costs <0.1ms for ~1k files. Per-file results are keyed by\n`file.path` in `FileMetrics[]`, so dispatch order does not affect the\nfinal `fileTokenCounts` map built by `calculateMetrics`.\n\nThe existing test asserted a specific result-array order; updated it to\nsort by path before comparison since the function's contract is \"for each\ntarget file, return its metrics\" — array order is not observed by the\nreal consumer.\n\n## Benchmark\n\nTwo interleaved paired A/B batches of `node bin/repomix.cjs --quiet -o\n/tmp/o.xml` on this repo (1041 files, xml output, includeDiffs /\nincludeLogs / sortByChanges all enabled), 16-CPU Linux/v9fs host, 3\nwarmup pairs alternating between variants:\n\n| batch | n  | base median | patch median | paired delta median | improvement |\n|-------|---:|------------:|-------------:|--------------------:|------------:|\n| A     | 30 | 1656 ms     | 1586 ms      | -62.5 ms            | 3.63 %      |\n| B     | 30 | 1670 ms     | 1618 ms      | -56.0 ms            | 2.90 %      |\n\nPaired t-statistic 6.49 (batch A) and 6.01 (batch B), both p < 0.001.\n95% CI on the paired delta: [41.8, 78.0] ms (A) and [32.6, 64.1] ms (B).\nBoth lower bounds clear the 2 % (~34 ms) threshold; the consistent\n~50-65 ms median delta matches the expected straggler-batch cost on this\nrepo.\n\n## Investigation summary\n\nFive parallel investigation sub-agents covered: string/serialization hot\npaths, Tinypool/IPC overhead, file-search/ignore pipeline, startup &\ninit cost, and token-counting & metrics aggregation. Their best\ncandidates by estimated impact:\n\n| Candidate                                                              | Estimated | Outcome |\n|------------------------------------------------------------------------|----------:|---------|\n| Sort file-metrics batches by content length descending (this commit)   | ~30-40 ms | **Selected.** Batch A: -62.5 ms (3.63%); Batch B: -56.0 ms (2.90%). |\n| Parallel pool cleanup in `pack()` finally (Promise.all)                | ~97 ms    | A/B benchmarked end-to-end: paired delta only 2 ms / 0.12% — the cleanup wasn't on the critical path on this repo (warmups already drained, individual `destroy()` ~20-40 ms each). Reverted. |\n| Lazy-load `packager.js` in `defaultAction.ts` (static → dynamic)       | ~50-70 ms | A/B benchmarked: median delta 22.5 ms / 1.26% (also 1.5 ms / 0.52% in a follow-up batch). Below threshold. Reverted. |\n| Globby `gitignore` pre-scan elimination via `ignoreFiles`              | ~18-40 ms | Not selected — `ignoreFiles` applies patterns globally where `gitignore: true` uses git's directory-relative scoping; would silently drop 14 fixture files in tests/. |\n| Pre-warm `outputGenerate` (Handlebars) like the other lazy loads       | ~164 ms (small repos) | Not selected — output phase is 218 ms below the file-metrics critical path on this 1041-file repo, so pre-warming output generation does not move the end-to-end number here. |\n| Misc string optimizations (markdown delimiter / line-counts indexOf)   | ~17 ms    | Not selected — also inside the output phase and below the file-metrics critical path. |",
+          "timestamp": "2026-04-24T05:15:46Z",
+          "tree_id": "4fcf717b32aa859f6f0782b5a702a8dbd02d237c",
+          "url": "https://github.com/yamadashy/repomix/commit/7be9f0fb832afa2eb462bdd4b616db6eb3b3b9a5"
+        },
+        "date": 1777007897094,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1254,
+            "range": "±74",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1229ms, Q3: 1303ms\nAll times: 1144, 1175, 1188, 1196, 1204, 1225, 1226, 1229, 1231, 1239, 1241, 1247, 1253, 1253, 1254, 1254, 1257, 1261, 1261, 1293, 1300, 1301, 1303, 1308, 1322, 1357, 1464, 1482, 1562, 1583ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1384,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1376ms, Q3: 1400ms\nAll times: 1344, 1373, 1373, 1374, 1375, 1376, 1376, 1378, 1379, 1381, 1384, 1390, 1393, 1395, 1398, 1400, 1401, 1403, 1404, 1412ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1900,
+            "range": "±34",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1875ms, Q3: 1909ms\nAll times: 1850, 1851, 1866, 1871, 1874, 1875, 1877, 1884, 1885, 1899, 1900, 1901, 1906, 1908, 1908, 1909, 1916, 1956, 1986, 2004ms"
           }
         ]
       }
