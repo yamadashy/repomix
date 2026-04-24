@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { unzip } from 'fflate';
 import { type CliOptions, runDefaultAction, setLogLevel } from 'repomix';
-import type { PackOptions, PackProgressCallback, PackResult } from '../../types.js';
+import type { PackOptions, PackProgressCallback, PackResult, ProcessPackResult } from '../../types.js';
 import { AppError } from '../../utils/errorHandler.js';
 import { logMemoryUsage } from '../../utils/logger.js';
 import { cleanupTempDirectory, copyOutputToCurrentDirectory, createTempDirectory } from './utils/fileUtils.js';
@@ -25,7 +25,7 @@ export async function processZipFile(
   format: string,
   options: PackOptions,
   onProgress?: PackProgressCallback,
-): Promise<PackResult> {
+): Promise<ProcessPackResult> {
   if (!file) {
     throw new AppError('File is required for file processing', 400);
   }
@@ -119,7 +119,9 @@ export async function processZipFile(
       totalTokens: packResult.totalTokens,
     });
 
-    return packResultData;
+    // Uploaded ZIPs are never cached — each upload is a unique payload, unlike
+    // remote repos where URL + options form a cache key.
+    return { result: packResultData, cached: false };
   } catch (error) {
     console.error('Error processing uploaded file:', error);
     if (error instanceof AppError) {

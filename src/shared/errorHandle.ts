@@ -115,20 +115,43 @@ const isRepomixError = (error: unknown): error is RepomixError => {
 };
 
 /**
- * Checks if an error is a ZodError using duck typing to avoid eagerly importing Zod.
- * ZodErrors have a `name` of 'ZodError' and an `issues` array.
+ * Rethrows schema validation errors (Zod or Valibot) as RepomixConfigValidationError
+ * using duck typing to avoid eagerly importing either library.
+ *
+ * - ZodError: `name === 'ZodError'`, `issues[].path` is `Array<string | number>`
+ * - ValiError: `name === 'ValiError'`, `issues[].path` is `Array<{ key: string | number | symbol }>`
  */
-export const rethrowValidationErrorIfZodError = (error: unknown, message: string): void => {
-  if (
-    error instanceof Error &&
-    error.name === 'ZodError' &&
-    'issues' in error &&
-    Array.isArray((error as { issues: unknown[] }).issues)
-  ) {
-    const issues = (error as { issues: Array<{ path: string[]; message: string }> }).issues;
-    const zodErrorText = issues.map((err) => `[${err.path.join('.')}] ${err.message}`).join('\n  ');
-    throw new RepomixConfigValidationError(
-      `${message}\n\n  ${zodErrorText}\n\n  Please check the config file and try again.`,
-    );
+export const rethrowValidationErrorIfSchemaError = (error: unknown, message: string): void => {
+  // Duck-type instead of `instanceof Error` so errors round-tripped through
+  // worker boundaries (which keep only plain { name, message, issues }) are
+  // still recognized. Aligns with isError / isRepomixError above.
+  if (!error || typeof error !== 'object') return;
+  const err = error as { name?: unknown; issues?: unknown };
+  if ((err.name !== 'ZodError' && err.name !== 'ValiError') || !Array.isArray(err.issues)) {
+    return;
   }
+
+  const issues = err.issues as Array<{ path?: unknown; message: string }>;
+  const errorText = issues
+    .map((issue) => {
+      const segments = Array.isArray(issue.path)
+        ? (issue.path as unknown[])
+            .map((segment) => {
+              // Zod: path segments are primitives. Valibot: { key } objects.
+              if (segment && typeof segment === 'object') {
+                if ('key' in segment) return String((segment as { key: unknown }).key);
+                return '';
+              }
+              return String(segment);
+            })
+            .filter((segment) => segment !== '')
+        : [];
+      // Omit the bracketed path entirely when there are no usable segments, so
+      // a root-level / path-less issue reads as `message` instead of `[] message`.
+      return segments.length === 0 ? issue.message : `[${segments.join('.')}] ${issue.message}`;
+    })
+    .join('\n  ');
+  throw new RepomixConfigValidationError(
+    `${message}\n\n  ${errorText}\n\n  Please check the config file and try again.`,
+  );
 };

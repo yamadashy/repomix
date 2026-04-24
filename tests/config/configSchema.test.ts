@@ -1,5 +1,5 @@
+import * as v from 'valibot';
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
 import {
   repomixConfigBaseSchema,
   repomixConfigCliSchema,
@@ -12,12 +12,12 @@ import {
 describe('configSchema', () => {
   describe('repomixOutputStyleSchema', () => {
     it('should accept valid output styles', () => {
-      expect(repomixOutputStyleSchema.parse('plain')).toBe('plain');
-      expect(repomixOutputStyleSchema.parse('xml')).toBe('xml');
+      expect(v.parse(repomixOutputStyleSchema, 'plain')).toBe('plain');
+      expect(v.parse(repomixOutputStyleSchema, 'xml')).toBe('xml');
     });
 
     it('should reject invalid output styles', () => {
-      expect(() => repomixOutputStyleSchema.parse('invalid')).toThrow(z.ZodError);
+      expect(() => v.parse(repomixOutputStyleSchema, 'invalid')).toThrow(v.ValiError);
     });
   });
 
@@ -33,8 +33,8 @@ describe('configSchema', () => {
           tokenCountTree: false,
         },
       };
-      expect(repomixConfigBaseSchema.parse(configWithBooleanTrue)).toEqual(configWithBooleanTrue);
-      expect(repomixConfigBaseSchema.parse(configWithBooleanFalse)).toEqual(configWithBooleanFalse);
+      expect(v.parse(repomixConfigBaseSchema, configWithBooleanTrue)).toEqual(configWithBooleanTrue);
+      expect(v.parse(repomixConfigBaseSchema, configWithBooleanFalse)).toEqual(configWithBooleanFalse);
     });
 
     it('should accept string values for tokenCountTree', () => {
@@ -43,7 +43,7 @@ describe('configSchema', () => {
           tokenCountTree: '100',
         },
       };
-      expect(repomixConfigBaseSchema.parse(configWithString)).toEqual(configWithString);
+      expect(v.parse(repomixConfigBaseSchema, configWithString)).toEqual(configWithString);
     });
 
     it('should reject invalid types for tokenCountTree', () => {
@@ -52,7 +52,7 @@ describe('configSchema', () => {
           tokenCountTree: [], // Should be boolean, number, or string
         },
       };
-      expect(() => repomixConfigBaseSchema.parse(configWithInvalidType)).toThrow(z.ZodError);
+      expect(() => v.parse(repomixConfigBaseSchema, configWithInvalidType)).toThrow(v.ValiError);
     });
   });
 
@@ -74,11 +74,11 @@ describe('configSchema', () => {
           enableSecurityCheck: true,
         },
       };
-      expect(repomixConfigBaseSchema.parse(validConfig)).toEqual(validConfig);
+      expect(v.parse(repomixConfigBaseSchema, validConfig)).toEqual(validConfig);
     });
 
     it('should accept empty object', () => {
-      expect(repomixConfigBaseSchema.parse({})).toEqual({});
+      expect(v.parse(repomixConfigBaseSchema, {})).toEqual({});
     });
 
     it('should reject invalid types', () => {
@@ -89,7 +89,7 @@ describe('configSchema', () => {
         },
         include: 'not-an-array', // Should be an array
       };
-      expect(() => repomixConfigBaseSchema.parse(invalidConfig)).toThrow(z.ZodError);
+      expect(() => v.parse(repomixConfigBaseSchema, invalidConfig)).toThrow(v.ValiError);
     });
   });
 
@@ -137,17 +137,142 @@ describe('configSchema', () => {
           encoding: 'o200k_base',
         },
       };
-      expect(repomixConfigDefaultSchema.parse(validConfig)).toEqual(validConfig);
+      expect(v.parse(repomixConfigDefaultSchema, validConfig)).toEqual(validConfig);
     });
 
     it('should reject incomplete config', () => {
       const invalidConfig = {};
-      expect(() => repomixConfigDefaultSchema.parse(invalidConfig)).toThrow();
+      expect(() => v.parse(repomixConfigDefaultSchema, invalidConfig)).toThrow(v.ValiError);
     });
 
     it('should provide helpful error for missing required fields', () => {
       const invalidConfig = {};
-      expect(() => repomixConfigDefaultSchema.parse(invalidConfig)).toThrow(/expected object/i);
+      try {
+        v.parse(repomixConfigDefaultSchema, invalidConfig);
+        expect.fail('Expected ValiError to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(v.ValiError);
+        const valiError = error as v.ValiError<typeof repomixConfigDefaultSchema>;
+        expect(valiError.issues[0].message).toMatch(/invalid (type|key)/i);
+      }
+    });
+
+    describe('numeric constraint enforcement', () => {
+      // The Valibot pipes (integer / minValue / maxValue) need behavioral coverage,
+      // not just structural equivalence to the previous Zod schema.
+      const baseDefaults = {
+        input: { maxFileSize: 50 * 1024 * 1024 },
+        output: {
+          filePath: 'output.xml',
+          style: 'xml',
+          parsableStyle: false,
+          fileSummary: true,
+          directoryStructure: true,
+          files: true,
+          removeComments: false,
+          removeEmptyLines: false,
+          compress: false,
+          topFilesLength: 5,
+          showLineNumbers: false,
+          truncateBase64: false,
+          copyToClipboard: false,
+          includeFullDirectoryStructure: false,
+          tokenCountTree: false,
+          git: {
+            sortByChanges: true,
+            sortByChangesMaxCommits: 100,
+            includeDiffs: false,
+            includeLogs: false,
+            includeLogsCount: 50,
+          },
+        },
+        include: [] as string[],
+        ignore: { useGitignore: true, useDotIgnore: true, useDefaultPatterns: true, customPatterns: [] as string[] },
+        security: { enableSecurityCheck: true },
+        tokenCount: { encoding: 'o200k_base' as const },
+      };
+
+      it('rejects non-integer maxFileSize', () => {
+        const cfg = { ...baseDefaults, input: { maxFileSize: 1.5 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects maxFileSize below 1', () => {
+        const cfg = { ...baseDefaults, input: { maxFileSize: 0 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects negative topFilesLength', () => {
+        const cfg = { ...baseDefaults, output: { ...baseDefaults.output, topFilesLength: -1 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects splitOutput below 1', () => {
+        const cfg = { ...baseDefaults, output: { ...baseDefaults.output, splitOutput: 0 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects non-integer splitOutput', () => {
+        const cfg = { ...baseDefaults, output: { ...baseDefaults.output, splitOutput: 1.5 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects splitOutput above Number.MAX_SAFE_INTEGER', () => {
+        const cfg = {
+          ...baseDefaults,
+          output: { ...baseDefaults.output, splitOutput: Number.MAX_SAFE_INTEGER + 1 },
+        };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects sortByChangesMaxCommits below 1', () => {
+        const cfg = {
+          ...baseDefaults,
+          output: {
+            ...baseDefaults.output,
+            git: { ...baseDefaults.output.git, sortByChangesMaxCommits: 0 },
+          },
+        };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects includeLogsCount below 1', () => {
+        const cfg = {
+          ...baseDefaults,
+          output: {
+            ...baseDefaults.output,
+            git: { ...baseDefaults.output.git, includeLogsCount: 0 },
+          },
+        };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects non-integer topFilesLength', () => {
+        const cfg = { ...baseDefaults, output: { ...baseDefaults.output, topFilesLength: 1.5 } };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects non-integer sortByChangesMaxCommits', () => {
+        const cfg = {
+          ...baseDefaults,
+          output: {
+            ...baseDefaults.output,
+            git: { ...baseDefaults.output.git, sortByChangesMaxCommits: 1.5 },
+          },
+        };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
+
+      it('rejects non-integer includeLogsCount', () => {
+        const cfg = {
+          ...baseDefaults,
+          output: {
+            ...baseDefaults.output,
+            git: { ...baseDefaults.output.git, includeLogsCount: 1.5 },
+          },
+        };
+        expect(() => v.parse(repomixConfigDefaultSchema, cfg)).toThrow(v.ValiError);
+      });
     });
   });
 
@@ -162,7 +287,7 @@ describe('configSchema', () => {
           customPatterns: ['*.log'],
         },
       };
-      expect(repomixConfigFileSchema.parse(validConfig)).toEqual(validConfig);
+      expect(v.parse(repomixConfigFileSchema, validConfig)).toEqual(validConfig);
     });
 
     it('should accept partial config', () => {
@@ -171,7 +296,7 @@ describe('configSchema', () => {
           filePath: 'partial-output.txt',
         },
       };
-      expect(repomixConfigFileSchema.parse(partialConfig)).toEqual(partialConfig);
+      expect(v.parse(repomixConfigFileSchema, partialConfig)).toEqual(partialConfig);
     });
   });
 
@@ -184,7 +309,7 @@ describe('configSchema', () => {
         },
         include: ['src/**/*.ts'],
       };
-      expect(repomixConfigCliSchema.parse(validConfig)).toEqual(validConfig);
+      expect(v.parse(repomixConfigCliSchema, validConfig)).toEqual(validConfig);
     });
 
     it('should reject invalid CLI options', () => {
@@ -193,7 +318,22 @@ describe('configSchema', () => {
           filePath: 123, // Should be string
         },
       };
-      expect(() => repomixConfigCliSchema.parse(invalidConfig)).toThrow(z.ZodError);
+      expect(() => v.parse(repomixConfigCliSchema, invalidConfig)).toThrow(v.ValiError);
+    });
+
+    it('should preserve base output fields alongside CLI-only stdout via intersect', () => {
+      // `buildCliConfig` parses against this schema before mergeConfigs, so the
+      // intersect must keep both the base-schema `filePath` and the CLI-only
+      // `stdout`. The base schema's `output` does not declare `stdout`; valibot
+      // would strip it without the intersect re-merging from the CLI member.
+      const cliConfig = {
+        output: { filePath: 'out.xml', stdout: true },
+        skillGenerate: true,
+      };
+      const result = v.parse(repomixConfigCliSchema, cliConfig) as typeof cliConfig;
+      expect(result.output.filePath).toBe('out.xml');
+      expect(result.output.stdout).toBe(true);
+      expect(result.skillGenerate).toBe(true);
     });
   });
 
@@ -242,7 +382,7 @@ describe('configSchema', () => {
           encoding: 'o200k_base',
         },
       };
-      expect(repomixConfigMergedSchema.parse(validConfig)).toEqual(validConfig);
+      expect(v.parse(repomixConfigMergedSchema, validConfig)).toEqual(validConfig);
     });
 
     it('should reject merged config missing required fields', () => {
@@ -252,7 +392,7 @@ describe('configSchema', () => {
           // Missing required fields
         },
       };
-      expect(() => repomixConfigMergedSchema.parse(invalidConfig)).toThrow(z.ZodError);
+      expect(() => v.parse(repomixConfigMergedSchema, invalidConfig)).toThrow(v.ValiError);
     });
 
     it('should reject merged config with invalid types', () => {
@@ -276,7 +416,50 @@ describe('configSchema', () => {
           enableSecurityCheck: true,
         },
       };
-      expect(() => repomixConfigMergedSchema.parse(invalidConfig)).toThrow(z.ZodError);
+      expect(() => v.parse(repomixConfigMergedSchema, invalidConfig)).toThrow(v.ValiError);
+    });
+
+    it('should preserve CLI-only fields (stdout, skillGenerate) through v.intersect', () => {
+      // Regression guard: repomixConfigDefaultSchema's output is strict and does not
+      // declare `stdout`; if intersect ever stopped merging per-schema outputs, the CLI
+      // `--stdout` flag would silently disappear after mergeConfigs validates the result.
+      const merged = {
+        cwd: '/path/to/project',
+        input: { maxFileSize: 1024 },
+        output: {
+          filePath: 'output.xml',
+          style: 'xml',
+          parsableStyle: false,
+          fileSummary: true,
+          directoryStructure: true,
+          files: true,
+          removeComments: false,
+          removeEmptyLines: false,
+          compress: false,
+          topFilesLength: 5,
+          showLineNumbers: false,
+          truncateBase64: false,
+          copyToClipboard: false,
+          includeFullDirectoryStructure: false,
+          tokenCountTree: false,
+          stdout: true,
+          git: {
+            sortByChanges: true,
+            sortByChangesMaxCommits: 100,
+            includeDiffs: false,
+            includeLogs: false,
+            includeLogsCount: 50,
+          },
+        },
+        include: [],
+        ignore: { useGitignore: true, useDotIgnore: true, useDefaultPatterns: true, customPatterns: [] },
+        security: { enableSecurityCheck: true },
+        tokenCount: { encoding: 'o200k_base' },
+        skillGenerate: 'my-skill',
+      };
+      const result = v.parse(repomixConfigMergedSchema, merged) as typeof merged;
+      expect(result.output.stdout).toBe(true);
+      expect(result.skillGenerate).toBe('my-skill');
     });
   });
 });

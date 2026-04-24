@@ -70,6 +70,32 @@ jobs:
         working-directory: website/server
         run: npm run lint
 
+  test-website-server:
+    name: Test Website Server
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: .tool-versions
+          cache: npm
+      - name: Build and link local repomix
+        run: |
+          npm ci
+          npm run build
+          npm link
+      - name: Install website server dependencies
+        working-directory: website/server
+        run: |
+          npm ci
+          npm link repomix
+      - name: Test website server
+        working-directory: website/server
+        run: npm run test
+
   bundle-website-server:
     name: Bundle Website Server
     runs-on: ubuntu-latest
