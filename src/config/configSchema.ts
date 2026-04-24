@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { TOKEN_ENCODINGS } from '../core/metrics/TokenCounter.js';
+import { TOKEN_ENCODINGS } from '../core/metrics/TokenEncoding.js';
 
 // Output style enum
 export const repomixOutputStyleSchema = v.picklist(['xml', 'markdown', 'json', 'plain']);

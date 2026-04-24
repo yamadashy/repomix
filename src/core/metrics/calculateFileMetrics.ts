@@ -3,7 +3,7 @@ import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import { type MetricsTaskRunner, runBatchTokenCount } from './metricsWorkerRunner.js';
-import type { TokenEncoding } from './TokenCounter.js';
+import type { TokenEncoding } from './TokenEncoding.js';
 import type { FileMetrics } from './workers/types.js';
 
 // Batch size for grouping files into worker tasks to reduce IPC overhead.

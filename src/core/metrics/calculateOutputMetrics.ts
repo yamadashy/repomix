@@ -1,6 +1,6 @@
 import { logger } from '../../shared/logger.js';
 import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
-import type { TokenEncoding } from './TokenCounter.js';
+import type { TokenEncoding } from './TokenEncoding.js';
 
 // Target ~200K characters per chunk to balance tokenization throughput and worker round-trip overhead.
 // Benchmarks show 200K is the sweet spot: fewer round-trips than 100K with enough chunks

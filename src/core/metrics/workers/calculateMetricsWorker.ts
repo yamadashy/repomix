@@ -1,5 +1,5 @@
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
-import type { TokenEncoding } from '../TokenCounter.js';
+import type { TokenEncoding } from '../TokenEncoding.js';
 import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
 
 /**
