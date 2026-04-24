@@ -43,6 +43,11 @@ export const calculateFileMetrics = async (
       Math.ceil(filesToProcess.length / (maxThreads * TARGET_BATCHES_PER_WORKER)),
     );
 
+    // Largest-first so workers start on the slow batches immediately (Tinypool
+    // dispatches batches FIFO). Safe to reorder: the consumer builds its
+    // fileTokenCounts map by path lookup, so dispatch order is not observable.
+    filesToProcess.sort((a, b) => b.content.length - a.content.length);
+
     // Split files into batches to reduce IPC round-trips
     const batches: ProcessedFile[][] = [];
     for (let i = 0; i < filesToProcess.length; i += batchSize) {

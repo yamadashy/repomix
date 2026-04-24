@@ -48,7 +48,8 @@ describe('calculateFileMetrics', () => {
       taskRunner: mockInitTaskRunner({ numOfTasks: 1, workerType: 'calculateMetrics', runtime: 'worker_threads' }),
     });
 
-    expect(result).toEqual([
+    // sort before compare — result order is not part of the function's contract
+    expect(result.sort((a, b) => a.path.localeCompare(b.path))).toEqual([
       { path: 'file1.txt', charCount: 100, tokenCount: 13 },
       { path: 'file3.txt', charCount: 300, tokenCount: 75 },
     ]);
