@@ -7,8 +7,10 @@ import { readRawFile as defaultReadRawFile, type FileSkipReason } from './fileRe
 import type { RawFile } from './fileTypes.js';
 
 // Concurrency limit for parallel file reads on the main thread.
-// 50 balances I/O throughput with FD/memory safety across different machines.
-const FILE_COLLECT_CONCURRENCY = 50;
+// 128 captures most of the achievable readFile throughput on a typical
+// source repo (returns plateau past ~128) while staying well under the
+// FD soft limit (1024 on Linux, 256 on macOS).
+const FILE_COLLECT_CONCURRENCY = 128;
 
 export interface SkippedFileInfo {
   path: string;
