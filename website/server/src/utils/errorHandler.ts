@@ -4,8 +4,9 @@ export class AppError extends Error {
   constructor(
     message: string,
     public readonly statusCode: ContentfulStatusCode = 500,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = 'AppError';
   }
 }

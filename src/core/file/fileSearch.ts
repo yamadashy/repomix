@@ -2,7 +2,6 @@ import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { type Options as GlobbyOptions, globby } from 'globby';
-import { minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -16,11 +15,10 @@ export interface FileSearchResult {
   emptyDirPaths: string[];
 }
 
-const findEmptyDirectories = async (
-  rootDir: string,
-  directories: string[],
-  ignorePatterns: string[],
-): Promise<string[]> => {
+// No per-directory ignore-pattern check is needed here. The `directories` array
+// comes from globby with the same `ignore` patterns (e.g. `dist/**`), which
+// excludes both the directory contents AND the directory entry itself.
+const findEmptyDirectories = async (rootDir: string, directories: string[]): Promise<string[]> => {
   const emptyDirs: string[] = [];
 
   for (const dir of directories) {
@@ -30,12 +28,7 @@ const findEmptyDirectories = async (
       const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
 
       if (!hasVisibleContents) {
-        // This checks if the directory itself matches any ignore patterns
-        const shouldIgnore = ignorePatterns.some((pattern) => minimatch(dir, pattern) || minimatch(`${dir}/`, pattern));
-
-        if (!shouldIgnore) {
-          emptyDirs.push(dir);
-        }
+        emptyDirs.push(dir);
       }
     } catch (error) {
       logger.debug(`Error checking directory ${dir}:`, error);
@@ -221,7 +214,7 @@ export const searchFiles = async (
       logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
 
       const filterStartTime = Date.now();
-      emptyDirPaths = await findEmptyDirectories(rootDir, directories, adjustedIgnorePatterns);
+      emptyDirPaths = await findEmptyDirectories(rootDir, directories);
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     }

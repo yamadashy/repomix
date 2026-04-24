@@ -1,79 +1,26 @@
 import zlib from 'node:zlib';
 import type { Context } from 'hono';
 import { stream } from 'hono/streaming';
-import { isValidRemoteValue } from 'repomix';
-import { z } from 'zod';
 import { processZipFile } from '../domains/pack/processZipFile.js';
 import { processRemoteRepo } from '../domains/pack/remoteRepo.js';
-import { FILE_SIZE_LIMITS } from '../domains/pack/utils/fileUtils.js';
 import { sanitizePattern } from '../domains/pack/utils/validation.js';
-import type { PackProgressStage, PackResult } from '../types.js';
+import type { PackProgressStage, ProcessPackResult } from '../types.js';
 import { getClientInfo } from '../utils/clientInfo.js';
 import { createErrorResponse } from '../utils/http.js';
 import { logError, logInfo } from '../utils/logger.js';
 import { calculateMemoryDiff, getMemoryUsage } from '../utils/memory.js';
 import { formatLatencyForDisplay } from '../utils/time.js';
 import { validateRequest } from '../utils/validation.js';
-
-const packRequestSchema = z
-  .object({
-    url: z
-      .string()
-      .min(1, 'Repository URL is required')
-      .max(200, 'Repository URL is too long')
-      .transform((val) => val.trim())
-      .refine((val) => isValidRemoteValue(val), { message: 'Invalid repository URL' })
-      .optional(),
-    file: z
-      .custom<File>()
-      .refine((file) => file instanceof File, {
-        message: 'Invalid file format',
-      })
-      .refine((file) => file.type === 'application/zip' || file.name.endsWith('.zip'), {
-        message: 'Only ZIP files are allowed',
-      })
-      .refine((file) => file.size <= FILE_SIZE_LIMITS.MAX_ZIP_SIZE, {
-        // 10MB limit
-        message: 'File size must be less than 10MB',
-      })
-      .optional(),
-    format: z.enum(['xml', 'markdown', 'plain']),
-    options: z
-      .object({
-        removeComments: z.boolean().optional(),
-        removeEmptyLines: z.boolean().optional(),
-        showLineNumbers: z.boolean().optional(),
-        fileSummary: z.boolean().optional(),
-        directoryStructure: z.boolean().optional(),
-        includePatterns: z
-          .string()
-          .max(100_000, 'Include patterns too long')
-          .optional()
-          .transform((val) => val?.trim()),
-        ignorePatterns: z
-          .string()
-          // Regular expression to validate ignore patterns
-          // Allowed characters: alphanumeric, *, ?, /, -, _, ., !, (, ), space, comma
-          .regex(/^[a-zA-Z0-9*?/\-_.,!()\s]*$/, 'Invalid characters in ignore patterns')
-          .max(1000, 'Ignore patterns too long')
-          .optional()
-          .transform((val) => val?.trim()),
-        outputParsable: z.boolean().optional(),
-        compress: z.boolean().optional(),
-      })
-      .strict(),
-  })
-  .strict()
-  .refine((data) => data.url || data.file, {
-    message: 'Either URL or file must be provided',
-  })
-  .refine((data) => !(data.url && data.file), {
-    message: 'Cannot provide both URL and file',
-  });
+import { classifyRejectReason, getRepoHost, PACK_EVENT, type PackOutcome } from './packEventSchema.js';
+import { type PackRequest, packRequestSchema } from './packRequestSchema.js';
 
 export const packAction = async (c: Context) => {
+  // Extracted up-front so validation_error logs can attach `source` for the
+  // pack_requests metric label; clientInfo doesn't depend on validated input.
+  const clientInfo = getClientInfo(c);
+
   // Parse and validate request before starting stream
-  let validatedData: z.infer<typeof packRequestSchema>;
+  let validatedData: PackRequest;
   let sanitizedOptions: { includePatterns?: string; ignorePatterns?: string } & Record<string, unknown>;
 
   try {
@@ -85,7 +32,21 @@ export const packAction = async (c: Context) => {
     let options: unknown = {};
     try {
       options = optionsRaw ? JSON.parse(optionsRaw) : {};
-    } catch {
+    } catch (jsonError) {
+      // Preserve the original SyntaxError so the log has position / token
+      // context — just the invalid_json count without the cause makes the
+      // invalid_json bucket unactionable when it spikes.
+      logError(
+        'Pack validation failed',
+        jsonError instanceof Error ? jsonError : new Error('Invalid JSON in options'),
+        {
+          event: PACK_EVENT,
+          outcome: 'validation_error' satisfies PackOutcome,
+          rejectReason: 'invalid_json',
+          requestId: c.get('requestId'),
+          source: clientInfo.source,
+        },
+      );
       return c.json(createErrorResponse('Invalid JSON in options', c.get('requestId')), 400);
     }
     const file = formData.get('file') as File | null;
@@ -109,7 +70,11 @@ export const packAction = async (c: Context) => {
     };
   } catch (error) {
     logError('Pack validation failed', error instanceof Error ? error : new Error('Unknown error'), {
+      event: PACK_EVENT,
+      outcome: 'validation_error' satisfies PackOutcome,
+      rejectReason: classifyRejectReason(error),
       requestId: c.get('requestId'),
+      source: clientInfo.source,
     });
 
     const { handlePackError } = await import('../utils/errorHandler.js');
@@ -118,7 +83,29 @@ export const packAction = async (c: Context) => {
   }
 
   const requestId = c.get('requestId');
-  const clientInfo = getClientInfo(c);
+  const inputType: 'file' | 'url' = validatedData.file ? 'file' : 'url';
+  const repoHost = getRepoHost({ file: validatedData.file, url: validatedData.url });
+  // Booleans flattened for log-based metric extraction. Patterns are logged
+  // as presence-only booleans to avoid high cardinality and user input leakage.
+  // Computed once so both success and pack_error logs can include it — OOMs
+  // typically land in pack_error, so logging options only on success would
+  // create survivorship bias for OOM investigation.
+  //
+  // `Boolean()` intentionally collapses `undefined` (user didn't send the
+  // field) into `false`. The metric is designed to answer "what % of packs
+  // had compress enabled" — both "user disabled" and "user didn't send"
+  // mean the feature wasn't active, which is the signal we want.
+  const packOptions = {
+    compress: Boolean(validatedData.options.compress),
+    removeComments: Boolean(validatedData.options.removeComments),
+    removeEmptyLines: Boolean(validatedData.options.removeEmptyLines),
+    showLineNumbers: Boolean(validatedData.options.showLineNumbers),
+    fileSummary: Boolean(validatedData.options.fileSummary),
+    directoryStructure: Boolean(validatedData.options.directoryStructure),
+    outputParsable: Boolean(validatedData.options.outputParsable),
+    hasIncludePatterns: Boolean(validatedData.options.includePatterns),
+    hasIgnorePatterns: Boolean(validatedData.options.ignorePatterns),
+  };
 
   // Stream NDJSON with per-line gzip flush. Bypasses hono/compress (which uses
   // Web CompressionStream and cannot flush mid-stream) by pre-setting
@@ -160,6 +147,9 @@ export const packAction = async (c: Context) => {
       await writeChain;
     };
 
+    // Declared outside the try so the catch path can also report durationMs.
+    const startTime = Date.now();
+
     try {
       const THROTTLE_MS = 200;
       let lastProgressTime = 0;
@@ -179,32 +169,39 @@ export const packAction = async (c: Context) => {
         await writeLine({ type: 'progress', stage, ...(message && { message }) });
       };
 
-      const startTime = Date.now();
       const beforeMemory = getMemoryUsage();
 
       // Process file or repository with progress reporting
-      let result: PackResult;
+      let processResult: ProcessPackResult;
       if (validatedData.file) {
-        result = await processZipFile(validatedData.file, validatedData.format, sanitizedOptions, sendProgress);
+        processResult = await processZipFile(validatedData.file, validatedData.format, sanitizedOptions, sendProgress);
       } else {
-        result = await processRemoteRepo(
+        processResult = await processRemoteRepo(
           validatedData.url as string,
           validatedData.format,
           sanitizedOptions,
           sendProgress,
         );
       }
+      const { result, cached } = processResult;
 
       // Log operation result with memory usage
       const afterMemory = getMemoryUsage();
       const memoryDiff = calculateMemoryDiff(beforeMemory, afterMemory);
 
       logInfo('Pack operation completed', {
+        event: PACK_EVENT,
+        outcome: 'success' satisfies PackOutcome,
         requestId,
         format: validatedData.format,
+        inputType,
+        repoHost,
+        cached,
+        source: clientInfo.source,
+        durationMs: Date.now() - startTime,
         repository: result.metadata.repository,
         duration: formatLatencyForDisplay(startTime),
-        inputType: validatedData.file ? 'file' : validatedData.url ? 'url' : 'unknown',
+        packOptions,
         clientInfo: {
           ip: clientInfo.ip,
           userAgent: clientInfo.userAgent,
@@ -225,7 +222,15 @@ export const packAction = async (c: Context) => {
       await writeLine({ type: 'result', data: result });
     } catch (error) {
       logError('Pack operation failed', error instanceof Error ? error : new Error('Unknown error'), {
+        event: PACK_EVENT,
+        outcome: 'pack_error' satisfies PackOutcome,
         requestId,
+        format: validatedData.format,
+        inputType,
+        repoHost,
+        source: clientInfo.source,
+        durationMs: Date.now() - startTime,
+        packOptions,
       });
 
       const { handlePackError } = await import('../utils/errorHandler.js');
