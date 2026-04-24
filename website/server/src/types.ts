@@ -46,6 +46,11 @@ export interface PackResult {
   };
 }
 
+export interface ProcessPackResult {
+  result: PackResult;
+  cached: boolean;
+}
+
 export interface ErrorResponse {
   error: string;
 }

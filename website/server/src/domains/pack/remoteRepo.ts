@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { type CliOptions, parseRemoteValue, runDefaultAction } from 'repomix';
-import type { PackOptions, PackProgressCallback, PackResult } from '../../types.js';
+import type { PackOptions, PackProgressCallback, PackResult, ProcessPackResult } from '../../types.js';
 import { AppError } from '../../utils/errorHandler.js';
 import { logMemoryUsage } from '../../utils/logger.js';
 import { generateCacheKey } from './utils/cache.js';
@@ -31,7 +31,7 @@ export async function processRemoteRepo(
   format: string,
   options: PackOptions,
   onProgress?: PackProgressCallback,
-): Promise<PackResult> {
+): Promise<ProcessPackResult> {
   if (!repoUrl) {
     throw new AppError('Repository URL is required for remote processing', 400);
   }
@@ -43,7 +43,7 @@ export async function processRemoteRepo(
   await onProgress?.('cache-check');
   const cachedResult = await cache.get(cacheKey);
   if (cachedResult) {
-    return cachedResult;
+    return { result: cachedResult, cached: true };
   }
 
   // Clone the repository
@@ -134,7 +134,7 @@ export async function processRemoteRepo(
       totalTokens: packResult.totalTokens,
     });
 
-    return packResultData;
+    return { result: packResultData, cached: false };
   } catch (error) {
     console.error('Error in remote repository processing:', error);
     if (error instanceof AppError) {
