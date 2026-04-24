@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import * as v from 'valibot';
 import { loadFileConfig, mergeConfigs } from '../../config/configLoad.js';
 import {
   type RepomixConfigCli,
@@ -11,7 +12,7 @@ import {
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
-import { RepomixError, rethrowValidationErrorIfZodError } from '../../shared/errorHandle.js';
+import { RepomixError, rethrowValidationErrorIfSchemaError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
@@ -368,9 +369,9 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   }
 
   try {
-    return repomixConfigCliSchema.parse(cliConfig);
+    return v.parse(repomixConfigCliSchema, cliConfig);
   } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid cli arguments');
+    rethrowValidationErrorIfSchemaError(error, 'Invalid cli arguments');
     throw error;
   }
 };

@@ -159,4 +159,69 @@ describe('configLoad Integration Tests', () => {
       expect(config.ignore?.customPatterns).toEqual(['**/node_modules/**']);
     });
   });
+
+  describe('ESM namespace unwrap', () => {
+    test('should unwrap `{ default: config }` wrapper from jiti ESM import', async () => {
+      const config = await loadFileConfig(
+        jsFixturesDir,
+        'repomix-dynamic.config.js',
+        {},
+        {
+          jitiImport: async () => ({
+            default: {
+              output: { filePath: 'unwrapped.xml', style: 'xml' },
+              ignore: { customPatterns: ['**/node_modules/**'] },
+            },
+          }),
+        },
+      );
+
+      expect(config).toEqual({
+        output: { filePath: 'unwrapped.xml', style: 'xml' },
+        ignore: { customPatterns: ['**/node_modules/**'] },
+      });
+    });
+
+    test('should preserve CJS config when `default` is a non-object value', async () => {
+      // Pathological CJS pattern: `module.exports = { default: 'plain', output: { ... } }`.
+      // The unwrap must not mistake this for an ESM namespace — `default` is a string,
+      // so the original object should be passed through untouched.
+      const config = await loadFileConfig(
+        jsFixturesDir,
+        'repomix-dynamic.config.js',
+        {},
+        {
+          jitiImport: async () => ({
+            default: 'plain',
+            output: { filePath: 'cjs-with-default.xml', style: 'plain' },
+          }),
+        },
+      );
+
+      expect(config.output?.filePath).toBe('cjs-with-default.xml');
+      expect(config.output?.style).toBe('plain');
+    });
+
+    test('documents the known ambiguous case: object `default` + sibling keys', async () => {
+      // Pins the documented limitation in src/config/configLoad.ts: a CJS module
+      // shaped like `{ default: { ... }, otherKey: ... }` cannot be distinguished
+      // from an ESM namespace wrapper, so `otherKey` is discarded. This is a
+      // non-issue for RepomixConfig (no `default` field), but the behavior should
+      // not silently change.
+      const config = await loadFileConfig(
+        jsFixturesDir,
+        'repomix-dynamic.config.js',
+        {},
+        {
+          jitiImport: async () => ({
+            default: { output: { filePath: 'from-default.xml', style: 'xml' } },
+            ignore: { customPatterns: ['dropped-by-unwrap'] },
+          }),
+        },
+      );
+
+      expect(config.output?.filePath).toBe('from-default.xml');
+      expect(config.ignore).toBeUndefined();
+    });
+  });
 });

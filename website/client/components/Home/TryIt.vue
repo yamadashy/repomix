@@ -249,16 +249,16 @@ onMounted(() => {
   // If repository parameter exists and is valid, trigger packing automatically
   // Skip auto-execution for bots/crawlers to prevent unintended API calls
   // (e.g., Applebot executing JS on permalink URLs causes mass pack requests)
-  if (urlParams.repo && isValidRemoteValue(urlParams.repo.trim()) && !isBot()) {
-    // Use nextTick to ensure all reactive values are properly initialized
-    nextTick(async () => {
-      try {
-        await handleSubmit();
-      } catch (error) {
-        console.error('Auto-execution failed:', error);
-      }
-    });
-  }
+  // if (urlParams.repo && isValidRemoteValue(urlParams.repo.trim()) && !isBot()) {
+  //   // Use nextTick to ensure all reactive values are properly initialized
+  //   nextTick(async () => {
+  //     try {
+  //       await handleSubmit();
+  //     } catch (error) {
+  //       console.error('Auto-execution failed:', error);
+  //     }
+  //   });
+  // }
 });
 </script>
 

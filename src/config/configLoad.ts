@@ -3,7 +3,8 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSON5 from 'json5';
 import pc from 'picocolors';
-import { RepomixError, rethrowValidationErrorIfZodError } from '../shared/errorHandle.js';
+import * as v from 'valibot';
+import { RepomixError, rethrowValidationErrorIfSchemaError } from '../shared/errorHandle.js';
 import { logger } from '../shared/logger.js';
 import {
   defaultConfig,
@@ -58,12 +59,14 @@ const findConfigFile = async (configPaths: string[], logPrefix: string): Promise
 
 // Default jiti import implementation for loading JS/TS config files
 // Lazy-loads jiti to avoid importing its heavy TypeScript toolchain
-// when using JSON/JSON5 config files or default config (the common case)
+// when using JSON/JSON5 config files or default config (the common case).
+// We deliberately do not pass `interopDefault`; the call site below handles
+// the ESM namespace `{ default: config }` unwrap explicitly so the behavior
+// is the same for .ts / .mts / .js / .mjs / .cjs inputs.
 const defaultJitiImport = async (fileUrl: string): Promise<unknown> => {
   const { createJiti } = await import('jiti');
   const jiti = createJiti(import.meta.url, {
     moduleCache: false, // Disable cache to ensure fresh config loads
-    interopDefault: true, // Automatically use default export
   });
   return await jiti.import(fileUrl);
 };
@@ -149,7 +152,19 @@ const loadAndValidateConfig = async (
       case 'cjs': {
         // Use jiti for TypeScript and JavaScript files
         // This provides consistent behavior and avoids Node.js module cache issues
-        config = await deps.jitiImport(pathToFileURL(filePath).href);
+        const imported = await deps.jitiImport(pathToFileURL(filePath).href);
+        // jiti.import returns a `{ default: ... }` wrapper for `export default {...}`
+        // (both ESM Module namespaces and jiti's TS interop). Unwrap only when
+        // `default` is itself an object — this preserves a CJS config that
+        // legitimately exports `{ default: 'plain', ...rest }` as-is.
+        // Known limitation: a CJS module exporting `{ default: { ... }, otherKey: ... }`
+        // would still be treated as an ESM wrapper and `otherKey` would be discarded.
+        // No known user hits this pattern; RepomixConfig has no `default` field.
+        const defaultExport =
+          imported && typeof imported === 'object' && 'default' in imported
+            ? (imported as { default: unknown }).default
+            : undefined;
+        config = defaultExport && typeof defaultExport === 'object' ? defaultExport : imported;
         break;
       }
 
@@ -166,9 +181,9 @@ const loadAndValidateConfig = async (
         throw new RepomixError(`Unsupported config file format: ${filePath}`);
     }
 
-    return repomixConfigFileSchema.parse(config);
+    return v.parse(repomixConfigFileSchema, config);
   } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid config schema');
+    rethrowValidationErrorIfSchemaError(error, 'Invalid config schema');
     if (error instanceof SyntaxError) {
       throw new RepomixError(`Invalid syntax in config file ${filePath}: ${error.message}`);
     }
@@ -247,9 +262,9 @@ export const mergeConfigs = (
   };
 
   try {
-    return repomixConfigMergedSchema.parse(mergedConfig);
+    return v.parse(repomixConfigMergedSchema, mergedConfig);
   } catch (error) {
-    rethrowValidationErrorIfZodError(error, 'Invalid merged config');
+    rethrowValidationErrorIfSchemaError(error, 'Invalid merged config');
     throw error;
   }
 };
