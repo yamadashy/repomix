@@ -13,15 +13,15 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Set up Homebrew
-        uses: Homebrew/actions/setup-homebrew@98cfa07b984a61682e6cd3a0833fad2006cc84ba # main
+        uses: Homebrew/actions/setup-homebrew@f1cc9df7a62b7f6244414d21a3ebc3ba9156a082 # main
         with:
           test-bot: false
 
       - name: Configure Git user
-        uses: Homebrew/actions/git-user-config@98cfa07b984a61682e6cd3a0833fad2006cc84ba # main
+        uses: Homebrew/actions/git-user-config@f1cc9df7a62b7f6244414d21a3ebc3ba9156a082 # main
 
       - name: Bump packages
-        uses: Homebrew/actions/bump-packages@98cfa07b984a61682e6cd3a0833fad2006cc84ba # main
+        uses: Homebrew/actions/bump-packages@f1cc9df7a62b7f6244414d21a3ebc3ba9156a082 # main
         with:
           token: ${{ secrets.COMMITTER_TOKEN }}
           formulae: repomix
