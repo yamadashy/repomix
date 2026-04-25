@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777108729379,
+  "lastUpdate": 1777108898641,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -3780,6 +3780,51 @@ window.BENCHMARK_DATA = {
             "range": "±118",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1772ms, Q3: 1890ms\nAll times: 1760, 1762, 1764, 1767, 1771, 1772, 1777, 1778, 1792, 1801, 1810, 1812, 1822, 1828, 1879, 1890, 1913, 1951, 2023, 2072ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ed18a8c54458879766a62ea964ee692f76c7bd6a",
+          "message": "Merge pull request #1512 from yamadashy/renovate/crate-ci-typos-1.x\n\nchore(deps): update crate-ci/typos action to v1.45.1",
+          "timestamp": "2026-04-25T18:16:49+09:00",
+          "tree_id": "1f4cacd2a14b3b2bb9109f2655ef610ff3ef03ff",
+          "url": "https://github.com/yamadashy/repomix/commit/ed18a8c54458879766a62ea964ee692f76c7bd6a"
+        },
+        "date": 1777108897499,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1276,
+            "range": "±314",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1094ms, Q3: 1408ms\nAll times: 986, 992, 1014, 1025, 1032, 1050, 1085, 1094, 1095, 1153, 1159, 1183, 1219, 1235, 1255, 1276, 1281, 1350, 1383, 1389, 1391, 1405, 1408, 1432, 1524, 1537, 1637, 1663, 1681, 1702ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1391,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1382ms, Q3: 1410ms\nAll times: 1372, 1373, 1377, 1379, 1382, 1382, 1382, 1386, 1387, 1390, 1391, 1393, 1394, 1396, 1405, 1410, 1422, 1424, 1434, 1437ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1875,
+            "range": "±14",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1868ms, Q3: 1882ms\nAll times: 1848, 1853, 1861, 1866, 1866, 1868, 1869, 1870, 1871, 1873, 1875, 1875, 1880, 1881, 1881, 1882, 1887, 1894, 1897, 1899ms"
           }
         ]
       }
