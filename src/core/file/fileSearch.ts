@@ -179,13 +179,45 @@ export const searchFiles = async (
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns (for globby):', ignoreFilePatterns);
 
+    const baseGlobbyOptions = createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns);
+    const needEmptyDirs = config.output.includeEmptyDirectories === true;
+
     logger.debug('[globby] Starting file search...');
     const globbyStartTime = Date.now();
 
-    const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-      onlyFiles: true,
-    }).catch((error: unknown) => {
+    // When empty directories are needed, request both files and directories in a single
+    // traversal (objectMode returns Entry objects so we can distinguish them via dirent).
+    // This avoids a second globby call, which would otherwise re-discover and re-read
+    // every .gitignore in the tree.
+    const filePaths: string[] = [];
+    const directoryCandidates: string[] = [];
+
+    try {
+      if (needEmptyDirs) {
+        const entries = await globby(includePatterns, {
+          ...baseGlobbyOptions,
+          onlyFiles: false,
+          objectMode: true,
+        });
+        // Mirror fast-glob's `onlyFiles: true` filter (`!entry.dirent.isFile()` drops the entry):
+        // with `followSymbolicLinks: false`, symlinks have `isFile() === false` and
+        // `isDirectory() === false`, and the same applies to FIFOs/sockets. The original code
+        // excluded these from the file list, so keep excluding them here.
+        for (const entry of entries) {
+          if (entry.dirent.isDirectory()) {
+            directoryCandidates.push(entry.path);
+          } else if (entry.dirent.isFile()) {
+            filePaths.push(entry.path);
+          }
+        }
+      } else {
+        const paths = await globby(includePatterns, {
+          ...baseGlobbyOptions,
+          onlyFiles: true,
+        });
+        for (const p of paths) filePaths.push(p);
+      }
+    } catch (error: unknown) {
       // Handle EPERM errors specifically
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
       if (code === 'EPERM' || code === 'EACCES') {
@@ -195,26 +227,19 @@ export const searchFiles = async (
         );
       }
       throw error;
-    });
+    }
 
     const globbyElapsedTime = Date.now() - globbyStartTime;
-    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+    logger.debug(
+      needEmptyDirs
+        ? `[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files and ${directoryCandidates.length} directories`
+        : `[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`,
+    );
 
     let emptyDirPaths: string[] = [];
-    if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories...');
-      const emptyDirStartTime = Date.now();
-
-      const directories = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyDirectories: true,
-      });
-
-      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
-
+    if (needEmptyDirs) {
       const filterStartTime = Date.now();
-      emptyDirPaths = await findEmptyDirectories(rootDir, directories);
+      emptyDirPaths = await findEmptyDirectories(rootDir, directoryCandidates);
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     }
