@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777071897952,
+  "lastUpdate": 1777114960661,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6525,6 +6525,51 @@ window.BENCHMARK_DATA = {
             "range": "±40",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1768ms, Q3: 1808ms\nAll times: 1743, 1753, 1755, 1759, 1764, 1768, 1781, 1782, 1785, 1793, 1794, 1794, 1801, 1803, 1805, 1808, 1809, 1816, 1821, 1830ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "d85e713d3f5e1342a02a49ed5261e40dc337fb23",
+          "message": "perf(core): Combine file+directory globby walks into a single traversal\n\nWhen `output.includeEmptyDirectories` is enabled, `searchFiles` previously\nissued two globby calls with identical options — one with `onlyFiles: true`\nand a second with `onlyDirectories: true` — to enumerate files and to obtain\ncandidate directories for the empty-dir scan. The second call duplicated the\nfull filesystem walk, including re-discovery and re-reading of every\n`.gitignore` in the tree (globby has no cross-call caching).\n\nIssue exactly one globby walk by setting `onlyFiles: false` with\n`objectMode: true`, then partition the returned `Entry` objects into files\nvs. directories using `dirent.isFile()` / `dirent.isDirectory()`. The default\n`includeEmptyDirectories: false` path is unchanged (still uses\n`onlyFiles: true`).\n\nNote on entry kinds: the `else if (entry.dirent.isFile())` guard mirrors\nfast-glob's own `onlyFiles: true` filter (`!entry.dirent.isFile()` drops\nthe entry). With `followSymbolicLinks: false`, symlinks have\n`isFile() === false` and `isDirectory() === false`, and the same applies\nto FIFOs/sockets. The original code excluded these from the file list,\nso we keep excluding them here.\n\nVerbose timings on a 777-file pack of repomix's own src+tests+website:\n\n  Before:  [globby] 124ms (files) + [empty dirs] 49ms (directories)  = 173ms\n  After:   [globby] 140ms (files + directories combined)             = 140ms\n\nPaired interleaved A/B benchmark vs origin/main (n=20 each,\n--include \"src,tests,website\"):\n\n                     min      median   mean     sd\n  BEFORE             1.137s   1.240s   1.231s   0.046s\n  AFTER              1.133s   1.195s   1.196s   0.031s\n\n  Mean paired delta:    34ms (95% CI ~21ms..47ms)\n  AFTER faster in:      18/20 runs\n  Wall-clock reduction: ~2.8% (mean), ~3.6% (median)\n\nThe generated XML output is byte-identical between builds (3,923,874 bytes).\nAll 1145 unit tests pass, including a new regression test covering the\nsymlink/FIFO/socket exclusion path.\n\nTests for `searchFiles` are updated to mock the combined `objectMode: true`\ncall, and the consistency assertion is widened to accept the combined-mode\nshape in addition to the existing only-files / only-directories shapes.",
+          "timestamp": "2026-04-25T10:57:55Z",
+          "tree_id": "50be275a0b4c4eecf3733c1467f9632a3257650b",
+          "url": "https://github.com/yamadashy/repomix/commit/d85e713d3f5e1342a02a49ed5261e40dc337fb23"
+        },
+        "date": 1777114960196,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 898,
+            "range": "±57",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 876ms, Q3: 933ms\nAll times: 837, 856, 863, 867, 871, 875, 875, 876, 877, 878, 879, 883, 885, 892, 895, 898, 899, 904, 905, 922, 922, 927, 933, 962, 967, 974, 988, 989, 1041, 1162ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1432,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1420ms, Q3: 1451ms\nAll times: 1408, 1410, 1413, 1415, 1420, 1420, 1420, 1421, 1422, 1431, 1432, 1437, 1437, 1438, 1449, 1451, 1452, 1471, 1504, 1506ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1902,
+            "range": "±158",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1878ms, Q3: 2036ms\nAll times: 1844, 1859, 1869, 1874, 1877, 1878, 1883, 1896, 1900, 1900, 1902, 1903, 1904, 1916, 1921, 2036, 2054, 2088, 2110, 2528ms"
           }
         ]
       }
