@@ -206,12 +206,21 @@ export const pack = async (
       files: filePaths,
     }));
 
-    // Ensure warm-up task completes before metrics calculation
-    await metricsWarmupPromise;
-
     // Generate and write output, overlapping with metrics calculation.
     // File and git metrics don't depend on the output, so they start immediately
     // while output generation runs concurrently.
+    //
+    // We do NOT await `metricsWarmupPromise` here. Warm-up tasks were enqueued
+    // synchronously at line 118 into the same Tinypool that calculateMetrics
+    // (line 232) reuses, and Tinypool dispatches from a single FIFO queue with
+    // one task per worker at a time. Any real metrics task enqueued below
+    // therefore lands strictly after every warm-up task in queue order, so the
+    // first task each worker picks up is a warm-up task that loads
+    // gpt-tokenizer; real tasks always run on already-warm workers. Skipping
+    // the await lets `produceOutput` (main-thread CPU work) start in parallel
+    // with the tail of the warm-up, shaving the produceOutput duration off the
+    // critical path when warm-up is the late stage. The `finally` block still
+    // awaits the warm-up before cleanup so worker termination stays orderly.
     const outputPromise = deps.produceOutput(
       rootDirs,
       config,

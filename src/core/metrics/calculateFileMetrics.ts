@@ -9,9 +9,12 @@ import type { FileMetrics } from './workers/types.js';
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
 // Each batch is sent as a single message to a worker thread, avoiding
 // per-file round-trip costs (~0.5ms each) that dominate when processing many files.
-// A size of 10 keeps individual worker tasks small so that workers become available sooner,
-// enabling overlap between file metrics and output generation.
-const METRICS_BATCH_SIZE = 10;
+// 25 trades a bit of late-stage parallelism for fewer IPC round-trips: with
+// 3 workers and N files, the per-worker number of sequential batch hand-offs
+// drops from ~⌈N/30⌉ at batch=10 to ~⌈N/75⌉ at batch=25, halving worker
+// hand-off overhead on small/medium repos. The wrapper-tokenization task still
+// dispatches concurrently, so output generation overlap is preserved.
+const METRICS_BATCH_SIZE = 25;
 
 export const calculateFileMetrics = async (
   processedFiles: ProcessedFile[],
