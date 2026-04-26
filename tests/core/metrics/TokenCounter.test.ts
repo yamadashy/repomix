@@ -97,40 +97,45 @@ describe('TokenCounter', () => {
   });
 
   describe('countTokens error handling', () => {
-    // Replace the cached countFn so we can exercise the catch branch without
-    // depending on real tokenizer internals.
-    const replaceCountFn = (counter: TokenCounter, fn: (text: string) => number) => {
-      (counter as unknown as { countFn: (text: string) => number }).countFn = fn;
+    // Inject a fake loadEncoding via the deps parameter so tests own the
+    // count function without reaching into private state. This keeps the
+    // tests honest if `countFn` is ever renamed.
+    const buildCounter = async (countFn: (text: string) => number) => {
+      const counter = new TokenCounter('o200k_base', {
+        loadEncoding: async () => countFn,
+      });
+      await counter.init();
+      return counter;
     };
 
-    test('returns 0 and warns when tokenizer throws an Error', () => {
-      replaceCountFn(tokenCounter, () => {
+    test('returns 0 and warns when tokenizer throws an Error', async () => {
+      const counter = await buildCounter(() => {
         throw new Error('tokenizer exploded');
       });
 
-      const count = tokenCounter.countTokens('content');
+      const count = counter.countTokens('content');
 
       expect(count).toBe(0);
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('tokenizer exploded'));
     });
 
-    test('includes filePath in the warning when provided', () => {
-      replaceCountFn(tokenCounter, () => {
+    test('includes filePath in the warning when provided', async () => {
+      const counter = await buildCounter(() => {
         throw new Error('boom');
       });
 
-      tokenCounter.countTokens('content', 'src/foo.ts');
+      counter.countTokens('content', 'src/foo.ts');
 
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('path: src/foo.ts'));
     });
 
-    test('coerces non-Error throws via String()', () => {
-      replaceCountFn(tokenCounter, () => {
+    test('coerces non-Error throws via String()', async () => {
+      const counter = await buildCounter(() => {
         // eslint-disable-next-line @typescript-eslint/no-throw-literal
         throw 'plain string error';
       });
 
-      const count = tokenCounter.countTokens('content');
+      const count = counter.countTokens('content');
 
       expect(count).toBe(0);
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('plain string error'));

@@ -45,13 +45,20 @@ const loadEncoding = async (encodingName: TokenEncoding): Promise<CountTokensFn>
 export class TokenCounter {
   private countFn: CountTokensFn | null = null;
   private readonly encodingName: TokenEncoding;
+  private readonly deps: { loadEncoding: typeof loadEncoding };
 
-  constructor(encodingName: TokenEncoding) {
+  constructor(
+    encodingName: TokenEncoding,
+    deps = {
+      loadEncoding,
+    },
+  ) {
     this.encodingName = encodingName;
+    this.deps = deps;
   }
 
   async init(): Promise<void> {
-    this.countFn = await loadEncoding(this.encodingName);
+    this.countFn = await this.deps.loadEncoding(this.encodingName);
   }
 
   public countTokens(content: string, filePath?: string): number {
