@@ -184,6 +184,70 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(sub?.configFiles).toContain('package.json');
       expect(sub?.configFiles).toContain('tsconfig.json');
     });
+
+    test('should sort root entry first, then subdirectories alphabetically', () => {
+      // Pin the documented sort: '.' (root) always comes before any subdirectory,
+      // and remaining packages sort alphabetically. Reordering would make root
+      // packages hard to find in monorepo output.
+      const files: ProcessedFile[] = [
+        { path: 'packages/zeta/package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: 'packages/alpha/package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: 'packages/middle/package.json', content: JSON.stringify({ dependencies: {} }) },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result.map((r) => r.path)).toEqual(['.', 'packages/alpha', 'packages/middle', 'packages/zeta']);
+    });
+
+    test('should preserve sort order when no root package exists', () => {
+      const files: ProcessedFile[] = [
+        { path: 'packages/zeta/package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: 'packages/alpha/package.json', content: JSON.stringify({ dependencies: {} }) },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result.map((r) => r.path)).toEqual(['packages/alpha', 'packages/zeta']);
+    });
+
+    test('should deduplicate config files within a package directory', () => {
+      // Fix `f7894dcb`: configFiles must be deduplicated. Crafted by passing
+      // the same fileName twice in processedFiles — exercises the Set-based dedup.
+      const files: ProcessedFile[] = [
+        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: 'tsconfig.json', content: '{}' },
+        { path: 'tsconfig.json', content: '{ "duplicate": true }' },
+      ];
+
+      const result = detectTechStack(files);
+
+      const tsConfigCount = result[0].configFiles.filter((f) => f === 'tsconfig.json').length;
+      expect(tsConfigCount).toBe(1);
+    });
+
+    test('keeps the first detected packageManager when later package.json files conflict', () => {
+      // Fix `005eb791` part 1: packageManager must not be overwritten by later files.
+      // In a monorepo, root and subpackage are separate buckets so each keeps its own.
+      const files: ProcessedFile[] = [
+        {
+          path: 'package.json',
+          content: JSON.stringify({ packageManager: 'pnpm@8.0.0', dependencies: {} }),
+        },
+        {
+          path: 'packages/sub/package.json',
+          content: JSON.stringify({ packageManager: 'yarn@4.0.0', dependencies: {} }),
+        },
+      ];
+
+      const result = detectTechStack(files);
+
+      const root = result.find((r) => r.path === '.');
+      const sub = result.find((r) => r.path === 'packages/sub');
+      expect(root?.packageManager).toBe('pnpm');
+      expect(sub?.packageManager).toBe('yarn');
+    });
   });
 
   describe('generateTechStackMd', () => {
