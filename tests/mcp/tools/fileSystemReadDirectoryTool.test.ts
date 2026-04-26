@@ -20,7 +20,7 @@ describe('FileSystemReadDirectoryTool', () => {
     registerFileSystemReadDirectoryTool(mockServer);
     toolHandler = (mockServer.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
 
-    // デフォルトのpath.isAbsoluteの動作をモック
+    // Default mock for path.isAbsolute
     vi.mocked(path.isAbsolute).mockImplementation((p: string) => p.startsWith('/'));
   });
 

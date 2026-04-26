@@ -85,22 +85,22 @@ describe('unifiedWorker', () => {
     });
   });
 
-  describe('handler cache', () => {
-    it('caches the loaded handler so cleanup runs exactly once per workerType', async () => {
-      // Stronger than counting handler invocations: onWorkerTermination iterates
-      // handlerCache.values(), so cleanup running exactly once per distinct
-      // workerType after multiple handler calls proves the cache deduplicates
-      // module loads. Removing the cache would either skip cleanup entirely
-      // (nothing in the Map) or break this invariant.
-      const { default: handler, onWorkerTermination } = await import('../../src/shared/unifiedWorker.js');
+  describe('repeated calls', () => {
+    it('routes every call through the worker handler without throwing', async () => {
+      // Note: this is a smoke test for repeated invocations, not a cache verifier.
+      // Whether handlerCache short-circuits in loadWorkerHandler can't be observed
+      // from outside — both paths still call Map.set(workerType, ...) once per type,
+      // and Node's own module cache makes the dynamic import effectively free on
+      // repeat. Verifying the cache behavior would require either exposing the
+      // cache or measuring import timing, neither of which is worth it for a
+      // micro-optimization.
+      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
       const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
 
       await handler({ rawFile: { path: 'a.ts', content: '' }, config: {} });
       await handler({ rawFile: { path: 'b.ts', content: '' }, config: {} });
 
-      await onWorkerTermination();
-
-      expect(fileProcessWorker.onWorkerTermination).toHaveBeenCalledTimes(1);
+      expect(fileProcessWorker.default).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -122,6 +122,26 @@ describe('unifiedWorker', () => {
 
       expect(fileProcessWorker.default).toHaveBeenCalled();
       expect(securityCheckWorker.default).not.toHaveBeenCalled();
+      vi.doUnmock('node:worker_threads');
+    });
+
+    it('falls back to workerData when task structure is unrecognizable (no inference)', async () => {
+      // Mirror of the override case: same workerData (securityCheck), but with an
+      // ambiguous task that produces no inferred type. Together with the override
+      // test above, this distinguishes "inference always wins" from "inference
+      // wins only when it yields a value" — the production behavior at unifiedWorker.ts:140-142.
+      vi.resetModules();
+      vi.doMock('node:worker_threads', () => ({
+        workerData: ['x', { workerType: 'securityCheck' }],
+      }));
+      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
+      const securityCheckWorker = await import('../../src/core/security/workers/securityCheckWorker.js');
+
+      await handler({ ambiguous: true });
+
+      expect(securityCheckWorker.default).toHaveBeenCalled();
+      expect(fileProcessWorker.default).not.toHaveBeenCalled();
       vi.doUnmock('node:worker_threads');
     });
   });

@@ -90,4 +90,26 @@ describe('validateFileSafety', () => {
       expect(warnSpy).not.toHaveBeenCalled();
     });
   });
+
+  it('skips runSecurityCheck entirely when enableSecurityCheck is false', async () => {
+    // Pin the negative path of the `if (config.security.enableSecurityCheck)` guard.
+    // Dropping the guard would still pass every other test in this file because
+    // they all enable the check; this one fails if the guard ever regresses.
+    const config: RepomixConfigMerged = {
+      security: { enableSecurityCheck: false },
+    } as RepomixConfigMerged;
+    const rawFiles: RawFile[] = [{ path: 'file1.txt', content: 'content' }];
+    const deps = {
+      runSecurityCheck: vi.fn(),
+      filterOutUntrustedFiles: vi.fn().mockReturnValue(rawFiles),
+    };
+
+    const result = await validateFileSafety(rawFiles, vi.fn(), config, undefined, undefined, deps);
+
+    expect(deps.runSecurityCheck).not.toHaveBeenCalled();
+    expect(result.suspiciousFilesResults).toEqual([]);
+    expect(result.suspiciousGitDiffResults).toEqual([]);
+    expect(result.suspiciousGitLogResults).toEqual([]);
+    expect(result.safeFilePaths).toEqual(['file1.txt']);
+  });
 });
