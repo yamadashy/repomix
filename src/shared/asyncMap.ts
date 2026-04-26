@@ -9,7 +9,9 @@
  * large arrays — `Promise.all` alone has no upper bound and can exhaust them.
  *
  * Rejection semantics match `Promise.all`: the first rejection propagates, and
- * already-started tasks continue running but their results are discarded.
+ * already-started tasks continue running but their results are discarded. Note
+ * that workers are not cooperatively cancelled — sibling workers will keep
+ * claiming new indices and starting tasks until `items` is exhausted.
  */
 export const mapWithConcurrency = async <T, R>(
   items: readonly T[],

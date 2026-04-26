@@ -29,8 +29,9 @@ describe('mapWithConcurrency', () => {
       return n;
     });
 
-    expect(peakActive).toBeLessThanOrEqual(4);
-    expect(peakActive).toBeGreaterThan(1);
+    // All `concurrency` workers are spawned synchronously via Promise.all and each
+    // runs up to its first await before any timer resolves, so peak hits the cap exactly.
+    expect(peakActive).toBe(4);
   });
 
   it('returns an empty array for empty input without invoking fn', async () => {
