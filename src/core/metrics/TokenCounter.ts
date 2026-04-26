@@ -20,7 +20,9 @@ const PLAIN_TEXT_OPTIONS: CountTokensOptions = { disallowedSpecial: new Set() };
 // Lazy-loaded countTokens functions keyed by encoding
 const encodingModules = new Map<string, CountTokensFn>();
 
-const loadEncoding = async (encodingName: TokenEncoding): Promise<CountTokensFn> => {
+type LoadEncodingFn = (encodingName: TokenEncoding) => Promise<CountTokensFn>;
+
+const loadEncoding: LoadEncodingFn = async (encodingName) => {
   const cached = encodingModules.get(encodingName);
   if (cached) {
     return cached;
@@ -45,13 +47,20 @@ const loadEncoding = async (encodingName: TokenEncoding): Promise<CountTokensFn>
 export class TokenCounter {
   private countFn: CountTokensFn | null = null;
   private readonly encodingName: TokenEncoding;
+  private readonly deps: { loadEncoding: LoadEncodingFn };
 
-  constructor(encodingName: TokenEncoding) {
+  constructor(
+    encodingName: TokenEncoding,
+    deps: { loadEncoding: LoadEncodingFn } = {
+      loadEncoding,
+    },
+  ) {
     this.encodingName = encodingName;
+    this.deps = deps;
   }
 
   async init(): Promise<void> {
-    this.countFn = await loadEncoding(this.encodingName);
+    this.countFn = await this.deps.loadEncoding(this.encodingName);
   }
 
   public countTokens(content: string, filePath?: string): number {

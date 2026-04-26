@@ -163,6 +163,76 @@ describe('cliReport', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('No git logs included'));
     });
 
+    test('should print skill directory output when skillGenerate is configured', () => {
+      const config = createMockConfig({
+        security: { enableSecurityCheck: true },
+        skillGenerate: true,
+      });
+
+      const packResult: PackResult = {
+        totalFiles: 10,
+        totalCharacters: 1000,
+        totalTokens: 200,
+        fileCharCounts: { 'file1.txt': 100 },
+        fileTokenCounts: { 'file1.txt': 50 },
+        suspiciousFilesResults: [],
+        suspiciousGitDiffResults: [],
+        suspiciousGitLogResults: [],
+        processedFiles: [],
+        safeFilePaths: [],
+        gitDiffTokenCount: 0,
+        gitLogTokenCount: 0,
+        skippedFiles: [],
+      };
+
+      // Use path.join so the expected substring uses the OS-native separator
+      // — getDisplayPath calls path.relative, which yields backslashes on Windows.
+      const cwd = path.join('/test', 'project');
+      const skillDir = path.join(cwd, '.claude', 'skills', 'test-skill');
+      const expectedRelative = path.join('.claude', 'skills', 'test-skill');
+
+      reportSummary(cwd, packResult, config, { skillDir });
+
+      // Both substrings must appear on the SAME log line, not just somewhere across
+      // separate logger.log calls — otherwise an unrelated line could satisfy each.
+      const calls = (logger.log as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+      const outputLine = calls.find((line) => line.includes('skill directory'));
+      expect(outputLine).toBeDefined();
+      expect(outputLine).toContain(expectedRelative);
+    });
+
+    test('should print first…last paths and part count for split outputs', () => {
+      const config = createMockConfig({
+        security: { enableSecurityCheck: true },
+      });
+
+      const packResult: PackResult = {
+        totalFiles: 10,
+        totalCharacters: 1000,
+        totalTokens: 200,
+        fileCharCounts: { 'file1.txt': 100 },
+        fileTokenCounts: { 'file1.txt': 50 },
+        suspiciousFilesResults: [],
+        suspiciousGitDiffResults: [],
+        suspiciousGitLogResults: [],
+        processedFiles: [],
+        safeFilePaths: [],
+        gitDiffTokenCount: 0,
+        gitLogTokenCount: 0,
+        skippedFiles: [],
+        outputFiles: ['repomix-output.1.xml', 'repomix-output.2.xml', 'repomix-output.3.xml'],
+      };
+
+      reportSummary('/test/project', packResult, config);
+
+      // first … last (3 parts)
+      const calls = (logger.log as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+      const outputLine = calls.find((line) => line.includes('repomix-output.1.xml'));
+      expect(outputLine).toBeDefined();
+      expect(outputLine).toContain('repomix-output.3.xml');
+      expect(outputLine).toContain('3 parts');
+    });
+
     test('should print summary with security check disabled', () => {
       const config = createMockConfig({
         security: { enableSecurityCheck: false },

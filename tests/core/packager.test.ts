@@ -133,4 +133,113 @@ describe('packager', () => {
     });
     expect(result.skippedFiles).toEqual([]);
   });
+
+  describe('parallel error handling', () => {
+    // The pipeline runs several stages in parallel (security check + file processing,
+    // output generation + metrics). Regressions in error propagation or worker cleanup
+    // are easy to introduce when adding parallel branches.
+    const mockFilePaths = ['file1.txt'];
+    const mockRawFiles = [{ path: 'file1.txt', content: 'raw' }];
+    const mockProcessedFiles = [{ path: 'file1.txt', content: 'processed' }];
+
+    const baseDeps = () => {
+      const cleanup = vi.fn().mockResolvedValue(undefined);
+      return {
+        cleanup,
+        deps: {
+          searchFiles: vi.fn().mockResolvedValue({ filePaths: mockFilePaths, emptyDirPaths: [] }),
+          sortPaths: vi.fn().mockImplementation((p) => p),
+          collectFiles: vi.fn().mockResolvedValue({ rawFiles: mockRawFiles, skippedFiles: [] }),
+          processFiles: vi.fn().mockResolvedValue(mockProcessedFiles),
+          validateFileSafety: vi.fn().mockResolvedValue({
+            safeFilePaths: mockFilePaths,
+            safeRawFiles: mockRawFiles,
+            suspiciousFilesResults: [],
+            suspiciousGitDiffResults: [],
+            suspiciousGitLogResults: [],
+          }),
+          produceOutput: vi.fn().mockResolvedValue({ outputForMetrics: 'output' }),
+          // Mirror real calculateMetrics behavior: await the outputForMetrics promise so a
+          // produceOutput rejection propagates here instead of becoming unhandled.
+          calculateMetrics: vi.fn().mockImplementation(async (_files, outputPromise) => {
+            await outputPromise;
+            return {
+              totalFiles: 1,
+              totalCharacters: 9,
+              totalTokens: 1,
+              fileCharCounts: { 'file1.txt': 9 },
+              fileTokenCounts: { 'file1.txt': 1 },
+              gitDiffTokenCount: 0,
+              gitLogTokenCount: 0,
+            };
+          }),
+          createMetricsTaskRunner: vi.fn().mockReturnValue({
+            taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup },
+            warmupPromise: Promise.resolve(),
+          }),
+          getGitDiffs: vi.fn().mockResolvedValue(undefined),
+          getGitLogs: vi.fn().mockResolvedValue(undefined),
+          prefetchSortData: vi.fn().mockResolvedValue(undefined),
+          sortOutputFiles: vi.fn().mockImplementation((files) => files),
+        },
+      };
+    };
+
+    test('cleans up the metrics worker pool when validateFileSafety rejects', async () => {
+      const { cleanup, deps } = baseDeps();
+      deps.validateFileSafety = vi.fn().mockRejectedValue(new Error('security check failed'));
+
+      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('security check failed');
+
+      expect(cleanup).toHaveBeenCalled();
+    });
+
+    test('cleans up the metrics worker pool when produceOutput rejects', async () => {
+      const { cleanup, deps } = baseDeps();
+      deps.produceOutput = vi.fn().mockRejectedValue(new Error('output failed'));
+
+      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('output failed');
+
+      expect(cleanup).toHaveBeenCalled();
+    });
+
+    test('cleans up the metrics worker pool when calculateMetrics rejects', async () => {
+      const { cleanup, deps } = baseDeps();
+      deps.calculateMetrics = vi.fn().mockRejectedValue(new Error('metrics failed'));
+
+      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('metrics failed');
+
+      expect(cleanup).toHaveBeenCalled();
+    });
+
+    test('a prefetchSortData failure does not block the pipeline', async () => {
+      const { cleanup, deps } = baseDeps();
+      deps.prefetchSortData = vi.fn().mockRejectedValue(new Error('git failed'));
+
+      const result = await pack(['root'], createMockConfig(), vi.fn(), deps);
+
+      // Pack should complete successfully even though the prefetch failed.
+      expect(result.totalFiles).toBe(1);
+      expect(deps.sortOutputFiles).toHaveBeenCalled();
+      expect(cleanup).toHaveBeenCalled();
+    });
+
+    test('cleans up the metrics worker pool even when the warmup promise rejects', async () => {
+      const { cleanup, deps } = baseDeps();
+      // Pre-attach a no-op handler so the rejection is observed at construction time,
+      // before pack() reaches `await metricsWarmupPromise`. Production code mirrors this
+      // with `.catch(() => {})` in packager.ts:262, so the warmup rejection is fully
+      // contained — but vitest's unhandled-rejection detector can flag it eagerly here.
+      const warmupPromise = Promise.reject(new Error('warmup failed'));
+      warmupPromise.catch(() => {});
+      deps.createMetricsTaskRunner = vi.fn().mockReturnValue({
+        taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup },
+        warmupPromise,
+      });
+
+      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('warmup failed');
+
+      expect(cleanup).toHaveBeenCalled();
+    });
+  });
 });

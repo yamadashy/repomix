@@ -2,6 +2,7 @@ import os from 'node:os';
 import { Tinypool } from 'tinypool';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  cleanupWorkerPool,
   createWorkerPool,
   getProcessConcurrency,
   getWorkerThreadCount,
@@ -185,6 +186,71 @@ describe('processConcurrency', () => {
       );
       expect(taskRunner).toHaveProperty('run');
       expect(taskRunner).toHaveProperty('cleanup');
+    });
+
+    it('delegates run and cleanup to the underlying pool', async () => {
+      const runMock = vi.fn().mockResolvedValue('result');
+      const destroyMock = vi.fn().mockResolvedValue(undefined);
+      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+        (this as Record<string, unknown>).run = runMock;
+        (this as Record<string, unknown>).destroy = destroyMock;
+        return this as Tinypool;
+      });
+
+      const taskRunner = initTaskRunner<{ payload: string }, string>({
+        numOfTasks: 10,
+        workerType: 'fileProcess',
+        runtime: 'worker_threads',
+      });
+
+      await expect(taskRunner.run({ payload: 'x' })).resolves.toBe('result');
+      expect(runMock).toHaveBeenCalledWith({ payload: 'x' });
+
+      await taskRunner.cleanup();
+      expect(destroyMock).toHaveBeenCalled();
+    });
+  });
+
+  describe('cleanupWorkerPool', () => {
+    it('calls destroy on standard Node runtime', async () => {
+      const destroy = vi.fn().mockResolvedValue(undefined);
+      const pool = { destroy } as unknown as Tinypool;
+
+      await cleanupWorkerPool(pool);
+
+      expect(destroy).toHaveBeenCalled();
+    });
+
+    it('skips destroy under Bun runtime', async () => {
+      const destroy = vi.fn();
+      const pool = { destroy } as unknown as Tinypool;
+      // Bun exposes process.versions.bun. Stub it for this test.
+      // Track whether the property originally existed so we can fully remove
+      // it on restore — assigning back `undefined` would leave the key
+      // defined-but-undefined and mutate process.versions for the rest of
+      // the suite.
+      const hadBun = Object.hasOwn(process.versions, 'bun');
+      const original = process.versions.bun;
+      Object.defineProperty(process.versions, 'bun', { value: '1.0.0', configurable: true });
+
+      try {
+        await cleanupWorkerPool(pool);
+        expect(destroy).not.toHaveBeenCalled();
+      } finally {
+        if (hadBun) {
+          Object.defineProperty(process.versions, 'bun', { value: original, configurable: true });
+        } else {
+          delete (process.versions as Record<string, unknown>).bun;
+        }
+      }
+    });
+
+    it('swallows destroy errors so shutdown never throws', async () => {
+      const pool = {
+        destroy: vi.fn().mockRejectedValue(new Error('teardown failed')),
+      } as unknown as Tinypool;
+
+      await expect(cleanupWorkerPool(pool)).resolves.toBeUndefined();
     });
   });
 });

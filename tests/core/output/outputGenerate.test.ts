@@ -1,8 +1,10 @@
+import fs from 'node:fs/promises';
 import process from 'node:process';
 import { DOMParser } from '@xmldom/xmldom';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
-import { generateOutput } from '../../../src/core/output/outputGenerate.js';
+import { buildOutputGeneratorContext, generateOutput } from '../../../src/core/output/outputGenerate.js';
+import { RepomixError } from '../../../src/shared/errorHandle.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 const createStrictXmlParser = () => {
@@ -316,5 +318,209 @@ describe('outputGenerate', () => {
     const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, ['file1.txt']);
 
     expect(output).not.toContain('Directory Structure');
+  });
+
+  test('generateOutput throws RepomixError for unsupported style', async () => {
+    const mockConfig = createMockConfig({
+      output: { filePath: 'output.txt', style: 'unsupported' as 'plain' },
+    });
+
+    await expect(generateOutput([process.cwd()], mockConfig, [], [])).rejects.toBeInstanceOf(RepomixError);
+  });
+});
+
+describe('buildOutputGeneratorContext', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const baseConfig = (overrides = {}) =>
+    createMockConfig({
+      cwd: '/repo',
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        directoryStructure: false,
+      },
+      ...overrides,
+    });
+
+  test('reads the instruction file when configured', async () => {
+    vi.spyOn(fs, 'readFile').mockResolvedValue('be helpful');
+    const config = baseConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        directoryStructure: false,
+        instructionFilePath: 'INSTRUCTIONS.md',
+      },
+    });
+
+    const ctx = await buildOutputGeneratorContext(['/repo'], config, [], []);
+
+    expect(ctx.instruction).toBe('be helpful');
+  });
+
+  test('throws RepomixError when instruction file is missing', async () => {
+    vi.spyOn(fs, 'readFile').mockRejectedValue(new Error('ENOENT'));
+    const config = baseConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        directoryStructure: false,
+        instructionFilePath: 'missing.md',
+      },
+    });
+
+    const promise = buildOutputGeneratorContext(['/repo'], config, [], []);
+    await expect(promise).rejects.toBeInstanceOf(RepomixError);
+    await expect(promise).rejects.toThrow(/Instruction file not found/);
+  });
+
+  test('uses pre-computed emptyDirPaths when includeEmptyDirectories is on', async () => {
+    const config = baseConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        directoryStructure: true,
+        includeEmptyDirectories: true,
+      },
+    });
+    const searchFiles = vi.fn();
+
+    const ctx = await buildOutputGeneratorContext(
+      ['/repo'],
+      config,
+      [],
+      [],
+      undefined,
+      undefined,
+      undefined,
+      ['empty-dir'],
+      {
+        listDirectories: vi.fn(),
+        listFiles: vi.fn(),
+        searchFiles,
+      },
+    );
+
+    // Pre-computed paths win — searchFiles should not be called.
+    expect(searchFiles).not.toHaveBeenCalled();
+    expect(ctx.treeString).toContain('empty-dir');
+  });
+
+  test('falls back to searchFiles when emptyDirPaths is not provided', async () => {
+    const config = baseConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        directoryStructure: true,
+        includeEmptyDirectories: true,
+      },
+    });
+    const searchFiles = vi.fn().mockResolvedValue({ filePaths: [], emptyDirPaths: ['scanned-dir'] });
+
+    const ctx = await buildOutputGeneratorContext(
+      ['/repo'],
+      config,
+      [],
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        listDirectories: vi.fn(),
+        listFiles: vi.fn(),
+        searchFiles,
+      },
+    );
+
+    expect(searchFiles).toHaveBeenCalledWith('/repo', config);
+    expect(ctx.treeString).toContain('scanned-dir');
+  });
+
+  test('wraps searchFiles failure in RepomixError', async () => {
+    const config = baseConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        directoryStructure: true,
+        includeEmptyDirectories: true,
+      },
+    });
+
+    const promise = buildOutputGeneratorContext(['/repo'], config, [], [], undefined, undefined, undefined, undefined, {
+      listDirectories: vi.fn(),
+      listFiles: vi.fn(),
+      searchFiles: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+    await expect(promise).rejects.toBeInstanceOf(RepomixError);
+    await expect(promise).rejects.toThrow(/Failed to search for empty directories.*boom/);
+  });
+
+  test('includes the full directory tree when includeFullDirectoryStructure is on', async () => {
+    const config = baseConfig({
+      include: ['src/**/*.ts'],
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        directoryStructure: true,
+        includeFullDirectoryStructure: true,
+      },
+    });
+    const listDirectories = vi.fn().mockResolvedValue(['src', 'src/feature']);
+    const listFiles = vi.fn().mockResolvedValue(['src/index.ts', 'src/feature/extra.ts']);
+
+    const ctx = await buildOutputGeneratorContext(
+      ['/repo'],
+      config,
+      ['src/index.ts'],
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        listDirectories,
+        listFiles,
+        searchFiles: vi.fn(),
+      },
+    );
+
+    expect(listDirectories).toHaveBeenCalledWith('/repo', config);
+    expect(listFiles).toHaveBeenCalledWith('/repo', config);
+    // The extra file from listFiles (not in allFilePaths) should be merged into the tree.
+    expect(ctx.treeString).toContain('extra.ts');
+  });
+
+  test('wraps full-tree listing failure in RepomixError', async () => {
+    const config = baseConfig({
+      include: ['src/**/*.ts'],
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        directoryStructure: true,
+        includeFullDirectoryStructure: true,
+      },
+    });
+
+    const promise = buildOutputGeneratorContext(
+      ['/repo'],
+      config,
+      ['src/index.ts'],
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        listDirectories: vi.fn().mockRejectedValue(new Error('list failed')),
+        listFiles: vi.fn().mockResolvedValue([]),
+        searchFiles: vi.fn(),
+      },
+    );
+    await expect(promise).rejects.toBeInstanceOf(RepomixError);
+    await expect(promise).rejects.toThrow(/Failed to build full directory structure.*list failed/);
   });
 });
