@@ -372,7 +372,9 @@ describe('buildOutputGeneratorContext', () => {
       },
     });
 
-    await expect(buildOutputGeneratorContext(['/repo'], config, [], [])).rejects.toThrow(/Instruction file not found/);
+    const promise = buildOutputGeneratorContext(['/repo'], config, [], []);
+    await expect(promise).rejects.toBeInstanceOf(RepomixError);
+    await expect(promise).rejects.toThrow(/Instruction file not found/);
   });
 
   test('uses pre-computed emptyDirPaths when includeEmptyDirectories is on', async () => {
@@ -448,13 +450,13 @@ describe('buildOutputGeneratorContext', () => {
       },
     });
 
-    await expect(
-      buildOutputGeneratorContext(['/repo'], config, [], [], undefined, undefined, undefined, undefined, {
-        listDirectories: vi.fn(),
-        listFiles: vi.fn(),
-        searchFiles: vi.fn().mockRejectedValue(new Error('boom')),
-      }),
-    ).rejects.toThrow(/Failed to search for empty directories.*boom/);
+    const promise = buildOutputGeneratorContext(['/repo'], config, [], [], undefined, undefined, undefined, undefined, {
+      listDirectories: vi.fn(),
+      listFiles: vi.fn(),
+      searchFiles: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+    await expect(promise).rejects.toBeInstanceOf(RepomixError);
+    await expect(promise).rejects.toThrow(/Failed to search for empty directories.*boom/);
   });
 
   test('includes the full directory tree when includeFullDirectoryStructure is on', async () => {
@@ -503,12 +505,22 @@ describe('buildOutputGeneratorContext', () => {
       },
     });
 
-    await expect(
-      buildOutputGeneratorContext(['/repo'], config, ['src/index.ts'], [], undefined, undefined, undefined, undefined, {
+    const promise = buildOutputGeneratorContext(
+      ['/repo'],
+      config,
+      ['src/index.ts'],
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
         listDirectories: vi.fn().mockRejectedValue(new Error('list failed')),
         listFiles: vi.fn().mockResolvedValue([]),
         searchFiles: vi.fn(),
-      }),
-    ).rejects.toThrow(/Failed to build full directory structure.*list failed/);
+      },
+    );
+    await expect(promise).rejects.toBeInstanceOf(RepomixError);
+    await expect(promise).rejects.toThrow(/Failed to build full directory structure.*list failed/);
   });
 });

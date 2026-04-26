@@ -226,15 +226,17 @@ describe('packager', () => {
 
     test('cleans up the metrics worker pool even when the warmup promise rejects', async () => {
       const { cleanup, deps } = baseDeps();
-      // Warmup rejection should be swallowed in the finally block (line 262 in packager.ts).
+      // Pre-attach a no-op handler so the rejection is observed at construction time,
+      // before pack() reaches `await metricsWarmupPromise`. Production code mirrors this
+      // with `.catch(() => {})` in packager.ts:262, so the warmup rejection is fully
+      // contained — but vitest's unhandled-rejection detector can flag it eagerly here.
+      const warmupPromise = Promise.reject(new Error('warmup failed'));
+      warmupPromise.catch(() => {});
       deps.createMetricsTaskRunner = vi.fn().mockReturnValue({
         taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup },
-        warmupPromise: Promise.reject(new Error('warmup failed')),
+        warmupPromise,
       });
 
-      // Explicitly attach a no-op handler to satisfy strict unhandled-rejection detection
-      // — the production code does the same with `.catch(() => {})` at line 262.
-      // We re-create the rejected promise via the mock above; vitest may flag it otherwise.
       await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('warmup failed');
 
       expect(cleanup).toHaveBeenCalled();

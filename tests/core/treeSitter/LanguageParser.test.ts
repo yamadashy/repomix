@@ -41,8 +41,9 @@ describe('LanguageParser', () => {
 
     it('throws RepomixError when used before init', async () => {
       const fresh = new LanguageParser();
-      await expect(fresh.getParserForLang('javascript')).rejects.toBeInstanceOf(RepomixError);
-      await expect(fresh.getParserForLang('javascript')).rejects.toThrow(/not initialized/);
+      const error = await fresh.getParserForLang('javascript').catch((e) => e);
+      expect(error).toBeInstanceOf(RepomixError);
+      expect((error as Error).message).toMatch(/not initialized/);
     });
 
     it('init() is idempotent — second call short-circuits', async () => {

@@ -214,8 +214,11 @@ describe('calculateMetrics fast/slow path equivalence', () => {
 
     // No taskRunner in deps means calculateMetrics owns the lifecycle.
     // We need to mock initTaskRunner to return our spy so we can assert cleanup.
+    // Reset first so the override is unambiguously consumed by THIS calculateMetrics
+    // call, not silently picked up by an earlier test that omits taskRunner.
     const { initTaskRunner } = await import('../../../src/shared/processConcurrency.js');
-    (initTaskRunner as Mock).mockReturnValueOnce(failingTaskRunner);
+    vi.mocked(initTaskRunner).mockReset();
+    vi.mocked(initTaskRunner).mockReturnValueOnce(failingTaskRunner);
 
     await expect(
       calculateMetrics(
