@@ -185,10 +185,16 @@ describe('cliReport', () => {
         skippedFiles: [],
       };
 
-      reportSummary('/test/project', packResult, config, { skillDir: '/test/project/.claude/skills/test-skill' });
+      // Use path.join so the expected substring uses the OS-native separator
+      // — getDisplayPath calls path.relative, which yields backslashes on Windows.
+      const cwd = path.join('/test', 'project');
+      const skillDir = path.join(cwd, '.claude', 'skills', 'test-skill');
+      const expectedRelative = path.join('.claude', 'skills', 'test-skill');
+
+      reportSummary(cwd, packResult, config, { skillDir });
 
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('skill directory'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('.claude/skills/test-skill'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining(expectedRelative));
     });
 
     test('should print first…last paths and part count for split outputs', () => {
