@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777185385244,
+  "lastUpdate": 1777191958209,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6705,6 +6705,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1755ms, Q3: 1774ms\nAll times: 1744, 1749, 1750, 1753, 1755, 1755, 1757, 1759, 1760, 1762, 1763, 1766, 1766, 1771, 1773, 1774, 1776, 1777, 1779, 1806ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "69ebe89955a696549f78e94c07acdefeed489afb",
+          "message": "perf(metrics): Raise METRICS_BATCH_SIZE 10 -> 25 to cut IPC round-trips\n\nIncrease the per-worker batch size in `calculateFileMetrics` so that fewer,\nlarger batches are dispatched into the metrics Tinypool. With 3 worker\nthreads and 252 files the change drops the total number of batches from 26\n(⌈252/10⌉) to 11 (⌈252/25⌉), and the number of serial worker round-trips\nfrom ~9 to ~4.\n\nEach Tinypool task incurs a fixed structured-clone + queue + response IPC\ncost on the order of ~3–4ms. Halving the round-trip count therefore cuts\n~20–40ms from the file-metrics phase on small/medium repos, which is\non the wall-clock critical path when output is small and the\n`extractOutputWrapper` fast path runs.\n\nWhy 25 (not larger):\n- Workers must still surface frequently enough that `produceOutput`'s\n  ~7ms wrapper-tokenization task does not get stuck behind a single\n  monolithic batch — at 25 each batch tokenizes ~5–6KB of source on\n  average, ~2–3ms of work, so wrapper dispatch latency stays low.\n- The wrapper task continues to dispatch concurrently from\n  `calculateMetrics`, so output-generation overlap is preserved.\n- For very large repos (700+ files) `calculateFileMetrics` is no longer\n  on the critical path (`collectFiles` + security dominate), so a higher\n  batch size has no measurable downside there either.\n\nBehavior preservation:\n- Output is byte-identical between BEFORE and AFTER builds. Verified by\n  packing an isolated copy of `website/client/components` (114,027 bytes,\n  byte-identical via `cmp`).\n- All 1145 unit tests pass; lint passes (only pre-existing warnings).\n- `METRICS_BATCH_SIZE` is purely a packing factor for IPC; per-file token\n  counts and the order of `FileMetrics` results are unchanged.\n\nPaired interleaved A/B benchmark (`node bin/repomix.cjs --include 'src'`,\nn=60, this branch with prior perf commits as BEFORE, this commit as AFTER):\n\n|        | min     | median  | mean    | sd     |\n|--------|---------|---------|---------|--------|\n| BEFORE | 1.245s  | 1.602s  | 1.588s  | 0.145s |\n| AFTER  | 1.257s  | 1.568s  | 1.564s  | 0.133s |\n\n- Median wall-clock delta: 33.7ms (~2.10%)\n- Mean wall-clock delta:   23.6ms (~1.49%)\n- AFTER faster in 33/60 paired runs\n\nThe local box is noisy (sd ~140ms vs the ~30–50ms saving), so the mean\nsits below 2% while the median consistently clears it. On a quieter\nsystem an isolated A/B measurement of just this change (--include\n'src,tests', n=8 vs n=5, otherwise identical configuration) showed:\n\n| BATCH_SIZE | mean   | median |\n|------------|--------|--------|\n| 10         | 852ms  | 848ms  |\n| 25         | 808ms  | 815ms  |\n\n→ ~44ms mean / ~33ms median saving = 3.9–5.2%. CI runners (Ubuntu / macOS\n/ Windows) should land closer to the quieter-system numbers.",
+          "timestamp": "2026-04-26T08:23:58Z",
+          "tree_id": "db0d8708dc7f94b1777fae0571bb5dce66443280",
+          "url": "https://github.com/yamadashy/repomix/commit/69ebe89955a696549f78e94c07acdefeed489afb"
+        },
+        "date": 1777191957675,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1152,
+            "range": "±215",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1044ms, Q3: 1259ms\nAll times: 954, 958, 985, 996, 1016, 1021, 1031, 1044, 1095, 1125, 1133, 1138, 1145, 1146, 1147, 1152, 1158, 1181, 1194, 1196, 1227, 1230, 1259, 1288, 1308, 1329, 1360, 1375, 1617, 1997ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1075,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1066ms, Q3: 1088ms\nAll times: 1050, 1054, 1056, 1060, 1063, 1066, 1070, 1072, 1074, 1075, 1075, 1079, 1080, 1082, 1082, 1088, 1089, 1099, 1112, 1118ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1862,
+            "range": "±112",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1828ms, Q3: 1940ms\nAll times: 1794, 1799, 1812, 1822, 1824, 1828, 1834, 1836, 1842, 1856, 1862, 1863, 1866, 1922, 1932, 1940, 1983, 2019, 2041, 2167ms"
           }
         ]
       }
