@@ -20,11 +20,15 @@ describe('memoryUtils', () => {
 
   test('getMemoryStats returns numeric MB values and a heap percentage', () => {
     const stats = getMemoryStats();
-    expect(stats.heapUsed).toEqual(expect.any(Number));
-    expect(stats.heapTotal).toEqual(expect.any(Number));
-    expect(stats.rss).toEqual(expect.any(Number));
-    expect(stats.external).toEqual(expect.any(Number));
+    // Sanity bounds — these would catch unit-conversion regressions
+    // (e.g., returning bytes instead of MB) that `expect.any(Number)` misses.
+    expect(stats.heapTotal).toBeGreaterThan(0);
+    expect(stats.rss).toBeGreaterThan(0);
+    expect(stats.heapUsed).toBeGreaterThan(0);
+    expect(stats.heapUsed).toBeLessThanOrEqual(stats.heapTotal);
+    expect(stats.external).toBeGreaterThanOrEqual(0);
     expect(stats.heapUsagePercent).toBeGreaterThanOrEqual(0);
+    expect(stats.heapUsagePercent).toBeLessThanOrEqual(100);
   });
 
   test('logMemoryUsage emits a trace line tagged with context', () => {

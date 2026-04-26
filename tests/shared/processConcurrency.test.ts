@@ -225,6 +225,11 @@ describe('processConcurrency', () => {
       const destroy = vi.fn();
       const pool = { destroy } as unknown as Tinypool;
       // Bun exposes process.versions.bun. Stub it for this test.
+      // Track whether the property originally existed so we can fully remove
+      // it on restore — assigning back `undefined` would leave the key
+      // defined-but-undefined and mutate process.versions for the rest of
+      // the suite.
+      const hadBun = Object.hasOwn(process.versions, 'bun');
       const original = process.versions.bun;
       Object.defineProperty(process.versions, 'bun', { value: '1.0.0', configurable: true });
 
@@ -232,10 +237,11 @@ describe('processConcurrency', () => {
         await cleanupWorkerPool(pool);
         expect(destroy).not.toHaveBeenCalled();
       } finally {
-        Object.defineProperty(process.versions, 'bun', {
-          value: original,
-          configurable: true,
-        });
+        if (hadBun) {
+          Object.defineProperty(process.versions, 'bun', { value: original, configurable: true });
+        } else {
+          delete (process.versions as Record<string, unknown>).bun;
+        }
       }
     });
 

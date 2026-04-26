@@ -86,16 +86,43 @@ describe('unifiedWorker', () => {
   });
 
   describe('handler cache', () => {
-    it('reuses the cached handler module across calls', async () => {
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+    it('caches the loaded handler so cleanup runs exactly once per workerType', async () => {
+      // Stronger than counting handler invocations: onWorkerTermination iterates
+      // handlerCache.values(), so cleanup running exactly once per distinct
+      // workerType after multiple handler calls proves the cache deduplicates
+      // module loads. Removing the cache would either skip cleanup entirely
+      // (nothing in the Map) or break this invariant.
+      const { default: handler, onWorkerTermination } = await import('../../src/shared/unifiedWorker.js');
       const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
 
-      // Two calls of the same workerType — the dynamic import should resolve once,
-      // but the handler should run for each task.
       await handler({ rawFile: { path: 'a.ts', content: '' }, config: {} });
       await handler({ rawFile: { path: 'b.ts', content: '' }, config: {} });
 
-      expect(fileProcessWorker.default).toHaveBeenCalledTimes(2);
+      await onWorkerTermination();
+
+      expect(fileProcessWorker.onWorkerTermination).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('task-based inference overrides workerData', () => {
+    it('lets a task that matches another workerType override the configured one (bundled-env reuse)', async () => {
+      // Tinypool may reuse a child process configured for one worker type to run
+      // tasks for another in bundled environments. inferWorkerTypeFromTask must
+      // win over getWorkerTypeFromWorkerData so the right handler is dispatched.
+      vi.resetModules();
+      vi.doMock('node:worker_threads', () => ({
+        workerData: ['x', { workerType: 'securityCheck' }],
+      }));
+      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
+      const securityCheckWorker = await import('../../src/core/security/workers/securityCheckWorker.js');
+
+      // Task structure infers fileProcess even though workerData says securityCheck.
+      await handler({ rawFile: { path: 'a.ts', content: '' }, config: {} });
+
+      expect(fileProcessWorker.default).toHaveBeenCalled();
+      expect(securityCheckWorker.default).not.toHaveBeenCalled();
+      vi.doUnmock('node:worker_threads');
     });
   });
 

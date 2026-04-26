@@ -193,8 +193,12 @@ describe('cliReport', () => {
 
       reportSummary(cwd, packResult, config, { skillDir });
 
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('skill directory'));
-      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining(expectedRelative));
+      // Both substrings must appear on the SAME log line, not just somewhere across
+      // separate logger.log calls — otherwise an unrelated line could satisfy each.
+      const calls = (logger.log as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+      const outputLine = calls.find((line) => line.includes('skill directory'));
+      expect(outputLine).toBeDefined();
+      expect(outputLine).toContain(expectedRelative);
     });
 
     test('should print first…last paths and part count for split outputs', () => {

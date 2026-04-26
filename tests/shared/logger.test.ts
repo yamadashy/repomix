@@ -120,7 +120,6 @@ describe('setLogLevelByWorkerData', () => {
   const originalEnvLogLevel = process.env.REPOMIX_LOG_LEVEL;
 
   beforeEach(() => {
-    process.env.REPOMIX_LOG_LEVEL = undefined;
     delete process.env.REPOMIX_LOG_LEVEL;
   });
 

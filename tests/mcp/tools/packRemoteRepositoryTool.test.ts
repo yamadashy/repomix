@@ -104,10 +104,13 @@ describe('PackRemoteRepositoryTool', () => {
         quiet: true,
       }),
     );
+    // path is fully determined by mocked createToolWorkspace + mocked path.join
+    // (see beforeEach: '/temp/dir' + '/' + defaultFilePathMap[style]).
+    // Hard-coding instead of expect.any(String) catches arg-swap regressions.
     expect(formatPackToolResponse).toHaveBeenCalledWith(
       { repository: 'yamadashy/repomix' },
       defaultPackResult,
-      expect.any(String),
+      '/temp/dir/repomix-output.md',
       7,
     );
   });
