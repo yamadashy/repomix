@@ -333,9 +333,10 @@ describe('fileProcess', () => {
       expect(workerResult[0].content).toBe(lightweightResult[0].content);
     });
 
-    it('truncateBase64 happens before removeEmptyLines (so multi-line base64 is squashed first)', async () => {
-      // Long base64 across multiple lines: truncateBase64 collapses it to a short
-      // placeholder, then removeEmptyLines tidies anything left behind.
+    it('applies truncateBase64 and removeEmptyLines together (base64 replaced and surrounding blanks cleaned up)', async () => {
+      // truncateBase64Content matches a single contiguous run of base64 chars (its regex does
+      // not span newlines), so this asserts combined behavior — base64 collapsed to a placeholder
+      // and the blank lines around it tidied — rather than a strict ordering invariant.
       const longBase64 =
         'DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtgharP9Bk+Y4it0vccQWaLsNX6H0RpjrPY/SJHbJG22wAlSm+Uud4DKE1yl7zhBitQdZq/5AkuU3idwucMMVZ7oMXqDzRZfqPI7RI3XIGmy/AVOl+Eqc7zGD1ih6zR9htAZYqv1PkeQ2iNstf8IUZrkLXa/yRJbpO43QInTHGWu+AFKk90mb7jCC1Sd5zB5gswVXqfxOkOM1h9osfsETZbgKXK7xQ5XoOozfIXPGGGq9D1Gj9kia7T+B1CZ4yx1vsgRWqPtNn+I0htkrfcASZLcJW63wQpTnOYveIHLFF2m8DlCi9UeZ7D6A==';
       const files: ProcessedFile[] = [

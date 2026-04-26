@@ -227,9 +227,9 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(tsConfigCount).toBe(1);
     });
 
-    test('keeps the first detected packageManager when later package.json files conflict', () => {
-      // Fix `005eb791` part 1: packageManager must not be overwritten by later files.
-      // In a monorepo, root and subpackage are separate buckets so each keeps its own.
+    test('assigns packageManager per package directory independently', () => {
+      // In a monorepo, root and subpackage are keyed to separate buckets by getDirPath,
+      // so each preserves its own packageManager regardless of input order.
       const files: ProcessedFile[] = [
         {
           path: 'package.json',
@@ -247,6 +247,27 @@ tokio = { version = "1.0", features = ["full"] }`,
       const sub = result.find((r) => r.path === 'packages/sub');
       expect(root?.packageManager).toBe('pnpm');
       expect(sub?.packageManager).toBe('yarn');
+    });
+
+    test('keeps the first detected packageManager when later entries map to the same directory', () => {
+      // Fix `005eb791` part 1: pins the `parsed.packageManager && !result.packageManager` guard.
+      // Two package.json entries at the same path land in the same directory bucket, so the
+      // second one's packageManager must NOT overwrite the first.
+      const files: ProcessedFile[] = [
+        {
+          path: 'package.json',
+          content: JSON.stringify({ packageManager: 'pnpm@8.0.0', dependencies: {} }),
+        },
+        {
+          path: 'package.json',
+          content: JSON.stringify({ packageManager: 'yarn@4.0.0', dependencies: {} }),
+        },
+      ];
+
+      const result = detectTechStack(files);
+
+      const root = result.find((r) => r.path === '.');
+      expect(root?.packageManager).toBe('pnpm');
     });
   });
 
