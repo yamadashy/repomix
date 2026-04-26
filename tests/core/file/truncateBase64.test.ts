@@ -103,4 +103,36 @@ describe('truncateBase64Content', () => {
     const result = truncateBase64Content(input);
     expect(result).toBe(input);
   });
+
+  it('should handle empty input', () => {
+    expect(truncateBase64Content('')).toBe('');
+  });
+
+  it('should preserve base64-like runs of exactly 255 chars (just below threshold)', () => {
+    // One char below MIN_BASE64_LENGTH_STANDALONE — `hasLongBase64Run` precondition
+    // must return false so the regex is skipped and content is untouched.
+    const just255 = longBase64.slice(0, 255);
+    const input = `const data = "${just255}";`;
+    const result = truncateBase64Content(input);
+    expect(result).toBe(input);
+  });
+
+  it('should preserve content where no single base64 run reaches the threshold', () => {
+    // Two 200-char base64-like runs separated by a non-base64 char (`=` is only
+    // valid as trailing padding, not inside the run). Neither run hits 256, so
+    // the regex must not match and the precondition must reset on the separator.
+    const run = longBase64.slice(0, 200);
+    const input = `${run} = ${run}`;
+    const result = truncateBase64Content(input);
+    expect(result).toBe(input);
+  });
+
+  it('should leave non-base64 data URIs untouched', () => {
+    // `data:text/plain,hello` has no `;base64,` literal, so the dataUriPattern
+    // cannot match. Verifies the `includes(';base64,')` guard short-circuits
+    // correctly without accidentally rewriting plain data URIs.
+    const input = 'const url = "data:text/plain;charset=utf-8,Hello%20World";';
+    const result = truncateBase64Content(input);
+    expect(result).toBe(input);
+  });
 });
