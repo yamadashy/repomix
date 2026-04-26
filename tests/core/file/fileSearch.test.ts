@@ -307,6 +307,7 @@ node_modules
           absolute: false,
           dot: true,
           followSymbolicLinks: false,
+          caseSensitiveMatch: true,
         }),
       );
     });
@@ -968,6 +969,7 @@ node_modules
           absolute: false,
           dot: true,
           followSymbolicLinks: false,
+          caseSensitiveMatch: true,
         });
 
         // A call must target a recognised entry kind: onlyFiles, onlyDirectories,
@@ -1042,6 +1044,33 @@ node_modules
 
         const ignorePatterns = options.ignore as string[];
         expect(ignorePatterns).toEqual(expect.arrayContaining(customPatterns));
+      }
+    });
+
+    test('should pass caseSensitiveMatch: true to all globby calls', async () => {
+      // This test verifies that caseSensitiveMatch: true is set to fix issue #980
+      // where BUILD files (used by pants build tool) were incorrectly ignored
+      // on macOS due to the default 'build/**' pattern matching 'BUILD' files
+      const mockConfig = createMockConfig({
+        include: ['**/*'],
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: true,
+          customPatterns: [],
+        },
+      });
+
+      vi.mocked(globby).mockResolvedValue(['BUILD', 'src/BUILD', 'build/output.js']);
+
+      await searchFiles('/test/root', mockConfig);
+
+      // Verify caseSensitiveMatch is passed to globby
+      const calls = vi.mocked(globby).mock.calls;
+      for (const call of calls) {
+        const options = call[1];
+        expect(options).toBeDefined();
+        if (!options) continue;
+        expect(options.caseSensitiveMatch).toBe(true);
       }
     });
   });
