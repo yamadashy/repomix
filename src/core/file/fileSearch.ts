@@ -1,9 +1,10 @@
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { type Options as GlobbyOptions, globby } from 'globby';
+import { type Options as GlobbyOptions, type GlobEntry, globby } from 'globby';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
+import { mapWithConcurrency } from '../../shared/asyncMap.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { sortPaths } from './filePathSort.js';
@@ -15,27 +16,27 @@ export interface FileSearchResult {
   emptyDirPaths: string[];
 }
 
+// readdir is independent across directories — run with bounded concurrency rather
+// than awaiting serially. The cap protects very large repos from EMFILE / file
+// descriptor exhaustion that unbounded `Promise.all` could cause.
+const EMPTY_DIR_CHECK_CONCURRENCY = 20;
+
 // No per-directory ignore-pattern check is needed here. The `directories` array
 // comes from globby with the same `ignore` patterns (e.g. `dist/**`), which
 // excludes both the directory contents AND the directory entry itself.
 const findEmptyDirectories = async (rootDir: string, directories: string[]): Promise<string[]> => {
-  const emptyDirs: string[] = [];
-
-  for (const dir of directories) {
+  const results = await mapWithConcurrency(directories, EMPTY_DIR_CHECK_CONCURRENCY, async (dir) => {
     const fullPath = path.join(rootDir, dir);
     try {
       const entries = await fs.readdir(fullPath);
       const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
-
-      if (!hasVisibleContents) {
-        emptyDirs.push(dir);
-      }
+      return hasVisibleContents ? null : dir;
     } catch (error) {
       logger.debug(`Error checking directory ${dir}:`, error);
+      return null;
     }
-  }
-
-  return emptyDirs;
+  });
+  return results.filter((dir): dir is string => dir !== null);
 };
 
 // Check if a path is a git worktree reference file
@@ -179,13 +180,7 @@ export const searchFiles = async (
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns (for globby):', ignoreFilePatterns);
 
-    logger.debug('[globby] Starting file search...');
-    const globbyStartTime = Date.now();
-
-    const filePaths = await globby(includePatterns, {
-      ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-      onlyFiles: true,
-    }).catch((error: unknown) => {
+    const handleGlobbyError = (error: unknown): never => {
       // Handle EPERM errors specifically
       const code = (error as NodeJS.ErrnoException | { code?: string })?.code;
       if (code === 'EPERM' || code === 'EACCES') {
@@ -195,28 +190,56 @@ export const searchFiles = async (
         );
       }
       throw error;
-    });
+    };
 
-    const globbyElapsedTime = Date.now() - globbyStartTime;
-    logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
+    logger.debug('[globby] Starting file search...');
+    const globbyStartTime = Date.now();
 
+    let filePaths: string[];
     let emptyDirPaths: string[] = [];
+
     if (config.output.includeEmptyDirectories) {
-      logger.debug('[empty dirs] Searching for empty directories...');
-      const emptyDirStartTime = Date.now();
-
-      const directories = await globby(includePatterns, {
+      // Single traversal returning both files and directories. The previous implementation
+      // ran globby twice with identical options (once for files, once for directories),
+      // which re-walks the tree and re-parses every .gitignore/.repomixignore, roughly
+      // doubling the discovery cost. Using `objectMode: true` lets us partition the entries
+      // by their Dirent type in one pass. We use `dirent.isFile()` (not `!isDirectory()`)
+      // to match the previous `onlyFiles: true` semantics for symlinks and other non-file
+      // non-directory entries (which are excluded in both implementations).
+      const entries: GlobEntry[] = await globby(includePatterns, {
         ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyDirectories: true,
-      });
+        onlyFiles: false,
+        objectMode: true,
+      }).catch(handleGlobbyError);
 
-      const emptyDirElapsedTime = Date.now() - emptyDirStartTime;
-      logger.debug(`[empty dirs] Found ${directories.length} directories in ${emptyDirElapsedTime}ms`);
+      const files: string[] = [];
+      const directories: string[] = [];
+      for (const entry of entries) {
+        if (entry.dirent.isFile()) {
+          files.push(entry.path);
+        } else if (entry.dirent.isDirectory()) {
+          directories.push(entry.path);
+        }
+      }
+      filePaths = files;
+
+      const globbyElapsedTime = Date.now() - globbyStartTime;
+      logger.debug(
+        `[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files and ${directories.length} directories`,
+      );
 
       const filterStartTime = Date.now();
       emptyDirPaths = await findEmptyDirectories(rootDir, directories);
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
+    } else {
+      filePaths = await globby(includePatterns, {
+        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+        onlyFiles: true,
+      }).catch(handleGlobbyError);
+
+      const globbyElapsedTime = Date.now() - globbyStartTime;
+      logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
     }
 
     logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
