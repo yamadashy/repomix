@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777120154974,
+  "lastUpdate": 1777185385244,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6660,6 +6660,51 @@ window.BENCHMARK_DATA = {
             "range": "±46",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 1725ms, Q3: 1771ms\nAll times: 1712, 1716, 1717, 1720, 1725, 1726, 1731, 1734, 1736, 1738, 1740, 1747, 1753, 1766, 1771, 1838, 2124, 2198, 2225ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "e4935e89289732e681a8c0fe430f6b83ae504fe9",
+          "message": "perf(core): Overlap produceOutput with metrics worker warm-up\n\nRemove the `await metricsWarmupPromise` barrier that previously sat between\nthe search/collect/security pipeline and `produceOutput`. The warm-up tasks\nshare the same Tinypool that `calculateMetrics` uses, so a real metrics task\nenqueued after warm-up tasks naturally runs only after the worker has loaded\ngpt-tokenizer. Awaiting the warm-up at this point only blocked the main\nthread; it was not required for correctness.\n\nBy dropping the barrier, `produceOutput` (a main-thread CPU workload of\n~22-36ms for the src+tests pack) now runs in parallel with the tail of the\nwarm-up that has not yet finished competing with the security-check pool for\nCPU. The `finally` block still awaits the warm-up before cleanup so worker\ntermination remains orderly.\n\nWhy the warm-up overhang exists at this point in the pipeline:\n- `metricsWarmupPromise` fires at packager.ts:118 after `searchFiles`.\n- It runs concurrently with `collectFiles + getGit{Diffs,Logs}` (~120ms)\n  and `validateFileSafety + processFiles` (~200ms — the security pool spawns\n  its own worker threads competing for CPU with warm-up workers).\n- On a 4-core box the warm-up's wall-clock cost slips past the security\n  check's completion: instrumentation showed the previous `await` at\n  packager.ts:210 blocked the main thread for 48-105ms (median ~67ms).\n- `produceOutput` is pure main-thread work (Handlebars render + string\n  assembly), so it does not contend with the worker pools.\n\nBehavior preservation:\n- Output XML is byte-identical between BEFORE and AFTER builds\n  (1,321,299 bytes for `--include 'src,tests'`).\n- All 1145 unit tests pass; lint passes (only pre-existing warnings).\n- Cleanup order is preserved by the existing `await metricsWarmupPromise.catch(...)`\n  in the `finally` block, which still runs before `metricsTaskRunner.cleanup()`.\n\nPaired interleaved A/B benchmark (n=30, `node bin/repomix.cjs --include 'src,tests'`):\n\n|        | min     | median  | mean    |\n|--------|---------|---------|---------|\n| BEFORE | 0.805s  | 0.849s  | 0.847s  |\n| AFTER  | 0.777s  | 0.821s  | 0.828s  |\n\n- Mean delta: 19ms (~2.2%)\n- Median delta: 28ms (~3.3%)\n- Min delta: 28ms (~3.5%)\n- AFTER faster in 21 of 25 paired runs (initial 25-run sample); trend held\n  at n=30.",
+          "timestamp": "2026-04-26T06:34:13Z",
+          "tree_id": "96183100e5c5fa4606e94b4d83ca90647be67c74",
+          "url": "https://github.com/yamadashy/repomix/commit/e4935e89289732e681a8c0fe430f6b83ae504fe9"
+        },
+        "date": 1777185384236,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1378,
+            "range": "±196",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1301ms, Q3: 1497ms\nAll times: 1143, 1200, 1205, 1218, 1236, 1288, 1294, 1301, 1323, 1326, 1330, 1333, 1354, 1357, 1375, 1378, 1401, 1404, 1473, 1475, 1482, 1489, 1497, 1529, 1541, 1570, 1572, 1581, 1587, 1879ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1434,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1422ms, Q3: 1443ms\nAll times: 1408, 1411, 1417, 1418, 1419, 1422, 1422, 1422, 1424, 1427, 1434, 1435, 1438, 1439, 1442, 1443, 1447, 1450, 1453, 1455ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1763,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1755ms, Q3: 1774ms\nAll times: 1744, 1749, 1750, 1753, 1755, 1755, 1757, 1759, 1760, 1762, 1763, 1766, 1766, 1771, 1773, 1774, 1776, 1777, 1779, 1806ms"
           }
         ]
       }
