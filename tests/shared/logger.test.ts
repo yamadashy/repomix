@@ -111,3 +111,91 @@ describe('logger', () => {
     expect(console.log).toHaveBeenCalledWith('CYAN:Multiple arguments 123');
   });
 });
+
+describe('setLogLevelByWorkerData', () => {
+  // setLogLevelByWorkerData reads `workerData` (captured at module load) and
+  // process.env at call time. Re-import per case via vi.resetModules so each
+  // test sees a fresh module with its own mocked workerData.
+  const originalLevel = logger.getLogLevel();
+  const originalEnvLogLevel = process.env.REPOMIX_LOG_LEVEL;
+
+  beforeEach(() => {
+    delete process.env.REPOMIX_LOG_LEVEL;
+  });
+
+  afterEach(() => {
+    vi.doUnmock('node:worker_threads');
+    vi.resetModules();
+    logger.setLogLevel(originalLevel);
+    if (originalEnvLogLevel === undefined) {
+      delete process.env.REPOMIX_LOG_LEVEL;
+    } else {
+      process.env.REPOMIX_LOG_LEVEL = originalEnvLogLevel;
+    }
+  });
+
+  it('sets log level from REPOMIX_LOG_LEVEL env var', async () => {
+    process.env.REPOMIX_LOG_LEVEL = String(repomixLogLevels.DEBUG);
+    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
+
+    setLogLevelByWorkerData();
+
+    expect(freshLogger.getLogLevel()).toBe(repomixLogLevels.DEBUG);
+  });
+
+  it('ignores non-numeric REPOMIX_LOG_LEVEL', async () => {
+    process.env.REPOMIX_LOG_LEVEL = 'not-a-number';
+    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
+    const before = freshLogger.getLogLevel();
+
+    setLogLevelByWorkerData();
+
+    expect(freshLogger.getLogLevel()).toBe(before);
+  });
+
+  it('ignores out-of-range REPOMIX_LOG_LEVEL', async () => {
+    process.env.REPOMIX_LOG_LEVEL = '999';
+    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
+    const before = freshLogger.getLogLevel();
+
+    setLogLevelByWorkerData();
+
+    expect(freshLogger.getLogLevel()).toBe(before);
+  });
+
+  it('falls back to workerData when env var is unset', async () => {
+    vi.resetModules();
+    vi.doMock('node:worker_threads', () => ({
+      workerData: ['some-task', { logLevel: repomixLogLevels.ERROR }],
+    }));
+    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
+
+    setLogLevelByWorkerData();
+
+    expect(freshLogger.getLogLevel()).toBe(repomixLogLevels.ERROR);
+  });
+
+  it('ignores invalid logLevel in workerData', async () => {
+    vi.resetModules();
+    vi.doMock('node:worker_threads', () => ({
+      workerData: ['some-task', { logLevel: 42 }],
+    }));
+    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
+    const before = freshLogger.getLogLevel();
+
+    setLogLevelByWorkerData();
+
+    expect(freshLogger.getLogLevel()).toBe(before);
+  });
+
+  it('does nothing when workerData is null and env var is unset', async () => {
+    vi.resetModules();
+    vi.doMock('node:worker_threads', () => ({ workerData: null }));
+    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
+    const before = freshLogger.getLogLevel();
+
+    setLogLevelByWorkerData();
+
+    expect(freshLogger.getLogLevel()).toBe(before);
+  });
+});

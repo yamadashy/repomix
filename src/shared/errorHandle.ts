@@ -110,7 +110,9 @@ const isRepomixError = (error: unknown): error is RepomixError => {
   return (
     typeof obj.message === 'string' &&
     'name' in obj &&
-    (obj.name === RepomixError.name || obj.name === RepomixConfigValidationError.name)
+    (obj.name === RepomixError.name ||
+      obj.name === RepomixConfigValidationError.name ||
+      obj.name === OperationCancelledError.name)
   );
 };
 

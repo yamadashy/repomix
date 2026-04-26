@@ -750,6 +750,41 @@ node_modules
       // Verify the files were returned correctly
       expect(result.filePaths).toEqual(['file1.js', 'file2.js']);
     });
+
+    describe('globby error handling', () => {
+      // Errors thrown by globby flow through handleGlobbyError → outer catch.
+      // We exercise both layers explicitly so refactors can't silently lose
+      // PermissionError translation or the friendly RepomixError wrapper.
+      test('translates EPERM into PermissionError', async () => {
+        const epermError = Object.assign(new Error('boom'), { code: 'EPERM' });
+        vi.mocked(globby).mockRejectedValue(epermError);
+
+        await expect(searchFiles('/mock/root', createMockConfig({}))).rejects.toBeInstanceOf(PermissionError);
+      });
+
+      test('translates EACCES into PermissionError', async () => {
+        const eaccesError = Object.assign(new Error('boom'), { code: 'EACCES' });
+        vi.mocked(globby).mockRejectedValue(eaccesError);
+
+        await expect(searchFiles('/mock/root', createMockConfig({}))).rejects.toBeInstanceOf(PermissionError);
+      });
+
+      test('wraps generic Error from globby with directory context', async () => {
+        vi.mocked(globby).mockRejectedValue(new Error('disk read failed'));
+
+        await expect(searchFiles('/mock/root', createMockConfig({}))).rejects.toThrow(
+          /Failed to filter files in directory \/mock\/root\. Reason: disk read failed/,
+        );
+      });
+
+      test('throws a generic message for non-Error throws', async () => {
+        vi.mocked(globby).mockRejectedValue({ unexpected: 'shape' });
+
+        await expect(searchFiles('/mock/root', createMockConfig({}))).rejects.toThrow(
+          'An unexpected error occurred while filtering files.',
+        );
+      });
+    });
   });
 
   describe('escapeGlobPattern', () => {

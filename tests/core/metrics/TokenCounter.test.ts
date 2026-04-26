@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
+import { logger } from '../../../src/shared/logger.js';
 
 vi.mock('../../../src/shared/logger');
 
@@ -93,5 +94,51 @@ describe('TokenCounter', () => {
 
   test('should free without error (no-op for gpt-tokenizer)', () => {
     expect(() => tokenCounter.free()).not.toThrow();
+  });
+
+  describe('countTokens error handling', () => {
+    // Inject a fake loadEncoding via the deps parameter so tests own the
+    // count function without reaching into private state. This keeps the
+    // tests honest if `countFn` is ever renamed.
+    const buildCounter = async (countFn: (text: string) => number) => {
+      const counter = new TokenCounter('o200k_base', {
+        loadEncoding: async () => countFn,
+      });
+      await counter.init();
+      return counter;
+    };
+
+    test('returns 0 and warns when tokenizer throws an Error', async () => {
+      const counter = await buildCounter(() => {
+        throw new Error('tokenizer exploded');
+      });
+
+      const count = counter.countTokens('content');
+
+      expect(count).toBe(0);
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('tokenizer exploded'));
+    });
+
+    test('includes filePath in the warning when provided', async () => {
+      const counter = await buildCounter(() => {
+        throw new Error('boom');
+      });
+
+      counter.countTokens('content', 'src/foo.ts');
+
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('path: src/foo.ts'));
+    });
+
+    test('coerces non-Error throws via String()', async () => {
+      const counter = await buildCounter(() => {
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw 'plain string error';
+      });
+
+      const count = counter.countTokens('content');
+
+      expect(count).toBe(0);
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('plain string error'));
+    });
   });
 });
