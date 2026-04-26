@@ -1037,4 +1037,31 @@ r2 := '\\\\'`,
     const manipulator = getFileManipulator('test.unsupported');
     expect(manipulator).toBeNull();
   });
+
+  describe('removeEmptyLines', () => {
+    // BaseManipulator.removeEmptyLines is inherited by every concrete manipulator.
+    // It runs after comment stripping in fileProcess to clean up the blanks left behind.
+    test('drops empty lines and whitespace-only lines', () => {
+      const manipulator = getFileManipulator('test.js');
+      const input = 'const a = 1;\n\n   \nconst b = 2;\n\nconst c = 3;\n';
+      expect(manipulator?.removeEmptyLines(input)).toBe('const a = 1;\nconst b = 2;\nconst c = 3;');
+    });
+
+    test('returns content unchanged when no empty lines exist', () => {
+      const manipulator = getFileManipulator('test.js');
+      const input = 'line1\nline2\nline3';
+      expect(manipulator?.removeEmptyLines(input)).toBe(input);
+    });
+
+    test('returns empty string when input is all blank lines', () => {
+      const manipulator = getFileManipulator('test.js');
+      expect(manipulator?.removeEmptyLines('\n\n   \n')).toBe('');
+    });
+
+    test('works for composite manipulators (.vue)', () => {
+      const manipulator = getFileManipulator('test.vue');
+      const input = 'a\n\nb';
+      expect(manipulator?.removeEmptyLines(input)).toBe('a\nb');
+    });
+  });
 });

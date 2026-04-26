@@ -85,6 +85,74 @@ describe('unifiedWorker', () => {
     });
   });
 
+  describe('handler cache', () => {
+    it('reuses the cached handler module across calls', async () => {
+      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
+
+      // Two calls of the same workerType — the dynamic import should resolve once,
+      // but the handler should run for each task.
+      await handler({ rawFile: { path: 'a.ts', content: '' }, config: {} });
+      await handler({ rawFile: { path: 'b.ts', content: '' }, config: {} });
+
+      expect(fileProcessWorker.default).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('workerData detection', () => {
+    it('uses workerType from array-shaped workerData (Tinypool child_process)', async () => {
+      vi.resetModules();
+      vi.doMock('node:worker_threads', () => ({
+        workerData: ['something', { workerType: 'fileProcess' }],
+      }));
+      // Task that is not auto-inferable so workerData is the only signal.
+      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
+
+      await handler({ ambiguous: true });
+
+      expect(fileProcessWorker.default).toHaveBeenCalled();
+      vi.doUnmock('node:worker_threads');
+    });
+
+    it('uses workerType from object-shaped workerData (worker_threads)', async () => {
+      vi.resetModules();
+      vi.doMock('node:worker_threads', () => ({
+        workerData: { workerType: 'securityCheck' },
+      }));
+      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const securityCheckWorker = await import('../../src/core/security/workers/securityCheckWorker.js');
+
+      await handler({ ambiguous: true });
+
+      expect(securityCheckWorker.default).toHaveBeenCalled();
+      vi.doUnmock('node:worker_threads');
+    });
+
+    it('falls back to REPOMIX_WORKER_TYPE env var', async () => {
+      vi.resetModules();
+      vi.doMock('node:worker_threads', () => ({ workerData: undefined }));
+      const original = process.env.REPOMIX_WORKER_TYPE;
+      process.env.REPOMIX_WORKER_TYPE = 'calculateMetrics';
+
+      try {
+        const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+        const calculateMetricsWorker = await import('../../src/core/metrics/workers/calculateMetricsWorker.js');
+
+        await handler({ ambiguous: true });
+
+        expect(calculateMetricsWorker.default).toHaveBeenCalled();
+      } finally {
+        if (original === undefined) {
+          delete process.env.REPOMIX_WORKER_TYPE;
+        } else {
+          process.env.REPOMIX_WORKER_TYPE = original;
+        }
+        vi.doUnmock('node:worker_threads');
+      }
+    });
+  });
+
   describe('onWorkerTermination', () => {
     it('should call cleanup on cached handlers', async () => {
       // First, load a handler to populate the cache

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
+import { logger } from '../../../src/shared/logger.js';
 
 vi.mock('../../../src/shared/logger');
 
@@ -93,5 +94,46 @@ describe('TokenCounter', () => {
 
   test('should free without error (no-op for gpt-tokenizer)', () => {
     expect(() => tokenCounter.free()).not.toThrow();
+  });
+
+  describe('countTokens error handling', () => {
+    // Replace the cached countFn so we can exercise the catch branch without
+    // depending on real tokenizer internals.
+    const replaceCountFn = (counter: TokenCounter, fn: (text: string) => number) => {
+      (counter as unknown as { countFn: (text: string) => number }).countFn = fn;
+    };
+
+    test('returns 0 and warns when tokenizer throws an Error', () => {
+      replaceCountFn(tokenCounter, () => {
+        throw new Error('tokenizer exploded');
+      });
+
+      const count = tokenCounter.countTokens('content');
+
+      expect(count).toBe(0);
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('tokenizer exploded'));
+    });
+
+    test('includes filePath in the warning when provided', () => {
+      replaceCountFn(tokenCounter, () => {
+        throw new Error('boom');
+      });
+
+      tokenCounter.countTokens('content', 'src/foo.ts');
+
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('path: src/foo.ts'));
+    });
+
+    test('coerces non-Error throws via String()', () => {
+      replaceCountFn(tokenCounter, () => {
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw 'plain string error';
+      });
+
+      const count = tokenCounter.countTokens('content');
+
+      expect(count).toBe(0);
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('plain string error'));
+    });
   });
 });

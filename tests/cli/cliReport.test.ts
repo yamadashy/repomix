@@ -163,6 +163,66 @@ describe('cliReport', () => {
       expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('No git logs included'));
     });
 
+    test('should print skill directory output when skillGenerate is configured', () => {
+      const config = createMockConfig({
+        security: { enableSecurityCheck: true },
+        skillGenerate: true,
+      });
+
+      const packResult: PackResult = {
+        totalFiles: 10,
+        totalCharacters: 1000,
+        totalTokens: 200,
+        fileCharCounts: { 'file1.txt': 100 },
+        fileTokenCounts: { 'file1.txt': 50 },
+        suspiciousFilesResults: [],
+        suspiciousGitDiffResults: [],
+        suspiciousGitLogResults: [],
+        processedFiles: [],
+        safeFilePaths: [],
+        gitDiffTokenCount: 0,
+        gitLogTokenCount: 0,
+        skippedFiles: [],
+      };
+
+      reportSummary('/test/project', packResult, config, { skillDir: '/test/project/.claude/skills/test-skill' });
+
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('skill directory'));
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('.claude/skills/test-skill'));
+    });
+
+    test('should print first…last paths and part count for split outputs', () => {
+      const config = createMockConfig({
+        security: { enableSecurityCheck: true },
+      });
+
+      const packResult: PackResult = {
+        totalFiles: 10,
+        totalCharacters: 1000,
+        totalTokens: 200,
+        fileCharCounts: { 'file1.txt': 100 },
+        fileTokenCounts: { 'file1.txt': 50 },
+        suspiciousFilesResults: [],
+        suspiciousGitDiffResults: [],
+        suspiciousGitLogResults: [],
+        processedFiles: [],
+        safeFilePaths: [],
+        gitDiffTokenCount: 0,
+        gitLogTokenCount: 0,
+        skippedFiles: [],
+        outputFiles: ['repomix-output.1.xml', 'repomix-output.2.xml', 'repomix-output.3.xml'],
+      };
+
+      reportSummary('/test/project', packResult, config);
+
+      // first … last (3 parts)
+      const calls = (logger.log as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+      const outputLine = calls.find((line) => line.includes('repomix-output.1.xml'));
+      expect(outputLine).toBeDefined();
+      expect(outputLine).toContain('repomix-output.3.xml');
+      expect(outputLine).toContain('3 parts');
+    });
+
     test('should print summary with security check disabled', () => {
       const config = createMockConfig({
         security: { enableSecurityCheck: false },
