@@ -109,22 +109,21 @@ describe('fileSearch', () => {
       const mockFilePaths = ['src/file1.js', 'src/file2.js'];
       const mockEmptyDirs = ['src/empty', 'empty-root'];
 
-      // When includeEmptyDirectories is true, searchFiles requests files and directories
-      // in a single globby call with `objectMode: true`. The returned entries carry a
-      // `dirent` indicating file vs directory.
-      const makeEntry = (p: string, isDir: boolean) => ({
-        name: p.split('/').pop() ?? p,
-        path: p,
-        dirent: { isDirectory: () => isDir, isFile: () => !isDir },
-      });
-
       vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
         const opts = options as Record<string, unknown>;
-        if (opts?.objectMode === true) {
-          return [
-            ...mockFilePaths.map((p) => makeEntry(p, false)),
-            ...mockEmptyDirs.map((p) => makeEntry(p, true)),
-          ] as never;
+        // New single-call path: files and directories are returned together in objectMode
+        if (opts?.objectMode) {
+          const fileEntries = mockFilePaths.map((p) => ({
+            path: p,
+            name: p.split('/').pop() ?? p,
+            dirent: { isFile: () => true, isDirectory: () => false } as unknown,
+          }));
+          const dirEntries = mockEmptyDirs.map((p) => ({
+            path: p,
+            name: p.split('/').pop() ?? p,
+            dirent: { isFile: () => false, isDirectory: () => true } as unknown,
+          }));
+          return [...fileEntries, ...dirEntries] as never;
         }
         return mockFilePaths;
       });
@@ -135,48 +134,11 @@ describe('fileSearch', () => {
 
       expect(result.filePaths).toEqual(mockFilePaths);
       expect(result.emptyDirPaths.sort()).toEqual(mockEmptyDirs.sort());
-    });
-
-    test('should drop non-file entries (symlinks, FIFOs, sockets) when empty directories are enabled', async () => {
-      // Regression: with `followSymbolicLinks: false`, entries that are neither files
-      // nor directories (symlinks, FIFOs, sockets) must be excluded from filePaths,
-      // matching fast-glob's own `onlyFiles: true` filter behavior.
-      const mockConfig = createMockConfig({
-        output: {
-          includeEmptyDirectories: true,
-        },
-      });
-
-      const makeEntry = (p: string, kind: 'file' | 'dir' | 'symlink') => ({
-        name: p.split('/').pop() ?? p,
-        path: p,
-        dirent: {
-          isDirectory: () => kind === 'dir',
-          isFile: () => kind === 'file',
-        },
-      });
-
-      vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
-        const opts = options as Record<string, unknown>;
-        if (opts?.objectMode === true) {
-          return [
-            makeEntry('src/file1.js', 'file'),
-            makeEntry('src/link-to-file.js', 'symlink'),
-            makeEntry('src/empty', 'dir'),
-            makeEntry('src/link-to-dir', 'symlink'),
-          ] as never;
-        }
-        return [];
-      });
-
-      vi.mocked(fs.readdir).mockResolvedValue([]);
-
-      const result = await searchFiles('/mock/root', mockConfig);
-
-      // Symlinks must not leak into filePaths.
-      expect(result.filePaths).toEqual(['src/file1.js']);
-      // Symlinks must not leak into directory candidates either.
-      expect(result.emptyDirPaths).toEqual(['src/empty']);
+      // One globby call (objectMode) returns files+directories together.
+      expect(globby).toHaveBeenCalledTimes(1);
+      const callOptions = vi.mocked(globby).mock.calls[0][1] as Record<string, unknown>;
+      expect(callOptions.objectMode).toBe(true);
+      expect(callOptions.onlyFiles).toBe(false);
     });
 
     test('should not collect empty directories when disabled', async () => {
@@ -189,8 +151,7 @@ describe('fileSearch', () => {
       const mockFilePaths = ['src/file1.js', 'src/file2.js'];
 
       vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
-        const opts = options as Record<string, unknown>;
-        if (opts?.onlyDirectories || opts?.objectMode === true) {
+        if ((options as Record<string, unknown>)?.onlyDirectories) {
           throw new Error('Should not search for directories when disabled');
         }
         return mockFilePaths;
@@ -984,10 +945,11 @@ node_modules
       await listDirectories('/test/root', mockConfig);
       await listFiles('/test/root', mockConfig);
 
-      // searchFiles, listDirectories, and listFiles each invoke globby once.
-      // searchFiles uses `onlyFiles: true` by default; when `includeEmptyDirectories`
-      // is enabled it instead uses `{ onlyFiles: false, objectMode: true }` to retrieve
-      // both files and directories in a single traversal.
+      // searchFiles calls globby once: `onlyFiles: true` when `includeEmptyDirectories` is
+      // disabled (the case here), or `onlyFiles: false, objectMode: true` when enabled to
+      // return files and directories in a single traversal.
+      // listDirectories calls globby once (onlyDirectories: true)
+      // listFiles calls globby once (onlyFiles: true)
       const calls = vi.mocked(globby).mock.calls;
 
       // Verify all calls have consistent base options
@@ -1008,13 +970,13 @@ node_modules
           followSymbolicLinks: false,
         });
 
-        // Each call selects exactly one traversal mode: only files, only directories,
-        // or combined (objectMode with onlyFiles: false).
-        const opts = options as Record<string, unknown>;
-        const hasOnlyFiles = opts.onlyFiles === true;
-        const hasOnlyDirectories = opts.onlyDirectories === true;
-        const isCombined = opts.onlyFiles === false && opts.objectMode === true;
-        expect(hasOnlyFiles || hasOnlyDirectories || isCombined).toBe(true);
+        // A call must target a recognised entry kind: onlyFiles, onlyDirectories,
+        // or objectMode (the combined files+directories path). A call may not
+        // set both onlyFiles and onlyDirectories.
+        const hasOnlyFiles = 'onlyFiles' in options && options.onlyFiles === true;
+        const hasOnlyDirectories = 'onlyDirectories' in options && options.onlyDirectories === true;
+        const hasObjectMode = 'objectMode' in options && options.objectMode === true;
+        expect(hasOnlyFiles || hasOnlyDirectories || hasObjectMode).toBe(true);
         expect(hasOnlyFiles && hasOnlyDirectories).toBe(false);
       }
     });

@@ -16,7 +16,13 @@ Repomix is maintained by Yamadashy ([@yamadashy](https://github.com/yamadashy)).
 
 ## Pull Requests
 
-Before submitting a Pull Request, please ensure:
+For new features, behavior changes, or non-trivial fixes, please open
+or comment on an issue first to discuss the direction. This helps us
+align on design and scope before any code is written, and avoids wasted
+effort on both sides. PRs submitted without prior discussion may be
+closed.
+
+Before submitting, please ensure:
 
 1. Your code passes all tests: Run `npm run test`
 2. Your code adheres to our linting standards: Run `npm run lint`

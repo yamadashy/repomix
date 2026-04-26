@@ -1,5 +1,6 @@
 import * as v from 'valibot';
-import { TOKEN_ENCODINGS } from '../core/metrics/TokenCounter.js';
+// Use the lightweight tokenEncodings module so gpt-tokenizer stays off the startup import graph.
+import { TOKEN_ENCODINGS } from '../core/metrics/tokenEncodings.js';
 
 // Output style enum
 export const repomixOutputStyleSchema = v.picklist(['xml', 'markdown', 'json', 'plain']);
