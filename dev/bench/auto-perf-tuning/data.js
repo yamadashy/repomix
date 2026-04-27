@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777212777033,
+  "lastUpdate": 1777258297244,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6840,6 +6840,51 @@ window.BENCHMARK_DATA = {
             "range": "±29",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 1744ms, Q3: 1773ms\nAll times: 1733, 1738, 1742, 1743, 1744, 1746, 1747, 1755, 1757, 1760, 1761, 1763, 1766, 1772, 1773, 1782, 1787, 1790, 1797ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "121819432fe070a9762e2f74c09169f658d51834",
+          "message": "perf(core): Start metrics worker warm-up before searchFiles\n\nPre-create the metrics worker pool and enqueue gpt-tokenizer warm-up\ntasks BEFORE `searchFiles` resolves, instead of after. This extends\nthe warm-up overlap window to also cover the file-search phase\n(~100-150ms), absorbing it into the parallel pipeline.\n\nWhy\n---\nEach metrics worker pays ~200-285ms to load gpt-tokenizer's o200k_base\nBPE ranks. Inits run in parallel across worker threads, so the\nwall-clock cost is one init (~max of three). On `--include 'src,tests'`\n(258 files), verbose timings showed:\n\n  searchFiles                ~100-130ms  (was: NO warm-up overlap)\n  collect/security/process   ~190-200ms  (warm-up overlapping)\n  metrics warm-up tail       ~48-105ms blocking after produceOutput\n\nBy starting warm-up at packager entry — before the searchFiles await —\nthe warm-up window expands to cover searchFiles too, eliminating most\nor all of the median ~67ms tail blocking the critical path.\n\nHow\n---\n`createMetricsTaskRunner` no longer takes `numOfTasks` (which was used\nto scale `maxThreads = ceil(N/100)`); it now takes only the encoding\nplus an optional `maxWorkerThreads` override. Pool size defaults to\n`Math.min(processConcurrency, 3)` (METRICS_PREWARM_THREAD_CAP).\n\nThe cap of 3 matches the previous file-count-derived cap for typical\nRepomix runs (200-300 files on a 4-core box → 3 workers). Tiny repos\n(1-100 files) now get 3 warmed workers instead of 1; init runs in\nparallel so wall-clock is unchanged. Very large repos (>1000 files on\n>3 core boxes) cap at 3 instead of `min(cpu, ceil(N/100))`, but those\nruns are dominated by collect/security and metrics is no longer on\nthe critical path; the metrics phase still completes within the\noverlapping `produceOutput` envelope at every scope tested.\n\nIn packager.ts, `createMetricsTaskRunner` moves above the\n`Searching for files...` progress message, and the existing\n`try { ... } finally { cleanup() }` block expands upward to wrap\n`searchFiles` and the sort/regroup so that pool cleanup still fires\nif `searchFiles` (or anything before file-collection) throws. A new\ntest covers this leak path.\n\nVerification\n------------\n- `npm run lint`  passes (only pre-existing warnings)\n- `npm run test`  all 1251 tests pass (+1 new searchFiles cleanup test)\n- Output XML byte-identical between BEFORE and AFTER:\n  - 1,402,416 bytes for `--include 'src,tests'`           (258 files)\n  - 4,003,549 bytes for `--include 'src,tests,website'`   (787 files)\n  - 4,522,933 bytes for default (1038 files)\n\nPaired interleaved A/B benchmarks (4-core box)\n----------------------------------------------\n`--include 'src,tests'` (258 files), n=20:\n\n|        | min     | median  | mean    | stdev   |\n|--------|---------|---------|---------|---------|\n| BEFORE | 0.707s  | 0.733s  | 0.732s  | 0.0140s |\n| AFTER  | 0.660s  | 0.700s  | 0.701s  | 0.0251s |\n\n  Mean paired Δ:  30.8ms (95% CI ≈ 19.0..42.6ms)  — 4.21% mean / 4.43% median\n  AFTER faster in 16/20 runs\n\n`--include 'src,tests,website'` (787 files), n=15:\n\n|        | min     | median  | mean    | stdev   |\n|--------|---------|---------|---------|---------|\n| BEFORE | 1.136s  | 1.188s  | 1.194s  | 0.0397s |\n| AFTER  | 1.098s  | 1.140s  | 1.138s  | 0.0286s |\n\n  Mean paired Δ:  55.7ms (95% CI ≈ 34.0..77.4ms)  — 4.67% mean / 4.04% median\n  AFTER faster in 15/15 runs\n\nDefault (no --include, 1038 files), trimmed n=9 (one OS-hiccup outlier):\n\n|        | median  | mean    |\n|--------|---------|---------|\n| BEFORE | 1.283s  | 1.277s  |\n| AFTER  | 1.193s  | 1.228s  |\n\n  ≈ 49ms mean / 90ms median improvement (~4-7%)\n\nAll scopes well above the >=2% target.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+          "timestamp": "2026-04-27T02:49:03Z",
+          "tree_id": "0cacc920c77637f88a6dd61ce94bf856f6f00224",
+          "url": "https://github.com/yamadashy/repomix/commit/121819432fe070a9762e2f74c09169f658d51834"
+        },
+        "date": 1777258296201,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1082,
+            "range": "±105",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1020ms, Q3: 1125ms\nAll times: 894, 943, 944, 967, 991, 1015, 1019, 1020, 1024, 1025, 1034, 1047, 1064, 1075, 1076, 1082, 1086, 1088, 1095, 1098, 1114, 1117, 1125, 1125, 1142, 1157, 1202, 1274, 1435, 1513ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1335,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1324ms, Q3: 1343ms\nAll times: 1301, 1312, 1313, 1318, 1320, 1324, 1326, 1330, 1332, 1333, 1335, 1337, 1339, 1340, 1341, 1343, 1344, 1351, 1361, 1366ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1760,
+            "range": "±34",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1752ms, Q3: 1786ms\nAll times: 1722, 1742, 1746, 1746, 1749, 1752, 1756, 1757, 1758, 1759, 1760, 1767, 1770, 1775, 1776, 1786, 1787, 1789, 1807, 1809ms"
           }
         ]
       }
