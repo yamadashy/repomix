@@ -246,7 +246,7 @@ describe('calculateMetrics fast/slow path equivalence', () => {
 
 describe('createMetricsTaskRunner', () => {
   it('should return a taskRunner and warmupPromise', async () => {
-    const result = createMetricsTaskRunner(100, 'o200k_base');
+    const result = createMetricsTaskRunner('o200k_base');
 
     expect(result).toHaveProperty('taskRunner');
     expect(result).toHaveProperty('warmupPromise');
@@ -258,7 +258,7 @@ describe('createMetricsTaskRunner', () => {
   });
 
   it('should fire a warmup task with empty content', async () => {
-    const result = createMetricsTaskRunner(50, 'cl100k_base');
+    const result = createMetricsTaskRunner('cl100k_base');
 
     await result.warmupPromise;
 
@@ -272,11 +272,20 @@ describe('createMetricsTaskRunner', () => {
       cleanup: vi.fn(),
     });
 
-    const result = createMetricsTaskRunner(10, 'o200k_base');
+    const result = createMetricsTaskRunner('o200k_base');
 
     // warmupPromise should resolve (errors swallowed by .catch on each task)
     const resolved = await result.warmupPromise;
     expect(Array.isArray(resolved)).toBe(true);
     expect((resolved as number[]).every((v) => v === 0)).toBe(true);
+  });
+
+  it('should respect maxWorkerThreads override', async () => {
+    const result = createMetricsTaskRunner('o200k_base', 2);
+
+    await result.warmupPromise;
+
+    // Two warmup tasks for two workers
+    expect(result.taskRunner.run).toHaveBeenCalledTimes(2);
   });
 });

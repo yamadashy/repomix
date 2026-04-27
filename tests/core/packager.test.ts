@@ -185,6 +185,16 @@ describe('packager', () => {
       };
     };
 
+    test('cleans up the metrics worker pool when searchFiles rejects', async () => {
+      const { cleanup, deps } = baseDeps();
+      deps.searchFiles = vi.fn().mockRejectedValue(new Error('search failed'));
+
+      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('search failed');
+
+      // Worker pool was created before searchFiles ran, so cleanup must still fire.
+      expect(cleanup).toHaveBeenCalled();
+    });
+
     test('cleans up the metrics worker pool when validateFileSafety rejects', async () => {
       const { cleanup, deps } = baseDeps();
       deps.validateFileSafety = vi.fn().mockRejectedValue(new Error('security check failed'));
@@ -226,10 +236,9 @@ describe('packager', () => {
 
     test('cleans up the metrics worker pool even when the warmup promise rejects', async () => {
       const { cleanup, deps } = baseDeps();
-      // Pre-attach a no-op handler so the rejection is observed at construction time,
-      // before pack() reaches `await metricsWarmupPromise`. Production code mirrors this
-      // with `.catch(() => {})` in packager.ts:262, so the warmup rejection is fully
-      // contained — but vitest's unhandled-rejection detector can flag it eagerly here.
+      // Pre-attach a no-op handler so the rejection is observed at construction time.
+      // Production code swallows warmup failures via `.catch(() => {})` in the finally
+      // block, so pack() resolves successfully but the worker pool is still cleaned up.
       const warmupPromise = Promise.reject(new Error('warmup failed'));
       warmupPromise.catch(() => {});
       deps.createMetricsTaskRunner = vi.fn().mockReturnValue({
@@ -237,7 +246,7 @@ describe('packager', () => {
         warmupPromise,
       });
 
-      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('warmup failed');
+      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).resolves.toBeDefined();
 
       expect(cleanup).toHaveBeenCalled();
     });

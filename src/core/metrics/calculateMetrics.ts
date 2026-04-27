@@ -1,6 +1,6 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -29,20 +29,38 @@ export interface MetricsTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
+// Cap pre-warmed metrics workers to avoid unnecessary CPU/RAM spend on small repos
+// (most users have <300 files and hit ceil(numOfTasks/100) <= 3 today). For very
+// large repos this caps the metrics pool at 3 workers, but those runs are dominated
+// by collect/security and the metrics phase is no longer on the critical path.
+const METRICS_PREWARM_THREAD_CAP = 3;
+
 /**
  * Create a metrics task runner and warm up all worker threads by triggering
  * gpt-tokenizer initialization in parallel. This allows the expensive module
- * loading to overlap with other pipeline stages (security check, file processing,
- * output generation).
+ * loading (~200ms per worker, in parallel) to overlap with other pipeline stages
+ * (file search, collection, security check, file processing, output generation).
+ *
+ * The pool is sized eagerly without knowing the file count, so it can be created
+ * before `searchFiles` resolves. `maxWorkerThreads` overrides default sizing.
  */
-export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+export const createMetricsTaskRunner = (
+  encoding: TokenEncoding,
+  maxWorkerThreads?: number,
+): MetricsTaskRunnerWithWarmup => {
+  const cap = maxWorkerThreads ?? Math.min(getProcessConcurrency(), METRICS_PREWARM_THREAD_CAP);
+
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
-    numOfTasks,
+    // numOfTasks is no longer informative for sizing — `maxWorkerThreads` is the
+    // sole cap. Pass a sentinel large enough that `getWorkerThreadCount` falls
+    // back to the cap.
+    numOfTasks: cap * 100,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    maxWorkerThreads: cap,
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { maxThreads } = getWorkerThreadCount(cap * 100, cap);
   const warmupPromise = Promise.all(
     Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
