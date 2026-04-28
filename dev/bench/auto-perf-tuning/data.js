@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777258297244,
+  "lastUpdate": 1777343619487,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6885,6 +6885,51 @@ window.BENCHMARK_DATA = {
             "range": "±34",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1752ms, Q3: 1786ms\nAll times: 1722, 1742, 1746, 1746, 1749, 1752, 1756, 1757, 1758, 1759, 1760, 1767, 1770, 1775, 1776, 1786, 1787, 1789, 1807, 1809ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "4a84ffbf147c98fa5e5a0ae05c3c887dc95c03a1",
+          "message": "perf(core): Lazy-load produceOutput to overlap module init with searchFiles\n\nConvert packager.ts's static import of `produceOutput` into the same\nlazy-import pattern already used for `packSkill`. The output module\nchain (Handlebars + three style templates, plus fast-xml-builder via\nthe parsable XML path) was loaded synchronously *before* pack() began,\nadding ~20-30ms of module evaluation to packager.ts's load-time cost.\n\nAfter the change, the first `await import(...)` resolves while pack()\nis already inside `searchFiles` (~100-200ms of async file-system I/O),\nso the module evaluation runs concurrently with that wait and falls\noff the critical path.\n\nA secondary effect: `createMetricsTaskRunner` is invoked from packager\nentry, so dropping ~24ms from packager.ts's load time means metrics\nworker warm-up (gpt-tokenizer BPE init, ~200-280ms per worker) now\nstarts ~24ms earlier and gets that much extra overlap with the search\nphase.\n\nTests still pass `produceOutput` via `overrideDeps` and continue to\nwork — the dep is still a function with an identical call signature;\nonly the underlying module is now resolved on first invocation\ninstead of at module load.\n\n## Paired interleaved A/B benchmarks (4-core box, n=30)\n\n`--include 'src,tests'` (252 files):\n\n|        | min    | median | mean   | sd      |\n|--------|--------|--------|--------|---------|\n| BEFORE | 697ms  | 743ms  | 773ms  | 91.6ms  |\n| AFTER  | 684ms  | 727ms  | 736ms  | 38.9ms  |\n\n- Mean paired Δ: 37.1ms · Median paired Δ: 16.1ms\n- Improvement: **4.80% mean / 2.17% median**\n- AFTER faster in 21/30 paired runs\n\n`--include 'src,tests,website'` (787 files, n=25):\n\n|        | min     | median  | mean    | sd      |\n|--------|---------|---------|---------|---------|\n| BEFORE | 1034ms  | 1158ms  | 1190ms  | 127.9ms |\n| AFTER  | 1051ms  | 1150ms  | 1143ms  | 56.7ms  |\n\n- Mean paired Δ: 46.5ms · Median paired Δ: 28.9ms\n- Improvement: **3.91% mean / 2.50% median**\n- AFTER faster in 17/25 paired runs\n\nThe smaller std-dev on AFTER in both pack sizes is consistent with\nthe lazy import smoothing out the worst cold-load tails: when the\noutput module chain is loaded during the search I/O wait instead of\nserially before pack(), event-loop latency around pack() startup is\nless variable.\n\nOutput is byte-identical; the existing test suite (1251 tests)\ncontinues to pass without modification.",
+          "timestamp": "2026-04-28T02:30:04Z",
+          "tree_id": "97abae3abddb2af8ee21c2599aed6a6198c82c67",
+          "url": "https://github.com/yamadashy/repomix/commit/4a84ffbf147c98fa5e5a0ae05c3c887dc95c03a1"
+        },
+        "date": 1777343618666,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1314,
+            "range": "±215",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1226ms, Q3: 1441ms\nAll times: 1103, 1105, 1154, 1179, 1185, 1186, 1213, 1226, 1239, 1258, 1263, 1286, 1307, 1311, 1313, 1314, 1317, 1329, 1346, 1349, 1371, 1393, 1441, 1471, 1476, 1534, 1618, 1628, 1737, 1880ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 983,
+            "range": "±13",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 978ms, Q3: 991ms\nAll times: 957, 962, 964, 965, 968, 978, 978, 981, 981, 982, 983, 985, 986, 989, 989, 991, 992, 995, 996, 1029ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1764,
+            "range": "±64",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1737ms, Q3: 1801ms\nAll times: 1717, 1718, 1729, 1733, 1735, 1737, 1741, 1747, 1747, 1752, 1764, 1764, 1771, 1778, 1780, 1801, 1809, 2048, 2100, 2115ms"
           }
         ]
       }
