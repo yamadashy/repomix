@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777343619487,
+  "lastUpdate": 1777397095317,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6930,6 +6930,51 @@ window.BENCHMARK_DATA = {
             "range": "±64",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1737ms, Q3: 1801ms\nAll times: 1717, 1718, 1729, 1733, 1735, 1737, 1741, 1747, 1747, 1752, 1764, 1764, 1771, 1778, 1780, 1801, 1809, 2048, 2100, 2115ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "28d5be9e4590a0ec0bd864242c25060767233116",
+          "message": "perf(core): Speculatively dispatch file metrics during security check\n\n`calculateFileMetrics` (file-content tokenization) used to run strictly\nafter the security check, on the post-security critical path. The\nmetrics worker pool is pre-warmed and idle from the time gpt-tokenizer\nfinishes loading (~290ms) until the security check completes (~450ms);\nthose ~150ms were wasted while the only critical-path work happening\non the main process was the security worker pool's own scan.\n\nThis change splits `processFiles` out of the `Promise.all([security,\nprocess])` block so that as soon as processed files are available the\nfile-metrics tokenization is dispatched onto the (already-warmed)\nmetrics worker pool. The dispatch runs in parallel with the security\nworker pool. After both finish, suspicious files (typically 0 in real\nrepos) are filtered out of the precomputed metrics by\n`calculateMetrics` instead of re-tokenizing.\n\nThe metrics and security pools compete for the same physical cores,\nso per-batch tokenization latency rises modestly under contention,\nbut the overall metrics phase still finishes earlier because it\noverlaps with security instead of serializing after it.\n\n## Behavior preserved\n\n- Identical fileTokenCounts/totalTokens output: filtering the\n  precomputed metrics by safeFilePaths produces the same set as the\n  previous in-calculateMetrics dispatch over the safe set.\n- Output XML is byte-identical (verified with `cmp` on the same source\n  tree).\n- Worker-pool cleanup path: the speculative promise is hoisted so the\n  existing `finally` block awaits it before `taskRunner.cleanup()`,\n  preserving orderly worker termination on every exit path\n  (success, validateFileSafety reject, processFiles reject, worker crash).\n- All 1251 existing tests pass.\n\n## Paired interleaved A/B benchmark (n=40, 4-core Linux box)\n\n`--include 'src,tests,website'` (777 files):\n\n|        | min     | median  | mean    | sd      |\n|--------|---------|---------|---------|---------|\n| BEFORE | 1.090s  | 1.190s  | 1.195s  | 0.0528s |\n| AFTER  | 1.080s  | 1.160s  | 1.167s  | 0.0482s |\n\n- Mean paired delta: 28.2ms (95% CI [12.5, 44.0]ms — entirely positive)\n- Median paired delta: 30.0ms\n- AFTER faster in 25/40 runs\n- Improvement: mean 2.36% / median 2.52%\n\n`--include 'src,tests'` (252 files), n=40:\n\n|        | min     | median  | mean    | sd      |\n|--------|---------|---------|---------|---------|\n| BEFORE | 0.680s  | 0.740s  | 0.746s  | 0.0350s |\n| AFTER  | 0.680s  | 0.740s  | 0.739s  | 0.0310s |\n\n- Mean paired delta: 6.2ms (95% CI [-4.8, 17.3]ms — straddles zero)\n- AFTER faster in 19/40 runs\n- Statistically neutral on small (~0.7s) packs where the metrics\n  phase is already short and the overlap window is too narrow to\n  outweigh CPU contention.\n\n## Risk\n\n- Suspicious files: their tokenization runs and is then discarded.\n  In real repos suspicious counts are typically 0 (security check\n  flags secrets/credentials), and a single 25-file batch costs\n  <50ms in the worst case. No correctness impact.\n- Worker contention: the speculative dispatch contends with security\n  workers for cores. Net is positive on packs that have enough\n  metrics work to outpace the contention overhead (>~500 files at\n  3 metrics workers).\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+          "timestamp": "2026-04-28T17:22:22Z",
+          "tree_id": "face52f919b3a72750436c18e3e59987189e5c13",
+          "url": "https://github.com/yamadashy/repomix/commit/28d5be9e4590a0ec0bd864242c25060767233116"
+        },
+        "date": 1777397094843,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1135,
+            "range": "±207",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1044ms, Q3: 1251ms\nAll times: 957, 957, 964, 977, 1005, 1021, 1034, 1044, 1058, 1066, 1075, 1084, 1093, 1099, 1134, 1135, 1138, 1149, 1192, 1200, 1234, 1235, 1251, 1292, 1316, 1356, 1365, 1396, 1462, 1989ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1344,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1334ms, Q3: 1355ms\nAll times: 1300, 1304, 1307, 1310, 1313, 1334, 1339, 1340, 1340, 1341, 1344, 1344, 1348, 1350, 1353, 1355, 1360, 1366, 1375, 1376ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1594,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1587ms, Q3: 1607ms\nAll times: 1564, 1568, 1570, 1582, 1585, 1587, 1589, 1591, 1592, 1593, 1594, 1596, 1598, 1601, 1604, 1607, 1607, 1610, 1614, 1669ms"
           }
         ]
       }
