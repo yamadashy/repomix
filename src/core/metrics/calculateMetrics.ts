@@ -13,6 +13,7 @@ import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
+import type { FileMetrics } from './workers/types.js';
 
 export interface CalculateMetricsResult {
   totalFiles: number;
@@ -74,6 +75,12 @@ const defaultDeps = {
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
   taskRunner: undefined as MetricsTaskRunner | undefined,
+  // Optional precomputed file metrics from a speculative dispatch in `pack()`. When
+  // provided, calculateMetrics skips its own calculateFileMetrics call and filters
+  // the precomputed results to the safe file set. The dispatch in `pack()` overlaps
+  // tokenization with the security check, removing it from the post-security
+  // critical path.
+  precomputedFileMetricsPromise: undefined as Promise<FileMetrics[]> | undefined,
 };
 
 /**
@@ -142,14 +149,17 @@ export const calculateMetrics = async (
     const metricsTargetPaths = processedFiles.map((file) => file.path);
 
     // Start output-independent metrics immediately so they can overlap with output generation
-    // when output is passed as a promise
-    const fileMetricsPromise = deps.calculateFileMetrics(
-      processedFiles,
-      metricsTargetPaths,
-      config.tokenCount.encoding,
-      progressCallback,
-      { taskRunner },
-    );
+    // when output is passed as a promise. If a precomputed file-metrics promise is provided
+    // (from a speculative dispatch in `pack()` that overlaps tokenization with the security
+    // check), filter its results to the safe set instead of re-tokenizing.
+    const fileMetricsPromise = deps.precomputedFileMetricsPromise
+      ? deps.precomputedFileMetricsPromise.then((all) => {
+          const safeSet = new Set(metricsTargetPaths);
+          return all.filter((m) => safeSet.has(m.path));
+        })
+      : deps.calculateFileMetrics(processedFiles, metricsTargetPaths, config.tokenCount.encoding, progressCallback, {
+          taskRunner,
+        });
     const gitDiffMetricsPromise = deps.calculateGitDiffMetrics(config, gitDiffResult, { taskRunner });
     const gitLogMetricsPromise = deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner });
 
