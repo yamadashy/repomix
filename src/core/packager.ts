@@ -13,7 +13,7 @@ import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
-import { produceOutput } from './packager/produceOutput.js';
+import type { ProduceOutputResult } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
@@ -35,12 +35,28 @@ export interface PackResult {
   skippedFiles: SkippedFileInfo[];
 }
 
+// Lazy-load produceOutput to defer importing the output module chain
+// (Handlebars + the three style templates, plus fast-xml-builder via the
+// parsable XML path). Those modules add ~20-30ms of synchronous evaluation
+// to packager.ts's module-load time; deferring them lets the load happen
+// during pack()'s first searchFiles I/O await instead of *before* pack()
+// starts. The existing packSkill entry below uses the same pattern.
+//
+// Side benefit: createMetricsTaskRunner runs ~24ms earlier, extending the
+// gpt-tokenizer warm-up overlap window across the file-search phase.
+const defaultProduceOutput = async (
+  ...args: Parameters<typeof import('./packager/produceOutput.js').produceOutput>
+): Promise<ProduceOutputResult> => {
+  const { produceOutput } = await import('./packager/produceOutput.js');
+  return produceOutput(...args);
+};
+
 const defaultDeps = {
   searchFiles,
   collectFiles,
   processFiles,
   validateFileSafety,
-  produceOutput,
+  produceOutput: defaultProduceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
   sortPaths,
