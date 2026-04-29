@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777486368923,
+  "lastUpdate": 1777505584479,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7065,6 +7065,51 @@ window.BENCHMARK_DATA = {
             "range": "±20",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1664ms, Q3: 1684ms\nAll times: 1647, 1647, 1659, 1662, 1663, 1664, 1664, 1670, 1672, 1673, 1673, 1674, 1674, 1677, 1684, 1684, 1694, 1700, 1704, 1705ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "d08914d131fa5a70cd8c3bf6c0b6d34c0a42d453",
+          "message": "perf(metrics): Step pre-warmed metrics workers down to 2 on ≤4 vCPU\n\nThree metrics workers concurrently parsing gpt-tokenizer's BPE table\nduring the searchFiles + collect + processFiles + security phases\ncontend with the main thread and the security worker pool (cap=2) for\nthe same physical cores on a 4-vCPU machine. The warmup tail extends\nacross the whole pre-output critical path, and the extra worker also\ncosts ~12-18ms in `pool.destroy()` in pack()'s finally block.\n\nPer-phase instrumentation on a 252-file pack (linux, 4 vCPU, n=3 each):\n\n  cap=3:                         cap=2:\n    warmup done   438ms             349ms  (-89ms)\n    security done 498ms             472ms  (-26ms)\n    output done   563ms             525ms\n    pack returns  577ms             535ms\n    destroy done  632ms             567ms  (-25ms)\n\nThe change keeps METRICS_PREWARM_THREAD_CAP at 3 (the historical max for\nbig repos) but adds an adaptive ceiling: when getProcessConcurrency() is\n≤4, the prewarm cap is stepped down to METRICS_PREWARM_SMALLBOX_CAP=2.\nThis protects the typical 4-vCPU dev box and the GitHub Actions\nubuntu-latest / windows-latest / macos-13 (3 vCPU) runners without\ngiving up parallelism on 6+ vCPU developer workstations and CI runners,\nwhere the warmup contention disappears and a third worker meaningfully\nparallelises the speculative-dispatch tail on large repos.\n\nEffective cap by vCPU count:\n\n  vCPU |  before |  after\n   2   |    2    |    2     (no change — already min-bound)\n   3   |    3    |    2     (improvement: less over-subscription)\n   4   |    3    |    2     (this change's primary target)\n   5   |    3    |    3     (no change)\n   6+  |    3    |    3     (no change — preserves parallelism)\n\nMETRICS_ASSUMED_WORKERS in calculateFileMetrics is intentionally left at\n3 — its file-comment notes drift only changes the batch count by a\nsmall factor and never affects correctness, so a mismatch is safe.\n\nPaired interleaved A/B benchmarks (linux, 4 vCPU, node 22):\n\n  --include 'src,tests' (252 files), n=20:\n                  min      median   mean     sd\n    BEFORE        696ms    737ms    742ms    28ms\n    AFTER         628ms    655ms    657ms    16ms\n  Δ mean: 84ms (11.36%) · Δ median: 83ms (11.19%)\n  AFTER faster in 20/20 paired runs.\n\n  --include 'src,tests,website' (777 files), n=15:\n                  min      median   mean     sd\n    BEFORE        1075ms   1126ms   1122ms   22ms\n    AFTER         1062ms   1106ms   1108ms   28ms\n  Δ mean: 14ms (1.25%) · Δ median: 20ms (1.78%)\n  AFTER faster in 11/15 paired runs.\n\nOutput XML byte-identical between BEFORE and AFTER for both pack sizes\n(verified via `cmp` on the full 4 MB output of the 777-file pack).\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+          "timestamp": "2026-04-29T23:30:25Z",
+          "tree_id": "01fef84af38d333024cb3691981d2c152725106e",
+          "url": "https://github.com/yamadashy/repomix/commit/d08914d131fa5a70cd8c3bf6c0b6d34c0a42d453"
+        },
+        "date": 1777505583992,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1256,
+            "range": "±155",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1186ms, Q3: 1341ms\nAll times: 1118, 1128, 1158, 1160, 1165, 1166, 1172, 1186, 1193, 1207, 1225, 1246, 1251, 1251, 1255, 1256, 1266, 1271, 1288, 1303, 1303, 1337, 1341, 1342, 1365, 1372, 1415, 1444, 1538, 1931ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1250,
+            "range": "±34",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1237ms, Q3: 1271ms\nAll times: 1217, 1228, 1234, 1236, 1237, 1237, 1242, 1243, 1246, 1249, 1250, 1252, 1255, 1255, 1260, 1271, 1277, 1278, 1281, 1345ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1585,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1568ms, Q3: 1593ms\nAll times: 1547, 1561, 1563, 1565, 1565, 1568, 1572, 1575, 1577, 1579, 1585, 1585, 1586, 1587, 1589, 1593, 1593, 1600, 1609, 1654ms"
           }
         ]
       }
