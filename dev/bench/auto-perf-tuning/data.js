@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777397095317,
+  "lastUpdate": 1777427381046,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -6975,6 +6975,51 @@ window.BENCHMARK_DATA = {
             "range": "±20",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1587ms, Q3: 1607ms\nAll times: 1564, 1568, 1570, 1582, 1585, 1587, 1589, 1591, 1592, 1593, 1594, 1596, 1598, 1601, 1604, 1607, 1607, 1610, 1614, 1669ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "5e4d8bc360a6e7f8910c50df45a8f55c907ffedb",
+          "message": "perf(metrics): Byte-balance file metrics batches and dispatch largest-first\n\nWorker compute time per metrics batch is roughly proportional to total\ncontent bytes in the batch, not file count. Fixed 25-file batches starve\nworkers near the tail because batches dominated by a few large files\ntake far longer than batches of small files; the slowest batch sets the\nmakespan. On the repomix repo, the largest 25-file batch in input order\nholds 178 KiB of content while the smallest holds 0.3 KiB — a ~600x\nspread that left ~30-40ms of compute imbalance in the file-metrics\nphase.\n\nReplace fixed-count batching with a byte-balanced bin-pack:\n\n- Walk files sequentially, accumulating into a batch until the running\n  total would exceed the byte target, then flush. Files larger than the\n  target form their own batch. A file-count cap (200) bounds batches\n  against pathological many-tiny-file inputs.\n\n- Sort batches largest-bytes-first before dispatch. Tinypool serves its\n  task queue in FIFO arrival order, so the longest-processing-time\n  batches enter the workers first. This approximates LPT scheduling and\n  minimises the tail batch.\n\n- Pick the byte target adaptively from the total content size so we\n  always emit ~3 batches per assumed worker (= 9 batches for the 3-cap\n  metrics pool). At a fixed 256 KiB target, a 1 MB pack would emit only\n  ~4 batches and leave workers idle for the last round; the adaptive\n  target keeps batch count proportional to work.\n\nOutput is byte-identical: tokenization is order-independent and the\ndownstream `FileMetrics[]` is consumed by `path`-keyed maps and a sum\nreduction in `calculateMetrics`, so batch order does not affect results.\n\n## Benchmarks (paired interleaved A/B vs HEAD~1, 4-core box)\n\n`--include 'src,tests,website'` (777 files), n=60:\n\n|        | min     | median  | mean    | sd      |\n|--------|---------|---------|---------|---------|\n| BEFORE | 1.114s  | 1.169s  | 1.168s  | 0.025s  |\n| AFTER  | 1.060s  | 1.133s  | 1.138s  | 0.032s  |\n\n- Mean paired Δ: **30.1ms** (95% CI ±10.3ms — entirely positive)\n- AFTER faster in 47/60 runs\n- Improvement: **mean 2.58% / median 3.03%**\n\nDefault `.` (1017 files), n=50: +0.39% mean (CI ±10.4ms — straddles\nzero); neutral within noise. The default scope has narrower file-size\nvariance (no large website docs) so batch-balance has less leverage.\n\n`--include 'src,tests'` (252 files), n=30: -0.78% mean (CI ±11.3ms);\nneutral. Adaptive target produces small batches matching the prior\nfixed-count behaviour for small inputs.\n\n`--include 'website'` (~280 files), n=30: +0.13% mean; neutral.\n\nGenerated XML output is byte-identical between BEFORE and AFTER builds\n(`cmp` over isolated test packs).\n\n## Tests\n\n- `npm run lint` — passes (only pre-existing warnings, unrelated)\n- `npm run test` — 1258 tests pass (+5 new tests for `packBatchesByBytes`\n  covering: byte-target compliance with the single-oversized-file\n  exception, largest-first ordering, oversized files getting their own\n  batch, file-count cap enforcement, and empty input)\n\n## Local sub-agent code review\n\n- Correctness review (independent sub-agent): no bugs found. Verified\n  result ordering is path-keyed downstream (calculateMetrics.ts:230-231\n  fileTokenCounts loop, line 195 reduce, line 156-158 safeSet filter),\n  worker batch ordering is preserved (calculateMetricsWorker.ts:56),\n  oversized-file handling is correct, and no input mutation occurs.\n- Design review (independent sub-agent): nits addressed in this commit\n  — tightened test invariants per both reviewers' feedback, clarified\n  the duplication rationale for METRICS_ASSUMED_WORKERS, added comment\n  to METRICS_BATCH_FILES_CAP, simplified flush comment, and fixed the\n  \"indistinguishable\" wording in the top-of-file comment.",
+          "timestamp": "2026-04-29T01:46:53Z",
+          "tree_id": "1fa00c8552466070b7f2d3c986239e4a5d613ece",
+          "url": "https://github.com/yamadashy/repomix/commit/5e4d8bc360a6e7f8910c50df45a8f55c907ffedb"
+        },
+        "date": 1777427380337,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1082,
+            "range": "±171",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1004ms, Q3: 1175ms\nAll times: 876, 930, 977, 994, 996, 1000, 1002, 1004, 1004, 1019, 1032, 1036, 1057, 1058, 1078, 1082, 1092, 1101, 1106, 1124, 1133, 1172, 1175, 1177, 1186, 1213, 1263, 1264, 1272, 1470ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1271,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1262ms, Q3: 1287ms\nAll times: 1234, 1249, 1252, 1255, 1256, 1262, 1266, 1267, 1268, 1268, 1271, 1273, 1274, 1279, 1284, 1287, 1292, 1312, 1313, 1314ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1566,
+            "range": "±53",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1559ms, Q3: 1612ms\nAll times: 1536, 1542, 1544, 1548, 1556, 1559, 1559, 1561, 1561, 1563, 1566, 1567, 1569, 1573, 1604, 1612, 1637, 1763, 1974, 1995ms"
           }
         ]
       }
