@@ -279,4 +279,24 @@ describe('createMetricsTaskRunner', () => {
     expect(Array.isArray(resolved)).toBe(true);
     expect((resolved as number[]).every((v) => v === 0)).toBe(true);
   });
+
+  // The metric pool is intentionally capped to leave headroom for the security-check
+  // pool (max 2 workers) + main thread on the same machine. Without this cap,
+  // 4 metric workers would contend with 2 security workers during gpt-tokenizer init.
+  it('should pass a capped maxWorkerThreads to initTaskRunner', async () => {
+    const processConcurrency = await import('../../../src/shared/processConcurrency.js');
+    const initTaskRunner = processConcurrency.initTaskRunner as Mock;
+    initTaskRunner.mockClear();
+
+    createMetricsTaskRunner(1000, 'o200k_base');
+
+    expect(initTaskRunner).toHaveBeenCalledTimes(1);
+    const callArg = initTaskRunner.mock.calls[0][0];
+    expect(callArg).toMatchObject({
+      workerType: 'calculateMetrics',
+      runtime: 'worker_threads',
+    });
+    expect(callArg.maxWorkerThreads).toBeGreaterThanOrEqual(1);
+    expect(callArg.maxWorkerThreads).toBe(Math.max(1, processConcurrency.getProcessConcurrency() - 2));
+  });
 });

@@ -1,6 +1,6 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -29,6 +29,12 @@ export interface MetricsTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
+// Reserve cores for the security-check pool (max 2) and the main thread so the
+// metric workers' gpt-tokenizer init (~270-465 ms each) doesn't contend with
+// security workers and slip past the collectFiles window into the security-check
+// window. Symmetric with the security pool's own `Math.min(2, ...)` cap.
+const getMetricWorkerCap = (): number => Math.max(1, getProcessConcurrency() - 2);
+
 /**
  * Create a metrics task runner and warm up all worker threads by triggering
  * gpt-tokenizer initialization in parallel. This allows the expensive module
@@ -36,13 +42,16 @@ export interface MetricsTaskRunnerWithWarmup {
  * output generation).
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+  const metricWorkerCap = getMetricWorkerCap();
+
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    maxWorkerThreads: metricWorkerCap,
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { maxThreads } = getWorkerThreadCount(numOfTasks, metricWorkerCap);
   const warmupPromise = Promise.all(
     Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
@@ -118,6 +127,7 @@ export const calculateMetrics = async (
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
+      maxWorkerThreads: getMetricWorkerCap(),
     });
 
   try {
