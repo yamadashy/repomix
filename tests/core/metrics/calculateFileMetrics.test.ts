@@ -65,4 +65,39 @@ describe('calculateFileMetrics', () => {
 
     expect(result).toEqual([]);
   });
+
+  // Guards the batching path: files spanning multiple batches must still
+  // produce correctly-ordered, complete results, and the progress callback
+  // must fire once per batch (not per file, not just once at the end).
+  it('preserves order and reports progress across multiple batches', async () => {
+    const fileCount = 120; // forces multiple batches at any plausible METRICS_BATCH_SIZE (≤120)
+    const processedFiles: ProcessedFile[] = Array.from({ length: fileCount }, (_, i) => ({
+      path: `file${i}.txt`,
+      content: 'x'.repeat(i + 1),
+    }));
+    const targetFilePaths = processedFiles.map((f) => f.path);
+    const progressCallback: RepomixProgressCallback = vi.fn();
+
+    const taskRunner = mockInitTaskRunner({
+      numOfTasks: fileCount,
+      workerType: 'calculateMetrics',
+      runtime: 'worker_threads',
+    });
+    const runSpy = vi.spyOn(taskRunner, 'run');
+
+    const result = await calculateFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback, {
+      taskRunner,
+    });
+
+    expect(result).toHaveLength(fileCount);
+    expect(result.map((r) => r.path)).toEqual(targetFilePaths);
+    for (const r of result) {
+      expect(r.charCount).toBeGreaterThan(0);
+      expect(r.tokenCount).toBeGreaterThan(0);
+    }
+
+    // Multiple batches → multiple taskRunner.run calls and progress callbacks
+    expect(runSpy.mock.calls.length).toBeGreaterThan(1);
+    expect(progressCallback).toHaveBeenCalledTimes(runSpy.mock.calls.length);
+  });
 });

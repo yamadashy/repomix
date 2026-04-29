@@ -6,8 +6,9 @@ import { freeTokenCounters, getTokenCounter } from '../tokenCounterFactory.js';
  * Token counting worker for metrics calculation.
  *
  * Supports both single-content and batch modes. Batch mode reduces IPC overhead
- * by processing multiple files per worker round-trip (~0.5ms overhead per round-trip).
- * For 991 files, batching with size 10 reduces round-trips from 991 to ~100.
+ * by processing multiple files per worker round-trip (~2ms minimum per round-trip,
+ * dominated by tinypool serialization and dispatch).
+ * For ~1000 files, batching with size 50 reduces round-trips from ~1000 to ~20.
  */
 
 // Initialize logger configuration from workerData at module load time

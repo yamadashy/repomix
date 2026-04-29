@@ -7,11 +7,13 @@ import type { TokenEncoding } from './TokenCounter.js';
 import type { FileMetrics } from './workers/types.js';
 
 // Batch size for grouping files into worker tasks to reduce IPC overhead.
-// Each batch is sent as a single message to a worker thread, avoiding
-// per-file round-trip costs (~0.5ms each) that dominate when processing many files.
-// A size of 10 keeps individual worker tasks small so that workers become available sooner,
-// enabling overlap between file metrics and output generation.
-const METRICS_BATCH_SIZE = 10;
+// Each batch is sent as a single message to a worker thread; measured minimum
+// batch durations are ~2ms, dominated by tinypool serialization and dispatch.
+// At ~1000 files on a 4-core host (~20 batches, ~5 per thread), this cuts the
+// estimated per-thread IPC overhead from ~50ms (batch=10) to ~10ms while
+// keeping load balance comparable. Larger batches (e.g. 100) hurt because a
+// single oversized batch can monopolize a worker and stretch the critical path.
+const METRICS_BATCH_SIZE = 50;
 
 export const calculateFileMetrics = async (
   processedFiles: ProcessedFile[],
