@@ -30,11 +30,18 @@ export interface MetricsTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
-// Cap pre-warmed metrics workers to avoid unnecessary CPU/RAM spend on small repos
-// (most users have <300 files and hit ceil(numOfTasks/100) <= 3 today). For very
-// large repos this caps the metrics pool at 3 workers, but those runs are dominated
-// by collect/security and the metrics phase is no longer on the critical path.
+// Upper bound on pre-warmed metrics workers. On boxes with enough cores
+// (>=5 vCPU) we keep the historical max of 3 for tokenization parallelism
+// on large repos. On <=4 vCPU boxes we cap at 2 instead — three metrics
+// workers parsing gpt-tokenizer's BPE table during searchFiles + collect +
+// processFiles + security would contend with the main thread and the
+// security worker pool (cap=2) for the same physical cores, extending the
+// warmup tail past the security check and adding to `pool.destroy()`.
 const METRICS_PREWARM_THREAD_CAP = 3;
+// vCPU threshold below which we step the prewarm cap down from
+// METRICS_PREWARM_THREAD_CAP to METRICS_PREWARM_SMALLBOX_CAP.
+const METRICS_SMALLBOX_VCPU_THRESHOLD = 4;
+const METRICS_PREWARM_SMALLBOX_CAP = 2;
 
 /**
  * Create a metrics task runner and warm up all worker threads by triggering
@@ -49,7 +56,10 @@ export const createMetricsTaskRunner = (
   encoding: TokenEncoding,
   maxWorkerThreads?: number,
 ): MetricsTaskRunnerWithWarmup => {
-  const cap = maxWorkerThreads ?? Math.min(getProcessConcurrency(), METRICS_PREWARM_THREAD_CAP);
+  const concurrency = getProcessConcurrency();
+  const ceiling =
+    concurrency <= METRICS_SMALLBOX_VCPU_THRESHOLD ? METRICS_PREWARM_SMALLBOX_CAP : METRICS_PREWARM_THREAD_CAP;
+  const cap = maxWorkerThreads ?? Math.min(concurrency, ceiling);
 
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     // numOfTasks is no longer informative for sizing — `maxWorkerThreads` is the
