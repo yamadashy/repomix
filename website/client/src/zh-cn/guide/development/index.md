@@ -74,7 +74,7 @@ npm run repomix
 
 ### Nix 开发
 
-如果你启用了 [Nix](https://nixos.org/download) flakes，可以进入预装了 Node.js 和 Git 的可复现开发 shell（版本与 `.tool-versions` 匹配）：
+如果你启用了 [Nix](https://nixos.org/download) flakes，可以进入预装了 Node.js 24 和 Git 的可复现开发 shell：
 
 ```bash
 nix develop

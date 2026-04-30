@@ -38,7 +38,7 @@ npm run repomix
 
 ### Nix ile Geliştirme
 
-[Nix](https://nixos.org/download) flakes etkinleştirilmişse, Node.js ve Git önceden yüklenmiş yeniden üretilebilir bir geliştirme shell'ine girebilirsiniz (sürümler `.tool-versions` ile eşleşir):
+[Nix](https://nixos.org/download) flakes etkinleştirilmişse, Node.js 24 ve Git önceden yüklenmiş yeniden üretilebilir bir geliştirme shell'ine girebilirsiniz:
 
 ```bash
 nix develop

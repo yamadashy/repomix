@@ -49,7 +49,7 @@ npm run lint
 
 ### Phát triển với Nix
 
-Nếu bạn có [Nix](https://nixos.org/download) với flakes được bật, bạn có thể vào một shell phát triển có thể tái tạo với Node.js và Git được cài đặt sẵn (phiên bản khớp với `.tool-versions`):
+Nếu bạn có [Nix](https://nixos.org/download) với flakes được bật, bạn có thể vào một shell phát triển có thể tái tạo với Node.js 24 và Git được cài đặt sẵn:
 
 ```bash
 nix develop

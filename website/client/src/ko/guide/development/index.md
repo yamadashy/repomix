@@ -74,7 +74,7 @@ npm run repomix
 
 ### Nix 개발
 
-[Nix](https://nixos.org/download) flakes가 활성화되어 있다면, Node.js와 Git이 미리 설치된 재현 가능한 개발 셸에 들어갈 수 있습니다 (버전은 `.tool-versions`와 일치):
+[Nix](https://nixos.org/download) flakes가 활성화되어 있다면, Node.js 24와 Git이 미리 설치된 재현 가능한 개발 셸에 들어갈 수 있습니다:
 
 ```bash
 nix develop

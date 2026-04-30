@@ -74,7 +74,7 @@ npm run repomix
 
 ### Nix-Entwicklung
 
-Wenn Sie [Nix](https://nixos.org/download) mit aktivierten Flakes verwenden, können Sie eine reproduzierbare Entwicklungs-Shell mit vorinstalliertem Node.js und Git betreten (Versionen entsprechend `.tool-versions`):
+Wenn Sie [Nix](https://nixos.org/download) mit aktivierten Flakes verwenden, können Sie eine reproduzierbare Entwicklungs-Shell mit vorinstalliertem Node.js 24 und Git betreten:
 
 ```bash
 nix develop

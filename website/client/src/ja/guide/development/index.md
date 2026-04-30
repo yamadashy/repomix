@@ -38,7 +38,7 @@ npm run repomix
 
 ### Nix開発
 
-[Nix](https://nixos.org/download)（flakes有効）を使用している場合、Node.jsとGitがプリインストールされた再現可能な開発シェルに入ることができます（バージョンは`.tool-versions`と一致）：
+[Nix](https://nixos.org/download)（flakes有効）を使用している場合、Node.js 24とGitがプリインストールされた再現可能な開発シェルに入ることができます：
 
 ```bash
 nix develop

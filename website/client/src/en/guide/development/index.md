@@ -38,7 +38,7 @@ npm run repomix
 
 ### Nix Development
 
-If you have [Nix](https://nixos.org/download) with flakes enabled, you can enter a reproducible development shell with Node.js and Git pre-installed (versions matching `.tool-versions`):
+If you have [Nix](https://nixos.org/download) with flakes enabled, you can enter a reproducible development shell with Node.js 24 and Git pre-installed:
 
 ```bash
 nix develop

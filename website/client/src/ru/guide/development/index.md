@@ -38,7 +38,7 @@ npm run repomix
 
 ### Разработка с Nix
 
-Если у вас установлен [Nix](https://nixos.org/download) с включёнными flakes, вы можете войти в воспроизводимую среду разработки с предустановленными Node.js и Git (версии соответствуют `.tool-versions`):
+Если у вас установлен [Nix](https://nixos.org/download) с включёнными flakes, вы можете войти в воспроизводимую среду разработки с предустановленными Node.js 24 и Git:
 
 ```bash
 nix develop

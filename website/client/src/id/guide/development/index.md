@@ -28,7 +28,7 @@ npm install
 
 ### Pengembangan dengan Nix
 
-Jika Anda memiliki [Nix](https://nixos.org/download) dengan flakes diaktifkan, Anda dapat memasuki shell pengembangan yang dapat direproduksi dengan Node.js dan Git terinstal sebelumnya (versi sesuai dengan `.tool-versions`):
+Jika Anda memiliki [Nix](https://nixos.org/download) dengan flakes diaktifkan, Anda dapat memasuki shell pengembangan yang dapat direproduksi dengan Node.js 24 dan Git terinstal sebelumnya:
 
 ```bash
 nix develop
