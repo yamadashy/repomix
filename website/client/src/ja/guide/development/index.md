@@ -36,6 +36,25 @@ npm install
 npm run repomix
 ```
 
+### Nix開発
+
+[Nix](https://nixos.org/download)（flakes有効）を使用している場合、Node.js 24とGitがプリインストールされた再現可能な開発シェルに入ることができます：
+
+```bash
+nix develop
+```
+
+シェル内では、標準の`npm`ワークフローが期待通りに動作します：
+
+```bash
+npm ci
+npm run build
+npm run test
+npm run lint
+```
+
+注意: このシェルはRepomix自体の開発用で、CLIとしてインストールするためのものではありません。
+
 ### Docker開発
 
 Dockerを使用してRepomixを実行することもできます：

@@ -47,6 +47,25 @@ npm run test
 npm run lint
 ```
 
+### Phát triển với Nix
+
+Nếu bạn có [Nix](https://nixos.org/download) với flakes được bật, bạn có thể vào một shell phát triển có thể tái tạo với Node.js 24 và Git được cài đặt sẵn:
+
+```bash
+nix develop
+```
+
+Trong shell, quy trình `npm` tiêu chuẩn hoạt động như mong đợi:
+
+```bash
+npm ci
+npm run build
+npm run test
+npm run lint
+```
+
+Lưu ý: shell này dùng để phát triển Repomix, không phải để cài đặt như một CLI.
+
 ## Cấu trúc dự án
 
 Dự án Repomix được tổ chức như sau:
