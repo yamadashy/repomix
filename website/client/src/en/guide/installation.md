@@ -24,7 +24,19 @@ bun add -g repomix
 ```bash [Homebrew]
 brew install repomix
 ```
+```bash [Nix]
+nix profile install github:yamadashy/repomix
+```
 :::
+
+## Run Without Installing (Nix)
+
+If you have [Nix](https://nixos.org/download) with flakes enabled, you can run Repomix directly:
+
+```bash
+nix run github:yamadashy/repomix -- --version
+nix run github:yamadashy/repomix -- --remote yamadashy/repomix
+```
 
 ## Docker Installation
 
