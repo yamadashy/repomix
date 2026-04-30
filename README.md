@@ -109,7 +109,7 @@ brew install repomix
 nix run github:yamadashy/repomix
 
 # Or install persistently with Nix
-nix profile install github:yamadashy/repomix
+nix profile add github:yamadashy/repomix
 
 # Then run in any project directory
 repomix

@@ -25,7 +25,7 @@ bun add -g repomix
 brew install repomix
 ```
 ```bash [Nix]
-nix profile install github:yamadashy/repomix
+nix profile add github:yamadashy/repomix
 ```
 :::
 
