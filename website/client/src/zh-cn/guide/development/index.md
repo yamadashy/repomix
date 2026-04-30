@@ -72,6 +72,25 @@ npm install
 npm run repomix
 ```
 
+### Nix 开发
+
+如果你启用了 [Nix](https://nixos.org/download) flakes，可以进入预装了 Node.js 24 和 Git 的可复现开发 shell：
+
+```bash
+nix develop
+```
+
+在 shell 中，标准的 `npm` 工作流可正常使用：
+
+```bash
+npm ci
+npm run build
+npm run test
+npm run lint
+```
+
+注意：此 shell 用于开发 Repomix 本身，不是用于将其作为 CLI 安装。
+
 ### Docker 开发
 
 你也可以使用 Docker 运行 Repomix：

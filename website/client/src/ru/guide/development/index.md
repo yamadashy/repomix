@@ -36,6 +36,25 @@ npm install
 npm run repomix
 ```
 
+### Разработка с Nix
+
+Если у вас установлен [Nix](https://nixos.org/download) с включёнными flakes, вы можете войти в воспроизводимую среду разработки с предустановленными Node.js 24 и Git:
+
+```bash
+nix develop
+```
+
+Внутри shell стандартный рабочий процесс `npm` работает как обычно:
+
+```bash
+npm ci
+npm run build
+npm run test
+npm run lint
+```
+
+Примечание: эта оболочка предназначена для работы над самим Repomix, а не для его установки в качестве CLI.
+
 ### Разработка с Docker
 
 Вы также можете запустить Repomix с помощью Docker:

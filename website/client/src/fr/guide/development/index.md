@@ -70,6 +70,25 @@ npm install
 npm run repomix
 ```
 
+### Développement avec Nix
+
+Si vous avez [Nix](https://nixos.org/download) avec les flakes activés, vous pouvez entrer dans un shell de développement reproductible avec Node.js 24 et Git préinstallés :
+
+```bash
+nix develop
+```
+
+Dans le shell, le workflow `npm` standard fonctionne comme prévu :
+
+```bash
+npm ci
+npm run build
+npm run test
+npm run lint
+```
+
+Note : ce shell sert à contribuer à Repomix, et non à l'installer comme CLI.
+
 ### Développement avec Docker
 
 Vous pouvez également exécuter Repomix en utilisant Docker :
