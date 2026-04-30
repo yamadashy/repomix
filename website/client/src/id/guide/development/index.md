@@ -26,6 +26,23 @@ cd repomix
 npm install
 ```
 
+### Pengembangan dengan Nix
+
+Jika Anda memiliki [Nix](https://nixos.org/download) dengan flakes diaktifkan, Anda dapat memasuki shell pengembangan yang dapat direproduksi dengan Node.js dan Git terinstal sebelumnya (versi sesuai dengan `.tool-versions`):
+
+```bash
+nix develop
+```
+
+Di dalam shell, alur kerja `npm` standar berfungsi seperti yang diharapkan:
+
+```bash
+npm ci
+npm run build
+npm run test
+npm run lint
+```
+
 ## Struktur Proyek
 
 Repositori Repomix diorganisir sebagai berikut:

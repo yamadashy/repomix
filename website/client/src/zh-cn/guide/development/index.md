@@ -72,6 +72,23 @@ npm install
 npm run repomix
 ```
 
+### Nix 开发
+
+如果你启用了 [Nix](https://nixos.org/download) flakes，可以进入预装了 Node.js 和 Git 的可复现开发 shell（版本与 `.tool-versions` 匹配）：
+
+```bash
+nix develop
+```
+
+在 shell 中，标准的 `npm` 工作流可正常使用：
+
+```bash
+npm ci
+npm run build
+npm run test
+npm run lint
+```
+
 ### Docker 开发
 
 你也可以使用 Docker 运行 Repomix：

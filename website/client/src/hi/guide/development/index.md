@@ -43,6 +43,23 @@ yarn dev
 pnpm dev
 ```
 
+### Nix के साथ विकास
+
+यदि आपके पास [Nix](https://nixos.org/download) flakes सक्षम है, तो आप Node.js और Git के साथ पहले से इंस्टॉल किए गए पुन: प्रस्तुत करने योग्य विकास शेल में प्रवेश कर सकते हैं (संस्करण `.tool-versions` से मेल खाते हैं):
+
+```bash
+nix develop
+```
+
+शेल के अंदर, मानक `npm` वर्कफ़्लो अपेक्षानुसार काम करता है:
+
+```bash
+npm ci
+npm run build
+npm run test
+npm run lint
+```
+
 ## प्रोजेक्ट संरचना
 
 Repomix प्रोजेक्ट निम्नलिखित प्रमुख डायरेक्टरी में संगठित है:

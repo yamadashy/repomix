@@ -72,6 +72,23 @@ npm install
 npm run repomix
 ```
 
+### Nix 개발
+
+[Nix](https://nixos.org/download) flakes가 활성화되어 있다면, Node.js와 Git이 미리 설치된 재현 가능한 개발 셸에 들어갈 수 있습니다 (버전은 `.tool-versions`와 일치):
+
+```bash
+nix develop
+```
+
+셸 내부에서 표준 `npm` 워크플로우가 예상대로 동작합니다:
+
+```bash
+npm ci
+npm run build
+npm run test
+npm run lint
+```
+
 ### Docker 개발
 
 Docker를 사용하여 Repomix를 실행할 수도 있습니다:
