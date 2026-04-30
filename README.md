@@ -105,12 +105,6 @@ bun add -g repomix
 # Alternatively using Homebrew (macOS/Linux)
 brew install repomix
 
-# Alternatively using Nix (run without installing)
-nix run github:yamadashy/repomix
-
-# Or install persistently with Nix
-nix profile add github:yamadashy/repomix
-
 # Then run in any project directory
 repomix
 ```
