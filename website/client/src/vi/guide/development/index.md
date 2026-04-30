@@ -64,6 +64,8 @@ npm run test
 npm run lint
 ```
 
+Lưu ý: shell này dùng để phát triển Repomix, không phải để cài đặt như một CLI.
+
 ## Cấu trúc dự án
 
 Dự án Repomix được tổ chức như sau:

@@ -89,6 +89,8 @@ npm run test
 npm run lint
 ```
 
+Nota: este shell es para trabajar en Repomix, no para instalarlo como CLI.
+
 ### Desarrollo con Docker
 
 También puedes ejecutar Repomix usando Docker:

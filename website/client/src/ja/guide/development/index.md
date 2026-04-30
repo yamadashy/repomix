@@ -53,6 +53,8 @@ npm run test
 npm run lint
 ```
 
+注意: このシェルはRepomix自体の開発用で、CLIとしてインストールするためのものではありません。
+
 ### Docker開発
 
 Dockerを使用してRepomixを実行することもできます：

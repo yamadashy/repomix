@@ -43,6 +43,8 @@ npm run test
 npm run lint
 ```
 
+Catatan: shell ini untuk mengerjakan Repomix itu sendiri, bukan untuk menginstalnya sebagai CLI.
+
 ## Struktur Proyek
 
 Repositori Repomix diorganisir sebagai berikut:
