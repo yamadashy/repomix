@@ -1,3 +1,8 @@
+---
+title: Command Line Options
+description: Reference every Repomix CLI option for input, output, file selection, remote repositories, configuration, security, token counting, MCP, and agent skills.
+---
+
 # Command Line Options
 
 ## Basic Options

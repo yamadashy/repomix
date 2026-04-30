@@ -1,3 +1,8 @@
+---
+title: Getting Started with Repomix
+description: Start using Repomix to pack a repository into AI-friendly context for ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity, and other LLMs.
+---
+
 # Getting Started with Repomix
 
 <script setup>

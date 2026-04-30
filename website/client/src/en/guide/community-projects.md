@@ -1,3 +1,8 @@
+---
+title: Community Projects
+description: Discover community tools, editor extensions, desktop apps, language implementations, and integrations built around Repomix.
+---
+
 # Community Projects
 
 Discover amazing projects created by the Repomix community! These projects extend Repomix's capabilities, provide implementations in other languages, or integrate Repomix into larger toolsets.
@@ -46,4 +51,3 @@ CLI toolset for AI agents with multiple capabilities including web search via Pe
 - [Installation](/guide/installation) - Install Repomix CLI or browser extension
 - [MCP Server](/guide/mcp-server) - Use Repomix as an MCP server for AI assistants
 - [Claude Code Plugins](/guide/claude-code-plugins) - Official plugins for Claude Code
-

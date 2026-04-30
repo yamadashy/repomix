@@ -2,6 +2,7 @@
 layout: home
 title: Repomix
 titleTemplate: Pack your codebase into AI-friendly formats
+description: Pack local or remote repositories into AI-friendly XML, Markdown, JSON, or plain text for Claude, ChatGPT, Gemini, MCP, and code review workflows.
 aside: false
 editLink: false
 

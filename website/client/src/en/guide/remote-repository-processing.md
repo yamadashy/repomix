@@ -1,3 +1,8 @@
+---
+title: GitHub Repository Processing
+description: Pack GitHub repositories with Repomix using full URLs, user/repo shorthand, branches, tags, commits, Docker, and remote config trust controls.
+---
+
 # GitHub Repository Processing
 
 ## Basic Usage

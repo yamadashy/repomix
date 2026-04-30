@@ -1,3 +1,8 @@
+---
+title: Security
+description: Learn how Repomix uses Secretlint and safety checks to detect secrets, API keys, tokens, credentials, and sensitive repository content before packing.
+---
+
 # Security
 
 ## Security Check Feature
