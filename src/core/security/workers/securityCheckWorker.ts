@@ -4,6 +4,11 @@ import { lintSource } from '@secretlint/core';
 import { creator } from '@secretlint/secretlint-rule-preset-recommend';
 import type { SecretLintCoreConfig } from '@secretlint/types';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
+import { QUICK_SECRET_SCREEN } from '../quickSecretScreen.js';
+
+// Re-export QUICK_SECRET_SCREEN so existing call sites and tests
+// (`tests/core/security/workers/securityCheckWorker.test.ts`) keep working.
+export { QUICK_SECRET_SCREEN };
 
 // Initialize logger configuration from workerData at module load time
 // This must be called before any logging operations in the worker
@@ -93,19 +98,6 @@ export const createSecretLintConfig = (): SecretLintCoreConfig => ({
 
 // Cache config at module level - created once per worker, reused for all tasks
 const cachedConfig = createSecretLintConfig();
-
-// Pre-screen to skip `lintSource`'s ~0.3-0.5ms per-file setup cost. Carries
-// one over-inclusive marker per detection rule in
-// `@secretlint/secretlint-rule-preset-recommend`. Asymmetric on purpose:
-// false positives fall through to `lintSource` (correct, slightly slower);
-// false negatives would silently drop real secrets. The matching rule-count
-// pin in `securityCheckWorker.test.ts` forces an audit when the preset
-// gains a new detector. GCP rule fires by `source.ext`, but `runSecretLint`
-// passes `filePath.split('.').pop()` (no leading dot) so it never matches
-// today — no extension passthrough needed.
-// Exported for unit tests.
-export const QUICK_SECRET_SCREEN =
-  /A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA|secret_?access_?key|account|-----BEGIN|hooks\.slack\.com|x(?:app|oxa|oxb|oxp|oxo|oxr)-|gh[oprsu]_|github_pat_|sk-ant-api0|sk-(?:proj|svcacct|admin)-|T3BlbkFJ|lin_api_|ops_ey|SG\.[\w-]+\.|sh(?:pat|pss|pca|ppa)_|x-oauth-basic|_authToken|npm_[A-Za-z0-9_]{20}|mongodb(?:\+srv)?:\/\/|(?:jdbc:)?mysqlx?:\/\/|postgres(?:ql)?:\/\/|:\/\/[^\s/?#@]+:[^\s/?#@]+@/i;
 
 export default async (task: SecurityCheckTask): Promise<(SuspiciousFileResult | null)[]> => {
   const config = cachedConfig;

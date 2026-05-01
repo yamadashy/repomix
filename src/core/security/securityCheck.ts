@@ -1,14 +1,12 @@
+import type { SecretLintCoreConfig } from '@secretlint/types';
 import pc from 'picocolors';
 import { logger } from '../../shared/logger.js';
-import {
-  getProcessConcurrency as defaultGetProcessConcurrency,
-  initTaskRunner,
-} from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import type { SecurityCheckItem, SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
+import { QUICK_SECRET_SCREEN } from './quickSecretScreen.js';
+import type { SecurityCheckItem, SecurityCheckType } from './workers/securityCheckWorker.js';
 
 export type { SecurityCheckType } from './workers/securityCheckWorker.js';
 
@@ -18,14 +16,24 @@ export interface SuspiciousFileResult {
   type: SecurityCheckType;
 }
 
-// Batch size for grouping files into worker tasks to reduce IPC overhead.
-// Each batch is sent as a single message to a worker thread, avoiding
-// per-file round-trip costs that dominate when processing many files.
-// Security check always processes all files (~1000 in a typical repo), so a batch size of 50
-// already produces ~20 batches — enough to distribute well across available CPU cores.
-// (Unlike metrics, which may process only a small number of top files when tokenCountTree
-// is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
-const BATCH_SIZE = 50;
+type SecretLintEngine = {
+  runSecretLint: typeof import('./workers/securityCheckWorker.js').runSecretLint;
+  createSecretLintConfig: typeof import('./workers/securityCheckWorker.js').createSecretLintConfig;
+};
+// Cache the Promise (not the resolved value) so concurrent callers within a
+// single process share one `import()`. Reset on rejection so a transient
+// failure (e.g. flaky module resolution) doesn't permanently poison the
+// cache for long-lived consumers (MCP server, library use of `pack()`).
+let _secretLintEnginePromise: Promise<SecretLintEngine> | undefined;
+const defaultLoadSecretLintEngine = (): Promise<SecretLintEngine> => {
+  _secretLintEnginePromise ??= import('./workers/securityCheckWorker.js')
+    .then((m) => ({ runSecretLint: m.runSecretLint, createSecretLintConfig: m.createSecretLintConfig }))
+    .catch((err) => {
+      _secretLintEnginePromise = undefined;
+      throw err;
+    });
+  return _secretLintEnginePromise;
+};
 
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
@@ -33,8 +41,7 @@ export const runSecurityCheck = async (
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
   deps = {
-    initTaskRunner,
-    getProcessConcurrency: defaultGetProcessConcurrency,
+    loadSecretLintEngine: defaultLoadSecretLintEngine,
   },
 ): Promise<SuspiciousFileResult[]> => {
   const gitDiffItems: SecurityCheckItem[] = [];
@@ -84,53 +91,53 @@ export const runSecurityCheck = async (
     return [];
   }
 
-  // Cap security workers at 2 to reduce contention with the metrics worker pool that
-  // runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
-  // so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
-  const maxSecurityWorkers = Math.min(2, deps.getProcessConcurrency());
+  const startTime = process.hrtime.bigint();
+  logger.trace(`Starting security check for ${totalItems} files/content`);
 
-  // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
-  const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-    numOfTasks: totalItems,
-    workerType: 'securityCheck',
-    runtime: 'worker_threads',
-    maxWorkerThreads: maxSecurityWorkers,
-  });
-
-  // Split items into batches to reduce IPC round-trips
-  const batches: SecurityCheckItem[][] = [];
-  for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-    batches.push(allItems.slice(i, i + BATCH_SIZE));
+  const candidates: SecurityCheckItem[] = [];
+  for (const item of allItems) {
+    if (QUICK_SECRET_SCREEN.test(item.content)) {
+      candidates.push(item);
+    }
   }
 
+  const lastItem = allItems[allItems.length - 1];
+  progressCallback(`Running security check... (${totalItems}/${totalItems}) ${pc.dim(lastItem.filePath)}`);
+  logger.trace(`Running security check... (${totalItems}/${totalItems}) ${lastItem.filePath}`);
+
+  if (candidates.length === 0) {
+    const endTime = process.hrtime.bigint();
+    const duration = Number(endTime - startTime) / 1e6;
+    logger.trace(`Security check completed in ${duration.toFixed(2)}ms (pre-screen rejected all ${totalItems} items)`);
+    return [];
+  }
+
+  let engine: SecretLintEngine;
   try {
-    logger.trace(`Starting security check for ${totalItems} files/content in ${batches.length} batches`);
-    const startTime = process.hrtime.bigint();
+    engine = await deps.loadSecretLintEngine();
+  } catch (error) {
+    logger.error('Error loading secretlint engine:', error);
+    throw error;
+  }
 
-    let completedItems = 0;
+  const config: SecretLintCoreConfig = engine.createSecretLintConfig();
 
-    const batchResults = await Promise.all(
-      batches.map(async (batch) => {
-        const results = await taskRunner.run({ items: batch });
+  try {
+    logger.trace(
+      `Pre-screen flagged ${candidates.length}/${totalItems} items; running lintSource on flagged items only`,
+    );
 
-        completedItems += batch.length;
-        const lastItem = batch[batch.length - 1];
-        progressCallback(`Running security check... (${completedItems}/${totalItems}) ${pc.dim(lastItem.filePath)}`);
-        logger.trace(`Running security check... (${completedItems}/${totalItems}) ${lastItem.filePath}`);
-
-        return results;
-      }),
+    const lintResults = await Promise.all(
+      candidates.map((item) => engine.runSecretLint(item.filePath, item.content, item.type, config)),
     );
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;
     logger.trace(`Security check completed in ${duration.toFixed(2)}ms`);
 
-    return batchResults.flat().filter((result): result is SuspiciousFileResult => result !== null);
+    return lintResults.filter((result): result is SuspiciousFileResult => result !== null);
   } catch (error) {
     logger.error('Error during security check:', error);
     throw error;
-  } finally {
-    await taskRunner.cleanup();
   }
 };
