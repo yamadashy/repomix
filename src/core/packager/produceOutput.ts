@@ -5,7 +5,7 @@ import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
-import { generateOutput as generateOutputDefault } from '../output/outputGenerate.js';
+import type { generateOutput as generateOutputType } from '../output/outputGenerate.js';
 import { generateSplitOutputParts } from '../output/outputSplit.js';
 import { copyToClipboardIfEnabled as copyToClipboardIfEnabledDefault } from './copyToClipboardIfEnabled.js';
 import { writeOutputToDisk as writeOutputToDiskDefault } from './writeOutputToDisk.js';
@@ -14,6 +14,17 @@ export interface ProduceOutputResult {
   outputFiles?: string[];
   outputForMetrics: string | string[];
 }
+
+// Lazy-load `generateOutput` so the output-generation chain (Handlebars ~40-50ms
+// + the three style templates that statically import it + tree-generation
+// helpers) does not enter the cold start of `pack()`. `produceOutput` is invoked
+// once near the end of the pipeline, in parallel with the longer metrics
+// calculation, which gives the import latency room to hide rather than
+// stretching CLI startup time.
+const generateOutputDefault: typeof generateOutputType = async (...args) => {
+  const { generateOutput } = await import('../output/outputGenerate.js');
+  return generateOutput(...args);
+};
 
 const defaultDeps = {
   generateOutput: generateOutputDefault,
