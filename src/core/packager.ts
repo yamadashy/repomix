@@ -8,13 +8,19 @@ import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
-import type { ProcessedFile } from './file/fileTypes.js';
+import type { ProcessedFile, RawFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import {
+  createSecurityCheckTaskRunner,
+  dispatchSecurityFileBatch,
+  runGitSecurityCheck,
+  SECURITY_BATCH_SIZE,
+  type SuspiciousFileResult,
+} from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -43,6 +49,9 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityCheckTaskRunner,
+  dispatchSecurityFileBatch,
+  runGitSecurityCheck,
   sortPaths,
   sortOutputFiles,
   prefetchSortData,
@@ -120,6 +129,36 @@ export const pack = async (
     config.tokenCount.encoding,
   );
 
+  // Pipeline the security check with file collection: each batch of collected
+  // files is dispatched to a dedicated security worker pool as soon as it is
+  // ready, instead of waiting for all files to be read. This overlaps the
+  // ~150ms secretlint scan with the ~400ms file-read I/O on a typical repo,
+  // moving the security stage off the critical path between collect and
+  // output generation.
+  const enableSecurityCheck = config.security.enableSecurityCheck;
+  const securityTaskRunner = enableSecurityCheck ? deps.createSecurityCheckTaskRunner(allFilePaths.length) : undefined;
+  const pendingFileSecurityChecks: Promise<SuspiciousFileResult[]>[] = [];
+
+  // Attach a handler at dispatch so Node sees the rejection as handled and
+  // re-throw inside it so `Promise.all(pendingFileSecurityChecks)` later
+  // surfaces the failure to `validateFileSafety` — matching the fail-loud
+  // behavior of the legacy `runSecurityCheck` path.
+  const dispatchFileSecurityBatch = securityTaskRunner
+    ? (batch: RawFile[]) => {
+        if (batch.length === 0) return;
+        pendingFileSecurityChecks.push(
+          deps.dispatchSecurityFileBatch(securityTaskRunner, batch).catch((error) => {
+            logger.error('Security check batch failed:', error);
+            throw error;
+          }),
+        );
+      }
+    : undefined;
+
+  // Hoisted so `finally` can drain the in-flight git-content security task
+  // before tearing the worker pool down.
+  let gitSecurityPromise: Promise<SuspiciousFileResult[]> = Promise.resolve([]);
+
   try {
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
@@ -132,7 +171,16 @@ export const pack = async (
         async () =>
           await Promise.all(
             sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-              deps.collectFiles(filePaths, rootDir, config, progressCallback),
+              deps.collectFiles(
+                filePaths,
+                rootDir,
+                config,
+                progressCallback,
+                undefined,
+                dispatchFileSecurityBatch
+                  ? { onBatch: dispatchFileSecurityBatch, batchSize: SECURITY_BATCH_SIZE }
+                  : undefined,
+              ),
             ),
           ),
       ),
@@ -143,13 +191,28 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
-    // Run security check and file processing concurrently.
-    // Security check uses worker threads while file processing runs on the main thread
-    // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
-    // After both complete, filter out any suspicious files from the processed results.
+    // Once git diff/log subprocesses have returned (still in parallel with
+    // any security batches still running), dispatch a final security task
+    // for git content. This must happen after `gitDiffResult` is known but
+    // can run concurrently with `processFiles` below.
+    if (securityTaskRunner) {
+      gitSecurityPromise = deps.runGitSecurityCheck(securityTaskRunner, gitDiffResult, gitLogResult).catch((error) => {
+        logger.error('Git security check failed:', error);
+        throw error;
+      });
+    }
+
+    // Run security finalization (waiting for streamed file batches + git
+    // security to settle, then partitioning by type) and file processing
+    // concurrently. Security uses worker threads while file processing
+    // runs on the main thread (in the default non-compress/non-removeComments
+    // config), so they don't compete for CPU.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
+          fileSecurityResultsPromise: enableSecurityCheck ? Promise.all(pendingFileSecurityChecks) : undefined,
+          gitSecurityResultsPromise: enableSecurityCheck ? gitSecurityPromise : undefined,
+        }),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
@@ -261,5 +324,13 @@ export const pack = async (
   } finally {
     await metricsWarmupPromise.catch(() => {});
     await metricsTaskRunner.cleanup();
+    if (securityTaskRunner) {
+      // Drain any in-flight file batches AND the git-content task before
+      // tearing the pool down so workers are not killed mid-task on the
+      // error path (where validateFileSafety/processFiles may have thrown
+      // before either promise was awaited).
+      await Promise.allSettled([...pendingFileSecurityChecks, gitSecurityPromise]);
+      await securityTaskRunner.cleanup();
+    }
   }
 };

@@ -62,6 +62,12 @@ describe('packager split output', () => {
         },
         warmupPromise: Promise.resolve(),
       }),
+      createSecurityCheckTaskRunner: vi.fn().mockReturnValue({
+        run: vi.fn().mockResolvedValue([]),
+        cleanup: vi.fn().mockResolvedValue(undefined),
+      }),
+      dispatchSecurityFileBatch: vi.fn().mockResolvedValue([]),
+      runGitSecurityCheck: vi.fn().mockResolvedValue([]),
     });
 
     expect(produceOutput).toHaveBeenCalledWith(

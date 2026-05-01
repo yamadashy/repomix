@@ -109,10 +109,18 @@ describe.runIf(!isWindows)('packager integration', () => {
             workTreeDiffContent: '',
             stagedDiffContent: '',
           };
-          return validateFileSafety(rawFiles, progressCallback, config, gitDiffMock, undefined, {
-            runSecurityCheck: async () => [],
-            filterOutUntrustedFiles,
-          });
+          return validateFileSafety(
+            rawFiles,
+            progressCallback,
+            config,
+            gitDiffMock,
+            undefined,
+            {},
+            {
+              runSecurityCheck: async () => [],
+              filterOutUntrustedFiles,
+            },
+          );
         },
         produceOutput,
         createMetricsTaskRunner: () => ({
@@ -122,6 +130,12 @@ describe.runIf(!isWindows)('packager integration', () => {
           },
           warmupPromise: Promise.resolve(),
         }),
+        createSecurityCheckTaskRunner: () => ({
+          run: async () => [],
+          cleanup: async () => {},
+        }),
+        dispatchSecurityFileBatch: async () => [],
+        runGitSecurityCheck: async () => [],
         calculateMetrics: async (
           processedFiles,
           _output,

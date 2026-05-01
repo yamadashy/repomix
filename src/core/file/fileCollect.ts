@@ -10,6 +10,12 @@ import type { RawFile } from './fileTypes.js';
 // 50 balances I/O throughput with FD/memory safety across different machines.
 const FILE_COLLECT_CONCURRENCY = 50;
 
+// Default batch size for streaming `onBatch` deliveries. Matches the security
+// check's BATCH_SIZE so each delivered batch maps to one worker task without
+// re-batching, preserving the IPC-overhead amortization the security pool was
+// originally tuned for.
+const DEFAULT_BATCH_SIZE = 50;
+
 export interface SkippedFileInfo {
   path: string;
   reason: FileSkipReason;
@@ -18,6 +24,16 @@ export interface SkippedFileInfo {
 export interface FileCollectResults {
   rawFiles: RawFile[];
   skippedFiles: SkippedFileInfo[];
+}
+
+export interface CollectFilesOptions {
+  // Fired with successive groups of `batchSize` (default 50) successfully
+  // collected files as collection proceeds. Lets callers (e.g., the security
+  // check) start work on early batches before all files finish reading,
+  // overlapping CPU work with file I/O. The final partial group is flushed
+  // when collection completes.
+  onBatch?: (batch: RawFile[]) => void;
+  batchSize?: number;
 }
 
 const promisePool = async <T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> => {
@@ -44,6 +60,7 @@ export const collectFiles = async (
   deps = {
     readRawFile: defaultReadRawFile,
   },
+  options: CollectFilesOptions = {},
 ): Promise<FileCollectResults> => {
   const startTime = process.hrtime.bigint();
   logger.trace(`Starting file collection for ${filePaths.length} files`);
@@ -51,6 +68,17 @@ export const collectFiles = async (
   let completedTasks = 0;
   const totalTasks = filePaths.length;
   const maxFileSize = config.input.maxFileSize;
+  const onBatch = options.onBatch;
+  const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
+  let pendingBatch: RawFile[] = [];
+
+  const flushPendingBatch = () => {
+    if (onBatch && pendingBatch.length > 0) {
+      const batch = pendingBatch;
+      pendingBatch = [];
+      onBatch(batch);
+    }
+  };
 
   const results = await promisePool(filePaths, FILE_COLLECT_CONCURRENCY, async (filePath) => {
     const fullPath = path.resolve(rootDir, filePath);
@@ -60,8 +88,18 @@ export const collectFiles = async (
     progressCallback(`Collect file... (${completedTasks}/${totalTasks}) ${pc.dim(filePath)}`);
     logger.trace(`Collect files... (${completedTasks}/${totalTasks}) ${filePath}`);
 
+    if (onBatch && result.content !== null) {
+      pendingBatch.push({ path: filePath, content: result.content });
+      if (pendingBatch.length >= batchSize) {
+        flushPendingBatch();
+      }
+    }
+
     return { filePath, result };
   });
+
+  // Emit any remaining files that didn't fill a final batch.
+  flushPendingBatch();
 
   const rawFiles: RawFile[] = [];
   const skippedFiles: SkippedFileInfo[] = [];

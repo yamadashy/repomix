@@ -58,6 +58,12 @@ describe('packager', () => {
         },
         warmupPromise: Promise.resolve(),
       }),
+      createSecurityCheckTaskRunner: vi.fn().mockReturnValue({
+        run: vi.fn().mockResolvedValue([]),
+        cleanup: vi.fn().mockResolvedValue(undefined),
+      }),
+      dispatchSecurityFileBatch: vi.fn().mockResolvedValue([]),
+      runGitSecurityCheck: vi.fn().mockResolvedValue([]),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -80,7 +86,14 @@ describe('packager', () => {
     const result = await pack(['root'], mockConfig, progressCallback, mockDeps);
 
     expect(mockDeps.searchFiles).toHaveBeenCalledWith('root', mockConfig, undefined);
-    expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback);
+    expect(mockDeps.collectFiles).toHaveBeenCalledWith(
+      mockFilePaths,
+      'root',
+      mockConfig,
+      progressCallback,
+      undefined,
+      expect.objectContaining({ batchSize: expect.any(Number) }),
+    );
     expect(mockDeps.validateFileSafety).toHaveBeenCalled();
     expect(mockDeps.processFiles).toHaveBeenCalled();
     expect(mockDeps.produceOutput).toHaveBeenCalled();
@@ -92,6 +105,10 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      expect.objectContaining({
+        fileSecurityResultsPromise: expect.any(Promise),
+        gitSecurityResultsPromise: expect.any(Promise),
+      }),
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
@@ -177,6 +194,12 @@ describe('packager', () => {
             taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup },
             warmupPromise: Promise.resolve(),
           }),
+          createSecurityCheckTaskRunner: vi.fn().mockReturnValue({
+            run: vi.fn().mockResolvedValue([]),
+            cleanup,
+          }),
+          dispatchSecurityFileBatch: vi.fn().mockResolvedValue([]),
+          runGitSecurityCheck: vi.fn().mockResolvedValue([]),
           getGitDiffs: vi.fn().mockResolvedValue(undefined),
           getGitLogs: vi.fn().mockResolvedValue(undefined),
           prefetchSortData: vi.fn().mockResolvedValue(undefined),
