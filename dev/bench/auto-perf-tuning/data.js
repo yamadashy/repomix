@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777629022318,
+  "lastUpdate": 1777634251952,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7200,6 +7200,51 @@ window.BENCHMARK_DATA = {
             "range": "±126",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1638ms, Q3: 1764ms\nAll times: 1587, 1588, 1590, 1622, 1630, 1638, 1674, 1679, 1706, 1713, 1726, 1735, 1735, 1750, 1762, 1764, 1831, 1855, 1914, 1963ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "73f7825d96599854fd10d28fc9d6481f28880b2d",
+          "message": "perf(security): Run QUICK_SECRET_SCREEN on main thread, skip worker pool when no candidates\n\nReplaces the always-spawned 2-thread Tinypool security worker pool with a main-thread\npre-screen pass against `QUICK_SECRET_SCREEN`. In the typical real-world repo (no\nsecret-shaped content anywhere), every item is rejected by the regex and the check\nreturns immediately — no worker pool is spawned, no IPC round-trips, and the\n~30-50ms `@secretlint/core` + `secretlint-rule-preset-recommend` top-level import\nis never paid. When at least one item passes the pre-screen, the engine is\nlazy-loaded once via dynamic `import()` (cached promise, cleared on rejection so\na transient failure doesn't poison long-lived consumers) and `lintSource` runs\non the main thread for just the flagged items (typically a handful even on\nsecret-bearing repos).\n\nWhy this is a net win even when secrets are present:\n\nThe previous worker-based path always paid:\n- Worker pool startup + `@secretlint/*` module load in each worker (~30-50ms each, 2 workers in parallel)\n- Structured-clone IPC for every file's full content across BATCH_SIZE=50 batches\n- Tinypool teardown in the `finally` block\n\nFor the common no-secret case, all of that is eliminated — replaced by a\n~10-15ms regex pass on the main thread. For the rare match case, the\n~30-50ms main-thread `@secretlint` import replaces the per-worker import,\nand `lintSource` runs only on the small flagged set instead of the full\nbatch (the in-worker QUICK_SECRET_SCREEN added in 5467691 already ran the\nsame regex in-worker, so the lintSource call count is identical between\nold and new paths).\n\nThe ~150ms `gpt-tokenizer` warm-up that competed with the security workers\non 4-vCPU boxes (5 worker threads + main thread for 4 cores) also gets back\nthe freed CPU, so file-metrics workers complete sooner.\n\n`QUICK_SECRET_SCREEN` is split into `src/core/security/quickSecretScreen.ts`\nso the main thread can import it without pulling in `@secretlint`. The\nworker file re-exports it for the existing\n`tests/core/security/workers/securityCheckWorker.test.ts` rule-count pin.\nThe worker module + `runSecretLint` + `createSecretLintConfig` exports\nremain in place because `src/mcp/tools/fileSystemReadFileTool.ts` still\nimports them for per-file MCP scans.\n\n## Paired interleaved A/B benchmark (n=25, `--include 'src,tests'`, 258 files, 4 vCPU)\n\n|        | min   | median | mean   | sd    |\n|--------|-------|--------|--------|-------|\n| BEFORE | 641ms | 688ms  | 685.9ms| 19.3ms|\n| AFTER  | 613ms | 648ms  | 649.4ms| 19.8ms|\n\n- Mean paired Δ: **36.6ms** (95% CI ≈ 25.3..47.8ms — entirely positive)\n- Median paired Δ: **42.0ms**\n- AFTER faster in **22/25** pairs\n- Wall-clock reduction: **~5.3% mean / ~5.8% median**\n\nOutput XML is byte-identical to BEFORE (verified via `cmp` over the diff\nof the packed source files themselves; the only differences are the\nchanged source files appearing in their own packed form).\n\n## Test plan\n\n- [x] `npm run lint` — passes (only pre-existing warnings unrelated to this change)\n- [x] `npm run test` — 1261/1262 pass; the single failure (`tests/core/metrics/calculateFileMetrics.test.ts > preserves order and reports progress across multiple batches`) reproduces on the unmodified base branch and is unrelated\n- [x] `tests/core/security/securityCheck.test.ts` rewritten to match the new dependency surface (`loadSecretLintEngine` instead of `initTaskRunner`/`getProcessConcurrency`); existing semantics — issue detection, error propagation, no-mutation, git diff handling, gitDiffResult variants — are preserved, and a new test pins the no-candidates fast path\n- [x] `tests/core/security/workers/securityCheckWorker.test.ts` (preset rule-count pin and per-rule marker tests) still passes via the re-exported `QUICK_SECRET_SCREEN` from the worker module\n- [x] Independent sub-agent code reviews (correctness, design, test coverage): one latent issue surfaced — a rejected `_secretLintEnginePromise` would permanently poison the cache for long-lived processes (CLI is fine, MCP server / library callers wouldn't be) — fixed in this commit by clearing the cache on rejection. Over-explanatory comments trimmed per CLAUDE.md guidance.",
+          "timestamp": "2026-05-01T11:15:37Z",
+          "tree_id": "ca45b902faa9147feeec6c39958fe603845d47a0",
+          "url": "https://github.com/yamadashy/repomix/commit/73f7825d96599854fd10d28fc9d6481f28880b2d"
+        },
+        "date": 1777634250729,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 852,
+            "range": "±153",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 824ms, Q3: 977ms\nAll times: 755, 775, 789, 797, 806, 806, 811, 824, 828, 833, 843, 845, 848, 848, 848, 852, 863, 869, 901, 910, 910, 968, 977, 992, 1007, 1010, 1025, 1058, 1075, 1107ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1191,
+            "range": "±42",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1167ms, Q3: 1209ms\nAll times: 1145, 1154, 1154, 1157, 1164, 1167, 1169, 1172, 1174, 1179, 1191, 1192, 1194, 1198, 1203, 1209, 1218, 1219, 1221, 1232ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1503,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1501ms, Q3: 1516ms\nAll times: 1486, 1494, 1496, 1498, 1500, 1501, 1501, 1502, 1503, 1503, 1503, 1505, 1507, 1512, 1516, 1516, 1517, 1520, 1525, 1533ms"
           }
         ]
       }
