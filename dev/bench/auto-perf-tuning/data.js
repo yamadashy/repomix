@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777573635836,
+  "lastUpdate": 1777629022318,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7155,6 +7155,51 @@ window.BENCHMARK_DATA = {
             "range": "±209",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1607ms, Q3: 1816ms\nAll times: 1552, 1571, 1581, 1600, 1601, 1607, 1626, 1690, 1698, 1704, 1709, 1794, 1797, 1804, 1812, 1816, 1819, 1844, 1864, 1870ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "5467691683d00056a0b791ed81e973ee8fe4ef87",
+          "message": "perf(security): Pre-screen lintSource calls with quick regex marker check\n\nBypass the per-file `lintSource` setup cost when the file content cannot\npossibly match any rule in `@secretlint/secretlint-rule-preset-recommend`.\n\n`lintSource` constructs a fresh `PromiseEventEmitter`, registers all\ndetection-rule listeners, and routes the file through every rule's\n`matchAll` regex even when the content is plain source code. Measured\nworker cost: ~0.3-0.5ms per file. With 2 security workers and ≥250 files,\nthat serial overhead dominates the security-check phase even after\nTinypool batching.\n\nThe `QUICK_SECRET_SCREEN` regex carries one over-inclusive marker per\ndetection rule (AWS access-key prefixes, `secret_access_key`, `account`,\n`-----BEGIN`, Slack `xox[abporu]-`/`xapp-`, `hooks.slack.com`, GitHub\n`gh[oprsu]_`/`github_pat_`, Anthropic `sk-ant-api0`, OpenAI\n`sk-(proj|svcacct|admin)-`/`T3BlbkFJ`, Linear `lin_api_`, 1Password\n`ops_ey`, SendGrid `SG.<token>.`, Shopify `shp{at,ss,ca,pa}_`, npm\n`x-oauth-basic`/`_authToken`/`npm_<20+>`, MongoDB/MySQL/PostgreSQL URLs,\nbasic-auth `://u:p@`). Case-insensitive and intentionally over-inclusive:\nfalse positives merely fall through to `lintSource` (correct, slightly\nslower); false negatives would silently drop secrets, so each rule's\nunique substring is included. The AWS Account ID rule's `(ID|id|Id)?`\nsuffix is optional, so `ACCOUNT=...` without `_ID` must match — the\nmarker is `account` rather than `account_id`.\n\nGCP rule fires by file extension (`.json` / `.p12`) on `source.ext`. The\nexisting code passes `filePath.split('.').pop()` (no leading dot), so the\nGCP rule never matches today; preserving that quirk means no special\npass-through is needed. Files with `-----BEGIN` inside JSON still match\nvia the privatekey rule.\n\n## Coverage verification\n\n- 23 security tests pass, including 3 new pins:\n  - QUICK_SECRET_SCREEN rejects plain source and runSecretLint\n    short-circuits to null\n  - QUICK_SECRET_SCREEN matches a minimal sample for every detection rule\n  - The installed preset's detection-rule list matches the expected 14;\n    a future secretlint version that adds a rule fails this assertion\n    and forces an audit before secrets can silently slip through\n- XML output is byte-identical between BEFORE and AFTER on\n  `--include 'src,tests'` (1.42MB) when packing a fixed source snapshot\n\n## Paired interleaved A/B benchmarks (4-vCPU box)\n\n`--include 'src,tests'` (259 files), n=40:\n\n|        | min   | median | mean  | sd     |\n|--------|-------|--------|-------|--------|\n| BEFORE | 682ms | 802ms  | 798ms | 80.1ms |\n| AFTER  | 646ms | 785ms  | 768ms | 77.8ms |\n\n- Mean paired Δ: **30.3ms** (3.79%)\n- Median paired Δ: **34ms** (4.24%)\n- AFTER faster in 29/40 pairs\n\nDefault (full repo, ~1040 files), n=40:\n\n|        | min    | median | mean   | sd      |\n|--------|--------|--------|--------|---------|\n| BEFORE | 1369ms | 1597ms | 1646ms | 231.9ms |\n| AFTER  | 1374ms | 1524ms | 1603ms | 277.0ms |\n\n- Mean paired Δ: **43.1ms** (2.62%)\n- Median paired Δ: **30ms** (1.88%)\n- AFTER faster in 22/40 pairs\n\nBoth pack sizes meet the ≥2% mean wall-clock threshold; the focused\nsmall-pack benchmark also clears it on the median.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+          "timestamp": "2026-05-01T09:48:28Z",
+          "tree_id": "b78f65462dca8de3542f2d8382a4f5ae6be06ec5",
+          "url": "https://github.com/yamadashy/repomix/commit/5467691683d00056a0b791ed81e973ee8fe4ef87"
+        },
+        "date": 1777629021779,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1088,
+            "range": "±119",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1033ms, Q3: 1152ms\nAll times: 877, 948, 956, 964, 1008, 1020, 1023, 1033, 1043, 1059, 1059, 1063, 1063, 1065, 1087, 1088, 1098, 1122, 1123, 1133, 1146, 1150, 1152, 1154, 1154, 1163, 1213, 1258, 1395, 1415ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1123,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1117ms, Q3: 1143ms\nAll times: 1107, 1108, 1110, 1116, 1116, 1117, 1117, 1118, 1119, 1122, 1123, 1130, 1134, 1140, 1142, 1143, 1148, 1151, 1168, 1176ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1726,
+            "range": "±126",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1638ms, Q3: 1764ms\nAll times: 1587, 1588, 1590, 1622, 1630, 1638, 1674, 1679, 1706, 1713, 1726, 1735, 1735, 1750, 1762, 1764, 1831, 1855, 1914, 1963ms"
           }
         ]
       }
