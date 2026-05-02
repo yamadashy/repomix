@@ -1,3 +1,8 @@
+---
+title: Prompt Examples
+description: Copy prompt templates for using Repomix output in AI code reviews, security analysis, performance reviews, documentation, testing, and quality checks.
+---
+
 # Prompt Examples
 
 ## Code Review

@@ -1,3 +1,8 @@
+---
+title: Using Repomix with GitHub Actions
+description: Automate Repomix in GitHub Actions to package repositories for AI analysis, CI workflows, artifacts, code review, and compressed output.
+---
+
 # Using Repomix with GitHub Actions
 
 You can automate the process of packing your codebase for AI analysis by integrating Repomix into your GitHub Actions workflows. This is useful for continuous integration (CI), code review, or preparing your repository for LLM-based tools.

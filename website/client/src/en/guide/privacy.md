@@ -1,3 +1,8 @@
+---
+title: Privacy Policy
+description: Understand how the Repomix CLI, website, and browser extension handle repository data, telemetry, temporary uploads, and security responsibilities.
+---
+
 # Privacy Policy
 
 ## Repomix CLI Tool

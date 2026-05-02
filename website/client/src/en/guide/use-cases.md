@@ -1,3 +1,8 @@
+---
+title: Use Cases
+description: Explore practical Repomix workflows for AI code review, bug investigation, refactoring, documentation, onboarding, security audits, and architecture analysis.
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>
