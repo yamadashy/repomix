@@ -1,3 +1,8 @@
+---
+title: "Configurazione"
+description: "Configura Repomix con file JSON, JSONC, JSON5, JavaScript o TypeScript, inclusi formati di output, pattern include e ignore e opzioni avanzate."
+---
+
 # Configurazione
 
 Repomix può essere configurato usando un file di configurazione o opzioni da linea di comando. Il file di configurazione ti permette di personalizzare vari aspetti dell'elaborazione e dell'output della tua codebase.

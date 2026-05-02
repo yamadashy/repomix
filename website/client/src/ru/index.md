@@ -1,6 +1,7 @@
 ---
 layout: home
 title: Repomix
+description: "Упаковывайте локальные или удалённые репозитории в удобные для ИИ форматы XML, Markdown, JSON или простой текст для Claude, ChatGPT, Gemini, MCP и ревью кода."
 titleTemplate: Упаковка кодовой базы в форматы, удобные для ИИ
 aside: false
 editLink: false

@@ -1,3 +1,8 @@
+---
+title: "Claude Code Eklentileri"
+description: "MCP, slash komutları ve yapay zeka destekli depo keşfi için resmi Repomix Claude Code eklentilerini kurun ve kullanın."
+---
+
 # Claude Code Eklentileri
 
 Repomix, [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) için AI destekli geliştirme ortamıyla sorunsuz entegrasyon sağlayan resmi eklentiler sunar. Bu eklentiler, doğal dil komutlarını kullanarak doğrudan Claude Code içinde kod tabanlarını analiz etmeyi ve paketlemeyi kolaylaştırır.

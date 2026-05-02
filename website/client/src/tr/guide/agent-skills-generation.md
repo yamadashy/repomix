@@ -1,3 +1,8 @@
+---
+title: "Ajan Becerileri Oluşturma"
+description: "Yapay zeka asistanlarının kod tabanı referanslarını, proje yapısını ve uygulama desenlerini yeniden kullanabilmesi için yerel veya uzak depolardan Claude Agent Skills oluşturun."
+---
+
 # Ajan Becerileri Oluşturma
 
 Repomix, [Claude Ajan Becerileri](https://docs.anthropic.com/en/docs/claude-code/skills) biçiminde çıktı oluşturabilir; AI asistanları için yeniden kullanılabilir bir kod tabanı referansı olarak kullanılabilecek yapılandırılmış bir Beceriler dizini yaratır.

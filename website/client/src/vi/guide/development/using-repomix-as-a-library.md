@@ -1,3 +1,8 @@
+---
+title: Sử dụng Repomix như một thư viện
+description: Dùng Repomix như thư viện Node.js để đóng gói thư mục local hoặc repository remote, truy cập core API và tích hợp output codebase sẵn sàng cho AI vào ứng dụng.
+---
+
 # Sử dụng Repomix như một thư viện
 
 Ngoài việc sử dụng Repomix như một công cụ dòng lệnh, bạn cũng có thể tích hợp nó trực tiếp vào các ứng dụng JavaScript hoặc TypeScript của mình như một thư viện.

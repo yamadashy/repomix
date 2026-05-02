@@ -1,3 +1,8 @@
+---
+title: बुनियादी उपयोग
+description: Directories, remote repositories, selected files, git diffs, commit logs, split outputs, token counts और compressed code pack करने के लिए Repomix CLI उपयोग करें।
+---
+
 # बुनियादी उपयोग
 
 Repomix का उपयोग करना आसान है। यहां बताया गया है कि आप अपने कोडबेस को AI-फ्रेंडली फॉर्मेट में पैक करने के लिए इसका उपयोग कैसे कर सकते हैं।

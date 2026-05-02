@@ -1,3 +1,8 @@
+---
+title: कॉन्फिगरेशन
+description: JSON, JSONC, JSON5, JavaScript या TypeScript files से Repomix configure करें, जिसमें output formats, include और ignore patterns तथा advanced options शामिल हैं।
+---
+
 # कॉन्फिगरेशन
 
 Repomix को कॉन्फिगरेशन फ़ाइल या कमांड-लाइन विकल्पों का उपयोग करके कॉन्फिगर किया जा सकता है। कॉन्फिगरेशन फ़ाइल आपको अपने कोडबेस के प्रसंस्करण और आउटपुट के विभिन्न पहलुओं को अनुकूलित करने की अनुमति देती है।

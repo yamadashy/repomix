@@ -1,3 +1,8 @@
+---
+title: Kasus Penggunaan
+description: Jelajahi workflow Repomix praktis untuk AI code review, investigasi bug, refactoring, dokumentasi, onboarding, audit keamanan, dan analisis arsitektur.
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

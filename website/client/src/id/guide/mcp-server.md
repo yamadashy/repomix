@@ -1,3 +1,8 @@
+---
+title: Server MCP
+description: Jalankan Repomix sebagai server Model Context Protocol agar AI assistant dapat mengemas, mencari, dan membaca codebase lokal atau remote secara langsung.
+---
+
 # Server MCP
 
 Repomix mendukung [Model Context Protocol (MCP)](https://modelcontextprotocol.io), memungkinkan asisten AI untuk berinteraksi langsung dengan codebase Anda. Ketika dijalankan sebagai server MCP, Repomix menyediakan tools yang memungkinkan asisten AI untuk mengemas repository lokal atau remote untuk analisis tanpa memerlukan persiapan file manual.

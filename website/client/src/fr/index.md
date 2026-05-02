@@ -1,6 +1,7 @@
 ---
 layout: home
 title: Repomix
+description: "Regroupez des dépôts locaux ou distants en XML, Markdown, JSON ou texte brut adaptés à l'IA pour Claude, ChatGPT, Gemini, MCP et les revues de code."
 titleTemplate: Empaquetez votre code dans des formats adaptés à l'IA
 aside: false
 editLink: false

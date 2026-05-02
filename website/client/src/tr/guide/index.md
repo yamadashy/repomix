@@ -1,3 +1,8 @@
+---
+title: "Repomix ile Başlarken"
+description: "Bir depoyu ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity ve diğer LLM’ler için yapay zeka dostu bağlama paketlemek üzere Repomix’i kullanmaya başlayın."
+---
+
 # Repomix ile Başlarken
 
 <script setup>

@@ -1,3 +1,8 @@
+---
+title: Repomix में योगदान
+description: Repomix development environment set up करें, tests चलाएं, code lint करें, project structure समझें और open source project में योगदान दें।
+---
+
 # Repomix में योगदान
 
 Repomix एक ओपन सोर्स प्रोजेक्ट है और हम योगदान का स्वागत करते हैं! यह गाइड आपको Repomix के विकास में शामिल होने के लिए आवश्यक जानकारी प्रदान करेगी।

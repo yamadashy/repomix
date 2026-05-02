@@ -1,3 +1,8 @@
+---
+title: Contoh Prompt
+description: Salin template prompt untuk menggunakan output Repomix dalam AI code review, analisis keamanan, review performa, dokumentasi, testing, dan pemeriksaan kualitas.
+---
+
 # Contoh Prompt
 
 

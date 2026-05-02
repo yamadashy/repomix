@@ -1,3 +1,8 @@
+---
+title: "Temel Kullanım"
+description: "Repomix CLI ile dizinleri, uzak depoları, seçili dosyaları, git diff’lerini, commit günlüklerini, bölünmüş çıktıları, token sayılarını ve sıkıştırılmış kodu paketleyin."
+---
+
 # Temel Kullanım
 
 ## Hızlı Başlangıç

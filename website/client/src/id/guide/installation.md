@@ -1,3 +1,8 @@
+---
+title: Instalasi
+description: Instal Repomix dengan npx, npm, Yarn, Bun, Homebrew, Docker, ekstensi VS Code, atau ekstensi browser, lalu verifikasi setup CLI.
+---
+
 # Instalasi
 
 

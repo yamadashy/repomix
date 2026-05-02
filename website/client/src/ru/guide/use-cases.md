@@ -1,3 +1,8 @@
+---
+title: "Сценарии использования"
+description: "Изучите практические сценарии Repomix для AI-ревью кода, расследования ошибок, рефакторинга, документации, онбординга, аудитов безопасности и анализа архитектуры."
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

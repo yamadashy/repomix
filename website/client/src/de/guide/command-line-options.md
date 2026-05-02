@@ -1,3 +1,8 @@
+---
+title: "Befehlszeilenoptionen"
+description: "Referenz aller Repomix-CLI-Optionen für Eingabe, Ausgabe, Dateiauswahl, Remote-Repositories, Konfiguration, Sicherheit, Token-Zählung, MCP und Agent Skills."
+---
+
 # Befehlszeilenoptionen
 
 ## Grundlegende Optionen

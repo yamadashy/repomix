@@ -1,3 +1,8 @@
+---
+title: 安装
+description: 使用 npx、npm、Yarn、Bun、Homebrew、Docker、VS Code 扩展或浏览器扩展安装 Repomix，并验证 CLI 设置。
+---
+
 # 安装
 
 ## 使用 npx（无需安装）

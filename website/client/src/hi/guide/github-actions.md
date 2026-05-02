@@ -1,3 +1,8 @@
+---
+title: GitHub Actions
+description: AI analysis, CI workflows, artifacts, code review और compressed output के लिए GitHub Actions में Repomix automate करें।
+---
+
 # GitHub Actions
 
 Repomix को GitHub Actions के साथ एकीकृत किया जा सकता है ताकि रिपॉजिटरी को स्वचालित रूप से प्रोसेस किया जा सके और AI-फ्रेंडली आउटपुट जनरेट किया जा सके। यह आपको CI/CD पाइपलाइन के हिस्से के रूप में Repomix का उपयोग करने की अनुमति देता है।

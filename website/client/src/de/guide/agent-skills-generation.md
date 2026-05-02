@@ -1,3 +1,8 @@
+---
+title: "Agent Skills Generierung"
+description: "Erstellen Sie Claude Agent Skills aus lokalen oder Remote-Repositories, damit KI-Assistenten Codebasis-Referenzen, Projektstruktur und Implementierungsmuster wiederverwenden können."
+---
+
 # Agent Skills Generierung
 
 Repomix kann Ausgaben im Format von [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) generieren und dabei ein strukturiertes Skills-Verzeichnis erstellen, das als wiederverwendbare Codebase-Referenz für KI-Assistenten dient.

@@ -1,8 +1,13 @@
+---
+title: "Repomix Explorer Becerisi (Ajan Becerileri)"
+description: "Claude Code ve Agent Skills formatını destekleyen diğer yapay zeka asistanlarıyla yerel ve uzak kod tabanlarını analiz etmek için Repomix Explorer agent skill’ini kurun."
+---
+
 # Repomix Explorer Becerisi (Ajan Becerileri)
 
 Repomix, AI kodlama asistanlarının Repomix CLI kullanarak kod tabanlarını analiz etmesini ve keşfetmesini sağlayan kullanıma hazır bir **Repomix Explorer** becerisi sunar.
 
-Bu beceri; Claude Code, Cursor, Codex, GitHub Copilot ve daha fazlasını kapsayan çeşitli AI araçlarıyla çalışacak şekilde tasarlanmıştır.
+Bu beceri, Claude Code ve Agent Skills formatını destekleyen diğer yapay zeka asistanları için tasarlanmıştır.
 
 ## Hızlı Kurulum
 

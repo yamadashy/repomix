@@ -1,3 +1,8 @@
+---
+title: Nén mã
+description: Dùng tính năng nén mã dựa trên Tree-sitter trong Repomix để giảm token usage trong khi vẫn giữ imports, exports, classes, functions, interfaces và cấu trúc.
+---
+
 # Nén mã
 
 Repomix cung cấp tính năng nén mã để giảm kích thước đầu ra bằng cách chỉ bao gồm chữ ký hàm và loại bỏ phần thân hàm. Điều này đặc biệt hữu ích khi làm việc với các codebase lớn và giới hạn token của mô hình ngôn ngữ lớn (LLM).

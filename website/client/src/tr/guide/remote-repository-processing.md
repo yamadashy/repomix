@@ -1,3 +1,8 @@
+---
+title: "GitHub Deposu İşleme"
+description: "Repomix ile GitHub depolarını tam URL, kullanıcı/depo kısaltması, dallar, etiketler, commit’ler, Docker ve uzak yapılandırma güven kontrolleriyle paketleyin."
+---
+
 # GitHub Deposu İşleme
 
 ## Temel Kullanım

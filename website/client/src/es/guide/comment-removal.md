@@ -1,3 +1,8 @@
+---
+title: "Eliminación de comentarios"
+description: "Elimina comentarios de código de la salida de Repomix para reducir ruido y uso de tokens, conservando los archivos fuente y el comportamiento de los lenguajes compatibles."
+---
+
 # Eliminación de comentarios
 
 Repomix puede eliminar automáticamente los comentarios de tu código al generar el archivo de salida. Esto puede ayudar a reducir el ruido y centrarse en el código real.

@@ -1,3 +1,8 @@
+---
+title: 命令行选项
+description: 查阅 Repomix CLI 的所有选项，涵盖输入、输出、文件选择、远程仓库、配置、安全、令牌计数、MCP 和 Agent Skills。
+---
+
 # 命令行选项
 
 ## 基本选项

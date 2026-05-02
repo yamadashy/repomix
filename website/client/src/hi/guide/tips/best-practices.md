@@ -1,3 +1,8 @@
+---
+title: AI-सहायक विकास टिप्स
+description: Existing code, modular implementation, tests, planning और Repomix-based context sharing के लिए practical AI-assisted development tips।
+---
+
 # AI-सहायक विकास टिप्स
 
 Repomix के साथ AI मॉडल का उपयोग करके अपने विकास प्रक्रिया को अधिकतम करने के लिए यहां कुछ सर्वोत्तम प्रथाएं दी गई हैं।

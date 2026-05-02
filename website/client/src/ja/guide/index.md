@@ -1,3 +1,8 @@
+---
+title: Repomixとは
+description: Repomixを使ってリポジトリをChatGPT、Claude、Gemini、Grok、DeepSeek、PerplexityなどのLLM向けAIフレンドリーなコンテキストに変換する方法を紹介します。
+---
+
 # Repomixとは
 
 <script setup>

@@ -1,3 +1,8 @@
+---
+title: "Kommentarentfernung"
+description: "Entfernen Sie Code-Kommentare aus Repomix-Ausgaben, um Rauschen und Token-Verbrauch zu reduzieren, ohne Quelldateien oder unterstütztes Sprachverhalten zu verändern."
+---
+
 # Kommentarentfernung
 
 Repomix kann beim Generieren der Ausgabedatei automatisch Kommentare aus Ihrer Codebasis entfernen. Dies kann helfen, Störungen zu reduzieren und sich auf den eigentlichen Code zu konzentrieren.

@@ -1,3 +1,8 @@
+---
+title: Agent Skills जनरेशन
+description: Local या remote repositories से Claude Agent Skills बनाएं ताकि AI assistants codebase references, project structure और implementation patterns दोबारा उपयोग कर सकें।
+---
+
 # Agent Skills जनरेशन
 
 Repomix [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) फॉर्मेट में आउटपुट जनरेट कर सकता है, एक स्ट्रक्चर्ड Skills डायरेक्टरी बनाता है जिसे AI असिस्टेंट के लिए पुन: प्रयोज्य कोडबेस रेफरेंस के रूप में उपयोग किया जा सकता है।

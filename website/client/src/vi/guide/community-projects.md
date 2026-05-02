@@ -1,3 +1,8 @@
+---
+title: Dự Án Cộng Đồng
+description: Khám phá công cụ cộng đồng, extension cho editor, ứng dụng desktop, triển khai ngôn ngữ và tích hợp được xây dựng quanh Repomix.
+---
+
 # Dự Án Cộng Đồng
 
 Khám phá những dự án tuyệt vời được tạo ra bởi cộng đồng Repomix! Những dự án này mở rộng khả năng của Repomix, cung cấp các triển khai bằng ngôn ngữ khác, hoặc tích hợp Repomix vào các bộ công cụ lớn hơn.

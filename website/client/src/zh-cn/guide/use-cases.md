@@ -1,3 +1,8 @@
+---
+title: 使用场景
+description: 探索 Repomix 在 AI 代码审查、缺陷排查、重构、文档、入门培训、安全审计和架构分析中的实用流程。
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

@@ -1,3 +1,8 @@
+---
+title: "Casos de Uso"
+description: "Explore fluxos de trabalho práticos do Repomix para revisão de código com IA, investigação de bugs, refatoração, documentação, onboarding, auditorias de segurança e análise de arquitetura."
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

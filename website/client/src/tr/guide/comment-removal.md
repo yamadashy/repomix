@@ -1,3 +1,8 @@
+---
+title: "Yorum Kaldırma"
+description: "Kaynak dosyaları ve desteklenen dil davranışını korurken gürültüyü ve token kullanımını azaltmak için Repomix çıktısından kod yorumlarını kaldırın."
+---
+
 # Yorum Kaldırma
 
 Repomix, çıktı dosyası oluştururken kod tabanınızdaki yorumları otomatik olarak kaldırabilir. Bu özellik, gereksiz gürültüyü azaltarak asıl koda odaklanmanıza yardımcı olur.

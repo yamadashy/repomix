@@ -1,3 +1,8 @@
+---
+title: "Utilizzo Base"
+description: "Usa la CLI Repomix per impacchettare directory, repository remoti, file selezionati, diff git, log dei commit, output suddivisi, conteggi token e codice compresso."
+---
+
 # Utilizzo Base
 
 ## Avvio Rapido

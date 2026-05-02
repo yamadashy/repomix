@@ -1,3 +1,8 @@
+---
+title: "Uso básico"
+description: "Usa la CLI de Repomix para empaquetar directorios, repositorios remotos, archivos seleccionados, diffs de git, logs de commits, salidas divididas, conteos de tokens y código comprimido."
+---
+
 # Uso básico
 
 ## Inicio rápido

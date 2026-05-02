@@ -1,3 +1,8 @@
+---
+title: Cài đặt
+description: Cài đặt Repomix bằng npx, npm, Yarn, Bun, Homebrew, Docker, extension VS Code hoặc extension trình duyệt, rồi xác minh thiết lập CLI.
+---
+
 # Cài đặt
 
 Có nhiều cách để cài đặt và sử dụng Repomix. Chọn phương pháp phù hợp nhất với quy trình làm việc của bạn.

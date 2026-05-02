@@ -1,3 +1,8 @@
+---
+title: Praktik Terbaik Pengembangan dengan Bantuan AI
+description: Tips praktis pengembangan berbantuan AI untuk memakai kode yang ada, implementasi modular, test, perencanaan, dan berbagi konteks berbasis Repomix.
+---
+
 # Praktik Terbaik Pengembangan dengan Bantuan AI
 
 

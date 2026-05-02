@@ -1,3 +1,8 @@
+---
+title: Các Trường Hợp Sử Dụng
+description: Khám phá các workflow Repomix thực tế cho AI code review, điều tra bug, refactoring, tài liệu, onboarding, audit bảo mật và phân tích kiến trúc.
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

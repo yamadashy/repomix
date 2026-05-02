@@ -1,3 +1,8 @@
+---
+title: "Ausgabeformate"
+description: "Vergleichen Sie die Repomix-Ausgabeformate XML, Markdown, JSON und Klartext und wählen Sie die beste Struktur für Claude, ChatGPT, Gemini, APIs und Automatisierung."
+---
+
 # Ausgabeformate
 
 Repomix unterstützt vier Ausgabeformate:

@@ -1,3 +1,8 @@
+---
+title: Sử dụng cơ bản
+description: Dùng Repomix CLI để đóng gói thư mục, repository remote, file được chọn, git diff, commit log, output tách phần, số token và code đã nén.
+---
+
 # Sử dụng cơ bản
 
 Repomix được thiết kế để dễ sử dụng với các tùy chọn mặc định hợp lý, đồng thời cung cấp khả năng tùy chỉnh mạnh mẽ cho các trường hợp sử dụng nâng cao.

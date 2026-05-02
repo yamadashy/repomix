@@ -1,3 +1,8 @@
+---
+title: "Exemples de prompts"
+description: "Copiez des modèles de prompts pour utiliser la sortie Repomix dans les revues de code IA, analyses de sécurité, revues de performance, documentation, tests et contrôles qualité."
+---
+
 # Exemples de prompts
 
 ## Revue de code

@@ -1,3 +1,8 @@
+---
+title: "Prompt-Beispiele"
+description: "Kopieren Sie Prompt-Vorlagen für Repomix-Ausgaben in KI-Code-Reviews, Sicherheitsanalysen, Performance-Reviews, Dokumentation, Tests und Qualitätsprüfungen."
+---
+
 # Prompt-Beispiele
 
 ## Code-Review

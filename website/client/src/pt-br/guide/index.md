@@ -1,3 +1,8 @@
+---
+title: "Introdução ao Repomix"
+description: "Comece a usar o Repomix para empacotar um repositório em contexto amigável para IA para ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity e outros LLMs."
+---
+
 # Introdução ao Repomix
 
 <script setup>

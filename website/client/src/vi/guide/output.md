@@ -1,3 +1,8 @@
+---
+title: Định dạng đầu ra
+description: So sánh các định dạng output XML, Markdown, JSON và văn bản thuần của Repomix, rồi chọn cấu trúc tốt nhất cho Claude, ChatGPT, Gemini, API và automation.
+---
+
 # Định dạng đầu ra
 
 Repomix hỗ trợ bốn định dạng đầu ra:

@@ -1,3 +1,8 @@
+---
+title: "Instalação"
+description: "Instale o Repomix com npx, npm, Yarn, Bun, Homebrew, Docker, extensões do VS Code ou extensões de navegador e verifique a configuração da CLI."
+---
+
 # Instalação
 
 ## Usando npx (Nenhuma Instalação Necessária)

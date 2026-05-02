@@ -1,3 +1,8 @@
+---
+title: 出力フォーマット
+description: RepomixのXML、Markdown、JSON、プレーンテキスト出力形式を比較し、Claude、ChatGPT、Gemini、API、自動化に適した構造を選びます。
+---
+
 # 出力フォーマット
 
 Repomixは4つの出力フォーマットをサポートしています。

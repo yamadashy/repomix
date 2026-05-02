@@ -1,3 +1,8 @@
+---
+title: Format Output
+description: Bandingkan format output XML, Markdown, JSON, dan teks biasa Repomix, lalu pilih struktur terbaik untuk Claude, ChatGPT, Gemini, API, dan otomasi.
+---
+
 # Format Output
 
 Repomix mendukung empat format output:

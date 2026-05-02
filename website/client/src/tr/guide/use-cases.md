@@ -1,3 +1,8 @@
+---
+title: "Kullanım Senaryoları"
+description: "Yapay zeka destekli kod inceleme, hata araştırma, refaktörleme, dokümantasyon, onboarding, güvenlik denetimleri ve mimari analizi için pratik Repomix iş akışlarını keşfedin."
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

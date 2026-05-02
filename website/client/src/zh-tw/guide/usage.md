@@ -1,3 +1,8 @@
+---
+title: 基本用法
+description: 了解如何使用 Repomix CLI 打包目錄、遠端儲存庫、選定檔案、git diff、提交記錄、分割輸出、token 計數與壓縮程式碼。
+---
+
 # 基本用法
 
 ## 快速開始

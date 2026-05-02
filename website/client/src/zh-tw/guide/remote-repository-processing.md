@@ -1,3 +1,8 @@
+---
+title: GitHub 倉庫處理
+description: 使用完整 URL、user/repo 簡寫、分支、標籤、提交、Docker 與遠端設定信任控制，透過 Repomix 打包 GitHub 儲存庫。
+---
+
 # GitHub 倉庫處理
 
 ## 基本用法

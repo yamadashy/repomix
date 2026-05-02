@@ -1,3 +1,8 @@
+---
+title: Bắt đầu với Repomix
+description: Bắt đầu dùng Repomix để đóng gói repository thành ngữ cảnh thân thiện với AI cho ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity và các LLM khác.
+---
+
 # Bắt đầu với Repomix
 
 <script setup>

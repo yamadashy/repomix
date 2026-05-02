@@ -1,3 +1,8 @@
+---
+title: कोड कम्प्रेशन
+description: Imports, exports, classes, functions, interfaces और structure बचाते हुए token usage घटाने के लिए Repomix में Tree-sitter आधारित code compression उपयोग करें।
+---
+
 # कोड कम्प्रेशन
 
 Repomix का कोड कम्प्रेशन फीचर आपके कोडबेस को संक्षिप्त करने में मदद करता है, जिससे AI मॉडल के लिए टोकन उपयोग कम हो जाता है और बड़े कोडबेस को संभालना आसान हो जाता है।

@@ -1,3 +1,8 @@
+---
+title: "Kurulum"
+description: "Repomix’i npx, npm, Yarn, Bun, Homebrew, Docker, VS Code eklentileri veya tarayıcı eklentileriyle kurun ve CLI yapılandırmasını doğrulayın."
+---
+
 # Kurulum
 
 ## npx ile Kullanım (Kurulum Gerekmez)

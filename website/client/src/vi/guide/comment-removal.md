@@ -1,3 +1,8 @@
+---
+title: Xóa bình luận
+description: Xóa comment code khỏi output Repomix để giảm nhiễu và token usage trong khi vẫn giữ nguyên source file và hành vi ngôn ngữ được hỗ trợ.
+---
+
 # Xóa bình luận
 
 Repomix cung cấp tùy chọn để xóa bình luận khỏi mã nguồn trong đầu ra, giúp giảm kích thước đầu ra và tập trung vào mã thực tế.

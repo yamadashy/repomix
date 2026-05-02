@@ -1,3 +1,8 @@
+---
+title: 설치
+description: "npx, npm, Yarn, Bun, Homebrew, Docker, VS Code 확장, 브라우저 확장으로 Repomix를 설치하고 CLI 설정을 확인합니다."
+---
+
 # 설치
 
 ## npx 사용 (설치 불필요)

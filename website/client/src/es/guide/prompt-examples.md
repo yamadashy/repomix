@@ -1,3 +1,8 @@
+---
+title: "Ejemplos de prompts"
+description: "Copia plantillas de prompts para usar la salida de Repomix en revisiones de código con IA, análisis de seguridad, revisiones de rendimiento, documentación, pruebas y controles de calidad."
+---
+
 # Ejemplos de prompts
 
 ## Revisión de código

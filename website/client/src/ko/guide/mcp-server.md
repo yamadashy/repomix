@@ -1,3 +1,8 @@
+---
+title: MCP 서버
+description: "Repomix를 Model Context Protocol 서버로 실행해 AI 어시스턴트가 로컬 또는 원격 코드베이스를 직접 패키징, 검색, 읽을 수 있게 합니다."
+---
+
 # MCP 서버
 
 Repomix는 [Model Context Protocol (MCP)](https://modelcontextprotocol.io)를 지원하며, AI 어시스턴트가 코드베이스와 직접 상호작용할 수 있게 해줍니다. MCP 서버로 실행하면 Repomix는 AI 어시스턴트가 수동 파일 준비 없이 로컬 또는 원격 저장소를 분석용으로 패키징할 수 있는 도구를 제공합니다.

@@ -1,3 +1,8 @@
+---
+title: "Konfiguration"
+description: "Konfigurieren Sie Repomix mit JSON-, JSONC-, JSON5-, JavaScript- oder TypeScript-Dateien, einschließlich Ausgabeformaten, Include- und Ignore-Mustern sowie erweiterten Optionen."
+---
+
 # Konfiguration
 
 Repomix kann über eine Konfigurationsdatei oder Kommandozeilenoptionen konfiguriert werden. Die Konfigurationsdatei ermöglicht es Ihnen, die Verarbeitung und Ausgabe Ihres Codes anzupassen.

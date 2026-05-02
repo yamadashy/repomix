@@ -1,3 +1,8 @@
+---
+title: "Plugins do Claude Code"
+description: "Instale e use os plugins oficiais do Repomix para Claude Code com MCP, comandos slash e exploração de repositórios com IA."
+---
+
 # Plugins do Claude Code
 
 O Repomix fornece plugins oficiais para o [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) que se integram perfeitamente ao ambiente de desenvolvimento baseado em IA. Esses plugins facilitam a analise e o empacotamento de bases de codigo diretamente dentro do Claude Code usando comandos em linguagem natural.

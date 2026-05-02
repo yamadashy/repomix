@@ -1,3 +1,8 @@
+---
+title: Pembuatan Agent Skills
+description: Buat Claude Agent Skills dari repositori lokal atau remote agar AI assistant dapat memakai ulang referensi codebase, struktur proyek, dan pola implementasi.
+---
+
 # Pembuatan Agent Skills
 
 Repomix dapat menghasilkan output dalam format [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills), membuat direktori Skills terstruktur yang dapat digunakan sebagai referensi codebase yang dapat digunakan kembali untuk asisten AI.

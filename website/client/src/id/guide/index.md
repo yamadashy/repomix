@@ -1,3 +1,8 @@
+---
+title: Memulai dengan Repomix
+description: Mulai gunakan Repomix untuk mengemas repositori menjadi konteks ramah AI bagi ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity, dan LLM lain.
+---
+
 # Memulai dengan Repomix
 
 <script setup>
