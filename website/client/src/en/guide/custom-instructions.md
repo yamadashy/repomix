@@ -1,3 +1,8 @@
+---
+title: Custom Instructions
+description: Add project-specific instructions to Repomix output so AI assistants understand coding standards, architecture context, review goals, and response requirements.
+---
+
 # Custom Instructions
 
 Repomix allows you to provide custom instructions that will be included in the output file. This can be useful for adding context or specific guidelines for AI systems processing the repository.
@@ -48,4 +53,3 @@ This repository contains the source code for the Repomix tool. Please follow the
 - [Output Formats](/guide/output) - Learn about the different output formats
 - [Prompt Examples](/guide/prompt-examples) - Example prompts for AI analysis
 - [Use Cases](/guide/use-cases) - Real-world examples of using Repomix with AI
-

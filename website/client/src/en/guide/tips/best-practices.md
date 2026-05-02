@@ -1,3 +1,8 @@
+---
+title: "AI-Assisted Development Best Practices: From My Experience"
+description: Practical AI-assisted development tips for using existing code, modular implementation, tests, planning, and Repomix-based context sharing.
+---
+
 # AI-Assisted Development Best Practices: From My Experience
 
 While I haven't successfully completed a large-scale project using AI yet, I'd like to share what I've learned so far from my experience working with AI in development.

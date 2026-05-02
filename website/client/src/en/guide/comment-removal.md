@@ -1,3 +1,7 @@
+---
+title: Comment Removal
+description: Remove code comments from Repomix output to reduce noise and token usage while preserving source files and supported language behavior.
+---
 
 # Comment Removal
 

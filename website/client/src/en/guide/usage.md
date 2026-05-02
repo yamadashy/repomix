@@ -1,3 +1,8 @@
+---
+title: Basic Usage
+description: Use Repomix CLI to pack directories, remote repositories, selected files, git diffs, commit logs, split outputs, token counts, and compressed code.
+---
+
 # Basic Usage
 
 ## Quick Start
