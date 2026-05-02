@@ -30,18 +30,23 @@ export interface MetricsTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
-// Upper bound on pre-warmed metrics workers. On boxes with enough cores
-// (>=5 vCPU) we keep the historical max of 3 for tokenization parallelism
-// on large repos. On <=4 vCPU boxes we cap at 2 instead — three metrics
-// workers parsing gpt-tokenizer's BPE table during searchFiles + collect +
-// processFiles + security would contend with the main thread and the
-// security worker pool (cap=2) for the same physical cores, extending the
-// warmup tail past the security check and adding to `pool.destroy()`.
+// Upper bound on pre-warmed metrics workers. Three workers maximize
+// tokenization parallelism on the typical full-repo pack workload.
+//
+// Previously this was stepped down to 2 on ≤4 vCPU because the security
+// check ran in its own 2-thread worker pool, and 3 metrics workers + 2
+// security workers + main thread would oversubscribe a 4-core box during
+// warmup (gpt-tokenizer BPE parse). After the security check moved back
+// to the main thread (commit `73f7825`), the only persistent CPU load
+// outside metrics on the default-config critical path is the main thread
+// itself, leaving headroom for a 3rd metrics worker on a 4-vCPU box.
+//
+// Carve-out: when `--compress` or `--removeComments` is set, `processFiles`
+// also spawns a Tinypool sized to `processConcurrency`. That pool overlaps
+// with the metrics workers during the speculative-metrics window; if a
+// future change makes those file-process workers always-on (or expands to
+// other persistent worker pools), revisit this cap.
 const METRICS_PREWARM_THREAD_CAP = 3;
-// vCPU threshold below which we step the prewarm cap down from
-// METRICS_PREWARM_THREAD_CAP to METRICS_PREWARM_SMALLBOX_CAP.
-const METRICS_SMALLBOX_VCPU_THRESHOLD = 4;
-const METRICS_PREWARM_SMALLBOX_CAP = 2;
 
 /**
  * Create a metrics task runner and warm up all worker threads by triggering
@@ -57,9 +62,7 @@ export const createMetricsTaskRunner = (
   maxWorkerThreads?: number,
 ): MetricsTaskRunnerWithWarmup => {
   const concurrency = getProcessConcurrency();
-  const ceiling =
-    concurrency <= METRICS_SMALLBOX_VCPU_THRESHOLD ? METRICS_PREWARM_SMALLBOX_CAP : METRICS_PREWARM_THREAD_CAP;
-  const cap = maxWorkerThreads ?? Math.min(concurrency, ceiling);
+  const cap = maxWorkerThreads ?? Math.min(concurrency, METRICS_PREWARM_THREAD_CAP);
 
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     // numOfTasks is no longer informative for sizing — `maxWorkerThreads` is the
