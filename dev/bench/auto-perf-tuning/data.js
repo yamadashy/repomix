@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777695165198,
+  "lastUpdate": 1777764325555,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7290,6 +7290,51 @@ window.BENCHMARK_DATA = {
             "range": "±31",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1499ms, Q3: 1530ms\nAll times: 1485, 1488, 1488, 1493, 1499, 1499, 1501, 1509, 1513, 1513, 1517, 1519, 1522, 1528, 1528, 1530, 1531, 1531, 1535, 1551ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "55e5d0626ca646310ca05522b039652d6f0195cf",
+          "message": "perf(metrics): Restore metrics worker cap to 3 on ≤4 vCPU\n\n`createMetricsTaskRunner` previously stepped the pre-warmed metrics worker\npool down from 3 to 2 on ≤4 vCPU boxes (commit `d08914d`). The rationale\nwas warmup-time CPU contention: 3 metrics workers parsing gpt-tokenizer's\nBPE table during searchFiles + collect + processFiles + security would\noversubscribe a 4-core box because the security check itself ran in its\nown 2-thread Tinypool. Five worker threads + main on 4 cores extended the\nwarmup tail past the security check and added measurable wall-clock cost\non `pool.destroy()`.\n\nCommit `73f7825` removed that contention by moving the security check\nback to the main thread (with a regex pre-screen that skips the worker\npool entirely on the typical no-secret case). With no security worker\npool to compete for cores, the cap-2 step-down has no remaining\njustification on the default-config critical path: 3 metrics workers +\nmain thread = 4 active threads, which fits a 4-core box without\nre-introducing the original contention.\n\nRemoves `METRICS_PREWARM_SMALLBOX_CAP` and `METRICS_SMALLBOX_VCPU_THRESHOLD`\nalong with the `concurrency <= threshold ? small : large` ceiling\nexpression. The cap is now uniformly `Math.min(concurrency, 3)` across all\nbox sizes — the same value the >4 vCPU path was already using.\n\nToken counts are unchanged (same workers, same encoding, same batch\ncontents). Output is byte-identical (verified via `cmp` on the same\ntarget directory across both binaries).\n\n## Bench (4-vCPU Ubuntu, full repo, hyperfine n=30, interleaved)\n\n|        | mean    | sd      | range          |\n|--------|---------|---------|----------------|\n| BEFORE | 989.9ms | 24.8ms  | 933 .. 1048ms  |\n| AFTER  | 949.8ms | 28.4ms  | 892 .. 1022ms  |\n\nMean wall-clock saving: **40.1ms (~4.0%)** · AFTER faster overall.\n\n## Bench (4-vCPU Ubuntu, full repo, paired interleaved n=40)\n\n|        | median  | mean    | sd     |\n|--------|---------|---------|--------|\n| BEFORE | 1265ms  | 1272ms  | 31.4ms |\n| AFTER  | 1235ms  | 1230ms  | 36.1ms |\n\n- Mean paired Δ: **42.2ms (3.31%)** · 95% CI ≈ 27.8ms..56.6ms (entirely positive)\n- Median paired Δ: **37ms (2.92%)**\n- AFTER faster in 34/40 pairs\n\nIndependent re-run (n=25 paired, fresh worktrees) measured a larger delta\nof **59.1ms (6.25%)**, 95% CI [39.6, 78.7] ms, AFTER faster in 22/25\npairs. The exact wall-clock saving varies with system load; both runs\nclear the 2% threshold with 95% confidence.\n\n## Trade-off (smaller workloads)\n\nOn smaller `--include` scopes (e.g. `src,tests`, ~250 files / ~1MB), the\nfixed gpt-tokenizer warmup cost of the 3rd worker (~80-100ms BPE parse)\nexceeds its parallelization benefit on the short metrics phase, producing\na measurable regression of **~50-60ms (~10-13%)** on a ~480-540ms baseline.\n\nThis regression is intentional. The perf-tuning spec targets the 1-2s CLI\nexecution range; the canonical full-repo bench (~1s on this box) is in\nrange and improves above the 2% bar. Smaller scopes are sub-second and\nout of range, but users who pack only `--include 'src,tests'`-sized\nslices on a 4-vCPU box will see metrics complete ~50-60ms slower than\non the prior cap-2 path. Net effect for those users vs. two commits ago\n(`d08914d` shipped an ~84ms improvement on the same workload at cap-2):\nthe small-include path is now a net regression of ~30ms relative to the\npre-`d08914d` state, but better than the cap-2 baseline only on the\n≥1k-file workloads the spec targets.",
+          "timestamp": "2026-05-02T23:23:18Z",
+          "tree_id": "ea04f106a3eb04ed4bd93fb4182757a45f8a4c42",
+          "url": "https://github.com/yamadashy/repomix/commit/55e5d0626ca646310ca05522b039652d6f0195cf"
+        },
+        "date": 1777764324132,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 756,
+            "range": "±48",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 737ms, Q3: 785ms\nAll times: 719, 723, 723, 724, 726, 731, 733, 737, 740, 741, 744, 745, 747, 748, 754, 756, 757, 758, 759, 759, 775, 775, 785, 795, 800, 827, 830, 890, 948, 961ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1142,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1131ms, Q3: 1149ms\nAll times: 1099, 1106, 1124, 1127, 1128, 1131, 1134, 1135, 1136, 1137, 1142, 1143, 1144, 1145, 1146, 1149, 1150, 1151, 1163, 1180ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1784,
+            "range": "±233",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1703ms, Q3: 1936ms\nAll times: 1660, 1665, 1672, 1694, 1696, 1703, 1716, 1719, 1723, 1765, 1784, 1807, 1825, 1893, 1902, 1936, 2061, 2069, 2086, 2352ms"
           }
         ]
       }
