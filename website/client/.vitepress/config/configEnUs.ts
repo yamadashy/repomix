@@ -22,6 +22,7 @@ export const configEnUs = defineConfig({
             { text: 'Basic Usage', link: '/guide/usage' },
             { text: 'Prompt Examples', link: '/guide/prompt-examples' },
             { text: 'Use Cases', link: '/guide/use-cases' },
+            { text: 'FAQ and Troubleshooting', link: '/guide/faq' },
           ],
         },
         {

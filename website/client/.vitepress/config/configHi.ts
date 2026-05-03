@@ -22,6 +22,7 @@ export const configHi = defineConfig({
             { text: 'बुनियादी उपयोग', link: '/hi/guide/usage' },
             { text: 'प्रॉम्प्ट उदाहरण', link: '/hi/guide/prompt-examples' },
             { text: 'उपयोग के मामले', link: '/hi/guide/use-cases' },
+            { text: 'FAQ और समस्या निवारण', link: '/hi/guide/faq' },
           ],
         },
         {

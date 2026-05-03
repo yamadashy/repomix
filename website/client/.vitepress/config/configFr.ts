@@ -22,6 +22,7 @@ export const configFr = defineConfig({
             { text: 'Utilisation de base', link: '/fr/guide/usage' },
             { text: 'Exemples de prompts', link: '/fr/guide/prompt-examples' },
             { text: "Cas d'Usage", link: '/fr/guide/use-cases' },
+            { text: 'FAQ et dépannage', link: '/fr/guide/faq' },
           ],
         },
         {

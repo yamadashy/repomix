@@ -22,6 +22,7 @@ export const configZhTw = defineConfig({
             { text: '基本用法', link: '/zh-tw/guide/usage' },
             { text: '提示範例', link: '/zh-tw/guide/prompt-examples' },
             { text: '使用案例', link: '/zh-tw/guide/use-cases' },
+            { text: '常見問題與疑難排解', link: '/zh-tw/guide/faq' },
           ],
         },
         {

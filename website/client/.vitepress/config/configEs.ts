@@ -22,6 +22,7 @@ export const configEs = defineConfig({
             { text: 'Uso Básico', link: '/es/guide/usage' },
             { text: 'Ejemplos de Prompts', link: '/es/guide/prompt-examples' },
             { text: 'Casos de Uso', link: '/es/guide/use-cases' },
+            { text: 'FAQ y solución de problemas', link: '/es/guide/faq' },
           ],
         },
         {
