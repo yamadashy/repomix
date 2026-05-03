@@ -59,7 +59,7 @@ const createPageHead = ({ page, title, description, pageData }: PageHeadContext)
     ['meta', { property: 'og:url', content: url }],
     ['meta', { property: 'og:description', content: description }],
     ['meta', { name: 'twitter:title', content: title }],
-    ['meta', { property: 'twitter:url', content: url }],
+    ['meta', { name: 'twitter:url', content: url }],
     ['meta', { name: 'twitter:description', content: description }],
   ];
 };
@@ -209,16 +209,10 @@ export const configShard = defineConfig({
 
     // OGP
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:title', content: siteName }],
     ['meta', { property: 'og:site_name', content: siteName }],
     ['meta', { property: 'og:image', content: ogImageUrl }],
-    ['meta', { property: 'og:url', content: siteUrl }],
-    ['meta', { property: 'og:description', content: siteDescription }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { property: 'twitter:domain', content: 'repomix.com' }],
-    ['meta', { property: 'twitter:url', content: siteUrl }],
-    ['meta', { name: 'twitter:title', content: siteName }],
-    ['meta', { name: 'twitter:description', content: siteDescription }],
+    ['meta', { name: 'twitter:domain', content: 'repomix.com' }],
     ['meta', { name: 'twitter:image', content: ogImageUrl }],
     ['meta', { name: 'thumbnail', content: ogImageUrl }],
 

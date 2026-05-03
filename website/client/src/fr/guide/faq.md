@@ -90,7 +90,7 @@ repomix --init
 
 ### Repomix fonctionne-t-il avec C#, Python, Java, Go, Rust ou d'autres langages ?
 
-Oui. Repomix lit les fichiers de votre projet et les formate pour les outils d'IA, il peut donc empaqueter des dépôts écrits dans n'importe quel langage. La CLI nécessite Node.js 20 ou plus récent. Certaines fonctions avancées, comme la compression basée sur Tree-sitter, dépendent du support de parser pour chaque langage.
+Oui. Repomix lit les fichiers de votre projet et les formate pour les outils d'IA, il peut donc empaqueter des dépôts écrits dans n'importe quel langage. La CLI nécessite Node.js 20 ou plus récent. Certaines fonctions avancées, comme la compression basée sur Tree-sitter, dépendent de la prise en charge des parseurs pour chaque langage.
 
 ### Puis-je utiliser Repomix avec Hermes Agent, OpenClaw ou d'autres agents compatibles MCP ?
 
@@ -109,7 +109,7 @@ mcp_servers:
     args: ["-y", "repomix", "--mcp"]
 ```
 
-Pour OpenClaw ou d'autres agents compatibles MCP, utilisez le même command et les mêmes args là où l'agent permet de configurer un serveur MCP stdio externe. Si votre assistant prend en charge Agent Skills, vous pouvez aussi utiliser [Repomix Explorer Skill](/fr/guide/repomix-explorer-skill).
+Pour OpenClaw ou d'autres agents compatibles MCP, utilisez la même commande et les mêmes arguments là où l'agent permet de configurer un serveur MCP stdio externe. Si votre assistant prend en charge Agent Skills, vous pouvez aussi utiliser [Repomix Explorer Skill](/fr/guide/repomix-explorer-skill).
 
 ### Comment aider un assistant IA à comprendre une nouvelle bibliothèque ou un framework ?
 

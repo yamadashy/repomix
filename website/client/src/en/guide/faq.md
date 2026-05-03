@@ -169,7 +169,7 @@ The hosted website is better for quick public repository checks or small uploads
 
 ### What does `--compress` do?
 
-`--compress` uses Tree-sitter based code compression to keep important structure such as imports, exports, classes, functions, interfaces, and method signatures while removing implementation detail. It is useful when the model needs an architectural overview more than exact line-by-line code.
+`--compress` uses Tree-sitter-based code compression to keep important structure such as imports, exports, classes, functions, interfaces, and method signatures while removing implementation detail. It is useful when the model needs an architectural overview more than exact line-by-line code.
 
 See [Code Compression](/guide/code-compress) for details.
 
