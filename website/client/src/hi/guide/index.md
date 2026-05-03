@@ -1,3 +1,8 @@
+---
+title: Repomix के साथ शुरुआत करना
+description: ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity और अन्य LLMs के लिए repository को AI-friendly context में pack करने के लिए Repomix शुरू करें।
+---
+
 # Repomix के साथ शुरुआत करना
 
 <script setup>

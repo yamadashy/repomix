@@ -1,3 +1,8 @@
+---
+title: Plugin Claude Code
+description: Instal dan gunakan plugin resmi Repomix Claude Code untuk MCP, slash command, dan eksplorasi repositori berbasis AI.
+---
+
 # Plugin Claude Code
 
 Repomix menyediakan plugin resmi untuk [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) yang terintegrasi secara mulus dengan lingkungan pengembangan berbasis AI. Plugin ini memudahkan Anda untuk menganalisis dan mengemas codebase langsung di dalam Claude Code menggunakan perintah bahasa alami.

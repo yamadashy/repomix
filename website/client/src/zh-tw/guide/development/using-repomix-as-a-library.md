@@ -1,3 +1,8 @@
+---
+title: 作為庫使用 Repomix
+description: 將 Repomix 作為 Node.js 函式庫使用，打包本機目錄或遠端儲存庫、存取核心 API，並將 AI 就緒的程式碼庫輸出整合到應用程式。
+---
+
 # 作為庫使用 Repomix
 
 除了作為 CLI 工具使用 Repomix 外，您還可以將其功能直接集成到 Node.js 應用程序中。

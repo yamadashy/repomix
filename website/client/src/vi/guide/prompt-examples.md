@@ -1,3 +1,8 @@
+---
+title: Ví dụ Prompt
+description: Sao chép các template prompt để dùng output Repomix trong AI code review, phân tích bảo mật, review hiệu năng, tài liệu, testing và kiểm tra chất lượng.
+---
+
 # Ví dụ Prompt
 
 Khi sử dụng Repomix để đóng gói codebase của bạn, việc tạo prompt hiệu quả cho AI là rất quan trọng để có được kết quả tốt nhất. Trang này cung cấp các ví dụ prompt để sử dụng với đầu ra Repomix.

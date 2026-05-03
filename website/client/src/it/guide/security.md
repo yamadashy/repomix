@@ -1,3 +1,8 @@
+---
+title: "Sicurezza"
+description: "Scopri come Repomix usa Secretlint e controlli di sicurezza per rilevare segreti, chiavi API, token, credenziali e contenuti sensibili del repository prima dell'impacchettamento."
+---
+
 # Sicurezza
 
 ## Funzionalità di Controllo Sicurezza

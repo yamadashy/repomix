@@ -1,3 +1,8 @@
+---
+title: MCP伺服器
+description: 將 Repomix 作為 Model Context Protocol 伺服器執行，讓 AI 助手可以直接打包、搜尋與讀取本機或遠端程式碼庫。
+---
+
 # MCP伺服器
 
 Repomix 支援 [Model Context Protocol (MCP)](https://modelcontextprotocol.io)，允許 AI 助手直接與您的程式碼庫交互。當作為 MCP 伺服器運行時，Repomix 提供了工具，使 AI 助手能夠在無需手動準備文件的情況下打包本地或遠端倉庫進行分析。

@@ -1,3 +1,8 @@
+---
+title: 作为库使用 Repomix
+description: 将 Repomix 作为 Node.js 库使用，打包本地目录或远程仓库、访问核心 API，并将 AI 就绪的代码库输出集成到应用中。
+---
+
 # 作为库使用 Repomix
 
 除了作为 CLI 工具使用 Repomix 外，你还可以将其功能直接集成到 Node.js 应用程序中。

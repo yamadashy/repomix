@@ -1,3 +1,8 @@
+---
+title: सुरक्षा
+description: जानें कि Repomix packing से पहले secrets, API keys, tokens, credentials और sensitive repository content detect करने के लिए Secretlint और safety checks कैसे उपयोग करता है।
+---
+
 # सुरक्षा
 
 Repomix में एक अंतर्निहित सुरक्षा जांच प्रणाली है जो आपके कोडबेस में संवेदनशील जानकारी का पता लगाती है और आपको AI मॉडल के साथ साझा करने से पहले उन्हें हटाने या संशोधित करने की अनुमति देती है।

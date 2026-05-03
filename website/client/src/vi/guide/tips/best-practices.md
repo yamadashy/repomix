@@ -1,3 +1,8 @@
+---
+title: Mẹo phát triển hỗ trợ AI
+description: Các mẹo thực tế về phát triển có AI hỗ trợ khi dùng code hiện có, triển khai theo module, test, lập kế hoạch và chia sẻ ngữ cảnh bằng Repomix.
+---
+
 # Mẹo phát triển hỗ trợ AI
 
 Khi phát triển phần mềm với sự hỗ trợ của AI, có một số thực hành tốt nhất có thể giúp bạn tối đa hóa hiệu quả và chất lượng của quá trình phát triển. Trang này cung cấp các mẹo và hướng dẫn để làm việc hiệu quả với AI khi sử dụng Repomix.

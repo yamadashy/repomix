@@ -1,3 +1,8 @@
+---
+title: "Anwendungsfälle"
+description: "Entdecken Sie praktische Repomix-Workflows für KI-Code-Reviews, Fehlersuche, Refactoring, Dokumentation, Onboarding, Sicherheitsaudits und Architekturanalysen."
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

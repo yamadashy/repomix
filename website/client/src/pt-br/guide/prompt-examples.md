@@ -1,3 +1,8 @@
+---
+title: "Exemplos de Prompts"
+description: "Copie modelos de prompts para usar a saída do Repomix em revisões de código com IA, análise de segurança, revisão de desempenho, documentação, testes e verificações de qualidade."
+---
+
 # Exemplos de Prompts
 
 ## Revisão de Código

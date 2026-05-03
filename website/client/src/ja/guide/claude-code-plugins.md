@@ -1,3 +1,8 @@
+---
+title: Claude Code プラグイン
+description: MCP、スラッシュコマンド、AIによるリポジトリ探索に対応したRepomix公式Claude Codeプラグインのインストールと使い方を説明します。
+---
+
 # Claude Code プラグイン
 
 Repomixは[Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview)向けの公式プラグインを提供しています。これらのプラグインを使用すると、自然言語コマンドでClaude Code内から直接コードベースを分析・パッキングできます。

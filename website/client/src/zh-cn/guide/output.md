@@ -1,3 +1,8 @@
+---
+title: 输出格式
+description: 比较 Repomix 的 XML、Markdown、JSON 和纯文本输出格式，为 Claude、ChatGPT、Gemini、API 与自动化选择合适结构。
+---
+
 # 输出格式
 
 Repomix 支持四种输出格式：

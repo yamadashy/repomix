@@ -1,3 +1,8 @@
+---
+title: "İstem Örnekleri"
+description: "Repomix çıktısını yapay zeka kod incelemelerinde, güvenlik analizinde, performans incelemelerinde, dokümantasyonda, testlerde ve kalite kontrollerinde kullanmak için prompt şablonlarını kopyalayın."
+---
+
 # İstem Örnekleri
 
 ## Kod İncelemesi

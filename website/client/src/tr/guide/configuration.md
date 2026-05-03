@@ -1,3 +1,8 @@
+---
+title: "Yapılandırma"
+description: "Repomix’i JSON, JSONC, JSON5, JavaScript veya TypeScript dosyalarıyla yapılandırın; çıktı formatları, include ve ignore desenleri ile gelişmiş seçenekleri ayarlayın."
+---
+
 # Yapılandırma
 
 Repomix, bir yapılandırma dosyası veya komut satırı seçenekleri kullanılarak yapılandırılabilir. Yapılandırma dosyası, Repomix'in kod tabanınızı işleme ve çıktı alma biçiminin çeşitli yönlerini özelleştirmenize olanak tanır.

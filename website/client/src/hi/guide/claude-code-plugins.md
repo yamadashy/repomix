@@ -1,3 +1,8 @@
+---
+title: Claude Code प्लगइन्स
+description: MCP, slash commands और AI-powered repository exploration के लिए official Repomix Claude Code plugins install और use करें।
+---
+
 # Claude Code प्लगइन्स
 
 Repomix [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) के लिए आधिकारिक प्लगइन्स प्रदान करता है जो AI-संचालित विकास वातावरण के साथ सहजता से एकीकृत होते हैं। ये प्लगइन्स प्राकृतिक भाषा कमांड का उपयोग करके Claude Code के भीतर सीधे कोडबेस का विश्लेषण और पैकेजिंग करना आसान बनाते हैं।

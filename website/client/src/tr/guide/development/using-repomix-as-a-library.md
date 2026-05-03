@@ -1,3 +1,8 @@
+---
+title: "Repomix'i Kütüphane Olarak Kullanma"
+description: "Repomix’i Node.js kütüphanesi olarak kullanarak yerel dizinleri veya uzak depoları paketleyin, temel API’lere erişin ve yapay zekaya hazır kod tabanı çıktısını uygulamalara entegre edin."
+---
+
 # Repomix'i Kütüphane Olarak Kullanma
 
 Repomix'i yalnızca bir CLI aracı olarak kullanmakla kalmayıp, işlevselliğini doğrudan Node.js uygulamalarınıza da entegre edebilirsiniz.

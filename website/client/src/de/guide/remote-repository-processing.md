@@ -1,3 +1,8 @@
+---
+title: "GitHub-Repository-Verarbeitung"
+description: "Packen Sie GitHub-Repositories mit Repomix über vollständige URLs, user/repo-Kurzform, Branches, Tags, Commits, Docker und Vertrauenskontrollen für Remote-Konfiguration."
+---
+
 # GitHub-Repository-Verarbeitung
 
 ## Grundlegende Verwendung

@@ -1,6 +1,7 @@
 ---
 layout: home
 title: Repomix
+description: "Packen Sie lokale oder Remote-Repositories in KI-freundliches XML, Markdown, JSON oder Klartext für Claude, ChatGPT, Gemini, MCP und Code-Reviews."
 titleTemplate: Ihre Codebasis in KI-freundliche Formate verpacken
 aside: false
 editLink: false

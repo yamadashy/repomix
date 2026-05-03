@@ -1,3 +1,8 @@
+---
+title: Menggunakan Repomix sebagai Library
+description: Gunakan Repomix sebagai library Node.js untuk mengemas direktori lokal atau repositori remote, mengakses API inti, dan mengintegrasikan output codebase siap AI ke aplikasi.
+---
+
 # Menggunakan Repomix sebagai Library
 
 

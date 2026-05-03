@@ -1,3 +1,8 @@
+---
+title: 在 GitHub Actions 中使用 Repomix
+description: 在 GitHub Actions 中自动运行 Repomix，为 AI 分析、CI 流程、构件、代码审查和压缩输出打包仓库。
+---
+
 # 在 GitHub Actions 中使用 Repomix
 
 通过将 Repomix 集成到 GitHub Actions 工作流中，可以自动打包代码库以供 AI 分析。这对于持续集成（CI）、代码审查或为 LLM 工具做准备非常有用。

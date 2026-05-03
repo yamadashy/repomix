@@ -1,3 +1,8 @@
+---
+title: "Topluluk Projeleri"
+description: "Repomix etrafında geliştirilen topluluk araçlarını, editör eklentilerini, masaüstü uygulamalarını, dil uygulamalarını ve entegrasyonları keşfedin."
+---
+
 # Topluluk Projeleri
 
 Repomix topluluğunun oluşturduğu harika projeleri keşfedin! Bu projeler Repomix'in yeteneklerini genişletmekte, diğer dillerde uygulamalar sunmakta ya da Repomix'i daha büyük araç setlerine entegre etmektedir.

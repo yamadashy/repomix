@@ -1,3 +1,8 @@
+---
+title: "Commencer avec Repomix"
+description: "Commencez avec Repomix pour empaqueter un dépôt en contexte adapté à l'IA pour ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity et autres LLM."
+---
+
 # Commencer avec Repomix
 
 <script setup>

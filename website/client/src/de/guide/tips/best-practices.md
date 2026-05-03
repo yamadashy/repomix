@@ -1,3 +1,8 @@
+---
+title: "Best Practices für KI-unterstützte Entwicklung: Aus meiner Erfahrung"
+description: "Praktische Tipps zur KI-unterstützten Entwicklung mit vorhandenem Code, modularer Umsetzung, Tests, Planung und kontextreicher Zusammenarbeit mit Repomix."
+---
+
 # Best Practices für KI-unterstützte Entwicklung: Aus meiner Erfahrung
 
 Obwohl ich noch kein großes Projekt mit KI erfolgreich abgeschlossen habe, möchte ich meine bisherigen Erfahrungen in der Entwicklung mit KI teilen.

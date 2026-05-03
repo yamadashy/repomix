@@ -1,3 +1,8 @@
+---
+title: कस्टम निर्देश
+description: Repomix output में project-specific instructions जोड़ें ताकि AI assistants coding standards, architecture context, review goals और response requirements समझ सकें।
+---
+
 # कस्टम निर्देश
 
 Repomix आपको अपने आउटपुट में कस्टम निर्देश शामिल करने की अनुमति देता है। ये निर्देश AI मॉडल को आपके कोडबेस के साथ कैसे इंटरैक्ट करना है, इसके बारे में मार्गदर्शन प्रदान करते हैं।

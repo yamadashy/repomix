@@ -1,3 +1,8 @@
+---
+title: 使用案例
+description: 探索 Repomix 在 AI 程式碼審查、錯誤調查、重構、文件、入門導覽、安全稽核與架構分析中的實用流程。
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

@@ -1,3 +1,8 @@
+---
+title: 설정
+description: "JSON, JSONC, JSON5, JavaScript, TypeScript 파일로 출력 형식, 포함 및 무시 패턴, 고급 옵션을 포함한 Repomix 설정 방법을 설명합니다."
+---
+
 # 설정
 
 Repomix는 설정 파일 또는 명령줄 옵션을 사용하여 설정할 수 있습니다. 설정 파일을 사용하면 코드베이스의 처리 및 출력 방식을 사용자 정의할 수 있습니다.

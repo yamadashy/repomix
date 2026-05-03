@@ -1,3 +1,8 @@
+---
+title: "Code-Komprimierung"
+description: "Nutzen Sie Tree-sitter-basierte Code-Komprimierung in Repomix, um Token-Verbrauch zu senken und Imports, Exports, Klassen, Funktionen, Interfaces und Struktur zu erhalten."
+---
+
 # Code-Komprimierung
 
 Die Code-Komprimierung ist eine leistungsstarke Funktion, die wichtige Code-Strukturen intelligent extrahiert und dabei Implementierungsdetails entfernt. Dies ist besonders nützlich, um die Token-Anzahl zu reduzieren und gleichzeitig wichtige strukturelle Informationen über Ihre Codebasis beizubehalten.

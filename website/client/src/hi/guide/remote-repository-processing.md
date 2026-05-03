@@ -1,3 +1,8 @@
+---
+title: GitHub रिपॉजिटरी प्रोसेसिंग
+description: Full URLs, user/repo shorthand, branches, tags, commits, Docker और remote config trust controls के साथ Repomix से GitHub repositories pack करें।
+---
+
 # GitHub रिपॉजिटरी प्रोसेसिंग
 
 Repomix आपको GitHub जैसे प्लेटफॉर्म पर होस्ट किए गए रिमोट रिपॉजिटरी को प्रोसेस करने की अनुमति देता है। यह सुविधा उपयोगी है जब आप अपने लोकल मशीन पर रिपॉजिटरी को क्लोन किए बिना कोडबेस का विश्लेषण करना चाहते हैं।

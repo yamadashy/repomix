@@ -1,3 +1,8 @@
+---
+title: "Özel Talimatlar"
+description: "Yapay zeka asistanlarının kod standartlarını, mimari bağlamı, inceleme hedeflerini ve yanıt gereksinimlerini anlaması için Repomix çıktısına projeye özel talimatlar ekleyin."
+---
+
 # Özel Talimatlar
 
 Repomix, çıktı dosyasına dahil edilecek özel talimatlar eklemenizi sağlar. Bu özellik, depoyu işleyen yapay zeka sistemlerine bağlam veya belirli yönergeler sağlamak için kullanışlıdır.

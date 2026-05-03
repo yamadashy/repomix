@@ -1,3 +1,8 @@
+---
+title: "Erste Schritte mit Repomix"
+description: "Starten Sie mit Repomix und packen Sie ein Repository als KI-freundlichen Kontext für ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity und andere LLMs."
+---
+
 # Erste Schritte mit Repomix
 
 <script setup>

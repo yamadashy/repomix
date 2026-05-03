@@ -1,3 +1,8 @@
+---
+title: Hướng dẫn tùy chỉnh
+description: Thêm hướng dẫn riêng của dự án vào output Repomix để AI assistant hiểu coding standards, bối cảnh kiến trúc, mục tiêu review và yêu cầu phản hồi.
+---
+
 # Hướng dẫn tùy chỉnh
 
 Repomix cho phép bạn thêm hướng dẫn tùy chỉnh vào đầu ra của mình, giúp hướng dẫn AI về cách hiểu và làm việc với codebase của bạn.

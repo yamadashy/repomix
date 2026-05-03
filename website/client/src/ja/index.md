@@ -1,6 +1,7 @@
 ---
 layout: home
 title: Repomix
+description: ローカルまたはリモートのリポジトリをClaude、ChatGPT、Gemini、MCP、コードレビュー向けのAIフレンドリーなXML、Markdown、JSON、プレーンテキストに変換します。
 titleTemplate: コードベースをAIフレンドリーな形式にパッケージング
 aside: false
 editLink: false

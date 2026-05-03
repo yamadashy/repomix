@@ -1,3 +1,8 @@
+---
+title: उपयोग के मामले
+description: AI code review, bug investigation, refactoring, documentation, onboarding, security audits और architecture analysis के लिए practical Repomix workflows explore करें।
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

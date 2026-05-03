@@ -1,3 +1,8 @@
+---
+title: "Formati di Output"
+description: "Confronta i formati di output XML, Markdown, JSON e testo semplice di Repomix e scegli la struttura migliore per Claude, ChatGPT, Gemini, API e automazione."
+---
+
 # Formati di Output
 
 Repomix supporta quattro formati di output:

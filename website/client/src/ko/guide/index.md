@@ -1,3 +1,8 @@
+---
+title: Repomix 시작하기
+description: "Repomix로 저장소를 ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity 등 LLM에 적합한 AI 친화적 컨텍스트로 패키징하는 방법을 시작합니다."
+---
+
 # Repomix 시작하기
 
 <script setup>

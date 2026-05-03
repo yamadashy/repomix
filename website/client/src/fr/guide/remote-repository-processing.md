@@ -1,3 +1,8 @@
+---
+title: "Traitement des dépôts GitHub"
+description: "Empaquetez des dépôts GitHub avec Repomix via URL complète, raccourci user/repo, branches, tags, commits, Docker et contrôles de confiance de configuration distante."
+---
+
 # Traitement des dépôts GitHub
 
 ## Utilisation de base

@@ -1,3 +1,8 @@
+---
+title: "Compressão de Código"
+description: "Use a compressão de código baseada em Tree-sitter no Repomix para reduzir o uso de tokens preservando imports, exports, classes, funções, interfaces e estrutura."
+---
+
 # Compressão de Código
 
 A compressão de código é um recurso poderoso que extrai estruturas essenciais do código de forma inteligente enquanto remove detalhes de implementação. Isso é particularmente útil para reduzir a contagem de tokens enquanto mantém informações estruturais importantes sobre sua base de código.

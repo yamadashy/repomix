@@ -1,3 +1,8 @@
+---
+title: Xử lý kho lưu trữ GitHub
+description: Đóng gói repository GitHub bằng Repomix với URL đầy đủ, shorthand user/repo, branch, tag, commit, Docker và kiểm soát trust cho remote config.
+---
+
 # Xử lý kho lưu trữ GitHub
 
 Repomix có thể xử lý các kho lưu trữ từ xa mà không cần clone chúng cục bộ, giúp bạn dễ dàng đóng gói và phân tích các dự án mã nguồn mở.

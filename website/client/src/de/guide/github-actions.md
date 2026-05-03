@@ -1,3 +1,8 @@
+---
+title: "Verwendung von Repomix mit GitHub Actions"
+description: "Automatisieren Sie Repomix in GitHub Actions, um Repositories für KI-Analysen, CI-Workflows, Artefakte, Code-Reviews und komprimierte Ausgaben zu packen."
+---
+
 # Verwendung von Repomix mit GitHub Actions
 
 Sie können den Verpackungsprozess Ihres Codebases für die KI-Analyse automatisieren, indem Sie Repomix in Ihre GitHub Actions Workflows integrieren. Dies ist nützlich für Continuous Integration (CI), Code-Reviews oder die Vorbereitung für LLM-Tools.

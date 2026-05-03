@@ -1,3 +1,8 @@
+---
+title: Repomix को लाइब्रेरी के रूप में उपयोग करना
+description: Local directories या remote repositories pack करने, core APIs access करने और applications में AI-ready codebase output integrate करने के लिए Repomix को Node.js library की तरह उपयोग करें।
+---
+
 # Repomix को लाइब्रेरी के रूप में उपयोग करना
 
 Repomix को एक स्टैंडअलोन CLI टूल के रूप में उपयोग करने के अलावा, आप इसे अपने JavaScript या TypeScript प्रोजेक्ट में एक लाइब्रेरी के रूप में भी उपयोग कर सकते हैं।

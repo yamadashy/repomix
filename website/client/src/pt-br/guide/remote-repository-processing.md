@@ -1,3 +1,8 @@
+---
+title: "Processamento de Repositório GitHub"
+description: "Empacote repositórios GitHub com o Repomix usando URLs completas, abreviação usuário/repo, branches, tags, commits, Docker e controles de confiança para configuração remota."
+---
+
 # Processamento de Repositório GitHub
 
 ## Uso Básico

@@ -1,3 +1,8 @@
+---
+title: "Benutzerdefinierte Anweisungen"
+description: "Fügen Sie projektspezifische Anweisungen zur Repomix-Ausgabe hinzu, damit KI-Assistenten Coding-Standards, Architekturkontext, Review-Ziele und Antwortanforderungen verstehen."
+---
+
 # Benutzerdefinierte Anweisungen
 
 Repomix ermöglicht es Ihnen, benutzerdefinierte Anweisungen bereitzustellen, die in die Ausgabedatei aufgenommen werden. Dies kann nützlich sein, um Kontext oder spezifische Richtlinien für KI-Systeme hinzuzufügen, die das Repository verarbeiten.

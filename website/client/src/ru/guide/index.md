@@ -1,3 +1,8 @@
+---
+title: "Начало работы с Repomix"
+description: "Начните использовать Repomix, чтобы упаковывать репозиторий в удобный для ИИ контекст для ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity и других LLM."
+---
+
 # Начало работы с Repomix
 
 <script setup>

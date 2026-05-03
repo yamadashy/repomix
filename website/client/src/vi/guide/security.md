@@ -1,3 +1,8 @@
+---
+title: Bảo mật
+description: Tìm hiểu cách Repomix dùng Secretlint và safety check để phát hiện secret, API key, token, credential và nội dung repository nhạy cảm trước khi đóng gói.
+---
+
 # Bảo mật
 
 Repomix tích hợp các tính năng bảo mật mạnh mẽ để giúp ngăn chặn việc vô tình tiết lộ thông tin nhạy cảm khi chia sẻ codebase của bạn với các mô hình ngôn ngữ lớn (LLMs).

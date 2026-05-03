@@ -1,3 +1,8 @@
+---
+title: 設定
+description: JSON、JSONC、JSON5、JavaScript、TypeScript設定ファイルで、出力形式、includeとignoreパターン、高度なオプションを含むRepomixの設定方法を説明します。
+---
+
 # 設定
 
 Repomixは設定ファイルまたはコマンドラインオプションを使用して設定できます。設定ファイルを使用することで、コードベースの処理と出力方法をカスタマイズできます。

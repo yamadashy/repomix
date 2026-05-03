@@ -1,3 +1,8 @@
+---
+title: 출력 형식
+description: "Repomix의 XML, Markdown, JSON, 일반 텍스트 출력 형식을 비교하고 Claude, ChatGPT, Gemini, API, 자동화에 적합한 구조를 선택합니다."
+---
+
 # 출력 형식
 
 Repomix는 네 가지 출력 형식을 지원합니다:

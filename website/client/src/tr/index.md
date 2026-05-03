@@ -1,6 +1,7 @@
 ---
 layout: home
 title: Repomix
+description: "Yerel veya uzak depoları Claude, ChatGPT, Gemini, MCP ve kod inceleme iş akışları için yapay zeka dostu XML, Markdown, JSON ya da düz metin formatlarına paketleyin."
 titleTemplate: Kod tabanınızı yapay zeka dostu formatlara dönüştürün
 aside: false
 editLink: false

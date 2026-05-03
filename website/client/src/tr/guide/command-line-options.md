@@ -1,3 +1,8 @@
+---
+title: "Komut Satırı Seçenekleri"
+description: "Girdi, çıktı, dosya seçimi, uzak depolar, yapılandırma, güvenlik, token sayımı, MCP ve agent skills için tüm Repomix CLI seçeneklerine başvurun."
+---
+
 # Komut Satırı Seçenekleri
 
 ## Temel Seçenekler

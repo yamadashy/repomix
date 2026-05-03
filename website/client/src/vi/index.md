@@ -1,6 +1,7 @@
 ---
 layout: home
 title: Repomix
+description: Đóng gói repository local hoặc remote thành XML, Markdown, JSON hoặc văn bản thuần thân thiện với AI cho Claude, ChatGPT, Gemini, MCP và quy trình review code.
 titleTemplate: Đóng gói codebase của bạn thành các định dạng thân thiện với AI
 aside: false
 editLink: false

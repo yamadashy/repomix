@@ -1,3 +1,8 @@
+---
+title: "Projetos da Comunidade"
+description: "Descubra ferramentas da comunidade, extensões de editores, aplicativos desktop, implementações em linguagens e integrações criadas em torno do Repomix."
+---
+
 # Projetos da Comunidade
 
 Descubra projetos incríveis criados pela comunidade Repomix! Estes projetos estendem as capacidades do Repomix, fornecem implementações em outras linguagens ou integram o Repomix em conjuntos de ferramentas maiores.

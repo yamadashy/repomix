@@ -1,3 +1,8 @@
+---
+title: GitHub Actions
+description: Otomatiskan Repomix di GitHub Actions untuk mengemas repositori bagi analisis AI, workflow CI, artifact, code review, dan output terkompresi.
+---
+
 # GitHub Actions
 
 

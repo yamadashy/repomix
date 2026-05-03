@@ -1,3 +1,8 @@
+---
+title: 配置
+description: 使用 JSON、JSONC、JSON5、JavaScript 或 TypeScript 文件配置 Repomix，包括输出格式、包含和忽略模式以及高级选项。
+---
+
 # 配置
 
 Repomix 可以通过配置文件或命令行选项进行配置。配置文件允许你自定义代码库的处理和输出方式。

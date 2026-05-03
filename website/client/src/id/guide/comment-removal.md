@@ -1,3 +1,8 @@
+---
+title: Penghapusan Komentar
+description: Hapus komentar kode dari output Repomix untuk mengurangi noise dan penggunaan token sambil mempertahankan file sumber dan perilaku bahasa yang didukung.
+---
+
 # Penghapusan Komentar
 
 

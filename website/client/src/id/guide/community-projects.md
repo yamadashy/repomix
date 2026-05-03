@@ -1,3 +1,8 @@
+---
+title: Proyek Komunitas
+description: Temukan tool komunitas, ekstensi editor, aplikasi desktop, implementasi bahasa, dan integrasi yang dibangun di sekitar Repomix.
+---
+
 # Proyek Komunitas
 
 Temukan proyek-proyek luar biasa yang dibuat oleh komunitas Repomix! Proyek-proyek ini memperluas kemampuan Repomix, menyediakan implementasi dalam bahasa lain, atau mengintegrasikan Repomix ke dalam toolset yang lebih besar.

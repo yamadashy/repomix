@@ -1,3 +1,8 @@
+---
+title: "Çıktı Formatları"
+description: "Repomix XML, Markdown, JSON ve düz metin çıktı formatlarını karşılaştırın; Claude, ChatGPT, Gemini, API’ler ve otomasyon için en uygun yapıyı seçin."
+---
+
 # Çıktı Formatları
 
 Repomix dört çıktı formatını destekler:

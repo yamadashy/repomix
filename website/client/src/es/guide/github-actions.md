@@ -1,3 +1,8 @@
+---
+title: "Usar Repomix con GitHub Actions"
+description: "Automatiza Repomix en GitHub Actions para empaquetar repositorios destinados a análisis de IA, flujos de CI, artefactos, revisiones de código y salidas comprimidas."
+---
+
 # Usar Repomix con GitHub Actions
 
 Puedes automatizar el empaquetado de tu base de código para análisis por IA integrando Repomix en tus flujos de trabajo de GitHub Actions. Esto es útil para integración continua (CI), revisión de código o preparación para herramientas LLM.

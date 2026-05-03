@@ -1,3 +1,8 @@
+---
+title: Konfigurasi
+description: Konfigurasikan Repomix dengan file JSON, JSONC, JSON5, JavaScript, atau TypeScript, termasuk format output, pola include dan ignore, serta opsi lanjutan.
+---
+
 # Konfigurasi
 
 Repomix dapat dikonfigurasi menggunakan file konfigurasi atau opsi baris perintah. File konfigurasi memungkinkan Anda untuk menyesuaikan berbagai aspek cara pemrosesan dan output codebase Anda.

@@ -1,3 +1,8 @@
+---
+title: Penggunaan Dasar
+description: Gunakan CLI Repomix untuk mengemas direktori, repositori remote, file terpilih, git diff, log commit, output terpisah, hitungan token, dan kode terkompresi.
+---
+
 # Penggunaan Dasar
 
 

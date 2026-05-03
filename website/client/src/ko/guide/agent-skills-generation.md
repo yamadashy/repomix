@@ -1,3 +1,8 @@
+---
+title: Agent Skills 생성
+description: "로컬 또는 원격 저장소에서 Claude Agent Skills를 생성해 AI 어시스턴트가 코드베이스 참조, 프로젝트 구조, 구현 패턴을 재사용하도록 합니다."
+---
+
 # Agent Skills 생성
 
 Repomix는 [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) 형식의 출력을 생성하여 AI 어시스턴트의 재사용 가능한 코드베이스 참조로 사용할 수 있는 구조화된 Skills 디렉토리를 생성할 수 있습니다.

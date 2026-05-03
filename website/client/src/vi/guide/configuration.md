@@ -1,3 +1,8 @@
+---
+title: Cấu hình
+description: Cấu hình Repomix bằng file JSON, JSONC, JSON5, JavaScript hoặc TypeScript, bao gồm output format, include và ignore pattern cùng các tùy chọn nâng cao.
+---
+
 # Cấu hình
 
 Repomix có thể được cấu hình bằng file cấu hình hoặc các tùy chọn dòng lệnh. File cấu hình cho phép bạn tùy chỉnh các khía cạnh khác nhau về cách xử lý và xuất ra codebase của bạn.

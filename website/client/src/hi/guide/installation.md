@@ -1,3 +1,8 @@
+---
+title: इंस्टॉलेशन
+description: npx, npm, Yarn, Bun, Homebrew, Docker, VS Code extensions या browser extensions से Repomix install करें और CLI setup verify करें।
+---
+
 # इंस्टॉलेशन
 
 Repomix को कई तरीकों से इंस्टॉल किया जा सकता है। अपनी आवश्यकताओं के अनुसार सबसे उपयुक्त विधि चुनें।
