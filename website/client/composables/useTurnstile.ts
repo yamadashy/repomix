@@ -145,6 +145,13 @@ export function useTurnstile() {
 
   async function ensureWidget(el: HTMLElement): Promise<TurnstileGlobal> {
     const turnstile = await loadTurnstileScript();
+    // The component may have unmounted (or the user may have switched away
+    // from the form) while the script was loading. Detached DOM elements
+    // accept render() but the corresponding remove() in onBeforeUnmount has
+    // already run, so the widget would leak. Bail out instead.
+    if (containerEl.value !== el) {
+      throw new Error('Turnstile container detached during script load');
+    }
     if (!widgetId.value) {
       widgetId.value = turnstile.render(el, {
         sitekey: siteKey,

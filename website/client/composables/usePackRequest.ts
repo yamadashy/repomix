@@ -230,6 +230,13 @@ export function usePackRequest() {
   function cancelRequest() {
     if (requestController) {
       requestController.abort('cancel');
+      // The downstream onAbort callback would normally surface the
+      // "Request was cancelled" warning, but since we're about to null
+      // requestController the isCurrent() guard inside onAbort treats it
+      // as stale and skips the message. Set it here directly so the user
+      // gets immediate feedback.
+      error.value = 'Request was cancelled.';
+      errorType.value = 'warning';
       requestController = null;
     }
     loading.value = false;
