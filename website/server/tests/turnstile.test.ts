@@ -411,9 +411,7 @@ describe('EXPECTED_TURNSTILE_ACTION contract', () => {
   test('matches the action literal embedded in the client useTurnstile composable', async () => {
     expect(EXPECTED_TURNSTILE_ACTION).toBe('pack');
 
-    const useTurnstilePath = fileURLToPath(
-      new URL('../../client/composables/useTurnstile.ts', import.meta.url),
-    );
+    const useTurnstilePath = fileURLToPath(new URL('../../client/composables/useTurnstile.ts', import.meta.url));
     const source = await readFile(useTurnstilePath, 'utf8');
     expect(source).toMatch(/action:\s*['"]pack['"]/);
   });
