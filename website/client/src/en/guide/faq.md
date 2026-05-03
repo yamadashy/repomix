@@ -1,6 +1,6 @@
 ---
 title: FAQ and Troubleshooting
-description: Answers to common Repomix questions about private repositories, C# and Python support, output formats, token reduction, remote GitHub repositories, security checks, and AI workflows.
+description: Answers to common Repomix questions about private repositories, C# and Python support, MCP-compatible agents, output formats, token reduction, remote GitHub repositories, security checks, and AI workflows.
 ---
 
 # FAQ and Troubleshooting
@@ -22,6 +22,33 @@ See [Installation](/guide/installation) for runtime requirements.
 ### When should I use Repomix instead of an IDE extension or MCP server?
 
 Use the CLI when you want a portable file that works with any AI tool, including ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity, or local LLM workflows. Use the MCP server or Claude Code plugins when you want an assistant to request repository context directly from your local environment during an interactive coding session.
+
+### Can I use Repomix with Hermes Agent, OpenClaw, or other MCP-compatible agents?
+
+Yes. Repomix can run as an MCP server, so MCP-compatible agents can request packed codebase context directly:
+
+```bash
+npx -y repomix --mcp
+```
+
+For Hermes Agent, add Repomix as a stdio MCP server in `~/.hermes/config.yaml`:
+
+```yaml
+mcp_servers:
+  repomix:
+    command: "npx"
+    args: ["-y", "repomix", "--mcp"]
+```
+
+For OpenClaw or other MCP-compatible agents, use the same command and arguments wherever the agent lets you configure an external stdio MCP server. Check the agent's current MCP documentation for the exact config format.
+
+If your assistant supports the Agent Skills format, you can also install the Repomix Explorer skill instead of configuring MCP:
+
+```bash
+npx add-skill yamadashy/repomix --skill repomix-explorer
+```
+
+Use the MCP server when you want the agent to call Repomix tools during a session. Use [Repomix Explorer Skill](/guide/repomix-explorer-skill) when you want a reusable natural-language workflow for exploring local or remote codebases.
 
 ### Does Repomix work with private repositories?
 
