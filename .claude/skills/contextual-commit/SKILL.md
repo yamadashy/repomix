@@ -7,6 +7,8 @@ description: >-
   action lines in the commit body that preserve WHY code was written, not
   just WHAT changed.
 license: MIT
+metadata:
+  internal: true
 ---
 
 # Contextual Commits
