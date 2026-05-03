@@ -1,6 +1,6 @@
 ---
 title: FAQ and Troubleshooting
-description: Answers to common Repomix questions about private repositories, output formats, token reduction, remote GitHub repositories, security checks, and AI workflows.
+description: Answers to common Repomix questions about private repositories, C# and Python support, output formats, token reduction, remote GitHub repositories, security checks, and AI workflows.
 ---
 
 # FAQ and Troubleshooting
@@ -12,6 +12,12 @@ Use this page when you need a quick answer about choosing the right Repomix work
 ### What is Repomix used for?
 
 Repomix packs a repository into a single AI-friendly file so you can give an AI assistant broad codebase context without manually copying files. It is useful for code review, bug investigation, refactoring plans, onboarding, documentation, security analysis, and architecture reviews.
+
+### Does Repomix work with C#, Python, Java, Go, Rust, or other languages?
+
+Yes. Repomix can pack repositories written in any programming language because it reads files from your project and formats them for AI tools. Repomix itself runs on Node.js, so you need Node.js 20 or later when using the CLI. Some advanced features, such as Tree-sitter code compression, depend on language parser support and may vary by language.
+
+See [Installation](/guide/installation) for runtime requirements.
 
 ### When should I use Repomix instead of an IDE extension or MCP server?
 
@@ -37,6 +43,23 @@ npx repomix --remote https://github.com/yamadashy/repomix
 ```
 
 You can also target a branch, tag, commit, or subdirectory from a supported GitHub URL.
+
+### How do I use Repomix to help an AI assistant understand a new library or framework?
+
+Pack the library repository or its documentation, then ask the AI assistant to use the output as reference material:
+
+```bash
+npx repomix --remote owner/repo
+npx repomix --remote owner/repo --include "docs/**,src/**"
+```
+
+For repeated use with Claude, generate a reusable Agent Skills directory:
+
+```bash
+npx repomix --remote owner/repo --skill-generate library-reference
+```
+
+See [Agent Skills Generation](/guide/agent-skills-generation) for reusable library reference workflows.
 
 ## Output Formats
 
@@ -83,6 +106,33 @@ repomix --remove-comments
 
 For large repositories, combine include and ignore patterns with code compression. You can also split the output or focus on the subsystem related to your question.
 
+### How do I exclude CSS, tests, build output, or other noisy files?
+
+Use `--ignore` for one-off commands:
+
+```bash
+repomix --ignore "**/*.css,**/*.test.ts,dist/**,coverage/**"
+```
+
+Use `--include` when you want to keep only specific source or documentation paths:
+
+```bash
+repomix --include "src/**/*.ts,docs/**/*.md"
+```
+
+For team workflows, store these patterns in `repomix.config.json` so everyone generates the same output.
+
+### Is there a repository size limit?
+
+The CLI does not have a fixed repository size limit, but very large repositories can be constrained by memory, file size, or the AI tool's upload and context limits. For large projects, start with targeted include patterns, inspect token-heavy files, and split the output when needed:
+
+```bash
+repomix --token-count-tree 1000
+repomix --split-output 1mb
+```
+
+The hosted website is better for quick public repository checks or small uploads. For large repositories, private repositories, or repeatable team workflows, use the local CLI.
+
 ### What does `--compress` do?
 
 `--compress` uses Tree-sitter based code compression to keep important structure such as imports, exports, classes, functions, interfaces, and method signatures while removing implementation detail. It is useful when the model needs an architectural overview more than exact line-by-line code.
@@ -116,6 +166,12 @@ Only send code that your organization allows you to share with that AI provider.
 ### Why are files missing from the output?
 
 Repomix respects ignore rules such as `.gitignore`, default ignore patterns, and custom patterns from your configuration. Check your `repomix.config.json`, CLI `--ignore` options, and whether the files are ignored by git.
+
+### Why does `--include` not include files from `node_modules`, build directories, or ignored paths?
+
+`--include` narrows the files Repomix tries to pack, but ignore rules still apply. Files can still be excluded by `.gitignore`, `.ignore`, `.repomixignore`, built-in default patterns, or `repomix.config.json`.
+
+If you intentionally need files from a normally ignored location, review the ignore source first. For advanced cases, options such as `--no-gitignore` or `--no-default-patterns` can disable parts of the ignore behavior, but use them carefully because they may include dependencies, build artifacts, or other noisy files.
 
 ### Why did Repomix include files I did not want?
 
