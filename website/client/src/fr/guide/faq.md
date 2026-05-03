@@ -1,6 +1,6 @@
 ---
 title: FAQ et dépannage
-description: Réponses aux questions fréquentes sur Repomix, les dépôts privés, les formats de sortie, la réduction de tokens, la sécurité et les workflows IA.
+description: Réponses aux questions fréquentes sur Repomix, les dépôts privés, le support C# et Python, les agents compatibles MCP, les formats de sortie, la réduction de tokens, la sécurité et les workflows IA.
 ---
 
 # FAQ et dépannage
@@ -85,6 +85,73 @@ Créez et versionnez une configuration partagée :
 ```bash
 repomix --init
 ```
+
+## Questions fréquentes supplémentaires
+
+### Repomix fonctionne-t-il avec C#, Python, Java, Go, Rust ou d'autres langages ?
+
+Oui. Repomix lit les fichiers de votre projet et les formate pour les outils d'IA, il peut donc empaqueter des dépôts écrits dans n'importe quel langage. La CLI nécessite Node.js 20 ou plus récent. Certaines fonctions avancées, comme la compression basée sur Tree-sitter, dépendent du support de parser pour chaque langage.
+
+### Puis-je utiliser Repomix avec Hermes Agent, OpenClaw ou d'autres agents compatibles MCP ?
+
+Oui. Repomix peut s'exécuter comme serveur MCP :
+
+```bash
+npx -y repomix --mcp
+```
+
+Pour Hermes Agent, ajoutez Repomix comme serveur MCP stdio dans `~/.hermes/config.yaml` :
+
+```yaml
+mcp_servers:
+  repomix:
+    command: "npx"
+    args: ["-y", "repomix", "--mcp"]
+```
+
+Pour OpenClaw ou d'autres agents compatibles MCP, utilisez le même command et les mêmes args là où l'agent permet de configurer un serveur MCP stdio externe. Si votre assistant prend en charge Agent Skills, vous pouvez aussi utiliser [Repomix Explorer Skill](/fr/guide/repomix-explorer-skill).
+
+### Comment aider un assistant IA à comprendre une nouvelle bibliothèque ou un framework ?
+
+Empaquetez le dépôt de la bibliothèque ou sa documentation, puis donnez la sortie à l'assistant IA comme référence :
+
+```bash
+npx repomix --remote owner/repo
+npx repomix --remote owner/repo --include "docs/**,src/**"
+```
+
+Pour un usage répété, vous pouvez générer un répertoire Agent Skills réutilisable :
+
+```bash
+npx repomix --remote owner/repo --skill-generate library-reference
+```
+
+### Comment exclure CSS, tests, sorties de build ou autres fichiers bruyants ?
+
+Utilisez `--ignore` pour une commande ponctuelle :
+
+```bash
+repomix --ignore "**/*.css,**/*.test.ts,dist/**,coverage/**"
+```
+
+Utilisez `--include` pour ne garder que certains chemins de code source ou de documentation :
+
+```bash
+repomix --include "src/**/*.ts,docs/**/*.md"
+```
+
+### Existe-t-il une limite de taille de dépôt ?
+
+La CLI n'a pas de limite fixe de taille de dépôt, mais les très grands dépôts peuvent être limités par la mémoire, la taille de fichier ou les limites d'upload et de contexte de l'outil d'IA. Pour les grands projets, commencez avec des include ciblés, inspectez les fichiers lourds en tokens et divisez la sortie si nécessaire :
+
+```bash
+repomix --token-count-tree 1000
+repomix --split-output 1mb
+```
+
+### Pourquoi `--include` n'inclut-il pas les fichiers de `node_modules`, des dossiers de build ou des chemins ignorés ?
+
+`--include` réduit les fichiers que Repomix essaie d'empaqueter, mais les règles d'ignore s'appliquent toujours. Des fichiers peuvent être exclus par `.gitignore`, `.ignore`, `.repomixignore`, les motifs par défaut intégrés ou `repomix.config.json`. Dans les cas avancés, `--no-gitignore` ou `--no-default-patterns` peuvent aider, mais utilisez-les prudemment car ils peuvent inclure des dépendances, des artefacts de build ou d'autres fichiers bruyants.
 
 ## Ressources liées
 

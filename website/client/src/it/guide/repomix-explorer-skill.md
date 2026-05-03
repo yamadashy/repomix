@@ -11,11 +11,35 @@ Questo skill è progettato per Claude Code e altri assistenti IA compatibili con
 
 ## Installazione Rapida
 
-```bash
-npx add-skill yamadashy/repomix --skill repomix-explorer
+Per Claude Code, installa il plugin ufficiale Repomix Explorer:
+
+```text
+/plugin marketplace add yamadashy/repomix
+/plugin install repomix-explorer@repomix
 ```
 
-Questo comando installa lo skill nella directory degli skill del tuo assistente IA (es. `.claude/skills/`), rendendolo immediatamente disponibile.
+Il plugin per Claude Code fornisce comandi con namespace come `/repomix-explorer:explore-local` e `/repomix-explorer:explore-remote`. Consulta [Plugin Claude Code](/it/guide/claude-code-plugins) per la configurazione completa.
+
+Per Codex, Cursor, OpenClaw e altri assistenti compatibili con Agent Skills, installa lo skill standalone con Skills CLI:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer
+```
+
+Per scegliere un assistente specifico, passa `--agent`:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer --agent codex
+npx skills add yamadashy/repomix --skill repomix-explorer --agent openclaw
+```
+
+Per Hermes Agent, installa lo skill a file singolo con il comando skills nativo di Hermes:
+
+```bash
+hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md
+```
+
+Se usi Hermes principalmente per l'analisi dei repository, anche la configurazione del [Server MCP](/it/guide/mcp-server) è una buona opzione perché esegue Repomix direttamente come server MCP.
 
 ## Cosa Fa
 

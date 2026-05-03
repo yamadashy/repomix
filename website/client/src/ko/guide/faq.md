@@ -1,6 +1,6 @@
 ---
 title: FAQ 및 문제 해결
-description: Repomix의 비공개 저장소, 출력 형식, 토큰 절감, 원격 GitHub 저장소, 보안 점검, AI 워크플로에 대한 자주 묻는 질문입니다.
+description: Repomix의 비공개 저장소, C# 및 Python 지원, MCP 호환 에이전트, 출력 형식, 토큰 절감, 보안 점검, AI 워크플로에 대한 자주 묻는 질문입니다.
 ---
 
 # FAQ 및 문제 해결
@@ -85,6 +85,73 @@ Repomix는 `.gitignore`, 기본 ignore 규칙, 사용자 지정 ignore 패턴을
 ```bash
 repomix --init
 ```
+
+## 추가 자주 묻는 질문
+
+### Repomix는 C#, Python, Java, Go, Rust 같은 다른 언어 저장소에서도 동작하나요?
+
+예. Repomix는 프로젝트 파일을 읽어 AI 도구에 맞게 포맷하므로 어떤 프로그래밍 언어로 작성된 저장소도 패킹할 수 있습니다. CLI를 실행하려면 Node.js 20 이상이 필요합니다. Tree-sitter 기반 코드 압축 같은 일부 고급 기능은 언어별 파서 지원 여부에 따라 달라질 수 있습니다.
+
+### Hermes Agent, OpenClaw 또는 다른 MCP 호환 에이전트와 Repomix를 사용할 수 있나요?
+
+예. Repomix는 MCP 서버로 실행할 수 있습니다:
+
+```bash
+npx -y repomix --mcp
+```
+
+Hermes Agent에서는 `~/.hermes/config.yaml`에 Repomix를 stdio MCP 서버로 추가합니다:
+
+```yaml
+mcp_servers:
+  repomix:
+    command: "npx"
+    args: ["-y", "repomix", "--mcp"]
+```
+
+OpenClaw 또는 다른 MCP 호환 에이전트에서는 외부 stdio MCP 서버를 설정하는 위치에 동일한 command와 args를 사용합니다. Assistant가 Agent Skills를 지원한다면 [Repomix Explorer Skill](/ko/guide/repomix-explorer-skill)도 사용할 수 있습니다.
+
+### AI 어시스턴트가 새 라이브러리나 프레임워크를 이해하도록 Repomix를 어떻게 사용하나요?
+
+라이브러리 저장소나 문서를 패킹한 뒤, 그 출력을 AI 어시스턴트에게 참고 자료로 제공합니다:
+
+```bash
+npx repomix --remote owner/repo
+npx repomix --remote owner/repo --include "docs/**,src/**"
+```
+
+반복해서 사용할 경우 재사용 가능한 Agent Skills 디렉터리로 생성할 수도 있습니다:
+
+```bash
+npx repomix --remote owner/repo --skill-generate library-reference
+```
+
+### CSS, 테스트, 빌드 출력 또는 노이즈가 많은 파일은 어떻게 제외하나요?
+
+일회성 명령에는 `--ignore`를 사용합니다:
+
+```bash
+repomix --ignore "**/*.css,**/*.test.ts,dist/**,coverage/**"
+```
+
+특정 소스나 문서 경로만 남기려면 `--include`를 사용합니다:
+
+```bash
+repomix --include "src/**/*.ts,docs/**/*.md"
+```
+
+### 저장소 크기 제한이 있나요?
+
+CLI에는 고정된 저장소 크기 제한이 없지만, 매우 큰 저장소는 메모리, 파일 크기, AI 도구의 업로드 및 컨텍스트 제한의 영향을 받을 수 있습니다. 큰 프로젝트에서는 대상 include 패턴으로 시작하고, 토큰이 큰 파일을 확인한 뒤 필요하면 출력을 분할하세요:
+
+```bash
+repomix --token-count-tree 1000
+repomix --split-output 1mb
+```
+
+### `--include`를 사용해도 `node_modules`, 빌드 디렉터리 또는 무시된 경로의 파일이 포함되지 않는 이유는 무엇인가요?
+
+`--include`는 Repomix가 패킹하려는 파일을 좁히지만, ignore 규칙은 계속 적용됩니다. 파일은 `.gitignore`, `.ignore`, `.repomixignore`, 내장 기본 패턴 또는 `repomix.config.json`에 의해 제외될 수 있습니다. 고급 경우에는 `--no-gitignore` 또는 `--no-default-patterns`를 사용할 수 있지만, 의존성, 빌드 산출물 또는 다른 노이즈 파일까지 포함될 수 있으므로 주의하세요.
 
 ## 관련 리소스
 

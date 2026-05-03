@@ -1,6 +1,6 @@
 ---
 title: FAQ और समस्या निवारण
-description: Repomix में private repositories, output formats, token reduction, remote GitHub repositories, security checks और AI workflows के बारे में आम सवालों के जवाब।
+description: Repomix में private repositories, C# और Python support, MCP-compatible agents, output formats, token reduction, security checks और AI workflows के बारे में आम सवालों के जवाब।
 ---
 
 # FAQ और समस्या निवारण
@@ -85,6 +85,73 @@ Shared configuration बनाएँ और commit करें:
 ```bash
 repomix --init
 ```
+
+## अतिरिक्त आम सवाल
+
+### क्या Repomix C#, Python, Java, Go, Rust या अन्य languages के साथ काम करता है?
+
+हाँ। Repomix आपके project की files पढ़ता है और उन्हें AI tools के लिए format करता है, इसलिए यह किसी भी programming language वाले repository को pack कर सकता है। CLI चलाने के लिए Node.js 20 या नया version चाहिए। कुछ advanced features, जैसे Tree-sitter based code compression, language parser support पर निर्भर करते हैं।
+
+### क्या मैं Repomix को Hermes Agent, OpenClaw या अन्य MCP-compatible agents के साथ उपयोग कर सकता हूँ?
+
+हाँ। Repomix MCP server के रूप में चल सकता है:
+
+```bash
+npx -y repomix --mcp
+```
+
+Hermes Agent के लिए, `~/.hermes/config.yaml` में Repomix को stdio MCP server के रूप में जोड़ें:
+
+```yaml
+mcp_servers:
+  repomix:
+    command: "npx"
+    args: ["-y", "repomix", "--mcp"]
+```
+
+OpenClaw या अन्य MCP-compatible agents में, जहाँ external stdio MCP server configure किया जाता है वहाँ यही command और args इस्तेमाल करें। अगर आपका assistant Agent Skills format support करता है, तो [Repomix Explorer Skill](/hi/guide/repomix-explorer-skill) भी उपयोग कर सकते हैं।
+
+### AI assistant को नई library या framework समझाने के लिए Repomix कैसे उपयोग करें?
+
+Library repository या उसके docs को pack करें और output को reference material के रूप में AI assistant को दें:
+
+```bash
+npx repomix --remote owner/repo
+npx repomix --remote owner/repo --include "docs/**,src/**"
+```
+
+Repeated use के लिए reusable Agent Skills directory generate कर सकते हैं:
+
+```bash
+npx repomix --remote owner/repo --skill-generate library-reference
+```
+
+### CSS, tests, build output या noisy files कैसे exclude करें?
+
+One-off commands के लिए `--ignore` इस्तेमाल करें:
+
+```bash
+repomix --ignore "**/*.css,**/*.test.ts,dist/**,coverage/**"
+```
+
+सिर्फ specific source या docs paths रखने के लिए `--include` इस्तेमाल करें:
+
+```bash
+repomix --include "src/**/*.ts,docs/**/*.md"
+```
+
+### क्या repository size limit है?
+
+CLI में fixed repository size limit नहीं है, लेकिन बहुत बड़े repositories memory, file size, या AI tool के upload और context limits से प्रभावित हो सकते हैं। बड़े projects में targeted include patterns से शुरुआत करें, token-heavy files देखें, और जरूरत हो तो output split करें:
+
+```bash
+repomix --token-count-tree 1000
+repomix --split-output 1mb
+```
+
+### `--include` करने पर भी `node_modules`, build directories या ignored paths क्यों नहीं आते?
+
+`--include` Repomix द्वारा pack की जाने वाली files को narrow करता है, लेकिन ignore rules फिर भी लागू होते हैं। Files `.gitignore`, `.ignore`, `.repomixignore`, built-in default patterns या `repomix.config.json` से exclude हो सकती हैं। Advanced cases में `--no-gitignore` या `--no-default-patterns` उपयोग कर सकते हैं, लेकिन सावधानी रखें क्योंकि इससे dependencies, build artifacts और अन्य noisy files शामिल हो सकती हैं।
 
 ## संबंधित संसाधन
 
