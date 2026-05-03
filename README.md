@@ -1253,7 +1253,7 @@ npx skills add yamadashy/repomix --skill repomix-explorer --agent codex
 npx skills add yamadashy/repomix --skill repomix-explorer --agent openclaw
 ```
 
-For Hermes Agent, install the single-file skill with Hermes' native skills command:
+For Hermes Agent, install the single-file skill with Hermes Agent's native skills command:
 
 ```bash
 hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md

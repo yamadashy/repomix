@@ -33,13 +33,13 @@ npx skills add yamadashy/repomix --skill repomix-explorer --agent codex
 npx skills add yamadashy/repomix --skill repomix-explorer --agent openclaw
 ```
 
-对于 Hermes Agent，请使用 Hermes 原生的 skills 命令安装单文件 skill：
+对于 Hermes Agent，请使用 Hermes Agent 原生的 skills 命令安装单文件 skill：
 
 ```bash
 hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md
 ```
 
-如果你主要使用 Hermes 进行仓库分析，[MCP 服务器](/zh-cn/guide/mcp-server)设置也是不错的选择，因为它会直接将 Repomix 作为 MCP server 运行。
+如果你主要使用 Hermes Agent 进行仓库分析，[MCP 服务器](/zh-cn/guide/mcp-server)设置也是不错的选择，因为它会直接将 Repomix 作为 MCP server 运行。
 
 ## 功能介绍
 

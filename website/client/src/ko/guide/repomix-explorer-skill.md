@@ -33,13 +33,13 @@ npx skills add yamadashy/repomix --skill repomix-explorer --agent codex
 npx skills add yamadashy/repomix --skill repomix-explorer --agent openclaw
 ```
 
-Hermes Agent에서는 Hermes의 네이티브 skills 명령으로 단일 파일 스킬을 설치할 수 있습니다:
+Hermes Agent에서는 Hermes Agent의 네이티브 skills 명령으로 단일 파일 스킬을 설치할 수 있습니다:
 
 ```bash
 hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md
 ```
 
-Hermes를 주로 저장소 분석에 사용한다면 Repomix를 직접 MCP 서버로 실행하는 [MCP 서버](/ko/guide/mcp-server) 설정도 좋은 선택입니다.
+Hermes Agent를 주로 저장소 분석에 사용한다면 Repomix를 직접 MCP 서버로 실행하는 [MCP 서버](/ko/guide/mcp-server) 설정도 좋은 선택입니다.
 
 ## 기능
 

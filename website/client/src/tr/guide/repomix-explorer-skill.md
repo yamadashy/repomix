@@ -33,13 +33,13 @@ npx skills add yamadashy/repomix --skill repomix-explorer --agent codex
 npx skills add yamadashy/repomix --skill repomix-explorer --agent openclaw
 ```
 
-Hermes Agent için tek dosyalı skill'i Hermes'in yerel skills komutuyla kurun:
+Hermes Agent için tek dosyalı skill'i Hermes Agent'ın yerel skills komutuyla kurun:
 
 ```bash
 hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md
 ```
 
-Hermes'i ağırlıklı olarak repository analizi için kullanıyorsanız, Repomix'i doğrudan MCP server olarak çalıştıran [MCP Server](/tr/guide/mcp-server) kurulumu da iyi bir seçenektir.
+Hermes Agent'ı ağırlıklı olarak repository analizi için kullanıyorsanız, Repomix'i doğrudan MCP server olarak çalıştıran [MCP Server](/tr/guide/mcp-server) kurulumu da iyi bir seçenektir.
 
 ## Ne İşe Yarar
 

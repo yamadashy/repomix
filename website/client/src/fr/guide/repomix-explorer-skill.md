@@ -33,13 +33,13 @@ npx skills add yamadashy/repomix --skill repomix-explorer --agent codex
 npx skills add yamadashy/repomix --skill repomix-explorer --agent openclaw
 ```
 
-Pour Hermes Agent, installez le skill en fichier unique avec la commande native de Hermes :
+Pour Hermes Agent, installez le skill en fichier unique avec la commande native de Hermes Agent :
 
 ```bash
 hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md
 ```
 
-Si vous utilisez surtout Hermes pour l'analyse de dépôts, la configuration du [Serveur MCP](/fr/guide/mcp-server) est aussi une bonne option, car elle exécute Repomix directement comme serveur MCP.
+Si vous utilisez surtout Hermes Agent pour l'analyse de dépôts, la configuration du [Serveur MCP](/fr/guide/mcp-server) est aussi une bonne option, car elle exécute Repomix directement comme serveur MCP.
 
 ## Ce Qu'il Fait
 
