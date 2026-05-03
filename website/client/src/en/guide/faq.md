@@ -45,10 +45,17 @@ For OpenClaw or other MCP-compatible agents, use the same command and arguments 
 If your assistant supports the Agent Skills format, you can also install the Repomix Explorer skill instead of configuring MCP:
 
 ```bash
-npx add-skill yamadashy/repomix --skill repomix-explorer
+npx skills add yamadashy/repomix --skill repomix-explorer
 ```
 
-Use the MCP server when you want the agent to call Repomix tools during a session. Use [Repomix Explorer Skill](/guide/repomix-explorer-skill) when you want a reusable natural-language workflow for exploring local or remote codebases.
+For Claude Code, use the dedicated Repomix Explorer plugin instead:
+
+```text
+/plugin marketplace add yamadashy/repomix
+/plugin install repomix-explorer@repomix
+```
+
+Use the MCP server when you want the agent to call Repomix tools during a session. Use [Repomix Explorer Skill](/guide/repomix-explorer-skill) when you want a reusable natural-language workflow for exploring local or remote codebases; that guide also includes the Hermes Agent `hermes skills install` command. Use the Claude Code plugin when you want namespaced slash commands such as `/repomix-explorer:explore-local`.
 
 ### Does Repomix work with private repositories?
 
