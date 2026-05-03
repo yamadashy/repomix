@@ -70,6 +70,13 @@ export function usePackRequest() {
       requestController.abort();
     }
     requestController = new AbortController();
+    // Capture the controller in a local const before any await. cancelRequest()
+    // can null out the shared `requestController` while we're awaiting
+    // turnstile.getToken(); reading `requestController.signal` after that
+    // would throw TypeError. The local reference still points to the original
+    // (already-aborted) controller, so the downstream signal check in
+    // handlePackRequest still works correctly.
+    const controller = requestController;
 
     loading.value = true;
     error.value = null;
@@ -82,7 +89,7 @@ export function usePackRequest() {
 
     // Set up automatic timeout
     // Use .bind() to avoid capturing the surrounding scope in the closure
-    const timeoutId = setTimeout(requestController.abort.bind(requestController, 'timeout'), TIMEOUT_MS);
+    const timeoutId = setTimeout(controller.abort.bind(controller, 'timeout'), TIMEOUT_MS);
 
     // Obtain a 1-shot Turnstile token before issuing the pack request. If the
     // widget fails (e.g. script blocked by an ad blocker, network error) we
@@ -116,7 +123,7 @@ export function usePackRequest() {
             progressStage.value = stage;
             progressMessage.value = message ?? null;
           },
-          signal: requestController.signal,
+          signal: controller.signal,
           file: mode.value === 'file' || mode.value === 'folder' ? uploadedFile.value || undefined : undefined,
           turnstileToken,
         },

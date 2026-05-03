@@ -79,11 +79,14 @@ export function turnstileMiddleware(deps: TurnstileDeps = defaultDeps) {
 
     let verifyResult: SiteverifyResponse | undefined;
     try {
-      const body = new URLSearchParams({
-        secret,
-        response: token,
-        remoteip: clientInfo.ip,
-      });
+      // remoteip is optional in Cloudflare's siteverify API. clientInfo.ip
+      // falls back to '0.0.0.0' when no IP header was present — sending that
+      // sentinel doesn't help Cloudflare's risk scoring and can confuse their
+      // validation, so omit the field entirely in that case.
+      const body = new URLSearchParams({ secret, response: token });
+      if (clientInfo.ip && clientInfo.ip !== '0.0.0.0') {
+        body.set('remoteip', clientInfo.ip);
+      }
       const res = await deps.fetch(SITEVERIFY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

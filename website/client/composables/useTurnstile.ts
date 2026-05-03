@@ -18,6 +18,11 @@ const SCRIPT_SRC =
   'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=__repomixTurnstileOnload&render=explicit';
 const SCRIPT_ID = 'repomix-turnstile-script';
 const READY_CALLBACK = '__repomixTurnstileOnload';
+// Upper bound on how long getToken() will wait for a callback. Cloudflare's
+// `timeout-callback` only fires for interactive challenges, so an invisible
+// widget that hangs (CDN stall, iframe never resolves) would otherwise leave
+// the caller's promise pending forever and freeze the loading spinner.
+const GET_TOKEN_TIMEOUT_MS = 15_000;
 
 interface TurnstileGlobal {
   render: (el: HTMLElement, options: TurnstileRenderOptions) => string;
@@ -50,6 +55,15 @@ let scriptPromise: Promise<TurnstileGlobal> | null = null;
 function loadTurnstileScript(): Promise<TurnstileGlobal> {
   if (scriptPromise) return scriptPromise;
 
+  // Reset state on rejection so a transient CDN failure (ad blocker, network
+  // blip) doesn't permanently lock the page out of Turnstile. Without this,
+  // the rejected promise would be cached forever and every subsequent
+  // getToken() call would inherit the same stale rejection.
+  const resetForRetry = () => {
+    scriptPromise = null;
+    document.getElementById(SCRIPT_ID)?.remove();
+  };
+
   scriptPromise = new Promise<TurnstileGlobal>((resolve, reject) => {
     if (window.turnstile) {
       resolve(window.turnstile);
@@ -60,6 +74,7 @@ function loadTurnstileScript(): Promise<TurnstileGlobal> {
       if (window.turnstile) {
         resolve(window.turnstile);
       } else {
+        resetForRetry();
         reject(new Error('Turnstile script loaded but window.turnstile is missing'));
       }
     };
@@ -71,7 +86,10 @@ function loadTurnstileScript(): Promise<TurnstileGlobal> {
       script.src = SCRIPT_SRC;
       script.async = true;
       script.defer = true;
-      script.onerror = () => reject(new Error('Failed to load Turnstile script'));
+      script.onerror = () => {
+        resetForRetry();
+        reject(new Error('Failed to load Turnstile script'));
+      };
       document.head.appendChild(script);
     }
   });
@@ -142,7 +160,7 @@ export function useTurnstile() {
       throw new Error('Turnstile widget failed to render');
     }
 
-    return new Promise<string>((resolve, reject) => {
+    const tokenPromise = new Promise<string>((resolve, reject) => {
       pendingResolve = resolve;
       pendingReject = reject;
       // The widget retains its previous token until reset(); explicit reset
@@ -150,6 +168,16 @@ export function useTurnstile() {
       if (widgetId.value) turnstile.reset(widgetId.value);
       if (widgetId.value) turnstile.execute(widgetId.value);
     });
+    // Bounded race against a hung widget. Clearing the pending handlers on
+    // timeout prevents a stale token from later resolving a long-gone caller.
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        pendingResolve = null;
+        pendingReject = null;
+        reject(new Error('Turnstile challenge timed out'));
+      }, GET_TOKEN_TIMEOUT_MS);
+    });
+    return Promise.race([tokenPromise, timeoutPromise]);
   }
 
   function setContainer(el: HTMLElement | null) {
@@ -157,6 +185,14 @@ export function useTurnstile() {
   }
 
   onBeforeUnmount(() => {
+    // Reject any in-flight getToken() promise so the awaiting caller doesn't
+    // hang forever after the form unmounts (e.g. user navigates away mid-
+    // challenge).
+    if (pendingReject) {
+      pendingReject(new Error('Turnstile widget unmounted'));
+      pendingResolve = null;
+      pendingReject = null;
+    }
     if (widgetId.value && window.turnstile) {
       window.turnstile.remove(widgetId.value);
       widgetId.value = null;
