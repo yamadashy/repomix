@@ -14,8 +14,7 @@ import { configDe } from './config/configDe';
 //
 // `CF_PAGES_BRANCH` is auto-injected by Cloudflare Pages with the configured
 // production branch name.
-const isCfPagesProductionDeploy =
-  process.env.CF_PAGES === '1' && process.env.CF_PAGES_BRANCH === 'main';
+const isCfPagesProductionDeploy = process.env.CF_PAGES === '1' && process.env.CF_PAGES_BRANCH === 'main';
 if (isCfPagesProductionDeploy && !process.env.VITE_TURNSTILE_SITE_KEY) {
   throw new Error(
     'VITE_TURNSTILE_SITE_KEY must be set for the Cloudflare Pages production deploy. Configure it in Pages → Settings → Environment variables (Production) and retry.',
