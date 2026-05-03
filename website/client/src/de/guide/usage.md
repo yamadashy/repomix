@@ -1,3 +1,8 @@
+---
+title: "Grundlegende Verwendung"
+description: "Nutzen Sie die Repomix-CLI, um Verzeichnisse, Remote-Repositories, ausgewählte Dateien, Git-Diffs, Commit-Logs, geteilte Ausgaben, Token-Zählungen und komprimierten Code zu packen."
+---
+
 # Grundlegende Verwendung
 
 ## Schnellstart

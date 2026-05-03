@@ -1,3 +1,8 @@
+---
+title: "MCP Sunucusu"
+description: "Yapay zeka asistanlarının yerel veya uzak kod tabanlarını doğrudan paketlemesi, araması ve okuması için Repomix’i Model Context Protocol sunucusu olarak çalıştırın."
+---
+
 # MCP Sunucusu
 
 Repomix, [Model Context Protocol (MCP)](https://modelcontextprotocol.io)'yi destekler ve AI asistanlarının kod tabanınızla doğrudan etkileşime girmesini sağlar. MCP sunucusu olarak çalıştırıldığında Repomix, AI asistanlarının manuel dosya hazırlamaya gerek kalmadan yerel veya uzak depoları analiz için paketleyebileceği araçlar sunar.

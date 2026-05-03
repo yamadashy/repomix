@@ -1,3 +1,8 @@
+---
+title: 명령행 옵션
+description: "입력, 출력, 파일 선택, 원격 저장소, 설정, 보안, 토큰 계산, MCP, Agent Skills를 위한 모든 Repomix CLI 옵션을 참조합니다."
+---
+
 # 명령행 옵션
 
 ## 기본 옵션

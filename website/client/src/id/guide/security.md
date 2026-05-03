@@ -1,3 +1,8 @@
+---
+title: Keamanan
+description: Pelajari bagaimana Repomix memakai Secretlint dan safety check untuk mendeteksi secret, API key, token, credential, dan konten repositori sensitif sebelum pengemasan.
+---
+
 # Keamanan
 
 

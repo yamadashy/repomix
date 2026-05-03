@@ -1,6 +1,7 @@
 ---
 layout: home
 title: Repomix
+description: "로컬 또는 원격 저장소를 Claude, ChatGPT, Gemini, MCP, 코드 리뷰 워크플로에 적합한 AI 친화적 XML, Markdown, JSON, 일반 텍스트로 패키징합니다."
 titleTemplate: 코드베이스를 AI 친화적인 형식으로 패키징
 aside: false
 editLink: false

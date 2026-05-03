@@ -1,3 +1,8 @@
+---
+title: Claude Code 外掛
+description: 安裝並使用官方 Repomix Claude Code 外掛，支援 MCP、斜線指令與 AI 驅動的儲存庫探索。
+---
+
 # Claude Code 外掛
 
 Repomix 為 [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) 提供官方外掛，可與 AI 驅動的開發環境無縫整合。這些外掛讓您可以使用自然語言指令直接在 Claude Code 中分析和打包程式碼庫。

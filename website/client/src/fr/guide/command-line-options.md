@@ -1,3 +1,8 @@
+---
+title: "Options de ligne de commande"
+description: "Consultez toutes les options de la CLI Repomix pour l'entrée, la sortie, la sélection de fichiers, les dépôts distants, la configuration, la sécurité, le comptage des tokens, MCP et les Agent Skills."
+---
+
 # Options de ligne de commande
 
 ## Options de base

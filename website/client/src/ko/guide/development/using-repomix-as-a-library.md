@@ -1,3 +1,8 @@
+---
+title: Repomix를 라이브러리로 사용하기
+description: Repomix를 Node.js 라이브러리로 사용해 로컬 디렉터리나 원격 저장소를 패키징하고 core API에 접근하며 AI 친화적 코드베이스 출력을 애플리케이션에 통합합니다.
+---
+
 # Repomix를 라이브러리로 사용하기
 
 Repomix를 CLI 도구로 사용하는 것 외에도 Node.js 애플리케이션에 직접 기능을 통합할 수 있습니다.

@@ -1,3 +1,8 @@
+---
+title: Đóng góp cho Repomix
+description: Thiết lập môi trường phát triển Repomix, chạy test, lint code, hiểu cấu trúc dự án và đóng góp thay đổi cho dự án open source.
+---
+
 # Đóng góp cho Repomix
 
 Repomix là một dự án mã nguồn mở và chúng tôi hoan nghênh đóng góp từ cộng đồng. Trang này cung cấp thông tin về cách bạn có thể đóng góp cho dự án.

@@ -1,3 +1,8 @@
+---
+title: "Instrucciones Personalizadas"
+description: "Agrega instrucciones específicas del proyecto a la salida de Repomix para que los asistentes de IA comprendan estándares de código, contexto arquitectónico, objetivos de revisión y requisitos de respuesta."
+---
+
 # Instrucciones Personalizadas
 
 Repomix te permite proporcionar instrucciones personalizadas que se incluirán en el archivo de salida. Esto puede ser útil para agregar contexto o pautas específicas para los sistemas de IA que procesan el repositorio.

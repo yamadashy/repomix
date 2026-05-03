@@ -1,3 +1,8 @@
+---
+title: Tạo Agent Skills
+description: Tạo Claude Agent Skills từ repository local hoặc remote để AI assistant có thể tái sử dụng tham chiếu codebase, cấu trúc dự án và mẫu triển khai.
+---
+
 # Tạo Agent Skills
 
 Repomix có thể tạo đầu ra theo định dạng [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills), tạo một thư mục Skills có cấu trúc có thể được sử dụng làm tham chiếu codebase có thể tái sử dụng cho các trợ lý AI.

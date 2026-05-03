@@ -1,3 +1,8 @@
+---
+title: "Contribuindo para o Repomix"
+description: "Configure o ambiente de desenvolvimento do Repomix, execute testes, verifique o código, entenda a estrutura do projeto e contribua com mudanças para o projeto open source."
+---
+
 # Contribuindo para o Repomix
 
 Obrigado pelo seu interesse no **Repomix**! 🚀 Adoraríamos sua ajuda para torná-lo ainda melhor. Este guia irá ajudá-lo a começar a contribuir para o projeto.

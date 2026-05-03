@@ -1,3 +1,8 @@
+---
+title: Agent Skills 生成
+description: 從本機或遠端儲存庫生成 Claude Agent Skills，讓 AI 助手重用程式碼庫參考、專案結構與實作模式。
+---
+
 # Agent Skills 生成
 
 Repomix 可以生成 [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) 格式的輸出，建立一個結構化的 Skills 目錄，可作為 AI 助手的可重複使用程式碼庫參考。

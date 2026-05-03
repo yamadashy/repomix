@@ -1,3 +1,8 @@
+---
+title: कम्युनिटी प्रोजेक्ट्स
+description: Repomix के आसपास बने community tools, editor extensions, desktop apps, language implementations और integrations खोजें।
+---
+
 # कम्युनिटी प्रोजेक्ट्स
 
 Repomix कम्युनिटी द्वारा बनाए गए अद्भुत प्रोजेक्ट्स की खोज करें! ये प्रोजेक्ट्स Repomix की क्षमताओं को बढ़ाते हैं, अन्य भाषाओं में implementations प्रदान करते हैं, या Repomix को बड़े toolsets में integrate करते हैं।

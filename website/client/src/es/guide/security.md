@@ -1,3 +1,8 @@
+---
+title: "Seguridad"
+description: "Aprende cómo Repomix usa Secretlint y comprobaciones de seguridad para detectar secretos, claves API, tokens, credenciales y contenido sensible del repositorio antes de empaquetar."
+---
+
 # Seguridad
 
 ## Función de verificación de seguridad

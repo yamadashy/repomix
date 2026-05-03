@@ -1,6 +1,7 @@
 ---
 layout: home
 title: Repomix
+description: "Compacte repositórios locais ou remotos em XML, Markdown, JSON ou texto simples amigáveis para IA para Claude, ChatGPT, Gemini, MCP e revisão de código."
 titleTemplate: Compacte seu código-fonte em formatos amigáveis para IA
 aside: false
 editLink: false

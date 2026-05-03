@@ -1,6 +1,7 @@
 ---
 layout: home
 title: Repomix
+description: "Impacchetta repository locali o remoti in XML, Markdown, JSON o testo semplice ottimizzati per IA, Claude, ChatGPT, Gemini, MCP e revisioni del codice."
 titleTemplate: Impacchetta il tuo codice in formati adatti all'IA
 aside: false
 editLink: false

@@ -1,3 +1,8 @@
+---
+title: GitHub Actions
+description: Tự động hóa Repomix trong GitHub Actions để đóng gói repository cho phân tích AI, CI workflow, artifact, code review và output đã nén.
+---
+
 # GitHub Actions
 
 Repomix có thể được tích hợp vào quy trình CI/CD của bạn bằng cách sử dụng GitHub Actions, cho phép bạn tự động đóng gói kho lưu trữ của mình và cung cấp đầu ra cho các bước tiếp theo.

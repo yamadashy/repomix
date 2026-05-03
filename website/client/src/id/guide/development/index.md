@@ -1,3 +1,8 @@
+---
+title: Berkontribusi ke Repomix
+description: Siapkan lingkungan pengembangan Repomix, jalankan test, lint kode, pahami struktur proyek, dan kontribusikan perubahan ke proyek open source.
+---
+
 # Berkontribusi ke Repomix
 
 

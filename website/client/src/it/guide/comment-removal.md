@@ -1,3 +1,8 @@
+---
+title: "Rimozione Commenti"
+description: "Rimuovi i commenti del codice dall'output Repomix per ridurre rumore e uso di token, preservando i file sorgente e il comportamento dei linguaggi supportati."
+---
+
 # Rimozione Commenti
 
 Repomix può rimuovere automaticamente i commenti dalla tua codebase durante la generazione del file di output. Questo può aiutare a ridurre il rumore e concentrarsi sul codice vero e proprio.

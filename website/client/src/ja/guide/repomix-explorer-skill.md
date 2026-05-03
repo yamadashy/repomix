@@ -1,8 +1,13 @@
+---
+title: Repomix Explorer Skill (Agent Skills)
+description: Repomix Explorer agent skillをインストールし、Claude CodeやAgent Skills形式対応のAIアシスタントでローカルおよびリモートコードベースを分析します。
+---
+
 # Repomix Explorer Skill (Agent Skills)
 
 Repomixは、AIコーディングアシスタントがRepomix CLIを使ってコードベースを分析・探索できる、すぐに使える**Repomix Explorer**スキルを提供しています。
 
-このスキルは、Claude Code、Cursor、Codex、GitHub Copilotなど、さまざまなAIツールで動作するように設計されています。
+このスキルは、Claude CodeやAgent Skills形式に対応したAIアシスタント向けに設計されています。
 
 ## クイックインストール
 

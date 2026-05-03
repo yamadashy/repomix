@@ -1,3 +1,8 @@
+---
+title: "Esempi di Prompt"
+description: "Copia template di prompt per usare l'output Repomix in revisioni del codice con IA, analisi di sicurezza, revisioni delle prestazioni, documentazione, test e controlli qualità."
+---
+
 # Esempi di Prompt
 
 ## Revisione del Codice

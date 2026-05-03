@@ -1,3 +1,8 @@
+---
+title: Repomix 入门指南
+description: 开始使用 Repomix，将仓库打包为适用于 ChatGPT、Claude、Gemini、Grok、DeepSeek、Perplexity 等 LLM 的 AI 友好上下文。
+---
+
 # Repomix 入门指南
 
 <script setup>

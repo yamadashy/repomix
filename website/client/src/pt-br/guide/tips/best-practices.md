@@ -1,3 +1,8 @@
+---
+title: "Melhores Práticas para Desenvolvimento com IA: Da Minha Experiência"
+description: "Dicas práticas de desenvolvimento assistido por IA para usar código existente, implementação modular, testes, planejamento e compartilhamento de contexto com Repomix."
+---
+
 # Melhores Práticas para Desenvolvimento com IA: Da Minha Experiência
 
 Embora eu ainda não tenha concluído um grande projeto com IA, gostaria de compartilhar minhas experiências até agora no desenvolvimento com IA.

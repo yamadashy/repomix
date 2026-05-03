@@ -1,3 +1,8 @@
+---
+title: "Projets Communautaires"
+description: "Découvrez les outils communautaires, extensions d'éditeurs, applications de bureau, implémentations dans d'autres langages et intégrations construites autour de Repomix."
+---
+
 # Projets Communautaires
 
 Découvrez les projets formidables créés par la communauté Repomix ! Ces projets étendent les capacités de Repomix, fournissent des implémentations dans d'autres langages, ou intègrent Repomix dans des ensembles d'outils plus larges.

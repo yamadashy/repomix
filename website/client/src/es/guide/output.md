@@ -1,3 +1,8 @@
+---
+title: "Formatos de salida"
+description: "Compara los formatos de salida XML, Markdown, JSON y texto plano de Repomix y elige la mejor estructura para Claude, ChatGPT, Gemini, APIs y automatización."
+---
+
 # Formatos de salida
 
 Repomix admite cuatro formatos de salida:

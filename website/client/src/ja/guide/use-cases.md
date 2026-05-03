@@ -1,3 +1,8 @@
+---
+title: ユースケース
+description: AIコードレビュー、バグ調査、リファクタリング、ドキュメント、オンボーディング、セキュリティ監査、アーキテクチャ分析に役立つRepomixの実践的なワークフローを紹介します。
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

@@ -1,3 +1,8 @@
+---
+title: "Elaborazione Repository Remoti"
+description: "Impacchetta repository GitHub con Repomix usando URL completi, abbreviazione user/repo, branch, tag, commit, Docker e controlli di fiducia per configurazioni remote."
+---
+
 # Elaborazione Repository Remoti
 
 ## Utilizzo Base

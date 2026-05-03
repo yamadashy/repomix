@@ -1,3 +1,8 @@
+---
+title: 設定
+description: 使用 JSON、JSONC、JSON5、JavaScript 或 TypeScript 檔案設定 Repomix，包括輸出格式、包含與忽略模式以及進階選項。
+---
+
 # 設定
 
 Repomix可以透過設定檔或命令列選項進行設定。設定檔允許您自訂程式碼庫的處理和輸出方式。

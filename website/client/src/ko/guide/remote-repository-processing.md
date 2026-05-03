@@ -1,3 +1,8 @@
+---
+title: GitHub 저장소 처리
+description: "전체 URL, user/repo 축약형, 브랜치, 태그, 커밋, Docker, 원격 설정 신뢰 제어를 사용해 GitHub 저장소를 Repomix로 패키징합니다."
+---
+
 # GitHub 저장소 처리
 
 ## 기본 사용법

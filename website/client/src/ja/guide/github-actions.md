@@ -1,3 +1,8 @@
+---
+title: GitHub ActionsでRepomixを使う
+description: GitHub ActionsでRepomixを自動化し、AI分析、CIワークフロー、アーティファクト、コードレビュー、圧縮出力向けにリポジトリをパッケージ化します。
+---
+
 # GitHub ActionsでRepomixを使う
 
 GitHub ActionsワークフローにRepomixを組み込むことで、AI解析用のコードベースパッキングを自動化できます。CIやコードレビュー、LLMツール向けの準備に便利です。

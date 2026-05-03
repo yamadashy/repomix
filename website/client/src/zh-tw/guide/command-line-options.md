@@ -1,3 +1,8 @@
+---
+title: 命令列選項
+description: 查閱 Repomix CLI 的所有選項，涵蓋輸入、輸出、檔案選擇、遠端儲存庫、設定、安全性、token 計數、MCP 與 Agent Skills。
+---
+
 # 命令列選項
 
 ## 基本選項

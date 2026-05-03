@@ -1,3 +1,8 @@
+---
+title: インストール
+description: npx、npm、Yarn、Bun、Homebrew、Docker、VS Code拡張機能、ブラウザ拡張機能でRepomixをインストールし、CLI設定を確認します。
+---
+
 # インストール
 
 ## npx を使用する方法 (インストール不要)

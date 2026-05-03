@@ -1,3 +1,8 @@
+---
+title: "Primeros pasos con Repomix"
+description: "Empieza con Repomix para empaquetar un repositorio como contexto optimizado para ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity y otros LLM."
+---
+
 # Primeros pasos con Repomix
 
 <script setup>

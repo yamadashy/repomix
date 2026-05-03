@@ -1,3 +1,8 @@
+---
+title: "Geração de Agent Skills"
+description: "Gere Claude Agent Skills a partir de repositórios locais ou remotos para que assistentes de IA possam reutilizar referências de código, estrutura do projeto e padrões de implementação."
+---
+
 # Geração de Agent Skills
 
 O Repomix pode gerar saída no formato [Claude Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills), criando um diretório estruturado de Skills que pode ser usado como referência de código reutilizável para assistentes de IA.

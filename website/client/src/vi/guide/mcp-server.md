@@ -1,3 +1,8 @@
+---
+title: Máy chủ MCP
+description: Chạy Repomix như server Model Context Protocol để AI assistant có thể trực tiếp đóng gói, tìm kiếm và đọc codebase local hoặc remote.
+---
+
 # Máy chủ MCP
 
 Repomix hỗ trợ [Model Context Protocol (MCP)](https://modelcontextprotocol.io), cho phép các trợ lý AI tương tác trực tiếp với codebase của bạn. Khi chạy như một máy chủ MCP, Repomix cung cấp các công cụ cho phép các trợ lý AI đóng gói repository cục bộ hoặc từ xa để phân tích mà không cần chuẩn bị file thủ công.

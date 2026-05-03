@@ -1,3 +1,8 @@
+---
+title: Tùy chọn Dòng lệnh
+description: Tham khảo mọi tùy chọn Repomix CLI cho input, output, chọn file, repository remote, cấu hình, bảo mật, đếm token, MCP và agent skills.
+---
+
 # Tùy chọn Dòng lệnh
 
 ## Tùy chọn Cơ bản
@@ -135,4 +140,3 @@ repomix --include-diffs --include-logs  # Bao gồm cả diff và logs
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Chỉ hiển thị tệp/thư mục với 1000+ token
 ```
-

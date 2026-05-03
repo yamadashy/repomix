@@ -1,3 +1,8 @@
+---
+title: "Kod Sıkıştırma"
+description: "Imports, exports, sınıflar, fonksiyonlar, arayüzler ve yapıyı korurken token kullanımını azaltmak için Repomix’te Tree-sitter tabanlı kod sıkıştırmayı kullanın."
+---
+
 # Kod Sıkıştırma
 
 Kod sıkıştırma, uygulama ayrıntılarını kaldırırken temel kod yapılarını akıllıca çıkaran güçlü bir özelliktir. Bu özellik, kod tabanınız hakkındaki önemli yapısal bilgileri korurken token sayısını azaltmak için özellikle kullanışlıdır.

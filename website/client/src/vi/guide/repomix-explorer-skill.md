@@ -1,8 +1,13 @@
+---
+title: Repomix Explorer Skill (Agent Skills)
+description: Cài đặt Repomix Explorer agent skill để phân tích codebase local và remote bằng Claude Code cùng các AI assistant khác hỗ trợ định dạng Agent Skills.
+---
+
 # Repomix Explorer Skill (Agent Skills)
 
 Repomix cung cấp một skill **Repomix Explorer** sẵn sàng sử dụng cho phép các trợ lý lập trình AI phân tích và khám phá codebase bằng Repomix CLI.
 
-Skill này được thiết kế để hoạt động với nhiều công cụ AI khác nhau bao gồm Claude Code, Cursor, Codex, GitHub Copilot và nhiều hơn nữa.
+Skill này được thiết kế cho Claude Code và các AI assistant khác hỗ trợ định dạng Agent Skills.
 
 ## Cài Đặt Nhanh
 

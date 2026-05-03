@@ -1,3 +1,8 @@
+---
+title: "Yapay Zeka Destekli Geliştirmede En İyi Uygulamalar: Deneyimlerimden"
+description: "Mevcut kodu kullanma, modüler uygulama, testler, planlama ve Repomix tabanlı bağlam paylaşımı için pratik yapay zeka destekli geliştirme ipuçları."
+---
+
 # Yapay Zeka Destekli Geliştirmede En İyi Uygulamalar: Deneyimlerimden
 
 Henüz yapay zeka kullanarak büyük ölçekli bir projeyi başarıyla tamamlamış değilim; ancak bu süreçte öğrendiklerimi sizlerle paylaşmak istiyorum.

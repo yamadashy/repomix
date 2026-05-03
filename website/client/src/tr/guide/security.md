@@ -1,3 +1,8 @@
+---
+title: "Güvenlik"
+description: "Repomix’in paketleme öncesinde sırları, API anahtarlarını, tokenları, kimlik bilgilerini ve hassas depo içeriklerini tespit etmek için Secretlint ve güvenlik kontrollerini nasıl kullandığını öğrenin."
+---
+
 # Güvenlik
 
 ## Güvenlik Kontrol Özelliği

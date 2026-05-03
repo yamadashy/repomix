@@ -1,3 +1,8 @@
+---
+title: "MCP-Server"
+description: "Betreiben Sie Repomix als Model-Context-Protocol-Server, damit KI-Assistenten lokale oder Remote-Codebasen direkt packen, durchsuchen und lesen können."
+---
+
 # MCP-Server
 
 Repomix unterstützt das [Model Context Protocol (MCP)](https://modelcontextprotocol.io), das es KI-Assistenten ermöglicht, direkt mit Ihrer Codebasis zu interagieren. Wenn Repomix als MCP-Server ausgeführt wird, stellt es Tools bereit, die es KI-Assistenten ermöglichen, lokale oder entfernte Repositories ohne manuelle Dateivorbereitung für die Analyse zu verpacken.

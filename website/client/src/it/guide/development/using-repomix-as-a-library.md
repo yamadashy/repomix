@@ -1,3 +1,8 @@
+---
+title: "Usare Repomix come Libreria"
+description: "Usa Repomix come libreria Node.js per impacchettare directory locali o repository remoti, accedere alle API principali e integrare output della codebase pronti per l'IA nelle applicazioni."
+---
+
 # Usare Repomix come Libreria
 
 Oltre a usare Repomix come strumento CLI, puoi integrare le sue funzionalità direttamente nelle tue applicazioni Node.js.

@@ -1,3 +1,8 @@
+---
+title: Instruksi Khusus
+description: Tambahkan instruksi khusus proyek ke output Repomix agar AI assistant memahami standar coding, konteks arsitektur, tujuan review, dan kebutuhan respons.
+---
+
 # Instruksi Khusus
 
 

@@ -1,3 +1,8 @@
+---
+title: "Sicherheit"
+description: "Erfahren Sie, wie Repomix Secretlint und Sicherheitsprüfungen nutzt, um Secrets, API-Schlüssel, Tokens, Zugangsdaten und sensible Repository-Inhalte vor dem Packen zu erkennen."
+---
+
 # Sicherheit
 
 ## Sicherheitsprüfungsfunktion

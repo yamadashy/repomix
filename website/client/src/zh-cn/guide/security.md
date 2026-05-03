@@ -1,3 +1,8 @@
+---
+title: 安全性
+description: 了解 Repomix 如何使用 Secretlint 和安全检查，在打包前检测密钥、API key、令牌、凭据和敏感仓库内容。
+---
+
 # 安全性
 
 ## 安全检查功能

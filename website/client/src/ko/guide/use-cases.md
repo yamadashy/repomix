@@ -1,3 +1,8 @@
+---
+title: 사용 사례
+description: "AI 코드 리뷰, 버그 조사, 리팩터링, 문서화, 온보딩, 보안 감사, 아키텍처 분석을 위한 실용적인 Repomix 워크플로를 살펴봅니다."
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

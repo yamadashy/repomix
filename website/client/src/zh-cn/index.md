@@ -1,6 +1,7 @@
 ---
 layout: home
 title: Repomix
+description: 将本地或远程仓库打包为适用于 Claude、ChatGPT、Gemini、MCP 和代码审查流程的 AI 友好 XML、Markdown、JSON 或纯文本。
 titleTemplate: 将代码库打包为 AI 友好的格式
 aside: false
 editLink: false

@@ -1,3 +1,8 @@
+---
+title: Opsi Baris Perintah
+description: Referensi lengkap opsi CLI Repomix untuk input, output, pemilihan file, repositori remote, konfigurasi, keamanan, penghitungan token, MCP, dan agent skills.
+---
+
 # Opsi Baris Perintah
 
 ## Opsi Dasar
@@ -135,4 +140,3 @@ repomix --include-diffs --include-logs  # Sertakan diff dan log
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Hanya tampilkan file/direktori dengan 1000+ token
 ```
-

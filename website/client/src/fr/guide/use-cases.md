@@ -1,3 +1,8 @@
+---
+title: "Cas d'utilisation"
+description: "Explorez des workflows Repomix concrets pour revue de code IA, investigation de bugs, refactorisation, documentation, onboarding, audits de sécurité et analyse d'architecture."
+---
+
 <script setup>
 import YouTubeVideo from '../../../components/YouTubeVideo.vue';
 </script>

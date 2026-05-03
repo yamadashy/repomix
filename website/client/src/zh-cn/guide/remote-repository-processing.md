@@ -1,3 +1,8 @@
+---
+title: GitHub 仓库处理
+description: 使用完整 URL、user/repo 简写、分支、标签、提交、Docker 和远程配置可信控制，通过 Repomix 打包 GitHub 仓库。
+---
+
 # GitHub 仓库处理
 
 ## 基本用法

@@ -1,3 +1,8 @@
+---
+title: प्रॉम्प्ट उदाहरण
+description: AI code reviews, security analysis, performance reviews, documentation, testing और quality checks में Repomix output उपयोग करने के लिए prompt templates copy करें।
+---
+
 # प्रॉम्प्ट उदाहरण
 
 Repomix द्वारा जनरेट की गई फाइल का उपयोग करके AI मॉडल के साथ प्रभावी ढंग से संवाद करने के लिए यहां कुछ प्रॉम्प्ट उदाहरण दिए गए हैं।

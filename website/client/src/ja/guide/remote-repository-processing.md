@@ -1,3 +1,8 @@
+---
+title: GitHubリポジトリの処理
+description: 完全なURL、user/repo短縮表記、ブランチ、タグ、コミット、Docker、リモート設定の信頼制御を使ってGitHubリポジトリをRepomixでパックします。
+---
+
 # GitHubリポジトリの処理
 
 ## 基本的な使用方法
