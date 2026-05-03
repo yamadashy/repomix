@@ -81,6 +81,11 @@ function loadTurnstileScript(): Promise<TurnstileGlobal> {
     }
 
     window[READY_CALLBACK] = () => {
+      // Drop the global once it has fired. Keeps the success path symmetric
+      // with the retry path (which also deletes via resetForRetry) and avoids
+      // leaving a stale function on `window` that could be invoked again if
+      // the script tag is re-injected by some other code on the page.
+      delete window[READY_CALLBACK];
       if (window.turnstile) {
         resolve(window.turnstile);
       } else {
@@ -126,17 +131,17 @@ export function useTurnstile() {
   //    has fired.
   let currentGen = 0;
 
-  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY ?? FALLBACK_TEST_SITE_KEY;
+  // Production builds must inject a real site key. A console.error is too
+  // easy to miss during smoke tests, so throw at first useTurnstile() call —
+  // the form fails to initialise loudly and the misconfig is unmissable.
+  // Test/dev builds fall through to the always-passes test sitekey so
+  // contributors without a Cloudflare account can still exercise the flow.
   if (import.meta.env.PROD && !import.meta.env.VITE_TURNSTILE_SITE_KEY) {
-    // Production builds must inject a real site key. Falling through to the
-    // test key (always-passes) silently neutralises Turnstile if the server
-    // also uses a test secret, or causes universal 403s if it uses a real
-    // secret. A loud console.error makes the misconfiguration obvious during
-    // smoke tests.
-    console.error(
-      'VITE_TURNSTILE_SITE_KEY is not set; falling back to the Cloudflare test site key. Turnstile will not protect /api/pack.',
+    throw new Error(
+      'VITE_TURNSTILE_SITE_KEY is not set in this production build. Configure the env var in Cloudflare Pages and redeploy.',
     );
   }
+  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY ?? FALLBACK_TEST_SITE_KEY;
 
   async function ensureWidget(el: HTMLElement): Promise<TurnstileGlobal> {
     const turnstile = await loadTurnstileScript();
@@ -188,13 +193,30 @@ export function useTurnstile() {
   // already aborted.
   async function getToken(signal?: AbortSignal): Promise<string> {
     error.value = null;
-    if (signal?.aborted) {
-      throw new Error('Turnstile challenge aborted');
-    }
+    const checkAborted = () => {
+      if (signal?.aborted) throw new Error('Turnstile challenge aborted');
+    };
+    checkAborted();
     if (!containerEl.value) {
       throw new Error('Turnstile container element not registered');
     }
-    const turnstile = await ensureWidget(containerEl.value);
+    // Race the script-load step against the caller's abort signal so a
+    // user-initiated cancel during a slow script load (CDN stall, ad
+    // blocker, network blip) doesn't have to wait for the surrounding 30s
+    // pack timeout. The signal is also re-checked before listener setup
+    // below to cover the race where the abort fired during the await.
+    const widgetPromise = ensureWidget(containerEl.value);
+    const turnstile = signal
+      ? await Promise.race([
+          widgetPromise,
+          new Promise<never>((_, reject) => {
+            const onPreAbort = () => reject(new Error('Turnstile challenge aborted'));
+            if (signal.aborted) onPreAbort();
+            else signal.addEventListener('abort', onPreAbort, { once: true });
+          }),
+        ])
+      : await widgetPromise;
+    checkAborted();
     if (!widgetId.value) {
       throw new Error('Turnstile widget failed to render');
     }

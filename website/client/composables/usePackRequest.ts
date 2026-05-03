@@ -100,6 +100,14 @@ export function usePackRequest() {
     // - In dev/preview: continue without a token. The server skips
     //   verification when TURNSTILE_SECRET_KEY is unset, so contributors
     //   without a Cloudflare account can still exercise the pack flow.
+    // All UI mutations from this point forward are guarded by `isCurrent()`.
+    // Without the guard, a slow request whose user hit cancel-and-resubmit
+    // could clobber the new request's `loading` / `result` / `error` state
+    // mid-flight (e.g. an old onAbort firing "Request was cancelled" while a
+    // fresh pack is still loading). Anchoring to the local AbortController
+    // identity is the cleanest way to detect supersession.
+    const isCurrent = () => requestController === controller;
+
     let turnstileToken: string | undefined;
     try {
       // Pass the controller signal so cancelling the pack request also
@@ -113,34 +121,34 @@ export function usePackRequest() {
         // in flight. Mirror handlePackRequest's onAbort messaging since we
         // short-circuit before calling it.
         clearTimeout(timeoutId);
-        if (requestController === controller) {
+        if (isCurrent()) {
           loading.value = false;
           requestController = null;
+          if (controller.signal.reason === 'timeout') {
+            error.value =
+              'Request timed out.\nPlease consider using Include Patterns or Ignore Patterns to reduce the scope.';
+          } else {
+            error.value = 'Request was cancelled.';
+          }
+          errorType.value = 'warning';
         }
-        if (controller.signal.reason === 'timeout') {
-          error.value =
-            'Request timed out.\nPlease consider using Include Patterns or Ignore Patterns to reduce the scope.';
-        } else {
-          error.value = 'Request was cancelled.';
-        }
-        errorType.value = 'warning';
         return;
       }
       if (import.meta.env.PROD) {
         clearTimeout(timeoutId);
-        if (requestController === controller) {
+        if (isCurrent()) {
           loading.value = false;
           requestController = null;
+          // Distinguish "Turnstile script blocked" (likely an extension) from
+          // generic verification failure so the user has a path to recovery
+          // instead of just being told "try again".
+          const msg = turnstileError instanceof Error ? turnstileError.message : '';
+          const isScriptIssue = /script|load|missing/i.test(msg);
+          error.value = isScriptIssue
+            ? 'Bot protection failed to load. Please disable ad blockers or privacy extensions blocking challenges.cloudflare.com and reload.'
+            : 'Verification failed. Please reload the page and try again.';
+          errorType.value = 'error';
         }
-        // Distinguish "Turnstile script blocked" (likely an extension) from
-        // generic verification failure so the user has a path to recovery
-        // instead of just being told "try again".
-        const msg = turnstileError instanceof Error ? turnstileError.message : '';
-        const isScriptIssue = /script|load|missing/i.test(msg);
-        error.value = isScriptIssue
-          ? 'Bot protection failed to load. Please disable ad blockers or privacy extensions blocking challenges.cloudflare.com and reload.'
-          : 'Verification failed. Please reload the page and try again.';
-        errorType.value = 'error';
         return;
       }
     }
@@ -152,16 +160,20 @@ export function usePackRequest() {
         getPackRequestOptions.value,
         {
           onSuccess: (response) => {
+            if (!isCurrent()) return;
             result.value = response;
           },
           onError: (errorMessage) => {
+            if (!isCurrent()) return;
             error.value = errorMessage;
           },
           onAbort: (message) => {
+            if (!isCurrent()) return;
             error.value = message;
             errorType.value = 'warning';
           },
           onProgress: (stage, message) => {
+            if (!isCurrent()) return;
             progressStage.value = stage;
             progressMessage.value = message ?? null;
           },

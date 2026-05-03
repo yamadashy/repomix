@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { describe, expect, test, vi } from 'vitest';
 import { turnstileMiddleware } from '../src/middlewares/turnstile.js';
+import * as logger from '../src/utils/logger.js';
 
 // The middleware reads `requestId` and `clientInfo` from the Hono context
 // (set by upstream middleware in production). For unit tests we shim these
@@ -244,38 +245,109 @@ describe('turnstileMiddleware', () => {
     expect(body.get('remoteip')).toBe('203.0.113.42');
   });
 
-  test('logs the secret-missing warning at most once across requests', async () => {
-    // Reuse a single middleware instance across calls so the closure-state
-    // `secretMissingLogged` flag is shared (mirrors the production setup).
+  test('logs the secret-missing warning at most once across requests (dev/test)', async () => {
+    const logWarningSpy = vi.spyOn(logger, 'logWarning').mockImplementation(() => {});
+    try {
+      // Reuse a single middleware instance across calls so the closure-state
+      // `secretMissingLogged` flag is shared (mirrors the production setup
+      // where one instance is registered for the whole server lifetime).
+      const middleware = turnstileMiddleware({
+        fetch: vi.fn(),
+        getSecret: () => undefined,
+        isProduction: () => false,
+      });
+      const app = buildApp({ middleware });
+
+      await app.request('/api/pack', { method: 'POST' });
+      await app.request('/api/pack', { method: 'POST' });
+      await app.request('/api/pack', { method: 'POST' });
+
+      const skipLogs = logWarningSpy.mock.calls.filter((call) =>
+        String(call[0]).includes('Turnstile verification skipped'),
+      );
+      expect(skipLogs).toHaveLength(1);
+    } finally {
+      logWarningSpy.mockRestore();
+    }
+  });
+
+  test('logs the secret-missing warning every request in production (no closure cache)', async () => {
+    const logWarningSpy = vi.spyOn(logger, 'logWarning').mockImplementation(() => {});
+    try {
+      const middleware = turnstileMiddleware({
+        fetch: vi.fn(),
+        getSecret: () => undefined,
+        isProduction: () => true,
+      });
+      const app = buildApp({ middleware });
+
+      await app.request('/api/pack', { method: 'POST' });
+      await app.request('/api/pack', { method: 'POST' });
+
+      // Production fail-closed path logs every time so a chronic misconfig
+      // shows up on the dashboard, not just once at boot.
+      const prodLogs = logWarningSpy.mock.calls.filter((call) =>
+        String(call[0]).includes('TURNSTILE_SECRET_KEY not set in production'),
+      );
+      expect(prodLogs).toHaveLength(2);
+    } finally {
+      logWarningSpy.mockRestore();
+    }
+  });
+
+  test('passes through when siteverify hostname is allowed', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(okResponse({ success: true, hostname: 'repomix.com' }));
     const middleware = turnstileMiddleware({
-      fetch: vi.fn(),
-      getSecret: () => undefined,
+      fetch: fetchMock,
+      getSecret: () => SECRET,
       isProduction: () => false,
     });
     const app = buildApp({ middleware });
 
-    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
-    try {
-      await app.request('/api/pack', { method: 'POST' });
-      await app.request('/api/pack', { method: 'POST' });
-      await app.request('/api/pack', { method: 'POST' });
+    const res = await app.request('/api/pack', {
+      method: 'POST',
+      headers: { 'X-Turnstile-Token': 'good-token' },
+    });
 
-      // logWarning eventually goes through Winston which writes to the same
-      // stdout stream we don't intercept here, so the cleanest assertion is
-      // that the function-level flag is honoured by the next request also
-      // returning 200 without further side effects.
-      // (A direct logger spy would be tighter, but the only-once contract is
-      // observable through behaviour: the middleware doesn't re-throw or
-      // mutate state on subsequent calls.)
-    } finally {
-      consoleInfoSpy.mockRestore();
-    }
-    // No assertion failure means the closure state didn't blow up; if the
-    // only-once guard ever regresses, the warning would still be emitted on
-    // every call but tests would still pass — so we add a guard against the
-    // function changing shape such that getSecret is called more than 3 times
-    // (which would indicate a recreated middleware per request).
-    expect(true).toBe(true);
+    expect(res.status).toBe(200);
+  });
+
+  test('returns 403 when siteverify reports an unexpected hostname', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(okResponse({ success: true, hostname: 'attacker.example' }));
+    const middleware = turnstileMiddleware({
+      fetch: fetchMock,
+      getSecret: () => SECRET,
+      isProduction: () => false,
+    });
+    const app = buildApp({ middleware });
+
+    const res = await app.request('/api/pack', {
+      method: 'POST',
+      headers: { 'X-Turnstile-Token': 'token' },
+    });
+
+    expect(res.status).toBe(403);
+  });
+
+  test('passes through when siteverify omits hostname (test sitekey backward-compat)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse({ success: true }));
+    const middleware = turnstileMiddleware({
+      fetch: fetchMock,
+      getSecret: () => SECRET,
+      isProduction: () => false,
+    });
+    const app = buildApp({ middleware });
+
+    const res = await app.request('/api/pack', {
+      method: 'POST',
+      headers: { 'X-Turnstile-Token': 'good-token' },
+    });
+
+    expect(res.status).toBe(200);
   });
 
   test('passes through siteverify error-codes in the rejection log payload', async () => {

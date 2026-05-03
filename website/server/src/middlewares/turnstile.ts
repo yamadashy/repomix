@@ -18,6 +18,12 @@ const MAX_TOKEN_LENGTH = 2048;
 // server requires this exact value so a token issued for some other endpoint
 // (or a future widget) can't be replayed at /api/pack.
 const EXPECTED_ACTION = 'pack';
+// Hostnames we expect tokens to be minted from. Must match the site
+// configured in the Cloudflare Turnstile dashboard. Tokens minted on other
+// hostnames (e.g. a leaked sitekey reused on attacker's domain) will be
+// rejected. The test sitekey returns no hostname, so undefined is allowed
+// for backward-compat.
+const ALLOWED_HOSTNAMES: readonly string[] = ['repomix.com'];
 
 interface SiteverifyResponse {
   success: boolean;
@@ -171,6 +177,22 @@ export function turnstileMiddleware(deps: TurnstileDeps = defaultDeps) {
         outcome: 'turnstile_failed' satisfies PackOutcome,
         reason: 'action_mismatch',
         action: verifyResult.action,
+        requestId,
+        source: clientInfo.source,
+        ...(cf && { cf }),
+      });
+      return c.json(createErrorResponse(MESSAGES.TURNSTILE_FAILED, requestId), 403);
+    }
+
+    // Hostname claim binding: defends against a leaked sitekey being used on
+    // an attacker-controlled origin. Test sitekeys omit hostname, so allow
+    // undefined for backward-compat (same pattern as the action check).
+    if (verifyResult.hostname !== undefined && !ALLOWED_HOSTNAMES.includes(verifyResult.hostname)) {
+      logInfo('Turnstile verification rejected: hostname mismatch', {
+        event: PACK_EVENT,
+        outcome: 'turnstile_failed' satisfies PackOutcome,
+        reason: 'hostname_mismatch',
+        hostname: verifyResult.hostname,
         requestId,
         source: clientInfo.source,
         ...(cf && { cf }),
