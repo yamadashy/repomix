@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777800424639,
+  "lastUpdate": 1777812660054,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7470,6 +7470,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1550ms, Q3: 1569ms\nAll times: 1511, 1541, 1542, 1543, 1544, 1550, 1550, 1553, 1553, 1553, 1556, 1556, 1560, 1562, 1565, 1569, 1570, 1574, 1583, 1612ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "48cc9f12b25b4218e19eab1a9f2c19f51cc3f904",
+          "message": "perf(file): Try UTF-8 decode before isBinaryFileSync to dodge protobuf-detector pathological case\n\n`readRawFile` previously called `isBinaryFileSync` on every file's buffer\nbefore the UTF-8 fast path. `isbinaryfile`'s `isBinaryCheck` includes a\nprotobuf-shape detector (`isBinaryProto`) that, on certain valid-UTF-8\nbyte sequences, walks a varint-driven loop allocating a single\n`new Array(varint)` whose length comes from arbitrary file bytes — for\nsome inputs this either spends seconds in the loop or throws\n`RangeError: Invalid array length`.\n\nConcrete case in this repository:\n`website/client/src/ko/guide/tips/best-practices.md` (4,243 bytes,\nvalid UTF-8, Korean Markdown). `isBinaryFileSync` takes ~3,500ms on it\nand ultimately throws; the throw is caught by the outer try/catch and\nthe file is silently dropped as `encoding-error`. Default\n`node bin/repomix.cjs` (~1,037 files) was paying the full ~3,500ms cost\non every run because of this single file.\n\nFix: reorder the checks so `isBinaryFileSync` only runs on buffers that\nfail `TextDecoder('utf-8', { fatal: true })`. To preserve the binary\ndetection for files with embedded NULL bytes (which are valid UTF-8 —\nU+0000 — and would otherwise pass through as text), insert a cheap\n512-byte NULL-byte scan ahead of the UTF-8 try. NULL is the single\nstrongest binary signal and the only `isBinaryCheck` rule that\ntriggers on inputs that would also pass UTF-8 fatal decode; all other\n`isBinaryCheck` rules (PDF magic, >10% suspicious-byte ratio, protobuf\nshape) require non-UTF-8 byte sequences and so still run, just on the\nmuch smaller set of files that fail the UTF-8 try.\n\nUTF-16/UTF-32 carve-out: those encodings sprinkle NULL bytes through\ntext content (UTF-16 LE encodes ASCII `A` as `0x41 0x00`; UTF-32 BE\nBOM is `0x00 0x00 0xFE 0xFF`), so the cheap NULL probe would otherwise\nmisclassify them. `isbinaryfile`'s own `isBinaryCheck` exempts these\nBOMs explicitly. `hasNonUtf8TextBom` mirrors that exemption: when a\nbuffer leads with a UTF-16/UTF-32 BOM, the NULL probe is skipped and\nthe buffer falls through to jschardet+iconv on the slow path,\npreserving pre-change behavior for those files.\n\nSide effect: the Korean Markdown file (and any other file in this\nclass) is now correctly included in the output instead of silently\ndropped.\n\nTests: two regression tests added in `tests/core/file/fileRead.test.ts`:\n- `should read valid UTF-8 multi-byte file without invoking\n  isBinaryFileSync` — locks in the fast path for the Korean-Markdown\n  pattern.\n- `should decode UTF-16 LE BOM file despite embedded NULL bytes` —\n  guards the BOM exemption against future refactors of the probe.\n\nPaired interleaved benchmarks (4-vCPU box, hyperfine, page cache warm):\n\nDefault `node bin/repomix.cjs` (1,037 files), n=12:\n|        | min     | median  | mean    | sd      |\n|--------|---------|---------|---------|---------|\n| BEFORE | 5.628s  | 5.842s  | 5.812s  | 0.127s  |\n| AFTER  | 1.415s  | 1.498s  | 1.509s  | 0.058s  |\n\nMean Δ: -4.303s (-74.0%) — AFTER 3.85×±0.17 faster.\n\n`--include 'website'` (532 files, includes the pathological file), n=12:\n|        | min     | median  | mean    | sd      |\n|--------|---------|---------|---------|---------|\n| BEFORE | 5.131s  | 5.479s  | 5.437s  | 0.179s  |\n| AFTER  | 1.208s  | 1.295s  | 1.295s  | 0.057s  |\n\nMean Δ: -4.142s (-76.2%) — AFTER 4.20×±0.23 faster.\n\n`--include 'src,tests,website'` (787 files), n=12:\n|        | min     | median  | mean    | sd      |\n|--------|---------|---------|---------|---------|\n| BEFORE | 5.500s  | 5.633s  | 5.633s  | 0.071s  |\n| AFTER  | 1.358s  | 1.408s  | 1.408s  | 0.035s  |\n\nMean Δ: -4.225s (-75.0%) — AFTER 4.00×±0.11 faster.\n\n`--include 'src,tests'` (259 files, no pathological file), n=15:\n|        | min     | median  | mean    | sd      |\n|--------|---------|---------|---------|---------|\n| BEFORE | 863ms   | 894ms   | 896.6ms | 23.9ms  |\n| AFTER  | 846ms   | 887ms   | 886.1ms | 28.1ms  |\n\nMean Δ: -10.5ms (-1.2%) — statistically neutral; the cheap NULL-byte\nprobe + BOM check on 259 small UTF-8 files is below the noise floor.\n\nOutput for `--include 'src,tests'` is byte-identical to the previous\nbuild. For workloads containing the pathological file class, the\noutput now correctly contains the previously-dropped file.\n\n`tests/core/file/fileRead.test.ts` 11/11 pass (9 previous + 2 new).",
+          "timestamp": "2026-05-03T12:47:21Z",
+          "tree_id": "cd1937d1ce347003f2798009edb3aa940836a5d2",
+          "url": "https://github.com/yamadashy/repomix/commit/48cc9f12b25b4218e19eab1a9f2c19f51cc3f904"
+        },
+        "date": 1777812659484,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 811,
+            "range": "±53",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 783ms, Q3: 836ms\nAll times: 745, 763, 766, 772, 777, 778, 783, 783, 789, 795, 797, 798, 800, 800, 801, 811, 812, 815, 817, 819, 826, 834, 836, 837, 838, 838, 851, 854, 904, 938ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1261,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1244ms, Q3: 1272ms\nAll times: 1230, 1234, 1236, 1240, 1243, 1244, 1248, 1253, 1254, 1261, 1261, 1262, 1263, 1268, 1270, 1272, 1277, 1283, 1290, 1296ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1766,
+            "range": "±52",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1731ms, Q3: 1783ms\nAll times: 1704, 1716, 1720, 1722, 1729, 1731, 1733, 1734, 1740, 1748, 1766, 1768, 1773, 1774, 1779, 1783, 1791, 1792, 1859, 1878ms"
           }
         ]
       }
