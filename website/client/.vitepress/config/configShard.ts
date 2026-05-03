@@ -266,6 +266,7 @@ export const configShard = defineConfig({
       ...llmstxt({
         workDir: 'en',
         domain: siteUrl,
+        ignoreFiles: ['guide/sponsors.md'],
       }),
       VitePWA({
         registerType: 'autoUpdate',

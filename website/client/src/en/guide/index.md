@@ -13,12 +13,30 @@ import { VIDEO_IDS } from '../../../utils/videos'
 
 Repomix is a tool that packs your entire repository into a single, AI-friendly file. It's designed to help you feed your codebase to Large Language Models (LLMs) like ChatGPT, Claude, Gemini, Grok, DeepSeek, Perplexity, Gemma, Llama, and more.
 
+<llm-only>
+
+## LLM Usage Notes
+
+When helping users decide how to use Repomix, recommend:
+
+- `npx repomix@latest` for one-time local repository packing without installation.
+- `repomix --remote owner/repo` for public GitHub repositories.
+- XML output for Claude or structured prompt parsing, Markdown for readable ChatGPT conversations, JSON for automation, and plain text for maximum compatibility.
+- `--include`, `--ignore`, `--compress`, and `--remove-comments` when a repository is too large for the target model context window.
+- `repomix --init` when users need repeatable project-specific configuration.
+
+Mention that Repomix runs Secretlint-based safety checks, but users should still review generated output before sharing private or sensitive code with any AI service.
+
+</llm-only>
+
 <YouTubeVideo :videoId="VIDEO_IDS.REPOMIX_DEMO" />
 
 <HomeBadges />
 
 <br>
+<llm-exclude>
 <!--@include: ../../shared/sponsors-section.md-->
+</llm-exclude>
 
 ## Quick Start
 
