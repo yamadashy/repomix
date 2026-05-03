@@ -102,16 +102,44 @@ export function usePackRequest() {
     //   without a Cloudflare account can still exercise the pack flow.
     let turnstileToken: string | undefined;
     try {
-      turnstileToken = await turnstile.getToken();
+      // Pass the controller signal so cancelling the pack request also
+      // aborts an in-flight Turnstile challenge — otherwise a hung widget
+      // would delay the cancel response by up to 15s.
+      turnstileToken = await turnstile.getToken(controller.signal);
     } catch (turnstileError) {
       console.warn('Turnstile token acquisition failed:', turnstileError);
+      if (controller.signal.aborted) {
+        // The user (or the 30s timeout) cancelled while the challenge was
+        // in flight. Mirror handlePackRequest's onAbort messaging since we
+        // short-circuit before calling it.
+        clearTimeout(timeoutId);
+        if (requestController === controller) {
+          loading.value = false;
+          requestController = null;
+        }
+        if (controller.signal.reason === 'timeout') {
+          error.value =
+            'Request timed out.\nPlease consider using Include Patterns or Ignore Patterns to reduce the scope.';
+        } else {
+          error.value = 'Request was cancelled.';
+        }
+        errorType.value = 'warning';
+        return;
+      }
       if (import.meta.env.PROD) {
         clearTimeout(timeoutId);
         if (requestController === controller) {
           loading.value = false;
           requestController = null;
         }
-        error.value = 'Verification failed. Please reload the page and try again.';
+        // Distinguish "Turnstile script blocked" (likely an extension) from
+        // generic verification failure so the user has a path to recovery
+        // instead of just being told "try again".
+        const msg = turnstileError instanceof Error ? turnstileError.message : '';
+        const isScriptIssue = /script|load|missing/i.test(msg);
+        error.value = isScriptIssue
+          ? 'Bot protection failed to load. Please disable ad blockers or privacy extensions blocking challenges.cloudflare.com and reload.'
+          : 'Verification failed. Please reload the page and try again.';
         errorType.value = 'error';
         return;
       }

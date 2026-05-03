@@ -63,9 +63,15 @@ function loadTurnstileScript(): Promise<TurnstileGlobal> {
   // blip) doesn't permanently lock the page out of Turnstile. Without this,
   // the rejected promise would be cached forever and every subsequent
   // getToken() call would inherit the same stale rejection.
+  //
+  // Belt-and-suspenders: also drop the global onload callback so a late-
+  // arriving script load (e.g. extension interference resolving after
+  // onerror) can't reach into a stale closure and resolve a long-gone
+  // promise.
   const resetForRetry = () => {
     scriptPromise = null;
     document.getElementById(SCRIPT_ID)?.remove();
+    delete window[READY_CALLBACK];
   };
 
   scriptPromise = new Promise<TurnstileGlobal>((resolve, reject) => {
@@ -174,8 +180,17 @@ export function useTurnstile() {
 
   // Ask the (invisible) widget for a fresh verification token. Each call
   // resets the widget first because Turnstile tokens are 1-shot.
-  async function getToken(): Promise<string> {
+  //
+  // The optional `signal` lets the caller (usePackRequest's submit flow)
+  // abort the challenge mid-flight when the user cancels — without it, a
+  // hung Turnstile iframe would block the cancel response for up to
+  // GET_TOKEN_TIMEOUT_MS even though the surrounding pack request was
+  // already aborted.
+  async function getToken(signal?: AbortSignal): Promise<string> {
     error.value = null;
+    if (signal?.aborted) {
+      throw new Error('Turnstile challenge aborted');
+    }
     if (!containerEl.value) {
       throw new Error('Turnstile container element not registered');
     }
@@ -194,6 +209,7 @@ export function useTurnstile() {
 
     const myGen = ++currentGen;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
 
     const tokenPromise = new Promise<string>((resolve, reject) => {
       // Wrap in gen-checked closures so a delayed widget callback can't
@@ -202,6 +218,7 @@ export function useTurnstile() {
       pendingResolve = (token) => {
         if (myGen !== currentGen) return;
         if (timeoutId !== undefined) clearTimeout(timeoutId);
+        if (onAbort && signal) signal.removeEventListener('abort', onAbort);
         pendingResolve = null;
         pendingReject = null;
         resolve(token);
@@ -209,6 +226,7 @@ export function useTurnstile() {
       pendingReject = (err) => {
         if (myGen !== currentGen) return;
         if (timeoutId !== undefined) clearTimeout(timeoutId);
+        if (onAbort && signal) signal.removeEventListener('abort', onAbort);
         pendingResolve = null;
         pendingReject = null;
         reject(err);
@@ -218,12 +236,21 @@ export function useTurnstile() {
       if (widgetId.value) turnstile.reset(widgetId.value);
       if (widgetId.value) turnstile.execute(widgetId.value);
     });
+
+    if (signal) {
+      onAbort = () => {
+        if (pendingReject) pendingReject(new Error('Turnstile challenge aborted'));
+      };
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+
     // Bounded race against a hung widget. The gen check ensures a stale timer
     // from a previous call (whose tokenPromise already resolved) cannot clear
     // the current request's handlers.
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => {
         if (myGen !== currentGen) return;
+        if (onAbort && signal) signal.removeEventListener('abort', onAbort);
         pendingResolve = null;
         pendingReject = null;
         reject(new Error('Turnstile challenge timed out'));
