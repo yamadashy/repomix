@@ -6,7 +6,10 @@ import { turnstileMiddleware } from '../src/middlewares/turnstile.js';
 // (set by upstream middleware in production). For unit tests we shim these
 // via a tiny middleware so each test gets the values it needs without
 // importing the full middleware chain.
-function buildApp(opts: { middleware: ReturnType<typeof turnstileMiddleware>; requestId?: string }) {
+function buildApp(opts: {
+  middleware: ReturnType<typeof turnstileMiddleware>;
+  requestId?: string;
+}) {
   const app = new Hono();
   app.use('*', async (c, next) => {
     c.set('requestId', opts.requestId ?? 'req-test');
@@ -18,12 +21,18 @@ function buildApp(opts: { middleware: ReturnType<typeof turnstileMiddleware>; re
 
 const SECRET = 'test-secret';
 
+const okResponse = (body: object) =>
+  new Response(JSON.stringify(body), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
 describe('turnstileMiddleware', () => {
-  test('skips verification when secret is unset (fail-open)', async () => {
+  test('skips verification when secret is unset (fail-open in dev/test)', async () => {
     const fetchMock = vi.fn();
     const middleware = turnstileMiddleware({
       fetch: fetchMock,
       getSecret: () => undefined,
+      isProduction: () => false,
     });
     const app = buildApp({ middleware });
 
@@ -33,11 +42,27 @@ describe('turnstileMiddleware', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  test('returns 403 when secret is unset in production (fail-closed)', async () => {
+    const fetchMock = vi.fn();
+    const middleware = turnstileMiddleware({
+      fetch: fetchMock,
+      getSecret: () => undefined,
+      isProduction: () => true,
+    });
+    const app = buildApp({ middleware });
+
+    const res = await app.request('/api/pack', { method: 'POST' });
+
+    expect(res.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   test('returns 403 when token header is missing', async () => {
     const fetchMock = vi.fn();
     const middleware = turnstileMiddleware({
       fetch: fetchMock,
       getSecret: () => SECRET,
+      isProduction: () => false,
     });
     const app = buildApp({ middleware });
 
@@ -49,15 +74,49 @@ describe('turnstileMiddleware', () => {
     expect(body.error).toMatch(/Verification failed/);
   });
 
-  test('passes through when siteverify reports success', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    );
+  test('returns 403 when token is whitespace-only (treated as missing)', async () => {
+    const fetchMock = vi.fn();
     const middleware = turnstileMiddleware({
       fetch: fetchMock,
       getSecret: () => SECRET,
+      isProduction: () => false,
+    });
+    const app = buildApp({ middleware });
+
+    const res = await app.request('/api/pack', {
+      method: 'POST',
+      headers: { 'X-Turnstile-Token': '   ' },
+    });
+
+    expect(res.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test('returns 403 when token exceeds max length (no siteverify call)', async () => {
+    const fetchMock = vi.fn();
+    const middleware = turnstileMiddleware({
+      fetch: fetchMock,
+      getSecret: () => SECRET,
+      isProduction: () => false,
+    });
+    const app = buildApp({ middleware });
+
+    const oversized = 'x'.repeat(2049);
+    const res = await app.request('/api/pack', {
+      method: 'POST',
+      headers: { 'X-Turnstile-Token': oversized },
+    });
+
+    expect(res.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test('passes through when siteverify reports success', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse({ success: true, action: 'pack' }));
+    const middleware = turnstileMiddleware({
+      fetch: fetchMock,
+      getSecret: () => SECRET,
+      isProduction: () => false,
     });
     const app = buildApp({ middleware });
 
@@ -75,19 +134,48 @@ describe('turnstileMiddleware', () => {
     expect(body.get('response')).toBe('good-token');
   });
 
+  test('passes through when siteverify omits action (backward-compat)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse({ success: true }));
+    const middleware = turnstileMiddleware({
+      fetch: fetchMock,
+      getSecret: () => SECRET,
+      isProduction: () => false,
+    });
+    const app = buildApp({ middleware });
+
+    const res = await app.request('/api/pack', {
+      method: 'POST',
+      headers: { 'X-Turnstile-Token': 'good-token' },
+    });
+
+    expect(res.status).toBe(200);
+  });
+
+  test('returns 403 when siteverify reports an action other than "pack"', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse({ success: true, action: 'login' }));
+    const middleware = turnstileMiddleware({
+      fetch: fetchMock,
+      getSecret: () => SECRET,
+      isProduction: () => false,
+    });
+    const app = buildApp({ middleware });
+
+    const res = await app.request('/api/pack', {
+      method: 'POST',
+      headers: { 'X-Turnstile-Token': 'wrong-action-token' },
+    });
+
+    expect(res.status).toBe(403);
+  });
+
   test('returns 403 when siteverify reports failure', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          success: false,
-          'error-codes': ['invalid-input-response'],
-        }),
-        { headers: { 'Content-Type': 'application/json' } },
-      ),
+      okResponse({ success: false, 'error-codes': ['invalid-input-response'] }),
     );
     const middleware = turnstileMiddleware({
       fetch: fetchMock,
       getSecret: () => SECRET,
+      isProduction: () => false,
     });
     const app = buildApp({ middleware });
 
@@ -104,6 +192,7 @@ describe('turnstileMiddleware', () => {
     const middleware = turnstileMiddleware({
       fetch: fetchMock,
       getSecret: () => SECRET,
+      isProduction: () => false,
     });
     const app = buildApp({ middleware });
 

@@ -11,6 +11,13 @@ const TOKEN_HEADER = 'X-Turnstile-Token';
 // hung verify call must not stall the pack flow. Returning 403 on timeout is
 // safer than failing open per request.
 const SITEVERIFY_TIMEOUT_MS = 5_000;
+// Cloudflare's documented upper bound for Turnstile tokens. Anything longer is
+// guaranteed-invalid and should be rejected before we call siteverify.
+const MAX_TOKEN_LENGTH = 2048;
+// Action claim the client widget binds when calling turnstile.render — the
+// server requires this exact value so a token issued for some other endpoint
+// (or a future widget) can't be replayed at /api/pack.
+const EXPECTED_ACTION = 'pack';
 
 interface SiteverifyResponse {
   success: boolean;
@@ -23,11 +30,13 @@ interface SiteverifyResponse {
 interface TurnstileDeps {
   fetch: typeof fetch;
   getSecret: () => string | undefined;
+  isProduction: () => boolean;
 }
 
 const defaultDeps: TurnstileDeps = {
   fetch: globalThis.fetch,
   getSecret: () => process.env.TURNSTILE_SECRET_KEY,
+  isProduction: () => process.env.NODE_ENV === 'production',
 };
 
 // Verify Cloudflare Turnstile tokens before /api/pack runs the actual pack.
@@ -35,13 +44,16 @@ const defaultDeps: TurnstileDeps = {
 // per request — the middleware doesn't cache verifications.
 //
 // Behaviour:
-// - TURNSTILE_SECRET_KEY unset → fail-open (skip verification, log once at
-//   warn level). This keeps local dev / preview environments unblocked while
-//   still surfacing missing config in production logs.
-// - Token missing or empty → 403 with `outcome: turnstile_failed`.
+// - TURNSTILE_SECRET_KEY unset:
+//   - In production → fail-closed (403 with `reason: secret_missing`). Missing
+//     config in production is a deployment bug, not a normal state.
+//   - In dev/test → fail-open (skip verification, warn once). Keeps local
+//     contributors and preview environments unblocked.
+// - Token missing / empty / oversized → 403 with `outcome: turnstile_failed`.
 // - siteverify success: false → 403 with `outcome: turnstile_failed`.
 // - siteverify network failure → 403 with `outcome: turnstile_failed` (fail-
 //   closed; if Cloudflare can't verify, treat as untrusted).
+// - Action claim mismatch → 403 (token wasn't minted for /api/pack).
 //
 // Placement: applied to /api/pack only — docs pages, health checks, and any
 // future public read-only endpoints stay challenge-free so SEO/LLMO crawlers
@@ -50,26 +62,54 @@ export function turnstileMiddleware(deps: TurnstileDeps = defaultDeps) {
   let secretMissingLogged = false;
 
   return async function turnstileMiddleware(c: Context, next: Next) {
+    const requestId = c.get('requestId');
+    const clientInfo = getClientInfo(c);
+    const cf = buildCfLogField(clientInfo);
+
     const secret = deps.getSecret();
     if (!secret) {
+      if (deps.isProduction()) {
+        logWarning('TURNSTILE_SECRET_KEY not set in production', {
+          event: PACK_EVENT,
+          outcome: 'turnstile_failed' satisfies PackOutcome,
+          reason: 'secret_missing',
+          requestId,
+          source: clientInfo.source,
+          ...(cf && { cf }),
+        });
+        return c.json(createErrorResponse(MESSAGES.TURNSTILE_FAILED, requestId), 403);
+      }
       if (!secretMissingLogged) {
         secretMissingLogged = true;
-        logWarning('TURNSTILE_SECRET_KEY not set — Turnstile verification skipped');
+        logWarning('TURNSTILE_SECRET_KEY not set — Turnstile verification skipped (non-production)');
       }
       await next();
       return;
     }
 
-    const requestId = c.get('requestId');
-    const clientInfo = getClientInfo(c);
-    const cf = buildCfLogField(clientInfo);
-    const token = c.req.header(TOKEN_HEADER);
+    const rawToken = c.req.header(TOKEN_HEADER);
+    const token = rawToken?.trim();
 
     if (!token) {
       logInfo('Turnstile token missing', {
         event: PACK_EVENT,
         outcome: 'turnstile_failed' satisfies PackOutcome,
         reason: 'missing_token',
+        requestId,
+        source: clientInfo.source,
+        ...(cf && { cf }),
+      });
+      return c.json(createErrorResponse(MESSAGES.TURNSTILE_FAILED, requestId), 403);
+    }
+
+    if (token.length > MAX_TOKEN_LENGTH) {
+      // Defensive: oversized tokens are guaranteed-invalid per Cloudflare's
+      // spec. Reject without spending a siteverify call.
+      logInfo('Turnstile token rejected: oversized', {
+        event: PACK_EVENT,
+        outcome: 'turnstile_failed' satisfies PackOutcome,
+        reason: 'token_too_long',
+        tokenLength: token.length,
         requestId,
         source: clientInfo.source,
         ...(cf && { cf }),
@@ -113,6 +153,24 @@ export function turnstileMiddleware(deps: TurnstileDeps = defaultDeps) {
         outcome: 'turnstile_failed' satisfies PackOutcome,
         reason: 'siteverify_rejected',
         errorCodes: verifyResult?.['error-codes'],
+        requestId,
+        source: clientInfo.source,
+        ...(cf && { cf }),
+      });
+      return c.json(createErrorResponse(MESSAGES.TURNSTILE_FAILED, requestId), 403);
+    }
+
+    // Action claim binding: only present on tokens minted with `data-action`
+    // on the widget. Cloudflare's test sitekey echoes whatever action the
+    // client supplied (or undefined if none), so we accept undefined as a
+    // backward-compat fallback for older client builds. The strict check kicks
+    // in once the client started sending an action.
+    if (verifyResult.action !== undefined && verifyResult.action !== EXPECTED_ACTION) {
+      logInfo('Turnstile verification rejected: action mismatch', {
+        event: PACK_EVENT,
+        outcome: 'turnstile_failed' satisfies PackOutcome,
+        reason: 'action_mismatch',
+        action: verifyResult.action,
         requestId,
         source: clientInfo.source,
         ...(cf && { cf }),

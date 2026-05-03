@@ -35,6 +35,10 @@ interface TurnstileGlobal {
 interface TurnstileRenderOptions {
   sitekey: string;
   size?: 'normal' | 'compact' | 'invisible';
+  // `action` is bound into the issued token and verified server-side, so a
+  // token minted for /api/pack can't be replayed at a future endpoint that
+  // expects a different action.
+  action?: string;
   callback?: (token: string) => void;
   'error-callback'?: (errorCode: string) => void;
   'expired-callback'?: () => void;
@@ -106,8 +110,27 @@ export function useTurnstile() {
   // on each `getToken()` call so back-to-back submits don't share state.
   let pendingResolve: ((token: string) => void) | null = null;
   let pendingReject: ((error: Error) => void) | null = null;
+  // Monotonic generation counter. Each getToken() call captures a local copy
+  // and the timeout/callback closures verify it before mutating shared state.
+  // This neutralises three otherwise-leaky scenarios:
+  //  - a stale timeout from a previous call clearing the next call's pending
+  //    handlers,
+  //  - a delayed widget callback resolving the next call with a stale token,
+  //  - a back-to-back submit reusing handlers before the previous timeout
+  //    has fired.
+  let currentGen = 0;
 
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY ?? FALLBACK_TEST_SITE_KEY;
+  if (import.meta.env.PROD && !import.meta.env.VITE_TURNSTILE_SITE_KEY) {
+    // Production builds must inject a real site key. Falling through to the
+    // test key (always-passes) silently neutralises Turnstile if the server
+    // also uses a test secret, or causes universal 403s if it uses a real
+    // secret. A loud console.error makes the misconfiguration obvious during
+    // smoke tests.
+    console.error(
+      'VITE_TURNSTILE_SITE_KEY is not set; falling back to the Cloudflare test site key. Turnstile will not protect /api/pack.',
+    );
+  }
 
   async function ensureWidget(el: HTMLElement): Promise<TurnstileGlobal> {
     const turnstile = await loadTurnstileScript();
@@ -115,6 +138,7 @@ export function useTurnstile() {
       widgetId.value = turnstile.render(el, {
         sitekey: siteKey,
         size: 'invisible',
+        action: 'pack',
         callback: (token: string) => {
           if (pendingResolve) {
             pendingResolve(token);
@@ -160,18 +184,46 @@ export function useTurnstile() {
       throw new Error('Turnstile widget failed to render');
     }
 
+    // Supersede any in-flight request: reject the previous caller before we
+    // overwrite pendingResolve/pendingReject below.
+    if (pendingReject) {
+      pendingReject(new Error('Superseded by new Turnstile request'));
+      pendingResolve = null;
+      pendingReject = null;
+    }
+
+    const myGen = ++currentGen;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     const tokenPromise = new Promise<string>((resolve, reject) => {
-      pendingResolve = resolve;
-      pendingReject = reject;
+      // Wrap in gen-checked closures so a delayed widget callback can't
+      // resolve a later request with a stale token, and the timeout below
+      // clears handlers only if no fresher request has taken over.
+      pendingResolve = (token) => {
+        if (myGen !== currentGen) return;
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+        pendingResolve = null;
+        pendingReject = null;
+        resolve(token);
+      };
+      pendingReject = (err) => {
+        if (myGen !== currentGen) return;
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+        pendingResolve = null;
+        pendingReject = null;
+        reject(err);
+      };
       // The widget retains its previous token until reset(); explicit reset
       // forces a new challenge on every getToken() call.
       if (widgetId.value) turnstile.reset(widgetId.value);
       if (widgetId.value) turnstile.execute(widgetId.value);
     });
-    // Bounded race against a hung widget. Clearing the pending handlers on
-    // timeout prevents a stale token from later resolving a long-gone caller.
+    // Bounded race against a hung widget. The gen check ensures a stale timer
+    // from a previous call (whose tokenPromise already resolved) cannot clear
+    // the current request's handlers.
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
+        if (myGen !== currentGen) return;
         pendingResolve = null;
         pendingReject = null;
         reject(new Error('Turnstile challenge timed out'));

@@ -92,15 +92,29 @@ export function usePackRequest() {
     const timeoutId = setTimeout(controller.abort.bind(controller, 'timeout'), TIMEOUT_MS);
 
     // Obtain a 1-shot Turnstile token before issuing the pack request. If the
-    // widget fails (e.g. script blocked by an ad blocker, network error) we
-    // continue without a token — the server-side middleware decides the policy
-    // (it returns 403 if TURNSTILE_SECRET_KEY is set, or skips verification
-    // otherwise so dev/preview environments stay functional).
+    // widget fails (e.g. script blocked by an ad blocker, network error) the
+    // policy is environment-specific:
+    // - In production: surface a user-facing error and skip the request.
+    //   The server-side middleware would 403 anyway, so calling /api/pack
+    //   without a token only wastes a server round-trip.
+    // - In dev/preview: continue without a token. The server skips
+    //   verification when TURNSTILE_SECRET_KEY is unset, so contributors
+    //   without a Cloudflare account can still exercise the pack flow.
     let turnstileToken: string | undefined;
     try {
       turnstileToken = await turnstile.getToken();
     } catch (turnstileError) {
       console.warn('Turnstile token acquisition failed:', turnstileError);
+      if (import.meta.env.PROD) {
+        clearTimeout(timeoutId);
+        if (requestController === controller) {
+          loading.value = false;
+          requestController = null;
+        }
+        error.value = 'Verification failed. Please reload the page and try again.';
+        errorType.value = 'error';
+        return;
+      }
     }
 
     try {
@@ -130,8 +144,15 @@ export function usePackRequest() {
       );
     } finally {
       clearTimeout(timeoutId);
-      loading.value = false;
-      requestController = null;
+      // Only reset shared state if no newer submitRequest() has taken over the
+      // slot. Without this guard, a slow finally from a cancelled (or
+      // superseded) request would clobber a fresh in-flight request: setting
+      // loading=false hides the spinner, and nulling requestController breaks
+      // a subsequent cancelRequest() call.
+      if (requestController === controller) {
+        loading.value = false;
+        requestController = null;
+      }
     }
   }
 
