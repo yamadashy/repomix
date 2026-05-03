@@ -4,6 +4,7 @@ import { handlePackRequest } from '../components/utils/requestHandlers';
 import { isValidRemoteValue } from '../components/utils/validation';
 import { parseUrlParameters } from '../utils/urlParams';
 import { usePackOptions } from './usePackOptions';
+import { useTurnstile } from './useTurnstile';
 
 export type InputMode = 'url' | 'file' | 'folder';
 
@@ -11,6 +12,8 @@ export function usePackRequest() {
   const packOptionsComposable = usePackOptions();
   const { packOptions, getPackRequestOptions, resetOptions, applyUrlParameters, DEFAULT_PACK_OPTIONS } =
     packOptionsComposable;
+
+  const turnstile = useTurnstile();
 
   // Input states
   const inputUrl = ref('');
@@ -81,6 +84,18 @@ export function usePackRequest() {
     // Use .bind() to avoid capturing the surrounding scope in the closure
     const timeoutId = setTimeout(requestController.abort.bind(requestController, 'timeout'), TIMEOUT_MS);
 
+    // Obtain a 1-shot Turnstile token before issuing the pack request. If the
+    // widget fails (e.g. script blocked by an ad blocker, network error) we
+    // continue without a token — the server-side middleware decides the policy
+    // (it returns 403 if TURNSTILE_SECRET_KEY is set, or skips verification
+    // otherwise so dev/preview environments stay functional).
+    let turnstileToken: string | undefined;
+    try {
+      turnstileToken = await turnstile.getToken();
+    } catch (turnstileError) {
+      console.warn('Turnstile token acquisition failed:', turnstileError);
+    }
+
     try {
       await handlePackRequest(
         mode.value === 'url' ? inputUrl.value : '',
@@ -103,6 +118,7 @@ export function usePackRequest() {
           },
           signal: requestController.signal,
           file: mode.value === 'file' || mode.value === 'folder' ? uploadedFile.value || undefined : undefined,
+          turnstileToken,
         },
       );
     } finally {
@@ -196,6 +212,9 @@ export function usePackRequest() {
     submitRequest,
     repackWithSelectedFiles,
     cancelRequest,
+
+    // Turnstile widget container (Vue ref callback consumer)
+    setTurnstileContainer: turnstile.setContainer,
 
     // Pack option actions
     resetOptions,

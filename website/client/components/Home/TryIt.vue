@@ -101,6 +101,11 @@
           @repack="handleRepack"
         />
       </div>
+
+      <!-- Cloudflare Turnstile (invisible). Rendered into this element by
+           useTurnstile so the script tag and widget instance live alongside
+           the form that needs them. -->
+      <div ref="turnstileContainer" class="turnstile-container" />
     </form>
   </div>
 </template>
@@ -151,7 +156,14 @@ const {
   repackWithSelectedFiles,
   resetOptions,
   cancelRequest,
+  setTurnstileContainer,
 } = usePackRequest();
+
+// Wire the template ref into useTurnstile so the widget renders into the
+// element below the form. Using a ref function lets us pass the DOM node to
+// the composable without exposing the ref to the rest of the component.
+const turnstileContainer = ref<HTMLElement | null>(null);
+watch(turnstileContainer, (el) => setTurnstileContainer(el));
 
 // Check if reset button should be shown
 const shouldShowReset = computed(() => {
