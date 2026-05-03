@@ -11,11 +11,35 @@ Repomix는 AI 코딩 어시스턴트가 Repomix CLI를 사용하여 코드베이
 
 ## 빠른 설치
 
-```bash
-npx add-skill yamadashy/repomix --skill repomix-explorer
+Claude Code에서는 공식 Repomix Explorer 플러그인을 설치하세요:
+
+```text
+/plugin marketplace add yamadashy/repomix
+/plugin install repomix-explorer@repomix
 ```
 
-이 명령은 AI 어시스턴트의 스킬 디렉토리(예: `.claude/skills/`)에 스킬을 설치하여 즉시 사용할 수 있게 합니다.
+Claude Code 플러그인은 `/repomix-explorer:explore-local`, `/repomix-explorer:explore-remote` 같은 네임스페이스 명령을 제공합니다. 전체 설정은 [Claude Code 플러그인](/ko/guide/claude-code-plugins)을 참고하세요.
+
+Codex, Cursor, OpenClaw 및 Agent Skills와 호환되는 다른 어시스턴트에서는 Skills CLI로 독립형 스킬을 설치합니다:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer
+```
+
+특정 어시스턴트를 대상으로 하려면 `--agent`를 전달하세요:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer --agent codex
+npx skills add yamadashy/repomix --skill repomix-explorer --agent openclaw
+```
+
+Hermes Agent에서는 Hermes Agent의 네이티브 skills 명령으로 단일 파일 스킬을 설치할 수 있습니다:
+
+```bash
+hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md
+```
+
+Hermes Agent를 주로 저장소 분석에 사용한다면 Repomix를 직접 MCP 서버로 실행하는 [MCP 서버](/ko/guide/mcp-server) 설정도 좋은 선택입니다.
 
 ## 기능
 

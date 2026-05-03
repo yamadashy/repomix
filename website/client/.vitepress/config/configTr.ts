@@ -22,6 +22,7 @@ export const configTr = defineConfig({
             { text: 'Temel Kullanım', link: '/tr/guide/usage' },
             { text: 'Prompt Örnekleri', link: '/tr/guide/prompt-examples' },
             { text: 'Kullanım Senaryoları', link: '/tr/guide/use-cases' },
+            { text: 'SSS ve sorun giderme', link: '/tr/guide/faq' },
           ],
         },
         {

@@ -11,11 +11,35 @@ Bu beceri, Claude Code ve Agent Skills formatını destekleyen diğer yapay zeka
 
 ## Hızlı Kurulum
 
-```bash
-npx add-skill yamadashy/repomix --skill repomix-explorer
+Claude Code için resmi Repomix Explorer eklentisini kurun:
+
+```text
+/plugin marketplace add yamadashy/repomix
+/plugin install repomix-explorer@repomix
 ```
 
-Bu komut, beceriyi AI asistanınızın beceriler dizinine (örn. `.claude/skills/`) kurar ve hemen kullanılabilir hale getirir.
+Claude Code eklentisi `/repomix-explorer:explore-local` ve `/repomix-explorer:explore-remote` gibi ad alanlı komutlar sağlar. Tam kurulum için [Claude Code Eklentileri](/tr/guide/claude-code-plugins) bölümüne bakın.
+
+Codex, Cursor, OpenClaw ve Agent Skills uyumlu diğer asistanlar için bağımsız skill'i Skills CLI ile kurun:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer
+```
+
+Belirli bir asistanı hedeflemek için `--agent` kullanın:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer --agent codex
+npx skills add yamadashy/repomix --skill repomix-explorer --agent openclaw
+```
+
+Hermes Agent için tek dosyalı skill'i Hermes Agent'ın yerel skills komutuyla kurun:
+
+```bash
+hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md
+```
+
+Hermes Agent'ı ağırlıklı olarak repository analizi için kullanıyorsanız, Repomix'i doğrudan MCP server olarak çalıştıran [MCP Server](/tr/guide/mcp-server) kurulumu da iyi bir seçenektir.
 
 ## Ne İşe Yarar
 

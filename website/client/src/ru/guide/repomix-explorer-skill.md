@@ -11,11 +11,35 @@ Repomix предоставляет готовый к использованию 
 
 ## Быстрая Установка
 
-```bash
-npx add-skill yamadashy/repomix --skill repomix-explorer
+Для Claude Code установите официальный плагин Repomix Explorer:
+
+```text
+/plugin marketplace add yamadashy/repomix
+/plugin install repomix-explorer@repomix
 ```
 
-Эта команда устанавливает навык в директорию навыков вашего AI-помощника (например, `.claude/skills/`), делая его сразу доступным.
+Плагин Claude Code предоставляет команды с пространством имён, например `/repomix-explorer:explore-local` и `/repomix-explorer:explore-remote`. Полную настройку смотрите в разделе [Плагины Claude Code](/ru/guide/claude-code-plugins).
+
+Для Codex, Cursor, OpenClaw и других ассистентов, совместимых с Agent Skills, установите standalone skill через Skills CLI:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer
+```
+
+Чтобы выбрать конкретного ассистента, передайте `--agent`:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer --agent codex
+npx skills add yamadashy/repomix --skill repomix-explorer --agent openclaw
+```
+
+Для Hermes Agent установите однофайловый skill с помощью нативной команды Hermes Agent:
+
+```bash
+hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md
+```
+
+Если вы используете Hermes Agent в основном для анализа репозиториев, настройка [MCP Server](/ru/guide/mcp-server) тоже подходит, потому что запускает Repomix напрямую как MCP-сервер.
 
 ## Что Он Делает
 

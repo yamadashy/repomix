@@ -20,6 +20,7 @@ export const configJa = defineConfig({
             { text: '基本的な使い方', link: '/ja/guide/usage' },
             { text: 'プロンプト例', link: '/ja/guide/prompt-examples' },
             { text: 'ユースケース', link: '/ja/guide/use-cases' },
+            { text: 'FAQとトラブルシューティング', link: '/ja/guide/faq' },
           ],
         },
         {

@@ -22,6 +22,7 @@ export const configVi = defineConfig({
             { text: 'Sử dụng cơ bản', link: '/vi/guide/usage' },
             { text: 'Ví dụ Prompt', link: '/vi/guide/prompt-examples' },
             { text: 'Trường Hợp Sử Dụng', link: '/vi/guide/use-cases' },
+            { text: 'FAQ và khắc phục sự cố', link: '/vi/guide/faq' },
           ],
         },
         {

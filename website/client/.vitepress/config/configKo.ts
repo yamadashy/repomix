@@ -22,6 +22,7 @@ export const configKo = defineConfig({
             { text: '기본 사용법', link: '/ko/guide/usage' },
             { text: '프롬프트 예제', link: '/ko/guide/prompt-examples' },
             { text: '사용 사례', link: '/ko/guide/use-cases' },
+            { text: 'FAQ 및 문제 해결', link: '/ko/guide/faq' },
           ],
         },
         {

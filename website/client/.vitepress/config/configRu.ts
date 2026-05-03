@@ -22,6 +22,7 @@ export const configRu = defineConfig({
             { text: 'Базовое использование', link: '/ru/guide/usage' },
             { text: 'Примеры промптов', link: '/ru/guide/prompt-examples' },
             { text: 'Сценарии использования', link: '/ru/guide/use-cases' },
+            { text: 'FAQ и устранение неполадок', link: '/ru/guide/faq' },
           ],
         },
         {

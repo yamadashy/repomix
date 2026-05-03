@@ -11,11 +11,35 @@ Skill ini dirancang untuk Claude Code dan AI assistant lain yang mendukung forma
 
 ## Instalasi Cepat
 
-```bash
-npx add-skill yamadashy/repomix --skill repomix-explorer
+Untuk Claude Code, instal plugin resmi Repomix Explorer:
+
+```text
+/plugin marketplace add yamadashy/repomix
+/plugin install repomix-explorer@repomix
 ```
 
-Perintah ini menginstal skill ke direktori skills asisten AI Anda (misalnya `.claude/skills/`), membuatnya langsung tersedia.
+Plugin Claude Code menyediakan perintah bernama seperti `/repomix-explorer:explore-local` dan `/repomix-explorer:explore-remote`. Lihat [Plugin Claude Code](/id/guide/claude-code-plugins) untuk setup lengkap.
+
+Untuk Codex, Cursor, OpenClaw, dan asisten lain yang kompatibel dengan Agent Skills, instal skill mandiri dengan Skills CLI:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer
+```
+
+Untuk menargetkan asisten tertentu, gunakan `--agent`:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer --agent codex
+npx skills add yamadashy/repomix --skill repomix-explorer --agent openclaw
+```
+
+Untuk Hermes Agent, instal skill satu file dengan perintah skills native Hermes Agent:
+
+```bash
+hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md
+```
+
+Jika Anda memakai Hermes Agent terutama untuk analisis repository, setup [MCP Server](/id/guide/mcp-server) juga merupakan opsi yang baik karena menjalankan Repomix langsung sebagai MCP server.
 
 ## Apa yang Dilakukan
 

@@ -1233,11 +1233,31 @@ Repomix provides a ready-to-use **Repomix Explorer** skill that enables AI codin
 
 #### Quick Install
 
-```bash
-npx add-skill yamadashy/repomix --skill repomix-explorer
+For Claude Code, install the official Repomix Explorer plugin:
+
+```text
+/plugin marketplace add yamadashy/repomix
+/plugin install repomix-explorer@repomix
 ```
 
-This command installs the skill to your AI assistant's skills directory (e.g., `.claude/skills/`), making it immediately available.
+For Codex, Cursor, OpenClaw, and other Agent Skills-compatible assistants, install the standalone skill with the Skills CLI:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer
+```
+
+To target a specific assistant, pass `--agent`:
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-explorer --agent codex
+npx skills add yamadashy/repomix --skill repomix-explorer --agent openclaw
+```
+
+For Hermes Agent, install the single-file skill with Hermes Agent's native skills command:
+
+```bash
+hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md
+```
 
 #### What It Does
 

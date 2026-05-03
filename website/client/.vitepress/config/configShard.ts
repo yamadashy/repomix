@@ -1,6 +1,6 @@
 import { visualizer } from 'rollup-plugin-visualizer';
 import { type ManifestOptions, VitePWA } from 'vite-plugin-pwa';
-import { defineConfig } from 'vitepress';
+import { defineConfig, type HeadConfig } from 'vitepress';
 import llmstxt from 'vitepress-plugin-llms';
 import { configDeSearch } from './configDe';
 import { configEsSearch } from './configEs';
@@ -25,6 +25,44 @@ const githubUrl = 'https://github.com/yamadashy/repomix';
 const npmUrl = 'https://www.npmjs.com/package/repomix';
 
 const googleAnalyticsTag = 'G-7PTT4PLC69';
+
+type PageHeadContext = {
+  page: string;
+  title: string;
+  description: string;
+  pageData: {
+    isNotFound?: boolean;
+  };
+};
+
+const buildPageUrl = (page: string) => {
+  const pathWithoutExtension = page.replace(/\.md$/, '');
+  const cleanPath = pathWithoutExtension.replace(/(^|\/)index$/, '$1');
+
+  if (!cleanPath || cleanPath === '/') {
+    return siteUrl;
+  }
+
+  return `${siteUrl}/${cleanPath.replace(/^\/+/, '').replace(/\/$/, '')}`;
+};
+
+const createPageHead = ({ page, title, description, pageData }: PageHeadContext): HeadConfig[] => {
+  if (pageData.isNotFound) {
+    return [];
+  }
+
+  const url = buildPageUrl(page);
+
+  return [
+    ['link', { rel: 'canonical', href: url }],
+    ['meta', { property: 'og:title', content: title }],
+    ['meta', { property: 'og:url', content: url }],
+    ['meta', { property: 'og:description', content: description }],
+    ['meta', { name: 'twitter:title', content: title }],
+    ['meta', { name: 'twitter:url', content: url }],
+    ['meta', { name: 'twitter:description', content: description }],
+  ];
+};
 
 // JSON-LD Structured Data
 const jsonLd = {
@@ -108,6 +146,7 @@ export const configShard = defineConfig({
   title: siteName,
 
   srcDir: 'src',
+  srcExclude: ['shared/**'],
 
   rewrites: {
     // rewrite to `en` locale
@@ -121,6 +160,8 @@ export const configShard = defineConfig({
   sitemap: {
     hostname: `${siteUrl}/`,
   },
+
+  transformHead: createPageHead,
 
   // Shared configuration
   themeConfig: {
@@ -168,16 +209,10 @@ export const configShard = defineConfig({
 
     // OGP
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:title', content: siteName }],
     ['meta', { property: 'og:site_name', content: siteName }],
     ['meta', { property: 'og:image', content: ogImageUrl }],
-    ['meta', { property: 'og:url', content: siteUrl }],
-    ['meta', { property: 'og:description', content: siteDescription }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { property: 'twitter:domain', content: 'repomix.com' }],
-    ['meta', { property: 'twitter:url', content: siteUrl }],
-    ['meta', { name: 'twitter:title', content: siteName }],
-    ['meta', { name: 'twitter:description', content: siteDescription }],
+    ['meta', { name: 'twitter:domain', content: 'repomix.com' }],
     ['meta', { name: 'twitter:image', content: ogImageUrl }],
     ['meta', { name: 'thumbnail', content: ogImageUrl }],
 
@@ -225,6 +260,7 @@ export const configShard = defineConfig({
       ...llmstxt({
         workDir: 'en',
         domain: siteUrl,
+        ignoreFiles: ['guide/sponsors.md'],
       }),
       VitePWA({
         registerType: 'autoUpdate',

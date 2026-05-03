@@ -162,3 +162,4 @@ Analyze this codebase for performance bottlenecks. Look for inefficient algorith
 - [Output Formats](/guide/output) - Choose the best format for your AI model
 - [Custom Instructions](/guide/custom-instructions) - Add context to guide AI analysis
 - [GitHub Repository Processing](/guide/remote-repository-processing) - Analyze remote repositories
+- [FAQ and Troubleshooting](/guide/faq) - Solve common setup, privacy, and token usage questions
