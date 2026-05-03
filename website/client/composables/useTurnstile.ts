@@ -1,8 +1,13 @@
 import { onBeforeUnmount, ref } from 'vue';
+import { loadTurnstileScript, type TurnstileGlobal } from './useTurnstileScript';
 
 // Cloudflare Turnstile integration. Used by usePackRequest to obtain a 1-shot
 // verification token that the server-side turnstileMiddleware verifies before
 // running /api/pack.
+//
+// The script-loading mechanics (script tag injection, READY_CALLBACK,
+// retry-on-failure) live in `useTurnstileScript.ts` so this file stays
+// focused on widget lifecycle / token requests / abort propagation.
 //
 // Site key resolution:
 // - Build-time env var `VITE_TURNSTILE_SITE_KEY` overrides the default
@@ -14,103 +19,11 @@ import { onBeforeUnmount, ref } from 'vue';
 //   server, or set both to real values together.
 const FALLBACK_TEST_SITE_KEY = '1x00000000000000000000AA';
 
-const SCRIPT_SRC =
-  'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=__repomixTurnstileOnload&render=explicit';
-const SCRIPT_ID = 'repomix-turnstile-script';
-const READY_CALLBACK = '__repomixTurnstileOnload';
 // Upper bound on how long getToken() will wait for a callback. Cloudflare's
 // `timeout-callback` only fires for interactive challenges, so an invisible
 // widget that hangs (CDN stall, iframe never resolves) would otherwise leave
 // the caller's promise pending forever and freeze the loading spinner.
 const GET_TOKEN_TIMEOUT_MS = 15_000;
-
-interface TurnstileGlobal {
-  render: (el: HTMLElement, options: TurnstileRenderOptions) => string;
-  execute: (widgetId: string) => void;
-  reset: (widgetId: string) => void;
-  remove: (widgetId: string) => void;
-  getResponse: (widgetId: string) => string | undefined;
-}
-
-interface TurnstileRenderOptions {
-  sitekey: string;
-  size?: 'normal' | 'compact' | 'invisible';
-  // `action` is bound into the issued token and verified server-side, so a
-  // token minted for /api/pack can't be replayed at a future endpoint that
-  // expects a different action.
-  action?: string;
-  callback?: (token: string) => void;
-  'error-callback'?: (errorCode: string) => void;
-  'expired-callback'?: () => void;
-  'timeout-callback'?: () => void;
-}
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileGlobal;
-    __repomixTurnstileOnload?: () => void;
-  }
-}
-
-let scriptPromise: Promise<TurnstileGlobal> | null = null;
-
-// Load the Turnstile script exactly once per page. Multiple components can
-// share the same script tag and the same `window.turnstile` instance.
-function loadTurnstileScript(): Promise<TurnstileGlobal> {
-  if (scriptPromise) return scriptPromise;
-
-  // Reset state on rejection so a transient CDN failure (ad blocker, network
-  // blip) doesn't permanently lock the page out of Turnstile. Without this,
-  // the rejected promise would be cached forever and every subsequent
-  // getToken() call would inherit the same stale rejection.
-  //
-  // Belt-and-suspenders: also drop the global onload callback so a late-
-  // arriving script load (e.g. extension interference resolving after
-  // onerror) can't reach into a stale closure and resolve a long-gone
-  // promise.
-  const resetForRetry = () => {
-    scriptPromise = null;
-    document.getElementById(SCRIPT_ID)?.remove();
-    delete window[READY_CALLBACK];
-  };
-
-  scriptPromise = new Promise<TurnstileGlobal>((resolve, reject) => {
-    if (window.turnstile) {
-      resolve(window.turnstile);
-      return;
-    }
-
-    window[READY_CALLBACK] = () => {
-      // Drop the global once it has fired. Keeps the success path symmetric
-      // with the retry path (which also deletes via resetForRetry) and avoids
-      // leaving a stale function on `window` that could be invoked again if
-      // the script tag is re-injected by some other code on the page.
-      delete window[READY_CALLBACK];
-      if (window.turnstile) {
-        resolve(window.turnstile);
-      } else {
-        resetForRetry();
-        reject(new Error('Turnstile script loaded but window.turnstile is missing'));
-      }
-    };
-
-    let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
-    if (!script) {
-      script = document.createElement('script');
-      script.id = SCRIPT_ID;
-      script.src = SCRIPT_SRC;
-      script.async = true;
-      script.defer = true;
-      script.onerror = () => {
-        resetForRetry();
-        reject(new Error('Failed to load Turnstile script'));
-      };
-      document.head.appendChild(script);
-    }
-  });
-
-  return scriptPromise;
-}
 
 export function useTurnstile() {
   const widgetId = ref<string | null>(null);

@@ -1,6 +1,8 @@
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { Hono } from 'hono';
 import { describe, expect, test, vi } from 'vitest';
-import { turnstileMiddleware } from '../src/middlewares/turnstile.js';
+import { EXPECTED_TURNSTILE_ACTION, turnstileMiddleware } from '../src/middlewares/turnstile.js';
 import * as logger from '../src/utils/logger.js';
 
 // The middleware reads `requestId` and `clientInfo` from the Hono context
@@ -372,5 +374,47 @@ describe('turnstileMiddleware', () => {
     // (loggers) see the codes via the verifyResult object — verified
     // implicitly by middleware not throwing on the array shape.
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('returns 403 when siteverify response is not valid JSON', async () => {
+    // Simulate a non-JSON response (e.g. Cloudflare returning a 5xx HTML
+    // error page or an upstream proxy mangling the body). The runSiteverify
+    // wrapper should map the JSON parse error to the same fail-closed 403
+    // path as a network failure — no uncaught exception should escape.
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('<!doctype html><h1>Bad Gateway</h1>', {
+        headers: { 'Content-Type': 'text/html' },
+      }),
+    );
+    const middleware = turnstileMiddleware({
+      fetch: fetchMock,
+      getSecret: () => SECRET,
+      isProduction: () => false,
+    });
+    const app = buildApp({ middleware });
+
+    const res = await app.request('/api/pack', {
+      method: 'POST',
+      headers: { 'X-Turnstile-Token': 'token' },
+    });
+
+    expect(res.status).toBe(403);
+  });
+});
+
+// Cross-stack contract: the EXPECTED_TURNSTILE_ACTION on the server must
+// match the literal `action` value the client widget binds in
+// `useTurnstile.ts`. They live in different bundles with no shared module,
+// so this test is the only thing keeping a rename on one side from silently
+// breaking Turnstile in production.
+describe('EXPECTED_TURNSTILE_ACTION contract', () => {
+  test('matches the action literal embedded in the client useTurnstile composable', async () => {
+    expect(EXPECTED_TURNSTILE_ACTION).toBe('pack');
+
+    const useTurnstilePath = fileURLToPath(
+      new URL('../../client/composables/useTurnstile.ts', import.meta.url),
+    );
+    const source = await readFile(useTurnstilePath, 'utf8');
+    expect(source).toMatch(/action:\s*['"]pack['"]/);
   });
 });

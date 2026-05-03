@@ -145,7 +145,7 @@ export function usePackRequest() {
           const msg = turnstileError instanceof Error ? turnstileError.message : '';
           const isScriptIssue = /script|load|missing/i.test(msg);
           error.value = isScriptIssue
-            ? 'Bot protection failed to load. Please disable ad blockers or privacy extensions blocking challenges.cloudflare.com and reload.'
+            ? 'Bot protection failed to load. Please disable ad blockers or privacy extensions blocking challenges.cloudflare.com and reload, or use the CLI: npx repomix --remote owner/repo.'
             : 'Verification failed. Please reload the page and try again.';
           errorType.value = 'error';
         }
