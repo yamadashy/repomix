@@ -1,6 +1,6 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -13,6 +13,7 @@ import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
+import type { FileMetrics } from './workers/types.js';
 
 export interface CalculateMetricsResult {
   totalFiles: number;
@@ -29,20 +30,51 @@ export interface MetricsTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
+// Upper bound on pre-warmed metrics workers. Three workers maximize
+// tokenization parallelism on the typical full-repo pack workload.
+//
+// Previously this was stepped down to 2 on ≤4 vCPU because the security
+// check ran in its own 2-thread worker pool, and 3 metrics workers + 2
+// security workers + main thread would oversubscribe a 4-core box during
+// warmup (gpt-tokenizer BPE parse). After the security check moved back
+// to the main thread (commit `73f7825`), the only persistent CPU load
+// outside metrics on the default-config critical path is the main thread
+// itself, leaving headroom for a 3rd metrics worker on a 4-vCPU box.
+//
+// Carve-out: when `--compress` or `--removeComments` is set, `processFiles`
+// also spawns a Tinypool sized to `processConcurrency`. That pool overlaps
+// with the metrics workers during the speculative-metrics window; if a
+// future change makes those file-process workers always-on (or expands to
+// other persistent worker pools), revisit this cap.
+const METRICS_PREWARM_THREAD_CAP = 3;
+
 /**
  * Create a metrics task runner and warm up all worker threads by triggering
  * gpt-tokenizer initialization in parallel. This allows the expensive module
- * loading to overlap with other pipeline stages (security check, file processing,
- * output generation).
+ * loading (~200ms per worker, in parallel) to overlap with other pipeline stages
+ * (file search, collection, security check, file processing, output generation).
+ *
+ * The pool is sized eagerly without knowing the file count, so it can be created
+ * before `searchFiles` resolves. `maxWorkerThreads` overrides default sizing.
  */
-export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+export const createMetricsTaskRunner = (
+  encoding: TokenEncoding,
+  maxWorkerThreads?: number,
+): MetricsTaskRunnerWithWarmup => {
+  const concurrency = getProcessConcurrency();
+  const cap = maxWorkerThreads ?? Math.min(concurrency, METRICS_PREWARM_THREAD_CAP);
+
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
-    numOfTasks,
+    // numOfTasks is no longer informative for sizing — `maxWorkerThreads` is the
+    // sole cap. Pass a sentinel large enough that `getWorkerThreadCount` falls
+    // back to the cap.
+    numOfTasks: cap * 100,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    maxWorkerThreads: cap,
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { maxThreads } = getWorkerThreadCount(cap * 100, cap);
   const warmupPromise = Promise.all(
     Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
@@ -56,6 +88,12 @@ const defaultDeps = {
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
   taskRunner: undefined as MetricsTaskRunner | undefined,
+  // Optional precomputed file metrics from a speculative dispatch in `pack()`. When
+  // provided, calculateMetrics skips its own calculateFileMetrics call and filters
+  // the precomputed results to the safe file set. The dispatch in `pack()` overlaps
+  // tokenization with the security check, removing it from the post-security
+  // critical path.
+  precomputedFileMetricsPromise: undefined as Promise<FileMetrics[]> | undefined,
 };
 
 /**
@@ -124,14 +162,17 @@ export const calculateMetrics = async (
     const metricsTargetPaths = processedFiles.map((file) => file.path);
 
     // Start output-independent metrics immediately so they can overlap with output generation
-    // when output is passed as a promise
-    const fileMetricsPromise = deps.calculateFileMetrics(
-      processedFiles,
-      metricsTargetPaths,
-      config.tokenCount.encoding,
-      progressCallback,
-      { taskRunner },
-    );
+    // when output is passed as a promise. If a precomputed file-metrics promise is provided
+    // (from a speculative dispatch in `pack()` that overlaps tokenization with the security
+    // check), filter its results to the safe set instead of re-tokenizing.
+    const fileMetricsPromise = deps.precomputedFileMetricsPromise
+      ? deps.precomputedFileMetricsPromise.then((all) => {
+          const safeSet = new Set(metricsTargetPaths);
+          return all.filter((m) => safeSet.has(m.path));
+        })
+      : deps.calculateFileMetrics(processedFiles, metricsTargetPaths, config.tokenCount.encoding, progressCallback, {
+          taskRunner,
+        });
     const gitDiffMetricsPromise = deps.calculateGitDiffMetrics(config, gitDiffResult, { taskRunner });
     const gitLogMetricsPromise = deps.calculateGitLogMetrics(config, gitLogResult, { taskRunner });
 

@@ -1,6 +1,18 @@
+// `rules` is exported at runtime, but its TS type pulls in `@secretlint/secretlint-rule-aws`
+// which is a transitive dev-only dep not installed here. Cast through `unknown` keeps
+// the rule-count pin without depending on the missing types package.
+const presetModule = (await import('@secretlint/secretlint-rule-preset-recommend')) as unknown as {
+  rules: { meta: { id: string } }[];
+};
+const recommendedPresetRules = presetModule.rules;
+
 import type { SecretLintCoreConfig } from '@secretlint/types';
 import { describe, expect, test } from 'vitest';
-import { createSecretLintConfig, runSecretLint } from '../../../../src/core/security/workers/securityCheckWorker.js';
+import {
+  createSecretLintConfig,
+  QUICK_SECRET_SCREEN,
+  runSecretLint,
+} from '../../../../src/core/security/workers/securityCheckWorker.js';
 
 describe('securityCheck', () => {
   const config: SecretLintCoreConfig = createSecretLintConfig();
@@ -73,5 +85,85 @@ That's all!
 
     const secretLintResult = await runSecretLint('normal.md', normalContent, 'file', config);
     expect(secretLintResult).toBeNull();
+  });
+
+  // Pins the QUICK_SECRET_SCREEN early-return path. Plain source code carries
+  // no marker for any recommended-preset rule, so the pre-screen must reject
+  // it; pair the regex check with runSecretLint to confirm the early return
+  // still produces a null result on rejected content.
+  test('QUICK_SECRET_SCREEN rejects plain source and runSecretLint short-circuits', async () => {
+    const plainContent = 'function greet(name) { return name; }\nconst x = 42;\n';
+    expect(QUICK_SECRET_SCREEN.test(plainContent)).toBe(false);
+    const result = await runSecretLint('plain.ts', plainContent, 'file', config);
+    expect(result).toBeNull();
+  });
+
+  // Spot-check that the marker for each detection rule is present in the
+  // pre-screen; a missing marker would cause silent secret bypass. Fixtures
+  // carry only the marker substring (not a credible token shape) so they do
+  // not look like real credentials to scanners. The block is also wrapped
+  // in secretlint-disable to silence the lint pass that would otherwise
+  // flag the marker prefixes themselves.
+  test('QUICK_SECRET_SCREEN matches the marker for every detection rule', () => {
+    // secretlint-disable
+    const samples: Record<string, string> = {
+      aws_access_key_AKIA: 'AKIA placeholder marker',
+      aws_access_key_A3T: 'A3TX placeholder marker',
+      aws_secret_key: 'secret_access_key placeholder marker',
+      aws_account: 'aws_account placeholder marker',
+      privatekey_pem: '-----BEGIN placeholder marker',
+      slack_token: 'xoxb-placeholder',
+      slack_webhook: 'hooks.slack.com placeholder marker',
+      github_classic: 'ghp_placeholder',
+      github_finegrained: 'github_pat_placeholder',
+      anthropic: 'sk-ant-api0 placeholder marker',
+      openai_typed: 'sk-proj-placeholder',
+      openai_bare: 'T3BlbkFJ placeholder marker',
+      linear: 'lin_api_placeholder',
+      onepassword: 'ops_ey placeholder marker',
+      sendgrid: 'SG.placeholder.x',
+      shopify: 'shpat_placeholder',
+      npm_xoauth: 'x-oauth-basic placeholder marker',
+      npm_authtoken: '_authToken placeholder marker',
+      npm_classic: 'npm_PlaceholderMarkerPadding00',
+      mongodb: 'mongodb://placeholder',
+      mongodb_srv: 'mongodb+srv://placeholder',
+      mysql: 'mysql://placeholder',
+      mysql_jdbc: 'jdbc:mysql://placeholder',
+      postgres: 'postgresql://placeholder',
+      basicauth: '://placeholderuser:placeholderpass@example.com',
+    };
+    // secretlint-enable
+    for (const [name, content] of Object.entries(samples)) {
+      expect(QUICK_SECRET_SCREEN.test(content), `marker missing for ${name}`).toBe(true);
+    }
+  });
+
+  // Maintenance pin: the QUICK_SECRET_SCREEN regex carries one marker per
+  // detection rule in the recommended preset. When secretlint adds a new
+  // rule in a minor bump, this assertion fails and forces an audit of the
+  // pre-screen before the new rule's secrets can silently slip through.
+  test('QUICK_SECRET_SCREEN covers every detection rule in the installed preset', () => {
+    const detectionRuleIds = recommendedPresetRules
+      .map((r) => r.meta.id)
+      .filter((id) => id !== '@secretlint/secretlint-rule-filter-comments');
+    expect(detectionRuleIds.sort()).toEqual(
+      [
+        '@secretlint/secretlint-rule-1password',
+        '@secretlint/secretlint-rule-anthropic',
+        '@secretlint/secretlint-rule-aws',
+        '@secretlint/secretlint-rule-basicauth',
+        '@secretlint/secretlint-rule-database-connection-string',
+        '@secretlint/secretlint-rule-gcp',
+        '@secretlint/secretlint-rule-github',
+        '@secretlint/secretlint-rule-linear',
+        '@secretlint/secretlint-rule-npm',
+        '@secretlint/secretlint-rule-openai',
+        '@secretlint/secretlint-rule-privatekey',
+        '@secretlint/secretlint-rule-sendgrid',
+        '@secretlint/secretlint-rule-shopify',
+        '@secretlint/secretlint-rule-slack',
+      ].sort(),
+    );
   });
 });

@@ -100,6 +100,82 @@ describe('calculateMetrics', () => {
   });
 });
 
+describe('calculateMetrics precomputed file metrics path', () => {
+  // The speculative dispatch in pack() pre-tokenizes ALL processed files (suspicious
+  // and safe) so it can run in parallel with the security check. calculateMetrics
+  // then filters those precomputed results down to the safe set instead of dispatching
+  // a fresh tokenization. These tests pin that filtering behavior.
+  const baseDeps = {
+    calculateFileMetrics: vi.fn(),
+    calculateOutputMetrics: async () => 0,
+    calculateGitDiffMetrics: () => Promise.resolve(0),
+    calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+    taskRunner: {
+      run: vi.fn().mockResolvedValue(0),
+      cleanup: vi.fn(),
+    },
+  };
+
+  it('uses precomputed metrics filtered to the safe set without re-tokenizing', async () => {
+    const safeFiles: ProcessedFile[] = [
+      { path: 'safe1.ts', content: 'a' },
+      { path: 'safe2.ts', content: 'bb' },
+    ];
+    // The precomputed result includes a "suspicious" file that should be filtered out.
+    const precomputed = [
+      { path: 'safe1.ts', charCount: 1, tokenCount: 5 },
+      { path: 'suspicious.ts', charCount: 100, tokenCount: 999 },
+      { path: 'safe2.ts', charCount: 2, tokenCount: 11 },
+    ];
+
+    const calculateFileMetricsSpy = vi.fn();
+
+    const result = await calculateMetrics(
+      safeFiles,
+      Promise.resolve('any-output'),
+      vi.fn(),
+      createMockConfig({ output: { parsableStyle: true } }),
+      undefined,
+      undefined,
+      {
+        ...baseDeps,
+        calculateFileMetrics: calculateFileMetricsSpy,
+        calculateOutputMetrics: async () => 50,
+        precomputedFileMetricsPromise: Promise.resolve(precomputed),
+      },
+    );
+
+    // Precomputed branch is used: no re-dispatch into the worker pool for file metrics.
+    expect(calculateFileMetricsSpy).not.toHaveBeenCalled();
+    // Suspicious file is filtered out; only safe-set tokens contribute.
+    expect(result.fileTokenCounts).toEqual({ 'safe1.ts': 5, 'safe2.ts': 11 });
+    expect(result.fileTokenCounts).not.toHaveProperty('suspicious.ts');
+  });
+
+  it('falls back to calculateFileMetrics when no precomputed promise is supplied', async () => {
+    const safeFiles: ProcessedFile[] = [{ path: 'a.ts', content: 'x' }];
+    const calculateFileMetricsSpy = vi.fn().mockResolvedValue([{ path: 'a.ts', charCount: 1, tokenCount: 7 }]);
+
+    const result = await calculateMetrics(
+      safeFiles,
+      Promise.resolve('any-output'),
+      vi.fn(),
+      createMockConfig({ output: { parsableStyle: true } }),
+      undefined,
+      undefined,
+      {
+        ...baseDeps,
+        calculateFileMetrics: calculateFileMetricsSpy,
+        calculateOutputMetrics: async () => 1,
+        // no precomputedFileMetricsPromise
+      },
+    );
+
+    expect(calculateFileMetricsSpy).toHaveBeenCalledTimes(1);
+    expect(result.fileTokenCounts).toEqual({ 'a.ts': 7 });
+  });
+});
+
 describe('calculateMetrics fast/slow path equivalence', () => {
   // The fast path skips re-tokenizing the full output by summing per-file token counts
   // plus a wrapper-only tokenization. This test pins the invariant that matters most:
@@ -246,7 +322,7 @@ describe('calculateMetrics fast/slow path equivalence', () => {
 
 describe('createMetricsTaskRunner', () => {
   it('should return a taskRunner and warmupPromise', async () => {
-    const result = createMetricsTaskRunner(100, 'o200k_base');
+    const result = createMetricsTaskRunner('o200k_base');
 
     expect(result).toHaveProperty('taskRunner');
     expect(result).toHaveProperty('warmupPromise');
@@ -258,7 +334,7 @@ describe('createMetricsTaskRunner', () => {
   });
 
   it('should fire a warmup task with empty content', async () => {
-    const result = createMetricsTaskRunner(50, 'cl100k_base');
+    const result = createMetricsTaskRunner('cl100k_base');
 
     await result.warmupPromise;
 
@@ -272,11 +348,20 @@ describe('createMetricsTaskRunner', () => {
       cleanup: vi.fn(),
     });
 
-    const result = createMetricsTaskRunner(10, 'o200k_base');
+    const result = createMetricsTaskRunner('o200k_base');
 
     // warmupPromise should resolve (errors swallowed by .catch on each task)
     const resolved = await result.warmupPromise;
     expect(Array.isArray(resolved)).toBe(true);
     expect((resolved as number[]).every((v) => v === 0)).toBe(true);
+  });
+
+  it('should respect maxWorkerThreads override', async () => {
+    const result = createMetricsTaskRunner('o200k_base', 2);
+
+    await result.warmupPromise;
+
+    // Two warmup tasks for two workers
+    expect(result.taskRunner.run).toHaveBeenCalledTimes(2);
   });
 });

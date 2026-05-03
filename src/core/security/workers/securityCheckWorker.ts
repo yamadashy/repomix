@@ -4,6 +4,11 @@ import { lintSource } from '@secretlint/core';
 import { creator } from '@secretlint/secretlint-rule-preset-recommend';
 import type { SecretLintCoreConfig } from '@secretlint/types';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
+import { QUICK_SECRET_SCREEN } from '../quickSecretScreen.js';
+
+// Re-export QUICK_SECRET_SCREEN so existing call sites and tests
+// (`tests/core/security/workers/securityCheckWorker.test.ts`) keep working.
+export { QUICK_SECRET_SCREEN };
 
 // Initialize logger configuration from workerData at module load time
 // This must be called before any logging operations in the worker
@@ -122,6 +127,10 @@ export const runSecretLint = async (
   type: SecurityCheckType,
   config: SecretLintCoreConfig,
 ): Promise<SuspiciousFileResult | null> => {
+  if (!QUICK_SECRET_SCREEN.test(content)) {
+    return null;
+  }
+
   const result = await lintSource({
     source: {
       filePath: filePath,
