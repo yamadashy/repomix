@@ -136,4 +136,45 @@ def hello():
     expect(result.content).toBeNull();
     expect(result.skippedReason).toBe('binary-content');
   });
+
+  test('should read valid UTF-8 multi-byte file without invoking isBinaryFileSync', async () => {
+    // Regression: prior to the UTF-8-first reorder, certain valid-UTF-8
+    // byte patterns triggered an O(n) protobuf-detector loop inside
+    // `isbinaryfile` that could spend seconds and ultimately throw
+    // `Invalid array length` (concrete trigger:
+    // `website/client/src/ko/guide/tips/best-practices.md`). The throw was
+    // caught by `readRawFile`'s outer try/catch and the file was silently
+    // dropped as `encoding-error`. After the reorder, valid UTF-8 with no
+    // NULL bytes must round-trip as text content without ever invoking
+    // `isBinaryFileSync`.
+    const filePath = path.join(testDir, 'korean.md');
+    // Korean Hangul syllables encode as 3-byte UTF-8 sequences (0xE0-0xEF
+    // lead bytes followed by two 0x80-0xBF continuation bytes); none of
+    // those bytes are NULL.
+    const content = `${'안녕하세요 '.repeat(200)}\n`; // ~3.6 KB of multi-byte UTF-8
+    await fs.writeFile(filePath, content, 'utf-8');
+
+    const result = await readRawFile(filePath, 1024 * 1024);
+
+    expect(result.content).toBe(content);
+    expect(result.skippedReason).toBeUndefined();
+  });
+
+  test('should decode UTF-16 LE BOM file despite embedded NULL bytes', async () => {
+    // Regression: the cheap NULL-byte binary probe ahead of the UTF-8 try
+    // would misclassify UTF-16/UTF-32 text files (whose ASCII characters
+    // encode with NULL high bytes) as binary. The probe must be skipped
+    // when the buffer starts with a UTF-16/UTF-32 BOM so jschardet+iconv
+    // can decode the file on the slow path, matching pre-change behavior.
+    const filePath = path.join(testDir, 'utf16le.txt');
+    // UTF-16 LE BOM (FF FE) followed by "Hello\n" encoded as 2 bytes/char.
+    const utf16LeBom = Buffer.from([0xff, 0xfe]);
+    const utf16LeBody = Buffer.from('Hello\n', 'utf16le');
+    await fs.writeFile(filePath, Buffer.concat([utf16LeBom, utf16LeBody]));
+
+    const result = await readRawFile(filePath, 1024);
+
+    expect(result.skippedReason).toBeUndefined();
+    expect(result.content).toBe('Hello\n');
+  });
 });
