@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777796907632,
+  "lastUpdate": 1777800424639,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7425,6 +7425,51 @@ window.BENCHMARK_DATA = {
             "range": "±25",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1588ms, Q3: 1613ms\nAll times: 1574, 1582, 1584, 1585, 1588, 1588, 1589, 1595, 1596, 1600, 1601, 1603, 1604, 1604, 1609, 1613, 1618, 1619, 1619, 1651ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "2d3bcc37c95217102e2fd00ce595bff01ebd7d58",
+          "message": "perf(file): Use readFileSync in readRawFile to skip libuv per-call overhead\n\nWhy\n---\n`collectFiles` uses `await fs.readFile` through a 50-way `promisePool`. On a\nwarm OS page cache (the common case for a repo pack — files were just\nlisted by globby), each `readFile` call is bounded not by disk latency but\nby the libuv thread-pool round-trip + Promise + microtask machinery, which\ncosts ~0.09 ms per file regardless of file size. For ~270 files this added\n~70 ms of pure async overhead; for ~1000 files (default `node bin/repomix.cjs`\non this repo) it adds correspondingly more.\n\n`readFileSync` issues the syscall directly from the V8 isolate. The kernel\nreturns from cache in a single syscall, no thread-pool hand-off, no Promise\nallocation, no microtask. The blocked main-thread time is dwarfed by the\nsaved overhead: a 270-file warm pure-sync read finishes in ~2 ms, vs. ~80 ms\nfor the async pool.\n\nSwitches `isBinaryFile` (Promise) to `isBinaryFileSync` for the same\nreason — the same `isbinaryfile` package ships both, and when called with a\n`Buffer` (as here) both delegate to the identical `isBinaryCheck` routine.\nNo behaviour change.\n\nTrade-off scope\n---------------\nBlocking the main thread during `collectFiles` defers — but does not\ndeadlock — work that needs main-thread callbacks during the read window:\n\n- Metrics workers run on `worker_threads` and make progress on their own OS\n  threads. Their result messages queue and are observed once the main\n  thread unblocks.\n- `getGitDiffs` / `getGitLogs` use `execFile`, whose subprocess stdout\n  pipes are drained by libuv I/O callbacks. While the main thread is in a\n  sync read, those callbacks queue; for very large `git log` outputs the\n  subprocess can momentarily stall on pipe-buffer fill (~64 KB on Linux),\n  but the stall resolves the moment `collectFiles` yields. No data is lost.\n- The spinner's `setInterval` callbacks queue and fire in a single burst\n  after the read window — visually equivalent to the prior behaviour for\n  CLI users.\n\nCold-disk single-root packs lose libuv's 4-way thread-pool parallelism on\nthe read phase. On NVMe (developer machines, GitHub Actions runners) per-\nfile disk wait is sub-ms, so the wall-clock cost is negligible. On HDD\nthis is a real ~4× slowdown for the read phase — outside the typical\ntarget environment. Multi-root packs still parallelize across roots via\n`pack()`'s top-level `Promise.all`, though within each root the reads\nserialize on the main thread.\n\nMaximum concurrent FDs drops from 50 (async pool) to 1 (sequential sync),\nwhich is strictly safer for FD-limited environments.\n\nPaired interleaved A/B benchmarks (n=15-30, 4-vCPU box, this branch)\n---------------------------------------------------------------------\n\n`--include 'src,tests'` (271 files, ~700 ms baseline), n=30:\n\n|        | min   | median | mean  | sd    |\n|--------|-------|--------|-------|-------|\n| BEFORE | 682ms | 716ms  | 716ms | 21.5  |\n| AFTER  | 658ms | 691ms  | 689ms | 21.0  |\n\n- Mean paired Δ: **26.7 ms** (95% CI ≈ 15.5..37.9 ms — entirely positive)\n- Median paired Δ: **23.6 ms** (~3.30 % median reduction)\n- AFTER faster in 22/30 pairs\n\n`--include 'src,tests,website'` (777 files), n=20:\n\n|        | min    | median | mean   | sd     |\n|--------|--------|--------|--------|--------|\n| BEFORE | 4151ms | 4367ms | 4354ms | 123.4  |\n| AFTER  | 4138ms | 4289ms | 4270ms | 76.8   |\n\n- Mean paired Δ: **83.5 ms** (95% CI ≈ 25.7..141.3 ms — entirely positive)\n- Median paired Δ: **73.1 ms** (~1.67 % median reduction)\n- AFTER faster in 15/20 pairs\n\nDefault (full repo, ~1000 files — same workload the CI bench packs), n=15:\n\n|        | min    | median | mean   | sd    |\n|--------|--------|--------|--------|-------|\n| BEFORE | 4777ms | 4878ms | 4886ms | 72.6  |\n| AFTER  | 4477ms | 4675ms | 4668ms | 104.4 |\n\n- Mean paired Δ: **218.8 ms** (95% CI ≈ 172.0..265.6 ms — entirely positive)\n- Median paired Δ: **249.7 ms** (**~5.12 % median reduction**)\n- AFTER faster in 15/15 pairs\n\nThe XML output is byte-identical between BEFORE and AFTER on a clean\nworking tree (the only diff in the packed self-image is this file plus\nthe `git_diff_work_tree` section reflecting this commit's working state).\n\nTest plan\n---------\n\n- [x] `npm run build` — passes\n- [x] `npm run lint` — passes (only the same two pre-existing warnings)\n- [x] `npm run test` — 1261/1262 pass; the single failure\n  (`tests/core/metrics/calculateFileMetrics.test.ts > preserves order and\n  reports progress across multiple batches`) is the same flake documented\n  in the existing PR body, reproducing on the unmodified base branch\n- [x] Two independent sub-agent reviews:\n  - Correctness reviewer: no blockers; behaviour-preserving, error\n    semantics equivalent, FD usage strictly safer\n  - Benchmark reviewer: no blockers; methodology sound, full-repo CI\n    margin (138..245 ms / ~3-4%) comfortably above 2% threshold; macOS\n    CI variance (~±200-300 ms IQR) may show a noisy result for this\n    commit alone — Ubuntu and Windows are the reliable signal",
+          "timestamp": "2026-05-03T09:25:02Z",
+          "tree_id": "bfe4b01cf253cc9cc667b4ab49254138af7b1dc1",
+          "url": "https://github.com/yamadashy/repomix/commit/2d3bcc37c95217102e2fd00ce595bff01ebd7d58"
+        },
+        "date": 1777800424061,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 2567,
+            "range": "±367",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 2343ms, Q3: 2710ms\nAll times: 2204, 2243, 2275, 2316, 2318, 2333, 2335, 2343, 2369, 2419, 2440, 2449, 2476, 2491, 2561, 2567, 2584, 2592, 2600, 2623, 2658, 2691, 2710, 2711, 2766, 2841, 2980, 2984, 3191, 3267ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 3537,
+            "range": "±219",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 3446ms, Q3: 3665ms\nAll times: 3422, 3428, 3430, 3441, 3442, 3446, 3462, 3468, 3491, 3495, 3537, 3628, 3660, 3661, 3662, 3665, 3667, 3671, 3673, 3964ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1556,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1550ms, Q3: 1569ms\nAll times: 1511, 1541, 1542, 1543, 1544, 1550, 1550, 1553, 1553, 1553, 1556, 1556, 1560, 1562, 1565, 1569, 1570, 1574, 1583, 1612ms"
           }
         ]
       }
