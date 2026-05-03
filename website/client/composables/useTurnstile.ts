@@ -131,16 +131,19 @@ export function useTurnstile() {
   //    has fired.
   let currentGen = 0;
 
-  // Production builds must inject a real site key. A console.error is too
-  // easy to miss during smoke tests, so throw at first useTurnstile() call —
-  // the form fails to initialise loudly and the misconfig is unmissable.
-  // Test/dev builds fall through to the always-passes test sitekey so
-  // contributors without a Cloudflare account can still exercise the flow.
-  if (import.meta.env.PROD && !import.meta.env.VITE_TURNSTILE_SITE_KEY) {
-    throw new Error(
-      'VITE_TURNSTILE_SITE_KEY is not set in this production build. Configure the env var in Cloudflare Pages and redeploy.',
-    );
-  }
+  // Site key resolution. The production-only safety net lives in
+  // `.vitepress/config.ts` (it throws at build time when the Cloudflare Pages
+  // production deploy is missing VITE_TURNSTILE_SITE_KEY). We deliberately do
+  // *not* duplicate that check here with `import.meta.env.PROD`, because PROD
+  // is true for all `vitepress build` outputs — CF Pages preview deploys,
+  // local `docs:build`, and CI builds all set PROD=true and are documented to
+  // fall through to the test sitekey. Adding a runtime throw scoped to PROD
+  // would crash the form in those non-production environments.
+  //
+  // Defense in depth: the server-side middleware fail-closes when it has a
+  // real TURNSTILE_SECRET_KEY but receives a token issued by the test
+  // sitekey (action/hostname mismatch), so an actual production deploy that
+  // somehow shipped the test sitekey would still 403 every pack.
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY ?? FALLBACK_TEST_SITE_KEY;
 
   async function ensureWidget(el: HTMLElement): Promise<TurnstileGlobal> {
