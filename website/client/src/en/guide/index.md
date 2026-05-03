@@ -87,6 +87,7 @@ With the entire codebase available as context, Repomix enables a wide range of a
 - [Configuration](configuration.md): Customize Repomix for your needs
 - [Security Features](security.md): Learn about security checks
 - [MCP Server](mcp-server.md): Integrate Repomix with AI assistants directly
+- [FAQ and Troubleshooting](faq.md): Find answers about formats, privacy, token usage, and common issues
 
 ## Community
 
@@ -101,4 +102,4 @@ Join our [Discord community](https://discord.gg/wNYzTwZFku) for:
 Found a bug or need help?
 - [Open an issue on GitHub](https://github.com/yamadashy/repomix/issues)
 - Join our Discord server
-- Check the [documentation](https://repomix.com)
+- Check the [FAQ and Troubleshooting](faq.md)

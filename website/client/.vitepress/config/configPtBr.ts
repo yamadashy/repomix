@@ -22,6 +22,7 @@ export const configPtBr = defineConfig({
             { text: 'Uso Básico', link: '/pt-br/guide/usage' },
             { text: 'Exemplos de Prompt', link: '/pt-br/guide/prompt-examples' },
             { text: 'Casos de Uso', link: '/pt-br/guide/use-cases' },
+            { text: 'FAQ e solução de problemas', link: '/pt-br/guide/faq' },
           ],
         },
         {

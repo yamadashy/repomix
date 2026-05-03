@@ -22,6 +22,7 @@ export const configZhCn = defineConfig({
             { text: '基本用法', link: '/zh-cn/guide/usage' },
             { text: '提示示例', link: '/zh-cn/guide/prompt-examples' },
             { text: '使用场景', link: '/zh-cn/guide/use-cases' },
+            { text: '常见问题和故障排除', link: '/zh-cn/guide/faq' },
           ],
         },
         {
