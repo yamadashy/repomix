@@ -1,6 +1,6 @@
-import * as fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import isBinaryPath from 'is-binary-path';
-import { isBinaryFile } from 'isbinaryfile';
+import { isBinaryFileSync } from 'isbinaryfile';
 import { logger } from '../../shared/logger.js';
 
 // Lazy-load encoding detection libraries to avoid their ~25ms combined import cost.
@@ -40,10 +40,10 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
 
     logger.trace(`Reading file: ${filePath}`);
 
-    // Read the file directly and check size afterward, avoiding a separate stat() syscall.
-    // This halves the number of I/O operations per file.
-    // Files exceeding maxFileSize are rare, so the occasional oversized read is acceptable.
-    const buffer = await fs.readFile(filePath);
+    // readFileSync avoids the per-call libuv + Promise + microtask overhead
+    // (~0.09ms/file) that dominates wall-clock when files are page-cached.
+    // Read directly and check size afterward to avoid a separate stat() syscall.
+    const buffer = readFileSync(filePath);
 
     if (buffer.length > maxFileSize) {
       const sizeKB = (buffer.length / 1024).toFixed(1);
@@ -52,7 +52,7 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
       return { content: null, skippedReason: 'size-limit' };
     }
 
-    if (await isBinaryFile(buffer)) {
+    if (isBinaryFileSync(buffer)) {
       logger.debug(`Skipping binary file (content check): ${filePath}`);
       return { content: null, skippedReason: 'binary-content' };
     }
