@@ -6,10 +6,7 @@ import { turnstileMiddleware } from '../src/middlewares/turnstile.js';
 // (set by upstream middleware in production). For unit tests we shim these
 // via a tiny middleware so each test gets the values it needs without
 // importing the full middleware chain.
-function buildApp(opts: {
-  middleware: ReturnType<typeof turnstileMiddleware>;
-  requestId?: string;
-}) {
+function buildApp(opts: { middleware: ReturnType<typeof turnstileMiddleware>; requestId?: string }) {
   const app = new Hono();
   app.use('*', async (c, next) => {
     c.set('requestId', opts.requestId ?? 'req-test');
@@ -169,9 +166,9 @@ describe('turnstileMiddleware', () => {
   });
 
   test('returns 403 when siteverify reports failure', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      okResponse({ success: false, 'error-codes': ['invalid-input-response'] }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(okResponse({ success: false, 'error-codes': ['invalid-input-response'] }));
     const middleware = turnstileMiddleware({
       fetch: fetchMock,
       getSecret: () => SECRET,
