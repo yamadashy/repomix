@@ -296,9 +296,7 @@ describe('turnstileMiddleware', () => {
   });
 
   test('passes through when siteverify hostname is allowed', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(okResponse({ success: true, hostname: 'repomix.com' }));
+    const fetchMock = vi.fn().mockResolvedValue(okResponse({ success: true, hostname: 'repomix.com' }));
     const middleware = turnstileMiddleware({
       fetch: fetchMock,
       getSecret: () => SECRET,
@@ -315,9 +313,7 @@ describe('turnstileMiddleware', () => {
   });
 
   test('returns 403 when siteverify reports an unexpected hostname', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(okResponse({ success: true, hostname: 'attacker.example' }));
+    const fetchMock = vi.fn().mockResolvedValue(okResponse({ success: true, hostname: 'attacker.example' }));
     const middleware = turnstileMiddleware({
       fetch: fetchMock,
       getSecret: () => SECRET,
