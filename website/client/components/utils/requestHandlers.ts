@@ -9,6 +9,7 @@ interface RequestHandlerOptions {
   onProgress?: (stage: PackProgressStage, message?: string) => void;
   signal?: AbortSignal;
   file?: File;
+  turnstileToken?: string;
 }
 
 /**
@@ -20,7 +21,7 @@ export async function handlePackRequest(
   options: PackOptions,
   handlerOptions: RequestHandlerOptions = {},
 ): Promise<void> {
-  const { onSuccess, onError, onAbort, onProgress, signal, file } = handlerOptions;
+  const { onSuccess, onError, onAbort, onProgress, signal, file, turnstileToken } = handlerOptions;
   const processedUrl = url.trim();
 
   // Track pack start
@@ -34,10 +35,14 @@ export async function handlePackRequest(
       file,
     };
 
-    const response = await packRepository(request, {
-      onProgress,
-      signal,
-    });
+    const response = await packRepository(
+      request,
+      {
+        onProgress,
+        signal,
+      },
+      turnstileToken,
+    );
 
     // Track successful pack
     if (response.metadata.summary) {
