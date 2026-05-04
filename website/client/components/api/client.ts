@@ -88,7 +88,11 @@ interface StreamErrorEvent {
 
 type StreamEvent = ProgressEvent | ResultEvent | StreamErrorEvent;
 
-export async function packRepository(request: PackRequest, callbacks?: PackStreamCallbacks): Promise<PackResult> {
+export async function packRepository(
+  request: PackRequest,
+  callbacks?: PackStreamCallbacks,
+  turnstileToken?: string,
+): Promise<PackResult> {
   const formData = new FormData();
 
   if (request.file) {
@@ -99,8 +103,14 @@ export async function packRepository(request: PackRequest, callbacks?: PackStrea
   formData.append('format', request.format);
   formData.append('options', JSON.stringify(request.options));
 
+  // Token rides as a header rather than a form field to keep packRequestSchema
+  // free of cross-cutting concerns; the server-side turnstileMiddleware reads
+  // it before the schema validation runs.
+  const headers: HeadersInit = turnstileToken ? { 'X-Turnstile-Token': turnstileToken } : {};
+
   const response = await fetch(`${API_BASE_URL}/api/pack`, {
     method: 'POST',
+    headers,
     body: formData,
     signal: callbacks?.signal,
   });

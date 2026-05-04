@@ -10,6 +10,7 @@ import { cloudflareGuardMiddleware } from './middlewares/cloudflareGuard.js';
 import { cloudLoggerMiddleware } from './middlewares/cloudLogger.js';
 import { corsMiddleware } from './middlewares/cors.js';
 import { rateLimitMiddleware } from './middlewares/rateLimit.js';
+import { turnstileMiddleware } from './middlewares/turnstile.js';
 import { logInfo, logMemoryUsage } from './utils/logger.js';
 import { getProcessConcurrency } from './utils/processConcurrency.js';
 
@@ -61,8 +62,9 @@ if (!isWarmupMode()) {
   // Health check endpoint
   app.get('/health', (c) => c.text('OK'));
 
-  // Main packing endpoint
-  app.post('/api/pack', bodyLimitMiddleware, packAction);
+  // Main packing endpoint — Turnstile is scoped to /api/pack only so docs and
+  // health endpoints remain challenge-free for SEO/LLMO crawlers.
+  app.post('/api/pack', turnstileMiddleware(), bodyLimitMiddleware, packAction);
 
   // Start server
   const port = process.env.PORT ? Number.parseInt(process.env.PORT, 10) : 3000;

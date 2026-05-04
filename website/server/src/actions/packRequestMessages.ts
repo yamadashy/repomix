@@ -19,4 +19,5 @@ export const MESSAGES = {
   IGNORE_TOO_LONG: 'Ignore patterns too long',
   MISSING_INPUT: 'Either URL or file must be provided',
   BOTH_PROVIDED: 'Cannot provide both URL and file',
+  TURNSTILE_FAILED: 'Verification failed. Please try again.',
 } as const;

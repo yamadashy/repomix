@@ -15,7 +15,7 @@ export const corsMiddleware = cors({
     return null;
   },
   allowMethods: ['GET', 'POST', 'OPTIONS'],
-  allowHeaders: ['Content-Type'],
+  allowHeaders: ['Content-Type', 'X-Turnstile-Token'],
   maxAge: 86400,
   credentials: true,
 });
