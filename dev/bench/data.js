@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777965936218,
+  "lastUpdate": 1777995057076,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -4455,6 +4455,51 @@ window.BENCHMARK_DATA = {
             "range": "±22",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1779ms, Q3: 1801ms\nAll times: 1746, 1757, 1759, 1771, 1771, 1779, 1780, 1783, 1785, 1786, 1788, 1795, 1797, 1797, 1799, 1801, 1828, 1854, 2103, 2285ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7df0b1ba913a10786027625094f342eee69e9ca3",
+          "message": "Merge pull request #1542 from yamadashy/perf/isbinaryfile-utf8-fastpath\n\nperf(file): Try UTF-8 decode before isBinaryFile to dodge protobuf-detector pathological case",
+          "timestamp": "2026-05-06T00:28:16+09:00",
+          "tree_id": "3c17b24da237868643088fcf5c83363ddaf34de6",
+          "url": "https://github.com/yamadashy/repomix/commit/7df0b1ba913a10786027625094f342eee69e9ca3"
+        },
+        "date": 1777995055554,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 953,
+            "range": "±136",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 923ms, Q3: 1059ms\nAll times: 868, 869, 871, 880, 884, 893, 919, 923, 924, 925, 929, 941, 942, 944, 951, 953, 961, 981, 1010, 1017, 1025, 1027, 1059, 1066, 1089, 1102, 1112, 1120, 1130, 1135ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1371,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1361ms, Q3: 1385ms\nAll times: 1336, 1339, 1349, 1355, 1361, 1361, 1366, 1366, 1367, 1369, 1371, 1375, 1378, 1379, 1382, 1385, 1387, 1395, 1398, 1401ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1885,
+            "range": "±52",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1868ms, Q3: 1920ms\nAll times: 1839, 1841, 1851, 1859, 1863, 1868, 1872, 1877, 1880, 1885, 1885, 1888, 1900, 1900, 1912, 1920, 1921, 1926, 1957, 1988ms"
           }
         ]
       }
