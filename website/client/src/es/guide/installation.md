@@ -74,7 +74,7 @@ Instálala desde el [VSCode Marketplace](https://marketplace.visualstudio.com/it
 
 ## Requisitos del sistema
 
-- Node.js: ≥ 20.0.0
+- Node.js: ≥ 22.0.0
 - Git: Requerido para el procesamiento de repositorios remotos
 
 ## Verificación

@@ -88,7 +88,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node-version: [20.x, 22.x, 24.x, 25.x]
+        node-version: [22.x, 24.x, 25.x]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -99,7 +99,6 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm ci
-      # Run tests directly instead of using npm scripts with node --run which is not supported in older Node versions
       - run: ./node_modules/.bin/vitest --reporter=verbose
         env:
           CI_OS: ${{ runner.os }}
@@ -161,7 +160,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node-version: [20.x, 22.x, 24.x, 25.x]
+        node-version: [22.x, 24.x, 25.x]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -172,7 +171,6 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm ci
-      # Run build directly instead of using npm scripts with node --run which is not supported in older Node versions
       - run: ./node_modules/.bin/rimraf lib && ./node_modules/.bin/tsc -p tsconfig.build.json --sourceMap --declaration
       - name: Remove dev dependencies
         run: npm prune --omit=dev

@@ -72,7 +72,7 @@ Accédez instantanément à Repomix directement depuis n'importe quel dépôt Gi
 
 ## Configuration requise
 
-- Node.js: ≥ 20.0.0
+- Node.js: ≥ 22.0.0
 - Git: Requis pour le traitement des dépôts distants
 
 ## Vérification

@@ -74,7 +74,7 @@ Get instant access to Repomix directly from any GitHub repository! Our Chrome ex
 
 ## System Requirements
 
-- Node.js: ≥ 20.0.0
+- Node.js: ≥ 22.0.0
 - Git: Required for remote repository processing
 
 ## Verification

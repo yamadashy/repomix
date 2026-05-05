@@ -20,7 +20,7 @@ Thank you for your interest in **Repomix**! 🚀 We'd love your help to make it 
 
 ### Prerequisites
 
-- Node.js ≥ 20.0.0
+- Node.js ≥ 22.0.0
 - Git
 - npm
 - Docker (optional, for running the website or containerized development)

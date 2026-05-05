@@ -20,7 +20,7 @@ description: "Repomix geliştirme ortamını kurun, testleri çalıştırın, ko
 
 ### Ön Koşullar
 
-- Node.js ≥ 20.0.0
+- Node.js ≥ 22.0.0
 - Git
 - npm
 - Docker (isteğe bağlı; web sitesini çalıştırmak veya konteyner içinde geliştirme için)

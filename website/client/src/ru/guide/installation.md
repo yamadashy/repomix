@@ -74,7 +74,7 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix --remote yamadash
 
 ## Системные требования
 
-- Node.js: ≥ 20.0.0
+- Node.js: ≥ 22.0.0
 - Git: Требуется для обработки удалённых репозиториев
 
 ## Проверка

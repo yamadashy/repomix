@@ -90,7 +90,7 @@ repomix --init
 
 ### Repomix 支援 C#、Python、Java、Go、Rust 或其他語言的 repository 嗎？
 
-支援。Repomix 會讀取專案檔案並將其格式化為適合 AI 工具使用的內容，因此可以打包任何程式語言編寫的 repository。CLI 需要 Node.js 20 或更高版本。一些進階功能，例如基於 Tree-sitter 的程式碼壓縮，會取決於對應語言的 parser 支援情況。
+支援。Repomix 會讀取專案檔案並將其格式化為適合 AI 工具使用的內容，因此可以打包任何程式語言編寫的 repository。CLI 需要 Node.js 22 或更高版本。一些進階功能，例如基於 Tree-sitter 的程式碼壓縮，會取決於對應語言的 parser 支援情況。
 
 ### 可以將 Repomix 與 Hermes Agent、OpenClaw 或其他 MCP 相容 agent 一起使用嗎？
 

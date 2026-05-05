@@ -31,7 +31,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: '22'
       
       - name: Run Repomix
         run: npx repomix --output-file repomix-output.xml
@@ -71,7 +71,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: '22'
       
       - name: Run Repomix
         run: |
@@ -128,7 +128,7 @@ jobs:
     strategy:
       matrix:
         output-style: [xml, markdown, json, plain]
-        node-version: [20, 22]
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v3
       

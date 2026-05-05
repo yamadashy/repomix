@@ -54,7 +54,7 @@ npm run lint
 
 ### Prérequis
 
-- Node.js ≥ 20.0.0
+- Node.js ≥ 22.0.0
 - Git
 - npm
 - Docker (optionnel, pour exécuter le site web ou le développement conteneurisé)

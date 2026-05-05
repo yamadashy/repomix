@@ -90,7 +90,7 @@ repomix --init
 
 ### Apakah Repomix bekerja dengan C#, Python, Java, Go, Rust, atau bahasa lain?
 
-Ya. Repomix membaca file dari project Anda dan memformatnya untuk tool AI, sehingga dapat mem-pack repository dalam bahasa pemrograman apa pun. CLI membutuhkan Node.js 20 atau lebih baru. Beberapa fitur lanjutan, seperti kompresi kode berbasis Tree-sitter, bergantung pada dukungan parser untuk setiap bahasa.
+Ya. Repomix membaca file dari project Anda dan memformatnya untuk tool AI, sehingga dapat mem-pack repository dalam bahasa pemrograman apa pun. CLI membutuhkan Node.js 22 atau lebih baru. Beberapa fitur lanjutan, seperti kompresi kode berbasis Tree-sitter, bergantung pada dukungan parser untuk setiap bahasa.
 
 ### Bisakah saya menggunakan Repomix dengan Hermes Agent, OpenClaw, atau agent lain yang kompatibel dengan MCP?
 

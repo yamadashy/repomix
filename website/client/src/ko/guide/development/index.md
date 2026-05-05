@@ -56,7 +56,7 @@ npm run lint
 
 ### 필수 구성 요소
 
-- Node.js ≥ 20.0.0
+- Node.js ≥ 22.0.0
 - Git
 - npm
 - Docker (선택 사항, 웹사이트 실행 또는 컨테이너화된 개발용)

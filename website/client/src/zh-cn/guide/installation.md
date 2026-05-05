@@ -74,7 +74,7 @@ docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix --remote yamadash
 
 ## 系统要求
 
-- Node.js: ≥ 20.0.0
+- Node.js: ≥ 22.0.0
 - Git: 处理远程仓库时需要
 
 ## 验证安装
