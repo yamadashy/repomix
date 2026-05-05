@@ -91,7 +91,7 @@ const jsonLd = {
       isAccessibleForFree: true,
       installUrl: npmUrl,
       downloadUrl: npmUrl,
-      softwareRequirements: 'Node.js 20.0.0 or higher',
+      softwareRequirements: 'Node.js 22.0.0 or higher',
       image: `${siteUrl}/images/repomix-logo.svg`,
       screenshot: ogImageUrl,
       author: {

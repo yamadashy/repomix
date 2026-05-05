@@ -24,9 +24,9 @@ const EXIT_CODES = {
   ERROR: 1,
 };
 
-if (major < 20) {
+if (major < 22) {
   console.warn(
-    `Warning: Repomix recommends Node.js version 20 or higher. Current version: ${nodeVersion}. Some features may not work as expected.\n`,
+    `Warning: Repomix recommends Node.js version 22 or higher. Current version: ${nodeVersion}. Some features may not work as expected.\n`,
   );
 }
 
