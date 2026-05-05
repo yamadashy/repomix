@@ -128,7 +128,7 @@ jobs:
     strategy:
       matrix:
         output-style: [xml, markdown, json, plain]
-        node-version: [22, 24]
+        node-version: [22, 24, 26]
     steps:
       - uses: actions/checkout@v3
       
