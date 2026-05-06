@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import Handlebars from 'handlebars';
+import type Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -18,33 +18,45 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
-import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { getXmlTemplate } from './outputStyles/xmlStyle.js';
 
 // Cache for compiled Handlebars templates to avoid recompilation on every call
 const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
 
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
+// `handlebars` (and the style template modules that transitively re-import it
+// via `outputStyleUtils`) costs ~50 ms to evaluate at process start, but it is
+// only consumed by `generateHandlebarOutput` near the end of `pack()` — well
+// after file search, collection, processing, and the security check have all
+// run. Loading via `await import(...)` defers the cost off the synchronous CLI
+// startup path; the dynamic import then runs concurrently with
+// `calculateMetrics` (the two are in `Promise.all` in `packager.ts`), so the
+// load typically resolves while metrics workers are still busy and adds zero
+// to the wall-clock critical path.
+const loadStyleTemplate = async (style: string): Promise<string> => {
+  switch (style) {
+    case 'xml': {
+      const mod = await import('./outputStyles/xmlStyle.js');
+      return mod.getXmlTemplate();
+    }
+    case 'markdown': {
+      const mod = await import('./outputStyles/markdownStyle.js');
+      return mod.getMarkdownTemplate();
+    }
+    case 'plain': {
+      const mod = await import('./outputStyles/plainStyle.js');
+      return mod.getPlainTemplate();
+    }
+    default:
+      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
+  }
+};
+
+const getCompiledTemplate = async (style: string): Promise<Handlebars.TemplateDelegate> => {
   const cached = compiledTemplateCache.get(style);
   if (cached) {
     return cached;
   }
 
-  let template: string;
-  switch (style) {
-    case 'xml':
-      template = getXmlTemplate();
-      break;
-    case 'markdown':
-      template = getMarkdownTemplate();
-      break;
-    case 'plain':
-      template = getPlainTemplate();
-      break;
-    default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
-  }
+  const [{ default: Handlebars }, template] = await Promise.all([import('handlebars'), loadStyleTemplate(style)]);
 
   const compiled = Handlebars.compile(template);
   compiledTemplateCache.set(style, compiled);
@@ -221,7 +233,7 @@ const generateHandlebarOutput = async (
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
   try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
+    const compiledTemplate = await getCompiledTemplate(config.output.style);
     return `${compiledTemplate(renderContext).trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
