@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777812660054,
+  "lastUpdate": 1778109958614,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7515,6 +7515,51 @@ window.BENCHMARK_DATA = {
             "range": "±52",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1731ms, Q3: 1783ms\nAll times: 1704, 1716, 1720, 1722, 1729, 1731, 1733, 1734, 1740, 1748, 1766, 1768, 1773, 1774, 1779, 1783, 1791, 1792, 1859, 1878ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "974fb27a81b5a8946e26da687e8feb8ac1be56ea",
+          "message": "perf(output): Lazy-load handlebars and style templates to defer ~50ms startup cost\n\nHandlebars and the per-style template modules (which transitively re-import\nhandlebars via `outputStyleUtils`) collectively add ~50 ms to the synchronous\nCLI startup path, even though they are only consumed by `generateHandlebarOutput`\nnear the end of `pack()` — after file search, collection, processing, and the\nsecurity check have all run.\n\nSwitch the static `import Handlebars from 'handlebars'` and the three style\nimports to a `import type` plus dynamic `await import(...)` inside\n`getCompiledTemplate`. The compiled-template cache (`compiledTemplateCache`)\nensures the imports only run once per process. The dynamic load now overlaps\nwith `calculateMetrics` (the two run inside the `Promise.all` in `packager.ts`),\nso on workloads where the metrics phase is the wall-clock critical path the\nimport cost is fully hidden; on smaller workloads the cost moves off the\nserial startup path.\n\n## Benchmark — node bin/repomix.cjs --include 'src,tests' --quiet (258 files), n=30 paired interleaved\n\n|        | min     | p25     | median  | p75     | mean    | sd      |\n|--------|---------|---------|---------|---------|---------|---------|\n| BEFORE |  983 ms | 1061 ms | 1088 ms | 1108 ms | 1081.6 ms | 39.1 ms |\n| AFTER  |  998 ms | 1040 ms | 1061 ms | 1078 ms | 1058.8 ms | 32.7 ms |\n\n- Mean paired Δ: +22.7 ms (~2.10 % wall-clock reduction)\n- Median paired Δ: +24.5 ms\n- AFTER faster in 22/30 pairs (73 %)\n\nA second independent re-run on the same machine (n=15, AFTER-first ordering)\nreproduced the direction with mean Δ +21.5 ms / median Δ +12 ms / 10/15 pairs\nfaster — paired-delta SD ≈ 48 ms, so the 95 % CI on the per-machine effect\nstraddles zero (t(14) ≈ 1.75, p ≈ 0.10). The mean magnitude is consistent\nacross runs but the per-pair variance on this 4-vCPU host is large relative\nto the effect; the percentage-level claim should be read as \"~2 % mean\nreduction in the typical case, with run-to-run noise dominating any single\npair.\" Cleaner machines would likely tighten the CI.\n\n## Benchmark — node bin/repomix.cjs --quiet (default, 1572 files), n=30 paired interleaved\n\n|        | min     | p25     | median  | p75     | mean    | sd      |\n|--------|---------|---------|---------|---------|---------|---------|\n| BEFORE | 1906 ms | 2040 ms | 2084 ms | 2147 ms | 2087.2 ms | 80.0 ms |\n| AFTER  | 1912 ms | 2024 ms | 2097 ms | 2145 ms | 2089.6 ms | 81.2 ms |\n\n- Mean paired Δ: -2.5 ms · Median paired Δ: +2.5 ms — statistically neutral\n- AFTER faster in 16/30 pairs (53 %)\n- No regression: the import cost is fully absorbed by the longer metrics tail\n  on this workload.\n\n## Correctness\n\n- XML output (default style) byte-identical between BEFORE and AFTER (verified\n  via `cmp` on `--include 'src,tests'`).\n- Markdown output byte-identical between BEFORE and AFTER (verified via `cmp`\n  with `--style markdown --output /tmp/{before,after}.md`).\n- The compiled-template cache continues to dedupe per style; the\n  `markdownStyle.ts` top-level call to `registerHandlebarsHelpers()` runs the\n  first time the markdown branch is awaited (idempotent — the helper module\n  guards on `handlebarsHelpersRegistered`, so the duplicate-import path that\n  exists in `skillSectionGenerators.ts` continues to work unchanged).\n- All 1256 tests pass (`npm test`); lint clean (only pre-existing warnings).\n\n## Why other candidates were not chosen\n\nFive investigation sub-agents (CLI startup, file I/O, security pipeline,\noutput, metrics) ran in parallel. Other candidates measured below threshold\nor regressed on the larger workload:\n\n- Run `lintSource` on the main thread instead of the security worker pool\n  (security candidate): +3.78 % on 258-file pack, but a reproducible -1.85 %\n  regression on the 1572-file pack — the main-thread `await lintSource` loop\n  starves I/O callbacks (worker-pool messages, git pipe drains) for ~190 ms\n  on the large repo and the savings are eaten by downstream phases.\n  `setImmediate` yielding reduced but did not eliminate the regression.\n- `METRICS_BATCH_SIZE` 50 → 100 (metrics candidate): claimed alignment with\n  `TASKS_PER_THREAD = 100`, but measured -2.56 % regression on the 1572-file\n  pack (5/20 pairs faster). The original comment-warning held empirically.\n- Skip `calculateFileLineCounts` / `calculateMarkdownDelimiter` for non-markdown\n  styles (output candidate): only 0.6–1.0 % wall-clock impact, below threshold.\n- Skip the `**/.ignore` globby file-tree scan when no root `.ignore` exists\n  (file I/O candidate): warm-disk savings ~10–35 ms, below threshold.",
+          "timestamp": "2026-05-06T23:23:51Z",
+          "tree_id": "442568cef8f330e956f312219a0ee2e5797d250e",
+          "url": "https://github.com/yamadashy/repomix/commit/974fb27a81b5a8946e26da687e8feb8ac1be56ea"
+        },
+        "date": 1778109957854,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1047,
+            "range": "±195",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 968ms, Q3: 1163ms\nAll times: 889, 893, 900, 907, 913, 923, 945, 968, 972, 975, 980, 992, 993, 1046, 1047, 1047, 1061, 1099, 1125, 1126, 1155, 1160, 1163, 1202, 1210, 1219, 1226, 1227, 1237, 1351ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1437,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1426ms, Q3: 1448ms\nAll times: 1410, 1411, 1416, 1419, 1423, 1426, 1428, 1431, 1433, 1434, 1437, 1441, 1444, 1445, 1447, 1448, 1450, 1457, 1479, 1487ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1761,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1746ms, Q3: 1775ms\nAll times: 1717, 1721, 1724, 1739, 1739, 1746, 1753, 1755, 1759, 1760, 1761, 1766, 1766, 1769, 1771, 1775, 1777, 1780, 1812, 1825ms"
           }
         ]
       }
