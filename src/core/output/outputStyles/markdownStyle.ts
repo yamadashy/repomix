@@ -1,87 +1,94 @@
-import { registerHandlebarsHelpers } from '../outputStyleUtils.js';
+import type { RenderContext } from '../outputGeneratorTypes.js';
+import { getLanguageFromFilePath } from '../outputStyleUtils.js';
 
-// Register Handlebars helpers (idempotent)
-registerHandlebarsHelpers();
+export const renderMarkdown = (ctx: Partial<RenderContext>): string => {
+  const parts: string[] = [];
 
-export const getMarkdownTemplate = () => {
-  return /* md */ `
-{{#if fileSummaryEnabled}}
-{{{generationHeader}}}
+  // Leading newline (from template literal opening).
+  parts.push('\n');
 
-# File Summary
+  if (ctx.fileSummaryEnabled) {
+    parts.push(
+      `${ctx.generationHeader ?? ''}\n` +
+        '\n' +
+        '# File Summary\n' +
+        '\n' +
+        '## Purpose\n' +
+        `${ctx.summaryPurpose ?? ''}\n` +
+        '\n' +
+        '## File Format\n' +
+        `${ctx.summaryFileFormat ?? ''}\n` +
+        '5. Multiple file entries, each consisting of:\n' +
+        '  a. A header with the file path (## File: path/to/file)\n' +
+        '  b. The full contents of the file in a code block\n' +
+        '\n' +
+        '## Usage Guidelines\n' +
+        `${ctx.summaryUsageGuidelines ?? ''}\n` +
+        '\n' +
+        '## Notes\n' +
+        `${ctx.summaryNotes ?? ''}\n` +
+        '\n',
+    );
+  }
 
-## Purpose
-{{{summaryPurpose}}}
+  if (ctx.headerText) {
+    parts.push(`# User Provided Header\n${ctx.headerText}\n\n`);
+  }
 
-## File Format
-{{{summaryFileFormat}}}
-5. Multiple file entries, each consisting of:
-  a. A header with the file path (## File: path/to/file)
-  b. The full contents of the file in a code block
+  if (ctx.directoryStructureEnabled) {
+    parts.push('# Directory Structure\n' + '```\n' + `${ctx.treeString ?? ''}\n` + '```\n' + '\n');
+  }
 
-## Usage Guidelines
-{{{summaryUsageGuidelines}}}
+  if (ctx.filesEnabled) {
+    parts.push('# Files\n\n');
+    const delimiter = ctx.markdownCodeBlockDelimiter ?? '```';
+    for (const file of ctx.processedFiles ?? []) {
+      const language = getLanguageFromFilePath(file.path);
+      parts.push(
+        `## File: ${file.path}\n` + `${delimiter}${language}\n` + `${file.content}\n` + `${delimiter}\n` + '\n',
+      );
+    }
+  }
 
-## Notes
-{{{summaryNotes}}}
+  // Static blank line between files and gitDiff blocks.
+  parts.push('\n');
 
-{{/if}}
-{{#if headerText}}
-# User Provided Header
-{{{headerText}}}
+  if (ctx.gitDiffEnabled) {
+    parts.push(
+      '# Git Diffs\n' +
+        '## Git Diffs Working Tree\n' +
+        '```diff\n' +
+        `${ctx.gitDiffWorkTree ?? ''}\n` +
+        '```\n' +
+        '\n' +
+        '## Git Diffs Staged\n' +
+        '```diff\n' +
+        `${ctx.gitDiffStaged ?? ''}\n` +
+        '```\n' +
+        '\n',
+    );
+  }
 
-{{/if}}
-{{#if directoryStructureEnabled}}
-# Directory Structure
-\`\`\`
-{{{treeString}}}
-\`\`\`
+  // Static blank line between gitDiff and gitLog blocks.
+  parts.push('\n');
 
-{{/if}}
-{{#if filesEnabled}}
-# Files
+  if (ctx.gitLogEnabled) {
+    parts.push('# Git Logs\n\n');
+    for (const commit of ctx.gitLogCommits ?? []) {
+      parts.push(`## Commit: ${commit.date}\n` + `**Message:** ${commit.message}\n` + '\n' + '**Files:**\n');
+      for (const file of commit.files) {
+        parts.push(`- ${file}\n`);
+      }
+      parts.push('\n');
+    }
+  }
 
-{{#each processedFiles}}
-## File: {{{this.path}}}
-{{{../markdownCodeBlockDelimiter}}}{{{getFileExtension this.path}}}
-{{{this.content}}}
-{{{../markdownCodeBlockDelimiter}}}
+  // Static blank line between gitLog and instruction blocks.
+  parts.push('\n');
 
-{{/each}}
-{{/if}}
+  if (ctx.instruction) {
+    parts.push(`# Instruction\n${ctx.instruction}\n`);
+  }
 
-{{#if gitDiffEnabled}}
-# Git Diffs
-## Git Diffs Working Tree
-\`\`\`diff
-{{{gitDiffWorkTree}}}
-\`\`\`
-
-## Git Diffs Staged
-\`\`\`diff
-{{{gitDiffStaged}}}
-\`\`\`
-
-{{/if}}
-
-{{#if gitLogEnabled}}
-# Git Logs
-
-{{#each gitLogCommits}}
-## Commit: {{{this.date}}}
-**Message:** {{{this.message}}}
-
-**Files:**
-{{#each this.files}}
-- {{{this}}}
-{{/each}}
-
-{{/each}}
-{{/if}}
-
-{{#if instruction}}
-# Instruction
-{{{instruction}}}
-{{/if}}
-`;
+  return parts.join('');
 };

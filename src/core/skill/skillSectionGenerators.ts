@@ -1,17 +1,15 @@
-import Handlebars from 'handlebars';
 import { generateTreeStringWithLineCounts } from '../file/fileTreeGenerate.js';
 import type { RenderContext } from '../output/outputGeneratorTypes.js';
-import { registerHandlebarsHelpers } from '../output/outputStyleUtils.js';
-
-// Register Handlebars helpers (idempotent)
-registerHandlebarsHelpers();
+import { getLanguageFromFilePath } from '../output/outputStyleUtils.js';
 
 /**
  * Generates the summary section for skill output.
  * Contains purpose, file format, usage guidelines, notes, and project statistics.
  */
 export const generateSummarySection = (context: RenderContext, statisticsSection?: string): string => {
-  const template = Handlebars.compile(`{{{generationHeader}}}
+  const statisticsBlock = statisticsSection ? `${statisticsSection}\n` : '';
+
+  const content = `${context.generationHeader}
 
 # Summary
 
@@ -33,18 +31,15 @@ This skill contains the following reference files:
 
 ## Usage Guidelines
 
-{{{summaryUsageGuidelines}}}
+${context.summaryUsageGuidelines}
 
 ## Notes
 
-{{{summaryNotes}}}
+${context.summaryNotes}
 
-{{#if statisticsSection}}
-{{{statisticsSection}}}
-{{/if}}
-`);
+${statisticsBlock}`;
 
-  return template({ ...context, statisticsSection }).trim();
+  return content.trim();
 };
 
 /**
@@ -60,14 +55,11 @@ export const generateStructureSection = (context: RenderContext): string => {
   const filePaths = context.processedFiles.map((f) => f.path);
   const treeStringWithLineCounts = generateTreeStringWithLineCounts(filePaths, context.fileLineCounts);
 
-  const template = Handlebars.compile(`# Directory Structure
+  return `# Directory Structure
 
 \`\`\`
-{{{treeString}}}
-\`\`\`
-`);
-
-  return template({ treeString: treeStringWithLineCounts }).trim();
+${treeStringWithLineCounts}
+\`\`\``;
 };
 
 /**
@@ -79,16 +71,12 @@ export const generateFilesSection = (context: RenderContext): string => {
     return '';
   }
 
-  const template = Handlebars.compile(`# Files
+  const delimiter = context.markdownCodeBlockDelimiter;
+  const parts: string[] = ['# Files\n\n'];
+  for (const file of context.processedFiles) {
+    const language = getLanguageFromFilePath(file.path);
+    parts.push(`## File: ${file.path}\n` + `${delimiter}${language}\n` + `${file.content}\n` + `${delimiter}\n` + '\n');
+  }
 
-{{#each processedFiles}}
-## File: {{{this.path}}}
-{{{../markdownCodeBlockDelimiter}}}{{{getFileExtension this.path}}}
-{{{this.content}}}
-{{{../markdownCodeBlockDelimiter}}}
-
-{{/each}}
-`);
-
-  return template(context).trim();
+  return parts.join('').trim();
 };

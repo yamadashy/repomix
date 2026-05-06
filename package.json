@@ -88,7 +88,6 @@
     "git-url-parse": "^16.1.0",
     "globby": "^16.2.0",
     "gpt-tokenizer": "^3.4.0",
-    "handlebars": "^4.7.9",
     "iconv-lite": "^0.7.0",
     "is-binary-path": "^3.0.0",
     "isbinaryfile": "^5.0.2",

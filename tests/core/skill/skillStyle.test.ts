@@ -1,46 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { generateSkillMd, getSkillTemplate } from '../../../src/core/skill/skillStyle.js';
+import { generateSkillMd } from '../../../src/core/skill/skillStyle.js';
 
 describe('skillStyle', () => {
-  describe('getSkillTemplate', () => {
-    test('should return valid SKILL.md template', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('---');
-      expect(template).toContain('name:');
-      expect(template).toContain('description:');
-      expect(template).toContain('# ');
-      expect(template).toContain('references/');
-    });
-
-    test('should include files table with contents column', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('## Files');
-      expect(template).toContain('| File | Contents |');
-    });
-
-    test('should include how to use section with numbered steps', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('## How to Use');
-      expect(template).toContain('### 1. Find file locations');
-      expect(template).toContain('### 2. Read file contents');
-      expect(template).toContain('### 3. Search for code');
-    });
-
-    test('should include overview and common use cases', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('## Overview');
-      expect(template).toContain('## Common Use Cases');
-      expect(template).toContain('## Tips');
-    });
-
-    test('should reference multiple files', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('references/summary.md');
-      expect(template).toContain('references/project-structure.md');
-      expect(template).toContain('references/files.md');
-    });
-  });
-
   describe('generateSkillMd', () => {
     const createTestContext = (overrides = {}) => ({
       skillName: 'test-skill',
@@ -76,16 +37,29 @@ describe('skillStyle', () => {
       expect(result).toContain('12345 tokens');
     });
 
+    test('should include the standard sections', () => {
+      const result = generateSkillMd(createTestContext());
+      expect(result).toContain('## Overview');
+      expect(result).toContain('## Files');
+      expect(result).toContain('| File | Contents |');
+      expect(result).toContain('## How to Use');
+      expect(result).toContain('### 1. Find file locations');
+      expect(result).toContain('### 2. Read file contents');
+      expect(result).toContain('### 3. Search for code');
+      expect(result).toContain('## Common Use Cases');
+      expect(result).toContain('## Tips');
+    });
+
+    test('should reference multiple files', () => {
+      const result = generateSkillMd(createTestContext());
+      expect(result).toContain('references/summary.md');
+      expect(result).toContain('references/project-structure.md');
+      expect(result).toContain('references/files.md');
+    });
+
     test('should end with newline', () => {
       const result = generateSkillMd(createTestContext());
       expect(result.endsWith('\n')).toBe(true);
-    });
-
-    test('should include references to multiple files', () => {
-      const result = generateSkillMd(createTestContext());
-      expect(result).toContain('`references/summary.md`');
-      expect(result).toContain('`references/project-structure.md`');
-      expect(result).toContain('`references/files.md`');
     });
 
     test('should not include git sections (skill output is for reference codebases)', () => {
@@ -112,6 +86,21 @@ describe('skillStyle', () => {
     test('should include total lines in header', () => {
       const result = generateSkillMd(createTestContext({ totalLines: 5000 }));
       expect(result).toContain('5000 lines');
+    });
+
+    test('should include source link when sourceUrl is provided', () => {
+      const result = generateSkillMd(
+        createTestContext({
+          projectName: 'My Project',
+          sourceUrl: 'https://github.com/example/my-project',
+        }),
+      );
+      expect(result).toContain('from [My Project](https://github.com/example/my-project)');
+    });
+
+    test('should not include source link when sourceUrl is omitted', () => {
+      const result = generateSkillMd(createTestContext());
+      expect(result).not.toContain(' from [');
     });
   });
 });

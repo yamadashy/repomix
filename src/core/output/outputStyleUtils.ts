@@ -1,7 +1,6 @@
 /**
  * Shared utilities for output style generation.
  */
-import Handlebars from 'handlebars';
 
 /**
  * Map of file extensions to syntax highlighting language names.
@@ -221,23 +220,4 @@ const extensionToLanguageMap: Record<string, string> = {
 export const getLanguageFromFilePath = (filePath: string): string => {
   const extension = filePath.split('.').pop()?.toLowerCase();
   return extension ? extensionToLanguageMap[extension] || '' : '';
-};
-
-// Track if Handlebars helpers have been registered
-let handlebarsHelpersRegistered = false;
-
-/**
- * Register common Handlebars helpers for output generation.
- * This function is idempotent - calling it multiple times has no effect.
- */
-export const registerHandlebarsHelpers = (): void => {
-  if (handlebarsHelpersRegistered) {
-    return;
-  }
-
-  Handlebars.registerHelper('getFileExtension', (filePath: string) => {
-    return getLanguageFromFilePath(filePath);
-  });
-
-  handlebarsHelpersRegistered = true;
 };

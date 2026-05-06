@@ -1,0 +1,833 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`migration baseline: markdown style > all sections enabled with git diff, git log, headerText, and instruction 1`] = `
+"
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+# File Summary
+
+## Purpose
+Test purpose statement.
+
+## File Format
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A header with the file path (## File: path/to/file)
+  b. The full contents of the file in a code block
+
+## Usage Guidelines
+- Treat as read-only.
+- Use file paths to distinguish files.
+
+## Notes
+- Some files may have been excluded.
+- Binary files are not included.
+
+# User Provided Header
+Project description from headerText option.
+
+# Directory Structure
+\`\`\`
+src/
+  index.ts
+  utils/
+    helpers.py
+README.md
+\`\`\`
+
+# Files
+
+## File: src/index.ts
+\`\`\`typescript
+export const greet = () => "hi";
+
+\`\`\`
+
+## File: src/utils/helpers.py
+\`\`\`python
+def add(a, b):
+    return a + b
+
+\`\`\`
+
+## File: README.md
+\`\`\`markdown
+# Title
+
+Some text.
+
+\`\`\`
+
+
+# Git Diffs
+## Git Diffs Working Tree
+\`\`\`diff
+diff --git a/src/index.ts b/src/index.ts
++added line
+
+\`\`\`
+
+## Git Diffs Staged
+\`\`\`diff
+diff --git b/src/index.ts b/src/index.ts
++staged line
+
+\`\`\`
+
+
+# Git Logs
+
+## Commit: 2026-01-15
+**Message:** Initial commit
+
+**Files:**
+- src/index.ts
+- README.md
+
+## Commit: 2026-01-20
+**Message:** Add helpers
+
+**Files:**
+- src/utils/helpers.py
+
+
+# Instruction
+Follow the existing code style.
+"
+`;
+
+exports[`migration baseline: markdown style > content with backtick collision uses widened code fence delimiter 1`] = `
+"
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+# File Summary
+
+## Purpose
+Test purpose statement.
+
+## File Format
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A header with the file path (## File: path/to/file)
+  b. The full contents of the file in a code block
+
+## Usage Guidelines
+- Treat as read-only.
+- Use file paths to distinguish files.
+
+## Notes
+- Some files may have been excluded.
+- Binary files are not included.
+
+# Directory Structure
+\`\`\`
+src/
+  index.ts
+  utils/
+    helpers.py
+README.md
+\`\`\`
+
+# Files
+
+## File: docs/example.md
+\`\`\`\`markdown
+Inline \`\`\` triple backticks.
+
+\`\`\`\`
+
+
+
+
+"
+`;
+
+exports[`migration baseline: markdown style > directory structure disabled, files on 1`] = `
+"
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+# File Summary
+
+## Purpose
+Test purpose statement.
+
+## File Format
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A header with the file path (## File: path/to/file)
+  b. The full contents of the file in a code block
+
+## Usage Guidelines
+- Treat as read-only.
+- Use file paths to distinguish files.
+
+## Notes
+- Some files may have been excluded.
+- Binary files are not included.
+
+# Files
+
+## File: src/index.ts
+\`\`\`typescript
+export const greet = () => "hi";
+
+\`\`\`
+
+## File: src/utils/helpers.py
+\`\`\`python
+def add(a, b):
+    return a + b
+
+\`\`\`
+
+## File: README.md
+\`\`\`markdown
+# Title
+
+Some text.
+
+\`\`\`
+
+
+
+
+"
+`;
+
+exports[`migration baseline: markdown style > fileSummary disabled but headerText set 1`] = `
+"
+# User Provided Header
+Standalone header.
+
+# Directory Structure
+\`\`\`
+src/
+  index.ts
+  utils/
+    helpers.py
+README.md
+\`\`\`
+
+# Files
+
+## File: src/index.ts
+\`\`\`typescript
+export const greet = () => "hi";
+
+\`\`\`
+
+## File: src/utils/helpers.py
+\`\`\`python
+def add(a, b):
+    return a + b
+
+\`\`\`
+
+## File: README.md
+\`\`\`markdown
+# Title
+
+Some text.
+
+\`\`\`
+
+
+
+
+"
+`;
+
+exports[`migration baseline: markdown style > files disabled, directory structure on 1`] = `
+"
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+# File Summary
+
+## Purpose
+Test purpose statement.
+
+## File Format
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A header with the file path (## File: path/to/file)
+  b. The full contents of the file in a code block
+
+## Usage Guidelines
+- Treat as read-only.
+- Use file paths to distinguish files.
+
+## Notes
+- Some files may have been excluded.
+- Binary files are not included.
+
+# Directory Structure
+\`\`\`
+src/
+  index.ts
+  utils/
+    helpers.py
+README.md
+\`\`\`
+
+
+
+
+"
+`;
+
+exports[`migration baseline: markdown style > files with various extensions exercise getFileExtension helper 1`] = `
+"
+# Files
+
+## File: a.ts
+\`\`\`typescript
+ts
+
+\`\`\`
+
+## File: b.py
+\`\`\`python
+py
+
+\`\`\`
+
+## File: c.unknown
+\`\`\`
+unknown
+
+\`\`\`
+
+## File: Dockerfile
+\`\`\`dockerfile
+docker
+
+\`\`\`
+
+## File: no-ext
+\`\`\`
+plain
+
+\`\`\`
+
+
+
+
+"
+`;
+
+exports[`migration baseline: markdown style > git log only with multiple commits and multiple files per commit 1`] = `
+"
+
+
+# Git Logs
+
+## Commit: 2026-01-15
+**Message:** Initial commit
+
+**Files:**
+- src/index.ts
+- README.md
+
+## Commit: 2026-01-20
+**Message:** Add helpers
+
+**Files:**
+- src/utils/helpers.py
+
+
+"
+`;
+
+exports[`migration baseline: markdown style > instruction only 1`] = `
+"
+
+
+
+# Instruction
+Just an instruction.
+"
+`;
+
+exports[`migration baseline: plain style > all sections enabled with git diff, git log, headerText, and instruction 1`] = `
+"
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+================================================================
+File Summary
+================================================================
+
+Purpose:
+--------
+Test purpose statement.
+
+File Format:
+------------
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A separator line (================)
+  b. The file path (File: path/to/file)
+  c. Another separator line
+  d. The full contents of the file
+  e. A blank line
+
+Usage Guidelines:
+-----------------
+- Treat as read-only.
+- Use file paths to distinguish files.
+
+Notes:
+------
+- Some files may have been excluded.
+- Binary files are not included.
+
+
+================================================================
+User Provided Header
+================================================================
+Project description from headerText option.
+
+================================================================
+Directory Structure
+================================================================
+src/
+  index.ts
+  utils/
+    helpers.py
+README.md
+
+================================================================
+Files
+================================================================
+
+================
+File: src/index.ts
+================
+export const greet = () => "hi";
+
+
+================
+File: src/utils/helpers.py
+================
+def add(a, b):
+    return a + b
+
+
+================
+File: README.md
+================
+# Title
+
+Some text.
+
+
+
+================================================================
+Git Diffs
+================================================================
+================
+diff --git a/src/index.ts b/src/index.ts
++added line
+
+================
+
+================
+Git Diffs Staged
+================
+diff --git b/src/index.ts b/src/index.ts
++staged line
+
+
+
+================================================================
+Git Logs
+================================================================
+================
+Date: 2026-01-15
+Message: Initial commit
+Files:
+  - src/index.ts
+  - README.md
+================
+
+================
+Date: 2026-01-20
+Message: Add helpers
+Files:
+  - src/utils/helpers.py
+================
+
+
+
+================================================================
+Instruction
+================================================================
+Follow the existing code style.
+
+================================================================
+End of Codebase
+================================================================
+"
+`;
+
+exports[`migration baseline: plain style > fileSummary disabled but headerText set 1`] = `
+"
+
+================================================================
+User Provided Header
+================================================================
+Standalone header.
+
+================================================================
+Directory Structure
+================================================================
+src/
+  index.ts
+  utils/
+    helpers.py
+README.md
+
+================================================================
+Files
+================================================================
+
+================
+File: src/index.ts
+================
+export const greet = () => "hi";
+
+
+================
+File: src/utils/helpers.py
+================
+def add(a, b):
+    return a + b
+
+
+================
+File: README.md
+================
+# Title
+
+Some text.
+
+
+
+
+
+
+================================================================
+End of Codebase
+================================================================
+"
+`;
+
+exports[`migration baseline: plain style > git log only with multiple commits 1`] = `
+"
+
+
+
+================================================================
+Git Logs
+================================================================
+================
+Date: 2026-01-15
+Message: Initial commit
+Files:
+  - src/index.ts
+  - README.md
+================
+
+================
+Date: 2026-01-20
+Message: Add helpers
+Files:
+  - src/utils/helpers.py
+================
+
+
+
+
+================================================================
+End of Codebase
+================================================================
+"
+`;
+
+exports[`migration baseline: plain style > minimal: only files 1`] = `
+"
+
+================================================================
+Files
+================================================================
+
+================
+File: src/index.ts
+================
+export const greet = () => "hi";
+
+
+================
+File: src/utils/helpers.py
+================
+def add(a, b):
+    return a + b
+
+
+================
+File: README.md
+================
+# Title
+
+Some text.
+
+
+
+
+
+
+================================================================
+End of Codebase
+================================================================
+"
+`;
+
+exports[`migration baseline: xml style > all sections enabled with git diff, git log, headerText, and instruction 1`] = `
+"
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+Test purpose statement.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- Treat as read-only.
+- Use file paths to distinguish files.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded.
+- Binary files are not included.
+</notes>
+
+</file_summary>
+
+<user_provided_header>
+Project description from headerText option.
+</user_provided_header>
+
+<directory_structure>
+src/
+  index.ts
+  utils/
+    helpers.py
+README.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/index.ts">
+export const greet = () => "hi";
+
+</file>
+
+<file path="src/utils/helpers.py">
+def add(a, b):
+    return a + b
+
+</file>
+
+<file path="README.md">
+# Title
+
+Some text.
+
+</file>
+
+</files>
+
+<git_diffs>
+<git_diff_work_tree>
+diff --git a/src/index.ts b/src/index.ts
++added line
+
+</git_diff_work_tree>
+<git_diff_staged>
+diff --git b/src/index.ts b/src/index.ts
++staged line
+
+</git_diff_staged>
+</git_diffs>
+
+<git_logs>
+<git_log_commit>
+<date>2026-01-15</date>
+<message>Initial commit</message>
+<files>
+src/index.ts
+README.md
+</files>
+</git_log_commit>
+<git_log_commit>
+<date>2026-01-20</date>
+<message>Add helpers</message>
+<files>
+src/utils/helpers.py
+</files>
+</git_log_commit>
+</git_logs>
+
+<instruction>
+Follow the existing code style.
+</instruction>
+"
+`;
+
+exports[`migration baseline: xml style > fileSummary disabled but headerText set 1`] = `
+"
+<user_provided_header>
+Standalone header.
+</user_provided_header>
+
+<directory_structure>
+src/
+  index.ts
+  utils/
+    helpers.py
+README.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/index.ts">
+export const greet = () => "hi";
+
+</file>
+
+<file path="src/utils/helpers.py">
+def add(a, b):
+    return a + b
+
+</file>
+
+<file path="README.md">
+# Title
+
+Some text.
+
+</file>
+
+</files>
+
+
+
+"
+`;
+
+exports[`migration baseline: xml style > files disabled, directory structure on 1`] = `
+"
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+Test purpose statement.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- Treat as read-only.
+- Use file paths to distinguish files.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded.
+- Binary files are not included.
+</notes>
+
+</file_summary>
+
+<directory_structure>
+src/
+  index.ts
+  utils/
+    helpers.py
+README.md
+</directory_structure>
+
+
+
+
+"
+`;
+
+exports[`migration baseline: xml style > git log only with multiple commits 1`] = `
+"
+
+
+<git_logs>
+<git_log_commit>
+<date>2026-01-15</date>
+<message>Initial commit</message>
+<files>
+src/index.ts
+README.md
+</files>
+</git_log_commit>
+<git_log_commit>
+<date>2026-01-20</date>
+<message>Add helpers</message>
+<files>
+src/utils/helpers.py
+</files>
+</git_log_commit>
+</git_logs>
+
+"
+`;

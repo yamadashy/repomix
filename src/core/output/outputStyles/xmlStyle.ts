@@ -1,89 +1,97 @@
-export const getXmlTemplate = () => {
-  return /* xml */ `
-{{#if fileSummaryEnabled}}
-{{{generationHeader}}}
+import type { RenderContext } from '../outputGeneratorTypes.js';
 
-<file_summary>
-This section contains a summary of this file.
+export const renderXml = (ctx: Partial<RenderContext>): string => {
+  const parts: string[] = [];
 
-<purpose>
-{{{summaryPurpose}}}
-</purpose>
+  // Leading newline (from template literal opening).
+  parts.push('\n');
 
-<file_format>
-{{{summaryFileFormat}}}
-5. Multiple file entries, each consisting of:
-  - File path as an attribute
-  - Full contents of the file
-</file_format>
+  if (ctx.fileSummaryEnabled) {
+    parts.push(
+      `${ctx.generationHeader ?? ''}\n` +
+        '\n' +
+        '<file_summary>\n' +
+        'This section contains a summary of this file.\n' +
+        '\n' +
+        '<purpose>\n' +
+        `${ctx.summaryPurpose ?? ''}\n` +
+        '</purpose>\n' +
+        '\n' +
+        '<file_format>\n' +
+        `${ctx.summaryFileFormat ?? ''}\n` +
+        '5. Multiple file entries, each consisting of:\n' +
+        '  - File path as an attribute\n' +
+        '  - Full contents of the file\n' +
+        '</file_format>\n' +
+        '\n' +
+        '<usage_guidelines>\n' +
+        `${ctx.summaryUsageGuidelines ?? ''}\n` +
+        '</usage_guidelines>\n' +
+        '\n' +
+        '<notes>\n' +
+        `${ctx.summaryNotes ?? ''}\n` +
+        '</notes>\n' +
+        '\n' +
+        '</file_summary>\n' +
+        '\n',
+    );
+  }
 
-<usage_guidelines>
-{{{summaryUsageGuidelines}}}
-</usage_guidelines>
+  if (ctx.headerText) {
+    parts.push(`<user_provided_header>\n${ctx.headerText}\n</user_provided_header>\n\n`);
+  }
 
-<notes>
-{{{summaryNotes}}}
-</notes>
+  if (ctx.directoryStructureEnabled) {
+    parts.push(`<directory_structure>\n${ctx.treeString ?? ''}\n</directory_structure>\n\n`);
+  }
 
-</file_summary>
+  if (ctx.filesEnabled) {
+    parts.push("<files>\nThis section contains the contents of the repository's files.\n\n");
+    for (const file of ctx.processedFiles ?? []) {
+      parts.push(`<file path="${file.path}">\n${file.content}\n</file>\n\n`);
+    }
+    parts.push('</files>\n');
+  }
 
-{{/if}}
-{{#if headerText}}
-<user_provided_header>
-{{{headerText}}}
-</user_provided_header>
+  // Static blank line between files and gitDiff blocks.
+  parts.push('\n');
 
-{{/if}}
-{{#if directoryStructureEnabled}}
-<directory_structure>
-{{{treeString}}}
-</directory_structure>
+  if (ctx.gitDiffEnabled) {
+    parts.push(
+      '<git_diffs>\n' +
+        '<git_diff_work_tree>\n' +
+        `${ctx.gitDiffWorkTree ?? ''}\n` +
+        '</git_diff_work_tree>\n' +
+        '<git_diff_staged>\n' +
+        `${ctx.gitDiffStaged ?? ''}\n` +
+        '</git_diff_staged>\n' +
+        '</git_diffs>\n',
+    );
+  }
 
-{{/if}}
-{{#if filesEnabled}}
-<files>
-This section contains the contents of the repository's files.
+  // Static blank line between gitDiff and gitLog blocks.
+  parts.push('\n');
 
-{{#each processedFiles}}
-<file path="{{{this.path}}}">
-{{{this.content}}}
-</file>
+  if (ctx.gitLogEnabled) {
+    parts.push('<git_logs>\n');
+    for (const commit of ctx.gitLogCommits ?? []) {
+      parts.push(
+        '<git_log_commit>\n' + `<date>${commit.date}</date>\n` + `<message>${commit.message}</message>\n` + '<files>\n',
+      );
+      for (const file of commit.files) {
+        parts.push(`${file}\n`);
+      }
+      parts.push('</files>\n</git_log_commit>\n');
+    }
+    parts.push('</git_logs>\n');
+  }
 
-{{/each}}
-</files>
-{{/if}}
+  // Static blank line between gitLog and instruction blocks.
+  parts.push('\n');
 
-{{#if gitDiffEnabled}}
-<git_diffs>
-<git_diff_work_tree>
-{{{gitDiffWorkTree}}}
-</git_diff_work_tree>
-<git_diff_staged>
-{{{gitDiffStaged}}}
-</git_diff_staged>
-</git_diffs>
-{{/if}}
+  if (ctx.instruction) {
+    parts.push(`<instruction>\n${ctx.instruction}\n</instruction>\n`);
+  }
 
-{{#if gitLogEnabled}}
-<git_logs>
-{{#each gitLogCommits}}
-<git_log_commit>
-<date>{{{this.date}}}</date>
-<message>{{{this.message}}}</message>
-<files>
-{{#each this.files}}
-{{{this}}}
-{{/each}}
-</files>
-</git_log_commit>
-{{/each}}
-</git_logs>
-{{/if}}
-
-{{#if instruction}}
-<instruction>
-{{{instruction}}}
-</instruction>
-{{/if}}
-`;
+  return parts.join('');
 };
