@@ -1,5 +1,3 @@
-import nodepath from 'node:path';
-
 export interface TreeNode {
   name: string;
   children: TreeNode[];
@@ -36,7 +34,9 @@ export const generateFileTree = (files: string[], emptyDirPaths: string[] = []):
 };
 
 const addPathToTree = (root: TreeNode, path: string, isDirectory: boolean): void => {
-  const parts = path.split(nodepath.sep);
+  // Repomix stores file paths with forward-slash separators regardless of OS,
+  // so always split on '/' to keep tree generation byte-stable across platforms.
+  const parts = path.split('/');
   let currentNode = root;
 
   for (let i = 0; i < parts.length; i++) {

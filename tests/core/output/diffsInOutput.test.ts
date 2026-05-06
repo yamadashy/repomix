@@ -104,7 +104,10 @@ index 123..456 100644
         processedFiles,
         config: mockConfig,
         instruction: '',
-        gitDiffs: sampleDiff,
+        gitDiffResult: {
+          workTreeDiffContent: sampleDiff,
+          stagedDiffContent: '',
+        },
       };
     });
 
