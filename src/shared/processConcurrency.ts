@@ -47,7 +47,7 @@ const getWorkerPath = (workerType: WorkerType): string => {
 // pure-CPU work), so cutting the warm-up worker count from 3 → 2 on 250-400 file repos
 // removes one full BPE parse from the warm-up phase and reduces contention with the security pool.
 // Large repos (≥800 files) are unaffected: both 100 and 200 saturate the per-CPU cap.
-const TASKS_PER_THREAD = 200;
+export const TASKS_PER_THREAD = 200;
 
 export const getProcessConcurrency = (): number => {
   return typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length;

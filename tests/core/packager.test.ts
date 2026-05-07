@@ -185,6 +185,18 @@ describe('packager', () => {
       };
     };
 
+    test('cleans up the metrics worker pool when searchFiles rejects', async () => {
+      // The metrics worker pool is created before searchFiles so its BPE warm-up
+      // can overlap with the glob scan. A searchFiles rejection must still trigger
+      // the pool cleanup via the surrounding try/finally.
+      const { cleanup, deps } = baseDeps();
+      deps.searchFiles = vi.fn().mockRejectedValue(new Error('search failed'));
+
+      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('search failed');
+
+      expect(cleanup).toHaveBeenCalled();
+    });
+
     test('cleans up the metrics worker pool when validateFileSafety rejects', async () => {
       const { cleanup, deps } = baseDeps();
       deps.validateFileSafety = vi.fn().mockRejectedValue(new Error('security check failed'));

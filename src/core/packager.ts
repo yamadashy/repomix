@@ -2,6 +2,7 @@ import path from 'node:path';
 import type { RepomixConfigMerged } from '../config/configSchema.js';
 import { logger } from '../shared/logger.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
+import { TASKS_PER_THREAD } from '../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { sortPaths } from './file/filePathSort.js';
@@ -85,42 +86,65 @@ export const pack = async (
     logger.trace('Failed to prefetch sort data:', error);
   });
 
-  progressCallback('Searching for files...');
-  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
-    Promise.all(
-      rootDirs.map(async (rootDir) => {
-        const result = await deps.searchFiles(rootDir, config, explicitFiles);
-        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
-      }),
-    ),
-  );
-
-  // Deduplicate and sort empty directory paths for reuse during output generation,
-  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
-  const emptyDirPaths = config.output.includeEmptyDirectories
-    ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
-    : undefined;
-
-  // Sort file paths
-  progressCallback('Sorting files...');
-  const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
-
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
-    rootDir,
-    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
-  }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
+  // Start the metrics worker pool warm-up before searchFiles so that gpt-tokenizer
+  // BPE table loading (~250ms per worker) overlaps with the file-system glob scan
+  // (~130ms) in addition to the later security-check and file-processing phases.
+  // Without this, the residual `await metricsWarmupPromise` stall before
+  // calculateMetrics adds ~130ms to wall-clock for small/medium repos.
+  //
+  // We don't yet know the file count. Pool maxThreads is fixed at construction
+  // in Tinypool, and pre-warming workers we'll use is essential — Tinypool
+  // queues tasks for newly spawned (cold) workers and the pipeline can't progress
+  // until those workers finish their BPE parse and pick up the queued task
+  // (measured: oversizing the pool to maxThreads=cpuCount=4 with only 2 warm
+  // workers regressed the 258-file workload by 27% paired).
+  //
+  // After the TASKS_PER_THREAD=200 sizing, repos up to ~400 files use 2 metrics
+  // workers on a typical 4-core host. Larger repos would benefit from more
+  // parallelism, but paired benchmarks on the 1046-file workload show the
+  // eager-warmup gain still net-improves wall-clock at maxThreads=2 because the
+  // BPE warm-up cost (~250ms × cpuCount-2 extra workers) dominates the
+  // parallelism savings on the metrics phase. The 2-worker cap also matches the
+  // security pool's hard cap (securityCheck.ts).
+  //
+  // EAGER_WARMUP_THREADS=2 × TASKS_PER_THREAD yields maxThreads=min(cpuCount, 2)
+  // on any ≥2-CPU host; single-CPU hosts get maxThreads=1 (no change).
+  const EAGER_WARMUP_THREADS = 2;
+  const EAGER_METRICS_NUM_TASKS = EAGER_WARMUP_THREADS * TASKS_PER_THREAD;
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
+    EAGER_METRICS_NUM_TASKS,
     config.tokenCount.encoding,
   );
 
   try {
+    progressCallback('Searching for files...');
+    const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
+      Promise.all(
+        rootDirs.map(async (rootDir) => {
+          const result = await deps.searchFiles(rootDir, config, explicitFiles);
+          return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+        }),
+      ),
+    );
+
+    // Deduplicate and sort empty directory paths for reuse during output generation,
+    // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
+    const emptyDirPaths = config.output.includeEmptyDirectories
+      ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
+      : undefined;
+
+    // Sort file paths
+    progressCallback('Sorting files...');
+    const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
+    const sortedFilePaths = deps.sortPaths(allFilePaths);
+
+    // Regroup sorted file paths by rootDir using Set for O(1) membership checks
+    const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
+    const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+      rootDir,
+      filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+    }));
+
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses

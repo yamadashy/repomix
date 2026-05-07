@@ -32,7 +32,8 @@ export interface MetricsTaskRunnerWithWarmup {
 /**
  * Create a metrics task runner and warm up all worker threads by triggering
  * gpt-tokenizer initialization in parallel. This allows the expensive module
- * loading to overlap with other pipeline stages (security check, file processing,
+ * loading (~250ms per worker for the o200k_base BPE table) to overlap with
+ * other pipeline stages (file search, security check, file processing,
  * output generation).
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
