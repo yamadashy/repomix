@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778109958614,
+  "lastUpdate": 1778116436995,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7560,6 +7560,51 @@ window.BENCHMARK_DATA = {
             "range": "±29",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1746ms, Q3: 1775ms\nAll times: 1717, 1721, 1724, 1739, 1739, 1746, 1753, 1755, 1759, 1760, 1761, 1766, 1766, 1769, 1771, 1775, 1777, 1780, 1812, 1825ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "cf013a0c8fa325a323b9624b00da9fec48a9445c",
+          "message": "perf(shared): Raise TASKS_PER_THREAD from 100 to 200 to reduce worker contention\n\nBackground\n----------\nOn a typical CLI run (`node bin/repomix.cjs --include 'src,tests' --quiet`,\n258 files, 4-vCPU host), the metrics worker pool was sized as\n`ceil(258 / 100) = 3 workers`. Combined with the security pool's hard cap\nof 2 workers (securityCheck.ts:90) and the main thread, the process held\n6 active threads on 4 cores during the overlap of `validateFileSafety`\nand `calculateMetrics`.\n\nEach metrics worker independently parses gpt-tokenizer's ~2.2 MB\n`o200k_base.js` BPE table on its first task — a ~200-300 ms pure-CPU\noperation per worker. Spawning 3 cold metrics workers in the warm-up\nphase (calculateMetrics.ts:46-48) therefore drove the security workers\noff the CPU during their own (concurrent) cold-start, inflating the\ncritical-path security phase.\n\nChange\n------\nRaise `TASKS_PER_THREAD` from 100 to 200 so:\n\n- ≤200 file repos:    1 metrics worker (was 1)         — no change\n- 201-400 file repos: 2 metrics workers (was 3)        — -1 worker, the win\n- 401-600 file repos: 3 metrics workers (was 4-cap)    — -1 worker\n- 601-800 file repos: 4 metrics workers (was 4-cap)    — no change\n- 801+ file repos:    4 metrics workers (was 4-cap)    — no change (cap)\n\nFor the 258-file benchmark this brings active workers during the\nmetrics+security overlap to 2 + 2 = 4, matching CPU count, and halves\nthe parallel BPE-loading work in the warm-up phase.\n\nTests for `getWorkerThreadCount` and `createWorkerPool` are updated to\nreflect the new ratio.\n\nBenchmark\n---------\n`node bin/repomix.cjs --include 'src,tests' --quiet` (258 files), n=20\npaired interleaved (alternating BEFORE-first / AFTER-first ordering):\n\n|        | min     | p25     | median  | p75     | mean    | sd     |\n|--------|---------|---------|---------|---------|---------|--------|\n| BEFORE | 1045 ms | 1092 ms | 1109 ms | 1122 ms | 1107 ms | 27 ms  |\n| AFTER  |  937 ms |  973 ms |  991 ms | 1020 ms |  994 ms | 29 ms  |\n\nMean paired Δ:   +112.5 ms  (10.17 % wall-clock reduction)\nMedian paired Δ: +115.4 ms  (10.66 % wall-clock reduction)\nPaired-delta SD: 36.2 ms  (paired t = 13.88, p < 0.001)\nAFTER faster in 20/20 pairs (100 %)\n\nRegression check — `node bin/repomix.cjs --quiet` (default, 1572 files),\nn=15 paired interleaved:\n\n|        | min     | p25     | median  | p75     | mean    | sd     |\n|--------|---------|---------|---------|---------|---------|--------|\n| BEFORE | 1933 ms | 1970 ms | 2016 ms | 2102 ms | 2028 ms | 62 ms  |\n| AFTER  | 1955 ms | 1966 ms | 2004 ms | 2131 ms | 2034 ms | 74 ms  |\n\nMean paired Δ:   -6.2 ms (-0.31 %)  (paired t = -0.29, p > 0.05)\nMedian paired Δ: -12.7 ms (statistically neutral)\n\nNo regression on the large workload — both 100 and 200 saturate the\nper-CPU cap at 4 workers for ≥800 file repos, so the dispatch-time\nbehavior is identical there.\n\nCorrectness\n-----------\n- 1256 / 1256 unit tests pass.\n- `npm run lint` clean (only pre-existing warnings unrelated to this change).\n- No behavioral change to file processing, tokenization, security checks,\n  or output. Pool sizing is the only effect.",
+          "timestamp": "2026-05-07T01:11:11Z",
+          "tree_id": "265e93f0619b00beafc02fc7cbb6bf9f788360d4",
+          "url": "https://github.com/yamadashy/repomix/commit/cf013a0c8fa325a323b9624b00da9fec48a9445c"
+        },
+        "date": 1778116436401,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1544,
+            "range": "±190",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1430ms, Q3: 1620ms\nAll times: 1330, 1332, 1366, 1392, 1393, 1400, 1405, 1430, 1459, 1486, 1487, 1491, 1492, 1515, 1536, 1544, 1544, 1550, 1552, 1572, 1598, 1612, 1620, 1623, 1641, 1732, 1760, 1838, 2111, 2312ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1443,
+            "range": "±35",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1429ms, Q3: 1464ms\nAll times: 1390, 1418, 1424, 1427, 1428, 1429, 1436, 1440, 1442, 1443, 1443, 1446, 1446, 1451, 1463, 1464, 1464, 1473, 1474, 1474ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1780,
+            "range": "±38",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1768ms, Q3: 1806ms\nAll times: 1758, 1759, 1767, 1767, 1767, 1768, 1768, 1770, 1770, 1773, 1780, 1782, 1789, 1791, 1795, 1806, 1807, 1811, 1811, 1815ms"
           }
         ]
       }
