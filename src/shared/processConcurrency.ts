@@ -39,8 +39,15 @@ const getWorkerPath = (workerType: WorkerType): string => {
   }
 };
 
-// Worker initialization is expensive, so we prefer fewer threads unless there are many files
-const TASKS_PER_THREAD = 100;
+// Worker initialization is expensive, so we prefer fewer threads unless there are many files.
+// At 200 the metrics worker pool stays at 2 threads for typical small/medium repos
+// (≤400 files), which keeps total active worker threads (metrics + the 2-capped security
+// pool) at-or-below the CPU count on common 4-core hosts. Each metrics worker also
+// independently parses gpt-tokenizer's ~2.2MB BPE table on first task (~200-300ms of
+// pure-CPU work), so cutting the warm-up worker count from 3 → 2 on 250-400 file repos
+// removes one full BPE parse from the warm-up phase and reduces contention with the security pool.
+// Large repos (≥800 files) are unaffected: both 100 and 200 saturate the per-CPU cap.
+const TASKS_PER_THREAD = 200;
 
 export const getProcessConcurrency = (): number => {
   return typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length;

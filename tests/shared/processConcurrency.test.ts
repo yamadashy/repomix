@@ -55,7 +55,7 @@ describe('processConcurrency', () => {
       const { minThreads, maxThreads } = getWorkerThreadCount(1000);
 
       expect(minThreads).toBe(1);
-      expect(maxThreads).toBe(8); // Limited by CPU count: Math.min(8, 1000/100) = 8
+      expect(maxThreads).toBe(5); // Limited by task count: Math.min(8, ceil(1000/200)) = 5
     });
 
     it('should scale max threads based on task count', () => {
@@ -69,7 +69,7 @@ describe('processConcurrency', () => {
       const { minThreads, maxThreads } = getWorkerThreadCount(10000);
 
       expect(minThreads).toBe(1);
-      expect(maxThreads).toBe(8); // Limited by CPU count: Math.min(8, 10000/100) = 8
+      expect(maxThreads).toBe(8); // Limited by CPU count: Math.min(8, ceil(10000/200)) = 8
     });
 
     it('should handle zero tasks', () => {
@@ -87,14 +87,14 @@ describe('processConcurrency', () => {
     });
 
     it('should not exceed task-based limit even with higher maxWorkerThreads', () => {
-      // 200 tasks → ceil(200/100) = 2 threads, maxWorkerThreads=6 should not increase it
-      const { maxThreads } = getWorkerThreadCount(200, 6);
+      // 400 tasks → ceil(400/200) = 2 threads, maxWorkerThreads=6 should not increase it
+      const { maxThreads } = getWorkerThreadCount(400, 6);
 
       expect(maxThreads).toBe(2);
     });
 
     it('should ignore maxWorkerThreads when undefined', () => {
-      const { maxThreads } = getWorkerThreadCount(1000, undefined);
+      const { maxThreads } = getWorkerThreadCount(10000, undefined);
 
       expect(maxThreads).toBe(8);
     });
@@ -118,7 +118,7 @@ describe('processConcurrency', () => {
         filename: expect.stringContaining('fileProcessWorker.js'),
         runtime: 'child_process',
         minThreads: 1,
-        maxThreads: 4, // Math.min(4, 500/100) = 4
+        maxThreads: 3, // Math.min(4, ceil(500/200)) = 3
         idleTimeout: 5000,
         teardown: 'onWorkerTermination',
         workerData: {
@@ -141,7 +141,7 @@ describe('processConcurrency', () => {
         filename: expect.stringContaining('securityCheckWorker.js'),
         runtime: 'worker_threads',
         minThreads: 1,
-        maxThreads: 4, // Math.min(4, 500/100) = 4
+        maxThreads: 3, // Math.min(4, ceil(500/200)) = 3
         idleTimeout: 5000,
         teardown: 'onWorkerTermination',
         workerData: {
