@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778122719451,
+  "lastUpdate": 1778147450178,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7650,6 +7650,51 @@ window.BENCHMARK_DATA = {
             "range": "±46",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1595ms, Q3: 1641ms\nAll times: 1587, 1590, 1591, 1593, 1594, 1595, 1596, 1598, 1601, 1617, 1617, 1619, 1625, 1631, 1634, 1641, 1642, 1649, 1652, 1652ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "15ee2f8d406058ca1ff97c1d20322ce70eac2ba9",
+          "message": "perf(core): Use 3 metrics warm-up workers for unconstrained scope\n\nPacking.\n\n  Bumps EAGER_WARMUP_THREADS from 2 to 3 in src/core/packager.ts when the\n  user did not narrow the file set via --include / config.include / --stdin.\n  Tinypool fixes maxThreads at construction, so the 3rd worker must be\n  pre-warmed during the searchFiles + collectFiles window or it stalls\n  dispatch (a 4-thread / 2-warm experiment regressed by 27% paired in a\n  prior iteration). With explicit scope the file set is typically a few\n  hundred files, the metrics phase is shorter, and the 3rd worker's\n  ~250ms BPE warm-up dominates the parallelism gain — paired benchmarks\n  regressed -11.85% on the 258-file `--include 'src,tests'` workload at\n  unconditional EAGER_WARMUP_THREADS=3, so the heuristic falls back to 2.\n\nReasoning.\n\n  After change 3 on this branch (eager metrics warm-up), the metrics phase\n  is the dominant wall-clock contributor on the default 1046-file workload\n  (~770 ms in `calculate metrics`, vs ~120 ms output generation, ~370 ms\n  search, ~270 ms collect, ~200 ms security check). Five sub-agent\n  investigations over independent scopes (CLI startup, file search/glob,\n  file collect/security, output generation, token counting) converged on\n  metrics worker count as the only candidate clearing the 2% bar without\n  regressing other phases. Output gen, security pre-warm, file-search\n  scoping, and CLI lazy-load were all measured below threshold or net-\n  negative; documented as the previous iteration's notes plus the\n  follow-on attempts here:\n\n  - EAGER_WARMUP_THREADS=3 unconditional: -11.85% paired regression on\n    the 258-file workload (n=20, t=-10.85), +2.92% on the 1046-file\n    workload — net negative because small workloads can't amortize the\n    extra BPE parse.\n  - Pre-warm the security worker pool gated on the metrics warm-up:\n    security-check phase shrunk from 197 ms to 110 ms, but the saving was\n    absorbed by the parallel `Process Files` branch and an offsetting\n    worker-spawn cost during collect. Paired n=30 measured -4.90% on\n    258-file and 0.81% (noise) on 1046-file. Reverted.\n\nVerification.\n\n  Paired interleaved benchmarks (n=20, NODE_DISABLE_COMPILE_CACHE=1):\n\n  Default workload — `node bin/repomix.cjs --quiet` (1046 files):\n  |        | min     | median  | mean    | max     | sd     |\n  |--------|---------|---------|---------|---------|--------|\n  | BEFORE | 1820 ms | 1885 ms | 1886 ms | 2020 ms | 45 ms  |\n  | AFTER  | 1700 ms | 1845 ms | 1840 ms | 1970 ms | 62 ms  |\n  - Mean paired Δ:   +46.5 ms (2.46% wall-clock reduction)\n  - Median paired Δ: +50.0 ms (2.65%)\n  - Paired-delta SD: 65.3 ms · paired t = 3.18 (p < 0.01)\n  - AFTER faster in 15/20 pairs (75%)\n\n  Scoped workload — `node bin/repomix.cjs --include 'src,tests' --quiet`\n  (258 files):\n  |        | min     | median  | mean    | max     | sd     |\n  |--------|---------|---------|---------|---------|--------|\n  | BEFORE | 900 ms  | 955 ms  | 953 ms  | 990 ms  | 25 ms  |\n  | AFTER  | 910 ms  | 940 ms  | 946 ms  | 1010 ms | 29 ms  |\n  - Mean paired Δ:   +6.5 ms (0.68%) — neutral within noise (t = 0.90)\n  - The heuristic falls back to 2 warm workers, so this branch matches\n    pre-change behavior; the small positive delta is sampling noise.\n\n  An independent reviewer's paired n=15 NODE_DISABLE_COMPILE_CACHE=1 run\n  on a separate sample reported +4.10% (t=6.61, 14/15 pairs) on the\n  default workload, consistent direction at higher magnitude.\n\nCorrectness.\n\n  - All 1260 unit tests pass (`npm test`); 3 new tests in\n    `tests/core/packager.test.ts` exercise both heuristic branches plus\n    the `--stdin` (explicitFiles) path.\n  - `npm run lint` clean (only pre-existing warnings unchanged from main).\n  - XML and Markdown output byte-identical between BEFORE and AFTER on\n    both workloads (verified via sha256sum).\n  - Worker-pool size confirmed via `--verbose` logs:\n    - Default scan: `min=1, max=3 threads` for `calculateMetrics`.\n    - `--include 'src,tests'`: `min=1, max=2 threads` (unchanged).\n  - Single-CPU and 2-CPU hosts are unaffected (`min(cpuCount, 3) =\n    min(cpuCount, 2)` for cpuCount ≤ 2).\n  - Public `pack()` API unchanged (no new parameters; the heuristic reads\n    existing `config.include` and `explicitFiles` arguments).\n\nRisks.\n\n  The heuristic is a coarse proxy. Pathological cases:\n  - User runs default scan on a tiny repo (~50 files): 3 workers, +1\n    extra BPE parse. The cost is bounded by the eager-warm-up overlap\n    with searchFiles/collectFiles, so the worst case approaches the\n    paired noise floor (~30 ms sd on 258-file). Not measured below 50\n    files; expected to be neutral-to-slightly-negative within typical\n    run-to-run variance.\n  - User runs `--include 'huge-dir'` on a 5000-file project: 2 workers,\n    misses the parallelism win. Falls back to current production\n    behavior — no regression vs main.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+          "timestamp": "2026-05-07T09:48:32Z",
+          "tree_id": "7c2e98deb79f6ffbc2bf9cfdb8879572624b09cc",
+          "url": "https://github.com/yamadashy/repomix/commit/15ee2f8d406058ca1ff97c1d20322ce70eac2ba9"
+        },
+        "date": 1778147449127,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1660,
+            "range": "±523",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1380ms, Q3: 1903ms\nAll times: 1180, 1221, 1240, 1287, 1315, 1333, 1336, 1380, 1384, 1421, 1429, 1463, 1523, 1553, 1600, 1660, 1700, 1732, 1736, 1773, 1778, 1808, 1903, 2006, 2007, 2102, 2118, 2356, 2364, 2529ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1260,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1250ms, Q3: 1283ms\nAll times: 1221, 1235, 1235, 1241, 1243, 1250, 1252, 1252, 1256, 1257, 1260, 1266, 1267, 1276, 1278, 1283, 1298, 1498, 1506, 1552ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1732,
+            "range": "±36",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1710ms, Q3: 1746ms\nAll times: 1684, 1686, 1688, 1688, 1696, 1710, 1716, 1721, 1730, 1732, 1732, 1733, 1737, 1742, 1745, 1746, 1750, 1752, 1766, 1798ms"
           }
         ]
       }
