@@ -236,6 +236,44 @@ describe('packager', () => {
       expect(cleanup).toHaveBeenCalled();
     });
 
+    test('uses 3 warm-up workers for the metrics pool when no scope is specified', async () => {
+      // The eager metrics warm-up sizes the pool via numOfTasks. When the user did
+      // not constrain the file set (no --include / no --stdin), the metrics phase is
+      // typically long enough to amortize a 3rd worker's BPE warm-up, so we pass
+      // numOfTasks = 3 * TASKS_PER_THREAD = 600 (yielding maxThreads=min(cpuCount, 3)).
+      const { deps } = baseDeps();
+      const config = createMockConfig();
+      config.include = [];
+
+      await pack(['root'], config, vi.fn(), deps);
+
+      expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(600, expect.any(String));
+    });
+
+    test('uses 2 warm-up workers for the metrics pool when --include narrows scope', async () => {
+      // With explicit includes the file set is typically much smaller and the
+      // 3rd worker's BPE warm-up dominates the parallelism gain (paired benchmarks
+      // regressed by ~12% on the 258-file --include 'src,tests' workload), so the
+      // heuristic falls back to 2 warm workers.
+      const { deps } = baseDeps();
+      const config = createMockConfig();
+      config.include = ['src'];
+
+      await pack(['root'], config, vi.fn(), deps);
+
+      expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(400, expect.any(String));
+    });
+
+    test('uses 2 warm-up workers for the metrics pool when explicitFiles is provided (--stdin)', async () => {
+      const { deps } = baseDeps();
+      const config = createMockConfig();
+      config.include = [];
+
+      await pack(['root'], config, vi.fn(), deps, ['file1.txt', 'file2.txt']);
+
+      expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(400, expect.any(String));
+    });
+
     test('cleans up the metrics worker pool even when the warmup promise rejects', async () => {
       const { cleanup, deps } = baseDeps();
       // Pre-attach a no-op handler so the rejection is observed at construction time,

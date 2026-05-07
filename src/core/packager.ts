@@ -99,17 +99,24 @@ export const pack = async (
   // (measured: oversizing the pool to maxThreads=cpuCount=4 with only 2 warm
   // workers regressed the 258-file workload by 27% paired).
   //
-  // After the TASKS_PER_THREAD=200 sizing, repos up to ~400 files use 2 metrics
-  // workers on a typical 4-core host. Larger repos would benefit from more
-  // parallelism, but paired benchmarks on the 1046-file workload show the
-  // eager-warmup gain still net-improves wall-clock at maxThreads=2 because the
-  // BPE warm-up cost (~250ms × cpuCount-2 extra workers) dominates the
-  // parallelism savings on the metrics phase. The 2-worker cap also matches the
-  // security pool's hard cap (securityCheck.ts).
+  // Worker count: the metrics phase wall-clock is dominated by gpt-tokenizer
+  // throughput, so adding a 3rd warm worker pays off when the metrics phase
+  // is long enough to amortize its ~250ms BPE warm-up. We size on a coarse
+  // proxy for "long metrics phase" — whether the user constrained the file
+  // set via --include / config.include / --stdin (explicitFiles). When
+  // unconstrained (default scan), 3 warm workers measure +2.46% paired mean
+  // wall-clock reduction on the 1046-file workload (n=20, t=3.18,
+  // NODE_DISABLE_COMPILE_CACHE=1). With an explicit scope the file set is
+  // typically a few hundred files, the metrics phase is shorter, and the
+  // 3rd worker's BPE warm-up dominates the parallelism gain (-11.85%
+  // paired regression on the 258-file `--include 'src,tests'` workload at
+  // unconditional EAGER_WARMUP_THREADS=3), so we keep the original
+  // 2-worker sizing.
   //
-  // EAGER_WARMUP_THREADS=2 × TASKS_PER_THREAD yields maxThreads=min(cpuCount, 2)
-  // on any ≥2-CPU host; single-CPU hosts get maxThreads=1 (no change).
-  const EAGER_WARMUP_THREADS = 2;
+  // EAGER_WARMUP_THREADS × TASKS_PER_THREAD yields maxThreads=min(cpuCount, N)
+  // for N ∈ {2, 3}; single-CPU hosts collapse to maxThreads=1 (no change).
+  const hasExplicitScope = (explicitFiles?.length ?? 0) > 0 || config.include.length > 0;
+  const EAGER_WARMUP_THREADS = hasExplicitScope ? 2 : 3;
   const EAGER_METRICS_NUM_TASKS = EAGER_WARMUP_THREADS * TASKS_PER_THREAD;
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
     EAGER_METRICS_NUM_TASKS,
