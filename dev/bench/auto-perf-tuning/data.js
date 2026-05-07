@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778116436995,
+  "lastUpdate": 1778122719451,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7605,6 +7605,51 @@ window.BENCHMARK_DATA = {
             "range": "±38",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1768ms, Q3: 1806ms\nAll times: 1758, 1759, 1767, 1767, 1767, 1768, 1768, 1770, 1770, 1773, 1780, 1782, 1789, 1791, 1795, 1806, 1807, 1811, 1811, 1815ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "d51de615267e9f9df18896735c4ca2474c83f5f2",
+          "message": "perf(core): Start metrics worker warm-up before searchFiles\n\nBackground\n----------\nEach metrics worker independently parses gpt-tokenizer's ~2.2 MB\n`o200k_base.js` BPE table on its first task (~200-300 ms pure-CPU per\nworker). The pool was previously created in `pack()` after the file\nsearch and sort phases, so the only stages that could absorb the BPE\nwarm-up were `collectFiles` + git subprocesses + security check + file\nprocessing. On a 258-file run this still left a residual ~80-130 ms\n`await metricsWarmupPromise` stall before the metrics phase.\n\nChange\n------\nMove `createMetricsTaskRunner` to fire before `searchFiles`. This adds\nthe ~130 ms glob scan to the hidden warm-up budget and shrinks the\nresidual stall to ~0-12 ms on the 258-file workload.\n\nPool sizing: Tinypool fixes `maxThreads` at construction, and the file\ncount is not yet known. Pre-warming exactly the workers we'll use is\nessential — Tinypool queues tasks for newly spawned (cold) workers and\nthe pipeline can't progress until those workers finish their BPE parse\nand pick up the queued task (an experiment with `maxThreads=cpuCount=4`\nand only 2 warm workers regressed the 258-file workload by 27 % paired).\nSo the pool is sized to a fixed 2 workers (`numOfTasks = 2 ×\nTASKS_PER_THREAD = 400` → `maxThreads = min(cpuCount, 2)`), matching the\nsecurity pool's hard cap and the typical metrics pool size for repos\n≤400 files after the TASKS_PER_THREAD=200 sizing on this branch.\n\nLarger repos (>400 files) would benefit from more parallelism, but the\n1046-file regression check below shows the eager-warmup gain still\nnet-improves wall-clock at maxThreads=2 (the BPE warm-up cost\n~250 ms × cpuCount-2 extra workers dominates the parallelism savings on\nthe metrics phase). On single-CPU hosts the heuristic naturally\ncollapses to maxThreads=1, identical to today's behavior.\n\nThe `try { } finally { cleanup }` block is widened to cover the new\nearly call so the worker pool is cleaned up on early throws too. A new\n`searchFiles`-rejection test in `tests/core/packager.test.ts` exercises\nthat path explicitly.\n\n`TASKS_PER_THREAD` is exported from `processConcurrency.ts` and consumed\nby name in `packager.ts` to keep the eager-warmup constant tied to the\nshared sizing rule.\n\nBenchmark\n---------\nBoth runs use n=… paired interleaved (alternating BEFORE-first /\nAFTER-first ordering) with `NODE_DISABLE_COMPILE_CACHE=1` so cold-start\nBPE parse is measured rather than masked. 4-vCPU Intel(R) Xeon(R) host.\n\n`node bin/repomix.cjs --include 'src,tests' --quiet` (258 files, n=20):\n\n|        | min     | median  | mean    | max     | sd     |\n|--------|---------|---------|---------|---------|--------|\n| BEFORE | 1007 ms | 1044 ms | 1054 ms | 1164 ms | 36 ms  |\n| AFTER  |  893 ms |  966 ms |  962 ms | 1065 ms | 36 ms  |\n\n- Mean paired Δ:   +91.6 ms (8.69 % wall-clock reduction)\n- Median paired Δ: +97.5 ms (9.34 %)\n- Paired-delta SD: 36.0 ms · paired t = 11.39 (p < 0.001)\n- AFTER faster in 20/20 pairs (100 %)\n\nRegression check — `node bin/repomix.cjs --quiet` (default, 1046 files,\nn=15) on a clean repo (baseline binary built outside the working tree\nso it does not get picked up as a workload file):\n\n|        | min     | median  | mean    | max     | sd     |\n|--------|---------|---------|---------|---------|--------|\n| BEFORE | 1769 ms | 1872 ms | 1877 ms | 2063 ms | 79 ms  |\n| AFTER  | 1751 ms | 1820 ms | 1837 ms | 2018 ms | 61 ms  |\n\n- Mean paired Δ:   +40.0 ms (2.13 %)\n- Median paired Δ: +48.6 ms (2.60 %)\n- Paired-delta SD: 51.7 ms · paired t = 2.99 (p ≈ 0.01)\n- AFTER faster in 11/15 pairs (73 %)\n\nThe larger workload also clears the 2 % threshold; the eager warm-up's\ngain offsets the maxThreads=2 cap that's now applied unconditionally.\n\nCorrectness\n-----------\n- All 1257 unit tests pass (`npm test`); `npm run lint` clean (only\n  pre-existing warnings).\n- XML and Markdown output byte-identical between BEFORE and AFTER on\n  both the 258-file and 1046-file workloads.\n- Worker-pool size confirmed via `--verbose` logs: `min=1, max=2 threads`\n  for `calculateMetrics` on both workloads (was `max=2` on 258 files,\n  `max=4` on 1046 files before this change).\n- New test `cleans up the metrics worker pool when searchFiles rejects`\n  exercises the widened `try/finally` cleanup path.",
+          "timestamp": "2026-05-07T02:56:06Z",
+          "tree_id": "3a84288480b830fb5ce38f50a9cb9cef613649ea",
+          "url": "https://github.com/yamadashy/repomix/commit/d51de615267e9f9df18896735c4ca2474c83f5f2"
+        },
+        "date": 1778122718905,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 877,
+            "range": "±43",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 856ms, Q3: 899ms\nAll times: 820, 824, 841, 845, 846, 849, 854, 856, 859, 859, 870, 870, 871, 873, 873, 877, 878, 887, 887, 888, 892, 892, 899, 902, 910, 920, 933, 938, 958, 1047ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1225,
+            "range": "±71",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1211ms, Q3: 1282ms\nAll times: 1160, 1171, 1189, 1195, 1210, 1211, 1215, 1215, 1217, 1223, 1225, 1245, 1259, 1263, 1277, 1282, 1308, 1314, 1333, 1356ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1617,
+            "range": "±46",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1595ms, Q3: 1641ms\nAll times: 1587, 1590, 1591, 1593, 1594, 1595, 1596, 1598, 1601, 1617, 1617, 1619, 1625, 1631, 1634, 1641, 1642, 1649, 1652, 1652ms"
           }
         ]
       }
