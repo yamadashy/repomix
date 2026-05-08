@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778147450178,
+  "lastUpdate": 1778245447133,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7695,6 +7695,51 @@ window.BENCHMARK_DATA = {
             "range": "±36",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1710ms, Q3: 1746ms\nAll times: 1684, 1686, 1688, 1688, 1696, 1710, 1716, 1721, 1730, 1732, 1732, 1733, 1737, 1742, 1745, 1746, 1750, 1752, 1766, 1798ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "3427aae570725ae17e65e16469245d7fbee7ea84",
+          "message": "perf(core): Read files via util.promisify(fs.readFile) on the collect path\n\n`node:fs/promises.readFile` wraps every read in a `FileHandle` object,\npaying ~60μs of per-call JS bookkeeping vs. the callback-based path. With\n~1000 files draining concurrently through `collectFiles`, the overhead\ncompounds onto the search → collect → security/process critical path.\n\nSwitch the single hot read site (`readRawFile` in `src/core/file/fileRead.ts`)\nto `util.promisify(fs.readFile)`, which returns the same `Buffer` without\nconstructing a `FileHandle` per call. All downstream code\n(`Buffer.indexOf(0)`, `isBinaryFile(buffer)`, `TextDecoder.decode`, BOM\nstrip, jschardet/iconv slow path) is unchanged.\n\nOther readFile call sites in the codebase (config load, gitignore parse,\noutput instruction, MCP tools) are 1–2 calls each and remain on\n`fs/promises` for their `'utf-8'` ergonomics.\n\n## Mechanism\n\nIsolated raw-I/O microbenchmark walking the repo with a minimal ignore\nlist (`node_modules`, `.git`, `lib`, `repomix-output*` only — 1086 files,\nslightly looser than repomix's full default-ignore set), n=15 paired\ninterleaved, `NODE_DISABLE_COMPILE_CACHE=1`:\n\n| concurrency | fs/promises median | promisify median | Δ      |\n|-------------|---------------------|------------------|--------|\n| 50          | 118.3 ms            | 55.3 ms          | 63.0 ms |\n| 100         | 116.2 ms            | 47.1 ms          | 69.1 ms |\n| 200         | 122.7 ms            | 49.9 ms          | 72.7 ms |\n| unlimited   | 119.3 ms            | 59.5 ms          | 59.8 ms |\n\nThe savings are concurrency-independent — the overhead is per-call, not\ncontention.\n\nIn the full pipeline (1046 files after the default-ignore filter), the\n60–70 ms read savings flow through to the `collect` phase (verbose\ntimings: 263 → 223 ms, ~40 ms phase-level reduction), then to wall-clock\nwith some absorption by the parallel `getGitDiffs` / `getGitLogs` branch\nin the same `Promise.all`.\n\n## Benchmark — `node bin/repomix.cjs --quiet` (1046 files)\n\nn=50 paired interleaved, `NODE_DISABLE_COMPILE_CACHE=1`:\n\n|        | min     | median  | mean    | max     | sd     |\n|--------|---------|---------|---------|---------|--------|\n| BEFORE | 1647 ms | 1800 ms | 1794 ms | 2091 ms | 81 ms  |\n| AFTER  | 1606 ms | 1752 ms | 1756 ms | 1926 ms | 70 ms  |\n\n- Mean paired Δ:   **+38.2 ms (2.13% wall-clock reduction)**\n- Median paired Δ: +43.0 ms (2.40%)\n- Paired-delta SD: 81.3 ms · paired t = **3.33** (p < 0.01)\n- AFTER faster in **34/50** pairs (68%)\n\nn=50 was the minimum credible sample size given a paired-delta SD ≈\n80 ms and an effect size near 38 ms; an independent reviewer's two\nn=20 runs straddled the claim (t=0.93 and t=4.27 respectively),\nconsistent with this distribution.\n\n## Regression check — `node bin/repomix.cjs --include 'src,tests' --quiet` (258 files)\n\nn=30 paired interleaved, `NODE_DISABLE_COMPILE_CACHE=1`:\n\n|        | min    | median | mean   | max    | sd    |\n|--------|--------|--------|--------|--------|-------|\n| BEFORE | 850 ms | 918 ms | 922 ms | 984 ms | 38 ms |\n| AFTER  | 844 ms | 911 ms | 912 ms | 992 ms | 38 ms |\n\n- Mean paired Δ:   +10.2 ms (1.11%) — **neutral within noise** (paired t = 1.85)\n- AFTER faster in 17/30 pairs\n\n## Correctness\n\n- All **1260** unit tests pass (`npm test`); `npm run lint` clean\n  (only pre-existing warnings unrelated to this change).\n- XML output **byte-identical** between BEFORE and AFTER on both the\n  default 1046-file workload and the `--include 'src,tests'` 258-file\n  workload (verified via `diff` on full ~4.83 MB outputs).\n- The change is a one-site swap of an internal helper; the public\n  `readRawFile()` API and all `RawFile` content semantics are unchanged.\n\n## Local review\n\nTwo independent sub-agent reviewers approved:\n\n- **Code-correctness reviewer:** APPROVE. Verified API equivalence\n  (callback-based `fs.readFile` and `fs.promises.readFile` both delegate\n  to the same `uv_fs_read` op and surface identical `SystemError` codes\n  for ENOENT/EACCES/EISDIR/EMFILE), `Buffer` return-type match, libuv\n  thread-pool concurrency parity, no FD leak (callback path closes its\n  own FD before invoking the callback), and dependency-injection mocks\n  in `tests/core/file/fileCollect.test.ts` cover the new code path.\n- **Benchmark-methodology reviewer:** APPROVE WITH NITS. Confirmed the\n  before/after binaries differ exactly at the documented one-site swap,\n  reproduced byte-equivalence, and ran two independent paired n=20\n  benchmarks bracketing the +38.2 ms claim. The t-stat math checks out\n  (38.2 / (81.3/√50) = 3.32 ≈ reported 3.33). Doc nit on the microbench\n  vs pipeline file-count difference is addressed inline above.",
+          "timestamp": "2026-05-08T13:01:52Z",
+          "tree_id": "bf1b47e612bc965e4938db5aefef9a6b6943eb83",
+          "url": "https://github.com/yamadashy/repomix/commit/3427aae570725ae17e65e16469245d7fbee7ea84"
+        },
+        "date": 1778245446328,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 938,
+            "range": "±94",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 907ms, Q3: 1001ms\nAll times: 820, 862, 866, 878, 884, 885, 895, 907, 913, 915, 920, 921, 934, 934, 937, 938, 943, 946, 960, 985, 985, 986, 1001, 1007, 1014, 1025, 1036, 1038, 1108, 1189ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1310,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1295ms, Q3: 1321ms\nAll times: 1278, 1278, 1285, 1290, 1295, 1295, 1298, 1303, 1304, 1309, 1310, 1310, 1311, 1313, 1315, 1321, 1323, 1328, 1331, 1336ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1703,
+            "range": "±65",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1681ms, Q3: 1746ms\nAll times: 1657, 1658, 1672, 1681, 1681, 1681, 1688, 1699, 1701, 1701, 1703, 1718, 1720, 1728, 1742, 1746, 1747, 1750, 1765, 1780ms"
           }
         ]
       }
