@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778261847677,
+  "lastUpdate": 1778262018377,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7875,6 +7875,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1622ms, Q3: 1641ms\nAll times: 1577, 1597, 1602, 1611, 1619, 1622, 1624, 1626, 1629, 1634, 1635, 1636, 1639, 1640, 1640, 1641, 1648, 1649, 1659, 1672ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "db647834f500fbfbeae07d9aeb7c5ca32f9f365a",
+          "message": "test(core): Restore '# Directory Structure' assertion in markdown case\n\nEarlier push commit (03b8e70b) accidentally dropped the\n`expect(actualOutput).toContain('# Directory Structure')` assertion\ninside the markdown branch of the integration test's case-style switch.\nThat line still exists on disk and was present pre-change; restoring it\nto keep the markdown-style coverage symmetric with the plain-style\ncase below it.",
+          "timestamp": "2026-05-09T02:38:14+09:00",
+          "tree_id": "fe38729f999b6e39661777439cae2b7c33b210ab",
+          "url": "https://github.com/yamadashy/repomix/commit/db647834f500fbfbeae07d9aeb7c5ca32f9f365a"
+        },
+        "date": 1778262017794,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 880,
+            "range": "±88",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 860ms, Q3: 948ms\nAll times: 818, 826, 840, 844, 851, 853, 860, 860, 861, 867, 867, 869, 873, 873, 874, 880, 883, 889, 889, 910, 925, 947, 948, 986, 993, 997, 1013, 1029, 1046, 1180ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1226,
+            "range": "±30",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1218ms, Q3: 1248ms\nAll times: 1187, 1202, 1202, 1204, 1214, 1218, 1218, 1222, 1224, 1225, 1226, 1227, 1229, 1235, 1244, 1248, 1249, 1256, 1258, 1284ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 2102,
+            "range": "±56",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 2086ms, Q3: 2142ms\nAll times: 1686, 2046, 2071, 2082, 2082, 2086, 2093, 2100, 2101, 2102, 2102, 2104, 2108, 2109, 2120, 2142, 2143, 2155, 2156, 2159ms"
           }
         ]
       }
