@@ -58,6 +58,13 @@ describe('packager', () => {
         },
         warmupPromise: Promise.resolve(),
       }),
+      createSecurityTaskRunner: vi.fn().mockReturnValue({
+        taskRunner: {
+          run: vi.fn().mockResolvedValue([]),
+          cleanup: vi.fn().mockResolvedValue(undefined),
+        },
+        warmupPromise: Promise.resolve(),
+      }),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -92,6 +99,7 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      expect.objectContaining({ taskRunner: expect.any(Object) }),
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
@@ -177,6 +185,10 @@ describe('packager', () => {
             taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup },
             warmupPromise: Promise.resolve(),
           }),
+          createSecurityTaskRunner: vi.fn().mockReturnValue({
+            taskRunner: { run: vi.fn().mockResolvedValue([]), cleanup: vi.fn().mockResolvedValue(undefined) },
+            warmupPromise: Promise.resolve(),
+          }),
           getGitDiffs: vi.fn().mockResolvedValue(undefined),
           getGitLogs: vi.fn().mockResolvedValue(undefined),
           prefetchSortData: vi.fn().mockResolvedValue(undefined),
@@ -248,13 +260,17 @@ describe('packager', () => {
       await pack(['root'], config, vi.fn(), deps);
 
       expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(600, expect.any(String));
+      // Same gate also enables the security pool pre-warm on the unscoped path.
+      expect(deps.createSecurityTaskRunner).toHaveBeenCalled();
     });
 
     test('uses 2 warm-up workers for the metrics pool when --include narrows scope', async () => {
       // With explicit includes the file set is typically much smaller and the
       // 3rd worker's BPE warm-up dominates the parallelism gain (paired benchmarks
       // regressed by ~12% on the 258-file --include 'src,tests' workload), so the
-      // heuristic falls back to 2 warm workers.
+      // heuristic falls back to 2 warm workers. The same `hasExplicitScope`
+      // gate also disables the security pool pre-warm in this branch — its
+      // up-front cost outweighs the saved cold-start on small/scoped runs.
       const { deps } = baseDeps();
       const config = createMockConfig();
       config.include = ['src'];
@@ -262,6 +278,7 @@ describe('packager', () => {
       await pack(['root'], config, vi.fn(), deps);
 
       expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(400, expect.any(String));
+      expect(deps.createSecurityTaskRunner).not.toHaveBeenCalled();
     });
 
     test('uses 2 warm-up workers for the metrics pool when explicitFiles is provided (--stdin)', async () => {
@@ -272,6 +289,10 @@ describe('packager', () => {
       await pack(['root'], config, vi.fn(), deps, ['file1.txt', 'file2.txt']);
 
       expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(400, expect.any(String));
+      // The security pool pre-warm shares the `hasExplicitScope` gate — when --stdin
+      // (explicitFiles) provides the file set, the pre-warm is skipped to avoid the
+      // pool-construction overhead that outweighs the saved cold-start on small runs.
+      expect(deps.createSecurityTaskRunner).not.toHaveBeenCalled();
     });
 
     test('cleans up the metrics worker pool even when the warmup promise rejects', async () => {

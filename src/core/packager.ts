@@ -15,7 +15,11 @@ import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import {
+  createSecurityTaskRunner,
+  type SecurityTaskRunnerWithWarmup,
+  type SuspiciousFileResult,
+} from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -44,6 +48,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityTaskRunner,
   sortPaths,
   sortOutputFiles,
   prefetchSortData,
@@ -123,6 +128,10 @@ export const pack = async (
     config.tokenCount.encoding,
   );
 
+  // Declared outside the try block so the finally clause can clean up the pool
+  // even if a thrown error occurs after the runner is created but before pack returns.
+  let securityTaskRunnerWithWarmup: SecurityTaskRunnerWithWarmup | null = null;
+
   try {
     progressCallback('Searching for files...');
     const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -152,6 +161,29 @@ export const pack = async (
       filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
     }));
 
+    // Pre-warm the security worker pool so its `@secretlint/core` +
+    // `@secretlint/secretlint-rule-preset-recommend` module load (~50ms per worker;
+    // ~100ms wall-clock for two workers loading concurrently) overlaps with the
+    // collectFiles + git ops phase (~200ms) instead of running on the critical path
+    // inside `runSecurityCheck`. Without this warm-up the security check phase
+    // serially pays the cold-start cost before any scanning begins.
+    //
+    // Gated on the same `hasExplicitScope` heuristic as the metrics 3-worker bump:
+    // when the user narrows the file set via --include / config.include / --stdin
+    // the security phase scans only a few hundred files (≤6 batches) and finishes
+    // in ~50–80 ms; the saved cold-start cost is small and is outweighed by the
+    // up-front cost of creating + destroying a second worker pool (paired t=-4.88,
+    // -3.38% regression measured on a 258-file --include 'src,tests' workload).
+    // Unconstrained scans run the security check over ~1000+ files where the
+    // hidden cold-start dominates the savings (paired t=+5.72, +3.04% improvement
+    // on a 1046-file default workload).
+    //
+    // Skipped when the security check is disabled — no pool is needed and we
+    // would otherwise spawn worker threads that never run a real task.
+    if (config.security.enableSecurityCheck && !hasExplicitScope) {
+      securityTaskRunnerWithWarmup = deps.createSecurityTaskRunner(allFilePaths.length);
+    }
+
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
@@ -180,7 +212,9 @@ export const pack = async (
     // After both complete, filter out any suspicious files from the processed results.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
+          taskRunner: securityTaskRunnerWithWarmup?.taskRunner,
+        }),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
@@ -292,5 +326,9 @@ export const pack = async (
   } finally {
     await metricsWarmupPromise.catch(() => {});
     await metricsTaskRunner.cleanup();
+    if (securityTaskRunnerWithWarmup) {
+      await securityTaskRunnerWithWarmup.warmupPromise.catch(() => {});
+      await securityTaskRunnerWithWarmup.taskRunner.cleanup();
+    }
   }
 };
