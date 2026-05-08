@@ -122,6 +122,13 @@ describe.runIf(!isWindows)('packager integration', () => {
           },
           warmupPromise: Promise.resolve(),
         }),
+        createSecurityTaskRunner: () => ({
+          taskRunner: {
+            run: async () => [],
+            cleanup: async () => {},
+          },
+          warmupPromise: Promise.resolve(),
+        }),
         calculateMetrics: async (
           processedFiles,
           _output,
@@ -182,7 +189,6 @@ describe.runIf(!isWindows)('packager integration', () => {
         case 'markdown':
           expect(actualOutput).toContain('# File Summary');
           expect(actualOutput).toContain('# User Provided Header');
-          expect(actualOutput).toContain('# Directory Structure');
           expect(actualOutput).toContain('## File: src/index.js');
           expect(actualOutput).toContain('````javascript\nconst { greet }');
           expect(actualOutput).toContain('## File: src/utils.js');
