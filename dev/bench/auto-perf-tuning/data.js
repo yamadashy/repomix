@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778261531952,
+  "lastUpdate": 1778261847677,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7830,6 +7830,51 @@ window.BENCHMARK_DATA = {
             "range": "±32",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1685ms, Q3: 1717ms\nAll times: 1664, 1665, 1669, 1670, 1685, 1685, 1686, 1692, 1693, 1693, 1701, 1703, 1705, 1705, 1706, 1717, 1720, 1733, 1738, 1747ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "03b8e70b9cf55672e3581358e3f927fec3f1fc7f",
+          "message": "test(core): Wire createSecurityTaskRunner mock into remaining packager tests\n\nFinal commit of the perf(core) Pre-warm security worker pool change —\nextends the unit packager test and the integration packager test:\n\n- tests/core/packager.test.ts: adds `createSecurityTaskRunner` mock to\n  the orchestration test's `mockDeps` and to the `parallel error\n  handling` `baseDeps()` shared fixture, updates the\n  `validateFileSafety.toHaveBeenCalledWith` assertion to expect the new\n  6th-argument deps object (`{ taskRunner: <Object> }`), and adds\n  positive/negative gate assertions —\n  `expect(deps.createSecurityTaskRunner).toHaveBeenCalled()` for the\n  default unscoped path, `.not.toHaveBeenCalled()` for the\n  `--include 'src'` and `explicitFiles` (--stdin) paths.\n\n- tests/integration-tests/packager.test.ts: adds the\n  `createSecurityTaskRunner` stub so the default-scope path no longer\n  attempts to spawn a real worker pool (the previous unhandled-rejection\n  noise from a missing worker file URL is gone with this change).\n\n(See PR description / first source commit for the full perf change\nrationale, benchmark numbers, and correctness notes.)",
+          "timestamp": "2026-05-09T02:35:18+09:00",
+          "tree_id": "7c88b8fadef2c73fc5661118003431e92cf5e121",
+          "url": "https://github.com/yamadashy/repomix/commit/03b8e70b9cf55672e3581358e3f927fec3f1fc7f"
+        },
+        "date": 1778261847034,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1104,
+            "range": "±268",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 982ms, Q3: 1250ms\nAll times: 871, 881, 885, 891, 895, 948, 972, 982, 1025, 1052, 1052, 1085, 1098, 1101, 1104, 1104, 1142, 1166, 1177, 1206, 1214, 1247, 1250, 1260, 1399, 1407, 1471, 1515, 1628, 1676ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1298,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1287ms, Q3: 1318ms\nAll times: 1269, 1271, 1276, 1283, 1284, 1287, 1288, 1289, 1296, 1297, 1298, 1301, 1302, 1303, 1308, 1318, 1320, 1324, 1328, 1355ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1635,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1622ms, Q3: 1641ms\nAll times: 1577, 1597, 1602, 1611, 1619, 1622, 1624, 1626, 1629, 1634, 1635, 1636, 1639, 1640, 1640, 1641, 1648, 1649, 1659, 1672ms"
           }
         ]
       }
