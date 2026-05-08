@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778245447133,
+  "lastUpdate": 1778261414111,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -7740,6 +7740,51 @@ window.BENCHMARK_DATA = {
             "range": "±65",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1681ms, Q3: 1746ms\nAll times: 1657, 1658, 1672, 1681, 1681, 1681, 1688, 1699, 1701, 1701, 1703, 1718, 1720, 1728, 1742, 1746, 1747, 1750, 1765, 1780ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "1b38ebb818c5192e1d9aaceeffaa387e945c1266",
+          "message": "perf(core): Pre-warm security worker pool to overlap @secretlint/core load\n\nThe security worker pool currently spawns its 2 workers lazily inside\n`runSecurityCheck`, paying a ~50 ms `@secretlint/core` +\n`@secretlint/secretlint-rule-preset-recommend` module load on each freshly\nspawned worker (~100 ms wall-clock for both workers loading concurrently).\nThat cold-start cost runs on the critical path inside the security-check\nphase, before any scanning begins.\n\nMirror the existing `createMetricsTaskRunner` pattern: hoist the pool\nconstruction to `pack()` and dispatch one no-op task per worker at the\npipeline entry, so the module load overlaps with the collectFiles + git\nops phase (~200 ms) instead of stalling the security check.\n\nMechanism\n\n- New `createSecurityTaskRunner(numOfTasks, deps?)` in\n  `src/core/security/securityCheck.ts` returns\n  `{ taskRunner, warmupPromise }`. The warm-up dispatches `maxThreads`\n  no-op tasks (`{ items: [] }`) — Tinypool spawns a fresh worker for each\n  concurrent task, fanning out the @secretlint/core load across all\n  workers in parallel.\n- `runSecurityCheck` accepts an optional `taskRunner` in `deps`. When\n  provided, the caller owns the pool's lifecycle (creation + cleanup);\n  when omitted, runSecurityCheck creates and cleans up a fresh pool —\n  preserving the existing behavior for direct callers (e.g. the MCP\n  fileSystemReadFileTool path).\n- `validateFileSafety` accepts and forwards an optional `taskRunner`.\n- `pack()` calls `createSecurityTaskRunner` after `searchFiles` resolves\n  (file count is now known) and before the parallel collectFiles + git\n  ops block, so the warm-up runs concurrently with disk I/O. The task\n  runner is plumbed through `validateFileSafety` deps; the pool is\n  cleaned up alongside the metrics pool in the surrounding try/finally.\n\nScope gate\n\nPre-warming is gated on the same `hasExplicitScope` heuristic that\nalready differentiates 2- vs. 3-worker metrics warm-up:\n\n| Workload                                          | Pre-warm? |\n|---------------------------------------------------|-----------|\n| Default scan (no `--include` / `--stdin`)         | yes       |\n| `--include`, `config.include`, or `--stdin` set   | no        |\n\nWithout the gate, the small/scoped workload regresses by 3.4% paired\nmean: the security check scans only ~5 batches and finishes in ~50–80\nms, so the up-front cost of constructing + destroying a second worker\npool outweighs the saved cold-start. The unconstrained scan runs\nsecurity over ~1000+ files where the hidden cold-start dominates.\n\nBenchmark — `node bin/repomix.cjs --quiet` (1046 files)\n\nTwo independent paired n=50 runs (interleaved BEFORE/AFTER alternating\norder, NODE_DISABLE_COMPILE_CACHE=1):\n\n|        | min     | median  | mean    | max     | sd     |\n|--------|---------|---------|---------|---------|--------|\n| BEFORE | 1320 ms | 1454 ms | 1451 ms | 1590 ms | 49 ms  |\n| AFTER  | 1318 ms | 1410 ms | 1416 ms | 1501 ms | 40 ms  |\n\n- Mean paired Δ:   +35.2 ms (2.42% wall-clock reduction)\n- Median paired Δ: +32.5 ms (2.23%)\n- Paired-delta SD: 64.78 ms · paired t = 3.84 (p < 0.001)\n- AFTER faster in 39/50 pairs (78%)\n\nConfirmation run (same setup, n=50): mean Δ +37.0 ms (2.55%), t=3.93,\n36/50 pairs faster. Independent reviewer reproduction (n=25): mean Δ\n+40.8 ms (2.85%), t=3.56, 20/25 pairs faster.\n\nRegression check — `--include 'src,tests' --quiet` (258 files)\n\nn=30 paired interleaved, NODE_DISABLE_COMPILE_CACHE=1:\n\n|        | min    | median | mean   | max    |\n|--------|--------|--------|--------|--------|\n| BEFORE | 670 ms | 732 ms | 730 ms | 783 ms |\n| AFTER  | 688 ms | 728 ms | 729 ms | 786 ms |\n\n- Mean paired Δ:   +0.9 ms (0.13%) — neutral within noise\n  (paired t = 0.17). The gate falls back to the original lazy-spawn\n  path so AFTER == BEFORE up to noise.\n- AFTER faster in 16/30 pairs.\n\nWithout the gate this workload regresses by 3.4% paired (t=-4.88).\n\nCorrectness\n\n- All 1260 unit tests pass (`npm test`); `npm run lint` clean (only the\n  two pre-existing biome-ignore warnings unrelated to this change).\n- XML output byte-identical between BEFORE and AFTER on both the default\n  1046-file workload and the `--include 'src,tests'` 258-file workload\n  (verified via `diff` on full ~4.85 MB outputs).\n- `runSecurityCheck`'s public signature gains an optional `taskRunner`\n  in deps; when omitted, behavior is unchanged. Existing callers outside\n  the pack pipeline (e.g. MCP `fileSystemReadFileTool`) still spawn\n  their own pool.\n- The MCP main-thread security path is unaffected — it uses\n  `runSecretLint` directly (worker module loaded once at process start)\n  and never goes through the pool.\n\nNote on push history: this branch's tip includes a small\n\"test push_files mechanism\" commit (ab1b4231) that updated only\nvalidateFileSafety.ts. It exists because direct `git push` from this\nsession was blocked by the proxy and the change had to be pushed via\nthe GitHub Contents API in two parts. The cumulative diff vs. main is\nthe full 8-file change as described above.",
+          "timestamp": "2026-05-09T02:28:39+09:00",
+          "tree_id": "593077a872a44d1fad2a56e4e9f97eb1ef70f568",
+          "url": "https://github.com/yamadashy/repomix/commit/1b38ebb818c5192e1d9aaceeffaa387e945c1266"
+        },
+        "date": 1778261413333,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 953,
+            "range": "±135",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 888ms, Q3: 1023ms\nAll times: 815, 846, 850, 867, 871, 874, 881, 888, 889, 892, 897, 904, 927, 934, 952, 953, 956, 961, 968, 994, 1000, 1023, 1023, 1031, 1041, 1046, 1083, 1107, 1126, 1178ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1241,
+            "range": "±11",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1237ms, Q3: 1248ms\nAll times: 1192, 1210, 1228, 1231, 1233, 1237, 1238, 1238, 1239, 1239, 1241, 1245, 1247, 1248, 1248, 1248, 1248, 1260, 1262, 1271ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1584,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1576ms, Q3: 1593ms\nAll times: 1551, 1558, 1559, 1563, 1573, 1576, 1577, 1579, 1579, 1583, 1584, 1588, 1590, 1592, 1593, 1593, 1594, 1598, 1603, 1622ms"
           }
         ]
       }
