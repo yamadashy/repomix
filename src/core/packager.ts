@@ -13,6 +13,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { loadTokenCountCache, saveTokenCountCache } from './metrics/tokenCountCache.js';
 import { prefetchCompiledTemplate } from './output/outputGenerate.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
@@ -85,6 +86,12 @@ export const pack = async (
   };
 
   logMemoryUsage('Pack - Start');
+
+  // Start loading the token-count disk cache in the background so it is ready
+  // before calculateFileMetrics runs (~794 ms into the pipeline). The load
+  // itself takes only ~1 ms (50 KB JSON), but kicking it off here ensures it
+  // overlaps with file search and collection rather than blocking metrics.
+  const tokenCacheLoadPromise = loadTokenCountCache();
 
   // Pre-fetch git file-change counts for sortOutputFiles while search and
   // collection are in flight, so the later sortOutputFiles call is a cache hit.
@@ -279,6 +286,10 @@ export const pack = async (
 
     // Ensure warm-up task completes before metrics calculation
     await metricsWarmupPromise;
+    // Ensure the token-count cache is loaded before calculateFileMetrics reads it.
+    // The load started at t=0 and completes in <1ms, so this is almost always
+    // a no-op, but the explicit await prevents a subtle race on very fast machines.
+    await tokenCacheLoadPromise;
 
     // Generate and write output, overlapping with metrics calculation.
     // File and git metrics don't depend on the output, so they start immediately
@@ -327,6 +338,10 @@ export const pack = async (
     };
 
     logMemoryUsage('Pack - End');
+
+    // Persist the token-count cache for future runs (fire-and-forget).
+    // Errors are silently swallowed inside saveTokenCountCache.
+    saveTokenCountCache().catch(() => {});
 
     return result;
   } finally {
