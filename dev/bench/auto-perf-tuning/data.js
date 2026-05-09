@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778297711100,
+  "lastUpdate": 1778309751944,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -8100,6 +8100,51 @@ window.BENCHMARK_DATA = {
             "range": "±12",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1047ms, Q3: 1059ms\nAll times: 1030, 1032, 1038, 1039, 1045, 1047, 1047, 1048, 1049, 1049, 1051, 1056, 1056, 1057, 1059, 1059, 1059, 1064, 1064, 1065ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "005c1238aaa2b3645517cccd9929a6d243bad9ec",
+          "message": "perf(metrics): Cache output-wrapper token count via existing disk cache\n\nReuse the content-addressed disk cache used for per-file token counts to\nalso memoize the \"output wrapper\" (output minus all file contents) token\ncount. The wrapper string is byte-stable across runs when neither the\nrootDir tree nor headers/instructions change, so the second-run wrapper\ntokenization is a guaranteed cache hit.\n\nWhy this is on the critical path:\n- calculateMetrics blocks on the wrapper tokenization Promise alongside\n  per-file metrics; with a warm per-file cache, file metrics resolve in\n  ~5 ms and the wrapper worker dispatch (~30 ms on the ~120 KB wrapper)\n  becomes the longest task in calculateMetrics, which itself is on the\n  pipeline's critical path after produceOutput.\n- A cache hit replaces the worker round-trip with an MD5(wrapper) +\n  Map.get(), each <1 ms.\n\nBehavior preservation:\n- Cache key = `${encoding}:MD5(wrapper)[0:16]`, so any wrapper change\n  (headers, file set, sort order, template format) automatically misses.\n- On miss, the original runTokenCount runs and the result is written\n  back via setCached so subsequent runs hit. No behavioral difference.\n- Falls under the same CACHE_VERSION guard as per-file entries.\n\nBenchmark (paired, warm cache, n=30, repomix self-pack):\n  BASE  mean 1097.2 ms  sd 33.5\n  AFTER mean 1063.7 ms  sd 34.7\n  DELTA mean 33.6 ms (3.06%)  median 32.8 ms\n        t = 4.761 (df=29)  faster = 23/30\n        95% CI [19.1, 48.0] ms\n\nCold cache (paired, n=15, file deleted before each run):\n  DELTA mean -1.5 ms (-0.10%)  t = -0.12  -- within noise\n\nTests: all 1260 pass; npm run lint is clean (the two pre-existing\nbiome warnings in cliSpinner.ts are unrelated).",
+          "timestamp": "2026-05-09T15:54:12+09:00",
+          "tree_id": "e275f0242dbedce9014f4a30b1ae957cf49f0c93",
+          "url": "https://github.com/yamadashy/repomix/commit/005c1238aaa2b3645517cccd9929a6d243bad9ec"
+        },
+        "date": 1778309751400,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 670,
+            "range": "±120",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 611ms, Q3: 731ms\nAll times: 516, 562, 571, 576, 606, 606, 606, 611, 625, 649, 650, 652, 653, 656, 667, 670, 680, 686, 697, 699, 715, 718, 731, 731, 734, 735, 763, 780, 804, 824ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 750,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 735ms, Q3: 763ms\nAll times: 724, 726, 726, 729, 730, 735, 735, 741, 743, 747, 750, 750, 752, 752, 755, 763, 764, 779, 786, 839ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1030,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1023ms, Q3: 1056ms\nAll times: 1013, 1016, 1017, 1019, 1019, 1023, 1024, 1027, 1028, 1028, 1030, 1034, 1036, 1053, 1055, 1056, 1060, 1073, 1077, 1087ms"
           }
         ]
       }
