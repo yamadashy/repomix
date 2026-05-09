@@ -12,6 +12,7 @@ import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
+import { contentCacheKey, getCached, setCached } from './tokenCountCache.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
@@ -232,10 +233,23 @@ export const calculateMetrics = async (
         ? (async () => {
             // Dispatch wrapper tokenization immediately — a worker may already be
             // idle while file metrics batches still occupy the other workers.
-            const wrapperTokensPromise = runTokenCount(taskRunner, {
-              content: outputWrapper,
-              encoding: config.tokenCount.encoding,
-            });
+            // The wrapper string (output minus all file contents) is byte-stable
+            // across runs when neither the rootDir tree nor headers/instructions
+            // change, so reuse the same content-addressed disk cache used for
+            // per-file token counts. This avoids a worker round-trip (~30 ms on
+            // ~120 KB wrappers) on the warm-cache critical path of `calculateMetrics`.
+            const wrapperCacheKey = contentCacheKey(config.tokenCount.encoding, outputWrapper);
+            const cachedWrapperTokens = getCached(wrapperCacheKey);
+            const wrapperTokensPromise =
+              cachedWrapperTokens !== undefined
+                ? Promise.resolve(cachedWrapperTokens)
+                : runTokenCount(taskRunner, {
+                    content: outputWrapper,
+                    encoding: config.tokenCount.encoding,
+                  }).then((tokens) => {
+                    setCached(wrapperCacheKey, tokens);
+                    return tokens;
+                  });
             const [allFileMetrics, wrapperTokens] = await Promise.all([fileMetricsPromise, wrapperTokensPromise]);
             const fileTokensSum = allFileMetrics.reduce((sum, f) => sum + f.tokenCount, 0);
             logger.trace(
