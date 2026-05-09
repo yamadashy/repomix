@@ -26,32 +26,32 @@ jobs:
         run: npm ci
 
       - name: Run biome with auto-fix
-        run: npm run lint-biome
+        run: node --run lint-biome
         continue-on-error: true
 
       - name: Run oxlint with auto-fix
-        run: npm run lint-oxlint
+        run: node --run lint-oxlint
         continue-on-error: true
 
       - name: Fix website client linting
         working-directory: website/client
         run: |
           npm ci
-          npm run lint
+          node --run lint
         continue-on-error: true
 
       - name: Fix website server linting
         working-directory: website/server
         run: |
           npm ci
-          npm run lint
+          node --run lint
         continue-on-error: true
 
       - name: Fix browser extension linting
         working-directory: browser
         run: |
           npm ci
-          npm run lint
+          node --run lint
         continue-on-error: true
 
       - uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4

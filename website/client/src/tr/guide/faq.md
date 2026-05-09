@@ -90,7 +90,7 @@ repomix --init
 
 ### Repomix C#, Python, Java, Go, Rust veya diğer dillerle çalışır mı?
 
-Evet. Repomix projenizdeki dosyaları okur ve AI araçları için formatlar, bu yüzden herhangi bir programlama dilindeki repository'leri paketleyebilir. CLI için Node.js 20 veya daha yeni bir sürüm gerekir. Tree-sitter tabanlı kod sıkıştırma gibi bazı gelişmiş özellikler, ilgili dil parser desteğine bağlıdır.
+Evet. Repomix projenizdeki dosyaları okur ve AI araçları için formatlar, bu yüzden herhangi bir programlama dilindeki repository'leri paketleyebilir. CLI için Node.js 22 veya daha yeni bir sürüm gerekir. Tree-sitter tabanlı kod sıkıştırma gibi bazı gelişmiş özellikler, ilgili dil parser desteğine bağlıdır.
 
 ### Repomix'i Hermes Agent, OpenClaw veya diğer MCP uyumlu agent'larla kullanabilir miyim?
 

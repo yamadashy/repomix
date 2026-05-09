@@ -17,7 +17,7 @@ RUN npm ci
 
 # Copy source code and bundle
 COPY . .
-RUN npm run bundle
+RUN node --run bundle
 
 
 # ==============================================================================

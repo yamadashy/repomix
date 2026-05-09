@@ -24,20 +24,20 @@ jobs:
   repomix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
       
       - name: Run Repomix
         run: npx repomix --output-file repomix-output.xml
       
       - name: Upload Repomix Output
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: repomix-output
           path: repomix-output.xml
@@ -64,14 +64,14 @@ jobs:
   repomix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
       
       - name: Run Repomix
         run: |
@@ -84,14 +84,14 @@ jobs:
             --compress
       
       - name: Upload Repomix Output
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: repomix-output
           path: repomix-output.md
       
       - name: Create GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: repomix-output.md
           name: Repomix Output ${{ github.sha }}
@@ -128,12 +128,12 @@ jobs:
     strategy:
       matrix:
         output-style: [xml, markdown, json, plain]
-        node-version: [20, 22]
+        node-version: [22, 24, 26]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
       
@@ -141,7 +141,7 @@ jobs:
         run: npx repomix --style ${{ matrix.output-style }} --output-file repomix-output.${{ matrix.output-style }}
       
       - name: Upload Repomix Output
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: repomix-output-${{ matrix.output-style }}-node${{ matrix.node-version }}
           path: repomix-output.${{ matrix.output-style }}

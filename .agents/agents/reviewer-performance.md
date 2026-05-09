@@ -71,4 +71,4 @@ If no noteworthy issues found, say so briefly. Do not invent issues.
 
 - Only report issues with measurable impact at realistic scale. Skip micro-optimizations.
 - If a pattern is used intentionally for readability or simplicity, don't flag it unless the impact is significant.
-- Do not flag: Loop style preferences on small collections, micro-allocation in cold paths, patterns V8 optimizes well in modern versions (Node 20+).
+- Do not flag: Loop style preferences on small collections, micro-allocation in cold paths, patterns V8 optimizes well in modern versions (Node 22+).

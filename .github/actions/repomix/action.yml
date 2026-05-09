@@ -38,6 +38,10 @@ inputs:
     description: "Version (or tag) of the npm package to install – defaults to latest"
     required: false
     default: "latest"
+  node-version:
+    description: "Node.js version to use (defaults to 24)"
+    required: false
+    default: "24"
 
 runs:
   using: "composite"
@@ -45,7 +49,7 @@ runs:
     - name: Setup Node.js
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
-        node-version: "24"
+        node-version: ${{ inputs.node-version }}
     - name: Install project dependencies
       shell: bash
       run: |

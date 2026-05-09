@@ -72,7 +72,7 @@ Accedi istantaneamente a Repomix direttamente da qualsiasi repository GitHub! La
 
 ## Requisiti di Sistema
 
-- Node.js: ≥ 20.0.0
+- Node.js: ≥ 22.0.0
 - Git: Richiesto per l'elaborazione dei repository remoti
 
 ## Verifica

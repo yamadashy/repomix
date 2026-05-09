@@ -36,10 +36,10 @@ jobs:
         run: npm ci
       - name: Prepare WXT
         working-directory: browser
-        run: npm run prepare
+        run: node --run prepare
       - name: Lint browser extension
         working-directory: browser
-        run: npm run lint
+        run: node --run lint
 
   test-browser:
     name: Test Browser Extension
@@ -58,7 +58,7 @@ jobs:
         run: npm ci
       - name: Prepare WXT
         working-directory: browser
-        run: npm run prepare
+        run: node --run prepare
       - name: Test browser extension
         working-directory: browser
-        run: npm run test
+        run: node --run test

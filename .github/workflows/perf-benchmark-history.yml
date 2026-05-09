@@ -41,7 +41,7 @@ jobs:
           cache: npm
 
       - name: Install and build
-        run: npm ci && npm run build
+        run: npm ci && node --run build
 
       - name: Run benchmark
         shell: bash

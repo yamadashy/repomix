@@ -47,7 +47,7 @@ jobs:
       # Build repomix
       - name: Build repomix
         working-directory: .
-        run: npm run build
+        run: node --run build
 
       # Install benchmark dependencies
       - name: Install benchmark dependencies
@@ -55,7 +55,7 @@ jobs:
 
       # Build benchmark
       - name: Build benchmark
-        run: npm run build
+        run: node --run build
 
       # Run memory test
       - name: Run memory test
@@ -103,7 +103,7 @@ jobs:
       # Build repomix
       - name: Build repomix
         working-directory: .
-        run: npm run build
+        run: node --run build
 
       # Install benchmark dependencies
       - name: Install benchmark dependencies
@@ -111,7 +111,7 @@ jobs:
 
       # Build benchmark
       - name: Build benchmark
-        run: npm run build
+        run: node --run build
 
       # Run comprehensive memory test
       - name: Run comprehensive memory test

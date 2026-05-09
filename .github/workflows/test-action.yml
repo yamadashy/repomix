@@ -15,13 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        node-version: [22, 24, 26]
         include:
-          - node-version: 18
-            test-case: "minimal"
-          - node-version: 20
-            test-case: "basic"
           - node-version: 22
+            test-case: "minimal"
+          - node-version: 24
+            test-case: "basic"
+          - node-version: 26
             test-case: "full"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -32,12 +32,14 @@ jobs:
         if: matrix['test-case'] == 'minimal'
         uses: ./.github/actions/repomix
         with:
+          node-version: ${{ matrix.node-version }}
           output: "repomix-minimal-output.txt"
 
       - name: Run Repomix Action (Basic)
         if: matrix['test-case'] == 'basic'
         uses: ./.github/actions/repomix
         with:
+          node-version: ${{ matrix.node-version }}
           directories: "src"
           include: "**/*.ts"
           output: "repomix-basic-output.txt"
@@ -47,6 +49,7 @@ jobs:
         if: matrix['test-case'] == 'full'
         uses: ./.github/actions/repomix
         with:
+          node-version: ${{ matrix.node-version }}
           directories: "src tests"
           include: "**/*.ts,**/*.md"
           ignore: "**/*.test.ts"

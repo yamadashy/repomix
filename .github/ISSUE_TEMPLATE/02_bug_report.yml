@@ -43,4 +43,4 @@ body:
     attributes:
       label: Node.js Version
       description: "Output of `node --version`"
-      placeholder: "e.g. v18.16.0"
+      placeholder: "e.g. v22.0.0"

@@ -42,7 +42,7 @@ jobs:
         run: npm ci
       - name: Lint website client
         working-directory: website/client
-        run: npm run lint
+        run: node --run lint
 
   lint-website-server:
     name: Lint Website Server
@@ -59,7 +59,7 @@ jobs:
       - name: Build and link local repomix
         run: |
           npm ci
-          npm run build
+          node --run build
           npm link
       - name: Install website server dependencies
         working-directory: website/server
@@ -68,7 +68,7 @@ jobs:
           npm link repomix
       - name: Lint website server
         working-directory: website/server
-        run: npm run lint
+        run: node --run lint
 
   test-website-server:
     name: Test Website Server
@@ -85,7 +85,7 @@ jobs:
       - name: Build and link local repomix
         run: |
           npm ci
-          npm run build
+          node --run build
           npm link
       - name: Install website server dependencies
         working-directory: website/server
@@ -94,7 +94,7 @@ jobs:
           npm link repomix
       - name: Test website server
         working-directory: website/server
-        run: npm run test
+        run: node --run test
 
   bundle-website-server:
     name: Bundle Website Server
@@ -111,7 +111,7 @@ jobs:
       - name: Build and link local repomix
         run: |
           npm ci
-          npm run build
+          node --run build
           npm link
       - name: Install website server dependencies
         working-directory: website/server
@@ -120,4 +120,4 @@ jobs:
           npm link repomix
       - name: Bundle website server
         working-directory: website/server
-        run: npm run bundle
+        run: node --run bundle

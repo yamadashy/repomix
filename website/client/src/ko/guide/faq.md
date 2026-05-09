@@ -90,7 +90,7 @@ repomix --init
 
 ### Repomix는 C#, Python, Java, Go, Rust 같은 다른 언어 저장소에서도 동작하나요?
 
-예. Repomix는 프로젝트 파일을 읽어 AI 도구에 맞게 포맷하므로 어떤 프로그래밍 언어로 작성된 저장소도 패킹할 수 있습니다. CLI를 실행하려면 Node.js 20 이상이 필요합니다. Tree-sitter 기반 코드 압축 같은 일부 고급 기능은 언어별 파서 지원 여부에 따라 달라질 수 있습니다.
+예. Repomix는 프로젝트 파일을 읽어 AI 도구에 맞게 포맷하므로 어떤 프로그래밍 언어로 작성된 저장소도 패킹할 수 있습니다. CLI를 실행하려면 Node.js 22 이상이 필요합니다. Tree-sitter 기반 코드 압축 같은 일부 고급 기능은 언어별 파서 지원 여부에 따라 달라질 수 있습니다.
 
 ### Hermes Agent, OpenClaw 또는 다른 MCP 호환 에이전트와 Repomix를 사용할 수 있나요?
 

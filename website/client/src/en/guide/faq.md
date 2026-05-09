@@ -15,7 +15,7 @@ Repomix packs a repository into a single AI-friendly file so you can give an AI 
 
 ### Does Repomix work with C#, Python, Java, Go, Rust, or other languages?
 
-Yes. Repomix can pack repositories written in any programming language because it reads files from your project and formats them for AI tools. Repomix itself runs on Node.js, so you need Node.js 20 or later when using the CLI. Some advanced features, such as Tree-sitter code compression, depend on language parser support and may vary by language.
+Yes. Repomix can pack repositories written in any programming language because it reads files from your project and formats them for AI tools. Repomix itself runs on Node.js, so you need Node.js 22 or later when using the CLI. Some advanced features, such as Tree-sitter code compression, depend on language parser support and may vary by language.
 
 See [Installation](/guide/installation) for runtime requirements.
 
