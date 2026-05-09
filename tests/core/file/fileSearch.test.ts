@@ -52,6 +52,8 @@ describe('fileSearch', () => {
     });
     // Default mock for globby
     vi.mocked(globby).mockResolvedValue([]);
+    // Default mock for fs.readdir (used by collectIgnoreFilePatterns prescan)
+    vi.mocked(fs.readdir as (path: string, opts: object) => Promise<import('node:fs').Dirent<string>[]>).mockResolvedValue([]);
   });
 
   describe('getIgnoreFilePaths', () => {
@@ -279,6 +281,8 @@ node_modules
         hasAllPermission: true,
         details: { read: true, write: true, execute: true },
       });
+      // Default mock for fs.readdir (used by collectIgnoreFilePatterns prescan)
+      vi.mocked(fs.readdir as (path: string, opts: object) => Promise<import('node:fs').Dirent<string>[]>).mockResolvedValue([]);
     });
 
     test('should call globby with correct parameters', async () => {
@@ -301,8 +305,8 @@ node_modules
         expect.objectContaining({
           cwd: '/mock/root',
           ignore: expect.arrayContaining(['*.custom']),
-          gitignore: true,
-          ignoreFiles: expect.arrayContaining(['**/.repomixignore']),
+          gitignore: false,
+          ignoreFiles: [],
           onlyFiles: true,
           absolute: false,
           dot: true,
@@ -409,11 +413,11 @@ node_modules
       expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-parent.js');
       expect(result.emptyDirPaths).toEqual([]);
 
-      // Verify gitignore option was passed to globby
+      // Verify gitignore is disabled (patterns pre-collected by prescan into ignore array)
       expect(globby).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          gitignore: true,
+          gitignore: false,
         }),
       );
     });
@@ -469,11 +473,11 @@ node_modules
       expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-parent.js');
       expect(result.emptyDirPaths).toEqual([]);
 
-      // Verify ignoreFiles option includes .ignore
+      // Verify ignoreFiles is disabled (patterns pre-collected by prescan into ignore array)
       expect(globby).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          ignoreFiles: expect.arrayContaining(['**/.ignore']),
+          ignoreFiles: [],
         }),
       );
     });
@@ -529,11 +533,11 @@ node_modules
       expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-repomix.js');
       expect(result.emptyDirPaths).toEqual([]);
 
-      // Verify ignoreFiles option includes .repomixignore
+      // Verify ignoreFiles is disabled (patterns pre-collected by prescan into ignore array)
       expect(globby).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          ignoreFiles: expect.arrayContaining(['**/.repomixignore']),
+          ignoreFiles: [],
         }),
       );
     });
@@ -698,11 +702,11 @@ node_modules
       expect(ignorePatterns).toContain('.git');
       expect(ignorePatterns).not.toContain('.git/**');
 
-      // Verify gitignore option was passed (enables parent .gitignore handling)
+      // Verify gitignore is disabled (patterns pre-collected by prescan into ignore array)
       expect(globby).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          gitignore: true,
+          gitignore: false,
         }),
       );
     });
@@ -998,8 +1002,8 @@ node_modules
 
         expect(options).toMatchObject({
           cwd: '/test/root',
-          gitignore: true,
-          ignoreFiles: expect.arrayContaining(['**/.repomixignore']),
+          gitignore: false,
+          ignoreFiles: [],
           absolute: false,
           dot: true,
           followSymbolicLinks: false,
