@@ -53,7 +53,9 @@ describe('fileSearch', () => {
     // Default mock for globby
     vi.mocked(globby).mockResolvedValue([]);
     // Default mock for fs.readdir (used by collectIgnoreFilePatterns prescan)
-    vi.mocked(fs.readdir as (path: string, opts: object) => Promise<import('node:fs').Dirent<string>[]>).mockResolvedValue([]);
+    vi.mocked(
+      fs.readdir as (path: string, opts: object) => Promise<import('node:fs').Dirent<string>[]>,
+    ).mockResolvedValue([]);
   });
 
   describe('getIgnoreFilePaths', () => {
@@ -282,7 +284,9 @@ node_modules
         details: { read: true, write: true, execute: true },
       });
       // Default mock for fs.readdir (used by collectIgnoreFilePatterns prescan)
-      vi.mocked(fs.readdir as (path: string, opts: object) => Promise<import('node:fs').Dirent<string>[]>).mockResolvedValue([]);
+      vi.mocked(
+        fs.readdir as (path: string, opts: object) => Promise<import('node:fs').Dirent<string>[]>,
+      ).mockResolvedValue([]);
     });
 
     test('should call globby with correct parameters', async () => {
