@@ -63,6 +63,22 @@ const getCompiledTemplate = async (style: string): Promise<Handlebars.TemplateDe
   return compiled;
 };
 
+/**
+ * Kick off Handlebars + template loading for a given style so that the
+ * compiled template is already cached when generateHandlebarOutput runs.
+ * Call this as early as possible (e.g. during file collection) to overlap
+ * the ~50 ms load cost with other pipeline work.
+ *
+ * Fire-and-forget — errors are non-fatal because getCompiledTemplate
+ * retries the load on demand.
+ */
+export const prefetchCompiledTemplate = (style: string): void => {
+  // Only Handlebars-rendered styles need pre-loading; JSON / parsable-XML
+  // use different code paths that don't hit getCompiledTemplate().
+  if (style !== 'xml' && style !== 'markdown' && style !== 'plain') return;
+  getCompiledTemplate(style).catch(() => {});
+};
+
 const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
   const maxBackticks = files
     .flatMap((file) => file.content.match(/`+/g) ?? [])
@@ -87,7 +103,25 @@ const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string
   return lineCounts;
 };
 
-export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+export const createRenderContext = (
+  outputGeneratorContext: OutputGeneratorContext,
+  opts: { needsLineCounts?: boolean } = {},
+): RenderContext => {
+  const style = outputGeneratorContext.config.output.style;
+
+  // calculateMarkdownDelimiter scans every file for backtick runs (~4 ms for
+  // 1 000 files). Only the markdown template uses this value; all other styles
+  // can skip the scan and use the default fence.
+  const markdownCodeBlockDelimiter =
+    style === 'markdown' ? calculateMarkdownDelimiter(outputGeneratorContext.processedFiles) : '```';
+
+  // calculateFileLineCounts counts newlines in every file (~6 ms for 1 000 files).
+  // The result is only referenced by the skill-generation path
+  // (calculateStatistics / packSkill). Regular output templates do not use it,
+  // so callers that need the counts must pass needsLineCounts: true.
+  const fileLineCounts =
+    opts.needsLineCounts === true ? calculateFileLineCounts(outputGeneratorContext.processedFiles) : {};
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -101,12 +135,12 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    fileLineCounts,
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    markdownCodeBlockDelimiter,
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,

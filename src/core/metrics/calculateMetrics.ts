@@ -60,19 +60,81 @@ const defaultDeps = {
 };
 
 /**
+ * Returns the byte offset at which `file.content` begins in `output`, using
+ * a style-specific path anchor to disambiguate when the same text appears
+ * verbatim inside another file earlier in the output.
+ *
+ * XML:      `<file path="PATH">\n`
+ * Markdown: `## File: PATH\n{fence}{ext}\n`  (fence line is scanned past)
+ * Plain:    `================\nFile: PATH\n================\n`
+ *
+ * Returns `null` for unsupported styles or when the anchor / content is not found.
+ */
+const getFileContentStart = (
+  output: string,
+  file: ProcessedFile,
+  style: string,
+  searchFrom: number,
+): number | null => {
+  if (file.content.length === 0) return null;
+
+  if (style === 'xml') {
+    // XML template: `<file path="PATH">\nCONTENT\n</file>`
+    const anchor = `<file path="${file.path}">\n`;
+    const anchorIdx = output.indexOf(anchor, searchFrom);
+    if (anchorIdx === -1) return null;
+    const contentStart = anchorIdx + anchor.length;
+    if (!output.startsWith(file.content, contentStart)) return null;
+    return contentStart;
+  }
+
+  if (style === 'plain') {
+    // Plain template: `================\nFile: PATH\n================\nCONTENT`
+    const anchor = `File: ${file.path}\n`;
+    const anchorIdx = output.indexOf(anchor, searchFrom);
+    if (anchorIdx === -1) return null;
+    // Skip past the closing separator line (16 '=' characters + '\n')
+    const separatorEnd = output.indexOf('\n', anchorIdx + anchor.length);
+    if (separatorEnd === -1) return null;
+    const contentStart = separatorEnd + 1;
+    if (!output.startsWith(file.content, contentStart)) return null;
+    return contentStart;
+  }
+
+  if (style === 'markdown') {
+    // Markdown template: `## File: PATH\n{fence}{ext}\nCONTENT\n{fence}`
+    const anchor = `## File: ${file.path}\n`;
+    const anchorIdx = output.indexOf(anchor, searchFrom);
+    if (anchorIdx === -1) return null;
+    // Skip past the code fence line (e.g. "```ts\n")
+    const fenceLineEnd = output.indexOf('\n', anchorIdx + anchor.length);
+    if (fenceLineEnd === -1) return null;
+    const contentStart = fenceLineEnd + 1;
+    if (!output.startsWith(file.content, contentStart)) return null;
+    return contentStart;
+  }
+
+  return null;
+};
+
+/**
  * Extract the "wrapper" portion of a generated output: the output string minus
  * every file's content. Returns `null` if any file's content cannot be located
  * in the output (e.g., the template escaped it, the output was split, or the
  * processedFiles order does not match the output order).
  *
+ * Uses style-specific path anchors (e.g. `<file path="...">`) to find the
+ * correct occurrence of each file's content even when the same content appears
+ * verbatim inside another file earlier in the output. Falls back to a simple
+ * forward cursor scan for styles where no anchor is available.
+ *
  * Assumes `processedFilesInOutputOrder` lists files in the same order they
- * appear in `output`. A single forward pass with `indexOf(content, cursor)`
- * is enough and handles identical content between files (each occurrence is
- * consumed in order).
+ * appear in the generated output.
  */
 export const extractOutputWrapper = (
   output: string,
   processedFilesInOutputOrder: ReadonlyArray<ProcessedFile>,
+  style?: string,
 ): string | null => {
   const wrapperSegments: string[] = [];
   let cursor = 0;
@@ -81,10 +143,24 @@ export const extractOutputWrapper = (
     // (their contribution to sum-of-file-tokens is zero anyway).
     if (file.content.length === 0) continue;
 
-    const idx = output.indexOf(file.content, cursor);
-    if (idx === -1) {
-      return null;
+    let idx: number;
+
+    if (style && (style === 'xml' || style === 'plain' || style === 'markdown')) {
+      // Use path anchors to find the correct occurrence of file content,
+      // avoiding false matches when this file's text appears inside another file.
+      const contentStart = getFileContentStart(output, file, style, cursor);
+      if (contentStart === null) {
+        return null;
+      }
+      idx = contentStart;
+    } else {
+      // Fallback: simple forward scan
+      idx = output.indexOf(file.content, cursor);
+      if (idx === -1) {
+        return null;
+      }
     }
+
     wrapperSegments.push(output.slice(cursor, idx));
     cursor = idx + file.content.length;
   }
@@ -150,7 +226,8 @@ export const calculateMetrics = async (
     // the full ~4 MB output in 200 KB chunks. Falls back to calculateOutputMetrics
     // for JSON/parsable-XML/split output where indexOf can't find verbatim content.
     const singleOutput = canUseFastOutputTokenPath(config) && outputParts.length === 1 ? outputParts[0] : null;
-    const outputWrapper = singleOutput !== null ? extractOutputWrapper(singleOutput, processedFiles) : null;
+    const outputWrapper =
+      singleOutput !== null ? extractOutputWrapper(singleOutput, processedFiles, config.output.style) : null;
     if (singleOutput !== null && outputWrapper === null) {
       logger.trace('Fast-path unavailable, falling back to full output tokenization');
     }

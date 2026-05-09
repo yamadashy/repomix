@@ -111,7 +111,9 @@ export const generateSkillReferences = async (
     gitDiffResult,
     gitLogResult,
   );
-  const renderContext = createRenderContext(outputGeneratorContext);
+  // needsLineCounts=true: the skill path uses fileLineCounts for statistics
+  // (calculateStatistics) and tree-with-line-counts rendering.
+  const renderContext = createRenderContext(outputGeneratorContext, { needsLineCounts: true });
 
   // Calculate statistics
   const statistics = calculateStatistics(sortedProcessedFiles, renderContext.fileLineCounts);

@@ -13,6 +13,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import { prefetchCompiledTemplate } from './output/outputGenerate.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import {
@@ -183,6 +184,11 @@ export const pack = async (
     if (config.security.enableSecurityCheck && !hasExplicitScope) {
       securityTaskRunnerWithWarmup = deps.createSecurityTaskRunner(allFilePaths.length);
     }
+
+    // Kick off Handlebars + style-template loading in the background so the
+    // compiled template is ready (cache hit) when generateHandlebarOutput runs.
+    // This overlaps the ~50 ms load with the collectFiles + security-check phase.
+    prefetchCompiledTemplate(config.output.style);
 
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
