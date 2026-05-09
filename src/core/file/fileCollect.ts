@@ -10,6 +10,10 @@ import type { RawFile } from './fileTypes.js';
 // 50 balances I/O throughput with FD/memory safety across different machines.
 const FILE_COLLECT_CONCURRENCY = 50;
 
+// Default batch size for the optional `onBatch` streaming callback. Matches
+// the security-check worker batch size so caller-side re-batching is unnecessary.
+const DEFAULT_STREAM_BATCH_SIZE = 50;
+
 export interface SkippedFileInfo {
   path: string;
   reason: FileSkipReason;
@@ -18,6 +22,21 @@ export interface SkippedFileInfo {
 export interface FileCollectResults {
   rawFiles: RawFile[];
   skippedFiles: SkippedFileInfo[];
+}
+
+export interface CollectFilesOptions {
+  /**
+   * Fires synchronously each time `streamBatchSize` raw files have been read,
+   * letting downstream consumers (e.g. the security check) start work while
+   * collection is still in flight. The callback runs on the main event-loop
+   * tick that completed the file read; do not `await` long-running work
+   * inside it — return quickly (e.g. dispatch to a worker pool and stash the
+   * promise for later) so the read pool keeps draining.
+   * The final partial batch (if any) is delivered after all reads complete.
+   */
+  onBatch?: (batch: RawFile[]) => void;
+  /** Defaults to {@link DEFAULT_STREAM_BATCH_SIZE} (50). */
+  streamBatchSize?: number;
 }
 
 const promisePool = async <T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> => {
@@ -44,6 +63,7 @@ export const collectFiles = async (
   deps = {
     readRawFile: defaultReadRawFile,
   },
+  options: CollectFilesOptions = {},
 ): Promise<FileCollectResults> => {
   const startTime = process.hrtime.bigint();
   logger.trace(`Starting file collection for ${filePaths.length} files`);
@@ -51,6 +71,19 @@ export const collectFiles = async (
   let completedTasks = 0;
   const totalTasks = filePaths.length;
   const maxFileSize = config.input.maxFileSize;
+
+  // Streaming-batch state: keep a pending bucket of successfully-read files and
+  // hand it off to `onBatch` whenever it reaches the configured size. This lets
+  // the security check overlap with the rest of file I/O instead of running
+  // strictly afterwards. `pendingBatch` is shared across the up-to-50 concurrent
+  // promisePool coroutines, but the push + length check + swap below is a
+  // synchronous sequence between two `await` points (`readRawFile` above and
+  // the implicit yield on the next loop iteration), so JavaScript's
+  // single-threaded execution guarantees no other coroutine observes the
+  // intermediate state.
+  const onBatch = options.onBatch;
+  const streamBatchSize = options.streamBatchSize ?? DEFAULT_STREAM_BATCH_SIZE;
+  let pendingBatch: RawFile[] = [];
 
   const results = await promisePool(filePaths, FILE_COLLECT_CONCURRENCY, async (filePath) => {
     const fullPath = path.resolve(rootDir, filePath);
@@ -60,8 +93,25 @@ export const collectFiles = async (
     progressCallback(`Collect file... (${completedTasks}/${totalTasks}) ${pc.dim(filePath)}`);
     logger.trace(`Collect files... (${completedTasks}/${totalTasks}) ${filePath}`);
 
+    if (onBatch !== undefined && result.content !== null) {
+      pendingBatch.push({ path: filePath, content: result.content });
+      if (pendingBatch.length >= streamBatchSize) {
+        const flushed = pendingBatch;
+        pendingBatch = [];
+        onBatch(flushed);
+      }
+    }
+
     return { filePath, result };
   });
+
+  // Flush the final partial batch — collectFiles guarantees onBatch has seen
+  // every successfully-read file before returning.
+  if (onBatch !== undefined && pendingBatch.length > 0) {
+    const flushed = pendingBatch;
+    pendingBatch = [];
+    onBatch(flushed);
+  }
 
   const rawFiles: RawFile[] = [];
   const skippedFiles: SkippedFileInfo[] = [];

@@ -143,4 +143,71 @@ describe('fileCollect', () => {
 
     expect(mockProgress).toHaveBeenCalledTimes(2);
   });
+
+  describe('onBatch streaming', () => {
+    it('should emit a batch once streamBatchSize successful reads have accumulated', async () => {
+      const mockFilePaths = ['a.txt', 'b.txt', 'c.txt', 'd.txt', 'e.txt'];
+      const mockConfig = createMockConfig();
+      mockReadRawFile.mockResolvedValue({ content: 'content' });
+
+      const onBatch = vi.fn();
+      await collectFiles(
+        mockFilePaths,
+        '/root',
+        mockConfig,
+        () => {},
+        { readRawFile: mockReadRawFile },
+        { onBatch, streamBatchSize: 2 },
+      );
+
+      // 5 successful reads with batchSize=2 → batches of 2, 2, and a final partial batch of 1
+      expect(onBatch).toHaveBeenCalledTimes(3);
+      expect(onBatch.mock.calls[0][0]).toHaveLength(2);
+      expect(onBatch.mock.calls[1][0]).toHaveLength(2);
+      expect(onBatch.mock.calls[2][0]).toHaveLength(1);
+
+      // Every collected file is delivered to onBatch exactly once.
+      const seen = onBatch.mock.calls.flatMap((call) => call[0].map((f: { path: string }) => f.path)).sort();
+      expect(seen).toEqual(['a.txt', 'b.txt', 'c.txt', 'd.txt', 'e.txt']);
+    });
+
+    it('should not emit skipped files via onBatch', async () => {
+      const mockFilePaths = ['ok.txt', 'skip.bin', 'ok2.txt'];
+      const mockConfig = createMockConfig();
+      mockReadRawFile.mockImplementation(async (filePath) => {
+        if (filePath.endsWith('skip.bin')) {
+          return { content: null, skippedReason: 'binary-extension' };
+        }
+        return { content: 'content' };
+      });
+
+      const onBatch = vi.fn();
+      await collectFiles(
+        mockFilePaths,
+        '/root',
+        mockConfig,
+        () => {},
+        { readRawFile: mockReadRawFile },
+        { onBatch, streamBatchSize: 5 },
+      );
+
+      // The 2 successful reads are delivered as a single final partial batch.
+      expect(onBatch).toHaveBeenCalledTimes(1);
+      expect(onBatch.mock.calls[0][0]).toEqual([
+        { path: 'ok.txt', content: 'content' },
+        { path: 'ok2.txt', content: 'content' },
+      ]);
+    });
+
+    it('should not emit when no files are collected (only skipped files)', async () => {
+      const mockFilePaths = ['skip.bin'];
+      const mockConfig = createMockConfig();
+      mockReadRawFile.mockResolvedValue({ content: null, skippedReason: 'binary-extension' });
+
+      const onBatch = vi.fn();
+      await collectFiles(mockFilePaths, '/root', mockConfig, () => {}, { readRawFile: mockReadRawFile }, { onBatch });
+
+      expect(onBatch).not.toHaveBeenCalled();
+    });
+  });
 });

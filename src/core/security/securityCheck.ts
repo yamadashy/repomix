@@ -96,10 +96,19 @@ export const runSecurityCheck = async (
     // Optional pre-warmed task runner. When provided, the caller owns its lifecycle
     // (creation and cleanup); when omitted, we create and clean up a fresh pool.
     taskRunner?: SecurityTaskRunner;
+    // Optional file-batch promises that the caller has already dispatched to
+    // `taskRunner` while file collection was still in flight. When supplied,
+    // `runSecurityCheck` skips its own file-batch dispatch and only batches the
+    // git-diff/git-log items + aggregates results across the merged set. This
+    // is what `pack()` uses to overlap the security check with collectFiles.
+    prefiredFileBatchPromises?: Promise<(SuspiciousFileResult | null)[]>[];
   } = {},
 ): Promise<SuspiciousFileResult[]> => {
   const initTaskRunnerFn = deps.initTaskRunner ?? initTaskRunner;
   const getProcessConcurrencyFn = deps.getProcessConcurrency ?? defaultGetProcessConcurrency;
+  const prefiredFileBatchPromises = deps.prefiredFileBatchPromises;
+  const usePrefired = prefiredFileBatchPromises !== undefined;
+
   const gitDiffItems: SecurityCheckItem[] = [];
   const gitLogItems: SecurityCheckItem[] = [];
 
@@ -133,17 +142,21 @@ export const runSecurityCheck = async (
     }
   }
 
-  const fileItems: SecurityCheckItem[] = rawFiles.map((file) => ({
-    filePath: file.path,
-    content: file.content,
-    type: 'file',
-  }));
+  // When file batches are pre-fired, only the git-content items still need to
+  // be dispatched here. Otherwise we batch + dispatch the rawFiles ourselves.
+  const fileItems: SecurityCheckItem[] = usePrefired
+    ? []
+    : rawFiles.map((file) => ({
+        filePath: file.path,
+        content: file.content,
+        type: 'file',
+      }));
 
-  // Combine all items, then split into batches
-  const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
-  const totalItems = allItems.length;
+  const itemsToBatch = [...fileItems, ...gitDiffItems, ...gitLogItems];
+  const fileItemCount = usePrefired ? rawFiles.length : fileItems.length;
+  const totalItems = fileItemCount + gitDiffItems.length + gitLogItems.length;
 
-  if (totalItems === 0) {
+  if (totalItems === 0 && (!usePrefired || prefiredFileBatchPromises.length === 0)) {
     return [];
   }
 
@@ -159,30 +172,49 @@ export const runSecurityCheck = async (
       maxWorkerThreads: Math.min(MAX_SECURITY_WORKER_THREADS, getProcessConcurrencyFn()),
     });
 
-  // Split items into batches to reduce IPC round-trips
+  // Batches we still need to dispatch from this call (git diff/log only when
+  // pre-fired, all items otherwise).
   const batches: SecurityCheckItem[][] = [];
-  for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-    batches.push(allItems.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < itemsToBatch.length; i += BATCH_SIZE) {
+    batches.push(itemsToBatch.slice(i, i + BATCH_SIZE));
   }
 
+  const totalBatches = batches.length + (usePrefired ? prefiredFileBatchPromises.length : 0);
+
   try {
-    logger.trace(`Starting security check for ${totalItems} files/content in ${batches.length} batches`);
+    logger.trace(`Starting security check for ${totalItems} files/content in ${totalBatches} batches`);
     const startTime = process.hrtime.bigint();
 
     let completedItems = 0;
+    const totalForProgress = totalItems;
 
-    const batchResults = await Promise.all(
-      batches.map(async (batch) => {
-        const results = await taskRunner.run({ items: batch });
+    const newBatchPromises = batches.map(async (batch) => {
+      const results = await taskRunner.run({ items: batch });
 
-        completedItems += batch.length;
-        const lastItem = batch[batch.length - 1];
-        progressCallback(`Running security check... (${completedItems}/${totalItems}) ${pc.dim(lastItem.filePath)}`);
-        logger.trace(`Running security check... (${completedItems}/${totalItems}) ${lastItem.filePath}`);
+      completedItems += batch.length;
+      const lastItem = batch[batch.length - 1];
+      progressCallback(
+        `Running security check... (${completedItems}/${totalForProgress}) ${pc.dim(lastItem.filePath)}`,
+      );
+      logger.trace(`Running security check... (${completedItems}/${totalForProgress}) ${lastItem.filePath}`);
 
-        return results;
-      }),
-    );
+      return results;
+    });
+
+    // Pre-fired batches just need to be awaited and counted toward progress.
+    const prefiredAwaits = usePrefired
+      ? prefiredFileBatchPromises.map((p, idx) =>
+          p.then((results) => {
+            completedItems += results.length;
+            progressCallback(
+              `Running security check... (${completedItems}/${totalForProgress}) batch ${idx + 1}/${prefiredFileBatchPromises.length}`,
+            );
+            return results;
+          }),
+        )
+      : [];
+
+    const batchResults = await Promise.all([...newBatchPromises, ...prefiredAwaits]);
 
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1e6;

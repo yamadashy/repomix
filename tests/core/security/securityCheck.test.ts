@@ -227,4 +227,66 @@ describe('runSecurityCheck', () => {
     // With batch size 50, all in a single batch
     expect(progressCallback).toHaveBeenCalledTimes(1);
   });
+
+  describe('prefiredFileBatchPromises', () => {
+    it('should skip its own file-batch dispatch and aggregate pre-fired results', async () => {
+      // Simulate the packager streaming path: caller has already dispatched a
+      // batch to the worker and stashed the resulting promise.
+      const prefiredResult = await securityCheckWorker({
+        items: mockFiles.map((file) => ({ filePath: file.path, content: file.content, type: 'file' })),
+      });
+      const prefiredPromise = Promise.resolve(prefiredResult);
+
+      const taskRunnerRun = vi.fn();
+      const stubTaskRunner = {
+        run: taskRunnerRun,
+        cleanup: async () => {},
+      };
+
+      const result = await runSecurityCheck([...mockFiles], () => {}, undefined, undefined, {
+        taskRunner: stubTaskRunner,
+        prefiredFileBatchPromises: [prefiredPromise],
+      });
+
+      // Files were already dispatched by the caller — runSecurityCheck must not
+      // call taskRunner.run for them again. (It would only call run if there were
+      // git-diff/log items still to dispatch, and there aren't any here.)
+      expect(taskRunnerRun).not.toHaveBeenCalled();
+
+      // Suspicious files from the pre-fired batch are still surfaced.
+      expect(result).toHaveLength(1);
+      expect(result[0].filePath).toBe('test1.js');
+    });
+
+    it('should still dispatch git diff/log items when file batches are pre-fired', async () => {
+      const prefiredResult = await securityCheckWorker({
+        items: mockFiles.map((file) => ({ filePath: file.path, content: file.content, type: 'file' })),
+      });
+      const prefiredPromise = Promise.resolve(prefiredResult);
+
+      const taskRunnerRun = vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
+        return await securityCheckWorker(task);
+      });
+      const stubTaskRunner = {
+        run: taskRunnerRun,
+        cleanup: async () => {},
+      };
+
+      const gitDiffResult: GitDiffResult = {
+        workTreeDiffContent: 'diff --git a/test.js b/test.js\n+const secret = "password123";',
+        stagedDiffContent: '',
+      };
+
+      await runSecurityCheck([...mockFiles], () => {}, gitDiffResult, undefined, {
+        taskRunner: stubTaskRunner,
+        prefiredFileBatchPromises: [prefiredPromise],
+      });
+
+      // The git-diff item still needs to be dispatched — should be 1 batch.
+      expect(taskRunnerRun).toHaveBeenCalledTimes(1);
+      const dispatchedTask = taskRunnerRun.mock.calls[0][0];
+      expect(dispatchedTask.items).toHaveLength(1);
+      expect(dispatchedTask.items[0].type).toBe('gitDiff');
+    });
+  });
 });

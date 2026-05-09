@@ -87,7 +87,16 @@ describe('packager', () => {
     const result = await pack(['root'], mockConfig, progressCallback, mockDeps);
 
     expect(mockDeps.searchFiles).toHaveBeenCalledWith('root', mockConfig, undefined);
-    expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback);
+    expect(mockDeps.collectFiles).toHaveBeenCalledWith(
+      mockFilePaths,
+      'root',
+      mockConfig,
+      progressCallback,
+      undefined,
+      // Streams collected raw-file batches to the security worker pool while
+      // collectFiles is still draining; see pack() in src/core/packager.ts.
+      expect.objectContaining({ onBatch: expect.any(Function) }),
+    );
     expect(mockDeps.validateFileSafety).toHaveBeenCalled();
     expect(mockDeps.processFiles).toHaveBeenCalled();
     expect(mockDeps.produceOutput).toHaveBeenCalled();

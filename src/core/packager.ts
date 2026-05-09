@@ -197,6 +197,39 @@ export const pack = async (
     // This overlaps the ~50 ms load with the collectFiles + security-check phase.
     prefetchCompiledTemplate(config.output.style);
 
+    // Stream collected file batches into the security worker pool while
+    // collectFiles is still in flight. The security check normally runs
+    // sequentially after file collection finishes (~95 ms wall on a 1k-file
+    // warm run), but its only file-content dependency is the rawFiles array;
+    // by handing each 50-file batch off to the pre-warmed security task
+    // runner the moment it is ready, the per-file scan overlaps with the
+    // remaining file reads instead of stretching the critical path. The
+    // git-diff/log items are dispatched later inside `validateFileSafety`
+    // because they are produced by the parallel git operations and would
+    // otherwise force us to stall.
+    const securityTaskRunner = securityTaskRunnerWithWarmup?.taskRunner;
+    const prefiredSecurityBatchPromises: Promise<(SuspiciousFileResult | null)[]>[] = [];
+    const onSecurityBatch =
+      config.security.enableSecurityCheck && securityTaskRunner
+        ? (batch: { path: string; content: string }[]) => {
+            if (batch.length === 0) return;
+            const dispatched = securityTaskRunner.run({
+              items: batch.map((file) => ({
+                filePath: file.path,
+                content: file.content,
+                type: 'file',
+              })),
+            });
+            // Attach a no-op catch so a worker rejection does not surface as an
+            // unhandled-rejection warning if the pipeline aborts before
+            // `validateFileSafety` (which awaits this array via runSecurityCheck)
+            // is reached. The original promise is still pushed for awaiting,
+            // so a real failure still propagates through Promise.all.
+            dispatched.catch(() => {});
+            prefiredSecurityBatchPromises.push(dispatched);
+          }
+        : undefined;
+
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
@@ -208,7 +241,9 @@ export const pack = async (
         async () =>
           await Promise.all(
             sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-              deps.collectFiles(filePaths, rootDir, config, progressCallback),
+              deps.collectFiles(filePaths, rootDir, config, progressCallback, undefined, {
+                onBatch: onSecurityBatch,
+              }),
             ),
           ),
       ),
@@ -226,7 +261,8 @@ export const pack = async (
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
         deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
-          taskRunner: securityTaskRunnerWithWarmup?.taskRunner,
+          taskRunner: securityTaskRunner,
+          prefiredFileBatchPromises: onSecurityBatch ? prefiredSecurityBatchPromises : undefined,
         }),
       ),
       withMemoryLogging('Process Files', () => {

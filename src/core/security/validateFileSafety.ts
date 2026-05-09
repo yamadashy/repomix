@@ -23,6 +23,11 @@ export const validateFileSafety = async (
     // reuses it instead of creating a fresh pool, letting the caller (packager)
     // overlap worker module loading with earlier pipeline phases.
     taskRunner?: SecurityTaskRunner;
+    // File-batch promises that the caller (packager) already dispatched while
+    // collectFiles was streaming raw files in. When provided, `runSecurityCheck`
+    // skips re-batching the same files and only awaits these promises +
+    // dispatches the git-diff/log items.
+    prefiredFileBatchPromises?: Promise<(SuspiciousFileResult | null)[]>[];
   } = {},
 ) => {
   const runSecurityCheckFn = deps.runSecurityCheck ?? runSecurityCheck;
@@ -36,6 +41,7 @@ export const validateFileSafety = async (
     progressCallback('Running security check...');
     const allResults = await runSecurityCheckFn(rawFiles, progressCallback, gitDiffResult, gitLogResult, {
       taskRunner: deps.taskRunner,
+      prefiredFileBatchPromises: deps.prefiredFileBatchPromises,
     });
 
     // Separate Git diff and Git log results from regular file results
