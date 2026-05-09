@@ -1,7 +1,7 @@
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { GlobEntry, Options as GlobbyOptions } from 'globby';
+import type { Options as GlobbyOptions, GlobEntry } from 'globby';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { mapWithConcurrency } from '../../shared/asyncMap.js';
