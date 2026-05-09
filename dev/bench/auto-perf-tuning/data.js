@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778291145685,
+  "lastUpdate": 1778297711100,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -8055,6 +8055,51 @@ window.BENCHMARK_DATA = {
             "range": "±53",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1542ms, Q3: 1595ms\nAll times: 1525, 1527, 1533, 1538, 1541, 1542, 1542, 1548, 1556, 1557, 1558, 1561, 1566, 1573, 1574, 1595, 1616, 1641, 1680, 1876ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "91a643ef51849ec61cb9ae7c8f0f486d92d4b77d",
+          "message": "perf(core): Add content-addressed token-count disk cache\n\nIntroduce a persistent token-count cache keyed by MD5(content) + encoding.\nOn warm runs (re-packing the same repo), the 600ms BPE metrics phase is\nbypassed entirely, cutting total wall-clock time by ~28% (553ms).\n\n- tokenCountCache.ts: new module — load/save JSON from /tmp/, in-memory\n  Map<string,number> with 100k-entry LRU eviction and CACHE_VERSION guard\n- calculateFileMetrics.ts: classify files as cache-hit / cache-miss before\n  dispatching to workers; merge results back in original order\n- packager.ts: fire-and-forget cache load at t=0; await before metrics;\n  save after metrics completes\n\nBenchmark (n=30, paired t-test on repomix self-pack, warm cache):\n  Baseline (no cache): 1949.9ms +/- 73.0ms\n  Candidate (warm):    1396.9ms +/- 72.9ms\n  Improvement:         553ms (28.4%), t=28.20\n\nhttps://claude.ai/code/session_01Fm25x51fmGGeFMJyCm1CER",
+          "timestamp": "2026-05-09T12:33:31+09:00",
+          "tree_id": "7d12c7ec576c9d0dbf7199aa6b483caef5961d5b",
+          "url": "https://github.com/yamadashy/repomix/commit/91a643ef51849ec61cb9ae7c8f0f486d92d4b77d"
+        },
+        "date": 1778297710479,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 501,
+            "range": "±50",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 480ms, Q3: 530ms\nAll times: 467, 472, 472, 472, 476, 478, 479, 480, 481, 486, 487, 488, 491, 495, 497, 501, 505, 509, 510, 510, 513, 529, 530, 531, 541, 542, 573, 574, 577, 772ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 783,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 772ms, Q3: 788ms\nAll times: 738, 749, 767, 768, 769, 772, 772, 773, 775, 779, 783, 783, 784, 786, 786, 788, 794, 795, 796, 801ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1051,
+            "range": "±12",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1047ms, Q3: 1059ms\nAll times: 1030, 1032, 1038, 1039, 1045, 1047, 1047, 1048, 1049, 1049, 1051, 1056, 1056, 1057, 1059, 1059, 1059, 1064, 1064, 1065ms"
           }
         ]
       }
