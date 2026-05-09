@@ -10,6 +10,7 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
+import { getCacheSize, isCleanCached, markClean, securityCacheKey } from './securityCheckCache.js';
 import type { SecurityCheckItem, SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
 
 export type { SecurityCheckType } from './workers/securityCheckWorker.js';
@@ -147,13 +148,63 @@ export const runSecurityCheck = async (
     return [];
   }
 
+  // Resolve cache hits before dispatching to workers. Each MD5 (~50 µs per
+  // 5 KB file) is far cheaper than a worker IPC + secretlint scan
+  // (~5–15 ms per 50-item batch), so this filter pays for itself the first
+  // time a cache entry hits and removes the entire security worker pool from
+  // the wall-clock critical path on warm runs.
+  //
+  // Skip the entire pre-hash pass on a cold cache (size === 0): every item
+  // is guaranteed to be a miss, so MD5'ing them up front would just add
+  // ~30 ms of blocking work to the security-check critical path with no
+  // hits to recoup it. On a cold run we still populate the cache from each
+  // batch's `.then()` (interleaved with worker dispatch — see below), so
+  // subsequent runs become warm without a one-time double-hashing penalty.
+  //
+  // Only files (not git diffs/logs) are cache-eligible: git diffs change
+  // every workspace edit and git logs change with every commit, so the cache
+  // hit rate would be ~0 for those item types and the MD5 would be pure
+  // overhead.
+  const cacheIsCold = getCacheSize() === 0;
+  const uncachedItems: SecurityCheckItem[] = [];
+  // Track each uncached file item's cache key so we can mark it clean after
+  // the worker reports a null (no-issues) result. Aligned by index with
+  // `uncachedItems`. `null` for non-file items (git diffs/logs) and for file
+  // items whose key was deferred to the post-worker step on a cold cache.
+  const uncachedFileKeys: (string | null)[] = [];
+  let cacheHits = 0;
+
+  for (const item of allItems) {
+    if (!cacheIsCold && item.type === 'file') {
+      const key = securityCacheKey(item.content);
+      if (isCleanCached(key)) {
+        cacheHits++;
+        continue;
+      }
+      uncachedItems.push(item);
+      uncachedFileKeys.push(key);
+    } else {
+      uncachedItems.push(item);
+      uncachedFileKeys.push(null);
+    }
+  }
+
+  logger.trace(`Security check cache: ${cacheHits} hits, ${uncachedItems.length} misses`);
+
+  if (uncachedItems.length === 0) {
+    progressCallback(`Running security check... (${totalItems}/${totalItems})`);
+    logger.trace('Security check completed: all items served from cache');
+    return [];
+  }
+
   const ownsTaskRunner = !deps.taskRunner;
 
-  // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
+  // numOfTasks sizes the pool from the (possibly reduced) uncached count so we
+  // do not over-spawn workers for a near-fully-cached run.
   const taskRunner =
     deps.taskRunner ??
     initTaskRunnerFn<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-      numOfTasks: totalItems,
+      numOfTasks: uncachedItems.length,
       workerType: 'securityCheck',
       runtime: 'worker_threads',
       maxWorkerThreads: Math.min(MAX_SECURITY_WORKER_THREADS, getProcessConcurrencyFn()),
@@ -161,19 +212,45 @@ export const runSecurityCheck = async (
 
   // Split items into batches to reduce IPC round-trips
   const batches: SecurityCheckItem[][] = [];
-  for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-    batches.push(allItems.slice(i, i + BATCH_SIZE));
+  // Track each batch's starting offset into `uncachedItems` so we can map
+  // worker-returned results back to their original cache keys.
+  const batchOffsets: number[] = [];
+  for (let i = 0; i < uncachedItems.length; i += BATCH_SIZE) {
+    batchOffsets.push(i);
+    batches.push(uncachedItems.slice(i, i + BATCH_SIZE));
   }
 
   try {
-    logger.trace(`Starting security check for ${totalItems} files/content in ${batches.length} batches`);
+    logger.trace(
+      `Starting security check for ${uncachedItems.length}/${totalItems} uncached items in ${batches.length} batches`,
+    );
     const startTime = process.hrtime.bigint();
 
-    let completedItems = 0;
+    let completedItems = cacheHits;
 
     const batchResults = await Promise.all(
-      batches.map(async (batch) => {
+      batches.map(async (batch, batchIdx) => {
         const results = await taskRunner.run({ items: batch });
+
+        // Cache clean (null-result) file items. Items that returned a
+        // suspicious finding are NOT cached: re-runs should re-report them,
+        // and the cache file must never hold message text that could quote
+        // secret material from user code.
+        //
+        // Hashing happens here (after the worker resolves) rather than in a
+        // single up-front pass so that on a cold cache the ~30 ms of MD5
+        // work is interleaved with the worker dispatch wall-time instead of
+        // serialised in front of it. On the warm path the key was already
+        // computed by the cache pre-check and is reused; on the cold path
+        // (key === null for file items) we compute it lazily here.
+        const offset = batchOffsets[batchIdx];
+        for (let i = 0; i < results.length; i++) {
+          if (results[i] !== null) continue;
+          const item = batch[i];
+          if (item.type !== 'file') continue;
+          const key = uncachedFileKeys[offset + i] ?? securityCacheKey(item.content);
+          markClean(key);
+        }
 
         completedItems += batch.length;
         const lastItem = batch[batch.length - 1];

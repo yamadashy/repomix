@@ -1,10 +1,11 @@
 // src/core/security/securityCheck.test.ts
 
 import pc from 'picocolors';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
+import { __resetForTests as resetSecurityCheckCache } from '../../../src/core/security/securityCheckCache.js';
 import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
@@ -54,6 +55,14 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
 };
 
 describe('runSecurityCheck', () => {
+  // The security cache persists clean-content hashes in module-level state.
+  // Reset between tests so cache hits from earlier tests don't change which
+  // items reach the worker (and therefore which paths appear in progress
+  // callbacks).
+  beforeEach(() => {
+    resetSecurityCheckCache();
+  });
+
   it('should identify files with security issues', async () => {
     const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
