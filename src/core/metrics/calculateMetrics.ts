@@ -70,12 +70,7 @@ const defaultDeps = {
  *
  * Returns `null` for unsupported styles or when the anchor / content is not found.
  */
-const getFileContentStart = (
-  output: string,
-  file: ProcessedFile,
-  style: string,
-  searchFrom: number,
-): number | null => {
+const getFileContentStart = (output: string, file: ProcessedFile, style: string, searchFrom: number): number | null => {
   if (file.content.length === 0) return null;
 
   if (style === 'xml') {
