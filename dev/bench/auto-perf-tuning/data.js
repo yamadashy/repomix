@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778396301087,
+  "lastUpdate": 1778396472430,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -8235,6 +8235,51 @@ window.BENCHMARK_DATA = {
             "range": "±85",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1234ms, Q3: 1319ms\nAll times: 1036, 1057, 1228, 1228, 1230, 1234, 1236, 1250, 1251, 1254, 1258, 1261, 1275, 1286, 1286, 1319, 1325, 1331, 1338, 1361ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "ca44a74f3faed8c52c93135c3dbabc3d2f4e46a1",
+          "message": "perf(core): Wire warm-cache heuristic into packager and tests\n\nCompanion to the previous commit. Plumb `tokenCountCacheFileExists` into\nthe packager `defaultDeps` so the metrics warm-up sizing can be exercised\ndeterministically from tests, and add a paired test that asserts the\n2-warm-up-worker branch is taken when the persistent disk cache exists.\n\nAlso rename the cold-cache test to make the new gating explicit and refresh\nits docstring with the warm/cold distinction.\n\nhttps://claude.ai/code/session_01TJqKkJ8n3r6Pa2JdW9Vp2w",
+          "timestamp": "2026-05-10T15:59:43+09:00",
+          "tree_id": "51f7b26a76c02b8f6f70c49736d2bcd2d965424d",
+          "url": "https://github.com/yamadashy/repomix/commit/ca44a74f3faed8c52c93135c3dbabc3d2f4e46a1"
+        },
+        "date": 1778396471801,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 473,
+            "range": "±144",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 439ms, Q3: 583ms\nAll times: 409, 412, 421, 426, 426, 430, 437, 439, 441, 447, 449, 455, 457, 463, 463, 473, 482, 489, 490, 491, 559, 575, 583, 590, 600, 602, 656, 732, 760, 783ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 675,
+            "range": "±11",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 668ms, Q3: 679ms\nAll times: 656, 657, 658, 666, 666, 668, 668, 669, 669, 673, 675, 675, 677, 678, 679, 679, 680, 685, 686, 690ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 892,
+            "range": "±13",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 887ms, Q3: 900ms\nAll times: 870, 873, 874, 886, 887, 887, 888, 888, 889, 891, 892, 894, 894, 896, 897, 900, 905, 905, 916, 949ms"
           }
         ]
       }
