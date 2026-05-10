@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -107,3 +108,15 @@ export const setCached = (key: string, tokenCount: number): void => {
   entries.set(key, tokenCount);
   dirty = true;
 };
+
+/**
+ * Synchronously probe whether the on-disk cache file exists. Used at pack
+ * startup to size the metrics worker pool: when the cache is present the
+ * pipeline is likely a warm-cache repeat run that needs few or zero
+ * tokenizations, so we can afford to spin up fewer worker threads (each of
+ * which independently parses ~2.2 MB of BPE tables on first task).
+ *
+ * `existsSync` itself never throws — ENOENT, EACCES and other errors all
+ * surface as `false`, so we treat any non-existence reason as "cold".
+ */
+export const tokenCountCacheFileExists = (): boolean => existsSync(CACHE_FILE);
