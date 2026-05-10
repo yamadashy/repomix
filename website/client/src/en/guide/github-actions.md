@@ -131,7 +131,7 @@ See the [complete workflow example](https://github.com/yamadashy/repomix/blob/ma
 
 [`looptech-ai/understand-quickly`](https://github.com/looptech-ai/understand-quickly) is a public, machine-readable registry of code-knowledge and code-context artifacts. It indexes Repomix output through its [`bundle@1`](https://github.com/looptech-ai/understand-quickly/blob/main/schemas/bundle@1.json) format so AI agents (Claude, Codex, Cursor via MCP) can resolve a repo URL to its packed-context bundle.
 
-Publishing is opt-in. Drop this workflow into `.github/workflows/understand-quickly-publish.yml` to pack with Repomix and publish a small JSON pointer (the body stays in your repo and is fetched from `raw.githubusercontent.com`):
+Publishing is opt-in and only runs for public repos (the body is fetched from `raw.githubusercontent.com`). The workflow packs with Repomix, commits the output to a dedicated `understand-quickly` branch (so the URL is reachable), then publishes a small JSON pointer pinned to that commit SHA. Drop this into `.github/workflows/understand-quickly-publish.yml`:
 
 ```yaml
 name: understand-quickly publish
@@ -141,27 +141,42 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions: { contents: read }
+    permissions: { contents: write }   # needs write to commit packed output
     steps:
       - uses: actions/checkout@v4
-      - uses: yamadashy/repomix/.github/actions/repomix@main
+      - uses: yamadashy/repomix/.github/actions/repomix@main   # consider pinning @<sha>
         with: { output: repomix-output.xml, style: xml }
+      - name: Commit packed output to understand-quickly branch
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout --orphan understand-quickly
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          git add -f repomix-output.xml
+          git commit -m "chore(uq): publish $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push --force origin understand-quickly
+          echo "UQ_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - name: Build bundle@1 sidecar
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ env.UQ_SHA }}
         run: |
           node -e "
             const fs=require('fs');
             const b=fs.statSync('repomix-output.xml').size;
             fs.writeFileSync('repomix-output.bundle.json', JSON.stringify({
               format:'bundle@1',
-              manifest:{tool:'repomix',tool_version:'latest',generated_at:new Date().toISOString(),
-                file_count:0,byte_count:b,token_estimate:Math.round(b/4),format:'xml'},
-              content_url:'https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/repomix-output.xml'
+              manifest:{tool:'repomix',generated_at:new Date().toISOString(),
+                byte_count:b,token_estimate:Math.round(b/4),format:'xml'},
+              content_url:\`https://raw.githubusercontent.com/\${process.env.REPO}/\${process.env.SHA}/repomix-output.xml\`
             },null,2));"
-      - uses: looptech-ai/uq-publish-action@v0.1.0
+      - uses: looptech-ai/uq-publish-action@v0.1.0   # consider pinning @<sha>
         with:
           graph-path: repomix-output.bundle.json
           format: bundle@1
           token: ${{ secrets.UNDERSTAND_QUICKLY_TOKEN }}
 ```
 
-Set `UNDERSTAND_QUICKLY_TOKEN` to a fine-grained PAT with `Repository dispatches: write` on `looptech-ai/understand-quickly` only. Register your repo once via [`npx @understand-quickly/cli add`](https://github.com/looptech-ai/understand-quickly#add-a-repo) or the [wizard](https://looptech-ai.github.io/understand-quickly/add.html); subsequent pushes auto-refresh. See the [protocol](https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/protocol.md) and [DATA-LICENSE.md](https://github.com/looptech-ai/understand-quickly/blob/main/DATA-LICENSE.md) for the data-grant semantics — submission is opt-in, gated on the secret being set.
+Set `UNDERSTAND_QUICKLY_TOKEN` to a fine-grained PAT with `Repository dispatches: write` on `looptech-ai/understand-quickly` only. Register your repo once via [`npx @understand-quickly/cli add`](https://github.com/looptech-ai/understand-quickly#add-a-repo) or the [wizard](https://looptech-ai.github.io/understand-quickly/add.html); subsequent pushes auto-refresh. See the [protocol](https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/protocol.md) and [DATA-LICENSE.md](https://github.com/looptech-ai/understand-quickly/blob/main/DATA-LICENSE.md) for the data-grant semantics — submission is opt-in, gated on the secret being set, and only suitable for public repos.
