@@ -56,6 +56,41 @@
       matchUpdateTypes: ['major'],
       groupName: 'scripts major dependencies',
     },
+    // GitHub Actions
+    {
+      // Actions are SHA-pinned via pinact, so `pin` and `digest`
+      // updates need to be grouped alongside `minor` / `patch`.
+      matchManagers: ['github-actions'],
+      matchUpdateTypes: ['minor', 'patch', 'pin', 'digest'],
+      groupName: 'github-actions non-major dependencies',
+    },
+    {
+      matchManagers: ['github-actions'],
+      matchUpdateTypes: ['major'],
+      groupName: 'github-actions major dependencies',
+    },
+    // Dockerfiles
+    {
+      matchManagers: ['dockerfile'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'dockerfile non-major dependencies',
+    },
+    {
+      matchManagers: ['dockerfile'],
+      matchUpdateTypes: ['major'],
+      groupName: 'dockerfile major dependencies',
+    },
+    // Nix flake
+    {
+      matchManagers: ['nix'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'nix non-major dependencies',
+    },
+    {
+      matchManagers: ['nix'],
+      matchUpdateTypes: ['major'],
+      groupName: 'nix major dependencies',
+    },
   ],
   "ignoreDeps": [
     "node",

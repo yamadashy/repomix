@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "agent-carnet": {
+      "source": "yamadashy/agent-carnet",
+      "sourceType": "github",
+      "skillPath": "skills/agent-carnet/SKILL.md",
+      "computedHash": "eb9b255f9c60dcb052a890907b90082c442a6fa1dc8e0dd4b89995ff92af301c"
+    }
+  }
+}
