@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778393140782,
+  "lastUpdate": 1778421805966,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -4860,6 +4860,51 @@ window.BENCHMARK_DATA = {
             "range": "±33",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1835ms, Q3: 1868ms\nAll times: 1820, 1825, 1827, 1831, 1833, 1835, 1842, 1849, 1850, 1853, 1855, 1855, 1855, 1856, 1856, 1868, 1875, 1878, 1889, 1903ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c58db40761f4f754970f2e32e11218142e2219aa",
+          "message": "Merge pull request #1564 from yamadashy/feat/agent-carnet-skill\n\nchore(skills): Add agent-carnet skill for repository-local notebook",
+          "timestamp": "2026-05-10T23:01:30+09:00",
+          "tree_id": "d7904ca620ac83abd0ee3a2cba1d4b2bd4bd736a",
+          "url": "https://github.com/yamadashy/repomix/commit/c58db40761f4f754970f2e32e11218142e2219aa"
+        },
+        "date": 1778421804734,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 825,
+            "range": "±95",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 815ms, Q3: 910ms\nAll times: 788, 788, 791, 804, 806, 807, 811, 815, 816, 816, 821, 822, 823, 823, 823, 825, 830, 830, 844, 848, 892, 904, 910, 918, 924, 924, 935, 943, 982, 1030ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1424,
+            "range": "±36",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1410ms, Q3: 1446ms\nAll times: 1384, 1387, 1391, 1402, 1404, 1410, 1415, 1417, 1418, 1422, 1424, 1427, 1427, 1437, 1439, 1446, 1462, 1470, 1477, 1488ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1712,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1702ms, Q3: 1725ms\nAll times: 1682, 1694, 1696, 1701, 1702, 1702, 1702, 1706, 1707, 1707, 1712, 1713, 1713, 1715, 1720, 1725, 1727, 1728, 1730, 1757ms"
           }
         ]
       }
