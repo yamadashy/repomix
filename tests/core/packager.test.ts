@@ -65,6 +65,10 @@ describe('packager', () => {
         },
         warmupPromise: Promise.resolve(),
       }),
+      // Mock the security-check cache probe so the test does not depend on
+      // /tmp filesystem state from prior runs. Returning false matches the
+      // documented "force the cold-cache path" intent of this test.
+      securityCheckCacheUsable: vi.fn().mockReturnValue(false),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -197,6 +201,10 @@ describe('packager', () => {
           // metrics warm-up sizes for the cold-cache path. Tests targeting the
           // warm-cache path override this to return true.
           tokenCountCacheFileExists: vi.fn().mockReturnValue(false),
+          // Same default for the security-check cache: force the cold-cache
+          // path so the security pool warm-up gate (`!cacheFileExists()`)
+          // remains true unless a test opts in by overriding the mock.
+          securityCheckCacheUsable: vi.fn().mockReturnValue(false),
         },
       };
     };

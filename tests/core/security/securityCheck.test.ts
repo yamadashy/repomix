@@ -26,6 +26,18 @@ vi.mock('../../../src/shared/processConcurrency', () => ({
     cleanup: vi.fn(),
   })),
 }));
+// Pin the security-check cache to a clean state for every test so module-scoped
+// entries from earlier suite cases (a real module-level Map) cannot turn into
+// silent hits that bypass the worker dispatch we are trying to assert on.
+vi.mock('../../../src/core/security/securityCheckCache', () => ({
+  loadSecurityCheckCache: vi.fn().mockResolvedValue(undefined),
+  saveSecurityCheckCache: vi.fn().mockResolvedValue(undefined),
+  securityCacheKey: (content: string) => `test:${content.length}`,
+  getCachedSecurityResult: vi.fn().mockReturnValue(undefined),
+  setCachedSecurityResult: vi.fn(),
+  hasLoadedSecurityCheckEntries: vi.fn().mockReturnValue(false),
+  securityCheckCacheUsable: vi.fn().mockReturnValue(false),
+}));
 
 const mockFiles: RawFile[] = [
   {

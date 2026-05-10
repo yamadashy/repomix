@@ -22,6 +22,11 @@ import {
   type SecurityTaskRunnerWithWarmup,
   type SuspiciousFileResult,
 } from './security/securityCheck.js';
+import {
+  loadSecurityCheckCache,
+  saveSecurityCheckCache,
+  securityCheckCacheUsable,
+} from './security/securityCheckCache.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -57,6 +62,7 @@ const defaultDeps = {
   getGitDiffs,
   getGitLogs,
   tokenCountCacheFileExists,
+  securityCheckCacheUsable,
   // Lazy-load packSkill to defer importing the skill module chain
   // (skillSectionGenerators, skillStyle → Handlebars), which adds ~25ms
   // to module loading. Only used when --skill-generate is active (non-default).
@@ -93,6 +99,12 @@ export const pack = async (
   // itself takes only ~1 ms (50 KB JSON), but kicking it off here ensures it
   // overlaps with file search and collection rather than blocking metrics.
   const tokenCacheLoadPromise = loadTokenCountCache();
+
+  // Same idea for the security-check disk cache: kick off the JSON read at
+  // t=0 so it overlaps file search and collection. The cache stores per-file
+  // secretlint results keyed by `${secretlintVersion}:SHA256(content)[0:16]`,
+  // and the load typically resolves in <1 ms even for ~10 k entries.
+  const securityCacheLoadPromise = loadSecurityCheckCache();
 
   // Pre-fetch git file-change counts for sortOutputFiles while search and
   // collection are in flight, so the later sortOutputFiles call is a cache hit.
@@ -215,7 +227,20 @@ export const pack = async (
     //
     // Skipped when the security check is disabled — no pool is needed and we
     // would otherwise spawn worker threads that never run a real task.
-    if (config.security.enableSecurityCheck && !hasExplicitScope) {
+    // Skip pre-warming the security worker pool when a usable cache file
+    // is present (matching schema version AND rule fingerprint, validated
+    // synchronously by `securityCheckCacheUsable`). Cache hits short-circuit
+    // the worker dispatch entirely, so spawning workers + paying the ~50 ms
+    // `@secretlint/core` module load per worker would be pure overhead.
+    //
+    // The fingerprint check is the important bit: a cache file from a
+    // previous secretlint version still exists on disk after an upgrade,
+    // but every entry is now stale. Without the fingerprint check we'd
+    // skip warmup, then runSecurityCheck would create a fallback pool
+    // sequentially after `collectFiles`, adding ~100 ms of cold-start to
+    // the critical path. Validating the header sync up-front lets us
+    // keep the warmup overlap on the upgrade-day run.
+    if (config.security.enableSecurityCheck && !hasExplicitScope && !deps.securityCheckCacheUsable()) {
       securityTaskRunnerWithWarmup = deps.createSecurityTaskRunner(allFilePaths.length);
     }
 
@@ -245,6 +270,13 @@ export const pack = async (
 
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
+
+    // Ensure the security-check cache is loaded before runSecurityCheck reads
+    // from it. The load started at t=0 alongside file search and resolves in
+    // <1 ms, so this is almost always a no-op; the explicit await guarantees
+    // ordering on very fast machines where collectFiles could otherwise race
+    // ahead of the JSON parse.
+    await securityCacheLoadPromise;
 
     // Run security check and file processing concurrently.
     // Security check uses worker threads while file processing runs on the main thread
@@ -369,6 +401,10 @@ export const pack = async (
     // Persist the token-count cache for future runs (fire-and-forget).
     // Errors are silently swallowed inside saveTokenCountCache.
     saveTokenCountCache().catch(() => {});
+
+    // Same fire-and-forget pattern for the security-check cache. Errors are
+    // silently swallowed inside saveSecurityCheckCache.
+    saveSecurityCheckCache().catch(() => {});
 
     return result;
   } finally {

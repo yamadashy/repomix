@@ -10,6 +10,12 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
+import {
+  getCachedSecurityResult,
+  hasLoadedSecurityCheckEntries,
+  securityCacheKey,
+  setCachedSecurityResult,
+} from './securityCheckCache.js';
 import type { SecurityCheckItem, SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
 
 export type { SecurityCheckType } from './workers/securityCheckWorker.js';
@@ -139,37 +145,93 @@ export const runSecurityCheck = async (
     type: 'file',
   }));
 
-  // Combine all items, then split into batches
-  const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
-  const totalItems = allItems.length;
+  // Cache lookup pattern mirrors `calculateFileMetrics`. Skipped on cold
+  // pipelines (`!hasLoadedSecurityCheckEntries`) so we don't pay ~28 ms of
+  // SHA-256 just to record a guaranteed miss; keys are computed lazily in the
+  // result-write-back loop below to seed the cache for next run.
+  //
+  // Git diff / log items are intentionally NOT cached — their content is
+  // unique per session, so cache hit rate would be ~0 % and the SHA-256 would
+  // be pure overhead. They flow straight to the worker pool.
+  const cachedFileResults: SuspiciousFileResult[] = [];
+  const uncachedFileItems: SecurityCheckItem[] = [];
+  const uncachedFileKeys: (string | null)[] = [];
+
+  const cacheHasEntries = hasLoadedSecurityCheckEntries();
+
+  if (cacheHasEntries) {
+    for (const item of fileItems) {
+      const key = securityCacheKey(item.content);
+      // `securityCacheKey` returns null when the secretlint rule fingerprint
+      // is unavailable (rare resolver edge case). In that branch we treat
+      // the file as uncached AND record null so the writeback also skips it.
+      if (key === null) {
+        uncachedFileItems.push(item);
+        uncachedFileKeys.push(null);
+        continue;
+      }
+      const cached = getCachedSecurityResult(key);
+      if (cached !== undefined) {
+        // Cached `null` = previously checked clean (drop), `{ messages }`
+        // = previously flagged (rebuild a SuspiciousFileResult inline so
+        // the cache module exposes only the value, not the result shape).
+        if (cached !== null) {
+          cachedFileResults.push({ filePath: item.filePath, messages: cached.messages, type: item.type });
+        }
+      } else {
+        uncachedFileItems.push(item);
+        uncachedFileKeys.push(key);
+      }
+    }
+  } else {
+    // Cold cache: every file is a miss. Defer the SHA-256 cost — keys are computed
+    // lazily after the worker scan in the result-write-back loop below.
+    for (const item of fileItems) {
+      uncachedFileItems.push(item);
+      uncachedFileKeys.push(null);
+    }
+  }
+
+  const allItems = [...uncachedFileItems, ...gitDiffItems, ...gitLogItems];
+  const totalItems = fileItems.length + gitDiffItems.length + gitLogItems.length;
+  const cacheHits = fileItems.length - uncachedFileItems.length;
+  logger.trace(`Security cache: ${cacheHits} hits, ${uncachedFileItems.length} misses (file items)`);
 
   if (totalItems === 0) {
     return [];
   }
 
+  // Fast path: every file was cached AND there are no git diff/log items.
+  // No workers needed at all; skip pool init/teardown entirely.
+  if (allItems.length === 0) {
+    progressCallback(`Running security check... (${fileItems.length}/${fileItems.length})`);
+    return cachedFileResults;
+  }
+
   const ownsTaskRunner = !deps.taskRunner;
 
-  // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
+  // numOfTasks uses allItems.length (only the items actually dispatched),
+  // matching the worker pool to the residual workload after cache hits.
   const taskRunner =
     deps.taskRunner ??
     initTaskRunnerFn<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-      numOfTasks: totalItems,
+      numOfTasks: allItems.length,
       workerType: 'securityCheck',
       runtime: 'worker_threads',
       maxWorkerThreads: Math.min(MAX_SECURITY_WORKER_THREADS, getProcessConcurrencyFn()),
     });
 
-  // Split items into batches to reduce IPC round-trips
+  // Split residual (uncached + git) items into batches to reduce IPC round-trips
   const batches: SecurityCheckItem[][] = [];
   for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
     batches.push(allItems.slice(i, i + BATCH_SIZE));
   }
 
   try {
-    logger.trace(`Starting security check for ${totalItems} files/content in ${batches.length} batches`);
+    logger.trace(`Starting security check for ${allItems.length} files/content in ${batches.length} batches`);
     const startTime = process.hrtime.bigint();
 
-    let completedItems = 0;
+    let completedItems = cacheHits;
 
     const batchResults = await Promise.all(
       batches.map(async (batch) => {
@@ -188,7 +250,41 @@ export const runSecurityCheck = async (
     const duration = Number(endTime - startTime) / 1e6;
     logger.trace(`Security check completed in ${duration.toFixed(2)}ms`);
 
-    return batchResults.flat().filter((result): result is SuspiciousFileResult => result !== null);
+    const flatBatchResults = batchResults.flat();
+
+    // Write per-file results back to the cache for next time. The first
+    // `uncachedFileItems.length` entries of `flatBatchResults` are the file
+    // scan results in `allItems` order (we constructed allItems as
+    // [...uncachedFileItems, ...gitDiffItems, ...gitLogItems]). Git diff
+    // and log results are intentionally not cached.
+    //
+    // On the cold pipeline (`uncachedFileKeys[i] === null`) we hash content
+    // here for the first time. The ~28 ms total SHA-256 cost is paid once on
+    // the run that creates the cache and amortises across every subsequent
+    // run (which pays only the in-memory `Map.get` lookup and skips the
+    // ~130 ms worker-side secretlint scan entirely). Cold-pipeline overhead
+    // mirrors the existing token-count cache pattern documented elsewhere
+    // in this file's tree.
+    //
+    // `flatBatchResults[0..uncachedFileItems.length-1]` correspond to
+    // `uncachedFileItems` because we built `allItems` as
+    // `[...uncachedFileItems, ...gitDiffItems, ...gitLogItems]` and
+    // `Promise.all` preserves submission order.
+    for (let i = 0; i < uncachedFileItems.length; i++) {
+      const result = flatBatchResults[i];
+      const key = uncachedFileKeys[i] ?? securityCacheKey(uncachedFileItems[i].content);
+      // null key = rule fingerprint unavailable; skip writeback so we don't
+      // poison the cache under a different fingerprint on the next run.
+      if (key === null) continue;
+      if (result === null) {
+        setCachedSecurityResult(key, null);
+      } else {
+        setCachedSecurityResult(key, { messages: result.messages });
+      }
+    }
+
+    const workerSuspicious = flatBatchResults.filter((r): r is SuspiciousFileResult => r !== null);
+    return [...cachedFileResults, ...workerSuspicious];
   } catch (error) {
     logger.error('Error during security check:', error);
     throw error;
