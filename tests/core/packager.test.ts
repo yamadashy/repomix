@@ -193,6 +193,10 @@ describe('packager', () => {
           getGitLogs: vi.fn().mockResolvedValue(undefined),
           prefetchSortData: vi.fn().mockResolvedValue(undefined),
           sortOutputFiles: vi.fn().mockImplementation((files) => files),
+          // Default: assume the persistent token-count cache is missing so the
+          // metrics warm-up sizes for the cold-cache path. Tests targeting the
+          // warm-cache path override this to return true.
+          tokenCountCacheFileExists: vi.fn().mockReturnValue(false),
         },
       };
     };
@@ -248,12 +252,15 @@ describe('packager', () => {
       expect(cleanup).toHaveBeenCalled();
     });
 
-    test('uses 3 warm-up workers for the metrics pool when no scope is specified', async () => {
+    test('uses 3 warm-up workers for the metrics pool when no scope is specified and token cache is cold', async () => {
       // The eager metrics warm-up sizes the pool via numOfTasks. When the user did
-      // not constrain the file set (no --include / no --stdin), the metrics phase is
-      // typically long enough to amortize a 3rd worker's BPE warm-up, so we pass
-      // numOfTasks = 3 * TASKS_PER_THREAD = 600 (yielding maxThreads=min(cpuCount, 3)).
+      // not constrain the file set (no --include / no --stdin) AND no persistent
+      // token-count cache file exists from a prior run, the metrics phase has to
+      // tokenize every file and is typically long enough to amortize a 3rd worker's
+      // BPE warm-up, so we pass numOfTasks = 3 * TASKS_PER_THREAD = 600 (yielding
+      // maxThreads=min(cpuCount, 3)).
       const { deps } = baseDeps();
+      deps.tokenCountCacheFileExists = vi.fn().mockReturnValue(false);
       const config = createMockConfig();
       config.include = [];
 
@@ -261,6 +268,26 @@ describe('packager', () => {
 
       expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(600, expect.any(String));
       // Same gate also enables the security pool pre-warm on the unscoped path.
+      expect(deps.createSecurityTaskRunner).toHaveBeenCalled();
+    });
+
+    test('uses 2 warm-up workers for the metrics pool when no scope is specified but the token cache is warm', async () => {
+      // When the persistent token-count cache file already exists from a previous
+      // run, almost every per-file token count is served from cache and the metrics
+      // phase performs at most a single wrapper-token tokenization (also cached on
+      // the second run). Spawning a 3rd worker means a redundant ~340 ms BPE table
+      // parse that contends with file collection and security check on the critical
+      // path, so the heuristic falls back to numOfTasks = 2 * TASKS_PER_THREAD = 400.
+      const { deps } = baseDeps();
+      deps.tokenCountCacheFileExists = vi.fn().mockReturnValue(true);
+      const config = createMockConfig();
+      config.include = [];
+
+      await pack(['root'], config, vi.fn(), deps);
+
+      expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(400, expect.any(String));
+      // The security pool pre-warm is unaffected by the cache state — its gate is
+      // still `hasExplicitScope`, which is false here.
       expect(deps.createSecurityTaskRunner).toHaveBeenCalled();
     });
 
