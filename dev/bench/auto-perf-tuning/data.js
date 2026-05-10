@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778338720592,
+  "lastUpdate": 1778396301087,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -8190,6 +8190,51 @@ window.BENCHMARK_DATA = {
             "range": "±16",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 785ms, Q3: 801ms\nAll times: 775, 780, 782, 783, 784, 785, 785, 787, 788, 789, 789, 791, 793, 798, 798, 801, 801, 806, 815, 816ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "dcdbdd5efc0bb0e9d3cfa68262f9a2bdd96f343e",
+          "message": "perf(core): Skip 3rd metrics warmup worker when token cache is warm\n\nThe metrics worker pool eagerly spawns N workers at pack startup so each\nworker can parse gpt-tokenizer's o200k_base BPE table (~340 ms of pure-CPU\nwork) in parallel with file search and collection. Previously a fixed\nEAGER_WARMUP_THREADS=3 was used on the unscoped (default-scan) path because\n3 BPE parses amortize across the file tokenization that follows.\n\nWith the persistent token-count disk cache (introduced earlier on this\nbranch), warm-cache repeat runs serve almost every per-file token count\nout of the in-memory cache and dispatch zero worker tasks for them. The\n3rd worker's ~340 ms BPE parse becomes pure overhead that contends with\nfile collection (~360 ms) and security check (~140 ms) for the 4 cores\non a typical host.\n\nGate the 3rd warm-up worker on `tokenCountCacheFileExists()` (a sync\nexistsSync on the cache JSON in $TMPDIR). When the cache file exists from\na previous run we treat the run as warm-cache-likely and warm 2 workers;\nwhen it is missing (true cold cache) we keep the original 3-worker warmup\nso the actual tokenizations parallelise.\n\nInject tokenCountCacheFileExists via the packager `deps` object so the\ntest suite can deterministically exercise both branches without depending\non /tmp filesystem state. Keep the existing `hasExplicitScope` gate\nintact — explicit scopes still warm only 2 workers regardless of cache\nstate, matching the prior tuning for shorter metrics phases on small\nfile sets.\n\nBenchmark (n=30, paired, NODE_DISABLE_COMPILE_CACHE=1, repomix self-pack\non 1047 files, 4-core host):\n\n  Warm cache (cache file present)\n    BASELINE  median=1162.7  mean=1145.9  sd=62.8 ms\n    AFTER     median=1033.7  mean=1035.3  sd=50.4 ms\n    DELTA     mean=110.5 ms (9.65%)  median=110.3 ms\n              t=11.97 (df=29)  faster=30/30\n\n  Cold cache (cache file deleted before each run, n=20)\n    BASELINE  median=1658.8  mean=1675.0  sd=91.1 ms\n    AFTER     median=1632.0  mean=1652.3  sd=102.9 ms\n    DELTA     mean=22.7 ms (1.36%)  median=42.2 ms\n              t=1.29 (df=19)  faster=13/20  — within noise\n\nTest plan:\n- All 1261 tests pass (+1 new test for the warm-cache branch)\n- Lint clean\n- Hosts with `getProcessConcurrency() < 3` are unaffected: the\n  `Math.min(processConcurrency, EAGER_WARMUP_THREADS)` floor in\n  `getWorkerThreadCount` already collapses to the host CPU count.\n\nhttps://claude.ai/code/session_01TJqKkJ8n3r6Pa2JdW9Vp2w",
+          "timestamp": "2026-05-10T15:56:41+09:00",
+          "tree_id": "7aaccdb8cae61d8833eb71af316c6398b7b5aa27",
+          "url": "https://github.com/yamadashy/repomix/commit/dcdbdd5efc0bb0e9d3cfa68262f9a2bdd96f343e"
+        },
+        "date": 1778396300522,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1023,
+            "range": "±193",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 916ms, Q3: 1109ms\nAll times: 739, 785, 808, 813, 888, 903, 904, 916, 950, 957, 983, 986, 987, 1012, 1013, 1023, 1024, 1034, 1046, 1057, 1057, 1062, 1109, 1144, 1173, 1213, 1218, 1332, 1661, 1782ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 778,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 761ms, Q3: 790ms\nAll times: 730, 737, 738, 760, 760, 761, 762, 771, 775, 776, 778, 781, 782, 782, 789, 790, 791, 799, 808, 816ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1258,
+            "range": "±85",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1234ms, Q3: 1319ms\nAll times: 1036, 1057, 1228, 1228, 1230, 1234, 1236, 1250, 1251, 1254, 1258, 1261, 1275, 1286, 1286, 1319, 1325, 1331, 1338, 1361ms"
           }
         ]
       }
