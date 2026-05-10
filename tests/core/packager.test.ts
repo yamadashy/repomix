@@ -271,13 +271,19 @@ describe('packager', () => {
       expect(deps.createSecurityTaskRunner).toHaveBeenCalled();
     });
 
-    test('uses 2 warm-up workers for the metrics pool when no scope is specified but the token cache is warm', async () => {
+    test('uses 1 warm-up worker for the metrics pool when no scope is specified but the token cache is warm', async () => {
       // When the persistent token-count cache file already exists from a previous
       // run, almost every per-file token count is served from cache and the metrics
-      // phase performs at most a single wrapper-token tokenization (also cached on
-      // the second run). Spawning a 3rd worker means a redundant ~340 ms BPE table
-      // parse that contends with file collection and security check on the critical
-      // path, so the heuristic falls back to numOfTasks = 2 * TASKS_PER_THREAD = 400.
+      // phase performs only a small fixed set of dispatches that survive caching:
+      // a wrapper-token tokenization (cache hit after run #2) and, when opted in,
+      // git diff staged/worktree and git log token counts. Worst-case 2–3 short
+      // tasks fit one warm worker serially in well under 30 ms. Spawning extra
+      // warm workers means each one parses the ~2.2 MB o200k_base BPE table
+      // (~340 ms of pure CPU), contending with the file-collection main thread
+      // AND extending the final `pool.destroy()` (BPE-loaded workers take ~21 ms
+      // to terminate vs ~3 ms when idle). The heuristic therefore falls back to
+      // numOfTasks = 1 * TASKS_PER_THREAD = 200 (yielding maxThreads=min(cpuCount, 1)=1
+      // and a single warmup task).
       const { deps } = baseDeps();
       deps.tokenCountCacheFileExists = vi.fn().mockReturnValue(true);
       const config = createMockConfig();
@@ -285,7 +291,7 @@ describe('packager', () => {
 
       await pack(['root'], config, vi.fn(), deps);
 
-      expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(400, expect.any(String));
+      expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(200, expect.any(String));
       // The security pool pre-warm is unaffected by the cache state — its gate is
       // still `hasExplicitScope`, which is false here.
       expect(deps.createSecurityTaskRunner).toHaveBeenCalled();

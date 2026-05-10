@@ -128,28 +128,35 @@ export const pack = async (
   //    exists from a previous run. When present, almost every per-file token
   //    count is served from cache and `calculateFileMetrics` returns without
   //    dispatching any worker tasks (see `calculateFileMetrics.ts`); the only
-  //    real worker work is a single wrapper-token call (also cached after the
-  //    first run). On warm-cache repeat runs (the common case), spawning 3
-  //    workers means 3 redundant BPE table parses (~340 ms of CPU each) that
-  //    contend with file collection and security check on a 4-core host.
-  //    Reducing to 2 measured -110.5 ms / -9.65 % paired wall-clock on the
-  //    1047-file repomix self-pack workload (n=30, t=11.97, faster=30/30,
-  //    NODE_DISABLE_COMPILE_CACHE=1).
+  //    real worker work that survives is the small fixed set of dispatches
+  //    that happen unconditionally — wrapper-token (cache-hit after run #2),
+  //    git diff staged/worktree, and git log when the user opts in via
+  //    `output.git.includeDiffs`/`includeLogs`. That worst case fits one
+  //    worker handling 2–3 short tasks serially in <30 ms.
+  //    On warm-cache repeat runs (the common case), spawning 3 workers means
+  //    3 redundant BPE table parses (~340 ms of pure CPU each); even though
+  //    those parses overlap with file collection (~325 ms), the extra two
+  //    cores worth of CPU contention slows the main-thread file-collect
+  //    pipeline AND the post-pipeline `pool.destroy()` blocks waiting for
+  //    BPE-loaded workers to terminate (~21 ms each vs ~3 ms for an idle
+  //    worker). Reducing to 1 warm worker on the warm-cache path measured
+  //    -86.7 ms / -8.88% paired wall-clock on the 1068-file repomix
+  //    self-pack workload (n=12, t=7.39, faster=12/12).
   //    Cold-cache (cache file missing) keeps the original 3-worker warmup
   //    so the actual file tokenizations parallelise across more workers.
   //    The probe is a coarse heuristic: a cache file written by a previous
   //    run that used a different `tokenCount.encoding` (e.g. cl100k_base
   //    rather than the default o200k_base) yields no hits for the current
-  //    run, so the metrics phase will be cold-but-with-2-workers. Output
-  //    correctness is unaffected — only the warmup parallelism is
-  //    suboptimal — and the next run rebuilds the cache for the new
-  //    encoding so subsequent runs hit again.
+  //    run, so the metrics phase will be cold-but-with-1-worker — the BPE
+  //    parse pays sequentially on the main critical path before tokenizing
+  //    files, a one-time cost on the encoding switch (subsequent runs
+  //    rebuild the cache for the new encoding and hit again).
   //
   // EAGER_WARMUP_THREADS × TASKS_PER_THREAD yields maxThreads=min(cpuCount, N)
-  // for N ∈ {2, 3}; single-CPU hosts collapse to maxThreads=1 (no change).
+  // for N ∈ {1, 2, 3}; single-CPU hosts collapse to maxThreads=1 (no change).
   const hasExplicitScope = (explicitFiles?.length ?? 0) > 0 || config.include.length > 0;
   const cacheLikelyWarm = deps.tokenCountCacheFileExists();
-  const EAGER_WARMUP_THREADS = hasExplicitScope || cacheLikelyWarm ? 2 : 3;
+  const EAGER_WARMUP_THREADS = cacheLikelyWarm ? 1 : hasExplicitScope ? 2 : 3;
   const EAGER_METRICS_NUM_TASKS = EAGER_WARMUP_THREADS * TASKS_PER_THREAD;
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
     EAGER_METRICS_NUM_TASKS,
