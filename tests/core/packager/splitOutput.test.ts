@@ -69,6 +69,10 @@ describe('packager split output', () => {
         },
         warmupPromise: Promise.resolve(),
       }),
+      // Force the cold-cache path so the metrics worker pool is created via
+      // createMetricsTaskRunner. The warm-cache path skips pool creation
+      // and would leave `taskRunner` undefined for calculateMetrics.
+      tokenCountCacheFileExists: vi.fn().mockReturnValue(false),
     });
 
     expect(produceOutput).toHaveBeenCalledWith(
