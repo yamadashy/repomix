@@ -120,3 +120,14 @@ export const setCached = (key: string, tokenCount: number): void => {
  * surface as `false`, so we treat any non-existence reason as "cold".
  */
 export const tokenCountCacheFileExists = (): boolean => existsSync(CACHE_FILE);
+
+/**
+ * Reset all in-memory cache state. Intended for unit tests that share a
+ * process with other tests using the same module-level cache; calling this
+ * in `beforeEach` keeps test cases independent of each other's cache writes.
+ */
+export const resetTokenCountCacheForTests = (): void => {
+  entries.clear();
+  loaded = false;
+  dirty = false;
+};

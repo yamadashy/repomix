@@ -80,6 +80,10 @@ describe('packager', () => {
         gitDiffTokenCount: 0,
         gitLogTokenCount: 0,
       }),
+      // Force the cold-cache path so the metrics worker pool is created via
+      // createMetricsTaskRunner. The warm-cache path skips pool creation
+      // (tested separately) and would leave `taskRunner` undefined.
+      tokenCountCacheFileExists: vi.fn().mockReturnValue(false),
     };
 
     const mockConfig = createMockConfig();
@@ -271,19 +275,18 @@ describe('packager', () => {
       expect(deps.createSecurityTaskRunner).toHaveBeenCalled();
     });
 
-    test('uses 1 warm-up worker for the metrics pool when no scope is specified but the token cache is warm', async () => {
+    test('skips the metrics worker pool entirely when the token cache is warm', async () => {
       // When the persistent token-count cache file already exists from a previous
-      // run, almost every per-file token count is served from cache and the metrics
-      // phase performs only a small fixed set of dispatches that survive caching:
-      // a wrapper-token tokenization (cache hit after run #2) and, when opted in,
-      // git diff staged/worktree and git log token counts. Worst-case 2–3 short
-      // tasks fit one warm worker serially in well under 30 ms. Spawning extra
-      // warm workers means each one parses the ~2.2 MB o200k_base BPE table
-      // (~340 ms of pure CPU), contending with the file-collection main thread
-      // AND extending the final `pool.destroy()` (BPE-loaded workers take ~21 ms
-      // to terminate vs ~3 ms when idle). The heuristic therefore falls back to
-      // numOfTasks = 1 * TASKS_PER_THREAD = 200 (yielding maxThreads=min(cpuCount, 1)=1
-      // and a single warmup task).
+      // run, the per-file token cache (calculateFileMetrics), wrapper-token cache
+      // (calculateMetrics), and git log / git diff caches (calculateGitLogMetrics,
+      // calculateGitDiffMetrics) together serve every metrics dispatch from the
+      // in-memory cache — no worker task runs on the warm-cache critical path.
+      // Eagerly creating the pool here would pay a ~340 ms BPE warmup task (in
+      // parallel, but contending with file collection on the main thread) AND
+      // ~12 ms of BPE-loaded `pool.destroy()` before pack() returns. Skipping the
+      // pool creation entirely lets calculateMetrics lazily fall back to a fresh
+      // (non-warmed) pool ONLY if some content actually misses the cache, so the
+      // rare-write case pays the BPE-init cost once instead of every run.
       const { deps } = baseDeps();
       deps.tokenCountCacheFileExists = vi.fn().mockReturnValue(true);
       const config = createMockConfig();
@@ -291,7 +294,7 @@ describe('packager', () => {
 
       await pack(['root'], config, vi.fn(), deps);
 
-      expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(200, expect.any(String));
+      expect(deps.createMetricsTaskRunner).not.toHaveBeenCalled();
       // The security pool pre-warm is unaffected by the cache state — its gate is
       // still `hasExplicitScope`, which is false here.
       expect(deps.createSecurityTaskRunner).toHaveBeenCalled();

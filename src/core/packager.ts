@@ -154,14 +154,31 @@ export const pack = async (
   //
   // EAGER_WARMUP_THREADS × TASKS_PER_THREAD yields maxThreads=min(cpuCount, N)
   // for N ∈ {1, 2, 3}; single-CPU hosts collapse to maxThreads=1 (no change).
+  //
+  // When the persistent token-count cache file is present from a previous run
+  // we skip the eager pool creation entirely: with per-file token counts,
+  // the output-wrapper count, and git log / git diff counts all served from
+  // the in-memory cache (see calculateFileMetrics, calculateMetrics,
+  // calculateGitLogMetrics, calculateGitDiffMetrics), no worker task is
+  // dispatched on the warm-cache path. Creating the pool here would pay a
+  // ~340 ms BPE warmup task (parallel, but contends with file collection on
+  // the main thread) and ~12 ms of BPE-loaded `pool.destroy()` on the
+  // critical path before pack() returns. Leaving metricsTaskRunner=undefined
+  // lets calculateMetrics lazily create a non-warmed pool only if some content
+  // actually misses the cache — the rare-write case pays the BPE-init cost
+  // once instead of every run.
   const hasExplicitScope = (explicitFiles?.length ?? 0) > 0 || config.include.length > 0;
   const cacheLikelyWarm = deps.tokenCountCacheFileExists();
-  const EAGER_WARMUP_THREADS = cacheLikelyWarm ? 1 : hasExplicitScope ? 2 : 3;
-  const EAGER_METRICS_NUM_TASKS = EAGER_WARMUP_THREADS * TASKS_PER_THREAD;
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    EAGER_METRICS_NUM_TASKS,
-    config.tokenCount.encoding,
-  );
+
+  let metricsTaskRunner: ReturnType<typeof deps.createMetricsTaskRunner>['taskRunner'] | undefined;
+  let metricsWarmupPromise: Promise<unknown> = Promise.resolve();
+  if (!cacheLikelyWarm) {
+    const EAGER_WARMUP_THREADS = hasExplicitScope ? 2 : 3;
+    const EAGER_METRICS_NUM_TASKS = EAGER_WARMUP_THREADS * TASKS_PER_THREAD;
+    const created = deps.createMetricsTaskRunner(EAGER_METRICS_NUM_TASKS, config.tokenCount.encoding);
+    metricsTaskRunner = created.taskRunner;
+    metricsWarmupPromise = created.warmupPromise;
+  }
 
   // Declared outside the try block so the finally clause can clean up the pool
   // even if a thrown error occurs after the runner is created but before pack returns.
@@ -373,7 +390,9 @@ export const pack = async (
     return result;
   } finally {
     await metricsWarmupPromise.catch(() => {});
-    await metricsTaskRunner.cleanup();
+    if (metricsTaskRunner) {
+      await metricsTaskRunner.cleanup();
+    }
     if (securityTaskRunnerWithWarmup) {
       await securityTaskRunnerWithWarmup.warmupPromise.catch(() => {});
       await securityTaskRunnerWithWarmup.taskRunner.cleanup();

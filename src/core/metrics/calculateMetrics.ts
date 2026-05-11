@@ -184,7 +184,18 @@ export const calculateMetrics = async (
 
   progressCallback('Calculating metrics...');
 
-  // Initialize a single task runner for all metrics calculations
+  // Initialize a single task runner for all metrics calculations.
+  //
+  // When the caller did not pre-create a pool (warm-cache path in packager.ts
+  // skips eager pool creation because the in-memory token cache covers every
+  // metrics dispatch on the no-changes happy path), this lazy fallback creates
+  // a fresh pool. We deliberately do NOT pre-warm it: queuing a fire-and-forget
+  // warmup task ties up a worker for ~250 ms of gpt-tokenizer BPE initialization
+  // and the later `pool.destroy()` in the `finally` block blocks waiting for
+  // that task to complete — turning the warm-cache happy path (zero real
+  // dispatches) into a ~250 ms wall-clock regression. Instead, on the rare
+  // cache-miss path the first `runTokenCount` call pays BPE init synchronously;
+  // that cost is bounded to one occurrence per pack() invocation.
   const taskRunner =
     deps.taskRunner ??
     initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
