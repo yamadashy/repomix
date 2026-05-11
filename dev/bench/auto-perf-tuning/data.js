@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778504051175,
+  "lastUpdate": 1778504188878,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -8685,6 +8685,51 @@ window.BENCHMARK_DATA = {
             "range": "±14",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 795ms, Q3: 809ms\nAll times: 785, 789, 789, 792, 795, 795, 797, 800, 800, 802, 805, 806, 808, 809, 809, 809, 813, 830, 834, 855ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "c574dc549a0b10164b351926a54033a691283322",
+          "message": "perf(security): Wire security-check cache into runSecurityCheck and packager (part 2/2)\n\nCompanion to the previous commit on this branch. Wires the new\n`securityCheckCache` module into the security check pipeline:\n\n- `runSecurityCheck`: classify files into cache hits vs misses before\n  dispatching to workers; cold-cache fast path skips up-front MD5\n  hashing entirely and defers it to per-batch write callbacks.\n- `packager.ts`: load the cache at t=0; save after pack completes\n  (fire-and-forget).\n- Test: add `beforeEach` reset of the module-level cache.\n\nPushed as a separate API commit because GitHub MCP's `push_files`\nprocessed only the first file in the previous call; the tree state on\nthis branch now matches the single logical commit on the local branch.\n\nCombined benchmark (paired, n=30, warm cache):\n  DELTA  mean=55.71 ms (9.08%)  t=11.70  faster=30/30",
+          "timestamp": "2026-05-11T21:54:04+09:00",
+          "tree_id": "58e222a37a8c1581a45456f5492eb0f4d48ea3e2",
+          "url": "https://github.com/yamadashy/repomix/commit/c574dc549a0b10164b351926a54033a691283322"
+        },
+        "date": 1778504188237,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 351,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 337ms, Q3: 364ms\nAll times: 324, 324, 328, 329, 331, 333, 336, 337, 338, 342, 343, 343, 349, 349, 349, 351, 354, 360, 362, 362, 363, 364, 364, 367, 368, 369, 377, 379, 392, 417ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 580,
+            "range": "±12",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 575ms, Q3: 587ms\nAll times: 556, 566, 567, 571, 575, 575, 576, 578, 579, 579, 580, 584, 584, 584, 584, 587, 590, 591, 595, 604ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 816,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 809ms, Q3: 833ms\nAll times: 794, 798, 802, 804, 805, 809, 811, 812, 812, 813, 816, 819, 820, 821, 831, 833, 836, 853, 865, 1103ms"
           }
         ]
       }
