@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778460744422,
+  "lastUpdate": 1778470284392,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -8370,6 +8370,51 @@ window.BENCHMARK_DATA = {
             "range": "±144",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 819ms, Q3: 963ms\nAll times: 796, 801, 812, 817, 819, 819, 820, 820, 820, 820, 821, 822, 852, 866, 926, 963, 968, 974, 974, 993ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "c4fbff1f7195d23bbca8bc27b4ad02c58dc66c7a",
+          "message": "perf(core): Cache git log/diff token counts and skip metrics pool when cache is warm\n\nOn a warm-cache repeat run with the persistent token-count cache file already\npresent from a previous invocation, calculateFileMetrics serves every per-file\ncount from the in-memory cache without dispatching workers, and the wrapper\ntoken count is also a cache hit after run #2. The only remaining worker\ndispatches on the warm-cache critical path were calculateGitLogMetrics and\ncalculateGitDiffMetrics, which unconditionally went to a Tinypool worker even\nthough their content (git log / git diff output) is byte-stable across runs\nunless commits or working-tree changes intervene.\n\nTwo coupled changes:\n\n1. Probe the existing content-addressed token-count cache (tokenCountCache.ts,\n   shared with calculateFileMetrics and the wrapper-token path) before\n   dispatching the git log / git diff worker tasks. The MD5-of-content cache\n   key auto-invalidates whenever the underlying log or diff changes; persistence\n   via saveTokenCountCache() carries the savings across CLI invocations.\n   Per-piece caching for the diff path (worktree + staged are cached\n   independently) so that a change to one does not invalidate the other.\n   The hit / miss / fallback logic is factored into a single helper\n   `countTokensWithCache` in metricsWorkerRunner.ts to keep both call sites\n   identical.\n\n2. With every metrics dispatch now served from cache on the warm-cache-no-\n   changes happy path, the metrics worker pool is dead weight. Skip the eager\n   createMetricsTaskRunner call entirely when tokenCountCacheFileExists()\n   returns true. calculateMetrics already supports a lazy fallback that creates\n   a fresh pool only if some content actually misses the cache, so the rare\n   write-then-pack case pays the BPE-init cost once instead of every run. The\n   cold-cache path (no cache file present) continues to use the existing\n   2/3-warmup-worker heuristic unchanged. The lazy fallback deliberately does\n   NOT pre-warm — fire-and-forget warmup ties up a worker that pool.destroy()\n   then blocks on, turning the happy path (zero real dispatches) into a\n   ~250 ms wall-clock regression.\n\nSkipping the pool removes:\n- a ~340 ms BPE warmup task that ran in parallel but contended with file\n  collection on the main thread,\n- ~12 ms of BPE-loaded `pool.destroy()` that was on the critical path before\n  pack() returned.\n\nAdded `resetTokenCountCacheForTests` to tokenCountCache.ts so tests that share\nthe module-level cache Map can isolate cases that use identical content +\nencoding without one test's cache write short-circuiting another test's\nworker spy.\n\nBenchmark (paired, n=40, repomix self-pack on 1051 files, warm cache, no\nchanges between runs):\nBEFORE  min=665.0  mean=716.5  max=788.0  sd=27.0\nAFTER   min=608.0  mean=678.9  max=831.0  sd=36.4\nDELTA   mean=37.58 ms (5.24%)  sd=39.39\n        t=6.03 (df=39)  faster=36/40\n\nTradeoff (paired, n=15, warm cache + 1 file changed): ~125 ms slower on the\nfirst run after an edit (lazy non-warmed pool pays BPE init on the critical\npath). On the second invocation after a write the new entries are cached and\nthe run drops back to the warm-cache fast path.\n\nCold cache: no statistically significant change (mean 16.20 ms, t=1.12).\n\nTests: 1264/1264 passing. Lint: clean.\n\nhttps://claude.ai/code/session_014BQFztPCefkyVeiJwWqNqw",
+          "timestamp": "2026-05-11T12:29:54+09:00",
+          "tree_id": "8cb17e02b847f37ca0e7a57d772d926fadd6ceac",
+          "url": "https://github.com/yamadashy/repomix/commit/c4fbff1f7195d23bbca8bc27b4ad02c58dc66c7a"
+        },
+        "date": 1778470283161,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 630,
+            "range": "±105",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 565ms, Q3: 670ms\nAll times: 434, 475, 488, 491, 496, 508, 519, 565, 575, 578, 621, 622, 627, 628, 630, 630, 640, 641, 647, 655, 662, 668, 670, 679, 701, 702, 736, 740, 744, 770ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 621,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 612ms, Q3: 628ms\nAll times: 604, 605, 609, 609, 611, 612, 613, 615, 618, 621, 621, 621, 622, 622, 627, 628, 628, 630, 635, 655ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 843,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 837ms, Q3: 853ms\nAll times: 823, 824, 832, 834, 835, 837, 839, 840, 841, 842, 843, 844, 847, 848, 848, 853, 853, 854, 855, 859ms"
           }
         ]
       }
