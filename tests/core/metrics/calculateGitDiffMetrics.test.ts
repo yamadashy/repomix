@@ -3,6 +3,7 @@ import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { calculateGitDiffMetrics } from '../../../src/core/metrics/calculateGitDiffMetrics.js';
 import type { MetricsTaskRunner } from '../../../src/core/metrics/metricsWorkerRunner.js';
+import { resetTokenCountCacheForTests } from '../../../src/core/metrics/tokenCountCache.js';
 import {
   countTokens,
   type MetricsWorkerTask,
@@ -80,6 +81,10 @@ describe('calculateGitDiffMetrics', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset the module-level token-count cache so each test starts fresh.
+    // Without this, a cache write in one test could short-circuit the worker
+    // dispatch in another test that uses the same content+encoding.
+    resetTokenCountCacheForTests();
   });
 
   describe('when git diffs are disabled', () => {
@@ -196,6 +201,64 @@ describe('calculateGitDiffMetrics', () => {
         encoding: 'o200k_base',
       });
       expect(result).toBe(8); // 5 + 3
+    });
+
+    it('should skip the worker dispatch on the second call with identical diff content', async () => {
+      const gitDiffResult: GitDiffResult = {
+        workTreeDiffContent: 'cached worktree diff',
+        stagedDiffContent: 'cached staged diff',
+      };
+
+      const mockTaskRunnerSpy = vi
+        .fn()
+        .mockResolvedValueOnce(11) // workTree tokens
+        .mockResolvedValueOnce(13); // staged tokens
+
+      const customTaskRunner: MetricsTaskRunner = {
+        run: mockTaskRunnerSpy,
+        cleanup: async () => {},
+      };
+
+      const first = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
+        taskRunner: customTaskRunner,
+      });
+      const second = await calculateGitDiffMetrics(mockConfig, gitDiffResult, {
+        taskRunner: customTaskRunner,
+      });
+
+      // Two dispatches for the first call (worktree + staged), zero for the second.
+      expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(2);
+      expect(first).toBe(24);
+      expect(second).toBe(24);
+    });
+
+    it('should dispatch only for the changed piece when one of the two diffs is identical', async () => {
+      const mockTaskRunnerSpy = vi
+        .fn()
+        .mockResolvedValueOnce(11) // first workTree
+        .mockResolvedValueOnce(13) // first staged
+        .mockResolvedValueOnce(17); // second workTree (changed)
+
+      const customTaskRunner: MetricsTaskRunner = {
+        run: mockTaskRunnerSpy,
+        cleanup: async () => {},
+      };
+
+      const first = await calculateGitDiffMetrics(
+        mockConfig,
+        { workTreeDiffContent: 'wt-v1', stagedDiffContent: 'staged-stable' },
+        { taskRunner: customTaskRunner },
+      );
+      const second = await calculateGitDiffMetrics(
+        mockConfig,
+        { workTreeDiffContent: 'wt-v2', stagedDiffContent: 'staged-stable' },
+        { taskRunner: customTaskRunner },
+      );
+
+      // staged is cached on the second call; only the changed worktree is dispatched.
+      expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(3);
+      expect(first).toBe(24);
+      expect(second).toBe(30); // 17 (new worktree) + 13 (cached staged)
     });
 
     it('should calculate tokens for workTree diff only', async () => {
