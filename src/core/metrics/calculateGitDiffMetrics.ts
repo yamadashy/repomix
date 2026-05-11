@@ -1,7 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
+import { countTokensWithCache, type MetricsTaskRunner } from './metricsWorkerRunner.js';
 
 /**
  * Calculate token count for git diffs if included
@@ -24,22 +24,22 @@ export const calculateGitDiffMetrics = async (
     const startTime = process.hrtime.bigint();
     logger.trace('Starting git diff token calculation using worker');
 
+    // Probe the in-memory token-count cache on the main thread before each
+    // potential worker round-trip. Diff content is byte-stable across repeat
+    // runs unless the working tree / index changes, and the content-addressed
+    // key (MD5 of content) auto-invalidates when the diff changes. Persisted
+    // across runs via saveTokenCountCache(), so the savings carry over to a
+    // fresh CLI invocation as well.
     const countPromises: Promise<number>[] = [];
 
     if (gitDiffResult.workTreeDiffContent) {
       countPromises.push(
-        runTokenCount(deps.taskRunner, {
-          content: gitDiffResult.workTreeDiffContent,
-          encoding: config.tokenCount.encoding,
-        }),
+        countTokensWithCache(gitDiffResult.workTreeDiffContent, config.tokenCount.encoding, deps.taskRunner),
       );
     }
     if (gitDiffResult.stagedDiffContent) {
       countPromises.push(
-        runTokenCount(deps.taskRunner, {
-          content: gitDiffResult.stagedDiffContent,
-          encoding: config.tokenCount.encoding,
-        }),
+        countTokensWithCache(gitDiffResult.stagedDiffContent, config.tokenCount.encoding, deps.taskRunner),
       );
     }
 
