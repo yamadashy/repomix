@@ -3,6 +3,7 @@ import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitLogResult } from '../../../src/core/git/gitLogHandle.js';
 import { calculateGitLogMetrics } from '../../../src/core/metrics/calculateGitLogMetrics.js';
 import type { MetricsTaskRunner } from '../../../src/core/metrics/metricsWorkerRunner.js';
+import { resetTokenCountCacheForTests } from '../../../src/core/metrics/tokenCountCache.js';
 import {
   countTokens,
   type MetricsWorkerTask,
@@ -80,6 +81,10 @@ describe('calculateGitLogMetrics', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset the module-level token-count cache so each test starts fresh.
+    // Without this, a cache write in one test could short-circuit the worker
+    // dispatch in another test that uses the same content+encoding.
+    resetTokenCountCacheForTests();
   });
 
   describe('when git logs are disabled', () => {
@@ -189,6 +194,32 @@ describe('calculateGitLogMetrics', () => {
         encoding: 'o200k_base',
       });
       expect(result).toEqual({ gitLogTokenCount: 15 });
+    });
+
+    it('should skip the worker dispatch on the second call with identical content', async () => {
+      const gitLogResult: GitLogResult = {
+        logContent: 'commit cached-warm\nAuthor: Cache User\n\nWarm-cache test',
+        commits: [],
+      };
+
+      const mockTaskRunnerSpy = vi.fn().mockResolvedValueOnce(42);
+
+      const customTaskRunner: MetricsTaskRunner = {
+        run: mockTaskRunnerSpy,
+        cleanup: async () => {},
+      };
+
+      const first = await calculateGitLogMetrics(mockConfig, gitLogResult, {
+        taskRunner: customTaskRunner,
+      });
+      const second = await calculateGitLogMetrics(mockConfig, gitLogResult, {
+        taskRunner: customTaskRunner,
+      });
+
+      // First call dispatches to worker; second call is served from cache.
+      expect(mockTaskRunnerSpy).toHaveBeenCalledTimes(1);
+      expect(first).toEqual({ gitLogTokenCount: 42 });
+      expect(second).toEqual({ gitLogTokenCount: 42 });
     });
 
     it('should handle large log content correctly', async () => {
