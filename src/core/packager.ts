@@ -22,6 +22,7 @@ import {
   type SecurityTaskRunnerWithWarmup,
   type SuspiciousFileResult,
 } from './security/securityCheck.js';
+import { loadSecurityCheckCache, saveSecurityCheckCache } from './security/securityCheckCache.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -93,6 +94,11 @@ export const pack = async (
   // itself takes only ~1 ms (50 KB JSON), but kicking it off here ensures it
   // overlaps with file search and collection rather than blocking metrics.
   const tokenCacheLoadPromise = loadTokenCountCache();
+
+  // Start loading the security-check disk cache so it is ready before
+  // validateFileSafety runs. Same pattern as the token-count cache: the
+  // load takes ~1–3 ms and overlaps with file search and collection.
+  const securityCacheLoadPromise = config.security.enableSecurityCheck ? loadSecurityCheckCache() : Promise.resolve();
 
   // Pre-fetch git file-change counts for sortOutputFiles while search and
   // collection are in flight, so the later sortOutputFiles call is a cache hit.
@@ -263,6 +269,11 @@ export const pack = async (
     const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
     const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
 
+    // Ensure the security-check disk cache is loaded before validateFileSafety
+    // probes it. The load was started at t=0 and almost always finishes long
+    // before this point; the explicit await prevents a race on very fast hosts.
+    await securityCacheLoadPromise;
+
     // Run security check and file processing concurrently.
     // Security check uses worker threads while file processing runs on the main thread
     // (in the default non-compress/non-removeComments config), so they don't compete for CPU.
@@ -386,6 +397,10 @@ export const pack = async (
     // Persist the token-count cache for future runs (fire-and-forget).
     // Errors are silently swallowed inside saveTokenCountCache.
     saveTokenCountCache().catch(() => {});
+
+    // Persist the security-check cache for future runs (fire-and-forget).
+    // Only writes when there are dirty entries from new misses on this run.
+    saveSecurityCheckCache().catch(() => {});
 
     return result;
   } finally {
