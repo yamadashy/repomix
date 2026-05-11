@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778470738574,
+  "lastUpdate": 1778488325008,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -8595,6 +8595,51 @@ window.BENCHMARK_DATA = {
             "range": "±17",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 872ms, Q3: 889ms\nAll times: 844, 853, 863, 868, 872, 872, 875, 876, 876, 877, 877, 878, 880, 882, 888, 889, 896, 912, 920, 1608ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "9388778ad0da26d41d70cfe3955c7d55bcc3cbf7",
+          "message": "perf(core): Skip hasLongBase64Run char scan via newline prescan\n\nTruncate-base64's `hasLongBase64Run` precondition unconditionally walked every\ncharacter of every file. On profiles of repos with `truncateBase64: true`\n(repomix's own benchmark config) it accounted for ~31 ms of the\n`applyLightweightTransforms` phase across ~1000 files.\n\nBecause '\\n' (0x0A) is not in [A-Za-z0-9+/], a qualifying base64 run of\nMIN_BASE64_LENGTH_STANDALONE (256) chars must fit entirely inside a single\nnewline-delimited line. The longest line in the content is therefore an upper\nbound on the longest possible base64 run. `String.prototype.indexOf` for a\nsingle character is an optimized native scan in V8 — far faster than a JS\n`charCodeAt` loop — so jumping across newlines lets us bail in microseconds on\ntypical source code (lines ~80-120 chars) without ever entering the per-char\nbody.\n\nBehavior is preserved exactly: the existing per-char scan still runs whenever\nthe prescan finds a line long enough to potentially contain a run. The\nshort-circuit only fires when no line is >= 256 chars, in which case the slow\nscan provably could not return true. Output of `repomix --quiet` against the\nrepomix repo is byte-identical before and after.\n\nMicrobenchmark (1 000 synthetic source files, ~5 KB each):\n  JS-loop  steady-state: 70-90 ms / 1000 files\n  prescan  steady-state:  5-8  ms / 1000 files\n  ~10x faster on the per-file precondition.\n\nEnd-to-end paired benchmark (`node bin/repomix.cjs --quiet`):\n  N=25 paired, repomix self-pack (~1068 files), warm token-count cache\n  AFTER  mean=834.7 ms\n  BEFORE mean=886.5 ms\n  DELTA  mean=51.8 ms (5.85%)  sd=62.0  t=4.18\n         AFTER faster in 20/25 pairs (80%)\n\nStacks on top of the existing perf/auto-perf-tuning changes; the win is on\nthe `processFiles` main-thread loop which is parallel to `validateFileSafety`\nbut had been the slowest of the two on warm-cache runs.\n\nAll 1264 unit tests pass; output of the CLI is byte-identical against the\nrepomix self-pack workload before and after.\n\nhttps://claude.ai/code/session_01BUwqcUjDwynudD1HZ94dnK",
+          "timestamp": "2026-05-11T17:30:30+09:00",
+          "tree_id": "ea8b65ce57c8ed8c45faf2961fc4a052b74c21cb",
+          "url": "https://github.com/yamadashy/repomix/commit/9388778ad0da26d41d70cfe3955c7d55bcc3cbf7"
+        },
+        "date": 1778488324104,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 441,
+            "range": "±89",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 421ms, Q3: 510ms\nAll times: 368, 398, 401, 415, 417, 420, 421, 421, 422, 422, 423, 427, 427, 427, 440, 441, 450, 455, 479, 481, 505, 505, 510, 510, 518, 561, 565, 569, 575, 611ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 554,
+            "range": "±12",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 551ms, Q3: 563ms\nAll times: 543, 545, 547, 548, 549, 551, 551, 551, 552, 553, 554, 554, 556, 562, 562, 563, 563, 578, 585, 587ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 798,
+            "range": "±12",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 792ms, Q3: 804ms\nAll times: 773, 782, 785, 785, 787, 792, 794, 794, 795, 797, 798, 798, 799, 800, 802, 804, 807, 807, 807, 812ms"
           }
         ]
       }
