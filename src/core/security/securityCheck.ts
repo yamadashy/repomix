@@ -10,6 +10,7 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
+import { contentCacheKey, getCached, getCacheSize, setCached } from './securityCheckCache.js';
 import type { SecurityCheckItem, SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
 
 export type { SecurityCheckType } from './workers/securityCheckWorker.js';
@@ -133,27 +134,63 @@ export const runSecurityCheck = async (
     }
   }
 
-  const fileItems: SecurityCheckItem[] = rawFiles.map((file) => ({
-    filePath: file.path,
-    content: file.content,
-    type: 'file',
-  }));
+  // Classify file items into cache hits and misses before deciding whether to
+  // dispatch any worker tasks. Secretlint is deterministic for the same content
+  // and rule preset, so a cached result is permanently valid until the cache
+  // version is bumped (which happens on rule-preset upgrades).
+  //
+  // Git diff / git log content is never cached: by nature it changes between
+  // runs, so cache hits would be vanishingly rare and the cache file would grow
+  // unboundedly with disposable entries. These items always go through workers.
+  //
+  // Cold-cache fast path: when the in-memory cache is empty (no on-disk file or
+  // wrong version), pre-hashing every file is pure main-thread overhead because
+  // every lookup would miss anyway. We instead enqueue every file as a "miss"
+  // with a null placeholder key, and defer the MD5 hash to the per-batch write
+  // callback after workers return. Each batch's hashing then overlaps with
+  // subsequent batches' worker scanning instead of blocking dispatch.
+  const cachedFileResults: SuspiciousFileResult[] = [];
+  const missedFileItems: SecurityCheckItem[] = [];
+  const missedFileKeys: (string | null)[] = [];
 
-  // Combine all items, then split into batches
-  const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
-  const totalItems = allItems.length;
+  const hasCacheEntries = getCacheSize() > 0;
 
-  if (totalItems === 0) {
-    return [];
+  if (hasCacheEntries) {
+    for (const file of rawFiles) {
+      const key = contentCacheKey(file.content);
+      const cached = getCached(key);
+      if (cached === undefined) {
+        missedFileItems.push({ filePath: file.path, content: file.content, type: 'file' });
+        missedFileKeys.push(key);
+      } else if (cached !== null) {
+        cachedFileResults.push({ filePath: file.path, messages: cached, type: 'file' });
+      }
+      // cached === null means "scanned previously, clean" — nothing to push.
+    }
+  } else {
+    for (const file of rawFiles) {
+      missedFileItems.push({ filePath: file.path, content: file.content, type: 'file' });
+      missedFileKeys.push(null);
+    }
+  }
+
+  const dispatchItems = [...missedFileItems, ...gitDiffItems, ...gitLogItems];
+  const totalDispatch = dispatchItems.length;
+
+  if (totalDispatch === 0) {
+    logger.trace(`Security check served entirely from cache for ${rawFiles.length} files`);
+    return cachedFileResults;
   }
 
   const ownsTaskRunner = !deps.taskRunner;
 
-  // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
+  // numOfTasks uses totalDispatch (only the items we actually scan), so cold
+  // runs with N files still see numOfTasks≈N and warm runs with a handful of
+  // git items shrink the pool sizing accordingly.
   const taskRunner =
     deps.taskRunner ??
     initTaskRunnerFn<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-      numOfTasks: totalItems,
+      numOfTasks: totalDispatch,
       workerType: 'securityCheck',
       runtime: 'worker_threads',
       maxWorkerThreads: Math.min(MAX_SECURITY_WORKER_THREADS, getProcessConcurrencyFn()),
@@ -161,24 +198,46 @@ export const runSecurityCheck = async (
 
   // Split items into batches to reduce IPC round-trips
   const batches: SecurityCheckItem[][] = [];
-  for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-    batches.push(allItems.slice(i, i + BATCH_SIZE));
+  const batchOffsets: number[] = [];
+  for (let i = 0; i < dispatchItems.length; i += BATCH_SIZE) {
+    batches.push(dispatchItems.slice(i, i + BATCH_SIZE));
+    batchOffsets.push(i);
   }
 
   try {
-    logger.trace(`Starting security check for ${totalItems} files/content in ${batches.length} batches`);
+    logger.trace(
+      `Starting security check for ${totalDispatch} files/content in ${batches.length} batches (${rawFiles.length - missedFileItems.length} cached)`,
+    );
     const startTime = process.hrtime.bigint();
 
     let completedItems = 0;
 
     const batchResults = await Promise.all(
-      batches.map(async (batch) => {
+      batches.map(async (batch, batchIdx) => {
         const results = await taskRunner.run({ items: batch });
 
         completedItems += batch.length;
         const lastItem = batch[batch.length - 1];
-        progressCallback(`Running security check... (${completedItems}/${totalItems}) ${pc.dim(lastItem.filePath)}`);
-        logger.trace(`Running security check... (${completedItems}/${totalItems}) ${lastItem.filePath}`);
+        progressCallback(`Running security check... (${completedItems}/${totalDispatch}) ${pc.dim(lastItem.filePath)}`);
+        logger.trace(`Running security check... (${completedItems}/${totalDispatch}) ${lastItem.filePath}`);
+
+        // Write file-type results back into the content cache. Git diff/log
+        // items have no corresponding key (we never pushed one), so they are
+        // skipped by the offset check below. On the cold-cache fast path the
+        // key is null and we hash here, overlapping with subsequent batches.
+        const baseOffset = batchOffsets[batchIdx];
+        for (let i = 0; i < batch.length; i++) {
+          const absoluteIdx = baseOffset + i;
+          if (absoluteIdx < missedFileItems.length) {
+            // `?? null` is a defensive guard: workers always return one entry
+            // per item today, but treating a short array as "clean for the
+            // missing tail" prevents `setCached(key, undefined)` poisoning the
+            // cache with an entry that read back as a non-null hit later.
+            const result = results[i] ?? null;
+            const key = missedFileKeys[absoluteIdx] ?? contentCacheKey(missedFileItems[absoluteIdx].content);
+            setCached(key, result === null ? null : result.messages);
+          }
+        }
 
         return results;
       }),
@@ -188,7 +247,8 @@ export const runSecurityCheck = async (
     const duration = Number(endTime - startTime) / 1e6;
     logger.trace(`Security check completed in ${duration.toFixed(2)}ms`);
 
-    return batchResults.flat().filter((result): result is SuspiciousFileResult => result !== null);
+    const workerResults = batchResults.flat().filter((result): result is SuspiciousFileResult => result !== null);
+    return [...cachedFileResults, ...workerResults];
   } catch (error) {
     logger.error('Error during security check:', error);
     throw error;

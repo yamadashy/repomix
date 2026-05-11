@@ -1,10 +1,11 @@
 // src/core/security/securityCheck.test.ts
 
 import pc from 'picocolors';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
+import { resetSecurityCheckCacheForTests } from '../../../src/core/security/securityCheckCache.js';
 import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
@@ -54,6 +55,14 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
 };
 
 describe('runSecurityCheck', () => {
+  // The persistent security-check cache is module-level state shared across
+  // tests in the same process. Reset it before each case so prior assertions
+  // (e.g. progress callbacks, worker error paths) are not satisfied by a
+  // previously-cached hit instead of a fresh worker dispatch.
+  beforeEach(() => {
+    resetSecurityCheckCacheForTests();
+  });
+
   it('should identify files with security issues', async () => {
     const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
