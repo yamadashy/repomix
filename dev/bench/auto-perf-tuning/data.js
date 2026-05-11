@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778488325008,
+  "lastUpdate": 1778504051175,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -8640,6 +8640,51 @@ window.BENCHMARK_DATA = {
             "range": "±12",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 792ms, Q3: 804ms\nAll times: 773, 782, 785, 785, 787, 792, 794, 794, 795, 797, 798, 798, 799, 800, 802, 804, 807, 807, 807, 812ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "bef175f6128a747db7ac26154696f628ead4cd9f",
+          "message": "perf(security): Add content-addressed security check result cache\n\nMirror the existing tokenCountCache pattern for secretlint scan results.\nOn warm-cache repeat runs, files whose content hasn't changed are served\nfrom a persistent disk cache and never dispatched to a secretlint worker.\n\nThe secretlint scan is deterministic for the same content + rule preset,\nso a cached \"clean\" or \"messages\" verdict is permanently valid until the\nunderlying rule preset changes — which we detect automatically by baking\nthe installed @secretlint/core and @secretlint/secretlint-rule-preset-\nrecommend package versions into the cache file's version field.\n\nBenchmark (paired, n=30, repomix self-pack, warm token-count + warm\nsecurity-check cache):\n  BEFORE  mean=613.3 ms  sd=19.2\n  AFTER   mean=557.6 ms  sd=23.8\n  DELTA   mean=55.71 ms (9.08%)  t=11.70 (df=29)  faster=30/30\n\nOutput of `repomix --quiet` is byte-identical between BEFORE and AFTER.\n\nNote: pushed via GitHub MCP because the local git proxy returns HTTP 403\non direct push, mirroring the existing situation noted in section 9 of\nPR #1548.",
+          "timestamp": "2026-05-11T21:52:38+09:00",
+          "tree_id": "f729a076e351b1a3698dfbeb7aa5ee4982bd04c4",
+          "url": "https://github.com/yamadashy/repomix/commit/bef175f6128a747db7ac26154696f628ead4cd9f"
+        },
+        "date": 1778504050555,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 371,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 357ms, Q3: 379ms\nAll times: 349, 349, 350, 352, 356, 357, 357, 357, 358, 359, 361, 362, 363, 367, 369, 371, 373, 374, 375, 375, 375, 376, 379, 389, 390, 393, 398, 402, 438, 447ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 553,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 541ms, Q3: 560ms\nAll times: 533, 536, 537, 539, 541, 541, 544, 547, 549, 552, 553, 556, 556, 559, 559, 560, 561, 567, 568, 581ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 805,
+            "range": "±14",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 795ms, Q3: 809ms\nAll times: 785, 789, 789, 792, 795, 795, 797, 800, 800, 802, 805, 806, 808, 809, 809, 809, 813, 830, 834, 855ms"
           }
         ]
       }
