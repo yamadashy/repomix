@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778504188878,
+  "lastUpdate": 1778504319857,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -8730,6 +8730,51 @@ window.BENCHMARK_DATA = {
             "range": "±24",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 809ms, Q3: 833ms\nAll times: 794, 798, 802, 804, 805, 809, 811, 812, 812, 813, 816, 819, 820, 821, 831, 833, 836, 853, 865, 1103ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "7ec52f4b8cf49e69868ab4db733f06c20b5f084f",
+          "message": "perf(security): Wire security-check cache load/save into packager (part 3/3)\n\nFinal piece of the security-check cache optimization. Loads the cache at\nt=0 (overlapping with searchFiles), awaits before validateFileSafety\nreads it, and persists fire-and-forget after pack completes.\n\nPushed as a separate API commit because GitHub MCP's `push_files` only\nprocesses the first file per call. The tree state now matches the\nsingle logical commit on the local branch.\n\nCombined warm-cache benchmark (paired, n=30):\n  DELTA  mean=55.71 ms (9.08%)  t=11.70  faster=30/30",
+          "timestamp": "2026-05-11T21:56:49+09:00",
+          "tree_id": "766646c61e7484721e6b87ac19de97cfe0854491",
+          "url": "https://github.com/yamadashy/repomix/commit/7ec52f4b8cf49e69868ab4db733f06c20b5f084f"
+        },
+        "date": 1778504318514,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 839,
+            "range": "±206",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 792ms, Q3: 998ms\nAll times: 708, 744, 760, 765, 776, 783, 790, 792, 795, 805, 809, 815, 818, 827, 839, 839, 844, 848, 850, 878, 957, 971, 998, 1029, 1056, 1064, 1123, 1197, 1199, 1228ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 488,
+            "range": "±8",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 482ms, Q3: 490ms\nAll times: 474, 475, 477, 477, 480, 482, 483, 483, 485, 485, 488, 489, 490, 490, 490, 490, 491, 494, 495, 534ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 724,
+            "range": "±14",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 721ms, Q3: 735ms\nAll times: 708, 709, 715, 717, 717, 721, 722, 723, 723, 724, 724, 729, 731, 733, 734, 735, 736, 739, 741, 746ms"
           }
         ]
       }
