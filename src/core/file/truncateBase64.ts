@@ -20,10 +20,39 @@ const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_S
  * whole content. The hot loop avoids regex engine overhead and runs ~4x faster
  * than the original `replace`, which dominated `applyLightweightTransforms`
  * CPU on profiles of repos with `truncateBase64: true`.
+ *
+ * Newline-bounded prescan: '\n' (0x0A) is not in [A-Za-z0-9+/], so any base64
+ * run of length >= MIN_BASE64_LENGTH_STANDALONE must fit entirely inside a
+ * single newline-delimited line. The longest line in a content is therefore an
+ * upper bound on the longest possible base64 run. `String.prototype.indexOf`
+ * for a single character is an optimized native scan (much faster than a JS
+ * `charCodeAt` loop), so jumping across newlines lets us bail in microseconds
+ * on typical source code (lines ~80-120 chars) without ever entering the
+ * per-character body. Measured ~10x faster than the unconditional char scan on
+ * a 1000-file source-only sweep (~70 ms → ~6 ms).
  */
 const hasLongBase64Run = (content: string): boolean => {
   const len = content.length;
   if (len < MIN_BASE64_LENGTH_STANDALONE) return false;
+
+  let lineStart = 0;
+  let foundLongLine = false;
+  let nl = content.indexOf('\n');
+  while (nl !== -1) {
+    if (nl - lineStart >= MIN_BASE64_LENGTH_STANDALONE) {
+      foundLongLine = true;
+      break;
+    }
+    lineStart = nl + 1;
+    nl = content.indexOf('\n', lineStart);
+  }
+  // Account for the trailing partial line (or whole content when there are no newlines)
+  if (!foundLongLine && len - lineStart < MIN_BASE64_LENGTH_STANDALONE) {
+    return false;
+  }
+
+  // Slow path: at least one line is long enough to potentially contain a
+  // qualifying base64 run; fall back to the original per-char scan to verify.
   let run = 0;
   for (let i = 0; i < len; i++) {
     const c = content.charCodeAt(i);
