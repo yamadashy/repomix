@@ -14,7 +14,7 @@ import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { loadTokenCountCache, saveTokenCountCache } from './metrics/tokenCountCache.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
-import { produceOutput } from './packager/produceOutput.js';
+import type { produceOutput as produceOutputType } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
@@ -41,7 +41,14 @@ const defaultDeps = {
   collectFiles,
   processFiles,
   validateFileSafety,
-  produceOutput,
+  // Lazy-load produceOutput so its module chain (Handlebars template compile,
+  // output-style modules) loads in parallel with searchFiles + collect rather
+  // than blocking packager.ts entry. The dependency is invoked once per pack
+  // call so the import-cache overhead amortizes to a single resolve.
+  produceOutput: (async (...args: Parameters<typeof produceOutputType>) => {
+    const { produceOutput } = await import('./packager/produceOutput.js');
+    return produceOutput(...args);
+  }) as typeof produceOutputType,
   calculateMetrics,
   createMetricsTaskRunner,
   sortPaths,
@@ -92,42 +99,49 @@ export const pack = async (
     logger.trace('Failed to prefetch sort data:', error);
   });
 
-  progressCallback('Searching for files...');
-  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
-    Promise.all(
-      rootDirs.map(async (rootDir) => {
-        const result = await deps.searchFiles(rootDir, config, explicitFiles);
-        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
-      }),
-    ),
-  );
-
-  // Deduplicate and sort empty directory paths for reuse during output generation,
-  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
-  const emptyDirPaths = config.output.includeEmptyDirectories
-    ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
-    : undefined;
-
-  // Sort file paths
-  progressCallback('Sorting files...');
-  const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
-
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
-    rootDir,
-    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
-  }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
+  // Pre-initialize the metrics worker pool BEFORE searchFiles so that
+  // gpt-tokenizer's ~200-285ms-per-worker BPE table parse overlaps the
+  // search + collect + security + process pipeline rather than only the
+  // post-search stages. Pool size is now decoupled from the file count
+  // (see METRICS_PREWARM_THREAD_CAP in calculateMetrics.ts) so it can be
+  // created without waiting on searchFiles to resolve.
+  //
+  // The pool is created OUTSIDE the try block so a synchronous throw from
+  // createMetricsTaskRunner does not leave us with no `finally` to clean it
+  // up; the matching `finally` below handles the post-construction case.
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    allFilePaths.length,
     config.tokenCount.encoding,
   );
 
   try {
+    progressCallback('Searching for files...');
+    const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
+      Promise.all(
+        rootDirs.map(async (rootDir) => {
+          const result = await deps.searchFiles(rootDir, config, explicitFiles);
+          return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+        }),
+      ),
+    );
+
+    // Deduplicate and sort empty directory paths for reuse during output generation,
+    // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
+    const emptyDirPaths = config.output.includeEmptyDirectories
+      ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
+      : undefined;
+
+    // Sort file paths
+    progressCallback('Sorting files...');
+    const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
+    const sortedFilePaths = deps.sortPaths(allFilePaths);
+
+    // Regroup sorted file paths by rootDir using Set for O(1) membership checks
+    const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
+    const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+      rootDir,
+      filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+    }));
+
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
@@ -213,16 +227,12 @@ export const pack = async (
       files: filePaths,
     }));
 
-    // Ensure warm-up task completes before metrics calculation
-    await metricsWarmupPromise;
-    // Ensure the token-count cache is loaded before calculateFileMetrics reads
-    // from it. The load was started at the very beginning of pack() and is
-    // typically already resolved; this await is a safety net for fast machines.
-    await tokenCacheLoadPromise;
-
     // Generate and write output, overlapping with metrics calculation.
     // File and git metrics don't depend on the output, so they start immediately
-    // while output generation runs concurrently.
+    // while output generation runs concurrently. The metrics warm-up and
+    // token-count cache load are awaited INSIDE the metrics branch only —
+    // produceOutput has no dependency on either, so blocking the whole pipeline
+    // on them would idle the main thread while workers are still spinning up.
     const outputPromise = deps.produceOutput(
       rootDirs,
       config,
@@ -239,8 +249,13 @@ export const pack = async (
 
     const [{ outputFiles }, metrics] = await Promise.all([
       outputPromise,
-      withMemoryLogging('Calculate Metrics', () =>
-        deps.calculateMetrics(
+      withMemoryLogging('Calculate Metrics', async () => {
+        // Ensure warm-up is done and the token cache is loaded before
+        // calculateMetrics tasks fire. Both promises were kicked off at the
+        // very start of pack(); these awaits are typically already-resolved
+        // by the time we get here.
+        await Promise.all([metricsWarmupPromise, tokenCacheLoadPromise]);
+        return deps.calculateMetrics(
           processedFiles,
           outputForMetricsPromise,
           progressCallback,
@@ -250,8 +265,8 @@ export const pack = async (
           {
             taskRunner: metricsTaskRunner,
           },
-        ),
-      ),
+        );
+      }),
     ]);
 
     // Create a result object that includes metrics and security results

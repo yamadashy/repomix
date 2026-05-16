@@ -185,6 +185,20 @@ describe('packager', () => {
       };
     };
 
+    test('cleans up the metrics worker pool when searchFiles rejects', async () => {
+      // Regression: the metrics pool is now created BEFORE searchFiles so the
+      // gpt-tokenizer warm-up overlaps the search phase. If searchFiles throws
+      // (e.g. a glob pattern collides with an unreadable directory), the
+      // surrounding try/finally must still tear the pool down — otherwise the
+      // Tinypool workers leak and Node.js keeps the process alive.
+      const { cleanup, deps } = baseDeps();
+      deps.searchFiles = vi.fn().mockRejectedValue(new Error('search failed'));
+
+      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('search failed');
+
+      expect(cleanup).toHaveBeenCalled();
+    });
+
     test('cleans up the metrics worker pool when validateFileSafety rejects', async () => {
       const { cleanup, deps } = baseDeps();
       deps.validateFileSafety = vi.fn().mockRejectedValue(new Error('security check failed'));

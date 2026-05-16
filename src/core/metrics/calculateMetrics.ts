@@ -1,6 +1,6 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -30,20 +30,40 @@ export interface MetricsTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
+// Cap on metrics workers spawned for both warm-up and real tokenization.
+// The metrics phase fits comfortably in 3 workers for the typical Repomix
+// workload (≤1000 files); each extra worker pays a fresh ~200-285ms
+// gpt-tokenizer BPE table parse that contends with the file-collection
+// main thread for very small marginal benefit.
+const METRICS_PREWARM_THREAD_CAP = 3;
+
 /**
- * Create a metrics task runner and warm up all worker threads by triggering
- * gpt-tokenizer initialization in parallel. This allows the expensive module
- * loading to overlap with other pipeline stages (security check, file processing,
- * output generation).
+ * Create the metrics worker pool and warm up its threads by triggering
+ * gpt-tokenizer initialization in parallel. Called BEFORE `searchFiles` so
+ * the ~200-285ms-per-worker BPE table parse overlaps the entire search +
+ * collect + security + process pipeline rather than only the post-search
+ * stages.
+ *
+ * Because the pool is created without knowing the file count, it is sized
+ * by `min(host concurrency, METRICS_PREWARM_THREAD_CAP)` instead of the
+ * `ceil(numOfTasks / 100)` heuristic. On the worst case (>1000 files on a
+ * >3-vCPU host) this caps the metrics pool at 3 workers — acceptable because
+ * the metrics phase overlaps `produceOutput` and is no longer on the
+ * critical path after the per-file token-count cache landed.
  */
-export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+export const createMetricsTaskRunner = (encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+  const maxThreads = Math.max(1, Math.min(getProcessConcurrency(), METRICS_PREWARM_THREAD_CAP));
+
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
-    numOfTasks,
+    // numOfTasks is no longer meaningful at create time; maxWorkerThreads is
+    // the sole cap. Pass a sentinel large enough that the per-task heuristic
+    // in `getWorkerThreadCount` cannot drop us below the cap.
+    numOfTasks: maxThreads * 100,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    maxWorkerThreads: maxThreads,
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks);
   const warmupPromise = Promise.all(
     Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
