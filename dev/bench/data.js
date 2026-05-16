@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778422514830,
+  "lastUpdate": 1778915763443,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -4950,6 +4950,51 @@ window.BENCHMARK_DATA = {
             "range": "±51",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1688ms, Q3: 1739ms\nAll times: 1670, 1680, 1681, 1682, 1687, 1688, 1715, 1716, 1716, 1716, 1718, 1720, 1724, 1726, 1735, 1739, 1742, 1743, 1751, 1755ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a30ed5d385015dd410e43b610b178cb22063d6a1",
+          "message": "Merge pull request #1562 from yamadashy/perf/token-count-cache\n\nperf(core): Add content-addressed token-count disk cache",
+          "timestamp": "2026-05-16T16:13:23+09:00",
+          "tree_id": "cd3761c297f4181a09816ae9bc8ef99e172fdb1a",
+          "url": "https://github.com/yamadashy/repomix/commit/a30ed5d385015dd410e43b610b178cb22063d6a1"
+        },
+        "date": 1778915762528,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 731,
+            "range": "±97",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 679ms, Q3: 776ms\nAll times: 569, 591, 597, 638, 662, 675, 677, 679, 680, 690, 697, 702, 712, 715, 725, 731, 735, 736, 737, 739, 753, 767, 776, 784, 785, 794, 795, 803, 829, 937ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 763,
+            "range": "±76",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 747ms, Q3: 823ms\nAll times: 735, 737, 740, 742, 746, 747, 749, 750, 753, 759, 763, 764, 772, 779, 785, 823, 834, 841, 842, 881ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1490,
+            "range": "±56",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1462ms, Q3: 1518ms\nAll times: 1190, 1198, 1218, 1236, 1429, 1462, 1473, 1480, 1488, 1488, 1490, 1495, 1500, 1503, 1510, 1518, 1524, 1542, 1561, 1569ms"
           }
         ]
       }
