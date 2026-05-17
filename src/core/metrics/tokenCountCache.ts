@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { existsSync as fsExistsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { logger } from '../../shared/logger.js';
@@ -69,6 +70,26 @@ export const getCacheFilePath = (): string => {
  */
 export const isCacheDisabled = (): boolean => {
   return process.env.REPOMIX_TOKEN_CACHE === '0';
+};
+
+/**
+ * Synchronously probe whether the on-disk cache file exists. A `true` result
+ * means a previous run wrote a cache to disk and this run is almost
+ * certainly going to hit a substantial fraction of `getCached` lookups — a
+ * "warm-likely" heuristic used by the metrics worker pool sizing to avoid
+ * pre-warming workers that will never receive a real task.
+ *
+ * Falsy results are conservative: cache disabled, file missing, or stat
+ * failure all return `false`, which keeps the caller on the existing
+ * (uncapped) warm-up path.
+ */
+export const tokenCountCacheFileExistsSync = (): boolean => {
+  if (isCacheDisabled()) return false;
+  try {
+    return fsExistsSync(getCacheFilePath());
+  } catch {
+    return false;
+  }
 };
 
 /**

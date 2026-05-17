@@ -12,7 +12,7 @@ import { calculateGitLogMetrics } from './calculateGitLogMetrics.js';
 import { calculateOutputMetrics } from './calculateOutputMetrics.js';
 import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
 import type { TokenEncoding } from './TokenCounter.js';
-import { contentCacheKey, getCached, setCached } from './tokenCountCache.js';
+import { contentCacheKey, getCached, setCached, tokenCountCacheFileExistsSync } from './tokenCountCache.js';
 import type { MetricsWorkerResult, MetricsWorkerTask } from './workers/calculateMetricsWorker.js';
 
 export interface CalculateMetricsResult {
@@ -30,11 +30,41 @@ export interface MetricsTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
+// Floor on how many metrics workers are warmed when the on-disk token-count
+// cache file is present (the "warm-likely" path). On a fully warm run
+// `calculateFileMetrics` serves every per-file count from the cache and
+// dispatches zero worker tasks; only git diff / git log tokenization need
+// the pool, which is 2-3 small dispatches that one warmed worker handles
+// in well under a millisecond. Anything beyond this floor would pay a
+// wasted ~225ms gpt-tokenizer BPE parse for no real work.
+const METRICS_WARM_LIKELY_PREWARM = 1;
+
 /**
- * Create a metrics task runner and warm up all worker threads by triggering
- * gpt-tokenizer initialization in parallel. This allows the expensive module
- * loading to overlap with other pipeline stages (security check, file processing,
- * output generation).
+ * Create a metrics task runner and warm up a bounded number of worker threads
+ * by triggering gpt-tokenizer initialization in parallel. The warm-up
+ * overlaps the rest of the pack pipeline so the BPE table parse does not
+ * land on the critical path before `calculateMetrics`.
+ *
+ * Pool capacity (`maxWorkerThreads`) is unchanged from the previous behavior:
+ * `numOfTasks` flows through to Tinypool's standard `min(cpu, ceil(N/100))`
+ * sizing. The new piece is the *eager warm-up count*:
+ *
+ *   - When the on-disk token-count cache file is present, the run is almost
+ *     certainly "warm" — per-file token counts hit the cache and the only
+ *     metrics workload left is a handful of git diff / log tokenizations.
+ *     Warm a single worker for those and let any genuine miss spawn extra
+ *     workers lazily on demand. This saves up to (maxThreads − 1) wasted
+ *     ~225ms BPE parses per pack on high-vCPU hosts.
+ *
+ *   - When the cache file is missing, treat the run as "cold" and warm the
+ *     full `maxThreads` workers in parallel exactly as before, so the BPE
+ *     parses overlap collect/security/process instead of landing on the
+ *     metrics critical path.
+ *
+ * The cache-file check is a stat-level probe, not the loaded contents:
+ * `loadTokenCountCache()` may still be in flight when this runs. The probe
+ * is a best-effort warm/cold predictor, not a correctness signal — a stale
+ * or partial cache simply falls back to lazy worker spawn for the misses.
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
@@ -44,8 +74,11 @@ export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncod
   });
 
   const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const cacheWarmLikely = tokenCountCacheFileExistsSync();
+  const prewarmCount = cacheWarmLikely ? Math.min(maxThreads, METRICS_WARM_LIKELY_PREWARM) : maxThreads;
+
   const warmupPromise = Promise.all(
-    Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
+    Array.from({ length: prewarmCount }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
 
   return { taskRunner, warmupPromise };
