@@ -99,14 +99,19 @@ export const tokenCountCacheFileExistsSync = (): boolean => {
 };
 
 /**
- * Stable per-repo identifier used by the seen-marker filename. Joins the
- * sorted absolute paths so a multi-root pack with the same set of roots
- * (in any order) hashes to the same marker, while a different root set
- * — or the same root cloned to a different absolute path, as `--remote`
- * does via `fs.mkdtemp(...)` — hashes to a different marker.
+ * Stable per-repo identifier used by the seen-marker filename. Resolves each
+ * root to an absolute path before sorting + joining so callers that pass
+ * relative roots (e.g. the public `pack()` API used as a library) cannot
+ * collide markers across different cwds. A multi-root pack with the same
+ * set of roots (in any order) hashes to the same marker, while a different
+ * root set — or the same root cloned to a different absolute path, as
+ * `--remote` does via `fs.mkdtemp(...)` — hashes to a different marker.
  */
 const seenMarkerKey = (rootDirs: ReadonlyArray<string>): string => {
-  const joined = [...rootDirs].sort().join('\n');
+  const joined = rootDirs
+    .map((d) => path.resolve(d))
+    .sort()
+    .join('\n');
   return createHash('md5').update(joined).digest('hex');
 };
 
@@ -222,6 +227,26 @@ export const loadTokenCountCache = async (): Promise<void> => {
  * `tokenCountCacheSeenMarkerExistsSync`).
  */
 export const saveTokenCountCache = async (rootDirs: ReadonlyArray<string> = []): Promise<void> => {
+  // Resync the per-repo marker even when the save below is a no-op. Two
+  // scenarios this catches that the post-write `markRepoSeen` would miss:
+  //
+  //   - Upgrade from a pre-marker repomix release: the shared cache exists
+  //     on disk from prior runs but no markers do. A fully-warm pack
+  //     short-circuits the write (`!state.dirty`) and would otherwise
+  //     never create a marker, leaving the repo stuck on cold-likely
+  //     forever.
+  //
+  //   - Crash recovery: a previous pack landed the cache file via
+  //     `fs.rename` but exited before `markRepoSeen` could touch the
+  //     marker. The next run finds cache present + marker missing; this
+  //     resync fixes it up.
+  //
+  // The touch is idempotent (0-byte writeFile over an existing 0-byte
+  // file) so duplicating it with the post-write touch below is harmless.
+  if (!isCacheDisabled() && rootDirs.length > 0 && tokenCountCacheFileExistsSync()) {
+    await markRepoSeen(rootDirs);
+  }
+
   if (!state.dirty || state.entries.size === 0) return;
   if (isCacheDisabled()) return;
 

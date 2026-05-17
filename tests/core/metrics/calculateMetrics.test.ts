@@ -1,8 +1,12 @@
-import { describe, expect, it, type Mock, vi } from 'vitest';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { calculateFileMetrics } from '../../../src/core/metrics/calculateFileMetrics.js';
 import { calculateMetrics, createMetricsTaskRunner } from '../../../src/core/metrics/calculateMetrics.js';
+import { getRepoSeenMarkerPath } from '../../../src/core/metrics/tokenCountCache.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
@@ -278,5 +282,76 @@ describe('createMetricsTaskRunner', () => {
     const resolved = await result.warmupPromise;
     expect(Array.isArray(resolved)).toBe(true);
     expect((resolved as number[]).every((v) => v === 0)).toBe(true);
+  });
+});
+
+describe('createMetricsTaskRunner — cache-aware prewarm count', () => {
+  // The previous test block (which we keep) pins the warmup-task SHAPE
+  // (empty content, error swallowing). This block pins the warmup-task
+  // COUNT against the cache/marker heuristic — that is the actual perf
+  // contract a future refactor could silently break.
+  let tmpDir: string;
+  let cacheFile: string;
+  const originalCachePath = process.env.REPOMIX_TOKEN_CACHE_PATH;
+  const originalDisableEnv = process.env.REPOMIX_TOKEN_CACHE;
+  const REPO_DIR = '/tmp/test-repo-prewarm-pin';
+  const OTHER_REPO_DIR = '/tmp/test-repo-prewarm-other';
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-prewarm-test-'));
+    cacheFile = path.join(tmpDir, 'token-counts.json');
+    process.env.REPOMIX_TOKEN_CACHE_PATH = cacheFile;
+    delete process.env.REPOMIX_TOKEN_CACHE;
+  });
+
+  afterEach(async () => {
+    if (originalCachePath === undefined) {
+      delete process.env.REPOMIX_TOKEN_CACHE_PATH;
+    } else {
+      process.env.REPOMIX_TOKEN_CACHE_PATH = originalCachePath;
+    }
+    if (originalDisableEnv === undefined) {
+      delete process.env.REPOMIX_TOKEN_CACHE;
+    } else {
+      process.env.REPOMIX_TOKEN_CACHE = originalDisableEnv;
+    }
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('prewarms exactly 1 worker when shared cache + this-repo marker both exist (warm-likely)', async () => {
+    // Set up: shared cache file present AND marker for REPO_DIR present.
+    await fs.mkdir(path.dirname(cacheFile), { recursive: true });
+    await fs.writeFile(cacheFile, '{"version":1,"entries":{}}');
+    const markerPath = getRepoSeenMarkerPath([REPO_DIR]);
+    await fs.mkdir(path.dirname(markerPath), { recursive: true });
+    await fs.writeFile(markerPath, '');
+
+    const result = createMetricsTaskRunner([REPO_DIR], 1000, 'o200k_base');
+    await result.warmupPromise;
+
+    expect(result.taskRunner.run).toHaveBeenCalledTimes(1);
+    expect(result.taskRunner.run).toHaveBeenCalledWith({ content: '', encoding: 'o200k_base' });
+  });
+
+  it('prewarms maxThreads (>1) workers when cache exists but THIS repo marker is missing', async () => {
+    // Cache file present from some other repo, but no marker for OTHER_REPO_DIR.
+    await fs.mkdir(path.dirname(cacheFile), { recursive: true });
+    await fs.writeFile(cacheFile, '{"version":1,"entries":{}}');
+
+    const result = createMetricsTaskRunner([OTHER_REPO_DIR], 1000, 'o200k_base');
+    await result.warmupPromise;
+
+    // numOfTasks=1000 yields maxThreads = min(cpu, ceil(1000/100)) = min(cpu, 10).
+    // On any host with ≥2 vCPUs this is > 1. The test runs in CI on ≥2-core
+    // runners so the assertion is portable.
+    expect((result.taskRunner.run as Mock).mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('prewarms maxThreads (>1) workers when shared cache file is missing (cold)', async () => {
+    // No cache file, no marker.
+    const result = createMetricsTaskRunner([REPO_DIR], 1000, 'o200k_base');
+    await result.warmupPromise;
+
+    expect((result.taskRunner.run as Mock).mock.calls.length).toBeGreaterThan(1);
   });
 });
