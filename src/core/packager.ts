@@ -14,7 +14,7 @@ import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
 import { loadTokenCountCache, saveTokenCountCache } from './metrics/tokenCountCache.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
-import type { produceOutput as produceOutputType } from './packager/produceOutput.js';
+import { produceOutput } from './packager/produceOutput.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
@@ -41,14 +41,7 @@ const defaultDeps = {
   collectFiles,
   processFiles,
   validateFileSafety,
-  // Lazy-load produceOutput so its module chain (Handlebars template compile,
-  // output-style modules) loads in parallel with searchFiles + collect rather
-  // than blocking packager.ts entry. The dependency is invoked once per pack
-  // call so the import-cache overhead amortizes to a single resolve.
-  produceOutput: (async (...args: Parameters<typeof produceOutputType>) => {
-    const { produceOutput } = await import('./packager/produceOutput.js');
-    return produceOutput(...args);
-  }) as typeof produceOutputType,
+  produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
   sortPaths,
