@@ -64,11 +64,21 @@ export const createMetricsTaskRunner = (encoding: TokenEncoding): MetricsTaskRun
     maxWorkerThreads: maxThreads,
   });
 
-  const warmupPromise = Promise.all(
-    Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
-  );
+  try {
+    const warmupPromise = Promise.all(
+      Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
+    );
 
-  return { taskRunner, warmupPromise };
+    return { taskRunner, warmupPromise };
+  } catch (error) {
+    // The Tinypool was already created above. If anything between pool
+    // creation and the return throws synchronously (e.g. a `run()` call
+    // dispatches an immediate error in a future Tinypool release), tear
+    // the pool down before rethrowing so the caller never receives a half-
+    // constructed runner and we don't leak worker_threads.
+    void taskRunner.cleanup();
+    throw error;
+  }
 };
 
 const defaultDeps = {

@@ -246,6 +246,14 @@ export const pack = async (
     );
 
     const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
+    // Without this `.catch`, if `produceOutput` rejects while the metrics
+    // branch is still awaiting `metricsWarmupPromise` / `tokenCacheLoadPromise`,
+    // the derived `outputForMetricsPromise` rejection lands before
+    // `calculateMetrics` has attached its own handler — Node observes an
+    // unhandled rejection. The outer `Promise.all` below still propagates
+    // the original `outputPromise` rejection, so the no-op catch only
+    // suppresses the duplicate warning without swallowing the failure.
+    outputForMetricsPromise.catch(() => {});
 
     const [{ outputFiles }, metrics] = await Promise.all([
       outputPromise,
