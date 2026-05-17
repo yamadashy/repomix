@@ -1,6 +1,6 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -31,24 +31,46 @@ export interface MetricsTaskRunnerWithWarmup {
 }
 
 /**
- * Create a metrics task runner and warm up all worker threads by triggering
- * gpt-tokenizer initialization in parallel. This allows the expensive module
- * loading to overlap with other pipeline stages (security check, file processing,
- * output generation).
+ * Create the metrics worker pool and warm up its threads by triggering
+ * gpt-tokenizer initialization in parallel. Called BEFORE `searchFiles` so
+ * the ~200-285ms-per-worker BPE table parse overlaps the entire search +
+ * collect + security + process pipeline rather than only the post-search
+ * stages.
+ *
+ * Because the pool is now created without knowing the file count, the
+ * `ceil(numOfTasks / 100)` heuristic in `getWorkerThreadCount` no longer
+ * applies; we size to the host's full process concurrency instead. The
+ * runtime upper bound matches what `ceil(numOfTasks / 100)` would have
+ * returned for any repo with ≥ `processConcurrency * 100` files.
  */
-export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+export const createMetricsTaskRunner = (encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+  const maxThreads = Math.max(1, getProcessConcurrency());
+
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
-    numOfTasks,
+    // numOfTasks is no longer meaningful at create time; pool size is bounded
+    // by maxWorkerThreads instead. Use a sentinel large enough that the
+    // per-task heuristic in `getWorkerThreadCount` cannot drop us below the cap.
+    numOfTasks: maxThreads * 100,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    maxWorkerThreads: maxThreads,
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks);
-  const warmupPromise = Promise.all(
-    Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
-  );
+  try {
+    const warmupPromise = Promise.all(
+      Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
+    );
 
-  return { taskRunner, warmupPromise };
+    return { taskRunner, warmupPromise };
+  } catch (error) {
+    // The Tinypool was already created above. If anything between pool
+    // creation and the return throws synchronously (e.g. a `run()` call
+    // dispatches an immediate error in a future Tinypool release), tear
+    // the pool down before rethrowing so the caller never receives a half-
+    // constructed runner and we don't leak worker_threads.
+    void taskRunner.cleanup();
+    throw error;
+  }
 };
 
 const defaultDeps = {
