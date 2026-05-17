@@ -1,6 +1,6 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, getWorkerThreadCount, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
@@ -30,20 +30,38 @@ export interface MetricsTaskRunnerWithWarmup {
   warmupPromise: Promise<unknown>;
 }
 
+// Cap on metrics workers spawned for both warm-up and real tokenization.
+// On hosts with >3 vCPUs the original `min(cpu, ceil(numOfTasks / 100))`
+// scaling would spawn 4+ workers for repos with ≥400 files, but each extra
+// worker pays a fresh ~200-285ms gpt-tokenizer BPE table parse that mostly
+// contends with the main thread for very small marginal benefit on the
+// metrics phase (which is no longer on the critical path after the per-file
+// token-count cache landed).
+const METRICS_PREWARM_THREAD_CAP = 3;
+
 /**
  * Create a metrics task runner and warm up all worker threads by triggering
  * gpt-tokenizer initialization in parallel. This allows the expensive module
  * loading to overlap with other pipeline stages (security check, file processing,
  * output generation).
+ *
+ * Pool size is bounded by `min(host concurrency, METRICS_PREWARM_THREAD_CAP)`
+ * to avoid over-spawning workers on high-vCPU hosts. `numOfTasks` is still
+ * accepted from the caller (current packager.ts passes the file count) so the
+ * `ceil(numOfTasks / 100)` heuristic can pull the worker count BELOW the cap
+ * when the repo is small enough that fewer workers will saturate.
  */
 export const createMetricsTaskRunner = (numOfTasks: number, encoding: TokenEncoding): MetricsTaskRunnerWithWarmup => {
+  const cap = Math.max(1, Math.min(getProcessConcurrency(), METRICS_PREWARM_THREAD_CAP));
+
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    maxWorkerThreads: cap,
   });
 
-  const { maxThreads } = getWorkerThreadCount(numOfTasks);
+  const { maxThreads } = getWorkerThreadCount(numOfTasks, cap);
   const warmupPromise = Promise.all(
     Array.from({ length: maxThreads }, () => taskRunner.run({ content: '', encoding }).catch(() => 0)),
   );
