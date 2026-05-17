@@ -6,11 +6,14 @@ import {
   __resetTokenCountCacheForTests,
   contentCacheKey,
   getCached,
+  getRepoSeenMarkerPath,
   isCacheDisabled,
   loadTokenCountCache,
   MAX_CACHE_ENTRIES,
   saveTokenCountCache,
   setCached,
+  tokenCountCacheFileExistsSync,
+  tokenCountCacheSeenMarkerExistsSync,
 } from '../../../src/core/metrics/tokenCountCache.js';
 
 describe('tokenCountCache', () => {
@@ -228,6 +231,82 @@ describe('tokenCountCache', () => {
       // Overwriting an existing key must not trigger eviction.
       setCached(firstKey, 999);
       expect(getCached(firstKey)).toBe(999);
+    });
+  });
+
+  describe('per-repo seen markers (warm-likely heuristic)', () => {
+    // Regression set for the metrics-pool prewarm heuristic. The pool only
+    // drops eager warm-up to 1 when BOTH the shared cache file exists AND
+    // a per-repo marker exists. These tests pin three corners of that
+    // contract — without them a future refactor could silently regress the
+    // heuristic back to the "any cache file means warm" failure mode.
+
+    it('an unrelated repo stays cold-likely even after the shared cache is populated', async () => {
+      const repoA = ['/path/to/repo-a'];
+      const repoB = ['/path/to/repo-b'];
+
+      const key = contentCacheKey('o200k_base', 'shared content');
+      setCached(key, 12);
+      await saveTokenCountCache(repoA);
+
+      // The shared cache file now exists machine-wide.
+      expect(tokenCountCacheFileExistsSync()).toBe(true);
+      // But repo B has never written, so the marker for it must be absent.
+      expect(tokenCountCacheSeenMarkerExistsSync(repoB)).toBe(false);
+      // And repo A's marker should be present.
+      expect(tokenCountCacheSeenMarkerExistsSync(repoA)).toBe(true);
+    });
+
+    it('the same repo becomes warm-likely after a successful save', async () => {
+      const repo = ['/some/repo'];
+
+      // Before any save, neither file nor marker exist.
+      expect(tokenCountCacheFileExistsSync()).toBe(false);
+      expect(tokenCountCacheSeenMarkerExistsSync(repo)).toBe(false);
+
+      const key = contentCacheKey('o200k_base', 'a');
+      setCached(key, 1);
+      await saveTokenCountCache(repo);
+
+      // Both probes must agree the next pack is warm-likely.
+      expect(tokenCountCacheFileExistsSync()).toBe(true);
+      expect(tokenCountCacheSeenMarkerExistsSync(repo)).toBe(true);
+    });
+
+    it('a `--remote`-style fresh mkdtemp path does not see a stale marker', async () => {
+      // First `--remote` invocation clones to a random temp dir and saves.
+      const firstClone = ['/var/folders/T/repomix-AbCdEf'];
+      const key = contentCacheKey('o200k_base', 'cloned content');
+      setCached(key, 7);
+      await saveTokenCountCache(firstClone);
+
+      // Second `--remote` clones to a different random path (mkdtemp again).
+      // Even though the shared cache and the previous clone's marker still
+      // exist on disk, the new clone's marker is absent → prewarm decision
+      // must fall back to cold.
+      const secondClone = ['/var/folders/T/repomix-ZyXwVu'];
+      expect(tokenCountCacheFileExistsSync()).toBe(true);
+      expect(tokenCountCacheSeenMarkerExistsSync(firstClone)).toBe(true);
+      expect(tokenCountCacheSeenMarkerExistsSync(secondClone)).toBe(false);
+    });
+
+    it('the marker is NOT created when the save is a no-op (nothing dirty)', async () => {
+      const repo = ['/some/repo'];
+
+      // No setCached → save short-circuits without writing the cache file
+      // or touching the marker. Both must remain absent.
+      await saveTokenCountCache(repo);
+
+      expect(tokenCountCacheFileExistsSync()).toBe(false);
+      expect(tokenCountCacheSeenMarkerExistsSync(repo)).toBe(false);
+    });
+
+    it('marker path is sensitive to the rootDirs list but insensitive to ordering', async () => {
+      const a = getRepoSeenMarkerPath(['/a', '/b']);
+      const b = getRepoSeenMarkerPath(['/b', '/a']);
+      const c = getRepoSeenMarkerPath(['/a', '/c']);
+      expect(a).toBe(b);
+      expect(a).not.toBe(c);
     });
   });
 });
