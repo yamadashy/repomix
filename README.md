@@ -12,8 +12,8 @@
    <br>
    <a href="https://coderabbit.link/repomix">
       <picture>
-         <source media="(prefers-color-scheme: dark)" srcset="website/client/src/public/images/sponsors/coderabbit/dark-bg-banner.png">
-         <img alt="CodeRabbit sponsorship" width="400" src="website/client/src/public/images/sponsors/coderabbit/light-bg-banner.png">
+         <source media="(prefers-color-scheme: dark)" srcset="website/client/src/public/images/sponsors/coderabbit/dark.png">
+         <img alt="CodeRabbit sponsorship" width="400" src="website/client/src/public/images/sponsors/coderabbit/light.png">
       </picture>
    </a>
 
