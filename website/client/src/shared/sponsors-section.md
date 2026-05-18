@@ -14,10 +14,12 @@
    <br>
 
    <a href="https://coderabbit.link/repomix" target="_blank">
-      <picture>
-         <source media="(prefers-color-scheme: dark)" srcset="/images/sponsors/coderabbit/coderabbit-dark.png">
-         <img alt="CodeRabbit sponsorship" width="400" src="/images/sponsors/coderabbit/coderabbit-light.png">
-      </picture>
+      <table border="0" cellspacing="0" cellpadding="0"><tr><td height="225" align="center" valign="middle">
+         <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="/images/sponsors/coderabbit/coderabbit-dark.png">
+            <img alt="CodeRabbit sponsorship" width="400" src="/images/sponsors/coderabbit/coderabbit-light.png">
+         </picture>
+      </td></tr></table>
    </a>
 
   [CodeRabbit, AI-powered code reviews for PRs](https://coderabbit.link/repomix)  
