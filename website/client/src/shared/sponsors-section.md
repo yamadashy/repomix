@@ -20,7 +20,7 @@
       </picture>
    </a>
 
-  [CodeRabbit](https://coderabbit.link/repomix)  
+  [CodeRabbit | AI Code Reviews](https://coderabbit.link/repomix)  
   [Cut code review time & bugs in half, instantly.](https://coderabbit.link/repomix)
   
 
