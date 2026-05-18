@@ -12,8 +12,8 @@
    <br>
    <a href="https://coderabbit.link/repomix">
       <picture>
-         <source media="(prefers-color-scheme: dark)" srcset="https://victorious-bubble-f69a016683.media.strapiapp.com/White_Typemark_79b9189d19.svg">
-         <img alt="CodeRabbit sponsorship" width="400" src="https://victorious-bubble-f69a016683.media.strapiapp.com/Orange_Typemark_43bf516c9d.svg">
+         <source media="(prefers-color-scheme: dark)" srcset=".github/assets/coderabbit-dark.png">
+         <img alt="CodeRabbit sponsorship" width="400" src=".github/assets/coderabbit-light.png">
       </picture>
    </a>
 
