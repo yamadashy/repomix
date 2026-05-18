@@ -11,12 +11,10 @@
 
    <br>
    <a href="https://coderabbit.link/repomix">
-      <table border="0" cellspacing="0" cellpadding="0"><tr><td height="225" align="center" valign="middle">
-         <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="website/client/src/public/images/sponsors/coderabbit/coderabbit-dark.png">
-            <img alt="CodeRabbit sponsorship" width="400" src="website/client/src/public/images/sponsors/coderabbit/coderabbit-light.png">
-         </picture>
-      </td></tr></table>
+      <picture>
+         <source media="(prefers-color-scheme: dark)" srcset="website/client/src/public/images/sponsors/coderabbit/coderabbit-dark.png">
+         <img alt="CodeRabbit sponsorship" width="400" src="website/client/src/public/images/sponsors/coderabbit/coderabbit-light.png">
+      </picture>
    </a>
 
 ### [CodeRabbit, AI-powered code reviews for PRs](https://coderabbit.link/repomix)
