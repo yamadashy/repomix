@@ -9,6 +9,17 @@
 ### [Warp, built for coding with multiple AI agents](https://go.warp.dev/repomix)
 [Available for MacOS, Linux, & Windows](https://go.warp.dev/repomix)<br>
 
+   <br>
+   <a href="https://coderabbit.link/repomix">
+      <picture>
+         <source media="(prefers-color-scheme: dark)" srcset="https://victorious-bubble-f69a016683.media.strapiapp.com/White_Typemark_79b9189d19.svg">
+         <img alt="CodeRabbit sponsorship" width="400" src="https://victorious-bubble-f69a016683.media.strapiapp.com/Orange_Typemark_43bf516c9d.svg">
+      </picture>
+   </a>
+
+### [CodeRabbit, AI-powered code reviews for PRs](https://coderabbit.link/repomix)
+[Cut code review time & bugs in half](https://coderabbit.link/repomix)<br>
+
 
 </div>
 
