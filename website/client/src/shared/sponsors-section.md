@@ -13,14 +13,12 @@
    <br>
    <br>
 
-   <p>
    <a href="https://coderabbit.link/repomix" target="_blank">
       <picture>
          <source media="(prefers-color-scheme: dark)" srcset="/images/sponsors/coderabbit/dark.png">
          <img alt="CodeRabbit sponsorship" width="400" src="/images/sponsors/coderabbit/light.png">
       </picture>
    </a>
-   </p>
 
   [CodeRabbit | AI Code Reviews](https://coderabbit.link/repomix)  
   [Cut code review time & bugs in half, instantly.](https://coderabbit.link/repomix)
