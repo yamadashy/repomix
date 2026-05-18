@@ -15,13 +15,13 @@
 
    <a href="https://coderabbit.link/repomix" target="_blank">
       <picture>
-         <source media="(prefers-color-scheme: dark)" srcset="/images/sponsors/coderabbit/coderabbit-dark.png">
-         <img alt="CodeRabbit sponsorship" width="400" src="/images/sponsors/coderabbit/coderabbit-light.png">
+         <source media="(prefers-color-scheme: dark)" srcset="/images/sponsors/coderabbit/dark-bg-banner.png">
+         <img alt="CodeRabbit sponsorship" width="400" src="/images/sponsors/coderabbit/light-bg-banner.png">
       </picture>
    </a>
 
-  [CodeRabbit, AI-powered code reviews for PRs](https://coderabbit.link/repomix)  
-  [Cut code review time & bugs in half](https://coderabbit.link/repomix)
+  [CodeRabbit](https://coderabbit.link/repomix)  
+  [Cut code review time & bugs in half, instantly.](https://coderabbit.link/repomix)
   
 
 </div>
