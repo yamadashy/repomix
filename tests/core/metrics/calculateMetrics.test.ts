@@ -7,6 +7,7 @@ import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { calculateFileMetrics } from '../../../src/core/metrics/calculateFileMetrics.js';
 import { calculateMetrics, createMetricsTaskRunner } from '../../../src/core/metrics/calculateMetrics.js';
 import { getRepoSeenMarkerPath } from '../../../src/core/metrics/tokenCountCache.js';
+import { getWorkerThreadCount } from '../../../src/shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
@@ -333,7 +334,7 @@ describe('createMetricsTaskRunner — cache-aware prewarm count', () => {
     expect(result.taskRunner.run).toHaveBeenCalledWith({ content: '', encoding: 'o200k_base' });
   });
 
-  it('prewarms maxThreads (>1) workers when cache exists but THIS repo marker is missing', async () => {
+  it('prewarms the full maxThreads when cache exists but THIS repo marker is missing', async () => {
     // Cache file present from some other repo, but no marker for OTHER_REPO_DIR.
     await fs.mkdir(path.dirname(cacheFile), { recursive: true });
     await fs.writeFile(cacheFile, '{"version":1,"entries":{}}');
@@ -341,17 +342,19 @@ describe('createMetricsTaskRunner — cache-aware prewarm count', () => {
     const result = createMetricsTaskRunner([OTHER_REPO_DIR], 1000, 'o200k_base');
     await result.warmupPromise;
 
-    // numOfTasks=1000 yields maxThreads = min(cpu, ceil(1000/100)) = min(cpu, 10).
-    // On any host with ≥2 vCPUs this is > 1. The test runs in CI on ≥2-core
-    // runners so the assertion is portable.
-    expect((result.taskRunner.run as Mock).mock.calls.length).toBeGreaterThan(1);
+    // Compute the expected `maxThreads` from the same heuristic the production
+    // path uses (`min(cpu, ceil(N/100))`) so the assertion is portable across
+    // 1-vCPU / 2-vCPU / N-vCPU CI runners alike.
+    const { maxThreads } = getWorkerThreadCount(1000);
+    expect((result.taskRunner.run as Mock).mock.calls.length).toBe(maxThreads);
   });
 
-  it('prewarms maxThreads (>1) workers when shared cache file is missing (cold)', async () => {
+  it('prewarms the full maxThreads when shared cache file is missing (cold)', async () => {
     // No cache file, no marker.
     const result = createMetricsTaskRunner([REPO_DIR], 1000, 'o200k_base');
     await result.warmupPromise;
 
-    expect((result.taskRunner.run as Mock).mock.calls.length).toBeGreaterThan(1);
+    const { maxThreads } = getWorkerThreadCount(1000);
+    expect((result.taskRunner.run as Mock).mock.calls.length).toBe(maxThreads);
   });
 });
