@@ -52,6 +52,7 @@
 [![npm](https://img.shields.io/npm/d18m/repomix)](https://www.npmjs.com/package/repomix)
 [![Actions Status](https://github.com/yamadashy/repomix/actions/workflows/ci.yml/badge.svg)](https://github.com/yamadashy/repomix/actions?query=workflow%3A"ci")
 [![codecov](https://codecov.io/github/yamadashy/repomix/graph/badge.svg?token=PYQHDJ5SHX)](https://codecov.io/github/yamadashy/repomix)
+[![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/yamadashy/repomix?utm_source=oss&utm_medium=github&utm_campaign=yamadashy%2Frepomix&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
 [![Sponsors](https://img.shields.io/github/sponsors/yamadashy?logo=github)](https://github.com/sponsors/yamadashy)
 [![Discord](https://badgen.net/discord/online-members/wNYzTwZFku?icon=discord&label=discord)](https://discord.gg/wNYzTwZFku)
 
