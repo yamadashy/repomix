@@ -4,7 +4,7 @@
     :class="{ 'pack-button--loading': loading }"
     :disabled="!isValid && !loading"
     :aria-label="loading ? 'Cancel processing' : 'Pack repository'"
-    type="submit"
+    :type="loading ? 'button' : 'submit'"
     @click="handleClick"
   >
     <span class="pack-button__text pack-button__text--normal">
@@ -28,8 +28,9 @@ const props = defineProps<{
 const emit = defineEmits<(e: 'cancel') => void>();
 
 function handleClick(event: MouseEvent) {
-  // Only handle cancel on actual mouse clicks, not on form submission (Enter key)
-  if (props.loading && event.detail > 0) {
+  // type=button while loading prevents form submission, so any click
+  // (mouse or keyboard) safely signals cancel.
+  if (props.loading) {
     event.preventDefault();
     event.stopPropagation();
     emit('cancel');
