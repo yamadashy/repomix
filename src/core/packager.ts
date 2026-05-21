@@ -121,8 +121,10 @@ export const pack = async (
   }));
 
   // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation).
+  // (security check, file processing, output generation). `rootDirs` flows into the warm-up sizing so
+  // a per-repo "seen" marker can switch between cold (full warm-up) and warm-likely (single worker).
   const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+    rootDirs,
     allFilePaths.length,
     config.tokenCount.encoding,
   );
@@ -269,7 +271,7 @@ export const pack = async (
     // Persist the token-count cache for future runs. Awaited so newly produced
     // entries are not lost if the CLI exits immediately after pack(). The save
     // is atomic (writeFile-to-tmp + rename) and silently swallows errors.
-    await saveTokenCountCache();
+    await saveTokenCountCache(rootDirs);
 
     logMemoryUsage('Pack - End');
 

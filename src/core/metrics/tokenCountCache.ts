@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { existsSync as fsExistsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { logger } from '../../shared/logger.js';
@@ -23,6 +24,13 @@ export const MAX_CACHE_ENTRIES = 100_000;
 // (see shared/tmpDir.ts) with other ephemeral state such as mcp-outputs/.
 const CACHE_SUBDIR_NAME = 'cache';
 const CACHE_FILE_NAME = 'token-counts.json';
+// Per-repo "we've populated the shared cache for this repo before" markers
+// live under `cache/seen/{md5(rootDirs)}`. Empty files; existence alone is
+// the signal. See `tokenCountCacheSeenMarkerExistsSync` / `markRepoSeen`
+// for the warm-likely heuristic that pairs the global cache file probe
+// with a per-repo probe so unrelated repos cannot trigger a false warm
+// signal just because some other repo populated the shared cache.
+const SEEN_SUBDIR_NAME = 'seen';
 
 interface CacheData {
   version: number;
@@ -72,6 +80,107 @@ export const isCacheDisabled = (): boolean => {
 };
 
 /**
+ * Synchronously probe whether the on-disk cache file exists. Part 1 of the
+ * "warm-likely" heuristic; see `tokenCountCacheSeenMarkerExistsSync` for
+ * the per-repo half. A `false` here means the cache file is missing
+ * machine-wide and no run has populated it yet.
+ *
+ * Falsy results are conservative: cache disabled, file missing, or stat
+ * failure all return `false`, which keeps the caller on the existing
+ * (uncapped) warm-up path.
+ */
+export const tokenCountCacheFileExistsSync = (): boolean => {
+  if (isCacheDisabled()) return false;
+  try {
+    return fsExistsSync(getCacheFilePath());
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Stable per-repo identifier used by the seen-marker filename. Resolves each
+ * root to an absolute path before sorting + joining so callers that pass
+ * relative roots (e.g. the public `pack()` API used as a library) cannot
+ * collide markers across different cwds. A multi-root pack with the same
+ * set of roots (in any order) hashes to the same marker, while a different
+ * root set — or the same root cloned to a different absolute path, as
+ * `--remote` does via `fs.mkdtemp(...)` — hashes to a different marker.
+ */
+const seenMarkerKey = (rootDirs: ReadonlyArray<string>): string => {
+  const joined = rootDirs
+    .map((d) => path.resolve(d))
+    .sort()
+    .join('\n');
+  return createHash('md5').update(joined).digest('hex');
+};
+
+/**
+ * Returns the absolute path to the per-repo "seen" marker file. Derived
+ * from `getCacheFilePath()`'s directory so a `REPOMIX_TOKEN_CACHE_PATH`
+ * override automatically relocates the marker alongside the cache it
+ * predicts (keeps tests hermetic).
+ *
+ * The file itself is always 0 bytes — only existence is meaningful.
+ */
+export const getRepoSeenMarkerPath = (rootDirs: ReadonlyArray<string>): string => {
+  const cacheDir = path.dirname(getCacheFilePath());
+  return path.join(cacheDir, SEEN_SUBDIR_NAME, seenMarkerKey(rootDirs));
+};
+
+/**
+ * Synchronously probe whether THIS repo has populated the shared cache in
+ * a previous run. Pairs with `tokenCountCacheFileExistsSync`: the metrics
+ * worker pool only treats the run as warm-likely when BOTH return true.
+ *
+ * The shared cache being present is necessary (otherwise there are no
+ * entries to hit), but not sufficient — a fresh repo whose content has
+ * never reached the cache would hit `getCached` zero times and still
+ * benefit from the original `maxThreads` warm-up. The per-repo marker
+ * narrows the heuristic to "this repo wrote to the cache at least once."
+ *
+ * Stale-marker failure mode: a previously-saved repo whose entries were
+ * later FIFO-evicted by intervening packs of other repos. We still
+ * predict warm, but the actual hit rate may be lower than expected.
+ * Bounded: any miss spawns a worker lazily on the critical path; the
+ * cost ceiling per pack is one BPE init per missing worker.
+ *
+ * Falsy results are conservative: cache disabled, marker missing, or
+ * stat failure all return `false`.
+ */
+export const tokenCountCacheSeenMarkerExistsSync = (rootDirs: ReadonlyArray<string>): boolean => {
+  if (isCacheDisabled()) return false;
+  try {
+    return fsExistsSync(getRepoSeenMarkerPath(rootDirs));
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Touch the per-repo seen marker (empty file) so future packs of the same
+ * `rootDirs` recognise this machine has cache entries for it. Called from
+ * `saveTokenCountCache` after the shared-cache write succeeds, so the
+ * marker only appears when there is actually something cached.
+ *
+ * Errors degrade silently — a missing marker simply forces the next pack
+ * onto the cold-prewarm path, which is correct fallback behavior.
+ */
+const markRepoSeen = async (rootDirs: ReadonlyArray<string>): Promise<void> => {
+  if (isCacheDisabled() || rootDirs.length === 0) return;
+  const markerPath = getRepoSeenMarkerPath(rootDirs);
+  try {
+    await fs.mkdir(path.dirname(markerPath), { recursive: true });
+    // `writeFile` with empty content is the simplest cross-platform way to
+    // touch a file; `O_CREAT` semantics mean overwriting an existing marker
+    // is harmless (still 0 bytes, mtime refresh is fine).
+    await fs.writeFile(markerPath, '', { mode: 0o600 });
+  } catch (error) {
+    logger.trace('Failed to touch repo-seen marker:', error);
+  }
+};
+
+/**
  * Load the on-disk cache into memory. Errors (missing file, corrupt JSON,
  * version mismatch) degrade silently to an empty cache so first runs and
  * deleted caches keep working.
@@ -111,8 +220,33 @@ export const loadTokenCountCache = async (): Promise<void> => {
  * renames over the destination so concurrent invocations and interrupts
  * cannot leave a torn JSON file. Caller should await this so newly produced
  * entries are not lost on process exit.
+ *
+ * If `rootDirs` is provided, a per-repo "seen" marker is also touched on
+ * successful save so future packs of the same `rootDirs` can detect that
+ * this machine already has cache entries for them (see
+ * `tokenCountCacheSeenMarkerExistsSync`).
  */
-export const saveTokenCountCache = async (): Promise<void> => {
+export const saveTokenCountCache = async (rootDirs: ReadonlyArray<string> = []): Promise<void> => {
+  // Resync the per-repo marker even when the save below is a no-op. Two
+  // scenarios this catches that the post-write `markRepoSeen` would miss:
+  //
+  //   - Upgrade from a pre-marker repomix release: the shared cache exists
+  //     on disk from prior runs but no markers do. A fully-warm pack
+  //     short-circuits the write (`!state.dirty`) and would otherwise
+  //     never create a marker, leaving the repo stuck on cold-likely
+  //     forever.
+  //
+  //   - Crash recovery: a previous pack landed the cache file via
+  //     `fs.rename` but exited before `markRepoSeen` could touch the
+  //     marker. The next run finds cache present + marker missing; this
+  //     resync fixes it up.
+  //
+  // The touch is idempotent (0-byte writeFile over an existing 0-byte
+  // file) so duplicating it with the post-write touch below is harmless.
+  if (!isCacheDisabled() && rootDirs.length > 0 && tokenCountCacheFileExistsSync()) {
+    await markRepoSeen(rootDirs);
+  }
+
   if (!state.dirty || state.entries.size === 0) return;
   if (isCacheDisabled()) return;
 
@@ -170,6 +304,14 @@ export const saveTokenCountCache = async (): Promise<void> => {
       state.dirty = true;
     }
     logger.trace(`Saved ${state.entries.size} token count cache entries to ${cacheFile}`);
+
+    // Touch the per-repo seen marker only after the shared-cache write
+    // succeeds. If the rename above threw we skip the marker, so a future
+    // pack will (correctly) take the cold-prewarm path until we actually
+    // have something cached for this repo.
+    if (rootDirs.length > 0) {
+      await markRepoSeen(rootDirs);
+    }
   } catch (error) {
     logger.trace('Failed to save token count cache:', error);
   }
