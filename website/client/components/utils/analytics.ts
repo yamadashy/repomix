@@ -50,7 +50,10 @@ interface GAEventParams {
 // Strips query/hash/credentials and avoids forwarding raw URLs (which may
 // contain tokens or private host names) into Google Analytics.
 export function normalizeRepoLabel(input: string): string {
-  const trimmed = input?.trim() ?? '';
+  // Strip trailing slashes so `owner/repo/` still matches the shorthand
+  // regex below instead of falling through to URL parsing and returning
+  // `invalid`.
+  const trimmed = input?.trim().replace(/\/+$/, '') ?? '';
   if (trimmed === '') return 'none';
 
   // GitHub shorthand: owner/repo
@@ -60,14 +63,20 @@ export function normalizeRepoLabel(input: string): string {
 
   try {
     const url = new URL(trimmed);
-    const host = url.hostname.toLowerCase();
+    // Drop `www.` so `www.github.com/...` normalizes to the same `github:*`
+    // label as the canonical host.
+    const host = url.hostname.toLowerCase().replace(/^www\./, '');
     const segments = url.pathname.split('/').filter(Boolean);
 
     if (host === 'github.com' && segments.length >= 2) {
       const repo = segments[1].replace(/\.git$/, '');
       return `github:${segments[0]}/${repo}`;
     }
-    if (host === 'gist.github.com' && segments.length >= 2) {
+    if (host === 'gist.github.com' && segments.length >= 1) {
+      // Gist URLs come in two forms: `/<id>` (GitHub redirects to the user
+      // form) and `/<user>/<id>`. Handle both rather than leaking single-id
+      // URLs as `external:gist.github.com`.
+      if (segments.length === 1) return `gist:${segments[0]}`;
       return `gist:${segments[0]}/${segments[1]}`;
     }
     return `external:${host}`;
