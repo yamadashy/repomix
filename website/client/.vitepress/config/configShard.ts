@@ -157,10 +157,7 @@ const createPageHead = ({ page, title, description, pageData }: PageHeadContext)
       },
     ]);
   }
-  tags.push([
-    'link',
-    { rel: 'alternate', hreflang: 'x-default', href: buildLocaleUrl('en', rest) },
-  ]);
+  tags.push(['link', { rel: 'alternate', hreflang: 'x-default', href: buildLocaleUrl('en', rest) }]);
 
   // For documentation pages, emit a TechArticle JSON-LD pointing back to the
   // global WebSite graph so AI/search surfaces can connect article content to
