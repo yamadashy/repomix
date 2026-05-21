@@ -83,7 +83,7 @@ describe('configLoad', () => {
     });
 
     test('should return an empty object if no config file is found', async () => {
-      const loggerSpy = vi.spyOn(logger, 'log').mockImplementation(vi.fn());
+      using loggerSpy = vi.spyOn(logger, 'log').mockImplementation(vi.fn());
       vi.mocked(getGlobalDirectory).mockReturnValue('/global/repomix');
       vi.mocked(fs.stat).mockRejectedValue(new Error('File not found'));
 

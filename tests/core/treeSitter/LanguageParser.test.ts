@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { Parser } from 'web-tree-sitter';
 import { LanguageParser } from '../../../src/core/treeSitter/languageParser.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
@@ -35,10 +35,6 @@ describe('LanguageParser', () => {
   });
 
   describe('init / dispose', () => {
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
     it('throws RepomixError when used before init', async () => {
       const fresh = new LanguageParser();
       const error = await fresh.getParserForLang('javascript').catch((e) => e);
@@ -47,7 +43,7 @@ describe('LanguageParser', () => {
     });
 
     it('init() is idempotent — second call short-circuits', async () => {
-      const initSpy = vi.spyOn(Parser, 'init').mockResolvedValue(undefined);
+      using initSpy = vi.spyOn(Parser, 'init').mockResolvedValue(undefined);
       const target = new LanguageParser();
 
       await target.init();
@@ -58,7 +54,7 @@ describe('LanguageParser', () => {
     });
 
     it('wraps Parser.init() failures as RepomixError', async () => {
-      vi.spyOn(Parser, 'init').mockRejectedValue(new Error('wasm load failed'));
+      using _initSpy = vi.spyOn(Parser, 'init').mockRejectedValue(new Error('wasm load failed'));
       const target = new LanguageParser();
 
       await expect(target.init()).rejects.toBeInstanceOf(RepomixError);
@@ -66,7 +62,7 @@ describe('LanguageParser', () => {
     });
 
     it('dispose() resets state so subsequent calls require re-init', async () => {
-      vi.spyOn(Parser, 'init').mockResolvedValue(undefined);
+      using _initSpy = vi.spyOn(Parser, 'init').mockResolvedValue(undefined);
       const target = new LanguageParser();
       await target.init();
 

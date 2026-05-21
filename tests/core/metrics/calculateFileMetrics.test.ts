@@ -114,7 +114,7 @@ describe('calculateFileMetrics', () => {
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
     });
-    const runSpy = vi.spyOn(taskRunner, 'run');
+    using runSpy = vi.spyOn(taskRunner, 'run');
 
     const result = await calculateFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback, {
       taskRunner,
@@ -167,7 +167,7 @@ describe('calculateFileMetrics', () => {
         workerType: 'calculateMetrics',
         runtime: 'worker_threads',
       });
-      const runSpy = vi.spyOn(taskRunner, 'run');
+      using runSpy = vi.spyOn(taskRunner, 'run');
 
       // First run: cold cache — every file dispatches to a worker batch.
       const first = await calculateFileMetrics(processedFiles, targetFilePaths, 'o200k_base', progressCallback, {

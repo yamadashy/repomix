@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import process from 'node:process';
 import { DOMParser } from '@xmldom/xmldom';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { buildOutputGeneratorContext, generateOutput } from '../../../src/core/output/outputGenerate.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
@@ -330,10 +330,6 @@ describe('outputGenerate', () => {
 });
 
 describe('buildOutputGeneratorContext', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   const baseConfig = (overrides = {}) =>
     createMockConfig({
       cwd: '/repo',
@@ -346,7 +342,7 @@ describe('buildOutputGeneratorContext', () => {
     });
 
   test('reads the instruction file when configured', async () => {
-    vi.spyOn(fs, 'readFile').mockResolvedValue('be helpful');
+    using _readSpy = vi.spyOn(fs, 'readFile').mockResolvedValue('be helpful');
     const config = baseConfig({
       output: {
         filePath: 'output.txt',
@@ -362,7 +358,7 @@ describe('buildOutputGeneratorContext', () => {
   });
 
   test('throws RepomixError when instruction file is missing', async () => {
-    vi.spyOn(fs, 'readFile').mockRejectedValue(new Error('ENOENT'));
+    using _readSpy = vi.spyOn(fs, 'readFile').mockRejectedValue(new Error('ENOENT'));
     const config = baseConfig({
       output: {
         filePath: 'output.txt',

@@ -161,17 +161,14 @@ describe('cliRun', () => {
   });
 
   test('should call process.exit(1) on error', async () => {
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementationOnce(() => undefined as never);
-    const parseSpy = vi.spyOn(program, 'description').mockImplementationOnce(() => {
+    using exitSpy = vi.spyOn(process, 'exit').mockImplementationOnce(() => undefined as never);
+    using _parseSpy = vi.spyOn(program, 'description').mockImplementationOnce(() => {
       throw Error();
     });
-    const handleErrorSpy = vi.spyOn(logger, 'error');
+    using handleErrorSpy = vi.spyOn(logger, 'error');
     await expect(run()).resolves.not.toThrow();
     expect(exitSpy).toHaveBeenCalledWith(1);
     expect(handleErrorSpy).toHaveBeenCalled();
-    exitSpy.mockReset();
-    parseSpy.mockReset();
-    handleErrorSpy.mockReset();
   });
 
   describe('executeAction', () => {

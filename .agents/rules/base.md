@@ -94,6 +94,17 @@ export const functionName = async (
 
 - Mock dependencies by passing test doubles through the deps object
 - Use `vi.mock()` only when dependency injection is not feasible
+- For spies scoped to a single `it`/`test` block, prefer `using` over a manual `afterEach(() => vi.restoreAllMocks())`. `vi.spyOn()` returns a `Disposable`, so `using spy = vi.spyOn(...)` auto-calls `mockRestore()` when the block exits:
+
+  ```typescript
+  it('warns when input is empty', () => {
+    using warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    doThing('');
+    expect(warnSpy).toHaveBeenCalled();
+  });
+  ```
+
+  Keep `beforeEach`/`afterEach` only for spies shared across multiple tests in a `describe`.
 
 ## Output Generation
 

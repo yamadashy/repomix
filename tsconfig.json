@@ -9,7 +9,7 @@
     "strict": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
-    "lib": ["es2022"],
+    "lib": ["es2022", "esnext.disposable"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,

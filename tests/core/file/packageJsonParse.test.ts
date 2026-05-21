@@ -41,7 +41,7 @@ describe('packageJsonParse', () => {
       name: 'repomix',
     };
 
-    const loggerSpy = vi.spyOn(logger, 'warn').mockImplementation(vi.fn());
+    using loggerSpy = vi.spyOn(logger, 'warn').mockImplementation(vi.fn());
 
     vi.mocked(url.fileURLToPath).mockReturnValue('/mock/path/to/src/core/file2');
     vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockPackageJson));

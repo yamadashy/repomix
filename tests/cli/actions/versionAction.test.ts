@@ -17,7 +17,7 @@ describe('versionAction', () => {
   it('should print the correct version', async () => {
     vi.mocked(packageJsonParser.getVersion).mockResolvedValue('1.2.3');
 
-    const loggerSpy = vi.spyOn(logger, 'log').mockImplementation(vi.fn());
+    using loggerSpy = vi.spyOn(logger, 'log').mockImplementation(vi.fn());
     await runVersionAction();
 
     expect(packageJsonParser.getVersion).toHaveBeenCalled();

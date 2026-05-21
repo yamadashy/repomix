@@ -103,14 +103,12 @@ describe('initAction', () => {
       vi.mocked(prompts.confirm).mockResolvedValue(mockCancelSymbol as symbol);
       vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
 
-      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      using mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
       await createConfigFile('/test/dir', false);
 
       expect(mockExit).toHaveBeenCalledWith(0);
       expect(fs.writeFile).not.toHaveBeenCalled();
-
-      mockExit.mockRestore();
     });
 
     it('should return false when user cancels via isCancel on overwrite confirmation', async () => {
@@ -120,14 +118,12 @@ describe('initAction', () => {
       vi.mocked(prompts.confirm).mockResolvedValueOnce(mockCancelSymbol as symbol); // Overwrite cancel
       vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
 
-      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      using mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
       await createConfigFile('/test/dir', false);
 
       expect(mockExit).toHaveBeenCalledWith(0);
       expect(fs.writeFile).not.toHaveBeenCalled();
-
-      mockExit.mockRestore();
     });
 
     it('should return true when config file is successfully created', async () => {
@@ -213,14 +209,12 @@ describe('initAction', () => {
       vi.mocked(prompts.confirm).mockResolvedValue(mockCancelSymbol as symbol);
       vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
 
-      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      using mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
       await createIgnoreFile('/test/dir', false);
 
       expect(mockExit).toHaveBeenCalledWith(0);
       expect(fs.writeFile).not.toHaveBeenCalled();
-
-      mockExit.mockRestore();
     });
 
     it('should return true when ignore file is successfully created', async () => {
