@@ -75,17 +75,25 @@ const handleRepack = (selectedFiles: FileInfo[]) => {
     />
     <div v-else-if="result" class="result-content">
       <!-- Tab Navigation -->
-      <div v-if="hasFileSelection" class="tab-navigation">
-        <button 
+      <div v-if="hasFileSelection" class="tab-navigation" role="tablist" aria-label="Pack result view">
+        <button
+          id="tab-result"
           type="button"
+          role="tab"
+          aria-controls="tabpanel-result"
+          :aria-selected="activeTab === 'result'"
           class="tab-button"
           :class="{ active: activeTab === 'result' }"
           @click="handleTabClick('result')"
         >
           Result
         </button>
-        <button 
+        <button
+          id="tab-files"
           type="button"
+          role="tab"
+          aria-controls="tabpanel-files"
+          :aria-selected="activeTab === 'files'"
           class="tab-button"
           :class="{ active: activeTab === 'files' }"
           @click="handleTabClick('files')"
@@ -95,10 +103,20 @@ const handleRepack = (selectedFiles: FileInfo[]) => {
       </div>
 
       <!-- Tab Content -->
-      <div v-show="activeTab === 'result' || !hasFileSelection">
+      <div
+        id="tabpanel-result"
+        role="tabpanel"
+        aria-labelledby="tab-result"
+        v-show="activeTab === 'result' || !hasFileSelection"
+      >
         <TryItResultContent :result="result" :pack-options="packOptions" />
       </div>
-      <div v-show="activeTab === 'files' && hasFileSelection">
+      <div
+        id="tabpanel-files"
+        role="tabpanel"
+        aria-labelledby="tab-files"
+        v-show="activeTab === 'files' && hasFileSelection"
+      >
         <TryItFileSelection
           v-if="hasFileSelection"
           :all-files="result.metadata!.allFiles!"
@@ -145,6 +163,11 @@ const handleRepack = (selectedFiles: FileInfo[]) => {
 .tab-button:hover {
   background: var(--vp-c-bg-alt);
   color: var(--vp-c-text-1);
+}
+
+.tab-button:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -2px;
 }
 
 .tab-button.active {

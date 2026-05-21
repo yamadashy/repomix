@@ -76,10 +76,15 @@ function clearFolder() {
     <div
       class="upload-container"
       :class="{ 'drag-active': dragActive, 'has-error': hasError }"
+      role="button"
+      tabindex="0"
+      aria-label="Upload folder"
       @dragover.prevent="handleDragOver"
       @dragleave="handleDragLeave"
       @drop.prevent="onDrop"
       @click="triggerFileInput"
+      @keydown.enter.self.prevent="triggerFileInput"
+      @keydown.space.self.prevent="triggerFileInput"
     >
       <input
         ref="fileInput"
@@ -98,7 +103,12 @@ function clearFolder() {
           </p>
           <p v-else-if="selectedFolder" class="selected-file">
             Selected: {{ selectedFolder }}
-            <button class="clear-button" @click.stop="clearFolder">×</button>
+            <button
+              type="button"
+              class="clear-button"
+              aria-label="Clear selected folder"
+              @click.stop="clearFolder"
+            >×</button>
           </p>
           <template v-else>
             <p>Drop your folder here or click to browse (max 10MB)</p>
@@ -140,6 +150,11 @@ function clearFolder() {
 .upload-container:hover {
   border-color: var(--vp-c-brand-1);
   background-color: var(--vp-c-bg-soft);
+}
+
+.upload-container:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
 }
 
 .drag-active {
