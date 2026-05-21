@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import type { PackOptions } from '../../composables/usePackOptions';
 import type { TabType } from '../../types/ui';
 import type { DisplayProgressStage, FileInfo, PackResult } from '../api/client';
 import SupportMessage from './SupportMessage.vue';
 import TryItFileSelection from './TryItFileSelection.vue';
 import TryItLoading from './TryItLoading.vue';
-import TryItResultContent from './TryItResultContent.vue';
 import TryItResultErrorContent from './TryItResultErrorContent.vue';
+
+// Defer loading the Ace-editor-based result view (vue3-ace-editor + ace-builds
+// are heavy) until a pack result actually needs to render.
+const TryItResultContent = defineAsyncComponent(() => import('./TryItResultContent.vue'));
 
 interface Props {
   result?: PackResult | null;
