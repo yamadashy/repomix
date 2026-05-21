@@ -46,6 +46,73 @@ interface GAEventParams {
   value?: number;
 }
 
+// Reduce a user-supplied repo identifier to a privacy-safe label.
+// Strips query/hash/credentials and avoids forwarding raw URLs (which may
+// contain tokens or private host names) into Google Analytics.
+export function normalizeRepoLabel(input: string): string {
+  // Strip trailing slashes so `owner/repo/` still matches the shorthand
+  // regex below instead of falling through to URL parsing and returning
+  // `invalid`.
+  const trimmed = input?.trim().replace(/\/+$/, '') ?? '';
+  if (trimmed === '') return 'none';
+
+  // GitHub shorthand: owner/repo
+  if (/^[a-zA-Z0-9][\w.-]*\/[a-zA-Z0-9][\w.-]*$/.test(trimmed)) {
+    return `github:${trimmed.replace(/\.git$/, '')}`;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    // Drop `www.` so `www.github.com/...` normalizes to the same `github:*`
+    // label as the canonical host.
+    const host = url.hostname.toLowerCase().replace(/^www\./, '');
+    const segments = url.pathname.split('/').filter(Boolean);
+
+    if (host === 'github.com' && segments.length >= 2) {
+      const repo = segments[1].replace(/\.git$/, '');
+      return `github:${segments[0]}/${repo}`;
+    }
+    if (host === 'gist.github.com' && segments.length >= 1) {
+      // Gist URLs come in two forms: `/<id>` (GitHub redirects to the user
+      // form) and `/<user>/<id>`. Handle both rather than leaking single-id
+      // URLs as `external:gist.github.com`.
+      if (segments.length === 1) return `gist:${segments[0]}`;
+      return `gist:${segments[0]}/${segments[1]}`;
+    }
+    return `external:${host}`;
+  } catch {
+    return 'invalid';
+  }
+}
+
+export type ErrorCategory =
+  | 'timeout'
+  | 'rate_limit'
+  | 'not_found'
+  | 'verification'
+  | 'invalid_input'
+  | 'network'
+  | 'server'
+  | 'unknown';
+
+// Map a free-form error message to a stable category code so analytics
+// labels stay bounded and do not echo server-supplied strings verbatim.
+export function classifyError(message: string): ErrorCategory {
+  const lower = (message ?? '').toLowerCase();
+  if (lower.includes('timeout') || lower.includes('timed out')) return 'timeout';
+  if (lower.includes('rate limit') || lower.includes('429') || lower.includes('too many')) return 'rate_limit';
+  if (lower.includes('not found') || lower.includes('404')) return 'not_found';
+  if (lower.includes('turnstile') || lower.includes('verification') || lower.includes('verify')) {
+    return 'verification';
+  }
+  if (lower.includes('invalid') || lower.includes('format')) return 'invalid_input';
+  if (lower.includes('network') || lower.includes('fetch') || lower.includes('cors')) return 'network';
+  if (lower.includes('500') || lower.includes('502') || lower.includes('503') || lower.includes('server')) {
+    return 'server';
+  }
+  return 'unknown';
+}
+
 // Track an event using gtag
 export function trackEvent({ category, action, label, value }: GAEventParams): void {
   if (typeof window === 'undefined' || !window.gtag) {
@@ -66,21 +133,22 @@ export const analyticsUtils = {
     trackEvent({
       category: AnalyticsCategory.REPOSITORY,
       action: AnalyticsAction.PACK_START,
-      label: repoUrl,
+      label: normalizeRepoLabel(repoUrl),
     });
   },
 
   trackPackSuccess(repoUrl: string, totalFiles: number, totalChars: number): void {
+    const label = normalizeRepoLabel(repoUrl);
     trackEvent({
       category: AnalyticsCategory.REPOSITORY,
       action: AnalyticsAction.PACK_SUCCESS_FILES,
-      label: `${repoUrl}_files`,
+      label,
       value: totalFiles,
     });
     trackEvent({
       category: AnalyticsCategory.REPOSITORY,
       action: AnalyticsAction.PACK_SUCCESS_CHARS,
-      label: `${repoUrl}_chars`,
+      label,
       value: totalChars,
     });
   },
@@ -89,7 +157,7 @@ export const analyticsUtils = {
     trackEvent({
       category: AnalyticsCategory.REPOSITORY,
       action: AnalyticsAction.PACK_ERROR,
-      label: `${repoUrl} - ${error}`,
+      label: `${normalizeRepoLabel(repoUrl)} - ${classifyError(error)}`,
     });
   },
 
