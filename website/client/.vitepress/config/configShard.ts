@@ -24,6 +24,19 @@ const ogImageUrl = `${siteUrl}/images/og-image-large.png`;
 const githubUrl = 'https://github.com/yamadashy/repomix';
 const npmUrl = 'https://www.npmjs.com/package/repomix';
 
+// Stable @id for the global WebSite node so per-page schemas (e.g. TechArticle.isPartOf)
+// can reference it via `@id` instead of inlining a fresh node, which Google treats
+// as a separate entity.
+const websiteId = `${siteUrl}#website`;
+
+// Shared author block used by both the global SoftwareApplication JSON-LD and the
+// per-page TechArticle JSON-LD.
+const siteAuthor = {
+  '@type': 'Person' as const,
+  name: 'Kazuki Yamada',
+  url: 'https://github.com/yamadashy',
+};
+
 const googleAnalyticsTag = 'G-7PTT4PLC69';
 
 type PageHeadContext = {
@@ -37,64 +50,31 @@ type PageHeadContext = {
 
 // Order matters here: `en/...` is rewritten to the site root, so English
 // content emits canonical URLs without a locale prefix. Every other locale
-// keeps its folder as the URL prefix.
-const supportedLocales = [
-  'en',
-  'zh-cn',
-  'zh-tw',
-  'ja',
-  'es',
-  'pt-br',
-  'ko',
-  'de',
-  'fr',
-  'it',
-  'hi',
-  'id',
-  'vi',
-  'ru',
-  'tr',
-] as const;
+// keeps its folder as the URL prefix. Each entry carries its BCP-47 form
+// (used in `hreflang` and Schema.org `inLanguage`) and OpenGraph form
+// (underscore-separated, e.g. `en_US`). Keeping all three together prevents
+// drift when a new locale is added.
+export const localeConfig = {
+  en: { bcp47: 'en', og: 'en_US' },
+  'zh-cn': { bcp47: 'zh-CN', og: 'zh_CN' },
+  'zh-tw': { bcp47: 'zh-TW', og: 'zh_TW' },
+  ja: { bcp47: 'ja', og: 'ja_JP' },
+  es: { bcp47: 'es', og: 'es_ES' },
+  'pt-br': { bcp47: 'pt-BR', og: 'pt_BR' },
+  ko: { bcp47: 'ko', og: 'ko_KR' },
+  de: { bcp47: 'de', og: 'de_DE' },
+  fr: { bcp47: 'fr', og: 'fr_FR' },
+  it: { bcp47: 'it', og: 'it_IT' },
+  hi: { bcp47: 'hi', og: 'hi_IN' },
+  id: { bcp47: 'id', og: 'id_ID' },
+  vi: { bcp47: 'vi', og: 'vi_VN' },
+  ru: { bcp47: 'ru', og: 'ru_RU' },
+  tr: { bcp47: 'tr', og: 'tr_TR' },
+} as const;
 
-type Locale = (typeof supportedLocales)[number];
+export type Locale = keyof typeof localeConfig;
 
-// BCP-47 codes used in `hreflang` and `inLanguage` (Schema.org accepts BCP-47).
-const localeToBcp47: Record<Locale, string> = {
-  en: 'en',
-  'zh-cn': 'zh-CN',
-  'zh-tw': 'zh-TW',
-  ja: 'ja',
-  es: 'es',
-  'pt-br': 'pt-BR',
-  ko: 'ko',
-  de: 'de',
-  fr: 'fr',
-  it: 'it',
-  hi: 'hi',
-  id: 'id',
-  vi: 'vi',
-  ru: 'ru',
-  tr: 'tr',
-};
-
-// `og:locale` uses underscore form, e.g. `en_US`, `pt_BR`.
-const localeToOgLocale: Record<Locale, string> = {
-  en: 'en_US',
-  'zh-cn': 'zh_CN',
-  'zh-tw': 'zh_TW',
-  ja: 'ja_JP',
-  es: 'es_ES',
-  'pt-br': 'pt_BR',
-  ko: 'ko_KR',
-  de: 'de_DE',
-  fr: 'fr_FR',
-  it: 'it_IT',
-  hi: 'hi_IN',
-  id: 'id_ID',
-  vi: 'vi_VN',
-  ru: 'ru_RU',
-  tr: 'tr_TR',
-};
+const supportedLocales = Object.keys(localeConfig) as Locale[];
 
 const stripPageSuffix = (rest: string) =>
   rest
@@ -136,47 +116,49 @@ const createPageHead = ({ page, title, description, pageData }: PageHeadContext)
 
   const tags: HeadConfig[] = [
     ['link', { rel: 'canonical', href: url }],
+    ['meta', { property: 'og:type', content: isHome ? 'website' : 'article' }],
     ['meta', { property: 'og:title', content: title }],
     ['meta', { property: 'og:url', content: url }],
     ['meta', { property: 'og:description', content: description }],
-    ['meta', { property: 'og:locale', content: localeToOgLocale[locale] }],
+    ['meta', { property: 'og:locale', content: localeConfig[locale].og }],
     ['meta', { name: 'twitter:title', content: title }],
     ['meta', { name: 'twitter:url', content: url }],
     ['meta', { name: 'twitter:description', content: description }],
   ];
 
   // hreflang alternates so search engines can surface the right localized
-  // page to each user. `x-default` falls back to English.
+  // page to each user. `x-default` falls back to English. We also emit an
+  // `og:locale:alternate` for each non-current locale for social previews
+  // that honor it.
   for (const alt of supportedLocales) {
     tags.push([
       'link',
       {
         rel: 'alternate',
-        hreflang: localeToBcp47[alt],
+        hreflang: localeConfig[alt].bcp47,
         href: buildLocaleUrl(alt, rest),
       },
     ]);
+    if (alt !== locale) {
+      tags.push(['meta', { property: 'og:locale:alternate', content: localeConfig[alt].og }]);
+    }
   }
   tags.push(['link', { rel: 'alternate', hreflang: 'x-default', href: buildLocaleUrl('en', rest) }]);
 
-  // For documentation pages, emit a TechArticle JSON-LD pointing back to the
-  // global WebSite graph so AI/search surfaces can connect article content to
-  // the product entity.
+  // For documentation pages, emit a TechArticle JSON-LD that points back to
+  // the global WebSite node by `@id` so AI/search surfaces see a single
+  // linked entity across pages instead of a fresh inline WebSite per page.
   if (!isHome) {
     const articleJsonLd = {
       '@context': 'https://schema.org',
       '@type': 'TechArticle',
       headline: title,
       description,
-      inLanguage: localeToBcp47[locale],
-      isPartOf: { '@type': 'WebSite', name: siteName, url: siteUrl },
+      inLanguage: localeConfig[locale].bcp47,
+      isPartOf: { '@id': websiteId },
       mainEntityOfPage: { '@type': 'WebPage', '@id': url },
       image: ogImageUrl,
-      author: {
-        '@type': 'Person',
-        name: 'Kazuki Yamada',
-        url: 'https://github.com/yamadashy',
-      },
+      author: siteAuthor,
     };
     tags.push(['script', { type: 'application/ld+json' }, JSON.stringify(articleJsonLd)]);
   }
@@ -189,6 +171,7 @@ const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
     {
+      '@id': websiteId,
       '@type': 'WebSite',
       name: siteName,
       url: siteUrl,
@@ -214,11 +197,7 @@ const jsonLd = {
       softwareRequirements: 'Node.js 22.0.0 or higher',
       image: `${siteUrl}/images/repomix-logo.svg`,
       screenshot: ogImageUrl,
-      author: {
-        '@type': 'Person',
-        name: 'Kazuki Yamada',
-        url: 'https://github.com/yamadashy',
-      },
+      author: siteAuthor,
       sameAs: [githubUrl, npmUrl],
       featureList: [
         'AI-optimized output formats (XML, Markdown, JSON, Plain Text)',
@@ -341,8 +320,8 @@ export const configShard = defineConfig({
     ['link', { rel: 'preconnect', href: 'https://challenges.cloudflare.com', crossorigin: '' }],
     ['link', { rel: 'dns-prefetch', href: 'https://challenges.cloudflare.com' }],
 
-    // OGP
-    ['meta', { property: 'og:type', content: 'website' }],
+    // OGP. `og:type` is emitted per-page from `createPageHead` (article for
+    // docs, website for the home page) so we do not duplicate it here.
     ['meta', { property: 'og:site_name', content: siteName }],
     ['meta', { property: 'og:image', content: ogImageUrl }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
