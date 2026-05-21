@@ -1,13 +1,23 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import type { PackOptions } from '../../composables/usePackOptions';
 import type { TabType } from '../../types/ui';
 import type { DisplayProgressStage, FileInfo, PackResult } from '../api/client';
 import SupportMessage from './SupportMessage.vue';
 import TryItFileSelection from './TryItFileSelection.vue';
 import TryItLoading from './TryItLoading.vue';
-import TryItResultContent from './TryItResultContent.vue';
 import TryItResultErrorContent from './TryItResultErrorContent.vue';
+
+// Defer loading the Ace-editor-based result view (vue3-ace-editor + ace-builds
+// total ~480 KB) until a pack result actually needs to render. `delay: 200`
+// avoids a loading flicker on fast networks; `timeout: 10000` surfaces stalled
+// chunk fetches instead of leaving the panel blank indefinitely.
+const TryItResultContent = defineAsyncComponent({
+  loader: () => import('./TryItResultContent.vue'),
+  loadingComponent: TryItLoading,
+  delay: 200,
+  timeout: 10000,
+});
 
 interface Props {
   result?: PackResult | null;
