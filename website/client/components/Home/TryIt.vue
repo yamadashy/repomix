@@ -2,9 +2,12 @@
   <div class="container">
     <form class="try-it-container" @submit.prevent="handleSubmit($event)">
       <div class="input-row">
-        <div class="tab-container">
+        <div class="tab-container" role="tablist" aria-label="Repository input source">
           <button
             type="button"
+            role="tab"
+            aria-label="Remote repository URL"
+            :aria-selected="mode === 'url'"
             :class="{ active: mode === 'url' }"
             @click="setMode('url')"
           >
@@ -12,6 +15,9 @@
           </button>
           <button
             type="button"
+            role="tab"
+            aria-label="Upload local folder"
+            :aria-selected="mode === 'folder'"
             :class="{ active: mode === 'folder' }"
             @click="setMode('folder')"
           >
@@ -19,6 +25,9 @@
           </button>
           <button
             type="button"
+            role="tab"
+            aria-label="Upload ZIP archive"
+            :aria-selected="mode === 'file'"
             :class="{ active: mode === 'file' }"
             @click="setMode('file')"
           >

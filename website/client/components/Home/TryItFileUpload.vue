@@ -66,10 +66,15 @@ function clearFile() {
     <div
       class="upload-container"
       :class="{ 'drag-active': dragActive, 'has-error': hasError }"
+      role="button"
+      tabindex="0"
+      aria-label="Upload ZIP file"
       @dragover.prevent="handleDragOver"
       @dragleave="handleDragLeave"
       @drop.prevent="onDrop"
       @click="triggerFileInput"
+      @keydown.enter.prevent="triggerFileInput"
+      @keydown.space.prevent="triggerFileInput"
     >
       <input
         ref="fileInput"
@@ -88,7 +93,12 @@ function clearFile() {
           </p>
           <p v-else-if="selectedFile" class="selected-file">
             Selected: {{ selectedFile }}
-            <button class="clear-button" @click.stop="clearFile">×</button>
+            <button
+              type="button"
+              class="clear-button"
+              aria-label="Clear selected file"
+              @click.stop="clearFile"
+            >×</button>
           </p>
           <template v-else>
             <p>Drop your ZIP file here or click to browse (max 10MB)</p>
