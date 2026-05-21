@@ -83,8 +83,8 @@ function clearFolder() {
       @dragleave="handleDragLeave"
       @drop.prevent="onDrop"
       @click="triggerFileInput"
-      @keydown.enter.prevent="triggerFileInput"
-      @keydown.space.prevent="triggerFileInput"
+      @keydown.enter.self.prevent="triggerFileInput"
+      @keydown.space.self.prevent="triggerFileInput"
     >
       <input
         ref="fileInput"
@@ -150,6 +150,11 @@ function clearFolder() {
 .upload-container:hover {
   border-color: var(--vp-c-brand-1);
   background-color: var(--vp-c-bg-soft);
+}
+
+.upload-container:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
 }
 
 .drag-active {

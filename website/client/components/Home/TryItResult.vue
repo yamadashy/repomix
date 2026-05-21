@@ -155,6 +155,11 @@ const handleRepack = (selectedFiles: FileInfo[]) => {
   color: var(--vp-c-text-1);
 }
 
+.tab-button:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -2px;
+}
+
 .tab-button.active {
   color: var(--vp-c-brand-1);
   border-bottom-color: var(--vp-c-brand-1);
