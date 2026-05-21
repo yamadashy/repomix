@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778922975160,
+  "lastUpdate": 1779364928428,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -5130,6 +5130,51 @@ window.BENCHMARK_DATA = {
             "range": "±63",
             "unit": "ms",
             "extra": "Median of 19 runs\nQ1: 1265ms, Q3: 1328ms\nAll times: 1253, 1262, 1263, 1264, 1265, 1274, 1275, 1283, 1283, 1284, 1287, 1311, 1316, 1328, 1328, 1329, 1330, 1337, 1340ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dd0c7bf5d9ecc5bfafbee410ed6da5f317e5a73a",
+          "message": "Merge pull request #1580 from yamadashy/perf/metrics-cache-aware-prewarm\n\nperf(metrics): Skip the eager metrics warm-up when this repo's cache is already populated",
+          "timestamp": "2026-05-21T20:59:29+09:00",
+          "tree_id": "5c4f444db859261eca52fd612e9167a42332fe49",
+          "url": "https://github.com/yamadashy/repomix/commit/dd0c7bf5d9ecc5bfafbee410ed6da5f317e5a73a"
+        },
+        "date": 1779364927769,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 513,
+            "range": "±98",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 463ms, Q3: 561ms\nAll times: 420, 428, 429, 431, 433, 452, 455, 463, 470, 471, 477, 484, 492, 494, 496, 513, 515, 533, 534, 535, 537, 543, 561, 572, 599, 606, 618, 622, 643, 711ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 863,
+            "range": "±65",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 833ms, Q3: 898ms\nAll times: 798, 799, 821, 828, 832, 833, 839, 852, 857, 857, 863, 874, 879, 881, 888, 898, 900, 925, 931, 955ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1145,
+            "range": "±154",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1120ms, Q3: 1274ms\nAll times: 1096, 1098, 1100, 1105, 1105, 1120, 1122, 1123, 1126, 1127, 1145, 1148, 1250, 1261, 1266, 1274, 1277, 1282, 1289, 1309ms"
           }
         ]
       }
