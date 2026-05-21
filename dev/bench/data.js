@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779365044571,
+  "lastUpdate": 1779376445688,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -5220,6 +5220,51 @@ window.BENCHMARK_DATA = {
             "range": "±95",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1034ms, Q3: 1129ms\nAll times: 1016, 1019, 1022, 1026, 1028, 1034, 1045, 1050, 1054, 1068, 1068, 1071, 1080, 1107, 1110, 1129, 1159, 1170, 1254, 2832ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "746d0fd1cbee09affe6d65e6e9f9d27e04024c9f",
+          "message": "Merge pull request #1584 from yamadashy/ci/website-client-docs-build\n\nci(website): Add docs:build step to website client job",
+          "timestamp": "2026-05-22T00:10:31+09:00",
+          "tree_id": "8c1df9ec6fe24da6209771bc0fe2b7ed0979edcf",
+          "url": "https://github.com/yamadashy/repomix/commit/746d0fd1cbee09affe6d65e6e9f9d27e04024c9f"
+        },
+        "date": 1779376445049,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 454,
+            "range": "±34",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 439ms, Q3: 473ms\nAll times: 420, 421, 425, 428, 431, 438, 439, 439, 441, 442, 444, 444, 446, 449, 449, 454, 456, 457, 458, 462, 465, 471, 473, 476, 483, 488, 497, 510, 511, 549ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 768,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 762ms, Q3: 780ms\nAll times: 753, 755, 758, 759, 761, 762, 762, 762, 765, 765, 768, 768, 770, 778, 780, 780, 781, 782, 782, 786ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 982,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 971ms, Q3: 994ms\nAll times: 956, 963, 963, 966, 970, 971, 975, 975, 976, 978, 982, 983, 987, 991, 992, 994, 999, 1011, 1016, 1055ms"
           }
         ]
       }
