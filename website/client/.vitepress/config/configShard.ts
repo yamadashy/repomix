@@ -35,15 +35,94 @@ type PageHeadContext = {
   };
 };
 
-const buildPageUrl = (page: string) => {
-  const pathWithoutExtension = page.replace(/\.md$/, '');
-  const cleanPath = pathWithoutExtension.replace(/(^|\/)index$/, '$1');
+// Order matters here: `en/...` is rewritten to the site root, so English
+// content emits canonical URLs without a locale prefix. Every other locale
+// keeps its folder as the URL prefix.
+const supportedLocales = [
+  'en',
+  'zh-cn',
+  'zh-tw',
+  'ja',
+  'es',
+  'pt-br',
+  'ko',
+  'de',
+  'fr',
+  'it',
+  'hi',
+  'id',
+  'vi',
+  'ru',
+  'tr',
+] as const;
 
-  if (!cleanPath || cleanPath === '/') {
-    return siteUrl;
+type Locale = (typeof supportedLocales)[number];
+
+// BCP-47 codes used in `hreflang` and `inLanguage` (Schema.org accepts BCP-47).
+const localeToBcp47: Record<Locale, string> = {
+  en: 'en',
+  'zh-cn': 'zh-CN',
+  'zh-tw': 'zh-TW',
+  ja: 'ja',
+  es: 'es',
+  'pt-br': 'pt-BR',
+  ko: 'ko',
+  de: 'de',
+  fr: 'fr',
+  it: 'it',
+  hi: 'hi',
+  id: 'id',
+  vi: 'vi',
+  ru: 'ru',
+  tr: 'tr',
+};
+
+// `og:locale` uses underscore form, e.g. `en_US`, `pt_BR`.
+const localeToOgLocale: Record<Locale, string> = {
+  en: 'en_US',
+  'zh-cn': 'zh_CN',
+  'zh-tw': 'zh_TW',
+  ja: 'ja_JP',
+  es: 'es_ES',
+  'pt-br': 'pt_BR',
+  ko: 'ko_KR',
+  de: 'de_DE',
+  fr: 'fr_FR',
+  it: 'it_IT',
+  hi: 'hi_IN',
+  id: 'id_ID',
+  vi: 'vi_VN',
+  ru: 'ru_RU',
+  tr: 'tr_TR',
+};
+
+const stripPageSuffix = (rest: string) =>
+  rest
+    .replace(/\.md$/, '')
+    .replace(/(^|\/)index$/, '$1')
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '');
+
+// Resolve the source page (e.g. `ja/guide/installation.md`) into its locale
+// and the locale-relative remainder (`guide/installation`). English lives at
+// `en/...` on disk but is served from the site root thanks to the `rewrites`
+// rule, so the canonical URL omits the locale prefix.
+const resolvePageLocale = (page: string): { locale: Locale; rest: string } => {
+  for (const locale of supportedLocales) {
+    if (page === `${locale}.md` || page === `${locale}/index.md` || page.startsWith(`${locale}/`)) {
+      const remainder = page === `${locale}.md` || page === `${locale}/index.md` ? '' : page.slice(locale.length + 1);
+      return { locale, rest: stripPageSuffix(remainder) };
+    }
   }
+  return { locale: 'en', rest: stripPageSuffix(page) };
+};
 
-  return `${siteUrl}/${cleanPath.replace(/^\/+/, '').replace(/\/$/, '')}`;
+const buildLocaleUrl = (locale: Locale, rest: string): string => {
+  const prefix = locale === 'en' ? '' : `/${locale}`;
+  if (!rest) {
+    return `${siteUrl}${prefix}`;
+  }
+  return `${siteUrl}${prefix}/${rest}`;
 };
 
 const createPageHead = ({ page, title, description, pageData }: PageHeadContext): HeadConfig[] => {
@@ -51,17 +130,61 @@ const createPageHead = ({ page, title, description, pageData }: PageHeadContext)
     return [];
   }
 
-  const url = buildPageUrl(page);
+  const { locale, rest } = resolvePageLocale(page);
+  const url = buildLocaleUrl(locale, rest);
+  const isHome = rest === '';
 
-  return [
+  const tags: HeadConfig[] = [
     ['link', { rel: 'canonical', href: url }],
     ['meta', { property: 'og:title', content: title }],
     ['meta', { property: 'og:url', content: url }],
     ['meta', { property: 'og:description', content: description }],
+    ['meta', { property: 'og:locale', content: localeToOgLocale[locale] }],
     ['meta', { name: 'twitter:title', content: title }],
     ['meta', { name: 'twitter:url', content: url }],
     ['meta', { name: 'twitter:description', content: description }],
   ];
+
+  // hreflang alternates so search engines can surface the right localized
+  // page to each user. `x-default` falls back to English.
+  for (const alt of supportedLocales) {
+    tags.push([
+      'link',
+      {
+        rel: 'alternate',
+        hreflang: localeToBcp47[alt],
+        href: buildLocaleUrl(alt, rest),
+      },
+    ]);
+  }
+  tags.push([
+    'link',
+    { rel: 'alternate', hreflang: 'x-default', href: buildLocaleUrl('en', rest) },
+  ]);
+
+  // For documentation pages, emit a TechArticle JSON-LD pointing back to the
+  // global WebSite graph so AI/search surfaces can connect article content to
+  // the product entity.
+  if (!isHome) {
+    const articleJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'TechArticle',
+      headline: title,
+      description,
+      inLanguage: localeToBcp47[locale],
+      isPartOf: { '@type': 'WebSite', name: siteName, url: siteUrl },
+      mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+      image: ogImageUrl,
+      author: {
+        '@type': 'Person',
+        name: 'Kazuki Yamada',
+        url: 'https://github.com/yamadashy',
+      },
+    };
+    tags.push(['script', { type: 'application/ld+json' }, JSON.stringify(articleJsonLd)]);
+  }
+
+  return tags;
 };
 
 // JSON-LD Structured Data
