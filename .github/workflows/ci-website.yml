@@ -43,6 +43,9 @@ jobs:
       - name: Lint website client
         working-directory: website/client
         run: node --run lint
+      - name: Build website client
+        working-directory: website/client
+        run: node --run docs:build
 
   lint-website-server:
     name: Lint Website Server
