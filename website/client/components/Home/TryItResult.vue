@@ -9,8 +9,15 @@ import TryItLoading from './TryItLoading.vue';
 import TryItResultErrorContent from './TryItResultErrorContent.vue';
 
 // Defer loading the Ace-editor-based result view (vue3-ace-editor + ace-builds
-// are heavy) until a pack result actually needs to render.
-const TryItResultContent = defineAsyncComponent(() => import('./TryItResultContent.vue'));
+// total ~480 KB) until a pack result actually needs to render. `delay: 200`
+// avoids a loading flicker on fast networks; `timeout: 10000` surfaces stalled
+// chunk fetches instead of leaving the panel blank indefinitely.
+const TryItResultContent = defineAsyncComponent({
+  loader: () => import('./TryItResultContent.vue'),
+  loadingComponent: TryItLoading,
+  delay: 200,
+  timeout: 10000,
+});
 
 interface Props {
   result?: PackResult | null;
