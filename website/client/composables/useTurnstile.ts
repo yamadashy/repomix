@@ -87,7 +87,6 @@ export function useTurnstile() {
       if (!widgetId.value) {
         widgetId.value = turnstile.render(el, {
           sitekey: siteKey,
-          size: 'invisible',
           action: 'pack',
           execution: 'execute',
           callback: (token: string) => {

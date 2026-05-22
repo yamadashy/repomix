@@ -18,7 +18,7 @@ export interface TurnstileGlobal {
 
 export interface TurnstileRenderOptions {
   sitekey: string;
-  size?: 'normal' | 'compact' | 'invisible';
+  size?: 'normal' | 'compact' | 'flexible';
   // `action` is bound into the issued token and verified server-side, so a
   // token minted for /api/pack can't be replayed at a future endpoint that
   // expects a different action.
