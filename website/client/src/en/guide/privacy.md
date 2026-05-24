@@ -17,6 +17,7 @@ description: Understand how the Repomix CLI, website, and browser extension hand
 ## Repomix Website ([repomix.com](https://repomix.com/))
 
 - **Data Collection**: The Repomix website uses **Google Analytics** to collect usage data, such as page views and user interactions. This helps us understand how the website is used and improve the user experience.
+- **Bot Protection**: We use **Cloudflare Turnstile** in invisible mode to protect the Pack form from automated abuse. Turnstile runs in the background and may collect browser and network signals to perform this check, without displaying a CAPTCHA. See the [Cloudflare Turnstile Privacy Policy](https://www.cloudflare.com/en-gb/turnstile-privacy-policy/) for details.
 - **File Processing**: When uploading ZIP files or folders, your files are temporarily stored on our servers for processing. All uploaded files and processed data are automatically deleted immediately after processing is complete.
 
 ## Repomix Browser Extension
