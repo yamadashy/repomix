@@ -1,6 +1,8 @@
 ---
 name: agent-carnet
 description: "Use this skill when the user asks to save, recall, find, or organize notes. Triggers on: 'remember this', 'save this', 'note this', 'what did we discuss about...', 'check the notebook', 'find in carnet'. Also use proactively when discovering findings worth preserving across sessions."
+metadata:
+  internal: true
 ---
 
 # Agent Carnet
