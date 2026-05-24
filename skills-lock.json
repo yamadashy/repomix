@@ -6,6 +6,12 @@
       "sourceType": "github",
       "skillPath": "skills/agent-carnet/SKILL.md",
       "computedHash": "eb9b255f9c60dcb052a890907b90082c442a6fa1dc8e0dd4b89995ff92af301c"
+    },
+    "contextual-commit": {
+      "source": "berserkdisruptors/contextual-commits",
+      "sourceType": "github",
+      "skillPath": "skills/contextual-commit/SKILL.md",
+      "computedHash": "3ec7893fcabb2f1a3ab2e6cdf001354982aade9ed539047f44cb21858879eff0"
     }
   }
 }
