@@ -38,7 +38,7 @@ The Skills CLI installs the skill into the selected assistant's skills directory
 For Hermes Agent, install the single-file skill with Hermes Agent's native skills command:
 
 ```bash
-hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/.claude/skills/repomix-explorer/SKILL.md
+hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/skills/repomix-explorer/SKILL.md
 ```
 
 If you use Hermes Agent primarily for repository analysis, the [MCP Server](/guide/mcp-server) setup is also a good option because it runs Repomix directly as an MCP server.
