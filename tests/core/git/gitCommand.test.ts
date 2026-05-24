@@ -174,7 +174,7 @@ file2.ts
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(
         3,
         'git',
-        ['-C', directory, 'fetch', '--depth', '1', 'origin', remoteBranch],
+        ['-C', directory, 'fetch', '--depth', '1', 'origin', '--end-of-options', remoteBranch],
         expectGitRemoteOpts,
       );
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(4, 'git', ['-C', directory, 'checkout', 'FETCH_HEAD']);
@@ -207,7 +207,7 @@ file2.ts
       ]);
       expect(mockFileExecAsync).toHaveBeenLastCalledWith(
         'git',
-        ['-C', directory, 'fetch', '--depth', '1', 'origin', remoteBranch],
+        ['-C', directory, 'fetch', '--depth', '1', 'origin', '--end-of-options', remoteBranch],
         expectGitRemoteOpts,
       );
     });
@@ -242,7 +242,7 @@ file2.ts
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(
         3,
         'git',
-        ['-C', directory, 'fetch', '--depth', '1', 'origin', shortSha],
+        ['-C', directory, 'fetch', '--depth', '1', 'origin', '--end-of-options', shortSha],
         expectGitRemoteOpts,
       );
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(
@@ -251,7 +251,13 @@ file2.ts
         ['-C', directory, 'fetch', 'origin'],
         expectGitRemoteOpts,
       );
-      expect(mockFileExecAsync).toHaveBeenLastCalledWith('git', ['-C', directory, 'checkout', shortSha]);
+      expect(mockFileExecAsync).toHaveBeenLastCalledWith('git', [
+        '-C',
+        directory,
+        'checkout',
+        '--end-of-options',
+        shortSha,
+      ]);
     });
 
     test("should throw error when remote ref is not found, and it's not due to short SHA", async () => {
@@ -282,9 +288,25 @@ file2.ts
       ]);
       expect(mockFileExecAsync).toHaveBeenLastCalledWith(
         'git',
-        ['-C', directory, 'fetch', '--depth', '1', 'origin', remoteBranch],
+        ['-C', directory, 'fetch', '--depth', '1', 'origin', '--end-of-options', remoteBranch],
         expectGitRemoteOpts,
       );
+    });
+
+    test.each([
+      ['--upload-pack', '--upload-pack=touch /tmp/pwned'],
+      ['--config option', '--config=core.sshCommand=evil'],
+      ['leading dash', '-evil'],
+    ])('should reject branch/ref that could be a git option (%s)', async (_desc, remoteBranch) => {
+      const mockFileExecAsync = vi.fn();
+      const url = 'https://github.com/user/repo.git';
+      const directory = '/tmp/repo';
+
+      await expect(
+        execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
+      ).rejects.toThrow("Invalid branch or ref name. Name must not start with '-'");
+
+      expect(mockFileExecAsync).not.toHaveBeenCalled();
     });
   });
 
