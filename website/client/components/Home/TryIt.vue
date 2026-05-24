@@ -478,4 +478,16 @@ onMounted(() => {
   border-color: #333 transparent transparent transparent;
 }
 
+/* The Turnstile widget is executed programmatically via execution: 'execute'.
+   The container must remain in the DOM (removing it prevents widget rendering)
+   but should not affect page layout or be visible. */
+.turnstile-container {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 </style>
