@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779606184559,
+  "lastUpdate": 1779627249634,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -5445,6 +5445,51 @@ window.BENCHMARK_DATA = {
             "range": "±174",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1117ms, Q3: 1291ms\nAll times: 1106, 1110, 1112, 1112, 1114, 1117, 1118, 1129, 1130, 1131, 1136, 1139, 1154, 1163, 1174, 1291, 1299, 1311, 1335, 1356ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0924b6430c8baca2eabb477408a4b2a7500b49b",
+          "message": "Merge pull request #1597 from yamadashy/chore/skills-reorganize\n\nchore(skills): Reorganize skill directories",
+          "timestamp": "2026-05-24T21:52:22+09:00",
+          "tree_id": "30698f5c5cde48e6e84af28cdcb2fc439f6c48d9",
+          "url": "https://github.com/yamadashy/repomix/commit/e0924b6430c8baca2eabb477408a4b2a7500b49b"
+        },
+        "date": 1779627248268,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 466,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 448ms, Q3: 474ms\nAll times: 435, 437, 438, 439, 443, 446, 448, 448, 449, 451, 453, 456, 457, 457, 464, 466, 468, 470, 470, 472, 473, 473, 474, 477, 477, 479, 479, 481, 501, 517ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 778,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 767ms, Q3: 790ms\nAll times: 751, 753, 759, 762, 764, 767, 772, 772, 774, 777, 778, 779, 784, 786, 790, 790, 794, 797, 811, 817ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 588,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 580ms, Q3: 596ms\nAll times: 574, 575, 575, 580, 580, 580, 582, 586, 587, 587, 588, 588, 589, 589, 592, 596, 596, 603, 604, 610ms"
           }
         ]
       }
