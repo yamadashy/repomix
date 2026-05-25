@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779669480176,
+  "lastUpdate": 1779678597855,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -8820,6 +8820,51 @@ window.BENCHMARK_DATA = {
             "range": "±16",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1093ms, Q3: 1109ms\nAll times: 1077, 1083, 1085, 1089, 1093, 1093, 1095, 1097, 1098, 1099, 1101, 1104, 1105, 1106, 1107, 1109, 1123, 1184, 1295, 1434ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "ca4ac2e8731e1b07bb82dbad6b8ab315b4654002",
+          "message": "perf(core): Use synchronous reads in readRawFile to cut per-file I/O overhead\n\ncollectFiles dispatches readRawFile through a 50-way promise pool. On a\nwarm OS page cache (the common case — globby has just walked the tree, so\nfile contents are resident in RAM), each `await fs.readFile` is bounded not\nby disk latency but by the libuv thread-pool round-trip: ~0.09 ms/file of\nPromise allocation + microtask scheduling + completion-event machinery.\nAcross ~1085 files that is ~100 ms of pure overhead.\n\nReplace `await fs.readFile` with `readFileSync`, which issues the syscall\ndirectly from the V8 isolate and returns from the page cache in a single\nhop with no thread-pool hand-off. Also hoist the `TextDecoder` to module\nscope so the fast UTF-8 path reuses one instance instead of allocating per\nfile.\n\nThe function stays async: the rare non-UTF-8 slow path (dynamic import of\njschardet/iconv, `await isBinaryFile`) is unchanged, so readRawFile's\nsignature and all callers (collectFiles, MCP file tools) are untouched.\n\nAdditionally remove the manual UTF-8 BOM strip on the fast path. TextDecoder\nwith the default `ignoreBOM: false` already consumes a leading BOM during\ndecode, so `content.charCodeAt(0) === 0xfeff` was dead code that could never\nfire (verified: decoding `EF BB BF 68 69` yields \"hi\"). Output is unchanged;\nthe variable becomes `const`.\n\nOutput is byte-identical: only the I/O call changes; isBinaryPath, the\nNULL-byte probe, the UTF-8 decode, and the encoding-detection slow path are\nall preserved. Verified by the full test suite (1312 tests pass) and a BOM\nround-trip check.\n\nBenchmark — paired interleaved A/B, repomix self-pack (~1085 files), warm\npage cache, swapping only the compiled fileRead.js between runs:\n\n  n=25  BASE mean=917.1 sd=22.7  CAND mean=805.3 sd=16.9  DELTA 111.8 ms (12.19%)  faster=25/25\n  n=15  BASE mean=1091.8 sd=25.3 CAND mean=984.7 sd=27.4  DELTA 107.1 ms (9.81%)   faster=15/15\n\nCI cross-platform benchmark (median): Ubuntu -7.3%, Windows -7.7%, macOS\n+4.0% (within macOS run-to-run noise; sd >> delta). Comfortably above the\n2% wall-clock threshold on the low-variance platforms.\n\nTradeoff: reads now serialize on the main thread instead of using libuv's\n4-way pool. On SSD/NVMe (developer machines, CI) per-file disk wait is\nsub-ms so this is a net win; on cold spinning disk / NFS the lost read\nparallelism is a real regression, outside the typical target environment.\nMax concurrent FDs also drops from 50 to 1, which is strictly safer.\n\nhttps://claude.ai/code/session_014uS2W5jgpHtQaXNxy3hg7X",
+          "timestamp": "2026-05-25T03:08:11Z",
+          "tree_id": "684842970172fd2fe2a19e5c94c5e038b1b68b21",
+          "url": "https://github.com/yamadashy/repomix/commit/ca4ac2e8731e1b07bb82dbad6b8ab315b4654002"
+        },
+        "date": 1779678596515,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 755,
+            "range": "±110",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 704ms, Q3: 814ms\nAll times: 637, 675, 677, 689, 690, 696, 699, 704, 706, 709, 713, 719, 736, 742, 748, 755, 768, 781, 786, 793, 800, 803, 814, 816, 858, 859, 863, 959, 972, 997ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 684,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 678ms, Q3: 693ms\nAll times: 668, 670, 671, 675, 676, 678, 680, 680, 683, 684, 684, 688, 691, 691, 692, 693, 696, 698, 698, 709ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1117,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1114ms, Q3: 1134ms\nAll times: 1097, 1100, 1109, 1109, 1111, 1114, 1114, 1114, 1115, 1115, 1117, 1117, 1118, 1120, 1122, 1134, 1139, 1145, 1161, 1194ms"
           }
         ]
       }
