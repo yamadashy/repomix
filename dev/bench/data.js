@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779631276110,
+  "lastUpdate": 1779721348035,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -5535,6 +5535,51 @@ window.BENCHMARK_DATA = {
             "range": "±15",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 590ms, Q3: 605ms\nAll times: 580, 580, 582, 586, 586, 590, 592, 593, 593, 594, 594, 594, 594, 602, 604, 605, 609, 610, 615, 622ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "18b1d610789b6ead4a50c8c45782df1063155506",
+          "message": "Merge pull request #1600 from yamadashy/chore/harden-issue-similar-workflow\n\nchore(ci): harden similar-issues workflow with least-privilege split",
+          "timestamp": "2026-05-26T00:00:46+09:00",
+          "tree_id": "973387fc5fc091be75694be181458d79595ff6aa",
+          "url": "https://github.com/yamadashy/repomix/commit/18b1d610789b6ead4a50c8c45782df1063155506"
+        },
+        "date": 1779721347311,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 611,
+            "range": "±152",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 525ms, Q3: 677ms\nAll times: 478, 481, 488, 496, 499, 501, 520, 525, 532, 534, 536, 541, 568, 568, 572, 611, 623, 626, 654, 657, 671, 674, 677, 690, 692, 725, 800, 851, 904, 907ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 824,
+            "range": "±45",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 814ms, Q3: 859ms\nAll times: 802, 804, 808, 813, 814, 814, 815, 816, 820, 821, 824, 826, 836, 838, 844, 859, 912, 945, 984, 987ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1093,
+            "range": "±44",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1074ms, Q3: 1118ms\nAll times: 1061, 1062, 1062, 1067, 1068, 1074, 1074, 1084, 1086, 1090, 1093, 1098, 1104, 1105, 1105, 1118, 1120, 1120, 1125, 1139ms"
           }
         ]
       }
