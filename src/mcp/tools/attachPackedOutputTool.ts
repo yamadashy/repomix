@@ -305,7 +305,11 @@ It will return in that case a new output ID and the updated content.`,
           directory: path.basename(path.dirname(outputFilePath)),
         };
 
-        return await formatPackToolResponse(context, packResult, outputFilePath, topFilesLength);
+        // Mark this output as attach-sourced so read_repomix_output and
+        // grep_repomix_output secret-scan its content before serving it. The scan
+        // runs at serve time (not just here) so the boundary cannot be bypassed and
+        // stays correct even if the file changes after being attached.
+        return await formatPackToolResponse(context, packResult, outputFilePath, topFilesLength, true);
       } catch (error) {
         return buildMcpToolErrorResponse(convertErrorToJson(error));
       }
