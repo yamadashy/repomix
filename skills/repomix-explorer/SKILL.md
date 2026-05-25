@@ -11,8 +11,8 @@ description: |
 
   DO NOT trigger for:
   - Editing, refactoring, or writing code in the current project
-  - Reading or searching a known file/path (use Read or grep directly)
-  - Single-symbol lookups answerable with one grep
+  - Reading or searching a known file/path in the local project (use Read or grep directly)
+  - Single-symbol lookups in the local project answerable with one grep
   - Git operations, running tests, builds, or installs
 ---
 
