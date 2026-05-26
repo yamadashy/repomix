@@ -97,6 +97,8 @@ describe('AttachPackedOutputTool', () => {
       }),
       testFilePath,
       undefined,
+      // Attached files are marked for serve-time secret scanning.
+      true,
     );
     expect(result).toEqual({
       content: [{ type: 'text', text: 'Success response' }],
@@ -123,6 +125,7 @@ describe('AttachPackedOutputTool', () => {
       expect.anything(),
       expectedXmlPath,
       undefined,
+      true,
     );
     expect(result).toEqual({
       content: [{ type: 'text', text: 'Success response' }],
@@ -140,6 +143,7 @@ describe('AttachPackedOutputTool', () => {
       expect.anything(),
       testFilePath,
       topFilesLength,
+      true,
     );
   });
 
@@ -188,6 +192,20 @@ describe('AttachPackedOutputTool', () => {
     expect(packResult.safeFilePaths).toEqual(['src/index.js', 'src/utils.js', 'package.json']);
   });
 
+  test('should mark attached outputs for serve-time secret scanning', async () => {
+    // The attach path does not scan or return content itself; instead it flags the
+    // registered output so read_repomix_output / grep_repomix_output secret-scan it
+    // before serving, matching the file_system_read_file boundary.
+    const testFilePath = '/test/repomix-output.xml';
+
+    await toolHandler({ path: testFilePath });
+
+    const calls = vi.mocked(formatPackToolResponse).mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    // The requiresSecretScan flag (5th argument) must be true.
+    expect(calls[calls.length - 1][4]).toBe(true);
+  });
+
   test('should handle directory without repomix-output.xml', async () => {
     const testDirPath = '/test/empty-project';
 
@@ -221,6 +239,7 @@ describe('AttachPackedOutputTool', () => {
       }),
       testFilePath,
       undefined,
+      true,
     );
   });
 
@@ -266,6 +285,7 @@ function helper() {}
       }),
       testFilePath,
       undefined,
+      true,
     );
   });
 
@@ -309,6 +329,7 @@ function helper() {}
       }),
       testFilePath,
       undefined,
+      true,
     );
   });
 
@@ -349,6 +370,7 @@ function helper() {}
       }),
       testFilePath,
       undefined,
+      true,
     );
   });
 
@@ -371,6 +393,7 @@ function helper() {}
       }),
       testFilePath,
       undefined,
+      true,
     );
   });
 
@@ -394,6 +417,7 @@ function helper() {}
       }),
       testFilePath,
       undefined,
+      true,
     );
   });
 
@@ -417,6 +441,7 @@ function helper() {}
       }),
       testFilePath,
       undefined,
+      true,
     );
   });
 });

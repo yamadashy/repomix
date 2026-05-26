@@ -2,12 +2,14 @@ import fs from 'node:fs/promises';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+import { createSecretLintConfig, runSecretLint } from '../../core/security/workers/securityCheckWorker.js';
 import { logger } from '../../shared/logger.js';
 import {
   buildMcpToolErrorResponse,
   buildMcpToolSuccessResponse,
   convertErrorToJson,
   getOutputFilePath,
+  requiresSecretScan,
 } from './mcpToolRuntime.js';
 
 const readRepomixOutputInputSchema = z.object({
@@ -72,6 +74,19 @@ export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
 
         // Read the file content
         const content = await fs.readFile(filePath, 'utf8');
+
+        // For files attached from an untrusted path, run the same secret scan as
+        // file_system_read_file before serving any content, so this path cannot be
+        // used to bypass it.
+        if (requiresSecretScan(outputId)) {
+          const securityCheckResult = await runSecretLint(filePath, content, 'file', createSecretLintConfig());
+          if (securityCheckResult !== null) {
+            return buildMcpToolErrorResponse({
+              errorMessage: `Error: Security check failed. The file at ${filePath} may contain sensitive information.`,
+            });
+          }
+        }
+
         const lines = content.split('\n');
         const totalLines = lines.length;
 

@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { runSecretLint } from '../../../src/core/security/workers/securityCheckWorker.js';
 import {
   createRegexPattern,
   formatSearchResults,
@@ -17,8 +18,13 @@ vi.mock('../../../src/mcp/tools/mcpToolRuntime.js', async () => {
   return {
     ...actual,
     getOutputFilePath: vi.fn(),
+    requiresSecretScan: vi.fn(),
   };
 });
+vi.mock('../../../src/core/security/workers/securityCheckWorker.js', () => ({
+  createSecretLintConfig: vi.fn().mockReturnValue({}),
+  runSecretLint: vi.fn().mockResolvedValue(null),
+}));
 
 describe('grepRepomixOutputTool', () => {
   describe('createRegexPattern', () => {
@@ -446,6 +452,33 @@ describe('grepRepomixOutputTool', () => {
       expect(parsedResult.description).toContain('Found 2 match(es)');
       expect(parsedResult.formattedOutput).toContain('2:pattern match');
       expect(parsedResult.formattedOutput).toContain('4:another pattern');
+    });
+
+    it('should block attach-sourced content that fails the secret scan', async () => {
+      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/attached.json');
+      vi.mocked(mcpToolRuntime.requiresSecretScan).mockReturnValue(true);
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockResolvedValue('api_key = "leaked-secret"');
+      vi.mocked(runSecretLint).mockResolvedValue({ filePath: '/path/to/attached.json', messages: [] } as never);
+
+      const result = await toolHandler({ outputId: 'attached-id', pattern: 'secret' });
+
+      expect(runSecretLint).toHaveBeenCalled();
+      expect(result.isError).toBe(true);
+      const parsedResult = JSON.parse(result.content[0].text);
+      expect(parsedResult.errorMessage).toContain('Security check failed');
+    });
+
+    it('should not secret-scan outputs that are not attach-sourced', async () => {
+      vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/packed.xml');
+      vi.mocked(mcpToolRuntime.requiresSecretScan).mockReturnValue(false);
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readFile).mockResolvedValue('line 1\npattern match\nline 3');
+
+      const result = await toolHandler({ outputId: 'packed-id', pattern: 'pattern' });
+
+      expect(runSecretLint).not.toHaveBeenCalled();
+      expect(result.isError).toBeUndefined();
     });
 
     it('should handle separate before and after context lines', async () => {

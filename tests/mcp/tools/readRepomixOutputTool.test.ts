@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { runSecretLint } from '../../../src/core/security/workers/securityCheckWorker.js';
 import * as mcpToolRuntime from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { registerReadRepomixOutputTool } from '../../../src/mcp/tools/readRepomixOutputTool.js';
 
@@ -10,8 +11,13 @@ vi.mock('../../../src/mcp/tools/mcpToolRuntime.js', async () => {
   return {
     ...actual,
     getOutputFilePath: vi.fn(),
+    requiresSecretScan: vi.fn(),
   };
 });
+vi.mock('../../../src/core/security/workers/securityCheckWorker.js', () => ({
+  createSecretLintConfig: vi.fn().mockReturnValue({}),
+  runSecretLint: vi.fn().mockResolvedValue(null),
+}));
 vi.mock('../../../src/shared/logger.js', () => ({
   logger: {
     trace: vi.fn(),
@@ -86,6 +92,34 @@ describe('readRepomixOutputTool', () => {
     expect(result.isError).toBeUndefined();
     expect(result.content).toHaveLength(1);
     // The structured content is handled internally by the MCP framework
+  });
+
+  it('should block attach-sourced content that fails the secret scan', async () => {
+    vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/attached.json');
+    vi.mocked(mcpToolRuntime.requiresSecretScan).mockReturnValue(true);
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    vi.mocked(fs.readFile).mockResolvedValue('api_key = "leaked-secret"');
+    // Secret scan flags the content.
+    vi.mocked(runSecretLint).mockResolvedValue({ filePath: '/path/to/attached.json', messages: [] } as never);
+
+    const result = await toolHandler({ outputId: 'attached-id' });
+
+    expect(runSecretLint).toHaveBeenCalled();
+    expect(result.isError).toBe(true);
+    const parsedResult = JSON.parse(result.content[0].text);
+    expect(parsedResult.errorMessage).toContain('Security check failed');
+  });
+
+  it('should not secret-scan outputs that are not attach-sourced', async () => {
+    vi.mocked(mcpToolRuntime.getOutputFilePath).mockReturnValue('/path/to/packed.xml');
+    vi.mocked(mcpToolRuntime.requiresSecretScan).mockReturnValue(false);
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    vi.mocked(fs.readFile).mockResolvedValue('File content here');
+
+    const result = await toolHandler({ outputId: 'packed-id' });
+
+    expect(runSecretLint).not.toHaveBeenCalled();
+    expect(result.isError).toBeUndefined();
   });
 
   it('should handle unexpected errors during execution', async () => {
