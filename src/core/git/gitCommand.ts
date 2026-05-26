@@ -116,12 +116,15 @@ export const execGitShallowClone = async (
   validateGitUrl(url);
 
   if (remoteBranch) {
+    validateGitRef(remoteBranch);
+
     await deps.execFileAsync('git', ['-C', directory, 'init']);
     await deps.execFileAsync('git', ['-C', directory, 'remote', 'add', '--', 'origin', url]);
     try {
+      // '--end-of-options' ensures the ref is never interpreted as a git option (argument injection guard)
       await deps.execFileAsync(
         'git',
-        ['-C', directory, 'fetch', '--depth', '1', 'origin', remoteBranch],
+        ['-C', directory, 'fetch', '--depth', '1', 'origin', '--end-of-options', remoteBranch],
         gitRemoteOpts,
       );
       await deps.execFileAsync('git', ['-C', directory, 'checkout', 'FETCH_HEAD']);
@@ -148,7 +151,7 @@ export const execGitShallowClone = async (
       // Maybe the error is due to a short SHA, let's try again
       // Can't use --depth 1 here as we need to fetch the specific commit
       await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin'], gitRemoteOpts);
-      await deps.execFileAsync('git', ['-C', directory, 'checkout', remoteBranch]);
+      await deps.execFileAsync('git', ['-C', directory, 'checkout', '--end-of-options', remoteBranch]);
     }
   } else {
     await deps.execFileAsync('git', ['clone', '--depth', '1', '--', url, directory], gitRemoteOpts);
@@ -210,5 +213,18 @@ export const validateGitUrl = (url: string): void => {
     const redactedUrl = url.startsWith('https://') ? url.replace(/^(https?:\/\/)([^@/]+)@/i, '$1***@') : url;
     logger.trace('Invalid repository URL:', (error as Error).message);
     throw new RepomixError(`Invalid repository URL. Please provide a valid URL: ${redactedUrl}`);
+  }
+};
+
+/**
+ * Validates a Git ref (branch, tag, or commit) before passing it to git commands.
+ * A ref starting with '-' could be interpreted as a git option (e.g. --upload-pack),
+ * enabling argument injection. Git's own refname rules also forbid leading '-',
+ * so rejecting it is safe for all legitimate branches, tags, and SHAs.
+ * @throws {RepomixError} If the ref could be interpreted as a command-line option
+ */
+export const validateGitRef = (ref: string): void => {
+  if (ref.startsWith('-')) {
+    throw new RepomixError(`Invalid branch or ref name. Name must not start with '-': ${ref}`);
   }
 };
