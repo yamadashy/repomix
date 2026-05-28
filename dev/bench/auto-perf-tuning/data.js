@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779905668360,
+  "lastUpdate": 1779963162498,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9045,6 +9045,51 @@ window.BENCHMARK_DATA = {
             "range": "±176",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 994ms, Q3: 1170ms\nAll times: 983, 985, 988, 990, 993, 994, 996, 996, 997, 1008, 1019, 1021, 1039, 1064, 1093, 1170, 1203, 1222, 1277, 1535ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "f169958ffae264f64a43163b33477851c4573a26",
+          "message": "perf(output): Skip unused markdown-only render context fields on xml/plain/json paths\n\n`createRenderContext` always computed `fileLineCounts` and `markdownCodeBlockDelimiter`\nfor every render. Both fields are only read by `markdownStyle.ts` (the markdown\noutput template) and by `packSkill` (which forces `style: 'markdown'`); the\nxml / plain / json / parsable-xml templates never reference either. The\ncomputations — a `/\\n/g` regex match per file for line counts, and a `flatMap` +\n`/`+/g` regex per file for the longest-backtick fence — are pure overhead on the\ndefault `style: 'xml'` path that ~99% of users hit.\n\nGated the two scans on `outputGeneratorContext.config.output.style === 'markdown'`\nso they only run when the result will be consumed. The type still requires both\nfields, so non-markdown styles get `{}` and `''` sentinels.\n\n## Why this saves more than the function timings alone\n\nA standalone microbench of the two functions on the same content shows ~13 ms\ncombined, but the full-pipeline wall-clock saving is consistently larger (~25 ms\non this machine, ~40 ms on slower runs). The extra delta is the GC and\nallocator pressure that disappears with the regex scans: the `content.match(/\\n/g)`\nin `calculateFileLineCounts` allocates an N-element string array per file\n(~1100 arrays of ~tens-of-thousands of `\\n` matches across the test repo), and\n`files.flatMap((file) => file.content.match(/`+/g) ?? [])` in\n`calculateMarkdownDelimiter` allocates another N intermediate arrays plus one\nflattened result. Skipping them removes a chunk of heap traffic from the output\nphase, which is concurrent with metrics tokenisation on the worker thread —\nless main-thread GC means the worker also dispatches faster.\n\n## Behavior preserved (byte-identical output)\n\n- `markdown` style: `isMarkdown === true`, both functions still run; output\n  identical to baseline.\n- `xml` / `plain` / parsable-xml / `json` styles: neither field is read by the\n  template, so substituting `{}` / `''` for the computed values produces\n  identical output.\n- `packSkill` flow: explicitly sets `style: 'markdown'` on its config copy\n  before calling `createRenderContext`, so `isMarkdown` is true there too and\n  `calculateStatistics(..., renderContext.fileLineCounts)` still gets the real\n  line counts.\n- Verified all five output styles (xml, plain, markdown, json, parsable-xml)\n  produce byte-identical files between baseline and this change.\n- Full `npm run test` passes (1320/1320), `npm run lint` clean.\n\n## Benchmark\n\nPaired interleaved A/B on the repomix self-pack (~1064 files), default xml style,\nwarm cache, swapping only `lib/core/output/outputGenerate.js` between runs:\n\n```\nn=50  BASE mean=1056.6ms sd=51.6  median=1051.6ms\n      CAND mean=1017.4ms sd=45.1  median=1013.1ms\n      DELTA 39.2ms (3.71%)  faster=39/50\n\nn=30  BASE mean=1015.0ms sd=39.0  median=1013.9ms\n      CAND mean=990.4ms  sd=35.6  median=986.2ms\n      DELTA 24.7ms (2.43%)  faster=24/30\n```\n\nHyperfine confirms reduced CPU work too (user time 1766ms → 1713ms,\nsys time 353ms → 340ms), so the wall-clock win isn't measurement noise.\n\nComfortably above the 2% wall-clock threshold and faster in ~80% of paired\nruns across multiple sample sets.\n\n## Tradeoffs\n\n- The `style === 'markdown'` check is one extra property access at the top of\n  `createRenderContext` — negligible compared to the regex work it gates.\n- Future templates that want to use `fileLineCounts` or `markdownCodeBlockDelimiter`\n  on non-markdown styles will need to either select `style: 'markdown'` (as\n  packSkill already does) or remove the guard for their specific field. The\n  invariant is documented in a comment block above the gate.",
+          "timestamp": "2026-05-28T10:08:06Z",
+          "tree_id": "0f34bc73431c9c562bb424adf845650a5e49d371",
+          "url": "https://github.com/yamadashy/repomix/commit/f169958ffae264f64a43163b33477851c4573a26"
+        },
+        "date": 1779963160834,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 554,
+            "range": "±186",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 516ms, Q3: 702ms\nAll times: 485, 489, 494, 503, 504, 507, 510, 516, 520, 522, 530, 535, 544, 546, 553, 554, 568, 569, 578, 586, 595, 615, 702, 722, 744, 762, 831, 835, 849, 869ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 701,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 686ms, Q3: 715ms\nAll times: 677, 679, 682, 684, 686, 686, 687, 692, 693, 697, 701, 702, 702, 703, 707, 715, 717, 776, 791, 793ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1026,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1012ms, Q3: 1040ms\nAll times: 1002, 1005, 1009, 1009, 1010, 1012, 1018, 1019, 1024, 1024, 1026, 1029, 1029, 1031, 1032, 1040, 1046, 1052, 1055, 1058ms"
           }
         ]
       }
