@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779963758547,
+  "lastUpdate": 1780021934272,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9135,6 +9135,51 @@ window.BENCHMARK_DATA = {
             "range": "±112",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1063ms, Q3: 1175ms\nAll times: 1030, 1047, 1054, 1055, 1060, 1063, 1076, 1084, 1088, 1090, 1093, 1104, 1109, 1143, 1145, 1175, 1204, 1207, 1224, 1321ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "eae4b122634c06a3e287d69b6f7ee35d29b1bf4d",
+          "message": "perf(output): Skip rope-flattening trim on xml and plain handlebars output\n\nThe render path in `generateHandlebarOutput` ended every call with\n`compiledTemplate(renderContext).trim() + '\\n'`. The Handlebars-emitted\nstring is a V8 rope (concatenated segments built by `ret = ret + fn()`\nin the `each` helper) and `.trim()` forces V8 to walk and flatten that\nrope into a single contiguous buffer before scanning the ends. The CPU\nprofile attributes ~17% of main-thread ticks to `StringPrototypeTrim`\nfrom `generateHandlebarOutput` on a ~5 MB pack.\n\nThe trim was only doing real work at the boundaries: it stripped one\nleading `\\n` produced by the template literal opening with `\\n{{#if ...}}`,\nand normalized stacked-conditional trailing newlines down to a single `\\n`.\nDropping the leading `\\n` from each of the three handlebars templates\n(xml, plain, markdown) makes the trim's leading-side work vacuous, and\nthe xml and plain templates emit clean output that already ends with a\nsingle `\\n` regardless of which conditional sections fire (Handlebars\nconsumes the whitespace around standalone `{{#if}}` / `{{/if}}` tags\nwhen their condition is false), so `.trim()` can be skipped entirely\nfor those styles.\n\nThe markdown template uses stacked blank-line separators between\nsections (`{{/if}}\\n\\n{{#if ...}}`) that the existing trim absorbed\nwhen the trailing instruction block is set — keeping `.trim()` on the\nmarkdown path preserves byte-identical output for that style.\n\nOutput is verified byte-identical against the baseline for all three\nhandlebars styles across the configurations that exercise different\nconditional sections: full enable, --no-file-summary, --no-directory-\nstructure, --no-files, --header-text, no instruction file present.\n1320/1320 tests pass; lint clean.\n\nPaired hyperfine measurements on the repomix self-pack (default xml\nstyle, ~1085 files, ~5 MB output, --shell=none, --warmup 10):\n\n```\nn=100  BASE 1.644s ±0.081s  User=2.048s  Sys=0.395s\n       CAND 1.587s ±0.088s  User=1.977s  Sys=0.385s\n       DELTA  57 ms wall (3.5%)   71 ms user-CPU (3.5%)   t=4.75σ\n\nn=100  BASE 1.698s ±0.098s  User=2.111s  Sys=0.414s\n       CAND 1.655s ±0.090s  User=2.064s  Sys=0.397s\n       DELTA  43 ms wall (2.5%)   47 ms user-CPU (2.2%)   t=3.22σ\n```\n\nWall-clock improvement varies run-to-run (~2.5-4%) with the system\nload on this benchmark host, but the User-CPU delta is consistently\npositive and stable at 47-71 ms per run, confirming the savings come\nfrom real eliminated work rather than scheduling noise. The\noptimization is statistically significant in every measured paired run\nand clears the 2% threshold.\n\nhttps://claude.ai/code/session_01Knjvusa1eDnCvAQqTdeMvt",
+          "timestamp": "2026-05-29T02:30:34Z",
+          "tree_id": "fb4d9b39001a63ab3d973914a3e47bb0c1defcd2",
+          "url": "https://github.com/yamadashy/repomix/commit/eae4b122634c06a3e287d69b6f7ee35d29b1bf4d"
+        },
+        "date": 1780021932764,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 467,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 459ms, Q3: 478ms\nAll times: 443, 453, 453, 454, 456, 456, 456, 459, 459, 461, 461, 462, 463, 464, 465, 467, 469, 469, 470, 470, 472, 476, 478, 486, 489, 493, 500, 508, 545, 628ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 665,
+            "range": "±10",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 661ms, Q3: 671ms\nAll times: 651, 655, 656, 659, 660, 661, 663, 663, 664, 664, 665, 667, 668, 669, 670, 671, 672, 678, 690, 717ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1095,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1084ms, Q3: 1101ms\nAll times: 1069, 1078, 1080, 1080, 1083, 1084, 1086, 1088, 1092, 1093, 1095, 1095, 1096, 1098, 1099, 1101, 1101, 1104, 1105, 1107ms"
           }
         ]
       }
