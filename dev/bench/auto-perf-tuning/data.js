@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780021934272,
+  "lastUpdate": 1780104062667,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9180,6 +9180,51 @@ window.BENCHMARK_DATA = {
             "range": "±17",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1084ms, Q3: 1101ms\nAll times: 1069, 1078, 1080, 1080, 1083, 1084, 1086, 1088, 1092, 1093, 1095, 1095, 1096, 1098, 1099, 1101, 1101, 1104, 1105, 1107ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "ce9674606ee657fc01ffb239f5fad23e93010537",
+          "message": "perf(core): Replace globby's gitignore traversal with a single-pass scan\n\nglobby's `gitignore:true` runs an entire **second** tree walk independent\nfrom the main file traversal — it has to find and parse every `.gitignore`\nbefore producing the file list. On the repomix self-pack (~1085 files,\n1 root-level `.gitignore`), the verbose log shows `[globby] Completed in\n284ms` for the combined work. That second walk is the largest single\ncost left in `searchFiles`.\n\nThe fix splits ignore-file handling out of globby and runs it ourselves.\nThe implementation lives in `src/core/file/ignoreScope.ts` (new module,\n~150 lines) so the additional logic stays out of `fileSearch.ts` and\nkeeps that file under the project's 250-line guideline as the rest of\nthe change grows.\n\n1. `collectIgnoreScopes` — kicked off in parallel with the main glob.\n   It runs one `globby({ gitignore:false })` that targets only\n   `**/.gitignore`, `**/.ignore`, `**/.repomixignore` paths, reads each\n   match, and constructs a per-directory `Ignore` instance from the\n   `ignore` package (already a transitive dep via globby, now promoted\n   to a direct dep at `^7.0.5`).\n\n   Patterns from multiple ignore files in the same directory are merged\n   in `.gitignore` -> `.ignore` -> `.repomixignore` order so the\n   `ignore` library's \"later wins\" semantics produce deterministic\n   results regardless of which `fs.readFile` settles first — this\n   matters when (e.g.) a `.repomixignore` `!negate` should override a\n   `.gitignore` positive match in the same directory.\n\n2. The main `globby` call now uses `gitignore:false` and `onlyFiles:true`\n   (or `objectMode:true` for the includeEmptyDirectories branch). It\n   still honors the static `ignore` patterns (defaults + custom +\n   `.git/info/exclude`), so the heavy directories (`node_modules/**`,\n   `.git/**`, `dist/**`, etc.) are pruned during the walk — the\n   subsequent post-filter only sees paths that survived static exclusion.\n\n3. `isIgnoredByScopes` applies the per-directory `Ignore` instances\n   shallow-to-deep, replicating git semantics: slash-less patterns\n   recurse from their `.gitignore`'s location, leading/internal `/`\n   anchors to that location, deeper files override their parents, and\n   `!` negation re-includes correctly (this last part is what previous\n   attempts at this optimization got wrong — the test in\n   `fileSearch.gitignoreSpec.test.ts` was written specifically to flag\n   that regression and all 4 cases there pass on this change).\n\n`collectIgnoreScopes` logs at `warn` (not `trace`) when its globby\ncall fails — users get a clear hint that gitignore filtering silently\ndegraded, rather than a missing-output mystery. Hard faults from the\nmain walk (`EPERM`, `EACCES`) still flow through `handleGlobbyError`\nwith the proper `PermissionError` translation.\n\n`getIgnoreFilePatterns` now returns `**/.gitignore` as well — previously\nthat pattern was filtered out because globby's `gitignore` option\nhandled it. The tests for that helper were updated to match. The same\ntwo-phase treatment is applied to `listDirectories` and `listFiles` so\nthe optimization is consistent across all entry points.\n\nThe test mocks distinguish the ignore-file scan call from the main\nwalk via a strict pattern check (`^\\*\\*\\/\\.[a-z]*ignore$` + `onlyFiles`\nflag), so a user include pattern that happens to end in \"ignore\"\ncannot accidentally trip the mock branch.\n\n## Benchmark\n\nBench host: this branch's self-pack, default xml style, ~1085 files,\n~5 MB output, node 22.22, warm OS page cache.\n\nInterleaved A/B (alternated order each pair, n=40):\n\n```\nBASELINE   : mean=1170.3ms ±27.2  median=1165.6\nCANDIDATE  : mean=1003.4ms ±26.7  median=1000.3\nDelta      :  166.9ms (14.26%)    cand-faster=40/40\n```\n\nRefactor sanity check — the inline implementation that the first\nrevision of this commit shipped and the extracted-module version\nbenched within run-to-run noise on the same A/B harness:\n\n```\nINLINE     : mean=995.1 ±30.7  median=994.1\nREFACTORED : mean=992.6 ±38.8  median=985.9\nDelta      :  -2.5ms             refactored-faster=13/30  (~50/50)\n```\n\nBoth measurements clear the 2% threshold by a wide margin; candidate\nis faster in 40/40 interleaved trials vs the prior PR head.\n\n## Verification\n\n- File set / directory set verified identical against the baseline\n  implementation on the repomix self-pack (`{1088, 256}`).\n- All 1320 tests pass, including the four `fileSearch.gitignoreSpec`\n  cases (negation, slash-less recursion, monorepo `packages/*`,\n  dot-prefixed dirs) that are the explicit regression targets for\n  this kind of optimization.\n- Lint clean (0 errors, 3 pre-existing unrelated warnings).",
+          "timestamp": "2026-05-30T01:18:33Z",
+          "tree_id": "d05f15eb878dd1eed456597536358b596856ed85",
+          "url": "https://github.com/yamadashy/repomix/commit/ce9674606ee657fc01ffb239f5fad23e93010537"
+        },
+        "date": 1780104062005,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 513,
+            "range": "±71",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 460ms, Q3: 531ms\nAll times: 413, 438, 444, 448, 449, 457, 458, 460, 473, 474, 474, 476, 484, 502, 511, 513, 514, 518, 519, 521, 526, 529, 531, 539, 546, 583, 622, 627, 689, 801ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 610,
+            "range": "±10",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 603ms, Q3: 613ms\nAll times: 596, 598, 599, 600, 602, 603, 603, 603, 607, 608, 610, 611, 611, 612, 613, 613, 614, 618, 625, 653ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1120,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1108ms, Q3: 1125ms\nAll times: 1091, 1098, 1100, 1101, 1106, 1108, 1112, 1112, 1115, 1116, 1120, 1120, 1122, 1122, 1123, 1125, 1125, 1126, 1142, 1143ms"
           }
         ]
       }
