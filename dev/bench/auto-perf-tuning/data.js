@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780104062667,
+  "lastUpdate": 1780113723938,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9225,6 +9225,44 @@ window.BENCHMARK_DATA = {
             "range": "±17",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1108ms, Q3: 1125ms\nAll times: 1091, 1098, 1100, 1101, 1106, 1108, 1112, 1112, 1115, 1116, 1120, 1120, 1122, 1122, 1123, 1125, 1125, 1126, 1142, 1143ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "62c0341ee33faf230cbe3eaa72a9c04a71d12725",
+          "message": "perf(core): Move metrics worker pool warmup ahead of searchFiles\n\nMove `createMetricsTaskRunner` from after `searchFiles` to alongside\n`securityPrewarm` so the per-worker ~205ms gpt-tokenizer BPE parse\noverlaps the ~140ms globby walk and the ~80ms secretlint module load\ninstead of starting only once globby has returned. Previously the\nmetrics warmup would still be in flight when `await metricsWarmupPromise`\nfired (~50–100ms of blocked time on the metrics critical path); with\nthis change the warmup is reliably done by the time it is awaited.\n\n`numOfTasks=getProcessConcurrency() * 100` is passed in place of the\n(not-yet-known) `allFilePaths.length`. `getWorkerThreadCount` computes\n`maxThreads = min(cpus, ceil(N / TASKS_PER_THREAD))` (where\n`TASKS_PER_THREAD = 100`). The substituted value saturates the\n`ceil(N/100)` term to exactly `cpus`, giving `maxThreads = cpus` on\nevery CPU count — identical to what the old `allFilePaths.length` call\nproduced whenever the repo had ≥ `cpus * 100` files (every real repo\nwhere the perf delta is visible). The naive substitution of `1000`\nwould have capped `maxThreads` at 10 on hosts with more than 10 CPUs,\nshrinking the pool on >10-core CI runners; this revised value avoids\nthat regression.\n\nSmaller repos (< `cpus * 100` files) now over-warm slightly; those\nextra workers hit `idleTimeout` and reclaim within 5s, and those\nrepos are also the runs where the perf delta is invisible. The\n`cacheWarmLikely` probe still keys on `rootDirs`, so the warm-vs-cold\nprewarm-count decision is unchanged.\n\nThe `searchFiles` / sort block is moved inside the existing try block\nso the new `metricsTaskRunner` created before it is cleaned up by the\nexisting `finally` if `searchFiles` throws (previously the warmup\nfollowed `searchFiles`, so a search failure left no pool to clean up).\n\nBenchmark (repomix self-pack, ~1065 files, node 22.22):\n\nPaired interleaved A/B (compile cache enabled, warm OS page cache):\n\n```\nn=30  BASE mean=968.2ms sd=44.0  median=969.3\n      CAND mean=920.0ms sd=33.1  median=914.3\n      DELTA 48.1ms (4.97%)  faster=29/30\n\nn=50  BASE mean=884.4ms sd=33.8  median=879.3\n      CAND mean=849.7ms sd=29.1  median=844.7\n      DELTA 34.6ms (3.92%)  faster=45/50\n\nn=50  BASE mean=908.2ms sd=37.3  median=905.6\n      CAND mean=868.5ms sd=28.1  median=870.3\n      DELTA 39.7ms (4.37%)  faster=43/50\n```\n\nCold (NODE_DISABLE_COMPILE_CACHE=1):\n\n```\nn=30  BASE mean=984.5ms sd=52.0  median=995.9\n      CAND mean=925.6ms sd=40.7  median=938.4\n      DELTA 58.9ms (5.98%)  faster=27/30\n```\n\nAll measured runs clear the 2% target. Cold runs (representative of\nthe first invocation after upgrading or in CI) see the largest\nimprovement because the BPE parse is unhidden in the baseline.",
+          "timestamp": "2026-05-30T03:59:51Z",
+          "tree_id": "876211b0f287df9e7bea5e91e0b6806716eb2e2c",
+          "url": "https://github.com/yamadashy/repomix/commit/62c0341ee33faf230cbe3eaa72a9c04a71d12725"
+        },
+        "date": 1780113722402,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 656,
+            "range": "±100",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 608ms, Q3: 708ms\nAll times: 489, 500, 514, 521, 526, 536, 580, 608, 615, 619, 622, 628, 646, 652, 653, 656, 665, 674, 674, 696, 698, 703, 708, 710, 719, 727, 753, 773, 795, 798ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 639,
+            "range": "±11",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 634ms, Q3: 645ms\nAll times: 621, 631, 631, 633, 634, 634, 635, 635, 637, 637, 639, 640, 640, 641, 642, 645, 648, 650, 651, 662ms"
           }
         ]
       }
