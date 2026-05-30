@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780121522167,
+  "lastUpdate": 1780135913457,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9308,6 +9308,51 @@ window.BENCHMARK_DATA = {
             "range": "±84",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 969ms, Q3: 1053ms\nAll times: 946, 955, 962, 966, 967, 969, 979, 979, 984, 987, 990, 997, 997, 1000, 1012, 1053, 1057, 1065, 1068, 1094ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "9abff342ac32402cb61827692cae621f290b7e02",
+          "message": "perf(core): Harvest ignore files from the main walk to skip a second globby traversal\n\n`searchFiles` discovered the per-directory ignore scopes by running a\ndedicated `globby` call inside `collectIgnoreScopes` (`**/.gitignore`,\n`**/.ignore`, `**/.repomixignore`). That call performs a full, independent\ntree traversal solely to re-locate ignore files that the main file walk\nalready returns. On the repomix self-pack the two walks share the 4-thread\nlibuv pool and contend, making the second traversal the largest remaining\navoidable cost in the ~220ms globby window.\n\nFor the default include pattern (`**/*`) — the common case, including the\nself-pack — the main walk already returns every `.gitignore` / `.ignore` /\n`.repomixignore` in the tree. We now harvest those paths from the main\nwalk's results (basename match against the enabled ignore-file names) and\nfeed them to `collectIgnoreScopes` via a new optional `preFoundFiles`\nparameter, which skips the dedicated globby traversal entirely and only\nreads the (handful of) ignore files. The set of ignore files harvested is\nprovably identical to what the dedicated scan produced: both use the same\nstatic `ignore` patterns and the same `dot` / symlink settings, so the\nharvested list is a strict subset that excludes nothing the scan would have\nincluded. Scope construction, merge order, and `isIgnoredByScopes`\napplication are all unchanged.\n\nFor custom include patterns (e.g. `src/**/*.ts`) the main walk may not\nsurface the ignore files, so the dedicated scan is kept — and kept in\nparallel with the main walk, exactly as before. `listDirectories` /\n`listFiles` (MCP paths) also keep the dedicated scan.\n\nBehavior-preserving: output verified byte-identical to the previous branch\nhead on the self-pack across the default xml path. Full suite (1321 tests)\nand lint pass; a new test covers the harvest path (verifies filtering is\napplied and that only a single globby call is made for the default include).\n\nBenchmark (interleaved A/B, repomix self-pack ~1085 files, node 22.22,\nwarm OS page cache, n=60 paired):\n\n  WARM (compile cache on)\n    BASE mean=887.4ms sd=22.0  median=888.1\n    CAND mean=858.3ms sd=23.2  median=856.3\n    DELTA 29.1ms (3.28%)  cand-faster=55/60\n\n  COLD (NODE_DISABLE_COMPILE_CACHE=1)\n    BASE mean=915.2ms sd=24.5  median=913.1\n    CAND mean=888.0ms sd=29.1  median=883.0\n    DELTA 27.2ms (2.97%)  cand-faster=52/60\n\nThe win is compile-cache-independent (it eliminates I/O traversal, not\nmodule-parse), clearing the 2% threshold in both warm and cold runs.\n\nhttps://claude.ai/code/session_01Pq5inrJmDA3xGXcPS4pQFf",
+          "timestamp": "2026-05-30T10:10:04Z",
+          "tree_id": "22412088b6642c52d9d7631c885d5456eb76e906",
+          "url": "https://github.com/yamadashy/repomix/commit/9abff342ac32402cb61827692cae621f290b7e02"
+        },
+        "date": 1780135912642,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 476,
+            "range": "±53",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 463ms, Q3: 516ms\nAll times: 451, 454, 460, 460, 462, 462, 463, 463, 465, 466, 468, 469, 472, 472, 473, 476, 481, 482, 483, 497, 505, 514, 516, 523, 533, 537, 552, 560, 587, 659ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 622,
+            "range": "±13",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 615ms, Q3: 628ms\nAll times: 596, 610, 611, 612, 613, 615, 617, 617, 618, 619, 622, 626, 626, 626, 628, 628, 630, 630, 633, 636ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 961,
+            "range": "±176",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 832ms, Q3: 1008ms\nAll times: 816, 818, 819, 827, 830, 832, 835, 937, 956, 960, 961, 969, 972, 978, 997, 1008, 1024, 1030, 1042, 1071ms"
           }
         ]
       }
