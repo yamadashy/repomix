@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780118524279,
+  "lastUpdate": 1780120504905,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -5985,6 +5985,51 @@ window.BENCHMARK_DATA = {
             "range": "±10",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1028ms, Q3: 1038ms\nAll times: 1017, 1024, 1024, 1025, 1027, 1028, 1029, 1032, 1032, 1032, 1034, 1034, 1035, 1037, 1037, 1038, 1044, 1050, 1056, 1058ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "416d042d43bf9901e0d3842853f7aa27a9895b8e",
+          "message": "Merge pull request #1611 from yamadashy/chore/renovate-ignore-clack-prompts\n\nchore(renovate): Ignore @clack/prompts major update",
+          "timestamp": "2026-05-30T14:52:40+09:00",
+          "tree_id": "b67273f9ac0caeb8f5caeb1903543aec89d5fdc8",
+          "url": "https://github.com/yamadashy/repomix/commit/416d042d43bf9901e0d3842853f7aa27a9895b8e"
+        },
+        "date": 1780120504139,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 528,
+            "range": "±171",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 464ms, Q3: 635ms\nAll times: 439, 441, 444, 448, 451, 455, 463, 464, 469, 470, 479, 479, 480, 497, 511, 528, 544, 586, 592, 602, 605, 617, 635, 650, 682, 689, 726, 737, 911, 1034ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 753,
+            "range": "±62",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 744ms, Q3: 806ms\nAll times: 733, 736, 738, 739, 742, 744, 745, 746, 752, 752, 753, 759, 761, 769, 777, 806, 835, 846, 851, 966ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 757,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 750ms, Q3: 768ms\nAll times: 742, 744, 746, 746, 749, 750, 750, 752, 755, 757, 757, 757, 757, 762, 762, 768, 779, 811, 868, 960ms"
           }
         ]
       }
