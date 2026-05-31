@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -21,15 +20,24 @@ import {
 import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
+import { getHandlebars, registerHandlebarsHelpers } from './outputStyleUtils.js';
+
+type CompiledTemplate = ReturnType<typeof import('handlebars')['compile']>;
 
 // Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
+const compiledTemplateCache = new Map<string, CompiledTemplate>();
 
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
+const getCompiledTemplate = (style: string): CompiledTemplate => {
   const cached = compiledTemplateCache.get(style);
   if (cached) {
     return cached;
   }
+
+  // Ensure shared Handlebars helpers are registered before compiling. This was
+  // previously triggered by a module-load side effect in markdownStyle.ts; it
+  // now runs here so loading the style modules no longer forces Handlebars onto
+  // the startup path.
+  registerHandlebarsHelpers();
 
   let template: string;
   switch (style) {
@@ -46,7 +54,7 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
       throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
   }
 
-  const compiled = Handlebars.compile(template);
+  const compiled = getHandlebars().compile(template);
   compiledTemplateCache.set(style, compiled);
   return compiled;
 };

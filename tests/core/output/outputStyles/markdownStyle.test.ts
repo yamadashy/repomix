@@ -1,6 +1,16 @@
 import Handlebars from 'handlebars';
-import { describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test } from 'vitest';
 import { getMarkdownTemplate } from '../../../../src/core/output/outputStyles/markdownStyle.js';
+import { registerHandlebarsHelpers } from '../../../../src/core/output/outputStyleUtils.js';
+
+// Handlebars helpers (e.g. getFileExtension) are registered lazily at output
+// generation time rather than as a module-load side effect, so register them
+// explicitly here. registerHandlebarsHelpers operates on the same cached
+// Handlebars module instance this test imports, making the helper visible via
+// `Handlebars.helpers` and to templates compiled below.
+beforeAll(() => {
+  registerHandlebarsHelpers();
+});
 
 describe('markdownStyle', () => {
   describe('getMarkdownTemplate', () => {

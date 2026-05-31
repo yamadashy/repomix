@@ -1,7 +1,7 @@
 /**
  * Shared utilities for output style generation.
  */
-import Handlebars from 'handlebars';
+import { createRequire } from 'node:module';
 
 /**
  * Map of file extensions to syntax highlighting language names.
@@ -223,6 +223,25 @@ export const getLanguageFromFilePath = (filePath: string): string => {
   return extension ? extensionToLanguageMap[extension] || '' : '';
 };
 
+// Lazily load the Handlebars runtime via a synchronous require. Handlebars is a
+// CommonJS module whose full compiler costs ~30ms of main-thread parse time;
+// importing it at module load pulled that parse onto the startup critical path
+// even though templates are only compiled during output generation. Deferring
+// the require to first use moves the parse off startup into the output phase,
+// where it overlaps with the metrics worker threads that run concurrently with
+// output generation in `pack`.
+const cjsRequire = createRequire(import.meta.url);
+let handlebarsInstance: typeof import('handlebars') | undefined;
+
+export const getHandlebars = (): typeof import('handlebars') => {
+  if (handlebarsInstance !== undefined) {
+    return handlebarsInstance;
+  }
+  const loaded = cjsRequire('handlebars') as typeof import('handlebars');
+  handlebarsInstance = loaded;
+  return loaded;
+};
+
 // Track if Handlebars helpers have been registered
 let handlebarsHelpersRegistered = false;
 
@@ -235,7 +254,7 @@ export const registerHandlebarsHelpers = (): void => {
     return;
   }
 
-  Handlebars.registerHelper('getFileExtension', (filePath: string) => {
+  getHandlebars().registerHelper('getFileExtension', (filePath: string) => {
     return getLanguageFromFilePath(filePath);
   });
 

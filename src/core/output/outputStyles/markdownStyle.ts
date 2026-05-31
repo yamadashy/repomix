@@ -1,8 +1,3 @@
-import { registerHandlebarsHelpers } from '../outputStyleUtils.js';
-
-// Register Handlebars helpers (idempotent)
-registerHandlebarsHelpers();
-
 export const getMarkdownTemplate = () => {
   return /* md */ `
 {{#if fileSummaryEnabled}}
