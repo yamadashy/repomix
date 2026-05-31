@@ -1,11 +1,31 @@
 import { GptEncoding } from 'gpt-tokenizer/GptEncoding';
 import { resolveEncodingAsync } from 'gpt-tokenizer/resolveEncodingAsync';
 import { logger } from '../../shared/logger.js';
+import { readBpeRanksCache, writeBpeRanksCache } from './bpeRanksCache.js';
 import { TOKEN_ENCODINGS, type TokenEncoding } from './tokenEncodings.js';
 
 // Re-export for backward compatibility with existing
 // `import { TOKEN_ENCODINGS, TokenEncoding } from './TokenCounter.js'` call sites.
 export { TOKEN_ENCODINGS, type TokenEncoding };
+
+// Resolved BPE merge-rank table, as returned by `resolveEncodingAsync`. A plain
+// JSON-serializable array of strings, plus byte arrays (1–19 bytes in
+// o200k_base) for ranks whose token bytes are not valid UTF-8.
+type BpeRanks = Awaited<ReturnType<typeof resolveEncodingAsync>>;
+
+// Load the BPE merge-rank table from the on-disk JSON cache when present,
+// otherwise resolve it from gpt-tokenizer and persist it for next time. See
+// bpeRanksCache.ts for why this avoids the ~120 ms JS-module parse on warm runs.
+const resolveBpeRanks = async (encodingName: TokenEncoding): Promise<BpeRanks> => {
+  const cached = readBpeRanksCache(encodingName);
+  if (cached !== undefined) {
+    return cached as BpeRanks;
+  }
+
+  const bpeRanks = await resolveEncodingAsync(encodingName);
+  writeBpeRanksCache(encodingName, bpeRanks);
+  return bpeRanks;
+};
 
 interface CountTokensOptions {
   disallowedSpecial?: Set<string>;
@@ -30,9 +50,10 @@ const loadEncoding: LoadEncodingFn = async (encodingName) => {
 
   const startTime = process.hrtime.bigint();
 
-  // Use resolveEncodingAsync to lazily load BPE rank data, then create a GptEncoding instance.
-  // resolveEncodingAsync uses static import paths internally, so bundlers (rolldown) can resolve them.
-  const bpeRanks = await resolveEncodingAsync(encodingName);
+  // Load BPE rank data (from the on-disk JSON cache when available, else from
+  // gpt-tokenizer), then create a GptEncoding instance. resolveEncodingAsync
+  // uses static import paths internally, so bundlers (rolldown) can resolve them.
+  const bpeRanks = await resolveBpeRanks(encodingName);
   const encoder = GptEncoding.getEncodingApi(encodingName, () => bpeRanks);
   const countFn = encoder.countTokens.bind(encoder) as CountTokensFn;
   encodingModules.set(encodingName, countFn);
