@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780145422382,
+  "lastUpdate": 1780203070267,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9398,6 +9398,51 @@ window.BENCHMARK_DATA = {
             "range": "±8",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 976ms, Q3: 984ms\nAll times: 959, 959, 969, 972, 975, 976, 976, 977, 978, 978, 978, 981, 981, 982, 983, 984, 985, 993, 997, 1003ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "6106f30f04e1721c087e6b99815055a680809a6d",
+          "message": "perf(output): Lazy-load Handlebars to defer compiler off startup path\n\nThe output pipeline imported Handlebars at module load: outputGenerate.ts and\noutputStyleUtils.ts had top-level `import Handlebars from 'handlebars'`, and\nmarkdownStyle.ts called registerHandlebarsHelpers() as a module-load side\neffect. Because this graph is statically reachable from the CLI entry\n(cliRun -> defaultAction -> packager -> outputGenerate), the full Handlebars\ncompiler — a CommonJS bundle costing ~30ms of main-thread parse time — was\nloaded during startup before any file work began. A module-load trace showed\nit executing ~141ms into the run.\n\nHandlebars is only needed to compile the xml/markdown/plain output templates,\nwhich happens late in pack() and runs concurrently with the metrics worker\nthreads (outputPromise and calculateMetrics are awaited together via\nPromise.all). This change loads Handlebars through a cached synchronous\ncreateRequire (getHandlebars) deferred to first use, and moves helper\nregistration into getCompiledTemplate, so loading the style modules no longer\npulls Handlebars onto the startup path. A trace confirms Handlebars now loads\nat ~635ms (output phase) instead of ~141ms, where its parse overlaps with the\nworker threads instead of blocking startup. The json and parsable-xml paths,\nwhich never compile a Handlebars template, now avoid loading it entirely.\n\nA synchronous require is used because Handlebars is CommonJS, keeping every\ncall site synchronous and unchanged. Code paths that import Handlebars directly\n(skill generators, tests) resolve the same cached module instance, so helper\nregistration via getHandlebars() is shared.\n\nmarkdownStyle.test.ts previously relied on the module-load side effect to\nregister the getFileExtension helper; it now registers helpers explicitly in a\nbeforeAll, operating on the same Handlebars instance.\n\nBenchmark — `node bin/repomix.cjs --include src -o <tmp> --quiet`,\nhyperfine --warmup 5 --runs 25, baseline and patched builds rebuilt and run\ninterleaved (two rounds each to control for environment drift):\n  base:  758.0 / 753.4 ms  (mean 755.7)\n  after: 728.5 / 729.7 ms  (mean 729.1)\n  delta: 26.6 ms faster (3.52%); min 716 -> 701 ms\nAbove the 2% target and outside measurement noise (sigma ~20-29 ms).\n\nOutput verified byte-identical (cmp) before/after for xml, markdown, plain,\njson, parsable-xml and compress; markdown language fences still render via the\ngetFileExtension helper (51 typescript fences in both). tsgo --noEmit, biome\nand oxlint are clean; 352 tests across tests/core/output, tests/core/skill and\ntests/integration-tests pass.\n\nOptimize: defer the Handlebars compiler load from startup to output generation\nChange: top-level `import Handlebars` becomes a cached lazy createRequire\n        (getHandlebars); helper registration moves into getCompiledTemplate and\n        the module-load side-effect call in markdownStyle.ts is removed\nWhy: the compiler parse (~30ms) blocked the main thread at startup even though\n     Handlebars is only needed at render time, when the metrics worker threads\n     are already running and the parse can overlap with their CPU work\n\nhttps://claude.ai/code/session_01UAqgxmYukrLyiWmoVjGnMH",
+          "timestamp": "2026-05-31T04:46:33Z",
+          "tree_id": "499772539616ec6fefdca44ef760a3a9f317c4ea",
+          "url": "https://github.com/yamadashy/repomix/commit/6106f30f04e1721c087e6b99815055a680809a6d"
+        },
+        "date": 1780203068657,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 517,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 506ms, Q3: 527ms\nAll times: 481, 496, 497, 501, 504, 504, 505, 506, 507, 508, 509, 509, 515, 516, 516, 517, 518, 519, 520, 522, 523, 524, 527, 538, 568, 575, 579, 600, 608, 610ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 826,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 818ms, Q3: 841ms\nAll times: 801, 809, 812, 813, 818, 818, 819, 819, 821, 822, 826, 829, 831, 832, 837, 841, 842, 846, 878, 883ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1220,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1211ms, Q3: 1239ms\nAll times: 1195, 1201, 1202, 1204, 1206, 1211, 1214, 1214, 1216, 1218, 1220, 1222, 1224, 1225, 1228, 1239, 1266, 1302, 1473, 1627ms"
           }
         ]
       }
