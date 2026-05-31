@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780203070267,
+  "lastUpdate": 1780243933597,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9443,6 +9443,51 @@ window.BENCHMARK_DATA = {
             "range": "±28",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1211ms, Q3: 1239ms\nAll times: 1195, 1201, 1202, 1204, 1206, 1211, 1214, 1214, 1216, 1218, 1220, 1222, 1224, 1225, 1228, 1239, 1266, 1302, 1473, 1627ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "ade7f34fe6355bf7da8a0723797289c9219c1232",
+          "message": "perf(metrics): Cache gpt-tokenizer BPE ranks as JSON to cut tokenizer init\n\nThe metrics worker's TokenCounter initialization is the single largest cost on\na warm-cache CLI run. gpt-tokenizer ships each BPE merge-rank table as a ~2 MB\nCommonJS module of inline array literals; `resolveEncodingAsync` `require`s it,\nforcing V8 to lex/parse/execute the file and allocate a ~200k-element array on\nevery cold worker thread (~120 ms), before `GptEncoding.getEncodingApi` then\nbuilds the rank Map (~90 ms). A verbose trace showed this landing at ~211 ms on\nthe metrics critical path that gates output generation.\n\nThe value returned by `resolveEncodingAsync` is a plain JSON-serializable array\n(strings, plus byte arrays of 1–19 bytes for ranks whose token bytes are not\nvalid UTF-8). New `bpeRanksCache.ts` persists it once as JSON under\n`$TMPDIR/repomix/cache/bpe-ranks/` and, on later runs, reloads it via\n`readFileSync` + `JSON.parse` (~40 ms) — a restricted-grammar parse V8 handles\nin native C++, ~3x faster than re-executing the JS module. `getEncodingApi`\nreceives a byte-identical ranks array, so token counts are unchanged.\n\nintent(metrics): cut the ~211ms tokenizer init that dominates warm-cache runs\ndecision(bpe-cache): runtime JSON disk cache via gpt-tokenizer's public resolveEncodingAsync output — no build step, no bundled data, no internal imports\nrejected(bpe-cache): bundling a pre-built ranks JSON in lib/ — adds ~2MB to the published package and reaches into gpt-tokenizer's internal cjs/bpeRanks path, fragile across upgrades\ndecision(module-split): extract the cache to bpeRanksCache.ts mirroring tokenCountCache.ts — keeps TokenCounter focused and makes the cache unit-testable\ndecision(cache-key): key the file by gpt-tokenizer version + format version so an upgrade auto-invalidates stale tables (miss → rebuild)\nconstraint(bpe-cache): runs inside worker threads — sync fs + crypto-random tmp name + atomic rename so a concurrent worker (which shares this pid) never reads a partial file; all read/write errors fall back to resolveEncodingAsync (pure optimization, never a correctness signal)\nconstraint(shape-guard): readBpeRanksCache rejects any non-array/empty JSON as a clean miss, so a structurally-valid-but-wrong file is rebuilt rather than silently producing zero counts\nconstraint(opt-out): shares the REPOMIX_TOKEN_CACHE=0 switch with the token-count cache; REPOMIX_BPE_RANKS_CACHE_PATH redirects the dir for tests\n\nCorrectness:\n- Library-level equivalence verified: JSON round-trip yields identical encode()\n  output and countTokens() across source code, unicode, emoji, special tokens\n  (<|endoftext|>) and invalid UTF-8; all 1571 byte-array rank entries (lengths\n  1–19) preserved for o200k_base and cl100k_base.\n- Full CLI token totals identical with the cache enabled vs REPOMIX_TOKEN_CACHE=0,\n  and the generated output file is byte-identical.\n- 1332 tests pass (12 new for the cache: hit/miss/disabled/corrupt/malformed-shape\n  fallback); `tsgo --noEmit`, biome and oxlint clean.\n\nBenchmark — `node bin/repomix.cjs --include src -o <tmp> --quiet`, warm cache,\n25 runs/round, baseline (no cache) and patched rebuilt and run interleaved\n(two rounds each, to control for environment drift):\n  base:    773.1 / 742.6 ms  (mean 757.9)\n  patched: 722.0 / 688.1 ms  (mean 705.1)\n  delta:   -52.8 ms (7.0%)   — minimums ~703 → ~665 ms move in lockstep\nExceeds the 2% target and sits outside the run-to-run noise band (sd ~25 ms on\nthe patched runs) as shown by the consistent direction across both rounds.",
+          "timestamp": "2026-05-31T16:09:37Z",
+          "tree_id": "e933f9a26cadb470eb50ddbbe2cc24b5293a9d82",
+          "url": "https://github.com/yamadashy/repomix/commit/ade7f34fe6355bf7da8a0723797289c9219c1232"
+        },
+        "date": 1780243932487,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 703,
+            "range": "±149",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 618ms, Q3: 767ms\nAll times: 500, 560, 572, 576, 592, 605, 617, 618, 619, 628, 642, 643, 670, 674, 690, 703, 712, 712, 720, 739, 750, 758, 767, 774, 789, 798, 804, 843, 854, 854ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 841,
+            "range": "±10",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 836ms, Q3: 846ms\nAll times: 812, 815, 824, 828, 834, 836, 837, 837, 839, 841, 841, 841, 842, 843, 846, 846, 846, 852, 871, 885ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1276,
+            "range": "±70",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1260ms, Q3: 1330ms\nAll times: 1244, 1249, 1250, 1251, 1253, 1260, 1267, 1269, 1269, 1274, 1276, 1276, 1282, 1286, 1292, 1330, 1444, 1459, 1469, 1797ms"
           }
         ]
       }
