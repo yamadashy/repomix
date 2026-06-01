@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780331245421,
+  "lastUpdate": 1780341247285,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9623,6 +9623,51 @@ window.BENCHMARK_DATA = {
             "range": "±21",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 767ms, Q3: 788ms\nAll times: 754, 760, 765, 766, 767, 767, 768, 769, 772, 773, 774, 776, 776, 782, 783, 788, 796, 800, 800, 800ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "5ff9b1faac2fa475ac1af9bc1ffb31fa93ce9b69",
+          "message": "perf(core): Add newline pre-filter to base64 run detection\n\nSkip the per-character `hasLongBase64Run` scan for files whose lines are\nall shorter than the 256-char standalone-base64 threshold.\n\nWhy:\n  - `truncateBase64Content` runs on the main thread for every collected\n    file (no worker pool on the default pack path), so its CPU cost is\n    fully on the serial critical path. With `truncateBase64: true` (set in\n    this repo's own repomix.config.json, the benchmark target) it is the\n    dominant cost of the file-processing phase.\n  - `hasLongBase64Run` previously charCodeAt-scanned every byte of every\n    file (~5.5 MB across ~1.1k files) just to gate the standalone-base64\n    regex.\n\nWhat:\n  - A 256-char base64 run cannot contain a newline (`\\n` is not a base64\n    character and resets the run), so it must fit inside a single line.\n    Before the byte scan, walk newline offsets with the native\n    `String.prototype.indexOf`; if no line reaches the threshold, no run is\n    possible and we return early. Files with a long line fall through to\n    the unchanged full scan.\n\nBehavior-preserving:\n  - The pre-filter can only short-circuit when a long run is provably\n    absent; any file with a >=256-char line still runs the authoritative\n    byte scan, so results are identical. CLI output verified byte-identical\n    across xml/markdown/json/plain. Isolated run over all 1127 repo files:\n    0 mismatches vs the previous implementation.\n\nBenchmark (this container, `node bin/repomix.cjs`, warm cache):\n  - Isolated `truncateBase64Content` over the full repo file set\n    (interleaved, JIT-warmed median): 42.5ms -> 17.3ms, -25.2ms.\n  - Whole-process wall clock (interleaved, noise floor):\n    min   -32.5ms (-3.73%)\n    p25   -24.3ms (-2.53%)\n    Comfortably above the 2%-of-total improvement bar.\n\nTests:\n  - Added newline-split / many-short-lines / CRLF / no-newline cases to\n    tests/core/file/truncateBase64.test.ts. Full suite: 1345 passing.",
+          "timestamp": "2026-06-01T19:12:22Z",
+          "tree_id": "f4f907dcf7d4f8ee4d8eb5195e035c5e8ce5c9be",
+          "url": "https://github.com/yamadashy/repomix/commit/5ff9b1faac2fa475ac1af9bc1ffb31fa93ce9b69"
+        },
+        "date": 1780341245741,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 778,
+            "range": "±213",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 722ms, Q3: 935ms\nAll times: 641, 683, 702, 713, 713, 717, 717, 722, 723, 746, 746, 747, 750, 758, 773, 778, 784, 789, 790, 796, 835, 902, 935, 998, 1023, 1101, 1109, 1113, 1227, 1231ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 751,
+            "range": "±9",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 746ms, Q3: 755ms\nAll times: 733, 736, 739, 742, 743, 746, 746, 750, 750, 751, 751, 753, 753, 754, 754, 755, 755, 785, 791, 825ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1227,
+            "range": "±169",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1101ms, Q3: 1270ms\nAll times: 1055, 1067, 1068, 1069, 1086, 1101, 1105, 1120, 1213, 1223, 1227, 1229, 1256, 1258, 1259, 1270, 1283, 1283, 1301, 1319ms"
           }
         ]
       }
