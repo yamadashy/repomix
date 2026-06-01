@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780298081290,
+  "lastUpdate": 1780318823010,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9533,6 +9533,51 @@ window.BENCHMARK_DATA = {
             "range": "±41",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1006ms, Q3: 1047ms\nAll times: 996, 996, 999, 1004, 1004, 1006, 1008, 1009, 1010, 1021, 1022, 1024, 1032, 1033, 1043, 1047, 1071, 1186, 1252, 1357ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "60879a9aeba22a9eb4f9521e672819a5d6851d26",
+          "message": "perf(core): Use synchronous reads in readRawFile to cut collection overhead\n\nSwitch `readRawFile` from `await fs.readFile` (node:fs/promises) to\n`readFileSync` (node:fs) for the primary file read. The function stays\nasync and the non-UTF-8 encoding-detection fallback still uses async APIs.\n\nWhy: profiling the warm-cache CLI pack of the repomix repo shows\n`collectFiles` (~200ms) sits on the serial critical path between file\nsearch and the security/metrics phases. Each async read expands into an\nopen → fstat → read → close chain — ~4 event-loop cycles plus a libuv\nthreadpool round-trip and promise/microtask churn per file (×1090 files).\nThe async concurrency buys almost no real overlap here: the metrics worker\nis idle until file contents exist, and the git subprocesses complete well\nbefore collection does. On a warm page cache the dispatch overhead, not the\nsyscall, dominated. `readFileSync` collapses each file to a single blocking\nsyscall.\n\nBehavior is preserved: the same files are read and the same bytes are\ndecoded (size check, NULL-byte binary probe, UTF-8 fast path and legacy\nencoding fallback are all unchanged). Output verified byte-identical\n(xml, with and without --truncate-base64) against the base build, and the\nfull-repo pack produces an identical 1095-file set.\n\nAction: Read /home/user/repomix base-vs-patched interleaved benchmark,\n60 runs, warm cache, shared 4-core container, `node bin/repomix.cjs`:\n  min    918.4ms → 805.7ms  (-12.27%)\n  median 958.2ms → 842.8ms  (-12.05%)\n  mean   964.2ms → 843.5ms  (-12.52%)\nConsistent across three independent runs (-12.0% .. -13.6%). Corroborates\nan earlier automated run that measured -8% on the Ubuntu CI benchmark.\n\nConstraint: trade-off is on cold caches / high-latency filesystems\n(network FS, spinning disks), where serial sync reads forgo the parallel\nlibuv reads async allowed; the common local-SSD/warm-cache path — the\nbenchmark scenario and typical repeat runs — wins decisively. Sync reads\nin a CLI are idiomatic (eslint/prettier/tsc do the same).\n\nVerification: npm run test (1336 pass), npm run lint clean.",
+          "timestamp": "2026-06-01T12:55:48Z",
+          "tree_id": "efd3efe0897f2d4ed858c9ff3161bfdc8e146e3e",
+          "url": "https://github.com/yamadashy/repomix/commit/60879a9aeba22a9eb4f9521e672819a5d6851d26"
+        },
+        "date": 1780318821870,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 816,
+            "range": "±219",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 639ms, Q3: 858ms\nAll times: 559, 559, 564, 611, 626, 628, 638, 639, 662, 665, 696, 718, 733, 765, 801, 816, 827, 827, 833, 840, 849, 856, 858, 858, 860, 879, 883, 976, 982, 1234ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 834,
+            "range": "±55",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 815ms, Q3: 870ms\nAll times: 788, 803, 806, 808, 815, 815, 817, 819, 828, 829, 834, 839, 843, 845, 857, 870, 921, 945, 951, 976ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1394,
+            "range": "±211",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1197ms, Q3: 1408ms\nAll times: 1180, 1185, 1187, 1187, 1191, 1197, 1216, 1320, 1383, 1393, 1394, 1396, 1398, 1405, 1408, 1408, 1409, 1420, 1421, 1427ms"
           }
         ]
       }
