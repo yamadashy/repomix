@@ -122,6 +122,13 @@ describe.runIf(!isWindows)('packager integration', () => {
           },
           warmupPromise: Promise.resolve(),
         }),
+        createSecurityCheckTaskRunner: () => ({
+          taskRunner: {
+            run: async () => [],
+            cleanup: async () => {},
+          },
+          warmupPromise: Promise.resolve(),
+        }),
         calculateMetrics: async (
           processedFiles,
           _output,

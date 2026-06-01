@@ -15,7 +15,7 @@ import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMe
 import { loadTokenCountCache, saveTokenCountCache } from './metrics/tokenCountCache.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityCheckTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -49,6 +49,7 @@ const defaultDeps = {
   prefetchSortData,
   getGitDiffs,
   getGitLogs,
+  createSecurityCheckTaskRunner,
   // Lazy-load packSkill to defer importing the skill module chain
   // (skillSectionGenerators, skillStyle → Handlebars), which adds ~25ms
   // to module loading. Only used when --skill-generate is active (non-default).
@@ -92,44 +93,61 @@ export const pack = async (
     logger.trace('Failed to prefetch sort data:', error);
   });
 
-  progressCallback('Searching for files...');
-  const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
-    Promise.all(
-      rootDirs.map(async (rootDir) => {
-        const result = await deps.searchFiles(rootDir, config, explicitFiles);
-        return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
-      }),
-    ),
-  );
+  // Pre-create and warm the security-check worker pool at the very start of
+  // pack(), so secretlint's ~75ms per-thread module load overlaps the whole
+  // file-search and collection window instead of landing cold in front of the
+  // first security batch (which sits on the serial critical path: its results
+  // gate the processed-file filtering and output ordering). Created only when
+  // the security check is actually enabled; otherwise validateFileSafety never
+  // runs it. The pool's worker count is bounded by MAX_SECURITY_WORKERS inside
+  // createSecurityCheckTaskRunner, identical to the lazy path.
+  const securityCheck = config.security.enableSecurityCheck ? deps.createSecurityCheckTaskRunner() : undefined;
 
-  // Deduplicate and sort empty directory paths for reuse during output generation,
-  // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
-  const emptyDirPaths = config.output.includeEmptyDirectories
-    ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
-    : undefined;
-
-  // Sort file paths
-  progressCallback('Sorting files...');
-  const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
-
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
-    rootDir,
-    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
-  }));
-
-  // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
-  // (security check, file processing, output generation). `rootDirs` flows into the warm-up sizing so
-  // a per-repo "seen" marker can switch between cold (full warm-up) and warm-likely (single worker).
-  const { taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-    rootDirs,
-    allFilePaths.length,
-    config.tokenCount.encoding,
-  );
+  // Declared before the try so the finally block can clean these worker pools up
+  // even if an error (e.g. a searchFiles failure) unwinds pack() before the
+  // metrics pool is created. The security pool is created above, so the try must
+  // cover everything from here on to guarantee its cleanup as well.
+  let metricsTaskRunner: ReturnType<typeof createMetricsTaskRunner>['taskRunner'] | undefined;
+  let metricsWarmupPromise: ReturnType<typeof createMetricsTaskRunner>['warmupPromise'] | undefined;
 
   try {
+    progressCallback('Searching for files...');
+    const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
+      Promise.all(
+        rootDirs.map(async (rootDir) => {
+          const result = await deps.searchFiles(rootDir, config, explicitFiles);
+          return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
+        }),
+      ),
+    );
+
+    // Deduplicate and sort empty directory paths for reuse during output generation,
+    // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
+    const emptyDirPaths = config.output.includeEmptyDirectories
+      ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
+      : undefined;
+
+    // Sort file paths
+    progressCallback('Sorting files...');
+    const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
+    const sortedFilePaths = deps.sortPaths(allFilePaths);
+
+    // Regroup sorted file paths by rootDir using Set for O(1) membership checks
+    const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
+    const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+      rootDir,
+      filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+    }));
+
+    // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
+    // (security check, file processing, output generation). `rootDirs` flows into the warm-up sizing so
+    // a per-repo "seen" marker can switch between cold (full warm-up) and warm-likely (single worker).
+    ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+      rootDirs,
+      allFilePaths.length,
+      config.tokenCount.encoding,
+    ));
+
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
     // - getGitDiffs/getGitLogs spawn git subprocesses
@@ -158,7 +176,15 @@ export const pack = async (
     // After both complete, filter out any suspicious files from the processed results.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(
+          rawFiles,
+          progressCallback,
+          config,
+          gitDiffResult,
+          gitLogResult,
+          undefined,
+          securityCheck?.taskRunner,
+        ),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
@@ -277,7 +303,11 @@ export const pack = async (
 
     return result;
   } finally {
-    await metricsWarmupPromise.catch(() => {});
-    await metricsTaskRunner.cleanup();
+    if (metricsWarmupPromise !== undefined) await metricsWarmupPromise.catch(() => {});
+    if (metricsTaskRunner !== undefined) await metricsTaskRunner.cleanup();
+    if (securityCheck !== undefined) {
+      await securityCheck.warmupPromise.catch(() => {});
+      await securityCheck.taskRunner.cleanup();
+    }
   }
 };

@@ -5,7 +5,7 @@ import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import { filterOutUntrustedFiles } from './filterOutUntrustedFiles.js';
-import { runSecurityCheck, type SuspiciousFileResult } from './securityCheck.js';
+import { runSecurityCheck, type SecurityCheckTaskRunner, type SuspiciousFileResult } from './securityCheck.js';
 
 // Marks which files are suspicious and which are safe
 // Returns Git diff results separately so they can be included in the output
@@ -20,6 +20,10 @@ export const validateFileSafety = async (
     runSecurityCheck,
     filterOutUntrustedFiles,
   },
+  // Optional pre-warmed security worker pool created at the start of pack().
+  // Forwarded to runSecurityCheck so the warm workers are reused instead of
+  // spawning a fresh (cold) pool on the critical path.
+  securityTaskRunner?: SecurityCheckTaskRunner,
 ) => {
   let suspiciousFilesResults: SuspiciousFileResult[] = [];
   let suspiciousGitDiffResults: SuspiciousFileResult[] = [];
@@ -27,7 +31,14 @@ export const validateFileSafety = async (
 
   if (config.security.enableSecurityCheck) {
     progressCallback('Running security check...');
-    const allResults = await deps.runSecurityCheck(rawFiles, progressCallback, gitDiffResult, gitLogResult);
+    const allResults = await deps.runSecurityCheck(
+      rawFiles,
+      progressCallback,
+      gitDiffResult,
+      gitLogResult,
+      undefined,
+      securityTaskRunner,
+    );
 
     // Separate Git diff and Git log results from regular file results
     suspiciousFilesResults = allResults.filter((result) => result.type === 'file');

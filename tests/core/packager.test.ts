@@ -58,6 +58,13 @@ describe('packager', () => {
         },
         warmupPromise: Promise.resolve(),
       }),
+      createSecurityCheckTaskRunner: vi.fn().mockReturnValue({
+        taskRunner: {
+          run: vi.fn().mockResolvedValue([]),
+          cleanup: vi.fn().mockResolvedValue(undefined),
+        },
+        warmupPromise: Promise.resolve(),
+      }),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -92,6 +99,9 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      undefined,
+      // Pre-warmed security task runner forwarded from pack()
+      expect.objectContaining({ run: expect.any(Function), cleanup: expect.any(Function) }),
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
@@ -177,6 +187,10 @@ describe('packager', () => {
             taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup },
             warmupPromise: Promise.resolve(),
           }),
+          createSecurityCheckTaskRunner: vi.fn().mockReturnValue({
+            taskRunner: { run: vi.fn().mockResolvedValue([]), cleanup },
+            warmupPromise: Promise.resolve(),
+          }),
           getGitDiffs: vi.fn().mockResolvedValue(undefined),
           getGitLogs: vi.fn().mockResolvedValue(undefined),
           prefetchSortData: vi.fn().mockResolvedValue(undefined),
@@ -222,6 +236,24 @@ describe('packager', () => {
       expect(result.totalFiles).toBe(1);
       expect(deps.sortOutputFiles).toHaveBeenCalled();
       expect(cleanup).toHaveBeenCalled();
+    });
+
+    test('cleans up the pre-warmed security worker pool when searchFiles rejects', async () => {
+      // The security pool is created before searchFiles to overlap secretlint's
+      // module load with the search window. A searchFiles failure must therefore
+      // still tear it down — regression guard for a pool-leak on the error path.
+      const { deps } = baseDeps();
+      const securityCleanup = vi.fn().mockResolvedValue(undefined);
+      deps.createSecurityCheckTaskRunner = vi.fn().mockReturnValue({
+        taskRunner: { run: vi.fn().mockResolvedValue([]), cleanup: securityCleanup },
+        warmupPromise: Promise.resolve(),
+      });
+      deps.searchFiles = vi.fn().mockRejectedValue(new Error('search failed'));
+
+      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('search failed');
+
+      expect(deps.createSecurityCheckTaskRunner).toHaveBeenCalled();
+      expect(securityCleanup).toHaveBeenCalled();
     });
 
     test('cleans up the metrics worker pool even when the warmup promise rejects', async () => {

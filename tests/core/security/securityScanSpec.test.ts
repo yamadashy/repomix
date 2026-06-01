@@ -89,6 +89,13 @@ const runPack = async (rootDir: string, config: RepomixConfigMerged) =>
       taskRunner: { run: async () => 0, cleanup: async () => {} },
       warmupPromise: Promise.resolve(),
     }),
+    // Replace the pre-warmed security pool with an in-process no-op runner. The
+    // real scan still runs via the validateFileSafety wrapper's inline runner
+    // above; this only prevents pack() from spawning a real worker thread.
+    createSecurityCheckTaskRunner: () => ({
+      taskRunner: { run: async () => [], cleanup: async () => {} },
+      warmupPromise: Promise.resolve(),
+    }),
     calculateMetrics: async (processedFiles) => ({
       totalFiles: processedFiles.length,
       totalCharacters: processedFiles.reduce((acc, f) => acc + f.content.length, 0),

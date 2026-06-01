@@ -77,6 +77,10 @@ const runPack = (rootDirs: string[], config: RepomixConfigMerged) =>
       taskRunner: { run: async () => 0, cleanup: async () => {} },
       warmupPromise: Promise.resolve(),
     }),
+    createSecurityCheckTaskRunner: () => ({
+      taskRunner: { run: async () => [], cleanup: async () => {} },
+      warmupPromise: Promise.resolve(),
+    }),
     calculateMetrics: async (processedFiles) => ({
       totalFiles: processedFiles.length,
       totalCharacters: processedFiles.reduce((acc, f) => acc + f.content.length, 0),
