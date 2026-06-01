@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780318823010,
+  "lastUpdate": 1780331245421,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9578,6 +9578,51 @@ window.BENCHMARK_DATA = {
             "range": "±211",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1197ms, Q3: 1408ms\nAll times: 1180, 1185, 1187, 1187, 1191, 1197, 1216, 1320, 1383, 1393, 1394, 1396, 1398, 1405, 1408, 1408, 1409, 1420, 1421, 1427ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "84b2603355e7053573ac2c841aaa76fbd075bf41",
+          "message": "perf(core): Pre-warm the security-check worker pool at pack() start\n\nProblem\n-------\nThe security check (secretlint) is the longest task on the warm CLI pack\npath of the repomix repo (~260ms of an ~835ms run, measured via\n`Security check completed in …` traces). Its worker pool was created\nlazily inside `runSecurityCheck`, immediately before the first batch was\ndispatched. Each freshly spawned worker thread must statically import\n`@secretlint/core` + `@secretlint/secretlint-rule-preset-recommend`\n(~75ms per thread) before it can return any result, and that load lands\ndirectly in front of the first batch — on the serial critical path, since\nthe security results gate processed-file filtering and output ordering.\n\nChange\n------\nAdd `createSecurityCheckTaskRunner`, mirroring the existing\n`createMetricsTaskRunner`: it creates the pool and dispatches one empty\nwarm-up batch per worker so each thread spawns and pays its secretlint\nmodule-load cost up front. `pack()` calls it at the very start (guarded by\n`config.security.enableSecurityCheck`), so the load overlaps the whole\nfile-search + collection window instead of running cold later. The\npre-warmed runner is threaded through `validateFileSafety` into\n`runSecurityCheck`, which now reuses it when supplied and leaves its\nlifecycle (cleanup) to the caller; the lazy create-and-teardown path is\nunchanged when no runner is passed. Pool sizing and the 2-worker cap are\nidentical to the lazy path, so worker counts, batching, and results are\nunchanged.\n\nBecause the pool is created before `searchFiles`, the `try` block was\nwidened to cover the search/sort/regroup phase and the metrics-runner\nhandles were hoisted to `let`, so the `finally` always tears both pools\ndown even if `searchFiles` throws (the relevant case for the long-running\nMCP server). This also closes the pre-existing window where a search-phase\nthrow could orphan the metrics pool.\n\nBehavior preservation\n---------------------\n- Output verified byte-identical (xml, markdown, json; full repomix-repo\n  pack) between the base and patched builds on the same tree.\n- Same files/diffs/logs are scanned with the same secretlint config; only\n  the timing of worker module-load changes.\n- When the security check is disabled, no pool is created (asserted by the\n  `enableSecurityCheck: false` spec).\n- 1341 tests pass (incl. a new search-failure cleanup guard);\n  `tsgo --noEmit`, biome, and oxlint clean.\n\nBenchmark (warm cache, `node bin/repomix.cjs`, interleaved base-vs-patched)\n--------------------------------------------------------------------------\nMedian wall-clock over independent runs on a shared 4-core container:\n\n| run (pairs) | base    | patched | delta            |\n|-------------|---------|---------|------------------|\n| 40          | 844 ms  | 812 ms  | -32 ms (-3.8%)   |\n| 60          | 835 ms  | 793 ms  | -42 ms (-5.0%)   |\n| 50          | 836 ms  | 800 ms  | -36 ms (-4.3%)   |\n\nSecurity-check phase itself drops from ~260ms to ~180ms (the ~75ms\nsecretlint load is now hidden behind file search). The ~4% median wall\nimprovement is comfortably above the 2% target.\n\naction: extract createSecurityCheckTaskRunner with empty-batch warm-up;\n  reuse the pre-warmed pool in runSecurityCheck without cleaning it up;\n  widen the pack() try so both worker pools are always cleaned up\nwhy: secretlint's per-thread module load was the cold cost in front of the\n  longest critical-path phase; overlapping it with search removes it from\n  wall-clock",
+          "timestamp": "2026-06-01T16:23:56Z",
+          "tree_id": "ff104f27e9f17394c0f29ac7ce87cd5cd8c5adb0",
+          "url": "https://github.com/yamadashy/repomix/commit/84b2603355e7053573ac2c841aaa76fbd075bf41"
+        },
+        "date": 1780331243908,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 780,
+            "range": "±222",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 669ms, Q3: 891ms\nAll times: 616, 626, 627, 631, 644, 650, 659, 669, 676, 678, 686, 720, 722, 752, 778, 780, 809, 812, 813, 814, 818, 852, 891, 901, 932, 946, 969, 975, 1047, 1114ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 782,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 764ms, Q3: 789ms\nAll times: 751, 753, 755, 757, 759, 764, 765, 772, 774, 780, 782, 783, 784, 784, 787, 789, 796, 798, 812, 814ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 774,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 767ms, Q3: 788ms\nAll times: 754, 760, 765, 766, 767, 767, 768, 769, 772, 773, 774, 776, 776, 782, 783, 788, 796, 800, 800, 800ms"
           }
         ]
       }
