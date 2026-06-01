@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780243933597,
+  "lastUpdate": 1780298081290,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9488,6 +9488,51 @@ window.BENCHMARK_DATA = {
             "range": "±70",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1260ms, Q3: 1330ms\nAll times: 1244, 1249, 1250, 1251, 1253, 1260, 1267, 1269, 1269, 1274, 1276, 1276, 1282, 1286, 1292, 1330, 1444, 1459, 1469, 1797ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "3c9d83d8d8140d6343cb40d2bcd45c03665639ad",
+          "message": "perf(output): Defer unused render-context scans on xml/plain/json paths\n\ncreateRenderContext eagerly computed two values that each walk every\nfile's content:\n\n- fileLineCounts  -> calculateFileLineCounts (content.match(/\\n/g) per file)\n- markdownCodeBlockDelimiter -> calculateMarkdownDelimiter\n  (file.content.match(/`+/g) flattened across all files)\n\nNeither is read by the default xml, plain, or json render paths; only the\nmarkdown template and the skill path consume them. On a full-repo pack\n(1,066 files / 4.5M chars) this was pure wasted work on the common path —\ncalculateFileLineCounts alone showed up at ~16ms of main-thread CPU in a\nCPU profile.\n\nExpose both as lazily-computed, memoized getters on the render context.\nThe scan now runs at most once and only when a consumer actually reads the\nproperty, so the markdown/skill output is unchanged while xml/plain/json\nskip the work entirely. The `??=` memoization preserves the previous\n\"compute once\" semantics for the paths that do read these values (neither\nhelper can return a falsy value, so `??=` never recomputes).\n\nBehavior preservation:\n- Output is byte-identical for xml, markdown, plain and json styles\n  (verified by diffing full-repo packs against the base build).\n- Getters satisfy the readonly RenderContext contract; Handlebars resolves\n  them via normal own-property lookup; no worker/serialization boundary is\n  crossed by the render context.\n- TokenCounter / metrics untouched.\n- Added unit tests for the getter laziness, correctness and memoization.\n- 1336 tests pass; tsgo --noEmit, biome and oxlint clean.\n\nBenchmark (node bin/repomix.cjs <repo> --output <file>, warm cache,\ninterleaved base-vs-patched, 100 runs on a shared 4-core container):\n- min:    1090.0ms -> 1064.5ms  (-25.5ms, -2.34%)\n- median: 1163.0ms -> 1143.7ms  (-19.3ms, -1.66%)\n- mean:   1159.1ms -> 1141.1ms  (-18.0ms, -1.55%)\n\nThe change removes a fixed ~18-25ms of CPU-bound work; the min (the\nleast contended runs, i.e. the cleanest signal of the computational\ndelta) clears the 2% bar, while median/mean are diluted by container\nnoise. On faster dedicated runners where this benchmark completes in\n~0.4-0.5s, the same fixed saving is a larger fraction of total runtime.\n\nhttps://claude.ai/code/session_01FwFazjpfQ9ESsgDfbWo85v",
+          "timestamp": "2026-06-01T07:12:51Z",
+          "tree_id": "621cbb879038391eff42a9a052e0fddc79fe3f7d",
+          "url": "https://github.com/yamadashy/repomix/commit/3c9d83d8d8140d6343cb40d2bcd45c03665639ad"
+        },
+        "date": 1780298079566,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 878,
+            "range": "±214",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 754ms, Q3: 968ms\nAll times: 560, 645, 663, 687, 709, 735, 746, 754, 772, 797, 806, 828, 828, 832, 843, 878, 897, 899, 938, 940, 947, 952, 968, 971, 1038, 1050, 1060, 1062, 1067, 1069ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 797,
+            "range": "±75",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 789ms, Q3: 864ms\nAll times: 781, 783, 784, 786, 788, 789, 789, 789, 792, 796, 797, 800, 803, 812, 818, 864, 880, 912, 939, 952ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1022,
+            "range": "±41",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1006ms, Q3: 1047ms\nAll times: 996, 996, 999, 1004, 1004, 1006, 1008, 1009, 1010, 1021, 1022, 1024, 1032, 1033, 1043, 1047, 1071, 1186, 1252, 1357ms"
           }
         ]
       }
