@@ -84,6 +84,17 @@ const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  const processedFiles = outputGeneratorContext.processedFiles;
+
+  // `fileLineCounts` and `markdownCodeBlockDelimiter` each require a full scan of
+  // every file's content, but they are only consumed by the markdown template and
+  // the skill path. The default xml/plain/json render paths never read them, so we
+  // expose them as lazily-computed, memoized getters: the scan runs at most once,
+  // and only when a consumer actually accesses the property. This keeps the values
+  // byte-identical while removing the work from the common xml/plain/json paths.
+  let cachedFileLineCounts: Record<string, number> | undefined;
+  let cachedMarkdownCodeBlockDelimiter: string | undefined;
+
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -96,13 +107,19 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     headerText: outputGeneratorContext.config.output.headerText,
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
-    processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    processedFiles,
+    get fileLineCounts(): Record<string, number> {
+      cachedFileLineCounts ??= calculateFileLineCounts(processedFiles);
+      return cachedFileLineCounts;
+    },
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    get markdownCodeBlockDelimiter(): string {
+      cachedMarkdownCodeBlockDelimiter ??= calculateMarkdownDelimiter(processedFiles);
+      return cachedMarkdownCodeBlockDelimiter;
+    },
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,

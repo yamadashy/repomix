@@ -3,7 +3,12 @@ import process from 'node:process';
 import { DOMParser } from '@xmldom/xmldom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
-import { buildOutputGeneratorContext, generateOutput } from '../../../src/core/output/outputGenerate.js';
+import {
+  buildOutputGeneratorContext,
+  createRenderContext,
+  generateOutput,
+} from '../../../src/core/output/outputGenerate.js';
+import type { OutputGeneratorContext } from '../../../src/core/output/outputGeneratorTypes.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
@@ -522,5 +527,65 @@ describe('buildOutputGeneratorContext', () => {
     );
     await expect(promise).rejects.toBeInstanceOf(RepomixError);
     await expect(promise).rejects.toThrow(/Failed to build full directory structure.*list failed/);
+  });
+});
+
+describe('createRenderContext', () => {
+  const buildContext = (processedFiles: ProcessedFile[]): OutputGeneratorContext => ({
+    generationDate: '2024-01-01T00:00:00.000Z',
+    treeString: '',
+    processedFiles,
+    config: createMockConfig({ output: { style: 'xml' } }),
+    instruction: '',
+    gitDiffResult: undefined,
+    gitLogResult: undefined,
+  });
+
+  test('exposes fileLineCounts and markdownCodeBlockDelimiter as lazy getters', () => {
+    const context = buildContext([{ path: 'a.txt', content: 'line1\nline2' }]);
+    const renderContext = createRenderContext(context);
+
+    // The properties must be getters (deferred), not eagerly-computed data values,
+    // so the xml/plain/json paths can skip the work entirely.
+    const lineCountsDescriptor = Object.getOwnPropertyDescriptor(renderContext, 'fileLineCounts');
+    const delimiterDescriptor = Object.getOwnPropertyDescriptor(renderContext, 'markdownCodeBlockDelimiter');
+    expect(typeof lineCountsDescriptor?.get).toBe('function');
+    expect(typeof delimiterDescriptor?.get).toBe('function');
+  });
+
+  test('computes correct fileLineCounts on access', () => {
+    const renderContext = createRenderContext(
+      buildContext([
+        { path: 'empty.txt', content: '' },
+        { path: 'noTrailing.txt', content: 'a\nb\nc' },
+        { path: 'trailing.txt', content: 'a\nb\n' },
+      ]),
+    );
+
+    expect(renderContext.fileLineCounts).toEqual({
+      'empty.txt': 0,
+      'noTrailing.txt': 3,
+      'trailing.txt': 2,
+    });
+  });
+
+  test('computes correct markdownCodeBlockDelimiter on access', () => {
+    // Longest backtick run in content is 4, so the delimiter must be 5 backticks.
+    const renderContext = createRenderContext(
+      buildContext([
+        { path: 'a.md', content: 'inline `code` here' },
+        { path: 'b.md', content: '````\nfenced\n````' },
+      ]),
+    );
+
+    expect(renderContext.markdownCodeBlockDelimiter).toBe('`````');
+  });
+
+  test('memoizes each getter so the value is computed at most once', () => {
+    const renderContext = createRenderContext(buildContext([{ path: 'a.txt', content: 'x\ny' }]));
+
+    // Re-reading must return the identical reference/value (computed once, then cached).
+    expect(renderContext.fileLineCounts).toBe(renderContext.fileLineCounts);
+    expect(renderContext.markdownCodeBlockDelimiter).toBe(renderContext.markdownCodeBlockDelimiter);
   });
 });
