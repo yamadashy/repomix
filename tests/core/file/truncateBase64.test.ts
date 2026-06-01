@@ -127,6 +127,43 @@ describe('truncateBase64Content', () => {
     expect(result).toBe(input);
   });
 
+  it('should not truncate a base64-like run split across a newline', () => {
+    // A 320-char base64 body interrupted by a newline: neither line segment
+    // reaches 256, and `\n` resets the run, so nothing should be truncated.
+    // Guards the newline pre-filter in `hasLongBase64Run`.
+    const half = longBase64.slice(0, 160);
+    const input = `const data = "${half}\n${half}";`;
+    const result = truncateBase64Content(input);
+    expect(result).toBe(input);
+  });
+
+  it('should truncate a long base64 run that follows many short lines', () => {
+    // Many short lines (each < 256) precede the real run, so the newline
+    // pre-filter must fall through to the full scan and still truncate.
+    const shortLines = 'const a = 1;\n'.repeat(50);
+    const input = `${shortLines}const data = "${longBase64}";`;
+    const result = truncateBase64Content(input);
+    expect(result).toContain('DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg...');
+    expect(result.startsWith(shortLines)).toBe(true);
+  });
+
+  it('should truncate a base64 run on a CRLF-terminated line', () => {
+    // The `\r` before `\n` is also non-base64; the long line must still be
+    // detected by the pre-filter and truncated by the full scan.
+    const input = `const data = "${longBase64}";\r\nconst next = 2;\r\n`;
+    const result = truncateBase64Content(input);
+    expect(result).toContain('DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg...');
+    expect(result).toContain('const next = 2;');
+  });
+
+  it('should truncate a long base64 run with no newline at all', () => {
+    // Single-line content (no `\n`): the pre-filter treats the whole string as
+    // one segment and must fall through to the full scan.
+    const input = `prefix-${longBase64}-suffix`;
+    const result = truncateBase64Content(input);
+    expect(result).toContain('DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg...');
+  });
+
   it('should leave non-base64 data URIs untouched', () => {
     // `data:text/plain,hello` has no `;base64,` literal, so the dataUriPattern
     // cannot match. Verifies the `includes(';base64,')` guard short-circuits

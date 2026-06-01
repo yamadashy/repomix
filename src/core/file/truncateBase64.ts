@@ -24,6 +24,25 @@ const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_S
 const hasLongBase64Run = (content: string): boolean => {
   const len = content.length;
   if (len < MIN_BASE64_LENGTH_STANDALONE) return false;
+  // Newline pre-filter: `\n` is not a base64 character, so it always resets the
+  // run below. A run of `MIN_BASE64_LENGTH_STANDALONE` therefore has to fit
+  // inside a single line. If every line is shorter than that threshold no run is
+  // possible, and we can bail out before the per-character scan. `indexOf` is a
+  // native (memchr-style) scan, far cheaper than the charCodeAt loop, and the
+  // vast majority of source files have no such long line, so this skips the hot
+  // loop entirely for them.
+  let lineStart = 0;
+  let newlineIndex = content.indexOf('\n');
+  while (newlineIndex !== -1) {
+    if (newlineIndex - lineStart >= MIN_BASE64_LENGTH_STANDALONE) break;
+    lineStart = newlineIndex + 1;
+    newlineIndex = content.indexOf('\n', lineStart);
+  }
+  // The final segment (after the last newline, or the whole content when there
+  // is none) also needs the length check before we can rule out a long run.
+  if (newlineIndex === -1 && len - lineStart < MIN_BASE64_LENGTH_STANDALONE) {
+    return false;
+  }
   let run = 0;
   for (let i = 0; i < len; i++) {
     const c = content.charCodeAt(i);
