@@ -1,4 +1,4 @@
-import type { Stats } from 'node:fs';
+import nodeFs, { type Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { type Options as GlobbyOptions, type GlobEntry, globby } from 'globby';
@@ -315,6 +315,30 @@ const prepareIgnoreContext = async (
   return { adjustedIgnorePatterns, ignoreFilePatterns };
 };
 
+// A node:fs adapter whose only difference from the real module is that
+// `promises.stat` is served synchronously via `statSync`.
+//
+// When any discovered .gitignore/.repomixignore contains a negation pattern (or
+// a parent .gitignore is present), globby disables fast-glob's native `ignore`
+// and instead filters every discovered entry through a post-traversal predicate.
+// For each non-ignored entry that predicate awaits an `fs.promises.stat` call to
+// learn whether the entry is a directory (to apply directory-form gitignore
+// rules) — thousands of awaited stats that dominate the file-search phase, even
+// though objectMode already carries the dirent. fast-glob's own traversal uses
+// the callback-style fs methods (it never touches `fs.promises`), so overriding
+// only `promises.stat` leaves traversal and results byte-identical while removing
+// the libuv thread-pool round-trip per file. `statSync` returns an identical
+// Stats object (same isDirectory()/isFile()), so every filtering decision is
+// unchanged; this is purely a dispatch-cost optimization. Any unexpected throw is
+// caught by globby's existing try/catch exactly as the async path's rejection was.
+const globbyFs = {
+  ...nodeFs,
+  promises: {
+    ...nodeFs.promises,
+    stat: (statPath: nodeFs.PathLike, options?: nodeFs.StatOptions) => nodeFs.statSync(statPath, options),
+  },
+} as unknown as GlobbyOptions['fs'];
+
 /**
  * Creates base globby options with common ignore patterns.
  * Returns options that can be extended with specific settings like onlyFiles or onlyDirectories.
@@ -332,6 +356,7 @@ const createBaseGlobbyOptions = (
   absolute: false,
   dot: true,
   followSymbolicLinks: false,
+  fs: globbyFs,
 });
 
 export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promise<string[]> => {

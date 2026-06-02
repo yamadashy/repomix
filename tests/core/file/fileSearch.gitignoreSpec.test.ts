@@ -84,6 +84,34 @@ describe('fileSearch gitignore spec', () => {
   // rather than a regression target. Capture it as a real spec the day the
   // codebase commits to that behavior.
 
+  // Trailing-slash directory ignores (`artifacts/`) force globby's
+  // post-traversal predicate to stat each discovered entry to confirm it is a
+  // directory before applying the directory-form rule. `searchFiles` serves
+  // that per-entry stat synchronously (via a node:fs adapter whose
+  // `promises.stat` delegates to `statSync`) to avoid the libuv thread-pool
+  // round-trip; this case guards that the directory-check still produces
+  // identical filtering. The `!keep.draft` negation keeps globby on the
+  // predicate path (where the directory stat happens) rather than letting it
+  // hand the patterns to fast-glob's native ignore.
+  it('excludes contents of a trailing-slash directory ignore while honoring a sibling negation', async () => {
+    await writeFixture(tmpDir, {
+      '.gitignore': 'artifacts/\n*.draft\n!keep.draft\n',
+      'artifacts/out.data': 'generated\n',
+      'artifacts/nested/deep.data': 'generated\n',
+      'src/app.ts': 'export {};\n',
+      'keep.draft': 'kept\n',
+      'noisy.draft': 'dropped\n',
+    });
+
+    const { filePaths } = await searchFiles(tmpDir, createMockConfig());
+
+    expect(filePaths).not.toContain('artifacts/out.data');
+    expect(filePaths).not.toContain('artifacts/nested/deep.data');
+    expect(filePaths).toContain('src/app.ts');
+    expect(filePaths).toContain('keep.draft');
+    expect(filePaths).not.toContain('noisy.draft');
+  });
+
   it('reads .gitignore inside monorepo `packages/*` (the classic Lerna/pnpm layout)', async () => {
     await writeFixture(tmpDir, {
       'package.json': '{"name":"root","private":true}\n',
