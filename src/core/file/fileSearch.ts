@@ -1,7 +1,7 @@
 import nodeFs, { type Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { type Options as GlobbyOptions, type GlobEntry, globby } from 'globby';
+import { type Options as GlobbyOptions, type GlobEntry, globby, globbySync } from 'globby';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { mapWithConcurrency } from '../../shared/asyncMap.js';
@@ -206,11 +206,29 @@ export const searchFiles = async (
       // by their Dirent type in one pass. We use `dirent.isFile()` (not `!isDirectory()`)
       // to match the previous `onlyFiles: true` semantics for symlinks and other non-file
       // non-directory entries (which are excluded in both implementations).
-      const entries: GlobEntry[] = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyFiles: false,
-        objectMode: true,
-      }).catch(handleGlobbyError);
+      // Use the synchronous globby variant: when a discovered .gitignore/.repomixignore
+      // carries a negation pattern, globby routes every traversed entry through a
+      // post-traversal predicate. The async path dispatches that predicate as one
+      // microtask per entry (Promise.all over ~1.3k entries) on top of the per-entry
+      // stat; globbySync runs the same filter as a plain synchronous loop, dropping
+      // the microtask-queue overhead. fast-glob's sync traversal yields the identical
+      // entry set (paths and Dirent types) and globby applies the identical `ignore`
+      // filter, so the discovered file/directory split is byte-identical. Blocking the
+      // main thread here is harmless: the security/metrics worker warmups and the git
+      // prefetch all run off-thread, and globby already dominated the main thread for
+      // this whole window. globbySync throws synchronously, so the previous
+      // `.catch(handleGlobbyError)` becomes a try/catch that re-throws via the same
+      // never-returning handler (preserving EPERM/EACCES → PermissionError promotion).
+      let entries: GlobEntry[];
+      try {
+        entries = globbySync(includePatterns, {
+          ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+          onlyFiles: false,
+          objectMode: true,
+        });
+      } catch (error) {
+        throw handleGlobbyError(error);
+      }
 
       const files: string[] = [];
       const directories: string[] = [];
@@ -233,10 +251,17 @@ export const searchFiles = async (
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     } else {
-      filePaths = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyFiles: true,
-      }).catch(handleGlobbyError);
+      // Synchronous variant — same rationale as the objectMode branch above:
+      // eliminates globby's per-entry filter microtasks while returning the
+      // identical file set.
+      try {
+        filePaths = globbySync(includePatterns, {
+          ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+          onlyFiles: true,
+        });
+      } catch (error) {
+        throw handleGlobbyError(error);
+      }
 
       const globbyElapsedTime = Date.now() - globbyStartTime;
       logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
@@ -323,14 +348,19 @@ const prepareIgnoreContext = async (
 // and instead filters every discovered entry through a post-traversal predicate.
 // For each non-ignored entry that predicate awaits an `fs.promises.stat` call to
 // learn whether the entry is a directory (to apply directory-form gitignore
-// rules) — thousands of awaited stats that dominate the file-search phase, even
-// though objectMode already carries the dirent. fast-glob's own traversal uses
-// the callback-style fs methods (it never touches `fs.promises`), so overriding
-// only `promises.stat` leaves traversal and results byte-identical while removing
-// the libuv thread-pool round-trip per file. `statSync` returns an identical
-// Stats object (same isDirectory()/isFile()), so every filtering decision is
-// unchanged; this is purely a dispatch-cost optimization. Any unexpected throw is
-// caught by globby's existing try/catch exactly as the async path's rejection was.
+// rules) — thousands of awaited stats, even though objectMode already carries the
+// dirent. fast-glob's own traversal uses the callback-style fs methods (it never
+// touches `fs.promises`), so overriding only `promises.stat` leaves traversal and
+// results byte-identical while removing the libuv thread-pool round-trip per file.
+// `statSync` returns an identical Stats object (same isDirectory()/isFile()), so
+// every filtering decision is unchanged; this is purely a dispatch-cost
+// optimization. Any unexpected throw is caught by globby's existing try/catch
+// exactly as the async path's rejection was.
+//
+// NOTE: `searchFiles` (the hot path) now calls `globbySync`, which uses `statSync`
+// directly and ignores this `promises.stat` override. This adapter therefore only
+// affects the remaining async `globby` callers — `listFiles` / `listDirectories`,
+// used by the MCP server — which still benefit from the synchronous stat.
 const globbyFs = {
   ...nodeFs,
   promises: {

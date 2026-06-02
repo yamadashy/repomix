@@ -2,7 +2,7 @@ import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { globby } from 'globby';
+import { globby, globbySync } from 'globby';
 import { minimatch } from 'minimatch';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
@@ -20,9 +20,15 @@ import { RepomixError } from '../../../src/shared/errorHandle.js';
 import { createMockConfig, isWindows } from '../../testing/testUtils.js';
 
 vi.mock('fs/promises');
-vi.mock('globby', () => ({
-  globby: vi.fn(),
-}));
+// searchFiles uses globbySync on the hot path while listFiles/listDirectories
+// still use the async globby. Back both exports with a single shared mock so the
+// existing `vi.mocked(globby)` setup and assertions cover both: configured return
+// values are plain arrays, which globbySync consumes directly and the async globby
+// call sites receive transparently via `await`.
+vi.mock('globby', () => {
+  const fn = vi.fn();
+  return { globby: fn, globbySync: fn };
+});
 vi.mock('../../../src/core/file/permissionCheck.js', () => ({
   checkDirectoryPermissions: vi.fn(),
   PermissionError: class extends Error {
@@ -51,7 +57,7 @@ describe('fileSearch', () => {
       details: { read: true, write: true, execute: true },
     });
     // Default mock for globby
-    vi.mocked(globby).mockResolvedValue([]);
+    vi.mocked(globbySync).mockReturnValue([]);
   });
 
   describe('getIgnoreFilePaths', () => {
@@ -109,7 +115,7 @@ describe('fileSearch', () => {
       const mockFilePaths = ['src/file1.js', 'src/file2.js'];
       const mockEmptyDirs = ['src/empty', 'empty-root'];
 
-      vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
+      vi.mocked(globbySync).mockImplementation((_: unknown, options: unknown) => {
         const opts = options as Record<string, unknown>;
         // New single-call path: files and directories are returned together in objectMode
         if (opts?.objectMode) {
@@ -150,7 +156,7 @@ describe('fileSearch', () => {
 
       const mockFilePaths = ['src/file1.js', 'src/file2.js'];
 
-      vi.mocked(globby).mockImplementation(async (_: unknown, options: unknown) => {
+      vi.mocked(globbySync).mockImplementation((_: unknown, options: unknown) => {
         if ((options as Record<string, unknown>)?.onlyDirectories) {
           throw new Error('Should not search for directories when disabled');
         }
@@ -291,7 +297,7 @@ node_modules
         },
       });
 
-      vi.mocked(globby).mockResolvedValue(['file1.js', 'file2.js']);
+      vi.mocked(globbySync).mockReturnValue(['file1.js', 'file2.js']);
       vi.mocked(fs.access).mockResolvedValue(undefined);
 
       await searchFiles('/mock/root', mockConfig);
@@ -333,7 +339,7 @@ node_modules
         '/mock/root/subdir/.gitignore': 'ignored.js',
       };
 
-      vi.mocked(globby).mockImplementation(async () => {
+      vi.mocked(globbySync).mockImplementation(() => {
         // Simulate filtering files based on .gitignore
         return mockFileStructure.filter((file) => {
           const relativePath = file.replace('root/', '');
@@ -383,7 +389,7 @@ node_modules
         '/mock/root/.gitignore': 'ignored-by-parent.js',
       };
 
-      vi.mocked(globby).mockImplementation(async () => {
+      vi.mocked(globbySync).mockImplementation(() => {
         // Simulate globby v16 behavior: parent .gitignore patterns apply to all subdirectories
         return mockFileStructure.filter((file) => {
           const basename = path.basename(file);
@@ -443,7 +449,7 @@ node_modules
         '/mock/root/.ignore': 'ignored-by-parent.js',
       };
 
-      vi.mocked(globby).mockImplementation(async () => {
+      vi.mocked(globbySync).mockImplementation(() => {
         // Simulate parent .ignore patterns applying to all subdirectories
         return mockFileStructure.filter((file) => {
           const basename = path.basename(file);
@@ -503,7 +509,7 @@ node_modules
         '/mock/root/.repomixignore': 'ignored-by-repomix.js',
       };
 
-      vi.mocked(globby).mockImplementation(async () => {
+      vi.mocked(globbySync).mockImplementation(() => {
         // Simulate parent .repomixignore patterns applying to all subdirectories
         return mockFileStructure.filter((file) => {
           const basename = path.basename(file);
@@ -556,7 +562,7 @@ node_modules
         `root${sep}subdir${sep}ignored.js`,
       ];
 
-      vi.mocked(globby).mockResolvedValue(mockFileStructure);
+      vi.mocked(globbySync).mockReturnValue(mockFileStructure);
 
       const result = await searchFiles('/mock/root', mockConfig);
 
@@ -593,7 +599,7 @@ node_modules
       });
 
       // Mock globby to return some test files
-      vi.mocked(globby).mockResolvedValue(['file1.js', 'file2.js']);
+      vi.mocked(globbySync).mockReturnValue(['file1.js', 'file2.js']);
 
       const mockConfig = createMockConfig({
         ignore: {
@@ -663,7 +669,7 @@ node_modules
         }
         return true;
       });
-      vi.mocked(globby).mockResolvedValue(filteredFiles);
+      vi.mocked(globbySync).mockReturnValue(filteredFiles);
 
       vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
         // Return worktree content for .git file, gitignore content for .gitignore
@@ -726,7 +732,7 @@ node_modules
       });
 
       // Mock globby to return some test files
-      vi.mocked(globby).mockResolvedValue(['file1.js', 'file2.js']);
+      vi.mocked(globbySync).mockReturnValue(['file1.js', 'file2.js']);
 
       const mockConfig = createMockConfig({
         ignore: {
@@ -757,20 +763,26 @@ node_modules
       // PermissionError translation or the friendly RepomixError wrapper.
       test('translates EPERM into PermissionError', async () => {
         const epermError = Object.assign(new Error('boom'), { code: 'EPERM' });
-        vi.mocked(globby).mockRejectedValue(epermError);
+        vi.mocked(globbySync).mockImplementation(() => {
+          throw epermError;
+        });
 
         await expect(searchFiles('/mock/root', createMockConfig({}))).rejects.toBeInstanceOf(PermissionError);
       });
 
       test('translates EACCES into PermissionError', async () => {
         const eaccesError = Object.assign(new Error('boom'), { code: 'EACCES' });
-        vi.mocked(globby).mockRejectedValue(eaccesError);
+        vi.mocked(globbySync).mockImplementation(() => {
+          throw eaccesError;
+        });
 
         await expect(searchFiles('/mock/root', createMockConfig({}))).rejects.toBeInstanceOf(PermissionError);
       });
 
       test('wraps generic Error from globby with directory context', async () => {
-        vi.mocked(globby).mockRejectedValue(new Error('disk read failed'));
+        vi.mocked(globbySync).mockImplementation(() => {
+          throw new Error('disk read failed');
+        });
 
         await expect(searchFiles('/mock/root', createMockConfig({}))).rejects.toThrow(
           /Failed to filter files in directory \/mock\/root\. Reason: disk read failed/,
@@ -778,7 +790,9 @@ node_modules
       });
 
       test('throws a generic message for non-Error throws', async () => {
-        vi.mocked(globby).mockRejectedValue({ unexpected: 'shape' });
+        vi.mocked(globbySync).mockImplementation(() => {
+          throw { unexpected: 'shape' };
+        });
 
         await expect(searchFiles('/mock/root', createMockConfig({}))).rejects.toThrow(
           'An unexpected error occurred while filtering files.',
@@ -904,7 +918,7 @@ node_modules
     });
 
     test('should succeed when target path is a valid directory', async () => {
-      vi.mocked(globby).mockResolvedValue(['test.js']);
+      vi.mocked(globbySync).mockReturnValue(['test.js']);
 
       const mockConfig = createMockConfig();
 
@@ -932,7 +946,7 @@ node_modules
       ];
 
       // Mock globby to return the expected filtered files
-      vi.mocked(globby).mockResolvedValue(['src/file1.ts', 'src/file3.ts']);
+      vi.mocked(globbySync).mockReturnValue(['src/file1.ts', 'src/file3.ts']);
 
       const result = await searchFiles('/test', mockConfig, explicitFiles);
 
@@ -953,7 +967,7 @@ node_modules
       const explicitFiles = ['/test/src/main.ts', '/test/tests/unit.test.ts', '/test/lib/utils.ts'];
 
       // Mock globby to return the expected filtered files
-      vi.mocked(globby).mockResolvedValue(['src/main.ts', 'lib/utils.ts']);
+      vi.mocked(globbySync).mockReturnValue(['src/main.ts', 'lib/utils.ts']);
 
       const result = await searchFiles('/test', mockConfig, explicitFiles);
 
@@ -973,7 +987,7 @@ node_modules
         },
       });
 
-      vi.mocked(globby).mockResolvedValue(['file1.ts', 'file2.ts']);
+      vi.mocked(globbySync).mockReturnValue(['file1.ts', 'file2.ts']);
 
       // Call all functions that use globby
       await searchFiles('/test/root', mockConfig);
@@ -1025,7 +1039,7 @@ node_modules
         },
       });
 
-      vi.mocked(globby).mockResolvedValue([]);
+      vi.mocked(globbySync).mockReturnValue([]);
 
       // Call all functions
       await searchFiles('/test/root', mockConfigWithoutGitignore);
@@ -1058,7 +1072,7 @@ node_modules
         },
       });
 
-      vi.mocked(globby).mockResolvedValue([]);
+      vi.mocked(globbySync).mockReturnValue([]);
 
       // Call all functions
       await searchFiles('/test/root', mockConfig);
