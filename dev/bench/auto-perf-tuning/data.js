@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780405875401,
+  "lastUpdate": 1780416797443,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9758,6 +9758,51 @@ window.BENCHMARK_DATA = {
             "range": "±16",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 968ms, Q3: 984ms\nAll times: 956, 961, 963, 965, 967, 968, 968, 970, 970, 971, 972, 974, 974, 976, 984, 984, 993, 999, 1004, 1084ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "9899a57f0a57d4b96e2ca88fe7ce47a4287ad7d9",
+          "message": "perf(core): Use synchronous readdirSync in findEmptyDirectories\n\nReplace the async, bounded-concurrency empty-directory scan in\n`searchFiles` with a single synchronous `readdirSync` loop. The previous\nimplementation dispatched one `fs.promises.readdir` per discovered\ndirectory (~250 for the repomix repo) through `mapWithConcurrency`\n(20-wide). Those callbacks interleave on the event loop with messages\ncoming back from the already-running security-check and metrics worker\npools, so the scheduling/microtask overhead far exceeds the raw readdir\ncost. `findEmptyDirectories` runs on the main thread immediately after\n`globbySync` (which already holds the thread synchronously through the\npreceding traversal), so blocking it briefly is harmless — the worker\npools keep running off-thread throughout.\n\nThe sync loop performs the identical readdir + `.startsWith('.')`\nvisibility filter and produces the same empty-directory set, so output\nis byte-identical. The now-unused `mapWithConcurrency` import and\n`EMPTY_DIR_CHECK_CONCURRENCY` constant are removed.\n\nBenchmark (interleaved A/B, warm cache, `node bin/repomix.cjs` packing\nthis repo, 4-core VM, A=base B=patched):\n\n  70 runs:  median 893.9 -> 874.7 ms  (-19.1 ms, -2.1%)\n            mean   897.8 -> 876.7 ms  (-21.1 ms, -2.3%)\n            p75    912.3 -> 892.2 ms  (-20.0 ms, -2.2%)\n  40 runs:  median 920.5 -> 899.5 ms  (-21.1 ms, -2.3%)\n\nNoise floor (base vs base, same harness) is ~0.4% median, so the\nimprovement is reproducibly above the 2%-of-total bar. Output verified\nbyte-identical between base and patched builds on the same tree. Full\ntest suite (1346) and lint pass.\n\ndecision(empty-dir-scan): synchronous readdirSync over bounded-async readdir — eliminates per-directory microtask churn that contended with worker-pool messages on the event loop\nconstraint(empty-dir-scan): must run after globbySync on the main thread; sync blocking is acceptable because globby already monopolized the thread and worker pools run off-thread\nlearned(empty-dir-scan): the win (~20ms) is far larger than the isolated readdir cost (~5ms) — it comes from removing event-loop interleaving with security/metrics worker messages, not from raw I/O speedup",
+          "timestamp": "2026-06-02T16:10:08Z",
+          "tree_id": "aed9beef30ef79a5277d9192bb9cb8b9a0bcd352",
+          "url": "https://github.com/yamadashy/repomix/commit/9899a57f0a57d4b96e2ca88fe7ce47a4287ad7d9"
+        },
+        "date": 1780416795534,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 655,
+            "range": "±141",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 563ms, Q3: 704ms\nAll times: 515, 516, 524, 529, 548, 550, 559, 563, 565, 568, 574, 582, 585, 595, 644, 655, 657, 671, 684, 685, 692, 699, 704, 712, 713, 716, 719, 735, 745, 756ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 714,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 713ms, Q3: 731ms\nAll times: 696, 708, 709, 710, 712, 713, 713, 714, 714, 714, 714, 715, 720, 728, 729, 731, 732, 732, 733, 741ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1053,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1047ms, Q3: 1062ms\nAll times: 1034, 1036, 1040, 1042, 1046, 1047, 1050, 1050, 1051, 1052, 1053, 1054, 1057, 1058, 1060, 1062, 1063, 1068, 1069, 1086ms"
           }
         ]
       }
