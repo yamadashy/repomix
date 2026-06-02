@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780341247285,
+  "lastUpdate": 1780362531544,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9668,6 +9668,51 @@ window.BENCHMARK_DATA = {
             "range": "±169",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1101ms, Q3: 1270ms\nAll times: 1055, 1067, 1068, 1069, 1086, 1101, 1105, 1120, 1213, 1223, 1227, 1229, 1256, 1258, 1259, 1270, 1283, 1283, 1301, 1319ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "e9adb1cddee069ec16b2f4ad107cf47e06b8be3f",
+          "message": "perf(core): Serve globby's directory-check stats synchronously in searchFiles\n\nProblem:\nThe file-search phase (`searchFiles` → `globby`) is the single largest\nsequential segment of a warm-cache CLI pack (~160-230ms locally, the dominant\nphase on the critical path). When any discovered .gitignore/.repomixignore\ncontains a negation pattern — this repo's tracked `.carnet/.gitignore` has\n`*`, `!.gitignore`, `!README.md` — globby disables fast-glob's native `ignore`\nand filters every discovered entry through a post-traversal predicate. For each\nnon-ignored entry that predicate `await`s an `fs.promises.stat` call to learn\nwhether the entry is a directory (to apply directory-form gitignore rules),\neven though objectMode already carries the dirent. Those ~1.1k awaited stats —\neach paying a libuv thread-pool round-trip — dominate the search phase.\n\nChange:\nPass globby a node:fs adapter identical to the real module except that\n`promises.stat` is served synchronously via `statSync`. fast-glob's own\ntraversal uses the callback-style fs methods and never touches `fs.promises`,\nso only globby's per-entry directory-check filter (and its one-off findGitRoot /\ndirectoryToGlob stats) are affected. Because globby's filter runs after fast-glob\nhas already traversed (readdir'd) the directory tree, those directories are\npage-cached and `statSync` returns without the async dispatch overhead.\n`statSync` yields an identical Stats object (same isDirectory()/isFile()), so\nevery filtering decision — and thus the discovered file set — is unchanged; this\nis purely a dispatch-cost optimization. Any throw is caught by globby's existing\ntry/catch exactly as the async rejection was.\n\nThis deliberately keeps globby as the ignore engine rather than reimplementing\nits gitignore handling, avoiding the negation / slash-less-recursion / parent-\ngitignore / dot-dir regressions that prescan rewrites have historically caused\n(see tests/core/file/fileSearch.gitignoreSpec.test.ts).\n\nTrade-off (documented, not blocking):\nWith the async path globby dispatched up to ~4 stats concurrently on the libuv\nthread pool; the synchronous path runs them sequentially on the main thread. On\na warm cache (the benchmark and typical developer usage, and always the case\nhere since traversal precedes the filter) sequential statSync is faster because\nit removes the per-call dispatch overhead. On a genuinely cold inode cache or a\nhigh-latency network filesystem the serialized stats cannot overlap I/O and\ncould be slower; the discovered file set is identical either way.\n\nBehavior preservation:\n- Output verified byte-identical (cmp) between base and patched builds on the\n  same tree (xml default path), 4,989,684 bytes.\n- globbyFs is exercised by the real-filesystem (unmocked) suite\n  tests/core/file/fileSearch.gitignoreSpec.test.ts — negation, slash-less,\n  monorepo and dot-dir cases all run real globby through the custom fs. Added a\n  trailing-slash directory-ignore + negation case that specifically drives the\n  per-entry directory-check stat this change serves. (The unit suite\n  tests/core/file/fileSearch.test.ts mocks globby and does not touch globbyFs.)\n- Full suite: 1346 tests pass; tsgo, biome, oxlint, secretlint clean.\n\nBenchmark (interleaved base-vs-patched, warm cache, `node bin/repomix.cjs`,\n40 runs each, 4-core VM):\n\n| metric | base     | patched  | delta            |\n|--------|----------|----------|------------------|\n| median | 821.9 ms | 757.5 ms | -64.3 ms (-7.8%) |\n| mean   | 823.7 ms | 759.7 ms | -64.0 ms (-7.8%) |\n| p25    | 797.9 ms | 733.6 ms | -64.3 ms (-8.1%) |\n\nReproduced in a second 40-run pass (median -7.1%). Noise floor (base vs base,\n20 runs) is ~0.5% median, so the improvement is decisively above the 2% bar.\nIsolated globby call: ~164ms → ~101ms (-62ms, -38%), file/dir lists identical.",
+          "timestamp": "2026-06-02T01:06:37Z",
+          "tree_id": "26adcd959445ae2d11e2040707c96515a83c5b10",
+          "url": "https://github.com/yamadashy/repomix/commit/e9adb1cddee069ec16b2f4ad107cf47e06b8be3f"
+        },
+        "date": 1780362530007,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1093,
+            "range": "±351",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 896ms, Q3: 1247ms\nAll times: 829, 843, 880, 888, 892, 893, 895, 896, 923, 992, 1039, 1050, 1072, 1077, 1088, 1093, 1093, 1103, 1118, 1159, 1162, 1197, 1247, 1251, 1263, 1287, 1304, 1310, 1411, 1452ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 785,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 780ms, Q3: 799ms\nAll times: 770, 772, 773, 774, 774, 780, 782, 782, 782, 783, 785, 785, 788, 788, 798, 799, 799, 804, 813, 815ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 997,
+            "range": "±12",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 991ms, Q3: 1003ms\nAll times: 988, 989, 990, 990, 990, 991, 992, 994, 994, 996, 997, 997, 998, 1000, 1000, 1003, 1004, 1004, 1007, 1016ms"
           }
         ]
       }
