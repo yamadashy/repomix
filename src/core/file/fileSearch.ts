@@ -4,7 +4,6 @@ import path from 'node:path';
 import { type Options as GlobbyOptions, type GlobEntry, globby, globbySync } from 'globby';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
-import { mapWithConcurrency } from '../../shared/asyncMap.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { sortPaths } from './filePathSort.js';
@@ -16,27 +15,32 @@ export interface FileSearchResult {
   emptyDirPaths: string[];
 }
 
-// readdir is independent across directories — run with bounded concurrency rather
-// than awaiting serially. The cap protects very large repos from EMFILE / file
-// descriptor exhaustion that unbounded `Promise.all` could cause.
-const EMPTY_DIR_CHECK_CONCURRENCY = 20;
-
 // No per-directory ignore-pattern check is needed here. The `directories` array
 // comes from globby with the same `ignore` patterns (e.g. `dist/**`), which
 // excludes both the directory contents AND the directory entry itself.
-const findEmptyDirectories = async (rootDir: string, directories: string[]): Promise<string[]> => {
-  const results = await mapWithConcurrency(directories, EMPTY_DIR_CHECK_CONCURRENCY, async (dir) => {
+//
+// Each directory is checked with a single synchronous `readdirSync`. The async
+// variant dispatched one `fs.promises.readdir` microtask per directory (bounded
+// at 20-wide via `mapWithConcurrency`); for the repomix repo that is ~250
+// directories, whose callbacks interleave on the event loop with messages from
+// the already-running security-check / metrics worker pools, adding scheduling
+// overhead far exceeding the raw readdir cost. The synchronous loop runs the same
+// readdir + `.startsWith('.')` filter and produces the identical empty-directory
+// set, but as a plain main-thread pass with no microtask churn. Blocking the main
+// thread here is harmless: `globbySync` already held it synchronously through the
+// preceding traversal, and the worker pools run off-thread throughout.
+const findEmptyDirectories = (rootDir: string, directories: string[]): string[] => {
+  return directories.filter((dir) => {
     const fullPath = path.join(rootDir, dir);
     try {
-      const entries = await fs.readdir(fullPath);
+      const entries = nodeFs.readdirSync(fullPath);
       const hasVisibleContents = entries.some((entry) => !entry.startsWith('.'));
-      return hasVisibleContents ? null : dir;
+      return !hasVisibleContents;
     } catch (error) {
       logger.debug(`Error checking directory ${dir}:`, error);
-      return null;
+      return false;
     }
   });
-  return results.filter((dir): dir is string => dir !== null);
 };
 
 // Check if a path is a git worktree reference file
@@ -247,7 +251,7 @@ export const searchFiles = async (
       );
 
       const filterStartTime = Date.now();
-      emptyDirPaths = await findEmptyDirectories(rootDir, directories);
+      emptyDirPaths = findEmptyDirectories(rootDir, directories);
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     } else {

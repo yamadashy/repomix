@@ -1,4 +1,4 @@
-import type { Stats } from 'node:fs';
+import { readdirSync, type Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -20,6 +20,18 @@ import { RepomixError } from '../../../src/shared/errorHandle.js';
 import { createMockConfig, isWindows } from '../../testing/testUtils.js';
 
 vi.mock('fs/promises');
+// findEmptyDirectories now uses the synchronous `readdirSync` from node:fs.
+// Override only that export (the rest of node:fs stays real, e.g. the globbyFs
+// statSync adapter) so the empty-directory checks are controllable in tests.
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs') & { default?: typeof import('node:fs') }>();
+  const readdirSyncMock = vi.fn(() => [] as unknown as ReturnType<typeof actual.readdirSync>);
+  return {
+    ...actual,
+    readdirSync: readdirSyncMock,
+    default: { ...(actual.default ?? actual), readdirSync: readdirSyncMock },
+  };
+});
 // searchFiles uses globbySync on the hot path while listFiles/listDirectories
 // still use the async globby. Back both exports with a single shared mock so the
 // existing `vi.mocked(globby)` setup and assertions cover both: configured return
@@ -58,6 +70,8 @@ describe('fileSearch', () => {
     });
     // Default mock for globby
     vi.mocked(globbySync).mockReturnValue([]);
+    // Default mock for readdirSync: treat directories as empty unless overridden
+    vi.mocked(readdirSync).mockReturnValue([] as never);
   });
 
   describe('getIgnoreFilePaths', () => {
@@ -134,7 +148,7 @@ describe('fileSearch', () => {
         return mockFilePaths;
       });
 
-      vi.mocked(fs.readdir).mockResolvedValue([]);
+      vi.mocked(readdirSync).mockReturnValue([] as never);
 
       const result = await searchFiles('/mock/root', mockConfig);
 
@@ -285,6 +299,9 @@ node_modules
         hasAllPermission: true,
         details: { read: true, write: true, execute: true },
       });
+      // Keep the empty-directory scan controllable if a filterFiles test ever
+      // enables includeEmptyDirectories (this inner reset clears the outer one).
+      vi.mocked(readdirSync).mockReturnValue([] as never);
     });
 
     test('should call globby with correct parameters', async () => {
