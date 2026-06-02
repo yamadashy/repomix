@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780362531544,
+  "lastUpdate": 1780405875401,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9713,6 +9713,51 @@ window.BENCHMARK_DATA = {
             "range": "±12",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 991ms, Q3: 1003ms\nAll times: 988, 989, 990, 990, 990, 991, 992, 994, 994, 996, 997, 997, 998, 1000, 1000, 1003, 1004, 1004, 1007, 1016ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "7f44a8652b679110e9fd90f542d92627edbb4427",
+          "message": "perf(core): Use globbySync in searchFiles to drop per-entry filter microtasks\n\nSwitch the two hot-path globby calls in searchFiles (the objectMode\nfiles+directories pass and the onlyFiles pass) from the async `globby`\nto `globbySync`. The file-search phase is the single largest serial\nsegment of a warm-cache CLI pack (~205ms of a ~670ms wall on a 4-core\nVM). When a discovered .gitignore/.repomixignore carries a negation\npattern (this repo's own .carnet/.gitignore does), globby disables\nfast-glob's native ignore and post-filters every traversed entry; the\nasync path dispatches that predicate as one microtask per entry\n(Promise.all over ~1.3k entries). globbySync runs the identical filter\nas a plain synchronous loop, removing the microtask-queue churn.\n\ndecision(file-search): globbySync over the async globby — fast-glob's\n  sync traversal yields the identical entry set (paths + Dirent types)\n  and globby applies the same `ignore` filter, so the discovered file\n  set is byte-identical; output verified identical across xml/markdown/\n  plain/json and with --no-gitignore.\nconstraint(file-search): globbySync throws synchronously, so the prior\n  `.catch(handleGlobbyError)` becomes a try/catch that re-throws via the\n  same never-returning handler, preserving EPERM/EACCES → PermissionError\n  promotion and the generic-error wrapper.\nconstraint(file-search): blocking the main thread during traversal is\n  harmless here — the security/metrics worker warmups and the git sort\n  prefetch all run off-thread, and async globby already monopolized the\n  main thread for this whole window.\nrejected(security-workers): raising MAX_SECURITY_WORKERS 2→3 — measured a\n  ~3.6% REGRESSION on the 4-core VM (oversubscription against the\n  concurrent metrics-warmup worker), not the projected gain.\nrejected(startup): lazy-loading fileSearch out of packager's static graph\n  with a parallel prefetch — no measurable wall change (~0.3%); module\n  compilation is CPU-bound on the single main thread, so the \"parallel\"\n  prefetch and the defaultAction import serialize to the same total.\nrejected(metrics-output): overlapping output write with metrics, MD5\n  cache-key/TextDecoder micro-opts — all <5ms or hidden behind concurrent\n  phases, below the 2% bar.\nlearned(globbyFs): the prior commit's `promises.stat`-sync `globbyFs`\n  adapter no longer affects searchFiles (globbySync uses statSync\n  directly); it now only benefits the async listFiles/listDirectories\n  MCP-path callers. Comment updated to reflect this.\n\nBenchmark (interleaved base-vs-patched, warm cache, node bin/repomix.cjs\npacking this repo, 4-core VM), isolating this change against the branch\ntip — 80 runs:\n\n  metric    base       patched    delta\n  min       621.3ms    598.1ms    -23.2ms (-3.7%)\n  p25       652.5ms    626.4ms    -26.1ms (-4.0%)\n  median    669.6ms    639.3ms    -30.3ms (-4.5%)\n  mean      673.4ms    642.7ms    -30.7ms (-4.6%)\n  p75       691.2ms    657.5ms    -33.7ms (-4.9%)\n\nNoise floor (base vs base) is ~0.4% mean, so the ~4.5% improvement is\ndecisively above the 2%-of-total bar. Tests: globby mock backs both\n`globby`/`globbySync`; value setters route through globbySync's sync\nsignature while assertions stay on the shared fn. Full suite (1346) and\nlint pass.",
+          "timestamp": "2026-06-02T13:01:24Z",
+          "tree_id": "682c4789de50f4fd75544c9884c5c5568c012996",
+          "url": "https://github.com/yamadashy/repomix/commit/7f44a8652b679110e9fd90f542d92627edbb4427"
+        },
+        "date": 1780405874363,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 784,
+            "range": "±156",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 730ms, Q3: 886ms\nAll times: 634, 674, 705, 709, 712, 713, 723, 730, 730, 739, 751, 759, 761, 773, 777, 784, 791, 794, 815, 836, 844, 849, 886, 888, 897, 909, 919, 967, 1032, 1100ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 721,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 713ms, Q3: 736ms\nAll times: 696, 707, 708, 709, 711, 713, 716, 716, 720, 721, 721, 729, 729, 730, 735, 736, 737, 739, 758, 840ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 972,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 968ms, Q3: 984ms\nAll times: 956, 961, 963, 965, 967, 968, 968, 970, 970, 971, 972, 974, 974, 976, 984, 984, 993, 999, 1004, 1084ms"
           }
         ]
       }
