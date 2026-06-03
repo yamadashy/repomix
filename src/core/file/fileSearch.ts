@@ -21,9 +21,19 @@ export interface FileSearchResult {
 // descriptor exhaustion that unbounded `Promise.all` could cause.
 const EMPTY_DIR_CHECK_CONCURRENCY = 20;
 
+/**
+ * Returns true when custom ignore patterns include a meaningful negation.
+ * A bare `!` is ignored because it normalizes to an empty include pattern.
+ */
 const hasNegatedCustomPatterns = (patterns: string[] = []): boolean =>
   patterns.some((pattern) => pattern.startsWith('!') && pattern.length > 1);
 
+/**
+ * Converts custom ignore patterns into ordered globby include patterns when
+ * negations are present. Non-negated patterns become excludes (`dist/**` ->
+ * `!dist/**`), while negated patterns become includes (`!dist/keep.js` ->
+ * `dist/keep.js`) after normalization.
+ */
 const createCustomGlobPatterns = (patterns: string[] = []): string[] => {
   if (!hasNegatedCustomPatterns(patterns)) {
     return [];
