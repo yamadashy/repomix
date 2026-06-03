@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780499593975,
+  "lastUpdate": 1780516161774,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9848,6 +9848,51 @@ window.BENCHMARK_DATA = {
             "range": "±59",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 980ms, Q3: 1039ms\nAll times: 967, 971, 971, 974, 975, 980, 981, 982, 983, 983, 987, 990, 992, 993, 993, 1039, 1053, 1135, 1141, 1293ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "52416a0f5543c11274c2e6875d06a161d000dd88",
+          "message": "perf(core): Single-traversal gitignore filtering in searchFiles for the default scan\n\nFor the default \"pack everything\" run (`['**/*']` include set) at a git repo\nroot, replace globby's gitignore handling with a single fast-glob traversal\nplus an in-process `ignore` matcher. globbySync resolves gitignore by running\na SECOND fast-glob walk to discover every ignore file, then post-filtering each\nentry through a predicate that re-resolves an absolute path (path.resolve +\npath.normalize) per entry. On a ~1.4k-entry repo that extra full walk plus the\nper-entry path math dominates the file-search phase, which is synchronous and\non the main-thread critical path (it runs before file collection, security and\nmetrics).\n\nThe fast path does one fast-glob traversal (which already returns every entry,\nincluding the ignore files themselves), builds globby's exact gitignore matcher\nfrom that pass, and filters on the relative paths fast-glob already produced —\nno second walk, no per-entry path.resolve. The matcher uses the same\n`ignore@7.0.5` library globby uses and the identical base-application rules\n(gitignore spec 2.22.1), and it re-tests directory entries with a trailing\nseparator exactly as globby does, so the surviving file/directory set is\nidentical.\n\nThe fast path is taken only when globby would not pull in ignore files from\nOUTSIDE the traversal root:\n  - Non-default include / stdin scans stay on globby (its separate ignore-file\n    discovery can read ignore files outside the include set).\n  - Subdirectory scans of a git repo stay on globby: with `useGitignore` on,\n    globby walks up to the git root and applies every parent `.gitignore`, which\n    the fast path (only seeing entries under rootDir) cannot. A git-root walk\n    (single statSync when rootDir is itself the repo root — the dominant case)\n    gates this.\n\nBenchmark (this repo, full default config: git diffs/logs + security +\nempty-dirs; node bin/repomix.cjs --quiet; 25 interleaved runs, libs swapped\neach iteration to cancel drift):\n\n  base (globby) median 938.0ms  mean 947.5ms  min 886.8ms\n  patched       median 855.8ms  mean 859.9ms  min 788.1ms\n  improvement: 8.8% median / 9.2% mean (~82ms)\n\nBehavior preservation: output byte-identical between base and patched builds on\nthis repo for both includeEmptyDirectories=true and =false (git-disabled\ncompare, changed source files excluded). Full suite (1349 tests) and lint pass;\nthe fileSearch gitignore regression suite (negation, slash-less recursion,\nnested negation, monorepo packages/, dot-dirs, parent .gitignore on subdir\nscans, and useGitignore on/off on the fast path) passes against the new path.\n\ndecision(file-search): reuse globby's own `ignore` library + applyBaseToPattern rules verbatim so the gitignore semantics are identical, not re-derived\ndecision(file-search): gate the fast path on (a) the default `['**/*']` scan and (b) rootDir being the git root or outside any git repo; subdir-of-repo and --include/stdin keep globby because they read ignore files outside the traversal root\nrejected(file-search): hand-rolling the include/pattern matching too — fast-glob already does it identically since globby delegates to it; only globby's gitignore post-filter is reimplemented\nconstraint(file-search): globby's `gitignore: true` reads parent .gitignore up to the git root (findGitRootSync + getParentGitignorePaths), so a subdirectory scan must fall back to globby to keep those rules\nconstraint(file-search): globby's EPERM/EACCES->PermissionError promotion preserved by wrapping the fast path in the same handleGlobbyError try/catch; searchViaSingleTraversal is fully synchronous so there is no unhandledRejection window\nlearned(globby): globbySync runs two full tree walks (ignore-file discovery + main scan) and a per-entry path.resolve predicate; that overhead, not the raw traversal, is what dominated the search phase here",
+          "timestamp": "2026-06-03T19:46:56Z",
+          "tree_id": "176160219d1c868cb143072d7fef865829bd9483",
+          "url": "https://github.com/yamadashy/repomix/commit/52416a0f5543c11274c2e6875d06a161d000dd88"
+        },
+        "date": 1780516161055,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 457,
+            "range": "±78",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 448ms, Q3: 526ms\nAll times: 429, 437, 442, 443, 446, 446, 448, 448, 451, 452, 452, 452, 454, 456, 457, 457, 476, 480, 480, 497, 500, 503, 526, 534, 535, 537, 556, 558, 594, 640ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 648,
+            "range": "±14",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 641ms, Q3: 655ms\nAll times: 629, 633, 634, 635, 640, 641, 642, 643, 644, 644, 648, 650, 652, 654, 655, 655, 655, 660, 661, 689ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1010,
+            "range": "±14",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1002ms, Q3: 1016ms\nAll times: 998, 1000, 1000, 1001, 1002, 1002, 1003, 1005, 1007, 1008, 1010, 1010, 1011, 1013, 1015, 1016, 1020, 1022, 1033, 1035ms"
           }
         ]
       }
