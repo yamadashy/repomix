@@ -1,7 +1,9 @@
 import nodeFs, { type Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import fastGlob from 'fast-glob';
 import { type Options as GlobbyOptions, type GlobEntry, globby, globbySync } from 'globby';
+import gitIgnore from 'ignore';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -88,6 +90,179 @@ export const normalizeGlobPattern = (pattern: string): string => {
   }
 
   return pattern;
+};
+
+// --- Fast path for the default "scan everything" glob ('**/*') -------------------
+//
+// `globbySync` resolves gitignore by (1) running a SECOND fast-glob traversal to
+// discover every ignore file in the tree, then (2) post-filtering each discovered
+// entry through a predicate that re-resolves an absolute path (path.resolve +
+// path.normalize) per entry before testing it. For a repo of ~1.4k entries that
+// extra full walk plus the per-entry path math dominates the file-search phase.
+//
+// When the include set is the default `['**/*']` (no user `--include`, no stdin
+// file list), a single fast-glob traversal already returns every entry — including
+// the ignore files themselves — so we can build globby's exact gitignore matcher
+// from that one pass and filter on the relative paths fast-glob already produced,
+// with no second walk and no per-entry path.resolve. The matcher uses the same
+// `ignore` library and the identical base-application rules globby applies
+// (gitignore spec §2.22.1), so the surviving file/directory set is identical.
+// Non-default include / stdin scans still go through globby unchanged, because
+// there globby's ignore-file discovery can read ignore files outside the include
+// set and that behavior must be preserved.
+
+const isNegativeGitignorePattern = (pattern: string): boolean => pattern[0] === '!';
+
+// Mirrors globby's `applyBaseToPattern` (gitignore spec §2.22.1): rewrites a single
+// ignore-file pattern so it is anchored relative to the directory the ignore file
+// lives in (`base`, posix, relative to the search root; empty for the root file).
+const applyBaseToGitignorePattern = (pattern: string, base: string): string => {
+  if (!base) {
+    return pattern;
+  }
+  const negative = isNegativeGitignorePattern(pattern);
+  const clean = negative ? pattern.slice(1) : pattern;
+  const slashIndex = clean.indexOf('/');
+  const hasNonTrailingSlash = slashIndex !== -1 && slashIndex !== clean.length - 1;
+  let result: string;
+  if (!hasNonTrailingSlash) {
+    // No separator (or only a trailing one): may match at any depth below base.
+    result = path.posix.join(base, '**', clean);
+  } else if (clean.startsWith('/')) {
+    // Leading separator: anchored to the ignore file's directory.
+    result = path.posix.join(base, clean.slice(1));
+  } else {
+    // Mid-pattern separator: relative to the ignore file's directory.
+    result = path.posix.join(base, clean);
+  }
+  return negative ? `!${result}` : result;
+};
+
+// Returns true when the git root is a PROPER ancestor of rootDir — i.e. rootDir is a
+// subdirectory inside a git repo rather than the repo root itself. In that case
+// globby's `gitignore: true` walks up to the git root and reads every parent
+// `.gitignore` (via findGitRootSync + getParentGitignorePaths) — files the
+// single-traversal fast path, which only sees entries under rootDir, cannot discover.
+// The caller must then stay on the globby path. Mirrors globby's findGitRootSync walk:
+// a `.git` directory OR worktree file marks the root, and the closest one at-or-above
+// rootDir wins (so a `.git` directly at rootDir means there are no parents to read).
+const gitRootIsProperAncestor = (rootDir: string): boolean => {
+  const resolvedRoot = path.resolve(rootDir);
+  const isGitRoot = (dir: string): boolean => {
+    try {
+      const stats = nodeFs.statSync(path.join(dir, '.git'));
+      return stats.isDirectory() || stats.isFile();
+    } catch {
+      return false;
+    }
+  };
+
+  // A `.git` directly at rootDir makes rootDir the git root: globby reads no parents.
+  if (isGitRoot(resolvedRoot)) {
+    return false;
+  }
+
+  const { root } = path.parse(resolvedRoot);
+  let current = resolvedRoot;
+  while (current !== root) {
+    const parent = path.dirname(current);
+    if (parent === current) {
+      break;
+    }
+    current = parent;
+    if (isGitRoot(current)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+interface FastGlobDirentEntry {
+  path: string;
+  dirent: { isFile(): boolean; isDirectory(): boolean };
+}
+
+// Single-traversal replacement for globby's gitignore handling. Returns the same
+// file/directory split globby would produce for the default `['**/*']` include set.
+const searchViaSingleTraversal = (
+  rootDir: string,
+  includePatterns: string[],
+  adjustedIgnorePatterns: string[],
+  config: RepomixConfigMerged,
+): { files: string[]; directories: string[] } => {
+  const entries = fastGlob.sync(includePatterns, {
+    cwd: rootDir,
+    ignore: adjustedIgnorePatterns,
+    dot: true,
+    followSymbolicLinks: false,
+    onlyFiles: false,
+    objectMode: true,
+  }) as unknown as FastGlobDirentEntry[];
+
+  // Ignore-file basenames that participate, matching searchFiles' globby config:
+  // .gitignore via the `gitignore` option, .ignore/.repomixignore via `ignoreFiles`.
+  const ignoreBasenames = new Set<string>(['.repomixignore']);
+  if (config.ignore.useGitignore) {
+    ignoreBasenames.add('.gitignore');
+  }
+  if (config.ignore.useDotIgnore) {
+    ignoreBasenames.add('.ignore');
+  }
+
+  // Collect ignore files from the single traversal, ordered shallow -> deep so that
+  // patterns from deeper directories are added last and therefore win (git's "more
+  // specific gitignore takes precedence"), matching globby + git semantics.
+  const ignoreFileEntries = entries
+    .filter((entry) => entry.dirent.isFile() && ignoreBasenames.has(path.posix.basename(entry.path)))
+    .sort((a, b) => {
+      const depthDiff = a.path.split('/').length - b.path.split('/').length;
+      if (depthDiff !== 0) {
+        return depthDiff;
+      }
+      return a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+    });
+
+  const patterns: string[] = [];
+  for (const entry of ignoreFileEntries) {
+    let content: string;
+    try {
+      content = nodeFs.readFileSync(path.join(rootDir, entry.path), 'utf8');
+    } catch {
+      // Missing/unreadable ignore file: skip, matching globby's suppressed read errors.
+      continue;
+    }
+    const dir = path.posix.dirname(entry.path);
+    const base = dir === '.' ? '' : dir;
+    for (const line of content.split(/\r?\n/)) {
+      // globby keeps non-empty, non-comment lines verbatim (no trimming) before
+      // applying the base; the `ignore` library handles the rest.
+      if (line && !line.startsWith('#')) {
+        patterns.push(applyBaseToGitignorePattern(line, base));
+      }
+    }
+  }
+
+  const matcher = gitIgnore().add(patterns);
+  const files: string[] = [];
+  const directories: string[] = [];
+  for (const entry of entries) {
+    const relPath = entry.path;
+    // File-form test, matching globby's predicate on the raw entry path.
+    if (matcher.ignores(relPath)) {
+      continue;
+    }
+    if (entry.dirent.isDirectory()) {
+      // Directory-form test: globby re-tests directory entries with a trailing
+      // separator so directory-only patterns (e.g. `build/`) match the dir entry.
+      if (matcher.ignores(`${relPath}/`)) {
+        continue;
+      }
+      directories.push(relPath);
+    } else if (entry.dirent.isFile()) {
+      files.push(relPath);
+    }
+  }
+  return { files, directories };
 };
 
 // Get all file paths considering the config
@@ -202,6 +377,18 @@ export const searchFiles = async (
     let filePaths: string[];
     let emptyDirPaths: string[] = [];
 
+    // Take the single-traversal fast path only when globby would not pull ignore files
+    // from OUTSIDE the traversal root. Two cases keep us on the globby path:
+    //  1. A non-default include set (user `--include` or stdin file list): globby's
+    //     separate ignore-file discovery can read ignore files outside the include set.
+    //  2. rootDir is a subdirectory of a git repo with `useGitignore` on: globby walks
+    //     up to the git root and applies every parent `.gitignore`, which the fast path
+    //     (only seeing entries under rootDir) cannot. The git-root walk runs only for
+    //     the otherwise-eligible default scan, and resolves to a single statSync when
+    //     rootDir is itself the repo root — the dominant, perf-critical case.
+    const includesEverything = includePatterns.length === 1 && includePatterns[0] === '**/*';
+    const isDefaultScan = includesEverything && !(config.ignore.useGitignore && gitRootIsProperAncestor(rootDir));
+
     if (config.output.includeEmptyDirectories) {
       // Single traversal returning both files and directories. The previous implementation
       // ran globby twice with identical options (once for files, once for directories),
@@ -223,24 +410,34 @@ export const searchFiles = async (
       // this whole window. globbySync throws synchronously, so the previous
       // `.catch(handleGlobbyError)` becomes a try/catch that re-throws via the same
       // never-returning handler (preserving EPERM/EACCES → PermissionError promotion).
-      let entries: GlobEntry[];
-      try {
-        entries = globbySync(includePatterns, {
-          ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-          onlyFiles: false,
-          objectMode: true,
-        });
-      } catch (error) {
-        throw handleGlobbyError(error);
-      }
+      let files: string[];
+      let directories: string[];
+      if (isDefaultScan) {
+        try {
+          ({ files, directories } = searchViaSingleTraversal(rootDir, includePatterns, adjustedIgnorePatterns, config));
+        } catch (error) {
+          throw handleGlobbyError(error);
+        }
+      } else {
+        let entries: GlobEntry[];
+        try {
+          entries = globbySync(includePatterns, {
+            ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+            onlyFiles: false,
+            objectMode: true,
+          });
+        } catch (error) {
+          throw handleGlobbyError(error);
+        }
 
-      const files: string[] = [];
-      const directories: string[] = [];
-      for (const entry of entries) {
-        if (entry.dirent.isFile()) {
-          files.push(entry.path);
-        } else if (entry.dirent.isDirectory()) {
-          directories.push(entry.path);
+        files = [];
+        directories = [];
+        for (const entry of entries) {
+          if (entry.dirent.isFile()) {
+            files.push(entry.path);
+          } else if (entry.dirent.isDirectory()) {
+            directories.push(entry.path);
+          }
         }
       }
       filePaths = files;
@@ -254,6 +451,16 @@ export const searchFiles = async (
       emptyDirPaths = findEmptyDirectories(rootDir, directories);
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
+    } else if (isDefaultScan) {
+      // Same single-traversal fast path, files only (directories are not needed here).
+      try {
+        filePaths = searchViaSingleTraversal(rootDir, includePatterns, adjustedIgnorePatterns, config).files;
+      } catch (error) {
+        throw handleGlobbyError(error);
+      }
+
+      const globbyElapsedTime = Date.now() - globbyStartTime;
+      logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
     } else {
       // Synchronous variant — same rationale as the objectMode branch above:
       // eliminates globby's per-entry filter microtasks while returning the

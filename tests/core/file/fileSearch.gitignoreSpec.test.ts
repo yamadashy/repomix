@@ -78,11 +78,64 @@ describe('fileSearch gitignore spec', () => {
     expect(filePaths).toContain('sub/keep.ts');
   });
 
-  // Note: parent-directory .gitignore handling when `searchFiles` is invoked
-  // against a subdirectory is intentionally NOT covered here. globby reads
-  // .gitignore files within `cwd` only, so this is a pre-existing gap on main
-  // rather than a regression target. Capture it as a real spec the day the
-  // codebase commits to that behavior.
+  // Parent-directory .gitignore handling: when `searchFiles` is invoked against a
+  // subdirectory of a git repo, globby's `gitignore: true` walks up to the git root
+  // and applies every parent `.gitignore`. The default-scan fast path only sees
+  // entries under rootDir, so it deliberately bows out (falls back to globby) when a
+  // git root is a proper ancestor of rootDir; this spec guards that the parent rules
+  // are still honored. The `.git` directory marks the repo root for the git-root walk.
+  it('applies a parent .gitignore when scanning a subdirectory of a git repo', async () => {
+    await writeFixture(tmpDir, {
+      '.git/HEAD': 'ref: refs/heads/main\n',
+      '.gitignore': '*.secret\n',
+      'sub/keep.ts': 'export {};\n',
+      'sub/leak.secret': 'excluded by the parent .gitignore at the repo root\n',
+    });
+
+    const { filePaths } = await searchFiles(path.join(tmpDir, 'sub'), createMockConfig());
+
+    expect(filePaths).toContain('keep.ts');
+    expect(filePaths).not.toContain('leak.secret');
+  });
+
+  // Fast-path coverage: a `.git` directory at rootDir makes rootDir the repo root, so
+  // the default `['**/*']` scan takes the single-traversal fast path. With
+  // `useGitignore` disabled the fast path must NOT register `.gitignore` matchers, so
+  // the `.gitignore` rule is inert and the matching file is kept.
+  it('ignores .gitignore on the fast path when useGitignore is disabled', async () => {
+    await writeFixture(tmpDir, {
+      '.git/HEAD': 'ref: refs/heads/main\n',
+      '.gitignore': '*.draft\n',
+      'noisy.draft': 'kept because gitignore is disabled\n',
+      'keep.ts': 'export {};\n',
+    });
+
+    const config = createMockConfig({
+      ignore: { useGitignore: false, useDefaultPatterns: true, customPatterns: [] },
+    });
+    const { filePaths } = await searchFiles(tmpDir, config);
+
+    expect(filePaths).toContain('noisy.draft');
+    expect(filePaths).toContain('keep.ts');
+  });
+
+  // Companion to the above: with `useGitignore` enabled on the same fast path, the
+  // `.gitignore` rule (including a negation) is applied exactly as git would.
+  it('honors .gitignore and negation on the fast path when useGitignore is enabled', async () => {
+    await writeFixture(tmpDir, {
+      '.git/HEAD': 'ref: refs/heads/main\n',
+      '.gitignore': '*.draft\n!keep.draft\n',
+      'noisy.draft': 'dropped\n',
+      'keep.draft': 'kept via negation\n',
+      'src/app.ts': 'export {};\n',
+    });
+
+    const { filePaths } = await searchFiles(tmpDir, createMockConfig());
+
+    expect(filePaths).toContain('keep.draft');
+    expect(filePaths).toContain('src/app.ts');
+    expect(filePaths).not.toContain('noisy.draft');
+  });
 
   // Trailing-slash directory ignores (`artifacts/`) force globby's
   // post-traversal predicate to stat each discovered entry to confirm it is a

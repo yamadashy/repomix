@@ -32,15 +32,16 @@ vi.mock('node:fs', async (importOriginal) => {
     default: { ...(actual.default ?? actual), readdirSync: readdirSyncMock },
   };
 });
-// searchFiles uses globbySync on the hot path while listFiles/listDirectories
-// still use the async globby. Back both exports with a single shared mock so the
-// existing `vi.mocked(globby)` setup and assertions cover both: configured return
-// values are plain arrays, which globbySync consumes directly and the async globby
-// call sites receive transparently via `await`.
-vi.mock('globby', () => {
-  const fn = vi.fn();
-  return { globby: fn, globbySync: fn };
-});
+// searchFiles takes a single-traversal fast path (fast-glob's `sync`) for the
+// default `['**/*']` include set, and otherwise uses globbySync; listFiles/
+// listDirectories still use the async globby. Back globby, globbySync AND
+// fast-glob's `sync` with one shared mock so the existing `vi.mocked(globby)`
+// setup and call-count/option assertions cover every path transparently. The
+// fast path requests `objectMode: true`, so tests exercising it return
+// `{ path, dirent }` entries; the remaining call sites receive plain arrays.
+const { sharedGlob } = vi.hoisted(() => ({ sharedGlob: vi.fn() }));
+vi.mock('globby', () => ({ globby: sharedGlob, globbySync: sharedGlob }));
+vi.mock('fast-glob', () => ({ default: { sync: sharedGlob }, sync: sharedGlob }));
 vi.mock('../../../src/core/file/permissionCheck.js', () => ({
   checkDirectoryPermissions: vi.fn(),
   PermissionError: class extends Error {
@@ -171,8 +172,17 @@ describe('fileSearch', () => {
       const mockFilePaths = ['src/file1.js', 'src/file2.js'];
 
       vi.mocked(globbySync).mockImplementation((_: unknown, options: unknown) => {
-        if ((options as Record<string, unknown>)?.onlyDirectories) {
+        const opts = options as Record<string, unknown>;
+        if (opts?.onlyDirectories) {
           throw new Error('Should not search for directories when disabled');
+        }
+        // The fast path requests objectMode and keeps only file entries.
+        if (opts?.objectMode) {
+          return mockFilePaths.map((p) => ({
+            path: p,
+            name: p.split('/').pop() ?? p,
+            dirent: { isFile: () => true, isDirectory: () => false } as unknown,
+          })) as never;
         }
         return mockFilePaths;
       });
@@ -615,8 +625,14 @@ node_modules
         details: { read: true, write: true, execute: true },
       });
 
-      // Mock globby to return some test files
-      vi.mocked(globbySync).mockReturnValue(['file1.js', 'file2.js']);
+      // Mock globby/fast-glob to return some test files (default scan → objectMode fast path)
+      vi.mocked(globbySync).mockReturnValue(
+        ['file1.js', 'file2.js'].map((p) => ({
+          path: p,
+          name: p,
+          dirent: { isFile: () => true, isDirectory: () => false } as unknown,
+        })) as never,
+      );
 
       const mockConfig = createMockConfig({
         ignore: {
@@ -628,7 +644,7 @@ node_modules
 
       const result = await searchFiles('/test/dir', mockConfig);
 
-      // Check that globby was called with correct ignore patterns
+      // Check that the traversal was called with correct ignore patterns
       const executeGlobbyCall = vi.mocked(globby).mock.calls[0];
       const ignorePatterns = executeGlobbyCall[1]?.ignore as string[];
 
@@ -748,8 +764,14 @@ node_modules
         details: { read: true, write: true, execute: true },
       });
 
-      // Mock globby to return some test files
-      vi.mocked(globbySync).mockReturnValue(['file1.js', 'file2.js']);
+      // Mock globby/fast-glob to return some test files (default scan → objectMode fast path)
+      vi.mocked(globbySync).mockReturnValue(
+        ['file1.js', 'file2.js'].map((p) => ({
+          path: p,
+          name: p,
+          dirent: { isFile: () => true, isDirectory: () => false } as unknown,
+        })) as never,
+      );
 
       const mockConfig = createMockConfig({
         ignore: {
@@ -761,7 +783,7 @@ node_modules
 
       const result = await searchFiles('/test/dir', mockConfig);
 
-      // Check that globby was called with correct ignore patterns
+      // Check that the traversal was called with correct ignore patterns
       const executeGlobbyCall = vi.mocked(globby).mock.calls[0];
       const ignorePatterns = executeGlobbyCall[1]?.ignore as string[];
 
@@ -935,7 +957,10 @@ node_modules
     });
 
     test('should succeed when target path is a valid directory', async () => {
-      vi.mocked(globbySync).mockReturnValue(['test.js']);
+      // Default scan → objectMode fast path.
+      vi.mocked(globbySync).mockReturnValue([
+        { path: 'test.js', name: 'test.js', dirent: { isFile: () => true, isDirectory: () => false } as unknown },
+      ] as never);
 
       const mockConfig = createMockConfig();
 
@@ -1063,17 +1088,16 @@ node_modules
       await listDirectories('/test/root', mockConfigWithoutGitignore);
       await listFiles('/test/root', mockConfigWithoutGitignore);
 
-      // Verify all calls have gitignore: false
+      // Verify every globby-based call has gitignore: false. searchFiles' default-scan
+      // fast path resolves gitignore itself (it only registers .gitignore matchers when
+      // useGitignore is true) rather than via a globby option, so its traversal call has
+      // no `gitignore` key; assert on the calls that set the option (listDirectories/
+      // listFiles), which is where the option is the source of truth.
       const calls = vi.mocked(globby).mock.calls;
-      for (const call of calls) {
-        const options = call[1];
-
-        // In our implementation globby is always called with an options object.
-        // Guard here to satisfy the type-checker and avoid undefined access.
-        expect(options).toBeDefined();
-        if (!options) continue;
-
-        expect(options).toMatchObject({
+      const gitignoreOptionCalls = calls.filter((call) => call[1] && 'gitignore' in call[1]);
+      expect(gitignoreOptionCalls.length).toBeGreaterThan(0);
+      for (const call of gitignoreOptionCalls) {
+        expect(call[1]).toMatchObject({
           gitignore: false,
         });
       }
