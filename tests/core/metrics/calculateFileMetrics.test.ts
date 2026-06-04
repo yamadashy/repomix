@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { calculateFileMetrics } from '../../../src/core/metrics/calculateFileMetrics.js';
 import type { MetricsTaskRunner } from '../../../src/core/metrics/metricsWorkerRunner.js';
-import { __resetTokenCountCacheForTests } from '../../../src/core/metrics/tokenCountCache.js';
+import {
+  __resetTokenCountCacheForTests,
+  contentCacheKey,
+  setCached,
+} from '../../../src/core/metrics/tokenCountCache.js';
 import {
   countTokens,
   type MetricsWorkerTask,
@@ -186,6 +190,87 @@ describe('calculateFileMetrics', () => {
 
       expect(runSpy.mock.calls.length).toBe(0);
       expect(second).toEqual(first);
+    });
+
+    // A `tokenCacheKey` precomputed during the security-check window (see
+    // packager.ts) must be reused verbatim for the cache lookup, so the per-file
+    // MD5 hashing does not run again on the metrics critical path. We prove reuse
+    // by seeding the cache under an arbitrary (non-content) key and pointing the
+    // file's `tokenCacheKey` at it: a hit can only happen if the precomputed key
+    // — not a freshly hashed content key — drove the lookup.
+    it('reuses a precomputed tokenCacheKey for the cache lookup', async () => {
+      const fakeKey = 'o200k_base:9999:0123456789abcdef';
+      setCached(fakeKey, 4242);
+
+      const processedFiles: ProcessedFile[] = [{ path: 'a.txt', content: 'hello world', tokenCacheKey: fakeKey }];
+      const progressCallback: RepomixProgressCallback = vi.fn();
+
+      const taskRunner = mockInitTaskRunner({
+        numOfTasks: 1,
+        workerType: 'calculateMetrics',
+        runtime: 'worker_threads',
+      });
+      const runSpy = vi.spyOn(taskRunner, 'run');
+
+      const result = await calculateFileMetrics(processedFiles, ['a.txt'], 'o200k_base', progressCallback, {
+        taskRunner,
+      });
+
+      expect(runSpy.mock.calls.length).toBe(0);
+      expect(result).toEqual([{ path: 'a.txt', charCount: 'hello world'.length, tokenCount: 4242 }]);
+    });
+
+    // Defensive guard: a precomputed key carried over from a different encoding
+    // must be ignored (the prefix check), so it can never alias another
+    // encoding's cached count. The key is recomputed for the active encoding and
+    // the real token count is produced.
+    it('ignores a precomputed tokenCacheKey from a different encoding', async () => {
+      const content = 'hello world';
+      // Seed the wrong-encoding key with a sentinel that must NOT surface.
+      const wrongEncodingKey = contentCacheKey('cl100k_base', content);
+      setCached(wrongEncodingKey, 9999);
+
+      const processedFiles: ProcessedFile[] = [{ path: 'a.txt', content, tokenCacheKey: wrongEncodingKey }];
+      const progressCallback: RepomixProgressCallback = vi.fn();
+
+      const taskRunner = mockInitTaskRunner({
+        numOfTasks: 1,
+        workerType: 'calculateMetrics',
+        runtime: 'worker_threads',
+      });
+      const runSpy = vi.spyOn(taskRunner, 'run');
+
+      const result = await calculateFileMetrics(processedFiles, ['a.txt'], 'o200k_base', progressCallback, {
+        taskRunner,
+      });
+
+      // Prefix mismatch → recompute under o200k_base → miss → worker dispatch.
+      expect(runSpy.mock.calls.length).toBeGreaterThan(0);
+      expect(result[0].tokenCount).not.toBe(9999);
+      expect(result[0].tokenCount).toBeGreaterThan(0);
+    });
+
+    // A precomputed key with the right encoding prefix but absent from the cache
+    // (e.g. evicted, or a genuine first-seen file) must drive the lookup, miss,
+    // dispatch to a worker, and then cache the real count under that same key.
+    it('falls through to a worker when a correct-prefix precomputed key is not cached', async () => {
+      const content = 'hello world';
+      const file: ProcessedFile = { path: 'a.txt', content, tokenCacheKey: 'o200k_base:9999:0123456789abcdef' };
+      const progressCallback: RepomixProgressCallback = vi.fn();
+
+      const taskRunner = mockInitTaskRunner({
+        numOfTasks: 1,
+        workerType: 'calculateMetrics',
+        runtime: 'worker_threads',
+      });
+      const runSpy = vi.spyOn(taskRunner, 'run');
+
+      // Cache intentionally NOT seeded under the precomputed key.
+      const result = await calculateFileMetrics([file], ['a.txt'], 'o200k_base', progressCallback, { taskRunner });
+
+      expect(runSpy.mock.calls.length).toBeGreaterThan(0);
+      expect(result[0].charCount).toBe(content.length);
+      expect(result[0].tokenCount).toBeGreaterThan(0);
     });
   });
 });

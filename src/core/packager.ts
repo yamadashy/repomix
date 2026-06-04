@@ -12,7 +12,7 @@ import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
-import { loadTokenCountCache, saveTokenCountCache } from './metrics/tokenCountCache.js';
+import { contentCacheKey, loadTokenCountCache, saveTokenCountCache } from './metrics/tokenCountCache.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { createSecurityCheckTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
@@ -186,9 +186,32 @@ export const pack = async (
           securityCheck?.taskRunner,
         ),
       ),
-      withMemoryLogging('Process Files', () => {
+      withMemoryLogging('Process Files', async () => {
         progressCallback('Processing files...');
-        return deps.processFiles(rawFiles, config, progressCallback);
+        const processed = await deps.processFiles(rawFiles, config, progressCallback);
+        // Precompute the per-file token-count cache keys now, while the security
+        // worker pool is still scanning and the main thread would otherwise sit
+        // idle awaiting it. This moves the per-file MD5 hashing off the later
+        // metrics critical path (where `calculateFileMetrics` runs concurrently
+        // with output generation, both contending for the main thread) into a
+        // window where it overlaps the secretlint workers for free. The keys are
+        // identical to what `calculateFileMetrics` would compute, so token counts
+        // and output are unchanged.
+        //
+        // Gated on `enableSecurityCheck`: without the security worker pool there
+        // is no idle window to hide the hashing behind, so this arm resolves as
+        // soon as `processFiles` finishes and the hashing would instead land
+        // serially in front of output generation — a net regression on a warm
+        // cache. In that case we leave the hashing where it was, in
+        // `calculateFileMetrics` (overlapping output generation). Also skipped on
+        // the skill-generate path, which returns before metrics reads the keys.
+        if (config.skillGenerate === undefined && config.security.enableSecurityCheck) {
+          const encoding = config.tokenCount.encoding;
+          for (const file of processed) {
+            file.tokenCacheKey = contentCacheKey(encoding, file.content);
+          }
+        }
+        return processed;
       }),
     ]);
 

@@ -46,9 +46,18 @@ export const calculateFileMetrics = async (
     const allResults: FileMetrics[] = Array.from({ length: filesToProcess.length });
     const uncachedFiles: UncachedEntry[] = [];
 
+    const encodingPrefix = `${tokenCounterEncoding}:`;
     for (let i = 0; i < filesToProcess.length; i++) {
       const file = filesToProcess[i];
-      const key = contentCacheKey(tokenCounterEncoding, file.content);
+      // Reuse the key precomputed during the security-check window when it is for
+      // the active encoding; otherwise hash the content here as before. The prefix
+      // check guards against a stale key from a different encoding (the digest is
+      // content-only, so a mismatched prefix could otherwise alias another
+      // encoding's cached count).
+      const precomputed = file.tokenCacheKey;
+      const key = precomputed?.startsWith(encodingPrefix)
+        ? precomputed
+        : contentCacheKey(tokenCounterEncoding, file.content);
       const cached = getCached(key);
       if (cached !== undefined) {
         allResults[i] = { path: file.path, charCount: file.content.length, tokenCount: cached };
