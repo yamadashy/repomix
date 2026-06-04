@@ -65,6 +65,100 @@ export interface PackOptions {
   skillSourceUrl?: string;
 }
 
+const toDisplayPath = (filePath: string): string => filePath.replaceAll(path.win32.sep, path.posix.sep);
+
+const isCwdRelativePath = (relativePath: string): boolean =>
+  relativePath !== '' &&
+  relativePath !== '..' &&
+  !relativePath.startsWith(`..${path.sep}`) &&
+  !path.isAbsolute(relativePath);
+
+const getDuplicateLabels = (labels: string[]): Set<string> => {
+  const counts = new Map<string, number>();
+  for (const label of labels) {
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+
+  const duplicates = new Set<string>();
+  for (const [label, count] of counts) {
+    if (count > 1) {
+      duplicates.add(label);
+    }
+  }
+  return duplicates;
+};
+
+const uniquifyLabelsWithSuffixes = (labels: string[]): string[] => {
+  const seen = new Set<string>();
+  return labels.map((label, index) => {
+    const baseLabel = label || `root-${index + 1}`;
+    let candidate = baseLabel;
+    let suffix = 2;
+    while (seen.has(candidate)) {
+      candidate = `${baseLabel}-${suffix}`;
+      suffix++;
+    }
+    seen.add(candidate);
+    return candidate;
+  });
+};
+
+const buildRootLabels = (rootDirs: string[], cwd: string): string[] => {
+  const resolvedCwd = path.resolve(cwd);
+  const resolvedRootDirs = rootDirs.map((rootDir) => path.resolve(rootDir));
+  const labelCandidates = resolvedRootDirs.map((rootDir) => {
+    const relativeRootDir = path.relative(resolvedCwd, rootDir);
+    if (isCwdRelativePath(relativeRootDir)) {
+      const label = toDisplayPath(relativeRootDir);
+      return {
+        label,
+        segments: label.split('/').filter(Boolean),
+      };
+    }
+
+    return {
+      label: toDisplayPath(path.basename(rootDir) || rootDir),
+      segments: undefined,
+    };
+  });
+  const labels = labelCandidates.map(({ label }) => label);
+
+  if (new Set(labels).size === labels.length) {
+    return labels;
+  }
+
+  const duplicateLabels = getDuplicateLabels(labels);
+  const maxDepth = Math.max(...labelCandidates.map(({ segments }) => segments?.length ?? 1), 1);
+  let candidates = labels;
+
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    candidates = labels.map((label, index) => {
+      if (!duplicateLabels.has(label)) {
+        return label;
+      }
+
+      const segments = labelCandidates[index]?.segments;
+      if (!segments) {
+        return label || `root-${index + 1}`;
+      }
+
+      return segments.slice(-depth).join('/') || label || `root-${index + 1}`;
+    });
+
+    if (new Set(candidates).size === candidates.length) {
+      return candidates;
+    }
+  }
+
+  return uniquifyLabelsWithSuffixes(candidates);
+};
+
+const joinDisplayPath = (rootLabel: string, filePath: string): string => {
+  const normalizedRootLabel = toDisplayPath(rootLabel).replace(/^\/+|\/+$/g, '') || 'root';
+  const normalizedFilePath = toDisplayPath(filePath).replace(/^\/+/, '');
+  return normalizedFilePath ? `${normalizedRootLabel}/${normalizedFilePath}` : normalizedRootLabel;
+};
+
 export const pack = async (
   rootDirs: string[],
   config: RepomixConfigMerged,
@@ -110,15 +204,19 @@ export const pack = async (
 
   // Sort file paths
   progressCallback('Sorting files...');
-  const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
-
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+  const sortedFilePathsByDir = searchResultsByDir.map(({ rootDir, filePaths }) => ({
     rootDir,
-    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+    filePaths: deps.sortPaths([...new Set(filePaths)]),
   }));
+  const rootLabels = rootDirs.length > 1 ? buildRootLabels(rootDirs, config.cwd) : undefined;
+  const displayFilePathsByDir = sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => {
+    const rootLabel = rootLabels?.[index];
+    return {
+      rootDir,
+      filePaths: rootLabel ? filePaths.map((filePath) => joinDisplayPath(rootLabel, filePath)) : filePaths,
+    };
+  });
+  const allFilePaths = displayFilePathsByDir.flatMap(({ filePaths }) => filePaths);
 
   // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
   // (security check, file processing, output generation). `rootDirs` flows into the warm-up sizing so
@@ -149,8 +247,20 @@ export const pack = async (
       deps.getGitLogs(rootDirs, config),
     ]);
 
-    const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
-    const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
+    const rawFiles = collectResults.flatMap((curr, index) => {
+      const rootLabel = rootLabels?.[index];
+      return curr.rawFiles.map((file) => ({
+        ...file,
+        path: rootLabel ? joinDisplayPath(rootLabel, file.path) : file.path,
+      }));
+    });
+    const allSkippedFiles = collectResults.flatMap((curr, index) => {
+      const rootLabel = rootLabels?.[index];
+      return curr.skippedFiles.map((file) => ({
+        ...file,
+        path: rootLabel ? joinDisplayPath(rootLabel, file.path) : file.path,
+      }));
+    });
 
     // Run security check and file processing concurrently.
     // Security check uses worker threads while file processing runs on the main thread
@@ -208,10 +318,8 @@ export const pack = async (
     }
 
     // Build filePathsByRoot for multi-root tree generation
-    // Use directory basename as the label for each root
-    // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
-    const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
-      rootLabel: path.basename(rootDir) || rootDir,
+    const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => ({
+      rootLabel: rootLabels?.[index] ?? (path.basename(rootDir) || rootDir),
       files: filePaths,
     }));
 
