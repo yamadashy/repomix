@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780516161774,
+  "lastUpdate": 1780568385398,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9893,6 +9893,51 @@ window.BENCHMARK_DATA = {
             "range": "±14",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1002ms, Q3: 1016ms\nAll times: 998, 1000, 1000, 1001, 1002, 1002, 1003, 1005, 1007, 1008, 1010, 1010, 1011, 1013, 1015, 1016, 1020, 1022, 1033, 1035ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "82fe5fcbb9af21714a3dcc598c6c7b74a5e087a4",
+          "message": "perf(core): Precompute token-cache keys during the security-check idle window\n\nMove the per-file token-count cache-key hashing off the metrics critical\npath by computing it inside the file-processing arm of the security\nPromise.all, while the secretlint worker pool is still scanning and the main\nthread would otherwise sit idle awaiting it.\n\nProblem: on a warm cache (every per-file token count is a cache hit),\ncalculateFileMetrics still MD5-hashes the full content of every file\nsynchronously on the main thread to build each lookup key. That ~14-18ms of\nhashing runs in calculateMetrics, which is awaited concurrently with output\ngeneration — both on the main thread — so it lands directly on the\ncritical-path tail and competes with handlebars rendering for CPU.\n\nChange: ProcessedFile gains an optional `tokenCacheKey`. After processFiles\nresolves (the main thread is then idle for ~130ms waiting on the 2 security\nworkers), the keys are precomputed there so the hashing overlaps the\nsecurity wait for free. calculateFileMetrics reuses the precomputed key when\nits encoding prefix matches, otherwise recomputes exactly as before. The key\nis byte-for-byte the same `${encoding}:${byteLength}:${md5_16}` string, so\ntoken counts, the on-disk cache format, and the generated output are\nunchanged.\n\nGated on `enableSecurityCheck`: without the security worker pool there is no\nidle window to overlap, so the precompute is skipped and the hashing stays in\ncalculateFileMetrics (overlapping output generation) exactly as before — this\navoids a warm-cache regression on `--no-security-check` runs.\n\nBenchmark (interleaved base-vs-patched, libs swapped each iteration to\ncancel drift; warm cache; full default config — git diffs/logs + security +\nempty-dirs; packing this repo):\n\n  canonical (`node bin/repomix.cjs`, no --quiet, matching CI):\n    663.1ms → 643.0ms · -20.1ms (-3.04%), 34/40 wins\n    confirm (N=50): 655.3ms → 642.1ms · -13.2ms (-2.02%), 40/50 wins\n    after security-check gating (N=35): 661.7ms → 646.1ms · -15.6ms (-2.35%), 31/35 wins\n  --quiet:\n    655.5ms → 641.9ms · -13.5ms (-2.07%), 34/40 wins\n\nAbove the 2%-of-total bar. Output verified byte-identical (`cmp`) between base\nand patched builds on this tree.\n\ndecision(token-cache-hash): relocate the existing MD5 hashing into the\n  security-check window rather than change the hash — keeps cache keys and\n  output byte-identical with zero cache-version bump.\ndecision(precompute-overlap): gate on `enableSecurityCheck` so the relocation\n  only happens when there is an idle worker-wait window to absorb it.\nrejected(token-cache-hash): CRC32 cache key — measured a larger win (+18.8ms,\n  +2.95%) but 32-bit width raises collision probability to ~1-in-190k per\n  warm run, which would surface a wrong cached token count and break the\n  byte-identical-output guarantee.\nrejected(token-cache-hash): crypto.hash('md5') one-shot API — produces\n  identical digests but is not faster than createHash (~42ms both over the\n  corpus); the cost is the MD5 algorithm, not per-call object overhead.\nrejected(security-pool): raising MAX_SECURITY_WORKERS from 2 — measured\n  -21ms (cap 3) to -75ms (cap 4) on a 4-core host; oversubscription with the\n  metrics warmup regresses wall time, the existing cap is well tuned.\nrejected(startup): lazy-loading globby in fileSearch — byte-identical and on\n  the default scan path globby is never called, but measured ~0% end-to-end\n  (its unique deps are tiny; fast-glob loads regardless).\nconstraint(precompute-overlap): the precomputed key is honored only when its\n  `${encoding}:` prefix matches the active encoding, so a stale key from a\n  different encoding can never alias another encoding's cached count.\nlearned(critical-path): the per-file hashing competes with the security\n  workers for CPU on a 4-core host, so the overlap captures ~13-16ms of the\n  ~19ms isolated hashing cost rather than all of it; still a net safe win.",
+          "timestamp": "2026-06-04T10:13:47Z",
+          "tree_id": "04dfd3d0bb5fb1bf92e20fab3593c82d751f7155",
+          "url": "https://github.com/yamadashy/repomix/commit/82fe5fcbb9af21714a3dcc598c6c7b74a5e087a4"
+        },
+        "date": 1780568384553,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 527,
+            "range": "±59",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 499ms, Q3: 558ms\nAll times: 486, 488, 490, 490, 492, 494, 496, 499, 499, 500, 501, 503, 509, 520, 523, 527, 530, 533, 534, 538, 539, 545, 558, 592, 616, 623, 628, 631, 639, 777ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 644,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 636ms, Q3: 652ms\nAll times: 626, 629, 630, 631, 633, 636, 636, 641, 641, 643, 644, 647, 648, 648, 648, 652, 653, 655, 655, 670ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 955,
+            "range": "±62",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 942ms, Q3: 1004ms\nAll times: 901, 914, 915, 928, 929, 942, 945, 950, 952, 955, 955, 956, 957, 957, 959, 1004, 1020, 1052, 1091, 1106ms"
           }
         ]
       }
