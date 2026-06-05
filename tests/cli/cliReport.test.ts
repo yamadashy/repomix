@@ -1,9 +1,15 @@
 import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { reportCompletion, reportSecurityCheck, reportSummary, reportTopFiles } from '../../src/cli/cliReport.js';
+import {
+  reportCompletion,
+  reportResults,
+  reportSecurityCheck,
+  reportSummary,
+  reportTopFiles,
+} from '../../src/cli/cliReport.js';
 import type { SuspiciousFileResult } from '../../src/core/security/securityCheck.js';
 import type { PackResult } from '../../src/index.js';
-import { logger } from '../../src/shared/logger.js';
+import { logger, repomixLogLevels } from '../../src/shared/logger.js';
 import { createMockConfig } from '../testing/testUtils.js';
 
 vi.mock('../../src/shared/logger');
@@ -398,6 +404,52 @@ describe('cliReport', () => {
 
       expect(logger.log).toHaveBeenCalledWith('GREEN:🎉 All Done!');
       expect(logger.log).toHaveBeenCalledWith('Your repository has been successfully packed.');
+    });
+  });
+
+  describe('reportResults', () => {
+    const createPackResult = (): PackResult => ({
+      totalFiles: 10,
+      totalCharacters: 1000,
+      totalTokens: 200,
+      fileCharCounts: { 'file1.txt': 100 },
+      fileTokenCounts: { 'file1.txt': 50 },
+      suspiciousFilesResults: [],
+      suspiciousGitDiffResults: [],
+      suspiciousGitLogResults: [],
+      processedFiles: [],
+      safeFilePaths: [],
+      gitDiffTokenCount: 0,
+      gitLogTokenCount: 0,
+      skippedFiles: [],
+    });
+
+    // --quiet / --stdout drop the level below INFO; every logger.log() in the
+    // report is already a no-op there, so reportResults must bail out early and
+    // skip the work that builds those (discarded) messages. SILENT and WARN both
+    // sit in the guard's suppression range (< INFO) and must skip.
+    test.each([
+      ['SILENT', repomixLogLevels.SILENT],
+      ['WARN', repomixLogLevels.WARN],
+    ])('should skip all reporting when the log level is %s (below INFO)', (_label, level) => {
+      vi.mocked(logger.getLogLevel).mockReturnValue(level);
+      const config = createMockConfig({ security: { enableSecurityCheck: true } });
+
+      reportResults('/test/project', createPackResult(), config);
+
+      expect(logger.getLogLevel).toHaveBeenCalled();
+      expect(logger.log).not.toHaveBeenCalled();
+    });
+
+    test('should print the report when the log level is INFO', () => {
+      vi.mocked(logger.getLogLevel).mockReturnValue(repomixLogLevels.INFO);
+      const config = createMockConfig({ security: { enableSecurityCheck: true } });
+
+      reportResults('/test/project', createPackResult(), config);
+
+      // Assert the report actually ran (not just that some stray call happened):
+      // reportSummary always emits the Pack Summary header at INFO.
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Pack Summary'));
     });
   });
 });

@@ -4,7 +4,7 @@ import type { RepomixConfigMerged } from '../config/configSchema.js';
 import type { SkippedFileInfo } from '../core/file/fileCollect.js';
 import type { PackResult } from '../core/packager.js';
 import type { SuspiciousFileResult } from '../core/security/securityCheck.js';
-import { logger } from '../shared/logger.js';
+import { logger, repomixLogLevels } from '../shared/logger.js';
 import { reportTokenCountTree } from './reporters/tokenCountTreeReporter.js';
 
 /**
@@ -27,6 +27,18 @@ export const reportResults = (
   config: RepomixConfigMerged,
   options: ReportOptions = {},
 ): void => {
+  // Skip the entire terminal report when output is suppressed (e.g. --quiet or
+  // --stdout, which lower the log level below INFO). Every logger.log() call
+  // below is a no-op at these levels, yet the work that builds those discarded
+  // lines still runs first: reportTopFiles sorts every file by token count and
+  // reportTokenCountTree builds a token-count tree over the full file set. That
+  // is pure wasted work in suppressed-output mode, and it sits on the critical
+  // path right after pack() returns. Bailing out early skips it without changing
+  // any output: at log levels below INFO nothing here would be printed.
+  if (logger.getLogLevel() < repomixLogLevels.INFO) {
+    return;
+  }
+
   logger.log('');
 
   if (config.output.topFilesLength > 0) {
