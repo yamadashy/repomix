@@ -3,17 +3,16 @@ name: Update Schema
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  # Serialize runs that share the reused chore/schema-update branch so two
-  # near-simultaneous main pushes don't race on it.
-  group: schema-update-${{ github.ref }}
+  # Serialize all runs so concurrent triggers (a main push plus a
+  # workflow_dispatch, possibly from different refs) don't race on the shared,
+  # reused chore/schema-update branch. The group is intentionally ref-independent.
+  group: schema-update
   cancel-in-progress: false
 
 jobs:
@@ -23,10 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          # Same-repo PRs check out the PR head branch so the regenerated schema
-          # can be committed back to it. Fork PRs check out the merge ref so the
-          # schema is generated from the PR's code. Push / dispatch use main.
-          ref: ${{ github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || github.ref) || 'main' }}
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -35,33 +31,14 @@ jobs:
       - run: npm ci
       - run: node --run website-generate-schema
 
-      # On same-repo pull requests, commit the regenerated schema back into the
-      # PR branch so the schema change rides along with the PR that caused it.
-      - if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
-        with:
-          commit_message: 'chore(schema): Auto-generate schema'
-          commit_user_name: "github-actions[bot]"
-          commit_user_email: "github-actions[bot]@users.noreply.github.com"
-          commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
-
-      # Fork pull requests use a read-only token and cannot be committed to, so
-      # fail if the schema is out of date to surface the drift instead of
-      # silently merging it.
-      - if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
-        run: |
-          if ! git diff --quiet; then
-            echo "::error::Generated schema is out of date. Run 'node --run website-generate-schema' and commit the result."
-            git --no-pager diff --stat
-            exit 1
-          fi
-
-      # On main (e.g. after a version bump), direct pushes are blocked by the
-      # branch ruleset (pull_request required), so deliver the regenerated
-      # schema as a PR instead. COMMITTER_TOKEN is used so the PR triggers CI
-      # and is mergeable.
-      - if: github.event_name != 'pull_request'
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      # The schema is regenerated only on main (after a merge) and delivered as a
+      # PR. Pull requests intentionally do NOT run this workflow: committing the
+      # schema back to a PR branch (the previous behavior) left the PR head on a
+      # GITHUB_TOKEN-authored commit, which does not trigger CI and blocked merge.
+      # Direct pushes to main are blocked by the branch ruleset, so the
+      # regenerated schema is delivered as this PR instead. COMMITTER_TOKEN is
+      # used so the PR triggers CI and is mergeable.
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.COMMITTER_TOKEN }}
           base: main
