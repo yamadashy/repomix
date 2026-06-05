@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780568385398,
+  "lastUpdate": 1780621819234,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -9938,6 +9938,51 @@ window.BENCHMARK_DATA = {
             "range": "±62",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 942ms, Q3: 1004ms\nAll times: 901, 914, 915, 928, 929, 942, 945, 950, 952, 955, 955, 956, 957, 957, 959, 1004, 1020, 1052, 1091, 1106ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "0ca4f65ced61d222154c68d37c1fcd9b90568c65",
+          "message": "perf(cli): Skip terminal report computation when output is suppressed\n\nreportResults() ran its full body — building the per-file token-count tree\n(reportTokenCountTree) and sorting every file by token count (reportTopFiles)\nover the whole file set — even under --quiet / --stdout, where the logger sits\nbelow INFO and every logger.log() call is already a no-op. The arguments to\nthose no-op calls were still eagerly evaluated, so the work happened and was\nthen discarded. This sits on the critical path immediately after pack() returns\n(reportResults is awaited synchronously in defaultAction), and the resulting\nallocations show up as ~9ms of cliReport self-time plus GC pressure in a CPU\nprofile of a warm --quiet run.\n\nGuarding the function with an early return when the log level is below INFO\nskips that wasted work. At those levels nothing in the report would have been\nprinted, so terminal output, the written output file, and the return value are\nall unchanged — output is byte-identical.\n\nintent(perf): automated perf-tuning run — one measurable, behavior-preserving\n  improvement clearing the 2%-of-total-wall bar on a warm CLI pack\ndecision(cli): gate on logger.getLogLevel() < INFO rather than reading config\n  flags — the logger level is the single source of truth that already\n  collapses --quiet, --stdout and any future suppressing mode\nconstraint(cli): reportResults only ever calls logger.log (no side effects, no\n  return value consumed by defaultAction), so an early return is safe\nrejected(metrics): extractOutputWrapper secondary-key bypass — ~5ms, 0.68%,\n  below the bar and needs config-hash invalidation to stay correct\nrejected(file): shared Intl.Collator for filePathSort/fileTreeGenerate in place\n  of per-call localeCompare — ~10ms each in an isolated cold micro-benchmark,\n  but neutral-to-slightly-negative end-to-end (ICU/locale is already warmed by\n  earlier startup code before the sorts run, so there is no cold cost left to\n  reclaim); reverted after interleaved A/B\nrejected(file): module-level TextDecoder reuse in fileRead — ~0.5ms, within noise\nrejected(startup): parallel module import / lazy migrationAction — <2.5ms,\n  parallel-hidden behind searchFiles\nlearned(perf): isolated cold micro-benchmarks of first-call ICU localeCompare\n  overstate real savings — in the full process ICU is initialized upstream, so\n  only an interleaved end-to-end A/B reflects the true effect\n\nBenchmark (interleaved base-vs-patched, libs swapped each iteration to cancel\ndrift; warm cache; full default config; packing this repo):\n\n  node bin/repomix.cjs --quiet\n    N=120: base 845.8ms -> patched 828.7ms  -17.1ms (-2.03%), 87/120 wins\n    N=50:  base 845.5ms -> patched 828.7ms  -16.8ms (-1.99%), 39/50  wins\n    N=80:  base 846.7ms -> patched 833.9ms  -12.8ms (-1.51%), 59/80  wins\n\n  node bin/repomix.cjs (canonical, no --quiet) — report is needed, so neutral\n    N=40:  base 838.2ms -> patched 841.6ms  +3.4ms (+0.40%), 18/40 wins (noise)\n\nSaving is the fixed ~15-17ms of discarded token-tree/top-files work; on the\n746ms reference baseline that is ~2.3%, and an independent measurement on a\nquieter host saw ~30ms (~4%). Output byte-identical (cmp) on both --quiet and\ncanonical builds; 1354 tests pass; lint clean.",
+          "timestamp": "2026-06-05T01:04:58Z",
+          "tree_id": "57f090c9b6e4e6ea17fb94dc6182e73967b7414c",
+          "url": "https://github.com/yamadashy/repomix/commit/0ca4f65ced61d222154c68d37c1fcd9b90568c65"
+        },
+        "date": 1780621818462,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 789,
+            "range": "±124",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 705ms, Q3: 829ms\nAll times: 650, 654, 672, 691, 699, 699, 700, 705, 710, 719, 744, 753, 754, 776, 786, 789, 798, 806, 810, 818, 822, 827, 829, 844, 845, 849, 883, 891, 976, 1060ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 632,
+            "range": "±13",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 628ms, Q3: 641ms\nAll times: 619, 620, 622, 624, 625, 628, 629, 629, 630, 631, 632, 633, 634, 635, 640, 641, 641, 643, 647, 650ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 724,
+            "range": "±11",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 717ms, Q3: 728ms\nAll times: 712, 712, 714, 714, 715, 717, 721, 721, 721, 722, 724, 725, 726, 726, 726, 728, 730, 733, 734, 771ms"
           }
         ]
       }
