@@ -11,6 +11,7 @@ import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
+import { validateTokenBudget } from '../cliTokenBudget.js';
 import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { type DefaultActionRunnerResult, runDefaultAction } from './defaultAction.js';
@@ -138,6 +139,11 @@ export const runRemoteAction = async (
       skillProjectName,
       skillSourceUrl,
       skipLocalConfig: !trustRemoteConfig,
+      // Defer the token-budget check so the output is copied out of the temp
+      // dir below before the guard can throw; we run validateTokenBudget here
+      // afterwards. Otherwise an over-budget remote run would throw inside
+      // runDefaultAction and the temp dir (with the output) would be cleaned up.
+      deferTokenBudgetCheck: true,
     };
     result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithSkill);
 
@@ -148,6 +154,10 @@ export const runRemoteAction = async (
     if (!cliOptions.stdout && result.config.skillGenerate === undefined) {
       await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), result.config.output.filePath);
     }
+
+    // Enforce the token budget now that the output has been delivered (copied
+    // to the current directory, or written to stdout). Deferred above.
+    validateTokenBudget(result.packResult.totalTokens, result.config.output.tokenBudget);
 
     logger.trace(`Repository obtained via ${downloadMethod} method`);
   } finally {

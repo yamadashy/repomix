@@ -172,6 +172,16 @@ export const run = async () => {
         '--token-count-encoding <encoding>',
         'Tokenizer model for counting: o200k_base (GPT-4o), cl100k_base (GPT-3.5/4), etc. (default: o200k_base)',
       )
+      .option(
+        '--token-budget <number>',
+        'Fail with a non-zero exit code when the packed output exceeds N tokens (guard for CI/agent context limits)',
+        (v: string) => {
+          if (!/^\d+$/.test(v) || Number(v) < 1) {
+            throw new RepomixError(`Invalid number for --token-budget: '${v}'. Must be a positive integer.`);
+          }
+          return Number(v);
+        },
+      )
       // MCP
       .optionsGroup('MCP')
       .option('--mcp', 'Run as Model Context Protocol server for AI tool integration')
