@@ -76,6 +76,7 @@ description: "Consulte todas as opções da CLI do Repomix para entrada, saída,
 
 ## Opções de Contagem de Tokens
 - `--token-count-encoding <encoding>`: Modelo tokenizador para contagem: o200k_base (GPT-4o), cl100k_base (GPT-3.5/4), etc. (padrão: o200k_base)
+- `--token-budget <number>`: Falhar com código de saída diferente de zero quando a saída empacotada exceder N tokens. Útil como proteção em pipelines de CI e fluxos de trabalho de agentes para manter a saída dentro da janela de contexto do modelo de destino. A saída ainda é gerada; apenas o código de saída sinaliza o estouro.
 
 ## Opções MCP
 - `--mcp`: Executar como servidor Model Context Protocol para integração de ferramentas de IA

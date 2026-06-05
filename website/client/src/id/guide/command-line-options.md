@@ -76,6 +76,7 @@ description: Referensi lengkap opsi CLI Repomix untuk input, output, pemilihan f
 
 ## Opsi Jumlah Token
 - `--token-count-encoding <encoding>`: Model tokenizer untuk penghitungan: o200k_base (GPT-4o), cl100k_base (GPT-3.5/4), dll. (default: o200k_base)
+- `--token-budget <number>`: Gagal dengan kode keluar bukan nol saat output yang dikemas melebihi N token. Berguna sebagai pengaman dalam pipeline CI dan alur kerja agen untuk menjaga output tetap dalam jendela konteks model target. Output tetap dihasilkan; hanya kode keluar yang menandakan overflow
 
 ## Opsi MCP
 - `--mcp`: Jalankan sebagai server Model Context Protocol untuk integrasi alat AI

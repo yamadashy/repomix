@@ -42,6 +42,7 @@ export interface CliOptions extends OptionValues {
   remoteBranch?: string;
   remoteTrustConfig?: boolean;
   skipLocalConfig?: boolean; // Internal flag: skip loading config files from the working directory (e.g., untrusted remote repos)
+  deferTokenBudgetCheck?: boolean; // Internal flag: skip the token-budget check inside runDefaultAction so the caller can enforce it after delivering output (e.g., remote runs copy out of the temp dir first)
 
   // Configuration Options
   config?: string;
@@ -54,6 +55,7 @@ export interface CliOptions extends OptionValues {
   // Token Count Options
   tokenCountEncoding?: string;
   tokenCountTree?: boolean | number;
+  tokenBudget?: number;
 
   // MCP
   mcp?: boolean;

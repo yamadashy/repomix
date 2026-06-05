@@ -43,6 +43,7 @@ export const repomixConfigBaseSchema = v.object({
       includeFullDirectoryStructure: v.optional(v.boolean()),
       splitOutput: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(Number.MAX_SAFE_INTEGER))),
       tokenCountTree: v.optional(v.union([v.boolean(), v.number(), v.string()])),
+      tokenBudget: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(Number.MAX_SAFE_INTEGER))),
       git: v.optional(
         v.object({
           sortByChanges: v.optional(v.boolean()),
@@ -100,6 +101,8 @@ export const repomixConfigDefaultSchema = v.object({
     includeFullDirectoryStructure: v.optional(v.boolean(), false),
     splitOutput: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(Number.MAX_SAFE_INTEGER))),
     tokenCountTree: v.optional(v.union([v.boolean(), v.number(), v.string()]), false),
+    // No default: undefined means "unlimited" (no budget enforced), preserving current behavior.
+    tokenBudget: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(Number.MAX_SAFE_INTEGER))),
     git: v.object({
       sortByChanges: v.optional(v.boolean(), true),
       sortByChangesMaxCommits: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1)), 100),

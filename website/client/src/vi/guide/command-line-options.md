@@ -76,6 +76,7 @@ description: Tham khảo mọi tùy chọn Repomix CLI cho input, output, chọn
 
 ## Tùy chọn Số lượng Token
 - `--token-count-encoding <encoding>`: Mô hình tokenizer để đếm: o200k_base (GPT-4o), cl100k_base (GPT-3.5/4), v.v. (mặc định: o200k_base)
+- `--token-budget <number>`: Thất bại với mã thoát khác không khi đầu ra đã đóng gói vượt quá N token. Hữu ích như một biện pháp bảo vệ trong các pipeline CI và quy trình agent để giữ đầu ra trong cửa sổ ngữ cảnh của mô hình mục tiêu. Đầu ra vẫn được tạo ra; chỉ có mã thoát báo hiệu tràn
 
 ## Tùy chọn MCP
 - `--mcp`: Chạy như máy chủ Model Context Protocol để tích hợp công cụ AI

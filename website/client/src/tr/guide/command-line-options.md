@@ -76,6 +76,7 @@ description: "Girdi, çıktı, dosya seçimi, uzak depolar, yapılandırma, güv
 
 ## Token Sayımı Seçenekleri
 - `--token-count-encoding <encoding>`: Sayım için tokenleştirici model: o200k_base (GPT-4o), cl100k_base (GPT-3.5/4) vb. (varsayılan: o200k_base)
+- `--token-budget <number>`: Paketlenmiş çıktı N tokeni aştığında sıfır olmayan bir çıkış koduyla başarısız ol. Çıktıyı hedef modelin bağlam penceresi içinde tutmak için CI işlem hatlarında ve ajan iş akışlarında bir koruma olarak kullanışlıdır. Çıktı yine de oluşturulur; taşmayı yalnızca çıkış kodu bildirir.
 
 ## MCP Seçenekleri
 - `--mcp`: AI araç entegrasyonu için Model Context Protocol sunucusu olarak çalıştır

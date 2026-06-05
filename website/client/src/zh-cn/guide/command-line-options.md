@@ -76,6 +76,7 @@ description: 查阅 Repomix CLI 的所有选项，涵盖输入、输出、文件
 
 ## Token 计数选项
 - `--token-count-encoding <encoding>`: 用于计数的分词器模型：o200k_base（GPT-4o）、cl100k_base（GPT-3.5/4）等（默认：o200k_base）
+- `--token-budget <number>`: 当打包输出超过 N 个 token 时以非零退出码失败。可在 CI 流水线和 agent 工作流中作为防护，使输出保持在目标模型的上下文窗口内。输出仍会生成，仅由退出码标示溢出
 
 ## MCP 选项
 - `--mcp`: 作为AI工具集成的Model Context Protocol服务器运行
