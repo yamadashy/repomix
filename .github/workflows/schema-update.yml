@@ -9,9 +9,10 @@ permissions:
   contents: write
 
 concurrency:
-  # Serialize runs that share the reused chore/schema-update branch so two
-  # near-simultaneous main pushes don't race on it.
-  group: schema-update-${{ github.ref }}
+  # Serialize all runs so concurrent triggers (a main push plus a
+  # workflow_dispatch, possibly from different refs) don't race on the shared,
+  # reused chore/schema-update branch. The group is intentionally ref-independent.
+  group: schema-update
   cancel-in-progress: false
 
 jobs:
