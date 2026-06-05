@@ -76,6 +76,7 @@ description: Reference every Repomix CLI option for input, output, file selectio
 
 ## Token Count Options
 - `--token-count-encoding <encoding>`: Tokenizer model for counting: o200k_base (GPT-4o), cl100k_base (GPT-3.5/4), etc. (default: o200k_base)
+- `--token-budget <number>`: Fail with a non-zero exit code when the packed output exceeds N tokens. Useful as a guard in CI pipelines and agent workflows to keep output within a target model's context window. The output is still generated; only the exit code signals the overflow.
 
 ## MCP Options
 - `--mcp`: Run as Model Context Protocol server for AI tool integration

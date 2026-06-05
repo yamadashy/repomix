@@ -676,6 +676,7 @@ Instruction
 
 #### Token Count Options
 - `--token-count-encoding <encoding>`: Tokenizer model for counting: o200k_base (GPT-4o), cl100k_base (GPT-3.5/4), etc. (default: o200k_base)
+- `--token-budget <number>`: Fail with a non-zero exit code when the packed output exceeds N tokens. Useful as a guard in CI pipelines and agent workflows to keep output within a target model's context window. The output is still generated; only the exit code signals the overflow.
 
 #### MCP
 - `--mcp`: Run as Model Context Protocol server for AI tool integration
@@ -1393,6 +1394,7 @@ Here's an explanation of the configuration options:
 | `output.splitOutput`             | Split output into multiple numbered files by maximum size per part (e.g., `1000000` for ~1MB). Keeps each file under the limit and avoids splitting files across parts | Not set                |
 | `output.topFilesLength`          | Number of top files to display in the summary. If set to 0, no summary will be displayed                                     | `5`                    |
 | `output.tokenCountTree`          | Whether to display file tree with token count summaries. Can be boolean or number (minimum token count threshold)           | `false`                |
+| `output.tokenBudget`             | Fail with a non-zero exit code when the packed output exceeds this many tokens. Acts as a guard for CI/agent context limits; the output is still generated | Not set                |
 | `output.includeEmptyDirectories` | Whether to include empty directories in the repository structure                                                             | `false`                |
 | `output.includeFullDirectoryStructure` | When using `include` patterns, whether to display the complete directory tree (respecting ignore patterns) while still processing only the included files. Provides full repository context for AI analysis | `false`                |
 | `output.git.sortByChanges`       | Whether to sort files by git change count (files with more changes appear at the bottom)                                     | `true`                 |
@@ -1453,10 +1455,11 @@ Example configuration:
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "tokenCountTree": false, // or true, or a number like 10 for minimum token threshold
+    // "tokenBudget": 180000, // optional: fail when the packed output exceeds this many tokens
     "showLineNumbers": false,
     "truncateBase64": false,
     "copyToClipboard": false,
-    "splitOutput": null, // or a number like 1000000 for ~1MB per file
+    // "splitOutput": 1000000, // optional: split output into multiple ~1MB files
     "includeEmptyDirectories": false,
     "git": {
       "sortByChanges": true,

@@ -76,6 +76,7 @@ description: "Consultez toutes les options de la CLI Repomix pour l'entrée, la 
 
 ## Options de comptage de jetons
 - `--token-count-encoding <encoding>`: Modèle de tokenizer pour le comptage : o200k_base (GPT-4o), cl100k_base (GPT-3.5/4), etc. (par défaut : o200k_base)
+- `--token-budget <number>`: Échouer avec un code de sortie non nul lorsque la sortie empaquetée dépasse N jetons. Utile comme garde-fou dans les pipelines CI et les workflows d'agents pour maintenir la sortie dans la fenêtre de contexte d'un modèle cible. La sortie est tout de même générée ; seul le code de sortie signale le dépassement.
 
 ## Options MCP
 - `--mcp`: Fonctionner comme serveur Model Context Protocol pour l'intégration d'outils IA

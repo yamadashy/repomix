@@ -74,6 +74,45 @@ describe('remoteAction functions', () => {
       );
     });
 
+    test('enforces the token budget after copying output, with the check deferred inside runDefaultAction', async () => {
+      const execGitShallowCloneMock = vi.fn(async (_url: string, directory: string) => {
+        await fs.writeFile(path.join(directory, 'README.md'), 'Hello, world!');
+      });
+      const base = createMockDefaultActionResult();
+      const runDefaultActionMock = vi.fn(async () => ({
+        packResult: { ...base.packResult, totalTokens: 300 },
+        config: createMockConfig({ output: { filePath: 'repomix-output.txt', tokenBudget: 100 } }),
+      }));
+      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+
+      await expect(
+        runRemoteAction(
+          'https://gitlab.com/owner/repo.git',
+          {},
+          {
+            isGitInstalled: async () => Promise.resolve(true),
+            execGitShallowClone: execGitShallowCloneMock,
+            getRemoteRefs: async () => Promise.resolve(['main']),
+            runDefaultAction: runDefaultActionMock,
+            downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
+            isGitHubRepository: vi.fn().mockReturnValue(false),
+            parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+            isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+          },
+        ),
+      ).rejects.toThrow(/exceeds the token budget/);
+
+      // runDefaultAction must receive deferTokenBudgetCheck so it does not throw
+      // before the output is copied out of the temp dir.
+      expect(runDefaultActionMock).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(String),
+        expect.objectContaining({ deferTokenBudgetCheck: true }),
+      );
+      // The output was copied before the guard threw.
+      expect(fs.copyFile).toHaveBeenCalled();
+    });
+
     test('should download GitHub archive successfully without git installed', async () => {
       const downloadGitHubArchiveMock = vi.fn().mockResolvedValue(undefined);
       const execGitShallowCloneMock = vi.fn();

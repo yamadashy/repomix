@@ -106,6 +106,7 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
 | `output.truncateBase64`          | 是否截断长的 base64 数据字符串（例如图像）以减少 token 数量                                                                      | `false`                |
 | `output.copyToClipboard`         | 是否除了保存文件外还将输出复制到系统剪贴板                                                                                 | `false`                |
 | `output.splitOutput`             | 按每部分最大大小将输出拆分为多个编号文件（例如，`1000000` 表示约 1MB）。CLI 接受可读大小如 `500kb` 或 `2mb`。使每个文件保持在限制以下，并避免跨部分拆分源文件 | 未设置 |
+| `output.tokenBudget`             | 当打包输出超过此 token 数量时以非零退出码失败。作为 CI/agent 上下文限制的防护；输出仍会生成 | 未设置 |
 | `output.topFilesLength`          | 在摘要中显示的顶部文件数量。如果设置为 0，则不显示摘要                                                                      | `5`                    |
 | `output.includeEmptyDirectories` | 是否在仓库结构中包含空目录                                                                                                 | `false`                |
 | `output.includeFullDirectoryStructure` | 使用 `include` 模式时，是否显示完整的目录树（遵守 ignore 模式）同时仅处理包含的文件。为 AI 分析提供完整的仓库上下文 | `false`                |

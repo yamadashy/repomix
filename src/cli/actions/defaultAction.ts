@@ -17,6 +17,7 @@ import { splitPatterns } from '../../shared/patternUtils.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { reportResults } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
+import { validateTokenBudget } from '../cliTokenBudget.js';
 import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { runMigrationAction } from './migrationAction.js';
@@ -139,6 +140,15 @@ export const runDefaultAction = async (
 
   // Report results
   reportResults(cwd, packResult, config, cliOptions);
+
+  // Enforce the token budget as the last step. The output has already been
+  // produced (and written) by this point, so this is a guard that fails the
+  // run with a non-zero exit code, not an in-pack fail-fast. Remote runs defer
+  // this check (see deferTokenBudgetCheck) so they can copy the output out of
+  // the temp dir before the guard throws.
+  if (!cliOptions.deferTokenBudgetCheck) {
+    validateTokenBudget(packResult.totalTokens, config.output.tokenBudget);
+  }
 
   return {
     packResult,
@@ -335,6 +345,13 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.output = {
       ...cliConfig.output,
       tokenCountTree: options.tokenCountTree,
+    };
+  }
+
+  if (options.tokenBudget !== undefined) {
+    cliConfig.output = {
+      ...cliConfig.output,
+      tokenBudget: options.tokenBudget,
     };
   }
 

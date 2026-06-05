@@ -76,6 +76,7 @@ description: 查閱 Repomix CLI 的所有選項，涵蓋輸入、輸出、檔案
 
 ## 權杖計數選項
 - `--token-count-encoding <encoding>`: 計數用的分詞器模型：o200k_base（GPT-4o）、cl100k_base（GPT-3.5/4）等（預設：o200k_base）
+- `--token-budget <number>`: 當打包輸出超過 N 個權杖時以非零退出碼失敗。可在 CI 流水線和 agent 工作流程中作為防護，使輸出保持在目標模型的上下文視窗內。輸出仍會產生，僅由退出碼標示溢位
 
 ## MCP 選項
 - `--mcp`: 作為 Model Context Protocol 伺服器運行，用於 AI 工具整合
