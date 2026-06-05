@@ -62,6 +62,32 @@ describe('repomix dot-ignore spec', () => {
     expect(filePaths).not.toContain('pkg/generated/bundle.data');
   });
 
+  it.each([
+    { fileName: '.ignore', ignorePattern: '**/.ignore' },
+    { fileName: '.repomixignore', ignorePattern: '**/.repomixignore' },
+  ])('still applies nested $fileName rules when the file itself is ignored', async ({ fileName, ignorePattern }) => {
+    await writeFixture(tmpDir, {
+      [`pkg/${fileName}`]: 'generated.data\n',
+      'pkg/src.ts': 'export {};\n',
+      'pkg/generated.data': 'generated\n',
+    });
+
+    const { filePaths } = await searchFiles(
+      tmpDir,
+      createMockConfig({
+        include: ['pkg/**'],
+        ignore: {
+          useDefaultPatterns: false,
+          customPatterns: [ignorePattern],
+        },
+      }),
+    );
+
+    expect(filePaths).toContain('pkg/src.ts');
+    expect(filePaths).not.toContain(`pkg/${fileName}`);
+    expect(filePaths).not.toContain('pkg/generated.data');
+  });
+
   it('honors .ignore files when `useDotIgnore` is on (the default)', async () => {
     await writeFixture(tmpDir, {
       '.ignore': '*.draft\n',

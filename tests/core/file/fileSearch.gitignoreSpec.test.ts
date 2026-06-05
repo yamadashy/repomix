@@ -54,6 +54,63 @@ describe('fileSearch gitignore spec', () => {
     expect(filePaths).not.toContain('noisy.draft');
   });
 
+  it.each([
+    'browser/.gitignore',
+    '**/.gitignore',
+  ])('still applies nested .gitignore rules when the nested .gitignore file itself is ignored by `%s`', async (ignorePattern) => {
+    await writeFixture(tmpDir, {
+      'browser/.gitignore': '*.draft\n',
+      'browser/src/index.ts': 'export {};\n',
+      'browser/noisy.draft': 'noisy\n',
+    });
+
+    const { filePaths } = await searchFiles(
+      tmpDir,
+      createMockConfig({
+        include: ['browser/**'],
+        ignore: {
+          useDefaultPatterns: false,
+          customPatterns: [ignorePattern],
+        },
+      }),
+    );
+
+    expect(filePaths).toContain('browser/src/index.ts');
+    expect(filePaths).not.toContain('browser/.gitignore');
+    expect(filePaths).not.toContain('browser/noisy.draft');
+  });
+
+  it('filters root and nested .gitignore files matched by `**/.gitignore` while still applying their rules', async () => {
+    await writeFixture(tmpDir, {
+      '.gitignore': 'root-noisy.draft\n',
+      'keep.ts': 'export {};\n',
+      'root-noisy.draft': 'noisy\n',
+      'src/.gitignore': 'generated.ts\n',
+      'src/keep.ts': 'export {};\n',
+      'src/generated.ts': 'generated\n',
+    });
+    await fs.mkdir(path.join(tmpDir, 'empty'), { recursive: true });
+
+    const { filePaths, emptyDirPaths } = await searchFiles(
+      tmpDir,
+      createMockConfig({
+        output: { includeEmptyDirectories: true },
+        ignore: {
+          useDefaultPatterns: false,
+          customPatterns: ['**/.gitignore'],
+        },
+      }),
+    );
+
+    expect(filePaths).toContain('keep.ts');
+    expect(filePaths).toContain('src/keep.ts');
+    expect(filePaths).not.toContain('.gitignore');
+    expect(filePaths).not.toContain('src/.gitignore');
+    expect(filePaths).not.toContain('root-noisy.draft');
+    expect(filePaths).not.toContain('src/generated.ts');
+    expect(emptyDirPaths).toContain('empty');
+  });
+
   it('applies slash-less patterns recursively to all subdirectories', async () => {
     await writeFixture(tmpDir, {
       '.gitignore': '*.draft\nsecret.data\n',
