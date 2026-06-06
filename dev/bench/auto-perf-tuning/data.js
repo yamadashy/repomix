@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780721392190,
+  "lastUpdate": 1780753453010,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10118,6 +10118,51 @@ window.BENCHMARK_DATA = {
             "range": "±17",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 897ms, Q3: 914ms\nAll times: 894, 894, 894, 895, 897, 897, 898, 898, 904, 905, 905, 905, 908, 909, 910, 914, 914, 920, 923, 930ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "dbf56b9ea7446132d723826d8e004329c89788c8",
+          "message": "perf(security): Require inline credentials in the secretlint URL pre-filter\n\nNarrow the secretlint pre-filter so a bare `://` no longer forces every\nURL-bearing file through `lintSource`. The pre-filter (added previously to\nskip `@secretlint/core`'s large fixed per-call cost for files that cannot\ntrigger any rule) ended with a `:\\/\\/` alternative that matched any URL —\nimport paths, doc links, scheme-relative URLs — even though only a handful of\nrules are keyed on a URI and each has a far more specific necessary literal.\n\nReplace the bare `:\\/\\/` (and the now-redundant `mongodb:`/`mysql:`/`postgres:`\nscheme prefixes) with rule-specific coverage:\n- Credentialed URIs (basicauth + mongodb/mysql/postgresql connection-string\n  rules, which only report when the URI carries inline `scheme://user:password@`\n  credentials) are matched by SECRET_URL_CREDENTIAL_PATTERN\n  (`/:\\/\\/[^\\s:/]{1,256}:[^\\s@/]{1,256}@/`). Its username/password character\n  classes are the BROADEST used by any of those four rules (basicauth uses\n  `[-a-zA-Z0-9_]`; the DB rules use username `[^:/\\s]`, password `[^@/\\s]`), so\n  it matches a superset of every credential portion they can match.\n- URL-path-keyed rules whose secret is NOT in `user:password@` keep a direct\n  literal: `hooks\\.slack\\.com\\/services\\/` (Slack incoming webhooks) and\n  `x-oauth-basic` (npm XOAuth GitHub tokens, whose token segment may contain `/`\n  and so is not always reachable via the credential pattern).\n\nOn this repo this drops ~395 files (398 contain `://`, only 3 carry inline\ncredentials and 2 carry a path-keyed literal) from full engine scans in the\ndominant security phase.\n\nWhy behavior-preserving (no false negative across the recommended preset):\n- Every scanner rule's necessary literal is still covered — token-prefix rules\n  by SECRET_INDICATOR_PATTERN, credentialed-URI rules by the credential pattern,\n  and the two URL-path rules by their added literals. Audited rule-by-rule\n  against @secretlint/secretlint-rule-preset-recommend@13.0.2.\n- A credential-free URL cannot trigger any rule: the DB rules `continue` unless\n  both username and password groups are captured, and basicauth requires\n  `user:password@`. Verified against the live engine — credential-free URLs\n  (incl. `hooks.slack.com/help/...`, plain links, import URLs) return null and\n  the pre-filter skips them.\n- The broad credential classes cover special-character DB passwords (e.g.\n  `Xy7!q2mLp`, `Str0ng#Pass9`, `s3cr3t%pw1`) that a `[-a-zA-Z0-9_]`-only class\n  would have skipped; confirmed the engine fires AND the pre-filter matches on\n  mongodb+srv / postgresql / mysqlx / ftp connection strings, Slack webhooks,\n  and slash-containing XOAuth tokens.\n- Output verified byte-identical (`cmp`) between base and patched builds on the\n  xml/markdown/plain/json styles, packing this repo.\n\nTests (securityCheckWorker.test.ts):\n- Added special-char-password connection strings, a Slack incoming webhook, and\n  a slash-containing npm XOAuth token to the live-engine drift guard (engine\n  fires + pre-filter matches).\n- Added credential-free URL cases asserting the pre-filter skips them AND the\n  engine agrees they are clean.\n- Extended the engine-vs-pre-filter invariant test with a special-char DB URI\n  and a credential-free URL so any future false negative fails loudly.\n\nBenchmark (interleaved A/B, lib swapped each iteration to cancel drift, warm\ncache, full default config, `node bin/repomix.cjs` packing this repo):\n\n| methodology       | base median | delta              | wins    |\n|-------------------|-------------|--------------------|---------|\n| canonical N=200   | 583.8 ms    | -15.7 ms (-2.69%)  | 143/200 |\n| canonical N=150   | 593.5 ms    | -13.6 ms (-2.29%)  | 97/150  |\n\nAbove the 2%-of-total bar; the saving is the fixed per-call `lintSource`\noverhead for the ~395 credential-free URL files, removed from the gating\nsecurity phase. 1404 tests pass; lint clean.",
+          "timestamp": "2026-06-06T13:42:42Z",
+          "tree_id": "ad928b015c2d5732ff2da0a25aba26c46b719314",
+          "url": "https://github.com/yamadashy/repomix/commit/dbf56b9ea7446132d723826d8e004329c89788c8"
+        },
+        "date": 1780753452296,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 429,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 416ms, Q3: 441ms\nAll times: 396, 399, 414, 414, 414, 414, 416, 416, 418, 419, 420, 422, 423, 423, 424, 429, 429, 432, 433, 435, 440, 441, 441, 448, 448, 455, 482, 482, 519, 635ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 563,
+            "range": "±13",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 558ms, Q3: 571ms\nAll times: 554, 554, 555, 556, 557, 558, 559, 559, 561, 562, 563, 566, 567, 570, 570, 571, 571, 575, 575, 578ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 918,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 912ms, Q3: 929ms\nAll times: 885, 907, 907, 910, 911, 912, 914, 916, 916, 916, 918, 919, 920, 920, 924, 929, 930, 932, 952, 954ms"
           }
         ]
       }
