@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780753453010,
+  "lastUpdate": 1780772231692,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10163,6 +10163,51 @@ window.BENCHMARK_DATA = {
             "range": "±17",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 912ms, Q3: 929ms\nAll times: 885, 907, 907, 910, 911, 912, 914, 916, 916, 916, 918, 919, 920, 920, 924, 929, 930, 932, 952, 954ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "77ffcfeecdb1912f7f22b29f8c076c69fb6602a6",
+          "message": "perf(metrics): Cache git diff/log token counts on the content-addressed cache\n\nProblem\n-------\nOn a warm pack, every per-file token count and the output \"wrapper\"\ntokenization are already served from the content-addressed token cache\n(`tokenCountCache`), so the metrics phase does almost no worker work — except\nthe git diff and git log token counts, which were re-tokenized on the metrics\nworker on *every* run. The git log alone is a sizable string (50 commits of\ncontent) that takes tens of milliseconds to tokenize.\n\nThese counts are computed inside `calculateMetrics`, which overlaps output\ngeneration on the critical-path tail. The git diff/log tokenizations start\nimmediately (output-independent) and the metrics phase cannot finish until the\nslowest of them resolves, so the git log tokenization — being the longest\nsingle task left on a warm run — gates the metrics tail by the amount it\nexceeds output generation.\n\nChange\n------\nAdd `runCachedTokenCount(taskRunner, content, encoding)` to\n`metricsWorkerRunner`, mirroring the wrapper-tokenization fast path already in\n`calculateMetrics`: it keys the content on `contentCacheKey` and serves a hit\nfrom the in-memory/disk cache, only dispatching to a worker on a miss (then\ncaching the result). `calculateGitLogMetrics` and `calculateGitDiffMetrics`\nnow use it instead of calling `runTokenCount` directly.\n\nA token count is a pure function of `(encoding, content)`, so caching by\ncontent hash is behavior-preserving: a hit returns exactly what the worker\nwould compute, and any change to the diff/log content (new commit, edited\nworking tree) misses and recomputes. It reuses the existing cache (same key\nformat, same file) — no `CACHE_VERSION` bump.\n\nBenchmark\n---------\nInterleaved base-vs-patched (lib swapped each iteration to cancel drift), warm\ncache, full default config (git diffs/logs + security), `node bin/repomix.cjs\n--quiet` packing this repo:\n\n| methodology      | base median | delta (paired median) | wins    |\n|------------------|-------------|-----------------------|---------|\n| N=150            | 753.8 ms    | -15.5 ms (-2.06%)     | 104/150 |\n| N=150 (earlier)  | 795.9 ms    | -18.9 ms (-2.38%)     | 96/150  |\n| N=120            | 785.7 ms    | -14.0 ms (-1.87%)     | 77/120  |\n\nConsistently ~2% / ~15 ms on the warm-cache path, the amount the git log\ntokenization exceeded output generation on the metrics tail. With cache hits\nthe git log/diff token calls drop from ~64 ms / ~tens of ms to ~0.2 ms.\nOutput verified byte-identical (`cmp`) between base and patched on\nxml/markdown/plain/json; 1409 tests pass; lint clean.\n\nCorrectness & tests\n-------------------\n- The cached value equals the worker result for identical `(encoding,\n  content)`; cache keys, token counts and output bytes are unchanged.\n- New regression coverage in `calculateGitLogMetrics.test.ts` /\n  `calculateGitDiffMetrics.test.ts`: a second identical run is a cache hit\n  (one worker dispatch, not two), changed content re-dispatches, and\n  `REPOMIX_TOKEN_CACHE=0` disables caching. The token cache is reset in\n  `beforeEach` so cross-test pollution cannot turn a dispatch assertion into a\n  hit.",
+          "timestamp": "2026-06-06T18:45:59Z",
+          "tree_id": "cb56b2c209b6fa13f105f9ff4904c60a823958bb",
+          "url": "https://github.com/yamadashy/repomix/commit/77ffcfeecdb1912f7f22b29f8c076c69fb6602a6"
+        },
+        "date": 1780772230183,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 461,
+            "range": "±61",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 423ms, Q3: 484ms\nAll times: 404, 406, 407, 408, 410, 413, 422, 423, 429, 430, 433, 440, 443, 457, 460, 461, 461, 461, 464, 468, 474, 478, 484, 494, 497, 500, 504, 532, 579, 646ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 574,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 567ms, Q3: 582ms\nAll times: 547, 552, 561, 562, 562, 567, 568, 569, 571, 571, 574, 574, 574, 576, 582, 582, 584, 586, 586, 591ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 862,
+            "range": "±10",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 857ms, Q3: 867ms\nAll times: 851, 851, 854, 856, 856, 857, 859, 860, 860, 861, 862, 864, 865, 865, 866, 867, 867, 886, 889, 898ms"
           }
         ]
       }
