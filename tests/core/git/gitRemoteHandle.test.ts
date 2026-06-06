@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { getRemoteRefs } from '../../../src/core/git/gitRemoteHandle.js';
+import { checkRemoteRepoExists, getRemoteRefs } from '../../../src/core/git/gitRemoteHandle.js';
 import { logger } from '../../../src/shared/logger.js';
 
 vi.mock('../../../src/shared/logger');
@@ -7,6 +7,44 @@ vi.mock('../../../src/shared/logger');
 describe('gitRemoteHandle', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+  });
+
+  describe('checkRemoteRepoExists', () => {
+    test('should return true when the repository is reachable', async () => {
+      const mockExecLsRemoteHead = vi.fn().mockResolvedValue('a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6\tHEAD');
+
+      const result = await checkRemoteRepoExists('https://github.com/user/repo.git', {
+        execLsRemoteHead: mockExecLsRemoteHead,
+      });
+
+      expect(result).toBe(true);
+      expect(mockExecLsRemoteHead).toHaveBeenCalledWith('https://github.com/user/repo.git');
+    });
+
+    test('should return false when the repository is not reachable', async () => {
+      const mockExecLsRemoteHead = vi.fn().mockRejectedValue(new Error('Repository not found'));
+
+      const result = await checkRemoteRepoExists('https://github.com/user/nonexistent.git', {
+        execLsRemoteHead: mockExecLsRemoteHead,
+      });
+
+      expect(result).toBe(false);
+      expect(logger.trace).toHaveBeenCalledWith(
+        'Remote repository not reachable: https://github.com/user/nonexistent.git:',
+        'Repository not found',
+      );
+    });
+
+    test('should reject dangerous URLs before probing', async () => {
+      const mockExecLsRemoteHead = vi.fn();
+
+      await expect(
+        checkRemoteRepoExists('https://github.com/user/repo.git --upload-pack=evil-command', {
+          execLsRemoteHead: mockExecLsRemoteHead,
+        }),
+      ).rejects.toThrow('Invalid repository URL. URL contains potentially dangerous parameters');
+      expect(mockExecLsRemoteHead).not.toHaveBeenCalled();
+    });
   });
 
   describe('getRemoteRefs', () => {

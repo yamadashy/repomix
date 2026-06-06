@@ -6,6 +6,7 @@ import * as remoteAction from '../../src/cli/actions/remoteAction.js';
 import * as versionAction from '../../src/cli/actions/versionAction.js';
 import { run, runCli } from '../../src/cli/cliRun.js';
 import type { CliOptions } from '../../src/cli/types.js';
+import * as gitRemoteHandle from '../../src/core/git/gitRemoteHandle.js';
 import type { PackResult } from '../../src/core/packager.js';
 import { logger, type RepomixLogLevel, repomixLogLevels } from '../../src/shared/logger.js';
 import { createMockConfig } from '../testing/testUtils.js';
@@ -40,6 +41,7 @@ vi.mock('../../src/shared/logger', () => ({
 vi.mock('../../src/cli/actions/defaultAction');
 vi.mock('../../src/cli/actions/initAction');
 vi.mock('../../src/cli/actions/remoteAction');
+vi.mock('../../src/core/git/gitRemoteHandle');
 vi.mock('../../src/cli/actions/versionAction');
 
 describe('cliRun', () => {
@@ -241,11 +243,41 @@ describe('cliRun', () => {
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
-    test('should not auto-detect shorthand format as remote URL', async () => {
+    test('should auto-detect shorthand when no local path exists and the repository is reachable', async () => {
+      vi.mocked(gitRemoteHandle.checkRemoteRepoExists).mockResolvedValue(true);
+
       await runCli(['user/repo'], process.cwd(), {});
 
+      expect(gitRemoteHandle.checkRemoteRepoExists).toHaveBeenCalledWith('https://github.com/user/repo.git');
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('user/repo', expect.any(Object));
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should fall back to local handling when shorthand is not a reachable repository', async () => {
+      vi.mocked(gitRemoteHandle.checkRemoteRepoExists).mockResolvedValue(false);
+
+      await runCli(['user/repo'], process.cwd(), {});
+
+      expect(gitRemoteHandle.checkRemoteRepoExists).toHaveBeenCalledWith('https://github.com/user/repo.git');
       expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object));
       expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+    });
+
+    test('should prefer existing local path over shorthand auto-detection', async () => {
+      // `src/cli` exists relative to the repository root and matches the owner/repo pattern
+      await runCli(['src/cli'], process.cwd(), {});
+
+      expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['src/cli'], process.cwd(), expect.any(Object));
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+    });
+
+    test('should not probe shorthand in stdin mode', async () => {
+      await runCli(['user/repo'], process.cwd(), { stdin: true });
+
+      expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object));
     });
 
     test('should prioritize explicit --remote flag over auto-detected URL', async () => {
