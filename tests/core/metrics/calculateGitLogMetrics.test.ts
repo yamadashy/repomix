@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitLogResult } from '../../../src/core/git/gitLogHandle.js';
 import { calculateGitLogMetrics } from '../../../src/core/metrics/calculateGitLogMetrics.js';
 import type { MetricsTaskRunner } from '../../../src/core/metrics/metricsWorkerRunner.js';
+import { __resetTokenCountCacheForTests } from '../../../src/core/metrics/tokenCountCache.js';
 import {
   countTokens,
   type MetricsWorkerTask,
@@ -80,6 +81,10 @@ describe('calculateGitLogMetrics', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // The git log token count is served from the module-level content-addressed
+    // token cache. Reset it before each test so a value cached by an earlier
+    // test cannot turn a later worker-dispatch assertion into a cache hit.
+    __resetTokenCountCacheForTests();
   });
 
   describe('when git logs are disabled', () => {
@@ -425,6 +430,81 @@ Date: Sun Dec 31 18:30:00 2022 +0000
       });
 
       expect(result.gitLogTokenCount).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  // The git log content is stable across repeated packs of an unchanged repo
+  // (same HEAD), so its token count is served from the content-addressed token
+  // cache. A second pack with identical content must reuse the cached value
+  // instead of re-dispatching the (tens-of-ms) tokenization to a worker.
+  describe('token-count cache (production path)', () => {
+    let prevCacheEnv: string | undefined;
+
+    beforeEach(() => {
+      prevCacheEnv = process.env.REPOMIX_TOKEN_CACHE;
+      delete process.env.REPOMIX_TOKEN_CACHE;
+      __resetTokenCountCacheForTests();
+    });
+
+    afterEach(() => {
+      if (prevCacheEnv === undefined) {
+        delete process.env.REPOMIX_TOKEN_CACHE;
+      } else {
+        process.env.REPOMIX_TOKEN_CACHE = prevCacheEnv;
+      }
+      __resetTokenCountCacheForTests();
+    });
+
+    it('dispatches once then serves the cached count on a second identical run', async () => {
+      const gitLogResult: GitLogResult = {
+        logContent: 'commit abc123\nAuthor: Test\n\nStable log content',
+        commits: [],
+      };
+      const spy = vi.fn().mockResolvedValue(42);
+      const customTaskRunner: MetricsTaskRunner = { run: spy, cleanup: async () => {} };
+
+      const first = await calculateGitLogMetrics(mockConfig, gitLogResult, { taskRunner: customTaskRunner });
+      const second = await calculateGitLogMetrics(mockConfig, gitLogResult, { taskRunner: customTaskRunner });
+
+      expect(first).toEqual({ gitLogTokenCount: 42 });
+      expect(second).toEqual({ gitLogTokenCount: 42 });
+      // Only the first run reaches the worker; the second is a cache hit.
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-dispatches when the log content changes (cache miss on new content)', async () => {
+      const spy = vi.fn().mockResolvedValue(7);
+      const customTaskRunner: MetricsTaskRunner = { run: spy, cleanup: async () => {} };
+
+      await calculateGitLogMetrics(
+        mockConfig,
+        { logContent: 'first content', commits: [] },
+        {
+          taskRunner: customTaskRunner,
+        },
+      );
+      await calculateGitLogMetrics(
+        mockConfig,
+        { logContent: 'different content', commits: [] },
+        {
+          taskRunner: customTaskRunner,
+        },
+      );
+
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not cache when REPOMIX_TOKEN_CACHE=0', async () => {
+      process.env.REPOMIX_TOKEN_CACHE = '0';
+      const gitLogResult: GitLogResult = { logContent: 'uncached log content', commits: [] };
+      const spy = vi.fn().mockResolvedValue(3);
+      const customTaskRunner: MetricsTaskRunner = { run: spy, cleanup: async () => {} };
+
+      await calculateGitLogMetrics(mockConfig, gitLogResult, { taskRunner: customTaskRunner });
+      await calculateGitLogMetrics(mockConfig, gitLogResult, { taskRunner: customTaskRunner });
+
+      // Cache disabled: every run dispatches to the worker.
+      expect(spy).toHaveBeenCalledTimes(2);
     });
   });
 });

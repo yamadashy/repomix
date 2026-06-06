@@ -1,7 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
-import { type MetricsTaskRunner, runTokenCount } from './metricsWorkerRunner.js';
+import { type MetricsTaskRunner, runCachedTokenCount } from './metricsWorkerRunner.js';
 
 /**
  * Calculate token count for git diffs if included
@@ -28,18 +28,12 @@ export const calculateGitDiffMetrics = async (
 
     if (gitDiffResult.workTreeDiffContent) {
       countPromises.push(
-        runTokenCount(deps.taskRunner, {
-          content: gitDiffResult.workTreeDiffContent,
-          encoding: config.tokenCount.encoding,
-        }),
+        runCachedTokenCount(deps.taskRunner, gitDiffResult.workTreeDiffContent, config.tokenCount.encoding),
       );
     }
     if (gitDiffResult.stagedDiffContent) {
       countPromises.push(
-        runTokenCount(deps.taskRunner, {
-          content: gitDiffResult.stagedDiffContent,
-          encoding: config.tokenCount.encoding,
-        }),
+        runCachedTokenCount(deps.taskRunner, gitDiffResult.stagedDiffContent, config.tokenCount.encoding),
       );
     }
 

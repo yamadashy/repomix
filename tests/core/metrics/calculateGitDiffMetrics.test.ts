@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { calculateGitDiffMetrics } from '../../../src/core/metrics/calculateGitDiffMetrics.js';
 import type { MetricsTaskRunner } from '../../../src/core/metrics/metricsWorkerRunner.js';
+import { __resetTokenCountCacheForTests } from '../../../src/core/metrics/tokenCountCache.js';
 import {
   countTokens,
   type MetricsWorkerTask,
@@ -80,6 +81,10 @@ describe('calculateGitDiffMetrics', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // The git diff token counts are served from the module-level content-addressed
+    // token cache. Reset it before each test so a value cached by an earlier test
+    // cannot turn a later worker-dispatch assertion into a cache hit.
+    __resetTokenCountCacheForTests();
   });
 
   describe('when git diffs are disabled', () => {
@@ -356,6 +361,62 @@ describe('calculateGitDiffMetrics', () => {
         content: 'test content',
         encoding: 'cl100k_base',
       });
+    });
+  });
+
+  // The git diff content (working tree + staged) is stable across repeated packs
+  // of an unchanged working tree, so each diff's token count is served from the
+  // content-addressed token cache. A second pack with identical content must
+  // reuse the cached value instead of re-dispatching to a worker.
+  describe('token-count cache (production path)', () => {
+    let prevCacheEnv: string | undefined;
+
+    beforeEach(() => {
+      prevCacheEnv = process.env.REPOMIX_TOKEN_CACHE;
+      delete process.env.REPOMIX_TOKEN_CACHE;
+      __resetTokenCountCacheForTests();
+    });
+
+    afterEach(() => {
+      if (prevCacheEnv === undefined) {
+        delete process.env.REPOMIX_TOKEN_CACHE;
+      } else {
+        process.env.REPOMIX_TOKEN_CACHE = prevCacheEnv;
+      }
+      __resetTokenCountCacheForTests();
+    });
+
+    it('dispatches once per diff then serves cached counts on a second identical run', async () => {
+      const gitDiffResult: GitDiffResult = {
+        workTreeDiffContent: 'stable work tree diff',
+        stagedDiffContent: 'stable staged diff',
+      };
+      const spy = vi.fn().mockResolvedValue(5);
+      const customTaskRunner: MetricsTaskRunner = { run: spy, cleanup: async () => {} };
+
+      const first = await calculateGitDiffMetrics(mockConfig, gitDiffResult, { taskRunner: customTaskRunner });
+      const second = await calculateGitDiffMetrics(mockConfig, gitDiffResult, { taskRunner: customTaskRunner });
+
+      expect(first).toBe(10); // 5 (work tree) + 5 (staged)
+      expect(second).toBe(10);
+      // First run dispatches both diffs; the second is fully served from cache.
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not cache when REPOMIX_TOKEN_CACHE=0', async () => {
+      process.env.REPOMIX_TOKEN_CACHE = '0';
+      const gitDiffResult: GitDiffResult = {
+        workTreeDiffContent: 'uncached work tree diff',
+        stagedDiffContent: '',
+      };
+      const spy = vi.fn().mockResolvedValue(4);
+      const customTaskRunner: MetricsTaskRunner = { run: spy, cleanup: async () => {} };
+
+      await calculateGitDiffMetrics(mockConfig, gitDiffResult, { taskRunner: customTaskRunner });
+      await calculateGitDiffMetrics(mockConfig, gitDiffResult, { taskRunner: customTaskRunner });
+
+      // Cache disabled: every run dispatches to the worker.
+      expect(spy).toHaveBeenCalledTimes(2);
     });
   });
 });
