@@ -105,6 +105,27 @@ export const execLsRemote = async (
   }
 };
 
+/**
+ * Lightweight remote existence probe: only asks for HEAD instead of all refs,
+ * so the response stays tiny even for repositories with thousands of branches/tags.
+ */
+export const execLsRemoteHead = async (
+  url: string,
+  deps = {
+    execFileAsync,
+  },
+): Promise<string> => {
+  validateGitUrl(url);
+
+  try {
+    const result = await deps.execFileAsync('git', ['ls-remote', '--', url, 'HEAD'], gitRemoteOpts);
+    return result.stdout || '';
+  } catch (error) {
+    logger.trace('Failed to execute git ls-remote HEAD:', (error as Error).message);
+    throw error;
+  }
+};
+
 export const execGitShallowClone = async (
   url: string,
   directory: string,
