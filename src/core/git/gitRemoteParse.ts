@@ -1,6 +1,7 @@
 import gitUrlParse, { type GitUrl } from 'git-url-parse';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { isValidShorthand } from './gitRemoteUrl.js';
 
 interface IGitUrl extends GitUrl {
   commit: string | undefined;
@@ -12,12 +13,8 @@ export interface GitHubRepoInfo {
   ref?: string; // branch, tag, or commit SHA
 }
 
-// Check the short form of the GitHub URL. e.g. yamadashy/repomix
-const VALID_NAME_PATTERN = '[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?';
-const validShorthandRegex = new RegExp(`^${VALID_NAME_PATTERN}/${VALID_NAME_PATTERN}$`);
-export const isValidShorthand = (remoteValue: string): boolean => {
-  return validShorthandRegex.test(remoteValue);
-};
+// Re-export from lightweight module to preserve public API
+export { isValidShorthand } from './gitRemoteUrl.js';
 
 /**
  * Check if a URL is an Azure DevOps repository URL by validating the hostname.
