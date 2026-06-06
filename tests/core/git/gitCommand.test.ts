@@ -18,6 +18,12 @@ const expectGitRemoteOpts = expect.objectContaining({
   env: expect.objectContaining({ GIT_TERMINAL_PROMPT: '0' }),
 });
 
+// The automatic existence probe uses a short timeout and suppresses credential prompts.
+const expectGitProbeOpts = expect.objectContaining({
+  timeout: 5000,
+  env: expect.objectContaining({ GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' }),
+});
+
 describe('gitCommand', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -449,7 +455,7 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
       expect(mockFileExecAsync).toHaveBeenCalledWith(
         'git',
         ['ls-remote', '--', 'https://github.com/user/repo.git', 'HEAD'],
-        expectGitRemoteOpts,
+        expectGitProbeOpts,
       );
     });
 

@@ -308,7 +308,9 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   if (directories.length === 1 && !options.stdin && isValidShorthand(directories[0])) {
     const localPathExists = await fs.access(path.resolve(cwd, directories[0])).then(
       () => true,
-      () => false,
+      // EACCES/EPERM mean the path exists but is inaccessible — keep local-path precedence
+      // and only fall through to the remote probe when the path is truly missing.
+      (error: NodeJS.ErrnoException) => !['ENOENT', 'ENOTDIR'].includes(error.code ?? ''),
     );
     if (!localPathExists) {
       const { checkRemoteRepoExists } = await import('../core/git/gitRemoteHandle.js');

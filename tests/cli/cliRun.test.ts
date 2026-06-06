@@ -1,3 +1,4 @@
+import * as fs from 'node:fs/promises';
 import { program } from 'commander';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import * as defaultAction from '../../src/cli/actions/defaultAction.js';
@@ -44,9 +45,22 @@ vi.mock('../../src/cli/actions/remoteAction');
 vi.mock('../../src/core/git/gitRemoteHandle');
 vi.mock('../../src/cli/actions/versionAction');
 
+// Partial mock: `access` is spyable for shorthand-detection tests, everything else stays real.
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  return {
+    ...actual,
+    access: vi.fn(actual.access),
+  };
+});
+
+const actualFs = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+
 describe('cliRun', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // resetAllMocks clears the default implementation — restore real fs.access behavior.
+    vi.mocked(fs.access).mockImplementation(actualFs.access);
 
     vi.mocked(defaultAction.runDefaultAction).mockResolvedValue({
       config: createMockConfig({
@@ -270,6 +284,26 @@ describe('cliRun', () => {
       expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
       expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['src/cli'], process.cwd(), expect.any(Object));
       expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+    });
+
+    test('should treat permission-denied local path as existing and skip the remote probe', async () => {
+      const accessError = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+      vi.mocked(fs.access).mockRejectedValue(accessError);
+
+      await runCli(['user/repo'], process.cwd(), {});
+
+      expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object));
+    });
+
+    test('should not treat Windows-style absolute path as shorthand', async () => {
+      // `C:` contains a colon, which the owner/repo pattern rejects — no probe even when missing locally.
+      await runCli(['C:/project'], process.cwd(), {});
+
+      expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['C:/project'], process.cwd(), expect.any(Object));
     });
 
     test('should not probe shorthand in stdin mode', async () => {
