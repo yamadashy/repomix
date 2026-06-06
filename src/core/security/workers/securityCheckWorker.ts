@@ -125,17 +125,43 @@ const cachedConfig = createSecretLintConfig();
 //     `.p12` sub-rule reads binary PKCS#12 files, which never reach the security
 //     worker — repomix excludes binary content upstream in fileRead.)
 //   - Private keys: require the `-----BEGIN` PEM header.
-//   - Basic-auth URLs / database connection strings: require `://` (or the
-//     `mongodb:`/`mysql:`/`postgres:` scheme prefix).
+//   - Slack incoming webhooks: require the `hooks.slack.com/services/` path
+//     literal (the secret is encoded in the URL path, not in credentials).
+//   - npm XOAuth GitHub tokens: require the `x-oauth-basic` scheme literal (the
+//     token may contain `/`, so it is not always reachable via the credential
+//     pattern below — match the literal directly).
+//   - Basic-auth URLs / database connection strings (basicauth + mongodb/mysql/
+//     postgresql connection-string rules): handled separately by
+//     SECRET_URL_CREDENTIAL_PATTERN below rather than by a bare `://`. Every one
+//     of these rules only reports when the URI carries inline credentials
+//     (`scheme://user:password@host`) — the DB rules `continue` unless both a
+//     username and password group are captured, and basicauth's regex requires
+//     `user:password@`. A bare `://` (a plain URL, an import path, a doc link)
+//     can never trigger them, so matching the full `://user:password@` shape
+//     here skips the ~400 credential-free URL-bearing files that a bare `://`
+//     would otherwise force through `lintSource`.
 //
-// IMPORTANT: when bumping `@secretlint/*`, re-verify this pattern still covers
+// IMPORTANT: when bumping `@secretlint/*`, re-verify these patterns still cover
 // every rule's necessary literal — a rule whose prefix set gains a new member
-// (e.g. a new Slack/GitHub/Stripe token kind) must be added here. The
+// (e.g. a new Slack/GitHub/Stripe token kind) must be added here, and any new
+// URL/connection-string rule that can fire without inline `user:password@`
+// credentials must be added to (or relax) SECRET_URL_CREDENTIAL_PATTERN. The
 // securityCheckWorker behavior-preservation test cross-checks realistic secrets
 // against the live engine and fails loudly if a flagged secret is not matched
 // here.
 const SECRET_INDICATOR_PATTERN =
-  /AKIA|ghp_|gho_|ghs_|ghu_|ghr_|github_pat_|glpat-|glsa_|glc_|xoxb-|xoxa-|xoxp-|xoxs-|xoxr-|xapp-|xoxo-|SG\.|shppa_|shpca_|shpat_|shpss_|sk_live_|sk_test_|pk_live_|pk_test_|rk_live_|rk_test_|sk-ant-|sk-proj-|sk-svcacct-|sk-admin-|T3BlbkFJ|gsk_|hf_|lin_api_|npm_|_authToken|dckr_pat_|figd_|tskey-|ops_ey|ntn_|hvs\.|hvb\.|hvr\.|dapi|cfk_|cfut_|cfat_|vcp_|vci_|vca_|vcr_|vck_|-----BEGIN|secret|account|private_key_id|mongodb:|mysql:|postgres:|:\/\//i;
+  /AKIA|ghp_|gho_|ghs_|ghu_|ghr_|github_pat_|glpat-|glsa_|glc_|xoxb-|xoxa-|xoxp-|xoxs-|xoxr-|xapp-|xoxo-|SG\.|shppa_|shpca_|shpat_|shpss_|sk_live_|sk_test_|pk_live_|pk_test_|rk_live_|rk_test_|sk-ant-|sk-proj-|sk-svcacct-|sk-admin-|T3BlbkFJ|gsk_|hf_|lin_api_|npm_|_authToken|dckr_pat_|figd_|tskey-|ops_ey|ntn_|hvs\.|hvb\.|hvr\.|dapi|cfk_|cfut_|cfat_|vcp_|vci_|vca_|vcr_|vck_|-----BEGIN|secret|account|private_key_id|hooks\.slack\.com\/services\/|x-oauth-basic/i;
+
+// Necessary-literal pattern for the only rules keyed on a URI: basicauth and the
+// mongodb/mysql/postgresql connection-string rules. All four require inline
+// credentials of the form `scheme://user:password@host`. The username/password
+// character classes here are the *broadest* used by any of those rules
+// (basicauth: `[-a-zA-Z0-9_]`; the DB rules: username `[^:/\s]`, password
+// `[^@/\s]`), so this pattern matches a superset of every credential portion any
+// of them can match — guaranteeing no false negative — while a bare `://` no
+// longer forces credential-free URLs through the engine. Bounded quantifiers and
+// disjoint delimiters (`:`/`@`) keep it linear (no ReDoS).
+const SECRET_URL_CREDENTIAL_PATTERN = /:\/\/[^\s:/]{1,256}:[^\s@/]{1,256}@/;
 
 /**
  * Returns true if `content` contains any literal that a recommended-preset
@@ -143,7 +169,8 @@ const SECRET_INDICATOR_PATTERN =
  * the file cannot trigger any rule, so the (expensive) `lintSource` call is
  * skipped. Exported for behavior-preservation testing.
  */
-export const mightContainSecret = (content: string): boolean => SECRET_INDICATOR_PATTERN.test(content);
+export const mightContainSecret = (content: string): boolean =>
+  SECRET_INDICATOR_PATTERN.test(content) || SECRET_URL_CREDENTIAL_PATTERN.test(content);
 
 export default async (task: SecurityCheckTask): Promise<(SuspiciousFileResult | null)[]> => {
   const config = cachedConfig;

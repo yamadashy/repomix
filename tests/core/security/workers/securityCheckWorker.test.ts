@@ -104,6 +104,28 @@ describe('securityCheck pre-filter (mightContainSecret)', () => {
     ['npm token (npm_)', 'a.txt', `npm_${'abcdefghijklmnopqrstuvwxyz0123456789'}`],
     ['npm .npmrc authToken', '.npmrc', '//registry.npmjs.org/:_authToken=npmRealToken0123456789abcdef'],
     ['Basic-auth URL', 'a.txt', 'https://user:pass@example.com'],
+    // URL-path-keyed rules: the secret lives in the path, not in `user:pass@`
+    // credentials, so they are matched by literal — not by the credential
+    // pattern. A bare `://` would have covered them; dropping it must not.
+    // Deliberately short, obviously-synthetic path segments: enough for the
+    // engine's loose `T../B../..` regex to fire, but not a real-format webhook
+    // (avoids tripping GitHub push protection on the test fixture itself).
+    ['Slack incoming webhook', 'config.txt', 'SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T0/B0/000'],
+    // npm XOAuth GitHub token whose token segment contains `/` (allowed by the
+    // engine's `.{1,256}` capture) — unreachable via the credential pattern's
+    // `[^\s:/]` username class, so it relies on the `x-oauth-basic` literal.
+    ['npm XOAuth GitHub token (slash in token)', 'package.json', 'https://tok/en:x-oauth-basic@github.com/'],
+    // Connection strings whose passwords contain characters OUTSIDE [A-Za-z0-9_]
+    // (the basicauth credential class). The DB rules accept a broader password
+    // class ([^@/\s]), so the URI pre-filter must use those broad classes — a
+    // narrower one would skip these files and miss a real finding.
+    [
+      'MongoDB SRV URI (special-char password)',
+      'a.txt',
+      'mongodb+srv://dbadmin:Xy7!q2mLp@cluster0.ab12.mongodb.net/test',
+    ],
+    ['PostgreSQL URI (special-char password)', 'a.txt', 'postgresql://dbuser:Str0ng#Pass9@db.host.com:5432/mydb'],
+    ['MySQL X URI (special-char password)', 'a.txt', 'mysqlx://root:s3cr3t%pw1@127.0.0.1:33060/app'],
     ['AWS secret access key', 'config.txt', 'AWS_SECRET_ACCESS_KEY = wJalrXUtnFEMI/K7MDENG/bPxRfiCYSECRETSKEY'],
   ];
   // secretlint-enable
@@ -147,6 +169,27 @@ describe('securityCheck pre-filter (mightContainSecret)', () => {
     expect(mightContainSecret(benign)).toBe(false);
   });
 
+  // Credential-free URLs (plain links, import paths, doc references) carry a
+  // bare `://` but cannot trigger any rule — the basicauth/DB rules all require
+  // inline `user:password@` credentials. These must NOT be flagged: skipping
+  // them is exactly the work this pre-filter saves. Each is also confirmed clean
+  // by the live engine so the skip is provably correct.
+  // secretlint-disable
+  const credentialFreeUrls: [name: string, content: string][] = [
+    ['plain https link', 'See https://example.com/docs/path?query=1 for details'],
+    ['import url', "import pkg from 'https://esm.sh/lodash@4.17.21';"],
+    ['scheme-relative url', 'fetch("//cdn.example.com/app.js")'],
+    ['db scheme without credentials', 'DATABASE_URL=postgres://localhost:5432/appdb'],
+    ['url with host:port but no userinfo', 'proxy = http://proxy.internal:8080'],
+  ];
+  // secretlint-enable
+
+  test.each(credentialFreeUrls)('does not flag credential-free URL: %s', async (_name, content) => {
+    expect(mightContainSecret(content)).toBe(false);
+    // ...and the engine agrees there is nothing to find, so skipping is correct.
+    expect(await runSecretLint('a.txt', content, 'file', config)).toBeNull();
+  });
+
   // The core invariant: the worker's pre-filtered scan must produce exactly the
   // same per-item results as scanning every item through the live secretlint
   // engine without the pre-filter.
@@ -163,6 +206,15 @@ GitHub Token: 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`;
     const diffContent = '+const token = "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";';
     // secretlint-enable
     const benignContent = `# Docs\n\nJust an ordinary file with code: const sum = (a, b) => a + b;\n`;
+    // A DB connection string whose password has characters outside the basicauth
+    // credential class: the engine reports it, so the URI pre-filter (using the
+    // broad DB password class) must scan it too.
+    // secretlint-disable
+    const dbUriContent = 'DATABASE_URL=postgresql://dbuser:Str0ng#Pass9@db.host.com:5432/mydb';
+    // A credential-free URL: bare `://`, no userinfo — the pre-filter skips it
+    // and the engine finds nothing, so the result must still match.
+    const plainUrlContent = 'Homepage: https://example.com/path and mongodb://localhost:27017/dev';
+    // secretlint-enable
     const items = [
       { filePath: 'secret.md', content: secretContent, type: 'file' as const },
       { filePath: 'clean.ts', content: benignContent, type: 'file' as const },
@@ -170,6 +222,8 @@ GitHub Token: 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`;
       // still scanned by the pre-filter and must come back null from the engine.
       { filePath: 'notes.md', content: 'See the account dashboard for details.', type: 'file' as const },
       { filePath: 'config.txt', content: awsSecretContent, type: 'file' as const },
+      { filePath: 'db.env', content: dbUriContent, type: 'file' as const },
+      { filePath: 'readme.md', content: plainUrlContent, type: 'file' as const },
       { filePath: 'change.diff', content: diffContent, type: 'gitDiff' as const },
     ];
 
@@ -182,6 +236,8 @@ GitHub Token: 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`;
     expect(filtered[1]).toBeNull();
     expect(filtered[2]).toBeNull();
     expect(filtered[3]).not.toBeNull(); // AWS secret key
-    expect(filtered[4]).not.toBeNull(); // gitDiff reaches the engine
+    expect(filtered[4]).not.toBeNull(); // DB connection string with special-char password
+    expect(filtered[5]).toBeNull(); // credential-free URLs are skipped and clean
+    expect(filtered[6]).not.toBeNull(); // gitDiff reaches the engine
   });
 });
