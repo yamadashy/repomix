@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780672000026,
+  "lastUpdate": 1780721392190,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10073,6 +10073,51 @@ window.BENCHMARK_DATA = {
             "range": "±32",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1001ms, Q3: 1033ms\nAll times: 988, 995, 997, 998, 999, 1001, 1002, 1003, 1005, 1007, 1008, 1012, 1016, 1027, 1028, 1033, 1038, 1041, 1042, 1049ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "be33ae9e77a1a188081294e2887ae27cac7db6f6",
+          "message": "perf(security): Pre-filter files lacking any secret indicator before secretlint\n\nSkip the per-file @secretlint/core `lintSource` call for files whose content\ncontains none of the literals any enabled recommended-preset rule needs to\nreport a finding. The security check is the dominant phase of a warm pack, and\n`lintSource` carries a large fixed per-call cost (fresh context/event objects,\ninstantiating and wiring every rule in the preset) before any content is\ninspected. A module-level regex (SECRET_INDICATOR_PATTERN) unions the necessary\nliteral conditions of all rules; when it does not match, the file cannot trigger\nany rule and is returned as clean without invoking the engine. git diff/log\nitems always go through the engine (added secret lines may lack a stable\nsurrounding literal, and they are few).\n\nintent(perf-tuning): cut warm-cache CLI pack time by >=2% with a single\n  behavior-preserving change, targeting the measured critical-path bottleneck.\ndecision(security-prefilter): gate `lintSource` on a necessary-literal regex —\n  the security phase (~165ms, 2 workers) gates wall time, and a large share of a\n  repo's files contain no secret indicator, so skipping them removes real CPU\n  work from the gating phase rather than from an overlapped phase.\nrejected(handlebars-precompile): ship precompiled Handlebars specs + handlebars/\n  runtime to drop the ~13ms compileInput — only ~1.4% in rigorous 3-way\n  interleaved benchmarks. The compile sits in the output phase that overlaps the\n  metrics workers, so the saving is often hidden; it does not robustly clear the\n  2% bar. Reverted.\nrejected(token-cache/file-processing/startup): investigated in parallel —\n  metrics is already fully cached/overlapped, file-processing savings hide behind\n  the security-worker window, and a Handlebars warmup during that window\n  regressed wall time (synchronous work stalls Tinypool IPC).\nconstraint(secretlint-coupling): SECRET_INDICATOR_PATTERN must stay a superset of\n  every enabled rule's necessary literal. A local review found five originally\n  missing prefixes (Stripe rk_test_, Slack xapp-/xoxo-, GitHub ghr_, npm\n  _authToken); all are now covered. The pattern is over-inclusive by design (a\n  false positive only costs one needless scan). When bumping @secretlint/*,\n  re-verify coverage — the behavior-preservation tests cross-check realistic\n  secrets against the live engine and fail loudly if a flagged secret stops being\n  matched here.\nconstraint(byte-identity): output verified byte-identical (cmp) between base and\n  patched on xml/markdown/plain/json, on both a fixed corpus and the live repo.\n\nBenchmark (warm cache, full default config incl. security check, packing this\nrepo via `node bin/repomix.cjs --quiet`; interleaved base-vs-patched, lib swapped\neach iteration to cancel drift):\n  - paired N=60: base 656.0ms median, patched delta -27.8ms (-4.23%), 55/60 wins\n  - paired N=70: -30.1ms (-4.60%), 61/70 wins\n  - 3-way interleaved N=50: -27.6ms (-4.32%), 45/50 wins\nConsistently ~4-5%, well above the 2%-of-total bar.\n\nTests: 1394 pass (+27). New tests cross-check realistic secrets per rule family\nagainst the live engine (asserting the pre-filter never skips a detectable\nsecret, incl. the five previously-missing prefixes), assert the pre-filtered\nworker results equal an unfiltered live-engine scan, and cover the gitDiff\nbypass and an AWS secret-key item guarding the generic `secret` indicator. Lint\nclean.",
+          "timestamp": "2026-06-06T04:41:37Z",
+          "tree_id": "e561593d27047c1964a7e72e03e4f40437d6e077",
+          "url": "https://github.com/yamadashy/repomix/commit/be33ae9e77a1a188081294e2887ae27cac7db6f6"
+        },
+        "date": 1780721391462,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 425,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 414ms, Q3: 432ms\nAll times: 407, 408, 410, 410, 411, 411, 413, 414, 418, 418, 418, 419, 420, 424, 425, 425, 425, 427, 428, 429, 430, 432, 432, 434, 434, 449, 506, 512, 550, 597ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 548,
+            "range": "±13",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 540ms, Q3: 553ms\nAll times: 531, 531, 534, 534, 536, 540, 541, 542, 543, 543, 548, 548, 549, 551, 551, 553, 553, 558, 566, 573ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 905,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 897ms, Q3: 914ms\nAll times: 894, 894, 894, 895, 897, 897, 898, 898, 904, 905, 905, 905, 908, 909, 910, 914, 914, 920, 923, 930ms"
           }
         ]
       }
