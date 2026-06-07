@@ -54,6 +54,92 @@ describe('fileSearch gitignore spec', () => {
     expect(filePaths).not.toContain('noisy.draft');
   });
 
+  it.each([
+    'browser/.gitignore',
+    '**/.gitignore',
+    // A trailing slash must behave identically: the pattern is still deferred so
+    // globby loads the rules, and the post-filter (sharing the same normalization)
+    // still removes the file rather than leaking it.
+    '**/.gitignore/',
+  ])('still applies nested .gitignore rules when the nested .gitignore file itself is ignored by `%s`', async (ignorePattern) => {
+    await writeFixture(tmpDir, {
+      'browser/.gitignore': '*.draft\n',
+      'browser/src/index.ts': 'export {};\n',
+      'browser/noisy.draft': 'noisy\n',
+    });
+
+    const { filePaths } = await searchFiles(
+      tmpDir,
+      createMockConfig({
+        include: ['browser/**'],
+        ignore: {
+          useDefaultPatterns: false,
+          customPatterns: [ignorePattern],
+        },
+      }),
+    );
+
+    expect(filePaths).toContain('browser/src/index.ts');
+    expect(filePaths).not.toContain('browser/.gitignore');
+    expect(filePaths).not.toContain('browser/noisy.draft');
+  });
+
+  it('filters root and nested .gitignore files matched by `**/.gitignore` while still applying their rules', async () => {
+    await writeFixture(tmpDir, {
+      '.gitignore': 'root-noisy.draft\n',
+      'keep.ts': 'export {};\n',
+      'root-noisy.draft': 'noisy\n',
+      'src/.gitignore': 'generated.ts\n',
+      'src/keep.ts': 'export {};\n',
+      'src/generated.ts': 'generated\n',
+    });
+    await fs.mkdir(path.join(tmpDir, 'empty'), { recursive: true });
+
+    const { filePaths, emptyDirPaths } = await searchFiles(
+      tmpDir,
+      createMockConfig({
+        output: { includeEmptyDirectories: true },
+        ignore: {
+          useDefaultPatterns: false,
+          customPatterns: ['**/.gitignore'],
+        },
+      }),
+    );
+
+    expect(filePaths).toContain('keep.ts');
+    expect(filePaths).toContain('src/keep.ts');
+    expect(filePaths).not.toContain('.gitignore');
+    expect(filePaths).not.toContain('src/.gitignore');
+    expect(filePaths).not.toContain('root-noisy.draft');
+    expect(filePaths).not.toContain('src/generated.ts');
+    expect(emptyDirPaths).toContain('empty');
+  });
+
+  it('excludes the contents of a directory literally named `.gitignore` when ignored by `**/.gitignore`', async () => {
+    // Pathological but valid: `.gitignore` as a directory name. The old globby
+    // behavior (where `**/.gitignore` normalized to `**/.gitignore/**`) excluded
+    // its contents, so the post-filter must drop descendants too, not just a
+    // file named `.gitignore`.
+    await writeFixture(tmpDir, {
+      'proj/.gitignore/inside.txt': 'x\n',
+      'proj/keep.txt': 'x\n',
+    });
+
+    const { filePaths } = await searchFiles(
+      tmpDir,
+      createMockConfig({
+        include: ['proj/**'],
+        ignore: {
+          useDefaultPatterns: false,
+          customPatterns: ['**/.gitignore'],
+        },
+      }),
+    );
+
+    expect(filePaths).toContain('proj/keep.txt');
+    expect(filePaths).not.toContain('proj/.gitignore/inside.txt');
+  });
+
   it('applies slash-less patterns recursively to all subdirectories', async () => {
     await writeFixture(tmpDir, {
       '.gitignore': '*.draft\nsecret.data\n',
