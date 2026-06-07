@@ -24,6 +24,7 @@ describe('outputGenerate', () => {
   const mockDeps = {
     buildOutputGeneratorContext: vi.fn(),
     generateHandlebarOutput: vi.fn(),
+    generateXmlOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
     sortOutputFiles: vi.fn(),

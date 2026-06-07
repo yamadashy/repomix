@@ -60,18 +60,19 @@ describe('Output Generation with Diffs', () => {
       gitDiffResult,
     })),
     generateHandlebarOutput: vi.fn(),
+    generateXmlOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
     sortOutputFiles: vi.fn().mockResolvedValue(mockProcessedFiles),
   };
 
   test('XML style output should include diffs section when includeDiffs is enabled', async () => {
-    // Explicitly set XML style and parsable to false to use the template
+    // Explicitly set XML style and parsable to false to use the direct XML builder
     mockConfig.output.style = 'xml';
     mockConfig.output.parsableStyle = false;
 
-    // Mock the Handlebars output function to check for diffs in the template
-    mockDeps.generateHandlebarOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
+    // Mock the XML output function to check for diffs in the render context
+    mockDeps.generateXmlOutput.mockImplementation((renderContext: RenderContext, _processedFiles) => {
       // Verify that the renderContext has the gitDiffs property
       expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
 
@@ -97,8 +98,8 @@ describe('Output Generation with Diffs', () => {
     expect(output).toContain(sampleDiff);
     expect(output).toContain('</diffs>');
 
-    // Verify that the generateHandlebarOutput function was called
-    expect(mockDeps.generateHandlebarOutput).toHaveBeenCalled();
+    // Verify that the generateXmlOutput function was called
+    expect(mockDeps.generateXmlOutput).toHaveBeenCalled();
   });
 
   test('XML style output with parsableStyle should include diffs section', async () => {

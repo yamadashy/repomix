@@ -109,6 +109,7 @@ index 123..456 100644
     });
 
     const mockGenerateHandlebarOutput = vi.fn().mockResolvedValue('<xml>output with diffs</xml>');
+    const mockGenerateXmlOutput = vi.fn().mockReturnValue('<xml>output with diffs</xml>');
     const mockGenerateParsableXmlOutput = vi.fn().mockImplementation(async (renderContext: RenderContext) => {
       // Check that renderContext has gitDiffs
       expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
@@ -135,6 +136,7 @@ index 123..456 100644
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
         generateHandlebarOutput: mockGenerateHandlebarOutput,
+        generateXmlOutput: mockGenerateXmlOutput,
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
         sortOutputFiles: mockSortOutputFiles,
@@ -144,9 +146,9 @@ index 123..456 100644
     // Check that the output was generated with the correct template
     expect(mockBuildOutputGeneratorContext).toHaveBeenCalled();
 
-    // For non-parsable XML, should use Handlebars
+    // For non-parsable XML, should use the direct XML builder
     if (!mockConfig.output.parsableStyle) {
-      expect(mockGenerateHandlebarOutput).toHaveBeenCalled();
+      expect(mockGenerateXmlOutput).toHaveBeenCalled();
     } else {
       // For parsable XML, should use XML generator
       expect(mockGenerateParsableXmlOutput).toHaveBeenCalled();
@@ -209,6 +211,7 @@ index 123..456 100644
       {
         buildOutputGeneratorContext: mockBuildOutputGeneratorContext,
         generateHandlebarOutput: mockGenerateHandlebarOutput,
+        generateXmlOutput: vi.fn(),
         generateParsableXmlOutput: mockGenerateParsableXmlOutput,
         generateParsableJsonOutput: vi.fn(),
         sortOutputFiles: mockSortOutputFiles,
