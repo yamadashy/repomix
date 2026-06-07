@@ -18,10 +18,10 @@
   "devDependencies": {
     "@types/gtag.js": "^0.0.20",
     "@types/node": "^24.12.4",
-    "@typescript/native-preview": "^7.0.0-dev.20260522.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260527.2",
     "rollup-plugin-visualizer": "^7.0.1",
     "vite-plugin-pwa": "^1.3.0",
     "vitepress": "^1.6.4",
-    "vitepress-plugin-llms": "^1.12.2"
+    "vitepress-plugin-llms": "^1.13.1"
   }
 }
