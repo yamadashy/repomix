@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780772231692,
+  "lastUpdate": 1780816555400,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10208,6 +10208,51 @@ window.BENCHMARK_DATA = {
             "range": "±10",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 857ms, Q3: 867ms\nAll times: 851, 851, 854, 856, 856, 857, 859, 860, 860, 861, 862, 864, 865, 865, 866, 867, 867, 886, 889, 898ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "57f09f147b341ed7b2502de90c853ab7f0cf32a4",
+          "message": "perf(output): Build the default XML output directly instead of via Handlebars\n\nintent(performance): automated perf-tuning run — one focused, behavior-preserving change clearing the >=2% bar on a ~1-2s warm CLI pack\ndecision(xml-output): hand-build the non-parsable XML by direct string concatenation, mirroring getXmlTemplate() exactly, instead of rendering through Handlebars\nlearned(handlebars-on-xml): although Handlebars is lazy-loaded (#15), the default xml run still loaded+compiled it at first template compile; routing xml off Handlebars avoids that import entirely, so the win (~27ms) exceeds the render speedup alone (~12ms)\nconstraint(byte-identity): only the non-parsable xml style changed; parsable-xml/json keep their own builders and markdown/plain stay on Handlebars; output verified byte-identical across all styles and config toggles\nrejected(globby-lazy-load): deferring globby's import saved only ~2.4ms real wall — Node's compile-cache (enabled in bin/repomix.cjs) already eliminates the module parse cost, leaving only eval\nrejected(worker-pool-teardown-overlap): starting the security pool teardown early to overlap the output/metrics tail saved ~8ms (1.4%), below the bar; the metrics pool teardown stays on the exit path\nrejected(security-workers): raising MAX_SECURITY_WORKERS 2->3 regressed ~6% via worker oversubscription on a 4-core host\n\nChange\n- Add generateXmlOutput(): direct concatenation for the default (non-parsable) xml\n  style, reproducing getXmlTemplate() exactly — the file-summary / header /\n  directory-structure / files / git-diffs / git-logs / instruction toggles and the\n  Handlebars standalone-tag blank-line behavior. Route the xml case to it;\n  markdown/plain still use Handlebars, parsable-xml/json use their existing builders.\n- Extract createOutputSizeExceededError() shared by the Handlebars and XML paths so\n  both surface the identical \"output too large\" guidance on a RangeError.\n\nBenchmark (interleaved base-vs-patched, lib swapped each iteration to cancel drift,\nwarm cache, full default config, packing this repo)\n- node bin/repomix.cjs --quiet, N=150: base 573.3ms -> -27.6ms (-4.82%), 140/150 wins\n- node bin/repomix.cjs --quiet, N=100: base 576.1ms -> -24.9ms (-4.32%),  88/100 wins\n- node bin/repomix.cjs (canonical, matches CI), N=80: base 601.3ms -> -29.5ms (-4.91%), 72/80 wins\nIsolated render: Handlebars ~19.4ms -> manual ~6.7ms for the 4.6MB output; the rest\nof the saving is avoiding the Handlebars module load/compile on the default xml path.\n\nCorrectness & review\n- Output byte-identical (cmp) base vs patched on xml/markdown/plain/json and\n  parsable-xml, across config toggles (file-summary/directory-structure/files,\n  git diffs/logs on-off, instruction, header).\n- 1410 tests pass; lint clean (3 pre-existing warnings, none in changed files).\n- Tests: diffsInOutput / outputGenerateDiffs / outputGenerate mock-deps now include\n  generateXmlOutput and assert the xml path uses it; added an xmlStyle real-path test\n  covering the files / git-diffs / git-logs sections of the new builder.\n\nhttps://claude.ai/code/session_01UEMGY4zwYRRPWzQffCsW3M",
+          "timestamp": "2026-06-07T07:05:39Z",
+          "tree_id": "4ca1118659dacd8397526e91649ff14d40991e5d",
+          "url": "https://github.com/yamadashy/repomix/commit/57f09f147b341ed7b2502de90c853ab7f0cf32a4"
+        },
+        "date": 1780816553836,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 442,
+            "range": "±39",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 429ms, Q3: 468ms\nAll times: 406, 409, 414, 416, 423, 428, 429, 429, 431, 433, 437, 437, 438, 439, 441, 442, 444, 444, 445, 446, 452, 460, 468, 478, 482, 488, 509, 512, 533, 555ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 579,
+            "range": "±151",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 551ms, Q3: 702ms\nAll times: 506, 521, 530, 546, 549, 551, 561, 569, 571, 572, 579, 581, 583, 597, 690, 702, 708, 803, 834, 892ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 791,
+            "range": "±12",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 784ms, Q3: 796ms\nAll times: 775, 780, 780, 784, 784, 784, 786, 788, 788, 790, 791, 791, 792, 793, 796, 796, 801, 812, 817, 821ms"
           }
         ]
       }
