@@ -189,14 +189,12 @@ describe('multi-root pack spec', () => {
       'app/README.md',
       'app/src/index.ts',
     ]);
-    expect(Object.values(parsed.files)).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('MARKER_FROM_ROOT_A'),
-        expect.stringContaining('MARKER_FROM_ROOT_B'),
-        expect.stringContaining('ROOT_A_SRC_MARKER'),
-        expect.stringContaining('ROOT_B_SRC_MARKER'),
-      ]),
-    );
+    // Verify each disambiguated key maps to its own root's content (rootA -> app,
+    // rootB -> app-2), not just that all markers appear somewhere in the values.
+    expect(parsed.files['app/README.md']).toContain('MARKER_FROM_ROOT_A');
+    expect(parsed.files['app/src/index.ts']).toContain('ROOT_A_SRC_MARKER');
+    expect(parsed.files['app-2/README.md']).toContain('MARKER_FROM_ROOT_B');
+    expect(parsed.files['app-2/src/index.ts']).toContain('ROOT_B_SRC_MARKER');
   });
 
   it('reports the real file count for duplicate-relative-path multi-root inputs', async () => {
