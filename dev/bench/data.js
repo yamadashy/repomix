@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780828719376,
+  "lastUpdate": 1780846536123,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -6480,6 +6480,51 @@ window.BENCHMARK_DATA = {
             "range": "±15",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1116ms, Q3: 1131ms\nAll times: 1090, 1091, 1103, 1113, 1115, 1116, 1117, 1118, 1120, 1120, 1120, 1121, 1121, 1122, 1124, 1131, 1189, 1190, 1273, 1477ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fc69dcc31357d5db934f67ceaff4150f67e4735c",
+          "message": "Merge pull request #1622 from Samsen879/fix-ignore-gitignore-conflict\n\nfix(file): keep ignored .gitignore rules active",
+          "timestamp": "2026-06-08T00:33:17+09:00",
+          "tree_id": "0f9a330968372237c5335d0717c3b2158eb81bbe",
+          "url": "https://github.com/yamadashy/repomix/commit/fc69dcc31357d5db934f67ceaff4150f67e4735c"
+        },
+        "date": 1780846534580,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 702,
+            "range": "±352",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 620ms, Q3: 972ms\nAll times: 553, 556, 571, 600, 600, 606, 617, 620, 624, 631, 646, 655, 667, 676, 701, 702, 820, 858, 882, 935, 941, 943, 972, 973, 1016, 1093, 1141, 1250, 1305, 1418ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 859,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 846ms, Q3: 871ms\nAll times: 839, 841, 842, 843, 844, 846, 848, 849, 856, 857, 859, 860, 862, 866, 869, 871, 871, 872, 878, 886ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1211,
+            "range": "±59",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1198ms, Q3: 1257ms\nAll times: 1162, 1169, 1172, 1190, 1196, 1198, 1200, 1202, 1205, 1207, 1211, 1213, 1223, 1228, 1239, 1257, 1265, 1418, 1473, 1593ms"
           }
         ]
       }
