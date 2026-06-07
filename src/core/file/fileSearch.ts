@@ -90,8 +90,15 @@ export const normalizeGlobPattern = (pattern: string): string => {
 
 const toPosixPath = (value: string): string => value.replace(/\\/g, '/');
 
+// Canonical posix form of a deferred ignore pattern: forward slashes and no
+// trailing slash. Detection (isIgnoreControlFilePattern) and post-filtering
+// (filterDeferredIgnoredFiles) must share this so a pattern that is deferred is
+// also matched by the filter. Otherwise e.g. `**/.gitignore/` would be deferred
+// (dropped from globby's ignore) yet never matched here, leaking the file.
+const toPosixIgnorePattern = (pattern: string): string => toPosixPath(pattern).replace(/\/+$/, '');
+
 const isIgnoreControlFilePattern = (pattern: string): boolean => {
-  const normalizedPattern = toPosixPath(pattern).replace(/\/+$/, '');
+  const normalizedPattern = toPosixIgnorePattern(pattern);
   if (normalizedPattern.startsWith('!')) {
     return false;
   }
@@ -102,7 +109,7 @@ const filterDeferredIgnoredFiles = (filePaths: string[], deferredIgnorePatterns:
   if (deferredIgnorePatterns.length === 0) {
     return filePaths;
   }
-  const posixPatterns = deferredIgnorePatterns.map((pattern) => toPosixPath(pattern));
+  const posixPatterns = deferredIgnorePatterns.map(toPosixIgnorePattern);
   return filePaths.filter((filePath) => {
     const normalizedPath = toPosixPath(filePath);
     return !posixPatterns.some((pattern) => minimatch(normalizedPath, pattern, { dot: true }));

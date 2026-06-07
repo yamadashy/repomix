@@ -57,6 +57,10 @@ describe('fileSearch gitignore spec', () => {
   it.each([
     'browser/.gitignore',
     '**/.gitignore',
+    // A trailing slash must behave identically: the pattern is still deferred so
+    // globby loads the rules, and the post-filter (sharing the same normalization)
+    // still removes the file rather than leaking it.
+    '**/.gitignore/',
   ])('still applies nested .gitignore rules when the nested .gitignore file itself is ignored by `%s`', async (ignorePattern) => {
     await writeFixture(tmpDir, {
       'browser/.gitignore': '*.draft\n',
