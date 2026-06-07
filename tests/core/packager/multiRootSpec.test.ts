@@ -101,41 +101,39 @@ const countOccurrences = (haystack: string, needle: string): number => {
 };
 
 describe('multi-root pack spec', () => {
+  let rootAParent: string;
+  let rootBParent: string;
   let rootA: string;
   let rootB: string;
   let outputDir: string;
   let outputPath: string;
 
   beforeEach(async () => {
-    rootA = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-multiroot-a-'));
-    rootB = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-multiroot-b-'));
+    rootAParent = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-multiroot-parent-a-'));
+    rootBParent = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-multiroot-parent-b-'));
+    rootA = path.join(rootAParent, 'app');
+    rootB = path.join(rootBParent, 'app');
     outputDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-multiroot-out-'));
     outputPath = path.join(outputDir, 'output.xml');
 
-    // Same relative path in each root, but unique content so a collapsing
-    // implementation produces an obviously-wrong output.
+    // Same root basename and same relative paths, but unique content so a
+    // collapsing implementation produces an obviously-wrong output.
+    await fs.mkdir(rootA);
     await fs.writeFile(path.join(rootA, 'README.md'), '# Root A\nMARKER_FROM_ROOT_A\n');
     await fs.mkdir(path.join(rootA, 'src'));
     await fs.writeFile(path.join(rootA, 'src', 'index.ts'), 'export const fromA = "ROOT_A_SRC_MARKER";\n');
 
+    await fs.mkdir(rootB);
     await fs.writeFile(path.join(rootB, 'README.md'), '# Root B (totally different)\nMARKER_FROM_ROOT_B\n');
-    await fs.mkdir(path.join(rootB, 'lib'));
-    await fs.writeFile(path.join(rootB, 'lib', 'util.ts'), 'export const fromB = "ROOT_B_LIB_MARKER";\n');
+    await fs.mkdir(path.join(rootB, 'src'));
+    await fs.writeFile(path.join(rootB, 'src', 'index.ts'), 'export const fromB = "ROOT_B_SRC_MARKER";\n');
   });
 
   afterEach(async () => {
-    await fs.rm(rootA, { recursive: true, force: true });
-    await fs.rm(rootB, { recursive: true, force: true });
+    await fs.rm(rootAParent, { recursive: true, force: true });
+    await fs.rm(rootBParent, { recursive: true, force: true });
     await fs.rm(outputDir, { recursive: true, force: true });
   });
-
-  // Note on `totalFiles`: a separate pre-existing quirk in `sortedFilePathsByDir`
-  // means the same relative path appears in each root's collect input (e.g.
-  // `README.md` is filtered from the global sorted list per-root, so duplicates
-  // pass twice). That inflates `result.totalFiles` beyond 4. This spec is
-  // intentionally narrow: it verifies the *unique content* contract — both
-  // roots' real bytes reach the packed output — and does not assert on
-  // counts, which would couple it to that unrelated quirk.
 
   it('preserves both unique contents of a duplicate relative path when packing multiple roots (xml)', async () => {
     const config = buildMergedConfig(outputDir, outputPath, 'xml');
@@ -148,7 +146,7 @@ describe('multi-root pack spec', () => {
     expect(output).toContain('MARKER_FROM_ROOT_A');
     expect(output).toContain('MARKER_FROM_ROOT_B');
     expect(output).toContain('ROOT_A_SRC_MARKER');
-    expect(output).toContain('ROOT_B_LIB_MARKER');
+    expect(output).toContain('ROOT_B_SRC_MARKER');
   });
 
   it('preserves both unique contents in plain style too', async () => {
@@ -163,16 +161,48 @@ describe('multi-root pack spec', () => {
     expect(output).toContain('MARKER_FROM_ROOT_B');
   });
 
-  // Sanity check on the deduplication direction: each unique sentinel must
-  // appear at most twice (the pre-existing `sortedFilePathsByDir` quirk causes
-  // each root's bytes to be packed twice). If an over-eager perf change starts
-  // multiplying entries further, this catches it.
-  it('does not balloon a duplicated path beyond the existing 2x quirk', async () => {
-    const config = buildMergedConfig(outputDir, outputPath, 'xml');
+  it.each([
+    'xml',
+    'markdown',
+    'plain',
+  ] as const)('packs each duplicate-relative-path multi-root file exactly once in %s style', async (style) => {
+    const config = buildMergedConfig(outputDir, outputPath, style);
     await runPack([rootA, rootB], config);
 
     const output = await fs.readFile(outputPath, 'utf-8');
-    expect(countOccurrences(output, 'MARKER_FROM_ROOT_A')).toBeLessThanOrEqual(2);
-    expect(countOccurrences(output, 'MARKER_FROM_ROOT_B')).toBeLessThanOrEqual(2);
+    expect(countOccurrences(output, 'MARKER_FROM_ROOT_A')).toBe(1);
+    expect(countOccurrences(output, 'MARKER_FROM_ROOT_B')).toBe(1);
+    expect(countOccurrences(output, 'ROOT_A_SRC_MARKER')).toBe(1);
+    expect(countOccurrences(output, 'ROOT_B_SRC_MARKER')).toBe(1);
+  });
+
+  it('preserves duplicate relative paths in json output with unique keys', async () => {
+    const config = buildMergedConfig(outputDir, outputPath, 'json');
+    await runPack([rootA, rootB], config);
+
+    const output = await fs.readFile(outputPath, 'utf-8');
+    const parsed = JSON.parse(output) as { files: Record<string, string> };
+
+    expect(Object.keys(parsed.files).sort()).toEqual([
+      'app-2/README.md',
+      'app-2/src/index.ts',
+      'app/README.md',
+      'app/src/index.ts',
+    ]);
+    // Verify each disambiguated key maps to its own root's content (rootA -> app,
+    // rootB -> app-2), not just that all markers appear somewhere in the values.
+    expect(parsed.files['app/README.md']).toContain('MARKER_FROM_ROOT_A');
+    expect(parsed.files['app/src/index.ts']).toContain('ROOT_A_SRC_MARKER');
+    expect(parsed.files['app-2/README.md']).toContain('MARKER_FROM_ROOT_B');
+    expect(parsed.files['app-2/src/index.ts']).toContain('ROOT_B_SRC_MARKER');
+  });
+
+  it('reports the real file count for duplicate-relative-path multi-root inputs', async () => {
+    const config = buildMergedConfig(outputDir, outputPath, 'xml');
+    const result = await runPack([rootA, rootB], config);
+
+    expect(result.totalFiles).toBe(4);
+    expect(result.processedFiles).toHaveLength(4);
+    expect(Object.keys(result.fileCharCounts)).toHaveLength(4);
   });
 });

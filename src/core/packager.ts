@@ -15,6 +15,7 @@ import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMe
 import { loadTokenCountCache, saveTokenCountCache } from './metrics/tokenCountCache.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
+import { buildRootLabels, joinDisplayPath } from './packager/rootDisplayPath.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
@@ -110,15 +111,19 @@ export const pack = async (
 
   // Sort file paths
   progressCallback('Sorting files...');
-  const allFilePaths = searchResultsByDir.flatMap(({ filePaths }) => filePaths);
-  const sortedFilePaths = deps.sortPaths(allFilePaths);
-
-  // Regroup sorted file paths by rootDir using Set for O(1) membership checks
-  const filePathSetByDir = new Map(searchResultsByDir.map(({ rootDir, filePaths }) => [rootDir, new Set(filePaths)]));
-  const sortedFilePathsByDir = rootDirs.map((rootDir) => ({
+  const sortedFilePathsByDir = searchResultsByDir.map(({ rootDir, filePaths }) => ({
     rootDir,
-    filePaths: sortedFilePaths.filter((filePath) => filePathSetByDir.get(rootDir)?.has(filePath) ?? false),
+    filePaths: deps.sortPaths([...new Set(filePaths)]),
   }));
+  const rootLabels = rootDirs.length > 1 ? buildRootLabels(rootDirs, config.cwd) : undefined;
+  const displayFilePathsByDir = sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => {
+    const rootLabel = rootLabels?.[index];
+    return {
+      rootDir,
+      filePaths: rootLabel ? filePaths.map((filePath) => joinDisplayPath(rootLabel, filePath)) : filePaths,
+    };
+  });
+  const allFilePaths = displayFilePathsByDir.flatMap(({ filePaths }) => filePaths);
 
   // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
   // (security check, file processing, output generation). `rootDirs` flows into the warm-up sizing so
@@ -149,8 +154,20 @@ export const pack = async (
       deps.getGitLogs(rootDirs, config),
     ]);
 
-    const rawFiles = collectResults.flatMap((curr) => curr.rawFiles);
-    const allSkippedFiles = collectResults.flatMap((curr) => curr.skippedFiles);
+    const rawFiles = collectResults.flatMap((curr, index) => {
+      const rootLabel = rootLabels?.[index];
+      return curr.rawFiles.map((file) => ({
+        ...file,
+        path: rootLabel ? joinDisplayPath(rootLabel, file.path) : file.path,
+      }));
+    });
+    const allSkippedFiles = collectResults.flatMap((curr, index) => {
+      const rootLabel = rootLabels?.[index];
+      return curr.skippedFiles.map((file) => ({
+        ...file,
+        path: rootLabel ? joinDisplayPath(rootLabel, file.path) : file.path,
+      }));
+    });
 
     // Run security check and file processing concurrently.
     // Security check uses worker threads while file processing runs on the main thread
@@ -208,10 +225,8 @@ export const pack = async (
     }
 
     // Build filePathsByRoot for multi-root tree generation
-    // Use directory basename as the label for each root
-    // Fallback to rootDir if basename is empty (e.g., filesystem root "/")
-    const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }) => ({
-      rootLabel: path.basename(rootDir) || rootDir,
+    const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => ({
+      rootLabel: rootLabels?.[index] ?? (path.basename(rootDir) || rootDir),
       files: filePaths,
     }));
 
