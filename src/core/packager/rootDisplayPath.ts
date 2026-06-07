@@ -15,21 +15,6 @@ const isCwdRelativePath = (relativePath: string): boolean =>
   !relativePath.startsWith(`..${path.sep}`) &&
   !path.isAbsolute(relativePath);
 
-const getDuplicateLabels = (labels: string[]): Set<string> => {
-  const counts = new Map<string, number>();
-  for (const label of labels) {
-    counts.set(label, (counts.get(label) ?? 0) + 1);
-  }
-
-  const duplicates = new Set<string>();
-  for (const [label, count] of counts) {
-    if (count > 1) {
-      duplicates.add(label);
-    }
-  }
-  return duplicates;
-};
-
 const uniquifyLabelsWithSuffixes = (labels: string[]): string[] => {
   const seen = new Set<string>();
   return labels.map((label, index) => {
@@ -57,52 +42,17 @@ const uniquifyLabelsWithSuffixes = (labels: string[]): string[] => {
  */
 export const buildRootLabels = (rootDirs: string[], cwd: string): string[] => {
   const resolvedCwd = path.resolve(cwd);
-  const resolvedRootDirs = rootDirs.map((rootDir) => path.resolve(rootDir));
-  const labelCandidates = resolvedRootDirs.map((rootDir) => {
-    const relativeRootDir = path.relative(resolvedCwd, rootDir);
-    if (isCwdRelativePath(relativeRootDir)) {
-      const label = toDisplayPath(relativeRootDir);
-      return {
-        label,
-        segments: label.split('/').filter(Boolean),
-      };
-    }
-
-    return {
-      label: toDisplayPath(path.basename(rootDir) || rootDir),
-      segments: undefined,
-    };
+  const labels = rootDirs.map((rootDir) => {
+    const resolvedRootDir = path.resolve(rootDir);
+    const relativeRootDir = path.relative(resolvedCwd, resolvedRootDir);
+    return isCwdRelativePath(relativeRootDir)
+      ? toDisplayPath(relativeRootDir)
+      : toDisplayPath(path.basename(resolvedRootDir) || resolvedRootDir);
   });
-  const labels = labelCandidates.map(({ label }) => label);
 
-  if (new Set(labels).size === labels.length) {
-    return labels;
-  }
-
-  const duplicateLabels = getDuplicateLabels(labels);
-  const maxDepth = Math.max(...labelCandidates.map(({ segments }) => segments?.length ?? 1), 1);
-  let candidates = labels;
-
-  for (let depth = 1; depth <= maxDepth; depth++) {
-    candidates = labels.map((label, index) => {
-      if (!duplicateLabels.has(label)) {
-        return label;
-      }
-
-      const segments = labelCandidates[index]?.segments;
-      if (!segments) {
-        return label || `root-${index + 1}`;
-      }
-
-      return segments.slice(-depth).join('/') || label || `root-${index + 1}`;
-    });
-
-    if (new Set(candidates).size === candidates.length) {
-      return candidates;
-    }
-  }
-
-  return uniquifyLabelsWithSuffixes(candidates);
+  // uniquifyLabelsWithSuffixes leaves already-unique labels untouched and only
+  // appends a numeric suffix to collisions, so it covers both cases.
+  return uniquifyLabelsWithSuffixes(labels);
 };
 
 /**
