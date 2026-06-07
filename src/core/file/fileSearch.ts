@@ -2,6 +2,7 @@ import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { type Options as GlobbyOptions, type GlobEntry, globby } from 'globby';
+import { minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { mapWithConcurrency } from '../../shared/asyncMap.js';
@@ -20,6 +21,7 @@ export interface FileSearchResult {
 // than awaiting serially. The cap protects very large repos from EMFILE / file
 // descriptor exhaustion that unbounded `Promise.all` could cause.
 const EMPTY_DIR_CHECK_CONCURRENCY = 20;
+const IGNORE_CONTROL_FILE_NAMES = new Set(['.gitignore', '.ignore', '.repomixignore']);
 
 // No per-directory ignore-pattern check is needed here. The `directories` array
 // comes from globby with the same `ignore` patterns (e.g. `dist/**`), which
@@ -86,6 +88,41 @@ export const normalizeGlobPattern = (pattern: string): string => {
   return pattern;
 };
 
+const toPosixPath = (value: string): string => value.replace(/\\/g, '/');
+
+// Canonical posix form of a deferred ignore pattern: forward slashes and no
+// trailing slash. Detection (isIgnoreControlFilePattern) and post-filtering
+// (filterDeferredIgnoredFiles) must share this so a pattern that is deferred is
+// also matched by the filter. Otherwise e.g. `**/.gitignore/` would be deferred
+// (dropped from globby's ignore) yet never matched here, leaking the file.
+const toPosixIgnorePattern = (pattern: string): string => toPosixPath(pattern).replace(/\/+$/, '');
+
+const isIgnoreControlFilePattern = (pattern: string): boolean => {
+  const normalizedPattern = toPosixIgnorePattern(pattern);
+  if (normalizedPattern.startsWith('!')) {
+    return false;
+  }
+  return IGNORE_CONTROL_FILE_NAMES.has(path.posix.basename(normalizedPattern));
+};
+
+const filterDeferredIgnoredFiles = (filePaths: string[], deferredIgnorePatterns: string[]): string[] => {
+  if (deferredIgnorePatterns.length === 0) {
+    return filePaths;
+  }
+  const posixPatterns = deferredIgnorePatterns.map(toPosixIgnorePattern);
+  return filePaths.filter((filePath) => {
+    const normalizedPath = toPosixPath(filePath);
+    // Match the control file itself, and — for the pathological case of a
+    // directory literally named `.gitignore` — its descendants too. globby
+    // previously normalized `**/.gitignore` to `**/.gitignore/**` (which excludes
+    // both), so matching `${pattern}/**` here preserves that behavior.
+    return !posixPatterns.some(
+      (pattern) =>
+        minimatch(normalizedPath, pattern, { dot: true }) || minimatch(normalizedPath, `${pattern}/**`, { dot: true }),
+    );
+  });
+};
+
 // Get all file paths considering the config
 export const searchFiles = async (
   rootDir: string,
@@ -140,10 +177,14 @@ export const searchFiles = async (
   }
 
   try {
-    const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+    const { adjustedIgnorePatterns, ignoreFilePatterns, deferredIgnorePatterns } = await prepareIgnoreContext(
+      rootDir,
+      config,
+    );
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns:', ignoreFilePatterns);
+    logger.trace('Deferred ignore patterns:', deferredIgnorePatterns);
 
     // Start with configured include patterns
     let includePatterns = config.include.map((pattern) => escapeGlobPattern(pattern));
@@ -221,7 +262,7 @@ export const searchFiles = async (
           directories.push(entry.path);
         }
       }
-      filePaths = files;
+      filePaths = filterDeferredIgnoredFiles(files, deferredIgnorePatterns);
 
       const globbyElapsedTime = Date.now() - globbyStartTime;
       logger.debug(
@@ -233,10 +274,13 @@ export const searchFiles = async (
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     } else {
-      filePaths = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-        onlyFiles: true,
-      }).catch(handleGlobbyError);
+      filePaths = filterDeferredIgnoredFiles(
+        await globby(includePatterns, {
+          ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+          onlyFiles: true,
+        }).catch(handleGlobbyError),
+        deferredIgnorePatterns,
+      );
 
       const globbyElapsedTime = Date.now() - globbyStartTime;
       logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
@@ -288,14 +332,25 @@ export const parseIgnoreContent = (content: string): string[] => {
 const prepareIgnoreContext = async (
   rootDir: string,
   config: RepomixConfigMerged,
-): Promise<{ adjustedIgnorePatterns: string[]; ignoreFilePatterns: string[] }> => {
+): Promise<{ adjustedIgnorePatterns: string[]; ignoreFilePatterns: string[]; deferredIgnorePatterns: string[] }> => {
   const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
     getIgnorePatterns(rootDir, config),
     getIgnoreFilePatterns(config),
   ]);
 
+  // Keep ignore-control files visible to globby so their rules are loaded, then filter them from final file lists.
+  const deferredIgnorePatterns: string[] = [];
+  const globbyIgnorePatterns: string[] = [];
+  for (const pattern of ignorePatterns) {
+    if (isIgnoreControlFilePattern(pattern)) {
+      deferredIgnorePatterns.push(pattern);
+    } else {
+      globbyIgnorePatterns.push(pattern);
+    }
+  }
+
   // Normalize ignore patterns to handle trailing slashes consistently
-  const normalizedIgnorePatterns = ignorePatterns.map(normalizeGlobPattern);
+  const normalizedIgnorePatterns = globbyIgnorePatterns.map(normalizeGlobPattern);
 
   // Check if .git is a worktree reference
   const gitPath = path.join(rootDir, '.git');
@@ -312,7 +367,7 @@ const prepareIgnoreContext = async (
     }
   }
 
-  return { adjustedIgnorePatterns, ignoreFilePatterns };
+  return { adjustedIgnorePatterns, ignoreFilePatterns, deferredIgnorePatterns };
 };
 
 /**
@@ -433,12 +488,15 @@ export const listDirectories = async (rootDir: string, config: RepomixConfigMerg
  * @returns Array of file paths relative to rootDir
  */
 export const listFiles = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
-  const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+  const { adjustedIgnorePatterns, ignoreFilePatterns, deferredIgnorePatterns } = await prepareIgnoreContext(
+    rootDir,
+    config,
+  );
 
   const files = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,
   });
 
-  return sortPaths(files);
+  return sortPaths(filterDeferredIgnoredFiles(files, deferredIgnorePatterns));
 };
