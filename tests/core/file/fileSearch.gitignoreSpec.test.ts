@@ -115,6 +115,31 @@ describe('fileSearch gitignore spec', () => {
     expect(emptyDirPaths).toContain('empty');
   });
 
+  it('excludes the contents of a directory literally named `.gitignore` when ignored by `**/.gitignore`', async () => {
+    // Pathological but valid: `.gitignore` as a directory name. The old globby
+    // behavior (where `**/.gitignore` normalized to `**/.gitignore/**`) excluded
+    // its contents, so the post-filter must drop descendants too, not just a
+    // file named `.gitignore`.
+    await writeFixture(tmpDir, {
+      'proj/.gitignore/inside.txt': 'x\n',
+      'proj/keep.txt': 'x\n',
+    });
+
+    const { filePaths } = await searchFiles(
+      tmpDir,
+      createMockConfig({
+        include: ['proj/**'],
+        ignore: {
+          useDefaultPatterns: false,
+          customPatterns: ['**/.gitignore'],
+        },
+      }),
+    );
+
+    expect(filePaths).toContain('proj/keep.txt');
+    expect(filePaths).not.toContain('proj/.gitignore/inside.txt');
+  });
+
   it('applies slash-less patterns recursively to all subdirectories', async () => {
     await writeFixture(tmpDir, {
       '.gitignore': '*.draft\nsecret.data\n',

@@ -112,7 +112,14 @@ const filterDeferredIgnoredFiles = (filePaths: string[], deferredIgnorePatterns:
   const posixPatterns = deferredIgnorePatterns.map(toPosixIgnorePattern);
   return filePaths.filter((filePath) => {
     const normalizedPath = toPosixPath(filePath);
-    return !posixPatterns.some((pattern) => minimatch(normalizedPath, pattern, { dot: true }));
+    // Match the control file itself, and — for the pathological case of a
+    // directory literally named `.gitignore` — its descendants too. globby
+    // previously normalized `**/.gitignore` to `**/.gitignore/**` (which excludes
+    // both), so matching `${pattern}/**` here preserves that behavior.
+    return !posixPatterns.some(
+      (pattern) =>
+        minimatch(normalizedPath, pattern, { dot: true }) || minimatch(normalizedPath, `${pattern}/**`, { dot: true }),
+    );
   });
 };
 
