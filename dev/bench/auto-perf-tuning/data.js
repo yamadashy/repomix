@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780855854717,
+  "lastUpdate": 1780891518083,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10388,6 +10388,51 @@ window.BENCHMARK_DATA = {
             "range": "±12",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 860ms, Q3: 872ms\nAll times: 853, 856, 856, 857, 857, 860, 860, 860, 861, 861, 862, 863, 865, 869, 871, 872, 873, 879, 881, 891ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "c43c66cc467e9106f036f92f97db150a449e56a4",
+          "message": "perf(core): Hoist the warm-likely metrics worker pool warm-up to pack() start\n\n## Problem\n\nOn a warm pack, the metrics worker pool's warm-up — a single `taskRunner.run`\nthat loads gpt-tokenizer in the worker (worker spawn + the multi-MB BPE-ranks\nJSON parse, ~220ms even with the #14 on-disk cache) — is created only *after*\n`searchFiles` and awaited (`await metricsWarmupPromise`) just before output\ngeneration. Started that late, the ~220ms warm-up has only the collect + security\nwindow to overlap and resolves ~30ms *after* the await, so it blocks the\ncritical-path tail.\n\nPer-phase timing of a warm `--quiet` run (instrumented):\n\n    searchFiles            ~100ms   (serial, front of path)\n    collect + git          ~90ms\n    security check         ~100ms   (process files hidden behind it)\n    await metricsWarmup    ~28-39ms <- blocks here\n    output + metrics       ~45ms\n\n`process.memoryUsage()` and the MD5/base64/sort costs the CPU profile flagged\nturned out to be mis-attributed native self-time or fully hidden behind the\nsecurity idle window (measured: each <1% of wall) — the metrics warm-up await is\nthe one real, exposed serial cost.\n\n## Change\n\nWhen this repo's token-count cache is already populated (the \"warm-likely\" path,\ndetectable from `rootDirs` alone via the new exported `isMetricsWarmLikely`),\ncreate the metrics pool at the very start of `pack()` instead of after search, so\nthe ~220ms warm-up overlaps the full search + collect + security window and is\nhidden before the await.\n\nThe hoist is restricted to the warm-likely path because there the eager warm-up\ncount is a fixed single worker (`METRICS_WARM_LIKELY_PREWARM`), independent of the\nfile count — so the pool can be created before the count is known without changing\nhow many workers warm up. On the cold path the warm-up count scales with the file\ncount (to overlap every worker's BPE parse), which is unknown until after search,\nso that path is left exactly as before (the post-search creation now runs only\nwhen the pool was not already created). `METRICS_EAGER_PREWARM_TASKS` only sets the\npool's max-thread cap; a warm run dispatches at most a couple of git tokenizations,\nso the cap is never reached and the pool behaves identically to a file-count-sized\none. The eager creation sits immediately before the `try`, so the existing\n`finally` still tears the pool down on every path.\n\nBehavior is preserved: same worker pool, same warm-up count, same metrics, output\nbyte-identical.\n\n## Benchmark\n\nInterleaved base-vs-patched (lib swapped each iteration to cancel drift), warm\ncache, full default config, packing this repo:\n\n| methodology | base median | delta (paired median) | wins |\n|---|---|---|---|\n| `--quiet` N=120 | 566.2 ms | -27.2 ms (-4.81%) | 102/120 |\n| `--quiet` N=100 | 566.8 ms | -27.5 ms (-4.85%) | 90/100 |\n| canonical (`node bin/repomix.cjs`, matches CI) N=60 | 555.0 ms | -26.8 ms (-4.82%) | 52/60 |\n\nConsistently ~4.8%, well above the 2%-of-total bar — the warm-up's ~30ms tail\nremoved from the critical path. Output verified byte-identical (`cmp`) between\nbase and patched on xml/markdown/json; the cold path (no cache) is unchanged and\nstill byte-identical. 1434 tests pass; lint clean.\n\n## Tests\n\nAdded two regression tests in packager.test.ts: the warm-likely path creates the\nmetrics pool eagerly before `searchFiles` (exactly once, sized by\n`METRICS_EAGER_PREWARM_TASKS`); the cold path creates it after `searchFiles` sized\nby the discovered file count. `isMetricsWarmLikely` is injected through the deps\nobject so both branches are covered deterministically regardless of the on-disk\ncache state.",
+          "timestamp": "2026-06-08T04:03:40Z",
+          "tree_id": "2bef68a5ebdcb479f64966b641fab9fc2116fb3f",
+          "url": "https://github.com/yamadashy/repomix/commit/c43c66cc467e9106f036f92f97db150a449e56a4"
+        },
+        "date": 1780891516418,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 407,
+            "range": "±43",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 378ms, Q3: 421ms\nAll times: 357, 365, 368, 372, 372, 377, 377, 378, 379, 381, 391, 395, 396, 401, 403, 407, 408, 411, 412, 417, 417, 420, 421, 423, 423, 427, 428, 435, 478, 480ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 504,
+            "range": "±14",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 498ms, Q3: 512ms\nAll times: 494, 496, 496, 497, 498, 498, 500, 501, 502, 503, 504, 506, 509, 509, 511, 512, 514, 518, 602, 607ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 806,
+            "range": "±11",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 799ms, Q3: 810ms\nAll times: 779, 795, 797, 798, 799, 799, 801, 802, 805, 805, 806, 808, 808, 809, 810, 810, 811, 814, 814, 828ms"
           }
         ]
       }
