@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { METRICS_EAGER_PREWARM_TASKS } from '../../src/core/metrics/calculateMetrics.js';
 import { pack } from '../../src/core/packager.js';
 import { createMockConfig } from '../testing/testUtils.js';
 
@@ -58,6 +59,9 @@ describe('packager', () => {
         },
         warmupPromise: Promise.resolve(),
       }),
+      // Default to the cold path so the metrics pool is created after search; the
+      // dedicated warm/cold tests below override this to assert each branch.
+      isMetricsWarmLikely: vi.fn().mockReturnValue(false),
       createSecurityCheckTaskRunner: vi.fn().mockReturnValue({
         taskRunner: {
           run: vi.fn().mockResolvedValue([]),
@@ -187,6 +191,7 @@ describe('packager', () => {
             taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup },
             warmupPromise: Promise.resolve(),
           }),
+          isMetricsWarmLikely: vi.fn().mockReturnValue(false),
           createSecurityCheckTaskRunner: vi.fn().mockReturnValue({
             taskRunner: { run: vi.fn().mockResolvedValue([]), cleanup },
             warmupPromise: Promise.resolve(),
@@ -256,6 +261,22 @@ describe('packager', () => {
       expect(securityCleanup).toHaveBeenCalled();
     });
 
+    test('cleans up the eagerly-created metrics worker pool when searchFiles rejects on the warm-likely path', async () => {
+      // On the warm-likely path the metrics pool is created before searchFiles
+      // (outside the try) to overlap its gpt-tokenizer warm-up with the search
+      // window. A searchFiles failure must therefore still tear it down — the
+      // pre-try creation must be covered by the finally block.
+      const { cleanup, deps } = baseDeps();
+      deps.isMetricsWarmLikely = vi.fn().mockReturnValue(true);
+      deps.searchFiles = vi.fn().mockRejectedValue(new Error('search failed'));
+
+      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('search failed');
+
+      // Pool was created eagerly (before search) and cleaned up despite the failure.
+      expect(deps.createMetricsTaskRunner).toHaveBeenCalledTimes(1);
+      expect(cleanup).toHaveBeenCalled();
+    });
+
     test('cleans up the metrics worker pool even when the warmup promise rejects', async () => {
       const { cleanup, deps } = baseDeps();
       // Pre-attach a no-op handler so the rejection is observed at construction time,
@@ -272,6 +293,61 @@ describe('packager', () => {
       await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('warmup failed');
 
       expect(cleanup).toHaveBeenCalled();
+    });
+
+    test('warm-likely path creates the metrics pool eagerly before searchFiles, exactly once', async () => {
+      // On the warm-likely path the eager warm-up count is a fixed single worker,
+      // so the pool can be created at pack() start (before the file count is known)
+      // to let its ~220ms gpt-tokenizer warm-up overlap the whole search + collect +
+      // security window instead of landing on the critical-path tail.
+      const { deps } = baseDeps();
+      deps.isMetricsWarmLikely = vi.fn().mockReturnValue(true);
+
+      const callOrder: string[] = [];
+      deps.searchFiles = vi.fn().mockImplementation(async () => {
+        callOrder.push('search');
+        return { filePaths: mockFilePaths, emptyDirPaths: [] };
+      });
+      const innerCreate = deps.createMetricsTaskRunner;
+      deps.createMetricsTaskRunner = vi.fn().mockImplementation((...args) => {
+        callOrder.push('createMetrics');
+        return innerCreate(...args);
+      });
+
+      await pack(['root'], createMockConfig(), vi.fn(), deps);
+
+      // Created once, eagerly, before search — and sized by the eager provisional
+      // task count, not the (not-yet-known) file count.
+      expect(deps.createMetricsTaskRunner).toHaveBeenCalledTimes(1);
+      expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(
+        ['root'],
+        METRICS_EAGER_PREWARM_TASKS,
+        expect.anything(),
+      );
+      expect(callOrder.indexOf('createMetrics')).toBeLessThan(callOrder.indexOf('search'));
+    });
+
+    test('cold path creates the metrics pool after searchFiles, sized by the file count', async () => {
+      const { deps } = baseDeps();
+      deps.isMetricsWarmLikely = vi.fn().mockReturnValue(false);
+
+      const callOrder: string[] = [];
+      deps.searchFiles = vi.fn().mockImplementation(async () => {
+        callOrder.push('search');
+        return { filePaths: mockFilePaths, emptyDirPaths: [] };
+      });
+      const innerCreate = deps.createMetricsTaskRunner;
+      deps.createMetricsTaskRunner = vi.fn().mockImplementation((...args) => {
+        callOrder.push('createMetrics');
+        return innerCreate(...args);
+      });
+
+      await pack(['root'], createMockConfig(), vi.fn(), deps);
+
+      // Created once, after search, sized by the discovered file count.
+      expect(deps.createMetricsTaskRunner).toHaveBeenCalledTimes(1);
+      expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(['root'], mockFilePaths.length, expect.anything());
+      expect(callOrder.indexOf('search')).toBeLessThan(callOrder.indexOf('createMetrics'));
     });
   });
 });

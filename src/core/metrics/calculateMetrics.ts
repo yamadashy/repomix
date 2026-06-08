@@ -45,6 +45,27 @@ export interface MetricsTaskRunnerWithWarmup {
 // wasted ~225ms gpt-tokenizer BPE parse for no real work.
 const METRICS_WARM_LIKELY_PREWARM = 1;
 
+// Provisional task count used when the metrics pool is created eagerly at
+// pack() start (the warm-likely hoist), before the file count is known. It only
+// sets the pool's max-thread cap (`min(cpu, ceil(n / TASKS_PER_THREAD))`); a
+// large value pins the cap to the host concurrency. On a warm run the metrics
+// phase dispatches at most a couple of git tokenizations, so the cap is never
+// reached and the pool behaves identically to a file-count-sized one. The eager
+// warm-up count itself stays a fixed single worker (METRICS_WARM_LIKELY_PREWARM),
+// so it does not depend on this value.
+export const METRICS_EAGER_PREWARM_TASKS = 1_000_000;
+
+/**
+ * Best-effort predictor of whether this repo's metrics run will hit the warm
+ * token-count cache: true when both the global cache file and this repo's
+ * per-repo "seen" marker exist. On the warm-likely path the eager metrics
+ * warm-up is a fixed single worker independent of the file count, so the pool
+ * can be created (and its ~225ms gpt-tokenizer warm-up started) before the file
+ * count is known. Mirrors the gate `createMetricsTaskRunner` uses internally.
+ */
+export const isMetricsWarmLikely = (rootDirs: ReadonlyArray<string>): boolean =>
+  tokenCountCacheFileExistsSync() && tokenCountCacheSeenMarkerExistsSync(rootDirs);
+
 /**
  * Create a metrics task runner and warm up a bounded number of worker threads
  * by triggering gpt-tokenizer initialization in parallel. The warm-up
@@ -88,7 +109,7 @@ export const createMetricsTaskRunner = (
   });
 
   const { maxThreads } = getWorkerThreadCount(numOfTasks);
-  const cacheWarmLikely = tokenCountCacheFileExistsSync() && tokenCountCacheSeenMarkerExistsSync(rootDirs);
+  const cacheWarmLikely = isMetricsWarmLikely(rootDirs);
   const prewarmCount = cacheWarmLikely ? Math.min(maxThreads, METRICS_WARM_LIKELY_PREWARM) : maxThreads;
 
   const warmupPromise = Promise.all(

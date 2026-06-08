@@ -11,7 +11,12 @@ import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
-import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
+import {
+  calculateMetrics,
+  createMetricsTaskRunner,
+  isMetricsWarmLikely,
+  METRICS_EAGER_PREWARM_TASKS,
+} from './metrics/calculateMetrics.js';
 import { contentCacheKey, loadTokenCountCache, saveTokenCountCache } from './metrics/tokenCountCache.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
@@ -51,6 +56,7 @@ const defaultDeps = {
   getGitDiffs,
   getGitLogs,
   createSecurityCheckTaskRunner,
+  isMetricsWarmLikely,
   // Lazy-load packSkill to defer importing the skill module chain
   // (skillSectionGenerators, skillStyle → Handlebars), which adds ~25ms
   // to module loading. Only used when --skill-generate is active (non-default).
@@ -111,6 +117,32 @@ export const pack = async (
   let metricsTaskRunner: ReturnType<typeof createMetricsTaskRunner>['taskRunner'] | undefined;
   let metricsWarmupPromise: ReturnType<typeof createMetricsTaskRunner>['warmupPromise'] | undefined;
 
+  // Eagerly create the metrics worker pool here, at pack() start, when this
+  // repo's token-count cache is already populated (the "warm-likely" path). The
+  // pool's warm-up loads gpt-tokenizer (~220ms: worker spawn + the multi-MB
+  // BPE-ranks parse) and is awaited just before output generation. Created at its
+  // original site — after file search — that ~220ms warm-up has only the collect
+  // and security window to overlap and resolves ~30ms after the await, blocking
+  // the critical-path tail. Starting it here gives the warm-up the full search +
+  // collect + security window, hiding it entirely.
+  //
+  // Restricted to the warm-likely path because there the eager warm-up count is a
+  // fixed single worker (METRICS_WARM_LIKELY_PREWARM), independent of the file
+  // count — so the pool can be created before the count is known without changing
+  // how many workers warm up. On the cold path the warm-up count scales with the
+  // file count (to overlap every worker's BPE parse), which is not known until
+  // after search, so that path keeps creating the pool below, unchanged.
+  // `METRICS_EAGER_PREWARM_TASKS` only sets the pool's max-thread cap; a warm run
+  // dispatches at most a couple of git tokenizations, so the cap is never reached
+  // and the pool behaves identically to a file-count-sized one.
+  if (deps.isMetricsWarmLikely(rootDirs)) {
+    ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+      rootDirs,
+      METRICS_EAGER_PREWARM_TASKS,
+      config.tokenCount.encoding,
+    ));
+  }
+
   try {
     progressCallback('Searching for files...');
     const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
@@ -147,11 +179,15 @@ export const pack = async (
     // Pre-initialize metrics worker pool to overlap gpt-tokenizer loading with subsequent pipeline stages
     // (security check, file processing, output generation). `rootDirs` flows into the warm-up sizing so
     // a per-repo "seen" marker can switch between cold (full warm-up) and warm-likely (single worker).
-    ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
-      rootDirs,
-      allFilePaths.length,
-      config.tokenCount.encoding,
-    ));
+    // On the warm-likely path the pool was already created eagerly at pack() start (see above), so this
+    // only runs on the cold path, where the warm-up count needs the now-known file count.
+    if (metricsTaskRunner === undefined) {
+      ({ taskRunner: metricsTaskRunner, warmupPromise: metricsWarmupPromise } = deps.createMetricsTaskRunner(
+        rootDirs,
+        allFilePaths.length,
+        config.tokenCount.encoding,
+      ));
+    }
 
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
