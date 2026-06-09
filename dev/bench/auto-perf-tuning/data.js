@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780891518083,
+  "lastUpdate": 1781011688014,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10433,6 +10433,51 @@ window.BENCHMARK_DATA = {
             "range": "±11",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 799ms, Q3: 810ms\nAll times: 779, 795, 797, 798, 799, 799, 801, 802, 805, 805, 806, 808, 808, 809, 810, 810, 811, 814, 814, 828ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "f748a8b2eb013434c6e219d4ac0ddc39f2c442f8",
+          "message": "perf(security): Cache clean secretlint verdicts to skip the engine on warm runs\n\nThe security check is the single most expensive phase of a warm pack:\ndisabling it (`--no-security-check`) cuts ~59ms (~11%) off the warm CLI run on\nthis repo. The cost is `@secretlint/core`'s `lintSource`, which runs for every\nfile that passes the cheap `mightContainSecret` pre-filter (~176 of ~1070 files\nhere, ~46ms of worker time). The overwhelming majority of those turn out clean\n(they merely contain an indicator word like `secret` in a comment), and a clean\nverdict is deterministic given (file path, content, secretlint rule version), so\nit can be cached and replayed instead of recomputed every run.\n\nWhat changed:\n\n- Extract the pre-filter (`mightContainSecret` + its patterns) into\n  `securityCheckPrefilter.ts`, a module with no `@secretlint/*` import, so it can\n  run on the main thread without pulling secretlint's ~75ms module load there.\n  The worker re-exports it for the existing behavior-preservation test.\n\n- Add `securityResultCache.ts`, a content-addressed disk cache mirroring the\n  existing token-count / BPE-ranks caches. Key `${filePath}:${byteLength}:${md5_16}`,\n  value always `[]`. The cache file name embeds the secretlint preset version, so\n  a rule upgrade reads from a fresh, empty cache. Atomic temp-write + rename; FIFO\n  eviction at 100k entries; every read/write failure degrades silently to a\n  re-check (a load failure can never cause a missed secret, only a re-scan).\n\n  Two deliberate design points keep this safe:\n  * Only CLEAN verdicts are cached. Suspicious files are never persisted — their\n    findings embed the detected secret text, and writing that to a temp file would\n    defeat a secret scanner. They are simply re-scanned (and re-verified) every\n    run; there are very few, so the cost is negligible.\n  * The key uses the FULL file path, not just the extension, because some preset\n    rules branch on the file name (e.g. `secretlint-rule-npm` only runs its\n    xOAuth-token check for `package.json` / `package-lock.json` / `.npmrc`). Keying\n    on the path keeps `package.json`'s verdict distinct from a byte-identical\n    `config.json`, so a clean verdict for one is never replayed for the other.\n\n- `runSecurityCheck` partitions files on the main thread before touching the\n  worker pool: pre-filter misses are clean without the engine (and no longer sent\n  over IPC); pre-filter hits with a clean-cache hit are skipped; only genuine\n  misses are dispatched, and their fresh CLEAN verdicts are written back. `pack()`\n  loads the cache at start (overlapping search) and saves it at the end, gated on\n  `enableSecurityCheck`.\n\nBehavior preservation: output is byte-identical (cmp) across xml/markdown/json\nbetween base and patched, and identical between the cold (miss) and warm (hit)\npaths. A real AWS secret is still flagged and excluded on both paths, and the\ncache file holds only path-keyed empty arrays — no secret text ever reaches disk.\nA pre-filter miss yields the same `null` the worker returned; a clean-cache hit\nreplays the clean verdict secretlint produced for byte-identical content at the\nsame path under the same rule version. The disk cache is disabled by default in\nthe test suite (REPOMIX_SECURITY_CACHE=0), matching the token-count cache.\n\nBenchmark (interleaved base-vs-patched, lib swapped each iteration, warm cache,\nfull default config, packing this repo):\n\n  --quiet               N=100  base 525.5ms  -36.2ms (-6.88%)  98/100 wins\n  canonical (CI-style)  N=60   base 521.7ms  -30.1ms (-5.76%)  59/60 wins\n\nConsistently ~6-7%, well above the 2%-of-total bar. 1453 tests pass; lint clean.",
+          "timestamp": "2026-06-09T13:22:28Z",
+          "tree_id": "83f222a70529067279d9250fa6a411a76c203a81",
+          "url": "https://github.com/yamadashy/repomix/commit/f748a8b2eb013434c6e219d4ac0ddc39f2c442f8"
+        },
+        "date": 1781011687196,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 392,
+            "range": "±61",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 371ms, Q3: 432ms\nAll times: 353, 357, 358, 358, 361, 361, 368, 371, 375, 379, 382, 384, 385, 388, 392, 392, 393, 400, 406, 419, 427, 431, 432, 437, 440, 440, 442, 469, 469, 538ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 447,
+            "range": "±59",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 411ms, Q3: 470ms\nAll times: 395, 400, 401, 403, 406, 411, 413, 432, 437, 440, 447, 447, 451, 457, 461, 470, 472, 481, 499, 512ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 733,
+            "range": "±11",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 730ms, Q3: 741ms\nAll times: 725, 726, 727, 727, 727, 730, 731, 731, 732, 733, 733, 734, 735, 735, 738, 741, 745, 747, 754, 756ms"
           }
         ]
       }
