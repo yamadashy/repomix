@@ -1,10 +1,15 @@
 // src/core/security/securityCheck.test.ts
 
 import pc from 'picocolors';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { createSecurityCheckTaskRunner, runSecurityCheck } from '../../../src/core/security/securityCheck.js';
+import {
+  __resetSecurityResultCacheForTests,
+  securityResultCacheKey,
+  setCachedClean as setCachedSecurityClean,
+} from '../../../src/core/security/securityResultCache.js';
 import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
@@ -73,10 +78,11 @@ describe('runSecurityCheck', () => {
       getProcessConcurrency: mockGetProcessConcurrency,
     });
 
-    // With 2 files and batch size 50, all files are in a single batch
-    // Progress callback is called once per batch with the last file in the batch
+    // test2.js contains no secret indicator, so the main-thread pre-filter drops
+    // it before dispatch (the worker would have returned `null` for it anyway).
+    // Only test1.js is dispatched, so the single batch reports one item.
     expect(progressCallback).toHaveBeenCalledWith(
-      expect.stringContaining(`Running security check... (2/2) ${pc.dim('test2.js')}`),
+      expect.stringContaining(`Running security check... (1/1) ${pc.dim('test1.js')}`),
     );
   });
 
@@ -313,5 +319,120 @@ describe('createSecurityCheckTaskRunner', () => {
 
     // Must resolve despite the worker dispatch rejecting
     await expect(warmupPromise).resolves.toBeDefined();
+  });
+});
+
+describe('runSecurityCheck pre-filter and result cache', () => {
+  // Capture exactly which items reach the worker so we can assert the main-thread
+  // pre-filter / cache prevented dispatch.
+  const makeCapturingRunner = () => {
+    const dispatched: string[] = [];
+    const initTaskRunner = (<T, R>(_options: WorkerOptions) => ({
+      run: async (task: T) => {
+        const items = (task as SecurityCheckTask).items;
+        for (const item of items) dispatched.push(item.filePath);
+        return (await securityCheckWorker(task as SecurityCheckTask)) as R;
+      },
+      cleanup: async () => {},
+    })) as typeof import('../../../src/shared/processConcurrency.js').initTaskRunner;
+    return { dispatched, initTaskRunner };
+  };
+
+  const originalDisableEnv = process.env.REPOMIX_SECURITY_CACHE;
+
+  afterEach(() => {
+    if (originalDisableEnv === undefined) {
+      delete process.env.REPOMIX_SECURITY_CACHE;
+    } else {
+      process.env.REPOMIX_SECURITY_CACHE = originalDisableEnv;
+    }
+    __resetSecurityResultCacheForTests();
+  });
+
+  it('never dispatches files that lack any secret indicator (pre-filter)', async () => {
+    const { dispatched, initTaskRunner } = makeCapturingRunner();
+    const files: RawFile[] = [
+      { path: 'clean.js', content: 'export const greet = (n) => "hi " + n;' },
+      // secretlint-disable
+      { path: 'leak.env', content: 'AWS_SECRET_ACCESS_KEY = wJalrXUtnFEMI/K7MDENG/bPxRfiCYSECRETSKEY' },
+      // secretlint-enable
+    ];
+
+    const result = await runSecurityCheck(files, () => {}, undefined, undefined, {
+      initTaskRunner,
+      getProcessConcurrency: () => 1,
+    });
+
+    // Only the credential-bearing file reaches the worker.
+    expect(dispatched).toEqual(['leak.env']);
+    expect(result.map((r) => r.filePath)).toEqual(['leak.env']);
+  });
+
+  it('skips dispatch when the content is cached clean', async () => {
+    // Enable the cache for this test (the suite disables it globally).
+    delete process.env.REPOMIX_SECURITY_CACHE;
+    __resetSecurityResultCacheForTests();
+
+    // A file that passes the pre-filter ("secret" indicator) but is benign.
+    const benign = 'const note = "remember the secret handshake";';
+    const files: RawFile[] = [{ path: 'note.js', content: benign }];
+
+    // A previous run verified this exact content at this path clean.
+    setCachedSecurityClean(securityResultCacheKey(benign, 'note.js'));
+
+    const { dispatched, initTaskRunner } = makeCapturingRunner();
+    const result = await runSecurityCheck(files, () => {}, undefined, undefined, {
+      initTaskRunner,
+      getProcessConcurrency: () => 1,
+    });
+
+    // The worker is never invoked; the file is treated as clean.
+    expect(dispatched).toEqual([]);
+    expect(result).toEqual([]);
+  });
+
+  it('does not replay a config.json clean verdict for a byte-identical package.json', async () => {
+    // Regression guard: the npm preset rule only runs its xOAuth-token check for
+    // package.json / package-lock.json / .npmrc, so a clean verdict for the same
+    // content at a different path must NOT be replayed (the cache key includes the
+    // full path, not just the extension).
+    delete process.env.REPOMIX_SECURITY_CACHE;
+    __resetSecurityResultCacheForTests();
+
+    // Passes the pre-filter via the `x-oauth-basic` indicator.
+    // secretlint-disable
+    const content = 'registry=https://token:x-oauth-basic@example.com/';
+    // secretlint-enable
+    // A previous run verified this content clean *as config.json*.
+    setCachedSecurityClean(securityResultCacheKey(content, 'config.json'));
+
+    const { dispatched, initTaskRunner } = makeCapturingRunner();
+    await runSecurityCheck([{ path: 'package.json', content }], () => {}, undefined, undefined, {
+      initTaskRunner,
+      getProcessConcurrency: () => 1,
+    });
+
+    // package.json is a cache miss (different key) → still dispatched and re-scanned.
+    expect(dispatched).toEqual(['package.json']);
+  });
+
+  it('re-scans (dispatches) a credential-bearing file even though only clean verdicts are cached', async () => {
+    delete process.env.REPOMIX_SECURITY_CACHE;
+    __resetSecurityResultCacheForTests();
+
+    // secretlint-disable
+    const leaky = 'AWS_SECRET_ACCESS_KEY = wJalrXUtnFEMI/K7MDENG/bPxRfiCYSECRETSKEY';
+    // secretlint-enable
+    const files: RawFile[] = [{ path: 'leak.env', content: leaky }];
+
+    const { dispatched, initTaskRunner } = makeCapturingRunner();
+    const result = await runSecurityCheck(files, () => {}, undefined, undefined, {
+      initTaskRunner,
+      getProcessConcurrency: () => 1,
+    });
+
+    // It is dispatched (suspicious verdicts are never cached) and flagged.
+    expect(dispatched).toEqual(['leak.env']);
+    expect(result.map((r) => r.filePath)).toEqual(['leak.env']);
   });
 });

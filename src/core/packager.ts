@@ -22,6 +22,7 @@ import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { buildRootLabels, joinDisplayPath } from './packager/rootDisplayPath.js';
 import { createSecurityCheckTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
+import { loadSecurityResultCache, saveSecurityResultCache } from './security/securityResultCache.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -93,6 +94,13 @@ export const pack = async (
   // hundred KB of JSON at most), but starting it here lets it overlap with
   // file search and collection rather than blocking the metrics phase.
   const tokenCacheLoadPromise = loadTokenCountCache();
+
+  // Load the security-result cache in the background too, so a warm run can skip
+  // the secretlint engine for files whose content (and the secretlint rule
+  // version) are unchanged. Same overlap rationale as the token-count cache:
+  // started here, it is ready by the time the security check reads it. Only when
+  // the security check is enabled; otherwise no security work runs at all.
+  const securityCacheLoadPromise = config.security.enableSecurityCheck ? loadSecurityResultCache() : undefined;
 
   // Pre-fetch git file-change counts for sortOutputFiles while search and
   // collection are in flight, so the later sortOutputFiles call is a cache hit.
@@ -222,6 +230,12 @@ export const pack = async (
         path: rootLabel ? joinDisplayPath(rootLabel, file.path) : file.path,
       }));
     });
+
+    // Ensure the security-result cache is loaded before the security check reads
+    // it. Started at pack() start, it is typically already resolved; this await
+    // is a safety net so the cache lookups inside validateFileSafety see a
+    // populated cache on warm runs.
+    await securityCacheLoadPromise;
 
     // Run security check and file processing concurrently.
     // Security check uses worker threads while file processing runs on the main thread
@@ -372,6 +386,10 @@ export const pack = async (
     // entries are not lost if the CLI exits immediately after pack(). The save
     // is atomic (writeFile-to-tmp + rename) and silently swallows errors.
     await saveTokenCountCache(rootDirs);
+
+    // Persist the security-result cache likewise, so verdicts computed this run
+    // can be replayed next time. No-op when the cache is unchanged or disabled.
+    await saveSecurityResultCache();
 
     logMemoryUsage('Pack - End');
 

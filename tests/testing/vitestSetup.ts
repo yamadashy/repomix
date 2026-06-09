@@ -10,6 +10,14 @@ if (process.env.REPOMIX_TOKEN_CACHE === undefined) {
   process.env.REPOMIX_TOKEN_CACHE = '0';
 }
 
+// Disable the security-result disk cache by default for the same reasons: keep
+// test runs from touching the developer's real $TMPDIR cache, and keep tests
+// that assert on security worker dispatch behavior from being skewed by verdicts
+// left behind by a previous run. Tests exercising the cache clear this directly.
+if (process.env.REPOMIX_SECURITY_CACHE === undefined) {
+  process.env.REPOMIX_SECURITY_CACHE = '0';
+}
+
 // Redirect the BPE-ranks disk cache to an isolated per-process temp directory so
 // any test that re-enables the cache (by clearing REPOMIX_TOKEN_CACHE) never
 // touches the developer's real $TMPDIR/repomix cache. Tests that exercise the

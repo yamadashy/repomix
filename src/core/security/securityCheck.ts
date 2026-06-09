@@ -9,6 +9,12 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
+import { mightContainSecret } from './securityCheckPrefilter.js';
+import {
+  getCached as getCachedSecurityResult,
+  securityResultCacheKey,
+  setCachedClean as setCachedSecurityClean,
+} from './securityResultCache.js';
 import type { SecurityCheckItem, SecurityCheckTask, SecurityCheckType } from './workers/securityCheckWorker.js';
 
 export type { SecurityCheckType } from './workers/securityCheckWorker.js';
@@ -135,16 +141,57 @@ export const runSecurityCheck = async (
     }
   }
 
-  const fileItems: SecurityCheckItem[] = rawFiles.map((file) => ({
-    filePath: file.path,
-    content: file.content,
-    type: 'file',
-  }));
+  // Partition the regular files on the main thread before touching the worker
+  // pool. Two cheap filters run here so the expensive `lintSource` engine call
+  // (the dominant cost of the security phase) is dispatched for as few files as
+  // possible:
+  //
+  //   1. The pre-filter (`mightContainSecret`) — the same check the worker
+  //      applies. A file that fails it can never trigger any secretlint rule, so
+  //      it is clean without the engine. Running it here (instead of only in the
+  //      worker) means those files are never sent over IPC at all.
+  //   2. The clean-verdict cache — for files that pass the pre-filter, a previous
+  //      run may have verified the byte-identical content clean under the same
+  //      secretlint rule version. A cache hit skips both the IPC and the engine
+  //      call. Only clean verdicts are cached; suspicious files always miss and
+  //      are re-scanned (so they are re-verified, and no secret text hits disk).
+  //
+  // Both filters are behavior-preserving: a pre-filter miss yields the same
+  // `null` (clean) the worker would have returned, and a clean-cache hit replays
+  // the clean verdict secretlint produced for byte-identical content under the
+  // same rule version. Anything not resolved here is dispatched to the worker
+  // exactly as before.
+  const dispatchItems: SecurityCheckItem[] = [];
+  // Cache key per dispatched item, used to record a fresh clean verdict back to
+  // the cache (undefined for git items and any item that should not be cached).
+  const dispatchCacheKeys: (string | undefined)[] = [];
 
-  // Combine all items, then split into batches
-  const allItems = [...fileItems, ...gitDiffItems, ...gitLogItems];
-  const totalItems = allItems.length;
+  for (const file of rawFiles) {
+    if (!mightContainSecret(file.content)) {
+      // Pre-filter clear: identical to the worker's own skip — no finding possible.
+      continue;
+    }
+    const cacheKey = securityResultCacheKey(file.content, file.path);
+    if (getCachedSecurityResult(cacheKey) !== undefined) {
+      // Known clean from a previous run (only clean verdicts are cached) — skip
+      // the engine.
+      continue;
+    }
+    dispatchItems.push({ filePath: file.path, content: file.content, type: 'file' });
+    dispatchCacheKeys.push(cacheKey);
+  }
 
+  // Git diff/log items always go through the engine (never pre-filtered or
+  // cached): added secret lines may lack a stable surrounding literal, and they
+  // are few. They carry no cache key.
+  for (const gitItem of [...gitDiffItems, ...gitLogItems]) {
+    dispatchItems.push(gitItem);
+    dispatchCacheKeys.push(undefined);
+  }
+
+  const totalItems = dispatchItems.length;
+
+  // Everything resolved from the pre-filter / clean cache: no worker work needed.
   if (totalItems === 0) {
     return [];
   }
@@ -163,10 +210,12 @@ export const runSecurityCheck = async (
       maxWorkerThreads: maxSecurityWorkers,
     });
 
-  // Split items into batches to reduce IPC round-trips
+  // Split items into batches to reduce IPC round-trips. Batch boundaries align
+  // with `dispatchItems`/`dispatchCacheKeys` indices so worker results can be
+  // mapped back to their cache key for persistence.
   const batches: SecurityCheckItem[][] = [];
-  for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-    batches.push(allItems.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < dispatchItems.length; i += BATCH_SIZE) {
+    batches.push(dispatchItems.slice(i, i + BATCH_SIZE));
   }
 
   try {
@@ -192,7 +241,25 @@ export const runSecurityCheck = async (
     const duration = Number(endTime - startTime) / 1e6;
     logger.trace(`Security check completed in ${duration.toFixed(2)}ms`);
 
-    return batchResults.flat().filter((result): result is SuspiciousFileResult => result !== null);
+    // Worker results align positionally with `dispatchItems`. Record only the
+    // CLEAN verdicts back to the cache, keyed per file (git items carry no key);
+    // suspicious findings are intentionally never persisted so detected secret
+    // text never reaches disk — those files are re-scanned next run.
+    const flatResults = batchResults.flat();
+    const workerSuspicious: SuspiciousFileResult[] = [];
+    for (let i = 0; i < flatResults.length; i++) {
+      const result = flatResults[i];
+      const cacheKey = dispatchCacheKeys[i];
+      if (result === null) {
+        if (cacheKey !== undefined) {
+          setCachedSecurityClean(cacheKey);
+        }
+      } else {
+        workerSuspicious.push(result);
+      }
+    }
+
+    return workerSuspicious;
   } catch (error) {
     logger.error('Error during security check:', error);
     throw error;
