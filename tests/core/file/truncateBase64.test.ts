@@ -130,7 +130,8 @@ describe('truncateBase64Content', () => {
   it('should not truncate a base64-like run split across a newline', () => {
     // A 320-char base64 body interrupted by a newline: neither line segment
     // reaches 256, and `\n` resets the run, so nothing should be truncated.
-    // Guards the newline pre-filter in `hasLongBase64Run`.
+    // Guards the line-scoped scan in `hasLongBase64Run`, which only inspects
+    // lines that individually reach the threshold.
     const half = longBase64.slice(0, 160);
     const input = `const data = "${half}\n${half}";`;
     const result = truncateBase64Content(input);
@@ -138,8 +139,8 @@ describe('truncateBase64Content', () => {
   });
 
   it('should truncate a long base64 run that follows many short lines', () => {
-    // Many short lines (each < 256) precede the real run, so the newline
-    // pre-filter must fall through to the full scan and still truncate.
+    // Many short lines (each < 256) precede the real run; the line-scoped scan
+    // must skip them and still reach the long final line to truncate.
     const shortLines = 'const a = 1;\n'.repeat(50);
     const input = `${shortLines}const data = "${longBase64}";`;
     const result = truncateBase64Content(input);
@@ -147,9 +148,22 @@ describe('truncateBase64Content', () => {
     expect(result.startsWith(shortLines)).toBe(true);
   });
 
+  it('should truncate a base64 run on a long line that follows another long non-base64 line', () => {
+    // The scan in `hasLongBase64Run` is line-scoped: it only character-scans
+    // lines that reach the length threshold. An earlier long line that is NOT a
+    // base64 run (here a 300-char run of '-', which resets the counter every
+    // char) must not cause the scanner to stop — the real run on the following
+    // long line still has to be detected and truncated.
+    const longDashes = '-'.repeat(300);
+    const input = `${longDashes}\nconst data = "${longBase64}";`;
+    const result = truncateBase64Content(input);
+    expect(result).toContain(longDashes);
+    expect(result).toContain('DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg...');
+  });
+
   it('should truncate a base64 run on a CRLF-terminated line', () => {
     // The `\r` before `\n` is also non-base64; the long line must still be
-    // detected by the pre-filter and truncated by the full scan.
+    // detected by the line-scoped scan and truncated.
     const input = `const data = "${longBase64}";\r\nconst next = 2;\r\n`;
     const result = truncateBase64Content(input);
     expect(result).toContain('DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg...');
@@ -157,8 +171,8 @@ describe('truncateBase64Content', () => {
   });
 
   it('should truncate a long base64 run with no newline at all', () => {
-    // Single-line content (no `\n`): the pre-filter treats the whole string as
-    // one segment and must fall through to the full scan.
+    // Single-line content (no `\n`): the line-scoped scan treats the whole
+    // string as one segment and scans it directly.
     const input = `prefix-${longBase64}-suffix`;
     const result = truncateBase64Content(input);
     expect(result).toContain('DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg...');

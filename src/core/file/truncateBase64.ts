@@ -24,35 +24,36 @@ const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_S
 const hasLongBase64Run = (content: string): boolean => {
   const len = content.length;
   if (len < MIN_BASE64_LENGTH_STANDALONE) return false;
-  // Newline pre-filter: `\n` is not a base64 character, so it always resets the
-  // run below. A run of `MIN_BASE64_LENGTH_STANDALONE` therefore has to fit
-  // inside a single line. If every line is shorter than that threshold no run is
-  // possible, and we can bail out before the per-character scan. `indexOf` is a
-  // native (memchr-style) scan, far cheaper than the charCodeAt loop, and the
-  // vast majority of source files have no such long line, so this skips the hot
-  // loop entirely for them.
+  // `\n` is not a base64 character, so it always resets the run counter below. A
+  // run of `MIN_BASE64_LENGTH_STANDALONE` therefore has to fit inside a single
+  // line, and only lines at least that long can possibly contain one. Walk the
+  // content one line at a time (via the native, memchr-style `indexOf('\n')`)
+  // and run the per-character scan *only* on lines that clear the threshold.
+  // Shorter lines provably cannot hold a qualifying run, so they are skipped
+  // without a charCodeAt pass — and the vast majority of source files have no
+  // long line at all, so the expensive loop is usually skipped entirely. The
+  // old code, once it found a single long line, fell back to scanning the whole
+  // file (every short line included); this restricts the scan to the long lines,
+  // which is equivalent because the run never spans a newline.
   let lineStart = 0;
-  let newlineIndex = content.indexOf('\n');
-  while (newlineIndex !== -1) {
-    if (newlineIndex - lineStart >= MIN_BASE64_LENGTH_STANDALONE) break;
-    lineStart = newlineIndex + 1;
-    newlineIndex = content.indexOf('\n', lineStart);
-  }
-  // The final segment (after the last newline, or the whole content when there
-  // is none) also needs the length check before we can rule out a long run.
-  if (newlineIndex === -1 && len - lineStart < MIN_BASE64_LENGTH_STANDALONE) {
-    return false;
-  }
-  let run = 0;
-  for (let i = 0; i < len; i++) {
-    const c = content.charCodeAt(i);
-    // [A-Z]:65-90, [a-z]:97-122, [0-9]:48-57, '+':43, '/':47
-    if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47) {
-      run++;
-      if (run >= MIN_BASE64_LENGTH_STANDALONE) return true;
-    } else {
-      run = 0;
+  while (true) {
+    const newlineIndex = content.indexOf('\n', lineStart);
+    const lineEnd = newlineIndex === -1 ? len : newlineIndex;
+    if (lineEnd - lineStart >= MIN_BASE64_LENGTH_STANDALONE) {
+      let run = 0;
+      for (let i = lineStart; i < lineEnd; i++) {
+        const c = content.charCodeAt(i);
+        // [A-Z]:65-90, [a-z]:97-122, [0-9]:48-57, '+':43, '/':47
+        if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47) {
+          run++;
+          if (run >= MIN_BASE64_LENGTH_STANDALONE) return true;
+        } else {
+          run = 0;
+        }
+      }
     }
+    if (newlineIndex === -1) break;
+    lineStart = newlineIndex + 1;
   }
   return false;
 };
