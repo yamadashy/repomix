@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781011688014,
+  "lastUpdate": 1781063044946,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10478,6 +10478,51 @@ window.BENCHMARK_DATA = {
             "range": "±11",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 730ms, Q3: 741ms\nAll times: 725, 726, 727, 727, 727, 730, 731, 731, 732, 733, 733, 734, 735, 735, 738, 741, 745, 747, 754, 756ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "b9d38ca6bd43cd70f1360cae07ff703ee7f8abd0",
+          "message": "perf(core): Scan only long lines for standalone base64 runs\n\n`hasLongBase64Run` (the cheap precondition gating the standalone-base64\ntruncation regex) used a newline pre-filter to bail out when every line is\nshorter than the 256-char threshold, but once it found a single long line it\nfell back to a `charCodeAt` scan over the *entire* file — every short line\nincluded. A base64 run of 256 chars can never span a newline (`\\n` is not a\nbase64 character and resets the run counter), so it must lie wholly within one\nline that is itself at least 256 chars long. Every shorter line is provably\nincapable of holding a qualifying run.\n\nReplace the two-pass \"find a long line, then scan everything\" structure with a\nsingle line-scoped pass: walk the content one line at a time via the native\n`indexOf('\\n')` and run the per-character scan only on lines that clear the\nthreshold. On the repomix repo ~220 of ~1070 files contain a long line, but\nonly ~365 KB of their ~6 MB total content actually sits on those long lines, so\nthe old code character-scanned ~16x more bytes than necessary for them.\n\nBehavior is unchanged: the function returns the same boolean for all inputs\n(the old full scan already reset the run at every newline, so it only ever\nfound within-line runs too — it just wasted time visiting the short lines).\n\nVerification:\n- Differential fuzz of old vs new logic over 2,000,000 randomized inputs\n  (base64 chars, newlines, padding, injected long runs): 0 mismatches.\n- Old vs new over all 1,410 repo text files: 0 mismatches.\n- Full output byte-identical (`cmp`) on xml/markdown/json when packing a fixed\n  external git repo with both the base and patched builds.\n- 1453 tests pass; lint + tsgo clean. Added a regression test for a base64 run\n  on a long line that follows another long non-base64 line.\n\nBenchmark (warm cache, real packed set):\n- Isolated `processFiles` phase over the 1,116 packed files, interleaved\n  base-vs-patched (3 rounds): 37.3 ms -> 27.2 ms, -10.1 ms (-27%), stable.\n- `hasLongBase64Run` micro over the 1,410 repo files (interleaved): 33.5 ms ->\n  22.5 ms (1.49x).\n- `processFiles` runs on the main thread as the long pole of its concurrent\n  phase (the security check runs in worker threads), so the ~10 ms lands on the\n  critical path — ~2% of the ~0.5 s warm CLI run, and far larger on repos with\n  big minified/base64 payloads where the old code scanned whole multi-MB lines.",
+          "timestamp": "2026-06-10T03:41:56Z",
+          "tree_id": "e672700885a87d87964ffc96d76078c90737d237",
+          "url": "https://github.com/yamadashy/repomix/commit/b9d38ca6bd43cd70f1360cae07ff703ee7f8abd0"
+        },
+        "date": 1781063043396,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 456,
+            "range": "±114",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 379ms, Q3: 493ms\nAll times: 324, 331, 353, 355, 357, 369, 376, 379, 384, 401, 409, 417, 418, 431, 440, 456, 458, 463, 472, 476, 490, 491, 493, 504, 510, 514, 525, 564, 592, 619ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 498,
+            "range": "±11",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 495ms, Q3: 506ms\nAll times: 486, 486, 489, 493, 494, 495, 495, 495, 497, 497, 498, 498, 504, 504, 506, 506, 507, 509, 509, 511ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 791,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 782ms, Q3: 799ms\nAll times: 763, 769, 776, 780, 781, 782, 783, 789, 789, 790, 791, 792, 792, 792, 796, 799, 800, 803, 805, 832ms"
           }
         ]
       }
