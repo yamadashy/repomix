@@ -1038,6 +1038,33 @@ r2 := '\\\\'`,
     expect(manipulator).toBeNull();
   });
 
+  describe('case-insensitive extension matching', () => {
+    // Extensions are matched case-insensitively, so files with uppercase or
+    // mixed-case extensions still resolve to a manipulator. Without this,
+    // removeComments and removeEmptyLines silently no-op on such files.
+    test.each([
+      '.JS',
+      '.Js',
+      '.PY',
+      '.CSS',
+      '.C',
+      '.HTML',
+      '.Vue',
+    ])('resolves a manipulator for uppercase extension %s', (ext) => {
+      expect(getFileManipulator(`test${ext}`)).not.toBeNull();
+    });
+
+    test('strips comments from a file with an uppercase extension', () => {
+      const manipulator = getFileManipulator('Main.JS');
+      const input = 'const a = 1; // inline\n/* block */\nconst b = 2;';
+      expect(manipulator?.removeComments(input)).toBe('const a = 1;\n\nconst b = 2;');
+    });
+
+    test('still returns null for unsupported uppercase extensions', () => {
+      expect(getFileManipulator('test.UNSUPPORTED')).toBeNull();
+    });
+  });
+
   describe('removeEmptyLines', () => {
     // BaseManipulator.removeEmptyLines is inherited by every concrete manipulator.
     // It runs after comment stripping in fileProcess to clean up the blanks left behind.
