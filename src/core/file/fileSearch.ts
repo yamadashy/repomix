@@ -1,4 +1,5 @@
-import type { Stats } from 'node:fs';
+import type { Dirent, Stats } from 'node:fs';
+import fsCallback from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { type Options as GlobbyOptions, type GlobEntry, globby } from 'globby';
@@ -371,6 +372,73 @@ const prepareIgnoreContext = async (
 };
 
 /**
+ * Creates an fs adapter for globby that answers its gitignore-filter stat calls from
+ * directory-entry types already learned during traversal.
+ *
+ * When `gitignore: true`, globby stats every matched path to decide whether
+ * trailing-slash ignore rules (`dir/`) should also be tested against it — roughly one
+ * stat syscall per matched file. The traversal's readdir(withFileTypes) calls already
+ * carry each entry's type, so this adapter records them and serves the stat calls from
+ * memory. Symlinks and other special entries are never recorded (stat follows links, so
+ * the dirent type may not match) and fall through to a real stat, as does any path not
+ * seen during traversal. The adapter is created per globby call, so the cache cannot go
+ * stale across searches.
+ *
+ * Cache keys are built with `path.join`, which normalizes separators to the native one —
+ * exactly like the `path.normalize` + `path.resolve` chain globby applies before calling
+ * `stat`, so the keys match on Windows too despite fast-glob's walker joining segments
+ * with `/`. Do not posix-normalize the keys instead: a blanket `\` → `/` rewrite could
+ * collide two distinct POSIX paths (where `\` is a legal filename character) and serve a
+ * wrong type, whereas a separator mismatch merely falls through to a real stat.
+ */
+const createGlobbyFsAdapter = (): GlobbyOptions['fs'] => {
+  const isDirectoryByPath = new Map<string, boolean>();
+
+  const readdir = (dirPath: string, options: unknown, callback?: unknown): void => {
+    if (
+      typeof options === 'object' &&
+      options !== null &&
+      (options as { withFileTypes?: boolean }).withFileTypes === true &&
+      typeof callback === 'function'
+    ) {
+      const onEntries = callback as (error: NodeJS.ErrnoException | null, entries: Dirent[]) => void;
+      fsCallback.readdir(dirPath, options as { withFileTypes: true }, (error, entries) => {
+        if (!error) {
+          for (const entry of entries) {
+            if (entry.isDirectory() || entry.isFile()) {
+              isDirectoryByPath.set(path.join(dirPath, entry.name), entry.isDirectory());
+            }
+          }
+        }
+        onEntries(error, entries);
+      });
+      return;
+    }
+    // Pass through any other call shape (e.g. plain readdir without withFileTypes) unchanged.
+    (fsCallback.readdir as (p: string, o: unknown, c?: unknown) => void)(dirPath, options, callback);
+  };
+
+  const stat = (statPath: string, callback: (error: NodeJS.ErrnoException | null, stats: Stats) => void): void => {
+    const isDirectory = isDirectoryByPath.get(statPath);
+    if (isDirectory === undefined) {
+      fsCallback.stat(statPath, callback);
+      return;
+    }
+    // The ignore filter consults only isDirectory()/isFile(); other Stats fields are not accessed.
+    callback(null, { isDirectory: () => isDirectory, isFile: () => !isDirectory } as unknown as Stats);
+  };
+
+  return {
+    lstat: fsCallback.lstat,
+    lstatSync: fsCallback.lstatSync,
+    statSync: fsCallback.statSync,
+    readdirSync: fsCallback.readdirSync,
+    readdir: readdir as typeof fsCallback.readdir,
+    stat: stat as typeof fsCallback.stat,
+  };
+};
+
+/**
  * Creates base globby options with common ignore patterns.
  * Returns options that can be extended with specific settings like onlyFiles or onlyDirectories.
  */
@@ -387,6 +455,7 @@ const createBaseGlobbyOptions = (
   absolute: false,
   dot: true,
   followSymbolicLinks: false,
+  fs: createGlobbyFsAdapter(),
 });
 
 export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promise<string[]> => {
