@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781201793458,
+  "lastUpdate": 1781216137570,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10568,6 +10568,51 @@ window.BENCHMARK_DATA = {
             "range": "±115",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1232ms, Q3: 1347ms\nAll times: 1208, 1214, 1220, 1223, 1224, 1232, 1236, 1236, 1239, 1244, 1249, 1255, 1272, 1296, 1345, 1347, 1374, 1386, 1392, 1427ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "21fa8458d1bcdcaf82965a6a70fd365f8c5d51c4",
+          "message": "perf(security): Pre-warm security worker pool to overlap spawn with file collection\n\nintent(security): automated perf tuning pass — single highest-impact, behavior-preserving change against a ~860ms default pack run\nlearned(security-workers): spawning the 2 secretlint worker threads costs ~50-100ms each (thread creation + 7MB preset bundle import) and previously happened inside runSecurityCheck, i.e. after file collection — squarely on the critical path; the security leg gates the security∥processFiles phase (~208ms of a ~242ms phase)\ndecision(security-pool): create the pool in pack() right after createMetricsTaskRunner and post one empty-items task per worker, mirroring the already-merged metrics prewarm pattern; the spawn then overlaps the ~165ms collect+git phase instead of starting after it\ndecision(pool-teardown): start taskRunner.cleanup() right after the security phase resolves so the worker destroy overlaps output generation and metrics; the finally block awaits the same promise (starting it if an earlier stage threw) so no path leaks threads\nconstraint(warmup-count): warm-up count mirrors Tinypool's own sizing (min(2, concurrency, ceil(numOfTasks/100))) so no thread is spawned that the real workload would not have created anyway\nconstraint(secretlint-rules): same rules run on exactly the same content — only worker spawn timing changes; an empty-items warmup batch returns [] without linting anything\nrejected(metrics-prewarm-zero): skipping metrics warmup on warm-likely runs (~41ms) — exposes a ~150ms BPE init to the common \"one file changed\" incremental run, the exact case the merged cache-aware prewarm hedges\nrejected(base64-sampling): sparse-sampling hasLongBase64Run (~38ms CPU) — runs inside processFiles, which is parallel to and shorter than the security leg, so the CPU saving does not move wall time\nrejected(metrics-cleanup-noawait): fire-and-forget metrics pool destroy (~14-17ms) — borderline at the 2% threshold, kept as a future candidate\n\nBenchmark (repomix repo itself, ~1100 files, 20 interleaved warm pairs, quiet 4-core host):\n- end-to-end: median 859ms -> 815.5ms (-43.5ms, -5.1%)\n- security check phase (trace log): 207.8ms -> 161.9ms (-46ms)\n- output byte-identical vs base build (cmp) for default run and --no-security-check\n- npm run lint clean (3 pre-existing warnings), npm run test 1365/1365 pass (8 new tests)",
+          "timestamp": "2026-06-11T22:13:36Z",
+          "tree_id": "5dca6eed8434a28a7d62ae199aac426166b97442",
+          "url": "https://github.com/yamadashy/repomix/commit/21fa8458d1bcdcaf82965a6a70fd365f8c5d51c4"
+        },
+        "date": 1781216136216,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 497,
+            "range": "±52",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 478ms, Q3: 530ms\nAll times: 461, 466, 466, 474, 474, 476, 477, 478, 485, 487, 488, 488, 493, 493, 497, 497, 499, 500, 503, 508, 509, 523, 530, 532, 533, 551, 557, 579, 614, 621ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 853,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 844ms, Q3: 867ms\nAll times: 828, 832, 833, 838, 842, 844, 845, 847, 850, 852, 853, 853, 854, 855, 859, 867, 877, 883, 915, 933ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1241,
+            "range": "±270",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1191ms, Q3: 1461ms\nAll times: 1179, 1184, 1184, 1185, 1188, 1191, 1215, 1224, 1225, 1225, 1241, 1255, 1256, 1257, 1327, 1461, 1480, 1486, 1589, 1791ms"
           }
         ]
       }
