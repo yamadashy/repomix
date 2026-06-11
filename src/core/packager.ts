@@ -16,7 +16,7 @@ import { loadTokenCountCache, saveTokenCountCache } from './metrics/tokenCountCa
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { buildRootLabels, joinDisplayPath } from './packager/rootDisplayPath.js';
-import type { SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityCheckTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -45,6 +45,7 @@ const defaultDeps = {
   produceOutput,
   calculateMetrics,
   createMetricsTaskRunner,
+  createSecurityCheckTaskRunner,
   sortPaths,
   sortOutputFiles,
   prefetchSortData,
@@ -134,6 +135,29 @@ export const pack = async (
     config.tokenCount.encoding,
   );
 
+  // Pre-initialize the security worker pool so spawning its worker threads and
+  // loading the secretlint preset (~50-100ms per worker) overlap with file
+  // collection and git subprocesses instead of starting inside runSecurityCheck,
+  // which sits on the critical path after collection completes.
+  const securityRunnerWithWarmup = config.security.enableSecurityCheck
+    ? deps.createSecurityCheckTaskRunner(allFilePaths.length)
+    : undefined;
+  // Started after the security check finishes so the pool destroy overlaps with
+  // output generation and metrics; the finally block ensures it also runs (and
+  // is awaited) on every error path.
+  let securityCleanupPromise: Promise<void> | undefined;
+  const startSecurityRunnerCleanup = (): Promise<void> => {
+    if (securityCleanupPromise === undefined) {
+      securityCleanupPromise = securityRunnerWithWarmup
+        ? securityRunnerWithWarmup.warmupPromise
+            .catch(() => {})
+            .then(() => securityRunnerWithWarmup.taskRunner.cleanup())
+            .catch(() => {})
+        : Promise.resolve();
+    }
+    return securityCleanupPromise;
+  };
+
   try {
     // Run file collection and git operations in parallel since they are independent:
     // - collectFiles reads file contents from disk
@@ -175,13 +199,20 @@ export const pack = async (
     // After both complete, filter out any suspicious files from the processed results.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
+          securityTaskRunner: securityRunnerWithWarmup?.taskRunner,
+        }),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
         return deps.processFiles(rawFiles, config, progressCallback);
       }),
     ]);
+
+    // The security pool is idle from here on; tear it down in the background so
+    // the worker-thread destroy cost overlaps with sorting, output generation,
+    // and metrics instead of adding serial time before pack() returns.
+    startSecurityRunnerCleanup();
 
     const { safeFilePaths, suspiciousFilesResults, suspiciousGitDiffResults, suspiciousGitLogResults } =
       validationResult;
@@ -294,5 +325,6 @@ export const pack = async (
   } finally {
     await metricsWarmupPromise.catch(() => {});
     await metricsTaskRunner.cleanup();
+    await startSecurityRunnerCleanup();
   }
 };
