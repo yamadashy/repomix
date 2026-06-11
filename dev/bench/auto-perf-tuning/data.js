@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781063044946,
+  "lastUpdate": 1781201793458,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10523,6 +10523,51 @@ window.BENCHMARK_DATA = {
             "range": "±17",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 782ms, Q3: 799ms\nAll times: 763, 769, 776, 780, 781, 782, 783, 789, 789, 790, 791, 792, 792, 792, 796, 799, 800, 803, 805, 832ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "5101545cd523be0acb00fbe135e45effcc48cf83",
+          "message": "perf(file): Answer globby's gitignore stat calls from readdir dirent types\n\nintent(file-search): automated perf tuning pass — single highest-impact, behavior-preserving change against a ~1.25s default pack run\nlearned(globby): with gitignore enabled, globby's ignore filter calls fs.stat on every matched path (~1100 syscalls on this repo) only to decide whether trailing-slash rules apply; the traversal's readdir(withFileTypes) already carried each entry's type\ndecision(fs-adapter): pass a per-call fs adapter to globby that records dirent types during readdir and serves the stat calls from memory; symlinks/special entries and unseen paths fall through to a real stat since stat follows links while dirents do not\nrejected(secretlint-prefilter): trigger-regex pre-filter before lintSource (~88ms) — a hand-maintained trigger list can silently miss preset rules and produce security false negatives\nrejected(gitlog-token-cache): caching the git log token count (~10-16ms) — below the 2% improvement threshold and off the critical path\nconstraint(fs-adapter): statSync must be forwarded so globby's cwd-is-directory validation keeps running; ignore.js readFile falls back to real fs on its own\nconstraint(cache-keys): keys are path.join-normalized to native separators, matching globby's normalize+resolve chain on every platform; deliberately NOT posix-normalized because a blanket backslash rewrite could collide distinct POSIX paths (review feedback on PR #1633 investigated and declined — verified via path.win32 that join/resolve produce identical keys)\n\nBenchmark (repomix repo itself, ~1100 files, 8 interleaved runs each, warm):\n- end-to-end: median 1242ms -> 1182ms (-60ms, -4.8%)\n- globby phase: 254ms -> 206ms (-48ms)\n- output byte-identical vs base build (cmp) for default run, --include-empty-directories, symlink/trailing-slash edge cases, and non-git directories\n- npm run lint clean (3 pre-existing warnings), npm run test 1357/1357 pass",
+          "timestamp": "2026-06-11T18:14:43Z",
+          "tree_id": "f777e3003f9a76a25fc07639fda1736937be689e",
+          "url": "https://github.com/yamadashy/repomix/commit/5101545cd523be0acb00fbe135e45effcc48cf83"
+        },
+        "date": 1781201792427,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 529,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 515ms, Q3: 542ms\nAll times: 505, 509, 510, 510, 510, 511, 513, 515, 516, 516, 520, 520, 521, 522, 522, 529, 530, 531, 532, 535, 535, 536, 542, 561, 577, 578, 588, 615, 635, 660ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 847,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 834ms, Q3: 871ms\nAll times: 813, 829, 833, 833, 834, 834, 837, 838, 840, 845, 847, 848, 851, 854, 864, 871, 925, 927, 945, 976ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1249,
+            "range": "±115",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1232ms, Q3: 1347ms\nAll times: 1208, 1214, 1220, 1223, 1224, 1232, 1236, 1236, 1239, 1244, 1249, 1255, 1272, 1296, 1345, 1347, 1374, 1386, 1392, 1427ms"
           }
         ]
       }
