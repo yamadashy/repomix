@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781237769031,
+  "lastUpdate": 1781248521360,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10658,6 +10658,51 @@ window.BENCHMARK_DATA = {
             "range": "±27",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1210ms, Q3: 1237ms\nAll times: 1182, 1195, 1205, 1207, 1208, 1210, 1218, 1223, 1225, 1226, 1226, 1227, 1231, 1232, 1233, 1237, 1237, 1238, 1246, 1257ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "1f2621edd7461af8bde826784673cd6370c2151f",
+          "message": "perf(file): Cache readdir results across globby's double traversal\n\nintent(file-search): automated perf tuning pass — single highest-impact, behavior-preserving change against a ~810ms default pack run\nlearned(globby-traversal): a single globby() call walks the tree twice — globIgnoreFiles discovers .gitignore/.repomixignore/.ignore files, then the main fast-glob scan re-walks the same tree — issuing 582 readdir(withFileTypes) calls for 291 directories on this repo; both walks share the per-call options.fs adapter, so it is the natural cache point\ndecision(fs-adapter): record successful withFileTypes readdir results in the existing createGlobbyFsAdapter and replay the second walk's calls via process.nextTick (preserves the async callback contract fast-glob expects); errors are never cached so a transiently failing directory is retried\nconstraint(dirent-sharing): both traversals receive the same Dirent[] array — safe because fast-glob wraps dirents in its own entry objects and never mutates the source array\nconstraint(snapshot-semantics): both walks now see one consistent directory snapshot per search; previously a directory changing between the two walks could be listed differently by each (noted in the adapter docstring)\nrejected(security-batch-size): SECURITY_CHECK_BATCH_SIZE 50 -> 200 measured -58ms under heavy machine load, but 25 quiet interleaved pairs show identical medians (793ms vs 793ms) — the IPC overhead it removes only matters on contended hosts; 400 regresses (~+20ms, worker imbalance)\nrejected(lazy-render-context): lazy fileLineCounts/markdownCodeBlockDelimiter getters in createRenderContext (~14-15ms on the default XML path, 1.8%) — below the 2% threshold\nrejected(lazy-handlebars-import): deferring the handlebars import cuts ~17ms of startup but the deferred import() evaluation blocks in-flight collection I/O callbacks (a 0.24ms readFile stretched to 94ms in the probe), netting only ~4ms end to end\nrejected(metrics-cleanup-noawait): fire-and-forget metrics pool destroy (~15ms median) — still borderline below threshold, unchanged from the previous pass\n\nBenchmark (repomix repo itself, ~1100 files, 25 interleaved warm pairs,\nquiet 4-core Linux, default pack):\n- end-to-end median 808ms -> 780ms (-28ms, -3.5%), paired delta median\n  -30ms, paired mean -28.8ms (t = 4.6), 20/25 pairs improved\n- [globby] search phase 166-177ms -> 139-149ms\n- readdir(withFileTypes) during search: one call per directory; a new\n  regression test asserts no directory is listed twice\n- output byte-identical (cmp) vs the base build for the default run,\n  --include-empty-directories, multi-root (src website), and\n  --no-gitignore (with the A/B-swapped lib file excluded from the pack)\n\nnpm run test: 1379/1379 pass (1 new). npm run lint: clean (3\npre-existing warnings in unrelated files).\n\nhttps://claude.ai/code/session_011DHBuMqYeyMgJuYRSeJxSa",
+          "timestamp": "2026-06-12T07:13:02Z",
+          "tree_id": "ce245bf0eeabdc4a8548a83e3c17740d6b4d7031",
+          "url": "https://github.com/yamadashy/repomix/commit/1f2621edd7461af8bde826784673cd6370c2151f"
+        },
+        "date": 1781248520537,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 677,
+            "range": "±178",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 616ms, Q3: 794ms\nAll times: 541, 560, 562, 583, 596, 599, 603, 616, 618, 624, 633, 639, 641, 653, 677, 677, 678, 699, 707, 754, 761, 790, 794, 810, 820, 825, 828, 874, 918, 1063ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 800,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 790ms, Q3: 809ms\nAll times: 781, 784, 787, 787, 789, 790, 793, 794, 797, 798, 800, 801, 802, 806, 806, 809, 810, 812, 812, 816ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 958,
+            "range": "±32",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 939ms, Q3: 971ms\nAll times: 926, 929, 931, 932, 939, 939, 942, 946, 946, 957, 958, 962, 965, 966, 971, 971, 981, 981, 984, 985ms"
           }
         ]
       }
