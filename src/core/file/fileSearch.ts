@@ -373,7 +373,8 @@ const prepareIgnoreContext = async (
 
 /**
  * Creates an fs adapter for globby that answers its gitignore-filter stat calls from
- * directory-entry types already learned during traversal.
+ * directory-entry types already learned during traversal, and serves the second
+ * traversal's readdir calls from the first traversal's results.
  *
  * When `gitignore: true`, globby stats every matched path to decide whether
  * trailing-slash ignore rules (`dir/`) should also be tested against it — roughly one
@@ -384,6 +385,14 @@ const prepareIgnoreContext = async (
  * seen during traversal. The adapter is created per globby call, so the cache cannot go
  * stale across searches.
  *
+ * A single globby call also walks the tree twice — once to discover ignore files
+ * (.gitignore/.repomixignore/.ignore) and once for the main scan — issuing a second
+ * readdir(withFileTypes) for every directory. Successful results from the first walk
+ * are replayed from memory on the second, halving the readdir syscalls per search.
+ * Errors are never cached, so a directory that failed transiently is retried. Both
+ * walks therefore see one consistent snapshot per search; previously a directory
+ * changing between the two walks could be listed differently by each.
+ *
  * Cache keys are built with `path.join`, which normalizes separators to the native one —
  * exactly like the `path.normalize` + `path.resolve` chain globby applies before calling
  * `stat`, so the keys match on Windows too despite fast-glob's walker joining segments
@@ -393,6 +402,7 @@ const prepareIgnoreContext = async (
  */
 const createGlobbyFsAdapter = (): GlobbyOptions['fs'] => {
   const isDirectoryByPath = new Map<string, boolean>();
+  const readdirEntriesByPath = new Map<string, Dirent[]>();
 
   const readdir = (dirPath: string, options: unknown, callback?: unknown): void => {
     if (
@@ -402,8 +412,17 @@ const createGlobbyFsAdapter = (): GlobbyOptions['fs'] => {
       typeof callback === 'function'
     ) {
       const onEntries = callback as (error: NodeJS.ErrnoException | null, entries: Dirent[]) => void;
+      const cachedEntries = readdirEntriesByPath.get(dirPath);
+      if (cachedEntries !== undefined) {
+        // Replay via nextTick to keep the callback asynchronous, as fast-glob expects.
+        // The walker only reads the cached Dirent objects (it wraps them in its own
+        // entry objects), so sharing one array across traversals is safe.
+        process.nextTick(onEntries, null, cachedEntries);
+        return;
+      }
       fsCallback.readdir(dirPath, options as { withFileTypes: true }, (error, entries) => {
         if (!error) {
+          readdirEntriesByPath.set(dirPath, entries);
           for (const entry of entries) {
             if (entry.isDirectory() || entry.isFile()) {
               isDirectoryByPath.set(path.join(dirPath, entry.name), entry.isDirectory());

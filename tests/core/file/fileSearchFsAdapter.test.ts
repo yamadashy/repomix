@@ -58,6 +58,40 @@ describe.runIf(!isWindows)('searchFiles on a real filesystem', () => {
     expect([...result.filePaths].sort()).toEqual(['sub/.gitignore', 'sub/keep.txt']);
   });
 
+  test('reads each directory only once across globby ignore-discovery and main traversals', async () => {
+    await fs.mkdir(path.join(tempDir, 'src', 'core'), { recursive: true });
+    await fs.mkdir(path.join(tempDir, 'docs'));
+    await fs.writeFile(path.join(tempDir, '.gitignore'), 'dist/\n');
+    await fs.writeFile(path.join(tempDir, 'src', 'a.txt'), 'a');
+    await fs.writeFile(path.join(tempDir, 'src', 'core', 'b.txt'), 'b');
+    await fs.writeFile(path.join(tempDir, 'docs', 'c.txt'), 'c');
+
+    const config = createMockConfig({
+      ignore: { useGitignore: true, useDefaultPatterns: false },
+    });
+
+    // globby walks the tree twice per call (ignore-file discovery + main scan).
+    // The adapter must serve the second walk's readdir calls from the first
+    // walk's results, so no directory is listed by the kernel more than once.
+    // Spying on this module's fsCallback intercepts the adapter's calls too:
+    // both import the same module-cached 'node:fs' object, and the adapter
+    // dereferences fsCallback.readdir at call time.
+    const readdirSpy = vi.spyOn(fsCallback, 'readdir');
+    const result = await searchFiles(tempDir, config);
+
+    expect([...result.filePaths].sort()).toEqual(['.gitignore', 'docs/c.txt', 'src/a.txt', 'src/core/b.txt']);
+    const withFileTypesDirs = readdirSpy.mock.calls
+      .filter(
+        ([, options]) =>
+          typeof options === 'object' &&
+          options !== null &&
+          (options as { withFileTypes?: boolean }).withFileTypes === true,
+      )
+      .map(([dirPath]) => String(dirPath));
+    expect(withFileTypesDirs.length).toBeGreaterThan(0);
+    expect(new Set(withFileTypesDirs).size).toBe(withFileTypesDirs.length);
+  });
+
   test('answers gitignore stat checks from readdir results instead of per-path stat syscalls', async () => {
     const fileCount = 20;
     await fs.mkdir(path.join(tempDir, 'nested'));
