@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781216137570,
+  "lastUpdate": 1781237769031,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10613,6 +10613,51 @@ window.BENCHMARK_DATA = {
             "range": "±270",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1191ms, Q3: 1461ms\nAll times: 1179, 1184, 1184, 1185, 1188, 1191, 1215, 1224, 1225, 1225, 1241, 1255, 1256, 1257, 1327, 1461, 1480, 1486, 1589, 1791ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "7eeca34910cf45cbd05ed65f1d6f2975a64512fd",
+          "message": "perf(security): Stream security check batches during file collection\n\nThe security check previously dispatched all its worker batches only\nafter file collection had fully completed, putting the entire lint wall\ntime (~160ms on this repo) on the critical path between collection and\noutput generation. The security workers sit idle during collection\n(which is I/O-bound on the main thread), so the lint work can overlap\nit almost entirely.\n\nChanges:\n- New createSecurityCheckStream (securityCheckStreaming.ts): buffers\n  collected files and dispatches each full BATCH_SIZE batch to the\n  worker pool immediately. finalize() flushes the remainder plus git\n  diff/log items, enqueues any raw file that never arrived via addFile\n  (so custom collectFiles implementations that ignore the callback\n  cannot skip the check), awaits all batches, and re-orders suspicious\n  file results back to canonical rawFiles order. Batch failures are\n  captured (not rejected) until finalize so abandoned sessions on error\n  paths cannot surface unhandled rejections.\n- collectFiles gains an optional onFileCollected callback, invoked in\n  completion order for every file that ends up in rawFiles.\n- pack() wires the callback to the stream using final display paths\n  (multi-root labels applied), and forwards the stream to\n  validateFileSafety, which uses finalize() instead of runSecurityCheck.\n- createSecurityCheckTaskRunner now runs before file search and warms\n  up in two stages: one worker immediately (its spawn + secretlint\n  preset import overlap the ~155ms search phase, so it is ready when\n  the first batch arrives), and the second via completeWarmup() once\n  the file count is known — preserving the existing sizing rule\n  (second worker only from 101 items).\n\nBehavior is unchanged: the same items are linted with the same batch\nsize and rules, and outputs were verified byte-identical (cmp) against\nthe base build for the default run, --no-security-check,\n--include-empty-directories, multi-root, and a planted-secrets case\n(same 2 files flagged and excluded). runSecurityCheck keeps its\noriginal behavior for non-streamed callers (MCP, lib API).\n\nBenchmark (this repo, warm, 39 interleaved pairs, 4-core Linux,\ndefault pack): end-to-end median 869ms -> 832ms (-37ms, -4.3%), paired\nmean delta -34.8ms (-4.0%), paired t = 5.51. Trace: security-check\ntail after collection ~160ms -> ~60-90ms.\n\nVariants measured and rejected: holding dispatch until the metrics\nwarm-up settles (warm-up spans nearly the whole collection window,\nnullifying the overlap) and capping pre-finalize dispatch to one batch\nin flight (paired delta ~2ms, no effect).\n\nnpm run test: 1378/1378 pass (12 new). npm run lint: clean.\n\nhttps://claude.ai/code/session_015sBq63cfQRHYkmnvrokGF2",
+          "timestamp": "2026-06-12T04:14:31Z",
+          "tree_id": "3849c1b6d81d48524155266978569245964e7346",
+          "url": "https://github.com/yamadashy/repomix/commit/7eeca34910cf45cbd05ed65f1d6f2975a64512fd"
+        },
+        "date": 1781237768267,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 703,
+            "range": "±49",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 676ms, Q3: 725ms\nAll times: 625, 643, 661, 664, 671, 672, 675, 676, 677, 687, 688, 689, 691, 692, 693, 703, 707, 714, 718, 719, 720, 725, 725, 732, 756, 760, 777, 791, 798, 1286ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 776,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 763ms, Q3: 785ms\nAll times: 752, 752, 754, 757, 760, 763, 764, 764, 773, 775, 776, 776, 777, 778, 781, 785, 790, 798, 802, 820ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1226,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1210ms, Q3: 1237ms\nAll times: 1182, 1195, 1205, 1207, 1208, 1210, 1218, 1223, 1225, 1226, 1226, 1227, 1231, 1232, 1233, 1237, 1237, 1238, 1246, 1257ms"
           }
         ]
       }
