@@ -93,9 +93,16 @@ describe.runIf(!isWindows)('packager integration', () => {
         searchFiles,
         sortPaths: (filePaths) => filePaths,
         collectFiles: (filePaths, rootDir, config, progressCallback) => {
-          return collectFiles(filePaths, rootDir, config, progressCallback, {
-            readRawFile,
-          });
+          return collectFiles(
+            filePaths,
+            rootDir,
+            config,
+            progressCallback,
+            {},
+            {
+              readRawFile,
+            },
+          );
         },
         processFiles: async (rawFiles, config, _progressCallback) => {
           const processedFiles: ProcessedFile[] = [];
@@ -128,6 +135,7 @@ describe.runIf(!isWindows)('packager integration', () => {
             cleanup: async () => {},
           },
           warmupPromise: Promise.resolve(),
+          completeWarmup: () => {},
         }),
         calculateMetrics: async (
           processedFiles,

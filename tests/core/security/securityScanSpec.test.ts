@@ -62,7 +62,7 @@ const runPack = async (rootDir: string, config: RepomixConfigMerged) =>
     searchFiles,
     sortPaths: (filePaths) => filePaths,
     collectFiles: (filePaths, root, cfg, progressCallback) =>
-      collectFiles(filePaths, root, cfg, progressCallback, { readRawFile }),
+      collectFiles(filePaths, root, cfg, progressCallback, {}, { readRawFile }),
     processFiles: async (rawFiles, cfg) => {
       const processedFiles: ProcessedFile[] = [];
       for (const rawFile of rawFiles) {
@@ -84,6 +84,7 @@ const runPack = async (rootDir: string, config: RepomixConfigMerged) =>
     createSecurityCheckTaskRunner: () => ({
       taskRunner: inlineSecurityTaskRunner(),
       warmupPromise: Promise.resolve(),
+      completeWarmup: () => {},
     }),
     produceOutput,
     createMetricsTaskRunner: () => ({

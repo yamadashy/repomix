@@ -8,7 +8,7 @@ import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
-import type { ProcessedFile } from './file/fileTypes.js';
+import type { ProcessedFile, RawFile } from './file/fileTypes.js';
 import { getGitDiffs } from './git/gitDiffHandle.js';
 import { getGitLogs } from './git/gitLogHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMetrics.js';
@@ -17,6 +17,7 @@ import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
 import { buildRootLabels, joinDisplayPath } from './packager/rootDisplayPath.js';
 import { createSecurityCheckTaskRunner, type SuspiciousFileResult } from './security/securityCheck.js';
+import { createSecurityCheckStream } from './security/securityCheckStreaming.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
 
@@ -46,6 +47,7 @@ const defaultDeps = {
   calculateMetrics,
   createMetricsTaskRunner,
   createSecurityCheckTaskRunner,
+  createSecurityCheckStream,
   sortPaths,
   sortOutputFiles,
   prefetchSortData,
@@ -94,6 +96,39 @@ export const pack = async (
     logger.trace('Failed to prefetch sort data:', error);
   });
 
+  // Pre-initialize the security worker pool before file search so spawning its
+  // worker threads and loading the secretlint preset (~50-100ms per worker)
+  // overlap with the search phase. The workers are then ready to lint streamed
+  // batches as soon as file collection starts producing them. The second
+  // worker's warm-up is posted via completeWarmup() once the file count is
+  // known, keeping the pool sizing identical to the non-streamed path.
+  const securityRunnerWithWarmup = config.security.enableSecurityCheck
+    ? deps.createSecurityCheckTaskRunner()
+    : undefined;
+  // Streaming session: full batches of collected files are dispatched to the
+  // (pre-warmed, otherwise idle) security workers while collection is still
+  // reading the remaining files, so most lint work finishes inside the
+  // collection window instead of running serially after it.
+  const securityCheckStream = securityRunnerWithWarmup
+    ? deps.createSecurityCheckStream(securityRunnerWithWarmup.taskRunner)
+    : undefined;
+  // Started after the security check finishes so the pool destroy overlaps with
+  // output generation and metrics; the finally block ensures it also runs (and
+  // is awaited) on every error path. warmupPromise is intentionally read inside
+  // the closure: completeWarmup() may have extended it by then.
+  let securityCleanupPromise: Promise<void> | undefined;
+  const startSecurityRunnerCleanup = (): Promise<void> => {
+    if (securityCleanupPromise === undefined) {
+      securityCleanupPromise = securityRunnerWithWarmup
+        ? securityRunnerWithWarmup.warmupPromise
+            .catch(() => {})
+            .then(() => securityRunnerWithWarmup.taskRunner.cleanup())
+            .catch(() => {})
+        : Promise.resolve();
+    }
+    return securityCleanupPromise;
+  };
+
   progressCallback('Searching for files...');
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
@@ -135,28 +170,9 @@ export const pack = async (
     config.tokenCount.encoding,
   );
 
-  // Pre-initialize the security worker pool so spawning its worker threads and
-  // loading the secretlint preset (~50-100ms per worker) overlap with file
-  // collection and git subprocesses instead of starting inside runSecurityCheck,
-  // which sits on the critical path after collection completes.
-  const securityRunnerWithWarmup = config.security.enableSecurityCheck
-    ? deps.createSecurityCheckTaskRunner(allFilePaths.length)
-    : undefined;
-  // Started after the security check finishes so the pool destroy overlaps with
-  // output generation and metrics; the finally block ensures it also runs (and
-  // is awaited) on every error path.
-  let securityCleanupPromise: Promise<void> | undefined;
-  const startSecurityRunnerCleanup = (): Promise<void> => {
-    if (securityCleanupPromise === undefined) {
-      securityCleanupPromise = securityRunnerWithWarmup
-        ? securityRunnerWithWarmup.warmupPromise
-            .catch(() => {})
-            .then(() => securityRunnerWithWarmup.taskRunner.cleanup())
-            .catch(() => {})
-        : Promise.resolve();
-    }
-    return securityCleanupPromise;
-  };
+  // The file count is now known: post the second security warm-up task when
+  // the workload is large enough to use a second worker.
+  securityRunnerWithWarmup?.completeWarmup(allFilePaths.length);
 
   try {
     // Run file collection and git operations in parallel since they are independent:
@@ -169,9 +185,21 @@ export const pack = async (
         'Collect Files',
         async () =>
           await Promise.all(
-            sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-              deps.collectFiles(filePaths, rootDir, config, progressCallback),
-            ),
+            sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => {
+              // Feed each collected file straight into the security stream using
+              // its final display path, so streamed items match the rawFiles
+              // labeling applied below.
+              const rootLabel = rootLabels?.[index];
+              const onFileCollected = securityCheckStream
+                ? (file: RawFile) =>
+                    securityCheckStream.addFile({
+                      filePath: rootLabel ? joinDisplayPath(rootLabel, file.path) : file.path,
+                      content: file.content,
+                      type: 'file',
+                    })
+                : undefined;
+              return deps.collectFiles(filePaths, rootDir, config, progressCallback, { onFileCollected });
+            }),
           ),
       ),
       deps.getGitDiffs(rootDirs, config),
@@ -201,6 +229,7 @@ export const pack = async (
       withMemoryLogging('Security Check', () =>
         deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, {
           securityTaskRunner: securityRunnerWithWarmup?.taskRunner,
+          securityCheckStream,
         }),
       ),
       withMemoryLogging('Process Files', () => {

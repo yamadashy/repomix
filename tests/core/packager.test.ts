@@ -64,6 +64,7 @@ describe('packager', () => {
           cleanup: vi.fn().mockResolvedValue(undefined),
         },
         warmupPromise: Promise.resolve(),
+        completeWarmup: () => {},
       }),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
@@ -87,8 +88,20 @@ describe('packager', () => {
     const result = await pack(['root'], mockConfig, progressCallback, mockDeps);
 
     expect(mockDeps.searchFiles).toHaveBeenCalledWith('root', mockConfig, undefined);
-    expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback);
-    expect(mockDeps.validateFileSafety).toHaveBeenCalled();
+    expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback, {
+      onFileCollected: expect.any(Function),
+    });
+    expect(mockDeps.validateFileSafety).toHaveBeenCalledWith(
+      expect.anything(),
+      progressCallback,
+      mockConfig,
+      undefined,
+      undefined,
+      expect.objectContaining({
+        securityTaskRunner: expect.anything(),
+        securityCheckStream: expect.objectContaining({ addFile: expect.any(Function), finalize: expect.any(Function) }),
+      }),
+    );
     expect(mockDeps.processFiles).toHaveBeenCalled();
     expect(mockDeps.produceOutput).toHaveBeenCalled();
     expect(mockDeps.calculateMetrics).toHaveBeenCalled();
@@ -190,6 +203,7 @@ describe('packager', () => {
           createSecurityCheckTaskRunner: vi.fn().mockReturnValue({
             taskRunner: { run: vi.fn().mockResolvedValue([]), cleanup: securityCleanup },
             warmupPromise: Promise.resolve(),
+            completeWarmup: vi.fn(),
           }),
           getGitDiffs: vi.fn().mockResolvedValue(undefined),
           getGitLogs: vi.fn().mockResolvedValue(undefined),
@@ -261,7 +275,11 @@ describe('packager', () => {
 
       await pack(['root'], createMockConfig(), vi.fn(), deps);
 
-      expect(deps.createSecurityCheckTaskRunner).toHaveBeenCalledWith(mockFilePaths.length);
+      expect(deps.createSecurityCheckTaskRunner).toHaveBeenCalledTimes(1);
+      // The second-stage warm-up receives the file count once search completes.
+      expect(deps.createSecurityCheckTaskRunner.mock.results[0].value.completeWarmup).toHaveBeenCalledWith(
+        mockFilePaths.length,
+      );
       expect(securityCleanup).toHaveBeenCalled();
     });
 

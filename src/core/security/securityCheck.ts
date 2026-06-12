@@ -26,7 +26,8 @@ export interface SuspiciousFileResult {
 // already produces ~20 batches — enough to distribute well across available CPU cores.
 // (Unlike metrics, which may process only a small number of top files when tokenCountTree
 // is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
-const BATCH_SIZE = 50;
+// Exported so the streaming session (securityCheckStreaming.ts) batches identically.
+export const SECURITY_CHECK_BATCH_SIZE = 50;
 
 // Cap security workers at 2 to reduce contention with the metrics worker pool that
 // runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
@@ -37,7 +38,12 @@ export type SecurityTaskRunner = TaskRunner<SecurityCheckTask, (SuspiciousFileRe
 
 export interface SecurityTaskRunnerWithWarmup {
   taskRunner: SecurityTaskRunner;
+  // Mutable: completeWarmup() extends it with the second-stage warm-up task.
+  // Read it lazily (e.g. inside a cleanup closure), not at creation time.
   warmupPromise: Promise<unknown>;
+  // Called once the file count is known (after file search). Posts the second
+  // warm-up task when the workload is large enough to use a second worker.
+  completeWarmup: (numOfTasks: number) => void;
 }
 
 /**
@@ -46,19 +52,22 @@ export interface SecurityTaskRunnerWithWarmup {
  * Spawning a security worker is expensive (~50-100ms each: thread creation plus
  * loading the @secretlint preset bundle) and previously happened inside
  * `runSecurityCheck`, i.e. after file collection finished — squarely on the
- * critical path of the pack pipeline. Creating the runner early in `pack()`
- * lets the spawn and module loading overlap with file collection and git
- * subprocesses instead.
+ * critical path of the pack pipeline. Creating the runner at the very start of
+ * `pack()` — before file search — lets the spawn and module loading overlap
+ * with the search phase, so the workers are ready to lint streamed batches as
+ * soon as file collection starts.
  *
- * The warm-up posts one empty-items task per worker. An empty batch makes the
- * worker's handler return `[]` without linting anything, so the only effect is
- * forcing Tinypool to spawn the thread and import the secretlint modules. The
- * warm-up count mirrors the pool's own sizing (ceil(numOfTasks/100) capped at
- * 2 workers — i.e. 1 worker up to 100 items, 2 from 101) so no thread is
- * spawned that the real workload would not have spawned anyway.
+ * A warm-up posts an empty-items task. An empty batch makes the worker's
+ * handler return `[]` without linting anything, so the only effect is forcing
+ * Tinypool to spawn the thread and import the secretlint modules. The warm-up
+ * runs in two stages because the file count is unknown before search:
+ * - Stage 1 (here): one task — every non-empty workload uses at least one worker.
+ * - Stage 2 (`completeWarmup`, after search): the second task, posted only when
+ *   the runSecurityCheck sizing (ceil(numOfTasks/100) capped at 2 workers —
+ *   i.e. 1 worker up to 100 items, 2 from 101) would use a second worker, so
+ *   no thread is spawned that the real workload would not have spawned anyway.
  */
 export const createSecurityCheckTaskRunner = (
-  numOfTasks: number,
   deps = {
     initTaskRunner,
     getProcessConcurrency: defaultGetProcessConcurrency,
@@ -66,20 +75,36 @@ export const createSecurityCheckTaskRunner = (
 ): SecurityTaskRunnerWithWarmup => {
   const maxSecurityWorkers = Math.min(MAX_SECURITY_WORKERS, deps.getProcessConcurrency());
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({
-    numOfTasks,
+    // The file count is unknown this early; cap the pool by worker count alone.
+    // Threads beyond the first are spawned by Tinypool on demand, so this does
+    // not by itself create more threads for small workloads.
+    numOfTasks: Number.MAX_SAFE_INTEGER,
     workerType: 'securityCheck',
     runtime: 'worker_threads',
     maxWorkerThreads: maxSecurityWorkers,
   });
 
-  // Match Tinypool's maxThreads sizing (min(concurrency, ceil(numOfTasks/100), cap))
-  // so the warm-up never tries to spawn more threads than the pool allows.
-  const warmupCount = Math.max(1, Math.min(maxSecurityWorkers, Math.ceil(numOfTasks / 100)));
-  const warmupPromise = Promise.all(
-    Array.from({ length: warmupCount }, () => taskRunner.run({ items: [] }).catch(() => [])),
-  );
+  const startWarmupTask = () => taskRunner.run({ items: [] }).catch(() => []);
 
-  return { taskRunner, warmupPromise };
+  let warmupCompleted = false;
+  const runnerWithWarmup: SecurityTaskRunnerWithWarmup = {
+    taskRunner,
+    warmupPromise: startWarmupTask(),
+    completeWarmup: (numOfTasks: number) => {
+      if (warmupCompleted) {
+        return;
+      }
+      warmupCompleted = true;
+      // Mirror runSecurityCheck's worker sizing (min(cap, ceil(numOfTasks/100))).
+      const warmupCount = Math.max(1, Math.min(maxSecurityWorkers, Math.ceil(numOfTasks / 100)));
+      if (warmupCount > 1) {
+        const extraWarmups = Array.from({ length: warmupCount - 1 }, startWarmupTask);
+        runnerWithWarmup.warmupPromise = Promise.all([runnerWithWarmup.warmupPromise, ...extraWarmups]);
+      }
+    },
+  };
+
+  return runnerWithWarmup;
 };
 
 const defaultDeps = {
@@ -162,8 +187,8 @@ export const runSecurityCheck = async (
 
   // Split items into batches to reduce IPC round-trips
   const batches: SecurityCheckItem[][] = [];
-  for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-    batches.push(allItems.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < allItems.length; i += SECURITY_CHECK_BATCH_SIZE) {
+    batches.push(allItems.slice(i, i + SECURITY_CHECK_BATCH_SIZE));
   }
 
   try {

@@ -249,54 +249,74 @@ describe('runSecurityCheck', () => {
 });
 
 describe('createSecurityCheckTaskRunner', () => {
-  it('creates a runner and warms up workers with empty-items tasks', async () => {
+  it('creates a runner and immediately warms up a single worker', async () => {
     const run = vi.fn().mockResolvedValue([]);
     const cleanup = vi.fn().mockResolvedValue(undefined);
     const initTaskRunnerSpy = vi.fn().mockReturnValue({ run, cleanup });
 
-    const { taskRunner, warmupPromise } = createSecurityCheckTaskRunner(1000, {
+    const { taskRunner, warmupPromise } = createSecurityCheckTaskRunner({
       initTaskRunner: initTaskRunnerSpy,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
 
     expect(initTaskRunnerSpy).toHaveBeenCalledWith({
-      numOfTasks: 1000,
+      // The file count is unknown before search; the pool is capped by worker count alone.
+      numOfTasks: Number.MAX_SAFE_INTEGER,
       workerType: 'securityCheck',
       runtime: 'worker_threads',
       maxWorkerThreads: 2,
     });
 
     await warmupPromise;
-    // 1000 tasks size the pool at 2 workers; one warm-up task per worker.
-    expect(run).toHaveBeenCalledTimes(2);
+    // Only the first-stage warm-up runs until the file count is known.
+    expect(run).toHaveBeenCalledTimes(1);
     expect(run).toHaveBeenCalledWith({ items: [] });
     expect(taskRunner.run).toBe(run);
   });
 
-  it('warms up a single worker for small workloads', async () => {
+  it('completeWarmup posts the second warm-up task for large workloads', async () => {
     const run = vi.fn().mockResolvedValue([]);
     const initTaskRunnerSpy = vi.fn().mockReturnValue({ run, cleanup: vi.fn() });
 
-    const { warmupPromise } = createSecurityCheckTaskRunner(10, {
+    const runnerWithWarmup = createSecurityCheckTaskRunner({
       initTaskRunner: initTaskRunnerSpy,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
+    runnerWithWarmup.completeWarmup(1000);
 
-    await warmupPromise;
+    await runnerWithWarmup.warmupPromise;
+    // 1000 tasks size the pool at 2 workers; one warm-up task per worker.
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('completeWarmup keeps a single worker for small workloads and is idempotent', async () => {
+    const run = vi.fn().mockResolvedValue([]);
+    const initTaskRunnerSpy = vi.fn().mockReturnValue({ run, cleanup: vi.fn() });
+
+    const runnerWithWarmup = createSecurityCheckTaskRunner({
+      initTaskRunner: initTaskRunnerSpy,
+      getProcessConcurrency: mockGetProcessConcurrency,
+    });
     // ceil(10/100) = 1 — the pool would only ever spawn one worker.
+    runnerWithWarmup.completeWarmup(10);
+    // A second call must not add warm-up tasks either.
+    runnerWithWarmup.completeWarmup(1000);
+
+    await runnerWithWarmup.warmupPromise;
     expect(run).toHaveBeenCalledTimes(1);
   });
 
-  it('does not reject the warmup promise when a warm-up task fails', async () => {
+  it('does not reject the warmup promise when warm-up tasks fail', async () => {
     const run = vi.fn().mockRejectedValue(new Error('spawn failed'));
     const initTaskRunnerSpy = vi.fn().mockReturnValue({ run, cleanup: vi.fn() });
 
-    const { warmupPromise } = createSecurityCheckTaskRunner(1000, {
+    const runnerWithWarmup = createSecurityCheckTaskRunner({
       initTaskRunner: initTaskRunnerSpy,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
+    runnerWithWarmup.completeWarmup(1000);
 
     // Each warm-up task swallows its own failure and resolves to [].
-    await expect(warmupPromise).resolves.toEqual([[], []]);
+    await expect(runnerWithWarmup.warmupPromise).resolves.toEqual([[], []]);
   });
 });

@@ -115,6 +115,32 @@ describe('validateFileSafety', () => {
     });
   });
 
+  it('uses the streaming session instead of runSecurityCheck when provided', async () => {
+    const config: RepomixConfigMerged = {
+      security: { enableSecurityCheck: true },
+    } as RepomixConfigMerged;
+    const rawFiles: RawFile[] = [{ path: 'file1.txt', content: 'content' }];
+    const suspiciousFilesResults: SuspiciousFileResult[] = [
+      { filePath: 'file1.txt', messages: ['something suspicious.'], type: 'file' },
+    ];
+    const progressCallback: RepomixProgressCallback = vi.fn();
+    const securityCheckStream = {
+      addFile: vi.fn(),
+      finalize: vi.fn().mockResolvedValue(suspiciousFilesResults),
+    };
+    const deps = {
+      runSecurityCheck: vi.fn(),
+      filterOutUntrustedFiles: vi.fn().mockReturnValue([]),
+      securityCheckStream,
+    };
+
+    const result = await validateFileSafety(rawFiles, progressCallback, config, undefined, undefined, deps);
+
+    expect(securityCheckStream.finalize).toHaveBeenCalledWith(rawFiles, progressCallback, undefined, undefined);
+    expect(deps.runSecurityCheck).not.toHaveBeenCalled();
+    expect(result.suspiciousFilesResults).toEqual(suspiciousFilesResults);
+  });
+
   it('skips runSecurityCheck entirely when enableSecurityCheck is false', async () => {
     // Pin the negative path of the `if (config.security.enableSecurityCheck)` guard.
     // Dropping the guard would still pass every other test in this file because

@@ -86,6 +86,7 @@ index 123..456 100644
         cleanup: vi.fn().mockResolvedValue(undefined),
       },
       warmupPromise: Promise.resolve(),
+      completeWarmup: vi.fn(),
     });
 
     // Config with diffs disabled
@@ -152,6 +153,7 @@ index 123..456 100644
         cleanup: vi.fn().mockResolvedValue(undefined),
       },
       warmupPromise: Promise.resolve(),
+      completeWarmup: vi.fn(),
     });
 
     // Config with diffs enabled

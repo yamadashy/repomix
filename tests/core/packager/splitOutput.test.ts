@@ -68,6 +68,7 @@ describe('packager split output', () => {
           cleanup: vi.fn().mockResolvedValue(undefined),
         },
         warmupPromise: Promise.resolve(),
+        completeWarmup: () => {},
       }),
     });
 
