@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781291290063,
+  "lastUpdate": 1781303444699,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10838,6 +10838,51 @@ window.BENCHMARK_DATA = {
             "range": "±22",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1235ms, Q3: 1257ms\nAll times: 1213, 1224, 1226, 1228, 1232, 1235, 1236, 1238, 1238, 1246, 1247, 1251, 1252, 1255, 1256, 1257, 1260, 1261, 1261, 1309ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "632bf8f72e4641651da937870b03940a9a99f493",
+          "message": "perf(file): Replace globby's gitignore machinery with an in-repo synchronous ignore-file filter\n\nWith gitignore:true / ignoreFiles, globby filters every matched path\nthrough an async predicate — one Promise per path via Promise.all plus\na promisified stat each, ~1,100 microtask round-trips per search on\nthis repo. searchFiles now discovers and parses .gitignore /\n.repomixignore / .ignore itself (new gitignoreParse.ts +\ngitignoreFilter.ts, using the `ignore` package that globby itself\nuses), passes gitignore:false to globby, and applies the predicate as\na synchronous Array.filter over the results. The fast-glob\npruning-pattern injection (no-negations fast path) and\nparent-.gitignore collection up to the git root are replicated\nexactly, and the discovery walk shares the readdir-caching fs adapter\nwith the main scan so the tree is still read only once per search.\n\nEquivalence verification:\n- byte-identical output (cmp) vs HEAD build: default pack,\n  --no-gitignore, multi-root (src website), subdir pack (website/client)\n- searchFiles/listFiles/listDirectories parity on synthetic repos:\n  negations, nested .gitignore (CRLF), anchored and trailing-slash\n  patterns, .repomixignore/.ignore, 300-dir ignored tree (readdir\n  counts equal: 301 = 301), subdir-of-git-root with parent gitignores\n  and nested negation override\n- differential fuzz vs globby's internal predicate: 9,600 checks\n  across 60 random ignore-file trees, 0 mismatches; pruning patterns\n  equal as multisets across 120 configurations\n\nBenchmark (packing this repo, warm, quiet 4-core Linux, 30 interleaved\nABBA pairs, node bin/repomix.cjs --quiet):\n- e2e median 816ms -> 796.5ms, paired delta median -29ms (-3.6%),\n  mean -25.7ms (-3.1%), t = -3.40, 24/30 pairs improved\n- search phase ([globby] trace) 149-189ms -> 125-145ms\n\nintent(perf): round-7 automated pass; the previous round measured this\n  approach at -5.2% but rejected it as unshippable via globby internals\ndecision(gitignore-filter): keep globby for traversal and include\n  handling; replace only the ignore-file machinery — preserves\n  expandDirectories and negative-include behavior that a raw fast-glob\n  swap would silently lose\nrejected(globby-public-api): isIgnoredByIgnoreFiles alone — it\n  hardcodes includeParentIgnoreFiles=false (drops parent .gitignore\n  files when packing a subdirectory) and does not expose patterns for\n  traversal pruning\nrejected(candidates): skipping the redundant sortOutputFiles call in\n  generateOutput (-22ms) and a direct XML string builder replacing the\n  Handlebars render (-19ms) — both clear the 2% bar but are smaller\n  than this change; viable for future rounds\nconstraint(equivalence): ignore-file discovery order is\n  nondeterministic (async fast-glob) in globby today as well; order\n  only affects cross-file negation interplay, so the behavior class is\n  unchanged\nlearned(globby): gitignore:true injects converted gitignore patterns\n  into fast-glob's ignore option for directory pruning only when cwd\n  is the git root and no negations exist anywhere; replicated in\n  convertPatternsForFastGlob\n\nhttps://claude.ai/code/session_014MsDPw1ZUnHVU4giu48JA7",
+          "timestamp": "2026-06-12T22:29:12Z",
+          "tree_id": "681a6462db4d26501eab351e0bc242e876c94d54",
+          "url": "https://github.com/yamadashy/repomix/commit/632bf8f72e4641651da937870b03940a9a99f493"
+        },
+        "date": 1781303443830,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 472,
+            "range": "±40",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 458ms, Q3: 498ms\nAll times: 416, 440, 445, 448, 454, 456, 456, 458, 460, 461, 463, 465, 465, 469, 469, 472, 475, 479, 484, 490, 491, 498, 498, 498, 509, 516, 521, 540, 554, 647ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 802,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 783ms, Q3: 812ms\nAll times: 765, 768, 770, 775, 777, 783, 787, 791, 792, 797, 802, 805, 806, 807, 810, 812, 813, 822, 825, 844ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 979,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 970ms, Q3: 986ms\nAll times: 943, 951, 963, 965, 967, 970, 971, 971, 972, 974, 979, 982, 983, 983, 984, 986, 989, 990, 993, 995ms"
           }
         ]
       }
