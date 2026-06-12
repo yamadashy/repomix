@@ -10,6 +10,7 @@ import { mapWithConcurrency } from '../../shared/asyncMap.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { sortPaths } from './filePathSort.js';
+import { buildIgnoreFileFilter, type IgnoreFileFilter } from './gitignoreFilter.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
 
@@ -237,6 +238,17 @@ export const searchFiles = async (
     logger.debug('[globby] Starting file search...');
     const globbyStartTime = Date.now();
 
+    // The adapter is shared between the ignore-file discovery walk and the main
+    // scan so the directory tree is read once per search.
+    const fsAdapter = createGlobbyFsAdapter();
+    const ignoreFileFilter = await buildIgnoreFileFilter(
+      rootDir,
+      config.ignore.useGitignore,
+      ignoreFilePatterns,
+      adjustedIgnorePatterns,
+      fsAdapter,
+    ).catch(handleGlobbyError);
+
     let filePaths: string[];
     let emptyDirPaths: string[] = [];
 
@@ -249,7 +261,7 @@ export const searchFiles = async (
       // to match the previous `onlyFiles: true` semantics for symlinks and other non-file
       // non-directory entries (which are excluded in both implementations).
       const entries: GlobEntry[] = await globby(includePatterns, {
-        ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+        ...createBaseGlobbyOptions(rootDir, adjustedIgnorePatterns, ignoreFileFilter, fsAdapter),
         onlyFiles: false,
         objectMode: true,
       }).catch(handleGlobbyError);
@@ -258,9 +270,13 @@ export const searchFiles = async (
       const directories: string[] = [];
       for (const entry of entries) {
         if (entry.dirent.isFile()) {
-          files.push(entry.path);
+          if (!ignoreFileFilter.isIgnored(entry.path, false)) {
+            files.push(entry.path);
+          }
         } else if (entry.dirent.isDirectory()) {
-          directories.push(entry.path);
+          if (!ignoreFileFilter.isIgnored(entry.path, true)) {
+            directories.push(entry.path);
+          }
         }
       }
       filePaths = filterDeferredIgnoredFiles(files, deferredIgnorePatterns);
@@ -275,11 +291,12 @@ export const searchFiles = async (
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     } else {
+      const files = await globby(includePatterns, {
+        ...createBaseGlobbyOptions(rootDir, adjustedIgnorePatterns, ignoreFileFilter, fsAdapter),
+        onlyFiles: true,
+      }).catch(handleGlobbyError);
       filePaths = filterDeferredIgnoredFiles(
-        await globby(includePatterns, {
-          ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-          onlyFiles: true,
-        }).catch(handleGlobbyError),
+        files.filter((filePath) => !ignoreFileFilter.isIgnored(filePath, false)),
         deferredIgnorePatterns,
       );
 
@@ -372,26 +389,27 @@ const prepareIgnoreContext = async (
 };
 
 /**
- * Creates an fs adapter for globby that answers its gitignore-filter stat calls from
- * directory-entry types already learned during traversal, and serves the second
- * traversal's readdir calls from the first traversal's results.
+ * Creates an fs adapter shared between the ignore-file discovery walk
+ * (buildIgnoreFileFilter) and the main scan, serving the second walk's readdir
+ * calls from the first walk's results and answering stat calls from
+ * directory-entry types already learned during traversal.
  *
- * When `gitignore: true`, globby stats every matched path to decide whether
- * trailing-slash ignore rules (`dir/`) should also be tested against it — roughly one
- * stat syscall per matched file. The traversal's readdir(withFileTypes) calls already
- * carry each entry's type, so this adapter records them and serves the stat calls from
- * memory. Symlinks and other special entries are never recorded (stat follows links, so
- * the dirent type may not match) and fall through to a real stat, as does any path not
- * seen during traversal. The adapter is created per globby call, so the cache cannot go
- * stale across searches.
- *
- * A single globby call also walks the tree twice — once to discover ignore files
+ * Each search walks the tree twice — once to discover ignore files
  * (.gitignore/.repomixignore/.ignore) and once for the main scan — issuing a second
  * readdir(withFileTypes) for every directory. Successful results from the first walk
  * are replayed from memory on the second, halving the readdir syscalls per search.
  * Errors are never cached, so a directory that failed transiently is retried. Both
  * walks therefore see one consistent snapshot per search; previously a directory
  * changing between the two walks could be listed differently by each.
+ *
+ * The stat interception predates the in-repo ignore-file filter: globby's
+ * `gitignore: true` machinery statted every matched path to decide whether
+ * trailing-slash ignore rules (`dir/`) applied. The filter now answers that from
+ * dirent types directly, but the interception is kept — it is free and still
+ * serves any stat a glob implementation issues. Symlinks and other special
+ * entries are never recorded (stat follows links, so the dirent type may not
+ * match) and fall through to a real stat, as does any path not seen during
+ * traversal. The adapter is created per search, so the cache cannot go stale.
  *
  * Cache keys are built with `path.join`, which normalizes separators to the native one —
  * exactly like the `path.normalize` + `path.resolve` chain globby applies before calling
@@ -460,21 +478,28 @@ const createGlobbyFsAdapter = (): GlobbyOptions['fs'] => {
 /**
  * Creates base globby options with common ignore patterns.
  * Returns options that can be extended with specific settings like onlyFiles or onlyDirectories.
+ *
+ * Ignore files (.gitignore/.repomixignore/.ignore) are handled by repomix's own
+ * filter (see buildIgnoreFileFilter) instead of globby's `gitignore`/`ignoreFiles`
+ * options: the filter's pruning patterns are merged into `ignore` here and its
+ * predicate is applied synchronously to the results, which avoids globby's
+ * one-Promise-per-matched-path async filter. The fs adapter is shared with the
+ * filter's discovery walk so the main scan replays its readdir results.
  */
 const createBaseGlobbyOptions = (
   rootDir: string,
-  config: RepomixConfigMerged,
   ignorePatterns: string[],
-  ignoreFilePatterns: string[],
+  ignoreFileFilter: IgnoreFileFilter,
+  fsAdapter: GlobbyOptions['fs'],
 ): Omit<GlobbyOptions, 'onlyFiles' | 'onlyDirectories'> => ({
   cwd: rootDir,
-  ignore: ignorePatterns,
-  gitignore: config.ignore.useGitignore,
-  ignoreFiles: ignoreFilePatterns,
+  ignore: [...ignorePatterns, ...ignoreFileFilter.patternsForFastGlob],
+  gitignore: false,
+  ignoreFiles: [],
   absolute: false,
   dot: true,
   followSymbolicLinks: false,
-  fs: createGlobbyFsAdapter(),
+  fs: fsAdapter,
 });
 
 export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promise<string[]> => {
@@ -487,8 +512,9 @@ export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promis
   // Multiple ignore files in the same directory (.gitignore, .ignore, .repomixignore)
   // are all merged together. The order in this array does not affect priority.
   //
-  // .gitignore files are handled by globby's gitignore option (not ignoreFiles)
-  // to properly respect parent directory .gitignore files, matching Git's behavior.
+  // .gitignore files are handled separately by buildIgnoreFileFilter (which also
+  // collects parent directory .gitignore files up to the git root, matching
+  // Git's behavior), so they are not part of these patterns.
 
   if (config.ignore.useDotIgnore) {
     ignoreFilePatterns.push('**/.ignore');
@@ -559,12 +585,21 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
+  const fsAdapter = createGlobbyFsAdapter();
+  const ignoreFileFilter = await buildIgnoreFileFilter(
+    rootDir,
+    config.ignore.useGitignore,
+    ignoreFilePatterns,
+    adjustedIgnorePatterns,
+    fsAdapter,
+  );
+
   const directories = await globby(['**/*'], {
-    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    ...createBaseGlobbyOptions(rootDir, adjustedIgnorePatterns, ignoreFileFilter, fsAdapter),
     onlyDirectories: true,
   });
 
-  return sortPaths(directories);
+  return sortPaths(directories.filter((directory) => !ignoreFileFilter.isIgnored(directory, true)));
 };
 
 /**
@@ -581,10 +616,24 @@ export const listFiles = async (rootDir: string, config: RepomixConfigMerged): P
     config,
   );
 
+  const fsAdapter = createGlobbyFsAdapter();
+  const ignoreFileFilter = await buildIgnoreFileFilter(
+    rootDir,
+    config.ignore.useGitignore,
+    ignoreFilePatterns,
+    adjustedIgnorePatterns,
+    fsAdapter,
+  );
+
   const files = await globby(['**/*'], {
-    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
+    ...createBaseGlobbyOptions(rootDir, adjustedIgnorePatterns, ignoreFileFilter, fsAdapter),
     onlyFiles: true,
   });
 
-  return sortPaths(filterDeferredIgnoredFiles(files, deferredIgnorePatterns));
+  return sortPaths(
+    filterDeferredIgnoredFiles(
+      files.filter((filePath) => !ignoreFileFilter.isIgnored(filePath, false)),
+      deferredIgnorePatterns,
+    ),
+  );
 };

@@ -15,6 +15,7 @@ import {
   parseIgnoreContent,
   searchFiles,
 } from '../../../src/core/file/fileSearch.js';
+import { buildIgnoreFileFilter } from '../../../src/core/file/gitignoreFilter.js';
 import { checkDirectoryPermissions, PermissionError } from '../../../src/core/file/permissionCheck.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
 import { createMockConfig, isWindows } from '../../testing/testUtils.js';
@@ -22,6 +23,9 @@ import { createMockConfig, isWindows } from '../../testing/testUtils.js';
 vi.mock('fs/promises');
 vi.mock('globby', () => ({
   globby: vi.fn(),
+}));
+vi.mock('../../../src/core/file/gitignoreFilter.js', () => ({
+  buildIgnoreFileFilter: vi.fn(),
 }));
 vi.mock('../../../src/core/file/permissionCheck.js', () => ({
   checkDirectoryPermissions: vi.fn(),
@@ -52,10 +56,15 @@ describe('fileSearch', () => {
     });
     // Default mock for globby
     vi.mocked(globby).mockResolvedValue([]);
+    // Default mock for the ignore-file filter: no-op (nothing ignored, no pruning patterns)
+    vi.mocked(buildIgnoreFileFilter).mockResolvedValue({
+      isIgnored: () => false,
+      patternsForFastGlob: [],
+    });
   });
 
   describe('getIgnoreFilePaths', () => {
-    test('should return correct paths when .ignore and .repomixignore are enabled (.gitignore handled by gitignore option)', async () => {
+    test('should return correct paths when .ignore and .repomixignore are enabled (.gitignore handled by buildIgnoreFileFilter)', async () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       const mockConfig = createMockConfig({
         ignore: {
@@ -66,7 +75,7 @@ describe('fileSearch', () => {
         },
       });
       const filePatterns = await getIgnoreFilePatterns(mockConfig);
-      // .gitignore is not included because it's handled by globby's gitignore option
+      // .gitignore is not included because buildIgnoreFileFilter adds it separately
       expect(filePatterns).toEqual(['**/.ignore', '**/.repomixignore']);
     });
 
@@ -95,7 +104,7 @@ describe('fileSearch', () => {
         },
       });
       const filePatterns = await getIgnoreFilePatterns(mockConfig);
-      // .gitignore is not included because it's handled by globby's gitignore option
+      // .gitignore is not included because buildIgnoreFileFilter adds it separately
       expect(filePatterns).toEqual(['**/.repomixignore']);
     });
 
@@ -279,6 +288,10 @@ node_modules
         hasAllPermission: true,
         details: { read: true, write: true, execute: true },
       });
+      vi.mocked(buildIgnoreFileFilter).mockResolvedValue({
+        isIgnored: () => false,
+        patternsForFastGlob: [],
+      });
     });
 
     test('should call globby with correct parameters', async () => {
@@ -301,13 +314,22 @@ node_modules
         expect.objectContaining({
           cwd: '/mock/root',
           ignore: expect.arrayContaining(['*.custom']),
-          gitignore: true,
-          ignoreFiles: expect.arrayContaining(['**/.repomixignore']),
+          gitignore: false,
+          ignoreFiles: [],
           onlyFiles: true,
           absolute: false,
           dot: true,
           followSymbolicLinks: false,
         }),
+      );
+
+      // Ignore files are handled by repomix's own filter, not globby's options.
+      expect(buildIgnoreFileFilter).toHaveBeenCalledWith(
+        '/mock/root',
+        true,
+        expect.arrayContaining(['**/.repomixignore']),
+        expect.arrayContaining(['*.custom']),
+        expect.anything(),
       );
     });
 
@@ -355,6 +377,16 @@ node_modules
       expect(result.filePaths).toEqual(['root/another/file3.js', 'root/subdir/file2.js', 'root/file1.js']);
       expect(result.filePaths).not.toContain('root/subdir/ignored.js');
       expect(result.emptyDirPaths).toEqual([]);
+
+      // The .gitignore handling itself lives in buildIgnoreFileFilter (covered by
+      // its own tests); here we verify searchFiles enables it.
+      expect(buildIgnoreFileFilter).toHaveBeenCalledWith(
+        '/mock/root',
+        true,
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
     });
 
     test.runIf(!isWindows)('should respect parent directory .gitignore patterns (v16 behavior)', async () => {
@@ -409,12 +441,14 @@ node_modules
       expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-parent.js');
       expect(result.emptyDirPaths).toEqual([]);
 
-      // Verify gitignore option was passed to globby
-      expect(globby).toHaveBeenCalledWith(
+      // Verify the ignore-file filter was built with gitignore enabled
+      // (it collects parent .gitignore files up to the git root)
+      expect(buildIgnoreFileFilter).toHaveBeenCalledWith(
+        '/mock/root',
+        true,
         expect.anything(),
-        expect.objectContaining({
-          gitignore: true,
-        }),
+        expect.anything(),
+        expect.anything(),
       );
     });
 
@@ -469,12 +503,13 @@ node_modules
       expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-parent.js');
       expect(result.emptyDirPaths).toEqual([]);
 
-      // Verify ignoreFiles option includes .ignore
-      expect(globby).toHaveBeenCalledWith(
+      // Verify the ignore-file filter receives the .ignore file pattern
+      expect(buildIgnoreFileFilter).toHaveBeenCalledWith(
+        '/mock/root',
+        false,
+        expect.arrayContaining(['**/.ignore']),
         expect.anything(),
-        expect.objectContaining({
-          ignoreFiles: expect.arrayContaining(['**/.ignore']),
-        }),
+        expect.anything(),
       );
     });
 
@@ -529,12 +564,13 @@ node_modules
       expect(result.filePaths).not.toContain('root/subdir/nested/ignored-by-repomix.js');
       expect(result.emptyDirPaths).toEqual([]);
 
-      // Verify ignoreFiles option includes .repomixignore
-      expect(globby).toHaveBeenCalledWith(
+      // Verify the ignore-file filter receives the .repomixignore file pattern
+      expect(buildIgnoreFileFilter).toHaveBeenCalledWith(
+        '/mock/root',
+        false,
+        expect.arrayContaining(['**/.repomixignore']),
         expect.anything(),
-        expect.objectContaining({
-          ignoreFiles: expect.arrayContaining(['**/.repomixignore']),
-        }),
+        expect.anything(),
       );
     });
 
@@ -698,12 +734,14 @@ node_modules
       expect(ignorePatterns).toContain('.git');
       expect(ignorePatterns).not.toContain('.git/**');
 
-      // Verify gitignore option was passed (enables parent .gitignore handling)
-      expect(globby).toHaveBeenCalledWith(
+      // Verify the ignore-file filter was built with gitignore enabled
+      // (enables parent .gitignore handling)
+      expect(buildIgnoreFileFilter).toHaveBeenCalledWith(
+        '/test/worktree',
+        true,
         expect.anything(),
-        expect.objectContaining({
-          gitignore: true,
-        }),
+        expect.anything(),
+        expect.anything(),
       );
     });
 
@@ -998,8 +1036,8 @@ node_modules
 
         expect(options).toMatchObject({
           cwd: '/test/root',
-          gitignore: true,
-          ignoreFiles: expect.arrayContaining(['**/.repomixignore']),
+          gitignore: false,
+          ignoreFiles: [],
           absolute: false,
           dot: true,
           followSymbolicLinks: false,
@@ -1032,19 +1070,11 @@ node_modules
       await listDirectories('/test/root', mockConfigWithoutGitignore);
       await listFiles('/test/root', mockConfigWithoutGitignore);
 
-      // Verify all calls have gitignore: false
-      const calls = vi.mocked(globby).mock.calls;
-      for (const call of calls) {
-        const options = call[1];
-
-        // In our implementation globby is always called with an options object.
-        // Guard here to satisfy the type-checker and avoid undefined access.
-        expect(options).toBeDefined();
-        if (!options) continue;
-
-        expect(options).toMatchObject({
-          gitignore: false,
-        });
+      // Verify the ignore-file filter was built with gitignore disabled each time
+      const filterCalls = vi.mocked(buildIgnoreFileFilter).mock.calls;
+      expect(filterCalls).toHaveLength(3);
+      for (const call of filterCalls) {
+        expect(call[1]).toBe(false);
       }
     });
 
