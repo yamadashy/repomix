@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781259318650,
+  "lastUpdate": 1781291290063,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10793,6 +10793,51 @@ window.BENCHMARK_DATA = {
             "range": "±25",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1232ms, Q3: 1257ms\nAll times: 1203, 1204, 1209, 1211, 1224, 1232, 1240, 1240, 1244, 1246, 1249, 1251, 1255, 1256, 1256, 1257, 1261, 1300, 1375, 1629ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "a8905792156e8fdae160612fdbf61c55b792b57e",
+          "message": "perf(output): Defer line-count and markdown-delimiter scans with lazy render-context getters\n\ncreateRenderContext eagerly ran calculateFileLineCounts and\ncalculateMarkdownDelimiter — two full scans over every packed file's\ncontent (~5.5MB) — on every run, even though fileLineCounts is only\nconsumed by skill generation and markdownCodeBlockDelimiter only by the\nmarkdown/skill templates. Memoized getters defer both scans, so the\ndefault XML (and plain/JSON) path never pays for them. Output is\nbyte-identical (verified with cmp for xml and markdown styles); when a\ntemplate or packSkill touches the property, the same computation runs\nonce and is cached.\n\nWhy this clears the bar now when earlier rounds rejected it: this\nround's tail profiling showed that on warm runs (token cache hit) the\nmetrics workers resolve instantly and git token tasks complete ~28ms\nbefore produceOutput, so generateOutput is the sole main-thread\nbottleneck at the tail — the scans are wall-visible, not hidden behind\nthe parallel metrics branch as previously assumed.\n\nBenchmark (packing this repo, warm, quiet 4-core Linux, interleaved\nABBA pairs, node bin/repomix.cjs --quiet):\n\n- batch 1 (20 pairs): median delta -21.7ms, mean -20.1ms, t=-3.51, 15/20 improved\n- batch 2 (30 pairs): median delta -25.6ms, mean -18.0ms, t=-2.49, 19/30 improved\n- batch 3 (40 pairs): median delta -40.3ms, mean -40.9ms, t=-6.71, 37/40 improved\n- pooled (90 pairs): mean -28.6ms on a ~1045ms baseline = -2.7%\n\nIsolated scan cost is ~11-16ms (warm); the larger e2e delta is\nconsistent with reduced allocation/GC pressure from dropping the\nper-line match(/\\n/g) array allocations at peak heap.\n\nintent(perf-tuning): automated round targeting >=2% end-to-end CLI improvement with behavior preserved\ndecision(render-context): memoized getters over style-conditional skips — RenderContext shape and all call sites unchanged, and any consumer that does read the properties still gets identical values\nrejected(file-search): gitignore:false + prebuilt globby predicate measured -5.2% e2e but unshippable — depends on globby's unexported ignore.js internals (exports-map patch won't exist for npm consumers) and loses globby's gitignore-pattern directory pruning, risking large traversal regressions on repos with big ignored dirs and no negation patterns\nlearned(metrics-tail): on warm runs the tail critical path is produceOutput -> write -> wrapper extraction; git diff/log token tasks finish ~28ms earlier, so render-side CPU cuts are wall-visible up to that slack\n\nhttps://claude.ai/code/session_01RD8vNvv1qtYV8BgdxMU7js",
+          "timestamp": "2026-06-12T19:02:28Z",
+          "tree_id": "113557e7063e35746229052412eccb6700fbd651",
+          "url": "https://github.com/yamadashy/repomix/commit/a8905792156e8fdae160612fdbf61c55b792b57e"
+        },
+        "date": 1781291288399,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 899,
+            "range": "±202",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 784ms, Q3: 986ms\nAll times: 692, 742, 747, 759, 766, 766, 768, 784, 789, 791, 803, 817, 817, 819, 830, 899, 923, 933, 942, 944, 956, 959, 986, 992, 1012, 1159, 1208, 1276, 1359, 1473ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 755,
+            "range": "±110",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 722ms, Q3: 832ms\nAll times: 699, 715, 718, 718, 721, 722, 727, 730, 731, 745, 755, 757, 772, 775, 788, 832, 835, 866, 869, 878ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1247,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1235ms, Q3: 1257ms\nAll times: 1213, 1224, 1226, 1228, 1232, 1235, 1236, 1238, 1238, 1246, 1247, 1251, 1252, 1255, 1256, 1257, 1260, 1261, 1261, 1309ms"
           }
         ]
       }
