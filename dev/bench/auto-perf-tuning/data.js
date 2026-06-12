@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781248521360,
+  "lastUpdate": 1781259030650,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10703,6 +10703,51 @@ window.BENCHMARK_DATA = {
             "range": "±32",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 939ms, Q3: 971ms\nAll times: 926, 929, 931, 932, 939, 939, 942, 946, 946, 957, 958, 962, 965, 966, 971, 971, 981, 981, 984, 985ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "2d0a45ab11101b3b507694eda346e8eb725716cf",
+          "message": "perf(file): Sample-scan base64 run detection in truncateBase64\n\nintent(file-process): automated perf tuning pass — single highest-impact, behavior-preserving change against a ~865ms default pack run; truncateBase64 is enabled in this repo's own config so its precondition scan runs on every packed file in the benchmark workload\nlearned(base64-scan): hasLongBase64Run walked every character of every file (~5.5MB per pack, 23ms main-thread self time in CPU profiles, 35ms isolated) even though it almost always returns false — the per-character loop was itself the previous optimization over the regex it gates\ndecision(sampled-scan): sample one character every MIN_BASE64_LENGTH_STANDALONE (256) positions — any qualifying run occupies 256 consecutive indices, so it must contain a sample point; only a sampled base64-class hit triggers a bounded outward expansion to measure the surrounding run, and the sampling phase resets cleanly after each short-run skip (next possible run from hi+1 always covers sample hi+256)\nconstraint(equivalence): differential-tested against the per-character reference on the full repo corpus (1096 files, 0 mismatches) plus 20k randomized fuzz cases; a deterministic-LCG differential test now pins both false-positive and false-negative directions in the suite\nrejected(regex-precheck): /[A-Za-z0-9+/]{256}/.test() measured 4.5x SLOWER than the per-character loop (155ms vs 35ms on the corpus) — bounded-repetition re-scanning at each start position, not a viable replacement\nrejected(early-git-token-dispatch): pre-dispatching git diff/log token counts from the packager — with a warm token cache they resolve while calculateMetrics awaits outputPromise (Promise.all resolves in ~0ms; the 63-67ms wall time is main-thread-busy completion latency, not queue wait), e2e median +15ms under noise, unproven\nrejected(collect-concurrency): FILE_COLLECT_CONCURRENCY 50 -> 128/256 — identical medians over 40 quiet interleaved runs; libuv's 4-thread pool is saturated at depth 50, queue depth adds nothing\nrejected(startup-lazy-imports): module-level import() prefetches of tinypool/fast-glob/handlebars all measure 0 to -3ms — ESM already fetches/compiles the static graph in parallel; the budget is sequential module evaluation (~255 modules), only bundling would cut it\nrejected(lazy-render-context): skipping fileLineCounts + markdownCodeBlockDelimiter on the XML path re-measured at ~11ms p50 quiet (6.2 + 4.7) — still below the 2% threshold, matching the previous pass's rejection\n\nBenchmark (repomix repo itself, ~1100 files, 20 interleaved warm pairs,\nquiet 4-core Linux, default pack, pristine HEAD worktree build vs\npatched build):\n- end-to-end median 865ms -> 820.5ms (paired delta median -26.5ms,\n  -3.1%), paired mean -37.5ms (t = 5.14), 18/20 pairs improved\n- isolated scan cost over the packed corpus: 35.6ms -> 1.6ms p50 (~22x)\n- output byte-identical (cmp) vs the base build on the same tree\n- 6 new tests: stride alignments 0-511, run ending at EOF,\n  whole-content run, phase reset after short-run skips, near-threshold\n  non-matches, and the seeded differential fuzz\n\nnpm run test: 1385/1385 pass. npm run lint: clean (3 pre-existing\nwarnings in unrelated files).\n\nhttps://claude.ai/code/session_01Ea6eConhLEQFKZsVkJz1zE",
+          "timestamp": "2026-06-12T10:07:25Z",
+          "tree_id": "99d685a5a9152ba9caadc885650a1119f6fc4978",
+          "url": "https://github.com/yamadashy/repomix/commit/2d0a45ab11101b3b507694eda346e8eb725716cf"
+        },
+        "date": 1781259029486,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 587,
+            "range": "±254",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 527ms, Q3: 781ms\nAll times: 494, 504, 504, 506, 511, 517, 525, 527, 527, 528, 541, 543, 556, 564, 586, 587, 597, 721, 722, 747, 776, 776, 781, 808, 816, 820, 868, 883, 915, 1056ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 752,
+            "range": "±13",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 746ms, Q3: 759ms\nAll times: 732, 740, 740, 741, 743, 746, 746, 747, 749, 749, 752, 756, 756, 757, 758, 759, 759, 761, 767, 793ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1069,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1059ms, Q3: 1081ms\nAll times: 1046, 1046, 1048, 1054, 1058, 1059, 1060, 1061, 1061, 1062, 1069, 1072, 1073, 1075, 1077, 1081, 1083, 1085, 1089, 1091ms"
           }
         ]
       }
