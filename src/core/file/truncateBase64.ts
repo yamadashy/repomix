@@ -12,30 +12,53 @@ const dataUriPattern = new RegExp(
 );
 const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
 
+// [A-Z]:65-90, [a-z]:97-122, [0-9]:48-57, '+':43, '/':47
+const isBase64CharCode = (c: number): boolean =>
+  (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47;
+
 /**
- * Cheap precondition for `standaloneBase64Pattern`: scans for any run of
- * `[A-Za-z0-9+/]` reaching `MIN_BASE64_LENGTH_STANDALONE`, the smallest body
+ * Cheap precondition for `standaloneBase64Pattern`: detects whether any run of
+ * `[A-Za-z0-9+/]` reaches `MIN_BASE64_LENGTH_STANDALONE`, the smallest body
  * the regex can match. When this returns false, the regex provably has zero
  * matches, so we can skip the much more expensive backtracking scan over the
- * whole content. The hot loop avoids regex engine overhead and runs ~4x faster
- * than the original `replace`, which dominated `applyLightweightTransforms`
- * CPU on profiles of repos with `truncateBase64: true`.
+ * whole content.
+ *
+ * Instead of testing every character, the scan samples one character every
+ * `MIN_BASE64_LENGTH_STANDALONE` positions: a run of that length occupies
+ * `MIN_BASE64_LENGTH_STANDALONE` consecutive indices, so it necessarily
+ * contains a sample point — no qualifying run can slip between two samples.
+ * Only when a sampled character is in the base64 class does the scan expand
+ * outward to measure the surrounding run (bounded by the run itself, typically
+ * a handful of characters in source code). This probes one in
+ * `MIN_BASE64_LENGTH_STANDALONE` characters plus a short expansion per hit,
+ * and replaced a per-character loop that dominated
+ * `applyLightweightTransforms` CPU on profiles of repos with
+ * `truncateBase64: true`.
  */
 const hasLongBase64Run = (content: string): boolean => {
   const len = content.length;
   if (len < MIN_BASE64_LENGTH_STANDALONE) return false;
-  let run = 0;
-  for (let i = 0; i < len; i++) {
-    const c = content.charCodeAt(i);
-    // [A-Z]:65-90, [a-z]:97-122, [0-9]:48-57, '+':43, '/':47
-    if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 43 || c === 47) {
-      run++;
-      if (run >= MIN_BASE64_LENGTH_STANDALONE) return true;
-    } else {
-      run = 0;
+  let i = MIN_BASE64_LENGTH_STANDALONE - 1;
+  while (true) {
+    // Clamp the last sample to the final character so the trailing partial
+    // window (shorter than the sampling stride) is still covered.
+    if (i >= len) i = len - 1;
+    if (isBase64CharCode(content.charCodeAt(i))) {
+      // Sample hit: measure the maximal run containing it.
+      let lo = i - 1;
+      while (lo >= 0 && isBase64CharCode(content.charCodeAt(lo))) lo--;
+      let hi = i + 1;
+      while (hi < len && isBase64CharCode(content.charCodeAt(hi))) hi++;
+      if (hi - lo - 1 >= MIN_BASE64_LENGTH_STANDALONE) return true;
+      // The run around this sample is too short. Resume sampling after it:
+      // `hi` is a non-base64 index (or `len`), so the next possible run starts
+      // at `hi + 1` and any qualifying run from there contains index
+      // `hi + MIN_BASE64_LENGTH_STANDALONE`.
+      i = hi;
     }
+    if (i >= len - 1) return false;
+    i += MIN_BASE64_LENGTH_STANDALONE;
   }
-  return false;
 };
 
 /**

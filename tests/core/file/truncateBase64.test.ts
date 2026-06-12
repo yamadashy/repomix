@@ -135,4 +135,108 @@ describe('truncateBase64Content', () => {
     const result = truncateBase64Content(input);
     expect(result).toBe(input);
   });
+
+  describe('sampled run detection (hasLongBase64Run precondition)', () => {
+    // The precondition samples one character every 256 positions instead of
+    // scanning every character. These cases pin the sampling-specific edges:
+    // runs at arbitrary offsets, runs in the trailing partial window, and
+    // sampling-phase resets after short-run expansions.
+
+    it('should detect a qualifying run at every alignment relative to the sample stride', () => {
+      // A 256-char run starting at offset k occupies [k, k+255], which must
+      // contain a sample regardless of k. Exercise alignments around the
+      // first two sample points (indices 255 and 511).
+      for (const offset of [0, 1, 127, 254, 255, 256, 257, 300, 511]) {
+        const input = `${'-'.repeat(offset)}${longBase64.slice(0, 256)}#tail`;
+        const result = truncateBase64Content(input);
+        expect(result, `offset ${offset}`).toContain('...');
+      }
+    });
+
+    it('should detect a run that ends exactly at the end of content', () => {
+      // The final partial window is shorter than the sampling stride; the
+      // clamped last sample must still see this run.
+      const input = `${'x '.repeat(150)}${longBase64.slice(0, 256)}`;
+      const result = truncateBase64Content(input);
+      expect(result).toContain('...');
+    });
+
+    it('should detect a run when the whole content is exactly one run of threshold length', () => {
+      const input = longBase64.slice(0, 256);
+      const result = truncateBase64Content(input);
+      expect(result).toBe(`${longBase64.slice(0, 32)}...`);
+    });
+
+    it('should detect a qualifying run that follows many short runs', () => {
+      // Every sample before the real run lands inside a short base64-like word,
+      // forcing repeated expand-and-skip steps that reset the sampling phase.
+      const shortWords = 'word1 path/to2 abc3 '.repeat(60); // 1200 chars of short runs
+      const input = `${shortWords}${longBase64.slice(0, 256)} end`;
+      const result = truncateBase64Content(input);
+      expect(result).toContain('...');
+    });
+
+    it('should preserve content of many near-threshold runs separated by breaks', () => {
+      // 250-char runs separated by a single newline give a 251-char period,
+      // misaligned with the 256-char sampling stride: nearly every sample
+      // lands inside a run, forcing a repeated expand-and-skip (phase reset)
+      // that must measure each run as 250 < 256 and never match.
+      const nearRun = longBase64.slice(0, 250);
+      const input = Array.from({ length: 30 }, () => nearRun).join('\n');
+      const result = truncateBase64Content(input);
+      expect(result).toBe(input);
+    });
+
+    it('should match the per-character reference scan on randomized content', () => {
+      // Differential check: the sampled precondition must agree with a
+      // straightforward per-character reference on generated inputs.
+      const referenceHasLongRun = (content: string): boolean => {
+        let run = 0;
+        for (let i = 0; i < content.length; i++) {
+          if (/[A-Za-z0-9+/]/.test(content[i])) {
+            run++;
+            if (run >= 256) return true;
+          } else {
+            run = 0;
+          }
+        }
+        return false;
+      };
+      // Deterministic LCG so failures are reproducible.
+      let seed = 0x2f6e2b1;
+      const rand = () => {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        return seed / 0x7fffffff;
+      };
+      const alphabet = 'Aa0+/ .,\n=-_';
+      for (let trial = 0; trial < 500; trial++) {
+        let s = '';
+        const length = Math.floor(rand() * 700);
+        for (let j = 0; j < length; j++) {
+          s += alphabet[Math.floor(rand() * alphabet.length)];
+        }
+        let injectedQualifyingRun = false;
+        if (rand() < 0.3) {
+          const runLength = 200 + Math.floor(rand() * 120);
+          const pos = Math.floor(rand() * (s.length + 1));
+          // Repetitions of this diverse base64 prefix always pass isLikelyBase64.
+          const run = longBase64
+            .slice(0, 32)
+            .repeat(Math.ceil(runLength / 32))
+            .slice(0, runLength);
+          s = s.slice(0, pos) + run + s.slice(pos);
+          injectedQualifyingRun = runLength >= 256;
+        }
+        if (injectedQualifyingRun) {
+          // False-negative direction: a diverse run of >= 256 chars exists, so
+          // the sampled precondition must let the truncation happen.
+          expect(truncateBase64Content(s), `trial ${trial}`).not.toBe(s);
+        } else if (!referenceHasLongRun(s)) {
+          // False-positive direction: no qualifying run anywhere, so content
+          // must come back untouched.
+          expect(truncateBase64Content(s), `trial ${trial}`).toBe(s);
+        }
+      }
+    });
+  });
 });
