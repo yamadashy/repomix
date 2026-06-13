@@ -96,6 +96,41 @@ describe('buildIgnoreFileFilter', () => {
     expect(filter.isIgnored('excluded/hidden.txt', false)).toBe(false);
   });
 
+  describe('inputs routed to legacy path resolution (never produced by fast-glob)', () => {
+    test('normalizes dot segments, doubled and trailing slashes before matching', async () => {
+      await write('.gitignore', '*.log\nbuild/\n');
+
+      const filter = await buildIgnoreFileFilter(tempDir, true, IGNORE_FILE_PATTERNS, [], undefined);
+      // The `ignore` package throws on `./`-prefixed paths, and `..` segments
+      // must resolve before matching — these would crash or mismatch on the
+      // fast path. Doubled/trailing slashes are routed too so they keep the
+      // legacy normalize-equivalent semantics.
+      expect(filter.isIgnored('./a.log', false)).toBe(true);
+      expect(filter.isIgnored('sub/../a.log', false)).toBe(true);
+      expect(filter.isIgnored('sub//deep/a.log', false)).toBe(true);
+      expect(filter.isIgnored('build/', true)).toBe(true);
+      // Negative control through the same fallback branch.
+      expect(filter.isIgnored('./a.txt', false)).toBe(false);
+    });
+
+    test('never ignores the scan root itself or paths outside the base directory', async () => {
+      await write('.gitignore', '*\n');
+
+      const filter = await buildIgnoreFileFilter(tempDir, true, IGNORE_FILE_PATTERNS, [], undefined);
+      expect(filter.isIgnored('', false)).toBe(false);
+      expect(filter.isIgnored('.', true)).toBe(false);
+      expect(filter.isIgnored('../outside.txt', false)).toBe(false);
+    });
+
+    test('resolves absolute inputs against the base directory', async () => {
+      await write('.gitignore', '*.log\n');
+
+      const filter = await buildIgnoreFileFilter(tempDir, true, IGNORE_FILE_PATTERNS, [], undefined);
+      expect(filter.isIgnored(path.join(tempDir, 'a.log'), false)).toBe(true);
+      expect(filter.isIgnored(path.join(tempDir, 'a.txt'), false)).toBe(false);
+    });
+  });
+
   describe('with a git root above the scan root', () => {
     test('collects parent .gitignore files and anchors them at the git root', async () => {
       await fs.mkdir(path.join(tempDir, '.git'), { recursive: true });

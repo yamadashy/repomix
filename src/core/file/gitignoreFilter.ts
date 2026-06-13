@@ -21,6 +21,7 @@ import fs from 'node:fs/promises';
 import nodePath from 'node:path';
 import fastGlob from 'fast-glob';
 import type { Options as GlobbyOptions } from 'globby';
+import ignore from 'ignore';
 import {
   convertPatternsForFastGlob,
   createIgnoreMatcher,
@@ -202,13 +203,41 @@ export const buildIgnoreFileFilter = async (
   const resolvedCwd = nodePath.resolve(cwd);
   const patternsForFastGlob = convertPatternsForFastGlob(patterns, usingGitRoot);
 
+  // Fast path for the strings fast-glob actually emits: clean, slash-separated
+  // paths relative to the scan root. For those, the baseDir-relative form the
+  // `ignore` package expects is a constant prefix (scan root's path below the
+  // git root, empty when they coincide) plus the input — no per-path
+  // resolve/normalize/relative calls. Routing every tested path through
+  // `createIgnoreMatcher` instead cost several path operations per call
+  // (doubled for directories), which dominated the post-scan filter (~15ms
+  // per search on this repo's ~1,400 tested file and directory paths).
+  const ig = ignore().add(patterns);
+  const cwdFromBase = nodePath.relative(nodePath.resolve(baseDir), resolvedCwd).replace(/\\/g, '/');
+  const baseRelativePrefix = cwdFromBase ? `${cwdFromBase}/` : '';
+
+  // Inputs the fast path cannot take: empty, `.`/`..` segments, backslashes,
+  // doubled or trailing slashes (all of which path normalization would have
+  // rewritten), plus absolute paths. fast-glob never produces these, but the
+  // legacy matcher resolves them exactly as globby did, so fall back for them.
+  const needsLegacyResolution = /(?:^|\/)\.\.?(?:\/|$)|\\|\/\/|\/$/;
+
   return {
     isIgnored: (relativePath: string, isDirectory: boolean): boolean => {
-      const absolutePath = nodePath.resolve(resolvedCwd, nodePath.normalize(relativePath));
-      if (matcher(absolutePath).ignored) {
+      if (relativePath === '' || needsLegacyResolution.test(relativePath) || nodePath.isAbsolute(relativePath)) {
+        const absolutePath = nodePath.resolve(resolvedCwd, nodePath.normalize(relativePath));
+        if (matcher(absolutePath).ignored) {
+          return true;
+        }
+        return isDirectory && matcher(absolutePath + nodePath.sep).ignored;
+      }
+
+      const baseRelativePath = baseRelativePrefix + relativePath;
+      if (ig.ignores(baseRelativePath)) {
         return true;
       }
-      return isDirectory && matcher(absolutePath + nodePath.sep).ignored;
+      // Directory-only rules (`dir/`) only match when the tested path carries a
+      // trailing separator, mirroring the legacy matcher's second test.
+      return isDirectory && ig.ignores(`${baseRelativePath}/`);
     },
     patternsForFastGlob,
   };
