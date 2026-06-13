@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781303444699,
+  "lastUpdate": 1781312640449,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance (auto-perf-tuning)": [
@@ -10883,6 +10883,51 @@ window.BENCHMARK_DATA = {
             "range": "±16",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 970ms, Q3: 986ms\nAll times: 943, 951, 963, 965, 967, 970, 971, 971, 972, 974, 979, 982, 983, 983, 984, 986, 989, 990, 993, 995ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "committer": {
+            "email": "noreply@anthropic.com",
+            "name": "Claude",
+            "username": "claude"
+          },
+          "distinct": true,
+          "id": "b053bbe5d50264f3171f4ca84084c9190e485bfc",
+          "message": "perf(file): Fast-path the ignore-file predicate without per-path resolution\n\nThe isIgnored() predicate returned by buildIgnoreFileFilter routed every\ntested path through createIgnoreMatcher, which performs ~5 path operations\nper call (resolve, normalize, relative, isInsidePath check, slash\nconversion) before reaching the `ignore` matcher — applied to every file\nand directory the scans emit (~1,400 paths per search on this repo, plus\nthe empty-directory scans), this dominated the post-scan filter cost.\n\nfast-glob only ever emits clean, slash-separated paths relative to the\nscan root. For those, the baseDir-relative form the `ignore` package\nexpects is a constant prefix (the scan root's path below the git root;\nempty when they coincide) plus the input string, so the fast path is now\none string concatenation + ig.ignores(). A single regex routes every\nother input shape ('', '.'/'..' segments, backslashes, doubled or\ntrailing slashes, absolute paths) to the unchanged legacy matcher, so\nedge-case semantics stay exactly as before.\n\ndecision(gitignore-filter): keep createIgnoreMatcher as the fallback for\nnon-fast-glob input shapes instead of replicating its normalization\ninline — equivalence by construction, and the fallback never runs on the\nhot path\nrejected(double-sort): skipping the second sortOutputFiles inside\ngenerateOutput — re-measured at ~0.12ms isolated; the change-7 round's\n22ms figure was the git-log subprocess cost already eliminated by\nprefetchSortData\nrejected(xml-direct-builder): direct string builder replacing the\nHandlebars xml render — noise-level on the current tip (t=-0.14 over 20\ninterleaved pairs); earlier ~19ms estimates came from builds without the\nlanded lazy render-context getters\nrejected(md5-precompute): computing contentCacheKey during processFiles\nto clear it from the tail — +7.6ms (noise, t=0.86) over 20 interleaved\npairs on the current tip\nlearned(bench): this container runs ~1.6-1.7x slower than the previous\nrounds' quiet host (e2e baseline ~1615ms vs ~800-950ms); relative deltas\nfrom interleaved pairs are the comparable metric\n\nBenchmark (32 interleaved ABBA pairs, warm, default pack of this repo,\n4-core Linux): e2e median 1615ms -> 1540ms, paired mean delta -82.0ms\n(-5.1%), median delta -74ms (-4.6%), t = -7.68, 29/32 pairs improved.\nSearch phase ([globby] trace, --verbose): 749-778ms -> 643-684ms with\nidentical results (1099 files, 255 directories).\n\nOutput byte-identical (cmp) vs the previous build for: default pack,\nsubdirectory pack (website/client — exercises the git-root prefix\nbranch), multi-root (src website), and --no-gitignore. 1416/1416 tests\npass; lint clean (3 pre-existing warnings in unrelated files).\n\nhttps://claude.ai/code/session_01N3uqykUShsrDKkyvjuKi13",
+          "timestamp": "2026-06-13T00:58:10Z",
+          "tree_id": "b62f7cc45049e873d78048619949e86eddb4b978",
+          "url": "https://github.com/yamadashy/repomix/commit/b053bbe5d50264f3171f4ca84084c9190e485bfc"
+        },
+        "date": 1781312639623,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 687,
+            "range": "±68",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 655ms, Q3: 723ms\nAll times: 633, 637, 648, 649, 650, 651, 652, 655, 657, 660, 666, 667, 675, 681, 683, 687, 688, 695, 709, 716, 717, 718, 723, 739, 749, 775, 776, 801, 824, 927ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 728,
+            "range": "±94",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 723ms, Q3: 817ms\nAll times: 708, 709, 715, 716, 719, 723, 723, 724, 724, 727, 728, 731, 738, 741, 802, 817, 837, 848, 855, 874ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 960,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 951ms, Q3: 973ms\nAll times: 938, 940, 941, 941, 946, 951, 953, 954, 957, 959, 960, 960, 963, 965, 968, 973, 977, 978, 983, 986ms"
           }
         ]
       }
