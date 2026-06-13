@@ -111,6 +111,12 @@ describe('watch option conflicts', () => {
       '--watch cannot be used with remote URLs',
     );
   });
+
+  it('should throw when --watch is used with --skill-generate', async () => {
+    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const options: CliOptions = { watch: true, skillGenerate: 'my-skill' };
+    await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --skill-generate');
+  });
 });
 
 describe('watchAction', () => {

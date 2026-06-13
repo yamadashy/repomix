@@ -267,6 +267,11 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
         '--watch cannot be used with --split-output. Watch mode does not yet support split output files.',
       );
     }
+    if (options.skillGenerate !== undefined) {
+      throw new RepomixError(
+        '--watch cannot be used with --skill-generate. Watch mode does not support skill generation.',
+      );
+    }
     if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
       throw new RepomixError('--watch cannot be used with remote URLs. Watch mode only works with local directories.');
     }
