@@ -4,16 +4,16 @@ import * as os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { afterEach, beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
-import type { WatchDeps } from '../../../src/cli/actions/watchAction.js';
-import type { CliOptions } from '../../../src/cli/types.js';
-import * as configLoader from '../../../src/config/configLoad.js';
-import * as packager from '../../../src/core/packager.js';
-import * as loggerModule from '../../../src/shared/logger.js';
-import { createMockConfig, isWindows } from '../../testing/testUtils.js';
+import type { WatchDeps } from '../../../../src/cli/actions/watch/watchAction.js';
+import type { CliOptions } from '../../../../src/cli/types.js';
+import * as configLoader from '../../../../src/config/configLoad.js';
+import * as packager from '../../../../src/core/packager.js';
+import * as loggerModule from '../../../../src/shared/logger.js';
+import { createMockConfig, isWindows } from '../../../testing/testUtils.js';
 
-vi.mock('../../../src/core/packager');
-vi.mock('../../../src/config/configLoad');
-vi.mock('../../../src/shared/logger');
+vi.mock('../../../../src/core/packager');
+vi.mock('../../../../src/config/configLoad');
+vi.mock('../../../../src/shared/logger');
 
 const mockSpinner = {
   start: vi.fn() as MockedFunction<() => void>,
@@ -22,7 +22,7 @@ const mockSpinner = {
   fail: vi.fn() as MockedFunction<(message: string) => void>,
 };
 
-vi.mock('../../../src/cli/cliSpinner', () => {
+vi.mock('../../../../src/cli/cliSpinner', () => {
   const MockSpinner = class {
     start = mockSpinner.start;
     update = mockSpinner.update;
@@ -31,8 +31,8 @@ vi.mock('../../../src/cli/cliSpinner', () => {
   };
   return { Spinner: MockSpinner };
 });
-vi.mock('../../../src/cli/cliReport');
-vi.mock('../../../src/cli/actions/migrationAction', () => ({
+vi.mock('../../../../src/cli/cliReport');
+vi.mock('../../../../src/cli/actions/migrationAction', () => ({
   runMigrationAction: vi.fn().mockResolvedValue({}),
 }));
 
@@ -86,31 +86,31 @@ describe('watch option conflicts', () => {
   });
 
   it('should throw when --watch is used with --remote', async () => {
-    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const { runCli } = await import('../../../../src/cli/cliRun.js');
     const options: CliOptions = { watch: true, remote: 'user/repo' };
     await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --remote');
   });
 
   it('should throw when --watch is used with --stdout', async () => {
-    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const { runCli } = await import('../../../../src/cli/cliRun.js');
     const options: CliOptions = { watch: true, stdout: true };
     await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --stdout');
   });
 
   it('should throw when --watch is used with --stdin', async () => {
-    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const { runCli } = await import('../../../../src/cli/cliRun.js');
     const options: CliOptions = { watch: true, stdin: true };
     await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --stdin');
   });
 
   it('should throw when --watch is used with --split-output', async () => {
-    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const { runCli } = await import('../../../../src/cli/cliRun.js');
     const options: CliOptions = { watch: true, splitOutput: 1000 };
     await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --split-output');
   });
 
   it('should throw when --watch is used with a positional remote URL', async () => {
-    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const { runCli } = await import('../../../../src/cli/cliRun.js');
     const options: CliOptions = { watch: true };
     await expect(runCli(['https://github.com/user/repo'], process.cwd(), options)).rejects.toThrow(
       '--watch cannot be used with remote URLs',
@@ -118,7 +118,7 @@ describe('watch option conflicts', () => {
   });
 
   it('should throw when --watch is used with --skill-generate', async () => {
-    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const { runCli } = await import('../../../../src/cli/cliRun.js');
     const options: CliOptions = { watch: true, skillGenerate: 'my-skill' };
     await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --skill-generate');
   });
@@ -186,7 +186,7 @@ describe('watchAction', () => {
     const options: CliOptions = {};
 
     // Import separately to ensure runWatchAction is called before abort
-    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    const { runWatchAction } = await import('../../../../src/cli/actions/watch/watchAction.js');
     const watchPromise = runWatchAction(['.'], process.cwd(), options, {
       watch: createMockWatch(mockWatcher),
       signal: controller.signal,
@@ -211,7 +211,7 @@ describe('watchAction', () => {
     const cwd = process.cwd();
 
     const watchPromise = (async () => {
-      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+      const { runWatchAction } = await import('../../../../src/cli/actions/watch/watchAction.js');
       return runWatchAction(['.'], cwd, options, {
         watch: mockWatch,
         signal: controller.signal,
@@ -244,7 +244,7 @@ describe('watchAction', () => {
     const mockWatch = createMockWatch(mockWatcher);
 
     const watchPromise = (async () => {
-      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+      const { runWatchAction } = await import('../../../../src/cli/actions/watch/watchAction.js');
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
@@ -275,7 +275,7 @@ describe('watchAction', () => {
     const mockWatch = createMockWatch(mockWatcher);
 
     const watchPromise = (async () => {
-      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+      const { runWatchAction } = await import('../../../../src/cli/actions/watch/watchAction.js');
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
@@ -325,7 +325,7 @@ describe('watchAction', () => {
     });
 
     const watchPromise = (async () => {
-      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+      const { runWatchAction } = await import('../../../../src/cli/actions/watch/watchAction.js');
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
@@ -368,7 +368,7 @@ describe('watchAction', () => {
     const mockWatch = createMockWatch(mockWatcher);
 
     const watchPromise = (async () => {
-      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+      const { runWatchAction } = await import('../../../../src/cli/actions/watch/watchAction.js');
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
@@ -397,7 +397,7 @@ describe('watchAction', () => {
     const mockWatch = createMockWatch(mockWatcher);
 
     const watchPromise = (async () => {
-      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+      const { runWatchAction } = await import('../../../../src/cli/actions/watch/watchAction.js');
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
@@ -420,7 +420,7 @@ describe('watchAction', () => {
     const mockWatch = createMockWatch(mockWatcher);
 
     const watchPromise = (async () => {
-      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+      const { runWatchAction } = await import('../../../../src/cli/actions/watch/watchAction.js');
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
@@ -447,7 +447,7 @@ describe('watchAction', () => {
       }),
     );
 
-    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    const { runWatchAction } = await import('../../../../src/cli/actions/watch/watchAction.js');
     await expect(
       runWatchAction(
         ['.'],
@@ -480,7 +480,7 @@ describe('buildWatchIgnoreFilter', () => {
   });
 
   const buildFilter = async () => {
-    const { buildWatchIgnoreFilter } = await import('../../../src/cli/actions/watchIgnore.js');
+    const { buildWatchIgnoreFilter } = await import('../../../../src/cli/actions/watch/watchIgnore.js');
     const config = createMockConfig({
       cwd: tmpRoot,
       output: { filePath: 'repomix-output.xml' },
@@ -515,7 +515,7 @@ describe('buildWatchIgnoreFilter', () => {
   });
 
   it('normalizes trailing-slash custom patterns so the directory is pruned', async () => {
-    const { buildWatchIgnoreFilter } = await import('../../../src/cli/actions/watchIgnore.js');
+    const { buildWatchIgnoreFilter } = await import('../../../../src/cli/actions/watch/watchIgnore.js');
     const config = createMockConfig({
       cwd: tmpRoot,
       ignore: { useGitignore: false, useDefaultPatterns: true, useDotIgnore: false, customPatterns: ['cachedir/'] },
@@ -527,7 +527,7 @@ describe('buildWatchIgnoreFilter', () => {
   });
 
   it('checks all roots for nested or overlapping watched directories', async () => {
-    const { buildWatchIgnoreFilter } = await import('../../../src/cli/actions/watchIgnore.js');
+    const { buildWatchIgnoreFilter } = await import('../../../../src/cli/actions/watch/watchIgnore.js');
     const sub = path.join(tmpRoot, 'sub');
     await fs.mkdir(sub, { recursive: true });
     const config = createMockConfig({

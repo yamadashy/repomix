@@ -2,15 +2,15 @@ import path from 'node:path';
 import process from 'node:process';
 import type { ChokidarOptions, FSWatcher } from 'chokidar';
 import pc from 'picocolors';
-import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import { type PackResult, pack } from '../../core/packager.js';
-import { RepomixError } from '../../shared/errorHandle.js';
-import { logger } from '../../shared/logger.js';
-import type { RepomixProgressCallback } from '../../shared/types.js';
-import { reportResults } from '../cliReport.js';
-import { Spinner } from '../cliSpinner.js';
-import type { CliOptions } from '../types.js';
-import { buildMergedConfig } from './defaultAction.js';
+import type { RepomixConfigMerged } from '../../../config/configSchema.js';
+import { type PackResult, pack } from '../../../core/packager.js';
+import { RepomixError } from '../../../shared/errorHandle.js';
+import { logger } from '../../../shared/logger.js';
+import type { RepomixProgressCallback } from '../../../shared/types.js';
+import { reportResults } from '../../cliReport.js';
+import { Spinner } from '../../cliSpinner.js';
+import type { CliOptions } from '../../types.js';
+import { buildMergedConfig } from '../defaultAction.js';
 import { buildWatchIgnoreFilter } from './watchIgnore.js';
 
 export interface WatchDeps {

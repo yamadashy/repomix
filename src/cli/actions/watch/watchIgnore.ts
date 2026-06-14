@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { isGitIgnored, isIgnoredByIgnoreFiles } from 'globby';
 import { Minimatch } from 'minimatch';
-import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import { getIgnoreFilePatterns, getIgnorePatterns, normalizeGlobPattern } from '../../core/file/fileSearch.js';
+import type { RepomixConfigMerged } from '../../../config/configSchema.js';
+import { getIgnoreFilePatterns, getIgnorePatterns, normalizeGlobPattern } from '../../../core/file/fileSearch.js';
 
 /**
  * Builds a chokidar `ignored` predicate that mirrors the packer's ignore rules,

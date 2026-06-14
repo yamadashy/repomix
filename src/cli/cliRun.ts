@@ -340,7 +340,7 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   }
 
   if (options.watch) {
-    const { runWatchAction } = await import('./actions/watchAction.js');
+    const { runWatchAction } = await import('./actions/watch/watchAction.js');
     return await runWatchAction(directories, cwd, options);
   }
 
