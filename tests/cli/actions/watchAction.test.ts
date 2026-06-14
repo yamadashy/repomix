@@ -9,7 +9,7 @@ import type { CliOptions } from '../../../src/cli/types.js';
 import * as configLoader from '../../../src/config/configLoad.js';
 import * as packager from '../../../src/core/packager.js';
 import * as loggerModule from '../../../src/shared/logger.js';
-import { createMockConfig } from '../../testing/testUtils.js';
+import { createMockConfig, isWindows } from '../../testing/testUtils.js';
 
 vi.mock('../../../src/core/packager');
 vi.mock('../../../src/config/configLoad');
@@ -475,7 +475,9 @@ describe('buildWatchIgnoreFilter', () => {
     expect(ignored(path.join(tmpRoot, '.git'))).toBe(true);
   });
 
-  it('ignores gitignored directories themselves, not just their descendants', async () => {
+  // globby's gitignore resolution behaves differently on Windows, so this case is
+  // skipped there (mirrors the .gitignore tests in fileSearch.test.ts).
+  it.runIf(!isWindows)('ignores gitignored directories themselves, not just their descendants', async () => {
     const ignored = await buildFilter();
     expect(ignored(path.join(tmpRoot, 'build-cache'))).toBe(true);
     expect(ignored(path.join(tmpRoot, 'build-cache', 'cached.tmp'))).toBe(true);
@@ -489,5 +491,20 @@ describe('buildWatchIgnoreFilter', () => {
   it('does not ignore real source files', async () => {
     const ignored = await buildFilter();
     expect(ignored(path.join(tmpRoot, 'src', 'index.ts'))).toBe(false);
+  });
+
+  it('checks all roots for nested or overlapping watched directories', async () => {
+    const { buildWatchIgnoreFilter } = await import('../../../src/cli/actions/watchIgnore.js');
+    const sub = path.join(tmpRoot, 'sub');
+    await fs.mkdir(sub, { recursive: true });
+    const config = createMockConfig({
+      cwd: tmpRoot,
+      ignore: { useGitignore: false, useDefaultPatterns: true, useDotIgnore: false, customPatterns: ['anchored/**'] },
+    });
+    const ignored = await buildWatchIgnoreFilter([tmpRoot, sub], config);
+    // `anchored/**` is anchored: relative to the outer root the path is `sub/anchored/...`
+    // (no match), but relative to the nested root it is `anchored/...` (match). The predicate
+    // must keep checking roots instead of stopping at the first one that contains the path.
+    expect(ignored(path.join(sub, 'anchored', 'file.txt'))).toBe(true);
   });
 });

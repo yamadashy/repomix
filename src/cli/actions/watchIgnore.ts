@@ -69,7 +69,9 @@ export const buildWatchIgnoreFilter = async (
       if (ignoreFileIgnored && (ignoreFileIgnored(normalized) || ignoreFileIgnored(`${normalized}/`))) {
         return true;
       }
-      return false; // path belongs to this root but matched no ignore rule
+      // Do not early-return false here: with nested or overlapping watched roots the
+      // path may still be ignored relative to another root (e.g. a pattern anchored to
+      // a nested root). Keep checking the remaining roots before deciding it is allowed.
     }
 
     return false;
