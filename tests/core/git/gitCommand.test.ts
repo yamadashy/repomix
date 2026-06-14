@@ -7,6 +7,7 @@ import {
   execGitShallowClone,
   execGitVersion,
   execLsRemote,
+  execLsRemoteHead,
 } from '../../../src/core/git/gitCommand.js';
 import { logger } from '../../../src/shared/logger.js';
 
@@ -15,6 +16,12 @@ vi.mock('../../../src/shared/logger');
 const expectGitRemoteOpts = expect.objectContaining({
   timeout: 30000,
   env: expect.objectContaining({ GIT_TERMINAL_PROMPT: '0' }),
+});
+
+// The automatic existence probe uses a short timeout and suppresses credential prompts.
+const expectGitProbeOpts = expect.objectContaining({
+  timeout: 5000,
+  env: expect.objectContaining({ GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' }),
 });
 
 describe('gitCommand', () => {
@@ -432,6 +439,44 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
         execLsRemote('https://github.com/user/repo.git', { execFileAsync: mockFileExecAsync }),
       ).rejects.toThrow('git command failed');
       expect(logger.trace).toHaveBeenCalledWith('Failed to execute git ls-remote:', 'git command failed');
+    });
+  });
+
+  describe('execLsRemoteHead', () => {
+    test('should query only HEAD instead of all refs', async () => {
+      const mockOutput = 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6\tHEAD';
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: mockOutput });
+
+      const result = await execLsRemoteHead('https://github.com/user/repo.git', {
+        execFileAsync: mockFileExecAsync,
+      });
+
+      expect(result).toBe(mockOutput);
+      expect(mockFileExecAsync).toHaveBeenCalledWith(
+        'git',
+        ['ls-remote', '--', 'https://github.com/user/repo.git', 'HEAD'],
+        expectGitProbeOpts,
+      );
+    });
+
+    test('should throw error when git ls-remote HEAD fails', async () => {
+      const mockFileExecAsync = vi.fn().mockRejectedValue(new Error('repository not found'));
+
+      await expect(
+        execLsRemoteHead('https://github.com/user/nonexistent.git', { execFileAsync: mockFileExecAsync }),
+      ).rejects.toThrow('repository not found');
+      expect(logger.trace).toHaveBeenCalledWith('Failed to execute git ls-remote HEAD:', 'repository not found');
+    });
+
+    test('should validate URL before executing', async () => {
+      const mockFileExecAsync = vi.fn();
+
+      await expect(
+        execLsRemoteHead('https://github.com/user/repo.git --upload-pack=evil-command', {
+          execFileAsync: mockFileExecAsync,
+        }),
+      ).rejects.toThrow('Invalid repository URL. URL contains potentially dangerous parameters');
+      expect(mockFileExecAsync).not.toHaveBeenCalled();
     });
   });
 });

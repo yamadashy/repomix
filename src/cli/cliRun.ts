@@ -1,8 +1,10 @@
+import * as fs from 'node:fs/promises';
+import path from 'node:path';
 import process from 'node:process';
 import { Option, program } from 'commander';
 import pc from 'picocolors';
 import { getVersion } from '../core/file/packageJsonParse.js';
-import { isExplicitRemoteUrl } from '../core/git/gitRemoteUrl.js';
+import { isExplicitRemoteUrl, isValidShorthand } from '../core/git/gitRemoteUrl.js';
 import { handleError, RepomixError } from '../shared/errorHandle.js';
 import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
@@ -294,6 +296,35 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
     const { runRemoteAction } = await import('./actions/remoteAction.js');
     return await runRemoteAction(directories[0], options);
+  }
+
+  // Auto-detect GitHub shorthand (owner/repo) in positional arguments.
+  // Shorthand is ambiguous with relative local paths, so it is only treated as remote when:
+  //   1. the argument does not exist as a local path, and
+  //   2. the repository is confirmed reachable on GitHub (HEAD-only `git ls-remote` probe).
+  // A mistyped local path (e.g. `src/uitls`) fails the probe and falls through to the
+  // regular local-path handling instead of triggering an unintended clone attempt.
+  // Skipped in stdin mode, where positional directory arguments are rejected.
+  if (directories.length === 1 && !options.stdin && isValidShorthand(directories[0])) {
+    const localPathExists = await fs.access(path.resolve(cwd, directories[0])).then(
+      () => true,
+      // EACCES/EPERM mean the path exists but is inaccessible — keep local-path precedence
+      // and only fall through to the remote probe when the path is truly missing.
+      (error: NodeJS.ErrnoException) => !['ENOENT', 'ENOTDIR'].includes(error.code ?? ''),
+    );
+    if (!localPathExists) {
+      const { checkRemoteRepoExists } = await import('../core/git/gitRemoteHandle.js');
+      if (await checkRemoteRepoExists(`https://github.com/${directories[0]}.git`)) {
+        logger.log(
+          pc.dim(
+            `Detected GitHub repository shorthand: ${directories[0]} (prefix with ./ to treat it as a local path)\n`,
+          ),
+        );
+        const { runRemoteAction } = await import('./actions/remoteAction.js');
+        return await runRemoteAction(directories[0], options);
+      }
+      logger.trace(`Argument matches owner/repo shorthand but is not a reachable GitHub repository: ${directories[0]}`);
+    }
   }
 
   const { runDefaultAction } = await import('./actions/defaultAction.js');

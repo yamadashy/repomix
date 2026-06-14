@@ -11,6 +11,12 @@ const GIT_REMOTE_TIMEOUT = 30000;
 const gitRemoteEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
 const gitRemoteOpts = { timeout: GIT_REMOTE_TIMEOUT, env: gitRemoteEnv };
 
+// Opts for the automatic existence probe. It can be triggered by a mistyped local path,
+// so it must fail fast on slow/offline networks and must never block on credential
+// prompts (GCM_INTERACTIVE suppresses Git Credential Manager GUI popups on Windows).
+const GIT_PROBE_TIMEOUT = 5000;
+const gitProbeOpts = { timeout: GIT_PROBE_TIMEOUT, env: { ...gitRemoteEnv, GCM_INTERACTIVE: 'never' } };
+
 export const execGitLogFilenames = async (
   directory: string,
   maxCommits = 100,
@@ -101,6 +107,27 @@ export const execLsRemote = async (
     return result.stdout || '';
   } catch (error) {
     logger.trace('Failed to execute git ls-remote:', (error as Error).message);
+    throw error;
+  }
+};
+
+/**
+ * Lightweight remote existence probe: only asks for HEAD instead of all refs,
+ * so the response stays tiny even for repositories with thousands of branches/tags.
+ */
+export const execLsRemoteHead = async (
+  url: string,
+  deps = {
+    execFileAsync,
+  },
+): Promise<string> => {
+  validateGitUrl(url);
+
+  try {
+    const result = await deps.execFileAsync('git', ['ls-remote', '--', url, 'HEAD'], gitProbeOpts);
+    return result.stdout || '';
+  } catch (error) {
+    logger.trace('Failed to execute git ls-remote HEAD:', (error as Error).message);
     throw error;
   }
 };
