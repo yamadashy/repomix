@@ -278,11 +278,14 @@ describe('cliRun', () => {
     });
 
     test('should prefer existing local path over shorthand auto-detection', async () => {
-      // `src/cli` exists relative to the repository root and matches the owner/repo pattern
-      await runCli(['src/cli'], process.cwd(), {});
+      // Simulate an existing local path that also matches the owner/repo pattern.
+      // Mocking fs.access keeps the test independent of the repository's own directory layout.
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+
+      await runCli(['user/repo'], process.cwd(), {});
 
       expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['src/cli'], process.cwd(), expect.any(Object));
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object));
       expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
     });
 
