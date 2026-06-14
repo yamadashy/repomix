@@ -436,6 +436,27 @@ describe('watchAction', () => {
 
     expect(mockWatcher.close).toHaveBeenCalled();
   });
+
+  it('should throw when the merged config enables split output (e.g. from a config file)', async () => {
+    // validateWatchOptions in cliRun only sees CLI flags; split output can also come from
+    // the config file, so runWatchAction must reject it on the merged config.
+    vi.mocked(configLoader.mergeConfigs).mockReturnValue(
+      createMockConfig({
+        cwd: process.cwd(),
+        output: { filePath: 'repomix-output.xml', splitOutput: 1000 },
+      }),
+    );
+
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    await expect(
+      runWatchAction(
+        ['.'],
+        process.cwd(),
+        {},
+        { watch: createMockWatch(mockWatcher), buildIgnoreFilter: noopBuildIgnoreFilter },
+      ),
+    ).rejects.toThrow('split output');
+  });
 });
 
 describe('buildWatchIgnoreFilter', () => {
@@ -491,6 +512,18 @@ describe('buildWatchIgnoreFilter', () => {
   it('does not ignore real source files', async () => {
     const ignored = await buildFilter();
     expect(ignored(path.join(tmpRoot, 'src', 'index.ts'))).toBe(false);
+  });
+
+  it('normalizes trailing-slash custom patterns so the directory is pruned', async () => {
+    const { buildWatchIgnoreFilter } = await import('../../../src/cli/actions/watchIgnore.js');
+    const config = createMockConfig({
+      cwd: tmpRoot,
+      ignore: { useGitignore: false, useDefaultPatterns: true, useDotIgnore: false, customPatterns: ['cachedir/'] },
+    });
+    const ignored = await buildWatchIgnoreFilter([tmpRoot], config);
+    // `cachedir/` is normalized to `cachedir` (matching the packer), so the directory itself
+    // matches and chokidar prunes it instead of descending.
+    expect(ignored(path.join(tmpRoot, 'cachedir'))).toBe(true);
   });
 
   it('checks all roots for nested or overlapping watched directories', async () => {

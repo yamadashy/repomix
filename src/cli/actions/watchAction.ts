@@ -4,6 +4,7 @@ import type { ChokidarOptions, FSWatcher } from 'chokidar';
 import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { type PackResult, pack } from '../../core/packager.js';
+import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { reportResults } from '../cliReport.js';
@@ -64,6 +65,19 @@ export const runWatchAction = async (
   logger.trace('Watch mode: loaded CLI options:', cliOptions);
 
   const config = await buildMergedConfig(cwd, cliOptions);
+
+  // These options are also settable via the config file, so re-check them on the merged
+  // config (validateWatchOptions in cliRun only sees CLI flags). Split output would create
+  // numbered files that the watcher then picks up, causing a rebuild loop.
+  if (config.output.splitOutput !== undefined) {
+    throw new RepomixError(
+      '--watch cannot be used with split output. Watch mode does not yet support split output files.',
+    );
+  }
+  if (config.output.stdout) {
+    throw new RepomixError('--watch cannot be used with stdout output. Watch mode writes to a file.');
+  }
+
   const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
 
   // Run initial pack

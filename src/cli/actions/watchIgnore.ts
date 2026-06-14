@@ -2,7 +2,7 @@ import path from 'node:path';
 import { isGitIgnored, isIgnoredByIgnoreFiles } from 'globby';
 import { Minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import { getIgnoreFilePatterns, getIgnorePatterns } from '../../core/file/fileSearch.js';
+import { getIgnoreFilePatterns, getIgnorePatterns, normalizeGlobPattern } from '../../core/file/fileSearch.js';
 
 /**
  * Builds a chokidar `ignored` predicate that mirrors the packer's ignore rules,
@@ -24,7 +24,9 @@ export const buildWatchIgnoreFilter = async (
   const rootFilters = await Promise.all(
     targetPaths.map(async (root) => {
       // Default + custom + output + .git/info/exclude patterns (relative to this root).
-      const patterns = await getIgnorePatterns(root, config);
+      // Normalize the same way the packer does (fileSearch.prepareIgnoreContext) so watch
+      // and pack ignore identical patterns (e.g. trailing-slash and `**/folder` forms).
+      const patterns = (await getIgnorePatterns(root, config)).map(normalizeGlobPattern);
       const fileMatchers = patterns.map((pattern) => new Minimatch(pattern, { dot: true }));
       // Directory form of every `foo/**` pattern, so the directory itself matches and
       // chokidar stops before descending into it (the part that actually prevents EMFILE).
