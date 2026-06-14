@@ -243,6 +243,38 @@ const commanderActionEndpoint = async (directories: string[], options: CliOption
   await runCli(directories, process.cwd(), options);
 };
 
+/**
+ * Validates flags that cannot be combined with --watch. Runs before log-level
+ * changes so error messages are not suppressed by --quiet/--stdout.
+ */
+const validateWatchOptions = (directories: string[], options: CliOptions): void => {
+  if (!options.watch) {
+    return;
+  }
+  if (options.remote) {
+    throw new RepomixError('--watch cannot be used with --remote. Watch mode only works with local directories.');
+  }
+  if (options.stdout) {
+    throw new RepomixError('--watch cannot be used with --stdout. Watch mode writes to a file.');
+  }
+  if (options.stdin) {
+    throw new RepomixError('--watch cannot be used with --stdin. Watch mode discovers files automatically.');
+  }
+  if (options.splitOutput) {
+    throw new RepomixError(
+      '--watch cannot be used with --split-output. Watch mode does not yet support split output files.',
+    );
+  }
+  if (options.skillGenerate !== undefined) {
+    throw new RepomixError(
+      '--watch cannot be used with --skill-generate. Watch mode does not support skill generation.',
+    );
+  }
+  if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
+    throw new RepomixError('--watch cannot be used with remote URLs. Watch mode only works with local directories.');
+  }
+};
+
 export const runCli = async (directories: string[], cwd: string, options: CliOptions) => {
   // Detect stdout mode
   // NOTE: For compatibility, currently not detecting pipe mode
@@ -252,30 +284,7 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   }
 
   // Validate --watch conflicts early, before log level changes can suppress error messages
-  if (options.watch) {
-    if (options.remote) {
-      throw new RepomixError('--watch cannot be used with --remote. Watch mode only works with local directories.');
-    }
-    if (options.stdout) {
-      throw new RepomixError('--watch cannot be used with --stdout. Watch mode writes to a file.');
-    }
-    if (options.stdin) {
-      throw new RepomixError('--watch cannot be used with --stdin. Watch mode discovers files automatically.');
-    }
-    if (options.splitOutput) {
-      throw new RepomixError(
-        '--watch cannot be used with --split-output. Watch mode does not yet support split output files.',
-      );
-    }
-    if (options.skillGenerate !== undefined) {
-      throw new RepomixError(
-        '--watch cannot be used with --skill-generate. Watch mode does not support skill generation.',
-      );
-    }
-    if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
-      throw new RepomixError('--watch cannot be used with remote URLs. Watch mode only works with local directories.');
-    }
-  }
+  validateWatchOptions(directories, options);
 
   // Set log level based on verbose and quiet flags
   if (options.quiet) {

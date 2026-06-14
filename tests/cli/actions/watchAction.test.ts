@@ -459,7 +459,7 @@ describe('buildWatchIgnoreFilter', () => {
   });
 
   const buildFilter = async () => {
-    const { buildWatchIgnoreFilter } = await import('../../../src/cli/actions/watchAction.js');
+    const { buildWatchIgnoreFilter } = await import('../../../src/cli/actions/watchIgnore.js');
     const config = createMockConfig({
       cwd: tmpRoot,
       output: { filePath: 'repomix-output.xml' },
