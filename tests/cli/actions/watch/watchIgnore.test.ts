@@ -69,6 +69,17 @@ describe('buildWatchIgnoreFilter', () => {
     expect(ignored(path.join(tmpRoot, 'cachedir'))).toBe(true);
   });
 
+  it('still applies ignore rules to in-root directories whose name starts with ".."', async () => {
+    const config = createMockConfig({
+      cwd: tmpRoot,
+      ignore: { useGitignore: false, useDefaultPatterns: true, useDotIgnore: false, customPatterns: ['..cache/**'] },
+    });
+    const ignored = await buildWatchIgnoreFilter([tmpRoot], config);
+    // `..cache` is a real directory inside the root, not a parent traversal. The outside-root
+    // guard must not treat it as `..` and skip it, otherwise its ignore rule is never applied.
+    expect(ignored(path.join(tmpRoot, '..cache', 'file.ts'))).toBe(true);
+  });
+
   it('checks all roots for nested or overlapping watched directories', async () => {
     const sub = path.join(tmpRoot, 'sub');
     await fs.mkdir(sub, { recursive: true });

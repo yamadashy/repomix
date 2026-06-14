@@ -48,7 +48,11 @@ export const buildWatchIgnoreFilter = async (
   return (watchedPath: string): boolean => {
     for (const { root, fileMatchers, dirMatchers, gitIgnored, ignoreFileIgnored } of rootFilters) {
       const relative = path.relative(root, watchedPath);
-      if (relative === '' || relative.startsWith('..')) {
+      // Skip only when the path is genuinely outside this root. A bare `..startsWith` test
+      // is too broad: it also rejects in-root directories whose name begins with `..`
+      // (e.g. `..cache/file.ts`). Match a real parent traversal (`..` or `../`) or, on
+      // Windows where a cross-drive relative path is absolute, an absolute result.
+      if (relative === '' || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
         continue; // not under this root
       }
       const normalized = relative.split(path.sep).join('/');
