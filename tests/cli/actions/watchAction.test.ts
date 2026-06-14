@@ -1,11 +1,12 @@
 import { EventEmitter } from 'node:events';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { afterEach, beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import type { WatchDeps } from '../../../src/cli/actions/watchAction.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import * as configLoader from '../../../src/config/configLoad.js';
-import { defaultIgnoreList } from '../../../src/config/defaultIgnore.js';
 import * as packager from '../../../src/core/packager.js';
 import * as loggerModule from '../../../src/shared/logger.js';
 import { createMockConfig } from '../../testing/testUtils.js';
@@ -69,6 +70,10 @@ function createMockWatcher() {
 function createMockWatch(watcher: ReturnType<typeof createMockWatcher>): WatchDeps['watch'] {
   return vi.fn().mockReturnValue(watcher) as unknown as WatchDeps['watch'];
 }
+
+// Stub the ignore filter in flow tests: the real builder reads .gitignore via globby,
+// whose I/O stalls under fake timers. The real builder is covered separately below.
+const noopBuildIgnoreFilter: WatchDeps['buildIgnoreFilter'] = async () => () => false;
 
 describe('watch option conflicts', () => {
   beforeEach(() => {
@@ -185,6 +190,7 @@ describe('watchAction', () => {
     const watchPromise = runWatchAction(['.'], process.cwd(), options, {
       watch: createMockWatch(mockWatcher),
       signal: controller.signal,
+      buildIgnoreFilter: noopBuildIgnoreFilter,
     });
 
     // Let initial pack complete
@@ -209,6 +215,7 @@ describe('watchAction', () => {
       return runWatchAction(['.'], cwd, options, {
         watch: mockWatch,
         signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
       });
     })();
 
@@ -218,39 +225,17 @@ describe('watchAction', () => {
     await watchPromise;
 
     const expectedTargetPaths = [path.resolve(cwd, '.')];
-    const expectedIgnorePatterns = [...defaultIgnoreList, path.resolve(cwd, 'repomix-output.xml')];
+    const watchCall = (mockWatch as ReturnType<typeof vi.fn>).mock.calls[0];
 
-    expect(mockWatch).toHaveBeenCalledWith(expectedTargetPaths, {
+    expect(watchCall[0]).toEqual(expectedTargetPaths);
+    expect(watchCall[1]).toMatchObject({
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 100 },
-      ignored: expectedIgnorePatterns,
     });
-  });
 
-  it('should ignore the output file path in the watcher', async () => {
-    const controller = new AbortController();
-    const options: CliOptions = {};
-    const mockWatch = createMockWatch(mockWatcher);
-    const cwd = process.cwd();
-
-    const watchPromise = (async () => {
-      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
-      return runWatchAction(['.'], cwd, options, {
-        watch: mockWatch,
-        signal: controller.signal,
-      });
-    })();
-
-    await vi.advanceTimersByTimeAsync(0);
-
-    controller.abort();
-    await watchPromise;
-
-    const watchCall = (mockWatch as ReturnType<typeof vi.fn>).mock.calls[0];
-    const watchOptions = watchCall[1];
-    // The ignored option should be an array that includes the output file path
-    expect(Array.isArray(watchOptions.ignored)).toBe(true);
-    expect(watchOptions.ignored).toContain(path.resolve(cwd, 'repomix-output.xml'));
+    // chokidar v4+ dropped glob support in `ignored`, so it is now a predicate function.
+    // The predicate's matching behavior is covered by the buildWatchIgnoreFilter unit tests.
+    expect(typeof watchCall[1].ignored).toBe('function');
   });
 
   it('should re-pack on file change after debounce', async () => {
@@ -263,6 +248,7 @@ describe('watchAction', () => {
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
       });
     })();
 
@@ -293,6 +279,7 @@ describe('watchAction', () => {
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
       });
     })();
 
@@ -342,6 +329,7 @@ describe('watchAction', () => {
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
       });
     })();
 
@@ -384,6 +372,7 @@ describe('watchAction', () => {
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
       });
     })();
 
@@ -412,6 +401,7 @@ describe('watchAction', () => {
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
       });
     })();
 
@@ -434,6 +424,7 @@ describe('watchAction', () => {
       return runWatchAction(['.'], process.cwd(), options, {
         watch: mockWatch,
         signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
       });
     })();
 
@@ -444,5 +435,59 @@ describe('watchAction', () => {
     await watchPromise;
 
     expect(mockWatcher.close).toHaveBeenCalled();
+  });
+});
+
+describe('buildWatchIgnoreFilter', () => {
+  let tmpRoot: string;
+
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    // Real filesystem + real timers: the builder reads .gitignore via globby, which
+    // needs a .git directory present to anchor gitignore resolution.
+    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-watch-ignore-'));
+    await fs.mkdir(path.join(tmpRoot, '.git'), { recursive: true });
+    await fs.mkdir(path.join(tmpRoot, 'node_modules', 'pkg'), { recursive: true });
+    await fs.mkdir(path.join(tmpRoot, 'build-cache'), { recursive: true });
+    await fs.mkdir(path.join(tmpRoot, 'src'), { recursive: true });
+    await fs.writeFile(path.join(tmpRoot, '.gitignore'), 'build-cache/\n');
+    await fs.writeFile(path.join(tmpRoot, 'src', 'index.ts'), 'export const a = 1;\n');
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpRoot, { recursive: true, force: true });
+  });
+
+  const buildFilter = async () => {
+    const { buildWatchIgnoreFilter } = await import('../../../src/cli/actions/watchAction.js');
+    const config = createMockConfig({
+      cwd: tmpRoot,
+      output: { filePath: 'repomix-output.xml' },
+      ignore: { useGitignore: true, useDefaultPatterns: true, useDotIgnore: true, customPatterns: [] },
+    });
+    return buildWatchIgnoreFilter([tmpRoot], config);
+  };
+
+  it('ignores default-pattern directories themselves so chokidar never descends (EMFILE guard)', async () => {
+    const ignored = await buildFilter();
+    expect(ignored(path.join(tmpRoot, 'node_modules'))).toBe(true);
+    expect(ignored(path.join(tmpRoot, 'node_modules', 'pkg', 'index.js'))).toBe(true);
+    expect(ignored(path.join(tmpRoot, '.git'))).toBe(true);
+  });
+
+  it('ignores gitignored directories themselves, not just their descendants', async () => {
+    const ignored = await buildFilter();
+    expect(ignored(path.join(tmpRoot, 'build-cache'))).toBe(true);
+    expect(ignored(path.join(tmpRoot, 'build-cache', 'cached.tmp'))).toBe(true);
+  });
+
+  it('ignores the output file path', async () => {
+    const ignored = await buildFilter();
+    expect(ignored(path.join(tmpRoot, 'repomix-output.xml'))).toBe(true);
+  });
+
+  it('does not ignore real source files', async () => {
+    const ignored = await buildFilter();
+    expect(ignored(path.join(tmpRoot, 'src', 'index.ts'))).toBe(false);
   });
 });
