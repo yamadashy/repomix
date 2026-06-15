@@ -52,6 +52,10 @@ export const runDefaultAction = async (
   const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
   logger.trace('Merged config:', config);
 
+  if (cliOptions.skipFileProcessors && Object.keys(config.fileProcessors).length > 0) {
+    throw new RepomixError('fileProcessors cannot be used in remote mode.');
+  }
+
   // Validate conflicting options
   validateConflictingOptions(config);
 

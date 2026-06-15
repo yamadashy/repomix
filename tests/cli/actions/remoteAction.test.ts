@@ -70,7 +70,7 @@ describe('remoteAction functions', () => {
       expect(runDefaultActionMock).toHaveBeenCalledWith(
         expect.any(Array),
         expect.any(String),
-        expect.objectContaining({ skipLocalConfig: true }),
+        expect.objectContaining({ skipFileProcessors: true, skipLocalConfig: true }),
       );
     });
 
@@ -216,7 +216,7 @@ describe('remoteAction functions', () => {
       expect(runDefaultActionMock).toHaveBeenCalledWith(
         expect.any(Array),
         expect.any(String),
-        expect.objectContaining({ skipLocalConfig: true }),
+        expect.objectContaining({ skipFileProcessors: true, skipLocalConfig: true }),
       );
     });
 
@@ -244,7 +244,7 @@ describe('remoteAction functions', () => {
       expect(runDefaultActionMock).toHaveBeenCalledWith(
         expect.any(Array),
         expect.any(String),
-        expect.objectContaining({ skipLocalConfig: false }),
+        expect.objectContaining({ skipFileProcessors: true, skipLocalConfig: false }),
       );
     });
 

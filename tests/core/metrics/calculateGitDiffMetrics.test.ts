@@ -69,6 +69,7 @@ describe('calculateGitDiffMetrics', () => {
     tokenCount: {
       encoding: 'o200k_base' as const,
     },
+    fileProcessors: {},
     cwd: '/test/project',
   };
 

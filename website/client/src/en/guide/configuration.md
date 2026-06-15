@@ -116,6 +116,7 @@ JavaScript configuration files work the same as TypeScript, supporting `defineCo
 | `output.git.includeLogs`         | Whether to include git logs in the output. Shows commit history with dates, messages, and file paths                        | `false`                |
 | `output.git.includeLogsCount`    | Number of git log commits to include in the output                                                                          | `50`                   |
 | `include`                        | Patterns of files to include using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)    | `[]`                   |
+| `fileProcessors`                 | Map of glob patterns to shell commands that transform matched file contents. Commands must include `{file}`; stdout becomes packed content. Local repositories only | `{}`                   |
 | `ignore.useGitignore`            | Whether to use patterns from the project's `.gitignore` file                                                                 | `true`                 |
 | `ignore.useDotIgnore`            | Whether to use patterns from the project's `.ignore` file                                                                    | `true`                 |
 | `ignore.useDefaultPatterns`      | Whether to use default ignore patterns (node_modules, .git, etc.)                                                           | `true`                 |
@@ -180,6 +181,7 @@ Here's an example of a complete configuration file (`repomix.config.json`):
     }
   },
   "include": ["**/*"],
+  "fileProcessors": {},
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,
@@ -234,6 +236,24 @@ You can specify include patterns in your configuration file:
 ```
 
 Or use the `--include` command-line option for one-time filtering.
+
+## File Processors
+
+`fileProcessors` lets you transform matched text files with an external command before Repomix packs them. Repomix writes the current file content to a temporary file, replaces `{file}` in the command with that temporary file path, and uses the command's stdout as the new file content.
+
+For example, to convert Jupyter notebooks to Python with `jupyter nbconvert`:
+
+```json
+{
+  "fileProcessors": {
+    "**/*.ipynb": "jupyter nbconvert --to python --stdout {file}"
+  }
+}
+```
+
+Processor patterns use the same glob syntax as `include`. When multiple patterns match a file, the first matching entry in the configuration is used. Commands run from the repository root, and the transformed content is used by downstream packing steps, including security checks.
+
+This feature is opt-in and runs local commands, so only configure processors you trust. It is disabled for remote repository processing.
 
 ## Ignore Patterns
 

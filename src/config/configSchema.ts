@@ -74,6 +74,7 @@ export const repomixConfigBaseSchema = v.object({
       encoding: v.optional(v.string()),
     }),
   ),
+  fileProcessors: v.optional(v.record(v.string(), v.string())),
 });
 
 // Default config schema with default values
@@ -124,6 +125,7 @@ export const repomixConfigDefaultSchema = v.object({
   tokenCount: v.object({
     encoding: v.optional(v.picklist(TOKEN_ENCODINGS), 'o200k_base'),
   }),
+  fileProcessors: v.optional(v.record(v.string(), v.string()), () => ({})),
 });
 
 // File-specific schema. Add options for file path and style

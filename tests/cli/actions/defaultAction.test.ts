@@ -157,6 +157,21 @@ describe('defaultAction', () => {
     expect(mockSpinner.fail).toHaveBeenCalledWith('Error during packing');
   });
 
+  it('should reject fileProcessors when disabled by remote mode', async () => {
+    vi.mocked(configLoader.mergeConfigs).mockReturnValue(
+      createMockConfig({
+        fileProcessors: {
+          '**/*.ipynb': 'jupyter nbconvert --to python --stdout {file}',
+        },
+      }),
+    );
+
+    await expect(runDefaultAction(['.'], process.cwd(), { skipFileProcessors: true })).rejects.toThrow(
+      'fileProcessors cannot be used in remote mode',
+    );
+    expect(packager.pack).not.toHaveBeenCalled();
+  });
+
   describe('progressCallback', () => {
     it('should forward progress messages to the provided callback', async () => {
       // Configure pack mock to invoke its 3rd argument (progressCallback)

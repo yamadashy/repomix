@@ -3,6 +3,7 @@ import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
+import { applyFileProcessors as defaultApplyFileProcessors } from './fileProcessors.js';
 import { readRawFile as defaultReadRawFile, type FileSkipReason } from './fileRead.js';
 import type { RawFile } from './fileTypes.js';
 
@@ -18,6 +19,11 @@ export interface SkippedFileInfo {
 export interface FileCollectResults {
   rawFiles: RawFile[];
   skippedFiles: SkippedFileInfo[];
+}
+
+export interface CollectFilesDeps {
+  readRawFile?: typeof defaultReadRawFile;
+  applyFileProcessors?: typeof defaultApplyFileProcessors;
 }
 
 const promisePool = async <T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> => {
@@ -41,20 +47,20 @@ export const collectFiles = async (
   rootDir: string,
   config: RepomixConfigMerged,
   progressCallback: RepomixProgressCallback = () => {},
-  deps = {
-    readRawFile: defaultReadRawFile,
-  },
+  deps: CollectFilesDeps = {},
 ): Promise<FileCollectResults> => {
   const startTime = process.hrtime.bigint();
   logger.trace(`Starting file collection for ${filePaths.length} files`);
 
+  const readRawFile = deps.readRawFile ?? defaultReadRawFile;
+  const applyFileProcessors = deps.applyFileProcessors ?? defaultApplyFileProcessors;
   let completedTasks = 0;
   const totalTasks = filePaths.length;
   const maxFileSize = config.input.maxFileSize;
 
   const results = await promisePool(filePaths, FILE_COLLECT_CONCURRENCY, async (filePath) => {
     const fullPath = path.resolve(rootDir, filePath);
-    const result = await deps.readRawFile(fullPath, maxFileSize);
+    const result = await readRawFile(fullPath, maxFileSize);
 
     completedTasks++;
     progressCallback(`Collect file... (${completedTasks}/${totalTasks}) ${pc.dim(filePath)}`);
@@ -74,9 +80,11 @@ export const collectFiles = async (
     }
   }
 
+  const processedRawFiles = await applyFileProcessors(rawFiles, rootDir, config, progressCallback);
+
   const endTime = process.hrtime.bigint();
   const duration = Number(endTime - startTime) / 1e6;
   logger.trace(`File collection completed in ${duration.toFixed(2)}ms`);
 
-  return { rawFiles, skippedFiles };
+  return { rawFiles: processedRawFiles, skippedFiles };
 };

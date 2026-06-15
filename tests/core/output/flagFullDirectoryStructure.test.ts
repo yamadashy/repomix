@@ -47,6 +47,7 @@ const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): Repomix
     encoding: 'cl100k_base',
   },
   ...overrides,
+  fileProcessors: overrides.fileProcessors ?? {},
 });
 
 describe('includeFullDirectoryStructure flag', () => {
@@ -161,6 +162,7 @@ describe('includeEmptyDirectories with pre-computed emptyDirPaths', () => {
     security: { enableSecurityCheck: true },
     tokenCount: { encoding: 'cl100k_base' },
     ...overrides,
+    fileProcessors: overrides.fileProcessors ?? {},
   });
 
   test('uses pre-computed emptyDirPaths and skips searchFiles call', async () => {

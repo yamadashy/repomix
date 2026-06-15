@@ -374,6 +374,26 @@ describe('configLoad', () => {
       expect(merged.tokenCount.encoding).toBe('cl100k_base');
     });
 
+    test('should merge fileProcessors config correctly', () => {
+      const fileConfig: RepomixConfigFile = {
+        fileProcessors: {
+          '**/*.ipynb': 'jupyter nbconvert --to python --stdout {file}',
+        },
+      };
+      const cliConfig: RepomixConfigCli = {
+        fileProcessors: {
+          '**/*.json': 'node scripts/json-to-text.js {file}',
+        },
+      };
+
+      const merged = mergeConfigs(process.cwd(), fileConfig, cliConfig);
+
+      expect(merged.fileProcessors).toEqual({
+        '**/*.ipynb': 'jupyter nbconvert --to python --stdout {file}',
+        '**/*.json': 'node scripts/json-to-text.js {file}',
+      });
+    });
+
     test('should map default filename to style when only style is provided via CLI', () => {
       const merged = mergeConfigs(process.cwd(), {}, { output: { style: 'markdown' } });
       expect(merged.output.filePath).toBe('repomix-output.md');

@@ -1403,6 +1403,7 @@ Here's an explanation of the configuration options:
 | `output.git.includeLogs`        | Whether to include git logs in the output (includes commit history with dates, messages, and file paths)                   | `false`                |
 | `output.git.includeLogsCount`   | Number of git log commits to include                                                                                         | `50`                   |
 | `include`                        | Patterns of files to include (using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax))  | `[]`                   |
+| `fileProcessors`                 | Map of glob patterns to shell commands that transform matched file contents. Commands must include `{file}`; stdout becomes packed content. Local repositories only | `{}`                   |
 | `ignore.useGitignore`            | Whether to use patterns from the project's `.gitignore` file                                                                 | `true`                 |
 | `ignore.useDotIgnore`            | Whether to use patterns from the project's `.ignore` file                                                                    | `true`                 |
 | `ignore.useDefaultPatterns`      | Whether to use default ignore patterns                                                                                       | `true`                 |
@@ -1470,6 +1471,7 @@ Example configuration:
     }
   },
   "include": ["**/*"],
+  "fileProcessors": {},
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,
@@ -1546,6 +1548,29 @@ preventing the leakage of confidential information.
 Note: Binary files are not included in the packed output by default, but their paths are listed in the "Repository
 Structure" section of the output file. This provides a complete overview of the repository structure while keeping the
 packed file efficient and text-based.
+
+### File Processors
+
+`fileProcessors` lets you transform matched text files with an external command before Repomix packs them. Repomix
+writes the current file content to a temporary file, replaces `{file}` in the command with that temporary file path, and
+uses the command's stdout as the new file content.
+
+For example, to convert Jupyter notebooks to Python with `jupyter nbconvert`:
+
+```json5
+{
+  "fileProcessors": {
+    "**/*.ipynb": "jupyter nbconvert --to python --stdout {file}"
+  }
+}
+```
+
+Processor patterns use the same glob syntax as `include`. When multiple patterns match a file, the first matching entry
+in the configuration is used. Commands run from the repository root, and the transformed content is used by downstream
+packing steps, including security checks.
+
+This feature is opt-in and runs local commands, so only configure processors you trust. It is disabled for remote
+repository processing.
 
 ### Custom Instruction
 

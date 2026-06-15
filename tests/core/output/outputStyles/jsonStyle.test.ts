@@ -47,6 +47,7 @@ const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): Repomix
     encoding: 'cl100k_base',
   },
   ...overrides,
+  fileProcessors: overrides.fileProcessors ?? {},
 });
 
 const createMockProcessedFiles = (): ProcessedFile[] => [

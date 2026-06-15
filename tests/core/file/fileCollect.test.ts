@@ -59,6 +59,35 @@ describe('fileCollect', () => {
     });
   });
 
+  it('should apply file processors to collected text files before returning raw files', async () => {
+    const mockFilePaths = ['analysis.ipynb'];
+    const mockRootDir = '/root';
+    const mockConfig = createMockConfig({
+      fileProcessors: {
+        '**/*.ipynb': 'jupyter nbconvert --to python --stdout {file}',
+      },
+    });
+    const mockProgress = vi.fn();
+    const applyFileProcessors = vi.fn(async () => [
+      { path: 'analysis.ipynb', content: '# converted notebook\nprint(1)' },
+    ]);
+
+    mockReadRawFile.mockResolvedValue({ content: '{"cells":[]}' });
+
+    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, mockProgress, {
+      readRawFile: mockReadRawFile,
+      applyFileProcessors,
+    });
+
+    expect(applyFileProcessors).toHaveBeenCalledWith(
+      [{ path: 'analysis.ipynb', content: '{"cells":[]}' }],
+      mockRootDir,
+      mockConfig,
+      mockProgress,
+    );
+    expect(result.rawFiles).toEqual([{ path: 'analysis.ipynb', content: '# converted notebook\nprint(1)' }]);
+  });
+
   it('should skip large files based on default maxFileSize', async () => {
     const mockFilePaths = ['large.txt', 'normal.txt'];
     const mockRootDir = '/root';

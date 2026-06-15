@@ -70,6 +70,9 @@ describe('configSchema', () => {
           useGitignore: true,
           customPatterns: ['node_modules'],
         },
+        fileProcessors: {
+          '**/*.ipynb': 'jupyter nbconvert --to python --stdout {file}',
+        },
         security: {
           enableSecurityCheck: true,
         },
@@ -136,6 +139,7 @@ describe('configSchema', () => {
         tokenCount: {
           encoding: 'o200k_base',
         },
+        fileProcessors: {},
       };
       expect(v.parse(repomixConfigDefaultSchema, validConfig)).toEqual(validConfig);
     });
@@ -190,6 +194,7 @@ describe('configSchema', () => {
         ignore: { useGitignore: true, useDotIgnore: true, useDefaultPatterns: true, customPatterns: [] as string[] },
         security: { enableSecurityCheck: true },
         tokenCount: { encoding: 'o200k_base' as const },
+        fileProcessors: {},
       };
 
       it('rejects non-integer maxFileSize', () => {
@@ -286,8 +291,21 @@ describe('configSchema', () => {
         ignore: {
           customPatterns: ['*.log'],
         },
+        fileProcessors: {
+          '**/*.json': 'node scripts/json-to-text.js {file}',
+        },
       };
       expect(v.parse(repomixConfigFileSchema, validConfig)).toEqual(validConfig);
+    });
+
+    it('should reject file processor commands that are not strings', () => {
+      const invalidConfig = {
+        fileProcessors: {
+          '**/*.ipynb': ['jupyter', 'nbconvert'],
+        },
+      };
+
+      expect(() => v.parse(repomixConfigFileSchema, invalidConfig)).toThrow(v.ValiError);
     });
 
     it('should accept partial config', () => {
@@ -381,6 +399,9 @@ describe('configSchema', () => {
         tokenCount: {
           encoding: 'o200k_base',
         },
+        fileProcessors: {
+          '**/*.ipynb': 'jupyter nbconvert --to python --stdout {file}',
+        },
       };
       expect(v.parse(repomixConfigMergedSchema, validConfig)).toEqual(validConfig);
     });
@@ -455,6 +476,7 @@ describe('configSchema', () => {
         ignore: { useGitignore: true, useDotIgnore: true, useDefaultPatterns: true, customPatterns: [] },
         security: { enableSecurityCheck: true },
         tokenCount: { encoding: 'o200k_base' },
+        fileProcessors: {},
         skillGenerate: 'my-skill',
       };
       const result = v.parse(repomixConfigMergedSchema, merged) as typeof merged;

@@ -139,6 +139,7 @@ export const runRemoteAction = async (
       skillProjectName,
       skillSourceUrl,
       skipLocalConfig: !trustRemoteConfig,
+      skipFileProcessors: true,
       // Defer the token-budget check so the output is copied out of the temp
       // dir below before the guard can throw; we run validateTokenBudget here
       // afterwards. Otherwise an over-budget remote run would throw inside

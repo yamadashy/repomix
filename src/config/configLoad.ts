@@ -257,6 +257,11 @@ export const mergeConfigs = (
       ...fileConfig.tokenCount,
       ...cliConfig.tokenCount,
     },
+    fileProcessors: {
+      ...baseConfig.fileProcessors,
+      ...fileConfig.fileProcessors,
+      ...cliConfig.fileProcessors,
+    },
     // Skill generation (CLI only)
     ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
   };

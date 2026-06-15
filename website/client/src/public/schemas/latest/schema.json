@@ -92,6 +92,11 @@
             }
           ]
         },
+        "tokenBudget": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
         "git": {
           "type": "object",
           "properties": {
@@ -160,6 +165,15 @@
         }
       },
       "additionalProperties": false
+    },
+    "fileProcessors": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
     }
   },
   "additionalProperties": false,
