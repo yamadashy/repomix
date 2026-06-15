@@ -76,10 +76,10 @@ const toAbsolutePath = (cwd: string, filePath: string): string => path.resolve(c
 
 const uniquePaths = (paths: string[]): string[] => Array.from(new Set(paths));
 
-const pathSegments = (filePath: string): string[] => path.resolve(filePath).split(path.sep).filter(Boolean);
-
-const isInsideIgnoredDirectory = (filePath: string): boolean => {
-  const segments = pathSegments(filePath);
+const isInsideIgnoredDirectory = (cwd: string, filePath: string): boolean => {
+  const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(cwd, filePath);
+  const relativePath = path.relative(cwd, absolutePath);
+  const segments = relativePath.split(path.sep).filter(Boolean);
   return segments.includes('.git') || segments.includes('node_modules');
 };
 
@@ -207,8 +207,8 @@ export const runWatchAction = async (
   };
 
   const isIgnored = (filePath: string): boolean => {
-    const absolutePath = path.resolve(filePath);
-    return isInsideIgnoredDirectory(absolutePath) || outputPaths.has(absolutePath);
+    const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(cwd, filePath);
+    return isInsideIgnoredDirectory(cwd, absolutePath) || outputPaths.has(absolutePath);
   };
 
   await runRebuild();

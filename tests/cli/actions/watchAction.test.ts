@@ -182,6 +182,38 @@ describe('watchAction', () => {
     await runPromise;
   });
 
+  it('does not ignore watched files because the workspace parent path contains node_modules', async () => {
+    const cwd = path.resolve('/repo/node_modules/my-project');
+    const fakeWatcher = new FakeWatcher();
+    let stopWatching!: () => void;
+    const stopPromise = new Promise<void>((resolve) => {
+      stopWatching = resolve;
+    });
+    const createWatcher = vi.fn((_paths: string[], _options: ChokidarOptions) => fakeWatcher);
+
+    const runPromise = runWatchAction(
+      ['src'],
+      cwd,
+      { watch: true },
+      {
+        runDefaultAction: vi.fn(async () => createResult()),
+        createWatcher,
+        waitForStop: async () => stopPromise,
+        debounceMs: 300,
+      },
+    );
+    await flushPromises();
+
+    const options = createWatcher.mock.calls[0][1];
+    const ignored = options.ignored as (filePath: string) => boolean;
+
+    expect(ignored(path.join(cwd, 'src/index.ts'))).toBe(false);
+    expect(ignored(path.join(cwd, 'node_modules/pkg/index.js'))).toBe(true);
+
+    stopWatching();
+    await runPromise;
+  });
+
   it('watches instruction file paths from the active config', async () => {
     const runDefaultAction = vi.fn(async () =>
       createResult({
