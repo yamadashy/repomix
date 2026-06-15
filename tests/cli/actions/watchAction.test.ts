@@ -120,6 +120,12 @@ describe('watch option conflicts', () => {
     const options: CliOptions = { watch: true, skillGenerate: 'my-skill' };
     await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --skill-generate');
   });
+
+  it('should throw when --watch is used with --copy', async () => {
+    const { runCli } = await import('../../../src/cli/cliRun.js');
+    const options: CliOptions = { watch: true, copy: true };
+    await expect(runCli(['.'], process.cwd(), options)).rejects.toThrow('--watch cannot be used with --copy');
+  });
 });
 
 describe('watchAction', () => {
@@ -454,5 +460,321 @@ describe('watchAction', () => {
         { watch: createMockWatch(mockWatcher), buildIgnoreFilter: noopBuildIgnoreFilter },
       ),
     ).rejects.toThrow('split output');
+  });
+
+  it('should throw when the merged config writes to stdout via output "-" (e.g. from a config file)', async () => {
+    // validateWatchOptions in cliRun only sees CLI flags. `output: "-"` in a config file
+    // resolves to stdout mode (filePath === '-'), which the watch route must reject too.
+    vi.mocked(configLoader.mergeConfigs).mockReturnValue(
+      createMockConfig({ cwd: process.cwd(), output: { filePath: '-' } }),
+    );
+
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    await expect(
+      runWatchAction(
+        ['.'],
+        process.cwd(),
+        {},
+        { watch: createMockWatch(mockWatcher), buildIgnoreFilter: noopBuildIgnoreFilter },
+      ),
+    ).rejects.toThrow('stdout');
+  });
+
+  it('should throw when the merged config enables skill generation (e.g. from a config file)', async () => {
+    // Skill generation can be set via the config file, which validateWatchOptions in cliRun
+    // (CLI flags only) would miss, so the watch route must reject it on the merged config.
+    vi.mocked(configLoader.mergeConfigs).mockReturnValue(
+      createMockConfig({ cwd: process.cwd(), skillGenerate: 'my-skill' }),
+    );
+
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    await expect(
+      runWatchAction(
+        ['.'],
+        process.cwd(),
+        {},
+        { watch: createMockWatch(mockWatcher), buildIgnoreFilter: noopBuildIgnoreFilter },
+      ),
+    ).rejects.toThrow('skill generation');
+  });
+
+  it('should throw when the merged config enables copy to clipboard (e.g. from a config file)', async () => {
+    // --copy is a hard conflict with --watch: re-packing on every change would repeatedly
+    // overwrite the clipboard. copyToClipboard can also be set via the config file, which
+    // validateWatchOptions in cliRun (CLI flags only) would miss.
+    vi.mocked(configLoader.mergeConfigs).mockReturnValue(
+      createMockConfig({
+        cwd: process.cwd(),
+        output: { filePath: 'repomix-output.xml', copyToClipboard: true },
+      }),
+    );
+
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    await expect(
+      runWatchAction(
+        ['.'],
+        process.cwd(),
+        {},
+        { watch: createMockWatch(mockWatcher), buildIgnoreFilter: noopBuildIgnoreFilter },
+      ),
+    ).rejects.toThrow('--watch cannot be used with --copy');
+  });
+
+  it('should apply the shared conflict validation to the merged config (skill-generate + copy)', async () => {
+    // The watch route must validate conflicts identically to the default route, so a
+    // config-file combination such as skillGenerate + copyToClipboard is rejected with the
+    // same message validateConflictingOptions produces for the default action.
+    vi.mocked(configLoader.mergeConfigs).mockReturnValue(
+      createMockConfig({
+        cwd: process.cwd(),
+        skillGenerate: 'my-skill',
+        output: { copyToClipboard: true },
+      }),
+    );
+
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    await expect(
+      runWatchAction(
+        ['.'],
+        process.cwd(),
+        {},
+        { watch: createMockWatch(mockWatcher), buildIgnoreFilter: noopBuildIgnoreFilter },
+      ),
+    ).rejects.toThrow('cannot be copied to clipboard');
+  });
+
+  it('throws when the merged config sets output.stdout (e.g. from a config file)', async () => {
+    vi.mocked(configLoader.mergeConfigs).mockReturnValue(
+      createMockConfig({ cwd: process.cwd(), output: { stdout: true } }),
+    );
+
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    await expect(
+      runWatchAction(
+        ['.'],
+        process.cwd(),
+        {},
+        { watch: createMockWatch(mockWatcher), buildIgnoreFilter: noopBuildIgnoreFilter },
+      ),
+    ).rejects.toThrow('stdout');
+  });
+
+  it('logs an error when the watcher emits an error event', async () => {
+    const controller = new AbortController();
+    const mockWatch = createMockWatch(mockWatcher);
+
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    const watchPromise = runWatchAction(
+      ['.'],
+      process.cwd(),
+      {},
+      {
+        watch: mockWatch,
+        signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
+      },
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    // chokidar surfaces fatal fs errors (EMFILE, EACCES, ...) via the 'error' event.
+    const watcherError = new Error('EMFILE: too many open files');
+    mockWatcher.emit('error', watcherError);
+
+    expect(loggerModule.logger.error).toHaveBeenCalledWith('File watcher error:', watcherError);
+
+    controller.abort();
+    await watchPromise;
+  });
+
+  it('logs an error when a rebuild pack rejects', async () => {
+    const controller = new AbortController();
+    const mockWatch = createMockWatch(mockWatcher);
+
+    // Initial pack succeeds; the rebuild pack fails.
+    vi.mocked(packager.pack)
+      .mockResolvedValueOnce(createMockPackResult())
+      .mockRejectedValueOnce(new Error('pack failed during rebuild'));
+
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    const watchPromise = runWatchAction(
+      ['.'],
+      process.cwd(),
+      {},
+      {
+        watch: mockWatch,
+        signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
+      },
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(packager.pack).toHaveBeenCalledTimes(1);
+
+    mockWatcher.emit('change', 'src/index.ts');
+    await vi.advanceTimersByTimeAsync(350);
+
+    expect(packager.pack).toHaveBeenCalledTimes(2);
+    expect(loggerModule.logger.error).toHaveBeenCalledWith('Watch rebuild failed:', expect.any(Error));
+
+    // The failed rebuild must not wedge the watcher — a later change still rebuilds.
+    mockWatcher.emit('change', 'src/utils.ts');
+    await vi.advanceTimersByTimeAsync(350);
+    expect(packager.pack).toHaveBeenCalledTimes(3);
+
+    controller.abort();
+    await watchPromise;
+  });
+
+  it('registers and removes SIGINT/SIGTERM handlers when no abort signal is provided', async () => {
+    // Production path: without an injected AbortSignal, runWatchAction installs
+    // process SIGINT/SIGTERM listeners and removes them on cleanup. Stub the process
+    // methods so the test never touches the real process listeners.
+    const onSpy = vi.spyOn(process, 'on').mockReturnValue(process);
+    const removeListenerSpy = vi.spyOn(process, 'removeListener').mockReturnValue(process);
+
+    try {
+      const mockWatch = createMockWatch(mockWatcher);
+      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+      const watchPromise = runWatchAction(
+        ['.'],
+        process.cwd(),
+        {},
+        {
+          watch: mockWatch,
+          buildIgnoreFilter: noopBuildIgnoreFilter,
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      const sigintHandler = onSpy.mock.calls.find(([event]) => event === 'SIGINT')?.[1];
+      const sigtermHandler = onSpy.mock.calls.find(([event]) => event === 'SIGTERM')?.[1];
+      expect(sigintHandler).toBeTypeOf('function');
+      // Both signals share the same idempotent cleanup handler.
+      expect(sigtermHandler).toBe(sigintHandler);
+
+      // Simulate Ctrl+C.
+      await (sigintHandler as () => Promise<void>)();
+      await watchPromise;
+
+      expect(removeListenerSpy).toHaveBeenCalledWith('SIGINT', sigintHandler);
+      expect(removeListenerSpy).toHaveBeenCalledWith('SIGTERM', sigintHandler);
+      expect(mockWatcher.close).toHaveBeenCalled();
+    } finally {
+      onSpy.mockRestore();
+      removeListenerSpy.mockRestore();
+    }
+  });
+
+  it('cleans up only once when the shutdown signal fires twice (double Ctrl+C)', async () => {
+    const onSpy = vi.spyOn(process, 'on').mockReturnValue(process);
+    const removeListenerSpy = vi.spyOn(process, 'removeListener').mockReturnValue(process);
+
+    try {
+      const mockWatch = createMockWatch(mockWatcher);
+      const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+      const watchPromise = runWatchAction(
+        ['.'],
+        process.cwd(),
+        {},
+        {
+          watch: mockWatch,
+          buildIgnoreFilter: noopBuildIgnoreFilter,
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      const cleanup = onSpy.mock.calls.find(([event]) => event === 'SIGINT')?.[1] as () => Promise<void>;
+      expect(cleanup).toBeTypeOf('function');
+
+      // Two rapid Ctrl+C presses must not double-close the watcher.
+      await cleanup();
+      await cleanup();
+      await watchPromise;
+
+      expect(mockWatcher.close).toHaveBeenCalledTimes(1);
+    } finally {
+      onSpy.mockRestore();
+      removeListenerSpy.mockRestore();
+    }
+  });
+
+  it('does no work when the abort signal is already aborted before starting', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const mockWatch = createMockWatch(mockWatcher);
+
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    await runWatchAction(
+      ['.'],
+      process.cwd(),
+      {},
+      {
+        watch: mockWatch,
+        signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
+      },
+    );
+
+    // The early-return guard short-circuits before any packing or watching happens.
+    expect(packager.pack).not.toHaveBeenCalled();
+    expect(mockWatch).not.toHaveBeenCalled();
+  });
+
+  it('cancels a pending rebuild and ignores later changes once shutting down', async () => {
+    const controller = new AbortController();
+    const mockWatch = createMockWatch(mockWatcher);
+
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    const watchPromise = runWatchAction(
+      ['.'],
+      process.cwd(),
+      {},
+      {
+        watch: mockWatch,
+        signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
+      },
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(packager.pack).toHaveBeenCalledTimes(1);
+
+    // Queue a rebuild (starts the debounce timer), then shut down before it fires.
+    mockWatcher.emit('change', 'src/index.ts');
+    controller.abort();
+    await watchPromise;
+
+    // A change arriving after shutdown is ignored, and the cancelled timer never fires.
+    mockWatcher.emit('change', 'src/utils.ts');
+    await vi.advanceTimersByTimeAsync(350);
+    expect(packager.pack).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs an error when closing the watcher fails during shutdown', async () => {
+    const controller = new AbortController();
+    mockWatcher.close = vi.fn().mockRejectedValue(new Error('close failed'));
+    const mockWatch = createMockWatch(mockWatcher);
+
+    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
+    const watchPromise = runWatchAction(
+      ['.'],
+      process.cwd(),
+      {},
+      {
+        watch: mockWatch,
+        signal: controller.signal,
+        buildIgnoreFilter: noopBuildIgnoreFilter,
+      },
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort();
+    // Shutdown must still complete (resolve) even though watcher.close() rejects.
+    await watchPromise;
+
+    expect(loggerModule.logger.error).toHaveBeenCalledWith('Error closing watcher:', expect.any(Error));
   });
 });
