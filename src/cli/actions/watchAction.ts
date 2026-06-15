@@ -161,9 +161,11 @@ export const runWatchAction = async (
         try {
           const result = await runPack(targetPaths, config, cliOptions);
           reportResults(cwd, result, config, cliOptions);
-          // Use the system locale (undefined) with 24-hour time so the timestamp is
-          // portable rather than hardcoded to a single region's format.
-          const timestamp = new Date().toLocaleTimeString(undefined, { hour12: false });
+          // toTimeString() returns "HH:MM:SS GMT..." independent of locale, so the leading
+          // time portion is a portable, consistent 24-hour timestamp on every platform
+          // (toLocaleTimeString(undefined) would follow the system locale, e.g. non-ASCII
+          // digits or AM/PM).
+          const timestamp = new Date().toTimeString().split(' ')[0];
           logger.success(`Rebuilt at ${timestamp}`);
           logger.log(pc.dim('Watching for changes...'));
         } catch (error) {
