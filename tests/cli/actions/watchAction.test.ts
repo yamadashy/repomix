@@ -333,6 +333,16 @@ describe('watchAction', () => {
     expect(exit).toHaveBeenCalledWith(0);
   });
 
+  it('allows watch mode when skill generation is explicitly disabled', async () => {
+    const { runDefaultAction, stopWatching, runPromise } = setup({ skillGenerate: false });
+    await flushPromises();
+
+    expect(runDefaultAction).toHaveBeenCalledTimes(1);
+
+    stopWatching();
+    await runPromise;
+  });
+
   it.each([
     [{ stdin: true }, '--watch cannot be used with --stdin'],
     [{ stdout: true }, '--watch cannot be used with --stdout'],

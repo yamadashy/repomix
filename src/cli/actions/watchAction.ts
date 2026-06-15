@@ -126,7 +126,7 @@ const validateWatchOptions = (cliOptions: CliOptions): void => {
     [Boolean(cliOptions.stdin), '--stdin'],
     [Boolean(cliOptions.stdout || cliOptions.output === '-'), '--stdout'],
     [Boolean(cliOptions.copy), '--copy'],
-    [cliOptions.skillGenerate !== undefined, '--skill-generate'],
+    [Boolean(cliOptions.skillGenerate), '--skill-generate'],
   ];
 
   const conflict = conflicts.find(([enabled]) => enabled);
