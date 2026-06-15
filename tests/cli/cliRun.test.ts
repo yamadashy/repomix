@@ -5,6 +5,7 @@ import * as defaultAction from '../../src/cli/actions/defaultAction.js';
 import * as initAction from '../../src/cli/actions/initAction.js';
 import * as remoteAction from '../../src/cli/actions/remoteAction.js';
 import * as versionAction from '../../src/cli/actions/versionAction.js';
+import * as watchAction from '../../src/cli/actions/watchAction.js';
 import { run, runCli } from '../../src/cli/cliRun.js';
 import type { CliOptions } from '../../src/cli/types.js';
 import * as gitRemoteHandle from '../../src/core/git/gitRemoteHandle.js';
@@ -42,6 +43,7 @@ vi.mock('../../src/shared/logger', () => ({
 vi.mock('../../src/cli/actions/defaultAction');
 vi.mock('../../src/cli/actions/initAction');
 vi.mock('../../src/cli/actions/remoteAction');
+vi.mock('../../src/cli/actions/watchAction');
 vi.mock('../../src/core/git/gitRemoteHandle');
 vi.mock('../../src/cli/actions/versionAction');
 
@@ -174,6 +176,7 @@ describe('cliRun', () => {
       } satisfies PackResult,
     });
     vi.mocked(versionAction.runVersionAction).mockResolvedValue();
+    vi.mocked(watchAction.runWatchAction).mockResolvedValue(undefined);
   });
 
   test('should call process.exit(1) on error', async () => {
@@ -323,6 +326,48 @@ describe('cliRun', () => {
       });
 
       expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object));
+    });
+
+    test('should execute watch action for local directories when watch option is true', async () => {
+      await runCli(['src'], process.cwd(), { watch: true });
+
+      expect(watchAction.runWatchAction).toHaveBeenCalledWith(
+        ['src'],
+        process.cwd(),
+        expect.objectContaining({ watch: true }),
+      );
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+    });
+
+    test('should reject --watch with explicit --remote', async () => {
+      await expect(runCli(['.'], process.cwd(), { watch: true, remote: 'yamadashy/repomix' })).rejects.toThrow(
+        '--watch cannot be used with --remote',
+      );
+
+      expect(watchAction.runWatchAction).not.toHaveBeenCalled();
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+    });
+
+    test('should reject --watch with explicit remote URL positional argument', async () => {
+      await expect(runCli(['https://github.com/user/repo'], process.cwd(), { watch: true })).rejects.toThrow(
+        '--watch only supports local directories',
+      );
+
+      expect(watchAction.runWatchAction).not.toHaveBeenCalled();
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+    });
+
+    test('should not probe GitHub shorthand in watch mode', async () => {
+      await runCli(['user/repo'], process.cwd(), { watch: true });
+
+      expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
+      expect(watchAction.runWatchAction).toHaveBeenCalledWith(
+        ['user/repo'],
+        process.cwd(),
+        expect.objectContaining({ watch: true }),
+      );
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
     });
   });
 

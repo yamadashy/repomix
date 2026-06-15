@@ -16,6 +16,7 @@ export const getDisplayPath = (absolutePath: string, cwd: string): string => {
 
 export interface ReportOptions {
   skillDir?: string;
+  watchMode?: boolean;
 }
 
 /**
@@ -59,7 +60,7 @@ export const reportResults = (
   reportSummary(cwd, packResult, config, options);
   logger.log('');
 
-  reportCompletion();
+  reportCompletion(options);
 };
 
 export const reportSummary = (
@@ -237,9 +238,13 @@ export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileIn
   logger.log(pc.yellow('Please review these files if you expected them to contain text content.'));
 };
 
-export const reportCompletion = () => {
+export const reportCompletion = (options: ReportOptions = {}) => {
   logger.log(pc.green('🎉 All Done!'));
   logger.log('Your repository has been successfully packed.');
+
+  if (options.watchMode) {
+    return;
+  }
 
   logger.log('');
   logger.log(`💡 Repomix is now available in your browser! Try it at ${pc.underline('https://repomix.com')}`);

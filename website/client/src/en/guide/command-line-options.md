@@ -17,6 +17,7 @@ description: Reference every Repomix CLI option for input, output, file selectio
 | `--stdout` | Write packed output directly to stdout instead of a file (suppresses all logging) |
 | `--stdin` | Read file paths from stdin, one per line (specified files are processed directly) |
 | `--copy` | Copy the generated output to system clipboard after processing |
+| `--watch` | Watch local files and rebuild the output when changes are detected |
 | `--token-count-tree [threshold]` | Show file tree with token counts; optional threshold to show only files with ≥N tokens (e.g., `--token-count-tree 100`) |
 | `--top-files-len <number>` | Number of largest files to show in summary (default: `5`) |
 
@@ -114,6 +115,10 @@ repomix --stdout | llm "Please explain what this code does."
 
 # Custom output with compression
 repomix --compress
+
+# Watch local files and rebuild automatically
+repomix --watch
+repomix src --watch --include "src/**/*.ts"
 
 # Split output into multiple files (max size per part)
 repomix --split-output 20mb

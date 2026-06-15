@@ -398,6 +398,15 @@ describe('cliReport', () => {
 
       expect(logger.log).toHaveBeenCalledWith('GREEN:🎉 All Done!');
       expect(logger.log).toHaveBeenCalledWith('Your repository has been successfully packed.');
+      expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('https://repomix.com'));
+    });
+
+    test('should skip browser prompt in watch mode', () => {
+      reportCompletion({ watchMode: true });
+
+      expect(logger.log).toHaveBeenCalledWith('GREEN:🎉 All Done!');
+      expect(logger.log).toHaveBeenCalledWith('Your repository has been successfully packed.');
+      expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('https://repomix.com'));
     });
   });
 });

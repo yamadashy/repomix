@@ -71,6 +71,7 @@ export const run = async () => {
       )
       .option('--stdin', 'Read file paths from stdin, one per line (specified files are processed directly)')
       .option('--copy', 'Copy the generated output to system clipboard after processing')
+      .option('--watch', 'Watch local files and rebuild the output when changes are detected')
       .option(
         '--token-count-tree [threshold]',
         'Show file tree with token counts; optional threshold to show only files with ≥N tokens (e.g., --token-count-tree 100)',
@@ -284,6 +285,20 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     const { runInitAction } = await import('./actions/initAction.js');
     await runInitAction(cwd, options.global || false);
     return;
+  }
+
+  if (options.watch) {
+    if (options.remote) {
+      throw new RepomixError('--watch cannot be used with --remote. Watch mode only supports local directories.');
+    }
+    if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
+      throw new RepomixError(
+        '--watch only supports local directories. Clone the repository locally before watching it.',
+      );
+    }
+
+    const { runWatchAction } = await import('./actions/watchAction.js');
+    return await runWatchAction(directories, cwd, options);
   }
 
   if (options.remote) {

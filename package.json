@@ -83,6 +83,7 @@
     "@repomix/tree-sitter-wasms": "^0.1.17",
     "@secretlint/core": "^13.0.2",
     "@secretlint/secretlint-rule-preset-recommend": "^13.0.2",
+    "chokidar": "^5.0.0",
     "commander": "^15.0.0",
     "fast-xml-builder": "^1.2.0",
     "git-url-parse": "^16.1.0",

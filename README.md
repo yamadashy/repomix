@@ -204,6 +204,12 @@ using [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pat
 repomix --include "src/**/*.ts,**/*.md"
 ```
 
+To rebuild the output automatically when local files change:
+
+```bash
+repomix --watch
+```
+
 To exclude specific files or directories:
 
 ```bash

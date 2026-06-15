@@ -139,7 +139,10 @@ export const runDefaultAction = async (
   }
 
   // Report results
-  reportResults(cwd, packResult, config, cliOptions);
+  reportResults(cwd, packResult, config, {
+    skillDir: cliOptions.skillDir,
+    watchMode: cliOptions.watch,
+  });
 
   // Enforce the token budget as the last step. The output has already been
   // produced (and written) by this point, so this is a guard that fails the
