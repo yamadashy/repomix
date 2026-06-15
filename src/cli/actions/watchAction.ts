@@ -10,7 +10,7 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import { reportResults } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
 import type { CliOptions } from '../types.js';
-import { buildMergedConfig } from './defaultAction.js';
+import { buildMergedConfig, validateConflictingOptions } from './defaultAction.js';
 import { buildWatchIgnoreFilter } from './watch/watchIgnore.js';
 
 export interface WatchDeps {
@@ -66,16 +66,32 @@ export const runWatchAction = async (
 
   const config = await buildMergedConfig(cwd, cliOptions);
 
-  // These options are also settable via the config file, so re-check them on the merged
-  // config (validateWatchOptions in cliRun only sees CLI flags). Split output would create
-  // numbered files that the watcher then picks up, causing a rebuild loop.
+  // Apply the same conflict validation as the default route so combinations introduced via
+  // the config file (e.g. skillGenerate + copyToClipboard) are caught here too —
+  // validateWatchOptions in cliRun only sees CLI flags.
+  validateConflictingOptions(config);
+
+  // Watch-specific incompatibilities. These options are also settable via the config file,
+  // so re-check them on the merged config rather than relying on the CLI-flag check.
   if (config.output.splitOutput !== undefined) {
+    // Split output would create numbered files that the watcher then picks up, looping.
     throw new RepomixError(
       '--watch cannot be used with split output. Watch mode does not yet support split output files.',
     );
   }
-  if (config.output.stdout) {
+  // `output: "-"` resolves to stdout mode via filePath === '-', the same as --stdout.
+  if (config.output.stdout || config.output.filePath === '-') {
     throw new RepomixError('--watch cannot be used with stdout output. Watch mode writes to a file.');
+  }
+  if (config.skillGenerate !== undefined) {
+    throw new RepomixError(
+      '--watch cannot be used with --skill-generate. Watch mode does not support skill generation.',
+    );
+  }
+  if (config.output.copyToClipboard) {
+    throw new RepomixError(
+      '--watch cannot be used with --copy. Watch mode re-packs on every change, which would repeatedly overwrite the clipboard.',
+    );
   }
 
   const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
