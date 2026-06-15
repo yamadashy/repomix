@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildRootLabels, joinDisplayPath } from '../../../src/core/packager/rootDisplayPath.js';
+import { buildFileDisplayPath, buildRootLabels, joinDisplayPath } from '../../../src/core/packager/rootDisplayPath.js';
 
 // Build absolute paths from a resolved virtual base so the tests stay
 // deterministic and cross-platform (buildRootLabels uses path.resolve/relative).
@@ -58,6 +58,64 @@ describe('rootDisplayPath', () => {
 
     it('falls back to "root" when the label is empty', () => {
       expect(joinDisplayPath('', 'README.md')).toBe('root/README.md');
+    });
+  });
+
+  describe('buildFileDisplayPath', () => {
+    it('keeps target-relative paths unchanged for the default style', () => {
+      expect(
+        buildFileDisplayPath({
+          rootDir: path.join(base, 'other', 'core-library'),
+          filePath: 'src/core.py',
+          cwd,
+          filePathStyle: 'target-relative',
+        }),
+      ).toBe('src/core.py');
+    });
+
+    it('uses a multi-root label for target-relative paths when provided', () => {
+      expect(
+        buildFileDisplayPath({
+          rootDir: path.join(base, 'other', 'core-library'),
+          filePath: 'src/core.py',
+          cwd,
+          filePathStyle: 'target-relative',
+          rootLabel: 'core-library',
+        }),
+      ).toBe('core-library/src/core.py');
+    });
+
+    it('uses cwd-relative paths for roots outside cwd', () => {
+      expect(
+        buildFileDisplayPath({
+          rootDir: path.join(base, 'core-library'),
+          filePath: 'src/core.py',
+          cwd,
+          filePathStyle: 'cwd-relative',
+        }),
+      ).toBe('../core-library/src/core.py');
+    });
+
+    it('uses cwd-relative paths for nested roots inside cwd', () => {
+      expect(
+        buildFileDisplayPath({
+          rootDir: path.join(cwd, 'packages', 'app'),
+          filePath: 'src/index.ts',
+          cwd,
+          filePathStyle: 'cwd-relative',
+        }),
+      ).toBe('packages/app/src/index.ts');
+    });
+
+    it('normalizes cwd-relative paths to posix separators', () => {
+      expect(
+        buildFileDisplayPath({
+          rootDir: path.join(cwd, 'packages', 'app'),
+          filePath: `src${path.win32.sep}index.ts`,
+          cwd,
+          filePathStyle: 'cwd-relative',
+        }),
+      ).toBe('packages/app/src/index.ts');
     });
   });
 });

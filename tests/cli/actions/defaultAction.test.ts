@@ -274,6 +274,15 @@ describe('defaultAction', () => {
       expect(config.output?.style).toBe('xml');
     });
 
+    it('should handle custom output file path style', () => {
+      const options: CliOptions = {
+        outputFilePathStyle: 'cwd-relative',
+      };
+      const config = buildCliConfig(options);
+
+      expect(config.output?.filePathStyle).toBe('cwd-relative');
+    });
+
     it('should properly trim whitespace from comma-separated patterns', () => {
       const options = {
         include: 'src/**/*,  tests/**/*,   examples/**/*',

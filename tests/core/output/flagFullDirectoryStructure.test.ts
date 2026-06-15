@@ -9,6 +9,7 @@ const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): Repomix
   output: {
     filePath: 'repomix-output.json',
     style: 'json',
+    filePathStyle: 'target-relative',
     parsableStyle: false,
     headerText: undefined,
     instructionFilePath: undefined,
@@ -127,6 +128,7 @@ describe('includeEmptyDirectories with pre-computed emptyDirPaths', () => {
     output: {
       filePath: 'repomix-output.json',
       style: 'json',
+      filePathStyle: 'target-relative',
       parsableStyle: false,
       headerText: undefined,
       instructionFilePath: undefined,

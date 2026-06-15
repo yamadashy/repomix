@@ -1,5 +1,5 @@
 import type { OptionValues } from 'commander';
-import type { RepomixOutputStyle } from '../config/configSchema.js';
+import type { RepomixOutputFilePathStyle, RepomixOutputStyle } from '../config/configSchema.js';
 
 export interface CliOptions extends OptionValues {
   // Basic Options
@@ -9,6 +9,7 @@ export interface CliOptions extends OptionValues {
   output?: string;
   stdout?: boolean;
   style?: RepomixOutputStyle;
+  outputFilePathStyle?: RepomixOutputFilePathStyle;
   parsableStyle?: boolean;
   compress?: boolean;
   outputShowLineNumbers?: boolean;

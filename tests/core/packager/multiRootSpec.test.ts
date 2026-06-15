@@ -100,6 +100,8 @@ const countOccurrences = (haystack: string, needle: string): number => {
   return count;
 };
 
+const toDisplayPath = (filePath: string): string => filePath.replaceAll(path.win32.sep, path.posix.sep);
+
 describe('multi-root pack spec', () => {
   let rootAParent: string;
   let rootBParent: string;
@@ -195,6 +197,47 @@ describe('multi-root pack spec', () => {
     expect(parsed.files['app/src/index.ts']).toContain('ROOT_A_SRC_MARKER');
     expect(parsed.files['app-2/README.md']).toContain('MARKER_FROM_ROOT_B');
     expect(parsed.files['app-2/src/index.ts']).toContain('ROOT_B_SRC_MARKER');
+  });
+
+  it('uses cwd-relative file paths in xml output when requested', async () => {
+    const config = buildMergedConfig(outputDir, outputPath, 'xml', {
+      output: { filePathStyle: 'cwd-relative' },
+    });
+    await runPack([rootA], config);
+
+    const output = await fs.readFile(outputPath, 'utf-8');
+    const expectedReadmePath = toDisplayPath(path.relative(outputDir, path.join(rootA, 'README.md')));
+    const expectedSrcPath = toDisplayPath(path.relative(outputDir, path.join(rootA, 'src', 'index.ts')));
+
+    expect(output).toContain(`<file path="${expectedReadmePath}">`);
+    expect(output).toContain(`<file path="${expectedSrcPath}">`);
+    expect(output).not.toContain('<file path="README.md">');
+    expect(output).not.toContain('<file path="src/index.ts">');
+  });
+
+  it('uses cwd-relative file keys in json output for multiple roots when requested', async () => {
+    const config = buildMergedConfig(outputDir, outputPath, 'json', {
+      output: { filePathStyle: 'cwd-relative' },
+    });
+    await runPack([rootA, rootB], config);
+
+    const output = await fs.readFile(outputPath, 'utf-8');
+    const parsed = JSON.parse(output) as { files: Record<string, string> };
+
+    const expectedKeys = [
+      path.join(rootA, 'README.md'),
+      path.join(rootA, 'src', 'index.ts'),
+      path.join(rootB, 'README.md'),
+      path.join(rootB, 'src', 'index.ts'),
+    ].map((filePath) => toDisplayPath(path.relative(outputDir, filePath)));
+
+    expect(Object.keys(parsed.files).sort()).toEqual(expectedKeys.sort());
+    expect(parsed.files[toDisplayPath(path.relative(outputDir, path.join(rootA, 'README.md')))]).toContain(
+      'MARKER_FROM_ROOT_A',
+    );
+    expect(parsed.files[toDisplayPath(path.relative(outputDir, path.join(rootB, 'README.md')))]).toContain(
+      'MARKER_FROM_ROOT_B',
+    );
   });
 
   it('reports the real file count for duplicate-relative-path multi-root inputs', async () => {

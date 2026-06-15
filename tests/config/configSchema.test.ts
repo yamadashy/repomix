@@ -6,10 +6,22 @@ import {
   repomixConfigDefaultSchema,
   repomixConfigFileSchema,
   repomixConfigMergedSchema,
+  repomixOutputFilePathStyleSchema,
   repomixOutputStyleSchema,
 } from '../../src/config/configSchema.js';
 
 describe('configSchema', () => {
+  describe('repomixOutputFilePathStyleSchema', () => {
+    it('should accept valid file path styles', () => {
+      expect(v.parse(repomixOutputFilePathStyleSchema, 'target-relative')).toBe('target-relative');
+      expect(v.parse(repomixOutputFilePathStyleSchema, 'cwd-relative')).toBe('cwd-relative');
+    });
+
+    it('should reject invalid file path styles', () => {
+      expect(() => v.parse(repomixOutputFilePathStyleSchema, 'absolute')).toThrow(v.ValiError);
+    });
+  });
+
   describe('repomixOutputStyleSchema', () => {
     it('should accept valid output styles', () => {
       expect(v.parse(repomixOutputStyleSchema, 'plain')).toBe('plain');
@@ -62,6 +74,7 @@ describe('configSchema', () => {
         output: {
           filePath: 'output.txt',
           style: 'plain',
+          filePathStyle: 'cwd-relative',
           removeComments: true,
           tokenCountTree: true,
         },
@@ -102,6 +115,7 @@ describe('configSchema', () => {
         output: {
           filePath: 'output.txt',
           style: 'plain',
+          filePathStyle: 'target-relative',
           parsableStyle: false,
           fileSummary: true,
           directoryStructure: true,
@@ -165,6 +179,7 @@ describe('configSchema', () => {
         output: {
           filePath: 'output.xml',
           style: 'xml',
+          filePathStyle: 'target-relative',
           parsableStyle: false,
           fileSummary: true,
           directoryStructure: true,
@@ -347,6 +362,7 @@ describe('configSchema', () => {
         output: {
           filePath: 'merged-output.txt',
           style: 'plain',
+          filePathStyle: 'target-relative',
           parsableStyle: false,
           fileSummary: true,
           directoryStructure: true,
@@ -429,6 +445,7 @@ describe('configSchema', () => {
         output: {
           filePath: 'output.xml',
           style: 'xml',
+          filePathStyle: 'target-relative',
           parsableStyle: false,
           fileSummary: true,
           directoryStructure: true,
@@ -451,8 +468,8 @@ describe('configSchema', () => {
             includeLogsCount: 50,
           },
         },
-        include: [],
-        ignore: { useGitignore: true, useDotIgnore: true, useDefaultPatterns: true, customPatterns: [] },
+        include: [] as string[],
+        ignore: { useGitignore: true, useDotIgnore: true, useDefaultPatterns: true, customPatterns: [] as string[] },
         security: { enableSecurityCheck: true },
         tokenCount: { encoding: 'o200k_base' },
         skillGenerate: 'my-skill',

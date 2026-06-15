@@ -1,4 +1,5 @@
 import path from 'node:path';
+import type { RepomixOutputFilePathStyle } from '../../config/configSchema.js';
 
 /**
  * Helpers for building stable, unique per-root display labels and display
@@ -64,4 +65,27 @@ export const joinDisplayPath = (rootLabel: string, filePath: string): string => 
   const normalizedRootLabel = toDisplayPath(rootLabel).replace(/^\/+|\/+$/g, '') || 'root';
   const normalizedFilePath = toDisplayPath(filePath).replace(/^\/+/, '');
   return normalizedFilePath ? `${normalizedRootLabel}/${normalizedFilePath}` : normalizedRootLabel;
+};
+
+export interface BuildFileDisplayPathParams {
+  rootDir: string;
+  filePath: string;
+  cwd: string;
+  filePathStyle: RepomixOutputFilePathStyle;
+  rootLabel?: string;
+}
+
+export const buildFileDisplayPath = ({
+  rootDir,
+  filePath,
+  cwd,
+  filePathStyle,
+  rootLabel,
+}: BuildFileDisplayPathParams): string => {
+  if (filePathStyle === 'cwd-relative') {
+    const absolutePath = path.resolve(rootDir, filePath);
+    return toDisplayPath(path.relative(path.resolve(cwd), absolutePath)) || '.';
+  }
+
+  return rootLabel ? joinDisplayPath(rootLabel, filePath) : toDisplayPath(filePath);
 };

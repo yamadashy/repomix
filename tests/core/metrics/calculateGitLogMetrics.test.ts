@@ -32,6 +32,7 @@ describe('calculateGitLogMetrics', () => {
     output: {
       filePath: 'test-output.txt',
       style: 'xml',
+      filePathStyle: 'target-relative',
       parsableStyle: false,
       headerText: '',
       instructionFilePath: '',

@@ -29,6 +29,13 @@
           ],
           "type": "string"
         },
+        "filePathStyle": {
+          "enum": [
+            "target-relative",
+            "cwd-relative"
+          ],
+          "type": "string"
+        },
         "parsableStyle": {
           "type": "boolean"
         },
@@ -91,6 +98,11 @@
               "type": "string"
             }
           ]
+        },
+        "tokenBudget": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
         },
         "git": {
           "type": "object",

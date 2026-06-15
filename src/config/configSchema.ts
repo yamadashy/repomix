@@ -6,6 +6,10 @@ import { TOKEN_ENCODINGS } from '../core/metrics/tokenEncodings.js';
 export const repomixOutputStyleSchema = v.picklist(['xml', 'markdown', 'json', 'plain']);
 export type RepomixOutputStyle = v.InferOutput<typeof repomixOutputStyleSchema>;
 
+// Output file path style enum
+export const repomixOutputFilePathStyleSchema = v.picklist(['target-relative', 'cwd-relative']);
+export type RepomixOutputFilePathStyle = v.InferOutput<typeof repomixOutputFilePathStyleSchema>;
+
 // Default values map
 export const defaultFilePathMap: Record<RepomixOutputStyle, string> = {
   xml: 'repomix-output.xml',
@@ -26,6 +30,7 @@ export const repomixConfigBaseSchema = v.object({
     v.object({
       filePath: v.optional(v.string()),
       style: v.optional(repomixOutputStyleSchema),
+      filePathStyle: v.optional(repomixOutputFilePathStyleSchema),
       parsableStyle: v.optional(v.boolean()),
       headerText: v.optional(v.string()),
       instructionFilePath: v.optional(v.string()),
@@ -84,6 +89,7 @@ export const repomixConfigDefaultSchema = v.object({
   output: v.object({
     filePath: v.optional(v.string(), defaultFilePathMap.xml),
     style: v.optional(repomixOutputStyleSchema, 'xml'),
+    filePathStyle: v.optional(repomixOutputFilePathStyleSchema, 'target-relative'),
     parsableStyle: v.optional(v.boolean(), false),
     headerText: v.optional(v.string()),
     instructionFilePath: v.optional(v.string()),
