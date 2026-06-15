@@ -13,6 +13,13 @@ import type { CliOptions } from '../types.js';
 import { buildMergedConfig, validateConflictingOptions } from './defaultAction.js';
 import { buildWatchIgnoreFilter } from './watch/watchIgnore.js';
 
+// Coalesce rapid bursts of file-change events into a single rebuild: wait this long
+// after the last event before re-packing.
+const REBUILD_DEBOUNCE_MS = 300;
+// chokidar `awaitWriteFinish` setting: how long a file size must stay stable before the
+// change is emitted, so half-written files are not packed mid-save.
+const WRITE_STABILITY_THRESHOLD_MS = 100;
+
 export interface WatchDeps {
   watch: (paths: string | string[], options?: ChokidarOptions) => FSWatcher;
   signal?: AbortSignal;
@@ -108,11 +115,15 @@ export const runWatchAction = async (
   const watchIgnoreFilter = await buildIgnoreFilter(targetPaths, config);
   const watcher = resolvedDeps.watch(targetPaths, {
     ignoreInitial: true,
-    awaitWriteFinish: { stabilityThreshold: 100 },
+    awaitWriteFinish: { stabilityThreshold: WRITE_STABILITY_THRESHOLD_MS },
     ignored: watchIgnoreFilter,
   });
 
-  // Handle watcher errors (EMFILE, EACCES, EPERM, etc.) to prevent uncaught exceptions
+  // Handle watcher errors (EMFILE, EACCES, EPERM, etc.) to prevent uncaught exceptions.
+  // Note: this only logs the error. After a fatal error (e.g. EMFILE that chokidar cannot
+  // recover from) the watcher may stop delivering events while runWatchAction keeps awaiting
+  // the keep-alive promise — the process stays alive but is silently no longer watching.
+  // Acceptable for the initial release; revisit (e.g. exit non-zero) if it proves confusing.
   watcher.on('error', (error) => {
     logger.error('File watcher error:', error);
   });
@@ -150,7 +161,9 @@ export const runWatchAction = async (
         try {
           const result = await runPack(targetPaths, config, cliOptions);
           reportResults(cwd, result, config, cliOptions);
-          const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
+          // Use the system locale (undefined) with 24-hour time so the timestamp is
+          // portable rather than hardcoded to a single region's format.
+          const timestamp = new Date().toLocaleTimeString(undefined, { hour12: false });
           logger.success(`Rebuilt at ${timestamp}`);
           logger.log(pc.dim('Watching for changes...'));
         } catch (error) {
@@ -169,7 +182,7 @@ export const runWatchAction = async (
       };
       activeRebuildPromise = rebuildWork();
       await activeRebuildPromise;
-    }, 300);
+    }, REBUILD_DEBOUNCE_MS);
   };
 
   watcher.on('change', scheduleRebuild);
