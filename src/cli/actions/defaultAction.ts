@@ -383,11 +383,8 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
 /**
  * Validates that conflicting CLI options are not used together.
  * Throws RepomixError if incompatible options are detected.
- *
- * Exported so the watch action can apply the same validation to its merged
- * config, keeping the watch route consistent with the default route.
  */
-export const validateConflictingOptions = (config: RepomixConfigMerged): void => {
+const validateConflictingOptions = (config: RepomixConfigMerged): void => {
   const isStdoutMode = config.output.stdout || config.output.filePath === '-';
 
   // Define option states for conflict checking

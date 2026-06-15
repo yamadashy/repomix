@@ -520,29 +520,6 @@ describe('watchAction', () => {
     ).rejects.toThrow('--watch cannot be used with --copy');
   });
 
-  it('should apply the shared conflict validation to the merged config (skill-generate + copy)', async () => {
-    // The watch route must validate conflicts identically to the default route, so a
-    // config-file combination such as skillGenerate + copyToClipboard is rejected with the
-    // same message validateConflictingOptions produces for the default action.
-    vi.mocked(configLoader.mergeConfigs).mockReturnValue(
-      createMockConfig({
-        cwd: process.cwd(),
-        skillGenerate: 'my-skill',
-        output: { copyToClipboard: true },
-      }),
-    );
-
-    const { runWatchAction } = await import('../../../src/cli/actions/watchAction.js');
-    await expect(
-      runWatchAction(
-        ['.'],
-        process.cwd(),
-        {},
-        { watch: createMockWatch(mockWatcher), buildIgnoreFilter: noopBuildIgnoreFilter },
-      ),
-    ).rejects.toThrow('cannot be copied to clipboard');
-  });
-
   it('throws when the merged config sets output.stdout (e.g. from a config file)', async () => {
     vi.mocked(configLoader.mergeConfigs).mockReturnValue(
       createMockConfig({ cwd: process.cwd(), output: { stdout: true } }),

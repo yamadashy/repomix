@@ -10,7 +10,7 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 import { reportResults } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
 import type { CliOptions } from '../types.js';
-import { buildMergedConfig, validateConflictingOptions } from './defaultAction.js';
+import { buildMergedConfig } from './defaultAction.js';
 import { buildWatchIgnoreFilter } from './watch/watchIgnore.js';
 
 // Coalesce rapid bursts of file-change events into a single rebuild: wait this long
@@ -73,13 +73,11 @@ export const runWatchAction = async (
 
   const config = await buildMergedConfig(cwd, cliOptions);
 
-  // Apply the same conflict validation as the default route so combinations introduced via
-  // the config file (e.g. skillGenerate + copyToClipboard) are caught here too —
-  // validateWatchOptions in cliRun only sees CLI flags.
-  validateConflictingOptions(config);
-
-  // Watch-specific incompatibilities. These options are also settable via the config file,
-  // so re-check them on the merged config rather than relying on the CLI-flag check.
+  // Watch-specific incompatibilities. Each of these is independently incompatible with
+  // --watch and can also be set via the config file (which validateWatchOptions in cliRun,
+  // CLI-flags-only, does not see), so re-check them on the merged config here. They are
+  // checked individually rather than via the shared validateConflictingOptions so the error
+  // always names --watch instead of a (potentially confusing) pairwise conflict.
   if (config.output.splitOutput !== undefined) {
     // Split output would create numbered files that the watcher then picks up, looping.
     throw new RepomixError(
