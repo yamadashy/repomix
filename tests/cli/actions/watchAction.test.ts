@@ -116,6 +116,7 @@ describe('watchAction', () => {
       stopWatching = resolve;
     });
     const createWatcher = vi.fn((_paths: string[], _options: ChokidarOptions) => fakeWatcher);
+    const exit = vi.fn();
 
     const runPromise = runWatchAction(
       ['src'],
@@ -125,11 +126,12 @@ describe('watchAction', () => {
         runDefaultAction,
         createWatcher,
         waitForStop: async () => stopPromise,
+        exit,
         debounceMs: 300,
       },
     );
 
-    return { fakeWatcher, stopWatching, runPromise, runDefaultAction, createWatcher };
+    return { fakeWatcher, stopWatching, runPromise, runDefaultAction, createWatcher, exit };
   };
 
   it('runs an initial build and starts watching local directories', async () => {
@@ -190,6 +192,7 @@ describe('watchAction', () => {
       stopWatching = resolve;
     });
     const createWatcher = vi.fn((_paths: string[], _options: ChokidarOptions) => fakeWatcher);
+    const exit = vi.fn();
 
     const runPromise = runWatchAction(
       ['src'],
@@ -199,6 +202,7 @@ describe('watchAction', () => {
         runDefaultAction: vi.fn(async () => createResult()),
         createWatcher,
         waitForStop: async () => stopPromise,
+        exit,
         debounceMs: 300,
       },
     );
@@ -259,6 +263,7 @@ describe('watchAction', () => {
         runDefaultAction,
         createWatcher: vi.fn(() => fakeWatcher),
         waitForStop: async () => stopPromise,
+        exit: vi.fn(),
         debounceMs: 300,
       },
     );
@@ -301,6 +306,7 @@ describe('watchAction', () => {
         runDefaultAction,
         createWatcher: vi.fn(() => fakeWatcher),
         waitForStop: async () => stopPromise,
+        exit: vi.fn(),
         debounceMs: 300,
       },
     );
@@ -314,6 +320,17 @@ describe('watchAction', () => {
 
     stopWatching();
     await runPromise;
+  });
+
+  it('closes the watcher and exits when stop is requested', async () => {
+    const { fakeWatcher, stopWatching, runPromise, exit } = setup();
+    await flushPromises();
+
+    stopWatching();
+    await runPromise;
+
+    expect(fakeWatcher.close).toHaveBeenCalledTimes(1);
+    expect(exit).toHaveBeenCalledWith(0);
   });
 
   it.each([
@@ -332,6 +349,7 @@ describe('watchAction', () => {
           runDefaultAction: vi.fn(),
           createWatcher: vi.fn(),
           waitForStop: vi.fn(),
+          exit: vi.fn(),
           debounceMs: 300,
         },
       ),

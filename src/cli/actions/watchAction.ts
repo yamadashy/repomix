@@ -38,6 +38,7 @@ interface WatchDeps {
   runDefaultAction: typeof runDefaultActionDefault;
   createWatcher: (paths: string[], options: ChokidarOptions) => WatcherLike | Promise<WatcherLike>;
   waitForStop: (watcher: WatcherLike) => Promise<void>;
+  exit: (code: number) => never | undefined;
   debounceMs: number;
 }
 
@@ -62,6 +63,7 @@ const defaultDeps: WatchDeps = {
   runDefaultAction: runDefaultActionDefault,
   createWatcher: createDefaultWatcher,
   waitForStop: waitForSignal,
+  exit: (code) => process.exit(code),
   debounceMs: DEFAULT_DEBOUNCE_MS,
 };
 
@@ -247,5 +249,6 @@ export const runWatchAction = async (
       clearTimeout(debounceTimer);
     }
     await watcher.close();
+    deps.exit(0);
   }
 };
