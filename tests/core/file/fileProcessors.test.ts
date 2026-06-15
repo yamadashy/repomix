@@ -103,4 +103,19 @@ describe('fileProcessors', () => {
       recursive: true,
     });
   });
+
+  it('preserves processor command failures when temp cleanup also fails', async () => {
+    const config = createMockConfig({
+      fileProcessors: {
+        '**/*.ipynb': 'jupyter nbconvert --to python --stdout {file}',
+      },
+    });
+    const deps = createDeps();
+    deps.runCommand.mockRejectedValue(new Error('nbconvert failed'));
+    deps.rm.mockRejectedValue(new Error('cleanup failed'));
+
+    await expect(
+      applyFileProcessors([{ path: 'notebook.ipynb', content: '{}' }], '/repo', config, vi.fn(), deps),
+    ).rejects.toThrow('nbconvert failed');
+  });
 });

@@ -51,9 +51,11 @@ const defaultDeps: FileProcessorDeps = {
 
 const normalizePathForGlob = (filePath: string): string => filePath.replace(/\\/g, '/');
 
-const findProcessorCommand = (filePath: string, fileProcessors: Record<string, string>): [string, string] | null => {
+type ProcessorEntry = [string, string];
+
+const findProcessorCommand = (filePath: string, processorEntries: ProcessorEntry[]): ProcessorEntry | null => {
   const normalizedPath = normalizePathForGlob(filePath);
-  return Object.entries(fileProcessors).find(([pattern]) => minimatch(normalizedPath, pattern, { dot: true })) ?? null;
+  return processorEntries.find(([pattern]) => minimatch(normalizedPath, pattern, { dot: true })) ?? null;
 };
 
 const quoteForShell = (filePath: string): string => {
@@ -101,7 +103,11 @@ const processFile = async (
   } catch (error) {
     throw new RepomixError(`Failed to process ${rawFile.path} with file processor "${pattern}": ${formatError(error)}`);
   } finally {
-    await deps.rm(tempDir, { force: true, recursive: true });
+    try {
+      await deps.rm(tempDir, { force: true, recursive: true });
+    } catch {
+      // Cleanup is best-effort; keep the processor result or primary error intact.
+    }
   }
 };
 
@@ -112,13 +118,13 @@ export const applyFileProcessors = async (
   progressCallback: RepomixProgressCallback = () => {},
   deps: FileProcessorDeps = defaultDeps,
 ): Promise<RawFile[]> => {
-  const fileProcessors = config.fileProcessors;
-  if (Object.keys(fileProcessors).length === 0) {
+  const processorEntries = Object.entries(config.fileProcessors);
+  if (processorEntries.length === 0) {
     return rawFiles;
   }
 
   return await mapWithConcurrency(rawFiles, FILE_PROCESSOR_CONCURRENCY, async (rawFile, index) => {
-    const processor = findProcessorCommand(rawFile.path, fileProcessors);
+    const processor = findProcessorCommand(rawFile.path, processorEntries);
     if (!processor) {
       return rawFile;
     }
