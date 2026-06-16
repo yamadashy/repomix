@@ -435,6 +435,16 @@ describe('defaultAction', () => {
       );
     });
 
+    it('should throw error when empty --skill-project-name is used without --skill-generate', async () => {
+      const options: CliOptions = {
+        skillProjectName: '',
+      };
+
+      await expect(runDefaultAction(['.'], process.cwd(), options)).rejects.toThrow(
+        '--skill-project-name can only be used with --skill-generate',
+      );
+    });
+
     it('should throw error when --skill-project-name is empty', async () => {
       vi.mocked(configLoader.mergeConfigs).mockReturnValue(
         createMockConfig({

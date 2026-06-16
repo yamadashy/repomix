@@ -62,7 +62,7 @@ export const runDefaultAction = async (
   if (cliOptions.force && config.skillGenerate === undefined) {
     throw new RepomixError('--force can only be used with --skill-generate');
   }
-  if (cliOptions.skillProjectName && config.skillGenerate === undefined) {
+  if (cliOptions.skillProjectName !== undefined && config.skillGenerate === undefined) {
     throw new RepomixError('--skill-project-name can only be used with --skill-generate');
   }
 
