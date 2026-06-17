@@ -850,6 +850,37 @@ interface Item {
 > [!NOTE]
 > This is an experimental feature that we'll be actively improving based on user feedback and real-world usage
 
+### Per-file Inclusion Levels (`output.patterns`)
+
+While `--compress` applies one level to every file, `output.patterns` lets you control the detail level **per glob** from your config file. Each entry targets files by glob (matched the same way as `include`/`ignore`) and overrides the global `output.compress` setting for matching files:
+
+```json5
+{
+  "output": {
+    "compress": false, // global default acts as the catch-all
+    "patterns": [
+      { "pattern": "docs/**/*", "compress": true },
+      { "pattern": "website/**/*", "directoryStructureOnly": true }
+    ]
+  }
+}
+```
+
+There are three levels:
+
+- **Full content** (default) — the file's full content is included.
+- **Compressed** (`compress: true`) — the content is passed through the same Tree-sitter pipeline as `--compress`.
+- **Directory-structure-only** (`directoryStructureOnly: true`) — the file is listed in the directory structure, but its content block is omitted from the output entirely.
+
+Semantics:
+
+- Patterns are evaluated in array order and the **first matching pattern wins** for a given file.
+- A matched pattern's flags override the global `output.compress` setting. A pattern that matches without setting either flag forces **full content** for that file (useful for whitelisting files out of a global `compress`).
+- `directoryStructureOnly` takes precedence over `compress` when both are set.
+- If no pattern matches, the global behavior applies (full content, or compressed when `output.compress` is `true`).
+
+This is a config-file-only option; there is no CLI flag for per-pattern levels.
+
 ### Token Count Optimization
 
 Understanding your codebase's token distribution is crucial for optimizing AI interactions. Use the `--token-count-tree` option to visualize token usage across your project:
@@ -1396,6 +1427,7 @@ Here's an explanation of the configuration options:
 | `output.filePathStyle`           | How file paths are shown in output (`target-relative` keeps paths relative to each target root, `cwd-relative` keeps paths relative to the current working directory) | `"target-relative"`    |
 | `output.parsableStyle`           | Whether to escape the output based on the chosen style schema. Note that this can increase token count.                      | `false`                |
 | `output.compress`                | Whether to perform intelligent code extraction to reduce token count                                                         | `false`                |
+| `output.patterns`                | Per-file inclusion levels. An ordered array of `{ pattern, compress?, directoryStructureOnly? }` entries; the first matching glob wins and overrides the global `output.compress` for that file. See [Per-file Inclusion Levels](#per-file-inclusion-levels-outputpatterns) | Not set |
 | `output.headerText`              | Custom text to include in the file header                                                                                    | `null`                 |
 | `output.instructionFilePath`     | Path to a file containing detailed custom instructions                                                                       | `null`                 |
 | `output.fileSummary`             | Whether to include a summary section at the beginning of the output                                                          | `true`                 |
@@ -1463,6 +1495,11 @@ Example configuration:
     "filePathStyle": "target-relative",
     "parsableStyle": false,
     "compress": false,
+    // Optional: override the inclusion level per glob (first match wins)
+    // "patterns": [
+    //   { "pattern": "docs/**/*", "compress": true },
+    //   { "pattern": "website/**/*", "directoryStructureOnly": true }
+    // ],
     "headerText": "Custom header information for the packed file.",
     "fileSummary": true,
     "directoryStructure": true,

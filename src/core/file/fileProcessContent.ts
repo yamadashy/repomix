@@ -1,6 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import { parseFile } from '../treeSitter/parseFile.js';
+import { resolveFileLevel } from './fileLevelResolve.js';
 import { getFileManipulator } from './fileManipulate.js';
 import type { RawFile } from './fileTypes.js';
 
@@ -24,7 +25,10 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
     processedContent = manipulator.removeComments(processedContent);
   }
 
-  if (config.output.compress) {
+  // Compress when this file resolves to the 'compress' level. This honors
+  // per-file output.patterns overrides and falls back to the global
+  // output.compress setting when no pattern matches.
+  if (resolveFileLevel(rawFile.path, config.output) === 'compress') {
     try {
       const parsedContent = await parseFile(processedContent, rawFile.path, config);
       if (parsedContent === undefined) {

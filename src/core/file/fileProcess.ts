@@ -3,6 +3,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import { initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
+import { resolveFileLevel } from './fileLevelResolve.js';
 import { type FileManipulator, getFileManipulator } from './fileManipulate.js';
 import type { ProcessedFile, RawFile } from './fileTypes.js';
 import { truncateBase64Content } from './truncateBase64.js';
@@ -43,7 +44,10 @@ export const applyLightweightTransforms = (
 
     content = content.trim();
 
-    if (config.output.showLineNumbers && !config.output.compress) {
+    // Line numbers are suppressed for compressed files (their content is
+    // restructured signatures, not line-faithful source), matching the global
+    // compress behavior on a per-file basis.
+    if (config.output.showLineNumbers && resolveFileLevel(file.path, config.output) !== 'compress') {
       const lines = content.split('\n');
       const padding = lines.length.toString().length;
       const numberedLines = lines.map((line, idx) => `${(idx + 1).toString().padStart(padding)}: ${line}`);
@@ -84,21 +88,32 @@ export const processFiles = async (
   const startTime = process.hrtime.bigint();
   let files: ProcessedFile[];
 
-  // Only compress (tree-sitter) and removeComments (AST manipulation) justify worker thread overhead
-  const useWorkers = config.output.compress || config.output.removeComments;
+  // Resolve each file's inclusion level once. Files at the 'directory-only'
+  // level are dropped from the content output entirely — their paths still
+  // appear in the directory structure, which is built from the search results
+  // rather than from processedFiles.
+  const leveledFiles = rawFiles
+    .map((rawFile) => ({ rawFile, level: resolveFileLevel(rawFile.path, config.output) }))
+    .filter((entry) => entry.level !== 'directory-only');
+
+  // Only compress (tree-sitter) and removeComments (AST manipulation) justify worker thread overhead.
+  // Compression can be requested globally or per-file via output.patterns, so check the resolved
+  // levels rather than the global compress flag alone.
+  const needsCompression = leveledFiles.some((entry) => entry.level === 'compress');
+  const useWorkers = needsCompression || config.output.removeComments;
 
   if (useWorkers) {
     // Phase 1: Heavy processing via workers (removeComments, compress)
-    logger.trace(`Starting file processing for ${rawFiles.length} files using worker pool`);
+    logger.trace(`Starting file processing for ${leveledFiles.length} files using worker pool`);
 
     const taskRunner = deps.initTaskRunner<FileProcessTask, ProcessedFile>({
-      numOfTasks: rawFiles.length,
+      numOfTasks: leveledFiles.length,
       workerType: 'fileProcess',
       runtime: 'worker_threads',
     });
 
-    const tasks = rawFiles.map(
-      (rawFile) =>
+    const tasks = leveledFiles.map(
+      ({ rawFile }) =>
         ({
           rawFile,
           config,
@@ -130,8 +145,8 @@ export const processFiles = async (
     files = applyLightweightTransforms(files, config, () => {}, deps);
   } else {
     // No heavy processing needed - apply lightweight transforms directly
-    logger.trace(`Starting file processing for ${rawFiles.length} files in main thread (lightweight mode)`);
-    const inputFiles = rawFiles.map((rawFile) => ({ path: rawFile.path, content: rawFile.content }));
+    logger.trace(`Starting file processing for ${leveledFiles.length} files in main thread (lightweight mode)`);
+    const inputFiles = leveledFiles.map(({ rawFile }) => ({ path: rawFile.path, content: rawFile.content }));
     files = applyLightweightTransforms(inputFiles, config, progressCallback, deps);
   }
 

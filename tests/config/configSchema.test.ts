@@ -68,6 +68,74 @@ describe('configSchema', () => {
     });
   });
 
+  describe('output.patterns inclusion level', () => {
+    it('should accept patterns with compress and directoryStructureOnly flags', () => {
+      const configWithPatterns = {
+        output: {
+          patterns: [
+            { pattern: 'docs/**/*', compress: true },
+            { pattern: 'website/**/*', directoryStructureOnly: true },
+          ],
+        },
+      };
+      expect(v.parse(repomixConfigBaseSchema, configWithPatterns)).toEqual(configWithPatterns);
+    });
+
+    it('should accept a pattern entry with only the required pattern field', () => {
+      const configWithPattern = {
+        output: {
+          patterns: [{ pattern: 'src/**/*' }],
+        },
+      };
+      expect(v.parse(repomixConfigBaseSchema, configWithPattern)).toEqual(configWithPattern);
+    });
+
+    it('should reject a pattern entry missing the pattern field', () => {
+      const invalidConfig = {
+        output: {
+          patterns: [{ compress: true }],
+        },
+      };
+      expect(() => v.parse(repomixConfigBaseSchema, invalidConfig)).toThrow(v.ValiError);
+    });
+
+    it('should reject a non-string pattern', () => {
+      const invalidConfig = {
+        output: {
+          patterns: [{ pattern: 123 }],
+        },
+      };
+      expect(() => v.parse(repomixConfigBaseSchema, invalidConfig)).toThrow(v.ValiError);
+    });
+
+    it('should reject a non-boolean compress flag', () => {
+      const invalidConfig = {
+        output: {
+          patterns: [{ pattern: 'docs/**/*', compress: 'yes' }],
+        },
+      };
+      expect(() => v.parse(repomixConfigBaseSchema, invalidConfig)).toThrow(v.ValiError);
+    });
+
+    it('should reject a non-boolean directoryStructureOnly flag', () => {
+      const invalidConfig = {
+        output: {
+          patterns: [{ pattern: 'docs/**/*', directoryStructureOnly: 'yes' }],
+        },
+      };
+      expect(() => v.parse(repomixConfigBaseSchema, invalidConfig)).toThrow(v.ValiError);
+    });
+
+    it('should reject patterns that is not an array', () => {
+      const invalidConfig = {
+        output: {
+          patterns: 'docs/**/*',
+        },
+      };
+      expect(() => v.parse(repomixConfigBaseSchema, invalidConfig)).toThrow(v.ValiError);
+    });
+  });
+
   describe('repomixConfigBaseSchema', () => {
     it('should accept valid base config', () => {
       const validConfig = {

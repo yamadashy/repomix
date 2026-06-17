@@ -37,7 +37,9 @@ export const analyzeContent = (config: RepomixConfigMerged): ContentInfo => {
       securityCheckEnabled: config.security.enableSecurityCheck,
       showLineNumbers: config.output.showLineNumbers,
       parsableStyle: config.output.parsableStyle,
-      compressed: config.output.compress,
+      // True when compression is applied globally or to any subset via output.patterns,
+      // so the header note accurately reflects that some content uses the ⋮---- delimiter.
+      compressed: config.output.compress || (config.output.patterns?.some((p) => p.compress === true) ?? false),
       truncatedBase64: config.output.truncateBase64,
     },
     sorting: {

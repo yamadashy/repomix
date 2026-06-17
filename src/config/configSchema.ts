@@ -18,6 +18,19 @@ export const defaultFilePathMap: Record<RepomixOutputStyle, string> = {
   json: 'repomix-output.json',
 } as const;
 
+// Per-file inclusion level pattern (output.patterns).
+// Each entry targets files by glob (matched the same way as include/ignore) and
+// overrides the global output.compress setting for matching files. Patterns are
+// evaluated in array order and the first match wins. `directoryStructureOnly`
+// takes precedence over `compress`: the file is listed in the directory
+// structure but its content block is omitted from the output.
+export const outputPatternSchema = v.object({
+  pattern: v.string(),
+  compress: v.optional(v.boolean()),
+  directoryStructureOnly: v.optional(v.boolean()),
+});
+export type OutputPattern = v.InferOutput<typeof outputPatternSchema>;
+
 // Base config schema
 export const repomixConfigBaseSchema = v.object({
   $schema: v.optional(v.string()),
@@ -40,6 +53,7 @@ export const repomixConfigBaseSchema = v.object({
       removeComments: v.optional(v.boolean()),
       removeEmptyLines: v.optional(v.boolean()),
       compress: v.optional(v.boolean()),
+      patterns: v.optional(v.array(outputPatternSchema)),
       topFilesLength: v.optional(v.number()),
       showLineNumbers: v.optional(v.boolean()),
       truncateBase64: v.optional(v.boolean()),
