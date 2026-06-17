@@ -260,6 +260,11 @@ const validateWatchOptions = (directories: string[], options: CliOptions): void 
   if (options.stdin) {
     throw new RepomixError('--watch cannot be used with --stdin. Watch mode discovers files automatically.');
   }
+  if (options.copy) {
+    throw new RepomixError(
+      '--watch cannot be used with --copy. Watch mode re-packs on every change, which would repeatedly overwrite the clipboard.',
+    );
+  }
   if (options.splitOutput) {
     throw new RepomixError(
       '--watch cannot be used with --split-output. Watch mode does not yet support split output files.',

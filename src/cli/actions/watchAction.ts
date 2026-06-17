@@ -13,6 +13,13 @@ import type { CliOptions } from '../types.js';
 import { buildMergedConfig } from './defaultAction.js';
 import { buildWatchIgnoreFilter } from './watch/watchIgnore.js';
 
+// Coalesce rapid bursts of file-change events into a single rebuild: wait this long
+// after the last event before re-packing.
+const REBUILD_DEBOUNCE_MS = 300;
+// chokidar `awaitWriteFinish` setting: how long a file size must stay stable before the
+// change is emitted, so half-written files are not packed mid-save.
+const WRITE_STABILITY_THRESHOLD_MS = 100;
+
 export interface WatchDeps {
   watch: (paths: string | string[], options?: ChokidarOptions) => FSWatcher;
   signal?: AbortSignal;
@@ -66,16 +73,30 @@ export const runWatchAction = async (
 
   const config = await buildMergedConfig(cwd, cliOptions);
 
-  // These options are also settable via the config file, so re-check them on the merged
-  // config (validateWatchOptions in cliRun only sees CLI flags). Split output would create
-  // numbered files that the watcher then picks up, causing a rebuild loop.
+  // Watch-specific incompatibilities. Each of these is independently incompatible with
+  // --watch and can also be set via the config file (which validateWatchOptions in cliRun,
+  // CLI-flags-only, does not see), so re-check them on the merged config here. They are
+  // checked individually rather than via the shared validateConflictingOptions so the error
+  // always names --watch instead of a (potentially confusing) pairwise conflict.
   if (config.output.splitOutput !== undefined) {
+    // Split output would create numbered files that the watcher then picks up, looping.
     throw new RepomixError(
       '--watch cannot be used with split output. Watch mode does not yet support split output files.',
     );
   }
-  if (config.output.stdout) {
+  // `output: "-"` resolves to stdout mode via filePath === '-', the same as --stdout.
+  if (config.output.stdout || config.output.filePath === '-') {
     throw new RepomixError('--watch cannot be used with stdout output. Watch mode writes to a file.');
+  }
+  if (config.skillGenerate !== undefined) {
+    throw new RepomixError(
+      '--watch cannot be used with --skill-generate. Watch mode does not support skill generation.',
+    );
+  }
+  if (config.output.copyToClipboard) {
+    throw new RepomixError(
+      '--watch cannot be used with --copy. Watch mode re-packs on every change, which would repeatedly overwrite the clipboard.',
+    );
   }
 
   const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
@@ -92,11 +113,15 @@ export const runWatchAction = async (
   const watchIgnoreFilter = await buildIgnoreFilter(targetPaths, config);
   const watcher = resolvedDeps.watch(targetPaths, {
     ignoreInitial: true,
-    awaitWriteFinish: { stabilityThreshold: 100 },
+    awaitWriteFinish: { stabilityThreshold: WRITE_STABILITY_THRESHOLD_MS },
     ignored: watchIgnoreFilter,
   });
 
-  // Handle watcher errors (EMFILE, EACCES, EPERM, etc.) to prevent uncaught exceptions
+  // Handle watcher errors (EMFILE, EACCES, EPERM, etc.) to prevent uncaught exceptions.
+  // Note: this only logs the error. After a fatal error (e.g. EMFILE that chokidar cannot
+  // recover from) the watcher may stop delivering events while runWatchAction keeps awaiting
+  // the keep-alive promise — the process stays alive but is silently no longer watching.
+  // Acceptable for the initial release; revisit (e.g. exit non-zero) if it proves confusing.
   watcher.on('error', (error) => {
     logger.error('File watcher error:', error);
   });
@@ -134,7 +159,11 @@ export const runWatchAction = async (
         try {
           const result = await runPack(targetPaths, config, cliOptions);
           reportResults(cwd, result, config, cliOptions);
-          const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
+          // toTimeString() returns "HH:MM:SS GMT..." independent of locale, so the leading
+          // time portion is a portable, consistent 24-hour timestamp on every platform
+          // (toLocaleTimeString(undefined) would follow the system locale, e.g. non-ASCII
+          // digits or AM/PM).
+          const timestamp = new Date().toTimeString().split(' ')[0];
           logger.success(`Rebuilt at ${timestamp}`);
           logger.log(pc.dim('Watching for changes...'));
         } catch (error) {
@@ -153,7 +182,7 @@ export const runWatchAction = async (
       };
       activeRebuildPromise = rebuildWork();
       await activeRebuildPromise;
-    }, 300);
+    }, REBUILD_DEBOUNCE_MS);
   };
 
   watcher.on('change', scheduleRebuild);

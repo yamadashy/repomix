@@ -89,6 +89,12 @@ description: Reference every Repomix CLI option for input, output, file selectio
 | `--skill-output <path>` | Specify skill output directory path directly (skips location prompt) |
 | `-f, --force` | Skip all confirmation prompts (e.g., skill directory overwrite) |
 
+## Watch Mode Options
+
+- `-w, --watch`: Watch for file changes and automatically re-pack. New, changed, and deleted files are detected, rapid changes are debounced (300 ms), and a timestamp is printed after each rebuild. Press `Ctrl+C` to stop.
+
+Watch mode only works with local directories, so it cannot be combined with `--remote`, a positional remote repository URL, `--stdout`, `--stdin`, `--split-output`, `--skill-generate`, or `--copy`. These restrictions apply whether the option is set on the command line or in your config file.
+
 ## Related Resources
 
 - [Configuration](/guide/configuration) - Set options in your config file instead of CLI flags
@@ -144,4 +150,8 @@ repomix --include-diffs --include-logs  # Include both diffs and logs
 # Token count analysis
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Only show files/directories with 1000+ tokens
+
+# Watch mode — automatically re-pack on file changes
+repomix --watch
+repomix -w --include "src/**/*.ts"
 ```
