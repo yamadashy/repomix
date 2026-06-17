@@ -99,13 +99,11 @@ export const processFiles = async (
   // results rather than from processedFiles. The cached levels are reused by
   // applyLightweightTransforms so the glob matching is not repeated.
   const fileLevels = new Map<string, FileInclusionLevel>();
-  const leveledFiles = rawFiles
-    .map((rawFile) => {
-      const level = resolveFileLevel(rawFile.path, config.output);
-      fileLevels.set(rawFile.path, level);
-      return { rawFile, level };
-    })
-    .filter((entry) => entry.level !== 'directory-only');
+  const leveledFiles = rawFiles.flatMap((rawFile) => {
+    const level = resolveFileLevel(rawFile.path, config.output);
+    fileLevels.set(rawFile.path, level);
+    return level !== 'directory-only' ? [{ rawFile, level }] : [];
+  });
 
   // Only compress (tree-sitter) and removeComments (AST manipulation) justify worker thread overhead.
   // Compression can be requested globally or per-file via output.patterns, so check the resolved
@@ -124,10 +122,11 @@ export const processFiles = async (
     });
 
     const tasks = leveledFiles.map(
-      ({ rawFile }) =>
+      ({ rawFile, level }) =>
         ({
           rawFile,
           config,
+          level,
         }) satisfies FileProcessTask,
     );
 

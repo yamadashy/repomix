@@ -137,4 +137,61 @@ describe('processContent', () => {
     const result = await processContent(rawFile, config);
     expect(result).toBe('some content');
   });
+
+  it('should compress based on the passed level even when global compress is off', async () => {
+    const rawFile: RawFile = {
+      path: 'test.ts',
+      content: 'const x = 1;',
+    };
+    const config: RepomixConfigMerged = {
+      output: {
+        removeComments: false,
+        removeEmptyLines: false,
+        compress: false,
+        showLineNumbers: false,
+      },
+    } as RepomixConfigMerged;
+
+    const result = await processContent(rawFile, config, 'compress');
+    expect(parseFile).toHaveBeenCalledWith(rawFile.content, rawFile.path, config);
+    expect(result).toBe('parsed content');
+  });
+
+  it('should not compress when the passed level is "full" even if global compress is on', async () => {
+    const rawFile: RawFile = {
+      path: 'test.ts',
+      content: 'const x = 1;',
+    };
+    const config: RepomixConfigMerged = {
+      output: {
+        removeComments: false,
+        removeEmptyLines: false,
+        compress: true,
+        showLineNumbers: false,
+      },
+    } as RepomixConfigMerged;
+
+    const result = await processContent(rawFile, config, 'full');
+    expect(parseFile).not.toHaveBeenCalled();
+    expect(result).toBe('const x = 1;');
+  });
+
+  it('should fall back to resolving the level from config when none is passed', async () => {
+    const rawFile: RawFile = {
+      path: 'test.ts',
+      content: 'const x = 1;',
+    };
+    const config: RepomixConfigMerged = {
+      output: {
+        removeComments: false,
+        removeEmptyLines: false,
+        compress: true,
+        showLineNumbers: false,
+      },
+    } as RepomixConfigMerged;
+
+    const result = await processContent(rawFile, config);
+    expect(parseFile).toHaveBeenCalledWith(rawFile.content, rawFile.path, config);
+    expect(result).toBe('parsed content');
+  });
 });

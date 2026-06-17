@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
 import type { RepomixConfigFile, RepomixConfigMerged, RepomixOutputStyle } from '../../src/config/configSchema.js';
 import { collectFiles } from '../../src/core/file/fileCollect.js';
+import { resolveFileLevel } from '../../src/core/file/fileLevelResolve.js';
 import { readRawFile } from '../../src/core/file/fileRead.js';
 import { searchFiles } from '../../src/core/file/fileSearch.js';
 import type { ProcessedFile } from '../../src/core/file/fileTypes.js';
@@ -100,7 +101,8 @@ describe.runIf(!isWindows)('packager integration', () => {
         processFiles: async (rawFiles, config, _progressCallback) => {
           const processedFiles: ProcessedFile[] = [];
           for (const rawFile of rawFiles) {
-            processedFiles.push(await fileProcessWorker({ rawFile, config }));
+            const level = resolveFileLevel(rawFile.path, config.output);
+            processedFiles.push(await fileProcessWorker({ rawFile, config, level }));
           }
           return processedFiles;
         },
