@@ -689,6 +689,11 @@ Instruction
 | `--skill-output <path>` | Specify skill output directory path directly (skips location prompt) |
 | `-f, --force` | Skip all confirmation prompts (e.g., skill directory overwrite) |
 
+#### Watch Mode
+- `-w, --watch`: Watch for file changes and automatically re-pack. Debounces rapid changes (300ms) and logs a timestamp on each rebuild. Stop with `Ctrl+C`.
+
+  Watch mode only works with local directories, so it cannot be combined with `--remote`, a positional remote repository URL, `--stdout`, `--stdin`, `--split-output`, `--skill-generate`, or `--copy` (whether set on the command line or in your config file).
+
 #### Examples
 
 ```bash
@@ -721,6 +726,10 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 
 # Remote repository with shorthand
 repomix --remote user/repo
+
+# Watch mode — automatically re-pack on file changes
+repomix --watch
+repomix -w --include "src/**/*.ts"
 ```
 
 ### Updating Repomix

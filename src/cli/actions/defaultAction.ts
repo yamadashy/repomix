@@ -27,14 +27,12 @@ export interface DefaultActionRunnerResult {
   config: RepomixConfigMerged;
 }
 
-export const runDefaultAction = async (
-  directories: string[],
-  cwd: string,
-  cliOptions: CliOptions,
-  progressCallback?: RepomixProgressCallback,
-): Promise<DefaultActionRunnerResult> => {
-  logger.trace('Loaded CLI options:', cliOptions);
-
+/**
+ * Builds the merged Repomix config from CLI options: runs pending migrations,
+ * loads the file config, parses the CLI options, and merges them. Shared by the
+ * default and watch actions so the config pipeline lives in one place.
+ */
+export const buildMergedConfig = async (cwd: string, cliOptions: CliOptions): Promise<RepomixConfigMerged> => {
   // Run migration before loading config
   await runMigrationAction(cwd);
 
@@ -51,6 +49,20 @@ export const runDefaultAction = async (
   // Merge default, file, and CLI configs
   const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
   logger.trace('Merged config:', config);
+
+  return config;
+};
+
+export const runDefaultAction = async (
+  directories: string[],
+  cwd: string,
+  cliOptions: CliOptions,
+  progressCallback?: RepomixProgressCallback,
+): Promise<DefaultActionRunnerResult> => {
+  logger.trace('Loaded CLI options:', cliOptions);
+
+  // Build the merged config (migration + file config + CLI options)
+  const config = await buildMergedConfig(cwd, cliOptions);
 
   // Validate conflicting options
   validateConflictingOptions(config);

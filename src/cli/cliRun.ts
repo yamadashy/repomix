@@ -42,6 +42,9 @@ const semanticSuggestionMap: Record<string, string[]> = {
   console: ['--stdout'],
   terminal: ['--stdout'],
   pipe: ['--stdin'],
+  monitor: ['--watch'],
+  live: ['--watch'],
+  auto: ['--watch'],
 };
 
 export const run = async () => {
@@ -195,6 +198,9 @@ export const run = async () => {
       )
       .option('--skill-output <path>', 'Specify skill output directory path directly (skips location prompt)')
       .option('-f, --force', 'Skip all confirmation prompts (currently: skill directory overwrite)')
+      // Watch Mode
+      .optionsGroup('Watch Mode')
+      .option('-w, --watch', 'Watch for file changes and automatically re-pack')
       .action(commanderActionEndpoint);
 
     // Custom error handling function
@@ -237,6 +243,43 @@ const commanderActionEndpoint = async (directories: string[], options: CliOption
   await runCli(directories, process.cwd(), options);
 };
 
+/**
+ * Validates flags that cannot be combined with --watch. Runs before log-level
+ * changes so error messages are not suppressed by --quiet/--stdout.
+ */
+const validateWatchOptions = (directories: string[], options: CliOptions): void => {
+  if (!options.watch) {
+    return;
+  }
+  if (options.remote) {
+    throw new RepomixError('--watch cannot be used with --remote. Watch mode only works with local directories.');
+  }
+  if (options.stdout) {
+    throw new RepomixError('--watch cannot be used with --stdout. Watch mode writes to a file.');
+  }
+  if (options.stdin) {
+    throw new RepomixError('--watch cannot be used with --stdin. Watch mode discovers files automatically.');
+  }
+  if (options.copy) {
+    throw new RepomixError(
+      '--watch cannot be used with --copy. Watch mode re-packs on every change, which would repeatedly overwrite the clipboard.',
+    );
+  }
+  if (options.splitOutput) {
+    throw new RepomixError(
+      '--watch cannot be used with --split-output. Watch mode does not yet support split output files.',
+    );
+  }
+  if (options.skillGenerate !== undefined) {
+    throw new RepomixError(
+      '--watch cannot be used with --skill-generate. Watch mode does not support skill generation.',
+    );
+  }
+  if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
+    throw new RepomixError('--watch cannot be used with remote URLs. Watch mode only works with local directories.');
+  }
+};
+
 export const runCli = async (directories: string[], cwd: string, options: CliOptions) => {
   // Detect stdout mode
   // NOTE: For compatibility, currently not detecting pipe mode
@@ -244,6 +287,9 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   if (isForceStdoutMode) {
     options.stdout = true;
   }
+
+  // Validate --watch conflicts early, before log level changes can suppress error messages
+  validateWatchOptions(directories, options);
 
   // Set log level based on verbose and quiet flags
   if (options.quiet) {
@@ -296,6 +342,11 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
     const { runRemoteAction } = await import('./actions/remoteAction.js');
     return await runRemoteAction(directories[0], options);
+  }
+
+  if (options.watch) {
+    const { runWatchAction } = await import('./actions/watchAction.js');
+    return await runWatchAction(directories, cwd, options);
   }
 
   // Auto-detect GitHub shorthand (owner/repo) in positional arguments.
