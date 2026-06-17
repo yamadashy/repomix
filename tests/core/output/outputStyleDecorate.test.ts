@@ -57,6 +57,19 @@ describe('analyzeContent', () => {
     const result = analyzeContent(config);
     expect(result.processing.compressed).toBe(false);
   });
+
+  it('should not mark content as compressed for a pattern that sets both compress and directoryStructureOnly', () => {
+    // directoryStructureOnly takes precedence over compress in resolveFileLevel,
+    // so such a pattern omits the file's content rather than compressing it.
+    const config = createMockConfig({
+      output: {
+        compress: false,
+        patterns: [{ pattern: 'website/**/*', compress: true, directoryStructureOnly: true }],
+      },
+    });
+    const result = analyzeContent(config);
+    expect(result.processing.compressed).toBe(false);
+  });
 });
 
 describe('generateHeader', () => {
