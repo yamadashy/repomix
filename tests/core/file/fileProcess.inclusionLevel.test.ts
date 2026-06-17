@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { FileInclusionLevel } from '../../../src/core/file/fileLevelResolve.js';
 import type { FileManipulator } from '../../../src/core/file/fileManipulate.js';
 import { applyLightweightTransforms, processFiles } from '../../../src/core/file/fileProcess.js';
 import type { ProcessedFile, RawFile } from '../../../src/core/file/fileTypes.js';
@@ -166,6 +167,25 @@ describe('fileProcess inclusion levels (output.patterns)', () => {
       });
 
       expect(result).toEqual([{ path: 'src/index.ts', content: '1: Line 1\n2: Line 2' }]);
+    });
+
+    it('consults a provided fileLevels map instead of recomputing the level', () => {
+      // The file resolves to 'full' on its own (no patterns), but the precomputed
+      // map marks it 'compress', so line numbers must be suppressed. This proves the
+      // map is consulted rather than resolveFileLevel being called again.
+      const files: ProcessedFile[] = [{ path: 'src/index.ts', content: 'Line 1\nLine 2' }];
+      const config = createMockConfig({ output: { showLineNumbers: true } });
+      const fileLevels = new Map<string, FileInclusionLevel>([['src/index.ts', 'compress']]);
+
+      const result = applyLightweightTransforms(
+        files,
+        config,
+        () => {},
+        { getFileManipulator: mockGetFileManipulator },
+        fileLevels,
+      );
+
+      expect(result).toEqual([{ path: 'src/index.ts', content: 'Line 1\nLine 2' }]);
     });
   });
 });

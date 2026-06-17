@@ -3,7 +3,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import { initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
-import { resolveFileLevel } from './fileLevelResolve.js';
+import { type FileInclusionLevel, resolveFileLevel } from './fileLevelResolve.js';
 import { type FileManipulator, getFileManipulator } from './fileManipulate.js';
 import type { ProcessedFile, RawFile } from './fileTypes.js';
 import { truncateBase64Content } from './truncateBase64.js';
@@ -23,6 +23,10 @@ export const applyLightweightTransforms = (
   config: RepomixConfigMerged,
   progressCallback: RepomixProgressCallback,
   deps: { getFileManipulator: GetFileManipulator },
+  // Optional precomputed inclusion levels keyed by file path. When provided,
+  // the showLineNumbers guard reuses them instead of recomputing via
+  // resolveFileLevel; callers without the map fall back to recomputing.
+  fileLevels?: Map<string, FileInclusionLevel>,
 ): ProcessedFile[] => {
   const totalFiles = files.length;
   const results: ProcessedFile[] = Array.from({ length: totalFiles }) as ProcessedFile[];
@@ -47,7 +51,8 @@ export const applyLightweightTransforms = (
     // Line numbers are suppressed for compressed files (their content is
     // restructured signatures, not line-faithful source), matching the global
     // compress behavior on a per-file basis.
-    if (config.output.showLineNumbers && resolveFileLevel(file.path, config.output) !== 'compress') {
+    const level = fileLevels?.get(file.path) ?? resolveFileLevel(file.path, config.output);
+    if (config.output.showLineNumbers && level !== 'compress') {
       const lines = content.split('\n');
       const padding = lines.length.toString().length;
       const numberedLines = lines.map((line, idx) => `${(idx + 1).toString().padStart(padding)}: ${line}`);
@@ -88,12 +93,18 @@ export const processFiles = async (
   const startTime = process.hrtime.bigint();
   let files: ProcessedFile[];
 
-  // Resolve each file's inclusion level once. Files at the 'directory-only'
-  // level are dropped from the content output entirely — their paths still
-  // appear in the directory structure, which is built from the search results
-  // rather than from processedFiles.
+  // Resolve each file's inclusion level once and cache it by path. Files at the
+  // 'directory-only' level are dropped from the content output entirely — their
+  // paths still appear in the directory structure, which is built from the search
+  // results rather than from processedFiles. The cached levels are reused by
+  // applyLightweightTransforms so the glob matching is not repeated.
+  const fileLevels = new Map<string, FileInclusionLevel>();
   const leveledFiles = rawFiles
-    .map((rawFile) => ({ rawFile, level: resolveFileLevel(rawFile.path, config.output) }))
+    .map((rawFile) => {
+      const level = resolveFileLevel(rawFile.path, config.output);
+      fileLevels.set(rawFile.path, level);
+      return { rawFile, level };
+    })
     .filter((entry) => entry.level !== 'directory-only');
 
   // Only compress (tree-sitter) and removeComments (AST manipulation) justify worker thread overhead.
@@ -142,12 +153,12 @@ export const processFiles = async (
     }
 
     // Phase 2: Lightweight transforms (no progress - already reported by workers)
-    files = applyLightweightTransforms(files, config, () => {}, deps);
+    files = applyLightweightTransforms(files, config, () => {}, deps, fileLevels);
   } else {
     // No heavy processing needed - apply lightweight transforms directly
     logger.trace(`Starting file processing for ${leveledFiles.length} files in main thread (lightweight mode)`);
     const inputFiles = leveledFiles.map(({ rawFile }) => ({ path: rawFile.path, content: rawFile.content }));
-    files = applyLightweightTransforms(inputFiles, config, progressCallback, deps);
+    files = applyLightweightTransforms(inputFiles, config, progressCallback, deps, fileLevels);
   }
 
   const endTime = process.hrtime.bigint();
