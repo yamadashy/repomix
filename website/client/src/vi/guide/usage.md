@@ -1,63 +1,72 @@
 ---
-title: Sử dụng cơ bản
-description: Dùng Repomix CLI để đóng gói thư mục, repository remote, file được chọn, git diff, commit log, output tách phần, số token và code đã nén.
+title: Cách sử dụng cơ bản
+description: Sử dụng Repomix CLI để đóng gói thư mục, kho lưu trữ từ xa, các tệp được chọn, git diff, nhật ký commit, đầu ra được chia nhỏ, số lượng token và mã được nén.
 ---
 
-# Sử dụng cơ bản
+# Cách sử dụng cơ bản
 
-Repomix được thiết kế để dễ sử dụng với các tùy chọn mặc định hợp lý, đồng thời cung cấp khả năng tùy chỉnh mạnh mẽ cho các trường hợp sử dụng nâng cao.
+## Bắt đầu nhanh
 
-## Đóng gói kho lưu trữ cục bộ
-
-### Đóng gói toàn bộ kho lưu trữ
-
-Để đóng gói toàn bộ kho lưu trữ hiện tại của bạn, chỉ cần chạy Repomix trong thư mục gốc của dự án:
-
+Đóng gói toàn bộ kho lưu trữ của bạn:
 ```bash
 repomix
 ```
 
-Lệnh này sẽ tạo một tệp `repomix-output.xml` trong thư mục hiện tại, chứa toàn bộ codebase của bạn ở định dạng XML.
+## Các trường hợp sử dụng phổ biến
 
-### Đóng gói một thư mục cụ thể
-
-Để đóng gói một thư mục cụ thể thay vì toàn bộ kho lưu trữ:
-
+### Đóng gói các thư mục cụ thể
 ```bash
 repomix path/to/directory
 ```
 
-### Đóng gói các tệp cụ thể
-
-Bạn có thể chỉ định các tệp hoặc mẫu cụ thể để đóng gói bằng cách sử dụng tùy chọn `--include`:
-
+### Bao gồm các tệp cụ thể
+Sử dụng [các mẫu glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax):
 ```bash
 repomix --include "src/**/*.ts,**/*.md"
 ```
 
-Điều này sẽ đóng gói tất cả các tệp TypeScript trong thư mục `src` và tất cả các tệp Markdown trong toàn bộ dự án.
-
-## Đóng gói kho lưu trữ từ xa
-
-Repomix có thể đóng gói các kho lưu trữ từ xa mà không cần clone chúng cục bộ:
-
+### Loại trừ các tệp
 ```bash
-# Sử dụng định dạng rút gọn
-repomix --remote yamadashy/repomix
-
-# Sử dụng URL đầy đủ
-repomix --remote https://github.com/yamadashy/repomix
-
-# Chỉ định nhánh
-repomix --remote https://github.com/yamadashy/repomix/tree/main
-
-# Sử dụng URL của commit
-repomix --remote https://github.com/yamadashy/repomix/commit/836abcd7335137228ad77feb28655d85712680f1
+repomix --ignore "**/*.log,tmp/"
 ```
 
-## Nhập danh sách tệp (stdin)
+### Chia đầu ra thành nhiều tệp
 
-Truyền đường dẫn tệp qua stdin để có tính linh hoạt tối đa:
+Khi làm việc với các cơ sở mã lớn, đầu ra đã đóng gói có thể vượt quá giới hạn kích thước tệp do một số công cụ AI áp đặt (ví dụ, giới hạn 1MB của Google AI Studio). Sử dụng `--split-output` để tự động chia đầu ra thành nhiều tệp:
+
+```bash
+repomix --split-output 1mb
+```
+
+Lệnh này tạo ra các tệp được đánh số như:
+- `repomix-output.1.xml`
+- `repomix-output.2.xml`
+- `repomix-output.3.xml`
+
+Kích thước có thể được chỉ định kèm đơn vị: `500kb`, `1mb`, `2mb`, `1.5mb`, v.v. Các giá trị thập phân được hỗ trợ.
+
+> [!NOTE]
+> Các tệp được nhóm theo thư mục cấp cao nhất để duy trì ngữ cảnh. Một tệp hoặc thư mục đơn lẻ sẽ không bao giờ bị chia tách qua nhiều tệp đầu ra.
+
+### Kho lưu trữ từ xa
+```bash
+# Sử dụng URL GitHub
+repomix --remote https://github.com/user/repo
+
+# Sử dụng dạng viết tắt
+repomix --remote user/repo
+
+# Sử dụng dạng viết tắt mà không cần --remote (tự động phát hiện)
+repomix user/repo
+
+# Nhánh/tag/commit cụ thể
+repomix --remote user/repo --remote-branch main
+repomix --remote user/repo --remote-branch 935b695
+```
+
+### Đầu vào danh sách tệp (stdin)
+
+Truyền các đường dẫn tệp qua stdin để có sự linh hoạt tối đa:
 
 ```bash
 # Sử dụng lệnh find
@@ -66,171 +75,85 @@ find src -name "*.ts" -type f | repomix --stdin
 # Sử dụng git để lấy các tệp được theo dõi
 git ls-files "*.ts" | repomix --stdin
 
-# Sử dụng grep để tìm tệp chứa nội dung cụ thể
-grep -l "TODO" **/*.ts | repomix --stdin
-
-# Sử dụng ripgrep để tìm tệp với nội dung cụ thể
-rg -l "TODO|FIXME" --type ts | repomix --stdin
-
-# Sử dụng ripgrep (rg) để tìm tệp
+# Sử dụng ripgrep (rg) để tìm các tệp
 rg --files --type ts | repomix --stdin
 
-# Sử dụng sharkdp/fd để tìm tệp
+# Sử dụng grep để tìm các tệp chứa nội dung cụ thể
+grep -l "TODO" **/*.ts | repomix --stdin
+
+# Sử dụng ripgrep để tìm các tệp với nội dung cụ thể
+rg -l "TODO|FIXME" --type ts | repomix --stdin
+
+# Sử dụng sharkdp/fd để tìm các tệp
 fd -e ts | repomix --stdin
 
 # Sử dụng fzf để chọn từ tất cả các tệp
 fzf -m | repomix --stdin
 
-# Chọn tệp tương tác với fzf
+# Lựa chọn tệp tương tác với fzf
 find . -name "*.ts" -type f | fzf -m | repomix --stdin
 
 # Sử dụng ls với các mẫu glob
 ls src/**/*.ts | repomix --stdin
 
-# Từ một tệp chứa đường dẫn tệp
+# Từ một tệp chứa các đường dẫn tệp
 cat file-list.txt | repomix --stdin
 
-# Nhập trực tiếp với echo
+# Đầu vào trực tiếp với echo
 echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
 ```
 
-Tùy chọn `--stdin` cho phép bạn truyền danh sách đường dẫn tệp tới Repomix, mang lại tính linh hoạt tối đa trong việc chọn tệp nào để đóng gói.
+Tùy chọn `--stdin` cho phép bạn truyền (pipe) một danh sách các đường dẫn tệp tới Repomix, mang lại sự linh hoạt tối đa trong việc lựa chọn tệp nào để đóng gói.
 
-Khi sử dụng `--stdin`, các tệp được chỉ định thực sự được thêm vào các mẫu bao gồm. Điều này có nghĩa là hành vi bao gồm và bỏ qua bình thường vẫn áp dụng - các tệp được chỉ định qua stdin vẫn sẽ bị loại trừ nếu chúng khớp với các mẫu bỏ qua.
-
-> [!NOTE]
-> Khi sử dụng `--stdin`, đường dẫn tệp có thể là tương đối hoặc tuyệt đối, và Repomix sẽ tự động xử lý việc phân giải đường dẫn và loại bỏ trùng lặp.
-
-## Tùy chọn đầu ra
-
-### Định dạng đầu ra
-
-Repomix hỗ trợ nhiều định dạng đầu ra:
-
-```bash
-# XML (mặc định)
-repomix --style xml
-
-# Markdown
-repomix --style markdown
-
-# JSON
-repomix --style json
-
-# Văn bản thuần túy
-repomix --style plain
-```
-
-### Tên tệp đầu ra tùy chỉnh
-
-Để chỉ định tên tệp đầu ra:
-
-```bash
-repomix --output-file my-codebase.xml
-```
-
-### Xóa bình luận
-
-Xem [Xóa bình luận](/vi/guide/comment-removal) để biết các ngôn ngữ được hỗ trợ và chi tiết.
-
-```bash
-repomix --remove-comments
-```
-
-### Hiển thị số dòng
-
-Để bao gồm số dòng trong đầu ra:
-
-```bash
-repomix --show-line-numbers
-```
-
-## Bỏ qua tệp và thư mục
-
-### Sử dụng .gitignore
-
-Theo mặc định, Repomix tôn trọng các tệp `.gitignore` của bạn. Để ghi đè hành vi này:
-
-```bash
-repomix --no-respect-gitignore
-```
-
-### Mẫu bỏ qua tùy chỉnh
-
-Để chỉ định các mẫu bỏ qua bổ sung:
-
-```bash
-repomix --ignore "**/*.log,tmp/,**/*.min.js"
-```
-
-### Chia Đầu Ra Thành Nhiều Tệp
-
-Khi làm việc với các codebase lớn, đầu ra đã đóng gói có thể vượt quá giới hạn kích thước tệp được áp dụng bởi một số công cụ AI (ví dụ: giới hạn 1MB của Google AI Studio). Sử dụng `--split-output` để tự động chia đầu ra thành nhiều tệp:
-
-```bash
-repomix --split-output 1mb
-```
-
-Điều này tạo ra các tệp được đánh số như:
-- `repomix-output.1.xml`
-- `repomix-output.2.xml`
-- `repomix-output.3.xml`
-
-Kích thước có thể được chỉ định với đơn vị: `500kb`, `1mb`, `2mb`, `1.5mb`, v.v. Giá trị thập phân được hỗ trợ.
+Khi sử dụng `--stdin`, các tệp được chỉ định thực chất được thêm vào các mẫu bao gồm (include). Điều này có nghĩa là hành vi bao gồm và loại trừ thông thường vẫn được áp dụng: các tệp được chỉ định qua stdin vẫn sẽ bị loại trừ nếu chúng khớp với các mẫu loại trừ (ignore).
 
 > [!NOTE]
-> Các tệp được nhóm theo thư mục cấp cao nhất để duy trì ngữ cảnh. Một tệp hoặc thư mục đơn lẻ sẽ không bao giờ bị chia thành nhiều tệp đầu ra.
-
-### Sử dụng .repomixignore
-
-Bạn cũng có thể tạo một tệp `.repomixignore` trong thư mục gốc của dự án để chỉ định các mẫu bỏ qua cụ thể cho Repomix.
-
-## Tùy chọn nâng cao
+> Khi sử dụng `--stdin`, các đường dẫn tệp có thể là tương đối hoặc tuyệt đối, và Repomix sẽ tự động xử lý việc phân giải đường dẫn và loại bỏ trùng lặp.
 
 ### Nén mã {#code-compression}
 
-Giảm số lượng token mà vẫn bảo toàn cấu trúc mã. Xem [hướng dẫn Nén mã](/vi/guide/code-compress) để biết chi tiết.
+Giảm số lượng token trong khi vẫn giữ nguyên cấu trúc mã. Xem [hướng dẫn Nén mã](/vi/guide/code-compress) để biết chi tiết.
 
 ```bash
 repomix --compress
 
-# Bạn cũng có thể sử dụng nó với kho lưu trữ từ xa:
+# Bạn cũng có thể sử dụng nó với các kho lưu trữ từ xa:
 repomix --remote yamadashy/repomix --compress
 ```
 
 ### Tích hợp Git
 
-Bao gồm thông tin Git để cung cấp ngữ cảnh phát triển cho phân tích AI:
+Bao gồm thông tin Git để cung cấp ngữ cảnh phát triển cho việc phân tích bằng AI:
 
 ```bash
-# Bao gồm diff git (các thay đổi chưa commit)
+# Bao gồm git diff (các thay đổi chưa commit)
 repomix --include-diffs
 
-# Bao gồm nhật ký commit git (50 commit cuối cùng theo mặc định)
+# Bao gồm nhật ký commit của git (mặc định là 50 commit gần nhất)
 repomix --include-logs
 
 # Bao gồm số lượng commit cụ thể
 repomix --include-logs --include-logs-count 10
 
-# Bao gồm cả diff và logs
+# Bao gồm cả diff và nhật ký
 repomix --include-diffs --include-logs
 ```
 
-Điều này thêm ngữ cảnh có giá trị về:
-- **Các thay đổi gần đây**: Git diff hiển thị các sửa đổi chưa commit
-- **Các mẫu phát triển**: Git logs tiết lộ tệp nào thường được thay đổi cùng nhau
-- **Lịch sử commit**: Các thông điệp commit gần đây cung cấp hiểu biết về trọng tâm phát triển
-- **Mối quan hệ tệp**: Hiểu tệp nào được sửa đổi trong cùng một commit
+Điều này bổ sung ngữ cảnh có giá trị về:
+- **Các thay đổi gần đây**: Git diff hiển thị các sửa đổi chưa được commit
+- **Các mẫu phát triển**: Nhật ký git tiết lộ những tệp nào thường được thay đổi cùng nhau
+- **Lịch sử commit**: Các thông điệp commit gần đây cung cấp cái nhìn sâu sắc về trọng tâm phát triển
+- **Mối quan hệ giữa các tệp**: Hiểu rõ những tệp nào được sửa đổi trong cùng các commit
 
 ### Tối ưu hóa số lượng token
 
-Hiểu được phân phối token của codebase là rất quan trọng để tối ưu hóa tương tác AI. Sử dụng tùy chọn `--token-count-tree` để trực quan hóa việc sử dụng token trong toàn bộ dự án của bạn:
+Việc hiểu rõ phân bố token trong cơ sở mã của bạn là rất quan trọng để tối ưu hóa các tương tác với AI. Sử dụng tùy chọn `--token-count-tree` để trực quan hóa việc sử dụng token trong toàn bộ dự án của bạn:
 
 ```bash
 repomix --token-count-tree
 ```
 
-Điều này hiển thị một chế độ xem phân cấp codebase của bạn với số lượng token:
+Lệnh này hiển thị một dạng xem phân cấp của cơ sở mã cùng với số lượng token:
 
 ```
 🔢 Token Count Tree:
@@ -247,16 +170,58 @@ repomix --token-count-tree
 Bạn cũng có thể đặt ngưỡng token tối thiểu để tập trung vào các tệp lớn hơn:
 
 ```bash
-repomix --token-count-tree 1000  # Chỉ hiển thị tệp/thư mục có 1000+ token
+repomix --token-count-tree 1000  # Chỉ hiển thị các tệp/thư mục có từ 1000 token trở lên
 ```
 
 Điều này giúp bạn:
-- **Xác định các tệp nặng token** - có thể vượt quá giới hạn ngữ cảnh AI
-- **Tối ưu hóa lựa chọn tệp** - sử dụng các mẫu `--include` và `--ignore`
-- **Lập kế hoạch chiến lược nén** - nhắm mục tiêu những đóng góp lớn nhất
-- **Cân bằng nội dung vs ngữ cảnh** - khi chuẩn bị mã cho phân tích AI
+- **Xác định các tệp nặng về token** có thể vượt quá giới hạn ngữ cảnh của AI
+- **Tối ưu hóa việc lựa chọn tệp** bằng cách sử dụng các mẫu `--include` và `--ignore`
+- **Lập kế hoạch chiến lược nén** bằng cách nhắm vào các yếu tố đóng góp lớn nhất
+- **Cân bằng giữa nội dung và ngữ cảnh** khi chuẩn bị mã cho việc phân tích bằng AI
 
-### Kiểm tra bảo mật
+## Định dạng đầu ra
+
+### XML (Mặc định)
+```bash
+repomix --style xml
+```
+
+### Markdown
+```bash
+repomix --style markdown
+```
+
+### JSON
+```bash
+repomix --style json
+```
+
+### Văn bản thuần
+```bash
+repomix --style plain
+```
+
+## Tùy chọn bổ sung
+
+### Xóa các comment
+
+Xem [Xóa comment](/vi/guide/comment-removal) để biết các ngôn ngữ được hỗ trợ và chi tiết.
+
+```bash
+repomix --remove-comments
+```
+
+### Hiển thị số dòng
+```bash
+repomix --output-show-line-numbers
+```
+
+### Sao chép vào clipboard
+```bash
+repomix --copy
+```
+
+### Tắt kiểm tra bảo mật
 
 Xem [Bảo mật](/vi/guide/security) để biết chi tiết về những gì Repomix phát hiện.
 
@@ -264,64 +229,18 @@ Xem [Bảo mật](/vi/guide/security) để biết chi tiết về những gì R
 repomix --no-security-check
 ```
 
-### Đếm token
+## Cấu hình
 
-Để tắt đếm token:
-
-```bash
-repomix --no-token-count
-```
-
-## Sử dụng tệp cấu hình
-
-Để tạo một tệp cấu hình mẫu:
-
+Khởi tạo tệp cấu hình:
 ```bash
 repomix --init
 ```
 
-Điều này sẽ tạo một tệp `repomix.config.json` mà bạn có thể chỉnh sửa để tùy chỉnh hành vi của Repomix.
-
-Ví dụ về tệp cấu hình:
-
-```json
-{
-  "output": {
-    "style": "markdown",
-    "filePath": "custom-output.md",
-    "removeComments": true,
-    "showLineNumbers": true,
-    "topFilesLength": 10
-  },
-  "ignore": {
-    "customPatterns": ["*.test.ts", "docs/**"]
-  }
-}
-```
-
-## Sử dụng với AI
-
-Sau khi tạo tệp đầu ra, bạn có thể tải nó lên các công cụ AI như:
-
-- ChatGPT
-- Claude
-- Gemini
-- Perplexity
-- Phind
-- Và các LLM khác
-
-Khi tải lên tệp, bạn có thể sử dụng một prompt như:
-
-```
-Tệp này chứa toàn bộ codebase của tôi. Tôi muốn bạn:
-1. Phân tích cấu trúc tổng thể
-2. Xác định các mẫu thiết kế được sử dụng
-3. Đề xuất cải tiến
-```
+Xem [Hướng dẫn cấu hình](/vi/guide/configuration) để biết các tùy chọn chi tiết.
 
 ## Tài nguyên liên quan
 
-- [Định dạng đầu ra](/vi/guide/output) - Tìm hiểu về các định dạng XML, Markdown, JSON và văn bản thuần túy
-- [Tùy chọn dòng lệnh](/vi/guide/command-line-options) - Tham chiếu CLI đầy đủ
-- [Ví dụ prompt](/vi/guide/prompt-examples) - Ví dụ prompt cho phân tích AI
-- [Trường hợp sử dụng](/vi/guide/use-cases) - Ví dụ thực tế và quy trình làm việc
+- [Định dạng đầu ra](/vi/guide/output) - Tìm hiểu về các định dạng XML, Markdown, JSON và văn bản thuần
+- [Tùy chọn dòng lệnh](/vi/guide/command-line-options) - Tài liệu tham khảo CLI đầy đủ
+- [Ví dụ về prompt](/vi/guide/prompt-examples) - Các prompt mẫu để phân tích bằng AI
+- [Các trường hợp sử dụng](/vi/guide/use-cases) - Các ví dụ và quy trình làm việc thực tế

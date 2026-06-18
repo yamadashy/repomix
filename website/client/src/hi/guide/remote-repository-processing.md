@@ -1,137 +1,110 @@
 ---
 title: GitHub रिपॉजिटरी प्रोसेसिंग
-description: Full URLs, user/repo shorthand, branches, tags, commits, Docker और remote config trust controls के साथ Repomix से GitHub repositories pack करें।
+description: पूर्ण URL, user/repo शॉर्टहैंड, ब्रांच, टैग, कमिट, Docker, और रिमोट कॉन्फ़िग ट्रस्ट कंट्रोल का उपयोग करके Repomix के साथ GitHub रिपॉजिटरी पैक करें।
 ---
 
 # GitHub रिपॉजिटरी प्रोसेसिंग
 
-Repomix आपको GitHub जैसे प्लेटफॉर्म पर होस्ट किए गए रिमोट रिपॉजिटरी को प्रोसेस करने की अनुमति देता है। यह सुविधा उपयोगी है जब आप अपने लोकल मशीन पर रिपॉजिटरी को क्लोन किए बिना कोडबेस का विश्लेषण करना चाहते हैं।
+## बुनियादी उपयोग
 
-## रिमोट रिपॉजिटरी प्रोसेस करना
-
-रिमोट रिपॉजिटरी प्रोसेस करने के लिए, `--remote` विकल्प का उपयोग करें:
-
+सार्वजनिक रिपॉजिटरी प्रोसेस करें:
 ```bash
-repomix --remote <username>/<repository>
+# पूर्ण URL का उपयोग करके
+repomix --remote https://github.com/user/repo
+
+# GitHub शॉर्टहैंड का उपयोग करके
+repomix --remote user/repo
 ```
 
-उदाहरण:
+आप `owner/repo` शॉर्टहैंड को `--remote` के बिना सीधे भी पास कर सकते हैं:
 
 ```bash
-repomix --remote yamadashy/repomix
+repomix yamadashy/repomix
 ```
 
-यह GitHub से `yamadashy/repomix` रिपॉजिटरी को डाउनलोड करेगा और प्रोसेस करेगा।
+चूँकि `owner/repo` एक सापेक्ष स्थानीय पथ जैसा भी दिखता है, इसलिए Repomix इसे रिमोट रिपॉजिटरी के रूप में केवल तभी मानता है जब उस नाम की कोई स्थानीय फ़ाइल या डायरेक्टरी मौजूद न हो और रिपॉजिटरी GitHub पर पहुँच योग्य हो। एक मेल खाता स्थानीय पथ हमेशा प्राथमिकता लेता है; किसी `owner/repo`-आकार वाले पथ के लिए स्थानीय हैंडलिंग को मजबूर करने हेतु इसके आगे `./` लगाएँ (उदाहरण के लिए, `repomix ./owner/repo`)। यदि तर्क पैटर्न से मेल खाता है लेकिन रिपॉजिटरी तक नहीं पहुँचा जा सकता (उदाहरण के लिए, एक निजी रिपॉजिटरी या कोई टाइपो), तो Repomix इसे स्थानीय पथ के रूप में हैंडल करने पर वापस लौट आता है।
 
-## विशिष्ट ब्रांच या कमिट प्रोसेस करना
-
-डिफॉल्ट रूप से, Repomix रिपॉजिटरी के डिफॉल्ट ब्रांच (आमतौर पर `main` या `master`) को प्रोसेस करेगा। विशिष्ट ब्रांच या कमिट प्रोसेस करने के लिए, `--remote-branch` विकल्प का उपयोग करें:
+## ब्रांच और कमिट चयन
 
 ```bash
-repomix --remote <username>/<repository> --remote-branch <branch-or-commit>
+# विशिष्ट ब्रांच
+repomix --remote user/repo --remote-branch main
+
+# टैग
+repomix --remote user/repo --remote-branch v1.0.0
+
+# कमिट हैश
+repomix --remote user/repo --remote-branch 935b695
 ```
 
-उदाहरण:
+## आवश्यकताएँ
+
+- Git इंस्टॉल होना चाहिए
+- इंटरनेट कनेक्शन
+- रिपॉजिटरी तक पढ़ने की पहुँच
+
+## आउटपुट नियंत्रण
 
 ```bash
-# विशिष्ट ब्रांच प्रोसेस करना
-repomix --remote yamadashy/repomix --remote-branch develop
+# कस्टम आउटपुट स्थान
+repomix --remote user/repo -o custom-output.xml
 
-# विशिष्ट कमिट प्रोसेस करना
-repomix --remote yamadashy/repomix --remote-branch 935b695
+# XML फ़ॉर्मेट के साथ
+repomix --remote user/repo --style xml
+
+# टिप्पणियाँ हटाएँ
+repomix --remote user/repo --remove-comments
 ```
 
-## आउटपुट विकल्प
-
-रिमोट रिपॉजिटरी प्रोसेस करते समय, आप अन्य Repomix विकल्पों का उपयोग कर सकते हैं, जैसे आउटपुट स्टाइल और फिल्टरिंग:
+## Docker उपयोग
 
 ```bash
-repomix --remote yamadashy/repomix --style markdown --output-file output.md
-```
+# प्रोसेस करें और वर्तमान डायरेक्टरी में आउटपुट दें
+docker run -v .:/app -it --rm ghcr.io/yamadashy/repomix \
+  --remote user/repo
 
-```bash
-repomix --remote yamadashy/repomix --include "src/**/*.ts" --ignore "**/*.test.ts"
-```
-
-## प्राइवेट रिपॉजिटरी
-
-Repomix CLI टूल आपके लोकल Git क्रेडेंशियल्स का उपयोग करता है, इसलिए यदि आपके पास प्राइवेट रिपॉजिटरी तक पहुंच है, तो आप उन्हें भी प्रोसेस कर सकते हैं:
-
-```bash
-repomix --remote your-org/private-repo
-```
-
-## रिमोट प्रोसेसिंग के लाभ
-
-रिमोट रिपॉजिटरी प्रोसेसिंग के कई लाभ हैं:
-
-1. **डिस्क स्पेस बचाना**: आपको अपने लोकल मशीन पर रिपॉजिटरी को क्लोन करने की आवश्यकता नहीं है
-2. **समय बचाना**: बड़े रिपॉजिटरी को क्लोन करने में समय लग सकता है
-3. **सुविधा**: आपको Git इंस्टॉल करने या सेटअप करने की आवश्यकता नहीं है
-4. **एक्सप्लोरेशन**: नए प्रोजेक्ट्स या ओपन सोर्स रिपॉजिटरी का त्वरित विश्लेषण
-
-## रिमोट प्रोसेसिंग सीमाएं
-
-रिमोट रिपॉजिटरी प्रोसेसिंग की कुछ सीमाएं हैं:
-
-1. **नेटवर्क निर्भरता**: आपको इंटरनेट कनेक्शन की आवश्यकता है
-2. **डाउनलोड समय**: बड़े रिपॉजिटरी को डाउनलोड करने में समय लग सकता है
-3. **API सीमाएं**: GitHub API सीमाओं के अधीन है
-4. **Git इतिहास**: वर्तमान में, Repomix केवल निर्दिष्ट ब्रांच या कमिट के स्नैपशॉट को प्रोसेस करता है, न कि पूरे Git इतिहास को
-
-## उदाहरण उपयोग
-
-### ओपन सोर्स प्रोजेक्ट का विश्लेषण
-
-```bash
-repomix --remote facebook/react --include "packages/react/**/*.js" --style markdown --output-file react-analysis.md
-```
-
-### विशिष्ट ब्रांच का विश्लेषण
-
-```bash
-repomix --remote tensorflow/tensorflow --remote-branch r2.9 --include "tensorflow/python/**/*.py" --output-file tensorflow-python-api.xml
-```
-
-### कमिट के बीच तुलना
-
-आप विभिन्न कमिट्स के बीच तुलना करने के लिए Repomix का उपयोग कर सकते हैं:
-
-```bash
-# पहले कमिट को प्रोसेस करें
-repomix --remote user/repo --remote-branch commit1 --output-file output1.xml
-
-# दूसरे कमिट को प्रोसेस करें
-repomix --remote user/repo --remote-branch commit2 --output-file output2.xml
-
-# फिर आप दोनों आउटपुट फाइलों को AI मॉडल के साथ उपयोग कर सकते हैं
+# विशिष्ट डायरेक्टरी में आउटपुट दें
+docker run -v ./output:/app -it --rm ghcr.io/yamadashy/repomix \
+  --remote user/repo
 ```
 
 ## सुरक्षा
 
-सुरक्षा के लिए, रिमोट रिपॉजिटरी में मौजूद कॉन्फिग फाइलें (`repomix.config.*`) डिफॉल्ट रूप से लोड नहीं की जाती हैं। इससे अविश्वसनीय रिपॉजिटरी `repomix.config.ts` जैसी कॉन्फिग फाइलों के ज़रिए कोड एक्ज़ीक्यूट नहीं कर पाती हैं।
+सुरक्षा के लिए, रिमोट रिपॉजिटरी में कॉन्फ़िग फ़ाइलें (`repomix.config.*`) डिफ़ॉल्ट रूप से लोड नहीं की जातीं। यह अविश्वसनीय रिपॉजिटरी को `repomix.config.ts` जैसी कॉन्फ़िग फ़ाइलों के माध्यम से कोड चलाने से रोकता है।
 
-आपकी ग्लोबल कॉन्फिग और CLI विकल्प पहले की तरह लागू होते रहेंगे।
+आपकी ग्लोबल कॉन्फ़िग और CLI विकल्प फिर भी लागू होते हैं।
 
-किसी रिमोट रिपॉजिटरी की कॉन्फिग पर भरोसा करने के लिए:
+किसी रिमोट रिपॉजिटरी की कॉन्फ़िग पर भरोसा करने के लिए:
 
 ```bash
-# CLI फ्लैग का उपयोग करके
+# CLI फ़्लैग का उपयोग करके
 repomix --remote user/repo --remote-trust-config
 
 # एनवायरनमेंट वेरिएबल का उपयोग करके
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
-`--remote` के साथ `--config` का उपयोग करते समय, एक पूर्ण (absolute) पथ आवश्यक है:
+`--remote` के साथ `--config` का उपयोग करते समय, एक पूर्ण पथ आवश्यक होता है:
 
 ```bash
 repomix --remote user/repo --config /home/user/repomix.config.json
 ```
 
+## सामान्य समस्याएँ
+
+### पहुँच संबंधी समस्याएँ
+- सुनिश्चित करें कि रिपॉजिटरी सार्वजनिक है
+- Git इंस्टॉलेशन जाँचें
+- इंटरनेट कनेक्शन सत्यापित करें
+
+### बड़ी रिपॉजिटरी
+- विशिष्ट पथ चुनने के लिए `--include` का उपयोग करें
+- `--remove-comments` सक्षम करें
+- ब्रांच को अलग-अलग प्रोसेस करें
+
 ## संबंधित संसाधन
 
 - [कमांड लाइन विकल्प](/hi/guide/command-line-options) - `--remote` विकल्पों सहित पूर्ण CLI संदर्भ
-- [कॉन्फिगरेशन](/hi/guide/configuration) - रिमोट प्रोसेसिंग के लिए डिफ़ॉल्ट विकल्प सेट करें
-- [कोड कम्प्रेशन](/hi/guide/code-compress) - बड़े रिपॉजिटरी के लिए आउटपुट आकार कम करें
+- [कॉन्फ़िगरेशन](/hi/guide/configuration) - रिमोट प्रोसेसिंग के लिए डिफ़ॉल्ट विकल्प सेट करें
+- [कोड कम्प्रेशन](/hi/guide/code-compress) - बड़ी रिपॉजिटरी के लिए आउटपुट आकार कम करें
 - [सुरक्षा](/hi/guide/security) - Repomix संवेदनशील डेटा का पता कैसे लगाता है
