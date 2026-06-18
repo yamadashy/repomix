@@ -89,6 +89,12 @@ description: Tham khảo mọi tùy chọn Repomix CLI cho input, output, chọn
 | `--skill-output <path>` | Chỉ định trực tiếp đường dẫn thư mục đầu ra skill (bỏ qua lời nhắc vị trí) |
 | `-f, --force` | Bỏ qua tất cả lời nhắc xác nhận (ví dụ: ghi đè thư mục skill) |
 
+## Tùy chọn Chế độ Theo dõi
+
+- `-w, --watch`: Theo dõi các thay đổi của tệp và tự động đóng gói lại. Các tệp mới, đã thay đổi và đã xóa được phát hiện, các thay đổi nhanh được debounce (300 ms), và một dấu thời gian được in ra sau mỗi lần xây dựng lại. Nhấn `Ctrl+C` để dừng.
+
+Chế độ theo dõi chỉ hoạt động với các thư mục cục bộ, vì vậy không thể kết hợp với `--remote`, một URL kho lưu trữ từ xa được truyền dưới dạng tham số vị trí, `--stdout`, `--stdin`, `--split-output`, `--skill-generate`, hoặc `--copy`. Các hạn chế này áp dụng dù tùy chọn được đặt trên dòng lệnh hay trong tệp cấu hình của bạn.
+
 ## Tài nguyên liên quan
 
 - [Cấu hình](/vi/guide/configuration) - Đặt các tùy chọn trong tệp cấu hình thay vì cờ CLI
@@ -126,6 +132,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Kho lưu trữ từ xa với dạng viết tắt
 repomix --remote user/repo
 
+# Kho lưu trữ từ xa với dạng viết tắt (tự động phát hiện, không cần --remote)
+repomix user/repo
+
 # Danh sách tệp sử dụng stdin
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin
@@ -140,4 +149,8 @@ repomix --include-diffs --include-logs  # Bao gồm cả diff và logs
 # Phân tích số lượng token
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Chỉ hiển thị tệp/thư mục với 1000+ token
+
+# Chế độ theo dõi: tự động đóng gói lại khi tệp thay đổi
+repomix --watch
+repomix -w --include "src/**/*.ts"
 ```

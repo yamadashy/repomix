@@ -89,6 +89,12 @@ description: 查閱 Repomix CLI 的所有選項，涵蓋輸入、輸出、檔案
 | `--skill-output <path>` | 直接指定技能輸出目錄路徑（跳過位置選擇提示） |
 | `-f, --force` | 跳過所有確認提示（例如：技能目錄覆蓋） |
 
+## 監視模式選項
+
+- `-w, --watch`: 監視檔案變更並自動重新打包。會偵測新增、修改和刪除的檔案，對快速連續的變更進行防抖處理（300 毫秒），並在每次重新建構後印出時間戳記。按 `Ctrl+C` 停止。
+
+監視模式僅適用於本機目錄，因此無法與 `--remote`、作為位置參數傳入的遠端儲存庫 URL、`--stdout`、`--stdin`、`--split-output`、`--skill-generate` 或 `--copy` 組合使用。無論該選項是在命令列還是在組態檔中設定，這些限制都適用。
+
 ## 相關資源
 
 - [設定](/zh-tw/guide/configuration) - 透過設定檔而非 CLI 旗標設定選項
@@ -126,6 +132,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # 使用簡寫的遠端儲存庫
 repomix --remote user/repo
 
+# 使用簡寫的遠端儲存庫（自動檢測，無需 --remote）
+repomix user/repo
+
 # 使用stdin的檔案清單
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin
@@ -140,5 +149,9 @@ repomix --include-diffs --include-logs  # 同時包含差異和記錄
 # 權杖計數分析
 repomix --token-count-tree
 repomix --token-count-tree 1000  # 僅顯示擁有1000+權杖的檔案/目錄
+
+# 監視模式：檔案變更時自動重新打包
+repomix --watch
+repomix -w --include "src/**/*.ts"
 ```
 

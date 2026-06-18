@@ -16,6 +16,14 @@ repomix --remote https://github.com/user/repo
 repomix --remote user/repo
 ```
 
+你也可以直接传入 `owner/repo` 简写，而无需 `--remote`：
+
+```bash
+repomix yamadashy/repomix
+```
+
+由于 `owner/repo` 看起来也像相对本地路径，因此只有当不存在同名的本地文件或目录、且该仓库在 GitHub 上可访问时，Repomix 才会将其视为远程仓库。已存在的本地路径始终优先；若要强制将 `owner/repo` 形式的路径作为本地路径处理，请在前面加上 `./`（例如 `repomix ./owner/repo`）。如果参数匹配该格式但仓库无法访问（例如私有仓库或拼写错误），Repomix 会回退为将其作为本地路径处理。
+
 ## 分支和提交选择
 
 ```bash

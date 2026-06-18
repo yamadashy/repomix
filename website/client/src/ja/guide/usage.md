@@ -56,6 +56,9 @@ repomix --remote https://github.com/user/repo
 # ショートハンドを使用
 repomix --remote user/repo
 
+# --remote なしでショートハンドを使用（自動検出）
+repomix user/repo
+
 # 特定のブランチ/タグ/コミット
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695

@@ -16,6 +16,14 @@ repomix --remote https://github.com/user/repo
 repomix --remote user/repo
 ```
 
+`owner/repo` kısayolunu `--remote` olmadan doğrudan da geçebilirsiniz:
+
+```bash
+repomix yamadashy/repomix
+```
+
+`owner/repo` aynı zamanda göreli bir yerel yola da benzediğinden, Repomix bunu yalnızca o adda yerel bir dosya veya dizin yoksa ve depo GitHub üzerinde erişilebilirse uzak depo olarak değerlendirir. Mevcut bir yerel yol her zaman önceliklidir; `owner/repo` biçimindeki bir yolu yerel olarak işlemeye zorlamak için başına `./` ekleyin (örneğin, `repomix ./owner/repo`). Argüman desenle eşleşse de depoya erişilemiyorsa (örneğin özel bir depo veya bir yazım hatası), Repomix bunu yerel yol olarak işlemeye geri döner.
+
 ## Dal ve Commit Seçimi
 
 ```bash

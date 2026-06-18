@@ -89,6 +89,12 @@ description: "Consulte todas as opções da CLI do Repomix para entrada, saída,
 | `--skill-output <path>` | Especificar o caminho do diretório de saída de skills diretamente (pula o prompt de local) |
 | `-f, --force` | Pular todos os prompts de confirmação (ex: sobrescrita do diretório de skills) |
 
+## Opções do modo de observação
+
+- `-w, --watch`: Observa alterações nos arquivos e reempacota automaticamente. Arquivos novos, alterados e excluídos são detectados, alterações rápidas sofrem debounce (300 ms) e um timestamp é impresso após cada reconstrução. Pressione `Ctrl+C` para parar.
+
+O modo de observação só funciona com diretórios locais, portanto não pode ser combinado com `--remote`, uma URL de repositório remoto passada como argumento posicional, `--stdout`, `--stdin`, `--split-output`, `--skill-generate` ou `--copy`. Essas restrições se aplicam tanto se a opção for definida na linha de comando quanto no seu arquivo de configuração.
+
 ## Recursos relacionados
 
 - [Configuração](/pt-br/guide/configuration) - Definir opções no arquivo de configuração em vez de flags CLI
@@ -126,6 +132,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Repositório remoto com forma abreviada
 repomix --remote user/repo
 
+# Repositório remoto com forma abreviada (detectado automaticamente, sem --remote)
+repomix user/repo
+
 # Lista de arquivos usando stdin
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin
@@ -140,5 +149,9 @@ repomix --include-diffs --include-logs  # Incluir tanto diffs quanto logs
 # Análise de contagem de tokens
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Mostrar apenas arquivos/diretórios com 1000+ tokens
+
+# Modo de observação: reempacotar automaticamente ao alterar arquivos
+repomix --watch
+repomix -w --include "src/**/*.ts"
 ```
 

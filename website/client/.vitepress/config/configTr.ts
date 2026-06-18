@@ -30,6 +30,7 @@ export const configTr = defineConfig({
           items: [
             { text: 'Çıktı Formatları', link: '/tr/guide/output' },
             { text: 'Komut Satırı Seçenekleri', link: '/tr/guide/command-line-options' },
+            { text: 'İzleme Modu', link: '/tr/guide/watch-mode' },
             { text: 'Yapılandırma', link: '/tr/guide/configuration' },
             { text: 'Özel Talimatlar', link: '/tr/guide/custom-instructions' },
             { text: 'GitHub Deposu İşleme', link: '/tr/guide/remote-repository-processing' },

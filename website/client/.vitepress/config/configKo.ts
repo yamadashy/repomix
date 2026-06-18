@@ -30,6 +30,7 @@ export const configKo = defineConfig({
           items: [
             { text: '출력 형식', link: '/ko/guide/output' },
             { text: '명령줄 옵션', link: '/ko/guide/command-line-options' },
+            { text: '감시 모드', link: '/ko/guide/watch-mode' },
             { text: '설정', link: '/ko/guide/configuration' },
             { text: '사용자 정의 지침', link: '/ko/guide/custom-instructions' },
             { text: 'GitHub 저장소 처리', link: '/ko/guide/remote-repository-processing' },

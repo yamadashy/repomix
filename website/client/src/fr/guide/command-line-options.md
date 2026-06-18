@@ -89,6 +89,12 @@ description: "Consultez toutes les options de la CLI Repomix pour l'entrée, la 
 | `--skill-output <path>` | Spécifier directement le chemin du répertoire de sortie des skills (ignore l'invite d'emplacement) |
 | `-f, --force` | Ignorer toutes les invites de confirmation (ex : remplacement du répertoire de skills) |
 
+## Options du mode surveillance
+
+- `-w, --watch`: Surveille les modifications de fichiers et reconditionne automatiquement. Les fichiers ajoutés, modifiés et supprimés sont détectés, les changements rapides sont regroupés (debounce de 300 ms), et un horodatage est affiché après chaque reconstruction. Appuyez sur `Ctrl+C` pour arrêter.
+
+Le mode surveillance ne fonctionne qu'avec des répertoires locaux ; il ne peut donc pas être combiné avec `--remote`, une URL de dépôt distant passée en argument positionnel, `--stdout`, `--stdin`, `--split-output`, `--skill-generate` ou `--copy`. Ces restrictions s'appliquent que l'option soit définie en ligne de commande ou dans votre fichier de configuration.
+
 ## Ressources associées
 
 - [Configuration](/fr/guide/configuration) - Définir les options dans le fichier de configuration au lieu des flags CLI
@@ -126,6 +132,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Dépôt distant avec forme abrégée
 repomix --remote user/repo
 
+# Dépôt distant avec forme abrégée (détecté automatiquement, sans --remote)
+repomix user/repo
+
 # Liste de fichiers utilisant stdin
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin
@@ -140,5 +149,9 @@ repomix --include-diffs --include-logs  # Inclure à la fois les diffs et les jo
 # Analyse du comptage de jetons
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Afficher uniquement les fichiers/répertoires avec 1000+ jetons
+
+# Mode surveillance : reconditionnement automatique à chaque modification de fichier
+repomix --watch
+repomix -w --include "src/**/*.ts"
 ```
 

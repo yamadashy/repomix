@@ -30,6 +30,7 @@ export const configRu = defineConfig({
           items: [
             { text: 'Форматы вывода', link: '/ru/guide/output' },
             { text: 'Параметры командной строки', link: '/ru/guide/command-line-options' },
+            { text: 'Режим наблюдения', link: '/ru/guide/watch-mode' },
             { text: 'Конфигурация', link: '/ru/guide/configuration' },
             { text: 'Пользовательские инструкции', link: '/ru/guide/custom-instructions' },
             { text: 'Обработка GitHub-репозиториев', link: '/ru/guide/remote-repository-processing' },

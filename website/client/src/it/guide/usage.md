@@ -60,6 +60,9 @@ La dimensione può essere specificata con unità: `500kb`, `1mb`, `2mb`, `1.5mb`
 repomix --remote https://github.com/user/repo
 # Usando il formato abbreviato
 repomix --remote user/repo
+# Forma abbreviata senza --remote (rilevata automaticamente)
+repomix user/repo
+
 # Branch/tag/commit specifico
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695

@@ -56,6 +56,9 @@ repomix --remote https://github.com/usuario/repositorio
 # Usando la abreviatura
 repomix --remote usuario/repositorio
 
+# Usando la abreviatura sin --remote (detectado automáticamente)
+repomix usuario/repositorio
+
 # Rama/etiqueta/commit específico
 repomix --remote usuario/repositorio --remote-branch main
 repomix --remote usuario/repositorio --remote-branch 935b695

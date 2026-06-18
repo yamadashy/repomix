@@ -16,6 +16,14 @@ repomix --remote https://github.com/user/repo
 repomix --remote user/repo
 ```
 
+You can also pass the `owner/repo` shorthand directly, without `--remote`:
+
+```bash
+repomix yamadashy/repomix
+```
+
+Since `owner/repo` also looks like a relative local path, Repomix only treats it as a remote repository when no local file or directory of that name exists and the repository is reachable on GitHub. A matching local path always takes precedence; to force local handling for an `owner/repo`-shaped path, prefix it with `./` (for example, `repomix ./owner/repo`). If the argument matches the pattern but the repository cannot be reached (for example, a private repository or a typo), Repomix falls back to handling it as a local path.
+
 ## Branch and Commit Selection
 
 ```bash

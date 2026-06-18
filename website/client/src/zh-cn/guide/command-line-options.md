@@ -89,6 +89,12 @@ description: 查阅 Repomix CLI 的所有选项，涵盖输入、输出、文件
 | `--skill-output <path>` | 直接指定技能输出目录路径（跳过位置选择提示） |
 | `-f, --force` | 跳过所有确认提示（例如：技能目录覆盖） |
 
+## 监视模式选项
+
+- `-w, --watch`: 监视文件更改并自动重新打包。会检测新增、修改和删除的文件，对快速连续的更改进行防抖处理（300 毫秒），并在每次重新构建后打印时间戳。按 `Ctrl+C` 停止。
+
+监视模式仅适用于本地目录，因此无法与 `--remote`、作为位置参数传入的远程仓库 URL、`--stdout`、`--stdin`、`--split-output`、`--skill-generate` 或 `--copy` 组合使用。无论该选项是在命令行还是在配置文件中设置，这些限制都适用。
+
 ## 相关资源
 
 - [配置](/zh-cn/guide/configuration) - 通过配置文件而非 CLI 标志设置选项
@@ -131,6 +137,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # 使用简写的远程仓库
 repomix --remote user/repo
 
+# 使用简写的远程仓库（自动检测，无需 --remote）
+repomix user/repo
+
 # 使用stdin的文件列表
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin
@@ -139,5 +148,9 @@ echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
 # Token 计数分析
 repomix --token-count-tree
 repomix --token-count-tree 1000  # 仅显示拥有 1000+ Token 的文件
+
+# 监视模式：文件更改时自动重新打包
+repomix --watch
+repomix -w --include "src/**/*.ts"
 ```
 

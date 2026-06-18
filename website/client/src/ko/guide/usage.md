@@ -56,6 +56,9 @@ repomix --remote https://github.com/user/repo
 # 단축형 사용
 repomix --remote user/repo
 
+# --remote 없이 단축형 사용 (자동 감지)
+repomix user/repo
+
 # 특정 브랜치/태그/커밋
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695

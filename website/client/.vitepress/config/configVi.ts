@@ -30,6 +30,7 @@ export const configVi = defineConfig({
           items: [
             { text: 'Định dạng đầu ra', link: '/vi/guide/output' },
             { text: 'Tùy chọn dòng lệnh', link: '/vi/guide/command-line-options' },
+            { text: 'Chế độ theo dõi', link: '/vi/guide/watch-mode' },
             { text: 'Cấu hình', link: '/vi/guide/configuration' },
             { text: 'Hướng dẫn tùy chỉnh', link: '/vi/guide/custom-instructions' },
             { text: 'Xử lý kho lưu trữ GitHub', link: '/vi/guide/remote-repository-processing' },

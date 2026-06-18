@@ -16,6 +16,14 @@ repomix --remote https://github.com/user/repo
 repomix --remote user/repo
 ```
 
+`--remote` 없이 `owner/repo` 단축형을 직접 전달할 수도 있습니다:
+
+```bash
+repomix yamadashy/repomix
+```
+
+`owner/repo`는 상대 로컬 경로와도 구분되지 않기 때문에, Repomix는 해당 이름의 로컬 파일이나 디렉터리가 존재하지 않고 저장소가 GitHub에서 접근 가능한 경우에만 원격 저장소로 처리합니다. 일치하는 로컬 경로가 있으면 항상 그쪽이 우선합니다. `owner/repo` 형태의 경로를 강제로 로컬로 처리하려면 `./`를 앞에 붙이세요(예: `repomix ./owner/repo`). 인수가 패턴과 일치하지만 저장소에 접근할 수 없는 경우(예: 비공개 저장소나 오타)에는 Repomix가 이를 로컬 경로로 처리하도록 폴백합니다.
+
 ## 브랜치 및 커밋 선택
 
 ```bash

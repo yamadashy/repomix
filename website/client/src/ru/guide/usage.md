@@ -56,6 +56,9 @@ repomix --remote https://github.com/user/repo
 # Использование сокращения
 repomix --remote user/repo
 
+# Использование сокращения без --remote (определяется автоматически)
+repomix user/repo
+
 # Конкретная ветка/тег/коммит
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695

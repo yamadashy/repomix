@@ -89,6 +89,12 @@ description: Referensi lengkap opsi CLI Repomix untuk input, output, pemilihan f
 | `--skill-output <path>` | Menentukan jalur direktori output skill secara langsung (melewati prompt lokasi) |
 | `-f, --force` | Melewati semua prompt konfirmasi (mis. penimpaan direktori skill) |
 
+## Opsi Mode Watch
+
+- `-w, --watch`: Memantau perubahan file dan secara otomatis mengemas ulang. File baru, yang diubah, dan yang dihapus akan terdeteksi, perubahan cepat di-debounce (300 ms), dan stempel waktu dicetak setelah setiap pembangunan ulang. Tekan `Ctrl+C` untuk berhenti.
+
+Mode watch hanya bekerja dengan direktori lokal, sehingga tidak dapat dikombinasikan dengan `--remote`, URL repositori remote yang diberikan sebagai argumen posisional, `--stdout`, `--stdin`, `--split-output`, `--skill-generate`, atau `--copy`. Pembatasan ini berlaku baik opsi diatur di baris perintah maupun di file konfigurasi Anda.
+
 ## Sumber Daya Terkait
 
 - [Konfigurasi](/id/guide/configuration) - Atur opsi di file konfigurasi alih-alih flag CLI
@@ -126,6 +132,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Repositori remote dengan bentuk singkat
 repomix --remote user/repo
 
+# Repositori remote dengan bentuk singkat (terdeteksi otomatis, tanpa --remote)
+repomix user/repo
+
 # Daftar file menggunakan stdin
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin
@@ -140,4 +149,8 @@ repomix --include-diffs --include-logs  # Sertakan diff dan log
 # Analisis jumlah token
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Hanya tampilkan file/direktori dengan 1000+ token
+
+# Mode watch: kemas ulang otomatis saat file berubah
+repomix --watch
+repomix -w --include "src/**/*.ts"
 ```

@@ -30,6 +30,7 @@ export const configEs = defineConfig({
           items: [
             { text: 'Formatos de Salida', link: '/es/guide/output' },
             { text: 'Opciones de Línea de Comandos', link: '/es/guide/command-line-options' },
+            { text: 'Modo de observación', link: '/es/guide/watch-mode' },
             { text: 'Configuración', link: '/es/guide/configuration' },
             { text: 'Instrucciones Personalizadas', link: '/es/guide/custom-instructions' },
             { text: 'Procesamiento de Repositorios de GitHub', link: '/es/guide/remote-repository-processing' },
