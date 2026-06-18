@@ -28,6 +28,7 @@ export const configJa = defineConfig({
           items: [
             { text: '出力フォーマット', link: '/ja/guide/output' },
             { text: 'コマンドラインオプション', link: '/ja/guide/command-line-options' },
+            { text: 'ウォッチモード', link: '/ja/guide/watch-mode' },
             { text: '設定', link: '/ja/guide/configuration' },
             { text: 'カスタム指示', link: '/ja/guide/custom-instructions' },
             { text: 'GitHubリポジトリの処理', link: '/ja/guide/remote-repository-processing' },

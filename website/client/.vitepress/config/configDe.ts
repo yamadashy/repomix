@@ -30,6 +30,7 @@ export const configDe = defineConfig({
           items: [
             { text: 'Ausgabeformate', link: '/de/guide/output' },
             { text: 'Kommandozeilenoptionen', link: '/de/guide/command-line-options' },
+            { text: 'Watch-Modus', link: '/de/guide/watch-mode' },
             { text: 'Konfiguration', link: '/de/guide/configuration' },
             { text: 'Benutzerdefinierte Anweisungen', link: '/de/guide/custom-instructions' },
             { text: 'GitHub-Repository-Verarbeitung', link: '/de/guide/remote-repository-processing' },

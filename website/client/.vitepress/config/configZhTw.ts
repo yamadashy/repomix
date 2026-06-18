@@ -30,6 +30,7 @@ export const configZhTw = defineConfig({
           items: [
             { text: '輸出格式', link: '/zh-tw/guide/output' },
             { text: '命令行選項', link: '/zh-tw/guide/command-line-options' },
+            { text: '監視模式', link: '/zh-tw/guide/watch-mode' },
             { text: '配置', link: '/zh-tw/guide/configuration' },
             { text: '自定義指令', link: '/zh-tw/guide/custom-instructions' },
             { text: 'GitHub倉庫處理', link: '/zh-tw/guide/remote-repository-processing' },

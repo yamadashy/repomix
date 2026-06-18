@@ -30,6 +30,7 @@ export const configPtBr = defineConfig({
           items: [
             { text: 'Formatos de Saída', link: '/pt-br/guide/output' },
             { text: 'Opções de Linha de Comando', link: '/pt-br/guide/command-line-options' },
+            { text: 'Modo de observação', link: '/pt-br/guide/watch-mode' },
             { text: 'Configuração', link: '/pt-br/guide/configuration' },
             { text: 'Instruções Personalizadas', link: '/pt-br/guide/custom-instructions' },
             { text: 'Processamento de Repositório GitHub', link: '/pt-br/guide/remote-repository-processing' },

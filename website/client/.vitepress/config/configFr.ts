@@ -30,6 +30,7 @@ export const configFr = defineConfig({
           items: [
             { text: 'Formats de sortie', link: '/fr/guide/output' },
             { text: 'Options de ligne de commande', link: '/fr/guide/command-line-options' },
+            { text: 'Mode surveillance', link: '/fr/guide/watch-mode' },
             { text: 'Configuration', link: '/fr/guide/configuration' },
             { text: 'Instructions personnalisées', link: '/fr/guide/custom-instructions' },
             { text: 'Traitement des dépôts GitHub', link: '/fr/guide/remote-repository-processing' },
