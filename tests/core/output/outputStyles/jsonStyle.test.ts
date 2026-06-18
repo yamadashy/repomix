@@ -124,6 +124,23 @@ describe('JSON Output Style', () => {
     expect(parsed.stdinContent).toBe('npm run build failed');
   });
 
+  test('should preserve empty stdinContent when provided', async () => {
+    const config = createMockConfig({
+      output: {
+        ...createMockConfig().output,
+        stdinContent: '',
+      },
+    });
+    const processedFiles = createMockProcessedFiles();
+    const allFilePaths = processedFiles.map((f) => f.path);
+
+    const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
+    const parsed = JSON.parse(result);
+
+    expect(Object.hasOwn(parsed, 'stdinContent')).toBe(true);
+    expect(parsed.stdinContent).toBe('');
+  });
+
   test('should include files when enabled', async () => {
     const config = createMockConfig({
       output: {

@@ -177,7 +177,7 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
     ...(renderContext.headerText && {
       userProvidedHeader: renderContext.headerText,
     }),
-    ...(renderContext.stdinContent && {
+    ...(renderContext.stdinContent !== undefined && {
       stdinContent: renderContext.stdinContent,
     }),
     ...(renderContext.directoryStructureEnabled && {

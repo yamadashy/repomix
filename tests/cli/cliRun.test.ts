@@ -7,6 +7,7 @@ import * as remoteAction from '../../src/cli/actions/remoteAction.js';
 import * as versionAction from '../../src/cli/actions/versionAction.js';
 import { run, runCli } from '../../src/cli/cliRun.js';
 import type { CliOptions } from '../../src/cli/types.js';
+import * as fileStdin from '../../src/core/file/fileStdin.js';
 import * as gitRemoteHandle from '../../src/core/git/gitRemoteHandle.js';
 import type { PackResult } from '../../src/core/packager.js';
 import { logger, type RepomixLogLevel, repomixLogLevels } from '../../src/shared/logger.js';
@@ -223,6 +224,39 @@ describe('cliRun', () => {
       });
 
       expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object));
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should resolve stdin content before executing default action', async () => {
+      vi.spyOn(fileStdin, 'readContentFromStdin').mockResolvedValue('npm run build failed');
+
+      await runCli(['.'], process.cwd(), {
+        stdinContent: true,
+      });
+
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['.'],
+        process.cwd(),
+        expect.objectContaining({
+          stdinContent: 'npm run build failed',
+        }),
+      );
+    });
+
+    test('should resolve stdin content before executing remote action', async () => {
+      vi.spyOn(fileStdin, 'readContentFromStdin').mockResolvedValue('remote build failed');
+
+      await runCli(['.'], process.cwd(), {
+        remote: 'yamadashy/repomix',
+        stdinContent: true,
+      });
+
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+        'yamadashy/repomix',
+        expect.objectContaining({
+          stdinContent: 'remote build failed',
+        }),
+      );
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 

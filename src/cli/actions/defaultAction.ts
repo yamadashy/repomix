@@ -8,7 +8,7 @@ import {
   type RepomixOutputStyle,
   repomixConfigCliSchema,
 } from '../../config/configSchema.js';
-import { readContentFromStdin, readFilePathsFromStdin } from '../../core/file/fileStdin.js';
+import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfSchemaError } from '../../shared/errorHandle.js';
@@ -60,10 +60,6 @@ export const runDefaultAction = async (
   progressCallback?: RepomixProgressCallback,
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', cliOptions);
-
-  if (cliOptions.stdinContent === true) {
-    cliOptions.stdinContent = await readContentFromStdin();
-  }
 
   // Build the merged config (migration + file config + CLI options)
   const config = await buildMergedConfig(cwd, cliOptions);
