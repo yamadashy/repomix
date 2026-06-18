@@ -132,6 +132,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # 使用簡寫的遠端儲存庫
 repomix --remote user/repo
 
+# 使用簡寫的遠端儲存庫（自動檢測，無需 --remote）
+repomix user/repo
+
 # 使用stdin的檔案清單
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin

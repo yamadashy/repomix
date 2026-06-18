@@ -133,6 +133,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Удалённый репозиторий с сокращением
 repomix --remote user/repo
 
+# Удалённый репозиторий с сокращением (определяется автоматически, без --remote)
+repomix user/repo
+
 # Использование stdin для списка файлов
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin

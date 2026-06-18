@@ -132,6 +132,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Kho lưu trữ từ xa với dạng viết tắt
 repomix --remote user/repo
 
+# Kho lưu trữ từ xa với dạng viết tắt (tự động phát hiện, không cần --remote)
+repomix user/repo
+
 # Danh sách tệp sử dụng stdin
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin

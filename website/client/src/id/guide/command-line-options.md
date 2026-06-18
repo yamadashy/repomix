@@ -132,6 +132,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Repositori remote dengan bentuk singkat
 repomix --remote user/repo
 
+# Repositori remote dengan bentuk singkat (terdeteksi otomatis, tanpa --remote)
+repomix user/repo
+
 # Daftar file menggunakan stdin
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin

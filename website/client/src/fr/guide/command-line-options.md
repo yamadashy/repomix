@@ -132,6 +132,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Dépôt distant avec forme abrégée
 repomix --remote user/repo
 
+# Dépôt distant avec forme abrégée (détecté automatiquement, sans --remote)
+repomix user/repo
+
 # Liste de fichiers utilisant stdin
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin

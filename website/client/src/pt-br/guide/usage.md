@@ -56,6 +56,9 @@ repomix --remote https://github.com/user/repo
 # Usando abreviação
 repomix --remote user/repo
 
+# Usando atalho sem --remote (detectado automaticamente)
+repomix user/repo
+
 # Branch/tag/commit específico
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695

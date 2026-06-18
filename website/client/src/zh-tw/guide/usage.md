@@ -56,6 +56,9 @@ repomix --remote https://github.com/user/repo
 # 使用簡寫形式
 repomix --remote user/repo
 
+# 不使用 --remote 的簡寫（自動檢測）
+repomix user/repo
+
 # 指定分支/標籤/提交
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695

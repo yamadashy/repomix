@@ -137,6 +137,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # 축약형을 사용한 원격 저장소
 repomix --remote user/repo
 
+# 축약형을 사용한 원격 저장소 (자동 감지, --remote 불필요)
+repomix user/repo
+
 # stdin을 사용한 파일 목록
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin

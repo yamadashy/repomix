@@ -136,6 +136,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # Remote repository with shorthand
 repomix --remote user/repo
 
+# Remote repository with shorthand (auto-detected, no --remote needed)
+repomix user/repo
+
 # Using stdin for file list
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin

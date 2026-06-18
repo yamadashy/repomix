@@ -132,6 +132,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # शॉर्टहैंड के साथ रिमोट रिपॉजिटरी
 repomix --remote user/repo
 
+# शॉर्टहैंड के साथ रिमोट रिपॉजिटरी (स्वतः पता लगाया गया, --remote आवश्यक नहीं)
+repomix user/repo
+
 # stdin का उपयोग करके फ़ाइल सूची
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin

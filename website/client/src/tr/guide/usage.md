@@ -56,6 +56,9 @@ repomix --remote https://github.com/user/repo
 # Kısa biçim kullanarak
 repomix --remote user/repo
 
+# --remote olmadan kısayol kullanımı (otomatik algılanır)
+repomix user/repo
+
 # Belirli dal/etiket/commit
 repomix --remote user/repo --remote-branch main
 repomix --remote user/repo --remote-branch 935b695

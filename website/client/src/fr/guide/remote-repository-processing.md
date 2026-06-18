@@ -15,6 +15,14 @@ repomix --remote https://github.com/user/repo
 repomix --remote user/repo
 ```
 
+Vous pouvez aussi passer le format abrégé `owner/repo` directement, sans `--remote` :
+
+```bash
+repomix yamadashy/repomix
+```
+
+Comme `owner/repo` ressemble aussi à un chemin local relatif, Repomix ne le traite comme un dépôt distant que lorsqu'aucun fichier ou dossier local de ce nom n'existe et que le dépôt est accessible sur GitHub. Un chemin local existant a toujours la priorité ; pour forcer le traitement local d'un chemin en forme `owner/repo`, préfixez-le par `./` (par exemple, `repomix ./owner/repo`). Si l'argument correspond au motif mais que le dépôt est inaccessible (par exemple un dépôt privé ou une faute de frappe), Repomix le traite alors comme un chemin local.
+
 ## Sélection de branche et de commit
 
 ```bash

@@ -137,6 +137,9 @@ repomix --remote https://github.com/user/repo/commit/836abcd7335137228ad77feb286
 # ショートハンドを使用したリモートリポジトリ
 repomix --remote user/repo
 
+# ショートハンドを使用したリモートリポジトリ（自動検出、--remote 不要）
+repomix user/repo
+
 # stdinを使用したファイルリスト
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin
