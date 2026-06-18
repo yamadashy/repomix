@@ -89,6 +89,12 @@ description: "Referenz aller Repomix-CLI-Optionen für Eingabe, Ausgabe, Dateiau
 | `--skill-output <path>` | Skill-Ausgabeverzeichnis direkt angeben (überspringt die Standortauswahl) |
 | `-f, --force` | Alle Bestätigungsaufforderungen überspringen (z.B. Skill-Verzeichnis überschreiben) |
 
+## Watch-Modus-Optionen
+
+- `-w, --watch`: Auf Dateiänderungen achten und automatisch neu packen. Neue, geänderte und gelöschte Dateien werden erkannt, schnell aufeinanderfolgende Änderungen werden entprellt (300 ms), und nach jedem Neuaufbau wird ein Zeitstempel ausgegeben. Mit `Ctrl+C` beenden.
+
+Der Watch-Modus funktioniert nur mit lokalen Verzeichnissen und kann daher nicht mit `--remote`, einer als Positionsargument übergebenen Remote-Repository-URL, `--stdout`, `--stdin`, `--split-output`, `--skill-generate` oder `--copy` kombiniert werden. Diese Einschränkungen gelten unabhängig davon, ob die Option über die Befehlszeile oder in Ihrer Konfigurationsdatei gesetzt wird.
+
 ## Verwandte Ressourcen
 
 - [Konfiguration](/de/guide/configuration) - Optionen in der Konfigurationsdatei statt CLI-Flags setzen
@@ -140,5 +146,9 @@ repomix --include-diffs --include-logs  # Sowohl Diffs als auch Logs einschließ
 # Token-Anzahl-Analyse
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Nur Dateien/Verzeichnisse mit 1000+ Tokens anzeigen
+
+# Watch-Modus: bei Dateiänderungen automatisch neu packen
+repomix --watch
+repomix -w --include "src/**/*.ts"
 ```
 

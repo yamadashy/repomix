@@ -89,6 +89,12 @@ description: "Girdi, çıktı, dosya seçimi, uzak depolar, yapılandırma, güv
 | `--skill-output <path>` | Beceri çıktı dizin yolunu doğrudan belirt (konum istemini atlar) |
 | `-f, --force` | Tüm onay istemlerini atla (örn. beceri dizini üzerine yazma) |
 
+## İzleme Modu Seçenekleri
+
+- `-w, --watch`: Dosya değişikliklerini izler ve otomatik olarak yeniden paketler. Yeni, değiştirilmiş ve silinmiş dosyalar algılanır, hızlı değişiklikler debounce edilir (300 ms) ve her yeniden oluşturmadan sonra bir zaman damgası yazdırılır. Durdurmak için `Ctrl+C` tuşlarına basın.
+
+İzleme modu yalnızca yerel dizinlerle çalışır, bu nedenle `--remote`, konumsal argüman olarak verilen uzak depo URL'si, `--stdout`, `--stdin`, `--split-output`, `--skill-generate` veya `--copy` ile birlikte kullanılamaz. Bu kısıtlamalar, seçenek ister komut satırında ister yapılandırma dosyanızda ayarlanmış olsun geçerlidir.
+
 ## İlgili Kaynaklar
 
 - [Yapılandırma](/tr/guide/configuration) - CLI bayrakları yerine yapılandırma dosyasında seçenekleri ayarlayın
@@ -144,4 +150,8 @@ repomix --include-diffs --include-logs  # Include both diffs and logs
 # Token count analysis
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Only show files/directories with 1000+ tokens
+
+# İzleme modu: dosyalar değiştiğinde otomatik olarak yeniden paketle
+repomix --watch
+repomix -w --include "src/**/*.ts"
 ```
