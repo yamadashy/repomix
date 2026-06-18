@@ -16,6 +16,7 @@ description: "Consultez toutes les options de la CLI Repomix pour l'entrée, la 
 | `--quiet` | Supprimer toute sortie console sauf les erreurs (utile pour les scripts) |
 | `--stdout` | Écrire la sortie empaquetée directement vers stdout au lieu d'un fichier (supprime toute journalisation) |
 | `--stdin` | Lire les chemins de fichiers depuis stdin, un par ligne (les fichiers spécifiés sont traités directement) |
+| `--stdin-content` | Lire du contenu arbitraire depuis stdin et l'inclure près du début de la sortie empaquetée |
 | `--copy` | Copier la sortie générée dans le presse-papiers système après le traitement |
 | `--token-count-tree [threshold]` | Afficher l'arbre des fichiers avec les comptages de jetons ; seuil optionnel pour n'afficher que les fichiers avec au moins N jetons (ex : `--token-count-tree 100`) |
 | `--top-files-len <number>` | Nombre des plus gros fichiers à afficher dans le résumé (par défaut : `5`) |
@@ -141,4 +142,3 @@ repomix --include-diffs --include-logs  # Inclure à la fois les diffs et les jo
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Afficher uniquement les fichiers/répertoires avec 1000+ jetons
 ```
-

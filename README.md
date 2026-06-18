@@ -276,6 +276,18 @@ When using `--stdin`, the specified files are effectively added to the include p
 > [!NOTE]
 > When using `--stdin`, file paths can be relative or absolute, and Repomix will automatically handle path resolution and deduplication.
 
+To include command output or other ad-hoc context near the top of the packed output:
+
+```bash
+# Include build output in the generated Repomix file
+npm run build 2>&1 | repomix --stdin-content
+
+# Include recent logs in the generated Repomix file
+tail -n 200 app.log | repomix --stdin-content
+```
+
+The `--stdin-content` option reads arbitrary stdin text and places it after the header section, before the directory structure. Use it when you want to package current error output, logs, or other runtime context together with the codebase. It cannot be combined with `--stdin`.
+
 To include git logs in the output:
 
 ```bash
@@ -616,6 +628,7 @@ Instruction
 | `--quiet` | Suppress all console output except errors (useful for scripting) |
 | `--stdout` | Write packed output directly to stdout instead of a file (suppresses all logging) |
 | `--stdin` | Read file paths from stdin, one per line (specified files are processed directly) |
+| `--stdin-content` | Read arbitrary stdin content and include it near the top of the packed output |
 | `--copy` | Copy the generated output to system clipboard after processing |
 | `--token-count-tree [threshold]` | Show file tree with token counts; optional threshold to show only files with ≥N tokens (e.g., `--token-count-tree 100`) |
 | `--top-files-len <number>` | Number of largest files to show in summary (default: `5`) |
@@ -692,7 +705,7 @@ Instruction
 #### Watch Mode
 - `-w, --watch`: Watch for file changes and automatically re-pack. Debounces rapid changes (300ms) and logs a timestamp on each rebuild. Stop with `Ctrl+C`.
 
-  Watch mode only works with local directories, so it cannot be combined with `--remote`, a positional remote repository URL, `--stdout`, `--stdin`, `--split-output`, `--skill-generate`, or `--copy` (whether set on the command line or in your config file).
+  Watch mode only works with local directories, so it cannot be combined with `--remote`, a positional remote repository URL, `--stdout`, `--stdin`, `--stdin-content`, `--split-output`, `--skill-generate`, or `--copy` (whether set on the command line or in your config file).
 
 #### Examples
 

@@ -31,6 +31,11 @@ export const getMarkdownTemplate = () => {
 {{{headerText}}}
 
 {{/if}}
+{{#if stdinContent}}
+# Standard Input Content
+{{{stdinContent}}}
+
+{{/if}}
 {{#if directoryStructureEnabled}}
 # Directory Structure
 \`\`\`

@@ -73,6 +73,12 @@ export const run = async () => {
         ).conflicts('output'),
       )
       .option('--stdin', 'Read file paths from stdin, one per line (specified files are processed directly)')
+      .addOption(
+        new Option(
+          '--stdin-content',
+          'Read arbitrary stdin content and include it near the top of the packed output',
+        ).conflicts('stdin'),
+      )
       .option('--copy', 'Copy the generated output to system clipboard after processing')
       .option(
         '--token-count-tree [threshold]',
@@ -260,6 +266,9 @@ const validateWatchOptions = (directories: string[], options: CliOptions): void 
   if (options.stdin) {
     throw new RepomixError('--watch cannot be used with --stdin. Watch mode discovers files automatically.');
   }
+  if (options.stdinContent) {
+    throw new RepomixError('--watch cannot be used with --stdin-content. Watch mode discovers files automatically.');
+  }
   if (options.copy) {
     throw new RepomixError(
       '--watch cannot be used with --copy. Watch mode re-packs on every change, which would repeatedly overwrite the clipboard.',
@@ -290,6 +299,10 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
 
   // Validate --watch conflicts early, before log level changes can suppress error messages
   validateWatchOptions(directories, options);
+
+  if (options.stdin && options.stdinContent) {
+    throw new RepomixError('--stdin cannot be used with --stdin-content. Both options consume standard input.');
+  }
 
   // Set log level based on verbose and quiet flags
   if (options.quiet) {

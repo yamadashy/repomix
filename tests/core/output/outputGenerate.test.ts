@@ -135,6 +135,30 @@ describe('outputGenerate', () => {
     expect(fileElements[1].textContent).toBe(mockProcessedFiles[1].content);
   });
 
+  test('generateOutput should include stdin content in parsable xml style', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.xml',
+        style: 'xml',
+        parsableStyle: true,
+        stdinContent: 'npm run build failed',
+        topFilesLength: 2,
+        showLineNumbers: false,
+        removeComments: false,
+        removeEmptyLines: false,
+      },
+    });
+
+    const output = await generateOutput([process.cwd()], mockConfig, [], []);
+
+    const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
+    const repomix = doc.documentElement;
+    if (!repomix) throw new Error('documentElement is null');
+
+    const stdinContent = repomix.getElementsByTagName('stdin_content')[0];
+    expect(stdinContent.textContent).toBe('npm run build failed');
+  });
+
   test('generateOutput should write correct content to file (parsable markdown style)', async () => {
     const mockConfig = createMockConfig({
       output: {

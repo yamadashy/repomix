@@ -41,6 +41,13 @@ ${PLAIN_LONG_SEPARATOR}
 {{{headerText}}}
 
 {{/if}}
+{{#if stdinContent}}
+${PLAIN_LONG_SEPARATOR}
+Standard Input Content
+${PLAIN_LONG_SEPARATOR}
+{{{stdinContent}}}
+
+{{/if}}
 {{#if directoryStructureEnabled}}
 ${PLAIN_LONG_SEPARATOR}
 Directory Structure

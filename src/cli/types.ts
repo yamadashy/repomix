@@ -36,6 +36,7 @@ export interface CliOptions extends OptionValues {
   dotIgnore?: boolean;
   defaultPatterns?: boolean;
   stdin?: boolean;
+  stdinContent?: boolean | string;
 
   // Remote Repository Options
   remote?: string;

@@ -3,6 +3,7 @@ import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   filterValidLines,
+  readContentFromStdin,
   readFilePathsFromStdin,
   readLinesFromStream,
   resolveAndDeduplicatePaths,
@@ -308,6 +309,37 @@ describe('fileStdin', () => {
       await expect(readFilePathsFromStdin(cwd, deps)).rejects.toThrow(
         'An unexpected error occurred while reading from stdin.',
       );
+    });
+  });
+
+  describe('readContentFromStdin', () => {
+    it('should throw error when stdin is TTY', async () => {
+      const mockStdin = { isTTY: true } as NodeJS.ReadableStream & { isTTY?: boolean };
+      const deps: StdinDependencies = {
+        stdin: mockStdin,
+        createReadlineInterface: vi.fn(),
+      };
+
+      await expect(readContentFromStdin(deps)).rejects.toThrow(RepomixError);
+      await expect(readContentFromStdin(deps)).rejects.toThrow(
+        'No data provided via stdin. Please pipe content to repomix when using --stdin-content flag.',
+      );
+    });
+
+    it('should preserve stdin content without line normalization', async () => {
+      const mockCreateInterface = vi.fn();
+      const mockStdin = Readable.from(['npm run build\r\n\r\n', 'Error: build failed\n']) as NodeJS.ReadableStream & {
+        isTTY?: boolean;
+      };
+      mockStdin.isTTY = false;
+
+      const result = await readContentFromStdin({
+        stdin: mockStdin,
+        createReadlineInterface: mockCreateInterface,
+      });
+
+      expect(mockCreateInterface).not.toHaveBeenCalled();
+      expect(result).toBe('npm run build\r\n\r\nError: build failed\n');
     });
   });
 });

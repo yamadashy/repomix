@@ -16,6 +16,7 @@ description: "Consulta tutte le opzioni della CLI Repomix per input, output, sel
 | `--quiet` | Sopprime tutto l'output in console eccetto gli errori (utile per lo scripting) |
 | `--stdout` | Scrive l'output impacchettato direttamente su stdout invece di un file (sopprime tutto il logging) |
 | `--stdin` | Legge i percorsi dei file da stdin, uno per riga (i file specificati vengono elaborati direttamente) |
+| `--stdin-content` | Legge contenuto arbitrario da stdin e lo include vicino all'inizio dell'output impacchettato |
 | `--copy` | Copia l'output generato negli appunti di sistema dopo l'elaborazione |
 | `--token-count-tree [threshold]` | Mostra l'albero dei file con conteggi token; soglia opzionale per mostrare solo file con almeno N token (es: `--token-count-tree 100`) |
 | `--top-files-len <number>` | Numero dei file più grandi da mostrare nel riepilogo (predefinito: `5`) |
@@ -141,4 +142,3 @@ repomix --include-diffs --include-logs  # Include sia diff che log
 repomix --token-count-tree
 repomix --token-count-tree 1000  # Mostra solo file/directory con 1000+ token
 ```
-

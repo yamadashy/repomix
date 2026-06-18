@@ -16,6 +16,7 @@ description: "Girdi, çıktı, dosya seçimi, uzak depolar, yapılandırma, güv
 | `--quiet` | Hatalar dışında tüm konsol çıktısını bastır (betik yazımı için kullanışlıdır) |
 | `--stdout` | Paketlenmiş çıktıyı dosya yerine doğrudan stdout'a yaz (tüm günlük kaydını bastırır) |
 | `--stdin` | Stdin'den dosya yollarını satır satır oku (belirtilen dosyalar doğrudan işlenir) |
+| `--stdin-content` | Stdin'den rastgele içerik oku ve paketlenmiş çıktının başına yakın ekle |
 | `--copy` | İşlemden sonra oluşturulan çıktıyı sistem panosuna kopyala |
 | `--token-count-tree [threshold]` | Token sayısıyla dosya ağacını göster; isteğe bağlı eşik yalnızca ≥N token içeren dosyaları gösterir (örn. `--token-count-tree 100`) |
 | `--top-files-len <number>` | Özette gösterilecek en büyük dosya sayısı (varsayılan: `5`) |

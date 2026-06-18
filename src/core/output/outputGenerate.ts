@@ -86,6 +86,7 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     ),
     summaryNotes: generateSummaryNotes(outputGeneratorContext.config),
     headerText: outputGeneratorContext.config.output.headerText,
+    stdinContent: outputGeneratorContext.config.output.stdinContent,
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
@@ -123,6 +124,7 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
           }
         : undefined,
       user_provided_header: renderContext.headerText,
+      stdin_content: renderContext.stdinContent,
       directory_structure: renderContext.directoryStructureEnabled ? renderContext.treeString : undefined,
       files: renderContext.filesEnabled
         ? {
@@ -174,6 +176,9 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
     }),
     ...(renderContext.headerText && {
       userProvidedHeader: renderContext.headerText,
+    }),
+    ...(renderContext.stdinContent && {
+      stdinContent: renderContext.stdinContent,
     }),
     ...(renderContext.directoryStructureEnabled && {
       directoryStructure: renderContext.treeString,
