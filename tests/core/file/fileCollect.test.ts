@@ -21,9 +21,16 @@ describe('fileCollect', () => {
 
     mockReadRawFile.mockResolvedValue({ content: 'file content' });
 
-    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
-      readRawFile: mockReadRawFile,
-    });
+    const result = await collectFiles(
+      mockFilePaths,
+      mockRootDir,
+      mockConfig,
+      () => {},
+      {},
+      {
+        readRawFile: mockReadRawFile,
+      },
+    );
 
     expect(result).toEqual({
       rawFiles: [
@@ -49,9 +56,16 @@ describe('fileCollect', () => {
       return { content: 'file content' };
     });
 
-    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
-      readRawFile: mockReadRawFile,
-    });
+    const result = await collectFiles(
+      mockFilePaths,
+      mockRootDir,
+      mockConfig,
+      () => {},
+      {},
+      {
+        readRawFile: mockReadRawFile,
+      },
+    );
 
     expect(result).toEqual({
       rawFiles: [{ path: 'text.txt', content: 'file content' }],
@@ -71,9 +85,16 @@ describe('fileCollect', () => {
       return { content: 'file content' };
     });
 
-    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
-      readRawFile: mockReadRawFile,
-    });
+    const result = await collectFiles(
+      mockFilePaths,
+      mockRootDir,
+      mockConfig,
+      () => {},
+      {},
+      {
+        readRawFile: mockReadRawFile,
+      },
+    );
 
     expect(result).toEqual({
       rawFiles: [{ path: 'normal.txt', content: 'file content' }],
@@ -98,9 +119,16 @@ describe('fileCollect', () => {
       return { content: 'file content' };
     });
 
-    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
-      readRawFile: mockReadRawFile,
-    });
+    const result = await collectFiles(
+      mockFilePaths,
+      mockRootDir,
+      mockConfig,
+      () => {},
+      {},
+      {
+        readRawFile: mockReadRawFile,
+      },
+    );
 
     expect(result).toEqual({
       rawFiles: [{ path: 'small.txt', content: 'file content' }],
@@ -119,9 +147,16 @@ describe('fileCollect', () => {
 
     mockReadRawFile.mockResolvedValue({ content: null, skippedReason: 'encoding-error' });
 
-    const result = await collectFiles(mockFilePaths, mockRootDir, mockConfig, () => {}, {
-      readRawFile: mockReadRawFile,
-    });
+    const result = await collectFiles(
+      mockFilePaths,
+      mockRootDir,
+      mockConfig,
+      () => {},
+      {},
+      {
+        readRawFile: mockReadRawFile,
+      },
+    );
 
     expect(result).toEqual({
       rawFiles: [],
@@ -137,10 +172,45 @@ describe('fileCollect', () => {
 
     mockReadRawFile.mockResolvedValue({ content: 'file content' });
 
-    await collectFiles(mockFilePaths, mockRootDir, mockConfig, mockProgress, {
-      readRawFile: mockReadRawFile,
-    });
+    await collectFiles(
+      mockFilePaths,
+      mockRootDir,
+      mockConfig,
+      mockProgress,
+      {},
+      {
+        readRawFile: mockReadRawFile,
+      },
+    );
 
     expect(mockProgress).toHaveBeenCalledTimes(2);
+  });
+
+  it('should call onFileCollected for collected files but not for skipped files', async () => {
+    const mockFilePaths = ['kept.txt', 'skipped.txt'];
+    const mockRootDir = '/root';
+    const mockConfig = createMockConfig();
+    const onFileCollected = vi.fn();
+
+    mockReadRawFile.mockImplementation(async (filePath: string) => {
+      if (filePath.endsWith('skipped.txt')) {
+        return { content: null, skippedReason: 'size-limit' };
+      }
+      return { content: 'file content' };
+    });
+
+    const result = await collectFiles(
+      mockFilePaths,
+      mockRootDir,
+      mockConfig,
+      () => {},
+      { onFileCollected },
+      { readRawFile: mockReadRawFile },
+    );
+
+    expect(onFileCollected).toHaveBeenCalledTimes(1);
+    expect(onFileCollected).toHaveBeenCalledWith({ path: 'kept.txt', content: 'file content' });
+    // The callback receives the same objects that end up in rawFiles
+    expect(result.rawFiles).toEqual([{ path: 'kept.txt', content: 'file content' }]);
   });
 });

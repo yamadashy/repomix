@@ -58,6 +58,14 @@ describe('packager', () => {
         },
         warmupPromise: Promise.resolve(),
       }),
+      createSecurityCheckTaskRunner: vi.fn().mockReturnValue({
+        taskRunner: {
+          run: vi.fn().mockResolvedValue([]),
+          cleanup: vi.fn().mockResolvedValue(undefined),
+        },
+        warmupPromise: Promise.resolve(),
+        completeWarmup: () => {},
+      }),
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -80,8 +88,20 @@ describe('packager', () => {
     const result = await pack(['root'], mockConfig, progressCallback, mockDeps);
 
     expect(mockDeps.searchFiles).toHaveBeenCalledWith('root', mockConfig, undefined);
-    expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback);
-    expect(mockDeps.validateFileSafety).toHaveBeenCalled();
+    expect(mockDeps.collectFiles).toHaveBeenCalledWith(mockFilePaths, 'root', mockConfig, progressCallback, {
+      onFileCollected: expect.any(Function),
+    });
+    expect(mockDeps.validateFileSafety).toHaveBeenCalledWith(
+      expect.anything(),
+      progressCallback,
+      mockConfig,
+      undefined,
+      undefined,
+      expect.objectContaining({
+        securityTaskRunner: expect.anything(),
+        securityCheckStream: expect.objectContaining({ addFile: expect.any(Function), finalize: expect.any(Function) }),
+      }),
+    );
     expect(mockDeps.processFiles).toHaveBeenCalled();
     expect(mockDeps.produceOutput).toHaveBeenCalled();
     expect(mockDeps.calculateMetrics).toHaveBeenCalled();
@@ -92,6 +112,7 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      expect.objectContaining({ securityTaskRunner: expect.anything() }),
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
@@ -144,8 +165,10 @@ describe('packager', () => {
 
     const baseDeps = () => {
       const cleanup = vi.fn().mockResolvedValue(undefined);
+      const securityCleanup = vi.fn().mockResolvedValue(undefined);
       return {
         cleanup,
+        securityCleanup,
         deps: {
           searchFiles: vi.fn().mockResolvedValue({ filePaths: mockFilePaths, emptyDirPaths: [] }),
           sortPaths: vi.fn().mockImplementation((p) => p),
@@ -176,6 +199,11 @@ describe('packager', () => {
           createMetricsTaskRunner: vi.fn().mockReturnValue({
             taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup },
             warmupPromise: Promise.resolve(),
+          }),
+          createSecurityCheckTaskRunner: vi.fn().mockReturnValue({
+            taskRunner: { run: vi.fn().mockResolvedValue([]), cleanup: securityCleanup },
+            warmupPromise: Promise.resolve(),
+            completeWarmup: vi.fn(),
           }),
           getGitDiffs: vi.fn().mockResolvedValue(undefined),
           getGitLogs: vi.fn().mockResolvedValue(undefined),
@@ -240,6 +268,39 @@ describe('packager', () => {
       await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('warmup failed');
 
       expect(cleanup).toHaveBeenCalled();
+    });
+
+    test('cleans up the pre-warmed security worker pool on success', async () => {
+      const { securityCleanup, deps } = baseDeps();
+
+      await pack(['root'], createMockConfig(), vi.fn(), deps);
+
+      expect(deps.createSecurityCheckTaskRunner).toHaveBeenCalledTimes(1);
+      // The second-stage warm-up receives the file count once search completes.
+      expect(deps.createSecurityCheckTaskRunner.mock.results[0].value.completeWarmup).toHaveBeenCalledWith(
+        mockFilePaths.length,
+      );
+      expect(securityCleanup).toHaveBeenCalled();
+    });
+
+    test('cleans up the security worker pool when validateFileSafety rejects', async () => {
+      const { securityCleanup, deps } = baseDeps();
+      deps.validateFileSafety = vi.fn().mockRejectedValue(new Error('security check failed'));
+
+      await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('security check failed');
+
+      expect(securityCleanup).toHaveBeenCalled();
+    });
+
+    test('does not create a security task runner when the security check is disabled', async () => {
+      const { securityCleanup, deps } = baseDeps();
+      const config = createMockConfig({ security: { enableSecurityCheck: false } });
+
+      const result = await pack(['root'], config, vi.fn(), deps);
+
+      expect(result.totalFiles).toBe(1);
+      expect(deps.createSecurityCheckTaskRunner).not.toHaveBeenCalled();
+      expect(securityCleanup).not.toHaveBeenCalled();
     });
   });
 });

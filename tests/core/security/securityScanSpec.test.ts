@@ -62,7 +62,7 @@ const runPack = async (rootDir: string, config: RepomixConfigMerged) =>
     searchFiles,
     sortPaths: (filePaths) => filePaths,
     collectFiles: (filePaths, root, cfg, progressCallback) =>
-      collectFiles(filePaths, root, cfg, progressCallback, { readRawFile }),
+      collectFiles(filePaths, root, cfg, progressCallback, {}, { readRawFile }),
     processFiles: async (rawFiles, cfg) => {
       const processedFiles: ProcessedFile[] = [];
       for (const rawFile of rawFiles) {
@@ -73,17 +73,19 @@ const runPack = async (rootDir: string, config: RepomixConfigMerged) =>
     // Real validateFileSafety + real runSecurityCheck, with only the worker
     // pool replaced by an in-process runner. Crucially, the branching inside
     // runSecurityCheck (how rawFiles + gitDiff/gitLog items are batched and
-    // dispatched) is still the production code path under test.
-    validateFileSafety: (rawFiles, progressCallback, cfg, gitDiff, gitLog) =>
+    // dispatched) is still the production code path under test — including the
+    // pre-created task runner forwarding from pack() through validateFileSafety.
+    validateFileSafety: (rawFiles, progressCallback, cfg, gitDiff, gitLog, overrideDeps) =>
       validateFileSafety(rawFiles, progressCallback, cfg, gitDiff, gitLog, {
-        runSecurityCheck: (files, progress, diff, log) =>
-          runSecurityCheck(files, progress, diff, log, {
-            initTaskRunner: (() =>
-              inlineSecurityTaskRunner()) as typeof import('../../../src/shared/processConcurrency.js').initTaskRunner,
-            getProcessConcurrency: () => 1,
-          }),
+        ...overrideDeps,
+        runSecurityCheck,
         filterOutUntrustedFiles,
       }),
+    createSecurityCheckTaskRunner: () => ({
+      taskRunner: inlineSecurityTaskRunner(),
+      warmupPromise: Promise.resolve(),
+      completeWarmup: () => {},
+    }),
     produceOutput,
     createMetricsTaskRunner: () => ({
       taskRunner: { run: async () => 0, cleanup: async () => {} },

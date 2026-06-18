@@ -28,7 +28,9 @@ describe('validateFileSafety', () => {
 
     const result = await validateFileSafety(rawFiles, progressCallback, config, undefined, undefined, deps);
 
-    expect(deps.runSecurityCheck).toHaveBeenCalledWith(rawFiles, progressCallback, undefined, undefined);
+    expect(deps.runSecurityCheck).toHaveBeenCalledWith(rawFiles, progressCallback, undefined, undefined, {
+      taskRunner: undefined,
+    });
     expect(deps.filterOutUntrustedFiles).toHaveBeenCalledWith(rawFiles, suspiciousFilesResults);
     expect(result).toEqual({
       safeRawFiles,
@@ -89,6 +91,54 @@ describe('validateFileSafety', () => {
 
       expect(warnSpy).not.toHaveBeenCalled();
     });
+  });
+
+  it('forwards a pre-warmed security task runner to runSecurityCheck', async () => {
+    const config: RepomixConfigMerged = {
+      security: { enableSecurityCheck: true },
+    } as RepomixConfigMerged;
+    const rawFiles: RawFile[] = [{ path: 'file1.txt', content: 'content' }];
+    const securityTaskRunner = {
+      run: vi.fn().mockResolvedValue([]),
+      cleanup: vi.fn().mockResolvedValue(undefined),
+    };
+    const deps = {
+      runSecurityCheck: vi.fn().mockResolvedValue([]),
+      filterOutUntrustedFiles: vi.fn().mockReturnValue(rawFiles),
+      securityTaskRunner,
+    };
+
+    await validateFileSafety(rawFiles, vi.fn(), config, undefined, undefined, deps);
+
+    expect(deps.runSecurityCheck).toHaveBeenCalledWith(rawFiles, expect.any(Function), undefined, undefined, {
+      taskRunner: securityTaskRunner,
+    });
+  });
+
+  it('uses the streaming session instead of runSecurityCheck when provided', async () => {
+    const config: RepomixConfigMerged = {
+      security: { enableSecurityCheck: true },
+    } as RepomixConfigMerged;
+    const rawFiles: RawFile[] = [{ path: 'file1.txt', content: 'content' }];
+    const suspiciousFilesResults: SuspiciousFileResult[] = [
+      { filePath: 'file1.txt', messages: ['something suspicious.'], type: 'file' },
+    ];
+    const progressCallback: RepomixProgressCallback = vi.fn();
+    const securityCheckStream = {
+      addFile: vi.fn(),
+      finalize: vi.fn().mockResolvedValue(suspiciousFilesResults),
+    };
+    const deps = {
+      runSecurityCheck: vi.fn(),
+      filterOutUntrustedFiles: vi.fn().mockReturnValue([]),
+      securityCheckStream,
+    };
+
+    const result = await validateFileSafety(rawFiles, progressCallback, config, undefined, undefined, deps);
+
+    expect(securityCheckStream.finalize).toHaveBeenCalledWith(rawFiles, progressCallback, undefined, undefined);
+    expect(deps.runSecurityCheck).not.toHaveBeenCalled();
+    expect(result.suspiciousFilesResults).toEqual(suspiciousFilesResults);
   });
 
   it('skips runSecurityCheck entirely when enableSecurityCheck is false', async () => {

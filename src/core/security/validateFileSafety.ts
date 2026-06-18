@@ -5,7 +5,21 @@ import type { RawFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
 import { filterOutUntrustedFiles } from './filterOutUntrustedFiles.js';
-import { runSecurityCheck, type SuspiciousFileResult } from './securityCheck.js';
+import { runSecurityCheck, type SecurityTaskRunner, type SuspiciousFileResult } from './securityCheck.js';
+import type { SecurityCheckStream } from './securityCheckStreaming.js';
+
+const defaultDeps = {
+  runSecurityCheck,
+  filterOutUntrustedFiles,
+  // Optional pre-warmed task runner created by pack() before file collection,
+  // forwarded to runSecurityCheck so the worker spawn cost stays off the
+  // critical path. Its lifecycle is owned by the caller.
+  securityTaskRunner: undefined as SecurityTaskRunner | undefined,
+  // Optional streaming session created by pack(). When present, most file
+  // batches were already dispatched while collection was in flight, and
+  // finalize() returns the same results runSecurityCheck would produce.
+  securityCheckStream: undefined as SecurityCheckStream | undefined,
+};
 
 // Marks which files are suspicious and which are safe
 // Returns Git diff results separately so they can be included in the output
@@ -16,18 +30,20 @@ export const validateFileSafety = async (
   config: RepomixConfigMerged,
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
-  deps = {
-    runSecurityCheck,
-    filterOutUntrustedFiles,
-  },
+  overrideDeps: Partial<typeof defaultDeps> = {},
 ) => {
+  const deps = { ...defaultDeps, ...overrideDeps };
   let suspiciousFilesResults: SuspiciousFileResult[] = [];
   let suspiciousGitDiffResults: SuspiciousFileResult[] = [];
   let suspiciousGitLogResults: SuspiciousFileResult[] = [];
 
   if (config.security.enableSecurityCheck) {
     progressCallback('Running security check...');
-    const allResults = await deps.runSecurityCheck(rawFiles, progressCallback, gitDiffResult, gitLogResult);
+    const allResults = deps.securityCheckStream
+      ? await deps.securityCheckStream.finalize(rawFiles, progressCallback, gitDiffResult, gitLogResult)
+      : await deps.runSecurityCheck(rawFiles, progressCallback, gitDiffResult, gitLogResult, {
+          taskRunner: deps.securityTaskRunner,
+        });
 
     // Separate Git diff and Git log results from regular file results
     suspiciousFilesResults = allResults.filter((result) => result.type === 'file');

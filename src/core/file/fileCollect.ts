@@ -20,6 +20,14 @@ export interface FileCollectResults {
   skippedFiles: SkippedFileInfo[];
 }
 
+export interface CollectFilesOptions {
+  // Invoked as soon as each file's content is read (in completion order, not
+  // path order), letting downstream consumers — e.g. the streaming security
+  // check — start working while the remaining reads are still in flight.
+  // Only called for files that end up in rawFiles, never for skipped files.
+  onFileCollected?: (file: RawFile) => void;
+}
+
 const promisePool = async <T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> => {
   const results: R[] = Array.from({ length: items.length });
   let nextIndex = 0;
@@ -41,6 +49,7 @@ export const collectFiles = async (
   rootDir: string,
   config: RepomixConfigMerged,
   progressCallback: RepomixProgressCallback = () => {},
+  options: CollectFilesOptions = {},
   deps = {
     readRawFile: defaultReadRawFile,
   },
@@ -60,15 +69,21 @@ export const collectFiles = async (
     progressCallback(`Collect file... (${completedTasks}/${totalTasks}) ${pc.dim(filePath)}`);
     logger.trace(`Collect files... (${completedTasks}/${totalTasks}) ${filePath}`);
 
-    return { filePath, result };
+    let rawFile: RawFile | undefined;
+    if (result.content !== null) {
+      rawFile = { path: filePath, content: result.content };
+      options.onFileCollected?.(rawFile);
+    }
+
+    return { filePath, result, rawFile };
   });
 
   const rawFiles: RawFile[] = [];
   const skippedFiles: SkippedFileInfo[] = [];
 
-  for (const { filePath, result } of results) {
-    if (result.content !== null) {
-      rawFiles.push({ path: filePath, content: result.content });
+  for (const { filePath, result, rawFile } of results) {
+    if (rawFile) {
+      rawFiles.push(rawFile);
     } else if (result.skippedReason) {
       skippedFiles.push({ path: filePath, reason: result.skippedReason });
     }

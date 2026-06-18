@@ -76,6 +76,11 @@ const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  // fileLineCounts is only consumed by skill generation and markdownCodeBlockDelimiter only by the
+  // markdown/skill templates; both require a full scan over every file's content. Memoized getters
+  // defer that scan so the default XML (and plain/JSON) path never pays for it.
+  let fileLineCounts: Record<string, number> | undefined;
+  let markdownCodeBlockDelimiter: string | undefined;
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -89,12 +94,18 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    get fileLineCounts() {
+      fileLineCounts ??= calculateFileLineCounts(outputGeneratorContext.processedFiles);
+      return fileLineCounts;
+    },
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    get markdownCodeBlockDelimiter() {
+      markdownCodeBlockDelimiter ??= calculateMarkdownDelimiter(outputGeneratorContext.processedFiles);
+      return markdownCodeBlockDelimiter;
+    },
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,

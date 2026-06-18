@@ -80,6 +80,14 @@ index 123..456 100644
       },
       warmupPromise: Promise.resolve(),
     });
+    const mockCreateSecurityCheckTaskRunner = vi.fn().mockReturnValue({
+      taskRunner: {
+        run: vi.fn().mockResolvedValue([]),
+        cleanup: vi.fn().mockResolvedValue(undefined),
+      },
+      warmupPromise: Promise.resolve(),
+      completeWarmup: vi.fn(),
+    });
 
     // Config with diffs disabled
     if (mockConfig.output.git) {
@@ -94,6 +102,7 @@ index 123..456 100644
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
+      createSecurityCheckTaskRunner: mockCreateSecurityCheckTaskRunner,
       sortPaths: mockSortPaths,
     });
 
@@ -138,6 +147,14 @@ index 123..456 100644
       },
       warmupPromise: Promise.resolve(),
     });
+    const mockCreateSecurityCheckTaskRunner = vi.fn().mockReturnValue({
+      taskRunner: {
+        run: vi.fn().mockResolvedValue([]),
+        cleanup: vi.fn().mockResolvedValue(undefined),
+      },
+      warmupPromise: Promise.resolve(),
+      completeWarmup: vi.fn(),
+    });
 
     // Config with diffs enabled
     if (mockConfig.output.git) {
@@ -152,6 +169,7 @@ index 123..456 100644
       produceOutput: mockProduceOutput,
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
+      createSecurityCheckTaskRunner: mockCreateSecurityCheckTaskRunner,
       sortPaths: mockSortPaths,
     });
 
