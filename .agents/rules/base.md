@@ -43,7 +43,10 @@ repomix/
 
 - Follow the project's coding standards enforced by Biome (`biome.json`)
 - Maintain feature-based directory structure and avoid dependencies between features
-- Split files exceeding 250 lines into multiple files based on functionality
+- Keep each file focused on a single responsibility
+- Treat ~250 lines as a signal to review a file's cohesion, not a mandate to split:
+  split when the file mixes multiple responsibilities, but leave it as-is when the
+  length comes from one cohesive concern (e.g. large data/config tables)
 - Add comments in English where non-obvious logic exists
 - Provide corresponding unit tests for new features
 - Verify changes by running:
