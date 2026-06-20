@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781796081675,
+  "lastUpdate": 1781951856346,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -7020,6 +7020,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1222ms, Q3: 1241ms\nAll times: 1198, 1203, 1209, 1214, 1219, 1222, 1226, 1228, 1230, 1232, 1234, 1235, 1236, 1238, 1238, 1241, 1242, 1243, 1244, 1263ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "77fe4df591cb4ee61c152cb2e2fefe1738cdf610",
+          "message": "Merge pull request #1649 from WilliamK112/expose-skill-project-name\n\nfeat(cli): expose skill project name option",
+          "timestamp": "2026-06-20T19:35:35+09:00",
+          "tree_id": "dfb48d37cc2136abc13e37c4cb6eee0bd1a36ccc",
+          "url": "https://github.com/yamadashy/repomix/commit/77fe4df591cb4ee61c152cb2e2fefe1738cdf610"
+        },
+        "date": 1781951855263,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 536,
+            "range": "±75",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 517ms, Q3: 592ms\nAll times: 484, 487, 488, 488, 496, 500, 504, 517, 519, 519, 524, 527, 534, 534, 535, 536, 537, 538, 549, 553, 553, 565, 592, 620, 623, 637, 678, 684, 783, 788ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 795,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 786ms, Q3: 802ms\nAll times: 782, 783, 784, 785, 785, 786, 787, 793, 793, 794, 795, 795, 799, 799, 799, 802, 803, 803, 803, 810ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 977,
+            "range": "±48",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 970ms, Q3: 1018ms\nAll times: 957, 964, 966, 968, 968, 970, 971, 973, 975, 977, 977, 981, 986, 1006, 1009, 1018, 1026, 1034, 1038, 1216ms"
           }
         ]
       }
