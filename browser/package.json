@@ -34,10 +34,10 @@
   "license": "MIT",
   "devDependencies": {
     "@types/chrome": "^0.1.43",
-    "@types/node": "^24.13.1",
-    "@typescript/native-preview": "^7.0.0-dev.20260606.1",
+    "@types/node": "^24.13.2",
+    "@typescript/native-preview": "^7.0.0-dev.20260613.1",
     "jsdom": "^29.1.1",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8",
