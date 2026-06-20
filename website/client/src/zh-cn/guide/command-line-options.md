@@ -86,6 +86,7 @@ description: 查阅 Repomix CLI 的所有选项，涵盖输入、输出、文件
 | 选项 | 说明 |
 |------|------|
 | `--skill-generate [name]` | 生成 Claude Agent Skills 格式输出到 `.claude/skills/<name>/` 目录（省略名称时自动生成） |
+| `--skill-project-name <name>` | 覆盖生成的 Skills 描述中使用的项目名称 |
 | `--skill-output <path>` | 直接指定技能输出目录路径（跳过位置选择提示） |
 | `-f, --force` | 跳过所有确认提示（例如：技能目录覆盖） |
 

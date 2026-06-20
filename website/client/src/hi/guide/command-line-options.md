@@ -86,6 +86,7 @@ description: Input, output, file selection, remote repositories, configuration, 
 | विकल्प | विवरण |
 |--------|-------|
 | `--skill-generate [name]` | Claude Agent Skills फ़ॉर्मेट में आउटपुट `.claude/skills/<name>/` डायरेक्टरी में जनरेट करें (नाम छोड़ने पर ऑटो-जनरेट) |
+| `--skill-project-name <name>` | जनरेट किए गए Skills विवरण में उपयोग किए जाने वाले प्रोजेक्ट नाम को ओवरराइड करें |
 | `--skill-output <path>` | स्किल आउटपुट डायरेक्टरी पथ सीधे निर्दिष्ट करें (स्थान प्रॉम्प्ट छोड़ें) |
 | `-f, --force` | सभी पुष्टि प्रॉम्प्ट छोड़ें (जैसे: स्किल डायरेक्टरी ओवरराइट) |
 

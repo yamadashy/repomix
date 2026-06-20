@@ -86,6 +86,7 @@ description: "Referenz aller Repomix-CLI-Optionen für Eingabe, Ausgabe, Dateiau
 | Option | Beschreibung |
 |--------|-------------|
 | `--skill-generate [name]` | Claude Agent Skills Format-Ausgabe ins Verzeichnis `.claude/skills/<name>/` generieren (Name wird automatisch generiert, wenn weggelassen) |
+| `--skill-project-name <name>` | Den in generierten Skills-Beschreibungen verwendeten Projektnamen überschreiben |
 | `--skill-output <path>` | Skill-Ausgabeverzeichnis direkt angeben (überspringt die Standortauswahl) |
 | `-f, --force` | Alle Bestätigungsaufforderungen überspringen (z.B. Skill-Verzeichnis überschreiben) |
 

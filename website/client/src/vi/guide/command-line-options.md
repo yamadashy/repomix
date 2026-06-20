@@ -86,6 +86,7 @@ description: Tham khảo mọi tùy chọn Repomix CLI cho input, output, chọn
 | Tùy chọn | Mô tả |
 |-----------|-------|
 | `--skill-generate [name]` | Tạo đầu ra định dạng Claude Agent Skills vào thư mục `.claude/skills/<name>/` (tên tự động tạo nếu bỏ qua) |
+| `--skill-project-name <name>` | Ghi đè tên dự án được sử dụng trong mô tả Skills được tạo |
 | `--skill-output <path>` | Chỉ định trực tiếp đường dẫn thư mục đầu ra skill (bỏ qua lời nhắc vị trí) |
 | `-f, --force` | Bỏ qua tất cả lời nhắc xác nhận (ví dụ: ghi đè thư mục skill) |
 
