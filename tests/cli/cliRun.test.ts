@@ -352,6 +352,24 @@ describe('cliRun', () => {
     });
   });
 
+  describe('skill generation options', () => {
+    test('should pass --skill-project-name to default action', async () => {
+      await runCli(['.'], process.cwd(), {
+        skillGenerate: true,
+        skillProjectName: 'Repomix',
+      });
+
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['.'],
+        process.cwd(),
+        expect.objectContaining({
+          skillGenerate: true,
+          skillProjectName: 'Repomix',
+        }),
+      );
+    });
+  });
+
   describe('security check flag', () => {
     test('should enable security check by default', async () => {
       await runCli(['.'], process.cwd(), {});

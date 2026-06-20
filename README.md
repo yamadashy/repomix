@@ -686,6 +686,7 @@ Instruction
 | Option | Description |
 |--------|-------------|
 | `--skill-generate [name]` | Generate Claude Agent Skills format output to `.claude/skills/<name>/` directory (name auto-generated if omitted) |
+| `--skill-project-name <name>` | Override the project name used in generated Skills descriptions |
 | `--skill-output <path>` | Specify skill output directory path directly (skips location prompt) |
 | `-f, --force` | Skip all confirmation prompts (e.g., skill directory overwrite) |
 
@@ -1177,6 +1178,9 @@ repomix --skill-generate
 
 # Generate with custom Skills name
 repomix --skill-generate my-project-reference
+
+# Generate with a custom project name in Skills descriptions
+repomix --skill-generate --skill-project-name "My Project"
 
 # Generate from remote repository
 repomix --remote https://github.com/user/repo --skill-generate

@@ -74,10 +74,16 @@ export const runDefaultAction = async (
   if (cliOptions.force && config.skillGenerate === undefined) {
     throw new RepomixError('--force can only be used with --skill-generate');
   }
+  if (cliOptions.skillProjectName !== undefined && config.skillGenerate === undefined) {
+    throw new RepomixError('--skill-project-name can only be used with --skill-generate');
+  }
 
   // Validate --skill-output is not empty or whitespace only
   if (cliOptions.skillOutput !== undefined && !cliOptions.skillOutput.trim()) {
     throw new RepomixError('--skill-output path cannot be empty');
+  }
+  if (cliOptions.skillProjectName !== undefined && !cliOptions.skillProjectName.trim()) {
+    throw new RepomixError('--skill-project-name cannot be empty');
   }
 
   // Validate skill generation options and prompt for location

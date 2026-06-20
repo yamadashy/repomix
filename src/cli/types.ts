@@ -64,7 +64,7 @@ export interface CliOptions extends OptionValues {
   skillGenerate?: string | boolean;
   skillName?: string; // Pre-computed skill name (used internally for remote repos)
   skillDir?: string; // Pre-computed skill directory (used internally for remote repos)
-  skillProjectName?: string; // Pre-computed project name for skill description (used internally for remote repos)
+  skillProjectName?: string; // Project name for generated skill descriptions
   skillSourceUrl?: string; // Source URL for skill (used internally for remote repos only)
   skillOutput?: string; // Output path for skill (skips location prompt)
   force?: boolean; // Skip all confirmation prompts
