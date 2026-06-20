@@ -101,6 +101,10 @@ const manipulators: Record<string, FileManipulator> = {
 };
 
 export const getFileManipulator = (filePath: string): FileManipulator | null => {
-  const ext = path.extname(filePath);
+  // Match extensions case-insensitively so files with uppercase extensions
+  // (e.g. `Main.JS`, `style.CSS`, `App.PY`) still get their comments and empty
+  // lines stripped. This mirrors the lowercasing already done for tree-sitter
+  // language detection in languageParser.ts.
+  const ext = path.extname(filePath).toLowerCase();
   return manipulators[ext] || null;
 };
