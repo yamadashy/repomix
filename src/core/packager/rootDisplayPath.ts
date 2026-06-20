@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { RepomixOutputFilePathStyle } from '../../config/configSchema.js';
+import { RepomixError } from '../../shared/errorHandle.js';
 
 /**
  * Helpers for building stable, unique per-root display labels and display
@@ -82,10 +83,33 @@ export const buildFileDisplayPath = ({
   filePathStyle,
   rootLabel,
 }: BuildFileDisplayPathParams): string => {
-  if (filePathStyle === 'cwd-relative') {
-    const absolutePath = path.resolve(rootDir, filePath);
-    return toDisplayPath(path.relative(path.resolve(cwd), absolutePath)) || '.';
+  switch (filePathStyle) {
+    case 'cwd-relative': {
+      const absolutePath = path.resolve(rootDir, filePath);
+      return toDisplayPath(path.relative(path.resolve(cwd), absolutePath)) || '.';
+    }
+    case 'target-relative':
+      return rootLabel ? joinDisplayPath(rootLabel, filePath) : toDisplayPath(filePath);
+    default:
+      // Exhaustive: adding a new style to repomixOutputFilePathStyleSchema must
+      // be handled here explicitly rather than silently falling through.
+      throw new RepomixError(`Unsupported output file path style: ${filePathStyle}`);
   }
+};
 
-  return rootLabel ? joinDisplayPath(rootLabel, filePath) : toDisplayPath(filePath);
+/**
+ * Whether a file path style renders files with per-root display labels (and a
+ * per-root tree). Centralizing this keeps the "which styles use root labels"
+ * decision in one exhaustive place, so adding a new style surfaces here (and
+ * errors if left unhandled) instead of silently defaulting in scattered checks.
+ */
+export const usesRootLabels = (filePathStyle: RepomixOutputFilePathStyle): boolean => {
+  switch (filePathStyle) {
+    case 'target-relative':
+      return true;
+    case 'cwd-relative':
+      return false;
+    default:
+      throw new RepomixError(`Unsupported output file path style: ${filePathStyle}`);
+  }
 };

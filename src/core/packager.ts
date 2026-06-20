@@ -15,7 +15,7 @@ import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMe
 import { loadTokenCountCache, saveTokenCountCache } from './metrics/tokenCountCache.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import { buildFileDisplayPath, buildRootLabels } from './packager/rootDisplayPath.js';
+import { buildFileDisplayPath, buildRootLabels, usesRootLabels } from './packager/rootDisplayPath.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
@@ -105,7 +105,7 @@ export const pack = async (
 
   const filePathStyle = config.output.filePathStyle;
   const rootLabels =
-    filePathStyle === 'target-relative' && rootDirs.length > 1 ? buildRootLabels(rootDirs, config.cwd) : undefined;
+    usesRootLabels(filePathStyle) && rootDirs.length > 1 ? buildRootLabels(rootDirs, config.cwd) : undefined;
 
   // Deduplicate and sort empty directory paths for reuse during output generation,
   // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
@@ -267,13 +267,12 @@ export const pack = async (
     }
 
     // Build filePathsByRoot for multi-root tree generation
-    const filePathsByRoot: FilesByRoot[] | undefined =
-      filePathStyle === 'target-relative'
-        ? sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => ({
-            rootLabel: rootLabels?.[index] ?? (path.basename(rootDir) || rootDir),
-            files: filePaths,
-          }))
-        : undefined;
+    const filePathsByRoot: FilesByRoot[] | undefined = usesRootLabels(filePathStyle)
+      ? sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => ({
+          rootLabel: rootLabels?.[index] ?? (path.basename(rootDir) || rootDir),
+          files: filePaths,
+        }))
+      : undefined;
 
     // Ensure warm-up task completes before metrics calculation
     await metricsWarmupPromise;
