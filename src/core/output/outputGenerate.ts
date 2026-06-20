@@ -335,13 +335,17 @@ export const buildOutputGeneratorContext = async (
   let directoryPathsForTree: string[] = [];
   let filePathsForTree: string[] = allFilePaths;
 
+  // Only prefix with the per-root label for genuine multi-root packs. For a single
+  // root, filePathsByRoot still carries a basename fallback label, but pack() leaves
+  // single-root file paths unprefixed — so prefixing the full-tree directories here
+  // would desync them from the included files and add a spurious root branch.
   const toOutputDisplayPath = (rootDir: string, filePath: string, index: number): string =>
     buildFileDisplayPath({
       rootDir,
       filePath,
       cwd: config.cwd,
       filePathStyle: config.output.filePathStyle,
-      rootLabel: filePathsByRoot?.[index]?.rootLabel,
+      rootLabel: rootDirs.length > 1 ? filePathsByRoot?.[index]?.rootLabel : undefined,
     });
 
   if (shouldUseFullTree) {
