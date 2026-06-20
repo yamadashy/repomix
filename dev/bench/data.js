@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781958744264,
+  "lastUpdate": 1781962323888,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -7200,6 +7200,51 @@ window.BENCHMARK_DATA = {
             "range": "±18",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1202ms, Q3: 1220ms\nAll times: 1181, 1192, 1196, 1199, 1200, 1202, 1203, 1204, 1211, 1212, 1212, 1213, 1213, 1215, 1220, 1220, 1220, 1221, 1226, 1250ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "661a4df8df50ae8d1c872bc4f5f3063fe3ffc621",
+          "message": "Merge pull request #1632 from serhiizghama/fix/file-manipulator-case-insensitive-extension\n\nfix(core): Match file extensions case-insensitively in getFileManipulator",
+          "timestamp": "2026-06-20T22:30:11+09:00",
+          "tree_id": "8cc750d3b6e6aa0d69634f8b040a42326fc7e418",
+          "url": "https://github.com/yamadashy/repomix/commit/661a4df8df50ae8d1c872bc4f5f3063fe3ffc621"
+        },
+        "date": 1781962322346,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 516,
+            "range": "±48",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 505ms, Q3: 553ms\nAll times: 483, 484, 499, 500, 502, 503, 503, 505, 506, 508, 508, 511, 512, 513, 514, 516, 520, 520, 523, 526, 526, 539, 553, 554, 564, 575, 581, 583, 585, 707ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 883,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 879ms, Q3: 894ms\nAll times: 866, 867, 867, 875, 877, 879, 881, 882, 882, 883, 883, 885, 886, 889, 890, 894, 897, 903, 911, 928ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1479,
+            "range": "±74",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1452ms, Q3: 1526ms\nAll times: 1387, 1422, 1427, 1439, 1445, 1452, 1460, 1467, 1475, 1478, 1479, 1498, 1502, 1507, 1520, 1526, 1533, 1543, 1544, 1695ms"
           }
         ]
       }
