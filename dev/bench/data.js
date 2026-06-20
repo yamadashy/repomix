@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781962323888,
+  "lastUpdate": 1781967337070,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -7245,6 +7245,51 @@ window.BENCHMARK_DATA = {
             "range": "±74",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1452ms, Q3: 1526ms\nAll times: 1387, 1422, 1427, 1439, 1445, 1452, 1460, 1467, 1475, 1478, 1479, 1498, 1502, 1507, 1520, 1526, 1533, 1543, 1544, 1695ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7a9833efb36c7d1156f9ad1df7de32538a1cc82a",
+          "message": "Merge pull request #1665 from yamadashy/docs/file-cohesion-guideline\n\ndocs: Reframe the 250-line rule as a cohesion-review signal",
+          "timestamp": "2026-06-20T23:54:09+09:00",
+          "tree_id": "a3b242d39c68a8b54d4e585e796b54dd4fcd7215",
+          "url": "https://github.com/yamadashy/repomix/commit/7a9833efb36c7d1156f9ad1df7de32538a1cc82a"
+        },
+        "date": 1781967336005,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 531,
+            "range": "±48",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 507ms, Q3: 555ms\nAll times: 477, 486, 494, 495, 499, 500, 501, 507, 507, 508, 508, 509, 509, 519, 528, 531, 535, 537, 539, 543, 548, 554, 555, 571, 571, 578, 582, 600, 636, 651ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 821,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 812ms, Q3: 835ms\nAll times: 801, 806, 810, 811, 812, 812, 814, 818, 820, 821, 821, 826, 829, 832, 832, 835, 835, 838, 860, 868ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1239,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1224ms, Q3: 1245ms\nAll times: 1210, 1211, 1218, 1220, 1221, 1224, 1227, 1233, 1236, 1238, 1239, 1241, 1243, 1243, 1244, 1245, 1245, 1251, 1255, 1265ms"
           }
         ]
       }
