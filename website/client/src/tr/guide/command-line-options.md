@@ -86,6 +86,7 @@ description: "Girdi, çıktı, dosya seçimi, uzak depolar, yapılandırma, güv
 | Seçenek | Açıklama |
 |---------|----------|
 | `--skill-generate [name]` | Claude Agent Skills formatında çıktıyı `.claude/skills/<name>/` dizinine oluştur (ad belirtilmezse otomatik oluşturulur) |
+| `--skill-project-name <name>` | Oluşturulan Skills açıklamalarında kullanılan proje adını geçersiz kıl |
 | `--skill-output <path>` | Beceri çıktı dizin yolunu doğrudan belirt (konum istemini atlar) |
 | `-f, --force` | Tüm onay istemlerini atla (örn. beceri dizini üzerine yazma) |
 

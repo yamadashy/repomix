@@ -86,6 +86,7 @@ description: Referensi lengkap opsi CLI Repomix untuk input, output, pemilihan f
 | Opsi | Deskripsi |
 |------|-----------|
 | `--skill-generate [name]` | Menghasilkan output format Claude Agent Skills ke direktori `.claude/skills/<name>/` (nama otomatis dihasilkan jika dihilangkan) |
+| `--skill-project-name <name>` | Mengganti nama proyek yang digunakan dalam deskripsi Skills yang dihasilkan |
 | `--skill-output <path>` | Menentukan jalur direktori output skill secara langsung (melewati prompt lokasi) |
 | `-f, --force` | Melewati semua prompt konfirmasi (mis. penimpaan direktori skill) |
 

@@ -86,6 +86,7 @@ description: "Consulta todas las opciones de la CLI de Repomix para entrada, sal
 | Opción | Descripción |
 |--------|-------------|
 | `--skill-generate [name]` | Generar salida en formato Claude Agent Skills en el directorio `.claude/skills/<name>/` (nombre autogenerado si se omite) |
+| `--skill-project-name <name>` | Sobrescribir el nombre del proyecto usado en las descripciones de Skills generadas |
 | `--skill-output <path>` | Especificar la ruta del directorio de salida de skills directamente (omite la solicitud de ubicación) |
 | `-f, --force` | Omitir todas las solicitudes de confirmación (ej: sobrescritura del directorio de skills) |
 
