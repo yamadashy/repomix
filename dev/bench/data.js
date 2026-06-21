@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781967337070,
+  "lastUpdate": 1782017277893,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -7290,6 +7290,51 @@ window.BENCHMARK_DATA = {
             "range": "±21",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1224ms, Q3: 1245ms\nAll times: 1210, 1211, 1218, 1220, 1221, 1224, 1227, 1233, 1236, 1238, 1239, 1241, 1243, 1243, 1244, 1245, 1245, 1251, 1255, 1265ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "095d078b465eba6c9c55cc2000224918e997341c",
+          "message": "Merge pull request #1646 from Samsen879/feature/path-style\n\nAdd cwd-relative output path style",
+          "timestamp": "2026-06-21T13:46:18+09:00",
+          "tree_id": "1e001f5743aad2c3c27c572301feb2e1686aa52a",
+          "url": "https://github.com/yamadashy/repomix/commit/095d078b465eba6c9c55cc2000224918e997341c"
+        },
+        "date": 1782017276355,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 582,
+            "range": "±132",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 524ms, Q3: 656ms\nAll times: 498, 502, 517, 517, 518, 520, 522, 524, 533, 541, 542, 559, 565, 571, 576, 582, 599, 599, 629, 645, 653, 654, 656, 658, 701, 711, 827, 868, 872, 936ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 769,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 754ms, Q3: 776ms\nAll times: 746, 750, 750, 750, 751, 754, 754, 759, 760, 761, 769, 769, 770, 770, 773, 776, 779, 785, 794, 805ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1141,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1130ms, Q3: 1154ms\nAll times: 1101, 1117, 1121, 1126, 1128, 1130, 1137, 1137, 1138, 1139, 1141, 1142, 1143, 1148, 1151, 1154, 1160, 1162, 1167, 1181ms"
           }
         ]
       }
