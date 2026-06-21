@@ -26,6 +26,7 @@ description: "Girdi, çıktı, dosya seçimi, uzak depolar, yapılandırma, güv
 |---------|----------|
 | `-o, --output <file>` | Çıktı dosyası yolu (varsayılan: `repomix-output.xml`, stdout için `"-"` kullanın) |
 | `--style <style>` | Çıktı formatı: `xml`, `markdown`, `json` veya `plain` (varsayılan: `xml`) |
+| `--output-file-path-style <style>` | Çıktıda dosya yollarının gösterilme biçimi: `target-relative` veya `cwd-relative` (varsayılan: `target-relative`) |
 | `--parsable-style` | Geçerli XML/Markdown sağlamak için özel karakterleri kaçış karakteriyle işle (çıktı biçimlendirmeyi bozan kod içerdiğinde gereklidir) |
 | `--compress` | Tree-sitter ayrıştırmasını kullanarak temel kod yapısını (sınıflar, fonksiyonlar, arayüzler) çıkar |
 | `--output-show-line-numbers` | Çıktıda her satırın önüne satır numarası ekle |

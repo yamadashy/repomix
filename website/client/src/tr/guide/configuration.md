@@ -93,6 +93,7 @@ JavaScript yapılandırma dosyaları, `defineConfig` ve dinamik değerleri deste
 | `input.maxFileSize`              | İşlenecek maksimum dosya boyutu (bayt). Bu boyutu aşan dosyalar atlanır. Büyük ikili dosyaları veya veri dosyalarını hariç tutmak için kullanışlıdır | `50000000`            |
 | `output.filePath`                | Çıktı dosyasının adı. XML, Markdown ve düz metin formatlarını destekler                                                     | `"repomix-output.xml"` |
 | `output.style`                   | Çıktının stili (`xml`, `markdown`, `json`, `plain`). Her formatın farklı AI araçları için kendine özgü avantajları vardır   | `"xml"`                |
+| `output.filePathStyle`           | Çıktıda dosya yollarının gösterilme biçimi (`target-relative` yolları her hedef köke göre, `cwd-relative` ise geçerli çalışma dizinine göre göreceli tutar) | `"target-relative"`    |
 | `output.parsableStyle`           | Çıktının seçilen stil şemasına göre kaçış karakteriyle işlenip işlenmeyeceği. Daha iyi ayrıştırma sağlar ancak token sayısını artırabilir | `false`                |
 | `output.compress`                | Token sayısını azaltırken yapıyı korumak amacıyla Tree-sitter kullanarak akıllı kod çıkarma yapılıp yapılmayacağı            | `false`                |
 | `output.headerText`              | Dosya başlığına dahil edilecek özel metin. AI araçları için bağlam veya talimat sağlamak için kullanışlıdır                  | `null`                 |
@@ -158,6 +159,7 @@ Eksiksiz bir yapılandırma dosyası örneği (`repomix.config.json`):
   "output": {
     "filePath": "repomix-output.xml",
     "style": "xml",
+    "filePathStyle": "target-relative",
     "parsableStyle": false,
     "compress": false,
     "headerText": "Custom header information for the packed file.",

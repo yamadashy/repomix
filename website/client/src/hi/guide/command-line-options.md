@@ -26,6 +26,7 @@ description: Input, output, file selection, remote repositories, configuration, 
 |--------|-------|
 | `-o, --output <file>` | आउटपुट फ़ाइल पथ (डिफ़ॉल्ट: `repomix-output.xml`, stdout के लिए `"-"` का उपयोग करें) |
 | `--style <style>` | आउटपुट फ़ॉर्मेट: `xml`, `markdown`, `json`, या `plain` (डिफ़ॉल्ट: `xml`) |
+| `--output-file-path-style <style>` | आउटपुट में फ़ाइल पथ कैसे दिखाए जाएंगे: `target-relative` या `cwd-relative` (डिफ़ॉल्ट: `target-relative`) |
 | `--parsable-style` | वैध XML/Markdown सुनिश्चित करने के लिए विशेष वर्णों को एस्केप करें (जब आउटपुट में फ़ॉर्मेटिंग को तोड़ने वाला कोड हो तब आवश्यक) |
 | `--compress` | Tree-sitter पार्सिंग का उपयोग करके आवश्यक कोड संरचना (क्लास, फ़ंक्शन, इंटरफ़ेस) निकालें |
 | `--output-show-line-numbers` | आउटपुट में प्रत्येक पंक्ति के आगे पंक्ति संख्या जोड़ें |

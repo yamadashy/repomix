@@ -93,6 +93,7 @@ File cấu hình JavaScript hoạt động tương tự như TypeScript, hỗ tr
 | `input.maxFileSize`              | Kích thước file tối đa tính bằng byte để xử lý. Các file lớn hơn sẽ bị bỏ qua. Hữu ích để loại trừ các file binary lớn hoặc file dữ liệu | `50000000`            |
 | `output.filePath`                | Tên file đầu ra. Hỗ trợ định dạng XML, Markdown và văn bản thuần túy                                                        | `"repomix-output.xml"` |
 | `output.style`                   | Kiểu đầu ra (`xml`, `markdown`, `json`, `plain`). Mỗi định dạng có những ưu điểm riêng cho các công cụ AI khác nhau               | `"xml"`                |
+| `output.filePathStyle`           | Cách hiển thị đường dẫn tệp trong đầu ra (`target-relative` giữ đường dẫn tương đối so với thư mục gốc của mỗi mục tiêu, `cwd-relative` giữ đường dẫn tương đối so với thư mục làm việc hiện tại) | `"target-relative"`    |
 | `output.parsableStyle`           | Có nên escape đầu ra dựa trên schema kiểu đã chọn hay không. Cho phép phân tích tốt hơn nhưng có thể tăng số lượng token | `false`                |
 | `output.compress`                | Có nên thực hiện trích xuất mã thông minh bằng Tree-sitter để giảm số lượng token trong khi bảo toàn cấu trúc hay không    | `false`                |
 | `output.headerText`              | Văn bản tùy chỉnh để đưa vào header file. Hữu ích để cung cấp ngữ cảnh hoặc hướng dẫn cho các công cụ AI                  | `null`                 |
@@ -158,6 +159,7 @@ Bạn có thể bật xác thực schema cho file cấu hình của mình bằng
   "output": {
     "filePath": "repomix-output.xml",
     "style": "xml",
+    "filePathStyle": "target-relative",
     "parsableStyle": false,
     "compress": false,
     "headerText": "Thông tin header tùy chỉnh cho file đã đóng gói.",

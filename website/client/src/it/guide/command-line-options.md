@@ -26,6 +26,7 @@ description: "Consulta tutte le opzioni della CLI Repomix per input, output, sel
 |---------|-------------|
 | `-o, --output <file>` | Percorso del file di output (predefinito: `repomix-output.xml`, usa `"-"` per stdout) |
 | `--style <style>` | Formato di output: `xml`, `markdown`, `json` o `plain` (predefinito: `xml`) |
+| `--output-file-path-style <style>` | Come i percorsi dei file vengono mostrati nell'output: `target-relative` o `cwd-relative` (predefinito: `target-relative`) |
 | `--parsable-style` | Esegue l'escape dei caratteri speciali per garantire XML/Markdown valido (necessario quando l'output contiene codice che interrompe la formattazione) |
 | `--compress` | Estrae la struttura essenziale del codice (classi, funzioni, interfacce) tramite il parsing Tree-sitter |
 | `--output-show-line-numbers` | Prefissa ogni riga con il suo numero di riga nell'output |

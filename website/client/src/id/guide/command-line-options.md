@@ -26,6 +26,7 @@ description: Referensi lengkap opsi CLI Repomix untuk input, output, pemilihan f
 |------|-----------|
 | `-o, --output <file>` | Jalur file output (default: `repomix-output.xml`, gunakan `"-"` untuk stdout) |
 | `--style <style>` | Format output: `xml`, `markdown`, `json`, atau `plain` (default: `xml`) |
+| `--output-file-path-style <style>` | Cara jalur file ditampilkan dalam output: `target-relative` atau `cwd-relative` (default: `target-relative`) |
 | `--parsable-style` | Escape karakter khusus untuk memastikan XML/Markdown yang valid (diperlukan saat output berisi kode yang merusak format) |
 | `--compress` | Mengekstrak struktur kode esensial (kelas, fungsi, interface) menggunakan parsing Tree-sitter |
 | `--output-show-line-numbers` | Menambahkan nomor baris di depan setiap baris dalam output |
