@@ -459,6 +459,20 @@ describe('cliRun', () => {
       );
     });
 
+    test('should handle --output-file-path-style flag', async () => {
+      await runCli(['.'], process.cwd(), {
+        outputFilePathStyle: 'cwd-relative',
+      });
+
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['.'],
+        process.cwd(),
+        expect.objectContaining({
+          outputFilePathStyle: 'cwd-relative',
+        }),
+      );
+    });
+
     test('should handle --include-empty-directories flag', async () => {
       await runCli(['.'], process.cwd(), {
         includeEmptyDirectories: true,

@@ -9,6 +9,7 @@ const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): Repomix
   output: {
     filePath: 'repomix-output.json',
     style: 'json',
+    filePathStyle: 'target-relative',
     parsableStyle: false,
     headerText: undefined,
     instructionFilePath: undefined,
@@ -86,6 +87,43 @@ describe('includeFullDirectoryStructure flag', () => {
     expect(ctx.treeString).toContain('index.ts');
   });
 
+  test('does not prefix single-root full-tree directories with the root basename', async () => {
+    const config = createMockConfig();
+    const processedFiles: ProcessedFile[] = [{ path: 'src/a/index.ts', content: 'export const a = 1;\n' }];
+    const allFilePaths = processedFiles.map((f) => f.path);
+
+    const deps = {
+      listDirectories: async () => ['src', 'src/a', 'src/b', 'docs', 'docs/guide'],
+      listFiles: async () => ['src/a/index.ts', 'src/b/other.ts', 'docs/guide/intro.md'],
+      searchFiles: async () => ({ filePaths: allFilePaths, emptyDirPaths: [] }),
+    };
+
+    // pack() passes a one-entry filePathsByRoot for a single target-relative root,
+    // whose rootLabel falls back to the target basename. That label must NOT prefix
+    // the full-tree directories: the included file paths are left unprefixed for a
+    // single root, so prefixing here would desync them and add a spurious `repo/` branch.
+    const filePathsByRoot = [{ rootLabel: 'repo', files: allFilePaths }];
+
+    const ctx = await buildOutputGeneratorContext(
+      ['/repo'],
+      config,
+      allFilePaths,
+      processedFiles,
+      undefined,
+      undefined,
+      filePathsByRoot,
+      undefined,
+      deps,
+    );
+
+    // Directories from the full tree should appear unprefixed alongside the included file
+    expect(ctx.treeString).toContain('src/');
+    expect(ctx.treeString).toContain('docs/');
+    expect(ctx.treeString).toContain('index.ts');
+    // No spurious root-basename branch
+    expect(ctx.treeString).not.toContain('repo/');
+  });
+
   test('does not render full tree when include is empty even if flag is enabled', async () => {
     const config = createMockConfig({ include: [] });
     const processedFiles: ProcessedFile[] = [{ path: 'src/a/index.ts', content: 'export const a = 1;\n' }];
@@ -127,6 +165,7 @@ describe('includeEmptyDirectories with pre-computed emptyDirPaths', () => {
     output: {
       filePath: 'repomix-output.json',
       style: 'json',
+      filePathStyle: 'target-relative',
       parsableStyle: false,
       headerText: undefined,
       instructionFilePath: undefined,

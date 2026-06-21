@@ -93,6 +93,7 @@ JavaScript configuration files work the same as TypeScript, supporting `defineCo
 | `input.maxFileSize`              | Maximum file size in bytes to process. Files larger than this will be skipped. Useful for excluding large binary files or data files | `50000000`            |
 | `output.filePath`                | The name of the output file. Supports XML, Markdown, and plain text formats                                                   | `"repomix-output.xml"` |
 | `output.style`                   | The style of the output (`xml`, `markdown`, `json`, `plain`). Each format has its own advantages for different AI tools              | `"xml"`                |
+| `output.filePathStyle`           | How file paths are shown in output (`target-relative` keeps paths relative to each target root, `cwd-relative` keeps paths relative to the current working directory) | `"target-relative"`    |
 | `output.parsableStyle`           | Whether to escape the output based on the chosen style schema. Enables better parsing but may increase token count           | `false`                |
 | `output.compress`                | Whether to perform intelligent code extraction using Tree-sitter to reduce token count while preserving structure             | `false`                |
 | `output.headerText`              | Custom text to include in the file header. Useful for providing context or instructions for AI tools                         | `null`                 |
@@ -158,6 +159,7 @@ Here's an example of a complete configuration file (`repomix.config.json`):
   "output": {
     "filePath": "repomix-output.xml",
     "style": "xml",
+    "filePathStyle": "target-relative",
     "parsableStyle": false,
     "compress": false,
     "headerText": "Custom header information for the packed file.",

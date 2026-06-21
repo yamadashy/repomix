@@ -1,4 +1,6 @@
 import path from 'node:path';
+import type { RepomixOutputFilePathStyle } from '../../config/configSchema.js';
+import { RepomixError } from '../../shared/errorHandle.js';
 
 /**
  * Helpers for building stable, unique per-root display labels and display
@@ -64,4 +66,50 @@ export const joinDisplayPath = (rootLabel: string, filePath: string): string => 
   const normalizedRootLabel = toDisplayPath(rootLabel).replace(/^\/+|\/+$/g, '') || 'root';
   const normalizedFilePath = toDisplayPath(filePath).replace(/^\/+/, '');
   return normalizedFilePath ? `${normalizedRootLabel}/${normalizedFilePath}` : normalizedRootLabel;
+};
+
+export interface BuildFileDisplayPathParams {
+  rootDir: string;
+  filePath: string;
+  cwd: string;
+  filePathStyle: RepomixOutputFilePathStyle;
+  rootLabel?: string;
+}
+
+export const buildFileDisplayPath = ({
+  rootDir,
+  filePath,
+  cwd,
+  filePathStyle,
+  rootLabel,
+}: BuildFileDisplayPathParams): string => {
+  switch (filePathStyle) {
+    case 'cwd-relative': {
+      const absolutePath = path.resolve(rootDir, filePath);
+      return toDisplayPath(path.relative(path.resolve(cwd), absolutePath)) || '.';
+    }
+    case 'target-relative':
+      return rootLabel ? joinDisplayPath(rootLabel, filePath) : toDisplayPath(filePath);
+    default:
+      // Exhaustive: adding a new style to repomixOutputFilePathStyleSchema must
+      // be handled here explicitly rather than silently falling through.
+      throw new RepomixError(`Unsupported output file path style: ${filePathStyle}`);
+  }
+};
+
+/**
+ * Whether a file path style renders files with per-root display labels (and a
+ * per-root tree). Centralizing this keeps the "which styles use root labels"
+ * decision in one exhaustive place, so adding a new style surfaces here (and
+ * errors if left unhandled) instead of silently defaulting in scattered checks.
+ */
+export const usesRootLabels = (filePathStyle: RepomixOutputFilePathStyle): boolean => {
+  switch (filePathStyle) {
+    case 'target-relative':
+      return true;
+    case 'cwd-relative':
+      return false;
+    default:
+      throw new RepomixError(`Unsupported output file path style: ${filePathStyle}`);
+  }
 };

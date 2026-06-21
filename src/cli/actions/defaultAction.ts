@@ -5,6 +5,7 @@ import {
   type RepomixConfigCli,
   type RepomixConfigFile,
   type RepomixConfigMerged,
+  type RepomixOutputFilePathStyle,
   type RepomixOutputStyle,
   repomixConfigCliSchema,
 } from '../../config/configSchema.js';
@@ -229,6 +230,12 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.output = {
       ...cliConfig.output,
       style: options.style.toLowerCase() as RepomixOutputStyle,
+    };
+  }
+  if (options.outputFilePathStyle) {
+    cliConfig.output = {
+      ...cliConfig.output,
+      filePathStyle: options.outputFilePathStyle.toLowerCase() as RepomixOutputFilePathStyle,
     };
   }
   if (options.parsableStyle !== undefined) {

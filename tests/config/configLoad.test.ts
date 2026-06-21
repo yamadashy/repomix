@@ -353,6 +353,25 @@ describe('configLoad', () => {
       expect(merged.output.git.sortByChangesMaxCommits).toBe(100);
     });
 
+    test('should default output filePathStyle to target-relative', () => {
+      const merged = mergeConfigs(process.cwd(), {}, {});
+      expect(merged.output.filePathStyle).toBe('target-relative');
+    });
+
+    test('should merge output filePathStyle from file config', () => {
+      const merged = mergeConfigs(process.cwd(), { output: { filePathStyle: 'cwd-relative' } }, {});
+      expect(merged.output.filePathStyle).toBe('cwd-relative');
+    });
+
+    test('should let CLI output filePathStyle override file config', () => {
+      const merged = mergeConfigs(
+        process.cwd(),
+        { output: { filePathStyle: 'target-relative' } },
+        { output: { filePathStyle: 'cwd-relative' } },
+      );
+      expect(merged.output.filePathStyle).toBe('cwd-relative');
+    });
+
     test('should not mutate defaultConfig', () => {
       const originalFilePath = defaultConfig.output.filePath;
       const fileConfig: RepomixConfigFile = {

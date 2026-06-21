@@ -15,7 +15,7 @@ import { calculateMetrics, createMetricsTaskRunner } from './metrics/calculateMe
 import { loadTokenCountCache, saveTokenCountCache } from './metrics/tokenCountCache.js';
 import { prefetchSortData, sortOutputFiles } from './output/outputSort.js';
 import { produceOutput } from './packager/produceOutput.js';
-import { buildRootLabels, joinDisplayPath } from './packager/rootDisplayPath.js';
+import { buildFileDisplayPath, buildRootLabels, usesRootLabels } from './packager/rootDisplayPath.js';
 import type { SuspiciousFileResult } from './security/securityCheck.js';
 import { validateFileSafety } from './security/validateFileSafety.js';
 import type { PackSkillParams } from './skill/packSkill.js';
@@ -103,10 +103,29 @@ export const pack = async (
     ),
   );
 
+  const filePathStyle = config.output.filePathStyle;
+  const rootLabels =
+    usesRootLabels(filePathStyle) && rootDirs.length > 1 ? buildRootLabels(rootDirs, config.cwd) : undefined;
+
   // Deduplicate and sort empty directory paths for reuse during output generation,
   // avoiding a redundant searchFiles call in buildOutputGeneratorContext.
   const emptyDirPaths = config.output.includeEmptyDirectories
-    ? [...new Set(searchResultsByDir.flatMap((r) => r.emptyDirPaths))].sort()
+    ? [
+        ...new Set(
+          searchResultsByDir.flatMap(({ rootDir, emptyDirPaths }, index) => {
+            const rootLabel = rootLabels?.[index];
+            return emptyDirPaths.map((emptyDirPath) =>
+              buildFileDisplayPath({
+                rootDir,
+                filePath: emptyDirPath,
+                cwd: config.cwd,
+                filePathStyle,
+                rootLabel,
+              }),
+            );
+          }),
+        ),
+      ].sort()
     : undefined;
 
   // Sort file paths
@@ -115,12 +134,19 @@ export const pack = async (
     rootDir,
     filePaths: deps.sortPaths([...new Set(filePaths)]),
   }));
-  const rootLabels = rootDirs.length > 1 ? buildRootLabels(rootDirs, config.cwd) : undefined;
   const displayFilePathsByDir = sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => {
     const rootLabel = rootLabels?.[index];
     return {
       rootDir,
-      filePaths: rootLabel ? filePaths.map((filePath) => joinDisplayPath(rootLabel, filePath)) : filePaths,
+      filePaths: filePaths.map((filePath) =>
+        buildFileDisplayPath({
+          rootDir,
+          filePath,
+          cwd: config.cwd,
+          filePathStyle,
+          rootLabel,
+        }),
+      ),
     };
   });
   const allFilePaths = displayFilePathsByDir.flatMap(({ filePaths }) => filePaths);
@@ -155,17 +181,33 @@ export const pack = async (
     ]);
 
     const rawFiles = collectResults.flatMap((curr, index) => {
+      const rootDir = sortedFilePathsByDir[index]?.rootDir;
+      if (!rootDir) return [];
       const rootLabel = rootLabels?.[index];
       return curr.rawFiles.map((file) => ({
         ...file,
-        path: rootLabel ? joinDisplayPath(rootLabel, file.path) : file.path,
+        path: buildFileDisplayPath({
+          rootDir,
+          filePath: file.path,
+          cwd: config.cwd,
+          filePathStyle,
+          rootLabel,
+        }),
       }));
     });
     const allSkippedFiles = collectResults.flatMap((curr, index) => {
+      const rootDir = sortedFilePathsByDir[index]?.rootDir;
+      if (!rootDir) return [];
       const rootLabel = rootLabels?.[index];
       return curr.skippedFiles.map((file) => ({
         ...file,
-        path: rootLabel ? joinDisplayPath(rootLabel, file.path) : file.path,
+        path: buildFileDisplayPath({
+          rootDir,
+          filePath: file.path,
+          cwd: config.cwd,
+          filePathStyle,
+          rootLabel,
+        }),
       }));
     });
 
@@ -225,10 +267,12 @@ export const pack = async (
     }
 
     // Build filePathsByRoot for multi-root tree generation
-    const filePathsByRoot: FilesByRoot[] = sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => ({
-      rootLabel: rootLabels?.[index] ?? (path.basename(rootDir) || rootDir),
-      files: filePaths,
-    }));
+    const filePathsByRoot: FilesByRoot[] | undefined = usesRootLabels(filePathStyle)
+      ? sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => ({
+          rootLabel: rootLabels?.[index] ?? (path.basename(rootDir) || rootDir),
+          files: filePaths,
+        }))
+      : undefined;
 
     // Ensure warm-up task completes before metrics calculation
     await metricsWarmupPromise;

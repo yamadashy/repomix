@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { pack } from '../../src/core/packager.js';
 import { createMockConfig } from '../testing/testUtils.js';
@@ -21,7 +20,10 @@ describe('packager', () => {
   });
 
   test('pack should orchestrate packing files and generating output', async () => {
-    const file2Path = path.join('dir1', 'file2.txt');
+    // Use a POSIX separator: globby yields forward-slash paths on every platform
+    // and pack() normalizes display paths to forward slashes, so the mock must match
+    // that (path.join would emit "dir1\\file2.txt" on Windows and fail the assertion).
+    const file2Path = 'dir1/file2.txt';
     const mockRawFiles = [
       { path: 'file1.txt', content: 'raw content 1' },
       { path: file2Path, content: 'raw content 2' },

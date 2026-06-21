@@ -9,6 +9,7 @@ const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): Repomix
   output: {
     filePath: 'test-output.json',
     style: 'json' as const,
+    filePathStyle: 'target-relative',
     parsableStyle: false,
     headerText: undefined,
     instructionFilePath: undefined,

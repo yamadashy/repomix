@@ -8,6 +8,7 @@ import { type FilesByRoot, generateTreeString, generateTreeStringWithRoots } fro
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
+import { buildFileDisplayPath } from '../packager/rootDisplayPath.js';
 import type { OutputGeneratorContext, RenderContext } from './outputGeneratorTypes.js';
 import { sortOutputFiles } from './outputSort.js';
 import {
@@ -334,6 +335,19 @@ export const buildOutputGeneratorContext = async (
   let directoryPathsForTree: string[] = [];
   let filePathsForTree: string[] = allFilePaths;
 
+  // Only prefix with the per-root label for genuine multi-root packs. For a single
+  // root, filePathsByRoot still carries a basename fallback label, but pack() leaves
+  // single-root file paths unprefixed — so prefixing the full-tree directories here
+  // would desync them from the included files and add a spurious root branch.
+  const toOutputDisplayPath = (rootDir: string, filePath: string, index: number): string =>
+    buildFileDisplayPath({
+      rootDir,
+      filePath,
+      cwd: config.cwd,
+      filePathStyle: config.output.filePathStyle,
+      rootLabel: rootDirs.length > 1 ? filePathsByRoot?.[index]?.rootLabel : undefined,
+    });
+
   if (shouldUseFullTree) {
     try {
       // Collect all directories and all files from all roots
@@ -343,8 +357,24 @@ export const buildOutputGeneratorContext = async (
       ]);
 
       // Merge, deduplicate, and sort for deterministic output
-      const allDirectories = Array.from(new Set(allDirectoriesByRoot.flat())).sort();
-      const allRepoFiles = Array.from(new Set(allFilesByRoot.flat()));
+      const allDirectories = Array.from(
+        new Set(
+          allDirectoriesByRoot.flatMap((directories, index) => {
+            const rootDir = rootDirs[index];
+            if (!rootDir) return [];
+            return directories.map((directoryPath) => toOutputDisplayPath(rootDir, directoryPath, index));
+          }),
+        ),
+      ).sort();
+      const allRepoFiles = Array.from(
+        new Set(
+          allFilesByRoot.flatMap((files, index) => {
+            const rootDir = rootDirs[index];
+            if (!rootDir) return [];
+            return files.map((filePath) => toOutputDisplayPath(rootDir, filePath, index));
+          }),
+        ),
+      );
 
       // Merge in any files that weren't part of the included files so they appear in the tree
       const includedSet = new Set(allFilePaths);
@@ -367,7 +397,11 @@ export const buildOutputGeneratorContext = async (
     } else {
       try {
         const results = await Promise.all(rootDirs.map((rootDir) => deps.searchFiles(rootDir, config)));
-        const merged = results.flatMap((r) => r.emptyDirPaths);
+        const merged = results.flatMap((result, index) => {
+          const rootDir = rootDirs[index];
+          if (!rootDir) return [];
+          return result.emptyDirPaths.map((emptyDirPath) => toOutputDisplayPath(rootDir, emptyDirPath, index));
+        });
         directoryPathsForTree = [...new Set(merged)].sort();
       } catch (error) {
         throw new RepomixError(
