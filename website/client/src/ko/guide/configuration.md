@@ -93,6 +93,7 @@ JavaScript 설정 파일은 TypeScript와 동일하게 작동하며 `defineConfi
 | `input.maxFileSize`              | 처리할 최대 파일 크기(바이트). 이 크기를 초과하는 파일은 건너뜁니다. 큰 바이너리 파일이나 데이터 파일을 제외하는 데 유용합니다 | `50000000`            |
 | `output.filePath`                | 출력 파일 이름. XML, Markdown, 일반 텍스트 형식을 지원합니다                                                                | `"repomix-output.xml"` |
 | `output.style`                   | 출력 스타일(`xml`, `markdown`, `json`, `plain`). 각 형식은 다른 AI 도구에 대해 서로 다른 장점이 있습니다                          | `"xml"`                |
+| `output.filePathStyle`           | 출력에 파일 경로를 표시하는 방식 (`target-relative`는 각 대상 루트에 대한 상대 경로를 유지하고, `cwd-relative`는 현재 작업 디렉토리에 대한 상대 경로를 유지합니다) | `"target-relative"`    |
 | `output.parsableStyle`           | 선택한 스타일 스키마에 따라 출력을 이스케이프할지 여부. 더 나은 구문 분석이 가능하지만 토큰 수가 증가할 수 있습니다      | `false`                |
 | `output.compress`                | Tree-sitter를 사용하여 구조를 유지하면서 토큰 수를 줄이기 위해 지능적인 코드 추출을 수행할지 여부                         | `false`                |
 | `output.headerText`              | 파일 헤더에 포함할 사용자 정의 텍스트. AI 도구에 컨텍스트나 지침을 제공하는 데 유용합니다                                | `null`                 |
@@ -158,6 +159,7 @@ JavaScript 설정 파일은 TypeScript와 동일하게 작동하며 `defineConfi
   "output": {
     "filePath": "repomix-output.xml",
     "style": "xml",
+    "filePathStyle": "target-relative",
     "parsableStyle": false,
     "compress": false,
     "headerText": "패키지된 파일의 사용자 정의 헤더 정보",

@@ -93,6 +93,7 @@ Los archivos de configuración JavaScript funcionan igual que TypeScript, admiti
 | `input.maxFileSize`              | Tamaño máximo de archivo en bytes para procesar. Los archivos más grandes serán ignorados. Útil para excluir archivos binarios grandes o archivos de datos | `50000000`            |
 | `output.filePath`                | Nombre del archivo de salida. Admite formatos XML, Markdown y texto plano                                                    | `"repomix-output.xml"` |
 | `output.style`                   | Estilo de salida (`xml`, `markdown`, `json`, `plain`). Cada formato tiene sus propias ventajas para diferentes herramientas de IA    | `"xml"`                |
+| `output.filePathStyle`           | Cómo se muestran las rutas de archivos en la salida (`target-relative` mantiene las rutas relativas a cada raíz de destino, `cwd-relative` mantiene las rutas relativas al directorio de trabajo actual) | `"target-relative"`    |
 | `output.parsableStyle`           | Indica si se debe escapar la salida según el esquema de estilo elegido. Permite un mejor análisis pero puede aumentar el recuento de tokens | `false`                |
 | `output.compress`                | Indica si se debe realizar una extracción inteligente de código usando Tree-sitter para reducir el recuento de tokens mientras se preserva la estructura | `false`                |
 | `output.headerText`              | Texto personalizado para incluir en el encabezado del archivo. Útil para proporcionar contexto o instrucciones a las herramientas de IA | `null`                 |
@@ -158,6 +159,7 @@ Aquí hay un ejemplo de un archivo de configuración completo (`repomix.config.j
   "output": {
     "filePath": "repomix-output.xml",
     "style": "xml",
+    "filePathStyle": "target-relative",
     "parsableStyle": false,
     "compress": false,
     "headerText": "Información de encabezado personalizada para el archivo empaquetado.",

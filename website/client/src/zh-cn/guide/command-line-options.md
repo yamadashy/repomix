@@ -26,6 +26,7 @@ description: 查阅 Repomix CLI 的所有选项，涵盖输入、输出、文件
 |------|------|
 | `-o, --output <file>` | 输出文件路径（默认：`repomix-output.xml`，使用 `"-"` 输出到标准输出） |
 | `--style <style>` | 输出格式：`xml`、`markdown`、`json` 或 `plain`（默认：`xml`） |
+| `--output-file-path-style <style>` | 输出中文件路径的显示方式：`target-relative` 或 `cwd-relative`（默认：`target-relative`） |
 | `--parsable-style` | 转义特殊字符以确保有效的 XML/Markdown（当输出包含破坏格式的代码时需要） |
 | `--compress` | 使用 Tree-sitter 解析提取基本代码结构（类、函数、接口） |
 | `--output-show-line-numbers` | 为输出中的每行添加行号前缀 |

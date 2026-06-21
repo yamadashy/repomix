@@ -26,6 +26,7 @@ description: "Consulte todas as opções da CLI do Repomix para entrada, saída,
 |-------|-----------|
 | `-o, --output <file>` | Caminho do arquivo de saída (padrão: `repomix-output.xml`, usar `"-"` para stdout) |
 | `--style <style>` | Formato de saída: `xml`, `markdown`, `json` ou `plain` (padrão: `xml`) |
+| `--output-file-path-style <style>` | Como os caminhos de arquivo são exibidos na saída: `target-relative` ou `cwd-relative` (padrão: `target-relative`) |
 | `--parsable-style` | Escapar caracteres especiais para garantir XML/Markdown válido (necessário quando a saída contém código que quebra a formatação) |
 | `--compress` | Extrair a estrutura essencial do código (classes, funções, interfaces) usando análise Tree-sitter |
 | `--output-show-line-numbers` | Adicionar número de linha a cada linha na saída |

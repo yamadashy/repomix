@@ -93,6 +93,7 @@ JavaScript-Konfigurationsdateien funktionieren genauso wie TypeScript und unters
 | `input.maxFileSize`              | Maximale zu verarbeitende Dateigröße in Bytes. Größere Dateien werden übersprungen. Nützlich zum Ausschließen großer Binär- oder Datendateien | `50000000`            |
 | `output.filePath`                | Name der Ausgabedatei. Unterstützt XML-, Markdown- und Textformate                                                         | `"repomix-output.xml"` |
 | `output.style`                   | Ausgabestil (`xml`, `markdown`, `json`, `plain`). Jedes Format hat seine Vorteile für verschiedene KI-Tools                       | `"xml"`                |
+| `output.filePathStyle`           | Darstellung der Dateipfade in der Ausgabe (`target-relative` hält Pfade relativ zum jeweiligen Zielverzeichnis, `cwd-relative` hält Pfade relativ zum aktuellen Arbeitsverzeichnis) | `"target-relative"`    |
 | `output.parsableStyle`           | Ob die Ausgabe gemäß dem gewählten Stilschema escaped werden soll. Ermöglicht besseres Parsing, kann aber die Token-Anzahl erhöhen | `false`                |
 | `output.compress`                | Ob Tree-sitter verwendet werden soll, um intelligente Codeextraktion durchzuführen und dabei die Struktur beizubehalten, während die Token-Anzahl reduziert wird | `false`                |
 | `output.headerText`              | Benutzerdefinierter Text für den Dateikopf. Nützlich für die Bereitstellung von Kontext oder Anweisungen für KI-Tools    | `null`                 |
@@ -158,6 +159,7 @@ Hier ist ein Beispiel einer vollständigen Konfigurationsdatei (`repomix.config.
   "output": {
     "filePath": "repomix-output.xml",
     "style": "xml",
+    "filePathStyle": "target-relative",
     "parsableStyle": false,
     "compress": false,
     "headerText": "Benutzerdefinierte Header-Informationen für die gepackte Datei",

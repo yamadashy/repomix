@@ -26,6 +26,7 @@ description: "Referenz aller Repomix-CLI-Optionen für Eingabe, Ausgabe, Dateiau
 |--------|-------------|
 | `-o, --output <file>` | Ausgabedateipfad (Standard: `repomix-output.xml`, `"-"` für stdout) |
 | `--style <style>` | Ausgabeformat: `xml`, `markdown`, `json` oder `plain` (Standard: `xml`) |
+| `--output-file-path-style <style>` | Darstellung der Dateipfade in der Ausgabe: `target-relative` oder `cwd-relative` (Standard: `target-relative`) |
 | `--parsable-style` | Sonderzeichen escapen, um gültiges XML/Markdown sicherzustellen (nötig wenn die Ausgabe Code enthält, der die Formatierung bricht) |
 | `--compress` | Wesentliche Code-Struktur (Klassen, Funktionen, Interfaces) mittels Tree-sitter-Parsing extrahieren |
 | `--output-show-line-numbers` | Jede Zeile mit ihrer Zeilennummer in der Ausgabe versehen |

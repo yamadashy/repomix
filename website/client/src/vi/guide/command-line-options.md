@@ -26,6 +26,7 @@ description: Tham khảo mọi tùy chọn Repomix CLI cho input, output, chọn
 |-----------|-------|
 | `-o, --output <file>` | Đường dẫn tệp đầu ra (mặc định: `repomix-output.xml`, sử dụng `"-"` cho stdout) |
 | `--style <style>` | Định dạng đầu ra: `xml`, `markdown`, `json`, hoặc `plain` (mặc định: `xml`) |
+| `--output-file-path-style <style>` | Cách hiển thị đường dẫn tệp trong đầu ra: `target-relative` hoặc `cwd-relative` (mặc định: `target-relative`) |
 | `--parsable-style` | Escape các ký tự đặc biệt để đảm bảo XML/Markdown hợp lệ (cần thiết khi đầu ra chứa mã phá vỡ định dạng) |
 | `--compress` | Trích xuất cấu trúc mã cần thiết (lớp, hàm, interface) sử dụng phân tích Tree-sitter |
 | `--output-show-line-numbers` | Thêm số dòng trước mỗi dòng trong đầu ra |

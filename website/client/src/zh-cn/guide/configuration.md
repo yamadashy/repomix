@@ -93,6 +93,7 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
 | `input.maxFileSize`              | 要处理的最大文件大小（字节）。超过此大小的文件将被跳过。用于排除大型二进制文件或数据文件                                  | `50000000`            |
 | `output.filePath`                | 输出文件名。支持 XML、Markdown 和纯文本格式                                                                                   | `"repomix-output.xml"` |
 | `output.style`                   | 输出样式（`xml`、`markdown`、`json`、`plain`）。每种格式对不同的 AI 工具都有其优势                                                   | `"xml"`                |
+| `output.filePathStyle`           | 输出中文件路径的显示方式（`target-relative` 表示路径相对于各目标根目录，`cwd-relative` 表示路径相对于当前工作目录）                  | `"target-relative"`    |
 | `output.parsableStyle`           | 是否根据所选样式模式转义输出。可以提供更好的解析，但可能会增加 token 数量                                                    | `false`                |
 | `output.compress`                | 是否使用 Tree-sitter 执行智能代码提取，在保持结构的同时减少 token 数量                                                         | `false`                |
 | `output.headerText`              | 要包含在文件头部的自定义文本。对于为 AI 工具提供上下文或指令很有用                                                          | `null`                 |
@@ -158,6 +159,7 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
   "output": {
     "filePath": "repomix-output.xml",
     "style": "xml",
+    "filePathStyle": "target-relative",
     "parsableStyle": false,
     "compress": false,
     "headerText": "打包文件的自定义头部信息",
