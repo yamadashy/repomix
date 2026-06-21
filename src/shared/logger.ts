@@ -80,8 +80,9 @@ class RepomixLogger {
   }
 
   private formatArgs(args: unknown[]): string {
+    const useColors = pc.isColorSupported;
     return args
-      .map((arg) => (typeof arg === 'object' ? util.inspect(arg, { depth: null, colors: true }) : arg))
+      .map((arg) => (typeof arg === 'object' ? util.inspect(arg, { depth: null, colors: useColors }) : arg))
       .join(' ');
   }
 }
