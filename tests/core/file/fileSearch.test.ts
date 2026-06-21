@@ -211,6 +211,20 @@ describe('fileSearch', () => {
       expect(patterns).toContain('temp/');
     });
 
+    test('should leave custom patterns with negations out of globby ignore patterns', async () => {
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: false,
+          customPatterns: ['dist/**', '!dist/keep.js'],
+        },
+      });
+
+      const patterns = await getIgnorePatterns(process.cwd(), mockConfig);
+
+      expect(patterns).toEqual(['repomix-output.xml']);
+    });
+
     test('should include patterns from .git/info/exclude when useGitignore is true', async () => {
       const mockConfig = createMockConfig({
         ignore: {
@@ -307,6 +321,29 @@ node_modules
           absolute: false,
           dot: true,
           followSymbolicLinks: false,
+        }),
+      );
+    });
+
+    test('should translate custom negation patterns into ordered globby patterns', async () => {
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: false,
+          customPatterns: ['dist/**', '!dist/keep.js', '!'],
+        },
+      });
+
+      vi.mocked(globby).mockResolvedValue(['src/index.ts', 'dist/keep.js']);
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      expect(result.filePaths).toEqual(['dist/keep.js', 'src/index.ts']);
+      expect(globby).toHaveBeenCalledWith(
+        ['**/*', '!dist/**', 'dist/keep.js'],
+        expect.objectContaining({
+          ignore: expect.arrayContaining([expect.stringContaining('repomix-output.xml')]),
+          onlyFiles: true,
         }),
       );
     });
@@ -1077,6 +1114,27 @@ node_modules
 
         const ignorePatterns = options.ignore as string[];
         expect(ignorePatterns).toEqual(expect.arrayContaining(customPatterns));
+      }
+    });
+
+    test('should apply negated custom ignore patterns consistently across all functions', async () => {
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: false,
+          useDefaultPatterns: false,
+          customPatterns: ['dist/**', '!dist/keep.js'],
+        },
+      });
+
+      vi.mocked(globby).mockResolvedValue([]);
+
+      await searchFiles('/test/root', mockConfig);
+      await listDirectories('/test/root', mockConfig);
+      await listFiles('/test/root', mockConfig);
+
+      const calls = vi.mocked(globby).mock.calls;
+      for (const call of calls) {
+        expect(call[0]).toEqual(['**/*', '!dist/**', 'dist/keep.js']);
       }
     });
   });
