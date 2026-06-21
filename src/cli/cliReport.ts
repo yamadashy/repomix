@@ -19,6 +19,25 @@ export interface ReportOptions {
 }
 
 /**
+ * Resolves the absolute output path for the completion banner.
+ * Priority: skill directory > first output file > config file path.
+ */
+export const resolveOutputPath = (
+  cwd: string,
+  packResult: PackResult,
+  config: RepomixConfigMerged,
+  options: ReportOptions,
+): string => {
+  if (config.skillGenerate !== undefined && options.skillDir) {
+    return path.resolve(cwd, options.skillDir);
+  }
+  if (packResult.outputFiles && packResult.outputFiles.length > 0) {
+    return path.resolve(cwd, packResult.outputFiles[0]);
+  }
+  return path.resolve(cwd, config.output.filePath);
+};
+
+/**
  * Reports the results of packing operation including top files, security check, summary, and completion.
  */
 export const reportResults = (
@@ -59,7 +78,7 @@ export const reportResults = (
   reportSummary(cwd, packResult, config, options);
   logger.log('');
 
-  reportCompletion();
+  reportCompletion(resolveOutputPath(cwd, packResult, config, options));
 };
 
 export const reportSummary = (
@@ -89,22 +108,23 @@ export const reportSummary = (
 
   // Show skill output path or regular output path
   if (config.skillGenerate !== undefined && options.skillDir) {
-    const displayPath = getDisplayPath(options.skillDir, cwd);
-    logger.log(`       Output: ${displayPath} ${pc.dim('(skill directory)')}`);
+    const skillDirPath = path.resolve(cwd, options.skillDir);
+    logger.log(`       Output: ${skillDirPath} ${pc.dim('(skill directory)')}`);
   } else {
     if (packResult.outputFiles && packResult.outputFiles.length > 0) {
       const first = packResult.outputFiles[0];
       const last = packResult.outputFiles[packResult.outputFiles.length - 1];
-      const firstDisplayPath = getDisplayPath(path.resolve(cwd, first), cwd);
-      const lastDisplayPath = getDisplayPath(path.resolve(cwd, last), cwd);
+      const firstAbsPath = path.resolve(cwd, first);
+      const lastAbsPath = path.resolve(cwd, last);
 
       logger.log(
-        `       Output: ${firstDisplayPath} ${pc.dim('…')} ${lastDisplayPath} ${pc.dim(`(${packResult.outputFiles.length} parts)`)}`,
+        packResult.outputFiles.length === 1
+          ? `       Output: ${firstAbsPath}`
+          : `       Output: ${firstAbsPath} ${pc.dim('…')} ${lastAbsPath} ${pc.dim(`(${packResult.outputFiles.length} parts)`)}`,
       );
     } else {
       const outputPath = path.resolve(cwd, config.output.filePath);
-      const displayPath = getDisplayPath(outputPath, cwd);
-      logger.log(`       Output: ${displayPath}`);
+      logger.log(`       Output: ${outputPath}`);
     }
   }
   logger.log(`     Security: ${securityCheckMessage}`);
@@ -237,9 +257,42 @@ export const reportSkippedFiles = (_rootDir: string, skippedFiles: SkippedFileIn
   logger.log(pc.yellow('Please review these files if you expected them to contain text content.'));
 };
 
-export const reportCompletion = () => {
+const getOutputSummary = (outputPaths: string | string[]) => {
+  const normalizedOutputPaths = Array.isArray(outputPaths) ? outputPaths : [outputPaths];
+
+  if (normalizedOutputPaths.length === 1) {
+    return {
+      heading: '📁 Output file generated at:',
+      lines: [normalizedOutputPaths[0]],
+    };
+  }
+
+  const outputDirectories = [...new Set(normalizedOutputPaths.map((outputPath) => path.dirname(outputPath)))];
+
+  if (outputDirectories.length === 1) {
+    return {
+      heading: `📁 ${normalizedOutputPaths.length} output files generated in:`,
+      lines: [outputDirectories[0]],
+    };
+  }
+
+  return {
+    heading: `📁 ${normalizedOutputPaths.length} output files generated:`,
+    lines: normalizedOutputPaths,
+  };
+};
+
+export const reportCompletion = (outputPaths: string | string[]) => {
   logger.log(pc.green('🎉 All Done!'));
   logger.log('Your repository has been successfully packed.');
+
+  const outputSummary = getOutputSummary(outputPaths);
+
+  logger.log('');
+  logger.log(outputSummary.heading);
+  outputSummary.lines.forEach((outputPath) => {
+    logger.log(`   ${pc.bold(pc.cyan(pc.underline(outputPath)))}`);
+  });
 
   logger.log('');
   logger.log(`💡 Repomix is now available in your browser! Try it at ${pc.underline('https://repomix.com')}`);
