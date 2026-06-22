@@ -308,11 +308,6 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     throw new RepomixError('--stdin cannot be used with --stdin-content. Both options consume standard input.');
   }
 
-  if (options.stdinContent === true) {
-    const { readContentFromStdin } = await import('../core/file/fileStdin.js');
-    options.stdinContent = await readContentFromStdin();
-  }
-
   // Set log level based on verbose and quiet flags
   if (options.quiet) {
     logger.setLogLevel(repomixLogLevels.SILENT);
@@ -352,6 +347,11 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     const { runInitAction } = await import('./actions/initAction.js');
     await runInitAction(cwd, options.global || false);
     return;
+  }
+
+  if (options.stdinContent === true) {
+    const { readContentFromStdin } = await import('../core/file/fileStdin.js');
+    options.stdinContent = await readContentFromStdin();
   }
 
   if (options.remote) {

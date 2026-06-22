@@ -3,6 +3,7 @@ import { program } from 'commander';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import * as defaultAction from '../../src/cli/actions/defaultAction.js';
 import * as initAction from '../../src/cli/actions/initAction.js';
+import * as mcpAction from '../../src/cli/actions/mcpAction.js';
 import * as remoteAction from '../../src/cli/actions/remoteAction.js';
 import * as versionAction from '../../src/cli/actions/versionAction.js';
 import { run, runCli } from '../../src/cli/cliRun.js';
@@ -42,6 +43,7 @@ vi.mock('../../src/shared/logger', () => ({
 
 vi.mock('../../src/cli/actions/defaultAction');
 vi.mock('../../src/cli/actions/initAction');
+vi.mock('../../src/cli/actions/mcpAction');
 vi.mock('../../src/cli/actions/remoteAction');
 vi.mock('../../src/core/git/gitRemoteHandle');
 vi.mock('../../src/cli/actions/versionAction');
@@ -119,6 +121,7 @@ describe('cliRun', () => {
       } satisfies PackResult,
     });
     vi.mocked(initAction.runInitAction).mockResolvedValue();
+    vi.mocked(mcpAction.runMcpAction).mockResolvedValue();
     vi.mocked(remoteAction.runRemoteAction).mockResolvedValue({
       config: createMockConfig({
         cwd: process.cwd(),
@@ -211,10 +214,49 @@ describe('cliRun', () => {
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
+    test('should not read stdin content before executing version action', async () => {
+      const readContentFromStdinSpy = vi.spyOn(fileStdin, 'readContentFromStdin').mockRejectedValue(new Error('boom'));
+
+      await runCli(['.'], process.cwd(), {
+        version: true,
+        stdinContent: true,
+      });
+
+      expect(readContentFromStdinSpy).not.toHaveBeenCalled();
+      expect(versionAction.runVersionAction).toHaveBeenCalled();
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
     test('should execute init action when init option is true', async () => {
       await runCli(['.'], process.cwd(), { init: true });
 
       expect(initAction.runInitAction).toHaveBeenCalledWith(process.cwd(), false);
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should not read stdin content before executing init action', async () => {
+      const readContentFromStdinSpy = vi.spyOn(fileStdin, 'readContentFromStdin').mockRejectedValue(new Error('boom'));
+
+      await runCli(['.'], process.cwd(), {
+        init: true,
+        stdinContent: true,
+      });
+
+      expect(readContentFromStdinSpy).not.toHaveBeenCalled();
+      expect(initAction.runInitAction).toHaveBeenCalledWith(process.cwd(), false);
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should not read stdin content before executing mcp action', async () => {
+      const readContentFromStdinSpy = vi.spyOn(fileStdin, 'readContentFromStdin').mockRejectedValue(new Error('boom'));
+
+      await runCli(['.'], process.cwd(), {
+        mcp: true,
+        stdinContent: true,
+      });
+
+      expect(readContentFromStdinSpy).not.toHaveBeenCalled();
+      expect(mcpAction.runMcpAction).toHaveBeenCalled();
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
