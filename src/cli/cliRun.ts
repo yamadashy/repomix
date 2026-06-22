@@ -266,7 +266,7 @@ const validateWatchOptions = (directories: string[], options: CliOptions): void 
   if (options.stdin) {
     throw new RepomixError('--watch cannot be used with --stdin. Watch mode discovers files automatically.');
   }
-  if (options.stdinContent) {
+  if (hasStdinContentOption(options)) {
     throw new RepomixError('--watch cannot be used with --stdin-content. Watch mode discovers files automatically.');
   }
   if (options.copy) {
@@ -289,6 +289,10 @@ const validateWatchOptions = (directories: string[], options: CliOptions): void 
   }
 };
 
+const hasStdinContentOption = (options: CliOptions): boolean => {
+  return options.stdinContent !== undefined && options.stdinContent !== false;
+};
+
 export const runCli = async (directories: string[], cwd: string, options: CliOptions) => {
   // Detect stdout mode
   // NOTE: For compatibility, currently not detecting pipe mode
@@ -300,7 +304,7 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   // Validate --watch conflicts early, before log level changes can suppress error messages
   validateWatchOptions(directories, options);
 
-  if (options.stdin && options.stdinContent) {
+  if (options.stdin && hasStdinContentOption(options)) {
     throw new RepomixError('--stdin cannot be used with --stdin-content. Both options consume standard input.');
   }
 

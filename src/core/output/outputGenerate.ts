@@ -87,6 +87,7 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     summaryNotes: generateSummaryNotes(outputGeneratorContext.config),
     headerText: outputGeneratorContext.config.output.headerText,
     stdinContent: outputGeneratorContext.config.output.stdinContent,
+    stdinContentProvided: outputGeneratorContext.config.output.stdinContent !== undefined,
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,

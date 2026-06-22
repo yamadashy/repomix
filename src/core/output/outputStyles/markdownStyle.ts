@@ -31,7 +31,7 @@ export const getMarkdownTemplate = () => {
 {{{headerText}}}
 
 {{/if}}
-{{#if stdinContent}}
+{{#if stdinContentProvided}}
 # Standard Input Content
 {{{stdinContent}}}
 

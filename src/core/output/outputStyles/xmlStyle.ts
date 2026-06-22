@@ -34,7 +34,7 @@ This section contains a summary of this file.
 </user_provided_header>
 
 {{/if}}
-{{#if stdinContent}}
+{{#if stdinContentProvided}}
 <stdin_content>
 {{{stdinContent}}}
 </stdin_content>

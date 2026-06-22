@@ -53,6 +53,25 @@ describe('plainStyle', () => {
     expect(output.indexOf('Standard Input Content')).toBeLessThan(output.indexOf('Directory Structure'));
   });
 
+  test('generateOutput for plain should preserve empty stdin content section', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.txt',
+        style: 'plain',
+        stdinContent: '',
+        topFilesLength: 2,
+        showLineNumbers: false,
+        removeComments: false,
+        removeEmptyLines: false,
+      },
+    });
+
+    const output = await generateOutput([process.cwd()], mockConfig, [], []);
+
+    expect(output).toContain('Standard Input Content');
+    expect(output.indexOf('Standard Input Content')).toBeLessThan(output.indexOf('Directory Structure'));
+  });
+
   test('plain style: headerText always present, generationHeader only if fileSummaryEnabled', async () => {
     const mockConfig = createMockConfig({
       output: {

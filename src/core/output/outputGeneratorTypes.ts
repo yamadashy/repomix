@@ -21,6 +21,7 @@ export interface RenderContext {
   readonly summaryNotes: string;
   readonly headerText: string | undefined;
   readonly stdinContent?: string;
+  readonly stdinContentProvided: boolean;
   readonly instruction: string;
   readonly treeString: string;
   readonly processedFiles: ReadonlyArray<ProcessedFile>;
