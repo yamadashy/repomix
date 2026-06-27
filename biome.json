@@ -22,7 +22,8 @@
       "!**/website/server/dist",
       "!**/browser/dist",
       "!**/browser/packages",
-      "!.claude/worktrees"
+      "!.claude/worktrees",
+      "!**/*.svg"
     ]
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
