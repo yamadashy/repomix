@@ -12,4 +12,3 @@ rules:
       - claude-issue-similar.yml
       - claude-issue-triage.yml
       - claude.yml
-      - homebrew.yml
