@@ -93,14 +93,17 @@ export const processFiles = async (
   const startTime = process.hrtime.bigint();
   let files: ProcessedFile[];
 
-  // Resolve each file's inclusion level once and cache it by path. Files at the
-  // 'directory-only' level are dropped from the content output entirely — their
-  // paths still appear in the directory structure, which is built from the search
-  // results rather than from processedFiles. The cached levels are reused by
+  // Use each file's inclusion level, normally precomputed by the packager against
+  // the per-root-relative path (the same basis include/ignore use) and threaded on
+  // rawFile.level, falling back to resolving it from the path for callers that
+  // build RawFiles directly. Files at the 'directory-only' level are dropped from
+  // the content output entirely — their paths still appear in the directory
+  // structure, which is built from the search results rather than from
+  // processedFiles. The levels are cached by path and reused by
   // applyLightweightTransforms so the glob matching is not repeated.
   const fileLevels = new Map<string, FileInclusionLevel>();
   const leveledFiles = rawFiles.flatMap((rawFile) => {
-    const level = resolveFileLevel(rawFile.path, config.output);
+    const level = rawFile.level ?? resolveFileLevel(rawFile.path, config.output);
     fileLevels.set(rawFile.path, level);
     return level !== 'directory-only' ? [{ rawFile, level }] : [];
   });

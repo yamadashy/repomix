@@ -25,6 +25,12 @@ export interface FileLevelOutputConfig {
  * with `directoryStructureOnly` taking precedence over `compress`. A pattern
  * that matches without setting either flag forces full content for that file.
  *
+ * `filePath` is expected to be the file's per-root-relative path — the same
+ * basis `include`/`ignore` match against — so `output.patterns` globs match
+ * exactly like include/ignore. The packager resolves the level before rewriting
+ * the path to its display form (which, with multiple roots or
+ * `output.filePathStyle`, would otherwise shift what the globs match).
+ *
  * Globs are matched the same way as include/ignore patterns in fileSearch:
  * minimatch with `{ dot: true }`, against the posix (forward-slash) form of the
  * path so Windows backslash paths still match forward-slash globs.

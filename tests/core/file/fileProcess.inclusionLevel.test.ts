@@ -132,6 +132,45 @@ describe('fileProcess inclusion levels (output.patterns)', () => {
 
       expect(byPath(result)['src/index.ts']).toBe('const a = 1;');
     });
+
+    // The packager resolves the inclusion level against each file's
+    // per-root-relative path (the basis include/ignore use) and threads it on
+    // rawFile.level before rewriting path to its display form. processFiles must
+    // honor that threaded level rather than re-deriving it from the display path,
+    // which is what makes output.patterns match per-root for multiple roots and
+    // for output.filePathStyle: 'cwd-relative'.
+    it('honors a precomputed directory-only level threaded on rawFile.level over the path-derived level', async () => {
+      // No output.patterns are configured, so resolving from the (display) path
+      // alone would yield 'full'. The threaded 'directory-only' level must win and
+      // drop the file from the content output.
+      const rawFiles: RawFile[] = [
+        { path: 'app/src/index.ts', content: 'const a = 1;', level: 'directory-only' },
+        { path: 'app/README.md', content: '# app', level: 'full' },
+      ];
+      const config = createMockConfig({ output: {} });
+
+      const result = await processFiles(rawFiles, config, () => {}, {
+        initTaskRunner: mockInitTaskRunner,
+        getFileManipulator: mockGetFileManipulator,
+      });
+
+      expect(result.map((f) => f.path)).toEqual(['app/README.md']);
+    });
+
+    it('honors a precomputed compress level threaded on rawFile.level over the path-derived level', async () => {
+      // Global compress is off and no pattern matches, so the path-derived level
+      // would be 'full'. The threaded 'compress' level must route the file through
+      // the compression pipeline (worker path).
+      const rawFiles: RawFile[] = [{ path: 'app/src/index.ts', content: 'const a = 1;', level: 'compress' }];
+      const config = createMockConfig({ output: { compress: false } });
+
+      const result = await processFiles(rawFiles, config, () => {}, {
+        initTaskRunner: mockInitTaskRunner,
+        getFileManipulator: mockGetFileManipulator,
+      });
+
+      expect(byPath(result)['app/src/index.ts']).toBe('<<compressed>>');
+    });
   });
 
   describe('applyLightweightTransforms', () => {
