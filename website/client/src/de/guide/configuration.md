@@ -262,7 +262,7 @@ Repomix bietet mehrere Methoden zum Festlegen von Ignorier-Mustern, um bestimmte
 
 Dieser Ansatz ermöglicht eine flexible Konfiguration des Dateiausschlusses basierend auf den Anforderungen Ihres Projekts. Er hilft, die Größe der generierten Packdatei zu optimieren, indem er den Ausschluss sicherheitssensibler Dateien und großer Binärdateien gewährleistet und gleichzeitig die Preisgabe vertraulicher Informationen verhindert.
 
-**Hinweis:** Binärdateien werden standardmäßig nicht in der gepackten Ausgabe enthalten, aber ihre Pfade werden im Abschnitt "Repository-Struktur" der Ausgabedatei aufgelistet. Dies bietet einen vollständigen Überblick über die Repository-Struktur und hält gleichzeitig die gepackte Datei effizient und textbasiert. Weitere Details finden Sie unter [Binärdateiverarbeitung](#binärdateiverarbeitung).
+**Hinweis:** Binärdateien werden standardmäßig nicht in der gepackten Ausgabe enthalten, aber ihre Pfade werden im Abschnitt "Repository-Struktur" der Ausgabedatei aufgelistet. Dies bietet einen vollständigen Überblick über die Repository-Struktur und hält gleichzeitig die gepackte Datei effizient und textbasiert. Weitere Details finden Sie unter [Binärdateiverarbeitung](#binardateiverarbeitung).
 
 Beispiel für `.repomixignore`:
 ```text
