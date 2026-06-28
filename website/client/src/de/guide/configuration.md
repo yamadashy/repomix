@@ -96,6 +96,7 @@ JavaScript-Konfigurationsdateien funktionieren genauso wie TypeScript und unters
 | `output.filePathStyle`           | Darstellung der Dateipfade in der Ausgabe (`target-relative` hält Pfade relativ zum jeweiligen Zielverzeichnis, `cwd-relative` hält Pfade relativ zum aktuellen Arbeitsverzeichnis) | `"target-relative"`    |
 | `output.parsableStyle`           | Ob die Ausgabe gemäß dem gewählten Stilschema escaped werden soll. Ermöglicht besseres Parsing, kann aber die Token-Anzahl erhöhen | `false`                |
 | `output.compress`                | Ob Tree-sitter verwendet werden soll, um intelligente Codeextraktion durchzuführen und dabei die Struktur beizubehalten, während die Token-Anzahl reduziert wird | `false`                |
+| `output.patterns`                | Inklusionsstufen pro Datei. Ein geordnetes Array von `{ pattern, compress?, directoryStructureOnly? }`-Einträgen; das erste passende Glob-Muster gewinnt und überschreibt für diese Datei das globale `output.compress`. Siehe [Inklusionsstufen pro Datei](#inklusionsstufen-pro-datei) | Nicht gesetzt          |
 | `output.headerText`              | Benutzerdefinierter Text für den Dateikopf. Nützlich für die Bereitstellung von Kontext oder Anweisungen für KI-Tools    | `null`                 |
 | `output.instructionFilePath`     | Pfad zu einer Datei mit detaillierten benutzerdefinierten Anweisungen für die KI-Verarbeitung                            | `null`                 |
 | `output.fileSummary`             | Ob eine Zusammenfassung mit Dateianzahl, -größen und anderen Metriken am Anfang der Ausgabe eingefügt werden soll        | `true`                 |
@@ -170,6 +171,10 @@ Hier ist ein Beispiel einer vollständigen Konfigurationsdatei (`repomix.config.
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
+    // "patterns": [
+    //   { "pattern": "docs/**/*", "compress": true },
+    //   { "pattern": "website/**/*", "directoryStructureOnly": true }
+    // ],
     "truncateBase64": false,
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
@@ -329,6 +334,37 @@ Hauptvorteile:
 - Entfernung von Funktionskörpern und Implementierungsdetails
 
 Weitere Details und Beispiele finden Sie im [Code-Komprimierungs-Leitfaden](code-compress).
+
+### Inklusionsstufen pro Datei
+
+Während `output.compress` für jede Datei eine einzige Stufe anwendet, können Sie mit `output.patterns` die Detailstufe **pro Glob-Muster** über Ihre Konfigurationsdatei steuern. Jeder Eintrag adressiert Dateien per Glob-Muster (auf die gleiche Weise abgeglichen wie `include`/`ignore`) und überschreibt für passende Dateien die globale Einstellung `output.compress`.
+
+```json5
+{
+  "output": {
+    "compress": false, // globaler Standardwert dient als Catch-all
+    "patterns": [
+      { "pattern": "docs/**/*", "compress": true },
+      { "pattern": "website/**/*", "directoryStructureOnly": true }
+    ]
+  }
+}
+```
+
+Jede Datei wird einer von drei Stufen zugeordnet:
+
+- **Vollständiger Inhalt** (Standard): Der vollständige Inhalt der Datei wird einbezogen.
+- **Komprimiert** (`compress: true`): Der Inhalt wird durch dieselbe Tree-sitter-Pipeline wie bei `output.compress` geleitet.
+- **Nur Verzeichnisstruktur** (`directoryStructureOnly: true`): Die Datei wird in der Verzeichnisstruktur aufgeführt, aber ihr Inhaltsblock wird vollständig aus der Ausgabe weggelassen.
+
+Die Regeln:
+
+- Muster werden in der Array-Reihenfolge ausgewertet und das **erste passende Muster gewinnt** für eine gegebene Datei.
+- Die Flags eines passenden Musters überschreiben die globale Einstellung `output.compress`. Ein Muster, das ohne Setzen eines Flags passt, erzwingt **vollständigen Inhalt** für diese Datei, was praktisch ist, um Dateien aus einer globalen `compress`-Einstellung auf eine Whitelist zu setzen.
+- `directoryStructureOnly` hat Vorrang vor `compress`, wenn beide im selben Muster gesetzt sind.
+- Wenn kein Muster passt, gilt das globale Verhalten (vollständiger Inhalt oder komprimiert, wenn `output.compress` auf `true` steht).
+
+Diese Option ist nur in der Konfigurationsdatei verfügbar; es gibt keine entsprechende CLI-Option.
 
 ### Git-Integration
 

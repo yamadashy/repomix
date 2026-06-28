@@ -96,6 +96,7 @@ JavaScript yapılandırma dosyaları, `defineConfig` ve dinamik değerleri deste
 | `output.filePathStyle`           | Çıktıda dosya yollarının gösterilme biçimi (`target-relative` yolları her hedef köke göre, `cwd-relative` ise geçerli çalışma dizinine göre göreceli tutar) | `"target-relative"`    |
 | `output.parsableStyle`           | Çıktının seçilen stil şemasına göre kaçış karakteriyle işlenip işlenmeyeceği. Daha iyi ayrıştırma sağlar ancak token sayısını artırabilir | `false`                |
 | `output.compress`                | Token sayısını azaltırken yapıyı korumak amacıyla Tree-sitter kullanarak akıllı kod çıkarma yapılıp yapılmayacağı            | `false`                |
+| `output.patterns`                | Dosya bazında dahil etme düzeyleri. `{ pattern, compress?, directoryStructureOnly? }` girdilerinden oluşan sıralı bir dizi; eşleşen ilk glob kazanır ve o dosya için global `output.compress` ayarını geçersiz kılar. Bkz. [Dosya Bazında Dahil Etme Düzeyleri](#dosya-bazında-dahil-etme-duzeyleri) | Ayarlanmamış           |
 | `output.headerText`              | Dosya başlığına dahil edilecek özel metin. AI araçları için bağlam veya talimat sağlamak için kullanışlıdır                  | `null`                 |
 | `output.instructionFilePath`     | AI işleme için ayrıntılı özel talimatlar içeren dosyanın yolu                                                               | `null`                 |
 | `output.fileSummary`             | Başlangıçta dosya sayıları, boyutları ve diğer metrikleri gösteren özet bölümünün dahil edilip edilmeyeceği                 | `true`                 |
@@ -170,6 +171,10 @@ Eksiksiz bir yapılandırma dosyası örneği (`repomix.config.json`):
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
+    // "patterns": [
+    //   { "pattern": "docs/**/*", "compress": true },
+    //   { "pattern": "website/**/*", "directoryStructureOnly": true }
+    // ],
     "truncateBase64": false,
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
@@ -329,6 +334,37 @@ Temel avantajlar:
 - Fonksiyon gövdelerini ve uygulama ayrıntılarını kaldırır
 
 Daha fazla ayrıntı ve örnek için [Kod Sıkıştırma Kılavuzu](code-compress) sayfasına bakın.
+
+### Dosya Bazında Dahil Etme Düzeyleri
+
+`output.compress` her dosyaya tek bir düzey uygularken, `output.patterns` ayrıntı düzeyini yapılandırma dosyanızdan **glob bazında** kontrol etmenizi sağlar. Her girdi, dosyaları glob ile hedefler (`include`/`ignore` ile aynı şekilde eşleştirilir) ve eşleşen dosyalar için global `output.compress` ayarını geçersiz kılar.
+
+```json5
+{
+  "output": {
+    "compress": false, // global varsayılan, yakalama amaçlı genel kural olarak işlev görür
+    "patterns": [
+      { "pattern": "docs/**/*", "compress": true },
+      { "pattern": "website/**/*", "directoryStructureOnly": true }
+    ]
+  }
+}
+```
+
+Her dosya üç düzeyden birine çözümlenir:
+
+- **Tam içerik** (varsayılan): dosyanın tam içeriği dahil edilir.
+- **Sıkıştırılmış** (`compress: true`): içerik, `output.compress` ile aynı Tree-sitter işlem hattından geçirilir.
+- **Yalnızca dizin yapısı** (`directoryStructureOnly: true`): dosya dizin yapısında listelenir, ancak içerik bloğu çıktıdan tamamen çıkarılır.
+
+Kurallar:
+
+- Kalıplar dizi sırasına göre değerlendirilir ve belirli bir dosya için **eşleşen ilk kalıp kazanır**.
+- Eşleşen bir kalıbın bayrakları, global `output.compress` ayarını geçersiz kılar. Herhangi bir bayrak ayarlamadan eşleşen bir kalıp, o dosya için **tam içeriği** zorunlu kılar; bu, global bir `compress` ayarından dosyaları beyaz listeye almak için kullanışlıdır.
+- Aynı kalıpta her ikisi de ayarlandığında `directoryStructureOnly`, `compress` ayarına göre önceliklidir.
+- Hiçbir kalıp eşleşmezse global davranış uygulanır (tam içerik veya `output.compress` `true` olduğunda sıkıştırılmış).
+
+Bu seçenek yalnızca yapılandırma dosyasına özgüdür; eşdeğer bir CLI bayrağı yoktur.
 
 ### Git Entegrasyonu
 

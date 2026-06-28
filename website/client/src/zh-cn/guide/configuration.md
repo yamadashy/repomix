@@ -96,6 +96,7 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
 | `output.filePathStyle`           | 输出中文件路径的显示方式（`target-relative` 表示路径相对于各目标根目录，`cwd-relative` 表示路径相对于当前工作目录）                  | `"target-relative"`    |
 | `output.parsableStyle`           | 是否根据所选样式模式转义输出。可以提供更好的解析，但可能会增加 token 数量                                                    | `false`                |
 | `output.compress`                | 是否使用 Tree-sitter 执行智能代码提取，在保持结构的同时减少 token 数量                                                         | `false`                |
+| `output.patterns`                | 按文件设置包含级别。一个有序的 `{ pattern, compress?, directoryStructureOnly? }` 条目数组；第一个匹配的 glob 优先，并为该文件覆盖全局的 `output.compress`。参见[按文件设置包含级别](#按文件设置包含级别) | 未设置                 |
 | `output.headerText`              | 要包含在文件头部的自定义文本。对于为 AI 工具提供上下文或指令很有用                                                          | `null`                 |
 | `output.instructionFilePath`     | 包含用于 AI 处理的详细自定义指令的文件路径                                                                                   | `null`                 |
 | `output.fileSummary`             | 是否在输出开头包含显示文件计数、大小和其他指标的摘要部分                                                                   | `true`                 |
@@ -170,6 +171,10 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
+    // "patterns": [
+    //   { "pattern": "docs/**/*", "compress": true },
+    //   { "pattern": "website/**/*", "directoryStructureOnly": true }
+    // ],
     "truncateBase64": false,
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
@@ -329,6 +334,37 @@ build/
 - 移除函数体和实现细节
 
 更多详细信息和示例，请参阅[代码压缩指南](code-compress)。
+
+### 按文件设置包含级别
+
+`output.compress` 为每个文件应用单一级别，而 `output.patterns` 允许你在配置文件中**按 glob** 控制详细级别。每个条目通过 glob 定位文件（匹配方式与 `include`/`ignore` 相同），并为匹配的文件覆盖全局的 `output.compress` 设置。
+
+```json5
+{
+  "output": {
+    "compress": false, // 全局默认值作为兜底
+    "patterns": [
+      { "pattern": "docs/**/*", "compress": true },
+      { "pattern": "website/**/*", "directoryStructureOnly": true }
+    ]
+  }
+}
+```
+
+每个文件会被解析为三个级别之一：
+
+- **完整内容**（默认）：包含文件的完整内容。
+- **压缩**（`compress: true`）：内容会经过与 `output.compress` 相同的 Tree-sitter 处理流程。
+- **仅目录结构**（`directoryStructureOnly: true`）：文件会列在目录结构中，但其内容块会从输出中完全省略。
+
+规则如下：
+
+- 模式按数组顺序求值，对于给定文件，**第一个匹配的模式优先**。
+- 匹配模式的标志会覆盖全局的 `output.compress` 设置。匹配但未设置任何标志的模式会强制该文件为**完整内容**，这对于将文件从全局 `compress` 中列入白名单很方便。
+- 当同一模式同时设置了 `directoryStructureOnly` 和 `compress` 时，`directoryStructureOnly` 优先。
+- 如果没有模式匹配，则应用全局行为（完整内容，或当 `output.compress` 为 `true` 时为压缩）。
+
+此选项仅适用于配置文件；没有等效的 CLI 选项。
 
 ### Git 集成
 

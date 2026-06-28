@@ -96,6 +96,7 @@ File cấu hình JavaScript hoạt động tương tự như TypeScript, hỗ tr
 | `output.filePathStyle`           | Cách hiển thị đường dẫn tệp trong đầu ra (`target-relative` giữ đường dẫn tương đối so với thư mục gốc của mỗi mục tiêu, `cwd-relative` giữ đường dẫn tương đối so với thư mục làm việc hiện tại) | `"target-relative"`    |
 | `output.parsableStyle`           | Có nên escape đầu ra dựa trên schema kiểu đã chọn hay không. Cho phép phân tích tốt hơn nhưng có thể tăng số lượng token | `false`                |
 | `output.compress`                | Có nên thực hiện trích xuất mã thông minh bằng Tree-sitter để giảm số lượng token trong khi bảo toàn cấu trúc hay không    | `false`                |
+| `output.patterns`                | Mức độ bao gồm theo từng file. Một mảng có thứ tự gồm các mục `{ pattern, compress?, directoryStructureOnly? }`; glob khớp đầu tiên sẽ thắng và ghi đè `output.compress` toàn cục cho file đó. Xem [Mức độ Bao gồm theo Từng File](#muc-đo-bao-gom-theo-tung-file) | Không đặt              |
 | `output.headerText`              | Văn bản tùy chỉnh để đưa vào header file. Hữu ích để cung cấp ngữ cảnh hoặc hướng dẫn cho các công cụ AI                  | `null`                 |
 | `output.instructionFilePath`     | Đường dẫn đến file chứa hướng dẫn tùy chỉnh chi tiết cho xử lý AI                                                          | `null`                 |
 | `output.fileSummary`             | Có nên bao gồm phần tóm tắt ở đầu hiển thị số lượng file, kích thước và các chỉ số khác hay không                          | `true`                 |
@@ -170,6 +171,10 @@ Bạn có thể bật xác thực schema cho file cấu hình của mình bằng
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
+    // "patterns": [
+    //   { "pattern": "docs/**/*", "compress": true },
+    //   { "pattern": "website/**/*", "directoryStructureOnly": true }
+    // ],
     "truncateBase64": false,
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
@@ -277,6 +282,37 @@ Lợi ích chính:
 - Loại bỏ function body và chi tiết triển khai
 
 Để biết thêm chi tiết và ví dụ, hãy xem [Hướng dẫn Nén Mã](code-compress).
+
+### Mức độ Bao gồm theo Từng File
+
+Trong khi `output.compress` áp dụng một mức duy nhất cho mọi file, `output.patterns` cho phép bạn kiểm soát mức độ chi tiết **theo từng glob** từ file cấu hình của mình. Mỗi mục nhắm đến các file bằng glob (khớp theo cùng cách như `include`/`ignore`) và ghi đè cài đặt `output.compress` toàn cục cho các file khớp.
+
+```json5
+{
+  "output": {
+    "compress": false, // mặc định toàn cục đóng vai trò là phương án bao quát
+    "patterns": [
+      { "pattern": "docs/**/*", "compress": true },
+      { "pattern": "website/**/*", "directoryStructureOnly": true }
+    ]
+  }
+}
+```
+
+Mỗi file được phân giải về một trong ba mức:
+
+- **Nội dung đầy đủ** (mặc định): toàn bộ nội dung của file được bao gồm.
+- **Đã nén** (`compress: true`): nội dung được đưa qua cùng pipeline Tree-sitter như `output.compress`.
+- **Chỉ cấu trúc thư mục** (`directoryStructureOnly: true`): file được liệt kê trong cấu trúc thư mục, nhưng khối nội dung của nó bị bỏ hoàn toàn khỏi đầu ra.
+
+Các quy tắc:
+
+- Các mẫu được đánh giá theo thứ tự trong mảng và **mẫu khớp đầu tiên sẽ thắng** đối với một file nhất định.
+- Các cờ của mẫu khớp sẽ ghi đè cài đặt `output.compress` toàn cục. Một mẫu khớp mà không đặt cờ nào sẽ buộc **nội dung đầy đủ** cho file đó, điều này hữu ích để đưa các file vào danh sách trắng khỏi một `compress` toàn cục.
+- `directoryStructureOnly` được ưu tiên hơn `compress` khi cả hai cùng được đặt trên một mẫu.
+- Nếu không có mẫu nào khớp, hành vi toàn cục sẽ được áp dụng (nội dung đầy đủ, hoặc đã nén khi `output.compress` là `true`).
+
+Tùy chọn này chỉ có trong file cấu hình; không có tùy chọn CLI tương đương.
 
 ### Tích hợp Git
 

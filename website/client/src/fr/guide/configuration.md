@@ -96,6 +96,7 @@ Les fichiers de configuration JavaScript fonctionnent de la même manière que T
 | `output.filePathStyle`           | Façon dont les chemins de fichiers sont affichés dans la sortie (`target-relative` conserve les chemins relatifs à chaque racine cible, `cwd-relative` conserve les chemins relatifs au répertoire de travail courant) | `"target-relative"`    |
 | `output.parsableStyle`           | Indique s'il faut échapper la sortie selon le schéma de style choisi. Permet une meilleure analyse mais peut augmenter le nombre de tokens | `false`                |
 | `output.compress`                | Indique s'il faut effectuer une extraction intelligente du code à l'aide de Tree-sitter pour réduire le nombre de tokens tout en préservant la structure | `false`                |
+| `output.patterns`                | Niveaux d'inclusion par fichier. Un tableau ordonné d'entrées `{ pattern, compress?, directoryStructureOnly? }` ; le premier motif glob correspondant l'emporte et remplace le réglage global `output.compress` pour ce fichier. Voir [Niveaux d'inclusion par fichier](#niveaux-d-inclusion-par-fichier) | Non défini |
 | `output.headerText`              | Texte personnalisé à inclure dans l'en-tête du fichier. Utile pour fournir du contexte ou des instructions aux outils d'IA   | `null`                 |
 | `output.instructionFilePath`     | Chemin vers un fichier contenant des instructions personnalisées détaillées pour le traitement par l'IA                      | `null`                 |
 | `output.fileSummary`             | Indique s'il faut inclure une section de résumé au début montrant le nombre de fichiers, les tailles et d'autres métriques  | `true`                 |
@@ -170,6 +171,10 @@ Voici un exemple de fichier de configuration complet (`repomix.config.json`) :
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
+    // "patterns": [
+    //   { "pattern": "docs/**/*", "compress": true },
+    //   { "pattern": "website/**/*", "directoryStructureOnly": true }
+    // ],
     "truncateBase64": false,
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
@@ -329,6 +334,37 @@ Avantages principaux :
 - Supprime les corps de fonctions et les détails d'implémentation
 
 Pour plus de détails et d'exemples, consultez le [Guide de compression du code](code-compress).
+
+### Niveaux d'inclusion par fichier
+
+Alors que `output.compress` applique un seul niveau à chaque fichier, `output.patterns` vous permet de contrôler le niveau de détail **par motif glob** depuis votre fichier de configuration. Chaque entrée cible des fichiers par motif glob (mis en correspondance de la même manière que `include`/`ignore`) et remplace le réglage global `output.compress` pour les fichiers correspondants.
+
+```json5
+{
+  "output": {
+    "compress": false, // la valeur par défaut globale sert de cas par défaut
+    "patterns": [
+      { "pattern": "docs/**/*", "compress": true },
+      { "pattern": "website/**/*", "directoryStructureOnly": true }
+    ]
+  }
+}
+```
+
+Chaque fichier est résolu vers l'un des trois niveaux :
+
+- **Contenu complet** (par défaut) : le contenu complet du fichier est inclus.
+- **Compressé** (`compress: true`) : le contenu passe par le même pipeline Tree-sitter que `output.compress`.
+- **Structure de répertoires uniquement** (`directoryStructureOnly: true`) : le fichier est listé dans la structure des répertoires, mais son bloc de contenu est entièrement omis de la sortie.
+
+Les règles :
+
+- Les motifs sont évalués dans l'ordre du tableau et le **premier motif correspondant l'emporte** pour un fichier donné.
+- Les indicateurs d'un motif correspondant remplacent le réglage global `output.compress`. Un motif qui correspond sans définir d'indicateur force le **contenu complet** pour ce fichier, ce qui est pratique pour mettre des fichiers sur liste blanche en dehors d'un `compress` global.
+- `directoryStructureOnly` a la priorité sur `compress` lorsque les deux sont définis sur le même motif.
+- Si aucun motif ne correspond, le comportement global s'applique (contenu complet, ou compressé lorsque `output.compress` vaut `true`).
+
+Cette option est disponible uniquement dans le fichier de configuration ; il n'existe pas d'option CLI équivalente.
 
 ### Intégration Git
 

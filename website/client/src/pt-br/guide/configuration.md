@@ -96,6 +96,7 @@ Os arquivos de configuração JavaScript funcionam da mesma forma que TypeScript
 | `output.filePathStyle`           | Como os caminhos de arquivo são exibidos na saída (`target-relative` mantém os caminhos relativos à raiz de cada destino, `cwd-relative` mantém os caminhos relativos ao diretório de trabalho atual) | `"target-relative"`    |
 | `output.parsableStyle`           | Indica se a saída deve ser escapada de acordo com o esquema de estilo escolhido. Permite melhor análise mas pode aumentar a contagem de tokens | `false`                |
 | `output.compress`                | Indica se deve realizar extração inteligente de código usando Tree-sitter para reduzir a contagem de tokens enquanto preserva a estrutura | `false`                |
+| `output.patterns`                | Níveis de inclusão por arquivo. Um array ordenado de entradas `{ pattern, compress?, directoryStructureOnly? }`; o primeiro glob correspondente vence e substitui o `output.compress` global para aquele arquivo. Veja [Níveis de inclusão por arquivo](#niveis-de-inclusao-por-arquivo) | Não definido           |
 | `output.headerText`              | Texto personalizado para incluir no cabeçalho do arquivo. Útil para fornecer contexto ou instruções para ferramentas de IA | `null`                 |
 | `output.instructionFilePath`     | Caminho para um arquivo contendo instruções personalizadas detalhadas para processamento de IA                            | `null`                 |
 | `output.fileSummary`             | Indica se deve incluir uma seção de resumo no início mostrando contagens de arquivos, tamanhos e outras métricas         | `true`                 |
@@ -170,6 +171,10 @@ Aqui está um exemplo de um arquivo de configuração completo (`repomix.config.
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
+    // "patterns": [
+    //   { "pattern": "docs/**/*", "compress": true },
+    //   { "pattern": "website/**/*", "directoryStructureOnly": true }
+    // ],
     "truncateBase64": false,
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
@@ -329,6 +334,37 @@ Benefícios principais:
 - Remove corpos de funções e detalhes de implementação
 
 Para mais detalhes e exemplos, consulte o [Guia de compressão de código](code-compress).
+
+### Níveis de inclusão por arquivo
+
+Enquanto `output.compress` aplica um único nível a cada arquivo, `output.patterns` permite controlar o nível de detalhe **por glob** a partir do seu arquivo de configuração. Cada entrada seleciona arquivos por glob (correspondidos da mesma forma que `include`/`ignore`) e substitui a configuração global `output.compress` para os arquivos correspondentes.
+
+```json5
+{
+  "output": {
+    "compress": false, // o padrão global atua como o coringa
+    "patterns": [
+      { "pattern": "docs/**/*", "compress": true },
+      { "pattern": "website/**/*", "directoryStructureOnly": true }
+    ]
+  }
+}
+```
+
+Cada arquivo é resolvido para um de três níveis:
+
+- **Conteúdo completo** (padrão): o conteúdo completo do arquivo é incluído.
+- **Comprimido** (`compress: true`): o conteúdo passa pelo mesmo pipeline Tree-sitter que `output.compress`.
+- **Somente estrutura de diretórios** (`directoryStructureOnly: true`): o arquivo é listado na estrutura de diretórios, mas seu bloco de conteúdo é completamente omitido da saída.
+
+As regras:
+
+- Os padrões são avaliados na ordem do array e o **primeiro padrão correspondente vence** para um determinado arquivo.
+- As flags de um padrão correspondente substituem a configuração global `output.compress`. Um padrão que corresponde sem definir uma flag força **conteúdo completo** para aquele arquivo, o que é útil para incluir arquivos em uma lista de exceções de um `compress` global.
+- `directoryStructureOnly` tem precedência sobre `compress` quando ambos são definidos no mesmo padrão.
+- Se nenhum padrão corresponder, o comportamento global se aplica (conteúdo completo, ou comprimido quando `output.compress` é `true`).
+
+Esta opção é exclusiva do arquivo de configuração; não há opção de linha de comando equivalente.
 
 ### Integração com Git
 
