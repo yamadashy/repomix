@@ -1,6 +1,7 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import { parseFile } from '../treeSitter/parseFile.js';
+import { type FileInclusionLevel, resolveFileLevel } from './fileLevelResolve.js';
 import { getFileManipulator } from './fileManipulate.js';
 import type { RawFile } from './fileTypes.js';
 
@@ -13,7 +14,11 @@ import type { RawFile } from './fileTypes.js';
  * Lightweight transforms (truncateBase64, removeEmptyLines, trim, showLineNumbers)
  * are applied separately on the main thread by processFiles().
  */
-export const processContent = async (rawFile: RawFile, config: RepomixConfigMerged): Promise<string> => {
+export const processContent = async (
+  rawFile: RawFile,
+  config: RepomixConfigMerged,
+  level?: FileInclusionLevel,
+): Promise<string> => {
   const processStartAt = process.hrtime.bigint();
   let processedContent = rawFile.content;
   const manipulator = getFileManipulator(rawFile.path);
@@ -24,7 +29,12 @@ export const processContent = async (rawFile: RawFile, config: RepomixConfigMerg
     processedContent = manipulator.removeComments(processedContent);
   }
 
-  if (config.output.compress) {
+  // Compress when this file resolves to the 'compress' level. The level is
+  // normally precomputed in the main thread and threaded through; fall back to
+  // resolving it here when it is not supplied. This honors per-file
+  // output.patterns overrides and the global output.compress setting.
+  const effectiveLevel = level ?? resolveFileLevel(rawFile.path, config.output);
+  if (effectiveLevel === 'compress') {
     try {
       const parsedContent = await parseFile(processedContent, rawFile.path, config);
       if (parsedContent === undefined) {

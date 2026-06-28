@@ -88,14 +88,19 @@ describe('packager', () => {
     expect(mockDeps.produceOutput).toHaveBeenCalled();
     expect(mockDeps.calculateMetrics).toHaveBeenCalled();
 
+    // pack() resolves each file's inclusion level (against its per-root-relative
+    // path) and carries it on the raw file before handing them to the security
+    // check and file processing. With the default config every file resolves to
+    // 'full'.
+    const expectedLeveledRawFiles = mockRawFiles.map((file) => ({ ...file, level: 'full' as const }));
     expect(mockDeps.validateFileSafety).toHaveBeenCalledWith(
-      mockRawFiles,
+      expectedLeveledRawFiles,
       progressCallback,
       mockConfig,
       undefined,
       undefined,
     );
-    expect(mockDeps.processFiles).toHaveBeenCalledWith(mockRawFiles, mockConfig, progressCallback);
+    expect(mockDeps.processFiles).toHaveBeenCalledWith(expectedLeveledRawFiles, mockConfig, progressCallback);
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
       ['root'],
       mockConfig,

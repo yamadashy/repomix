@@ -96,6 +96,7 @@ JavaScript configuration files work the same as TypeScript, supporting `defineCo
 | `output.filePathStyle`           | How file paths are shown in output (`target-relative` keeps paths relative to each target root, `cwd-relative` keeps paths relative to the current working directory) | `"target-relative"`    |
 | `output.parsableStyle`           | Whether to escape the output based on the chosen style schema. Enables better parsing but may increase token count           | `false`                |
 | `output.compress`                | Whether to perform intelligent code extraction using Tree-sitter to reduce token count while preserving structure             | `false`                |
+| `output.patterns`                | Per-file inclusion levels. An ordered array of `{ pattern, compress?, directoryStructureOnly? }` entries; the first matching glob wins and overrides the global `output.compress` for that file. See [Per-file Inclusion Levels](#per-file-inclusion-levels) | Not set                |
 | `output.headerText`              | Custom text to include in the file header. Useful for providing context or instructions for AI tools                         | `null`                 |
 | `output.instructionFilePath`     | Path to a file containing detailed custom instructions for AI processing                                                     | `null`                 |
 | `output.fileSummary`             | Whether to include a summary section at the beginning showing file counts, sizes, and other metrics                          | `true`                 |
@@ -170,6 +171,10 @@ Here's an example of a complete configuration file (`repomix.config.json`):
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
+    // "patterns": [
+    //   { "pattern": "docs/**/*", "compress": true },
+    //   { "pattern": "website/**/*", "directoryStructureOnly": true }
+    // ],
     "truncateBase64": false,
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
@@ -329,6 +334,37 @@ Key benefits:
 - Removes function bodies and implementation details
 
 For more details and examples, see the [Code Compression Guide](code-compress).
+
+### Per-file Inclusion Levels
+
+While `output.compress` applies a single level to every file, `output.patterns` lets you control the detail level **per glob** from your configuration file. Each entry targets files by glob (matched the same way as `include`/`ignore`) and overrides the global `output.compress` setting for matching files.
+
+```json5
+{
+  "output": {
+    "compress": false, // global default acts as the catch-all
+    "patterns": [
+      { "pattern": "docs/**/*", "compress": true },
+      { "pattern": "website/**/*", "directoryStructureOnly": true }
+    ]
+  }
+}
+```
+
+Each file resolves to one of three levels:
+
+- **Full content** (default): the file's full content is included.
+- **Compressed** (`compress: true`): the content is passed through the same Tree-sitter pipeline as `output.compress`.
+- **Directory-structure-only** (`directoryStructureOnly: true`): the file is listed in the directory structure, but its content block is omitted from the output entirely.
+
+The rules:
+
+- Patterns are evaluated in array order and the **first matching pattern wins** for a given file.
+- A matched pattern's flags override the global `output.compress` setting. A pattern that matches without setting a flag forces **full content** for that file, which is handy for whitelisting files out of a global `compress`.
+- `directoryStructureOnly` takes precedence over `compress` when both are set on the same pattern.
+- If no pattern matches, the global behavior applies (full content, or compressed when `output.compress` is `true`).
+
+This option is config-file only; there is no equivalent CLI flag.
 
 ### Git Integration
 

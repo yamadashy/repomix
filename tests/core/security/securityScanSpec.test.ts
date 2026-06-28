@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mergeConfigs } from '../../../src/config/configLoad.js';
 import type { RepomixConfigFile, RepomixConfigMerged, RepomixOutputStyle } from '../../../src/config/configSchema.js';
 import { collectFiles } from '../../../src/core/file/fileCollect.js';
+import { resolveFileLevel } from '../../../src/core/file/fileLevelResolve.js';
 import { readRawFile } from '../../../src/core/file/fileRead.js';
 import { searchFiles } from '../../../src/core/file/fileSearch.js';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
@@ -66,7 +67,8 @@ const runPack = async (rootDir: string, config: RepomixConfigMerged) =>
     processFiles: async (rawFiles, cfg) => {
       const processedFiles: ProcessedFile[] = [];
       for (const rawFile of rawFiles) {
-        processedFiles.push(await fileProcessWorker({ rawFile, config: cfg }));
+        const level = resolveFileLevel(rawFile.path, cfg.output);
+        processedFiles.push(await fileProcessWorker({ rawFile, config: cfg, level }));
       }
       return processedFiles;
     },

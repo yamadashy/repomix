@@ -4,6 +4,7 @@ import { logger } from '../shared/logger.js';
 import { logMemoryUsage, withMemoryLogging } from '../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
+import { resolveFileLevel } from './file/fileLevelResolve.js';
 import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
 import { searchFiles } from './file/fileSearch.js';
@@ -186,6 +187,12 @@ export const pack = async (
       const rootLabel = rootLabels?.[index];
       return curr.rawFiles.map((file) => ({
         ...file,
+        // Resolve the inclusion level against the per-root-relative path (the same
+        // basis include/ignore match against), before `path` is rewritten to its
+        // display form below. Carrying it on the file means output.patterns globs
+        // match per-root regardless of root labels or output.filePathStyle, instead
+        // of being matched against the rewritten display path inside processFiles.
+        level: resolveFileLevel(file.path, config.output),
         path: buildFileDisplayPath({
           rootDir,
           filePath: file.path,
