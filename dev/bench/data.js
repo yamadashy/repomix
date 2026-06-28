@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782570798018,
+  "lastUpdate": 1782639629456,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -7605,6 +7605,51 @@ window.BENCHMARK_DATA = {
             "range": "±11",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 781ms, Q3: 792ms\nAll times: 778, 779, 780, 780, 781, 781, 782, 785, 785, 786, 787, 787, 789, 789, 790, 792, 793, 795, 796, 806ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51c03e9ef6bd519bc5b144f7420d5e4b2d845508",
+          "message": "Merge pull request #1653 from PMDevSolutions/feat/output-patterns-inclusion-level\n\nfeat(output): add per-file inclusion levels (output.patterns)",
+          "timestamp": "2026-06-28T18:38:56+09:00",
+          "tree_id": "a4040f3a93e059bf8d03b8838acb0299cc5252fe",
+          "url": "https://github.com/yamadashy/repomix/commit/51c03e9ef6bd519bc5b144f7420d5e4b2d845508"
+        },
+        "date": 1782639627844,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 515,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 505ms, Q3: 523ms\nAll times: 493, 499, 499, 501, 501, 502, 502, 505, 506, 511, 512, 513, 514, 514, 514, 515, 515, 517, 518, 518, 519, 520, 523, 528, 533, 540, 540, 553, 555, 581ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 869,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 862ms, Q3: 877ms\nAll times: 827, 853, 854, 855, 861, 862, 864, 865, 866, 868, 869, 870, 871, 875, 876, 877, 887, 891, 893, 893ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1222,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1213ms, Q3: 1229ms\nAll times: 1191, 1201, 1202, 1211, 1211, 1213, 1213, 1215, 1216, 1217, 1222, 1223, 1223, 1224, 1224, 1229, 1235, 1238, 1241, 1248ms"
           }
         ]
       }
