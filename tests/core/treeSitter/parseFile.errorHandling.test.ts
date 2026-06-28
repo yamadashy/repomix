@@ -114,6 +114,17 @@ describe('parseFile error handling', () => {
     expect(logger.warn).toHaveBeenCalledTimes(1);
   });
 
+  it('returns an empty string (not undefined) when a parseable file yields no captures', async () => {
+    // Contract boundary: '' means "compressed to nothing, keep it" while
+    // undefined means "could not compress, fall back". The default mock yields
+    // zero captures, exercising the success-with-empty-result path; the caller
+    // preserves '' via `parsedContent ?? processedContent`.
+    const result = await parseFile('const x = 1;', 'main.js', config);
+
+    expect(result).toBe('');
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
   it('returns undefined without warning when the parser yields no tree', async () => {
     // parser.parse() can return null; this is an expected non-result, logged at
     // debug level (not warn), and falls back to uncompressed content.
