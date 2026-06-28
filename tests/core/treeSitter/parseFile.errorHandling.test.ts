@@ -114,6 +114,17 @@ describe('parseFile error handling', () => {
     expect(logger.warn).toHaveBeenCalledTimes(1);
   });
 
+  it('returns undefined without warning when the parser yields no tree', async () => {
+    // parser.parse() can return null; this is an expected non-result, logged at
+    // debug level (not warn), and falls back to uncompressed content.
+    mockParser.getParserForLang.mockResolvedValue({ parse: vi.fn().mockReturnValue(null) });
+
+    const result = await parseFile('const x = 1;', 'main.js', config);
+
+    expect(result).toBeUndefined();
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
   it('returns undefined without warning for unsupported languages', async () => {
     mockParser.guessTheLang.mockReturnValue(undefined);
 

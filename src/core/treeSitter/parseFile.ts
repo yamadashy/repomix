@@ -48,9 +48,6 @@ export const parseFile = async (
 ): Promise<string | undefined> => {
   // Split the file content into individual lines
   const lines = fileContent.split('\n');
-  if (lines.length < 1) {
-    return '';
-  }
 
   try {
     const languageParser = await getLanguageParserSingleton();
