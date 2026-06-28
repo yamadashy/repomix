@@ -96,6 +96,7 @@ JavaScript 설정 파일은 TypeScript와 동일하게 작동하며 `defineConfi
 | `output.filePathStyle`           | 출력에 파일 경로를 표시하는 방식 (`target-relative`는 각 대상 루트에 대한 상대 경로를 유지하고, `cwd-relative`는 현재 작업 디렉토리에 대한 상대 경로를 유지합니다) | `"target-relative"`    |
 | `output.parsableStyle`           | 선택한 스타일 스키마에 따라 출력을 이스케이프할지 여부. 더 나은 구문 분석이 가능하지만 토큰 수가 증가할 수 있습니다      | `false`                |
 | `output.compress`                | Tree-sitter를 사용하여 구조를 유지하면서 토큰 수를 줄이기 위해 지능적인 코드 추출을 수행할지 여부                         | `false`                |
+| `output.patterns`                | 파일별 포함 수준. `{ pattern, compress?, directoryStructureOnly? }` 항목의 순서가 있는 배열이며, 처음으로 일치하는 glob이 우선하여 해당 파일에 대한 전역 `output.compress`를 덮어씁니다. [파일별 포함 수준](#파일별-포함-수준)을 참조하세요 | 미설정                 |
 | `output.headerText`              | 파일 헤더에 포함할 사용자 정의 텍스트. AI 도구에 컨텍스트나 지침을 제공하는 데 유용합니다                                | `null`                 |
 | `output.instructionFilePath`     | AI 처리를 위한 상세한 사용자 정의 지침이 포함된 파일 경로                                                                  | `null`                 |
 | `output.fileSummary`             | 출력 시작 부분에 파일 수, 크기 및 기타 메트릭을 보여주는 요약 섹션을 포함할지 여부                                        | `true`                 |
@@ -170,6 +171,10 @@ JavaScript 설정 파일은 TypeScript와 동일하게 작동하며 `defineConfi
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
+    // "patterns": [
+    //   { "pattern": "docs/**/*", "compress": true },
+    //   { "pattern": "website/**/*", "directoryStructureOnly": true }
+    // ],
     "truncateBase64": false,
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
@@ -329,6 +334,37 @@ build/
 - 함수 본문과 구현 세부 사항 제거
 
 자세한 정보와 예시는 [코드 압축 가이드](code-compress)를 참조하세요.
+
+### 파일별 포함 수준
+
+`output.compress`는 모든 파일에 단일 수준을 적용하지만, `output.patterns`를 사용하면 설정 파일에서 **glob별로** 세부 수준을 제어할 수 있습니다. 각 항목은 glob으로 파일을 대상으로 지정하며(`include`/`ignore`와 동일한 방식으로 매칭됨), 일치하는 파일에 대해 전역 `output.compress` 설정을 덮어씁니다.
+
+```json5
+{
+  "output": {
+    "compress": false, // 전역 기본값이 catch-all 역할을 합니다
+    "patterns": [
+      { "pattern": "docs/**/*", "compress": true },
+      { "pattern": "website/**/*", "directoryStructureOnly": true }
+    ]
+  }
+}
+```
+
+각 파일은 다음 세 가지 수준 중 하나로 결정됩니다:
+
+- **전체 내용**(기본값): 파일의 전체 내용이 포함됩니다.
+- **압축**(`compress: true`): `output.compress`와 동일한 Tree-sitter 파이프라인을 통해 내용이 처리됩니다.
+- **디렉토리 구조만**(`directoryStructureOnly: true`): 파일이 디렉토리 구조에 나열되지만, 해당 내용 블록은 출력에서 완전히 생략됩니다.
+
+규칙:
+
+- 패턴은 배열 순서대로 평가되며, 주어진 파일에 대해 **처음으로 일치하는 패턴이 우선합니다**.
+- 일치한 패턴의 플래그는 전역 `output.compress` 설정을 덮어씁니다. 플래그를 설정하지 않고 일치하는 패턴은 해당 파일에 대해 **전체 내용**을 강제하며, 이는 전역 `compress`에서 특정 파일을 화이트리스트로 제외하는 데 유용합니다.
+- 동일한 패턴에 `directoryStructureOnly`와 `compress`가 모두 설정된 경우 `directoryStructureOnly`가 우선합니다.
+- 일치하는 패턴이 없으면 전역 동작이 적용됩니다(전체 내용, 또는 `output.compress`가 `true`인 경우 압축).
+
+이 옵션은 설정 파일 전용이며, 동등한 CLI 플래그는 없습니다.
 
 ### Git 통합
 

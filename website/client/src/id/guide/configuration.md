@@ -96,6 +96,7 @@ File konfigurasi JavaScript bekerja sama seperti TypeScript, mendukung `defineCo
 | `output.filePathStyle`           | Cara jalur file ditampilkan dalam output (`target-relative` menjaga jalur relatif terhadap setiap root target, `cwd-relative` menjaga jalur relatif terhadap direktori kerja saat ini) | `"target-relative"`    |
 | `output.parsableStyle`           | Apakah akan escape output berdasarkan skema gaya yang dipilih. Memungkinkan parsing yang lebih baik tetapi dapat meningkatkan jumlah token | `false`                |
 | `output.compress`                | Apakah akan melakukan ekstraksi kode cerdas menggunakan Tree-sitter untuk mengurangi jumlah token sambil mempertahankan struktur | `false`                |
+| `output.patterns`                | Level penyertaan per-file. Sebuah array terurut berisi entri `{ pattern, compress?, directoryStructureOnly? }`; glob pertama yang cocok yang menang dan menimpa `output.compress` global untuk file tersebut. Lihat [Level Penyertaan Per-file](#level-penyertaan-per-file) | Tidak diatur           |
 | `output.headerText`              | Teks kustom untuk disertakan dalam header file. Berguna untuk memberikan konteks atau instruksi untuk alat AI              | `null`                 |
 | `output.instructionFilePath`     | Path ke file yang berisi instruksi kustom rinci untuk pemrosesan AI                                                         | `null`                 |
 | `output.fileSummary`             | Apakah akan menyertakan bagian ringkasan di awal yang menampilkan jumlah file, ukuran, dan metrik lainnya                  | `true`                 |
@@ -170,6 +171,10 @@ Berikut adalah contoh file konfigurasi lengkap (`repomix.config.json`):
     "removeEmptyLines": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
+    // "patterns": [
+    //   { "pattern": "docs/**/*", "compress": true },
+    //   { "pattern": "website/**/*", "directoryStructureOnly": true }
+    // ],
     "truncateBase64": false,
     "copyToClipboard": false,
     "includeEmptyDirectories": false,
@@ -277,6 +282,37 @@ Manfaat utama:
 - Menghapus body fungsi dan detail implementasi
 
 Untuk detail dan contoh lebih lanjut, lihat [Panduan Kompresi Kode](code-compress).
+
+### Level Penyertaan Per-file
+
+Sementara `output.compress` menerapkan satu level tunggal ke setiap file, `output.patterns` memungkinkan Anda mengontrol level detail **per glob** dari file konfigurasi Anda. Setiap entri menargetkan file berdasarkan glob (dicocokkan dengan cara yang sama seperti `include`/`ignore`) dan menimpa pengaturan `output.compress` global untuk file yang cocok.
+
+```json5
+{
+  "output": {
+    "compress": false, // default global bertindak sebagai catch-all
+    "patterns": [
+      { "pattern": "docs/**/*", "compress": true },
+      { "pattern": "website/**/*", "directoryStructureOnly": true }
+    ]
+  }
+}
+```
+
+Setiap file diselesaikan menjadi salah satu dari tiga level:
+
+- **Konten penuh** (default): konten penuh file disertakan.
+- **Terkompresi** (`compress: true`): konten dilewatkan melalui pipeline Tree-sitter yang sama seperti `output.compress`.
+- **Hanya struktur direktori** (`directoryStructureOnly: true`): file dicantumkan dalam struktur direktori, tetapi blok kontennya dihilangkan sepenuhnya dari output.
+
+Aturannya:
+
+- Pola dievaluasi sesuai urutan array dan **pola pertama yang cocok yang menang** untuk file tertentu.
+- Flag dari pola yang cocok menimpa pengaturan `output.compress` global. Pola yang cocok tanpa menetapkan flag akan memaksa **konten penuh** untuk file tersebut, yang berguna untuk memasukkan file ke whitelist dari `compress` global.
+- `directoryStructureOnly` lebih diutamakan daripada `compress` ketika keduanya diatur pada pola yang sama.
+- Jika tidak ada pola yang cocok, perilaku global berlaku (konten penuh, atau terkompresi ketika `output.compress` bernilai `true`).
+
+Opsi ini hanya tersedia di file konfigurasi; tidak ada opsi CLI yang setara.
 
 ### Integrasi Git
 
