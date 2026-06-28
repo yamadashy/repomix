@@ -34,28 +34,34 @@ let languageParserSingleton: LanguageParser | null = null;
 
 export const CHUNK_SEPARATOR = '⋮----';
 
-// TODO: Do something with config: RepomixConfigMerged, it is not used (yet)
-export const parseFile = async (fileContent: string, filePath: string, config: RepomixConfigMerged) => {
-  const languageParser = await getLanguageParserSingleton();
-
+// Compression is best-effort: this function never throws. On any failure it
+// returns undefined so callers can fall back to the uncompressed content. This
+// matters because tree-sitter runs on WASM, where a pathological file can
+// trigger a runtime abort; without this, a single bad file would crash the
+// whole pack. The success path is fully wrapped so a partially-built result is
+// never returned on error.
+export const parseFile = async (
+  fileContent: string,
+  filePath: string,
+  config: RepomixConfigMerged,
+): Promise<string | undefined> => {
   // Split the file content into individual lines
   const lines = fileContent.split('\n');
-  if (lines.length < 1) {
-    return '';
-  }
-
-  const lang: SupportedLang | undefined = languageParser.guessTheLang(filePath);
-  if (lang === undefined) {
-    // Language not supported
-    return undefined;
-  }
-
-  const query = await languageParser.getQueryForLang(lang);
-  const parser = await languageParser.getParserForLang(lang);
-  const processedChunks = new Set<string>();
-  const capturedChunks: CapturedChunk[] = [];
 
   try {
+    const languageParser = await getLanguageParserSingleton();
+
+    const lang: SupportedLang | undefined = languageParser.guessTheLang(filePath);
+    if (lang === undefined) {
+      // Language not supported: fall back to uncompressed content quietly.
+      return undefined;
+    }
+
+    const query = await languageParser.getQueryForLang(lang);
+    const parser = await languageParser.getParserForLang(lang);
+    const processedChunks = new Set<string>();
+    const capturedChunks: CapturedChunk[] = [];
+
     // Parse the file content into an Abstract Syntax Tree (AST)
     const tree = parser.parse(fileContent);
     if (!tree) {
@@ -91,23 +97,40 @@ export const parseFile = async (fileContent: string, filePath: string, config: R
         });
       }
     }
+
+    const filteredChunks = filterDuplicatedChunks(capturedChunks);
+    const mergedChunks = mergeAdjacentChunks(filteredChunks);
+
+    return mergedChunks
+      .map((chunk) => chunk.content)
+      .join(`\n${CHUNK_SEPARATOR}\n`)
+      .trim();
   } catch (error: unknown) {
-    logger.log(`Error parsing file: ${error}\n`);
+    // Any failure here (language preparation, parsing, or a WASM runtime abort)
+    // degrades to uncompressed content instead of aborting the whole pack.
+    //
+    // Note on hard WASM aborts (e.g. "table index is out of bounds"): such an
+    // abort can leave this worker's shared tree-sitter runtime degraded. The
+    // parser singleton is reused for the worker's lifetime, so later files routed
+    // to the same worker may also fall back to uncompressed output. This is
+    // bounded per worker and surfaced by the warning below. Recovering the
+    // runtime would require recycling the worker, which is out of scope here; the
+    // init-failure path is already retried by getLanguageParserSingleton.
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn(`Failed to compress ${filePath}, using uncompressed content: ${message}`);
+    return undefined;
   }
-
-  const filteredChunks = filterDuplicatedChunks(capturedChunks);
-  const mergedChunks = mergeAdjacentChunks(filteredChunks);
-
-  return mergedChunks
-    .map((chunk) => chunk.content)
-    .join(`\n${CHUNK_SEPARATOR}\n`)
-    .trim();
 };
 
 const getLanguageParserSingleton = async () => {
   if (!languageParserSingleton) {
-    languageParserSingleton = new LanguageParser();
-    await languageParserSingleton.init();
+    // Assign only after init() succeeds. Otherwise a failed init would leave an
+    // uninitialized parser cached for the rest of the worker's lifetime, so
+    // every subsequent file would throw "not initialized" and silently lose
+    // compression. Keeping the singleton null lets the next call retry init.
+    const parser = new LanguageParser();
+    await parser.init();
+    languageParserSingleton = parser;
   }
   return languageParserSingleton;
 };

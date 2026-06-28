@@ -35,16 +35,20 @@ export const processContent = async (
   // output.patterns overrides and the global output.compress setting.
   const effectiveLevel = level ?? resolveFileLevel(rawFile.path, config.output);
   if (effectiveLevel === 'compress') {
+    // Compression is best-effort. parseFile returns undefined when it cannot
+    // compress a file (unsupported language, parse failure, or a tree-sitter
+    // WASM abort on a pathological file); in that case we keep the uncompressed
+    // content so a single file's failure never aborts the entire pack. The
+    // catch is a safety net: parseFile is designed not to throw.
     try {
       const parsedContent = await parseFile(processedContent, rawFile.path, config);
       if (parsedContent === undefined) {
-        logger.trace(`Failed to parse ${rawFile.path} in compressed mode. Using original content.`);
+        logger.trace(`Could not compress ${rawFile.path}. Using uncompressed content.`);
       }
       processedContent = parsedContent ?? processedContent;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      logger.error(`Error parsing ${rawFile.path} in compressed mode: ${message}`);
-      throw error;
+      logger.warn(`Failed to compress ${rawFile.path}, using uncompressed content: ${message}`);
     }
   }
 
