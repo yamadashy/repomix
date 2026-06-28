@@ -38,7 +38,7 @@ vi.mock('../../../src/shared/logger.js', () => ({
   },
 }));
 
-const makeTree = () => ({ rootNode: {} });
+const makeTree = () => ({ rootNode: {}, delete: vi.fn() });
 const makeWorkingQuery = () => ({ captures: vi.fn().mockReturnValue([]) });
 const makeWorkingParser = () => ({ parse: vi.fn().mockReturnValue(makeTree()) });
 const makeWorkingStrategy = () => ({ parseCapture: vi.fn().mockReturnValue(null) });
