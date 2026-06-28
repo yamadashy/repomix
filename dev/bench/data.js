@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782639629456,
+  "lastUpdate": 1782660593739,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -7650,6 +7650,51 @@ window.BENCHMARK_DATA = {
             "range": "±16",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1213ms, Q3: 1229ms\nAll times: 1191, 1201, 1202, 1211, 1211, 1213, 1213, 1215, 1216, 1217, 1222, 1223, 1223, 1224, 1224, 1229, 1235, 1238, 1241, 1248ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "acb4e9f72606ac9f08eee1719ef40f7e54739f18",
+          "message": "Merge pull request #1679 from yamadashy/fix/compress-graceful-degradation\n\nfix(core): fall back to uncompressed content when tree-sitter compression fails",
+          "timestamp": "2026-06-29T00:28:08+09:00",
+          "tree_id": "3158e9d25099bbb6695afac4fdac48406e6d67a5",
+          "url": "https://github.com/yamadashy/repomix/commit/acb4e9f72606ac9f08eee1719ef40f7e54739f18"
+        },
+        "date": 1782660592092,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 808,
+            "range": "±106",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 747ms, Q3: 853ms\nAll times: 640, 649, 681, 706, 723, 741, 742, 747, 755, 761, 763, 786, 797, 800, 802, 808, 815, 819, 821, 831, 836, 842, 853, 854, 858, 859, 868, 887, 897, 949ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 801,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 793ms, Q3: 811ms\nAll times: 781, 789, 790, 790, 792, 793, 794, 794, 799, 799, 801, 802, 805, 806, 810, 811, 811, 812, 815, 816ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1220,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1209ms, Q3: 1225ms\nAll times: 1190, 1204, 1205, 1207, 1208, 1209, 1211, 1213, 1215, 1216, 1220, 1220, 1221, 1223, 1224, 1225, 1230, 1235, 1253, 1260ms"
           }
         ]
       }
