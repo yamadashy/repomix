@@ -262,7 +262,7 @@ O Repomix oferece múltiplos métodos para definir padrões de ignorar para excl
 
 Esta abordagem permite uma configuração flexível de exclusão de arquivos com base nas necessidades do seu projeto. Ajuda a otimizar o tamanho do arquivo empacotado gerado, garantindo a exclusão de arquivos sensíveis à segurança e arquivos binários grandes, enquanto previne o vazamento de informações confidenciais.
 
-**Nota:** Os arquivos binários não são incluídos na saída empacotada por padrão, mas seus caminhos são listados na seção "Estrutura do Repositório" do arquivo de saída. Isso fornece uma visão completa da estrutura do repositório enquanto mantém o arquivo empacotado eficiente e baseado em texto. Veja [Tratamento de Arquivos Binários](#tratamento-de-arquivos-binários) para mais detalhes.
+**Nota:** Os arquivos binários não são incluídos na saída empacotada por padrão, mas seus caminhos são listados na seção "Estrutura do Repositório" do arquivo de saída. Isso fornece uma visão completa da estrutura do repositório enquanto mantém o arquivo empacotado eficiente e baseado em texto. Veja [Tratamento de Arquivos Binários](#tratamento-de-arquivos-binarios) para mais detalhes.
 
 Exemplo de `.repomixignore`:
 ```text
