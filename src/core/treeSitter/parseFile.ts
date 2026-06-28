@@ -34,7 +34,6 @@ let languageParserSingleton: LanguageParser | null = null;
 
 export const CHUNK_SEPARATOR = '⋮----';
 
-// TODO: Do something with config: RepomixConfigMerged, it is not used (yet)
 // Compression is best-effort: this function never throws. On any failure it
 // returns undefined so callers can fall back to the uncompressed content. This
 // matters because tree-sitter runs on WASM, where a pathological file can
@@ -109,6 +108,14 @@ export const parseFile = async (
   } catch (error: unknown) {
     // Any failure here (language preparation, parsing, or a WASM runtime abort)
     // degrades to uncompressed content instead of aborting the whole pack.
+    //
+    // Note on hard WASM aborts (e.g. "table index is out of bounds"): such an
+    // abort can leave this worker's shared tree-sitter runtime degraded. The
+    // parser singleton is reused for the worker's lifetime, so later files routed
+    // to the same worker may also fall back to uncompressed output. This is
+    // bounded per worker and surfaced by the warning below. Recovering the
+    // runtime would require recycling the worker, which is out of scope here; the
+    // init-failure path is already retried by getLanguageParserSingleton.
     const message = error instanceof Error ? error.message : String(error);
     logger.warn(`Failed to compress ${filePath}, using uncompressed content: ${message}`);
     return undefined;

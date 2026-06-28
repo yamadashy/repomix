@@ -165,4 +165,23 @@ describe('parseFile error handling', () => {
     expect(secondResult).toBe('function foo()');
     expect(mockParser.init).toHaveBeenCalledTimes(2);
   });
+
+  it('reuses the initialized singleton across repeated post-init aborts (does not re-init per file)', async () => {
+    // The #1668 trigger is a post-init WASM abort surfacing during language
+    // preparation. init() has already succeeded, so the singleton is cached and
+    // reused: subsequent files degrade to uncompressed without re-running
+    // Parser.init(). This documents the bounded per-worker degradation; full
+    // runtime recovery would require recycling the worker.
+    mockParser.getQueryForLang.mockRejectedValue(
+      new Error('Failed to prepare language cpp: table index is out of bounds'),
+    );
+
+    const first = await parseFile('int main() { return 0; }', 'a.cpp', config);
+    const second = await parseFile('int main() { return 0; }', 'b.cpp', config);
+
+    expect(first).toBeUndefined();
+    expect(second).toBeUndefined();
+    expect(mockParser.init).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledTimes(2);
+  });
 });
