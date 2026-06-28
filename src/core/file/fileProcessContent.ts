@@ -48,7 +48,7 @@ export const processContent = async (
       processedContent = parsedContent ?? processedContent;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      logger.warn(`Error compressing ${rawFile.path}, using uncompressed content: ${message}`);
+      logger.warn(`Failed to compress ${rawFile.path}, using uncompressed content: ${message}`);
     }
   }
 
