@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   # Serialize all runs so concurrent triggers (a main push plus a
@@ -36,11 +37,17 @@ jobs:
       # schema back to a PR branch (the previous behavior) left the PR head on a
       # GITHUB_TOKEN-authored commit, which does not trigger CI and blocked merge.
       # Direct pushes to main are blocked by the branch ruleset, so the
-      # regenerated schema is delivered as this PR instead. COMMITTER_TOKEN is
-      # used so the PR triggers CI and is mergeable.
+      # regenerated schema is delivered as this PR instead.
+      #
+      # GITHUB_TOKEN is used (no PAT). A PR opened by GITHUB_TOKEN does not start
+      # further workflow runs, so CI does not run on the schema PR -- but the main
+      # ruleset requires no status checks (only review + code owner approval), so
+      # the PR is still mergeable after approval. This requires the repository
+      # setting "Allow GitHub Actions to create and approve pull requests" to be
+      # enabled (Settings > Actions > General > Workflow permissions).
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          token: ${{ secrets.COMMITTER_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           base: main
           commit-message: 'chore(schema): Auto-generate schema'
           branch: chore/schema-update
