@@ -38,7 +38,7 @@ vi.mock('../../../src/shared/logger.js', () => ({
   },
 }));
 
-const makeTree = () => ({ rootNode: {} });
+const makeTree = () => ({ rootNode: {}, delete: vi.fn() });
 const makeWorkingQuery = () => ({ captures: vi.fn().mockReturnValue([]) });
 const makeWorkingParser = () => ({ parse: vi.fn().mockReturnValue(makeTree()) });
 const makeWorkingStrategy = () => ({ parseCapture: vi.fn().mockReturnValue(null) });
@@ -87,15 +87,18 @@ describe('parseFile error handling', () => {
   });
 
   it('returns undefined when query.captures throws', async () => {
+    const tree = makeTree();
     mockParser.getQueryForLang.mockResolvedValue({
       captures: vi.fn(() => {
         throw new Error('captures failed');
       }),
     });
+    mockParser.getParserForLang.mockResolvedValue({ parse: vi.fn().mockReturnValue(tree) });
 
     const result = await parseFile('const x = 1;', 'main.js', config);
 
     expect(result).toBeUndefined();
+    expect(tree.delete).toHaveBeenCalledTimes(1);
     expect(logger.warn).toHaveBeenCalledTimes(1);
   });
 
@@ -146,8 +149,10 @@ describe('parseFile error handling', () => {
   });
 
   it('returns the compressed string on the success path', async () => {
+    const tree = makeTree();
     const capture = { node: { startPosition: { row: 0 }, endPosition: { row: 0 } } };
     mockParser.getQueryForLang.mockResolvedValue({ captures: vi.fn().mockReturnValue([capture]) });
+    mockParser.getParserForLang.mockResolvedValue({ parse: vi.fn().mockReturnValue(tree) });
     mockParser.getStrategyForLang.mockResolvedValue({
       parseCapture: vi.fn().mockReturnValue('function foo()'),
     });
@@ -155,6 +160,7 @@ describe('parseFile error handling', () => {
     const result = await parseFile('function foo() {}', 'foo.js', config);
 
     expect(result).toBe('function foo()');
+    expect(tree.delete).toHaveBeenCalledTimes(1);
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
