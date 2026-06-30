@@ -16,6 +16,7 @@ description: Tham khảo mọi tùy chọn Repomix CLI cho input, output, chọn
 | `--quiet` | Ẩn tất cả đầu ra console ngoại trừ lỗi (hữu ích cho scripting) |
 | `--stdout` | Ghi đầu ra đã đóng gói trực tiếp sang stdout thay vì tệp (ẩn tất cả ghi nhật ký) |
 | `--stdin` | Đọc đường dẫn tệp từ stdin, mỗi dòng một đường dẫn (các tệp được chỉ định được xử lý trực tiếp) |
+| `--stdin-content` | Đọc nội dung bất kỳ từ stdin và chèn gần đầu đầu ra đã đóng gói |
 | `--copy` | Sao chép đầu ra đã tạo vào clipboard hệ thống sau khi xử lý |
 | `--token-count-tree [threshold]` | Hiển thị cây tệp với số lượng token; ngưỡng tùy chọn để chỉ hiển thị tệp có ≥N token (ví dụ: `--token-count-tree 100`) |
 | `--top-files-len <number>` | Số lượng tệp lớn nhất để hiển thị trong tóm tắt (mặc định: `5`) |

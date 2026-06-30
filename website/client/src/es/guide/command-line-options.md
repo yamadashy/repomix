@@ -16,6 +16,7 @@ description: "Consulta todas las opciones de la CLI de Repomix para entrada, sal
 | `--quiet` | Suprimir toda salida de consola excepto errores (útil para scripting) |
 | `--stdout` | Escribir salida empaquetada directamente a stdout en lugar de un archivo (suprime todo el registro) |
 | `--stdin` | Leer rutas de archivos desde stdin, una por línea (los archivos especificados se procesan directamente) |
+| `--stdin-content` | Leer contenido arbitrario desde stdin e incluirlo cerca del inicio de la salida empaquetada |
 | `--copy` | Copiar la salida generada al portapapeles del sistema después del procesamiento |
 | `--token-count-tree [threshold]` | Mostrar árbol de archivos con conteo de tokens; umbral opcional para mostrar solo archivos con ≥N tokens (ej: `--token-count-tree 100`) |
 | `--top-files-len <number>` | Número de archivos más grandes a mostrar en el resumen (por defecto: `5`) |
@@ -156,4 +157,3 @@ repomix --token-count-tree 1000  # Solo mostrar archivos/directorios con 1000+ t
 repomix --watch
 repomix -w --include "src/**/*.ts"
 ```
-

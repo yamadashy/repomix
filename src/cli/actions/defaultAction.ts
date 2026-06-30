@@ -297,6 +297,10 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
     cliConfig.output = { ...cliConfig.output, headerText: options.headerText };
   }
 
+  if (typeof options.stdinContent === 'string') {
+    cliConfig.output = { ...cliConfig.output, stdinContent: options.stdinContent };
+  }
+
   if (options.compress !== undefined) {
     cliConfig.output = { ...cliConfig.output, compress: options.compress };
   }

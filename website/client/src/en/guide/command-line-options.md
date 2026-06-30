@@ -16,6 +16,7 @@ description: Reference every Repomix CLI option for input, output, file selectio
 | `--quiet` | Suppress all console output except errors (useful for scripting) |
 | `--stdout` | Write packed output directly to stdout instead of a file (suppresses all logging) |
 | `--stdin` | Read file paths from stdin, one per line (specified files are processed directly) |
+| `--stdin-content` | Read arbitrary stdin content and include it near the top of the packed output |
 | `--copy` | Copy the generated output to system clipboard after processing |
 | `--token-count-tree [threshold]` | Show file tree with token counts; optional threshold to show only files with ≥N tokens (e.g., `--token-count-tree 100`) |
 | `--top-files-len <number>` | Number of largest files to show in summary (default: `5`) |
@@ -95,7 +96,7 @@ description: Reference every Repomix CLI option for input, output, file selectio
 
 - `-w, --watch`: Watch for file changes and automatically re-pack. New, changed, and deleted files are detected, rapid changes are debounced (300 ms), and a timestamp is printed after each rebuild. Press `Ctrl+C` to stop.
 
-Watch mode only works with local directories, so it cannot be combined with `--remote`, a positional remote repository URL, `--stdout`, `--stdin`, `--split-output`, `--skill-generate`, or `--copy`. These restrictions apply whether the option is set on the command line or in your config file.
+Watch mode only works with local directories, so it cannot be combined with `--remote`, a positional remote repository URL, `--stdout`, `--stdin`, `--stdin-content`, `--split-output`, `--skill-generate`, or `--copy`. These restrictions apply whether the option is set on the command line or in your config file.
 
 ## Related Resources
 
@@ -145,6 +146,10 @@ repomix user/repo
 find src -name "*.ts" -type f | repomix --stdin
 git ls-files "*.js" | repomix --stdin
 echo -e "src/index.ts\nsrc/utils.ts" | repomix --stdin
+
+# Include command output or logs near the top of the packed output
+npm run build 2>&1 | repomix --stdin-content
+tail -n 200 app.log | repomix --stdin-content
 
 # Git integration
 repomix --include-diffs  # Include git diffs for uncommitted changes

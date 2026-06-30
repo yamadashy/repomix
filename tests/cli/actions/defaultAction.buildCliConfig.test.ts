@@ -54,4 +54,26 @@ describe('buildCliConfig', () => {
       expect(result.output?.tokenBudget).toBeUndefined();
     });
   });
+
+  describe('stdinContent option', () => {
+    it('should map stdinContent into output config', () => {
+      const options: CliOptions = {
+        stdinContent: 'npm run build failed',
+      };
+
+      const result = buildCliConfig(options);
+
+      expect(result.output?.stdinContent).toBe('npm run build failed');
+    });
+
+    it('should preserve empty stdinContent in output config', () => {
+      const options: CliOptions = {
+        stdinContent: '',
+      };
+
+      const result = buildCliConfig(options);
+
+      expect(result.output?.stdinContent).toBe('');
+    });
+  });
 });

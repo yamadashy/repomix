@@ -135,6 +135,55 @@ describe('outputGenerate', () => {
     expect(fileElements[1].textContent).toBe(mockProcessedFiles[1].content);
   });
 
+  test('generateOutput should include stdin content in parsable xml style', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.xml',
+        style: 'xml',
+        parsableStyle: true,
+        stdinContent: 'npm run build failed',
+        topFilesLength: 2,
+        showLineNumbers: false,
+        removeComments: false,
+        removeEmptyLines: false,
+      },
+    });
+
+    const output = await generateOutput([process.cwd()], mockConfig, [], []);
+
+    const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
+    const repomix = doc.documentElement;
+    if (!repomix) throw new Error('documentElement is null');
+
+    const stdinContent = repomix.getElementsByTagName('stdin_content')[0];
+    expect(stdinContent.textContent).toBe('npm run build failed');
+  });
+
+  test('generateOutput should preserve empty stdin content in parsable xml style', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.xml',
+        style: 'xml',
+        parsableStyle: true,
+        stdinContent: '',
+        topFilesLength: 2,
+        showLineNumbers: false,
+        removeComments: false,
+        removeEmptyLines: false,
+      },
+    });
+
+    const output = await generateOutput([process.cwd()], mockConfig, [], []);
+
+    const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
+    const repomix = doc.documentElement;
+    if (!repomix) throw new Error('documentElement is null');
+
+    const stdinContent = repomix.getElementsByTagName('stdin_content')[0];
+    expect(stdinContent).toBeDefined();
+    expect(stdinContent.textContent).toBe('');
+  });
+
   test('generateOutput should write correct content to file (parsable markdown style)', async () => {
     const mockConfig = createMockConfig({
       output: {
@@ -287,6 +336,21 @@ describe('outputGenerate', () => {
     expect(parsed.files).toHaveProperty('file2.txt');
     expect(parsed.files['file1.txt']).toBe('content1');
     expect(parsed.files['file2.txt']).toBe('content2');
+  });
+
+  test('generateOutput should preserve multiline stdin content in json style', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.json',
+        style: 'json',
+        stdinContent: 'build failed\nline 2',
+      },
+    });
+
+    const output = await generateOutput([process.cwd()], mockConfig, [], []);
+
+    const parsed = JSON.parse(output);
+    expect(parsed.stdinContent).toBe('build failed\nline 2');
   });
 
   test('generateOutput should exclude files section when files output is disabled', async () => {

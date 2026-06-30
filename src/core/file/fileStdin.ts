@@ -114,3 +114,42 @@ export const readFilePathsFromStdin = async (
     throw new RepomixError('An unexpected error occurred while reading from stdin.');
   }
 };
+
+/**
+ * Reads arbitrary text content from stdin, preserving blank lines.
+ */
+export const readContentFromStdin = async (
+  deps: StdinDependencies = {
+    stdin: process.stdin,
+    createReadlineInterface: readline.createInterface,
+  },
+): Promise<string> => {
+  logger.trace('Reading content from stdin...');
+
+  try {
+    const { stdin } = deps;
+
+    if (stdin.isTTY) {
+      throw new RepomixError(
+        'No data provided via stdin. Please pipe content to repomix when using --stdin-content flag.',
+      );
+    }
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of stdin as Readable) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+
+    return Buffer.concat(chunks).toString('utf8');
+  } catch (error) {
+    if (error instanceof RepomixError) {
+      throw error;
+    }
+
+    if (error instanceof Error) {
+      throw new RepomixError(`Failed to read content from stdin: ${error.message}`);
+    }
+
+    throw new RepomixError('An unexpected error occurred while reading content from stdin.');
+  }
+};

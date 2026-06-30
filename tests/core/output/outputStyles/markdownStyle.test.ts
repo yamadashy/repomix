@@ -63,6 +63,45 @@ describe('markdownStyle', () => {
       expect(result).toContain('Custom Header Text');
     });
 
+    test('should render stdin content after header text and before directory structure', () => {
+      const template = getMarkdownTemplate();
+      const compiledTemplate = Handlebars.compile(template);
+      const data = {
+        headerText: 'Project context',
+        stdinContent: 'npm run build failed',
+        stdinContentProvided: true,
+        treeString: 'src/\n  index.ts',
+        processedFiles: [],
+        fileSummaryEnabled: false,
+        directoryStructureEnabled: true,
+      };
+
+      const result = compiledTemplate(data);
+
+      expect(result).toContain('# Standard Input Content');
+      expect(result).toContain('npm run build failed');
+      expect(result.indexOf('# User Provided Header')).toBeLessThan(result.indexOf('# Standard Input Content'));
+      expect(result.indexOf('# Standard Input Content')).toBeLessThan(result.indexOf('# Directory Structure'));
+    });
+
+    test('should render empty stdin content when it was provided', () => {
+      const template = getMarkdownTemplate();
+      const compiledTemplate = Handlebars.compile(template);
+      const data = {
+        stdinContent: '',
+        stdinContentProvided: true,
+        treeString: 'src/\n  index.ts',
+        processedFiles: [],
+        fileSummaryEnabled: false,
+        directoryStructureEnabled: true,
+      };
+
+      const result = compiledTemplate(data);
+
+      expect(result).toContain('# Standard Input Content');
+      expect(result.indexOf('# Standard Input Content')).toBeLessThan(result.indexOf('# Directory Structure'));
+    });
+
     test('should not render header section when headerText is not provided', () => {
       const template = getMarkdownTemplate();
       const compiledTemplate = Handlebars.compile(template);

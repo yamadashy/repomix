@@ -16,6 +16,7 @@ description: Referensi lengkap opsi CLI Repomix untuk input, output, pemilihan f
 | `--quiet` | Menekan semua output konsol kecuali error (berguna untuk scripting) |
 | `--stdout` | Menulis output yang dikemas langsung ke stdout alih-alih file (menekan semua pencatatan) |
 | `--stdin` | Membaca jalur file dari stdin, satu per baris (file yang ditentukan langsung diproses) |
+| `--stdin-content` | Membaca konten bebas dari stdin dan menyertakannya di dekat awal output paket |
 | `--copy` | Menyalin output yang dihasilkan ke clipboard sistem setelah pemrosesan |
 | `--token-count-tree [threshold]` | Menampilkan pohon file dengan jumlah token; ambang batas opsional untuk menampilkan hanya file dengan ≥N token (mis. `--token-count-tree 100`) |
 | `--top-files-len <number>` | Jumlah file terbesar untuk ditampilkan dalam ringkasan (default: `5`) |
