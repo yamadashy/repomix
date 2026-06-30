@@ -38,7 +38,10 @@ vi.mock('../../../src/shared/logger.js', () => ({
   },
 }));
 
-const makeTree = () => ({ rootNode: {} });
+// Shared mock tree so tests can assert tree.delete() is invoked for WASM cleanup.
+// vi.clearAllMocks() in beforeEach resets its call history between tests.
+const mockTree = { rootNode: {}, delete: vi.fn() };
+const makeTree = () => mockTree;
 const makeWorkingQuery = () => ({ captures: vi.fn().mockReturnValue([]) });
 const makeWorkingParser = () => ({ parse: vi.fn().mockReturnValue(makeTree()) });
 const makeWorkingStrategy = () => ({ parseCapture: vi.fn().mockReturnValue(null) });
@@ -112,6 +115,8 @@ describe('parseFile error handling', () => {
 
     expect(result).toBeUndefined();
     expect(logger.warn).toHaveBeenCalledTimes(1);
+    // The tree was created before the strategy threw, so it must still be freed.
+    expect(mockTree.delete).toHaveBeenCalledTimes(1);
   });
 
   it('returns an empty string (not undefined) when a parseable file yields no captures', async () => {
@@ -156,6 +161,8 @@ describe('parseFile error handling', () => {
 
     expect(result).toBe('function foo()');
     expect(logger.warn).not.toHaveBeenCalled();
+    // The parsed tree is freed on the success path too.
+    expect(mockTree.delete).toHaveBeenCalledTimes(1);
   });
 
   it('retries initialization on the next call after a failed init', async () => {

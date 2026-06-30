@@ -18,6 +18,7 @@
  * The performance overhead of WASM is acceptable for the compress feature's use case.
  */
 
+import type { Tree } from 'web-tree-sitter';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { SupportedLang } from './languageConfig.js';
@@ -48,6 +49,7 @@ export const parseFile = async (
   // Split the file content into individual lines
   const lines = fileContent.split('\n');
 
+  let tree: Tree | null | undefined;
   try {
     const languageParser = await getLanguageParserSingleton();
 
@@ -63,7 +65,7 @@ export const parseFile = async (
     const capturedChunks: CapturedChunk[] = [];
 
     // Parse the file content into an Abstract Syntax Tree (AST)
-    const tree = parser.parse(fileContent);
+    tree = parser.parse(fileContent);
     if (!tree) {
       logger.debug(`Failed to parse file: ${filePath}`);
       return undefined;
@@ -119,6 +121,8 @@ export const parseFile = async (
     const message = error instanceof Error ? error.message : String(error);
     logger.warn(`Failed to compress ${filePath}, using uncompressed content: ${message}`);
     return undefined;
+  } finally {
+    tree?.delete();
   }
 };
 
