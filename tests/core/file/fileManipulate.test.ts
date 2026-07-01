@@ -1038,6 +1038,21 @@ r2 := '\\\\'`,
     expect(manipulator).toBeNull();
   });
 
+  describe('JS/TS module extension variants', () => {
+    // .mjs/.cjs/.mjsx/.mts/.cts/.mtsx are ESM/CommonJS variants of .js/.ts and are
+    // treated as JavaScript/TypeScript everywhere else (tree-sitter languageConfig,
+    // skill stats), so comment stripping must resolve a manipulator for them too.
+    test.each(['.mjs', '.cjs', '.mjsx', '.mts', '.cts', '.mtsx'])('resolves a manipulator for %s', (ext) => {
+      expect(getFileManipulator(`test${ext}`)).not.toBeNull();
+    });
+
+    test('strips comments from a .mjs file', () => {
+      const manipulator = getFileManipulator('eslint.config.mjs');
+      const input = 'const a = 1; // inline\n/* block */\nexport default a;';
+      expect(manipulator?.removeComments(input)).toBe('const a = 1;\n\nexport default a;');
+    });
+  });
+
   describe('case-insensitive extension matching', () => {
     // Extensions are matched case-insensitively, so files with uppercase or
     // mixed-case extensions still resolve to a manipulator. Without this,
