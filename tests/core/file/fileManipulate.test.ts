@@ -1039,10 +1039,10 @@ r2 := '\\\\'`,
   });
 
   describe('JS/TS module extension variants', () => {
-    // .mjs/.cjs/.mts/.cts are ESM/CommonJS variants of .js/.ts and are treated as
-    // JavaScript/TypeScript everywhere else (tree-sitter languageConfig, skill stats),
-    // so comment stripping must resolve a manipulator for them too.
-    test.each(['.mjs', '.cjs', '.mts', '.cts'])('resolves a manipulator for %s', (ext) => {
+    // .mjs/.cjs/.mjsx/.mts/.cts/.mtsx are ESM/CommonJS variants of .js/.ts and are
+    // treated as JavaScript/TypeScript everywhere else (tree-sitter languageConfig,
+    // skill stats), so comment stripping must resolve a manipulator for them too.
+    test.each(['.mjs', '.cjs', '.mjsx', '.mts', '.cts', '.mtsx'])('resolves a manipulator for %s', (ext) => {
       expect(getFileManipulator(`test${ext}`)).not.toBeNull();
     });
 
