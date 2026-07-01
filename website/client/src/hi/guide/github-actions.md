@@ -24,12 +24,12 @@ jobs:
   repomix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
       
@@ -37,7 +37,7 @@ jobs:
         run: npx repomix --output-file repomix-output.xml
       
       - name: Upload Repomix Output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: repomix-output
           path: repomix-output.xml
@@ -64,12 +64,12 @@ jobs:
   repomix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
       
@@ -84,14 +84,14 @@ jobs:
             --compress
       
       - name: Upload Repomix Output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: repomix-output
           path: repomix-output.md
       
       - name: Create GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: repomix-output.md
           name: Repomix Output ${{ github.sha }}
@@ -130,10 +130,10 @@ jobs:
         output-style: [xml, markdown, json, plain]
         node-version: [22, 24, 26]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
       
@@ -141,7 +141,7 @@ jobs:
         run: npx repomix --style ${{ matrix.output-style }} --output-file repomix-output.${{ matrix.output-style }}
       
       - name: Upload Repomix Output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: repomix-output-${{ matrix.output-style }}-node${{ matrix.node-version }}
           path: repomix-output.${{ matrix.output-style }}
@@ -157,7 +157,7 @@ jobs:
 
 - name: Comment on PR
   if: github.event_name == 'pull_request'
-  uses: actions/github-script@v6
+  uses: actions/github-script@v9
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     script: |
