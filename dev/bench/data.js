@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782830719705,
+  "lastUpdate": 1782918745925,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -7830,6 +7830,51 @@ window.BENCHMARK_DATA = {
             "range": "±23",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1433ms, Q3: 1456ms\nAll times: 1416, 1418, 1421, 1424, 1428, 1433, 1434, 1436, 1438, 1440, 1443, 1445, 1453, 1453, 1453, 1456, 1457, 1468, 1505, 1512ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "083e31b65a489a774e8ab16965692ff05619f8f2",
+          "message": "Merge pull request #1683 from serhiizghama/fix/strip-comments-esm-cjs-extensions\n\nfix(core): strip comments from .mjs/.cjs/.mts/.cts files",
+          "timestamp": "2026-07-02T00:10:02+09:00",
+          "tree_id": "978d271e2a7498e7e596f1e212ae667005f92367",
+          "url": "https://github.com/yamadashy/repomix/commit/083e31b65a489a774e8ab16965692ff05619f8f2"
+        },
+        "date": 1782918744833,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 784,
+            "range": "±177",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 670ms, Q3: 847ms\nAll times: 563, 576, 584, 618, 636, 650, 664, 670, 697, 703, 731, 743, 764, 769, 774, 784, 793, 796, 797, 812, 837, 839, 847, 854, 879, 931, 938, 989, 1021, 1120ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 849,
+            "range": "±50",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 837ms, Q3: 887ms\nAll times: 825, 826, 829, 835, 836, 837, 837, 846, 846, 848, 849, 850, 850, 864, 883, 887, 944, 964, 979, 996ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1246,
+            "range": "±55",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1228ms, Q3: 1283ms\nAll times: 1220, 1221, 1223, 1225, 1226, 1228, 1232, 1233, 1235, 1238, 1246, 1247, 1265, 1272, 1275, 1283, 1296, 1297, 1303, 1308ms"
           }
         ]
       }
