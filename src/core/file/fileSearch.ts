@@ -1,7 +1,7 @@
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { type Options as GlobbyOptions, type GlobEntry, globby } from 'globby';
+import { type Options as GlobbyOptions, type GlobEntry, globby, isGitIgnored } from 'globby';
 import { minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
@@ -123,6 +123,41 @@ const filterDeferredIgnoredFiles = (filePaths: string[], deferredIgnorePatterns:
   });
 };
 
+type ParentGitignoreFilter = (relativePath: string, isDirectory?: boolean) => boolean;
+
+const createParentGitignoreFilter = async (
+  rootDir: string,
+  config: RepomixConfigMerged,
+): Promise<ParentGitignoreFilter | undefined> => {
+  if (!config.ignore.useGitignore) {
+    return undefined;
+  }
+
+  const cwd = path.resolve(config.cwd);
+  const targetRoot = path.resolve(rootDir);
+  const relativeRoot = path.relative(cwd, targetRoot);
+  if (relativeRoot === '' || relativeRoot.startsWith('..') || path.isAbsolute(relativeRoot)) {
+    return undefined;
+  }
+
+  const gitIgnored = await isGitIgnored({ cwd });
+  return (relativePath, isDirectory = false) => {
+    const relativeToCwd = toPosixPath(path.relative(cwd, path.resolve(targetRoot, relativePath)));
+    return gitIgnored(relativeToCwd) || (isDirectory && gitIgnored(`${relativeToCwd}/`));
+  };
+};
+
+const filterParentGitignoredPaths = (
+  paths: string[],
+  parentGitignoreFilter: ParentGitignoreFilter | undefined,
+  isDirectory = false,
+): string[] => {
+  if (!parentGitignoreFilter) {
+    return paths;
+  }
+  return paths.filter((filePath) => !parentGitignoreFilter(filePath, isDirectory));
+};
+
 // Get all file paths considering the config
 export const searchFiles = async (
   rootDir: string,
@@ -181,6 +216,7 @@ export const searchFiles = async (
       rootDir,
       config,
     );
+    const parentGitignoreFilter = await createParentGitignoreFilter(rootDir, config);
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
     logger.trace('Ignore file patterns:', ignoreFilePatterns);
@@ -262,7 +298,10 @@ export const searchFiles = async (
           directories.push(entry.path);
         }
       }
-      filePaths = filterDeferredIgnoredFiles(files, deferredIgnorePatterns);
+      filePaths = filterParentGitignoredPaths(
+        filterDeferredIgnoredFiles(files, deferredIgnorePatterns),
+        parentGitignoreFilter,
+      );
 
       const globbyElapsedTime = Date.now() - globbyStartTime;
       logger.debug(
@@ -270,7 +309,11 @@ export const searchFiles = async (
       );
 
       const filterStartTime = Date.now();
-      emptyDirPaths = await findEmptyDirectories(rootDir, directories);
+      emptyDirPaths = filterParentGitignoredPaths(
+        await findEmptyDirectories(rootDir, directories),
+        parentGitignoreFilter,
+        true,
+      );
       const filterTime = Date.now() - filterStartTime;
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     } else {
@@ -281,6 +324,7 @@ export const searchFiles = async (
         }).catch(handleGlobbyError),
         deferredIgnorePatterns,
       );
+      filePaths = filterParentGitignoredPaths(filePaths, parentGitignoreFilter);
 
       const globbyElapsedTime = Date.now() - globbyStartTime;
       logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
@@ -470,13 +514,14 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
  */
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
+  const parentGitignoreFilter = await createParentGitignoreFilter(rootDir, config);
 
   const directories = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
   });
 
-  return sortPaths(directories);
+  return sortPaths(filterParentGitignoredPaths(directories, parentGitignoreFilter, true));
 };
 
 /**
@@ -492,11 +537,14 @@ export const listFiles = async (rootDir: string, config: RepomixConfigMerged): P
     rootDir,
     config,
   );
+  const parentGitignoreFilter = await createParentGitignoreFilter(rootDir, config);
 
   const files = await globby(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,
   });
 
-  return sortPaths(filterDeferredIgnoredFiles(files, deferredIgnorePatterns));
+  return sortPaths(
+    filterParentGitignoredPaths(filterDeferredIgnoredFiles(files, deferredIgnorePatterns), parentGitignoreFilter),
+  );
 };
