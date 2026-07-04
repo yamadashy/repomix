@@ -12,3 +12,10 @@ rules:
       - claude-issue-similar.yml
       - claude-issue-triage.yml
       - claude.yml
+  adhoc-packages:
+    ignore:
+      # Installing repomix at a user-specified version is this action's core function,
+      # so it cannot go through a lockfile
+      - action.yml
+      # Intentional: update npm itself to latest before publishing
+      - npm-publish.yml
