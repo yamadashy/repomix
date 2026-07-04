@@ -3,7 +3,7 @@
   "extends": [
     "config:recommended",
   ],
-  "schedule": ["before 9am on saturday"],
+  "schedule": ["on saturday", "before 1pm on sunday"],
   "rangeStrategy": "bump",
   "dependencyDashboard": false,
   "labels": ["dependencies", "renovate"],
