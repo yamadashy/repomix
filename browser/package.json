@@ -33,15 +33,15 @@
   "author": "yamadashy",
   "license": "MIT",
   "devDependencies": {
-    "@types/chrome": "^0.1.43",
+    "@types/chrome": "^0.2.0",
     "@types/node": "^24.13.2",
-    "@typescript/native-preview": "^7.0.0-dev.20260620.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260627.2",
     "jsdom": "^29.1.1",
     "sharp": "^0.35.2",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9",
-    "wxt": "^0.20.26"
+    "wxt": "^0.20.27"
   },
   "engines": {
     "node": ">=24.0.1"
