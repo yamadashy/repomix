@@ -11,17 +11,17 @@
   },
   "dependencies": {
     "fflate": "^0.8.3",
-    "isbot": "^5.1.43",
+    "isbot": "^5.1.44",
     "lucide-vue-next": "^1.0.0",
     "vue3-ace-editor": "^2.2.4"
   },
   "devDependencies": {
     "@types/gtag.js": "^0.0.20",
     "@types/node": "^24.13.2",
-    "@typescript/native-preview": "^7.0.0-dev.20260620.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260627.2",
     "rollup-plugin-visualizer": "^7.0.1",
     "vite-plugin-pwa": "^1.3.0",
     "vitepress": "^1.6.4",
-    "vitepress-plugin-llms": "^1.13.1"
+    "vitepress-plugin-llms": "^1.13.2"
   }
 }
