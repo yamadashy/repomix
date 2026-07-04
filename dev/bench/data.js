@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783170925630,
+  "lastUpdate": 1783173572663,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -8145,6 +8145,51 @@ window.BENCHMARK_DATA = {
             "range": "±33",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1175ms, Q3: 1208ms\nAll times: 1169, 1169, 1170, 1172, 1174, 1175, 1178, 1180, 1182, 1183, 1188, 1190, 1191, 1192, 1202, 1208, 1213, 1264, 1368, 1577ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f9befb06c690d1f20d66e868fc9def8e4886947a",
+          "message": "Merge pull request #1698 from yamadashy/chore/renovate-weekend-schedule\n\nchore(renovate): Extend schedule to full weekend window",
+          "timestamp": "2026-07-04T22:57:41+09:00",
+          "tree_id": "11a90c9621886194d7802ce27072bdf79e62c25f",
+          "url": "https://github.com/yamadashy/repomix/commit/f9befb06c690d1f20d66e868fc9def8e4886947a"
+        },
+        "date": 1783173571671,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 582,
+            "range": "±140",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 541ms, Q3: 681ms\nAll times: 517, 519, 534, 535, 539, 540, 540, 541, 546, 552, 560, 561, 563, 571, 571, 582, 612, 627, 630, 645, 673, 680, 681, 779, 798, 845, 860, 948, 980, 1123ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 916,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 907ms, Q3: 944ms\nAll times: 888, 896, 896, 901, 902, 907, 911, 912, 913, 913, 916, 928, 931, 933, 944, 944, 946, 956, 958, 980ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1277,
+            "range": "±62",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1263ms, Q3: 1325ms\nAll times: 1237, 1241, 1250, 1255, 1262, 1263, 1266, 1271, 1276, 1277, 1277, 1278, 1283, 1297, 1301, 1325, 1330, 1356, 1398, 1400ms"
           }
         ]
       }
