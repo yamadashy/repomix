@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783157355199,
+  "lastUpdate": 1783170925630,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -8100,6 +8100,51 @@ window.BENCHMARK_DATA = {
             "range": "±21",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1231ms, Q3: 1252ms\nAll times: 1198, 1203, 1215, 1223, 1229, 1231, 1231, 1232, 1235, 1237, 1237, 1239, 1239, 1240, 1241, 1252, 1253, 1254, 1258, 1262ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d4ab9fcad996d81558538381a0022244f687e7b2",
+          "message": "Merge pull request #1697 from yamadashy/fix/zizmor-adhoc-packages-ignore\n\nchore(ci): Ignore adhoc-packages zizmor findings for intentional installs",
+          "timestamp": "2026-07-04T22:13:11+09:00",
+          "tree_id": "96b75e96b4a67e49e67c3ff735761271a2238fb4",
+          "url": "https://github.com/yamadashy/repomix/commit/d4ab9fcad996d81558538381a0022244f687e7b2"
+        },
+        "date": 1783170924327,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 533,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 526ms, Q3: 552ms\nAll times: 510, 514, 516, 516, 518, 519, 520, 526, 526, 527, 527, 530, 531, 531, 532, 533, 536, 536, 543, 543, 548, 552, 552, 552, 552, 557, 560, 577, 604, 606ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 867,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 854ms, Q3: 874ms\nAll times: 839, 841, 849, 854, 854, 854, 855, 856, 857, 863, 867, 867, 869, 873, 874, 874, 877, 879, 881, 891ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1188,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1175ms, Q3: 1208ms\nAll times: 1169, 1169, 1170, 1172, 1174, 1175, 1178, 1180, 1182, 1183, 1188, 1190, 1191, 1192, 1202, 1208, 1213, 1264, 1368, 1577ms"
           }
         ]
       }
