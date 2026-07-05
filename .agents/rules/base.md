@@ -13,7 +13,7 @@ Refer to `README.md` for full project overview and `CONTRIBUTING.md` for contrib
 
 - `src/` — main source code (`cli/`, `config/`, `core/`, `shared/`). Feature-based structure; avoid dependencies between features
 - `tests/` — mirrors the `src/` directory structure
-- `website/` — documentation website (VitePress); docs live in 15 language directories under `website/client/src/`
+- `website/` — documentation website (VitePress); docs live in 15 language directories (`en` + 14 translated locales) under `website/client/src/`
 - `browser/` — browser extension
 
 ## Coding Guidelines
@@ -40,6 +40,10 @@ Refer to `README.md` for full project overview and `CONTRIBUTING.md` for contrib
   directories under `website/client/src/`, not just `en`.
 - Root `npm run lint` does not typecheck the website client. When changing
   `website/client`, verify with `npm run docs:build` in that directory.
+- The VitePress build does not validate in-page anchor links; when renaming a
+  heading, search the docs for links to its old anchor.
+- GitHub Actions steps must be pinned to full commit SHAs with a version comment
+  (e.g. `uses: actions/checkout@<sha> # v7.0.0`); pinact and zizmor enforce this in CI.
 
 ## Commit Messages
 
@@ -55,6 +59,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/) with scope: 
 - Follow the template at `.github/pull_request_template.md`
 - Include a clear summary of changes at the top
 - Reference related issues using `#issue-number`
+- Combine small, related changes in the same area into one PR rather than splitting them
 
 ## Dependencies and Testing
 
