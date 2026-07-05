@@ -1,5 +1,5 @@
 import { lookup as dnsLookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { BlockList, isIP } from 'node:net';
 import { AppError } from '../../utils/errorHandler.js';
 
 /**
@@ -30,65 +30,47 @@ const defaultDeps: ValidateUrlDeps = {
   lookup: (hostname, options) => dnsLookup(hostname, options),
 };
 
-const ipv4ToInt = (ip: string): number => ip.split('.').reduce((acc, octet) => acc * 256 + Number(octet), 0) >>> 0;
-
-// Private, loopback, link-local, and IANA special-purpose IPv4 ranges that must
+// Private, loopback, link-local, and IANA special-purpose ranges that must
 // never be reachable from the pack endpoint.
-const BLOCKED_V4_CIDRS: Array<[string, number]> = [
-  ['0.0.0.0', 8], // "this" network / unspecified
-  ['10.0.0.0', 8], // RFC 1918 private
-  ['100.64.0.0', 10], // CGNAT
-  ['127.0.0.0', 8], // loopback
-  ['169.254.0.0', 16], // link-local (incl. 169.254.169.254 cloud metadata)
-  ['172.16.0.0', 12], // RFC 1918 private (incl. Docker default bridge)
-  ['192.0.0.0', 24], // IETF protocol assignments
-  ['192.0.2.0', 24], // TEST-NET-1
-  ['192.168.0.0', 16], // RFC 1918 private
-  ['198.18.0.0', 15], // benchmarking
-  ['198.51.100.0', 24], // TEST-NET-2
-  ['203.0.113.0', 24], // TEST-NET-3
-  ['224.0.0.0', 4], // multicast
-  ['240.0.0.0', 4], // reserved
-  ['255.255.255.255', 32], // broadcast
-];
+//
+// `net.BlockList` matches on the parsed address bytes rather than the string,
+// so non-canonical spellings collapse onto the same rule: expanded IPv6
+// (`0:0:0:0:0:0:0:1`) and IPv4-mapped addresses in either dotted or hex form
+// (`::ffff:127.0.0.1` / `::ffff:7f00:1`) all hit the matching entry. Hand-rolled
+// string checks miss those forms — and `new URL()` canonicalizes IPv4-mapped
+// literals to the hex form, so the bypass is reachable in practice.
+const buildBlockedRanges = (): BlockList => {
+  const list = new BlockList();
 
-const inCidrV4 = (ipInt: number, base: string, bits: number): boolean => {
-  const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0;
-  return (ipInt & mask) === (ipv4ToInt(base) & mask);
+  // IPv4
+  list.addSubnet('0.0.0.0', 8, 'ipv4'); // "this" network / unspecified
+  list.addSubnet('10.0.0.0', 8, 'ipv4'); // RFC 1918 private
+  list.addSubnet('100.64.0.0', 10, 'ipv4'); // CGNAT
+  list.addSubnet('127.0.0.0', 8, 'ipv4'); // loopback
+  list.addSubnet('169.254.0.0', 16, 'ipv4'); // link-local (incl. 169.254.169.254 cloud metadata)
+  list.addSubnet('172.16.0.0', 12, 'ipv4'); // RFC 1918 private (incl. Docker default bridge)
+  list.addSubnet('192.0.0.0', 24, 'ipv4'); // IETF protocol assignments
+  list.addSubnet('192.0.2.0', 24, 'ipv4'); // TEST-NET-1
+  list.addSubnet('192.168.0.0', 16, 'ipv4'); // RFC 1918 private
+  list.addSubnet('198.18.0.0', 15, 'ipv4'); // benchmarking
+  list.addSubnet('198.51.100.0', 24, 'ipv4'); // TEST-NET-2
+  list.addSubnet('203.0.113.0', 24, 'ipv4'); // TEST-NET-3
+  list.addSubnet('224.0.0.0', 4, 'ipv4'); // multicast
+  list.addSubnet('240.0.0.0', 4, 'ipv4'); // reserved
+  list.addAddress('255.255.255.255', 'ipv4'); // broadcast
+
+  // IPv6
+  list.addAddress('::', 'ipv6'); // unspecified
+  list.addAddress('::1', 'ipv6'); // loopback
+  list.addSubnet('fc00::', 7, 'ipv6'); // unique local address
+  list.addSubnet('fe80::', 10, 'ipv6'); // link-local
+  list.addSubnet('fec0::', 10, 'ipv6'); // site-local (deprecated but still resolvable)
+  list.addSubnet('ff00::', 8, 'ipv6'); // multicast
+
+  return list;
 };
 
-const isBlockedIpv4 = (ip: string): boolean => {
-  const ipInt = ipv4ToInt(ip);
-  return BLOCKED_V4_CIDRS.some(([base, bits]) => inCidrV4(ipInt, base, bits));
-};
-
-const isBlockedIpv6 = (raw: string): boolean => {
-  // Strip an optional zone id (e.g. fe80::1%eth0) before matching.
-  const ip = raw.toLowerCase().split('%')[0];
-
-  if (ip === '::' || ip === '::1') {
-    return true; // unspecified / loopback
-  }
-
-  // IPv4-mapped (::ffff:a.b.c.d) and IPv4-compatible (::a.b.c.d) addresses
-  // tunnel an IPv4 target, so validate the embedded IPv4.
-  const mapped = ip.match(/^::(?:ffff:)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
-  if (mapped) {
-    return isBlockedIpv4(mapped[1]);
-  }
-
-  const firstHextet = ip.split(':')[0];
-  if (firstHextet.startsWith('fc') || firstHextet.startsWith('fd')) {
-    return true; // unique local address fc00::/7
-  }
-  if (/^fe[89ab]/.test(firstHextet)) {
-    return true; // link-local fe80::/10
-  }
-  if (firstHextet.startsWith('ff')) {
-    return true; // multicast ff00::/8
-  }
-  return false;
-};
+const blockedRanges = buildBlockedRanges();
 
 /**
  * Returns true if the given IP literal points at a private, loopback,
@@ -97,10 +79,11 @@ const isBlockedIpv6 = (raw: string): boolean => {
 export const isBlockedIpAddress = (ip: string): boolean => {
   const family = isIP(ip);
   if (family === 4) {
-    return isBlockedIpv4(ip);
+    return blockedRanges.check(ip, 'ipv4');
   }
   if (family === 6) {
-    return isBlockedIpv6(ip);
+    // BlockList maps IPv4-mapped IPv6 addresses onto the IPv4 rules above.
+    return blockedRanges.check(ip, 'ipv6');
   }
   return false;
 };

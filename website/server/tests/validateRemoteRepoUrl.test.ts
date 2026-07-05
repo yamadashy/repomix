@@ -30,8 +30,12 @@ describe('isBlockedIpAddress', () => {
     'fc00::1',
     'fd12:3456::1',
     'fe80::1',
-    '::ffff:127.0.0.1', // IPv4-mapped loopback
+    'fec0::1', // site-local (deprecated)
+    '::ffff:127.0.0.1', // IPv4-mapped loopback (dotted)
     '::ffff:169.254.169.254',
+    '::ffff:7f00:1', // IPv4-mapped loopback (hex form new URL normalizes to)
+    '::ffff:a9fe:a9fe', // IPv4-mapped metadata (hex form)
+    '0:0:0:0:0:0:0:1', // fully expanded loopback
   ])('blocks reserved address %s', (ip) => {
     expect(isBlockedIpAddress(ip)).toBe(true);
   });
@@ -88,6 +92,13 @@ describe('assertPublicHttpsRepoUrl', () => {
     await expectRejected('https://169.254.169.254/latest/meta-data');
     await expectRejected('https://10.0.0.5/owner/repo.git');
     await expectRejected('https://[::1]/owner/repo.git');
+  });
+
+  test('rejects IPv4-mapped IPv6 literals that new URL normalizes to hex', async () => {
+    // new URL('https://[::ffff:127.0.0.1]/…') canonicalizes the host to
+    // [::ffff:7f00:1]; byte-level matching must still catch the loopback.
+    await expectRejected('https://[::ffff:127.0.0.1]/owner/repo.git');
+    await expectRejected('https://[::ffff:169.254.169.254]/owner/repo.git');
   });
 
   test('rejects blocked hostnames without needing DNS', async () => {
