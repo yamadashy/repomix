@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783173572663,
+  "lastUpdate": 1783257815855,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -8190,6 +8190,51 @@ window.BENCHMARK_DATA = {
             "range": "±62",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1263ms, Q3: 1325ms\nAll times: 1237, 1241, 1250, 1255, 1262, 1263, 1266, 1271, 1276, 1277, 1277, 1278, 1283, 1297, 1301, 1325, 1330, 1356, 1398, 1400ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "959319230117821ea7fbd2b03ea484849f60c6fd",
+          "message": "Merge pull request #1705 from yamadashy/docs/agent-rules-best-practices\n\ndocs(config): Restructure agent rules per Claude Code best practices",
+          "timestamp": "2026-07-05T22:22:10+09:00",
+          "tree_id": "41e0db34ec95323d110bcec4dc6b97ece2efca9b",
+          "url": "https://github.com/yamadashy/repomix/commit/959319230117821ea7fbd2b03ea484849f60c6fd"
+        },
+        "date": 1783257814504,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 507,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 502ms, Q3: 517ms\nAll times: 481, 494, 495, 498, 499, 499, 501, 502, 503, 504, 504, 504, 505, 506, 506, 507, 508, 515, 516, 516, 516, 516, 517, 518, 522, 525, 527, 553, 578, 589ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 875,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 867ms, Q3: 884ms\nAll times: 846, 856, 857, 864, 865, 867, 868, 873, 874, 874, 875, 876, 877, 879, 879, 884, 888, 891, 922, 922ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1054,
+            "range": "±13",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1049ms, Q3: 1062ms\nAll times: 1033, 1046, 1046, 1048, 1048, 1049, 1049, 1051, 1052, 1053, 1054, 1055, 1056, 1057, 1058, 1062, 1065, 1071, 1074, 1079ms"
           }
         ]
       }
