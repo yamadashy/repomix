@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import type { PackOptions } from '../src/types.js';
+import type { PackOptions, PackResult } from '../src/types.js';
 import { AppError } from '../src/utils/errorHandler.js';
 
 // These tests target the one behavioral change this PR makes to remoteRepo.ts:
@@ -28,7 +28,7 @@ const {
   parseRemoteValueMock: vi.fn(),
   runDefaultActionMock: vi.fn(),
   assertPublicHttpsRepoUrlMock: vi.fn(async () => undefined),
-  cacheGetMock: vi.fn(async () => undefined),
+  cacheGetMock: vi.fn(async (): Promise<PackResult | undefined> => undefined),
   cacheSetMock: vi.fn(async () => undefined),
   createTempDirectoryMock: vi.fn(async () => '/tmp/repomix-test-dir'),
   cleanupTempDirectoryMock: vi.fn(async () => undefined),
@@ -188,5 +188,26 @@ describe('processRemoteRepo — assertPublicHttpsRepoUrl integration', () => {
     expect(execFileMock).toHaveBeenCalledTimes(1);
     expect(result.cached).toBe(false);
     expect(result.result.content).toBe('packed content');
+  });
+
+  test('hardens git clone against redirect-based SSRF and non-https protocols', async () => {
+    await processRemoteRepo('owner/repo', 'xml', baseOptions);
+
+    const gitArgs = execFileMock.mock.calls[0][1] as string[];
+    // A public https host that passes validation could still 3xx-redirect git to
+    // an internal target; these flags stop git from following that redirect or
+    // switching to a non-https protocol (file:// / ext:: …).
+    expect(gitArgs).toEqual(
+      expect.arrayContaining([
+        '-c',
+        'http.followRedirects=false',
+        '-c',
+        'protocol.allow=never',
+        '-c',
+        'protocol.https.allow=always',
+      ]),
+    );
+    // The hardening config must precede the `clone` subcommand to take effect.
+    expect(gitArgs.indexOf('http.followRedirects=false')).toBeLessThan(gitArgs.indexOf('clone'));
   });
 });
