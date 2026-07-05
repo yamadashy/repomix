@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import type { PackOptions } from '../src/types.js';
+import type { PackOptions, PackResult } from '../src/types.js';
 import { AppError } from '../src/utils/errorHandler.js';
 
 // These tests target the one behavioral change this PR makes to remoteRepo.ts:
@@ -28,7 +28,7 @@ const {
   parseRemoteValueMock: vi.fn(),
   runDefaultActionMock: vi.fn(),
   assertPublicHttpsRepoUrlMock: vi.fn(async () => undefined),
-  cacheGetMock: vi.fn(async () => undefined),
+  cacheGetMock: vi.fn(async (): Promise<PackResult | undefined> => undefined),
   cacheSetMock: vi.fn(async () => undefined),
   createTempDirectoryMock: vi.fn(async () => '/tmp/repomix-test-dir'),
   cleanupTempDirectoryMock: vi.fn(async () => undefined),
