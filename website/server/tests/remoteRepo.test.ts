@@ -189,4 +189,25 @@ describe('processRemoteRepo — assertPublicHttpsRepoUrl integration', () => {
     expect(result.cached).toBe(false);
     expect(result.result.content).toBe('packed content');
   });
+
+  test('hardens git clone against redirect-based SSRF and non-https protocols', async () => {
+    await processRemoteRepo('owner/repo', 'xml', baseOptions);
+
+    const gitArgs = execFileMock.mock.calls[0][1] as string[];
+    // A public https host that passes validation could still 3xx-redirect git to
+    // an internal target; these flags stop git from following that redirect or
+    // switching to a non-https protocol (file:// / ext:: …).
+    expect(gitArgs).toEqual(
+      expect.arrayContaining([
+        '-c',
+        'http.followRedirects=false',
+        '-c',
+        'protocol.allow=never',
+        '-c',
+        'protocol.https.allow=always',
+      ]),
+    );
+    // The hardening config must precede the `clone` subcommand to take effect.
+    expect(gitArgs.indexOf('http.followRedirects=false')).toBeLessThan(gitArgs.indexOf('clone'));
+  });
 });
