@@ -118,6 +118,32 @@ describe('assertPublicHttpsRepoUrl', () => {
     await expectRejected('https://evil.example.com/owner/repo.git', rebindDeps);
   });
 
+  test('rejects blocked hostnames case-insensitively and with a trailing FQDN dot', async () => {
+    const throwingDeps: ValidateUrlDeps = {
+      lookup: vi.fn(async () => {
+        throw new Error('lookup should not be called');
+      }),
+    };
+    await expectRejected('https://LOCALHOST/owner/repo.git', throwingDeps);
+    // A trailing dot denotes an absolute FQDN and must resolve identically to
+    // the bare hostname — `new URL()` preserves it verbatim on `.hostname`.
+    await expectRejected('https://localhost./owner/repo.git', throwingDeps);
+    await expectRejected('https://METADATA.GOOGLE.INTERNAL/owner/repo.git', throwingDeps);
+  });
+
+  test('does not over-block hostnames that merely contain a blocked label as a substring', async () => {
+    // `.internal` / `localhost` matching is suffix-based (a real label
+    // boundary), not a substring check — a hostname like
+    // `my-internal-service.example.com` must not be blocked just because it
+    // contains "internal", since its actual (rightmost) label is `.com`.
+    await expect(
+      assertPublicHttpsRepoUrl('https://my-internal-service.example.com/owner/repo.git', publicDeps),
+    ).resolves.toBeUndefined();
+    await expect(
+      assertPublicHttpsRepoUrl('https://notlocalhost.example.com/owner/repo.git', publicDeps),
+    ).resolves.toBeUndefined();
+  });
+
   test('does not block when DNS resolution fails (availability over false rejection)', async () => {
     const failingDeps: ValidateUrlDeps = {
       lookup: vi.fn(async () => {
