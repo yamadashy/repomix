@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { AppError } from '../src/utils/errorHandler.js';
 import type { PackOptions } from '../src/types.js';
+import { AppError } from '../src/utils/errorHandler.js';
 
 // These tests target the one behavioral change this PR makes to remoteRepo.ts:
 // `processRemoteRepo` now calls `assertPublicHttpsRepoUrl(parsed.repoUrl)` right
@@ -22,11 +22,9 @@ const {
   readFileMock,
   unlinkMock,
 } = vi.hoisted(() => ({
-  execFileMock: vi.fn(
-    (_file: string, _args: string[], _options: unknown, callback: (error: Error | null) => void) => {
-      callback(null);
-    },
-  ),
+  execFileMock: vi.fn((_file: string, _args: string[], _options: unknown, callback: (error: Error | null) => void) => {
+    callback(null);
+  }),
   parseRemoteValueMock: vi.fn(),
   runDefaultActionMock: vi.fn(),
   assertPublicHttpsRepoUrlMock: vi.fn(async () => undefined),
@@ -141,12 +139,12 @@ describe('processRemoteRepo — assertPublicHttpsRepoUrl integration', () => {
     const rejection = new AppError('Invalid repository URL. Only public https:// repository URLs are allowed.', 400);
     assertPublicHttpsRepoUrlMock.mockRejectedValue(rejection);
 
-    await expect(processRemoteRepo('http://169.254.169.254/latest/meta-data', 'xml', baseOptions)).rejects.toMatchObject(
-      {
-        statusCode: 400,
-        message: 'Invalid repository URL. Only public https:// repository URLs are allowed.',
-      },
-    );
+    await expect(
+      processRemoteRepo('http://169.254.169.254/latest/meta-data', 'xml', baseOptions),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: 'Invalid repository URL. Only public https:// repository URLs are allowed.',
+    });
   });
 
   test('validation runs before git clone on the success path', async () => {
