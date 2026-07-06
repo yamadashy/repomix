@@ -290,6 +290,25 @@ function parseBuildGradle(content: string): Partial<TechStackInfo> {
   return { dependencies, frameworks: [...new Set(frameworks)] };
 }
 
+// Version manager files that hold a single bare version string (e.g. `.node-version`,
+// `.ruby-version`) all parse the same way: trim the content and, when non-empty, report
+// it for the associated runtime. Build one parser per runtime from this shared logic.
+const createSingleRuntimeParser =
+  (runtime: string) =>
+  (content: string): RuntimeVersion[] => {
+    const version = content.trim();
+    if (version) {
+      return [{ runtime, version }];
+    }
+    return [];
+  };
+
+const parseNodeVersion = createSingleRuntimeParser('Node.js');
+const parseRubyVersion = createSingleRuntimeParser('Ruby');
+const parsePythonVersion = createSingleRuntimeParser('Python');
+const parseGoVersion = createSingleRuntimeParser('Go');
+const parseJavaVersion = createSingleRuntimeParser('Java');
+
 // Version manager files and their parsers
 const VERSION_FILES: Record<string, (content: string) => RuntimeVersion[]> = {
   '.node-version': parseNodeVersion,
@@ -300,46 +319,6 @@ const VERSION_FILES: Record<string, (content: string) => RuntimeVersion[]> = {
   '.java-version': parseJavaVersion,
   '.tool-versions': parseToolVersions,
 };
-
-function parseNodeVersion(content: string): RuntimeVersion[] {
-  const version = content.trim();
-  if (version) {
-    return [{ runtime: 'Node.js', version }];
-  }
-  return [];
-}
-
-function parseRubyVersion(content: string): RuntimeVersion[] {
-  const version = content.trim();
-  if (version) {
-    return [{ runtime: 'Ruby', version }];
-  }
-  return [];
-}
-
-function parsePythonVersion(content: string): RuntimeVersion[] {
-  const version = content.trim();
-  if (version) {
-    return [{ runtime: 'Python', version }];
-  }
-  return [];
-}
-
-function parseGoVersion(content: string): RuntimeVersion[] {
-  const version = content.trim();
-  if (version) {
-    return [{ runtime: 'Go', version }];
-  }
-  return [];
-}
-
-function parseJavaVersion(content: string): RuntimeVersion[] {
-  const version = content.trim();
-  if (version) {
-    return [{ runtime: 'Java', version }];
-  }
-  return [];
-}
 
 // Configuration files to detect
 const CONFIG_FILE_PATTERNS: string[] = [
