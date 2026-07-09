@@ -16,6 +16,16 @@ describe('fileTreeGenerate', () => {
       expect(result).toContain('subdir/');
       expect(result).toContain('nested.txt');
     });
+
+    // globby/buildFileDisplayPath always hand out "/"-separated paths, even on Windows
+    // where path.sep is "\\". Backslash input here stands in for that separator/path.sep
+    // mismatch: the tree must nest by path segment regardless of the OS separator.
+    test('nests paths independently of the OS separator', () => {
+      const files = ['src\\index.ts', 'src\\utils\\helper.ts'];
+      const result = generateTreeString(files);
+
+      expect(result).toBe('src/\n  utils/\n    helper.ts\n  index.ts');
+    });
   });
 
   describe('generateTreeStringWithRoots', () => {

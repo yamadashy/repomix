@@ -60,4 +60,13 @@ describe('filePathSort', () => {
     const expected = [`a${sep}`, `B${sep}`, 'C', 'd'];
     expect(sortPaths(input)).toEqual(expected);
   });
+
+  // globby/buildFileDisplayPath always hand out "/"-separated paths, even on Windows
+  // where path.sep is "\\". Backslash input here stands in for that separator/path.sep
+  // mismatch: the directory-aware ordering must not depend on the OS separator.
+  test('should treat separators independently of the OS separator', () => {
+    const input = ['dir\\subdir\\file.txt', 'dir\\file.js', 'dir\\subdir\\', 'file.txt'];
+    const expected = ['dir\\subdir\\', 'dir\\subdir\\file.txt', 'dir\\file.js', 'file.txt'];
+    expect(sortPaths(input)).toEqual(expected);
+  });
 });
