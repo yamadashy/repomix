@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783604227031,
+  "lastUpdate": 1783608700340,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -8370,6 +8370,51 @@ window.BENCHMARK_DATA = {
             "range": "±23",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1222ms, Q3: 1245ms\nAll times: 1204, 1211, 1211, 1215, 1219, 1222, 1222, 1223, 1225, 1225, 1226, 1228, 1235, 1239, 1242, 1245, 1281, 1309, 1421, 1615ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "855217d4b93eff9949db858f0ea8286533b326ee",
+          "message": "Merge pull request #1710 from serhiizghama/fix/token-count-tree-underscore-dirs\n\nfix(core): Count underscore-prefixed directories in token count tree",
+          "timestamp": "2026-07-09T23:47:56+09:00",
+          "tree_id": "2ee9326c87f4fe91cb6e772d9917ba85a1f88be0",
+          "url": "https://github.com/yamadashy/repomix/commit/855217d4b93eff9949db858f0ea8286533b326ee"
+        },
+        "date": 1783608698904,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 779,
+            "range": "±140",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 695ms, Q3: 835ms\nAll times: 598, 619, 639, 639, 654, 667, 689, 695, 707, 709, 730, 730, 746, 748, 766, 779, 790, 792, 795, 801, 811, 817, 835, 842, 844, 881, 941, 982, 1062, 1083ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 908,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 894ms, Q3: 917ms\nAll times: 858, 889, 891, 892, 892, 894, 896, 897, 904, 908, 908, 909, 910, 910, 911, 917, 919, 922, 926, 939ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1165,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1156ms, Q3: 1185ms\nAll times: 1136, 1141, 1148, 1149, 1152, 1156, 1158, 1158, 1161, 1163, 1165, 1167, 1175, 1184, 1184, 1185, 1186, 1190, 1228, 1239ms"
           }
         ]
       }
