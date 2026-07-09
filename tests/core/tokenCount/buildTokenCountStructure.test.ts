@@ -124,6 +124,22 @@ describe('buildTokenCountStructure', () => {
     expect(result).toEqual([]);
   });
 
+  test('should include underscore-prefixed directories like __tests__ in token sums', () => {
+    const files: FileWithTokens[] = [
+      { path: 'src/__tests__/foo.test.ts', tokens: 100 },
+      { path: 'src/index.ts', tokens: 50 },
+    ];
+
+    const tree = buildTokenCountTree(files) as TreeNode;
+    const src = tree.src as TreeNode;
+
+    // The __tests__ subtree must roll up into its ancestors' sums rather than
+    // being dropped by the metadata guard.
+    expect(tree._tokenSum).toBe(150);
+    expect(src._tokenSum).toBe(150);
+    expect((src.__tests__ as TreeNode)._tokenSum).toBe(100);
+  });
+
   test('should handle files with same name in different directories', () => {
     const files: FileWithTokens[] = [
       { path: 'src/index.js', tokens: 100 },
