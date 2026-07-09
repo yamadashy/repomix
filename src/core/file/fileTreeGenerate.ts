@@ -36,7 +36,10 @@ export const generateFileTree = (files: string[], emptyDirPaths: string[] = []):
 };
 
 const addPathToTree = (root: TreeNode, path: string, isDirectory: boolean): void => {
-  const parts = path.split(nodepath.sep);
+  // Paths arrive normalized to POSIX separators (globby output, buildFileDisplayPath),
+  // so split on "/" instead of the OS separator: on Windows path.sep is "\\", so a
+  // "/"-separated path would never split and the whole tree would collapse into a flat list.
+  const parts = path.replaceAll(nodepath.win32.sep, nodepath.posix.sep).split(nodepath.posix.sep);
   let currentNode = root;
 
   for (let i = 0; i < parts.length; i++) {
