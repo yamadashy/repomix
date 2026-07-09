@@ -57,9 +57,12 @@ const calculateTokenSums = (node: TreeNode): number => {
     totalTokens += node._files.reduce((sum, file) => sum + file.tokens, 0);
   }
 
-  // Add tokens from subdirectories
-  for (const [key, value] of Object.entries(node)) {
-    if (key.startsWith('_') || !value || typeof value !== 'object' || Array.isArray(value)) {
+  // Add tokens from subdirectories. Subdirectory values are TreeNode objects,
+  // while the metadata fields are an array (_files) and a number (_tokenSum),
+  // so the value-type check alone separates them. A key-prefix check here would
+  // also drop real directories whose name starts with '_' (e.g. __tests__).
+  for (const value of Object.values(node)) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
       continue;
     }
     totalTokens += calculateTokenSums(value as TreeNode);

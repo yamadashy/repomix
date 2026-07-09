@@ -39,9 +39,11 @@ export const reportTokenCountTree = (
 };
 
 const displayNode = (node: TreeNode, prefix: string, isRoot: boolean, minTokenCount: number): void => {
-  // Get all directory entries (excluding _files and _tokenSum)
+  // Get all directory entries. The _files (array) and _tokenSum (number)
+  // metadata fields are excluded by the value-type check, so directories whose
+  // name starts with '_' (e.g. __tests__) are still rendered.
   const allEntries = Object.entries(node).filter(
-    ([key, value]) => !key.startsWith('_') && value && typeof value === 'object' && !Array.isArray(value),
+    ([, value]) => value && typeof value === 'object' && !Array.isArray(value),
   );
 
   // Filter directories by minimum token count
