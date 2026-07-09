@@ -1,27 +1,23 @@
 import { describe, expect, test } from 'vitest';
-import { buildTokenCountTree, type FileWithTokens } from '../../../src/core/tokenCount/buildTokenCountStructure.js';
-import type { DirectoryTokenInfo, FileTokenInfo, TokenCountOutput } from '../../../src/core/tokenCount/types.js';
+import {
+  buildTokenCountTree,
+  type FileWithTokens,
+  type TokenCountTreeNode,
+} from '../../../src/core/tokenCount/buildTokenCountStructure.js';
+import type { DirectoryTokenInfo, TokenCountOutput } from '../../../src/core/tokenCount/types.js';
 
-interface TreeNode {
-  _files?: FileTokenInfo[];
-  _tokenSum?: number;
-  [key: string]: TreeNode | FileTokenInfo[] | number | undefined;
-}
-
-const convertToOutput = (node: TreeNode, isRoot = true): TokenCountOutput => {
+const convertToOutput = (node: TokenCountTreeNode, isRoot = true): TokenCountOutput => {
   const result: DirectoryTokenInfo[] = [];
 
   // Handle directories
-  for (const [key, value] of Object.entries(node)) {
-    if (key.startsWith('_')) continue;
-
+  for (const [name, child] of node.children) {
     const dirInfo: DirectoryTokenInfo = {
-      name: key,
-      files: (value as TreeNode)._files || [],
+      name,
+      files: child.files,
     };
 
     // Check for subdirectories
-    const subdirs = convertToOutput(value as TreeNode, false);
+    const subdirs = convertToOutput(child, false);
     if (subdirs.length > 0) {
       dirInfo.directories = subdirs;
     }
@@ -30,8 +26,8 @@ const convertToOutput = (node: TreeNode, isRoot = true): TokenCountOutput => {
   }
 
   // Handle root-level files (only at the actual root level)
-  if (isRoot && node._files) {
-    for (const file of node._files) {
+  if (isRoot) {
+    for (const file of node.files) {
       result.push({
         name: file.name,
         files: [file],
@@ -130,14 +126,32 @@ describe('buildTokenCountStructure', () => {
       { path: 'src/index.ts', tokens: 50 },
     ];
 
-    const tree = buildTokenCountTree(files) as TreeNode;
-    const src = tree.src as TreeNode;
+    const tree = buildTokenCountTree(files);
+    const src = tree.children.get('src');
 
-    // The __tests__ subtree must roll up into its ancestors' sums rather than
-    // being dropped by the metadata guard.
-    expect(tree._tokenSum).toBe(150);
-    expect(src._tokenSum).toBe(150);
-    expect((src.__tests__ as TreeNode)._tokenSum).toBe(100);
+    // The __tests__ subtree must roll up into its ancestors' sums, and a directory
+    // whose name starts with '_' must live in `children` like any other directory.
+    expect(tree.tokenSum).toBe(150);
+    expect(src?.tokenSum).toBe(150);
+    expect(src?.children.get('__tests__')?.tokenSum).toBe(100);
+  });
+
+  test('should keep directories whose name matches a node field (files, tokenSum, __proto__)', () => {
+    const files: FileWithTokens[] = [
+      { path: 'src/files/a.ts', tokens: 10 },
+      { path: 'src/tokenSum/b.ts', tokens: 20 },
+      { path: 'src/__proto__/c.ts', tokens: 30 },
+    ];
+
+    const tree = buildTokenCountTree(files);
+    const src = tree.children.get('src');
+
+    // Directory names that clash with node fields or the object prototype must
+    // still be stored as ordinary children, not collide with metadata.
+    expect(src?.children.get('files')?.tokenSum).toBe(10);
+    expect(src?.children.get('tokenSum')?.tokenSum).toBe(20);
+    expect(src?.children.get('__proto__')?.tokenSum).toBe(30);
+    expect(src?.tokenSum).toBe(60);
   });
 
   test('should handle files with same name in different directories', () => {

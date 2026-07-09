@@ -5,14 +5,20 @@ export interface FileWithTokens {
   tokens: number;
 }
 
-export interface TreeNode {
-  _files?: FileTokenInfo[];
-  _tokenSum?: number;
-  [key: string]: TreeNode | FileTokenInfo[] | number | undefined;
+// A directory node in the token-count tree. Files and metadata live in dedicated
+// fields, and child directories are kept in a separate `children` map, so a directory
+// can be named anything (including `files`, `tokenSum`, or `__proto__`) without
+// colliding with the metadata fields or the object prototype.
+export interface TokenCountTreeNode {
+  files: FileTokenInfo[];
+  tokenSum: number;
+  children: Map<string, TokenCountTreeNode>;
 }
 
-export const buildTokenCountTree = (filesWithTokens: FileWithTokens[]): TreeNode => {
-  const root: TreeNode = {};
+const createNode = (): TokenCountTreeNode => ({ files: [], tokenSum: 0, children: new Map() });
+
+export const buildTokenCountTree = (filesWithTokens: FileWithTokens[]): TokenCountTreeNode => {
+  const root = createNode();
 
   for (const file of filesWithTokens) {
     // The file.path is already relative to the root directory
@@ -27,17 +33,16 @@ export const buildTokenCountTree = (filesWithTokens: FileWithTokens[]): TreeNode
     // Navigate/create the directory structure
     let current = root;
     for (const part of parts) {
-      if (!current[part]) {
-        current[part] = {};
+      let child = current.children.get(part);
+      if (!child) {
+        child = createNode();
+        current.children.set(part, child);
       }
-      current = current[part] as TreeNode;
+      current = child;
     }
 
     // Add the file
-    if (!current._files) {
-      current._files = [];
-    }
-    current._files.push({
+    current.files.push({
       name: fileName,
       tokens: file.tokens,
     });
@@ -49,25 +54,15 @@ export const buildTokenCountTree = (filesWithTokens: FileWithTokens[]): TreeNode
   return root;
 };
 
-const calculateTokenSums = (node: TreeNode): number => {
-  let totalTokens = 0;
+const calculateTokenSums = (node: TokenCountTreeNode): number => {
+  // Tokens from files directly in this directory
+  let totalTokens = node.files.reduce((sum, file) => sum + file.tokens, 0);
 
-  // Add tokens from files in this directory
-  if (node._files) {
-    totalTokens += node._files.reduce((sum, file) => sum + file.tokens, 0);
+  // Plus tokens rolled up from every subdirectory
+  for (const child of node.children.values()) {
+    totalTokens += calculateTokenSums(child);
   }
 
-  // Add tokens from subdirectories. Subdirectory values are TreeNode objects,
-  // while the metadata fields are an array (_files) and a number (_tokenSum),
-  // so the value-type check alone separates them. A key-prefix check here would
-  // also drop real directories whose name starts with '_' (e.g. __tests__).
-  for (const value of Object.values(node)) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      continue;
-    }
-    totalTokens += calculateTokenSums(value as TreeNode);
-  }
-
-  node._tokenSum = totalTokens;
+  node.tokenSum = totalTokens;
   return totalTokens;
 };
