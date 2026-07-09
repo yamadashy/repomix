@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783608700340,
+  "lastUpdate": 1783611252948,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -8415,6 +8415,51 @@ window.BENCHMARK_DATA = {
             "range": "±29",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1156ms, Q3: 1185ms\nAll times: 1136, 1141, 1148, 1149, 1152, 1156, 1158, 1158, 1161, 1163, 1165, 1167, 1175, 1184, 1184, 1185, 1186, 1190, 1228, 1239ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ab81efd8e7e99bc3ae3a897d89e0790e4c999f4f",
+          "message": "Merge pull request #1711 from yamadashy/refactor/token-count-tree-typing\n\nrefactor(core): Use a discriminated node type for the token count tree",
+          "timestamp": "2026-07-10T00:31:04+09:00",
+          "tree_id": "04196f6bc36e5c76dfe9ee93e97446575d697fa5",
+          "url": "https://github.com/yamadashy/repomix/commit/ab81efd8e7e99bc3ae3a897d89e0790e4c999f4f"
+        },
+        "date": 1783611251584,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1098,
+            "range": "±273",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 944ms, Q3: 1217ms\nAll times: 755, 763, 773, 773, 777, 834, 935, 944, 948, 950, 971, 1025, 1025, 1063, 1091, 1098, 1124, 1150, 1168, 1190, 1194, 1215, 1217, 1217, 1242, 1306, 1309, 1384, 1414, 1414ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 654,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 649ms, Q3: 666ms\nAll times: 640, 643, 646, 647, 649, 649, 651, 651, 652, 653, 654, 654, 655, 658, 666, 666, 669, 671, 673, 673ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1187,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1171ms, Q3: 1208ms\nAll times: 1129, 1133, 1142, 1162, 1164, 1171, 1181, 1184, 1186, 1186, 1187, 1189, 1191, 1195, 1196, 1208, 1210, 1222, 1250, 1302ms"
           }
         ]
       }
