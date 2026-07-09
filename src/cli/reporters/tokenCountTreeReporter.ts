@@ -40,7 +40,7 @@ export const reportTokenCountTree = (
 
 const displayNode = (node: TokenCountTreeNode, prefix: string, isRoot: boolean, minTokenCount: number): void => {
   // Get child directories that meet the minimum token count
-  const entries = Object.entries(node.children).filter(([, child]) => child.tokenSum >= minTokenCount);
+  const entries = [...node.children].filter(([, child]) => child.tokenSum >= minTokenCount);
 
   // Get files in this directory and filter by minimum token count
   const files = node.files.filter((file) => file.tokens >= minTokenCount);

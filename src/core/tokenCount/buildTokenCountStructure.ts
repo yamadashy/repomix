@@ -6,15 +6,16 @@ export interface FileWithTokens {
 }
 
 // A directory node in the token-count tree. Files and metadata live in dedicated
-// fields, and child directories are kept in their own `children` map, so a directory
-// can be named anything (including `files` or `tokenSum`) without colliding with them.
+// fields, and child directories are kept in a separate `children` map, so a directory
+// can be named anything (including `files`, `tokenSum`, or `__proto__`) without
+// colliding with the metadata fields or the object prototype.
 export interface TokenCountTreeNode {
   files: FileTokenInfo[];
   tokenSum: number;
-  children: Record<string, TokenCountTreeNode>;
+  children: Map<string, TokenCountTreeNode>;
 }
 
-const createNode = (): TokenCountTreeNode => ({ files: [], tokenSum: 0, children: {} });
+const createNode = (): TokenCountTreeNode => ({ files: [], tokenSum: 0, children: new Map() });
 
 export const buildTokenCountTree = (filesWithTokens: FileWithTokens[]): TokenCountTreeNode => {
   const root = createNode();
@@ -32,10 +33,10 @@ export const buildTokenCountTree = (filesWithTokens: FileWithTokens[]): TokenCou
     // Navigate/create the directory structure
     let current = root;
     for (const part of parts) {
-      let child = current.children[part];
+      let child = current.children.get(part);
       if (!child) {
         child = createNode();
-        current.children[part] = child;
+        current.children.set(part, child);
       }
       current = child;
     }
@@ -58,7 +59,7 @@ const calculateTokenSums = (node: TokenCountTreeNode): number => {
   let totalTokens = node.files.reduce((sum, file) => sum + file.tokens, 0);
 
   // Plus tokens rolled up from every subdirectory
-  for (const child of Object.values(node.children)) {
+  for (const child of node.children.values()) {
     totalTokens += calculateTokenSums(child);
   }
 

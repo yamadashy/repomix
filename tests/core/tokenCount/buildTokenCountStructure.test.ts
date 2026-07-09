@@ -10,7 +10,7 @@ const convertToOutput = (node: TokenCountTreeNode, isRoot = true): TokenCountOut
   const result: DirectoryTokenInfo[] = [];
 
   // Handle directories
-  for (const [name, child] of Object.entries(node.children)) {
+  for (const [name, child] of node.children) {
     const dirInfo: DirectoryTokenInfo = {
       name,
       files: child.files,
@@ -127,13 +127,13 @@ describe('buildTokenCountStructure', () => {
     ];
 
     const tree = buildTokenCountTree(files);
-    const src = tree.children.src;
+    const src = tree.children.get('src');
 
     // The __tests__ subtree must roll up into its ancestors' sums, and a directory
     // whose name starts with '_' must live in `children` like any other directory.
     expect(tree.tokenSum).toBe(150);
-    expect(src.tokenSum).toBe(150);
-    expect(src.children.__tests__.tokenSum).toBe(100);
+    expect(src?.tokenSum).toBe(150);
+    expect(src?.children.get('__tests__')?.tokenSum).toBe(100);
   });
 
   test('should handle files with same name in different directories', () => {
