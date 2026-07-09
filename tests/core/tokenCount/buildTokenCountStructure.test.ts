@@ -136,6 +136,24 @@ describe('buildTokenCountStructure', () => {
     expect(src?.children.get('__tests__')?.tokenSum).toBe(100);
   });
 
+  test('should keep directories whose name matches a node field (files, tokenSum, __proto__)', () => {
+    const files: FileWithTokens[] = [
+      { path: 'src/files/a.ts', tokens: 10 },
+      { path: 'src/tokenSum/b.ts', tokens: 20 },
+      { path: 'src/__proto__/c.ts', tokens: 30 },
+    ];
+
+    const tree = buildTokenCountTree(files);
+    const src = tree.children.get('src');
+
+    // Directory names that clash with node fields or the object prototype must
+    // still be stored as ordinary children, not collide with metadata.
+    expect(src?.children.get('files')?.tokenSum).toBe(10);
+    expect(src?.children.get('tokenSum')?.tokenSum).toBe(20);
+    expect(src?.children.get('__proto__')?.tokenSum).toBe(30);
+    expect(src?.tokenSum).toBe(60);
+  });
+
   test('should handle files with same name in different directories', () => {
     const files: FileWithTokens[] = [
       { path: 'src/index.js', tokens: 100 },
