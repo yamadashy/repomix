@@ -13,6 +13,7 @@ const createMockContext = (overrides: Partial<RenderContext> = {}): RenderContex
   summaryUsageGuidelines: 'Use this file as context for AI assistants.',
   summaryNotes: 'Some files may have been excluded.',
   headerText: '',
+  stdinContentProvided: false,
   instruction: '',
   treeString: 'src/\n  index.ts\n  utils.ts',
   processedFiles: [

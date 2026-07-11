@@ -34,6 +34,12 @@ This section contains a summary of this file.
 </user_provided_header>
 
 {{/if}}
+{{#if stdinContentProvided}}
+<stdin_content>
+{{{stdinContent}}}
+</stdin_content>
+
+{{/if}}
 {{#if directoryStructureEnabled}}
 <directory_structure>
 {{{treeString}}}

@@ -16,6 +16,7 @@ description: "Referenz aller Repomix-CLI-Optionen für Eingabe, Ausgabe, Dateiau
 | `--quiet` | Alle Konsolenausgaben außer Fehler unterdrücken (nützlich für Skripting) |
 | `--stdout` | Gepackte Ausgabe direkt an stdout statt in eine Datei schreiben (unterdrückt alle Protokollierung) |
 | `--stdin` | Dateipfade von stdin lesen, einen pro Zeile (angegebene Dateien werden direkt verarbeitet) |
+| `--stdin-content` | Beliebigen stdin-Inhalt lesen und nahe am Anfang der gepackten Ausgabe einfügen |
 | `--copy` | Generierte Ausgabe nach der Verarbeitung in die Systemzwischenablage kopieren |
 | `--token-count-tree [threshold]` | Dateibaum mit Token-Anzahlen anzeigen; optionaler Schwellenwert um nur Dateien mit mindestens N Token anzuzeigen (z.B. `--token-count-tree 100`) |
 | `--top-files-len <number>` | Anzahl der größten Dateien in der Zusammenfassung (Standard: `5`) |
@@ -156,4 +157,3 @@ repomix --token-count-tree 1000  # Nur Dateien/Verzeichnisse mit 1000+ Tokens an
 repomix --watch
 repomix -w --include "src/**/*.ts"
 ```
-

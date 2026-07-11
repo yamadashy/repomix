@@ -31,6 +31,47 @@ describe('xmlStyle', () => {
     expect(output).toContain('files');
   });
 
+  test('generateOutput for xml should include stdin content before directory structure', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.xml',
+        style: 'xml',
+        headerText: 'Custom header text',
+        stdinContent: 'npm run build failed',
+        topFilesLength: 2,
+        showLineNumbers: false,
+        removeComments: false,
+        removeEmptyLines: false,
+      },
+    });
+
+    const output = await generateOutput([process.cwd()], mockConfig, [], []);
+
+    expect(output).toContain('stdin_content');
+    expect(output).toContain('npm run build failed');
+    expect(output.indexOf('Custom header text')).toBeLessThan(output.indexOf('stdin_content'));
+    expect(output.indexOf('stdin_content')).toBeLessThan(output.indexOf('directory_structure'));
+  });
+
+  test('generateOutput for xml should preserve empty stdin content section', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.xml',
+        style: 'xml',
+        stdinContent: '',
+        topFilesLength: 2,
+        showLineNumbers: false,
+        removeComments: false,
+        removeEmptyLines: false,
+      },
+    });
+
+    const output = await generateOutput([process.cwd()], mockConfig, [], []);
+
+    expect(output).toContain('stdin_content');
+    expect(output.indexOf('stdin_content')).toBeLessThan(output.indexOf('directory_structure'));
+  });
+
   test('xml style: headerText always present, generationHeader only if fileSummaryEnabled', async () => {
     const mockConfig = createMockConfig({
       output: {

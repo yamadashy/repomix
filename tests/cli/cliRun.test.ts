@@ -3,10 +3,12 @@ import { program } from 'commander';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import * as defaultAction from '../../src/cli/actions/defaultAction.js';
 import * as initAction from '../../src/cli/actions/initAction.js';
+import * as mcpAction from '../../src/cli/actions/mcpAction.js';
 import * as remoteAction from '../../src/cli/actions/remoteAction.js';
 import * as versionAction from '../../src/cli/actions/versionAction.js';
 import { run, runCli } from '../../src/cli/cliRun.js';
 import type { CliOptions } from '../../src/cli/types.js';
+import * as fileStdin from '../../src/core/file/fileStdin.js';
 import * as gitRemoteHandle from '../../src/core/git/gitRemoteHandle.js';
 import type { PackResult } from '../../src/core/packager.js';
 import { logger, type RepomixLogLevel, repomixLogLevels } from '../../src/shared/logger.js';
@@ -41,6 +43,7 @@ vi.mock('../../src/shared/logger', () => ({
 
 vi.mock('../../src/cli/actions/defaultAction');
 vi.mock('../../src/cli/actions/initAction');
+vi.mock('../../src/cli/actions/mcpAction');
 vi.mock('../../src/cli/actions/remoteAction');
 vi.mock('../../src/core/git/gitRemoteHandle');
 vi.mock('../../src/cli/actions/versionAction');
@@ -118,6 +121,7 @@ describe('cliRun', () => {
       } satisfies PackResult,
     });
     vi.mocked(initAction.runInitAction).mockResolvedValue();
+    vi.mocked(mcpAction.runMcpAction).mockResolvedValue();
     vi.mocked(remoteAction.runRemoteAction).mockResolvedValue({
       config: createMockConfig({
         cwd: process.cwd(),
@@ -210,10 +214,49 @@ describe('cliRun', () => {
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
+    test('should not read stdin content before executing version action', async () => {
+      const readContentFromStdinSpy = vi.spyOn(fileStdin, 'readContentFromStdin').mockRejectedValue(new Error('boom'));
+
+      await runCli(['.'], process.cwd(), {
+        version: true,
+        stdinContent: true,
+      });
+
+      expect(readContentFromStdinSpy).not.toHaveBeenCalled();
+      expect(versionAction.runVersionAction).toHaveBeenCalled();
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
     test('should execute init action when init option is true', async () => {
       await runCli(['.'], process.cwd(), { init: true });
 
       expect(initAction.runInitAction).toHaveBeenCalledWith(process.cwd(), false);
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should not read stdin content before executing init action', async () => {
+      const readContentFromStdinSpy = vi.spyOn(fileStdin, 'readContentFromStdin').mockRejectedValue(new Error('boom'));
+
+      await runCli(['.'], process.cwd(), {
+        init: true,
+        stdinContent: true,
+      });
+
+      expect(readContentFromStdinSpy).not.toHaveBeenCalled();
+      expect(initAction.runInitAction).toHaveBeenCalledWith(process.cwd(), false);
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should not read stdin content before executing mcp action', async () => {
+      const readContentFromStdinSpy = vi.spyOn(fileStdin, 'readContentFromStdin').mockRejectedValue(new Error('boom'));
+
+      await runCli(['.'], process.cwd(), {
+        mcp: true,
+        stdinContent: true,
+      });
+
+      expect(readContentFromStdinSpy).not.toHaveBeenCalled();
+      expect(mcpAction.runMcpAction).toHaveBeenCalled();
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
@@ -223,6 +266,167 @@ describe('cliRun', () => {
       });
 
       expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object));
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('should resolve stdin content before executing default action', async () => {
+      vi.spyOn(fileStdin, 'readContentFromStdin').mockResolvedValue('npm run build failed');
+
+      await runCli(['.'], process.cwd(), {
+        stdinContent: true,
+      });
+
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['.'],
+        process.cwd(),
+        expect.objectContaining({
+          stdinContent: 'npm run build failed',
+        }),
+      );
+    });
+
+    test('preserves empty stdin content before default action dispatch', async () => {
+      vi.spyOn(fileStdin, 'readContentFromStdin').mockResolvedValue('');
+
+      await runCli(['.'], process.cwd(), {
+        stdinContent: true,
+      });
+
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['.'],
+        process.cwd(),
+        expect.objectContaining({
+          stdinContent: '',
+        }),
+      );
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+    });
+
+    test('should resolve stdin content before executing remote action', async () => {
+      vi.spyOn(fileStdin, 'readContentFromStdin').mockResolvedValue('remote build failed');
+
+      await runCli(['.'], process.cwd(), {
+        remote: 'yamadashy/repomix',
+        stdinContent: true,
+      });
+
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+        'yamadashy/repomix',
+        expect.objectContaining({
+          stdinContent: 'remote build failed',
+        }),
+      );
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('preserves empty stdin content before remote action dispatch', async () => {
+      vi.spyOn(fileStdin, 'readContentFromStdin').mockResolvedValue('');
+
+      await runCli(['.'], process.cwd(), {
+        remote: 'yamadashy/repomix',
+        stdinContent: true,
+      });
+
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+        'yamadashy/repomix',
+        expect.objectContaining({
+          stdinContent: '',
+        }),
+      );
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('uses pre-resolved stdin content without reading stdin', async () => {
+      const readContentFromStdinSpy = vi.spyOn(fileStdin, 'readContentFromStdin');
+
+      await runCli(['.'], process.cwd(), {
+        stdinContent: 'provided by caller',
+      });
+
+      expect(readContentFromStdinSpy).not.toHaveBeenCalled();
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['.'],
+        process.cwd(),
+        expect.objectContaining({
+          stdinContent: 'provided by caller',
+        }),
+      );
+    });
+
+    test('rejects stdin-content with stdin before reading or dispatching actions', async () => {
+      const readContentFromStdinSpy = vi.spyOn(fileStdin, 'readContentFromStdin').mockResolvedValue('unused');
+
+      await expect(
+        runCli(['.'], process.cwd(), {
+          stdin: true,
+          stdinContent: true,
+        }),
+      ).rejects.toThrow('--stdin cannot be used with --stdin-content');
+
+      expect(readContentFromStdinSpy).not.toHaveBeenCalled();
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+    });
+
+    test('rejects pre-resolved empty stdin-content with stdin', async () => {
+      await expect(
+        runCli(['.'], process.cwd(), {
+          stdin: true,
+          stdinContent: '',
+        }),
+      ).rejects.toThrow('--stdin cannot be used with --stdin-content');
+
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+    });
+
+    test('rejects stdin-content with watch before reading stdin', async () => {
+      const readContentFromStdinSpy = vi.spyOn(fileStdin, 'readContentFromStdin').mockResolvedValue('unused');
+
+      await expect(
+        runCli(['.'], process.cwd(), {
+          watch: true,
+          stdinContent: true,
+        }),
+      ).rejects.toThrow('--watch cannot be used with --stdin-content');
+
+      expect(readContentFromStdinSpy).not.toHaveBeenCalled();
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+    });
+
+    test('applies stdin-content before auto-detected remote URL dispatch', async () => {
+      vi.spyOn(fileStdin, 'readContentFromStdin').mockResolvedValue('build failed\nline 2');
+
+      await runCli(['https://github.com/user/repo'], process.cwd(), {
+        stdinContent: true,
+      });
+
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+        'https://github.com/user/repo',
+        expect.objectContaining({
+          stdinContent: 'build failed\nline 2',
+        }),
+      );
+      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('applies stdin-content before shorthand remote dispatch', async () => {
+      vi.mocked(fs.access).mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }));
+      vi.mocked(gitRemoteHandle.checkRemoteRepoExists).mockResolvedValue(true);
+      vi.spyOn(fileStdin, 'readContentFromStdin').mockResolvedValue('remote shorthand log');
+
+      await runCli(['user/repo'], process.cwd(), {
+        stdinContent: true,
+      });
+
+      expect(gitRemoteHandle.checkRemoteRepoExists).toHaveBeenCalledWith('https://github.com/user/repo.git');
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+        'user/repo',
+        expect.objectContaining({
+          stdinContent: 'remote shorthand log',
+        }),
+      );
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 

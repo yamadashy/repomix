@@ -16,6 +16,7 @@ description: 查阅 Repomix CLI 的所有选项，涵盖输入、输出、文件
 | `--quiet` | 抑制除错误外的所有控制台输出（用于脚本编写） |
 | `--stdout` | 将打包输出直接写入标准输出而不是文件（抑制所有日志记录） |
 | `--stdin` | 从标准输入逐行读取文件路径（指定的文件直接处理） |
+| `--stdin-content` | 从标准输入读取任意内容，并将其放在打包输出的靠前位置 |
 | `--copy` | 处理后将生成的输出复制到系统剪贴板 |
 | `--token-count-tree [threshold]` | 显示带有 token 计数的文件树；可选阈值仅显示 ≥N token 的文件（例如：`--token-count-tree 100`） |
 | `--top-files-len <number>` | 摘要中显示的最大文件数（默认：`5`） |
@@ -155,4 +156,3 @@ repomix --token-count-tree 1000  # 仅显示拥有 1000+ Token 的文件
 repomix --watch
 repomix -w --include "src/**/*.ts"
 ```
-

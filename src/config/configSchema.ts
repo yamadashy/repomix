@@ -156,6 +156,7 @@ export const repomixConfigCliSchema = v.intersect([
     output: v.optional(
       v.object({
         stdout: v.optional(v.boolean()),
+        stdinContent: v.optional(v.string()),
       }),
     ),
     skillGenerate: v.optional(v.union([v.string(), v.boolean()])),
