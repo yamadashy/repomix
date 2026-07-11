@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783764794246,
+  "lastUpdate": 1783770178781,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -8550,6 +8550,51 @@ window.BENCHMARK_DATA = {
             "range": "±22",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1254ms, Q3: 1276ms\nAll times: 1239, 1243, 1247, 1251, 1252, 1254, 1254, 1258, 1258, 1259, 1260, 1261, 1261, 1265, 1273, 1276, 1278, 1280, 1287, 1301ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "babe80e6cf1825f05b962022df13c6546623bfcf",
+          "message": "Merge pull request #1712 from serhiizghama/fix/tree-sort-posix-separator\n\nfix(core): split file paths on the POSIX separator so the tree doesn't collapse on Windows",
+          "timestamp": "2026-07-11T20:40:57+09:00",
+          "tree_id": "b037d61e67268064b92de1fd202a075cb04cef1d",
+          "url": "https://github.com/yamadashy/repomix/commit/babe80e6cf1825f05b962022df13c6546623bfcf"
+        },
+        "date": 1783770178157,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 805,
+            "range": "±215",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 660ms, Q3: 875ms\nAll times: 567, 581, 599, 621, 629, 637, 652, 660, 669, 681, 706, 716, 726, 766, 786, 805, 822, 828, 846, 853, 861, 863, 875, 884, 889, 907, 921, 944, 983, 1034ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 871,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 864ms, Q3: 881ms\nAll times: 849, 856, 862, 862, 863, 864, 864, 866, 867, 867, 871, 872, 877, 879, 880, 881, 889, 890, 902, 941ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1241,
+            "range": "±233",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1221ms, Q3: 1454ms\nAll times: 1189, 1193, 1193, 1200, 1201, 1221, 1227, 1233, 1234, 1235, 1241, 1243, 1259, 1267, 1297, 1454, 1463, 1503, 1531, 1534ms"
           }
         ]
       }
