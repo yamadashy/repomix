@@ -3,11 +3,12 @@ import Hero from './Home/Hero.vue';
 import TryIt from './Home/TryIt.vue';
 </script>
 
+<!-- Use <main> so the home page exposes a main landmark (VitePress home layout omits one). -->
 <template>
-  <div class="home">
+  <main class="home">
     <Hero />
     <TryIt />
-  </div>
+  </main>
 </template>
 
 <style scoped>
