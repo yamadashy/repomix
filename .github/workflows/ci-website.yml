@@ -66,13 +66,14 @@ jobs:
           npm link
       - name: Install website server dependencies
         working-directory: website/server
-        # npm 12 refuses to prepare the github:repomix git dependency while
-        # min-release-age is set — it conflicts with the --before npm uses
-        # internally. Disable the cooldown for this lockfile-pinned install,
-        # matching the pattern in npm-publish.yml.
-        env:
-          npm_config_min_release_age: "0"
         run: |
+          # npm 12 fails to prepare the github:repomix git dependency: its prep
+          # child process re-reads .npmrc (min-release-age=7) and hits npm's own
+          # --before, which cannot coexist. Setting npm_config_min_release_age=0
+          # does not help (0 still counts as "provided", and the child re-reads
+          # .npmrc), so downgrade to npm 11.4.0, which predates the flag.
+          # Matches website/server/Dockerfile.
+          npm install -g npm@11.4.0
           npm ci
           npm link repomix
       - name: Lint website server
@@ -98,13 +99,14 @@ jobs:
           npm link
       - name: Install website server dependencies
         working-directory: website/server
-        # npm 12 refuses to prepare the github:repomix git dependency while
-        # min-release-age is set — it conflicts with the --before npm uses
-        # internally. Disable the cooldown for this lockfile-pinned install,
-        # matching the pattern in npm-publish.yml.
-        env:
-          npm_config_min_release_age: "0"
         run: |
+          # npm 12 fails to prepare the github:repomix git dependency: its prep
+          # child process re-reads .npmrc (min-release-age=7) and hits npm's own
+          # --before, which cannot coexist. Setting npm_config_min_release_age=0
+          # does not help (0 still counts as "provided", and the child re-reads
+          # .npmrc), so downgrade to npm 11.4.0, which predates the flag.
+          # Matches website/server/Dockerfile.
+          npm install -g npm@11.4.0
           npm ci
           npm link repomix
       - name: Test website server
@@ -130,13 +132,14 @@ jobs:
           npm link
       - name: Install website server dependencies
         working-directory: website/server
-        # npm 12 refuses to prepare the github:repomix git dependency while
-        # min-release-age is set — it conflicts with the --before npm uses
-        # internally. Disable the cooldown for this lockfile-pinned install,
-        # matching the pattern in npm-publish.yml.
-        env:
-          npm_config_min_release_age: "0"
         run: |
+          # npm 12 fails to prepare the github:repomix git dependency: its prep
+          # child process re-reads .npmrc (min-release-age=7) and hits npm's own
+          # --before, which cannot coexist. Setting npm_config_min_release_age=0
+          # does not help (0 still counts as "provided", and the child re-reads
+          # .npmrc), so downgrade to npm 11.4.0, which predates the flag.
+          # Matches website/server/Dockerfile.
+          npm install -g npm@11.4.0
           npm ci
           npm link repomix
       - name: Bundle website server
