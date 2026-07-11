@@ -140,7 +140,7 @@ code {
 
 .copy-button:hover {
   border-color: var(--vp-c-brand-1);
-  color: var(--vp-c-brand-1);
+  color: var(--brand-text);
 }
 
 .copy-button.copied {
@@ -150,7 +150,7 @@ code {
 }
 
 .guide-link a {
-  color: var(--vp-c-brand-1);
+  color: var(--brand-text);
   text-decoration: none;
   font-weight: 500;
 }

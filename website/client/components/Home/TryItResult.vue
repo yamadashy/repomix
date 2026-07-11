@@ -171,7 +171,7 @@ const handleRepack = (selectedFiles: FileInfo[]) => {
 }
 
 .tab-button.active {
-  color: var(--vp-c-brand-1);
+  color: var(--brand-text);
   border-bottom-color: var(--vp-c-brand-1);
   background: var(--vp-c-bg);
 }
