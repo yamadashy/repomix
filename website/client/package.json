@@ -22,6 +22,7 @@
     "rollup-plugin-visualizer": "^7.0.1",
     "vite-plugin-pwa": "^1.3.0",
     "vitepress": "^1.6.4",
-    "vitepress-plugin-llms": "^1.13.2"
+    "vitepress-plugin-llms": "^1.13.2",
+    "wrangler": "^4.107.0"
   }
 }

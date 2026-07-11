@@ -1,4 +1,5 @@
 .vitepress/cache
 .vitepress/dist
+.wrangler
 node_modules
 stats.html

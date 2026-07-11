@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "repomix",
+  "compatibility_date": "2026-07-08",
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": "./.vitepress/dist",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  }
+}
