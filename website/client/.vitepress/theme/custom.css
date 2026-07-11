@@ -60,10 +60,10 @@
 /* Syntax highlighting comments use #6A737D for both light and dark themes,
    which fails WCAG AA contrast on the code block background. Raise the contrast
    per mode by targeting the inline shiki color the tokens carry. */
-html:not(.dark) .vp-code span[style*='#6A737D'] {
+html:not(.dark) .vp-code span[style*="#6A737D"] {
   color: #57606a;
 }
-.dark .vp-code span[style*='#6A737D'] {
+.dark .vp-code span[style*="#6A737D"] {
   color: #8b949e;
 }
 
