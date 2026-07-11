@@ -19,6 +19,3 @@ rules:
       - action.yml
       # Intentional: update npm itself to latest before publishing
       - npm-publish.yml
-      # Intentional: downgrade npm to 11.4.0 so it can prepare the github:repomix
-      # git dependency without the min-release-age/--before conflict in npm 12
-      - ci-website.yml
