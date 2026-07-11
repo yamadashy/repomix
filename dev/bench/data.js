@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783771436661,
+  "lastUpdate": 1783772894222,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -8640,6 +8640,51 @@ window.BENCHMARK_DATA = {
             "range": "±17",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 926ms, Q3: 943ms\nAll times: 912, 913, 922, 923, 924, 926, 926, 926, 927, 930, 933, 935, 936, 938, 938, 943, 944, 946, 951, 962ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "distinct": true,
+          "id": "912bd733df35caa5fd9fa120a5c32b5545264827",
+          "message": "chore(deps): Bump Node to 24.15.0 and npm to 12.0.1\n\nThe npm-publish workflow runs `npm install -g npm@latest`, which now resolves\nto npm@12.0.1 and requires Node `^22.22.2 || ^24.15.0 || >=26.0.0`. The pinned\nNode 24.14.0 is just below that floor, so the publish job failed on EBADENGINE.\n\nBump the pinned Node to 24.15.0 to satisfy the latest npm, and align the local\nnpm pin with the version the publish job installs.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-07-11T21:16:56+09:00",
+          "tree_id": "b5a8f5f76deb16a6b2e3508a77d3e40597c74a2e",
+          "url": "https://github.com/yamadashy/repomix/commit/912bd733df35caa5fd9fa120a5c32b5545264827"
+        },
+        "date": 1783772892806,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 490,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 485ms, Q3: 501ms\nAll times: 474, 476, 478, 482, 482, 484, 484, 485, 487, 488, 488, 488, 489, 489, 489, 490, 494, 495, 496, 497, 497, 498, 501, 501, 508, 513, 527, 528, 561, 635ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 848,
+            "range": "±14",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 839ms, Q3: 853ms\nAll times: 832, 832, 835, 836, 837, 839, 840, 843, 843, 846, 848, 849, 850, 851, 852, 853, 856, 864, 878, 894ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1186,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1181ms, Q3: 1202ms\nAll times: 1168, 1173, 1174, 1177, 1180, 1181, 1181, 1182, 1182, 1182, 1186, 1189, 1189, 1190, 1190, 1202, 1202, 1203, 1211, 1232ms"
           }
         ]
       }
