@@ -91,6 +91,7 @@ Los archivos de configuración JavaScript funcionan igual que TypeScript, admiti
 | Opción                           | Descripción                                                                                                                  | Predeterminado        |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | Tamaño máximo de archivo en bytes para procesar. Los archivos más grandes serán ignorados. Útil para excluir archivos binarios grandes o archivos de datos | `50000000`            |
+| `input.processors`               | Array ordenado de entradas `{ pattern, command, timeout?, onError? }` que ejecuta un comando externo para transformar los archivos coincidentes antes de empaquetarlos (p. ej., JSON→TOON). Gana el primer glob que coincide. Ejecuta comandos arbitrarios, por lo que solo está habilitado para ejecuciones CLI locales. Consulte [Procesadores de archivos](#procesadores-de-archivos) | No establecido          |
 | `output.filePath`                | Nombre del archivo de salida. Admite formatos XML, Markdown y texto plano                                                    | `"repomix-output.xml"` |
 | `output.style`                   | Estilo de salida (`xml`, `markdown`, `json`, `plain`). Cada formato tiene sus propias ventajas para diferentes herramientas de IA    | `"xml"`                |
 | `output.filePathStyle`           | Cómo se muestran las rutas de archivos en la salida (`target-relative` mantiene las rutas relativas a cada raíz de destino, `cwd-relative` mantiene las rutas relativas al directorio de trabajo actual) | `"target-relative"`    |
@@ -155,7 +156,10 @@ Aquí hay un ejemplo de un archivo de configuración completo (`repomix.config.j
 {
   "$schema": "https://repomix.com/schemas/latest/schema.json",
   "input": {
-    "maxFileSize": 50000000
+    "maxFileSize": 50000000,
+    // "processors": [
+    //   { "pattern": "**/*.json", "command": "npx @toon-format/cli {file}" }
+    // ]
   },
   "output": {
     "filePath": "repomix-output.xml",
@@ -365,6 +369,50 @@ Las reglas:
 - Si ningún patrón coincide, se aplica el comportamiento global (contenido completo, o comprimido cuando `output.compress` es `true`).
 
 Esta opción solo está disponible en el archivo de configuración; no existe una opción CLI equivalente.
+
+### Procesadores de archivos
+
+`input.processors` ejecuta un comando externo para transformar el contenido de un archivo **antes** de que se empaquete. Cada entrada selecciona archivos mediante un glob (con la misma coincidencia que `include`/`ignore`) y reemplaza el contenido de los archivos coincidentes con la salida estándar del comando. Esto resulta útil para transformaciones que reducen tokens o convierten formatos, por ejemplo convertir JSON a [TOON](https://github.com/toon-format/toon), minificar SVGs o convertir notebooks a scripts planos.
+
+```json5
+{
+  "input": {
+    "processors": [
+      {
+        "pattern": "**/*.json",
+        "command": "npx @toon-format/cli {file}"
+      }
+    ]
+  }
+}
+```
+
+Cómo funciona:
+
+- Repomix escribe el contenido de cada archivo coincidente en un archivo temporal y sustituye su ruta por el marcador `{file}` en el comando (el marcador es **obligatorio**).
+- El comando se ejecuta a través del shell, por lo que funcionan las tuberías y herramientas como `npx`. Su salida estándar se convierte en el nuevo contenido del archivo, que luego fluye por el resto del pipeline (comprobación de seguridad, conteo de tokens y generación de salida) como cualquier otro archivo.
+- Los patrones se evalúan en el orden del array y **gana el primer patrón que coincide**: un archivo se transforma con como máximo un procesador (sin encadenamiento).
+
+Opciones por procesador:
+
+- `timeout`: Tiempo máximo en milisegundos para esperar el comando. Predeterminado: `60000` (60s). Tenga en cuenta que `npx` puede necesitar tiempo adicional para descargar un paquete con la caché fría.
+- `onError`: Qué hacer cuando el comando termina con un estado distinto de cero o agota el tiempo de espera. `"fail"` (predeterminado) aborta todo el empaquetado; `"skip"` registra una advertencia y recurre al contenido original del archivo.
+
+::: warning Security
+Los procesadores de archivos ejecutan **comandos arbitrarios** desde su archivo de configuración, por lo que siguen un modelo de confianza estricto:
+
+- Solo están habilitados para ejecuciones CLI locales (ejecutar `repomix` en su propia máquina), donde el límite de confianza es el mismo que el de los scripts de npm o un Makefile.
+- Están **deshabilitados** para la API de biblioteca (`pack()` / `runCli()`), el servidor MCP y el [repomix.com](https://repomix.com) alojado.
+- Para repositorios remotos (`--remote`), la configuración del repositorio clonado solo es confiable cuando también se pasa `--remote-trust-config`.
+
+Los procesadores activos se registran al inicio para que los procesadores inesperados de una configuración desconocida sean visibles.
+:::
+
+Notas:
+
+- No se recomienda combinar un procesador con `output.compress` (o un `compress` de `output.patterns`) en el mismo archivo: el contenido transformado puede dejar de analizarse como su lenguaje original. La compresión es best-effort y recurre silenciosamente al contenido transformado si falla el análisis.
+- Con `--watch`, los archivos coincidentes se reprocesan en cada reconstrucción, lo que vuelve a ejecutar el comando cada vez.
+- Los procesadores solo ven archivos de texto (los archivos binarios se excluyen antes del procesamiento), y su salida se lee como UTF-8.
 
 ### Integración con Git
 

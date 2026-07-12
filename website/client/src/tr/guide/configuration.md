@@ -91,6 +91,7 @@ JavaScript yapılandırma dosyaları, `defineConfig` ve dinamik değerleri deste
 | Seçenek                          | Açıklama                                                                                                                     | Varsayılan             |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | İşlenecek maksimum dosya boyutu (bayt). Bu boyutu aşan dosyalar atlanır. Büyük ikili dosyaları veya veri dosyalarını hariç tutmak için kullanışlıdır | `50000000`            |
+| `input.processors`               | Paketlemeden **önce** eşleşen dosyaları dönüştürmek için harici bir komut çalıştıran `{ pattern, command, timeout?, onError? }` girdilerinden oluşan sıralı bir dizi (örn. JSON→TOON). Eşleşen ilk glob kazanır. Rastgele komutlar çalıştırdığından yalnızca yerel CLI çalıştırmalarında etkindir. Bkz. [Dosya İşlemcileri](#dosya-islemcileri) | Ayarlanmamış            |
 | `output.filePath`                | Çıktı dosyasının adı. XML, Markdown ve düz metin formatlarını destekler                                                     | `"repomix-output.xml"` |
 | `output.style`                   | Çıktının stili (`xml`, `markdown`, `json`, `plain`). Her formatın farklı AI araçları için kendine özgü avantajları vardır   | `"xml"`                |
 | `output.filePathStyle`           | Çıktıda dosya yollarının gösterilme biçimi (`target-relative` yolları her hedef köke göre, `cwd-relative` ise geçerli çalışma dizinine göre göreceli tutar) | `"target-relative"`    |
@@ -155,7 +156,10 @@ Eksiksiz bir yapılandırma dosyası örneği (`repomix.config.json`):
 {
   "$schema": "https://repomix.com/schemas/latest/schema.json",
   "input": {
-    "maxFileSize": 50000000
+    "maxFileSize": 50000000,
+    // "processors": [
+    //   { "pattern": "**/*.json", "command": "npx @toon-format/cli {file}" }
+    // ]
   },
   "output": {
     "filePath": "repomix-output.xml",
@@ -365,6 +369,50 @@ Kurallar:
 - Hiçbir kalıp eşleşmezse global davranış uygulanır (tam içerik veya `output.compress` `true` olduğunda sıkıştırılmış).
 
 Bu seçenek yalnızca yapılandırma dosyasına özgüdür; eşdeğer bir CLI bayrağı yoktur.
+
+### Dosya İşlemcileri
+
+`input.processors`, bir dosyanın içeriğini paketlenmeden **önce** dönüştürmek için harici bir komut çalıştırır. Her girdi, dosyaları glob ile hedefler (`include`/`ignore` ile aynı şekilde eşleştirilir) ve eşleşen dosyaların içeriğini komutun standart çıktısıyla değiştirir. Bu, token azaltan veya format dönüştüren dönüşümler için kullanışlıdır; örneğin JSON'u [TOON](https://github.com/toon-format/toon) formatına dönüştürmek, SVG'leri küçültmek veya notebook'ları düz betiklere dönüştürmek gibi.
+
+```json5
+{
+  "input": {
+    "processors": [
+      {
+        "pattern": "**/*.json",
+        "command": "npx @toon-format/cli {file}"
+      }
+    ]
+  }
+}
+```
+
+Nasıl çalışır:
+
+- Repomix, eşleşen her dosyanın içeriğini geçici bir dosyaya yazar ve komuttaki `{file}` yer tutucusunu bu dosyanın yoluyla değiştirir (yer tutucu **zorunludur**).
+- Komut shell üzerinden çalıştırılır, bu nedenle pipe'lar ve `npx` gibi araçlar çalışır. Standart çıktısı dosyanın yeni içeriği olur ve bu içerik, diğer tüm dosyalar gibi işlem hattının geri kalanından (güvenlik kontrolü, token sayımı ve çıktı oluşturma) geçer.
+- Kalıplar dizi sırasına göre değerlendirilir ve **eşleşen ilk kalıp kazanır** — bir dosya en fazla bir işlemci tarafından dönüştürülür (zincirleme yoktur).
+
+İşlemci başına seçenekler:
+
+- `timeout`: Komutun tamamlanmasını beklemek için milisaniye cinsinden maksimum süre. Varsayılan: `60000` (60sn). `npx`'in soğuk önbellekte bir paketi indirmek için ekstra süreye ihtiyaç duyabileceğini unutmayın.
+- `onError`: Komut sıfır olmayan bir durumla sonuçlandığında veya zaman aşımına uğradığında ne yapılacağı. `"fail"` (varsayılan) tüm paketlemeyi iptal eder; `"skip"` bir uyarı kaydeder ve dosyanın özgün içeriğine geri döner.
+
+::: warning Güvenlik
+Dosya işlemcileri, yapılandırma dosyanızdan **rastgele komutlar** çalıştırır, bu nedenle katı bir güven modeline uyarlar:
+
+- Yalnızca yerel CLI çalıştırmalarında (kendi makinenizde `repomix` çalıştırmak) etkindir; burada güven sınırı npm betikleri veya bir Makefile ile aynıdır.
+- Kütüphane API'si (`pack()` / `runCli()`), MCP sunucusu ve barındırılan [repomix.com](https://repomix.com) için **devre dışıdır**.
+- Uzak depolar için (`--remote`), klonlanan deponun yapılandırması yalnızca `--remote-trust-config` da geçirildiğinde güvenilir kabul edilir.
+
+Etkin işlemciler başlangıçta günlüğe kaydedilir, böylece tanıdık olmayan bir yapılandırmadan gelen beklenmedik işlemciler görünür olur.
+:::
+
+Notlar:
+
+- Bir işlemciyi aynı dosyada `output.compress` (veya bir `output.patterns` `compress`) ile birleştirmek önerilmez: dönüştürülen içerik artık özgün diliyle ayrıştırılamayabilir. Sıkıştırma en iyi çaba (best-effort) esasına dayanır ve bir ayrıştırma hatasında sessizce dönüştürülen içeriğe geri döner.
+- `--watch` ile, eşleşen dosyalar her yeniden derlemede yeniden işlenir; bu da komutu her seferinde yeniden çalıştırır.
+- İşlemciler yalnızca metin dosyalarını görür (ikili dosyalar işlemeden önce hariç tutulur) ve çıktıları UTF-8 olarak okunur.
 
 ### Git Entegrasyonu
 

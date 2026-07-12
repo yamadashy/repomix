@@ -91,6 +91,7 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
 | 选项                             | 说明                                                                                                                         | 默认值                 |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | 要处理的最大文件大小（字节）。超过此大小的文件将被跳过。用于排除大型二进制文件或数据文件                                  | `50000000`            |
+| `input.processors`               | `{ pattern, command, timeout?, onError? }` 条目的有序数组，在打包前运行外部命令来转换匹配的文件（例如 JSON→TOON）。第一个匹配的 glob 优先。由于会运行任意命令，因此仅在本地 CLI 运行时启用。参见[文件处理器](#文件处理器) | 未设置                 |
 | `output.filePath`                | 输出文件名。支持 XML、Markdown 和纯文本格式                                                                                   | `"repomix-output.xml"` |
 | `output.style`                   | 输出样式（`xml`、`markdown`、`json`、`plain`）。每种格式对不同的 AI 工具都有其优势                                                   | `"xml"`                |
 | `output.filePathStyle`           | 输出中文件路径的显示方式（`target-relative` 表示路径相对于各目标根目录，`cwd-relative` 表示路径相对于当前工作目录）                  | `"target-relative"`    |
@@ -155,7 +156,10 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
 {
   "$schema": "https://repomix.com/schemas/latest/schema.json",
   "input": {
-    "maxFileSize": 50000000
+    "maxFileSize": 50000000,
+    // "processors": [
+    //   { "pattern": "**/*.json", "command": "npx @toon-format/cli {file}" }
+    // ]
   },
   "output": {
     "filePath": "repomix-output.xml",
@@ -365,6 +369,50 @@ build/
 - 如果没有模式匹配，则应用全局行为（完整内容，或当 `output.compress` 为 `true` 时为压缩）。
 
 此选项仅适用于配置文件；没有等效的 CLI 选项。
+
+### 文件处理器
+
+`input.processors` 会在文件被打包**之前**运行外部命令来转换其内容。每个条目通过 glob 定位文件（匹配方式与 `include`/`ignore` 相同），并用命令的标准输出替换匹配文件的内容。这对于减少 token 数量或转换格式的操作很有用，例如将 JSON 转换为 [TOON](https://github.com/toon-format/toon)、压缩 SVG，或将 notebook 转换为纯脚本。
+
+```json5
+{
+  "input": {
+    "processors": [
+      {
+        "pattern": "**/*.json",
+        "command": "npx @toon-format/cli {file}"
+      }
+    ]
+  }
+}
+```
+
+工作原理：
+
+- Repomix 会将每个匹配文件的内容写入一个临时文件，并将命令中的 `{file}` 占位符（**必需**）替换为该文件的路径。
+- 命令通过 shell 运行，因此管道和 `npx` 等工具都可以使用。其标准输出会成为文件的新内容，之后像其他文件一样流经流水线的其余部分（安全检查、token 计数和输出生成）。
+- 模式按数组顺序求值，**第一个匹配的模式优先**——一个文件最多只会被一个处理器转换（不会链式处理）。
+
+每个处理器的选项：
+
+- `timeout`：等待命令完成的最长时间（毫秒）。默认值：`60000`（60 秒）。请注意，`npx` 在冷缓存时可能需要额外的时间来下载包。
+- `onError`：命令以非零状态退出或超时时的处理方式。`"fail"`（默认）会中止整个打包；`"skip"` 会记录一条警告并回退到文件的原始内容。
+
+::: warning 安全
+文件处理器会运行配置文件中的**任意命令**，因此遵循严格的信任模型：
+
+- 仅在本地 CLI 运行时（在你自己的机器上运行 `repomix`）启用，此时的信任边界与 npm 脚本或 Makefile 相同。
+- 在库 API（`pack()` / `runCli()`）、MCP 服务器以及托管的 [repomix.com](https://repomix.com) 中**禁用**。
+- 对于远程仓库（`--remote`），仅当同时传递 `--remote-trust-config` 时，才会信任克隆仓库的配置。
+
+启用的处理器会在启动时记录到日志中，这样来自陌生配置的意外处理器就可以被察觉。
+:::
+
+注意事项：
+
+- 不建议在同一文件上同时使用处理器和 `output.compress`（或 `output.patterns` 的 `compress`）：转换后的内容可能无法再按其原始语言解析。压缩是尽力而为的，解析失败时会安静地回退到转换后的内容。
+- 使用 `--watch` 时，匹配的文件会在每次重新构建时被重新处理，这会每次都重新运行命令。
+- 处理器只会看到文本文件（二进制文件在处理前会被排除），其输出会以 UTF-8 读取。
 
 ### Git 集成
 

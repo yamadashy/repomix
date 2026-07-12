@@ -91,6 +91,7 @@ JavaScript configuration files work the same as TypeScript, supporting `defineCo
 | Option                           | Description                                                                                                                  | Default                |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | Maximum file size in bytes to process. Files larger than this will be skipped. Useful for excluding large binary files or data files | `50000000`            |
+| `input.processors`               | Ordered array of `{ pattern, command, timeout?, onError? }` entries that run an external command to transform matching files before packing (e.g. JSON→TOON). The first matching glob wins. Runs arbitrary commands, so it is enabled only for local CLI runs. See [File Processors](#file-processors) | Not set                |
 | `output.filePath`                | The name of the output file. Supports XML, Markdown, and plain text formats                                                   | `"repomix-output.xml"` |
 | `output.style`                   | The style of the output (`xml`, `markdown`, `json`, `plain`). Each format has its own advantages for different AI tools              | `"xml"`                |
 | `output.filePathStyle`           | How file paths are shown in output (`target-relative` keeps paths relative to each target root, `cwd-relative` keeps paths relative to the current working directory) | `"target-relative"`    |
@@ -155,7 +156,10 @@ Here's an example of a complete configuration file (`repomix.config.json`):
 {
   "$schema": "https://repomix.com/schemas/latest/schema.json",
   "input": {
-    "maxFileSize": 50000000
+    "maxFileSize": 50000000,
+    // "processors": [
+    //   { "pattern": "**/*.json", "command": "npx @toon-format/cli {file}" }
+    // ]
   },
   "output": {
     "filePath": "repomix-output.xml",
@@ -365,6 +369,50 @@ The rules:
 - If no pattern matches, the global behavior applies (full content, or compressed when `output.compress` is `true`).
 
 This option is config-file only; there is no equivalent CLI flag.
+
+### File Processors
+
+`input.processors` runs an external command to transform a file's content **before** it is packed. Each entry targets files by glob (matched the same way as `include`/`ignore`) and replaces the matching files' content with the command's standard output. This is useful for token-reducing or format-converting transforms, for example converting JSON to [TOON](https://github.com/toon-format/toon), minifying SVGs, or converting notebooks to plain scripts.
+
+```json5
+{
+  "input": {
+    "processors": [
+      {
+        "pattern": "**/*.json",
+        "command": "npx @toon-format/cli {file}"
+      }
+    ]
+  }
+}
+```
+
+How it works:
+
+- Repomix writes each matching file's content to a temporary file and substitutes its path for the `{file}` placeholder in the command (the placeholder is **required**).
+- The command runs through the shell, so pipes and tools like `npx` work. Its standard output becomes the file's new content, which then flows through the rest of the pipeline (security check, token counting, and output generation) like any other file.
+- Patterns are evaluated in array order and the **first matching pattern wins** — a file is transformed by at most one processor (no chaining).
+
+Per-processor options:
+
+- `timeout`: Maximum time in milliseconds to wait for the command. Default: `60000` (60s). Note that `npx` may need extra time to download a package on a cold cache.
+- `onError`: What to do when the command exits with a non-zero status or times out. `"fail"` (default) aborts the whole pack; `"skip"` logs a warning and falls back to the file's original content.
+
+::: warning Security
+File processors run **arbitrary commands** from your configuration file, so they follow a strict trust model:
+
+- They are enabled only for local CLI runs (running `repomix` on your own machine), where the trust boundary is the same as npm scripts or a Makefile.
+- They are **disabled** for the library API (`pack()` / `runCli()`), the MCP server, and the hosted [repomix.com](https://repomix.com).
+- For remote repositories (`--remote`), the cloned repository's config is trusted only when `--remote-trust-config` is also passed.
+
+Active processors are logged at startup so unexpected processors from an unfamiliar config are visible.
+:::
+
+Notes:
+
+- Combining a processor with `output.compress` (or an `output.patterns` `compress`) on the same file is not recommended: the transformed content may no longer parse as its original language. Compression is best-effort and quietly falls back to the transformed content on a parse failure.
+- With `--watch`, matching files are re-processed on every rebuild, which re-runs the command each time.
+- Processors only see text files (binary files are excluded before processing), and their output is read as UTF-8.
 
 ### Git Integration
 

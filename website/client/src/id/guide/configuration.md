@@ -91,6 +91,7 @@ File konfigurasi JavaScript bekerja sama seperti TypeScript, mendukung `defineCo
 | Opsi                             | Deskripsi                                                                                                                    | Default                |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | Ukuran file maksimum dalam byte untuk diproses. File yang lebih besar akan dilewati. Berguna untuk mengecualikan file biner besar atau file data | `50000000`            |
+| `input.processors`               | Array berurutan berisi entri `{ pattern, command, timeout?, onError? }` yang menjalankan perintah eksternal untuk mentransformasi file yang cocok sebelum dikemas (mis. JSON→TOON). Glob pertama yang cocok yang menang. Menjalankan perintah arbitrer, sehingga hanya diaktifkan untuk proses CLI lokal. Lihat [Prosesor File](#prosesor-file) | Tidak diatur            |
 | `output.filePath`                | Nama file output. Mendukung format XML, Markdown, dan teks biasa                                                            | `"repomix-output.xml"` |
 | `output.style`                   | Gaya output (`xml`, `markdown`, `json`, `plain`). Setiap format memiliki keunggulan tersendiri untuk berbagai alat AI               | `"xml"`                |
 | `output.filePathStyle`           | Cara jalur file ditampilkan dalam output (`target-relative` menjaga jalur relatif terhadap setiap root target, `cwd-relative` menjaga jalur relatif terhadap direktori kerja saat ini) | `"target-relative"`    |
@@ -155,7 +156,10 @@ Berikut adalah contoh file konfigurasi lengkap (`repomix.config.json`):
 {
   "$schema": "https://repomix.com/schemas/latest/schema.json",
   "input": {
-    "maxFileSize": 50000000
+    "maxFileSize": 50000000,
+    // "processors": [
+    //   { "pattern": "**/*.json", "command": "npx @toon-format/cli {file}" }
+    // ]
   },
   "output": {
     "filePath": "repomix-output.xml",
@@ -313,6 +317,50 @@ Aturannya:
 - Jika tidak ada pola yang cocok, perilaku global berlaku (konten penuh, atau terkompresi ketika `output.compress` bernilai `true`).
 
 Opsi ini hanya tersedia di file konfigurasi; tidak ada opsi CLI yang setara.
+
+### Prosesor File
+
+`input.processors` menjalankan perintah eksternal untuk mentransformasi konten file **sebelum** dikemas. Setiap entri menargetkan file berdasarkan glob (dicocokkan dengan cara yang sama seperti `include`/`ignore`) dan mengganti konten file yang cocok dengan output standar dari perintah tersebut. Ini berguna untuk transformasi yang mengurangi token atau mengonversi format, misalnya mengonversi JSON ke [TOON](https://github.com/toon-format/toon), meminifikasi SVG, atau mengonversi notebook menjadi skrip biasa.
+
+```json5
+{
+  "input": {
+    "processors": [
+      {
+        "pattern": "**/*.json",
+        "command": "npx @toon-format/cli {file}"
+      }
+    ]
+  }
+}
+```
+
+Cara kerjanya:
+
+- Repomix menulis konten setiap file yang cocok ke file sementara dan mengganti placeholder `{file}` dalam perintah dengan path file tersebut (placeholder ini **wajib** ada).
+- Perintah dijalankan melalui shell, sehingga pipe dan alat seperti `npx` dapat digunakan. Output standarnya menjadi konten baru file tersebut, yang kemudian mengalir melalui sisa pipeline (pemeriksaan keamanan, penghitungan token, dan pembuatan output) seperti file lainnya.
+- Pola dievaluasi sesuai urutan array dan **pola pertama yang cocok yang menang** — sebuah file ditransformasi oleh paling banyak satu prosesor (tanpa chaining).
+
+Opsi per-prosesor:
+
+- `timeout`: Waktu maksimum dalam milidetik untuk menunggu perintah. Default: `60000` (60 detik). Perhatikan bahwa `npx` mungkin memerlukan waktu tambahan untuk mengunduh paket pada cache dingin.
+- `onError`: Tindakan yang dilakukan ketika perintah keluar dengan status bukan nol atau timeout. `"fail"` (default) membatalkan seluruh proses pack; `"skip"` mencatat peringatan dan menggunakan konten asli file sebagai fallback.
+
+::: warning Keamanan
+Prosesor file menjalankan **perintah arbitrer** dari file konfigurasi Anda, sehingga mengikuti model kepercayaan yang ketat:
+
+- Hanya diaktifkan untuk proses CLI lokal (menjalankan `repomix` di mesin Anda sendiri), di mana batas kepercayaannya sama dengan npm scripts atau Makefile.
+- **Dinonaktifkan** untuk library API (`pack()` / `runCli()`), MCP server, dan [repomix.com](https://repomix.com) yang di-hosting.
+- Untuk repositori remote (`--remote`), konfigurasi dari repositori yang di-clone hanya dipercaya ketika `--remote-trust-config` juga digunakan.
+
+Prosesor yang aktif dicatat saat startup sehingga prosesor tak terduga dari konfigurasi yang tidak dikenal dapat terlihat.
+:::
+
+Catatan:
+
+- Menggabungkan prosesor dengan `output.compress` (atau `compress` dari `output.patterns`) pada file yang sama tidak disarankan: konten yang ditransformasi mungkin tidak lagi dapat di-parse sebagai bahasa aslinya. Kompresi bersifat best-effort dan akan secara diam-diam fallback ke konten yang ditransformasi jika parsing gagal.
+- Dengan `--watch`, file yang cocok akan diproses ulang pada setiap rebuild, yang menjalankan ulang perintah setiap kali.
+- Prosesor hanya melihat file teks (file biner dikecualikan sebelum pemrosesan), dan outputnya dibaca sebagai UTF-8.
 
 ### Integrasi Git
 

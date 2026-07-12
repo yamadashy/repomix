@@ -7,6 +7,7 @@ import { collectFiles, type SkippedFileInfo } from './file/fileCollect.js';
 import { resolveFileLevel } from './file/fileLevelResolve.js';
 import { sortPaths } from './file/filePathSort.js';
 import { processFiles } from './file/fileProcess.js';
+import { applyFileProcessors } from './file/fileProcessorRun.js';
 import { searchFiles } from './file/fileSearch.js';
 import type { FilesByRoot } from './file/fileTreeGenerate.js';
 import type { ProcessedFile } from './file/fileTypes.js';
@@ -41,6 +42,7 @@ export interface PackResult {
 const defaultDeps = {
   searchFiles,
   collectFiles,
+  applyFileProcessors,
   processFiles,
   validateFileSafety,
   produceOutput,
@@ -172,9 +174,15 @@ export const pack = async (
         'Collect Files',
         async () =>
           await Promise.all(
-            sortedFilePathsByDir.map(({ rootDir, filePaths }) =>
-              deps.collectFiles(filePaths, rootDir, config, progressCallback),
-            ),
+            sortedFilePathsByDir.map(async ({ rootDir, filePaths }) => {
+              const collected = await deps.collectFiles(filePaths, rootDir, config, progressCallback);
+              // Apply file processors per root while paths are still per-root-relative
+              // (the same basis include/ignore/output.patterns match against), before
+              // paths are rewritten to their display form below. Transformed content
+              // then flows through the security check and metrics like any other file.
+              const rawFiles = await deps.applyFileProcessors(collected.rawFiles, rootDir, config, progressCallback);
+              return { ...collected, rawFiles };
+            }),
           ),
       ),
       deps.getGitDiffs(rootDirs, config),
