@@ -217,6 +217,10 @@ export const applyFileProcessors = async (
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc-'));
   let completed = 0;
+  // Set once a `fail`-mode processor errors. Queued files that have not started
+  // yet short-circuit instead of spawning their command, so a single early
+  // failure does not spend up to `timeout` on every remaining matched file.
+  let aborted = false;
 
   const processOne = async (rawFile: RawFile, index: number): Promise<RawFile> => {
     const processor = matches[index];
@@ -237,53 +241,65 @@ export const applyFileProcessors = async (
 
     await acquireProcessorSlot();
     try {
-      let content: string;
+      // A prior fail-mode error already doomed the pack; skip spawning this command.
+      if (aborted) {
+        return rawFile;
+      }
+
+      let result: RawFile;
+      let skipped = false;
       try {
-        content = await deps.runProcessorCommand({
+        const content = await deps.runProcessorCommand({
           command: processor.command,
           content: rawFile.content,
           tempFilePath,
           timeout,
           cwd: rootDir,
         });
+
+        // A processor that exits 0 but writes nothing to stdout (e.g. a tool that
+        // edits the temp file in place, or only writes to stderr) would silently
+        // blank the file. Empty output is still accepted, but warn when it replaces
+        // non-empty content so the footgun is visible.
+        if (content === '' && rawFile.content !== '') {
+          logger.warn(
+            `File processor for "${rawFile.path}" produced empty output; the file will be packed as empty. ` +
+              `Check that the command writes the transformed content to stdout.`,
+          );
+        }
+        result = { ...rawFile, content };
       } catch (error) {
         const message = describeProcessorError(error, timeout);
-        if (onError === 'skip') {
-          logger.warn(
-            `File processor for "${rawFile.path}" failed, using original content (onError: "skip"): ${message}`,
+        if (onError !== 'skip') {
+          aborted = true;
+          throw new RepomixError(
+            `File processor failed for "${rawFile.path}".\n` +
+              `  Pattern: ${processor.pattern}\n` +
+              `  Command: ${processor.command}\n` +
+              `  Error: ${message}\n` +
+              `  Set "onError": "skip" on this processor to fall back to the original content instead.`,
           );
-          completed++;
-          progressCallback(
-            `Processing file with command... (${completed}/${matchedCount}) ${pc.dim(rawFile.path)} (skipped)`,
-          );
-          return rawFile;
         }
-        throw new RepomixError(
-          `File processor failed for "${rawFile.path}".\n` +
-            `  Pattern: ${processor.pattern}\n` +
-            `  Command: ${processor.command}\n` +
-            `  Error: ${message}\n` +
-            `  Set "onError": "skip" on this processor to fall back to the original content instead.`,
-        );
-      }
-
-      // A processor that exits 0 but writes nothing to stdout (e.g. a tool that edits
-      // the temp file in place, or only writes to stderr) would silently blank the
-      // file. Empty output is still accepted, but warn when it replaces non-empty
-      // content so the footgun is visible.
-      if (content === '' && rawFile.content !== '') {
         logger.warn(
-          `File processor for "${rawFile.path}" produced empty output; the file will be packed as empty. ` +
-            `Check that the command writes the transformed content to stdout.`,
+          `File processor for "${rawFile.path}" failed, using original content (onError: "skip"): ${message}`,
         );
+        result = rawFile;
+        skipped = true;
+      } finally {
+        // Remove this file's temp file promptly so disk use scales with concurrency,
+        // not matched-file count. The tempDir itself is still removed in the outer
+        // finally as a safety net.
+        await fs.rm(tempFilePath, { force: true }).catch(() => {});
       }
 
       // Progress is reported outside the run try/catch so a throwing progressCallback
       // is not misread as a processor failure (which, under onError: "skip", would
-      // discard the successfully transformed content).
+      // discard the successfully transformed content). Runs for success and skip alike.
       completed++;
-      progressCallback(`Processing file with command... (${completed}/${matchedCount}) ${pc.dim(rawFile.path)}`);
-      return { ...rawFile, content };
+      progressCallback(
+        `Processing file with command... (${completed}/${matchedCount}) ${pc.dim(rawFile.path)}${skipped ? ' (skipped)' : ''}`,
+      );
+      return result;
     } finally {
       releaseProcessorSlot();
     }

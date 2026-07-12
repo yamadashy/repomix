@@ -376,6 +376,60 @@ describe('fileProcessorRun', () => {
         }),
       ).rejects.toThrow(/boom detail from tool/);
     });
+
+    it('reports a timeout distinctly in the failure message', async () => {
+      const config = createMockConfig({
+        enableFileProcessors: true,
+        input: { processors: [{ pattern: '**/*.json', command: 'toon {file}', timeout: 1234 }] },
+      });
+      // execFile marks a timed-out process as killed.
+      const runProcessorCommandMock = vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error('Command failed'), { killed: true }));
+
+      await expect(
+        applyFileProcessors([{ path: 'a.json', content: '{}' }], '/root', config, () => {}, {
+          runProcessorCommand: runProcessorCommandMock,
+        }),
+      ).rejects.toThrow(/timed out after 1234ms/);
+    });
+
+    it('reports a stdout-overflow distinctly in the failure message', async () => {
+      const config = createMockConfig({
+        enableFileProcessors: true,
+        input: { processors: [{ pattern: '**/*.json', command: 'toon {file}' }] },
+      });
+      const runProcessorCommandMock = vi
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('Command failed'), { killed: true, code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' }),
+        );
+
+      await expect(
+        applyFileProcessors([{ path: 'a.json', content: '{}' }], '/root', config, () => {}, {
+          runProcessorCommand: runProcessorCommandMock,
+        }),
+      ).rejects.toThrow(/output exceeded the .* limit/);
+    });
+
+    it('removes the temp directory after processing', async () => {
+      const config = createMockConfig({
+        enableFileProcessors: true,
+        input: { processors: [{ pattern: '**/*.json', command: 'toon {file}' }] },
+      });
+      let capturedTempPath = '';
+      const runProcessorCommandMock = vi.fn((params: { tempFilePath: string }) => {
+        capturedTempPath = params.tempFilePath;
+        return Promise.resolve('out');
+      });
+
+      await applyFileProcessors([{ path: 'a.json', content: '{}' }], '/root', config, () => {}, {
+        runProcessorCommand: runProcessorCommandMock,
+      });
+
+      // The per-invocation temp dir must be gone once processing completes.
+      await expect(fs.access(path.dirname(capturedTempPath))).rejects.toThrow();
+    });
   });
 
   describe('runProcessorCommand', () => {
@@ -450,6 +504,26 @@ describe('fileProcessorRun', () => {
             cwd: tempDir,
           });
           expect(result).toBe('hello world');
+        } finally {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        }
+      });
+
+      it('escapes a single quote in the temp path (quoteForShell)', async () => {
+        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc-test-'));
+        // A single quote in the path would break naive single-quoting; quoteForShell
+        // must escape it so the real shell resolves the file.
+        const tempFilePath = path.join(tempDir, "it's-0.txt");
+
+        try {
+          const result = await runProcessorCommand({
+            command: 'cat {file}',
+            content: 'quoted ok',
+            tempFilePath,
+            timeout: 10000,
+            cwd: tempDir,
+          });
+          expect(result).toBe('quoted ok');
         } finally {
           await fs.rm(tempDir, { recursive: true, force: true });
         }
