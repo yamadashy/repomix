@@ -45,6 +45,7 @@ export const createMockConfig = (config: DeepPartial<RepomixConfigMerged> = {}):
     },
     // CLI-only optional properties
     ...(config.skillGenerate !== undefined && { skillGenerate: config.skillGenerate }),
+    ...(config.enableFileProcessors !== undefined && { enableFileProcessors: config.enableFileProcessors }),
   };
 };
 

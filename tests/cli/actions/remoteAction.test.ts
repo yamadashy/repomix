@@ -294,6 +294,62 @@ describe('remoteAction functions', () => {
       );
     });
 
+    test('should keep file processors disabled for remote runs without --remote-trust-config', async () => {
+      const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
+
+      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+      // enableFileProcessors: true simulates the real CLI entry point injection; the
+      // remote gate must still force it off because the config comes from a clone.
+      await runRemoteAction(
+        'yamadashy/repomix',
+        { enableFileProcessors: true },
+        {
+          isGitInstalled: vi.fn().mockResolvedValue(false),
+          execGitShallowClone: vi.fn(),
+          getRemoteRefs: async () => Promise.resolve(['main']),
+          runDefaultAction: runDefaultActionMock,
+          downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
+          isGitHubRepository: vi.fn().mockReturnValue(true),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+        },
+      );
+
+      expect(runDefaultActionMock).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(String),
+        expect.objectContaining({ enableFileProcessors: false }),
+      );
+    });
+
+    test('should enable file processors for remote runs when --remote-trust-config is passed', async () => {
+      const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
+
+      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+      await runRemoteAction(
+        'https://gitlab.com/owner/repo.git',
+        { enableFileProcessors: true, remoteTrustConfig: true },
+        {
+          isGitInstalled: async () => Promise.resolve(true),
+          execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
+            await fs.writeFile(path.join(directory, 'README.md'), 'Hello');
+          }),
+          getRemoteRefs: async () => Promise.resolve(['main']),
+          runDefaultAction: runDefaultActionMock,
+          downloadGitHubArchive: vi.fn(),
+          isGitHubRepository: vi.fn().mockReturnValue(false),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+        },
+      );
+
+      expect(runDefaultActionMock).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(String),
+        expect.objectContaining({ enableFileProcessors: true }),
+      );
+    });
+
     test('should set skipLocalConfig to false when REPOMIX_REMOTE_TRUST_CONFIG env var is true', async () => {
       const originalEnv = process.env.REPOMIX_REMOTE_TRUST_CONFIG;
       process.env.REPOMIX_REMOTE_TRUST_CONFIG = 'true';

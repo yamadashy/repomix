@@ -9,6 +9,7 @@ import {
   type RepomixOutputStyle,
   repomixConfigCliSchema,
 } from '../../config/configSchema.js';
+import { logFileProcessorStatus } from '../../core/file/fileProcessorRun.js';
 import { readFilePathsFromStdin } from '../../core/file/fileStdin.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
@@ -50,6 +51,10 @@ export const buildMergedConfig = async (cwd: string, cliOptions: CliOptions): Pr
   // Merge default, file, and CLI configs
   const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
   logger.trace('Merged config:', config);
+
+  // Surface configured file processors (active or disabled) for visibility, since
+  // they run arbitrary commands. Runs for every entry point (local, watch, remote).
+  logFileProcessorStatus(config);
 
   return config;
 };
@@ -387,6 +392,11 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   // Skill generation
   if (options.skillGenerate !== undefined) {
     cliConfig.skillGenerate = options.skillGenerate;
+  }
+
+  // Internal gate: only the real CLI entry point sets this (see commanderActionEndpoint).
+  if (options.enableFileProcessors !== undefined) {
+    cliConfig.enableFileProcessors = options.enableFileProcessors;
   }
 
   try {

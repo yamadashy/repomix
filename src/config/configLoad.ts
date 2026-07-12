@@ -259,6 +259,8 @@ export const mergeConfigs = (
     },
     // Skill generation (CLI only)
     ...(cliConfig.skillGenerate !== undefined && { skillGenerate: cliConfig.skillGenerate }),
+    // File processors gate (CLI/entry-point only; never set from a config file)
+    ...(cliConfig.enableFileProcessors !== undefined && { enableFileProcessors: cliConfig.enableFileProcessors }),
   };
 
   try {

@@ -91,6 +91,7 @@ File cấu hình JavaScript hoạt động tương tự như TypeScript, hỗ tr
 | Tùy chọn                         | Mô tả                                                                                                                        | Mặc định               |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | Kích thước file tối đa tính bằng byte để xử lý. Các file lớn hơn sẽ bị bỏ qua. Hữu ích để loại trừ các file binary lớn hoặc file dữ liệu | `50000000`            |
+| `input.processors`               | Mảng có thứ tự gồm các mục `{ pattern, command, timeout?, onError? }` chạy một lệnh bên ngoài để chuyển đổi các file khớp trước khi đóng gói (ví dụ JSON→TOON). Glob khớp đầu tiên sẽ thắng. Chạy các lệnh tùy ý, vì vậy chỉ chạy cho các lần chạy CLI cục bộ (và các kho lưu trữ từ xa có `--remote-trust-config`). Xem [Bộ xử lý File](#bo-xu-ly-file) | Không đặt              |
 | `output.filePath`                | Tên file đầu ra. Hỗ trợ định dạng XML, Markdown và văn bản thuần túy                                                        | `"repomix-output.xml"` |
 | `output.style`                   | Kiểu đầu ra (`xml`, `markdown`, `json`, `plain`). Mỗi định dạng có những ưu điểm riêng cho các công cụ AI khác nhau               | `"xml"`                |
 | `output.filePathStyle`           | Cách hiển thị đường dẫn tệp trong đầu ra (`target-relative` giữ đường dẫn tương đối so với thư mục gốc của mỗi mục tiêu, `cwd-relative` giữ đường dẫn tương đối so với thư mục làm việc hiện tại) | `"target-relative"`    |
@@ -155,7 +156,10 @@ Bạn có thể bật xác thực schema cho file cấu hình của mình bằng
 {
   "$schema": "https://repomix.com/schemas/latest/schema.json",
   "input": {
-    "maxFileSize": 50000000
+    "maxFileSize": 50000000,
+    // "processors": [
+    //   { "pattern": "**/*.json", "command": "npx @toon-format/cli {file}" }
+    // ]
   },
   "output": {
     "filePath": "repomix-output.xml",
@@ -313,6 +317,62 @@ Các quy tắc:
 - Nếu không có mẫu nào khớp, hành vi toàn cục sẽ được áp dụng (nội dung đầy đủ, hoặc đã nén khi `output.compress` là `true`).
 
 Tùy chọn này chỉ có trong file cấu hình; không có tùy chọn CLI tương đương.
+
+### Bộ xử lý File
+
+`input.processors` chạy một lệnh bên ngoài để chuyển đổi nội dung file **trước khi** đóng gói. Mỗi mục nhắm đến các file bằng glob (khớp theo cùng cách như `include`/`ignore`) và thay thế nội dung của các file khớp bằng đầu ra chuẩn (standard output) của lệnh đó. Điều này hữu ích cho các phép biến đổi giảm token hoặc chuyển đổi định dạng, ví dụ chuyển đổi JSON sang [TOON](https://github.com/toon-format/toon), minify SVG, hoặc chuyển đổi notebook thành script thuần túy.
+
+```json5
+{
+  "input": {
+    "processors": [
+      {
+        "pattern": "**/*.json",
+        "command": "npx @toon-format/cli {file}"
+      }
+    ]
+  }
+}
+```
+
+Cách hoạt động:
+
+- Repomix ghi nội dung của mỗi file khớp vào một file tạm và thay thế đường dẫn của nó vào chỗ placeholder `{file}` trong lệnh (placeholder này là **bắt buộc**).
+- Lệnh được chạy thông qua shell, vì vậy pipe và các công cụ như `npx` đều hoạt động được. Đầu ra chuẩn của nó trở thành nội dung mới của file, sau đó tiếp tục đi qua phần còn lại của pipeline (kiểm tra bảo mật, đếm token và tạo đầu ra) giống như bất kỳ file nào khác.
+- Các mẫu được đánh giá theo thứ tự trong mảng và **mẫu khớp đầu tiên sẽ thắng** — một file chỉ được biến đổi bởi tối đa một bộ xử lý (không có chaining).
+
+Các tùy chọn theo từng bộ xử lý:
+
+- `timeout`: Thời gian tối đa tính bằng mili giây để chờ lệnh. Mặc định: `60000` (60 giây). Lưu ý rằng `npx` có thể cần thêm thời gian để tải một package khi cache còn "nguội" (cold cache).
+- `onError`: Hành động khi lệnh thoát với trạng thái khác 0 hoặc hết thời gian chờ. `"fail"` (mặc định) sẽ hủy toàn bộ quá trình pack; `"skip"` ghi lại cảnh báo và quay về sử dụng nội dung gốc của file.
+
+Ví dụ lệnh (mỗi lệnh là một giá trị `command` được ghép với một `pattern` phù hợp):
+
+| Mẫu | `command` | Chức năng |
+| --- | --- | --- |
+| `**/*.json` | `jq -c . {file}` | Nén JSON bằng cách loại bỏ khoảng trắng |
+| `**/*.json` | `npx @toon-format/cli {file}` | Chuyển đổi JSON sang [TOON](https://github.com/toon-format/toon), một định dạng gọn nhẹ và tiết kiệm token |
+| `**/*.svg` | `npx svgo -i {file} -o -` | Rút gọn SVG |
+| `**/*.ipynb` | `jupyter nbconvert --to script --stdout {file}` | Chuyển đổi notebook Jupyter thành một script Python thuần |
+
+Vì mẫu khớp đầu tiên sẽ thắng, chỉ áp dụng một bộ xử lý cho mỗi file — ví dụ chọn `jq` hoặc bộ chuyển đổi TOON cho `**/*.json`. Lệnh phải ghi nội dung đã chuyển đổi ra đầu ra chuẩn, và công cụ mà nó gọi phải có sẵn trong `PATH` của bạn (các lệnh dựa trên `npx` sẽ tải công cụ về trong lần sử dụng đầu tiên).
+
+::: warning Bảo mật
+Bộ xử lý file chạy các **lệnh tùy ý** từ file cấu hình của bạn, vì vậy chúng tuân theo một mô hình tin cậy nghiêm ngặt:
+
+- Chỉ chạy **cho các lần chạy CLI cục bộ**, nơi Repomix giả định rằng cấu hình trong thư mục làm việc của bạn là của chính bạn — cùng ranh giới tin cậy như một npm script hoặc một Makefile. Tương tự, nếu bạn chạy `repomix` bên trong một repository lấy từ người khác **mà không xem xét `repomix.config.json` của nó trước**, các lệnh bộ xử lý của nó sẽ được thực thi trên máy của bạn. Hãy xem xét cấu hình của các repository không đáng tin cậy trước khi pack chúng.
+- **Bị vô hiệu hóa** đối với library API (`pack()` / `runCli()`), MCP server, và [repomix.com](https://repomix.com) được host, vì vậy không cái nào trong số này có thể chạy lệnh từ một cấu hình.
+- Đối với repository từ xa (`--remote`), cấu hình của repository đã clone — và do đó các bộ xử lý của nó — chỉ được tin cậy khi bạn truyền rõ ràng `--remote-trust-config`. Nếu không có nó, cấu hình từ xa thậm chí không được tải.
+
+Các bộ xử lý đang hoạt động được ghi log khi khởi động để các bộ xử lý bất ngờ từ một cấu hình lạ có thể được nhìn thấy. Vì lệnh được in ra khi khởi động và trong các thông báo lỗi, hãy tham chiếu thông tin xác thực thông qua biến môi trường (ví dụ: `$TOKEN`), vốn được ghi log mà không mở rộng giá trị, thay vì gắn trực tiếp chúng vào lệnh.
+:::
+
+Ghi chú:
+
+- Không nên kết hợp một bộ xử lý **làm thay đổi định dạng** với `output.compress`, `output.removeComments`, hoặc `compress` trong `output.patterns` trên cùng một file: các bước này được chọn dựa trên phần mở rộng gốc của file, do đó chúng sẽ chạy sai trình xử lý ngôn ngữ trên nội dung đã biến đổi. Vì lý do tương tự, đầu ra Markdown gắn nhãn khối mã theo phần mở rộng gốc (ví dụ: file JSON→TOON được đánh dấu là `json`). Việc nén là best-effort và sẽ âm thầm quay về nội dung đã biến đổi khi phân tích cú pháp thất bại.
+- Với `--watch`, các file khớp sẽ được xử lý lại ở mỗi lần rebuild, khiến lệnh được chạy lại mỗi lần.
+- Khi hết thời gian chờ, Repomix sẽ chấm dứt shell của lệnh; một lệnh tự tạo ra các tiến trình nền (background process) tồn tại lâu dài của riêng nó có thể khiến chúng tiếp tục chạy.
+- Bộ xử lý chỉ nhìn thấy các file văn bản (file nhị phân bị loại trừ trước khi xử lý), và đầu ra của chúng được đọc dưới dạng UTF-8.
 
 ### Tích hợp Git
 

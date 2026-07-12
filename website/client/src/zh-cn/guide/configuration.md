@@ -91,6 +91,7 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
 | 选项                             | 说明                                                                                                                         | 默认值                 |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | 要处理的最大文件大小（字节）。超过此大小的文件将被跳过。用于排除大型二进制文件或数据文件                                  | `50000000`            |
+| `input.processors`               | `{ pattern, command, timeout?, onError? }` 条目的有序数组，在打包前运行外部命令来转换匹配的文件（例如 JSON→TOON）。第一个匹配的 glob 优先。由于会运行任意命令，因此仅在本地 CLI 运行时(以及使用 `--remote-trust-config` 的远程仓库)启用。参见[文件处理器](#文件处理器) | 未设置                 |
 | `output.filePath`                | 输出文件名。支持 XML、Markdown 和纯文本格式                                                                                   | `"repomix-output.xml"` |
 | `output.style`                   | 输出样式（`xml`、`markdown`、`json`、`plain`）。每种格式对不同的 AI 工具都有其优势                                                   | `"xml"`                |
 | `output.filePathStyle`           | 输出中文件路径的显示方式（`target-relative` 表示路径相对于各目标根目录，`cwd-relative` 表示路径相对于当前工作目录）                  | `"target-relative"`    |
@@ -155,7 +156,10 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
 {
   "$schema": "https://repomix.com/schemas/latest/schema.json",
   "input": {
-    "maxFileSize": 50000000
+    "maxFileSize": 50000000,
+    // "processors": [
+    //   { "pattern": "**/*.json", "command": "npx @toon-format/cli {file}" }
+    // ]
   },
   "output": {
     "filePath": "repomix-output.xml",
@@ -365,6 +369,62 @@ build/
 - 如果没有模式匹配，则应用全局行为（完整内容，或当 `output.compress` 为 `true` 时为压缩）。
 
 此选项仅适用于配置文件；没有等效的 CLI 选项。
+
+### 文件处理器
+
+`input.processors` 会在文件被打包**之前**运行外部命令来转换其内容。每个条目通过 glob 定位文件（匹配方式与 `include`/`ignore` 相同），并用命令的标准输出替换匹配文件的内容。这对于减少 token 数量或转换格式的操作很有用，例如将 JSON 转换为 [TOON](https://github.com/toon-format/toon)、压缩 SVG，或将 notebook 转换为纯脚本。
+
+```json5
+{
+  "input": {
+    "processors": [
+      {
+        "pattern": "**/*.json",
+        "command": "npx @toon-format/cli {file}"
+      }
+    ]
+  }
+}
+```
+
+工作原理：
+
+- Repomix 会将每个匹配文件的内容写入一个临时文件，并将命令中的 `{file}` 占位符（**必需**）替换为该文件的路径。
+- 命令通过 shell 运行，因此管道和 `npx` 等工具都可以使用。其标准输出会成为文件的新内容，之后像其他文件一样流经流水线的其余部分（安全检查、token 计数和输出生成）。
+- 模式按数组顺序求值，**第一个匹配的模式优先**——一个文件最多只会被一个处理器转换（不会链式处理）。
+
+每个处理器的选项：
+
+- `timeout`：等待命令完成的最长时间（毫秒）。默认值：`60000`（60 秒）。请注意，`npx` 在冷缓存时可能需要额外的时间来下载包。
+- `onError`：命令以非零状态退出或超时时的处理方式。`"fail"`（默认）会中止整个打包；`"skip"` 会记录一条警告并回退到文件的原始内容。
+
+示例命令（每个都是与合适的 `pattern` 搭配的 `command` 值）：
+
+| 模式 | `command` | 作用 |
+| --- | --- | --- |
+| `**/*.json` | `jq -c . {file}` | 去除空白以压缩 JSON |
+| `**/*.json` | `npx @toon-format/cli {file}` | 将 JSON 转换为 [TOON](https://github.com/toon-format/toon)，一种紧凑且节省 token 的格式 |
+| `**/*.svg` | `npx svgo -i {file} -o -` | 压缩 SVG |
+| `**/*.ipynb` | `jupyter nbconvert --to script --stdout {file}` | 将 Jupyter notebook 转换为纯 Python 脚本 |
+
+由于第一个匹配的模式优先，因此每个文件只应用一个处理器——例如，对于 `**/*.json` 只选择 `jq` 或 TOON 转换器中的一个。命令必须将转换后的内容写入标准输出，并且它调用的工具必须在你的 `PATH` 上可用（基于 `npx` 的命令会在首次使用时下载工具）。
+
+::: warning 安全
+文件处理器会运行配置文件中的**任意命令**，因此遵循严格的信任模型：
+
+- **仅在本地 CLI 运行时**启用 —— Repomix 认为工作目录中的配置文件属于你自己，这与 npm 脚本或 Makefile 的信任边界相同。同样地，如果你在从他人处获得的仓库中运行 `repomix`，而**事先未检查其 `repomix.config.json`**，其处理器命令将会在你的机器上执行。在打包不受信任的仓库之前，请先检查其配置文件。
+- 在库 API（`pack()` / `runCli()`）、MCP 服务器以及托管的 [repomix.com](https://repomix.com) 中**均被禁用**，因此它们都不能运行配置中的命令。
+- 对于远程仓库（`--remote`），克隆仓库的配置 —— 以及其处理器 —— 仅在你显式传入 `--remote-trust-config` 时才会被信任。若不传入，远程配置甚至不会被加载。
+
+启用的处理器会在启动时记录到日志中，这样来自陌生配置的意外处理器就可以被察觉。由于命令会在启动时以及错误消息中被打印出来，请通过环境变量（例如 `$TOKEN`）引用凭据，而不要将其直接写入命令中，因为环境变量在日志中不会被展开。
+:::
+
+注意事项：
+
+- 不建议将**会更改格式**的处理器与 `output.compress`、`output.removeComments` 或 `output.patterns` 的 `compress` 在同一文件上组合使用：这些步骤是根据文件的原始扩展名进行分发的，因此会对转换后的内容运行错误的语言处理程序。出于同样的原因，Markdown 输出中的代码围栏也会按原始扩展名标注（例如，JSON→TOON 转换后的文件会被标注为 `json`）。压缩是尽力而为的，解析失败时会静默回退到转换后的内容。
+- 使用 `--watch` 时，匹配的文件会在每次重新构建时被重新处理，这会每次都重新运行命令。
+- 超时时，Repomix 会终止命令所在的 shell；如果命令自行启动了长期运行的后台进程，这些进程可能会继续运行。
+- 处理器只会看到文本文件（二进制文件在处理前会被排除），其输出会以 UTF-8 读取。
 
 ### Git 集成
 

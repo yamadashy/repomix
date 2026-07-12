@@ -141,6 +141,65 @@ describe('packager', () => {
     expect(result.skippedFiles).toEqual([]);
   });
 
+  test('applies file processors per root and passes the transformed content to the security check and processing', async () => {
+    const collectedRawFiles = [{ path: 'a.json', content: 'raw content' }];
+    const transformedRawFiles = [{ path: 'a.json', content: 'transformed content' }];
+    const mockFilePaths = ['a.json'];
+
+    const applyFileProcessors = vi.fn().mockResolvedValue(transformedRawFiles);
+
+    const mockDeps = {
+      searchFiles: vi.fn().mockResolvedValue({ filePaths: mockFilePaths, emptyDirPaths: [] }),
+      sortPaths: vi.fn().mockImplementation((paths) => paths),
+      collectFiles: vi.fn().mockResolvedValue({ rawFiles: collectedRawFiles, skippedFiles: [] }),
+      applyFileProcessors,
+      processFiles: vi.fn().mockReturnValue([{ path: 'a.json', content: 'transformed content' }]),
+      validateFileSafety: vi.fn().mockResolvedValue({
+        safeFilePaths: mockFilePaths,
+        safeRawFiles: transformedRawFiles,
+        suspiciousFilesResults: [],
+        suspiciousGitDiffResults: [],
+        suspiciousGitLogResults: [],
+      }),
+      produceOutput: vi.fn().mockResolvedValue({ outputForMetrics: 'out' }),
+      createMetricsTaskRunner: vi.fn().mockReturnValue({
+        taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup: vi.fn().mockResolvedValue(undefined) },
+        warmupPromise: Promise.resolve(),
+      }),
+      calculateMetrics: vi.fn().mockResolvedValue({
+        totalFiles: 1,
+        totalCharacters: 0,
+        totalTokens: 0,
+        fileCharCounts: {},
+        fileTokenCounts: {},
+        gitDiffTokenCount: 0,
+        gitLogTokenCount: 0,
+      }),
+    };
+
+    const config = createMockConfig();
+    const progressCallback = vi.fn();
+    await pack(['root'], config, progressCallback, mockDeps);
+
+    // Processors run per root, on the collected per-root-relative files (before path rewrite).
+    expect(applyFileProcessors).toHaveBeenCalledWith(collectedRawFiles, 'root', config, progressCallback);
+
+    // The security scan and file processing must operate on the TRANSFORMED content
+    // (what actually ships), not the original collected content.
+    expect(mockDeps.validateFileSafety).toHaveBeenCalledWith(
+      [expect.objectContaining({ path: 'a.json', content: 'transformed content' })],
+      progressCallback,
+      config,
+      undefined,
+      undefined,
+    );
+    expect(mockDeps.processFiles).toHaveBeenCalledWith(
+      [expect.objectContaining({ path: 'a.json', content: 'transformed content' })],
+      config,
+      progressCallback,
+    );
+  });
+
   describe('parallel error handling', () => {
     // The pipeline runs several stages in parallel (security check + file processing,
     // output generation + metrics). Regressions in error propagation or worker cleanup

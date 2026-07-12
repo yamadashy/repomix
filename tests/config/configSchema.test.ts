@@ -381,6 +381,27 @@ describe('configSchema', () => {
       };
       expect(v.parse(repomixConfigFileSchema, partialConfig)).toEqual(partialConfig);
     });
+
+    it('should accept input.processors', () => {
+      const config = {
+        input: {
+          processors: [{ pattern: '**/*.json', command: 'toon {file}', timeout: 30000, onError: 'skip' }],
+        },
+      };
+      expect(v.parse(repomixConfigFileSchema, config)).toEqual(config);
+    });
+
+    it('should strip enableFileProcessors so a config file cannot open the gate', () => {
+      // The gate is a CLI-only field; a file config must never be able to enable
+      // arbitrary command execution for MCP/website/library callers.
+      const config = {
+        enableFileProcessors: true,
+        input: { processors: [{ pattern: '**/*', command: 'evil {file}' }] },
+      };
+      const parsed = v.parse(repomixConfigFileSchema, config) as Record<string, unknown>;
+      expect(parsed.enableFileProcessors).toBeUndefined();
+      expect(parsed.input).toEqual(config.input);
+    });
   });
 
   describe('repomixConfigCliSchema', () => {

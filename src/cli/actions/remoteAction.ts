@@ -139,6 +139,9 @@ export const runRemoteAction = async (
       skillProjectName,
       skillSourceUrl,
       skipLocalConfig: !trustRemoteConfig,
+      // File processors from a cloned repo's config run arbitrary commands, so
+      // they are only honored when the user explicitly trusts remote config.
+      enableFileProcessors: (cliOptions.enableFileProcessors ?? false) && trustRemoteConfig,
       // Defer the token-budget check so the output is copied out of the temp
       // dir below before the guard can throw; we run validateTokenBudget here
       // afterwards. Otherwise an over-budget remote run would throw inside

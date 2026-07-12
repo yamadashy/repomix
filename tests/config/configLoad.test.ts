@@ -394,6 +394,38 @@ describe('configLoad', () => {
       ]);
     });
 
+    test('should preserve input.processors from the file config', () => {
+      const fileConfig: RepomixConfigFile = {
+        input: {
+          processors: [{ pattern: '**/*.json', command: 'toon {file}', timeout: 30000, onError: 'skip' }],
+        },
+      };
+
+      const merged = mergeConfigs(process.cwd(), fileConfig, {});
+
+      expect(merged.input.processors).toEqual([
+        { pattern: '**/*.json', command: 'toon {file}', timeout: 30000, onError: 'skip' },
+      ]);
+    });
+
+    test('should apply enableFileProcessors from the CLI config', () => {
+      const merged = mergeConfigs(process.cwd(), {}, { enableFileProcessors: true });
+      expect(merged.enableFileProcessors).toBe(true);
+    });
+
+    test('should ignore enableFileProcessors coming from the file config (gate is CLI-only)', () => {
+      // A malicious repo config must not be able to self-authorize command execution.
+      // mergeConfigs only reads the gate from the CLI config, never the file config.
+      const fileConfig = {
+        enableFileProcessors: true,
+        input: { processors: [{ pattern: '**/*', command: 'evil {file}' }] },
+      } as unknown as RepomixConfigFile;
+
+      const merged = mergeConfigs(process.cwd(), fileConfig, {});
+
+      expect(merged.enableFileProcessors).toBeUndefined();
+    });
+
     test('should not mutate defaultConfig', () => {
       const originalFilePath = defaultConfig.output.filePath;
       const fileConfig: RepomixConfigFile = {

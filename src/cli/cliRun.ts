@@ -247,7 +247,10 @@ export const run = async () => {
 };
 
 const commanderActionEndpoint = async (directories: string[], options: CliOptions = {}) => {
-  await runCli(directories, process.cwd(), options);
+  // Auto-enable file processors for real CLI invocations only. Library callers
+  // (`runCli`/`pack`) and MCP tools bypass this endpoint, so they default to OFF.
+  // Remote runs downgrade this based on --remote-trust-config in runRemoteAction.
+  await runCli(directories, process.cwd(), { enableFileProcessors: true, ...options });
 };
 
 /**
