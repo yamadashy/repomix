@@ -4,6 +4,7 @@ import {
   buildSplitOutputFilePath,
   generateSplitOutputParts,
   getRootEntry,
+  subdivideSplitGroup,
 } from '../../../src/core/output/outputSplit.js';
 
 describe('outputSplit', () => {
@@ -49,6 +50,45 @@ describe('outputSplit', () => {
     });
   });
 
+  describe('subdivideSplitGroup', () => {
+    it('splits a root-entry group one directory level deeper', () => {
+      const group = {
+        rootEntry: 'src',
+        processedFiles: [
+          { path: 'src/a.ts', content: 'a' },
+          { path: 'src/sub/b.ts', content: 'b' },
+          { path: 'src/sub/c.ts', content: 'c' },
+        ],
+        allFilePaths: ['src/a.ts', 'src/sub/b.ts', 'src/sub/c.ts', 'src/sub/ignored.txt'],
+      };
+
+      const children = subdivideSplitGroup(group);
+
+      expect(children?.map((c) => c.rootEntry)).toEqual(['src/a.ts', 'src/sub']);
+      const sub = children?.find((c) => c.rootEntry === 'src/sub');
+      expect(sub?.processedFiles.map((f) => f.path).sort()).toEqual(['src/sub/b.ts', 'src/sub/c.ts']);
+      expect(sub?.allFilePaths.sort()).toEqual(['src/sub/b.ts', 'src/sub/c.ts', 'src/sub/ignored.txt']);
+    });
+
+    it('returns null for a single indivisible file', () => {
+      expect(
+        subdivideSplitGroup({
+          rootEntry: 'README.md',
+          processedFiles: [{ path: 'README.md', content: 'readme' }],
+          allFilePaths: ['README.md'],
+        }),
+      ).toBeNull();
+
+      expect(
+        subdivideSplitGroup({
+          rootEntry: 'src/large.ts',
+          processedFiles: [{ path: 'src/large.ts', content: 'large' }],
+          allFilePaths: ['src/large.ts'],
+        }),
+      ).toBeNull();
+    });
+  });
+
   describe('buildSplitOutputFilePath', () => {
     it('inserts part index before extension', () => {
       expect(buildSplitOutputFilePath('repomix-output.xml', 1)).toBe('repomix-output.1.xml');
@@ -76,7 +116,9 @@ describe('outputSplit', () => {
       generateOutput: async () => 'x'.repeat(outputSize),
     });
 
-    it('throws error when single root entry exceeds maxBytesPerPart', async () => {
+    it('throws error when a single indivisible file exceeds maxBytesPerPart', async () => {
+      // A lone file cannot be split across parts, so once subdivision bottoms out at it the
+      // output still cannot be produced.
       const processedFiles = [{ path: 'src/large.ts', content: 'large content' }];
       const allFilePaths = ['src/large.ts'];
 
@@ -93,6 +135,45 @@ describe('outputSplit', () => {
           deps: createMockDeps(100), // Output larger than limit
         }),
       ).rejects.toThrow(/exceeds max size/);
+    });
+
+    it('subdivides a single oversized root entry into multiple parts instead of throwing', async () => {
+      // All files live under one root entry 'src', so the whole group is far larger than the
+      // limit. Previously this threw "root entry 'src' exceeds max size" (issue #1134); now the
+      // group is split one level deeper until each part fits.
+      const processedFiles = [
+        { path: 'src/a.ts', content: 'a' },
+        { path: 'src/b.ts', content: 'b' },
+        { path: 'src/sub/c.ts', content: 'c' },
+        { path: 'src/sub/d.ts', content: 'd' },
+      ];
+      const allFilePaths = processedFiles.map((f) => f.path);
+
+      // Size grows with the number of processed files in the chunk, so one file fits but the
+      // full 'src' group does not.
+      const mockGenerateOutput = async (_rootDirs: string[], _config: unknown, files: Array<{ path: string }>) =>
+        'x'.repeat(30 + files.length * 50);
+
+      const result = await generateSplitOutputParts({
+        rootDirs: ['/test'],
+        baseConfig: createMockConfig(),
+        processedFiles,
+        allFilePaths,
+        maxBytesPerPart: 100, // fits one file (80), not two (130)
+        gitDiffResult: undefined,
+        gitLogResult: undefined,
+        progressCallback: () => {},
+        deps: { generateOutput: mockGenerateOutput as ReturnType<typeof createMockDeps>['generateOutput'] },
+      });
+
+      expect(result.length).toBeGreaterThan(1);
+      for (const part of result) {
+        expect(part.byteLength).toBeLessThanOrEqual(100);
+      }
+
+      // Every file is covered exactly once across all parts, none dropped or duplicated.
+      const packedFiles = result.flatMap((p) => p.groups.flatMap((g) => g.processedFiles.map((f) => f.path)));
+      expect(packedFiles.sort()).toEqual(['src/a.ts', 'src/b.ts', 'src/sub/c.ts', 'src/sub/d.ts']);
     });
 
     it('throws error for invalid maxBytesPerPart', async () => {
