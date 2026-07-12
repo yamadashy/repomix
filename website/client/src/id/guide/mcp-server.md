@@ -137,7 +137,7 @@ Tool ini mengemas direktori kode lokal ke dalam file XML untuk analisis AI. Tool
 }
 ```
 
-Dengan contoh di atas (`compress: true` sebagai default global), file di bawah `src/core/` dipertahankan dengan konten penuh, file di bawah `docs/` hanya dicantumkan dalam struktur direktori, dan sisanya dikompresi.
+Dengan contoh di atas (di mana `compress: true` bertindak sebagai catch-all untuk file yang tidak cocok), file di bawah `src/core/` dipertahankan dengan konten penuh, file di bawah `docs/` hanya dicantumkan dalam struktur direktori, dan sisanya dikompresi.
 
 ### pack_remote_repository
 

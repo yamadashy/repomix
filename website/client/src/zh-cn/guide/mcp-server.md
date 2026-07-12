@@ -137,7 +137,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 }
 ```
 
-在上面的示例中（全局默认值为 `compress: true`），`src/core/` 下的文件将保留完整内容，`docs/` 下的文件仅在目录结构中列出，其余文件都会被压缩。
+在上面的示例中（`compress: true` 作为未匹配文件的兜底设置），`src/core/` 下的文件将保留完整内容，`docs/` 下的文件仅在目录结构中列出，其余文件都会被压缩。
 
 ### pack_remote_repository
 

@@ -135,7 +135,7 @@ Cet outil package un répertoire de code local dans un fichier XML pour l'analys
 }
 ```
 
-Avec l'exemple ci-dessus (`compress: true` comme valeur par défaut globale), les fichiers sous `src/core/` conservent leur contenu complet, les fichiers sous `docs/` sont listés uniquement dans la structure de répertoires, et tout le reste est compressé.
+Avec l'exemple ci-dessus (où `compress: true` sert de cas par défaut pour les fichiers non correspondants), les fichiers sous `src/core/` conservent leur contenu complet, les fichiers sous `docs/` sont listés uniquement dans la structure de répertoires, et tout le reste est compressé.
 
 ### pack_remote_repository
 

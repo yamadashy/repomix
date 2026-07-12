@@ -137,7 +137,7 @@ Esta ferramenta empacota um diretório de código local em um arquivo XML para a
 }
 ```
 
-Com o exemplo acima (`compress: true` como padrão global), os arquivos em `src/core/` são mantidos com conteúdo completo, os arquivos em `docs/` são listados apenas na árvore de diretórios, e todo o restante é comprimido.
+Com o exemplo acima (onde `compress: true` atua como o coringa para arquivos não correspondentes), os arquivos em `src/core/` são mantidos com conteúdo completo, os arquivos em `docs/` são listados apenas na árvore de diretórios, e todo o restante é comprimido.
 
 ### pack_remote_repository
 

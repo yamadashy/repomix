@@ -137,7 +137,7 @@ Dieses Tool verpackt ein lokales Code-Verzeichnis in eine XML-Datei für die KI-
 }
 ```
 
-Mit dem obigen Beispiel (`compress: true` als globaler Standard) bleiben Dateien unter `src/core/` mit vollständigem Inhalt erhalten, Dateien unter `docs/` werden nur in der Verzeichnisstruktur aufgeführt, und alles andere wird komprimiert.
+Mit dem obigen Beispiel (wobei `compress: true` als Catch-all für nicht erfasste Dateien dient) bleiben Dateien unter `src/core/` mit vollständigem Inhalt erhalten, Dateien unter `docs/` werden nur in der Verzeichnisstruktur aufgeführt, und alles andere wird komprimiert.
 
 ### pack_remote_repository
 

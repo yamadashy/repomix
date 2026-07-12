@@ -135,7 +135,7 @@ Questo strumento impacchetta una directory di codice locale in un file XML per l
 }
 ```
 
-Con l'esempio sopra (`compress: true` come impostazione predefinita globale), i file sotto `src/core/` mantengono il contenuto completo, i file sotto `docs/` vengono elencati solo nella struttura delle directory, mentre tutto il resto viene compresso.
+Con l'esempio sopra (dove `compress: true` funge da catch-all per i file non corrispondenti), i file sotto `src/core/` mantengono il contenuto completo, i file sotto `docs/` vengono elencati solo nella struttura delle directory, mentre tutto il resto viene compresso.
 
 ### pack_remote_repository
 

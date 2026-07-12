@@ -137,7 +137,7 @@ This tool packages a local code directory into a consolidated XML file for AI an
 }
 ```
 
-With the example above (`compress: true` as the global default), files under `src/core/` are kept at full content, files under `docs/` are listed in the directory structure only, and everything else is compressed.
+With the example above — where `compress: true` acts as the catch-all for unmatched files — files under `src/core/` are kept at full content, files under `docs/` are listed in the directory structure only, and everything else is compressed.
 
 ### pack_remote_repository
 

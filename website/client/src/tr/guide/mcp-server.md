@@ -137,7 +137,7 @@ Bu araç, yerel bir kod dizinini AI analizine uygun birleşik bir XML dosyasına
 }
 ```
 
-Yukarıdaki örnekte (genel varsayılan olarak `compress: true`), `src/core/` altındaki dosyalar tam içerikli tutulur, `docs/` altındaki dosyalar yalnızca dizin yapısında listelenir ve geri kalan her şey sıkıştırılır.
+Yukarıdaki örnekte (`compress: true`, eşleşmeyen dosyalar için genel kural görevi görür), `src/core/` altındaki dosyalar tam içerikli tutulur, `docs/` altındaki dosyalar yalnızca dizin yapısında listelenir ve geri kalan her şey sıkıştırılır.
 
 ### pack_remote_repository
 

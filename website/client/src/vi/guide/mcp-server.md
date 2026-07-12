@@ -137,7 +137,7 @@ Công cụ này đóng gói một thư mục code cục bộ thành một file X
 }
 ```
 
-Với ví dụ trên (`compress: true` là mặc định toàn cục), các file trong `src/core/` được giữ nguyên nội dung đầy đủ, các file trong `docs/` chỉ được liệt kê trong cấu trúc thư mục, và mọi thứ còn lại đều được nén.
+Với ví dụ trên (`compress: true` đóng vai trò là phương án bao quát cho các file không khớp), các file trong `src/core/` được giữ nguyên nội dung đầy đủ, các file trong `docs/` chỉ được liệt kê trong cấu trúc thư mục, và mọi thứ còn lại đều được nén.
 
 ### pack_remote_repository
 
