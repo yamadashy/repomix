@@ -1688,7 +1688,7 @@ The `{file}` placeholder (required) is replaced with a temp file holding the fil
 > - **Disabled** for the library API (`pack()` / `runCli()`), the MCP server, and the hosted [repomix.com](https://repomix.com).
 > - For remote repositories (`--remote`), the cloned config — and its processors — is trusted only when you explicitly pass `--remote-trust-config`; without it the remote config is not even loaded.
 >
-> Active processors are logged at startup. See the [configuration guide](https://repomix.com/guide/configuration#file-processors) for details.
+> Active processors are printed at startup and in error messages, so reference credentials via environment variables (e.g. `$TOKEN`), which are logged unexpanded, rather than inlining them. On timeout Repomix kills the command's shell, but a command that spawns its own long-lived background processes may leave them running. See the [configuration guide](https://repomix.com/guide/configuration#file-processors) for details.
 
 ## 🔍 Security Check
 

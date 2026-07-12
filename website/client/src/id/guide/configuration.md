@@ -353,13 +353,14 @@ Prosesor file menjalankan **perintah arbitrer** dari file konfigurasi Anda, sehi
 - **Dinonaktifkan** untuk library API (`pack()` / `runCli()`), MCP server, dan [repomix.com](https://repomix.com) yang di-hosting, sehingga tidak satu pun dari ketiganya dapat menjalankan perintah dari konfigurasi.
 - Untuk repositori remote (`--remote`), konfigurasi dari repositori yang di-clone — dan karenanya prosesornya — hanya dipercaya ketika Anda secara eksplisit meneruskan `--remote-trust-config`. Tanpa itu, konfigurasi remote bahkan tidak dimuat.
 
-Prosesor yang aktif dicatat saat startup sehingga prosesor tak terduga dari konfigurasi yang tidak dikenal dapat terlihat.
+Prosesor yang aktif dicatat saat startup sehingga prosesor tak terduga dari konfigurasi yang tidak dikenal dapat terlihat. Karena perintah dicetak saat startup dan dalam pesan error, referensikan kredensial melalui environment variable (mis. `$TOKEN`), yang dicatat tanpa diekspansi, alih-alih menuliskannya langsung di dalam perintah.
 :::
 
 Catatan:
 
 - Menggabungkan prosesor dengan `output.compress` (atau `compress` dari `output.patterns`) pada file yang sama tidak disarankan: konten yang ditransformasi mungkin tidak lagi dapat di-parse sebagai bahasa aslinya. Kompresi bersifat best-effort dan akan secara diam-diam fallback ke konten yang ditransformasi jika parsing gagal.
 - Dengan `--watch`, file yang cocok akan diproses ulang pada setiap rebuild, yang menjalankan ulang perintah setiap kali.
+- Saat timeout, Repomix menghentikan shell dari perintah tersebut; perintah yang memunculkan proses latar belakang (background process) miliknya sendiri yang berjalan lama dapat membiarkannya tetap berjalan.
 - Prosesor hanya melihat file teks (file biner dikecualikan sebelum pemrosesan), dan outputnya dibaca sebagai UTF-8.
 
 ### Integrasi Git

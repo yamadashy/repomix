@@ -405,13 +405,14 @@ Les processeurs de fichiers exécutent des **commandes arbitraires** depuis votr
 - Ils sont **désactivés** pour l'API de bibliothèque (`pack()` / `runCli()`), le serveur MCP et le [repomix.com](https://repomix.com) hébergé, de sorte qu'aucun d'entre eux ne peut exécuter de commandes depuis une configuration.
 - Pour les dépôts distants (`--remote`), la configuration du dépôt cloné — et donc ses processeurs — n'est fiable que lorsque vous passez explicitement `--remote-trust-config`. Sans cela, la configuration distante n'est même pas chargée.
 
-Les processeurs actifs sont journalisés au démarrage afin que les processeurs inattendus provenant d'une configuration inconnue soient visibles.
+Les processeurs actifs sont journalisés au démarrage afin que les processeurs inattendus provenant d'une configuration inconnue soient visibles. Comme la commande est affichée au démarrage et dans les messages d'erreur, référencez les identifiants via des variables d'environnement (par ex. `$TOKEN`), qui sont journalisées sans être développées, plutôt que de les inclure directement dans la commande.
 :::
 
 Remarques :
 
 - Combiner un processeur avec `output.compress` (ou un `compress` de `output.patterns`) sur le même fichier n'est pas recommandé : le contenu transformé peut ne plus être analysable comme son langage d'origine. La compression est faite au mieux et revient silencieusement au contenu transformé en cas d'échec d'analyse.
 - Avec `--watch`, les fichiers correspondants sont retraités à chaque reconstruction, ce qui réexécute la commande à chaque fois.
+- En cas de délai dépassé, Repomix termine le shell de la commande ; une commande qui génère ses propres processus d'arrière-plan de longue durée peut les laisser tourner.
 - Les processeurs ne voient que les fichiers texte (les fichiers binaires sont exclus avant le traitement), et leur sortie est lue en UTF-8.
 
 ### Intégration Git

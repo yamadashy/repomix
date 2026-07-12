@@ -405,13 +405,14 @@ Dateiprozessoren führen **beliebige Befehle** aus Ihrer Konfigurationsdatei aus
 - Sie sind für die Bibliotheks-API (`pack()` / `runCli()`), den MCP-Server und das gehostete [repomix.com](https://repomix.com) **deaktiviert**, sodass keines davon Befehle aus einer Konfiguration ausführen kann.
 - Bei Remote-Repositories (`--remote`) wird die Konfiguration des geklonten Repositories — und damit dessen Prozessoren — nur vertraut, wenn Sie explizit `--remote-trust-config` übergeben. Ohne diese Option wird die Remote-Konfiguration nicht einmal geladen.
 
-Aktive Prozessoren werden beim Start protokolliert, sodass unerwartete Prozessoren aus einer unbekannten Konfiguration sichtbar sind.
+Aktive Prozessoren werden beim Start protokolliert, sodass unerwartete Prozessoren aus einer unbekannten Konfiguration sichtbar sind. Da der Befehl beim Start und in Fehlermeldungen ausgegeben wird, referenzieren Sie Zugangsdaten über Umgebungsvariablen (z. B. `$TOKEN`), die dabei nicht aufgelöst protokolliert werden, statt sie direkt in den Befehl einzubetten.
 :::
 
 Hinweise:
 
 - Die Kombination eines Prozessors mit `output.compress` (oder einem `output.patterns`-`compress`) für dieselbe Datei wird nicht empfohlen: Der transformierte Inhalt lässt sich möglicherweise nicht mehr als seine ursprüngliche Sprache parsen. Die Komprimierung erfolgt nach bestem Bemühen und greift bei einem Parsing-Fehler stillschweigend auf den transformierten Inhalt zurück.
 - Bei `--watch` werden passende Dateien bei jedem Rebuild erneut verarbeitet, wodurch der Befehl jedes Mal erneut ausgeführt wird.
+- Bei einer Zeitüberschreitung beendet Repomix die Shell des Befehls; ein Befehl, der eigene langlebige Hintergrundprozesse startet, kann diese weiterlaufen lassen.
 - Prozessoren sehen nur Textdateien (Binärdateien werden vor der Verarbeitung ausgeschlossen), und ihre Ausgabe wird als UTF-8 gelesen.
 
 ### Git-Integration

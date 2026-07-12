@@ -405,13 +405,14 @@ I processori di file eseguono **comandi arbitrari** dal tuo file di configurazio
 - Sono **disabilitati** per la library API (`pack()` / `runCli()`), il server MCP e la versione hosted di [repomix.com](https://repomix.com), quindi nessuno di questi può eseguire comandi da una configurazione.
 - Per i repository remoti (`--remote`), la configurazione del repository clonato — e quindi i suoi processori — è considerata affidabile solo quando passi esplicitamente `--remote-trust-config`. Senza di esso, la configurazione remota non viene nemmeno caricata.
 
-I processori attivi vengono registrati all'avvio, in modo che processori inattesi provenienti da una configurazione non familiare siano visibili.
+I processori attivi vengono registrati all'avvio, in modo che processori inattesi provenienti da una configurazione non familiare siano visibili. Poiché il comando viene stampato all'avvio e nei messaggi di errore, fai riferimento alle credenziali tramite variabili d'ambiente (ad es. `$TOKEN`), che vengono registrate senza essere espanse, invece di inserirle direttamente nel comando.
 :::
 
 Note:
 
 - Combinare un processore con `output.compress` (o un `compress` di `output.patterns`) sullo stesso file non è consigliato: il contenuto trasformato potrebbe non essere più analizzabile come linguaggio originale. La compressione è best-effort e ripiega silenziosamente sul contenuto trasformato in caso di errore di parsing.
 - Con `--watch`, i file corrispondenti vengono rielaborati a ogni rebuild, il che riesegue il comando ogni volta.
+- In caso di timeout, Repomix termina la shell del comando; un comando che avvia propri processi in background di lunga durata potrebbe lasciarli in esecuzione.
 - I processori vedono solo file di testo (i file binari sono esclusi prima dell'elaborazione), e il loro output viene letto come UTF-8.
 
 ### Integrazione Git
