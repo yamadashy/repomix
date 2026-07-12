@@ -47,7 +47,9 @@ export const fileProcessorSchema = v.object({
   pattern: v.string(),
   command: v.string(),
   // Per-command timeout in milliseconds. Defaults to DEFAULT_FILE_PROCESSOR_TIMEOUT_MS.
-  timeout: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1))),
+  // Capped at Node's max 32-bit timer delay (2^31 - 1); larger values are clamped
+  // to ~1ms by Node, which would make the command fail instantly.
+  timeout: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(2_147_483_647))),
   onError: v.optional(fileProcessorOnErrorSchema),
 });
 export type FileProcessor = v.InferOutput<typeof fileProcessorSchema>;

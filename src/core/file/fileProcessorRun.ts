@@ -120,24 +120,33 @@ const validateProcessors = (processors: FileProcessor[]): void => {
   }
 };
 
-const promisePool = async <T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T, index: number) => Promise<R>,
-): Promise<R[]> => {
-  const results: R[] = Array.from({ length: items.length });
-  let nextIndex = 0;
+// Process-wide semaphore for external command spawns. The packager runs
+// `applyFileProcessors` for every root concurrently, so a per-root pool would
+// multiply the cap by the number of roots (N roots × limit). A module-level
+// semaphore keeps the total number of in-flight processor commands across the
+// whole pack bounded regardless of how many roots run at once.
+let activeProcessorCount = 0;
+const processorWaitQueue: Array<() => void> = [];
 
-  const worker = async () => {
-    while (nextIndex < items.length) {
-      const i = nextIndex++;
-      results[i] = await fn(items[i], i);
-    }
-  };
+const acquireProcessorSlot = (): Promise<void> => {
+  if (activeProcessorCount < FILE_PROCESSOR_CONCURRENCY) {
+    activeProcessorCount++;
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    processorWaitQueue.push(() => {
+      activeProcessorCount++;
+      resolve();
+    });
+  });
+};
 
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
-
-  return results;
+const releaseProcessorSlot = (): void => {
+  activeProcessorCount--;
+  const next = processorWaitQueue.shift();
+  if (next) {
+    next();
+  }
 };
 
 /**
@@ -181,51 +190,71 @@ export const applyFileProcessors = async (
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc-'));
   let completed = 0;
 
-  try {
-    return await promisePool(rawFiles, FILE_PROCESSOR_CONCURRENCY, async (rawFile, index) => {
-      const processor = matches[index];
-      if (!processor) {
+  const processOne = async (rawFile: RawFile, index: number): Promise<RawFile> => {
+    const processor = matches[index];
+    if (!processor) {
+      return rawFile;
+    }
+
+    const timeout = processor.timeout ?? DEFAULT_FILE_PROCESSOR_TIMEOUT_MS;
+    const onError = processor.onError ?? 'fail';
+    // Unique temp filename from the index plus a sanitized original extension.
+    // The index guarantees no collision between files sharing a basename across
+    // subdirectories. The extension is only kept when it is plain alphanumeric so
+    // a name like `payload.%PATH%` (whose extension is `.%PATH%`) cannot smuggle a
+    // Windows `cmd.exe` `%VAR%` expansion into the substituted temp path.
+    const rawExt = path.extname(rawFile.path);
+    const safeExt = /^\.[A-Za-z0-9_-]+$/.test(rawExt) ? rawExt : '';
+    const tempFilePath = path.join(tempDir, `${index}${safeExt}`);
+
+    await acquireProcessorSlot();
+    try {
+      const content = await deps.runProcessorCommand({
+        command: processor.command,
+        content: rawFile.content,
+        tempFilePath,
+        timeout,
+        cwd: rootDir,
+      });
+
+      completed++;
+      progressCallback(`Processing file with command... (${completed}/${matchedCount}) ${pc.dim(rawFile.path)}`);
+
+      return { ...rawFile, content };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (onError === 'skip') {
+        logger.warn(
+          `File processor for "${rawFile.path}" failed, using original content (onError: "skip"): ${message}`,
+        );
+        completed++;
         return rawFile;
       }
+      throw new RepomixError(
+        `File processor failed for "${rawFile.path}".\n` +
+          `  Pattern: ${processor.pattern}\n` +
+          `  Command: ${processor.command}\n` +
+          `  Error: ${message}\n` +
+          `  Set "onError": "skip" on this processor to fall back to the original content instead.`,
+      );
+    } finally {
+      releaseProcessorSlot();
+    }
+  };
 
-      const timeout = processor.timeout ?? DEFAULT_FILE_PROCESSOR_TIMEOUT_MS;
-      const onError = processor.onError ?? 'fail';
-      // Unique temp filename (index prefix) so files sharing a basename across
-      // subdirectories do not collide, while preserving the original extension
-      // for tools that dispatch on it.
-      const tempFilePath = path.join(tempDir, `${index}-${path.basename(rawFile.path)}`);
+  try {
+    // Use allSettled so that a `fail`-mode rejection does not tear down the temp
+    // dir while other commands are still reading their temp files. Every file
+    // settles first, then the temp dir is removed in `finally`, and only then is
+    // the first error (if any) surfaced.
+    const settled = await Promise.allSettled(rawFiles.map((rawFile, index) => processOne(rawFile, index)));
 
-      try {
-        const content = await deps.runProcessorCommand({
-          command: processor.command,
-          content: rawFile.content,
-          tempFilePath,
-          timeout,
-          cwd: rootDir,
-        });
+    const firstRejection = settled.find((result) => result.status === 'rejected');
+    if (firstRejection && firstRejection.status === 'rejected') {
+      throw firstRejection.reason;
+    }
 
-        completed++;
-        progressCallback(`Processing file with command... (${completed}/${matchedCount}) ${pc.dim(rawFile.path)}`);
-
-        return { ...rawFile, content };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (onError === 'skip') {
-          logger.warn(
-            `File processor for "${rawFile.path}" failed, using original content (onError: "skip"): ${message}`,
-          );
-          completed++;
-          return rawFile;
-        }
-        throw new RepomixError(
-          `File processor failed for "${rawFile.path}".\n` +
-            `  Pattern: ${processor.pattern}\n` +
-            `  Command: ${processor.command}\n` +
-            `  Error: ${message}\n` +
-            `  Set "onError": "skip" on this processor to fall back to the original content instead.`,
-        );
-      }
-    });
+    return settled.map((result, index) => (result.status === 'fulfilled' ? result.value : rawFiles[index]));
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true }).catch((error) => {
       logger.trace(`Failed to clean up processor temp dir ${tempDir}:`, error);

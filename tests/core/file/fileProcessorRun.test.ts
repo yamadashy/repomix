@@ -138,6 +138,21 @@ describe('fileProcessorRun', () => {
       expect(tempPaths.every((p) => p.endsWith('.json'))).toBe(true);
     });
 
+    it('drops an unsafe extension from the temp path to avoid shell variable expansion', async () => {
+      const config = createMockConfig({
+        enableFileProcessors: true,
+        input: { processors: [{ pattern: '**/*', command: 'toon {file}' }] },
+      });
+      const runProcessorCommandMock = vi.fn().mockResolvedValue('out');
+
+      await applyFileProcessors([{ path: 'payload.%PATH%', content: 'x' }], '/root', config, () => {}, {
+        runProcessorCommand: runProcessorCommandMock,
+      });
+
+      const tempFilePath = runProcessorCommandMock.mock.calls[0][0].tempFilePath as string;
+      expect(tempFilePath).not.toContain('%');
+    });
+
     it('uses the configured timeout for a processor', async () => {
       const config = createMockConfig({
         enableFileProcessors: true,
@@ -196,6 +211,77 @@ describe('fileProcessorRun', () => {
         }),
       ).rejects.toThrow(/must contain the \{file\} placeholder/);
       expect(runProcessorCommandMock).not.toHaveBeenCalled();
+    });
+
+    it('waits for all in-flight commands to settle before failing (fail mode)', async () => {
+      const config = createMockConfig({
+        enableFileProcessors: true,
+        input: { processors: [{ pattern: '**/*.json', command: 'toon {file}' }] },
+      });
+
+      // File "a" fails immediately; file "b" resolves only after we release it.
+      // The fail must not surface until b's command has settled, so the temp dir
+      // is never torn down while a command is still running.
+      let releaseB: (value: string) => void = () => {};
+      const bSettled = { done: false };
+      const runProcessorCommandMock = vi.fn((params: { content: string }) => {
+        if (params.content === 'A') {
+          return Promise.reject(new Error('boom'));
+        }
+        return new Promise<string>((resolve) => {
+          releaseB = (value) => {
+            bSettled.done = true;
+            resolve(value);
+          };
+        });
+      });
+
+      const resultPromise = applyFileProcessors(
+        [
+          { path: 'a.json', content: 'A' },
+          { path: 'b.json', content: 'B' },
+        ],
+        '/root',
+        config,
+        () => {},
+        { runProcessorCommand: runProcessorCommandMock },
+      );
+
+      // Let the microtask queue flush so "a" has rejected; the overall promise
+      // must still be pending because "b" has not settled yet.
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(bSettled.done).toBe(false);
+
+      releaseB('transformed-b');
+      await expect(resultPromise).rejects.toThrow(/File processor failed for "a\.json"/);
+      expect(bSettled.done).toBe(true);
+      expect(runProcessorCommandMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('caps the number of concurrent processor commands', async () => {
+      const config = createMockConfig({
+        enableFileProcessors: true,
+        input: { processors: [{ pattern: '**/*.json', command: 'toon {file}' }] },
+      });
+
+      let active = 0;
+      let peak = 0;
+      const runProcessorCommandMock = vi.fn(async () => {
+        active++;
+        peak = Math.max(peak, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active--;
+        return 'out';
+      });
+
+      const files = Array.from({ length: 40 }, (_, i) => ({ path: `f${i}.json`, content: '{}' }));
+      await applyFileProcessors(files, '/root', config, () => {}, { runProcessorCommand: runProcessorCommandMock });
+
+      // The module-level semaphore caps concurrency at min(8, cpus); it must never
+      // exceed the hard ceiling of 8 no matter how many files match.
+      expect(peak).toBeGreaterThan(0);
+      expect(peak).toBeLessThanOrEqual(8);
+      expect(runProcessorCommandMock).toHaveBeenCalledTimes(40);
     });
   });
 
