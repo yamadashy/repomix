@@ -1681,6 +1681,17 @@ might be retained.
 
 The `{file}` placeholder (required) is replaced with a temp file holding the file's content, and the command's stdout becomes the new content. Patterns are evaluated in order and the **first match wins** (one processor per file). Each entry also accepts `timeout` (ms, default `60000`) and `onError` (`"fail"` to abort the pack, default; `"skip"` to warn and keep the original content).
 
+Example commands (each is a `command` value paired with a suitable `pattern`):
+
+| Pattern | `command` | What it does |
+| --- | --- | --- |
+| `**/*.json` | `jq -c . {file}` | Compact JSON by stripping whitespace |
+| `**/*.json` | `npx @toon-format/cli {file}` | Convert JSON to [TOON](https://github.com/toon-format/toon), a compact token-efficient format |
+| `**/*.svg` | `npx svgo -i {file} -o -` | Minify SVG |
+| `**/*.ipynb` | `jupyter nbconvert --to script --stdout {file}` | Convert a Jupyter notebook to a plain Python script |
+
+Apply only one processor per file (first match wins), and make sure the tool it invokes is on your `PATH` (`npx`-based commands download it on first use).
+
 > [!WARNING]
 > File processors run **arbitrary commands** from your config file, so execution is default-deny:
 >

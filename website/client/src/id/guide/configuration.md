@@ -346,6 +346,17 @@ Opsi per-prosesor:
 - `timeout`: Waktu maksimum dalam milidetik untuk menunggu perintah. Default: `60000` (60 detik). Perhatikan bahwa `npx` mungkin memerlukan waktu tambahan untuk mengunduh paket pada cache dingin.
 - `onError`: Tindakan yang dilakukan ketika perintah keluar dengan status bukan nol atau timeout. `"fail"` (default) membatalkan seluruh proses pack; `"skip"` mencatat peringatan dan menggunakan konten asli file sebagai fallback.
 
+Contoh perintah (masing-masing adalah nilai `command` yang dipasangkan dengan `pattern` yang sesuai):
+
+| Pola | `command` | Fungsinya |
+| --- | --- | --- |
+| `**/*.json` | `jq -c . {file}` | Memadatkan JSON dengan menghapus spasi kosong |
+| `**/*.json` | `npx @toon-format/cli {file}` | Mengonversi JSON ke [TOON](https://github.com/toon-format/toon), format ringkas yang hemat token |
+| `**/*.svg` | `npx svgo -i {file} -o -` | Meminimalkan SVG |
+| `**/*.ipynb` | `jupyter nbconvert --to script --stdout {file}` | Mengonversi notebook Jupyter menjadi skrip Python biasa |
+
+Karena pola pertama yang cocok yang menang, terapkan hanya satu prosesor per file — misalnya pilih salah satu antara `jq` atau konverter TOON untuk `**/*.json`. Perintah harus menulis konten yang telah ditransformasi ke output standar, dan alat yang dipanggilnya harus tersedia di `PATH` Anda (perintah berbasis `npx` mengunduh alat saat pertama kali digunakan).
+
 ::: warning Keamanan
 Prosesor file menjalankan **perintah arbitrer** dari file konfigurasi Anda, sehingga mengikuti model kepercayaan yang ketat:
 

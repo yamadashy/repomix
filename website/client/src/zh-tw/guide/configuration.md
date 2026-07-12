@@ -398,6 +398,17 @@ build/
 - `timeout`：等待命令執行的最長時間（毫秒）。預設值：`60000`（60 秒）。請注意，`npx` 在快取為空時可能需要額外時間下載套件。
 - `onError`：命令以非零狀態退出或逾時時的處理方式。`"fail"`（預設）會中止整個打包過程；`"skip"` 會記錄警告並回退使用該檔案的原始內容。
 
+範例命令（每個都是與合適的 `pattern` 搭配的 `command` 值）：
+
+| 模式 | `command` | 作用 |
+| --- | --- | --- |
+| `**/*.json` | `jq -c . {file}` | 去除空白以壓縮 JSON |
+| `**/*.json` | `npx @toon-format/cli {file}` | 將 JSON 轉換為 [TOON](https://github.com/toon-format/toon)，一種精簡且節省 token 的格式 |
+| `**/*.svg` | `npx svgo -i {file} -o -` | 壓縮 SVG |
+| `**/*.ipynb` | `jupyter nbconvert --to script --stdout {file}` | 將 Jupyter notebook 轉換為純 Python 指令碼 |
+
+由於第一個符合的模式優先，因此每個檔案只套用一個處理器——例如，對於 `**/*.json` 只選擇 `jq` 或 TOON 轉換器其中之一。命令必須將轉換後的內容寫入標準輸出，而且它呼叫的工具必須在你的 `PATH` 上可用（基於 `npx` 的命令會在首次使用時下載工具）。
+
 ::: warning 安全性
 檔案處理器會執行來自您設定檔的**任意命令**，因此遵循嚴格的信任模型：
 

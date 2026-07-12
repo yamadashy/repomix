@@ -398,6 +398,17 @@ Opzioni per processore:
 - `timeout`: Tempo massimo in millisecondi da attendere per il comando. Predefinito: `60000` (60s). Nota che `npx` potrebbe richiedere tempo aggiuntivo per scaricare un pacchetto con cache fredda.
 - `onError`: Cosa fare quando il comando termina con uno stato diverso da zero o va in timeout. `"fail"` (predefinito) interrompe l'intero pack; `"skip"` registra un avviso e ripiega sul contenuto originale del file.
 
+Comandi di esempio (ciascuno è un valore `command` abbinato a un `pattern` appropriato):
+
+| Pattern | `command` | Cosa fa |
+| --- | --- | --- |
+| `**/*.json` | `jq -c . {file}` | Compatta il JSON rimuovendo gli spazi bianchi |
+| `**/*.json` | `npx @toon-format/cli {file}` | Converte il JSON in [TOON](https://github.com/toon-format/toon), un formato compatto ed efficiente in termini di token |
+| `**/*.svg` | `npx svgo -i {file} -o -` | Minimizza l'SVG |
+| `**/*.ipynb` | `jupyter nbconvert --to script --stdout {file}` | Converte un notebook Jupyter in un semplice script Python |
+
+Poiché vince il primo pattern corrispondente, applica un solo processore per file — ad esempio scegli `jq` oppure il convertitore TOON per `**/*.json`. Il comando deve scrivere il contenuto trasformato sullo standard output e lo strumento che invoca deve essere disponibile nel tuo `PATH` (i comandi basati su `npx` scaricano lo strumento al primo utilizzo).
+
 ::: warning Security
 I processori di file eseguono **comandi arbitrari** dal tuo file di configurazione, quindi seguono un modello di fiducia rigoroso:
 

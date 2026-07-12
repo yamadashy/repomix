@@ -398,6 +398,17 @@ Nasıl çalışır:
 - `timeout`: Komutun tamamlanmasını beklemek için milisaniye cinsinden maksimum süre. Varsayılan: `60000` (60sn). `npx`'in soğuk önbellekte bir paketi indirmek için ekstra süreye ihtiyaç duyabileceğini unutmayın.
 - `onError`: Komut sıfır olmayan bir durumla sonuçlandığında veya zaman aşımına uğradığında ne yapılacağı. `"fail"` (varsayılan) tüm paketlemeyi iptal eder; `"skip"` bir uyarı kaydeder ve dosyanın özgün içeriğine geri döner.
 
+Örnek komutlar (her biri uygun bir `pattern` ile eşleştirilmiş bir `command` değeridir):
+
+| Desen | `command` | Ne yapar |
+| --- | --- | --- |
+| `**/*.json` | `jq -c . {file}` | Boşlukları kaldırarak JSON'u sıkıştırır |
+| `**/*.json` | `npx @toon-format/cli {file}` | JSON'u [TOON](https://github.com/toon-format/toon) adlı kompakt ve token açısından verimli bir biçime dönüştürür |
+| `**/*.svg` | `npx svgo -i {file} -o -` | SVG'yi küçültür |
+| `**/*.ipynb` | `jupyter nbconvert --to script --stdout {file}` | Bir Jupyter not defterini düz bir Python betiğine dönüştürür |
+
+İlk eşleşen desen kazandığından, dosya başına yalnızca bir işlemci uygulayın — örneğin `**/*.json` için `jq` veya TOON dönüştürücüsünden birini seçin. Komut, dönüştürülmüş içeriği standart çıktıya yazmalıdır ve çağırdığı aracın `PATH`inizde mevcut olması gerekir (`npx` tabanlı komutlar aracı ilk kullanımda indirir).
+
 ::: warning Güvenlik
 Dosya işlemcileri, yapılandırma dosyanızdan **rastgele komutlar** çalıştırır, bu nedenle katı bir güven modeline uyarlar:
 

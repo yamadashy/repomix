@@ -398,6 +398,17 @@ Optionen pro Prozessor:
 - `timeout`: Maximale Wartezeit in Millisekunden für den Befehl. Standard: `60000` (60s). Beachten Sie, dass `npx` bei einem kalten Cache zusätzliche Zeit zum Herunterladen eines Pakets benötigen kann.
 - `onError`: Was zu tun ist, wenn der Befehl mit einem Status ungleich Null endet oder eine Zeitüberschreitung auftritt. `"fail"` (Standard) bricht den gesamten Packvorgang ab; `"skip"` protokolliert eine Warnung und greift auf den ursprünglichen Inhalt der Datei zurück.
 
+Beispielbefehle (jeweils ein `command`-Wert, gepaart mit einem passenden `pattern`):
+
+| Muster | `command` | Was er tut |
+| --- | --- | --- |
+| `**/*.json` | `jq -c . {file}` | JSON durch Entfernen von Leerzeichen komprimieren |
+| `**/*.json` | `npx @toon-format/cli {file}` | JSON in [TOON](https://github.com/toon-format/toon) konvertieren, ein kompaktes, token-effizientes Format |
+| `**/*.svg` | `npx svgo -i {file} -o -` | SVG minimieren |
+| `**/*.ipynb` | `jupyter nbconvert --to script --stdout {file}` | Ein Jupyter-Notebook in ein einfaches Python-Skript konvertieren |
+
+Da das erste passende Muster gewinnt, wenden Sie pro Datei nur einen Prozessor an — wählen Sie zum Beispiel für `**/*.json` entweder `jq` oder den TOON-Konverter. Der Befehl muss den transformierten Inhalt in die Standardausgabe schreiben, und das aufgerufene Werkzeug muss in Ihrem `PATH` verfügbar sein (`npx`-basierte Befehle laden das Werkzeug bei der ersten Verwendung herunter).
+
 ::: warning Security
 Dateiprozessoren führen **beliebige Befehle** aus Ihrer Konfigurationsdatei aus und folgen daher einem strikten Vertrauensmodell:
 

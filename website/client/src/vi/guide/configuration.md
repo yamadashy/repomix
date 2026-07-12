@@ -346,6 +346,17 @@ Các tùy chọn theo từng bộ xử lý:
 - `timeout`: Thời gian tối đa tính bằng mili giây để chờ lệnh. Mặc định: `60000` (60 giây). Lưu ý rằng `npx` có thể cần thêm thời gian để tải một package khi cache còn "nguội" (cold cache).
 - `onError`: Hành động khi lệnh thoát với trạng thái khác 0 hoặc hết thời gian chờ. `"fail"` (mặc định) sẽ hủy toàn bộ quá trình pack; `"skip"` ghi lại cảnh báo và quay về sử dụng nội dung gốc của file.
 
+Ví dụ lệnh (mỗi lệnh là một giá trị `command` được ghép với một `pattern` phù hợp):
+
+| Mẫu | `command` | Chức năng |
+| --- | --- | --- |
+| `**/*.json` | `jq -c . {file}` | Nén JSON bằng cách loại bỏ khoảng trắng |
+| `**/*.json` | `npx @toon-format/cli {file}` | Chuyển đổi JSON sang [TOON](https://github.com/toon-format/toon), một định dạng gọn nhẹ và tiết kiệm token |
+| `**/*.svg` | `npx svgo -i {file} -o -` | Rút gọn SVG |
+| `**/*.ipynb` | `jupyter nbconvert --to script --stdout {file}` | Chuyển đổi notebook Jupyter thành một script Python thuần |
+
+Vì mẫu khớp đầu tiên sẽ thắng, chỉ áp dụng một bộ xử lý cho mỗi file — ví dụ chọn `jq` hoặc bộ chuyển đổi TOON cho `**/*.json`. Lệnh phải ghi nội dung đã chuyển đổi ra đầu ra chuẩn, và công cụ mà nó gọi phải có sẵn trong `PATH` của bạn (các lệnh dựa trên `npx` sẽ tải công cụ về trong lần sử dụng đầu tiên).
+
 ::: warning Bảo mật
 Bộ xử lý file chạy các **lệnh tùy ý** từ file cấu hình của bạn, vì vậy chúng tuân theo một mô hình tin cậy nghiêm ngặt:
 
