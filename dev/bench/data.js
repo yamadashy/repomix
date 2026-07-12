@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783830324903,
+  "lastUpdate": 1783871461230,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -8820,6 +8820,51 @@ window.BENCHMARK_DATA = {
             "range": "±28",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1183ms, Q3: 1211ms\nAll times: 1168, 1168, 1179, 1180, 1182, 1183, 1186, 1189, 1194, 1197, 1199, 1200, 1201, 1202, 1204, 1211, 1218, 1224, 1246, 1371ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "41018c763f5efedfe02b971291aebf63236a0d65",
+          "message": "Merge pull request #1720 from yamadashy/feat/file-processors-933\n\nfeat(core): Support custom file processors with external commands",
+          "timestamp": "2026-07-13T00:49:23+09:00",
+          "tree_id": "a5220b459aa855b8cc2d204f4e1ee507b985228c",
+          "url": "https://github.com/yamadashy/repomix/commit/41018c763f5efedfe02b971291aebf63236a0d65"
+        },
+        "date": 1783871460588,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 508,
+            "range": "±61",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 490ms, Q3: 551ms\nAll times: 467, 473, 480, 482, 484, 487, 487, 490, 491, 494, 495, 495, 497, 505, 507, 508, 508, 513, 514, 517, 531, 536, 551, 567, 592, 605, 636, 664, 666, 667ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 940,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 929ms, Q3: 945ms\nAll times: 912, 917, 920, 923, 925, 929, 932, 935, 937, 940, 940, 942, 942, 942, 943, 945, 950, 967, 999, 1084ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1139,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1129ms, Q3: 1153ms\nAll times: 1118, 1121, 1124, 1126, 1127, 1129, 1132, 1134, 1137, 1138, 1139, 1140, 1141, 1147, 1151, 1153, 1154, 1159, 1163, 1167ms"
           }
         ]
       }
