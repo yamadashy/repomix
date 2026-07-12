@@ -91,7 +91,7 @@ JavaScript yapılandırma dosyaları, `defineConfig` ve dinamik değerleri deste
 | Seçenek                          | Açıklama                                                                                                                     | Varsayılan             |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | İşlenecek maksimum dosya boyutu (bayt). Bu boyutu aşan dosyalar atlanır. Büyük ikili dosyaları veya veri dosyalarını hariç tutmak için kullanışlıdır | `50000000`            |
-| `input.processors`               | Paketlemeden **önce** eşleşen dosyaları dönüştürmek için harici bir komut çalıştıran `{ pattern, command, timeout?, onError? }` girdilerinden oluşan sıralı bir dizi (örn. JSON→TOON). Eşleşen ilk glob kazanır. Rastgele komutlar çalıştırdığından yalnızca yerel CLI çalıştırmalarında etkindir. Bkz. [Dosya İşlemcileri](#dosya-islemcileri) | Ayarlanmamış            |
+| `input.processors`               | Paketlemeden **önce** eşleşen dosyaları dönüştürmek için harici bir komut çalıştıran `{ pattern, command, timeout?, onError? }` girdilerinden oluşan sıralı bir dizi (örn. JSON→TOON). Eşleşen ilk glob kazanır. Rastgele komutlar çalıştırdığından yalnızca yerel CLI çalıştırmalarında (ve `--remote-trust-config` ile uzak depolarda) çalışır. Bkz. [Dosya İşlemcileri](#dosya-islemcileri) | Ayarlanmamış            |
 | `output.filePath`                | Çıktı dosyasının adı. XML, Markdown ve düz metin formatlarını destekler                                                     | `"repomix-output.xml"` |
 | `output.style`                   | Çıktının stili (`xml`, `markdown`, `json`, `plain`). Her formatın farklı AI araçları için kendine özgü avantajları vardır   | `"xml"`                |
 | `output.filePathStyle`           | Çıktıda dosya yollarının gösterilme biçimi (`target-relative` yolları her hedef köke göre, `cwd-relative` ise geçerli çalışma dizinine göre göreceli tutar) | `"target-relative"`    |
@@ -421,7 +421,7 @@ Etkin işlemciler başlangıçta günlüğe kaydedilir, böylece tanıdık olmay
 
 Notlar:
 
-- Bir işlemciyi aynı dosyada `output.compress` (veya bir `output.patterns` `compress`) ile birleştirmek önerilmez: dönüştürülen içerik artık özgün diliyle ayrıştırılamayabilir. Sıkıştırma en iyi çaba (best-effort) esasına dayanır ve bir ayrıştırma hatasında sessizce dönüştürülen içeriğe geri döner.
+- **Biçimi değiştiren** bir işlemciyi aynı dosyada `output.compress`, `output.removeComments` veya bir `output.patterns` `compress` ile birleştirmek önerilmez: bu adımlar dosyanın özgün uzantısına göre seçilir, bu nedenle dönüştürülmüş içerik üzerinde yanlış dil işleyicisini çalıştırırlar. Aynı nedenle, Markdown çıktısı kod bloğunu özgün uzantıya göre etiketler (ör. JSON→TOON dosyası `json` olarak etiketlenir). Sıkıştırma en iyi çaba (best-effort) esasına dayanır ve bir ayrıştırma hatasında sessizce dönüştürülen içeriğe geri döner.
 - `--watch` ile, eşleşen dosyalar her yeniden derlemede yeniden işlenir; bu da komutu her seferinde yeniden çalıştırır.
 - Zaman aşımında Repomix, komutun shell'ini sonlandırır; kendi uzun ömürlü arka plan işlemlerini başlatan bir komut, bunları çalışır durumda bırakabilir.
 - İşlemciler yalnızca metin dosyalarını görür (ikili dosyalar işlemeden önce hariç tutulur) ve çıktıları UTF-8 olarak okunur.

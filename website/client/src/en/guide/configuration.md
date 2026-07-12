@@ -91,7 +91,7 @@ JavaScript configuration files work the same as TypeScript, supporting `defineCo
 | Option                           | Description                                                                                                                  | Default                |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | Maximum file size in bytes to process. Files larger than this will be skipped. Useful for excluding large binary files or data files | `50000000`            |
-| `input.processors`               | Ordered array of `{ pattern, command, timeout?, onError? }` entries that run an external command to transform matching files before packing (e.g. JSON→TOON). The first matching glob wins. Runs arbitrary commands, so it is enabled only for local CLI runs. See [File Processors](#file-processors) | Not set                |
+| `input.processors`               | Ordered array of `{ pattern, command, timeout?, onError? }` entries that run an external command to transform matching files before packing (e.g. JSON→TOON). The first matching glob wins. Runs arbitrary commands, so it runs only for local CLI runs (and remote repositories with `--remote-trust-config`). See [File Processors](#file-processors) | Not set                |
 | `output.filePath`                | The name of the output file. Supports XML, Markdown, and plain text formats                                                   | `"repomix-output.xml"` |
 | `output.style`                   | The style of the output (`xml`, `markdown`, `json`, `plain`). Each format has its own advantages for different AI tools              | `"xml"`                |
 | `output.filePathStyle`           | How file paths are shown in output (`target-relative` keeps paths relative to each target root, `cwd-relative` keeps paths relative to the current working directory) | `"target-relative"`    |
@@ -421,7 +421,7 @@ Active processors are logged at startup so unexpected processors from an unfamil
 
 Notes:
 
-- Combining a processor with `output.compress` (or an `output.patterns` `compress`) on the same file is not recommended: the transformed content may no longer parse as its original language. Compression is best-effort and quietly falls back to the transformed content on a parse failure.
+- Combining a **format-changing** processor with `output.compress`, `output.removeComments`, or an `output.patterns` `compress` on the same file is not recommended: those steps dispatch by the file's original extension, so they would run the wrong language handler on the transformed content. For the same reason, Markdown output labels the code fence by the original extension (e.g. a JSON→TOON file is fenced as `json`). Compression is best-effort and quietly falls back to the transformed content on a parse failure.
 - With `--watch`, matching files are re-processed on every rebuild, which re-runs the command each time.
 - On timeout, Repomix kills the command's shell; a command that spawns its own long-lived background processes may leave them running.
 - Processors only see text files (binary files are excluded before processing), and their output is read as UTF-8.

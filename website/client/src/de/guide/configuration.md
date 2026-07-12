@@ -91,7 +91,7 @@ JavaScript-Konfigurationsdateien funktionieren genauso wie TypeScript und unters
 | Option                           | Beschreibung                                                                                                                | Standardwert           |
 |----------------------------------|-----------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | Maximale zu verarbeitende Dateigröße in Bytes. Größere Dateien werden übersprungen. Nützlich zum Ausschließen großer Binär- oder Datendateien | `50000000`            |
-| `input.processors`               | Geordnetes Array von `{ pattern, command, timeout?, onError? }`-Einträgen, die einen externen Befehl ausführen, um passende Dateien vor dem Packen zu transformieren (z.B. JSON→TOON). Das erste passende Glob-Muster gewinnt. Führt beliebige Befehle aus, daher nur für lokale CLI-Ausführungen aktiviert. Siehe [Dateiprozessoren](#dateiprozessoren) | Nicht gesetzt          |
+| `input.processors`               | Geordnetes Array von `{ pattern, command, timeout?, onError? }`-Einträgen, die einen externen Befehl ausführen, um passende Dateien vor dem Packen zu transformieren (z.B. JSON→TOON). Das erste passende Glob-Muster gewinnt. Führt beliebige Befehle aus, daher nur für lokale CLI-Ausführungen (und Remote-Repositories mit `--remote-trust-config`) aktiviert. Siehe [Dateiprozessoren](#dateiprozessoren) | Nicht gesetzt          |
 | `output.filePath`                | Name der Ausgabedatei. Unterstützt XML-, Markdown- und Textformate                                                         | `"repomix-output.xml"` |
 | `output.style`                   | Ausgabestil (`xml`, `markdown`, `json`, `plain`). Jedes Format hat seine Vorteile für verschiedene KI-Tools                       | `"xml"`                |
 | `output.filePathStyle`           | Darstellung der Dateipfade in der Ausgabe (`target-relative` hält Pfade relativ zum jeweiligen Zielverzeichnis, `cwd-relative` hält Pfade relativ zum aktuellen Arbeitsverzeichnis) | `"target-relative"`    |
@@ -409,7 +409,7 @@ Beispielbefehle (jeweils ein `command`-Wert, gepaart mit einem passenden `patter
 
 Da das erste passende Muster gewinnt, wenden Sie pro Datei nur einen Prozessor an — wählen Sie zum Beispiel für `**/*.json` entweder `jq` oder den TOON-Konverter. Der Befehl muss den transformierten Inhalt in die Standardausgabe schreiben, und das aufgerufene Werkzeug muss in Ihrem `PATH` verfügbar sein (`npx`-basierte Befehle laden das Werkzeug bei der ersten Verwendung herunter).
 
-::: warning Security
+::: warning Sicherheit
 Dateiprozessoren führen **beliebige Befehle** aus Ihrer Konfigurationsdatei aus und folgen daher einem strikten Vertrauensmodell:
 
 - Sie laufen **nur bei lokalen CLI-Ausführungen**, wobei Repomix davon ausgeht, dass die Konfiguration in Ihrem Arbeitsverzeichnis Ihre eigene ist — dieselbe Vertrauensgrenze wie bei einem npm-Skript oder einem Makefile. Wenn Sie `repomix` in einem Repository ausführen, das Sie von jemand anderem erhalten haben, **ohne vorher dessen `repomix.config.json` zu prüfen**, werden dessen Prozessorbefehle auf Ihrem Rechner ausgeführt. Prüfen Sie die Konfiguration nicht vertrauenswürdiger Repositories, bevor Sie sie packen.
@@ -421,7 +421,7 @@ Aktive Prozessoren werden beim Start protokolliert, sodass unerwartete Prozessor
 
 Hinweise:
 
-- Die Kombination eines Prozessors mit `output.compress` (oder einem `output.patterns`-`compress`) für dieselbe Datei wird nicht empfohlen: Der transformierte Inhalt lässt sich möglicherweise nicht mehr als seine ursprüngliche Sprache parsen. Die Komprimierung erfolgt nach bestem Bemühen und greift bei einem Parsing-Fehler stillschweigend auf den transformierten Inhalt zurück.
+- Die Kombination eines **formatändernden** Prozessors mit `output.compress`, `output.removeComments` oder einem `output.patterns`-`compress` für dieselbe Datei wird nicht empfohlen: Diese Schritte werden anhand der ursprünglichen Dateierweiterung ausgewählt, sodass sie den falschen Sprach-Handler auf den transformierten Inhalt anwenden würden. Aus demselben Grund kennzeichnet die Markdown-Ausgabe den Code-Block weiterhin anhand der ursprünglichen Dateierweiterung (z. B. wird eine JSON→TOON-Datei als `json` markiert). Die Komprimierung erfolgt nach bestem Bemühen und greift bei einem Parsing-Fehler stillschweigend auf den transformierten Inhalt zurück.
 - Bei `--watch` werden passende Dateien bei jedem Rebuild erneut verarbeitet, wodurch der Befehl jedes Mal erneut ausgeführt wird.
 - Bei einer Zeitüberschreitung beendet Repomix die Shell des Befehls; ein Befehl, der eigene langlebige Hintergrundprozesse startet, kann diese weiterlaufen lassen.
 - Prozessoren sehen nur Textdateien (Binärdateien werden vor der Verarbeitung ausgeschlossen), und ihre Ausgabe wird als UTF-8 gelesen.

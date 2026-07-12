@@ -91,7 +91,7 @@ Os arquivos de configuração JavaScript funcionam da mesma forma que TypeScript
 | Opção                           | Descrição                                                                                                                  | Padrão                |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | Tamanho máximo do arquivo em bytes para processar. Arquivos maiores serão ignorados. Útil para excluir arquivos binários grandes ou arquivos de dados | `50000000`            |
-| `input.processors`               | Array ordenado de entradas `{ pattern, command, timeout?, onError? }` que executa um comando externo para transformar os arquivos correspondentes antes do empacotamento (ex., JSON→TOON). O primeiro glob correspondente vence. Executa comandos arbitrários, por isso está habilitado apenas para execuções locais da CLI. Veja [Processadores de arquivos](#processadores-de-arquivos) | Não definido            |
+| `input.processors`               | Array ordenado de entradas `{ pattern, command, timeout?, onError? }` que executa um comando externo para transformar os arquivos correspondentes antes do empacotamento (ex., JSON→TOON). O primeiro glob correspondente vence. Executa comandos arbitrários, por isso está habilitado apenas para execuções locais da CLI (e repositórios remotos com `--remote-trust-config`). Veja [Processadores de arquivos](#processadores-de-arquivos) | Não definido            |
 | `output.filePath`                | Nome do arquivo de saída. Suporta formatos XML, Markdown e texto simples                                                   | `"repomix-output.xml"` |
 | `output.style`                   | Estilo de saída (`xml`, `markdown`, `json`, `plain`). Cada formato tem suas próprias vantagens para diferentes ferramentas de IA   | `"xml"`                |
 | `output.filePathStyle`           | Como os caminhos de arquivo são exibidos na saída (`target-relative` mantém os caminhos relativos à raiz de cada destino, `cwd-relative` mantém os caminhos relativos ao diretório de trabalho atual) | `"target-relative"`    |
@@ -409,7 +409,7 @@ Comandos de exemplo (cada um é um valor `command` combinado com um `pattern` ad
 
 Como o primeiro padrão correspondente vence, aplique apenas um processador por arquivo — por exemplo, escolha `jq` ou o conversor TOON para `**/*.json`. O comando deve escrever o conteúdo transformado na saída padrão, e a ferramenta que ele invoca deve estar disponível no seu `PATH` (comandos baseados em `npx` baixam a ferramenta no primeiro uso).
 
-::: warning Security
+::: warning Segurança
 Os processadores de arquivos executam **comandos arbitrários** a partir do seu arquivo de configuração, portanto seguem um modelo de confiança rigoroso:
 
 - Eles são executados **apenas em execuções locais da CLI**, nas quais o Repomix assume que a configuração no seu diretório de trabalho é sua — o mesmo limite de confiança de um script npm ou de um Makefile. Da mesma forma, se você executar o `repomix` dentro de um repositório obtido de outra pessoa **sem revisar antes o `repomix.config.json`**, os comandos dos processadores serão executados na sua máquina. Revise a configuração de repositórios não confiáveis antes de empacotá-los.
@@ -421,7 +421,7 @@ Os processadores ativos são registrados na inicialização para que processador
 
 Notas:
 
-- Combinar um processador com `output.compress` (ou um `compress` de `output.patterns`) no mesmo arquivo não é recomendado: o conteúdo transformado pode deixar de ser interpretável como sua linguagem original. A compressão é best-effort e volta silenciosamente ao conteúdo transformado em caso de falha na análise.
+- Combinar um processador **que muda o formato** com `output.compress`, `output.removeComments`, ou um `compress` de `output.patterns` no mesmo arquivo não é recomendado: essas etapas são selecionadas de acordo com a extensão original do arquivo, portanto executariam o manipulador de linguagem errado sobre o conteúdo transformado. Pelo mesmo motivo, a saída Markdown rotula o bloco de código pela extensão original (ex.: um arquivo JSON→TOON é demarcado como `json`). A compressão é best-effort e volta silenciosamente ao conteúdo transformado em caso de falha na análise.
 - Com `--watch`, os arquivos correspondentes são reprocessados a cada rebuild, o que executa o comando novamente a cada vez.
 - Ao atingir o tempo limite, o Repomix encerra o shell do comando; um comando que gera seus próprios processos em segundo plano de longa duração pode deixá-los em execução.
 - Os processadores só veem arquivos de texto (arquivos binários são excluídos antes do processamento), e sua saída é lida como UTF-8.

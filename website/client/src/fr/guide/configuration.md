@@ -91,7 +91,7 @@ Les fichiers de configuration JavaScript fonctionnent de la même manière que T
 | Option                           | Description                                                                                                                  | Défaut                |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | Taille maximale des fichiers à traiter en octets. Les fichiers plus grands seront ignorés. Utile pour exclure les fichiers binaires volumineux ou les fichiers de données | `50000000`            |
-| `input.processors`               | Tableau ordonné d'entrées `{ pattern, command, timeout?, onError? }` qui exécutent une commande externe pour transformer les fichiers correspondants avant l'empaquetage (par ex. JSON→TOON). Le premier motif glob correspondant l'emporte. Exécute des commandes arbitraires, donc activé uniquement pour les exécutions CLI locales. Voir [Processeurs de fichiers](#processeurs-de-fichiers) | Non défini |
+| `input.processors`               | Tableau ordonné d'entrées `{ pattern, command, timeout?, onError? }` qui exécutent une commande externe pour transformer les fichiers correspondants avant l'empaquetage (par ex. JSON→TOON). Le premier motif glob correspondant l'emporte. Exécute des commandes arbitraires, donc activé uniquement pour les exécutions CLI locales (et les dépôts distants avec `--remote-trust-config`). Voir [Processeurs de fichiers](#processeurs-de-fichiers) | Non défini |
 | `output.filePath`                | Nom du fichier de sortie. Prend en charge les formats XML, Markdown et texte brut                                            | `"repomix-output.xml"` |
 | `output.style`                   | Style de sortie (`xml`, `markdown`, `json`, `plain`). Chaque format a ses propres avantages pour différents outils d'IA              | `"xml"`                |
 | `output.filePathStyle`           | Façon dont les chemins de fichiers sont affichés dans la sortie (`target-relative` conserve les chemins relatifs à chaque racine cible, `cwd-relative` conserve les chemins relatifs au répertoire de travail courant) | `"target-relative"`    |
@@ -409,7 +409,7 @@ Exemples de commandes (chacune est une valeur `command` associée à un `pattern
 
 Comme le premier motif correspondant l'emporte, n'appliquez qu'un seul processeur par fichier — par exemple, choisissez soit `jq`, soit le convertisseur TOON pour `**/*.json`. La commande doit écrire le contenu transformé sur la sortie standard, et l'outil qu'elle invoque doit être disponible dans votre `PATH` (les commandes basées sur `npx` téléchargent l'outil lors de la première utilisation).
 
-::: warning Security
+::: warning Sécurité
 Les processeurs de fichiers exécutent des **commandes arbitraires** depuis votre fichier de configuration, ils suivent donc un modèle de confiance strict :
 
 - Ils s'exécutent **uniquement lors des exécutions CLI locales**, où Repomix considère que la configuration présente dans votre répertoire de travail vous appartient — la même limite de confiance qu'un script npm ou qu'un Makefile. De même, si vous exécutez `repomix` dans un dépôt obtenu auprès de quelqu'un d'autre **sans avoir d'abord examiné son `repomix.config.json`**, ses commandes de processeur s'exécuteront sur votre machine. Examinez la configuration des dépôts non fiables avant de les empaqueter.
@@ -421,7 +421,7 @@ Les processeurs actifs sont journalisés au démarrage afin que les processeurs 
 
 Remarques :
 
-- Combiner un processeur avec `output.compress` (ou un `compress` de `output.patterns`) sur le même fichier n'est pas recommandé : le contenu transformé peut ne plus être analysable comme son langage d'origine. La compression est faite au mieux et revient silencieusement au contenu transformé en cas d'échec d'analyse.
+- Combiner un processeur **qui modifie le format** avec `output.compress`, `output.removeComments`, ou un `compress` de `output.patterns` sur le même fichier n'est pas recommandé : ces étapes sont sélectionnées selon l'extension d'origine du fichier, elles appliqueraient donc le mauvais gestionnaire de langage au contenu transformé. Pour la même raison, la sortie Markdown étiquette le bloc de code selon l'extension d'origine (par ex. un fichier JSON→TOON est balisé comme `json`). La compression est faite au mieux et revient silencieusement au contenu transformé en cas d'échec d'analyse.
 - Avec `--watch`, les fichiers correspondants sont retraités à chaque reconstruction, ce qui réexécute la commande à chaque fois.
 - En cas de délai dépassé, Repomix termine le shell de la commande ; une commande qui génère ses propres processus d'arrière-plan de longue durée peut les laisser tourner.
 - Les processeurs ne voient que les fichiers texte (les fichiers binaires sont exclus avant le traitement), et leur sortie est lue en UTF-8.

@@ -91,7 +91,7 @@ JavaScript 配置文件的工作方式与 TypeScript 相同，支持 `defineConf
 | 选项                             | 说明                                                                                                                         | 默认值                 |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
 | `input.maxFileSize`              | 要处理的最大文件大小（字节）。超过此大小的文件将被跳过。用于排除大型二进制文件或数据文件                                  | `50000000`            |
-| `input.processors`               | `{ pattern, command, timeout?, onError? }` 条目的有序数组，在打包前运行外部命令来转换匹配的文件（例如 JSON→TOON）。第一个匹配的 glob 优先。由于会运行任意命令，因此仅在本地 CLI 运行时启用。参见[文件处理器](#文件处理器) | 未设置                 |
+| `input.processors`               | `{ pattern, command, timeout?, onError? }` 条目的有序数组，在打包前运行外部命令来转换匹配的文件（例如 JSON→TOON）。第一个匹配的 glob 优先。由于会运行任意命令，因此仅在本地 CLI 运行时(以及使用 `--remote-trust-config` 的远程仓库)启用。参见[文件处理器](#文件处理器) | 未设置                 |
 | `output.filePath`                | 输出文件名。支持 XML、Markdown 和纯文本格式                                                                                   | `"repomix-output.xml"` |
 | `output.style`                   | 输出样式（`xml`、`markdown`、`json`、`plain`）。每种格式对不同的 AI 工具都有其优势                                                   | `"xml"`                |
 | `output.filePathStyle`           | 输出中文件路径的显示方式（`target-relative` 表示路径相对于各目标根目录，`cwd-relative` 表示路径相对于当前工作目录）                  | `"target-relative"`    |
@@ -421,7 +421,7 @@ build/
 
 注意事项：
 
-- 不建议在同一文件上同时使用处理器和 `output.compress`（或 `output.patterns` 的 `compress`）：转换后的内容可能无法再按其原始语言解析。压缩是尽力而为的，解析失败时会安静地回退到转换后的内容。
+- 不建议将**会更改格式**的处理器与 `output.compress`、`output.removeComments` 或 `output.patterns` 的 `compress` 在同一文件上组合使用：这些步骤是根据文件的原始扩展名进行分发的，因此会对转换后的内容运行错误的语言处理程序。出于同样的原因，Markdown 输出中的代码围栏也会按原始扩展名标注（例如，JSON→TOON 转换后的文件会被标注为 `json`）。压缩是尽力而为的，解析失败时会静默回退到转换后的内容。
 - 使用 `--watch` 时，匹配的文件会在每次重新构建时被重新处理，这会每次都重新运行命令。
 - 超时时，Repomix 会终止命令所在的 shell；如果命令自行启动了长期运行的后台进程，这些进程可能会继续运行。
 - 处理器只会看到文本文件（二进制文件在处理前会被排除），其输出会以 UTF-8 读取。
