@@ -87,9 +87,37 @@ export const runProcessorCommand = async (
     encoding: 'utf8',
     // Inherit the parent environment so PATH (needed by npx and friends) is available.
     env: process.env,
+    // On timeout, SIGKILL the shell rather than the default SIGTERM so a tool that
+    // ignores/traps SIGTERM cannot hang the whole pack (and pin a semaphore slot).
+    killSignal: 'SIGKILL',
+    // When we spawn cmd.exe ourselves, Node/libuv would otherwise re-quote each arg
+    // and backslash-escape the double quotes in `resolvedCommand`, which cmd.exe does
+    // not understand. Verbatim mode passes the command line through unchanged. Ignored
+    // on POSIX.
+    windowsVerbatimArguments: isWindows,
   });
 
   return stdout;
+};
+
+/**
+ * Turn a raw exec failure into a human-readable cause, distinguishing a timeout
+ * and a stdout-overflow from an ordinary non-zero exit so the error message is
+ * actionable.
+ */
+const describeProcessorError = (error: unknown, timeout: number): string => {
+  const err = error as (NodeJS.ErrnoException & { killed?: boolean; stderr?: string }) | undefined;
+  if (err?.killed && err.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+    return `output exceeded the ${FILE_PROCESSOR_MAX_BUFFER}-byte limit`;
+  }
+  // execFile kills the process (default signal, or SIGKILL here) when `timeout` elapses.
+  if (err?.killed) {
+    return `timed out after ${timeout}ms`;
+  }
+  const base = error instanceof Error ? error.message : String(error);
+  // Surface the command's stderr (capped) so a non-zero exit is diagnosable.
+  const stderr = typeof err?.stderr === 'string' ? err.stderr.trim() : '';
+  return stderr ? `${base}\n  Stderr: ${stderr.slice(0, 500)}` : base;
 };
 
 /**
@@ -209,34 +237,53 @@ export const applyFileProcessors = async (
 
     await acquireProcessorSlot();
     try {
-      const content = await deps.runProcessorCommand({
-        command: processor.command,
-        content: rawFile.content,
-        tempFilePath,
-        timeout,
-        cwd: rootDir,
-      });
+      let content: string;
+      try {
+        content = await deps.runProcessorCommand({
+          command: processor.command,
+          content: rawFile.content,
+          tempFilePath,
+          timeout,
+          cwd: rootDir,
+        });
+      } catch (error) {
+        const message = describeProcessorError(error, timeout);
+        if (onError === 'skip') {
+          logger.warn(
+            `File processor for "${rawFile.path}" failed, using original content (onError: "skip"): ${message}`,
+          );
+          completed++;
+          progressCallback(
+            `Processing file with command... (${completed}/${matchedCount}) ${pc.dim(rawFile.path)} (skipped)`,
+          );
+          return rawFile;
+        }
+        throw new RepomixError(
+          `File processor failed for "${rawFile.path}".\n` +
+            `  Pattern: ${processor.pattern}\n` +
+            `  Command: ${processor.command}\n` +
+            `  Error: ${message}\n` +
+            `  Set "onError": "skip" on this processor to fall back to the original content instead.`,
+        );
+      }
 
+      // A processor that exits 0 but writes nothing to stdout (e.g. a tool that edits
+      // the temp file in place, or only writes to stderr) would silently blank the
+      // file. Empty output is still accepted, but warn when it replaces non-empty
+      // content so the footgun is visible.
+      if (content === '' && rawFile.content !== '') {
+        logger.warn(
+          `File processor for "${rawFile.path}" produced empty output; the file will be packed as empty. ` +
+            `Check that the command writes the transformed content to stdout.`,
+        );
+      }
+
+      // Progress is reported outside the run try/catch so a throwing progressCallback
+      // is not misread as a processor failure (which, under onError: "skip", would
+      // discard the successfully transformed content).
       completed++;
       progressCallback(`Processing file with command... (${completed}/${matchedCount}) ${pc.dim(rawFile.path)}`);
-
       return { ...rawFile, content };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (onError === 'skip') {
-        logger.warn(
-          `File processor for "${rawFile.path}" failed, using original content (onError: "skip"): ${message}`,
-        );
-        completed++;
-        return rawFile;
-      }
-      throw new RepomixError(
-        `File processor failed for "${rawFile.path}".\n` +
-          `  Pattern: ${processor.pattern}\n` +
-          `  Command: ${processor.command}\n` +
-          `  Error: ${message}\n` +
-          `  Set "onError": "skip" on this processor to fall back to the original content instead.`,
-      );
     } finally {
       releaseProcessorSlot();
     }

@@ -44,6 +44,23 @@ describe('fileProcessorRun', () => {
       expect(runProcessorCommandMock).not.toHaveBeenCalled();
     });
 
+    it('returns files unchanged when the gate key is absent (library/MCP default)', async () => {
+      // createMockConfig omits enableFileProcessors entirely — the real default for
+      // library pack()/runCli() callers and MCP, which never inject the gate.
+      const config = createMockConfig({
+        input: { processors: [{ pattern: '**/*.json', command: 'cat {file}' }] },
+      });
+      expect(config.enableFileProcessors).toBeUndefined();
+      const runProcessorCommandMock = vi.fn();
+
+      const result = await applyFileProcessors(rawFiles, '/root', config, () => {}, {
+        runProcessorCommand: runProcessorCommandMock,
+      });
+
+      expect(result).toBe(rawFiles);
+      expect(runProcessorCommandMock).not.toHaveBeenCalled();
+    });
+
     it('returns files unchanged when enabled but no processors configured', async () => {
       const config = createMockConfig({ enableFileProcessors: true });
       const runProcessorCommandMock = vi.fn();
@@ -112,6 +129,8 @@ describe('fileProcessorRun', () => {
       });
 
       expect(runProcessorCommandMock).toHaveBeenCalledWith(expect.objectContaining({ command: 'first {file}' }));
+      // Exactly one processor runs per file — no chaining.
+      expect(runProcessorCommandMock).toHaveBeenCalledTimes(1);
     });
 
     it('passes a unique temp file path preserving the extension', async () => {
@@ -246,10 +265,18 @@ describe('fileProcessorRun', () => {
         () => {},
         { runProcessorCommand: runProcessorCommandMock },
       );
+      // Track whether the overall promise rejects before we release "b". A regression
+      // to fail-fast (Promise.all + immediate cleanup) would settle it here — the whole
+      // point this test guards against.
+      let rejectedEarly = false;
+      resultPromise.catch(() => {
+        rejectedEarly = true;
+      });
 
-      // Let the microtask queue flush so "a" has rejected; the overall promise
+      // Let the microtask/timer queue flush so "a" has rejected; the overall promise
       // must still be pending because "b" has not settled yet.
       await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(rejectedEarly).toBe(false);
       expect(bSettled.done).toBe(false);
 
       releaseB('transformed-b');
@@ -277,11 +304,77 @@ describe('fileProcessorRun', () => {
       const files = Array.from({ length: 40 }, (_, i) => ({ path: `f${i}.json`, content: '{}' }));
       await applyFileProcessors(files, '/root', config, () => {}, { runProcessorCommand: runProcessorCommandMock });
 
-      // The module-level semaphore caps concurrency at min(8, cpus); it must never
-      // exceed the hard ceiling of 8 no matter how many files match.
-      expect(peak).toBeGreaterThan(0);
+      // The module-level semaphore caps concurrency at min(8, cpus); it must run
+      // several in parallel (not serialize) but never exceed the hard ceiling of 8.
+      expect(peak).toBeGreaterThan(1);
       expect(peak).toBeLessThanOrEqual(8);
       expect(runProcessorCommandMock).toHaveBeenCalledTimes(40);
+    });
+
+    it('shares the concurrency cap across concurrent per-root calls', async () => {
+      // The module-level semaphore must bound the combined concurrency of two
+      // applyFileProcessors calls (the multi-root case), not 8-per-call.
+      const config = createMockConfig({
+        enableFileProcessors: true,
+        input: { processors: [{ pattern: '**/*.json', command: 'toon {file}' }] },
+      });
+
+      let active = 0;
+      let peak = 0;
+      const runProcessorCommandMock = vi.fn(async () => {
+        active++;
+        peak = Math.max(peak, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active--;
+        return 'out';
+      });
+
+      const makeFiles = (prefix: string) =>
+        Array.from({ length: 20 }, (_, i) => ({ path: `${prefix}/f${i}.json`, content: '{}' }));
+
+      await Promise.all([
+        applyFileProcessors(makeFiles('a'), '/root-a', config, () => {}, {
+          runProcessorCommand: runProcessorCommandMock,
+        }),
+        applyFileProcessors(makeFiles('b'), '/root-b', config, () => {}, {
+          runProcessorCommand: runProcessorCommandMock,
+        }),
+      ]);
+
+      expect(peak).toBeGreaterThan(1);
+      expect(peak).toBeLessThanOrEqual(8);
+      expect(runProcessorCommandMock).toHaveBeenCalledTimes(40);
+    });
+
+    it('accepts empty stdout as valid content but warns when it blanks a non-empty file', async () => {
+      const config = createMockConfig({
+        enableFileProcessors: true,
+        input: { processors: [{ pattern: '**/*.json', command: 'toon {file}' }] },
+      });
+      const runProcessorCommandMock = vi.fn().mockResolvedValue('');
+
+      const result = await applyFileProcessors([{ path: 'a.json', content: '{"a":1}' }], '/root', config, () => {}, {
+        runProcessorCommand: runProcessorCommandMock,
+      });
+
+      expect(result).toEqual([{ path: 'a.json', content: '' }]);
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('produced empty output'));
+    });
+
+    it('includes the command stderr in the failure message', async () => {
+      const config = createMockConfig({
+        enableFileProcessors: true,
+        input: { processors: [{ pattern: '**/*.json', command: 'toon {file}' }] },
+      });
+      const runProcessorCommandMock = vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error('Command failed'), { stderr: 'boom detail from tool' }));
+
+      await expect(
+        applyFileProcessors([{ path: 'a.json', content: '{}' }], '/root', config, () => {}, {
+          runProcessorCommand: runProcessorCommandMock,
+        }),
+      ).rejects.toThrow(/boom detail from tool/);
     });
   });
 
@@ -319,27 +412,86 @@ describe('fileProcessorRun', () => {
       }
     });
 
-    it('runs a real command end-to-end (cat echoes the temp file back)', async () => {
-      // Skip on Windows where `cat` is not guaranteed to exist.
-      if (process.platform === 'win32') {
-        return;
-      }
+    it('substitutes every {file} occurrence', async () => {
       const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc-test-'));
-      const tempFilePath = path.join(tempDir, '0-a.txt');
+      const tempFilePath = path.join(tempDir, '0-a.json');
+      const execFileAsyncMock = vi.fn().mockResolvedValue({ stdout: 'out', stderr: '' });
+      const deps = { execFileAsync: execFileAsyncMock } as unknown as Parameters<typeof runProcessorCommand>[1];
 
       try {
-        const result = await runProcessorCommand({
-          command: 'cat {file}',
-          content: 'hello world',
-          tempFilePath,
-          timeout: 10000,
-          cwd: tempDir,
-        });
-
-        expect(result).toBe('hello world');
+        await runProcessorCommand(
+          { command: 'diff {file} {file}', content: 'x', tempFilePath, timeout: 5000, cwd: tempDir },
+          deps,
+        );
+        const shellArgs = execFileAsyncMock.mock.calls[0][1] as string[];
+        const commandArg = shellArgs[shellArgs.length - 1];
+        expect(commandArg).not.toContain('{file}');
+        // Both placeholders replaced with the temp path.
+        expect(commandArg.match(/0-a\.json/g)).toHaveLength(2);
       } finally {
         await fs.rm(tempDir, { recursive: true, force: true });
       }
+    });
+
+    // Real-shell tests exercise the execFile wiring the mocked tests can't (exit codes,
+    // timeouts, and shell quoting). Skipped on Windows where the POSIX tools differ.
+    const describePosix = process.platform === 'win32' ? describe.skip : describe;
+    describePosix('real shell', () => {
+      it('echoes the temp file back (cat), even when the temp dir path contains a space', async () => {
+        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc test-'));
+        const tempFilePath = path.join(tempDir, '0-a.txt');
+
+        try {
+          const result = await runProcessorCommand({
+            command: 'cat {file}',
+            content: 'hello world',
+            tempFilePath,
+            timeout: 10000,
+            cwd: tempDir,
+          });
+          expect(result).toBe('hello world');
+        } finally {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        }
+      });
+
+      it('rejects when the real command exits non-zero', async () => {
+        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc-test-'));
+        const tempFilePath = path.join(tempDir, '0-a.txt');
+
+        try {
+          await expect(
+            runProcessorCommand({
+              command: 'cat {file} && exit 3',
+              content: 'x',
+              tempFilePath,
+              timeout: 10000,
+              cwd: tempDir,
+            }),
+          ).rejects.toThrow();
+        } finally {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        }
+      });
+
+      it('rejects (killed) when the real command exceeds its timeout', async () => {
+        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc-test-'));
+        const tempFilePath = path.join(tempDir, '0-a.txt');
+
+        try {
+          await expect(
+            runProcessorCommand({
+              command: 'sleep 5 # {file}',
+              content: 'x',
+              tempFilePath,
+              timeout: 100,
+              cwd: tempDir,
+            }),
+          ).rejects.toMatchObject({ killed: true });
+        } finally {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        }
+      });
     });
   });
 
