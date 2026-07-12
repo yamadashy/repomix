@@ -118,6 +118,7 @@ MCP 서버로 실행할 때 Repomix는 다음 도구를 제공합니다:
 | `compress` | 아니오 | `false` | 구현 세부사항을 제거하면서 핵심 코드 시그니처와 구조를 추출하는 Tree-sitter 압축 활성화. 의미를 유지하면서 토큰 사용량을 ~70% 줄입니다. `grep_repomix_output`이 점진적 콘텐츠 검색을 가능하게 하므로 일반적으로 불필요합니다. |
 | `includePatterns` | 아니오 | — | fast-glob 패턴으로 포함할 파일 지정. 쉼표로 구분 (예: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | 아니오 | — | fast-glob 패턴으로 제외할 추가 파일 지정. 쉼표로 구분 (예: `"test/**,*.spec.js"`). `.gitignore`와 내장 제외를 보완합니다. |
+| `outputPatterns` | 아니오 | — | 설정 파일의 [`output.patterns`](./configuration.md) 옵션에 해당하는 파일별 포함 수준. `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }` 형식의 항목 배열. 처음 일치하는 패턴이 우선하며, `directoryStructureOnly`가 `compress`보다 우선합니다. 두 플래그 모두 지정하지 않은 일치 항목은 전체 콘텐츠를 강제합니다(전역 `compress`에서 특정 파일을 제외할 때 유용). 대상 저장소의 `repomix.config.json`에 있는 `output.patterns`를 재정의합니다. |
 | `topFilesLength` | 아니오 | `10` | 메트릭 요약에 표시할 크기별 최대 파일 수 |
 | `style` | 아니오 | `xml` | 출력 형식 스타일: `xml`, `markdown`, `json`, 또는 `plain` |
 
@@ -125,12 +126,18 @@ MCP 서버로 실행할 때 Repomix는 다음 도구를 제공합니다:
 ```json
 {
   "directory": "/path/to/your/project",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```
+
+위 예시에서(`compress: true`가 일치하지 않는 파일에 대한 catch-all 역할을 하는 경우), `src/core/` 아래의 파일은 전체 콘텐츠로 유지되고, `docs/` 아래의 파일은 디렉토리 구조만 표시되며, 나머지는 모두 압축됩니다.
 
 ### pack_remote_repository
 
@@ -144,6 +151,7 @@ MCP 서버로 실행할 때 Repomix는 다음 도구를 제공합니다:
 | `compress` | 아니오 | `false` | 구현 세부사항을 제거하면서 핵심 코드 시그니처와 구조를 추출하는 Tree-sitter 압축 활성화. 의미를 유지하면서 토큰 사용량을 ~70% 줄입니다. `grep_repomix_output`이 점진적 콘텐츠 검색을 가능하게 하므로 일반적으로 불필요합니다. |
 | `includePatterns` | 아니오 | — | fast-glob 패턴으로 포함할 파일 지정. 쉼표로 구분 (예: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | 아니오 | — | fast-glob 패턴으로 제외할 추가 파일 지정. 쉼표로 구분 (예: `"test/**,*.spec.js"`). `.gitignore`와 내장 제외를 보완합니다. |
+| `outputPatterns` | 아니오 | — | 설정 파일의 [`output.patterns`](./configuration.md) 옵션에 해당하는 파일별 포함 수준. `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }` 형식의 항목 배열. 처음 일치하는 패턴이 우선하며, `directoryStructureOnly`가 `compress`보다 우선합니다. 두 플래그 모두 지정하지 않은 일치 항목은 전체 콘텐츠를 강제합니다(전역 `compress`에서 특정 파일을 제외할 때 유용). |
 | `topFilesLength` | 아니오 | `10` | 메트릭 요약에 표시할 크기별 최대 파일 수 |
 | `style` | 아니오 | `xml` | 출력 형식 스타일: `xml`, `markdown`, `json`, 또는 `plain` |
 
@@ -151,9 +159,13 @@ MCP 서버로 실행할 때 Repomix는 다음 도구를 제공합니다:
 ```json
 {
   "remote": "yamadashy/repomix",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```

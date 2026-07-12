@@ -118,6 +118,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 | `compress` | 否 | `false` | 啟用 Tree-sitter 壓縮以提取基本程式碼簽名和結構，同時刪除實現細節。在保持語義含義的同時減少約 70% 的令牌使用量。由於 `grep_repomix_output` 允許增量內容檢索，通常不需要。 |
 | `includePatterns` | 否 | — | 使用 fast-glob 模式指定要包含的檔案。多個模式用逗號分隔（例如 `"**/*.{js,ts}"`、`"src/**,docs/**"`） |
 | `ignorePatterns` | 否 | — | 使用 fast-glob 模式指定要排除的其他檔案。多個模式用逗號分隔（例如 `"test/**,*.spec.js"`）。補充 `.gitignore` 和內建排除。 |
+| `outputPatterns` | 否 | — | 依檔案設定內容包含層級，對應設定檔中的 [`output.patterns`](./configuration.md) 選項。是由 `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }` 組成的陣列。第一個相符的模式優先；`directoryStructureOnly` 優先於 `compress`，未設定任一旗標的相符項目將強制顯示完整內容（可用於在全域啟用 `compress` 時豁免特定檔案）。會覆寫目標儲存庫 `repomix.config.json` 中設定的 `output.patterns`。 |
 | `topFilesLength` | 否 | `10` | 在指標摘要中顯示的最大檔案數（按大小排序） |
 | `style` | 否 | `xml` | 輸出格式樣式：`xml`、`markdown`、`json` 或 `plain` |
 
@@ -125,12 +126,18 @@ claude mcp add repomix -- npx -y repomix --mcp
 ```json
 {
   "directory": "/path/to/your/project",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```
+
+在上面的範例中（`compress: true` 作為未符合檔案的萬用後備設定），`src/core/` 下的檔案會保留完整內容，`docs/` 下的檔案僅列在目錄結構中，其餘檔案則會被壓縮。
 
 ### pack_remote_repository
 
@@ -144,6 +151,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 | `compress` | 否 | `false` | 啟用 Tree-sitter 壓縮以提取基本程式碼簽名和結構，同時刪除實現細節。在保持語義含義的同時減少約 70% 的令牌使用量。由於 `grep_repomix_output` 允許增量內容檢索，通常不需要。 |
 | `includePatterns` | 否 | — | 使用 fast-glob 模式指定要包含的檔案。多個模式用逗號分隔（例如 `"**/*.{js,ts}"`、`"src/**,docs/**"`） |
 | `ignorePatterns` | 否 | — | 使用 fast-glob 模式指定要排除的其他檔案。多個模式用逗號分隔（例如 `"test/**,*.spec.js"`）。補充 `.gitignore` 和內建排除。 |
+| `outputPatterns` | 否 | — | 依檔案設定內容包含層級，對應設定檔中的 [`output.patterns`](./configuration.md) 選項。是由 `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }` 組成的陣列。第一個相符的模式優先；`directoryStructureOnly` 優先於 `compress`，未設定任一旗標的相符項目將強制顯示完整內容（可用於在全域啟用 `compress` 時豁免特定檔案）。 |
 | `topFilesLength` | 否 | `10` | 在指標摘要中顯示的最大檔案數（按大小排序） |
 | `style` | 否 | `xml` | 輸出格式樣式：`xml`、`markdown`、`json` 或 `plain` |
 
@@ -151,9 +159,13 @@ claude mcp add repomix -- npx -y repomix --mcp
 ```json
 {
   "remote": "yamadashy/repomix",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```

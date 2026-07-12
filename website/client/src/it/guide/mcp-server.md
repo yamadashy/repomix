@@ -116,6 +116,7 @@ Questo strumento impacchetta una directory di codice locale in un file XML per l
 | `compress` | No | `false` | Abilita la compressione Tree-sitter per estrarre le firme di codice essenziali e la struttura rimuovendo i dettagli di implementazione. Riduce l'utilizzo dei token di circa il 70% preservando il significato semantico. Generalmente non necessario poiché `grep_repomix_output` permette il recupero incrementale del contenuto. |
 | `includePatterns` | No | — | File da includere usando pattern fast-glob. Separati da virgole (es: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | No | — | File aggiuntivi da escludere usando pattern fast-glob. Separati da virgole (es: `"test/**,*.spec.js"`). Completano `.gitignore` e le esclusioni integrate. |
+| `outputPatterns` | No | — | Livelli di inclusione per-file, che rispecchiano l'opzione del file di configurazione [`output.patterns`](./configuration.md). Un array di voci `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }`. Il primo pattern corrispondente ha la precedenza; `directoryStructureOnly` ha la precedenza su `compress`, e una corrispondenza senza nessuno dei due flag forza il contenuto completo (utile per escludere file da un `compress` globale). Sovrascrive qualsiasi `output.patterns` proveniente dal `repomix.config.json` del repository di destinazione. |
 | `topFilesLength` | No | `10` | Numero dei file più grandi per dimensione da mostrare nel riepilogo delle metriche |
 | `style` | No | `xml` | Stile del formato di output: `xml`, `markdown`, `json` o `plain` |
 
@@ -123,12 +124,18 @@ Questo strumento impacchetta una directory di codice locale in un file XML per l
 ```json
 {
   "directory": "/path/to/your/project",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```
+
+Con l'esempio sopra (dove `compress: true` funge da catch-all per i file non corrispondenti), i file sotto `src/core/` mantengono il contenuto completo, i file sotto `docs/` vengono elencati solo nella struttura delle directory, mentre tutto il resto viene compresso.
 
 ### pack_remote_repository
 
@@ -142,6 +149,7 @@ Questo strumento recupera, clona e impacchetta un repository GitHub in un file X
 | `compress` | No | `false` | Abilita la compressione Tree-sitter per estrarre le firme di codice essenziali e la struttura rimuovendo i dettagli di implementazione. Riduce l'utilizzo dei token di circa il 70% preservando il significato semantico. Generalmente non necessario poiché `grep_repomix_output` permette il recupero incrementale del contenuto. |
 | `includePatterns` | No | — | File da includere usando pattern fast-glob. Separati da virgole (es: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | No | — | File aggiuntivi da escludere usando pattern fast-glob. Separati da virgole (es: `"test/**,*.spec.js"`). Completano `.gitignore` e le esclusioni integrate. |
+| `outputPatterns` | No | — | Livelli di inclusione per-file, che rispecchiano l'opzione del file di configurazione [`output.patterns`](./configuration.md). Un array di voci `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }`. Il primo pattern corrispondente ha la precedenza; `directoryStructureOnly` ha la precedenza su `compress`, e una corrispondenza senza nessuno dei due flag forza il contenuto completo (utile per escludere file da un `compress` globale). |
 | `topFilesLength` | No | `10` | Numero dei file più grandi per dimensione da mostrare nel riepilogo delle metriche |
 | `style` | No | `xml` | Stile del formato di output: `xml`, `markdown`, `json` o `plain` |
 
@@ -149,9 +157,13 @@ Questo strumento recupera, clona e impacchetta un repository GitHub in un file X
 ```json
 {
   "remote": "yamadashy/repomix",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```

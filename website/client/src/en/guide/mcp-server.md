@@ -118,6 +118,7 @@ This tool packages a local code directory into a consolidated XML file for AI an
 | `compress` | No | `false` | Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Reduces token usage by ~70% while preserving semantic meaning. Generally not needed since `grep_repomix_output` allows incremental content retrieval. |
 | `includePatterns` | No | — | Files to include using fast-glob patterns. Comma-separated (e.g., `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | No | — | Additional files to exclude using fast-glob patterns. Comma-separated (e.g., `"test/**,*.spec.js"`). Supplements `.gitignore` and built-in exclusions. |
+| `outputPatterns` | No | — | Per-file inclusion levels, mirroring the config-file [`output.patterns`](./configuration.md) option. An array of `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }` entries. The first matching pattern wins; `directoryStructureOnly` takes precedence over `compress`, and a match with neither flag forces full content (useful for exempting files from a global `compress`). Overrides any `output.patterns` from the target repository's `repomix.config.json`. |
 | `topFilesLength` | No | `10` | Number of largest files by size to display in the metrics summary |
 | `style` | No | `xml` | Output format style: `xml`, `markdown`, `json`, or `plain` |
 
@@ -125,12 +126,18 @@ This tool packages a local code directory into a consolidated XML file for AI an
 ```json
 {
   "directory": "/path/to/your/project",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```
+
+With the example above — where `compress: true` acts as the catch-all for unmatched files — files under `src/core/` are kept at full content, files under `docs/` are listed in the directory structure only, and everything else is compressed.
 
 ### pack_remote_repository
 
@@ -144,6 +151,7 @@ This tool fetches, clones, and packages a GitHub repository into a consolidated 
 | `compress` | No | `false` | Enable Tree-sitter compression to extract essential code signatures and structure while removing implementation details. Reduces token usage by ~70% while preserving semantic meaning. Generally not needed since `grep_repomix_output` allows incremental content retrieval. |
 | `includePatterns` | No | — | Files to include using fast-glob patterns. Comma-separated (e.g., `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | No | — | Additional files to exclude using fast-glob patterns. Comma-separated (e.g., `"test/**,*.spec.js"`). Supplements `.gitignore` and built-in exclusions. |
+| `outputPatterns` | No | — | Per-file inclusion levels, mirroring the config-file [`output.patterns`](./configuration.md) option. An array of `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }` entries. The first matching pattern wins; `directoryStructureOnly` takes precedence over `compress`, and a match with neither flag forces full content (useful for exempting files from a global `compress`). |
 | `topFilesLength` | No | `10` | Number of largest files by size to display in the metrics summary |
 | `style` | No | `xml` | Output format style: `xml`, `markdown`, `json`, or `plain` |
 
@@ -151,9 +159,13 @@ This tool fetches, clones, and packages a GitHub repository into a consolidated 
 ```json
 {
   "remote": "yamadashy/repomix",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```

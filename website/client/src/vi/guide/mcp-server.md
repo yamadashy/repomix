@@ -118,6 +118,7 @@ Công cụ này đóng gói một thư mục code cục bộ thành một file X
 | `compress` | Không | `false` | Kích hoạt nén Tree-sitter để trích xuất các chữ ký code cần thiết và cấu trúc trong khi loại bỏ chi tiết triển khai. Giảm sử dụng token khoảng 70% trong khi bảo toàn ý nghĩa ngữ nghĩa. Thường không cần thiết vì `grep_repomix_output` cho phép truy xuất nội dung tăng dần. |
 | `includePatterns` | Không | — | File để bao gồm sử dụng pattern fast-glob. Tách bằng dấu phẩy (ví dụ: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Không | — | File bổ sung để loại trừ sử dụng pattern fast-glob. Tách bằng dấu phẩy (ví dụ: `"test/**,*.spec.js"`). Bổ sung cho `.gitignore` và loại trừ tích hợp. |
+| `outputPatterns` | Không | — | Các cấp độ bao gồm theo từng file, phản ánh tùy chọn [`output.patterns`](./configuration.md) trong file cấu hình. Một mảng các mục `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }`. Pattern khớp đầu tiên sẽ được áp dụng; `directoryStructureOnly` được ưu tiên hơn `compress`, và một kết quả khớp không có cờ nào trong hai cờ này sẽ buộc hiển thị nội dung đầy đủ (hữu ích để loại trừ file khỏi `compress` toàn cục). Ghi đè mọi `output.patterns` từ `repomix.config.json` của repository đích. |
 | `topFilesLength` | Không | `10` | Số lượng file lớn nhất theo kích thước để hiển thị trong tóm tắt metrics |
 | `style` | Không | `xml` | Kiểu định dạng đầu ra: `xml`, `markdown`, `json`, hoặc `plain` |
 
@@ -125,12 +126,18 @@ Công cụ này đóng gói một thư mục code cục bộ thành một file X
 ```json
 {
   "directory": "/path/to/your/project",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```
+
+Với ví dụ trên (`compress: true` đóng vai trò là phương án bao quát cho các file không khớp), các file trong `src/core/` được giữ nguyên nội dung đầy đủ, các file trong `docs/` chỉ được liệt kê trong cấu trúc thư mục, và mọi thứ còn lại đều được nén.
 
 ### pack_remote_repository
 
@@ -144,6 +151,7 @@ Công cụ này lấy, clone và đóng gói một repository GitHub thành mộ
 | `compress` | Không | `false` | Kích hoạt nén Tree-sitter để trích xuất các chữ ký code cần thiết và cấu trúc trong khi loại bỏ chi tiết triển khai. Giảm sử dụng token khoảng 70% trong khi bảo toàn ý nghĩa ngữ nghĩa. Thường không cần thiết vì `grep_repomix_output` cho phép truy xuất nội dung tăng dần. |
 | `includePatterns` | Không | — | File để bao gồm sử dụng pattern fast-glob. Tách bằng dấu phẩy (ví dụ: `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Không | — | File bổ sung để loại trừ sử dụng pattern fast-glob. Tách bằng dấu phẩy (ví dụ: `"test/**,*.spec.js"`). Bổ sung cho `.gitignore` và loại trừ tích hợp. |
+| `outputPatterns` | Không | — | Các cấp độ bao gồm theo từng file, phản ánh tùy chọn [`output.patterns`](./configuration.md) trong file cấu hình. Một mảng các mục `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }`. Pattern khớp đầu tiên sẽ được áp dụng; `directoryStructureOnly` được ưu tiên hơn `compress`, và một kết quả khớp không có cờ nào trong hai cờ này sẽ buộc hiển thị nội dung đầy đủ (hữu ích để loại trừ file khỏi `compress` toàn cục). |
 | `topFilesLength` | Không | `10` | Số lượng file lớn nhất theo kích thước để hiển thị trong tóm tắt metrics |
 | `style` | Không | `xml` | Kiểu định dạng đầu ra: `xml`, `markdown`, `json`, hoặc `plain` |
 
@@ -151,9 +159,13 @@ Công cụ này lấy, clone và đóng gói một repository GitHub thành mộ
 ```json
 {
   "remote": "yamadashy/repomix",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```

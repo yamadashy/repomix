@@ -28,6 +28,7 @@ describe('PackCodebaseTool', () => {
     compress?: boolean;
     includePatterns?: string;
     ignorePatterns?: string;
+    outputPatterns?: { pattern: string; compress?: boolean; directoryStructureOnly?: boolean }[];
     topFilesLength?: number;
   }) => Promise<CallToolResult>;
 
@@ -134,6 +135,26 @@ describe('PackCodebaseTool', () => {
         include: '**/*.js',
         ignore: 'test/**',
         topFilesLen: 10,
+      }),
+    );
+  });
+
+  test('should pass outputPatterns through to runCli', async () => {
+    const testDir = '/test/project';
+    const outputPatterns = [
+      { pattern: 'src/core/**' },
+      { pattern: 'docs/**/*', compress: true },
+      { pattern: 'website/**/*', directoryStructureOnly: true },
+    ];
+
+    await toolHandler({ directory: testDir, compress: true, outputPatterns });
+
+    expect(runCli).toHaveBeenCalledWith(
+      ['.'],
+      testDir,
+      expect.objectContaining({
+        compress: true,
+        outputPatterns,
       }),
     );
   });

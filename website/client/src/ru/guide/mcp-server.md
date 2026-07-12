@@ -118,6 +118,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 | `compress` | Нет | `false` | Включить сжатие Tree-sitter для извлечения существенных сигнатур и структуры кода при удалении деталей реализации. Уменьшает использование токенов на ~70%, сохраняя семантическое значение. Обычно не требуется, так как `grep_repomix_output` позволяет инкрементальное получение содержимого. |
 | `includePatterns` | Нет | — | Файлы для включения с помощью паттернов fast-glob. Через запятую (например, `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Нет | — | Дополнительные файлы для исключения с помощью паттернов fast-glob. Через запятую (например, `"test/**,*.spec.js"`). Дополняют `.gitignore` и встроенные исключения. |
+| `outputPatterns` | Нет | — | Уровни включения для каждого файла, отражающие опцию [`output.patterns`](./configuration.md) файла конфигурации. Массив записей `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }`. Побеждает первый совпавший паттерн; `directoryStructureOnly` имеет приоритет над `compress`, а совпадение без обоих флагов принудительно включает полное содержимое (полезно для исключения файлов из глобального `compress`). Переопределяет любые `output.patterns` из `repomix.config.json` целевого репозитория. |
 | `topFilesLength` | Нет | `10` | Количество самых больших файлов по размеру для отображения в сводке метрик |
 | `style` | Нет | `xml` | Стиль формата вывода: `xml`, `markdown`, `json` или `plain` |
 
@@ -125,12 +126,18 @@ claude mcp add repomix -- npx -y repomix --mcp
 ```json
 {
   "directory": "/path/to/your/project",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```
+
+В примере выше (`compress: true` выступает как универсальное правило для файлов, не подпадающих ни под один шаблон) файлы в `src/core/` сохраняют полное содержимое, файлы в `docs/` показаны только в дереве директорий, а всё остальное сжимается.
 
 ### pack_remote_repository
 
@@ -144,6 +151,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 | `compress` | Нет | `false` | Включить сжатие Tree-sitter для извлечения существенных сигнатур и структуры кода при удалении деталей реализации. Уменьшает использование токенов на ~70%, сохраняя семантическое значение. Обычно не требуется, так как `grep_repomix_output` позволяет инкрементальное получение содержимого. |
 | `includePatterns` | Нет | — | Файлы для включения с помощью паттернов fast-glob. Через запятую (например, `"**/*.{js,ts}"`, `"src/**,docs/**"`) |
 | `ignorePatterns` | Нет | — | Дополнительные файлы для исключения с помощью паттернов fast-glob. Через запятую (например, `"test/**,*.spec.js"`). Дополняют `.gitignore` и встроенные исключения. |
+| `outputPatterns` | Нет | — | Уровни включения для каждого файла, отражающие опцию [`output.patterns`](./configuration.md) файла конфигурации. Массив записей `{ "pattern": string, "compress"?: boolean, "directoryStructureOnly"?: boolean }`. Побеждает первый совпавший паттерн; `directoryStructureOnly` имеет приоритет над `compress`, а совпадение без обоих флагов принудительно включает полное содержимое (полезно для исключения файлов из глобального `compress`). |
 | `topFilesLength` | Нет | `10` | Количество самых больших файлов по размеру для отображения в сводке метрик |
 | `style` | Нет | `xml` | Стиль формата вывода: `xml`, `markdown`, `json` или `plain` |
 
@@ -151,9 +159,13 @@ claude mcp add repomix -- npx -y repomix --mcp
 ```json
 {
   "remote": "yamadashy/repomix",
-  "compress": false,
+  "compress": true,
   "includePatterns": "src/**/*.ts,**/*.md",
   "ignorePatterns": "**/*.log,tmp/",
+  "outputPatterns": [
+    { "pattern": "src/core/**" },
+    { "pattern": "docs/**/*", "directoryStructureOnly": true }
+  ],
   "topFilesLength": 10
 }
 ```

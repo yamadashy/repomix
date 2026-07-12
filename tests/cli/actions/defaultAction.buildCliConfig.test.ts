@@ -54,4 +54,30 @@ describe('buildCliConfig', () => {
       expect(result.output?.tokenBudget).toBeUndefined();
     });
   });
+
+  describe('outputPatterns option (internal MCP field)', () => {
+    it('should map outputPatterns into output.patterns', () => {
+      const options: CliOptions = {
+        outputPatterns: [
+          { pattern: 'src/core/**' },
+          { pattern: 'docs/**/*', compress: true },
+          { pattern: 'website/**/*', directoryStructureOnly: true },
+        ],
+      };
+
+      const result = buildCliConfig(options);
+
+      expect(result.output?.patterns).toEqual([
+        { pattern: 'src/core/**' },
+        { pattern: 'docs/**/*', compress: true },
+        { pattern: 'website/**/*', directoryStructureOnly: true },
+      ]);
+    });
+
+    it('should leave patterns undefined when outputPatterns is not provided', () => {
+      const result = buildCliConfig({});
+
+      expect(result.output?.patterns).toBeUndefined();
+    });
+  });
 });

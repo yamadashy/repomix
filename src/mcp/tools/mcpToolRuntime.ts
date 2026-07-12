@@ -2,9 +2,36 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';
 import { generateTreeString } from '../../core/file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../../core/file/fileTypes.js';
 import { getRepomixTmpDir } from '../../shared/tmpDir.js';
+
+/**
+ * Shared MCP input schema for per-file inclusion levels (output.patterns).
+ * Lets an agent build a packing scenario per call, mirroring the config-file
+ * `output.patterns` option. Shape matches the `OutputPattern` config type so it
+ * can be passed straight through to CliOptions.outputPatterns.
+ */
+export const outputPatternsSchema = z
+  .array(
+    z.object({
+      pattern: z.string().min(1).describe('fast-glob pattern, matched the same way as includePatterns/ignorePatterns'),
+      compress: z.boolean().optional().describe('Compress matching files via Tree-sitter instead of full content'),
+      directoryStructureOnly: z
+        .boolean()
+        .optional()
+        .describe('List matching files in the directory structure only, omitting their content'),
+    }),
+  )
+  .optional()
+  .describe(
+    'Per-file inclusion levels. Patterns are evaluated in order and the first match wins; ' +
+      'directoryStructureOnly takes precedence over compress, and a match with neither flag forces FULL content ' +
+      '(use this to exempt specific files from a global compress). Files matching no pattern fall back to the ' +
+      "global compress setting. Overrides any output.patterns from the target repository's repomix.config.json. " +
+      'Example: set compress=true and outputPatterns=[{"pattern":"src/core/**"}] to keep src/core at full detail while compressing everything else.',
+  );
 
 interface OutputFileEntry {
   filePath: string;
