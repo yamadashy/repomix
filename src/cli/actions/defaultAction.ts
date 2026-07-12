@@ -300,6 +300,10 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
   if (options.compress !== undefined) {
     cliConfig.output = { ...cliConfig.output, compress: options.compress };
   }
+  // Internal MCP-only field: whole-array override of output.patterns from the config file.
+  if (options.outputPatterns !== undefined) {
+    cliConfig.output = { ...cliConfig.output, patterns: options.outputPatterns };
+  }
 
   if (options.tokenCountEncoding) {
     cliConfig.tokenCount = { encoding: options.tokenCountEncoding };

@@ -10,6 +10,7 @@ import {
   convertErrorToJson,
   createToolWorkspace,
   formatPackToolResponse,
+  outputPatternsSchema,
 } from './mcpToolRuntime.js';
 
 const packRemoteRepositoryInputSchema = z.object({
@@ -36,6 +37,7 @@ const packRemoteRepositoryInputSchema = z.object({
     .describe(
       'Specify additional files to exclude using fast-glob patterns. Multiple patterns can be comma-separated (e.g., "test/**,*.spec.js", "node_modules/**,dist/**"). These patterns supplement .gitignore and built-in exclusions.',
     ),
+  outputPatterns: outputPatternsSchema,
   topFilesLength: z
     .number()
     .int()
@@ -77,7 +79,15 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
         openWorldHint: true,
       },
     },
-    async ({ remote, compress, includePatterns, ignorePatterns, topFilesLength, style }): Promise<CallToolResult> => {
+    async ({
+      remote,
+      compress,
+      includePatterns,
+      ignorePatterns,
+      outputPatterns,
+      topFilesLength,
+      style,
+    }): Promise<CallToolResult> => {
       let tempDir = '';
 
       try {
@@ -90,6 +100,7 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
           compress,
           include: includePatterns,
           ignore: ignorePatterns,
+          outputPatterns,
           output: outputFilePath,
           style,
           securityCheck: true,

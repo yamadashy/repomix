@@ -28,6 +28,7 @@ describe('PackRemoteRepositoryTool', () => {
     compress?: boolean;
     includePatterns?: string;
     ignorePatterns?: string;
+    outputPatterns?: { pattern: string; compress?: boolean; directoryStructureOnly?: boolean }[];
     topFilesLength?: number;
     style?: 'xml' | 'markdown' | 'json' | 'plain';
   }) => Promise<CallToolResult>;
@@ -112,6 +113,26 @@ describe('PackRemoteRepositoryTool', () => {
       defaultPackResult,
       '/temp/dir/repomix-output.md',
       7,
+    );
+  });
+
+  test('forwards outputPatterns to runCli', async () => {
+    const outputPatterns = [
+      { pattern: 'src/core/**' },
+      { pattern: 'docs/**/*', compress: true },
+      { pattern: 'website/**/*', directoryStructureOnly: true },
+    ];
+
+    await toolHandler({ remote: 'yamadashy/repomix', compress: true, outputPatterns });
+
+    expect(runCli).toHaveBeenCalledWith(
+      ['.'],
+      process.cwd(),
+      expect.objectContaining({
+        remote: 'yamadashy/repomix',
+        compress: true,
+        outputPatterns,
+      }),
     );
   });
 
