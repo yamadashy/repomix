@@ -401,9 +401,9 @@ build/
 ::: warning 安全
 文件处理器会运行配置文件中的**任意命令**，因此遵循严格的信任模型：
 
-- 仅在本地 CLI 运行时（在你自己的机器上运行 `repomix`）启用，此时的信任边界与 npm 脚本或 Makefile 相同。
-- 在库 API（`pack()` / `runCli()`）、MCP 服务器以及托管的 [repomix.com](https://repomix.com) 中**禁用**。
-- 对于远程仓库（`--remote`），仅当同时传递 `--remote-trust-config` 时，才会信任克隆仓库的配置。
+- **仅在本地 CLI 运行时**启用 —— Repomix 认为工作目录中的配置文件属于你自己，这与 npm 脚本或 Makefile 的信任边界相同。同样地，如果你在从他人处获得的仓库中运行 `repomix`，而**事先未检查其 `repomix.config.json`**，其处理器命令将会在你的机器上执行。在打包不受信任的仓库之前，请先检查其配置文件。
+- 在库 API（`pack()` / `runCli()`）、MCP 服务器以及托管的 [repomix.com](https://repomix.com) 中**均被禁用**，因此它们都不能运行配置中的命令。
+- 对于远程仓库（`--remote`），克隆仓库的配置 —— 以及其处理器 —— 仅在你显式传入 `--remote-trust-config` 时才会被信任。若不传入，远程配置甚至不会被加载。
 
 启用的处理器会在启动时记录到日志中，这样来自陌生配置的意外处理器就可以被察觉。
 :::

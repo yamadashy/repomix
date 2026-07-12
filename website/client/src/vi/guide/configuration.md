@@ -349,9 +349,9 @@ Các tùy chọn theo từng bộ xử lý:
 ::: warning Bảo mật
 Bộ xử lý file chạy các **lệnh tùy ý** từ file cấu hình của bạn, vì vậy chúng tuân theo một mô hình tin cậy nghiêm ngặt:
 
-- Chỉ được bật cho các lần chạy CLI cục bộ (chạy `repomix` trên máy của chính bạn), nơi ranh giới tin cậy giống như npm scripts hoặc Makefile.
-- **Bị vô hiệu hóa** đối với library API (`pack()` / `runCli()`), MCP server, và [repomix.com](https://repomix.com) được host.
-- Đối với repository từ xa (`--remote`), cấu hình của repository đã clone chỉ được tin cậy khi `--remote-trust-config` cũng được truyền vào.
+- Chỉ chạy **cho các lần chạy CLI cục bộ**, nơi Repomix giả định rằng cấu hình trong thư mục làm việc của bạn là của chính bạn — cùng ranh giới tin cậy như một npm script hoặc một Makefile. Tương tự, nếu bạn chạy `repomix` bên trong một repository lấy từ người khác **mà không xem xét `repomix.config.json` của nó trước**, các lệnh bộ xử lý của nó sẽ được thực thi trên máy của bạn. Hãy xem xét cấu hình của các repository không đáng tin cậy trước khi pack chúng.
+- **Bị vô hiệu hóa** đối với library API (`pack()` / `runCli()`), MCP server, và [repomix.com](https://repomix.com) được host, vì vậy không cái nào trong số này có thể chạy lệnh từ một cấu hình.
+- Đối với repository từ xa (`--remote`), cấu hình của repository đã clone — và do đó các bộ xử lý của nó — chỉ được tin cậy khi bạn truyền rõ ràng `--remote-trust-config`. Nếu không có nó, cấu hình từ xa thậm chí không được tải.
 
 Các bộ xử lý đang hoạt động được ghi log khi khởi động để các bộ xử lý bất ngờ từ một cấu hình lạ có thể được nhìn thấy.
 :::

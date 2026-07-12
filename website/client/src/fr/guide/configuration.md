@@ -401,9 +401,9 @@ Options par processeur :
 ::: warning Security
 Les processeurs de fichiers exécutent des **commandes arbitraires** depuis votre fichier de configuration, ils suivent donc un modèle de confiance strict :
 
-- Ils ne sont activés que pour les exécutions CLI locales (exécuter `repomix` sur votre propre machine), où la limite de confiance est la même que pour les scripts npm ou un Makefile.
-- Ils sont **désactivés** pour l'API de bibliothèque (`pack()` / `runCli()`), le serveur MCP, et le [repomix.com](https://repomix.com) hébergé.
-- Pour les dépôts distants (`--remote`), la configuration du dépôt cloné n'est fiable que lorsque `--remote-trust-config` est également passé.
+- Ils s'exécutent **uniquement lors des exécutions CLI locales**, où Repomix considère que la configuration présente dans votre répertoire de travail vous appartient — la même limite de confiance qu'un script npm ou qu'un Makefile. De même, si vous exécutez `repomix` dans un dépôt obtenu auprès de quelqu'un d'autre **sans avoir d'abord examiné son `repomix.config.json`**, ses commandes de processeur s'exécuteront sur votre machine. Examinez la configuration des dépôts non fiables avant de les empaqueter.
+- Ils sont **désactivés** pour l'API de bibliothèque (`pack()` / `runCli()`), le serveur MCP et le [repomix.com](https://repomix.com) hébergé, de sorte qu'aucun d'entre eux ne peut exécuter de commandes depuis une configuration.
+- Pour les dépôts distants (`--remote`), la configuration du dépôt cloné — et donc ses processeurs — n'est fiable que lorsque vous passez explicitement `--remote-trust-config`. Sans cela, la configuration distante n'est même pas chargée.
 
 Les processeurs actifs sont journalisés au démarrage afin que les processeurs inattendus provenant d'une configuration inconnue soient visibles.
 :::

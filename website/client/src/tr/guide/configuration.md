@@ -401,9 +401,9 @@ Nasıl çalışır:
 ::: warning Güvenlik
 Dosya işlemcileri, yapılandırma dosyanızdan **rastgele komutlar** çalıştırır, bu nedenle katı bir güven modeline uyarlar:
 
-- Yalnızca yerel CLI çalıştırmalarında (kendi makinenizde `repomix` çalıştırmak) etkindir; burada güven sınırı npm betikleri veya bir Makefile ile aynıdır.
-- Kütüphane API'si (`pack()` / `runCli()`), MCP sunucusu ve barındırılan [repomix.com](https://repomix.com) için **devre dışıdır**.
-- Uzak depolar için (`--remote`), klonlanan deponun yapılandırması yalnızca `--remote-trust-config` da geçirildiğinde güvenilir kabul edilir.
+- **Yalnızca yerel CLI çalıştırmalarında** çalışırlar; burada Repomix, çalışma dizininizdeki yapılandırmanın size ait olduğunu varsayar — bu, bir npm betiği veya bir Makefile ile aynı güven sınırıdır. Benzer şekilde, başka birinden aldığınız bir depo içinde `repomix` çalıştırırsanız ve **önce `repomix.config.json` dosyasını incelemezseniz**, o deponun işlemci komutları makinenizde çalışır. Güvenilmeyen depoları paketlemeden önce yapılandırmalarını inceleyin.
+- Kütüphane API'si (`pack()` / `runCli()`), MCP sunucusu ve barındırılan [repomix.com](https://repomix.com) için **devre dışıdır**, dolayısıyla bunların hiçbiri bir yapılandırmadan komut çalıştıramaz.
+- Uzak depolar için (`--remote`), klonlanan deponun yapılandırması — ve dolayısıyla işlemcileri — yalnızca `--remote-trust-config` seçeneğini açıkça geçtiğinizde güvenilir kabul edilir. Bu olmadan, uzak yapılandırma yüklenmez bile.
 
 Etkin işlemciler başlangıçta günlüğe kaydedilir, böylece tanıdık olmayan bir yapılandırmadan gelen beklenmedik işlemciler görünür olur.
 :::

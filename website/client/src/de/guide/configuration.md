@@ -401,9 +401,9 @@ Optionen pro Prozessor:
 ::: warning Security
 Dateiprozessoren führen **beliebige Befehle** aus Ihrer Konfigurationsdatei aus und folgen daher einem strikten Vertrauensmodell:
 
-- Sie sind nur für lokale CLI-Ausführungen aktiviert (Ausführung von `repomix` auf Ihrem eigenen Rechner), wo die Vertrauensgrenze dieselbe ist wie bei npm-Skripten oder einem Makefile.
-- Sie sind für die Bibliotheks-API (`pack()` / `runCli()`), den MCP-Server und das gehostete [repomix.com](https://repomix.com) **deaktiviert**.
-- Bei Remote-Repositories (`--remote`) wird die Konfiguration des geklonten Repositories nur vertraut, wenn zusätzlich `--remote-trust-config` übergeben wird.
+- Sie laufen **nur bei lokalen CLI-Ausführungen**, wobei Repomix davon ausgeht, dass die Konfiguration in Ihrem Arbeitsverzeichnis Ihre eigene ist — dieselbe Vertrauensgrenze wie bei einem npm-Skript oder einem Makefile. Wenn Sie `repomix` in einem Repository ausführen, das Sie von jemand anderem erhalten haben, **ohne vorher dessen `repomix.config.json` zu prüfen**, werden dessen Prozessorbefehle auf Ihrem Rechner ausgeführt. Prüfen Sie die Konfiguration nicht vertrauenswürdiger Repositories, bevor Sie sie packen.
+- Sie sind für die Bibliotheks-API (`pack()` / `runCli()`), den MCP-Server und das gehostete [repomix.com](https://repomix.com) **deaktiviert**, sodass keines davon Befehle aus einer Konfiguration ausführen kann.
+- Bei Remote-Repositories (`--remote`) wird die Konfiguration des geklonten Repositories — und damit dessen Prozessoren — nur vertraut, wenn Sie explizit `--remote-trust-config` übergeben. Ohne diese Option wird die Remote-Konfiguration nicht einmal geladen.
 
 Aktive Prozessoren werden beim Start protokolliert, sodass unerwartete Prozessoren aus einer unbekannten Konfiguration sichtbar sind.
 :::

@@ -349,9 +349,9 @@ Opsi per-prosesor:
 ::: warning Keamanan
 Prosesor file menjalankan **perintah arbitrer** dari file konfigurasi Anda, sehingga mengikuti model kepercayaan yang ketat:
 
-- Hanya diaktifkan untuk proses CLI lokal (menjalankan `repomix` di mesin Anda sendiri), di mana batas kepercayaannya sama dengan npm scripts atau Makefile.
-- **Dinonaktifkan** untuk library API (`pack()` / `runCli()`), MCP server, dan [repomix.com](https://repomix.com) yang di-hosting.
-- Untuk repositori remote (`--remote`), konfigurasi dari repositori yang di-clone hanya dipercaya ketika `--remote-trust-config` juga digunakan.
+- Hanya berjalan **untuk proses CLI lokal**, di mana Repomix menganggap konfigurasi di direktori kerja Anda adalah milik Anda sendiri — batas kepercayaan yang sama seperti npm script atau Makefile. Begitu pula, jika Anda menjalankan `repomix` di dalam repositori yang diperoleh dari orang lain **tanpa memeriksa `repomix.config.json`-nya terlebih dahulu**, perintah prosesornya akan dieksekusi di mesin Anda. Periksa konfigurasi repositori yang tidak tepercaya sebelum melakukan pack.
+- **Dinonaktifkan** untuk library API (`pack()` / `runCli()`), MCP server, dan [repomix.com](https://repomix.com) yang di-hosting, sehingga tidak satu pun dari ketiganya dapat menjalankan perintah dari konfigurasi.
+- Untuk repositori remote (`--remote`), konfigurasi dari repositori yang di-clone — dan karenanya prosesornya — hanya dipercaya ketika Anda secara eksplisit meneruskan `--remote-trust-config`. Tanpa itu, konfigurasi remote bahkan tidak dimuat.
 
 Prosesor yang aktif dicatat saat startup sehingga prosesor tak terduga dari konfigurasi yang tidak dikenal dapat terlihat.
 :::

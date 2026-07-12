@@ -401,9 +401,9 @@ Per-processor options:
 ::: warning Security
 File processors run **arbitrary commands** from your configuration file, so they follow a strict trust model:
 
-- They are enabled only for local CLI runs (running `repomix` on your own machine), where the trust boundary is the same as npm scripts or a Makefile.
-- They are **disabled** for the library API (`pack()` / `runCli()`), the MCP server, and the hosted [repomix.com](https://repomix.com).
-- For remote repositories (`--remote`), the cloned repository's config is trusted only when `--remote-trust-config` is also passed.
+- They run **only for local CLI runs**, where Repomix assumes the config in your working directory is your own — the same trust boundary as an npm script or a Makefile. As with those, if you run `repomix` inside a repository you obtained from someone else **without reviewing its `repomix.config.json` first**, its processor commands will execute on your machine. Review the config of untrusted repositories before packing them.
+- They are **disabled** for the library API (`pack()` / `runCli()`), the MCP server, and the hosted [repomix.com](https://repomix.com), so none of these can run commands from a config.
+- For remote repositories (`--remote`), the cloned repository's config — and therefore its processors — is trusted only when you explicitly pass `--remote-trust-config`. Without it the remote config is not even loaded.
 
 Active processors are logged at startup so unexpected processors from an unfamiliar config are visible.
 :::
