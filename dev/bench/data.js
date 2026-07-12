@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783871461230,
+  "lastUpdate": 1783871779406,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -8865,6 +8865,51 @@ window.BENCHMARK_DATA = {
             "range": "±24",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1129ms, Q3: 1153ms\nAll times: 1118, 1121, 1124, 1126, 1127, 1129, 1132, 1134, 1137, 1138, 1139, 1140, 1141, 1147, 1151, 1153, 1154, 1159, 1163, 1167ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aa88eacfddb0a6092232390598c0545a470045bd",
+          "message": "Merge pull request #1721 from yamadashy/renovate/browser-non-major-dependencies\n\nchore(deps): update dependency @typescript/native-preview to ^7.0.0-dev.20260705.1",
+          "timestamp": "2026-07-13T00:54:31+09:00",
+          "tree_id": "c3d8589668a7fb09a9dc5c812c8f9fc2aa9987ce",
+          "url": "https://github.com/yamadashy/repomix/commit/aa88eacfddb0a6092232390598c0545a470045bd"
+        },
+        "date": 1783871778670,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 527,
+            "range": "±55",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 508ms, Q3: 563ms\nAll times: 495, 496, 500, 500, 502, 504, 505, 508, 510, 512, 516, 517, 522, 525, 526, 527, 537, 537, 538, 556, 557, 558, 563, 573, 578, 600, 600, 608, 625, 633ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 663,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 658ms, Q3: 674ms\nAll times: 647, 650, 652, 655, 657, 658, 660, 661, 661, 661, 663, 664, 667, 672, 673, 674, 675, 679, 685, 699ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1168,
+            "range": "±43",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1159ms, Q3: 1202ms\nAll times: 1139, 1152, 1154, 1154, 1159, 1159, 1163, 1164, 1167, 1168, 1168, 1173, 1179, 1180, 1186, 1202, 1259, 1332, 1499, 1512ms"
           }
         ]
       }
