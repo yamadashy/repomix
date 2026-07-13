@@ -33,9 +33,9 @@ export const getMarkdownTemplate = () => {
 {{/if}}
 {{#if directoryStructureEnabled}}
 # Directory Structure
-\`\`\`
+{{{markdownCodeBlockDelimiter}}}
 {{{treeString}}}
-\`\`\`
+{{{markdownCodeBlockDelimiter}}}
 
 {{/if}}
 {{#if filesEnabled}}
@@ -53,14 +53,14 @@ export const getMarkdownTemplate = () => {
 {{#if gitDiffEnabled}}
 # Git Diffs
 ## Git Diffs Working Tree
-\`\`\`diff
+{{{markdownCodeBlockDelimiter}}}diff
 {{{gitDiffWorkTree}}}
-\`\`\`
+{{{markdownCodeBlockDelimiter}}}
 
 ## Git Diffs Staged
-\`\`\`diff
+{{{markdownCodeBlockDelimiter}}}diff
 {{{gitDiffStaged}}}
-\`\`\`
+{{{markdownCodeBlockDelimiter}}}
 
 {{/if}}
 
