@@ -35,8 +35,11 @@ export interface DefaultActionRunnerResult {
  * default and watch actions so the config pipeline lives in one place.
  */
 export const buildMergedConfig = async (cwd: string, cliOptions: CliOptions): Promise<RepomixConfigMerged> => {
-  // Run migration before loading config
-  await runMigrationAction(cwd);
+  // A remote repository can opt out of its local config. Its legacy files must
+  // not then trigger an interactive migration or mutate the temporary clone.
+  if (!cliOptions.skipLocalConfig) {
+    await runMigrationAction(cwd);
+  }
 
   // Load the config file in main process
   const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, {
