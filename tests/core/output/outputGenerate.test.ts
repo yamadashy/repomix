@@ -233,6 +233,34 @@ describe('outputGenerate', () => {
     expect(output).toContain('diff --git b/staged.txt');
   });
 
+  test('generateOutput (markdown) widens the code fence so backticks in a git diff cannot close it early', async () => {
+    const fence = '```';
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.md',
+        style: 'markdown',
+        git: { includeDiffs: true },
+      },
+    });
+    const mockProcessedFiles: ProcessedFile[] = [{ path: 'file1.txt', content: 'content1' }];
+    // A unified diff of a Markdown file carries bare ``` context lines (space-prefixed),
+    // which are valid Markdown closing fences and would break a plain ```diff block.
+    const mockGitDiffResult = {
+      workTreeDiffContent: `diff --git a/README.md b/README.md\n@@ -1,3 +1,3 @@\n ${fence}\n-old\n+new\n ${fence}`,
+      stagedDiffContent: '',
+    };
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, [], mockGitDiffResult);
+
+    // The diff fence must be longer than the ``` inside it, so the whole diff stays in one block.
+    const section = output.slice(output.indexOf('## Git Diffs Working Tree'));
+    const openFence = section.match(/^(`+)diff$/m);
+    expect(openFence).not.toBeNull();
+    expect(openFence?.[1].length ?? 0).toBeGreaterThan(fence.length);
+    expect(section).toContain('-old');
+    expect(section).toContain('+new');
+  });
+
   test('generateOutput should include git logs when enabled', async () => {
     const mockConfig = createMockConfig({
       output: {

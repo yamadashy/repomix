@@ -52,9 +52,14 @@ const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
   return compiled;
 };
 
-const calculateMarkdownDelimiter = (files: ReadonlyArray<ProcessedFile>): string => {
-  const maxBackticks = files
-    .flatMap((file) => file.content.match(/`+/g) ?? [])
+// The Markdown template wraps file contents, the directory structure, and git
+// diffs in the same code fence, so the delimiter has to be longer than the
+// longest backtick run across all of them. A diff of a Markdown file, for
+// example, carries bare ``` context lines that would otherwise close the fence
+// early and corrupt the output.
+const calculateMarkdownDelimiter = (contents: ReadonlyArray<string | undefined>): string => {
+  const maxBackticks = contents
+    .flatMap((content) => content?.match(/`+/g) ?? [])
     .reduce((max, match) => Math.max(max, match.length), 0);
   return '`'.repeat(Math.max(3, maxBackticks + 1));
 };
@@ -95,7 +100,12 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter(outputGeneratorContext.processedFiles),
+    markdownCodeBlockDelimiter: calculateMarkdownDelimiter([
+      ...outputGeneratorContext.processedFiles.map((file) => file.content),
+      outputGeneratorContext.treeString,
+      outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
+      outputGeneratorContext.gitDiffResult?.stagedDiffContent,
+    ]),
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
