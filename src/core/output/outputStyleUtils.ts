@@ -219,7 +219,13 @@ const extensionToLanguageMap: Record<string, string> = {
  * @returns The language name for syntax highlighting, or empty string if unknown
  */
 export const getLanguageFromFilePath = (filePath: string): string => {
-  const extension = filePath.split('.').pop()?.toLowerCase();
+  // Match against the basename, not the whole path: the map holds a few
+  // extensionless whole-filename keys (dockerfile, makefile, cmake). A path
+  // like `docker/Dockerfile` has no dot, so splitting the full path on '.'
+  // keeps the directory prefix and misses the map (root-level `Dockerfile`
+  // matched, subdirectory ones silently fell back to no language hint).
+  const basename = filePath.split(/[\\/]/).pop() ?? '';
+  const extension = basename.split('.').pop()?.toLowerCase();
   return extension ? extensionToLanguageMap[extension] || '' : '';
 };
 
