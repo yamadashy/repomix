@@ -85,7 +85,7 @@
     "@secretlint/secretlint-rule-preset-recommend": "^13.0.2",
     "chokidar": "^5.0.0",
     "commander": "^15.0.0",
-    "fast-xml-builder": "^1.2.1",
+    "fast-xml-builder": "^1.3.0",
     "git-url-parse": "^16.1.0",
     "globby": "^16.2.1",
     "gpt-tokenizer": "^3.4.0",
