@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784354685364,
+  "lastUpdate": 1784358718352,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -9180,6 +9180,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 932ms, Q3: 951ms\nAll times: 925, 925, 927, 930, 931, 932, 932, 932, 934, 938, 939, 942, 944, 946, 951, 951, 951, 953, 956, 1010ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fd7bf4d08c8991e7adb586afc51b62e63511e331",
+          "message": "Merge pull request #1736 from yamadashy/chore/renovate-no-pr-limits\n\nchore(renovate): Remove PR creation rate limits",
+          "timestamp": "2026-07-18T16:09:54+09:00",
+          "tree_id": "fc828160976d8c32fc037c902d9541adf4a394de",
+          "url": "https://github.com/yamadashy/repomix/commit/fd7bf4d08c8991e7adb586afc51b62e63511e331"
+        },
+        "date": 1784358717354,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 996,
+            "range": "±140",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 900ms, Q3: 1040ms\nAll times: 666, 716, 749, 808, 851, 856, 894, 900, 942, 950, 957, 965, 970, 983, 990, 996, 1005, 1009, 1023, 1024, 1028, 1033, 1040, 1068, 1087, 1091, 1138, 1162, 1235, 1238ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 935,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 921ms, Q3: 943ms\nAll times: 902, 915, 918, 919, 920, 921, 923, 925, 927, 928, 935, 935, 935, 936, 939, 943, 947, 950, 955, 965ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1250,
+            "range": "±51",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1230ms, Q3: 1281ms\nAll times: 1182, 1202, 1212, 1216, 1222, 1230, 1231, 1236, 1241, 1247, 1250, 1251, 1255, 1259, 1260, 1281, 1292, 1293, 1329, 1361ms"
           }
         ]
       }
