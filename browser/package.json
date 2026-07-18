@@ -17,7 +17,7 @@
     "zip:edge": "wxt zip -b edge",
     "generate-icons": "tsx scripts/generate-icons.ts",
     "lint": "node --run lint-tsc",
-    "lint-tsc": "tsgo --noEmit",
+    "lint-tsc": "tsc --noEmit",
     "test": "vitest",
     "archive": "git archive HEAD -o ./storage/source.zip"
   },
@@ -35,7 +35,6 @@
   "devDependencies": {
     "@types/chrome": "^0.2.2",
     "@types/node": "^24.13.3",
-    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "jsdom": "^29.1.1",
     "sharp": "^0.35.3",
     "tsx": "^4.23.0",
