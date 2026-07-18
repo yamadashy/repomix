@@ -5,6 +5,10 @@
   ],
   "schedule": ["on saturday", "before 1pm on sunday"],
   "rangeStrategy": "bump",
+  // Updates are grouped per area (root/browser/website/scripts/actions),
+  // so open-PR count stays small even without rate limits.
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 0,
   "dependencyDashboard": false,
   "labels": ["dependencies", "renovate"],
   "packageRules": [
