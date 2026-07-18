@@ -256,6 +256,14 @@ export const configShard = defineConfig({
   cleanUrls: true,
   metaChunk: true,
 
+  markdown: {
+    image: {
+      // Defer loading of markdown images until they approach the viewport.
+      // Page LCP elements are text, so this does not delay LCP.
+      lazyLoading: true,
+    },
+  },
+
   sitemap: {
     hostname: `${siteUrl}/`,
   },
