@@ -4,23 +4,6 @@
   --vp-c-brand-3: #c2410c;
   --vp-c-brand-soft: rgba(249, 115, 22, 0.1);
 
-  /*
-   * Accessible brand color for text/links.
-   * The brand orange (#f97316) fails WCAG AA contrast as text on light
-   * backgrounds, so use the darker shade in light mode. On dark backgrounds
-   * the lighter orange has enough contrast, so .dark keeps #f97316.
-   */
-  --brand-text: var(--vp-c-brand-3);
-
-  /* Inline code text: default is the brand orange, which fails contrast on the
-     light code background. Use the accessible brand color instead. */
-  --vp-code-color: var(--brand-text);
-  /* Linked inline code (<a><code>) uses its own token, also the brand orange. */
-  --vp-code-link-color: var(--brand-text);
-  --vp-code-link-hover-color: var(--brand-text);
-  /* Code block language label: default (--vp-c-text-3) is too faint. */
-  --vp-code-lang-color: var(--vp-c-text-2);
-
   --vp-c-danger: #f44336;
 
   --vp-home-hero-name-color: transparent;
@@ -39,43 +22,9 @@
   order: 1;
 }
 
-.dark {
-  --brand-text: var(--vp-c-brand-1);
+.hero-description__accent {
+  color: var(--vp-c-brand-1);
 }
-
-/* Content links: use the accessible brand color, and underline inline links
-   inside prose so they are distinguishable without relying on color alone. */
-.vp-doc a {
-  color: var(--brand-text);
-}
-/* Default hover shifts to the lighter brand-2, which drops below AA on white. */
-.vp-doc a:hover {
-  color: var(--brand-text);
-}
-.vp-doc p a,
-.vp-doc li a {
-  text-decoration: underline;
-}
-
-/* Links/code inside tip blocks default to the brand orange, which fails
-   contrast on the tinted tip background. Use the accessible brand color. */
-.custom-block.tip a,
-.custom-block.tip code,
-.custom-block.tip a:hover,
-.custom-block.tip a:hover > code {
-  color: var(--brand-text);
-}
-
-/* Syntax highlighting comments use #6A737D for both light and dark themes,
-   which fails WCAG AA contrast on the code block background. Raise the contrast
-   per mode by targeting the inline shiki color the tokens carry. */
-html:not(.dark) .vp-code span[style*="#6a737d" i] {
-  color: #57606a;
-}
-.dark .vp-code span[style*="#6a737d" i] {
-  color: #8b949e;
-}
-
 .cli-section {
   margin-bottom: 32px;
   max-width: 800px;

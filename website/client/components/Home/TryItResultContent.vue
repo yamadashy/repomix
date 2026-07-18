@@ -444,7 +444,7 @@ dd {
 }
 
 .cli-banner-icon {
-  color: var(--brand-text);
+  color: var(--vp-c-brand-1);
   flex-shrink: 0;
 }
 
@@ -477,7 +477,7 @@ dd {
   border: 1px solid var(--vp-c-brand-1);
   border-radius: 6px;
   background: var(--vp-c-bg);
-  color: var(--brand-text);
+  color: var(--vp-c-brand-1);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
