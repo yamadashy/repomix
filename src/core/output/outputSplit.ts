@@ -222,15 +222,20 @@ export const generateSplitOutputParts = async ({
     currentBytes = 0;
   };
 
-  // Note: This algorithm has O(N²) complexity where N is the number of groups.
-  // For each group, we render all accumulated groups to measure the exact output size.
-  // This approach is intentional because:
+  // Note: Measuring each part exactly means rendering all groups accumulated so far, giving a
+  // base cost of O(N²) in the number of groups N. N is not fixed: a group that cannot fit even
+  // on its own is subdivided one directory level deeper and re-queued (see below), so on
+  // pathological inputs (e.g. a single huge top-level directory) N — and the number of renders —
+  // grows until each part fits, bottoming out at individual files. This exact-render approach is
+  // intentional because:
   // 1. The final output size cannot be predicted by simple addition - the output includes
   //    a file tree structure and template formatting (XML/Markdown) that vary non-linearly.
   // 2. Headers, footers, and file tree size change based on the combination of groups.
   // 3. For typical repositories with ~10-20 top-level directories, this is acceptable.
-  // If performance becomes an issue, consider caching individual group content sizes
-  // and estimating combined sizes with a safety margin.
+  // If performance becomes an issue, consider caching each group's standalone render size (their
+  // sum is an upper bound on the combined size, since shared tree structure and fixed overhead
+  // are only counted once when combined) to skip the exact render when a part clearly fits, and
+  // fall back to an exact render only near the limit so correctness is preserved.
   while (queue.length > 0) {
     const group = queue.shift() as OutputSplitGroup;
     const partIndex = parts.length + 1;
