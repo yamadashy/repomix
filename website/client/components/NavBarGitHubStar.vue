@@ -20,8 +20,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="isDesktop" class="nav-github-star">
+  <!-- The wrapper is always rendered (hidden below 960px via CSS) so the navbar
+       reserves the button's width before the client-side mount inserts the
+       iframe; gating the wrapper itself with v-if shifts the navbar (CLS). -->
+  <div class="nav-github-star">
     <iframe
+      v-if="isDesktop"
       title="Star yamadashy/repomix on GitHub"
       src="https://unpkg.com/github-buttons@2.29.1/dist/buttons.html#href=https%3A%2F%2Fgithub.com%2Fyamadashy%2Frepomix&data-text=Star&data-size=large&data-show-count=true&data-color-scheme=no-preference%3A+light%3B+light%3A+light%3B+dark%3A+dark%3B"
       sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
@@ -33,11 +37,21 @@ onUnmounted(() => {
 
 <style scoped>
 .nav-github-star {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: var(--vp-nav-height);
-  padding: 0 12px;
+  display: none;
+}
+
+/* Match the JS breakpoint (min-width: 960px) that gates the iframe. */
+@media (min-width: 960px) {
+  .nav-github-star {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    height: var(--vp-nav-height);
+    /* 130px iframe + 12px padding on each side */
+    width: 154px;
+    padding: 0 12px;
+  }
 }
 
 .github-star-button {

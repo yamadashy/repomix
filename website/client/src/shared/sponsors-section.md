@@ -3,8 +3,11 @@
    <br>
    <br>
 
+<!-- Image width/height attributes reserve layout space before load (CLS).
+     The values only need to match the source image's aspect ratio;
+     style="height: auto" keeps the ratio when max-width shrinks the image. -->
    <a href="https://go.warp.dev/repomix" target="_blank">
-      <img alt="Warp sponsorship" width="400" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/main/Github/Sponsor/Warp-Github-LG-01.png">
+      <img alt="Warp sponsorship" width="400" height="225" style="height: auto" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/main/Github/Sponsor/Warp-Github-LG-01.png">
    </a>
 
   [Warp, built for coding with multiple AI agents](https://go.warp.dev/repomix)  
@@ -16,7 +19,7 @@
    <a href="https://coderabbit.link/repomix" target="_blank">
       <picture>
          <source media="(prefers-color-scheme: dark)" srcset="/images/sponsors/coderabbit/dark.png">
-         <img alt="CodeRabbit sponsorship" width="400" src="/images/sponsors/coderabbit/light.png">
+         <img alt="CodeRabbit sponsorship" width="400" height="58" style="height: auto" src="/images/sponsors/coderabbit/light.png">
       </picture>
    </a>
 
@@ -26,7 +29,11 @@
 
 </div>
 
-[![Sponsors](https://cdn.jsdelivr.net/gh/yamadashy/sponsor-list/sponsors/sponsors.png)](https://github.com/sponsors/yamadashy)
+<!-- sponsors.png is auto-generated and its size changes as sponsors change;
+     the width/height here only need to stay roughly in sync for space reservation. -->
+<a href="https://github.com/sponsors/yamadashy">
+  <img alt="Sponsors" width="1667" height="819" style="height: auto" src="https://cdn.jsdelivr.net/gh/yamadashy/sponsor-list/sponsors/sponsors.png">
+</a>
 
 <div align="center" style="margin: 8px 0 0;">
   <p style="margin: 0 0 12px;">Please consider sponsoring me.</p>
