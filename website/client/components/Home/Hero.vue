@@ -42,7 +42,7 @@ const { site } = useData();
 }
 
 .hero-description__accent {
-  color: var(--brand-text);
+  color: var(--vp-c-brand-1);
 }
 
 .hero-tagline {

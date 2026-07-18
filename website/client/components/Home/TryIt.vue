@@ -418,7 +418,7 @@ onMounted(() => {
 }
 
 .reset-button:hover {
-  color: var(--brand-text);
+  color: var(--vp-c-brand-1);
   border-color: var(--vp-c-brand-1);
   background: var(--vp-c-bg-soft);
 

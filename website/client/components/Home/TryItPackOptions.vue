@@ -299,7 +299,11 @@ function handleCompressToggle(enabled: boolean) {
 }
 
 .option-label a {
-  color: var(--brand-text);
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+}
+
+.option-label a:hover {
   text-decoration: underline;
 }
 
@@ -331,9 +335,8 @@ function handleCompressToggle(enabled: boolean) {
 }
 
 .format-button.active {
-  /* Use the darker brand shade so white text meets WCAG AA contrast. */
-  background: var(--vp-c-brand-3);
-  border-color: var(--vp-c-brand-3);
+  background: var(--vp-c-brand-1);
+  border-color: var(--vp-c-brand-1);
   color: white;
 }
 

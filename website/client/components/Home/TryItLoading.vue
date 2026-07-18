@@ -110,13 +110,13 @@ const detailMessage = computed(() => {
 .sponsor-section .sponsor-title {
   font-weight: bold;
   font-size: 1.1em;
-  color: var(--brand-text);
+  color: var(--vp-c-brand-1);
   text-decoration: underline;
 }
 
 .sponsor-section .sponsor-subtitle {
   font-size: 0.9em;
-  color: var(--brand-text);
+  color: var(--vp-c-brand-1);
   text-decoration: underline;
 }
 
