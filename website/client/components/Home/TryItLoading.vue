@@ -37,7 +37,7 @@ const detailMessage = computed(() => {
     <div class="sponsor-section">
       <p class="sponsor-header">Special thanks to:</p>
       <a href="https://go.warp.dev/repomix" target="_blank" rel="noopener noreferrer">
-        <img alt="Warp sponsorship" width="400" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/main/Github/Sponsor/Warp-Github-LG-01.png">
+        <img alt="Warp sponsorship" width="400" height="225" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/main/Github/Sponsor/Warp-Github-LG-01.png">
       </a>
       <p class="sponsor-title">
         <a href="https://go.warp.dev/repomix" target="_blank" rel="noopener noreferrer">
