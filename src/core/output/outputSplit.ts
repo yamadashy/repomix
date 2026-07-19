@@ -31,6 +31,50 @@ export const getRootEntry = (relativeFilePath: string): string => {
   return first || normalized;
 };
 
+// Returns the first `depth` path segments joined with '/'. Used to key a group at a
+// deeper directory level than its current one when a single group is too large to fit.
+const getPathPrefix = (relativeFilePath: string, depth: number): string => {
+  const normalized = relativeFilePath.replaceAll(path.win32.sep, path.posix.sep);
+  return normalized.split('/').slice(0, depth).join('/');
+};
+
+// Re-partition an oversized group one directory level deeper. A group keyed by 'src'
+// becomes groups keyed by 'src/a', 'src/b', 'src/file.ts', and so on. Returns null when
+// the group can no longer be divided (a single file, which cannot be split across parts).
+export const subdivideSplitGroup = (group: OutputSplitGroup): OutputSplitGroup[] | null => {
+  const childDepth = group.rootEntry.split('/').length + 1;
+  const childrenByKey = new Map<string, OutputSplitGroup>();
+
+  for (const processedFile of group.processedFiles) {
+    const key = getPathPrefix(processedFile.path, childDepth);
+    const existing = childrenByKey.get(key);
+    if (existing) {
+      existing.processedFiles.push(processedFile);
+    } else {
+      childrenByKey.set(key, { rootEntry: key, processedFiles: [processedFile], allFilePaths: [] });
+    }
+  }
+
+  for (const filePath of group.allFilePaths) {
+    const key = getPathPrefix(filePath, childDepth);
+    const existing = childrenByKey.get(key);
+    if (existing) {
+      existing.allFilePaths.push(filePath);
+    } else {
+      childrenByKey.set(key, { rootEntry: key, processedFiles: [], allFilePaths: [filePath] });
+    }
+  }
+
+  const children = [...childrenByKey.values()].sort((a, b) => a.rootEntry.localeCompare(b.rootEntry));
+
+  // No progress: every path already resolves to the group's own key (a single file), so
+  // there is nothing finer to split into.
+  if (children.length === 1 && children[0].rootEntry === group.rootEntry) {
+    return null;
+  }
+  return children;
+};
+
 export const buildOutputSplitGroups = (processedFiles: ProcessedFile[], allFilePaths: string[]): OutputSplitGroup[] => {
   const groupsByRootEntry = new Map<string, OutputSplitGroup>();
 
@@ -161,16 +205,39 @@ export const generateSplitOutputParts = async ({
   let currentContent = '';
   let currentBytes = 0;
 
-  // Note: This algorithm has O(N²) complexity where N is the number of groups.
-  // For each group, we render all accumulated groups to measure the exact output size.
-  // This approach is intentional because:
+  // Groups are processed via a queue so an oversized group can be replaced in place by its
+  // finer-grained subdivisions (see below) and re-evaluated without special-casing the loop.
+  const queue: OutputSplitGroup[] = [...groups];
+
+  const finalizeCurrentPart = () => {
+    parts.push({
+      index: parts.length + 1,
+      filePath: buildSplitOutputFilePath(baseConfig.output.filePath, parts.length + 1),
+      content: currentContent,
+      byteLength: currentBytes,
+      groups: currentGroups,
+    });
+    currentGroups = [];
+    currentContent = '';
+    currentBytes = 0;
+  };
+
+  // Note: Measuring each part exactly means rendering all groups accumulated so far, giving a
+  // base cost of O(N²) in the number of groups N. N is not fixed: a group that cannot fit even
+  // on its own is subdivided one directory level deeper and re-queued (see below), so on
+  // pathological inputs (e.g. a single huge top-level directory) N — and the number of renders —
+  // grows until each part fits, bottoming out at individual files. This exact-render approach is
+  // intentional because:
   // 1. The final output size cannot be predicted by simple addition - the output includes
   //    a file tree structure and template formatting (XML/Markdown) that vary non-linearly.
   // 2. Headers, footers, and file tree size change based on the combination of groups.
   // 3. For typical repositories with ~10-20 top-level directories, this is acceptable.
-  // If performance becomes an issue, consider caching individual group content sizes
-  // and estimating combined sizes with a safety margin.
-  for (const group of groups) {
+  // If performance becomes an issue, consider caching each group's standalone render size (their
+  // sum is an upper bound on the combined size, since shared tree structure and fixed overhead
+  // are only counted once when combined) to skip the exact render when a part clearly fits, and
+  // fall back to an exact render only near the limit so correctness is preserved.
+  while (queue.length > 0) {
+    const group = queue.shift() as OutputSplitGroup;
     const partIndex = parts.length + 1;
     const nextGroups = [...currentGroups, group];
     progressCallback(`Generating output... (part ${partIndex}) ${pc.dim(`evaluating ${group.rootEntry}`)}`);
@@ -194,57 +261,31 @@ export const generateSplitOutputParts = async ({
       continue;
     }
 
-    if (currentGroups.length === 0) {
-      throw new RepomixError(
-        `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-          `Part size ${nextBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
-      );
+    // The group does not fit alongside what is already accumulated: flush the current part
+    // and retry this group on a fresh part.
+    if (currentGroups.length > 0) {
+      finalizeCurrentPart();
+      queue.unshift(group);
+      continue;
     }
 
-    // Finalize current part and start a new one with the current group.
-    parts.push({
-      index: partIndex,
-      filePath: buildSplitOutputFilePath(baseConfig.output.filePath, partIndex),
-      content: currentContent,
-      byteLength: currentBytes,
-      groups: currentGroups,
-    });
+    // The group does not fit even on its own. Split it one directory level deeper and retry
+    // the finer-grained groups. Only a single file cannot be divided further.
+    const subGroups = subdivideSplitGroup(group);
+    if (subGroups) {
+      queue.unshift(...subGroups);
+      continue;
+    }
 
-    const newPartIndex = parts.length + 1;
-    progressCallback(`Generating output... (part ${newPartIndex}) ${pc.dim(`evaluating ${group.rootEntry}`)}`);
-    const singleGroupContent = await renderGroups(
-      [group],
-      newPartIndex,
-      rootDirs,
-      baseConfig,
-      gitDiffResult,
-      gitLogResult,
-      filePathsByRoot,
-      emptyDirPaths,
-      deps.generateOutput,
+    throw new RepomixError(
+      `Cannot split output: '${group.rootEntry}' exceeds max size on its own. ` +
+        `Size ${nextBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes. ` +
+        'A single file cannot be split across parts.',
     );
-    const singleGroupBytes = getUtf8ByteLength(singleGroupContent);
-    if (singleGroupBytes > maxBytesPerPart) {
-      throw new RepomixError(
-        `Cannot split output: root entry '${group.rootEntry}' exceeds max size. ` +
-          `Part size ${singleGroupBytes.toLocaleString()} bytes > limit ${maxBytesPerPart.toLocaleString()} bytes.`,
-      );
-    }
-
-    currentGroups = [group];
-    currentContent = singleGroupContent;
-    currentBytes = singleGroupBytes;
   }
 
   if (currentGroups.length > 0) {
-    const finalIndex = parts.length + 1;
-    parts.push({
-      index: finalIndex,
-      filePath: buildSplitOutputFilePath(baseConfig.output.filePath, finalIndex),
-      content: currentContent,
-      byteLength: currentBytes,
-      groups: currentGroups,
-    });
+    finalizeCurrentPart();
   }
 
   return parts;
