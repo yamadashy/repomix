@@ -84,6 +84,10 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+::: warning
+`--remote-trust-config`를 사용하면 원격 저장소의 설정이 사용자의 로컬 환경과 동일한 수준으로 신뢰됩니다. 신뢰된 설정은 (`input.processors`를 통해) **임의의 명령을 실행**할 수 있고, (`output.instructionFilePath`나 `../`를 사용하는 include 패턴 등을 통해) **저장소 외부의 로컬 파일을 읽을** 수도 있습니다. 완전히 신뢰하고 검토를 마친 저장소에서만 사용하세요. 낯선 출처의 `npm install`이나 `Makefile`을 실행하기 전에 기울이는 것과 같은 주의가 필요합니다.
+:::
+
 `--remote`와 `--config`를 함께 사용할 때는 절대 경로를 지정해야 합니다:
 
 ```bash

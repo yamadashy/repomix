@@ -62,7 +62,7 @@ description: Referensi lengkap opsi CLI Repomix untuk input, output, pemilihan f
 |------|-----------|
 | `--remote <url>` | Mengkloning dan mengemas repositori remote (URL GitHub atau format `user/repo`) |
 | `--remote-branch <name>` | Branch, tag, atau commit spesifik yang akan digunakan (default: branch default repositori) |
-| `--remote-trust-config` | Memercayai dan memuat file konfigurasi dari repositori remote (dinonaktifkan secara default untuk keamanan) |
+| `--remote-trust-config` | Memercayai dan memuat file konfigurasi dari repositori remote. Konfigurasi yang dipercaya dapat menjalankan perintah dan membaca file lokal, jadi gunakan opsi ini hanya untuk repositori yang sepenuhnya Anda percayai (dinonaktifkan secara default untuk keamanan) |
 
 ## Opsi Konfigurasi
 

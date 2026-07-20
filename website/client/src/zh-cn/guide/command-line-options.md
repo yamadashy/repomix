@@ -62,7 +62,7 @@ description: 查阅 Repomix CLI 的所有选项，涵盖输入、输出、文件
 |------|------|
 | `--remote <url>` | 克隆并打包远程仓库（GitHub URL 或 `user/repo` 格式） |
 | `--remote-branch <name>` | 要使用的特定分支、标签或提交（默认：仓库的默认分支） |
-| `--remote-trust-config` | 信任并加载远程仓库的配置文件（出于安全考虑默认禁用） |
+| `--remote-trust-config` | 信任并加载远程仓库的配置文件。被信任的配置可以执行命令并读取本地文件，因此请仅对你完全信任的仓库使用（出于安全考虑默认禁用） |
 
 ## 配置选项
 

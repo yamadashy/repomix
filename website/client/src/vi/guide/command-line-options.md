@@ -62,7 +62,7 @@ description: Tham khảo mọi tùy chọn Repomix CLI cho input, output, chọn
 |-----------|-------|
 | `--remote <url>` | Clone và đóng gói kho lưu trữ từ xa (URL GitHub hoặc định dạng `user/repo`) |
 | `--remote-branch <name>` | Nhánh, tag, hoặc commit cụ thể để sử dụng (mặc định: nhánh mặc định của kho lưu trữ) |
-| `--remote-trust-config` | Tin tưởng và tải tệp cấu hình từ kho lưu trữ từ xa (mặc định bị tắt vì lý do bảo mật) |
+| `--remote-trust-config` | Tin tưởng và tải tệp cấu hình từ kho lưu trữ từ xa. Một cấu hình đáng tin cậy có thể thực thi lệnh và đọc tệp cục bộ, vì vậy chỉ sử dụng cho các kho lưu trữ mà bạn hoàn toàn tin tưởng (mặc định bị tắt vì lý do bảo mật) |
 
 ## Tùy chọn Cấu hình
 

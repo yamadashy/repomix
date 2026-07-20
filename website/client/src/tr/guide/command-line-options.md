@@ -62,7 +62,7 @@ description: "Girdi, çıktı, dosya seçimi, uzak depolar, yapılandırma, güv
 |---------|----------|
 | `--remote <url>` | Uzak bir depoyu klonla ve paketle (GitHub URL'si veya `kullanıcı/depo` formatı) |
 | `--remote-branch <name>` | Kullanılacak belirli dal, etiket veya commit (varsayılan: deponun varsayılan dalı) |
-| `--remote-trust-config` | Uzak depolardan yapılandırma dosyalarına güven ve yükle (güvenlik için varsayılan olarak devre dışı) |
+| `--remote-trust-config` | Uzak depolardan yapılandırma dosyalarına güven ve yükle. Güvenilen bir yapılandırma komut çalıştırabilir ve yerel dosyaları okuyabilir, bu yüzden bu seçeneği yalnızca tamamen güvendiğiniz depolar için kullanın (güvenlik için varsayılan olarak devre dışı) |
 
 ## Yapılandırma Seçenekleri
 

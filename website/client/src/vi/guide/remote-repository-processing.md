@@ -84,6 +84,10 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+::: warning
+`--remote-trust-config` cấp cho cấu hình của kho lưu trữ từ xa mức độ tin cậy ngang với máy của chính bạn. Một cấu hình đáng tin cậy có thể (thông qua `input.processors`) **thực thi các lệnh tùy ý** và (ví dụ thông qua `output.instructionFilePath` hoặc các mẫu include sử dụng `../`) **đọc các tệp cục bộ nằm ngoài kho lưu trữ**. Chỉ sử dụng tùy chọn này cho các kho lưu trữ mà bạn hoàn toàn tin tưởng và đã kiểm tra kỹ, với sự thận trọng tương tự như trước khi chạy `npm install` hoặc `Makefile` từ một nguồn không quen thuộc.
+:::
+
 Khi sử dụng `--config` với `--remote`, bắt buộc phải có đường dẫn tuyệt đối:
 
 ```bash
