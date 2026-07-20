@@ -57,6 +57,17 @@ const findConfigFile = async (configPaths: string[], logPrefix: string): Promise
   return null;
 };
 
+/**
+ * Returns the absolute path of the local repomix config file under `rootDir`,
+ * or null if none exists. Uses the same name/priority order as config loading,
+ * so callers (e.g. the remote-config trust prompt) resolve exactly the file
+ * that would be loaded.
+ */
+export const findLocalConfigPath = async (rootDir: string): Promise<string | null> => {
+  const localConfigPaths = defaultConfigPaths.map((configPath) => path.resolve(rootDir, configPath));
+  return findConfigFile(localConfigPaths, 'local');
+};
+
 // Default jiti import implementation for loading JS/TS config files
 // Lazy-loads jiti to avoid importing its heavy TypeScript toolchain
 // when using JSON/JSON5 config files or default config (the common case).

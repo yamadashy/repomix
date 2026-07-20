@@ -12,6 +12,7 @@ import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { Spinner } from '../cliSpinner.js';
 import { validateTokenBudget } from '../cliTokenBudget.js';
+import { confirmRemoteConfigTrust } from '../prompts/remoteConfigTrustPrompt.js';
 import { promptSkillLocation, resolveAndPrepareSkillDir } from '../prompts/skillPrompts.js';
 import type { CliOptions } from '../types.js';
 import { type DefaultActionRunnerResult, runDefaultAction } from './defaultAction.js';
@@ -28,6 +29,7 @@ export const runRemoteAction = async (
     isGitHubRepository,
     parseGitHubRepoInfo,
     isArchiveDownloadSupported,
+    confirmRemoteConfigTrust,
   },
 ): Promise<DefaultActionRunnerResult> => {
   // Validate --config path before any expensive operations (download/clone):
@@ -132,6 +134,19 @@ export const runRemoteAction = async (
     // Pass the pre-computed skill name, directory, project name, and source URL
     const skillSourceUrl = cliOptions.skillGenerate !== undefined ? repoUrl : undefined;
     const trustRemoteConfig = cliOptions.remoteTrustConfig || process.env.REPOMIX_REMOTE_TRUST_CONFIG === 'true';
+
+    // When trusting a remote repo's config, confirm with the user first (unless
+    // --force / non-interactive / already trusted). Throws if the user declines.
+    if (trustRemoteConfig) {
+      await deps.confirmRemoteConfigTrust({
+        repoDir: tempDirPath,
+        repoUrl,
+        force: cliOptions.force ?? false,
+        stdout: cliOptions.stdout ?? false,
+        hasExplicitConfig: Boolean(cliOptions.config),
+      });
+    }
+
     const optionsWithSkill = {
       ...cliOptions,
       skillName,

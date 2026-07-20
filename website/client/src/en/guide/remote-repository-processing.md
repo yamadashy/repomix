@@ -88,6 +88,16 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 `--remote-trust-config` grants the remote repository's config the same trust as your own machine. A trusted config can **run arbitrary commands** (via `input.processors`) and **read local files outside the repository** (e.g. via `output.instructionFilePath` or include patterns using `../`). Only use it for repositories you fully trust and have reviewed — the same caution you would apply before running `npm install` or a `Makefile` from an unfamiliar source.
 :::
 
+### Confirmation prompt
+
+When you trust a repository's config in an interactive terminal, repomix shows the config that is about to run and asks you to confirm before loading it:
+
+- **Yes, once** — trust this run only.
+- **Yes, and don't ask again for this repository** — remembered until your temporary files are cleared, and only while the config stays the same (a changed config prompts again).
+- **No** — abort without running the config.
+
+The prompt is skipped when you pass `--force`, in non-interactive shells such as CI (the config is trusted as before, keeping existing automation working), or once you have chosen to always trust that repository.
+
 When using `--config` with `--remote`, an absolute path is required:
 
 ```bash

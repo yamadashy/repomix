@@ -82,6 +82,16 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 `--remote-trust-config` accorde à la configuration du dépôt distant le même niveau de confiance qu'à votre propre machine. Une configuration de confiance peut **exécuter des commandes arbitraires** (via `input.processors`) et **lire des fichiers locaux en dehors du dépôt** (par exemple via `output.instructionFilePath` ou des motifs d'inclusion utilisant `../`). N'utilisez cette option que pour des dépôts auxquels vous faites entièrement confiance et que vous avez vérifiés, avec la même prudence que vous appliqueriez avant d'exécuter un `npm install` ou un `Makefile` provenant d'une source inconnue.
 :::
 
+### Invite de confirmation
+
+Lorsque vous faites confiance à la configuration d'un dépôt dans un terminal interactif, repomix affiche la configuration qui est sur le point de s'exécuter et vous demande de confirmer avant de la charger :
+
+- **Oui, une seule fois** : ne fait confiance qu'à cette exécution.
+- **Oui, et ne plus demander pour ce dépôt** : mémorisé jusqu'à ce que vos fichiers temporaires soient effacés, et seulement tant que la configuration reste identique (une configuration modifiée déclenche à nouveau l'invite).
+- **Non** : abandonne sans exécuter la configuration.
+
+L'invite est ignorée si vous passez `--force`, dans des shells non interactifs tels que la CI (la configuration reste alors considérée comme fiable comme auparavant, ce qui permet aux automatisations existantes de continuer à fonctionner), ou une fois que vous avez choisi de toujours faire confiance à ce dépôt.
+
 Lors de l'utilisation de `--config` avec `--remote`, un chemin absolu est requis :
 
 ```bash

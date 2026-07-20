@@ -204,7 +204,7 @@ export const run = async () => {
       )
       .option('--skill-project-name <name>', 'Override the project name used in generated Skills descriptions')
       .option('--skill-output <path>', 'Specify skill output directory path directly (skips location prompt)')
-      .option('-f, --force', 'Skip all confirmation prompts (currently: skill directory overwrite)')
+      .option('-f, --force', 'Skip all confirmation prompts (skill directory overwrite, remote config trust)')
       // Watch Mode
       .optionsGroup('Watch Mode')
       .option('-w, --watch', 'Watch for file changes and automatically re-pack')

@@ -62,6 +62,7 @@ describe('remoteAction functions', () => {
           isGitHubRepository: vi.fn().mockReturnValue(false),
           parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+          confirmRemoteConfigTrust: vi.fn(),
         },
       );
 
@@ -98,6 +99,7 @@ describe('remoteAction functions', () => {
             isGitHubRepository: vi.fn().mockReturnValue(false),
             parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
             isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+            confirmRemoteConfigTrust: vi.fn(),
           },
         ),
       ).rejects.toThrow(/exceeds the token budget/);
@@ -139,6 +141,7 @@ describe('remoteAction functions', () => {
           isGitHubRepository: vi.fn().mockReturnValue(false),
           parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+          confirmRemoteConfigTrust: vi.fn(),
         },
       );
 
@@ -177,6 +180,7 @@ describe('remoteAction functions', () => {
           isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          confirmRemoteConfigTrust: vi.fn(),
         },
       );
 
@@ -204,6 +208,7 @@ describe('remoteAction functions', () => {
           isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          confirmRemoteConfigTrust: vi.fn(),
         },
       );
 
@@ -231,6 +236,7 @@ describe('remoteAction functions', () => {
             isGitHubRepository: vi.fn().mockReturnValue(true),
             parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
             isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+            confirmRemoteConfigTrust: vi.fn(),
           },
         ),
       ).rejects.toThrow('Git is not installed or not in the system PATH.');
@@ -256,6 +262,7 @@ describe('remoteAction functions', () => {
           isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          confirmRemoteConfigTrust: vi.fn(),
         },
       );
 
@@ -284,6 +291,7 @@ describe('remoteAction functions', () => {
           isGitHubRepository: vi.fn().mockReturnValue(false),
           parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+          confirmRemoteConfigTrust: vi.fn(),
         },
       );
 
@@ -312,6 +320,7 @@ describe('remoteAction functions', () => {
           isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          confirmRemoteConfigTrust: vi.fn(),
         },
       );
 
@@ -340,6 +349,7 @@ describe('remoteAction functions', () => {
           isGitHubRepository: vi.fn().mockReturnValue(false),
           parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+          confirmRemoteConfigTrust: vi.fn(),
         },
       );
 
@@ -372,6 +382,7 @@ describe('remoteAction functions', () => {
             isGitHubRepository: vi.fn().mockReturnValue(false),
             parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
             isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+            confirmRemoteConfigTrust: vi.fn(),
           },
         );
 
@@ -411,6 +422,7 @@ describe('remoteAction functions', () => {
             isGitHubRepository: vi.fn().mockReturnValue(false),
             parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
             isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+            confirmRemoteConfigTrust: vi.fn(),
           },
         );
 
@@ -444,6 +456,7 @@ describe('remoteAction functions', () => {
             isGitHubRepository: vi.fn().mockReturnValue(true),
             parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
             isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+            confirmRemoteConfigTrust: vi.fn(),
           },
         ),
       ).rejects.toThrow('--config must be an absolute path');
@@ -463,6 +476,7 @@ describe('remoteAction functions', () => {
             isGitHubRepository: vi.fn().mockReturnValue(true),
             parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
             isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+            confirmRemoteConfigTrust: vi.fn(),
           },
         ),
       ).rejects.toThrow('--config must be an absolute path');
@@ -484,6 +498,7 @@ describe('remoteAction functions', () => {
           isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          confirmRemoteConfigTrust: vi.fn(),
         },
       );
 
@@ -504,6 +519,7 @@ describe('remoteAction functions', () => {
             isGitHubRepository: vi.fn().mockReturnValue(true),
             parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
             isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+            confirmRemoteConfigTrust: vi.fn(),
           },
         ),
       ).rejects.toThrow('--config must be an absolute path');
