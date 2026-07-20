@@ -62,7 +62,7 @@ description: "Consulta todas las opciones de la CLI de Repomix para entrada, sal
 |--------|-------------|
 | `--remote <url>` | Clonar y empaquetar un repositorio remoto (URL de GitHub o formato `user/repo`) |
 | `--remote-branch <name>` | Rama, etiqueta o commit específico a usar (por defecto: la rama por defecto del repositorio) |
-| `--remote-trust-config` | Confiar y cargar archivos de configuración de repositorios remotos (deshabilitado por defecto por seguridad) |
+| `--remote-trust-config` | Confiar y cargar archivos de configuración de repositorios remotos. Una configuración de confianza puede ejecutar comandos y leer archivos locales, así que úsala solo para repositorios en los que confíes plenamente (deshabilitado por defecto por seguridad) |
 
 ## Opciones de configuración
 

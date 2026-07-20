@@ -62,7 +62,7 @@ description: "Consulta tutte le opzioni della CLI Repomix per input, output, sel
 |---------|-------------|
 | `--remote <url>` | Clona e impacchetta un repository remoto (URL GitHub o formato `user/repo`) |
 | `--remote-branch <name>` | Branch, tag o commit specifico da usare (predefinito: branch predefinito del repository) |
-| `--remote-trust-config` | Considera affidabili e carica i file di configurazione dai repository remoti (disabilitato per impostazione predefinita per sicurezza) |
+| `--remote-trust-config` | Considera affidabili e carica i file di configurazione dai repository remoti. Una configurazione attendibile può eseguire comandi e leggere file locali, quindi usala solo per repository di cui ti fidi pienamente (disabilitato per impostazione predefinita per sicurezza) |
 
 ## Opzioni di Configurazione
 

@@ -62,7 +62,7 @@ description: "Referenz aller Repomix-CLI-Optionen für Eingabe, Ausgabe, Dateiau
 |--------|-------------|
 | `--remote <url>` | Remote-Repository klonen und packen (GitHub-URL oder `user/repo`-Format) |
 | `--remote-branch <name>` | Spezifischen Branch, Tag oder Commit verwenden (Standard: Standard-Branch des Repositories) |
-| `--remote-trust-config` | Konfigurationsdateien aus Remote-Repositories vertrauen und laden (aus Sicherheitsgründen standardmäßig deaktiviert) |
+| `--remote-trust-config` | Konfigurationsdateien aus Remote-Repositories vertrauen und laden. Eine vertrauenswürdige Konfiguration kann Befehle ausführen und lokale Dateien lesen, verwenden Sie diese Option daher nur für Repositories, denen Sie vollständig vertrauen (aus Sicherheitsgründen standardmäßig deaktiviert) |
 
 ## Konfigurationsoptionen
 

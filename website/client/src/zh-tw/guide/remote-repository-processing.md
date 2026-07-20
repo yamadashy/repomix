@@ -84,6 +84,10 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+::: warning
+`--remote-trust-config` 會讓遠端倉庫的設定獲得與本機同等的信任等級。受信任的設定可以（透過 `input.processors`）**執行任意命令**，也可以（例如透過 `output.instructionFilePath` 或使用 `../` 的 include 模式）**讀取倉庫之外的本機檔案**。請僅在您完全信任且已審查過的倉庫中使用，這應與執行來自陌生來源的 `npm install` 或 `Makefile` 之前所抱持的謹慎程度相同。
+:::
+
 在 `--remote` 模式下使用 `--config` 時，必須指定絕對路徑：
 
 ```bash

@@ -62,7 +62,7 @@ description: Reference every Repomix CLI option for input, output, file selectio
 |--------|-------------|
 | `--remote <url>` | Clone and pack a remote repository (GitHub URL or `user/repo` format) |
 | `--remote-branch <name>` | Specific branch, tag, or commit to use (default: repository's default branch) |
-| `--remote-trust-config` | Trust and load config files from remote repositories (disabled by default for security) |
+| `--remote-trust-config` | Trust and load config files from remote repositories. A trusted config can run commands and read local files, so use it only for repositories you fully trust (disabled by default for security) |
 
 ## Configuration Options
 

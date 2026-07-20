@@ -84,6 +84,10 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+::: warning
+`--remote-trust-config`, uzak deponun yapılandırmasına kendi makinenizle aynı düzeyde güven tanır. Güvenilen bir yapılandırma (`input.processors` aracılığıyla) **rastgele komutlar çalıştırabilir** ve (örneğin `output.instructionFilePath` veya `../` kullanan include kalıpları aracılığıyla) **depo dışındaki yerel dosyaları okuyabilir**. Bu seçeneği yalnızca tamamen güvendiğiniz ve incelediğiniz depolar için kullanın; tanımadığınız bir kaynaktan `npm install` veya `Makefile` çalıştırmadan önce göstereceğiniz özenin aynısını gösterin.
+:::
+
 `--remote` ile `--config` kullanırken mutlak bir yol belirtilmelidir:
 
 ```bash

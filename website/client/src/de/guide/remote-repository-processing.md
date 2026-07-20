@@ -84,6 +84,10 @@ repomix --remote user/repo --remote-trust-config
 REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 ```
 
+::: warning
+`--remote-trust-config` gewährt der Konfiguration des Remote-Repositorys dasselbe Vertrauen wie Ihrer eigenen Maschine. Eine vertrauenswürdige Konfiguration kann (über `input.processors`) **beliebige Befehle ausführen** und (z. B. über `output.instructionFilePath` oder Include-Muster mit `../`) **lokale Dateien außerhalb des Repositorys lesen**. Verwenden Sie diese Option nur für Repositories, denen Sie vollständig vertrauen und die Sie überprüft haben, mit derselben Vorsicht, die Sie vor dem Ausführen eines `npm install` oder eines `Makefile` aus unbekannter Quelle walten lassen würden.
+:::
+
 Bei Verwendung von `--config` mit `--remote` ist ein absoluter Pfad erforderlich:
 
 ```bash
