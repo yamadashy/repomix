@@ -241,6 +241,28 @@ temp-files/
       expect(patterns).toContain('*.ignored');
       expect(patterns).toContain('temp-files/');
     });
+
+    test('should use POSIX separators for a nested output file path (Windows)', async () => {
+      const mockConfig = createMockConfig({
+        cwd: '/mock/root',
+        output: { filePath: 'docs/repomix-output.xml' },
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      // Simulate Windows: path.relative returns backslash-separated paths there.
+      // globby matches ignore patterns against forward-slash paths, so the raw
+      // value would never match the output file and it would leak into itself.
+      vi.spyOn(path, 'relative').mockReturnValueOnce('docs\\repomix-output.xml');
+
+      const patterns = await getIgnorePatterns('/mock/root', mockConfig);
+
+      expect(patterns).toContain('docs/repomix-output.xml');
+      expect(patterns).not.toContain('docs\\repomix-output.xml');
+    });
   });
 
   describe('parseIgnoreContent', () => {
