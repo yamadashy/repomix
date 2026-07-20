@@ -48,11 +48,13 @@ const markerPathForUrl = (repoUrl: string): string =>
 // On a shared host, /tmp/repomix/trusted-remotes could be pre-created by another
 // local user who seeds markers to suppress this consent prompt. Require the dir to
 // be owned by us and not group/world-writable before honoring or writing markers.
+// `lstat` (not `stat`) so a symlinked store dir is rejected outright rather than
+// letting our chmod/write follow it into a directory we do not own.
 // POSIX only; on Windows (uid -1) the uid/mode model does not apply, so we skip it.
-const isStoreDirSafe = async (deps: { stat: typeof fs.stat }): Promise<boolean> => {
+const isDirSafe = async (dir: string, deps: { lstat: typeof fs.lstat }): Promise<boolean> => {
   try {
-    const stats = await deps.stat(getTrustStoreDir());
-    if (!stats.isDirectory()) return false;
+    const stats = await deps.lstat(dir);
+    if (stats.isSymbolicLink() || !stats.isDirectory()) return false;
     if (process.platform === 'win32') return true;
     const uid = os.userInfo().uid;
     if (uid >= 0 && stats.uid !== uid) return false;
@@ -63,10 +65,16 @@ const isStoreDirSafe = async (deps: { stat: typeof fs.stat }): Promise<boolean> 
   }
 };
 
+// The shared parent umbrella is checked too: $TMPDIR/repomix is created by whichever
+// consumer runs first (token cache, MCP outputs) under the default umask, so on a
+// multi-user /tmp it can be attacker-creatable even when our own subdir looks fine.
+const isStoreDirSafe = async (deps: { lstat: typeof fs.lstat }): Promise<boolean> =>
+  (await isDirSafe(getRepomixTmpDir(), deps)) && (await isDirSafe(getTrustStoreDir(), deps));
+
 export const isRemoteConfigTrusted = async (
   repoUrl: string,
   configDigest: string,
-  deps = { stat: fs.stat, readFile: fs.readFile },
+  deps = { lstat: fs.lstat, readFile: fs.readFile },
 ): Promise<boolean> => {
   if (!(await isStoreDirSafe(deps))) return false;
   try {
@@ -82,23 +90,26 @@ export const isRemoteConfigTrusted = async (
 export const markRemoteConfigTrusted = async (
   repoUrl: string,
   configDigest: string,
-  deps = { mkdir: fs.mkdir, chmod: fs.chmod, writeFile: fs.writeFile, stat: fs.stat },
+  deps = { mkdir: fs.mkdir, chmod: fs.chmod, writeFile: fs.writeFile, lstat: fs.lstat },
 ): Promise<void> => {
-  const dir = getTrustStoreDir();
-  await deps.mkdir(dir, { recursive: true, mode: 0o700 });
-  // mkdir does not tighten an existing dir's mode; enforce it best-effort, then
-  // verify ownership before writing so we never seed a marker into an
-  // attacker-controlled directory.
+  // Remembering the decision is best-effort: the user has already consented, so a
+  // failure here (ENOSPC, EACCES, a hostile store dir) must never abort the pack.
   try {
+    const dir = getTrustStoreDir();
+    await deps.mkdir(dir, { recursive: true, mode: 0o700 });
+    // Verify ownership BEFORE touching the directory: chmod-ing first would follow a
+    // symlink planted by another user and re-mode a directory we do not own.
+    if (!(await isStoreDirSafe(deps))) {
+      writeErr(pc.dim('Note: could not remember trust (the trust store directory is not owned by the current user).'));
+      return;
+    }
+    // mkdir does not tighten an existing dir's mode, so enforce it now that the dir
+    // is known to be ours.
     await deps.chmod(dir, 0o700);
-  } catch {
-    // Filesystems without chmod (e.g. some Windows setups) fall back to the check.
+    await deps.writeFile(markerPathForUrl(repoUrl), configDigest, { mode: 0o600 });
+  } catch (error) {
+    writeErr(pc.dim(`Note: could not remember trust (${error instanceof Error ? error.message : String(error)}).`));
   }
-  if (!(await isStoreDirSafe(deps))) {
-    writeErr(pc.dim('Note: could not remember trust — the trust store directory is not owned by the current user.'));
-    return;
-  }
-  await deps.writeFile(markerPathForUrl(repoUrl), configDigest, { mode: 0o600 });
 };
 
 // Interactivity is judged on stdin+stderr, never stdout: `--stdout` pipes the
@@ -164,10 +175,15 @@ export const confirmRemoteConfigTrust = async (
   const configPath = await deps.findLocalConfigPath(repoDir);
   if (!configPath) return; // no config in the cloned repo → nothing is trusted
 
-  // --force skips all confirmation prompts (explicit intent, responsibility on the caller).
-  if (force) return;
-
   const configName = path.basename(configPath);
+
+  // --force skips all confirmation prompts (explicit intent, responsibility on the
+  // caller). It is a broad flag, so say what it suppressed rather than silently
+  // granting a remote config the right to run.
+  if (force) {
+    writeErr(pc.dim(`Trusting remote config without review (--force): ${configName} (${repoUrl})`));
+    return;
+  }
 
   // Non-interactive (CI, pipes): keep the historical non-prompting behavior so
   // existing --remote-trust-config automations do not hang. Announce it on stderr.
@@ -193,8 +209,13 @@ export const confirmRemoteConfigTrust = async (
   }
 
   const isCode = CODE_CONFIG_RE.test(configName);
-  const truncated = Buffer.byteLength(configBytes, 'utf8') > MAX_DISPLAY_BYTES;
-  const shown = truncated ? `${configBytes.slice(0, MAX_DISPLAY_BYTES)}\n... (truncated)` : configBytes;
+  // Cap on bytes, and slice on bytes too: slicing the string would cut by UTF-16
+  // code units and blow past the cap on multi-byte content.
+  const configBuffer = Buffer.from(configBytes, 'utf8');
+  const truncated = configBuffer.byteLength > MAX_DISPLAY_BYTES;
+  const shown = truncated
+    ? `${configBuffer.subarray(0, MAX_DISPLAY_BYTES).toString('utf8')}\n... (truncated)`
+    : configBytes;
 
   writeErr();
   writeErr(pc.yellow(pc.bold(`⚠ ${repoUrl} ships a config file that will be trusted: ${configName}`)));
@@ -208,19 +229,22 @@ export const confirmRemoteConfigTrust = async (
   writeErr(pc.dim('─'.repeat(72)));
   writeErr();
 
+  const trustOptions: { value: RemoteTrustChoice; label: string; hint?: string }[] = [
+    { value: 'once', label: 'Yes, once' },
+    {
+      value: 'always',
+      label: "Yes, and don't ask again for this repository",
+      hint: 'remembered until temp files are cleared',
+    },
+    { value: 'no', label: 'No, do not run' },
+  ];
+
   const clack = await deps.loadClack();
   const choice = await clack.select({
     message: "Trust and run this repository's config?",
-    options: [
-      { value: 'once' as RemoteTrustChoice, label: 'Yes, once' },
-      {
-        value: 'always' as RemoteTrustChoice,
-        label: "Yes, and don't ask again for this repository",
-        hint: 'remembered until temp files are cleared',
-      },
-      { value: 'no' as RemoteTrustChoice, label: 'No, do not run' },
-    ],
-    initialValue: 'no' as RemoteTrustChoice,
+    options: trustOptions,
+    // Default to the safe choice so a stray Enter never grants trust.
+    initialValue: 'no' satisfies RemoteTrustChoice,
   });
 
   if (clack.isCancel(choice) || choice === 'no') {

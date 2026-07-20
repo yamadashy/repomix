@@ -3,6 +3,7 @@ import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { DefaultActionRunnerResult } from '../../../src/cli/actions/defaultAction.js';
 import { copyOutputToCurrentDirectory, runRemoteAction } from '../../../src/cli/actions/remoteAction.js';
+import { OperationCancelledError } from '../../../src/shared/errorHandle.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -73,6 +74,64 @@ describe('remoteAction functions', () => {
         expect.any(String),
         expect.objectContaining({ skipLocalConfig: true }),
       );
+    });
+
+    describe('remote config trust confirmation', () => {
+      const createTrustDeps = (overrides: Record<string, unknown> = {}) => ({
+        isGitInstalled: async () => Promise.resolve(true),
+        execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
+          await fs.writeFile(path.join(directory, 'README.md'), 'Hello, world!');
+        }),
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: vi.fn(async () => createMockDefaultActionResult()),
+        downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
+        isGitHubRepository: vi.fn().mockReturnValue(false),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+        confirmRemoteConfigTrust: vi.fn(),
+        ...overrides,
+      });
+
+      test('asks for confirmation when --remote-trust-config is used', async () => {
+        vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+        const deps = createTrustDeps();
+
+        await runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true }, deps);
+
+        expect(deps.confirmRemoteConfigTrust).toHaveBeenCalledTimes(1);
+        expect(deps.confirmRemoteConfigTrust).toHaveBeenCalledWith(
+          expect.objectContaining({
+            repoDir: expect.any(String),
+            repoUrl: 'https://gitlab.com/owner/repo.git',
+            force: false,
+            stdout: false,
+            hasExplicitConfig: false,
+          }),
+        );
+      });
+
+      test('aborts without packing when the user declines the config', async () => {
+        vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+        const deps = createTrustDeps({
+          confirmRemoteConfigTrust: vi.fn().mockRejectedValue(new OperationCancelledError('Remote config not trusted')),
+        });
+
+        await expect(
+          runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true }, deps),
+        ).rejects.toThrow(OperationCancelledError);
+
+        // The declined config must never reach the packer.
+        expect(deps.runDefaultAction).not.toHaveBeenCalled();
+      });
+
+      test('does not ask for confirmation when the config is not trusted', async () => {
+        vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+        const deps = createTrustDeps();
+
+        await runRemoteAction('https://gitlab.com/owner/repo.git', {}, deps);
+
+        expect(deps.confirmRemoteConfigTrust).not.toHaveBeenCalled();
+      });
     });
 
     test('enforces the token budget after copying output, with the check deferred inside runDefaultAction', async () => {

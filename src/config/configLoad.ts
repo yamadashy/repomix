@@ -104,8 +104,7 @@ export const loadFileConfig = async (
   }
 
   // Try to find a local config file using the priority order
-  const localConfigPaths = defaultConfigPaths.map((configPath) => path.resolve(rootDir, configPath));
-  const localConfigPath = await findConfigFile(localConfigPaths, 'local');
+  const localConfigPath = await findLocalConfigPath(rootDir);
 
   if (localConfigPath) {
     if (!options.skipLocalConfig) {
