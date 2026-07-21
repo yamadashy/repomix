@@ -156,18 +156,30 @@ describe('remoteConfigTrustPrompt', () => {
     });
 
     it('emits the truncation notice outside the fenced config so it cannot be forged', async () => {
-      // The config forges the marker; the genuine notice must still be distinguishable.
-      const forged = `${'x'.repeat(20)}\n... (truncated)\n${'y'.repeat(20_000)}`;
+      // The config forges both a closing separator and the notice text.
+      const forged = [
+        'x'.repeat(20),
+        '\u2500'.repeat(72),
+        '(config truncated for display; forged)',
+        'y'.repeat(20_000),
+      ].join('\n');
       const deps = makeDeps({ readFile: vi.fn().mockResolvedValue(forged) });
       await confirmRemoteConfigTrust(baseOptions, deps);
-      expect(stderrOutput()).toContain('config truncated for display');
+      const lines: string[] = stderrOutput().split('\n');
+
+      // Everything the config supplied is prefixed, including its forged notice.
+      expect(lines.some((line) => line.startsWith('| (config truncated for display; forged)'))).toBe(true);
+      // The genuine notice is the only unprefixed one, so it cannot be imitated.
+      const genuine = lines.filter((line) => line.startsWith('(config truncated for display'));
+      expect(genuine).toHaveLength(1);
+      expect(genuine[0]).not.toContain('forged');
     });
 
     it('refuses to prompt when stdout is not a terminal', async () => {
       // stdin/stderr look interactive but the clack menu would render into a
       // redirected stdout, leaving the user staring at an invisible prompt.
       const deps = makeDeps({ isPromptRenderable: vi.fn().mockReturnValue(false) });
-      await expect(confirmRemoteConfigTrust(baseOptions, deps)).rejects.toThrow(RepomixError);
+      await expect(confirmRemoteConfigTrust(baseOptions, deps)).rejects.toThrow(/stdout is not a terminal/);
       expect(deps.loadClack).not.toHaveBeenCalled();
     });
 
@@ -209,7 +221,9 @@ describe('remoteConfigTrustPrompt', () => {
 
     it('refuses to prompt under --stdout rather than corrupt piped output', async () => {
       const deps = makeDeps();
-      await expect(confirmRemoteConfigTrust({ ...baseOptions, stdout: true }, deps)).rejects.toThrow(RepomixError);
+      await expect(confirmRemoteConfigTrust({ ...baseOptions, stdout: true }, deps)).rejects.toThrow(
+        /packed output is being written to stdout/,
+      );
       expect(deps.loadClack).not.toHaveBeenCalled();
     });
 

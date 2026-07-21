@@ -14,6 +14,11 @@ const MAX_DISPLAY_BYTES = 8 * 1024;
 // the warning above it out of the scrollback while staying under the byte cap.
 const MAX_DISPLAY_LINES = 200;
 
+// Every echoed config line carries this prefix, so lines without it are ours. Without
+// it the config could print its own separator and truncation notice and convince the
+// reader that the dangerous part below was not config at all.
+const CONFIG_LINE_PREFIX = '| ';
+
 // Config extensions that execute on load (jiti): the shown text is not the whole
 // story (such a config can import sibling modules that are never displayed), so we
 // label these as executable code rather than implying a full audit.
@@ -31,7 +36,7 @@ const CODE_CONFIG_RE = /\.(ts|mts|cts|js|mjs|cjs)$/;
 const CONTROL_CHARS_RE =
   // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point of this sanitizer
   // biome-ignore lint/suspicious/noMisleadingCharacterClass: each code point is escaped individually, never matched as a grapheme cluster
-  /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u034F\u061C\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFE00-\uFE0F\uFEFF\u{1D173}-\u{1D17A}\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
+  /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u034F\u061C\u180B-\u180D\u180F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFE00-\uFE0F\uFEFF\u{1D173}-\u{1D17A}\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
 
 export type RemoteTrustChoice = 'once' | 'always' | 'no';
 
@@ -213,7 +218,10 @@ export const confirmRemoteConfigTrust = async (
   const capped = byteTruncated
     ? Buffer.from(lineCapped, 'utf8').subarray(0, MAX_DISPLAY_BYTES).toString('utf8')
     : lineCapped;
-  const shown = capped;
+  const shown = capped
+    .split('\n')
+    .map((line) => `${CONFIG_LINE_PREFIX}${line}`)
+    .join('\n');
   const wasTruncated = lineTruncated || byteTruncated;
 
   writeErr();
@@ -232,8 +240,8 @@ export const confirmRemoteConfigTrust = async (
   writeErr(pc.dim('─'.repeat(72)));
   writeErr(shown);
   writeErr(pc.dim('─'.repeat(72)));
-  // Outside the fence on purpose: a config can print "... (truncated)" itself, so
-  // the real notice must live where only our own output appears.
+  // Unprefixed on purpose: a config can print its own separator and notice, but it
+  // cannot emit a line without CONFIG_LINE_PREFIX, so only this one is ours.
   if (wasTruncated) {
     writeErr(pc.dim(`(config truncated for display; ${configName} is longer than shown)`));
   }
