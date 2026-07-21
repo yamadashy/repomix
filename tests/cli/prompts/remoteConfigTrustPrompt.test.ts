@@ -20,6 +20,11 @@ describe('remoteConfigTrustPrompt', () => {
 
   const stderrOutput = () => stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('');
 
+  // picocolors emits ANSI when colors are enabled (CI sets that), so assertions about
+  // where a line starts must compare against uncolored text.
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping real ANSI codes requires matching ESC
+  const stripAnsi = (text: string): string => text.replace(/\u001b\[[0-9;]*m/g, '');
+
   describe('confirmRemoteConfigTrust', () => {
     const baseOptions = {
       repoDir: '/repo',
@@ -165,7 +170,7 @@ describe('remoteConfigTrustPrompt', () => {
       ].join('\n');
       const deps = makeDeps({ readFile: vi.fn().mockResolvedValue(forged) });
       await confirmRemoteConfigTrust(baseOptions, deps);
-      const lines: string[] = stderrOutput().split('\n');
+      const lines: string[] = stripAnsi(stderrOutput()).split('\n');
 
       // Everything the config supplied is prefixed, including its forged notice.
       expect(lines.some((line) => line.startsWith('| (config truncated for display; forged)'))).toBe(true);
