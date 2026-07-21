@@ -98,6 +98,8 @@ Saat Anda mempercayai konfigurasi repositori di terminal interaktif, repomix men
 
 Prompt ini dilewati saat Anda menyertakan `--force`, di shell non-interaktif seperti CI (konfigurasi tetap dipercaya seperti sebelumnya, sehingga otomatisasi yang ada tetap berjalan), atau setelah Anda memilih untuk selalu mempercayai repositori tersebut.
 
+Untuk model kepercayaan lengkap — apa yang dapat dilakukan konfigurasi tepercaya, bagaimana konfigurasi yang ditampilkan dilindungi dari manipulasi, dan di mana keputusan "jangan tanya lagi" disimpan — lihat [Keamanan](/id/guide/security#remote-repository-config-trust).
+
 Saat menggunakan `--config` dengan `--remote`, path absolut diperlukan:
 
 ```bash

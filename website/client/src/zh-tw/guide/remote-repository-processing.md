@@ -98,6 +98,8 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 
 當您傳入 `--force`、在 CI 等非互動式 shell 中執行（設定會如以往一樣被信任，讓現有自動化保持正常運作），或是您已經選擇一律信任該倉庫時，此提示將被跳過。
 
+關於完整的信任模型 —— 受信任的設定能做什麼、顯示的設定如何防止被竄改，以及「不再詢問」的決定儲存在哪裡 —— 請參閱[安全性](/zh-tw/guide/security#remote-repository-config-trust)。
+
 在 `--remote` 模式下使用 `--config` 時，必須指定絕對路徑：
 
 ```bash

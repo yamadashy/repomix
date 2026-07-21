@@ -98,6 +98,8 @@ Wenn Sie die Konfiguration eines Repositorys in einem interaktiven Terminal vert
 
 Die Abfrage wird übersprungen, wenn Sie `--force` übergeben, in nicht-interaktiven Shells wie CI (die Konfiguration wird wie bisher vertraut, sodass bestehende Automatisierungen weiterhin funktionieren), oder wenn Sie bereits gewählt haben, diesem Repository immer zu vertrauen.
 
+Das vollständige Vertrauensmodell – was eine vertrauenswürdige Konfiguration tun kann, wie die angezeigte Konfiguration vor Manipulation geschützt wird und wo die Entscheidung "nicht mehr fragen" gespeichert wird – finden Sie unter [Sicherheit](/de/guide/security#remote-repository-config-trust).
+
 Bei Verwendung von `--config` mit `--remote` ist ein absoluter Pfad erforderlich:
 
 ```bash

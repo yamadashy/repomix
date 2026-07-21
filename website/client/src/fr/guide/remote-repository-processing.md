@@ -92,6 +92,8 @@ Lorsque vous faites confiance à la configuration d'un dépôt dans un terminal 
 
 L'invite est ignorée si vous passez `--force`, dans des shells non interactifs tels que la CI (la configuration reste alors considérée comme fiable comme auparavant, ce qui permet aux automatisations existantes de continuer à fonctionner), ou une fois que vous avez choisi de toujours faire confiance à ce dépôt.
 
+Pour le modèle de confiance complet — ce qu'une configuration de confiance peut faire, comment la configuration affichée est protégée contre toute altération, et où est stockée la décision « ne plus demander » — consultez la page [Sécurité](/fr/guide/security#remote-repository-config-trust).
+
 Lors de l'utilisation de `--config` avec `--remote`, un chemin absolu est requis :
 
 ```bash

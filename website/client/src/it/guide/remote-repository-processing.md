@@ -92,6 +92,8 @@ Quando ti fidi della configurazione di un repository in un terminale interattivo
 
 Il prompt viene saltato quando passi `--force`, in shell non interattive come la CI (la configurazione viene considerata attendibile come prima, mantenendo funzionanti le automazioni esistenti), oppure una volta che hai scelto di fidarti sempre di quel repository.
 
+Per il modello di fiducia completo — cosa può fare una configurazione attendibile, come la configurazione mostrata è protetta dalla manomissione e dove viene memorizzata la decisione "non chiedere più" — vedi [Sicurezza](/it/guide/security#remote-repository-config-trust).
+
 Quando si usa `--config` con `--remote`, è richiesto un percorso assoluto:
 
 ```bash

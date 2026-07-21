@@ -98,6 +98,8 @@ Khi bạn tin tưởng cấu hình của một kho lưu trữ trong terminal tư
 
 Lời nhắc này sẽ được bỏ qua khi bạn truyền `--force`, trong các shell không tương tác như CI (cấu hình vẫn được tin tưởng như trước, giúp các quy trình tự động hiện có tiếp tục hoạt động), hoặc khi bạn đã chọn luôn tin tưởng kho lưu trữ đó.
 
+Để biết đầy đủ mô hình tin cậy — cấu hình đáng tin cậy có thể làm gì, cách cấu hình hiển thị được bảo vệ khỏi bị giả mạo, và quyết định "không hỏi lại" được lưu trữ ở đâu — xem [Bảo mật](/vi/guide/security#remote-repository-config-trust).
+
 Khi sử dụng `--config` với `--remote`, bắt buộc phải có đường dẫn tuyệt đối:
 
 ```bash

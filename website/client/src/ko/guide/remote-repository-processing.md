@@ -98,6 +98,8 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 
 `--force`를 전달했거나, CI와 같은 비대화형 셸을 사용하거나(설정은 이전과 마찬가지로 신뢰되어 기존 자동화가 계속 작동합니다), 이미 해당 저장소를 항상 신뢰하도록 선택한 경우에는 이 확인 프롬프트가 표시되지 않습니다.
 
+전체 신뢰 모델(신뢰된 설정이 할 수 있는 일, 표시되는 설정이 조작으로부터 보호되는 방식, "다시 묻지 않음" 결정이 저장되는 위치)에 대한 자세한 내용은 [보안](/ko/guide/security#remote-repository-config-trust) 문서를 참고하세요.
+
 `--remote`와 `--config`를 함께 사용할 때는 절대 경로를 지정해야 합니다:
 
 ```bash

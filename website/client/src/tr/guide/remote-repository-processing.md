@@ -98,6 +98,8 @@ Etkileşimli bir terminalde bir deponun yapılandırmasına güvendiğinizde, re
 
 `--force` bayrağını geçtiğinizde, CI gibi etkileşimli olmayan kabuklarda (yapılandırma öncekiyle aynı şekilde güvenilir kabul edilir, böylece mevcut otomasyonlar çalışmaya devam eder) veya o depoya her zaman güvenmeyi zaten seçtiyseniz, bu istem atlanır.
 
+Tam güven modeli için — güvenilen bir yapılandırmanın neler yapabileceği, gösterilen yapılandırmanın kurcalanmaya karşı nasıl korunduğu ve "tekrar sorma" kararının nerede saklandığı dahil — bkz. [Güvenlik](/tr/guide/security#remote-repository-config-trust).
+
 `--remote` ile `--config` kullanırken mutlak bir yol belirtilmelidir:
 
 ```bash

@@ -98,6 +98,8 @@ When you trust a repository's config in an interactive terminal, repomix shows t
 
 The prompt is skipped when you pass `--force`, in non-interactive shells such as CI (the config is trusted as before, keeping existing automation working), or once you have chosen to always trust that repository.
 
+For the full trust model — what a trusted config can do, how the displayed config is protected from tampering, and where the "don't ask again" decision is stored — see [Security](/guide/security#remote-repository-config-trust).
+
 When using `--config` with `--remote`, an absolute path is required:
 
 ```bash

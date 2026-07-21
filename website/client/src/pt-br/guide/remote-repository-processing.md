@@ -98,6 +98,8 @@ Quando você confia na configuração de um repositório em um terminal interati
 
 O prompt é ignorado quando você passa `--force`, em shells não interativos como CI (a configuração é considerada confiável como antes, mantendo a automação existente funcionando), ou depois que você escolher sempre confiar nesse repositório.
 
+Para conhecer o modelo de confiança completo (o que uma configuração confiável pode fazer, como a configuração exibida é protegida contra adulteração e onde a decisão de "não perguntar novamente" é armazenada), veja [Segurança](/pt-br/guide/security#remote-repository-config-trust).
+
 Ao usar `--config` com `--remote`, um caminho absoluto é obrigatório:
 
 ```bash

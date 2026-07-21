@@ -98,6 +98,8 @@ Cuando confías en la configuración de un repositorio en una terminal interacti
 
 La solicitud se omite si pasas `--force`, en shells no interactivos como CI (la configuración se considera de confianza como antes, manteniendo funcionando la automatización existente), o una vez que has elegido confiar siempre en ese repositorio.
 
+Para conocer el modelo de confianza completo (qué puede hacer una configuración de confianza, cómo se protege de manipulaciones la configuración mostrada y dónde se guarda la decisión de "no preguntar de nuevo") consulta [Seguridad](/es/guide/security#remote-repository-config-trust).
+
 Al usar `--config` con `--remote`, se requiere una ruta absoluta:
 
 ```bash
