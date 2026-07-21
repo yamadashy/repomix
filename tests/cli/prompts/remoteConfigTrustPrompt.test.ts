@@ -6,7 +6,11 @@ import {
 } from '../../../src/cli/prompts/remoteConfigTrustPrompt.js';
 import { OperationCancelledError, RepomixError } from '../../../src/shared/errorHandle.js';
 
-const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
+const sha256 = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
+
+// The prompt reads the config without an encoding, so fs.readFile hands it a Buffer.
+// Mocks must do the same or they would not exercise the raw-bytes digest.
+const mockReadFile = (content: string | Buffer) => vi.fn().mockResolvedValue(Buffer.from(content as string));
 
 describe('remoteConfigTrustPrompt', () => {
   let stderrSpy: ReturnType<typeof vi.spyOn>;
@@ -38,7 +42,7 @@ describe('remoteConfigTrustPrompt', () => {
 
     const makeDeps = (over: Partial<ConfirmRemoteConfigTrustDeps> = {}): ConfirmRemoteConfigTrustDeps => ({
       findLocalConfigPath: vi.fn().mockResolvedValue('/repo/repomix.config.json'),
-      readFile: vi.fn().mockResolvedValue('{"output":{"style":"xml"}}'),
+      readFile: mockReadFile('{"output":{"style":"xml"}}'),
       lstat: vi.fn().mockResolvedValue({ isSymbolicLink: () => false, isFile: () => true }),
       realpath: vi.fn(async (target: unknown) => String(target)) as unknown as ConfirmRemoteConfigTrustDeps['realpath'],
       isRemoteConfigTrusted: vi.fn().mockResolvedValue(false),
@@ -84,7 +88,7 @@ describe('remoteConfigTrustPrompt', () => {
     it('truncates an oversized config on a byte budget', async () => {
       // 10k multi-byte characters: slicing by UTF-16 units would blow past the byte cap.
       const huge = 'あ'.repeat(10_000);
-      const deps = makeDeps({ readFile: vi.fn().mockResolvedValue(huge) });
+      const deps = makeDeps({ readFile: mockReadFile(huge) });
       await confirmRemoteConfigTrust(baseOptions, deps);
       const output = stderrOutput();
       expect(output).toContain('config truncated for display');
@@ -107,7 +111,7 @@ describe('remoteConfigTrustPrompt', () => {
     it('escapes ANSI escape sequences instead of letting them reach the terminal', async () => {
       // A config that tries to clear the screen and scroll the warning away.
       const hostile = '{"a":1}\u001b[2J\u001b[H\u001b[1Ainnocent looking';
-      const deps = makeDeps({ readFile: vi.fn().mockResolvedValue(hostile) });
+      const deps = makeDeps({ readFile: mockReadFile(hostile) });
       await confirmRemoteConfigTrust(baseOptions, deps);
       const output = stderrOutput();
       // The raw ESC must never be emitted; it is shown in an escaped, visible form.
@@ -118,7 +122,7 @@ describe('remoteConfigTrustPrompt', () => {
     it('digests the raw config, not the sanitized display form', async () => {
       const hostile = 'a\u001b[2Jb';
       const deps = makeDeps({
-        readFile: vi.fn().mockResolvedValue(hostile),
+        readFile: mockReadFile(hostile),
         loadClack: vi.fn().mockResolvedValue({
           select: vi.fn().mockResolvedValue('always'),
           isCancel: vi.fn().mockReturnValue(false),
@@ -127,14 +131,55 @@ describe('remoteConfigTrustPrompt', () => {
       });
       await confirmRemoteConfigTrust(baseOptions, deps);
       // The pin must match the bytes that will actually be loaded.
-      expect(deps.markRemoteConfigTrusted).toHaveBeenCalledWith(baseOptions.repoUrl, sha256(hostile));
+      expect(deps.markRemoteConfigTrusted).toHaveBeenCalledWith(baseOptions.repoUrl, sha256(Buffer.from(hostile)));
+    });
+
+    it('digests raw bytes, so files that decode alike still pin apart', async () => {
+      // Both byte strings decode to the same U+FFFD text, so hashing the decoded
+      // string would let a repo swap one for the other without re-prompting.
+      const digestFor = async (bytes: Buffer) => {
+        const deps = makeDeps({
+          readFile: vi.fn().mockResolvedValue(bytes),
+          loadClack: vi.fn().mockResolvedValue({
+            select: vi.fn().mockResolvedValue('always'),
+            isCancel: vi.fn().mockReturnValue(false),
+            cancel: vi.fn(),
+          }),
+        });
+        await confirmRemoteConfigTrust(baseOptions, deps);
+        return (deps.markRemoteConfigTrusted as ReturnType<typeof vi.fn>).mock.calls[0][1];
+      };
+
+      const a = Buffer.from([0x7b, 0xff, 0x7d]);
+      const b = Buffer.from([0x7b, 0xfe, 0x7d]);
+      expect(a.toString('utf8')).toBe(b.toString('utf8'));
+      expect(await digestFor(a)).not.toBe(await digestFor(b));
+    });
+
+    it('escapes the line separators U+2028 and U+2029', async () => {
+      // Renderers that treat these as line breaks would show a line that carries no
+      // CONFIG_LINE_PREFIX, which is how the config is told apart from our own output.
+      const deps = makeDeps({ readFile: mockReadFile('{"a":1}\u2028{"b":2}\u2029') });
+      await confirmRemoteConfigTrust(baseOptions, deps);
+      const output = stderrOutput();
+      expect(output).not.toContain('\u2028');
+      expect(output).not.toContain('\u2029');
+      expect(output).toContain('\\u2028');
+      expect(output).toContain('\\u2029');
+    });
+
+    it('warns that the truncated remainder is trusted as well', async () => {
+      const deps = makeDeps({ readFile: mockReadFile('x'.repeat(20_000)) });
+      await confirmRemoteConfigTrust(baseOptions, deps);
+      // The decision covers the whole file, not just the part that fits on screen.
+      expect(stderrOutput()).toContain('the hidden part is trusted too');
     });
 
     it('escapes bidi and invisible formatting characters (Trojan Source)', async () => {
       // U+202E flips display order; U+200B is invisible. Both would make the shown
       // config read differently from what actually executes.
       const hostile = '{"a":"\u202eevil\u200b"}';
-      const deps = makeDeps({ readFile: vi.fn().mockResolvedValue(hostile) });
+      const deps = makeDeps({ readFile: mockReadFile(hostile) });
       await confirmRemoteConfigTrust(baseOptions, deps);
       const output = stderrOutput();
       expect(output).not.toContain('\u202e');
@@ -145,7 +190,7 @@ describe('remoteConfigTrustPrompt', () => {
 
     it('caps the number of displayed lines so the warning cannot be scrolled away', async () => {
       // Thousands of newlines stay under the byte cap but would push the banner off screen.
-      const deps = makeDeps({ readFile: vi.fn().mockResolvedValue('\n'.repeat(5000)) });
+      const deps = makeDeps({ readFile: mockReadFile('\n'.repeat(5000)) });
       await confirmRemoteConfigTrust(baseOptions, deps);
       const output = stderrOutput();
       expect(output).toContain('config truncated for display');
@@ -155,7 +200,7 @@ describe('remoteConfigTrustPrompt', () => {
     it('escapes astral-plane tag characters as whole code points', async () => {
       // U+E0041 is invisible but is part of the file; charCodeAt would only see a
       // surrogate half here, so this pins the Unicode-aware handling.
-      const deps = makeDeps({ readFile: vi.fn().mockResolvedValue('{"a":"x\u{E0041}"}') });
+      const deps = makeDeps({ readFile: mockReadFile('{"a":"x\u{E0041}"}') });
       await confirmRemoteConfigTrust(baseOptions, deps);
       const output = stderrOutput();
       expect(output).not.toContain('\u{E0041}');
@@ -170,7 +215,7 @@ describe('remoteConfigTrustPrompt', () => {
         '(config truncated for display; forged)',
         'y'.repeat(20_000),
       ].join('\n');
-      const deps = makeDeps({ readFile: vi.fn().mockResolvedValue(forged) });
+      const deps = makeDeps({ readFile: mockReadFile(forged) });
       await confirmRemoteConfigTrust(baseOptions, deps);
       const lines: string[] = stripAnsi(stderrOutput()).split('\n');
 
@@ -266,7 +311,7 @@ describe('remoteConfigTrustPrompt', () => {
     it('remembers the config digest when the user selects "Yes, always"', async () => {
       const configBytes = '{"output":{"style":"markdown"}}';
       const deps = makeDeps({
-        readFile: vi.fn().mockResolvedValue(configBytes),
+        readFile: mockReadFile(configBytes),
         loadClack: vi.fn().mockResolvedValue({
           select: vi.fn().mockResolvedValue('always'),
           isCancel: vi.fn().mockReturnValue(false),

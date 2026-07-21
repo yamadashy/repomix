@@ -154,6 +154,12 @@ export const runRemoteAction = async (
       skillProjectName,
       skillSourceUrl,
       skipLocalConfig: !trustRemoteConfig,
+      // --force has already done its job here: it suppressed the trust confirmation
+      // above. runDefaultAction rejects --force without --skill-generate, so
+      // forwarding it would make the documented `--remote-trust-config --force`
+      // escape hatch always throw. When nothing consumed the flag, forward it so
+      // that validation still reports the misuse.
+      force: trustRemoteConfig && cliOptions.skillGenerate === undefined ? undefined : cliOptions.force,
       // Never migrate a remote clone: it would rewrite legacy Repopack files in the
       // temp dir into a repomix.config.* that the trust prompt never reviewed.
       skipMigration: true,

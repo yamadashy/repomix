@@ -25,7 +25,7 @@ import { getRepomixTmpDir } from '../../shared/tmpDir.js';
 // The prompt labels code configs as executable for this reason.
 const TRUST_SUBDIR_NAME = 'trusted-remotes';
 
-export const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
+export const sha256 = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
 
 const getTrustStoreDir = (): string => path.join(getRepomixTmpDir(), TRUST_SUBDIR_NAME);
 

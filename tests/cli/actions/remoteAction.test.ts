@@ -139,6 +139,36 @@ describe('remoteAction functions', () => {
         );
       });
 
+      test('stops forwarding --force once the trust prompt has consumed it', async () => {
+        vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+        const deps = createTrustDeps();
+
+        await runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true, force: true }, deps);
+
+        // runDefaultAction rejects --force without --skill-generate. Forwarding it
+        // would make the documented `--remote-trust-config --force` escape hatch
+        // throw instead of skipping the prompt.
+        expect(deps.confirmRemoteConfigTrust).toHaveBeenCalledWith(expect.objectContaining({ force: true }));
+        expect(deps.runDefaultAction).toHaveBeenCalledWith(
+          expect.any(Array),
+          expect.any(String),
+          expect.objectContaining({ force: undefined }),
+        );
+      });
+
+      test('keeps forwarding --force when nothing consumed it, so misuse is still reported', async () => {
+        vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+        const deps = createTrustDeps();
+
+        await runRemoteAction('https://gitlab.com/owner/repo.git', { force: true }, deps);
+
+        expect(deps.runDefaultAction).toHaveBeenCalledWith(
+          expect.any(Array),
+          expect.any(String),
+          expect.objectContaining({ force: true }),
+        );
+      });
+
       test('does not ask for confirmation when the config is not trusted', async () => {
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
         const deps = createTrustDeps();
@@ -441,30 +471,31 @@ describe('remoteAction functions', () => {
       try {
         const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
+        const deps = {
+          isGitInstalled: async () => Promise.resolve(true),
+          execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
+            await fs.writeFile(path.join(directory, 'README.md'), 'Hello');
+          }),
+          getRemoteRefs: async () => Promise.resolve(['main']),
+          runDefaultAction: runDefaultActionMock,
+          downloadGitHubArchive: vi.fn(),
+          isGitHubRepository: vi.fn().mockReturnValue(false),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+          confirmRemoteConfigTrust: vi.fn(),
+        };
+
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-        await runRemoteAction(
-          'https://gitlab.com/owner/repo.git',
-          {},
-          {
-            isGitInstalled: async () => Promise.resolve(true),
-            execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
-              await fs.writeFile(path.join(directory, 'README.md'), 'Hello');
-            }),
-            getRemoteRefs: async () => Promise.resolve(['main']),
-            runDefaultAction: runDefaultActionMock,
-            downloadGitHubArchive: vi.fn(),
-            isGitHubRepository: vi.fn().mockReturnValue(false),
-            parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
-            isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
-            confirmRemoteConfigTrust: vi.fn(),
-          },
-        );
+        await runRemoteAction('https://gitlab.com/owner/repo.git', {}, deps);
 
         expect(runDefaultActionMock).toHaveBeenCalledWith(
           expect.any(Array),
           expect.any(String),
           expect.objectContaining({ skipLocalConfig: false }),
         );
+        // The env var is the second way to trust remote config, so it must reach the
+        // same confirmation the flag does rather than becoming a silent bypass.
+        expect(deps.confirmRemoteConfigTrust).toHaveBeenCalledTimes(1);
       } finally {
         if (originalEnv === undefined) {
           delete process.env.REPOMIX_REMOTE_TRUST_CONFIG;

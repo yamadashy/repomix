@@ -31,13 +31,15 @@ const CODE_CONFIG_RE = /\.(ts|mts|cts|js|mjs|cjs)$/;
 // - Other invisible formatting: deprecated format characters, the combining
 //   grapheme joiner, variation selectors, and the tag block, which hide content
 //   from the reader while remaining part of the file.
+// - U+2028/U+2029, which some renderers treat as line terminators: a config
+//   could otherwise produce what looks like a fresh line without the prefix.
 // Unicode-aware so the astral ranges match whole code points rather than halves of
 // a surrogate pair.
 /* oxlint-disable no-control-regex, no-misleading-character-class -- see the biome-ignore comments below */
 const CONTROL_CHARS_RE =
   // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point of this sanitizer
   // biome-ignore lint/suspicious/noMisleadingCharacterClass: each code point is escaped individually, never matched as a grapheme cluster
-  /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u034F\u061C\u180B-\u180D\u180F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFE00-\uFE0F\uFEFF\u{1D173}-\u{1D17A}\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
+  /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u034F\u061C\u180B-\u180D\u180F\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFE00-\uFE0F\uFEFF\u{1D173}-\u{1D17A}\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
 /* oxlint-enable no-control-regex, no-misleading-character-class */
 
 export type RemoteTrustChoice = 'once' | 'always' | 'no';
@@ -176,9 +178,9 @@ export const confirmRemoteConfigTrust = async (
   // Only review a config that really lives inside the clone (see helper).
   await assertConfigIsContained(configPath, repoDir, deps);
 
-  let configText: string;
+  let configBytes: Buffer;
   try {
-    configText = await deps.readFile(configPath, 'utf8');
+    configBytes = await deps.readFile(configPath);
   } catch (error) {
     throw new RepomixError(
       `Could not read the remote repository's config (${configName}) for review: ${
@@ -186,7 +188,12 @@ export const confirmRemoteConfigTrust = async (
       }`,
     );
   }
-  const configDigest = sha256(configText);
+  // Pin the raw bytes, not the decoded text. Decoding as UTF-8 maps every invalid
+  // sequence to U+FFFD, so two different files can decode to the same string; a repo
+  // could then swap in a config the user never approved and still match the stored
+  // digest. Code configs are loaded from bytes by jiti, so the bytes are what runs.
+  const configDigest = sha256(configBytes);
+  const configText = configBytes.toString('utf8');
 
   // Already trusted for this exact config content.
   if (await deps.isRemoteConfigTrusted(repoUrl, configDigest)) return;
@@ -245,7 +252,12 @@ export const confirmRemoteConfigTrust = async (
   // Unprefixed on purpose: a config can print its own separator and notice, but it
   // cannot emit a line without CONFIG_LINE_PREFIX, so only this one is ours.
   if (wasTruncated) {
-    writeErr(pc.dim(`(config truncated for display; ${configName} is longer than shown)`));
+    // Say that the hidden part is trusted too. A config can front-load harmless
+    // settings and bury `input.processors` past the cap, so a notice that only
+    // mentions the display would understate what the answer below covers.
+    writeErr(
+      pc.dim(`(config truncated for display; ${configName} is longer than shown, and the hidden part is trusted too)`),
+    );
   }
   writeErr();
 

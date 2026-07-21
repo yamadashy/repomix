@@ -42,6 +42,25 @@ describe('remoteConfigTrustStore', () => {
       expect(trusted).toBe(false);
     });
 
+    it('resolves different spellings of the same remote to one marker', async () => {
+      // Trust is keyed on the canonical clone URL. If shorthand and the full https
+      // form landed on different markers, a repo could dodge an approved pin simply
+      // by being referenced another way — and each spelling would re-prompt.
+      const digest = sha256('config-bytes');
+      const readFile = vi.fn().mockResolvedValue(digest);
+      const markerFor = async (url: string) => {
+        readFile.mockClear();
+        await isRemoteConfigTrusted(url, digest, { lstat: vi.fn().mockResolvedValue(safeDirStat), readFile });
+        return readFile.mock.calls[0][0] as string;
+      };
+
+      const shorthand = await markerFor('user/repo');
+      expect(await markerFor('https://github.com/user/repo')).toBe(shorthand);
+      expect(await markerFor('https://github.com/user/repo.git')).toBe(shorthand);
+      // A different repository must not share it.
+      expect(await markerFor('user/other-repo')).not.toBe(shorthand);
+    });
+
     it('is untrusted when no marker exists', async () => {
       const trusted = await isRemoteConfigTrusted('github.com/user/repo', sha256('x'), {
         lstat: vi.fn().mockResolvedValue(safeDirStat),
