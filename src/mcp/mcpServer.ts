@@ -4,8 +4,6 @@ import { getVersion } from '../core/file/packageJsonParse.js';
 import { logger } from '../shared/logger.js';
 import { registerPackRemoteRepositoryPrompt } from './prompts/packRemoteRepositoryPrompts.js';
 import { registerAttachPackedOutputTool } from './tools/attachPackedOutputTool.js';
-import { registerFileSystemReadDirectoryTool } from './tools/fileSystemReadDirectoryTool.js';
-import { registerFileSystemReadFileTool } from './tools/fileSystemReadFileTool.js';
 import { registerGenerateSkillTool } from './tools/generateSkillTool.js';
 import { registerGrepRepomixOutputTool } from './tools/grepRepomixOutputTool.js';
 import { registerPackCodebaseTool } from './tools/packCodebaseTool.js';
@@ -22,7 +20,7 @@ const MCP_SERVER_INSTRUCTIONS =
   'use attach_packed_output to work with existing packed outputs, ' +
   'then read_repomix_output and grep_repomix_output to analyze it. ' +
   'Perfect for code reviews, documentation generation, bug investigation, GitHub repository analysis, and understanding large codebases. ' +
-  'Includes security scanning and supports compression for token efficiency.';
+  'Scans for known secret formats and supports compression for token efficiency.';
 
 export const createMcpServer = async () => {
   const mcpServer = new McpServer(
@@ -45,8 +43,6 @@ export const createMcpServer = async () => {
   registerAttachPackedOutputTool(mcpServer);
   registerReadRepomixOutputTool(mcpServer);
   registerGrepRepomixOutputTool(mcpServer);
-  registerFileSystemReadFileTool(mcpServer);
-  registerFileSystemReadDirectoryTool(mcpServer);
 
   return mcpServer;
 };

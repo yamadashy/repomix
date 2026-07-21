@@ -34,9 +34,9 @@ setLogLevelByWorkerData();
 // any number of) copies simultaneously without dependence on module layout.
 //
 // Why the `isMainThread` guard:
-// This module is also imported from `src/mcp/tools/fileSystemReadFileTool.ts`
-// (for `createSecretLintConfig` / `runSecretLint`), which runs in the MCP
-// server's main process — not a worker thread. Applying the patch there
+// This module is also imported by MCP tools (for `createSecretLintConfig` /
+// `runSecretLint`), which run in the MCP server's main process — not a worker
+// thread. Applying the patch there
 // would silently disable `performance.mark` process-wide, affecting any
 // other code in the main process that relies on the Node built-in. By
 // gating on `!isMainThread`, the patch is scoped to the Tinypool worker

@@ -69,7 +69,7 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
     {
       title: 'Pack Remote Repository',
       description:
-        'Fetch, clone, and package a GitHub repository into a consolidated file for AI analysis. This tool automatically clones the remote repository, analyzes its structure, and generates a comprehensive report. Supports multiple output formats: XML (structured with <file> tags), Markdown (human-readable with ## headers and code blocks), JSON (machine-readable with files as key-value pairs), and Plain text (simple format with separators). Also supports various GitHub URL formats and includes security checks to prevent exposure of sensitive information.',
+        'Fetch, clone, and package a GitHub repository into a consolidated file for AI analysis. This tool automatically clones the remote repository, analyzes its structure, and generates a comprehensive report. Supports multiple output formats: XML (structured with <file> tags), Markdown (human-readable with ## headers and code blocks), JSON (machine-readable with files as key-value pairs), and Plain text (simple format with separators). Also supports various GitHub URL formats. Files matching known secret formats are excluded, but that scan is a heuristic, not an access boundary.',
       inputSchema: packRemoteRepositoryInputSchema,
       outputSchema: packRemoteRepositoryOutputSchema,
       annotations: {

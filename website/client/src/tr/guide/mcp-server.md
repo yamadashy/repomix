@@ -185,7 +185,7 @@ Bu araç, Repomix tarafından oluşturulan çıktı dosyasının içeriğini oku
 **Özellikler:**
 - Web tabanlı ortamlar veya korumalı uygulamalar için özel olarak tasarlanmıştır
 - Daha önce oluşturulan çıktıların içeriğini kimliklerini kullanarak getirir
-- Dosya sistemi erişimi gerektirmeden paketlenmiş kod tabanına güvenli erişim sağlar
+- Dosya sistemi erişimi gerektirmeden paketlenmiş kod tabanına erişim sağlar
 - Büyük dosyalar için kısmi okumayı destekler
 
 **Örnek:**
@@ -228,50 +228,15 @@ Bu araç, JavaScript RegExp sözdizimini kullanan grep benzeri işlevsellikle bi
 }
 ```
 
-### file_system_read_file ve file_system_read_directory
+## Güvenlik Modeli
 
-Repomix'in MCP sunucusu, AI asistanlarının yerel dosya sistemiyle güvenli bir şekilde etkileşime girmesini sağlayan iki dosya sistemi aracı sunar:
+MCP sunucusunun neyi koruyup neyi korumadığını anlamak önemlidir, çünkü hangi aracın hangi argümanlarla çağrılacağına siz değil, AI ajanı karar verir.
 
-1. `file_system_read_file`
-  - Mutlak yollar kullanarak yerel dosya sisteminden dosya içeriğini okur
-  - Hassas bilgiler içeren dosyalara erişimi tespit edip önlemek için yerleşik güvenlik doğrulaması içerir
-  - [Secretlint](https://github.com/secretlint/secretlint) kullanarak güvenlik doğrulaması uygular
-  - Hassas bilgiler içeren dosyalara erişimi engeller (API anahtarları, parolalar, gizli bilgiler)
-  - Dizin geçiş saldırılarını önlemek için mutlak yolları doğrular
-  - Geçersiz yollar veya güvenlik sorunları için açık hata mesajlarıyla biçimlendirilmiş içerik döndürür
+- **Araçlar, sürecin okuyabildiği her şeyi okur.** `pack_codebase`, kendisine verilen herhangi bir mutlak dizin yolunu paketler ve paketlenmiş çıktı ajana geri döndürülür. Bir proje köküyle sınırlama yoktur; sınır yalnızca işletim sisteminizin dosya izinleridir.
+- **Gizli bilgi taraması bir sezgisel yöntemdir, erişim kontrolü değildir.** [Secretlint](https://github.com/secretlint/secretlint), bilinen kimlik bilgisi biçimleriyle eşleşen dosyaları hariç tutar (örneğin AWS anahtarları ve özel anahtarlar). Her gizli bilgiyi tanımaz, bu yüzden `~/.netrc` veya bir kubeconfig gibi dosyalar bu taramadan geçebilir. Temiz bir taramayı "belirgin bir şey bulunamadı" olarak değerlendirin, "bu paylaşmak için güvenli" olarak değil.
+- **Bir ajan, okuduğu içerik tarafından yönlendirilebilir.** Güvenilmeyen bir depoyu analiz ederse, o depodaki metin, ajanı hassas bir dizini paketlemeye veya alakasız bir URL'yi klonlamaya yönlendirmeye çalışabilir. Repomix, bulut örneği meta veri uç noktalarını klonlamayı reddeder, ancak gerçek bir isteği enjekte edilmiş bir istekten ayırt edemez.
 
-2. `file_system_read_directory`
-  - Mutlak yol kullanarak bir dizinin içeriğini listeler
-  - Dosya ve alt dizinleri açık göstergelerle gösteren biçimlendirilmiş bir liste döndürür
-  - Hem dosyaları hem dizinleri açık göstergelerle (`[FILE]` veya `[DIR]`) gösterir
-  - Uygun hata yönetimiyle güvenli dizin gezintisi sağlar
-  - Yolları doğrular ve mutlak olduklarından emin olur
-  - Proje yapısını keşfetmek ve kod tabanı organizasyonunu anlamak için kullanışlıdır
-
-Her iki araç da güçlü güvenlik önlemleri içerir:
-- Dizin geçiş saldırılarını önlemek için mutlak yol doğrulaması
-- Uygun erişim haklarını sağlamak için izin kontrolleri
-- Hassas bilgi tespiti için Secretlint entegrasyonu
-- Daha iyi hata ayıklama ve güvenlik farkındalığı için açık hata mesajları
-
-**Örnek:**
-```typescript
-// Dosya okuma
-const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
-});
-
-// Dizin içeriğini listeleme
-const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
-});
-```
-
-Bu araçlar, AI asistanlarının şunları yapması gerektiğinde özellikle kullanışlıdır:
-- Kod tabanındaki belirli dosyaları analiz etmek
-- Dizin yapılarında gezinmek
-- Dosya varlığını ve erişilebilirliğini doğrulamak
-- Güvenli dosya sistemi işlemlerini sağlamak
+MCP sunucusunu yalnızca bu düzeyde erişim vermeye istekli olduğunuz ajanlara ve depolara bağlayın.
 
 ## Repomix'i MCP Sunucusu Olarak Kullanmanın Avantajları
 
@@ -280,7 +245,7 @@ Repomix'i MCP sunucusu olarak kullanmak birçok avantaj sunar:
 1. **Doğrudan Entegrasyon**: AI asistanları, manuel dosya hazırlamaya gerek kalmadan kod tabanınızı doğrudan analiz edebilir.
 2. **Verimli İş Akışı**: Dosyaları manuel olarak oluşturma ve yükleme ihtiyacını ortadan kaldırarak kod analizi sürecini kolaylaştırır.
 3. **Tutarlı Çıktı**: AI asistanının kod tabanını tutarlı ve optimize edilmiş bir biçimde almasını sağlar.
-4. **Gelişmiş Özellikler**: Kod sıkıştırma, token sayımı ve güvenlik kontrolleri gibi Repomix'in tüm özelliklerinden yararlanır.
+4. **Gelişmiş Özellikler**: Kod sıkıştırma, token sayımı ve gizli bilgi taraması gibi Repomix'in tüm özelliklerinden yararlanır.
 
 Yapılandırıldıktan sonra AI asistanınız, kod tabanlarını analiz etmek için Repomix'in yeteneklerini doğrudan kullanabilir ve kod analizi iş akışlarını daha verimli hale getirir.
 

@@ -14,7 +14,9 @@ import {
 } from './mcpToolRuntime.js';
 
 const packCodebaseInputSchema = z.object({
-  directory: z.string().describe('Directory to pack (Absolute path)'),
+  directory: z
+    .string()
+    .describe('Directory to pack (Absolute path). Any directory readable by this process can be packed.'),
   compress: z
     .boolean()
     .default(false)

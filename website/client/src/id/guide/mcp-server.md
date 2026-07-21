@@ -185,7 +185,7 @@ Tool ini membaca konten file output yang dihasilkan oleh Repomix. Mendukung pemb
 **Fitur:**
 - Dirancang khusus untuk lingkungan berbasis web atau aplikasi sandbox
 - Mengambil konten output yang dihasilkan sebelumnya menggunakan ID mereka
-- Menyediakan akses aman ke codebase yang dikemas tanpa memerlukan akses filesystem
+- Menyediakan akses ke codebase yang dikemas tanpa memerlukan akses filesystem
 - Mendukung pembacaan parsial untuk file besar
 
 **Contoh:**
@@ -228,50 +228,15 @@ Tool ini mencari pola dalam file output Repomix menggunakan fungsionalitas mirip
 }
 ```
 
-### file_system_read_file dan file_system_read_directory
+## Model Keamanan
 
-Server MCP Repomix menyediakan dua tools filesystem yang memungkinkan asisten AI untuk berinteraksi dengan aman dengan filesystem lokal:
+Memahami apa yang dilindungi dan tidak dilindungi oleh server MCP itu penting, karena agen AI, bukan Anda, yang memutuskan tool mana yang dipanggil dan dengan argumen apa.
 
-1. `file_system_read_file`
-  - Membaca konten file dari filesystem lokal menggunakan path absolut
-  - Termasuk validasi keamanan built-in untuk mendeteksi dan mencegah akses ke file yang berisi informasi sensitif
-  - Mengimplementasikan validasi keamanan menggunakan [Secretlint](https://github.com/secretlint/secretlint)
-  - Mencegah akses ke file yang berisi informasi sensitif (API keys, password, secrets)
-  - Memvalidasi path absolut untuk mencegah serangan directory traversal
-  - Mengembalikan pesan error yang jelas untuk path yang tidak valid dan masalah keamanan
+- **Tools membaca apa pun yang bisa dibaca oleh proses tersebut.** `pack_codebase` mengemas path direktori absolut apa pun yang diberikan kepadanya, dan output yang dikemas dikembalikan ke agen. Tidak ada pembatasan ke root proyek; batasnya adalah izin filesystem sistem operasi Anda.
+- **Pemindaian secret adalah heuristik, bukan kontrol akses.** [Secretlint](https://github.com/secretlint/secretlint) mengecualikan file yang cocok dengan format kredensial yang diketahui (misalnya kunci AWS dan kunci privat). Ia tidak mengenali semua secret, sehingga file seperti `~/.netrc` atau kubeconfig bisa lolos begitu saja. Anggap pemindaian yang bersih sebagai "tidak ditemukan sesuatu yang mencolok", bukan sebagai "ini aman untuk dibagikan".
+- **Agen dapat diarahkan oleh konten yang dibacanya.** Jika ia menganalisis repository yang tidak tepercaya, teks dalam repository tersebut dapat mencoba menginstruksikannya untuk mengemas direktori sensitif atau mengkloning URL yang tidak terkait. Repomix menolak untuk mengkloning endpoint metadata instans cloud, tetapi tidak bisa membedakan permintaan asli dari yang disisipkan (injected).
 
-2. `file_system_read_directory`
-  - Mendaftar konten direktori menggunakan path absolut
-  - Mengembalikan daftar berformat yang menampilkan file dan subdirektori dengan indikator yang jelas
-  - Menampilkan file dan direktori dengan indikator yang jelas (`[FILE]` atau `[DIR]`)
-  - Menyediakan navigasi direktori yang aman dengan penanganan error yang tepat
-  - Memvalidasi path dan memastikan mereka absolut
-  - Berguna untuk mengeksplorasi struktur proyek dan memahami organisasi codebase
-
-Kedua tools menggabungkan tindakan keamanan yang kuat:
-- Validasi path absolut untuk mencegah serangan directory traversal
-- Pemeriksaan izin untuk memastikan hak akses yang tepat
-- Integrasi dengan Secretlint untuk deteksi informasi sensitif
-- Pesan error yang jelas untuk debugging dan kesadaran keamanan yang lebih baik
-
-**Contoh:**
-```typescript
-// Membaca file
-const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
-});
-
-// Mendaftar konten direktori
-const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
-});
-```
-
-Tools ini sangat berguna ketika asisten AI perlu:
-- Menganalisis file spesifik dalam codebase
-- Menavigasi struktur direktori
-- Memverifikasi eksistensi dan aksesibilitas file
-- Memastikan operasi filesystem yang aman
+Hubungkan server MCP hanya ke agen dan repository yang Anda bersedia memberikan tingkat akses ini.
 
 ## Manfaat Menggunakan Repomix sebagai Server MCP
 
@@ -280,7 +245,7 @@ Menggunakan Repomix sebagai server MCP menawarkan beberapa keuntungan:
 1. **Integrasi Langsung**: Asisten AI dapat menganalisis codebase Anda secara langsung tanpa persiapan file manual.
 2. **Workflow Efisien**: Merampingkan proses analisis kode dengan menghilangkan kebutuhan untuk menghasilkan dan mengunggah file secara manual.
 3. **Output Konsisten**: Memastikan asisten AI menerima codebase dalam format yang konsisten dan dioptimalkan.
-4. **Fitur Lanjutan**: Memanfaatkan semua fitur Repomix seperti kompresi kode, penghitungan token, dan pemeriksaan keamanan.
+4. **Fitur Lanjutan**: Memanfaatkan semua fitur Repomix seperti kompresi kode, penghitungan token, dan pemindaian secret.
 
 Setelah dikonfigurasi, asisten AI Anda dapat langsung menggunakan kemampuan Repomix untuk menganalisis codebase, membuat workflow analisis kode lebih efisien.
 

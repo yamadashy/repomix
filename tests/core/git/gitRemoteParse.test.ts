@@ -15,6 +15,17 @@ describe('remoteAction functions', () => {
   });
 
   describe('parseRemoteValue', () => {
+    test('refuses a cloud metadata endpoint before any git command runs', () => {
+      // Through MCP an agent picks the URL, so an injected instruction could aim a
+      // clone at an address the user never asked for.
+      expect(() => parseRemoteValue('http://169.254.169.254/latest/meta-data')).toThrow(/metadata endpoint/);
+    });
+
+    test('still allows a self-hosted remote on a private network', () => {
+      // RFC1918 is deliberately not blocked: internal GitLab/Gitea/GHE is normal.
+      expect(parseRemoteValue('http://10.0.0.5/team/repo.git').repoUrl).toBe('http://10.0.0.5/team/repo.git');
+    });
+
     test('should convert GitHub shorthand to full URL', () => {
       expect(parseRemoteValue('user/repo')).toEqual({
         repoUrl: 'https://github.com/user/repo.git',

@@ -185,7 +185,7 @@ Công cụ này đọc nội dung của một file đầu ra được tạo bở
 **Tính năng:**
 - Được thiết kế đặc biệt cho các môi trường dựa trên web hoặc ứng dụng sandbox
 - Truy xuất nội dung của các đầu ra được tạo trước đó bằng ID của chúng
-- Cung cấp truy cập an toàn đến codebase được đóng gói mà không cần truy cập hệ thống file
+- Cung cấp truy cập đến codebase được đóng gói mà không cần truy cập hệ thống file
 - Hỗ trợ đọc một phần cho các file lớn
 
 **Ví dụ:**
@@ -228,50 +228,15 @@ Công cụ này tìm kiếm các pattern trong một file đầu ra Repomix sử
 }
 ```
 
-### file_system_read_file và file_system_read_directory
+## Mô hình bảo mật
 
-Máy chủ MCP của Repomix cung cấp hai công cụ hệ thống file cho phép các trợ lý AI tương tác an toàn với hệ thống file cục bộ:
+Việc hiểu rõ những gì máy chủ MCP bảo vệ và không bảo vệ là điều quan trọng, vì AI agent — chứ không phải bạn — mới là bên quyết định gọi công cụ nào và với đối số gì.
 
-1. `file_system_read_file`
-  - Đọc nội dung file từ hệ thống file cục bộ sử dụng đường dẫn tuyệt đối
-  - Bao gồm xác thực bảo mật tích hợp để phát hiện và ngăn chặn truy cập đến các file chứa thông tin nhạy cảm
-  - Triển khai xác thực bảo mật sử dụng [Secretlint](https://github.com/secretlint/secretlint)
-  - Ngăn chặn truy cập đến các file chứa thông tin nhạy cảm (khóa API, mật khẩu, bí mật)
-  - Xác thực đường dẫn tuyệt đối để ngăn chặn các cuộc tấn công directory traversal
-  - Trả về thông báo lỗi rõ ràng cho các đường dẫn không hợp lệ và vấn đề bảo mật
+- **Các công cụ đọc được bất cứ thứ gì mà tiến trình có thể đọc.** `pack_codebase` đóng gói bất kỳ đường dẫn thư mục tuyệt đối nào được cung cấp, và đầu ra đã đóng gói được trả về cho agent. Không có giới hạn trong phạm vi thư mục gốc của dự án; ranh giới duy nhất là quyền truy cập file của hệ điều hành bạn đang dùng.
+- **Quét bí mật là một phương pháp heuristic, không phải là một cơ chế kiểm soát truy cập.** [Secretlint](https://github.com/secretlint/secretlint) loại trừ các file khớp với các định dạng thông tin xác thực đã biết (ví dụ: khóa AWS và khóa riêng tư). Nó không nhận diện được mọi loại bí mật, vì vậy các file như `~/.netrc` hoặc một kubeconfig vẫn có thể lọt qua. Hãy xem một lần quét "sạch" là "không tìm thấy gì rõ ràng", chứ không phải là "an toàn để chia sẻ".
+- **Một agent có thể bị điều khiển bởi chính nội dung mà nó đọc.** Nếu nó phân tích một repository không đáng tin cậy, văn bản trong repository đó có thể cố gắng hướng dẫn nó đóng gói một thư mục nhạy cảm hoặc clone một URL không liên quan. Repomix từ chối clone các endpoint metadata của cloud instance, nhưng nó không thể phân biệt một yêu cầu hợp lệ với một yêu cầu bị chèn (injected).
 
-2. `file_system_read_directory`
-  - Liệt kê nội dung của một thư mục sử dụng đường dẫn tuyệt đối
-  - Trả về một danh sách được định dạng hiển thị các file và thư mục con với các chỉ báo rõ ràng
-  - Hiển thị file và thư mục với các chỉ báo rõ ràng (`[FILE]` hoặc `[DIR]`)
-  - Cung cấp điều hướng thư mục an toàn với xử lý lỗi thích hợp
-  - Xác thực đường dẫn và đảm bảo chúng là tuyệt đối
-  - Hữu ích cho việc khám phá cấu trúc dự án và hiểu tổ chức codebase
-
-Cả hai công cụ đều kết hợp các biện pháp bảo mật mạnh mẽ:
-- Xác thực đường dẫn tuyệt đối để ngăn chặn các cuộc tấn công directory traversal
-- Kiểm tra quyền để đảm bảo quyền truy cập thích hợp
-- Tích hợp với Secretlint để phát hiện thông tin nhạy cảm
-- Thông báo lỗi rõ ràng để debug tốt hơn và nhận thức bảo mật
-
-**Ví dụ:**
-```typescript
-// Đọc một file
-const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
-});
-
-// Liệt kê nội dung thư mục
-const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
-});
-```
-
-Các công cụ này đặc biệt hữu ích khi các trợ lý AI cần:
-- Phân tích các file cụ thể trong codebase
-- Điều hướng cấu trúc thư mục
-- Xác minh sự tồn tại và khả năng truy cập của file
-- Đảm bảo các hoạt động hệ thống file an toàn
+Chỉ kết nối máy chủ MCP với các agent và repository mà bạn sẵn sàng cấp mức độ truy cập này.
 
 ## Lợi ích của việc sử dụng Repomix như một Máy chủ MCP
 
@@ -280,7 +245,7 @@ Sử dụng Repomix như một máy chủ MCP mang lại nhiều lợi thế:
 1. **Tích hợp trực tiếp**: Các trợ lý AI có thể phân tích codebase của bạn trực tiếp mà không cần chuẩn bị file thủ công.
 2. **Luồng công việc hiệu quả**: Tối ưu hóa quy trình phân tích code bằng cách loại bỏ nhu cầu tạo và tải lên file thủ công.
 3. **Đầu ra nhất quán**: Đảm bảo rằng trợ lý AI nhận được codebase ở định dạng nhất quán, được tối ưu hóa.
-4. **Các tính năng nâng cao**: Tận dụng tất cả các tính năng của Repomix như nén code, đếm token và kiểm tra bảo mật.
+4. **Các tính năng nâng cao**: Tận dụng tất cả các tính năng của Repomix như nén code, đếm token và quét bí mật.
 
 Một khi được cấu hình, trợ lý AI của bạn có thể sử dụng trực tiếp các khả năng của Repomix để phân tích codebase, làm cho luồng công việc phân tích code hiệu quả hơn.
 

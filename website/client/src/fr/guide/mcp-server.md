@@ -183,7 +183,7 @@ Cet outil lit le contenu d'un fichier de sortie généré par Repomix. Il prend 
 **Fonctionnalités :**
 - Conçu spécifiquement pour les environnements basés sur le web ou les applications en bac à sable
 - Récupère le contenu des sorties générées précédemment en utilisant leur ID
-- Fournit un accès sécurisé à la base de code packagée sans nécessiter d'accès au système de fichiers
+- Fournit un accès à la base de code packagée sans nécessiter d'accès au système de fichiers
 - Prend en charge la lecture partielle pour les gros fichiers
 
 **Exemple:**
@@ -226,50 +226,15 @@ Cet outil recherche des motifs dans un fichier de sortie Repomix en utilisant un
 }
 ```
 
-### file_system_read_file et file_system_read_directory
+## Modèle de sécurité
 
-Le serveur MCP de Repomix fournit deux outils système de fichiers qui permettent aux assistants IA d'interagir en toute sécurité avec le système de fichiers local:
+Il est important de comprendre ce que le serveur MCP protège et ce qu'il ne protège pas, car c'est l'agent IA, et non vous, qui décide quel outil appeler et avec quels arguments.
 
-1. `file_system_read_file`
-  - Lit le contenu des fichiers du système de fichiers local en utilisant des chemins absolus
-  - Inclut une validation de sécurité intégrée pour détecter et prévenir l'accès aux fichiers contenant des informations sensibles
-  - Implémente la validation de sécurité avec [Secretlint](https://github.com/secretlint/secretlint)
-  - Empêche l'accès aux fichiers contenant des informations sensibles (clés API, mots de passe, secrets)
-  - Valide les chemins absolus pour prévenir les attaques par traversée de répertoire
-  - Renvoie des messages d'erreur clairs pour les chemins invalides et les problèmes de sécurité
+- **Les outils lisent tout ce que le processus peut lire.** `pack_codebase` empaquette n'importe quel chemin de répertoire absolu qui lui est fourni, et la sortie empaquetée est renvoyée à l'agent. Il n'y a pas de confinement à une racine de projet ; la limite est celle des permissions de fichiers de votre système d'exploitation.
+- **L'analyse des secrets est une heuristique, pas un contrôle d'accès.** [Secretlint](https://github.com/secretlint/secretlint) exclut les fichiers correspondant à des formats d'identifiants connus (par exemple les clés AWS et les clés privées). Il ne reconnaît pas tous les secrets, donc des fichiers comme `~/.netrc` ou un kubeconfig peuvent passer au travers. Considérez qu'une analyse sans résultat signifie « rien d'évident n'a été trouvé », et non « ceci est sûr à partager ».
+- **Un agent peut être orienté par le contenu qu'il lit.** S'il analyse un dépôt non fiable, le texte de ce dépôt peut tenter de lui demander d'empaqueter un répertoire sensible ou de cloner une URL sans rapport. Repomix refuse de cloner les points de terminaison de métadonnées d'instance cloud, mais il ne peut pas distinguer une requête authentique d'une requête injectée.
 
-2. `file_system_read_directory`
-  - Liste le contenu d'un répertoire en utilisant un chemin absolu
-  - Renvoie une liste formatée montrant les fichiers et sous-répertoires avec des indicateurs clairs
-  - Affiche les fichiers et répertoires avec des indicateurs clairs (`[FILE]` ou `[DIR]`)
-  - Fournit une traversée sécurisée des répertoires avec une gestion appropriée des erreurs
-  - Valide les chemins et s'assure qu'ils sont absolus
-  - Utile pour explorer la structure du projet et comprendre l'organisation de la base de code
-
-Les deux outils intègrent des mesures de sécurité robustes:
-- Validation des chemins absolus pour prévenir les attaques par traversée de répertoire
-- Vérifications des permissions pour assurer des droits d'accès appropriés
-- Intégration avec Secretlint pour la détection d'informations sensibles
-- Messages d'erreur clairs pour un meilleur débogage et une meilleure sensibilisation à la sécurité
-
-**Exemple:**
-```typescript
-// Lecture d'un fichier
-const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
-});
-
-// Liste du contenu d'un répertoire
-const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
-});
-```
-
-Ces outils sont particulièrement utiles lorsque les assistants IA doivent:
-- Analyser des fichiers spécifiques dans la base de code
-- Naviguer dans les structures de répertoires
-- Vérifier l'existence et l'accessibilité des fichiers
-- Assurer des opérations sécurisées sur le système de fichiers
+Ne connectez le serveur MCP qu'à des agents et des dépôts auxquels vous êtes prêt à accorder ce niveau d'accès.
 
 ## Avantages de l'utilisation de Repomix comme serveur MCP
 
@@ -278,7 +243,7 @@ L'utilisation de Repomix comme serveur MCP offre plusieurs avantages:
 1. **Intégration directe**: Les assistants IA peuvent analyser directement votre base de code sans préparation manuelle des fichiers.
 2. **Flux de travail efficace**: Simplifie le processus d'analyse du code en éliminant le besoin de générer et de télécharger manuellement des fichiers.
 3. **Sortie cohérente**: Garantit que l'assistant IA reçoit la base de code dans un format cohérent et optimisé.
-4. **Fonctionnalités avancées**: Exploite toutes les fonctionnalités de Repomix comme la compression de code, le comptage de tokens et les vérifications de sécurité.
+4. **Fonctionnalités avancées**: Exploite toutes les fonctionnalités de Repomix comme la compression de code, le comptage de tokens et l'analyse des secrets.
 
 Une fois configuré, votre assistant IA peut utiliser directement les capacités de Repomix pour analyser les bases de code, rendant les flux de travail d'analyse de code plus efficaces.
 

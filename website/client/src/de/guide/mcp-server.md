@@ -185,7 +185,7 @@ Dieses Tool liest den Inhalt einer von Repomix generierten Ausgabedatei. Es unte
 **Funktionen:**
 - Speziell für webbasierte Umgebungen oder Sandbox-Anwendungen entwickelt
 - Ruft den Inhalt zuvor generierter Ausgaben über ihre ID ab
-- Bietet sicheren Zugriff auf verpackte Codebase ohne Dateisystemzugriff
+- Bietet Zugriff auf die verpackte Codebase ohne Dateisystemzugriff
 - Unterstützt partielles Lesen für große Dateien
 
 **Beispiel:**
@@ -228,50 +228,15 @@ Dieses Tool durchsucht Muster in einer Repomix-Ausgabedatei mit grep-ähnlicher 
 }
 ```
 
-### file_system_read_file und file_system_read_directory
+## Sicherheitsmodell
 
-Der Repomix MCP-Server bietet zwei Dateisystemwerkzeuge, die es KI-Assistenten ermöglichen, sicher mit dem lokalen Dateisystem zu interagieren:
+Es ist wichtig zu verstehen, was der MCP-Server schützt und was nicht, denn der KI-Agent entscheidet, nicht Sie, welches Tool mit welchen Argumenten aufgerufen wird.
 
-1. `file_system_read_file`
-  - Liest Dateiinhalte aus dem lokalen Dateisystem unter Verwendung absoluter Pfade
-  - Beinhaltet eingebaute Sicherheitsvalidierung zur Erkennung und Verhinderung des Zugriffs auf Dateien mit sensiblen Informationen
-  - Implementiert Sicherheitsvalidierung mit [Secretlint](https://github.com/secretlint/secretlint)
-  - Verhindert den Zugriff auf Dateien mit sensiblen Informationen (API-Schlüssel, Passwörter, Geheimnisse)
-  - Validiert absolute Pfade zur Verhinderung von Directory Traversal-Angriffen
-  - Liefert klare Fehlermeldungen für ungültige Pfade und Sicherheitsprobleme
+- **Die Tools lesen alles, was der Prozess lesen kann.** `pack_codebase` verpackt jeden absoluten Verzeichnispfad, der ihm übergeben wird, und die verpackte Ausgabe wird an den Agenten zurückgegeben. Es gibt keine Beschränkung auf ein Projekt-Root-Verzeichnis; die Grenze bilden die Dateiberechtigungen Ihres Betriebssystems.
+- **Secret-Scanning ist eine Heuristik, keine Zugriffskontrolle.** [Secretlint](https://github.com/secretlint/secretlint) schließt Dateien aus, die bekannten Zugangsdatenformaten entsprechen (zum Beispiel AWS-Schlüssel und private Schlüssel). Es erkennt nicht jedes Secret, sodass Dateien wie `~/.netrc` oder eine Kubeconfig durchrutschen können. Ein sauberes Scan-Ergebnis bedeutet „nichts Offensichtliches gefunden", nicht „sicher zum Teilen".
+- **Ein Agent kann durch den gelesenen Inhalt gesteuert werden.** Analysiert er ein nicht vertrauenswürdiges Repository, kann Text darin versuchen, ihn anzuweisen, ein sensibles Verzeichnis zu verpacken oder eine fremde URL zu klonen. Repomix verweigert das Klonen von Cloud-Instanz-Metadaten-Endpunkten, kann aber eine echte Anfrage nicht von einer eingeschleusten unterscheiden.
 
-2. `file_system_read_directory`
-  - Listet den Inhalt eines Verzeichnisses unter Verwendung eines absoluten Pfads
-  - Gibt eine formatierte Liste zurück, die Dateien und Unterverzeichnisse mit klaren Indikatoren zeigt
-  - Zeigt Dateien und Verzeichnisse mit klaren Indikatoren (`[FILE]` oder `[DIR]`)
-  - Bietet sichere Verzeichnisnavigation mit angemessener Fehlerbehandlung
-  - Validiert Pfade und stellt sicher, dass sie absolut sind
-  - Nützlich für die Erkundung der Projektstruktur und das Verständnis der Codebase-Organisation
-
-Beide Werkzeuge beinhalten robuste Sicherheitsmaßnahmen:
-- Validierung absoluter Pfade zur Verhinderung von Directory Traversal-Angriffen
-- Berechtigungsprüfungen zur Gewährleistung angemessener Zugriffsrechte
-- Integration mit Secretlint zur Erkennung sensibler Informationen
-- Klare Fehlermeldungen für Debugging und Sicherheitsbewusstsein
-
-**Beispiel:**
-```typescript
-// Datei lesen
-const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
-});
-
-// Verzeichnisinhalt auflisten
-const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
-});
-```
-
-Diese Werkzeuge sind besonders nützlich, wenn KI-Assistenten:
-- Bestimmte Dateien in der Codebase analysieren müssen
-- Verzeichnisstrukturen navigieren müssen
-- Existenz und Zugänglichkeit von Dateien überprüfen müssen
-- Sichere Dateisystemoperationen gewährleisten müssen
+Verbinden Sie den MCP-Server nur mit Agenten und Repositories, denen Sie dieses Maß an Zugriff geben möchten.
 
 ## Vorteile der Verwendung von Repomix als MCP-Server
 
@@ -280,7 +245,7 @@ Die Verwendung von Repomix als MCP-Server bietet mehrere Vorteile:
 1. **Direkte Integration**: KI-Assistenten können Ihre Codebasis ohne manuelle Dateivorbereitung direkt analysieren.
 2. **Effizienter Workflow**: Optimiert den Prozess der Codeanalyse, indem die Notwendigkeit entfällt, Dateien manuell zu generieren und hochzuladen.
 3. **Konsistente Ausgabe**: Stellt sicher, dass der KI-Assistent die Codebasis in einem konsistenten, optimierten Format erhält.
-4. **Erweiterte Funktionen**: Nutzt alle Funktionen von Repomix wie Code-Komprimierung, Token-Zählung und Sicherheitsprüfungen.
+4. **Erweiterte Funktionen**: Nutzt alle Funktionen von Repomix wie Code-Komprimierung, Token-Zählung und Secret-Scanning.
 
 Nach der Konfiguration kann Ihr KI-Assistent die Funktionen von Repomix direkt nutzen, um Codebasen zu analysieren, was Codeanalyse-Workflows effizienter macht.
 

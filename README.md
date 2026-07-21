@@ -89,7 +89,7 @@ This wouldn't have been possible without all of you using and supporting Repomix
 - **Simple to Use**: You need just one command to pack your entire repository.
 - **Customizable**: Easily configure what to include or exclude.
 - **Git-Aware**: Automatically respects your `.gitignore`, `.ignore`, and `.repomixignore` files.
-- **Security-Focused**: Incorporates [Secretlint](https://github.com/secretlint/secretlint) for robust security checks to detect and prevent inclusion of sensitive information.
+- **Security-Focused**: Incorporates [Secretlint](https://github.com/secretlint/secretlint) to detect files matching known credential formats and leave them out of the output.
 - **Code Compression**: The `--compress` option uses [Tree-sitter](https://github.com/tree-sitter/tree-sitter) to extract key code elements, reducing token count while preserving structure.
 
 ## 🚀 Quick Start
@@ -1081,23 +1081,6 @@ When running as an MCP server, Repomix provides the following tools:
     - Allows separate control of before/after context lines
     - Case-sensitive and case-insensitive search options
 
-6. **file_system_read_file**: Read a file from the local file system using an absolute path. Includes built-in security validation to detect and prevent access to files containing sensitive information.
-  - Parameters:
-    - `path`: Absolute path to the file to read
-  - Security features:
-    - Implements security validation using [Secretlint](https://github.com/secretlint/secretlint)
-    - Prevents access to files containing sensitive information (API keys, passwords, secrets)
-    - Validates absolute paths to prevent directory traversal attacks
-
-7. **file_system_read_directory**: List the contents of a directory using an absolute path. Returns a formatted list showing files and subdirectories with clear indicators.
-  - Parameters:
-    - `path`: Absolute path to the directory to list
-  - Features:
-    - Shows files and directories with clear indicators (`[FILE]` or `[DIR]`)
-    - Provides safe directory traversal with proper error handling
-    - Validates paths and ensures they are absolute
-    - Useful for exploring project structure and understanding codebase organization
-
 ### Claude Code Plugins
 
 Repomix provides official plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) that integrate seamlessly with the AI-powered development environment.
@@ -1142,7 +1125,7 @@ Foundation plugin that provides AI-powered codebase analysis through MCP server 
 **Features:**
 - Pack local and remote repositories
 - Search through packed outputs
-- Read files with built-in security scanning (Secretlint)
+- Read and search packed outputs
 - Automatic Tree-sitter compression (~70% token reduction)
 
 **2. repomix-commands** (Slash Commands Plugin)
@@ -1195,7 +1178,7 @@ The agent automatically:
 - **Seamless Integration**: Claude can directly analyze codebases without manual preparation
 - **Natural Language**: Use conversational commands instead of remembering CLI syntax
 - **Always Latest**: Automatically uses `npx repomix@latest` for up-to-date features
-- **Security Built-in**: Automatic Secretlint scanning prevents sensitive data exposure
+- **Secret Scanning**: Secretlint flags files matching known credential formats so they are left out of the output
 - **Token Optimization**: Tree-sitter compression for large codebases
 
 For more details, see the plugin documentation in the `.claude/plugins/` directory.

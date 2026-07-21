@@ -185,7 +185,7 @@ This tool reads the contents of a Repomix-generated output file. Supports partia
 **Features:**
 - Specifically designed for web-based environments or sandboxed applications
 - Retrieves the content of previously generated outputs using their ID
-- Provides secure access to packed codebase without requiring file system access
+- Provides access to the packed codebase without requiring file system access
 - Supports partial reading for large files
 
 **Example:**
@@ -228,50 +228,15 @@ This tool searches for patterns in a Repomix output file using grep-like functio
 }
 ```
 
-### file_system_read_file and file_system_read_directory
+## Security Model
 
-Repomix's MCP server provides two file system tools that allow AI assistants to safely interact with the local file system:
+Understanding what the MCP server does and does not protect matters, because the AI agent, not you, decides which tool to call and with which arguments.
 
-1. `file_system_read_file`
-  - Reads file contents from the local file system using absolute paths
-  - Includes built-in security validation to detect and prevent access to files containing sensitive information
-  - Implements security validation using [Secretlint](https://github.com/secretlint/secretlint)
-  - Prevents access to files containing sensitive information (API keys, passwords, secrets)
-  - Validates absolute paths to prevent directory traversal attacks
-  - Returns formatted content with clear error messages for invalid paths or security issues
+- **The tools read whatever the process can read.** `pack_codebase` packs any absolute directory path it is given, and the packed output is returned to the agent. There is no confinement to a project root; the boundary is your operating system's file permissions.
+- **Secret scanning is a heuristic, not an access control.** [Secretlint](https://github.com/secretlint/secretlint) excludes files matching known credential formats (for example AWS keys and private keys). It does not recognize every secret, so files such as `~/.netrc` or a kubeconfig can pass through it. Treat a clean scan as "nothing obvious was found", not as "this is safe to share".
+- **An agent can be steered by the content it reads.** If it analyzes an untrusted repository, text in that repository can attempt to instruct it to pack a sensitive directory or clone an unrelated URL. Repomix refuses to clone cloud instance metadata endpoints, but it cannot tell a genuine request from an injected one.
 
-2. `file_system_read_directory`
-  - Lists the contents of a directory using an absolute path
-  - Returns a formatted list showing files and subdirectories with clear indicators
-  - Shows both files and directories with clear indicators (`[FILE]` or `[DIR]`)
-  - Provides safe directory traversal with proper error handling
-  - Validates paths and ensures they are absolute
-  - Useful for exploring project structure and understanding codebase organization
-
-Both tools incorporate robust security measures:
-- Absolute path validation to prevent directory traversal attacks
-- Permission checks to ensure proper access rights
-- Integration with Secretlint for sensitive information detection
-- Clear error messaging for better debugging and security awareness
-
-**Example:**
-```typescript
-// Reading a file
-const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
-});
-
-// Listing directory contents
-const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
-});
-```
-
-These tools are particularly useful when AI assistants need to:
-- Analyze specific files in the codebase
-- Navigate directory structures
-- Verify file existence and accessibility
-- Ensure secure file system operations
+Connect the MCP server only to agents and repositories you are willing to give this level of access.
 
 ## Benefits of Using Repomix as an MCP Server
 
@@ -280,7 +245,7 @@ Using Repomix as an MCP server offers several advantages:
 1. **Direct Integration**: AI assistants can directly analyze your codebase without manual file preparation.
 2. **Efficient Workflow**: Streamlines the process of code analysis by eliminating the need to manually generate and upload files.
 3. **Consistent Output**: Ensures that the AI assistant receives the codebase in a consistent, optimized format.
-4. **Advanced Features**: Leverages all of Repomix's features like code compression, token counting, and security checks.
+4. **Advanced Features**: Leverages all of Repomix's features like code compression, token counting, and secret scanning.
 
 Once configured, your AI assistant can directly use Repomix's capabilities to analyze codebases, making code analysis workflows more efficient.
 
