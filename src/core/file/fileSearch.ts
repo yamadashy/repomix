@@ -425,7 +425,10 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
   // Add repomix output file
   if (config.output.filePath) {
     const absoluteOutputPath = path.resolve(config.cwd, config.output.filePath);
-    const relativeToTargetPath = path.relative(rootDir, absoluteOutputPath);
+    // Normalize to POSIX separators: globby matches ignore patterns against
+    // forward-slash paths, so a nested output path (e.g. `docs/out.xml`) would
+    // stay as `docs\out.xml` on Windows and fail to self-ignore the output file.
+    const relativeToTargetPath = toPosixPath(path.relative(rootDir, absoluteOutputPath));
 
     logger.trace('Adding output file to ignore patterns:', relativeToTargetPath);
 
