@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784645193044,
+  "lastUpdate": 1784646969900,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -9630,6 +9630,51 @@ window.BENCHMARK_DATA = {
             "range": "±24",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1183ms, Q3: 1207ms\nAll times: 1149, 1158, 1164, 1165, 1170, 1183, 1186, 1186, 1188, 1190, 1190, 1191, 1194, 1194, 1206, 1207, 1213, 1214, 1294, 1390ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2b7dfc6528bf7a1b5ad3db624a781d3f84378105",
+          "message": "Merge pull request #1748 from serhiizghama/fix/output-ignore-posix-separators\n\nfix(core): normalize output file path to POSIX separators before ignoring",
+          "timestamp": "2026-07-22T00:14:38+09:00",
+          "tree_id": "c657f9355d206cee757694e9f6ce6720f010dd6a",
+          "url": "https://github.com/yamadashy/repomix/commit/2b7dfc6528bf7a1b5ad3db624a781d3f84378105"
+        },
+        "date": 1784646969180,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 915,
+            "range": "±380",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 636ms, Q3: 1016ms\nAll times: 590, 597, 607, 617, 629, 629, 631, 636, 638, 691, 823, 830, 831, 831, 870, 915, 924, 975, 1001, 1013, 1014, 1014, 1016, 1019, 1020, 1039, 1051, 1059, 1067, 1078ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 911,
+            "range": "±88",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 903ms, Q3: 991ms\nAll times: 886, 892, 902, 902, 903, 903, 905, 905, 907, 908, 911, 912, 917, 918, 930, 991, 1018, 1021, 1027, 1108ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1197,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1185ms, Q3: 1209ms\nAll times: 1169, 1174, 1177, 1179, 1182, 1185, 1191, 1192, 1194, 1196, 1197, 1202, 1203, 1207, 1209, 1209, 1209, 1211, 1216, 1219ms"
           }
         ]
       }
