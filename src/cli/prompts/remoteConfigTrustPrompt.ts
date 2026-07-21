@@ -3,6 +3,7 @@ import path from 'node:path';
 import pc from 'picocolors';
 import { findLocalConfigPath } from '../../config/configLoad.js';
 import { OperationCancelledError, RepomixError } from '../../shared/errorHandle.js';
+import { writeStderrLine as writeErr } from '../../shared/stderrWrite.js';
 import { isRemoteConfigTrusted, markRemoteConfigTrusted, sha256 } from './remoteConfigTrustStore.js';
 
 // Cap how much of the config we echo so a huge file cannot bury the interesting
@@ -14,17 +15,29 @@ const MAX_DISPLAY_BYTES = 8 * 1024;
 // label these as executable code rather than implying a full audit.
 const CODE_CONFIG_RE = /\.(ts|mts|cts|js|mjs|cjs)$/;
 
+// C0/C1 control characters, minus tab and newline which carry the config's real
+// layout. Everything else is escaped before display.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point of this sanitizer
+const CONTROL_CHARS_RE = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g;
+
 export type RemoteTrustChoice = 'once' | 'always' | 'no';
+
+/**
+ * Renders attacker-controlled text safely for a terminal. The config we echo is
+ * fully controlled by the remote repository, so raw ANSI/VT sequences could scroll
+ * away the warning printed above it, reposition the cursor to hide a dangerous line
+ * such as `input.processors`, or push the real payload past the truncation cap while
+ * the visible portion looks harmless. Any of those turns the review into a doctored
+ * view and defeats the informed consent this prompt exists to obtain, so control
+ * characters are escaped into a visible form rather than being emitted or dropped.
+ */
+const sanitizeForDisplay = (text: string): string =>
+  text.replace(CONTROL_CHARS_RE, (char) => `\\x${char.charCodeAt(0).toString(16).padStart(2, '0')}`);
 
 // Interactivity is judged on stdin+stderr, never stdout: `--stdout` pipes the
 // packed output through stdout, so gating on stdout.isTTY would silently trust a
 // piped run — exactly the case we want to prompt in.
-const isInteractive = (): boolean => Boolean(process.stdin.isTTY && process.stderr.isTTY);
-
-// All trust messaging goes to stderr so it never mixes into `--stdout` output.
-const writeErr = (line = ''): void => {
-  process.stderr.write(`${line}\n`);
-};
+export const isInteractive = (): boolean => Boolean(process.stdin.isTTY && process.stderr.isTTY);
 
 const loadClack = async () => {
   const p = await import('@clack/prompts');
@@ -131,9 +144,9 @@ export const confirmRemoteConfigTrust = async (
   // Only review a config that really lives inside the clone (see helper).
   await assertConfigIsContained(configPath, repoDir, deps);
 
-  let configBytes: string;
+  let configText: string;
   try {
-    configBytes = await deps.readFile(configPath, 'utf8');
+    configText = await deps.readFile(configPath, 'utf8');
   } catch (error) {
     throw new RepomixError(
       `Could not read the remote repository's config (${configName}) for review: ${
@@ -141,7 +154,7 @@ export const confirmRemoteConfigTrust = async (
       }`,
     );
   }
-  const configDigest = sha256(configBytes);
+  const configDigest = sha256(configText);
 
   // Already trusted for this exact config content.
   if (await deps.isRemoteConfigTrusted(repoUrl, configDigest)) return;
@@ -157,16 +170,23 @@ export const confirmRemoteConfigTrust = async (
   }
 
   const isCode = CODE_CONFIG_RE.test(configName);
-  // Cap on bytes, and slice on bytes too: slicing the string would cut by UTF-16
+  // Escape control characters first so the cap applies to what is actually printed,
+  // then cap on bytes and slice on bytes: slicing the string would cut by UTF-16
   // code units and blow past the cap on multi-byte content.
-  const configBuffer = Buffer.from(configBytes, 'utf8');
-  const truncated = configBuffer.byteLength > MAX_DISPLAY_BYTES;
+  const displayText = sanitizeForDisplay(configText);
+  const truncated = Buffer.byteLength(displayText, 'utf8') > MAX_DISPLAY_BYTES;
   const shown = truncated
-    ? `${configBuffer.subarray(0, MAX_DISPLAY_BYTES).toString('utf8')}\n... (truncated)`
-    : configBytes;
+    ? `${Buffer.from(displayText, 'utf8').subarray(0, MAX_DISPLAY_BYTES).toString('utf8')}\n... (truncated)`
+    : displayText;
 
   writeErr();
-  writeErr(pc.yellow(pc.bold(`⚠ ${repoUrl} ships a config file that will be trusted: ${configName}`)));
+  writeErr(
+    pc.yellow(
+      pc.bold(
+        `⚠ ${sanitizeForDisplay(repoUrl)} ships a config file that will be trusted: ${sanitizeForDisplay(configName)}`,
+      ),
+    ),
+  );
   if (isCode) {
     writeErr(pc.yellow('  This is executable code — loading it runs arbitrary commands on your machine.'));
   } else {

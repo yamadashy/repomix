@@ -66,6 +66,39 @@ describe('remoteConfigTrustStore', () => {
       expect(trusted).toBe(false);
     });
 
+    it('refuses to honor a marker in a foreign-owned store dir (read path)', async () => {
+      // The seeding attack: another local user plants a marker whose digest matches.
+      const digest = sha256('config-bytes');
+      const trusted = await isRemoteConfigTrusted('github.com/user/repo', digest, {
+        lstat: vi.fn().mockResolvedValue(makeStats({ uid: myUid + 1 })),
+        readFile: vi.fn().mockResolvedValue(digest),
+      });
+      expect(trusted).toBe(false);
+    });
+
+    it('refuses to honor a marker in a world-writable store dir (read path)', async () => {
+      const digest = sha256('config-bytes');
+      const trusted = await isRemoteConfigTrusted('github.com/user/repo', digest, {
+        lstat: vi.fn().mockResolvedValue(makeStats({ mode: 0o777 })),
+        readFile: vi.fn().mockResolvedValue(digest),
+      });
+      expect(trusted).toBe(false);
+    });
+
+    it('checks the parent umbrella as well as the trusted-remotes subdir', async () => {
+      const digest = sha256('config-bytes');
+      // First lstat is $TMPDIR/repomix (unsafe), second is trusted-remotes (safe).
+      const lstat = vi
+        .fn()
+        .mockResolvedValueOnce(makeStats({ mode: 0o777 }))
+        .mockResolvedValueOnce(makeStats({}));
+      const trusted = await isRemoteConfigTrusted('github.com/user/repo', digest, {
+        lstat,
+        readFile: vi.fn().mockResolvedValue(digest),
+      });
+      expect(trusted).toBe(false);
+    });
+
     it('writes a content-pinned, 0600 marker when remembering trust', async () => {
       const writeFile = vi.fn().mockResolvedValue(undefined);
       const digest = sha256('remembered-config');

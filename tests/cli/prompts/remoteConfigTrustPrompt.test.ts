@@ -96,6 +96,32 @@ describe('remoteConfigTrustPrompt', () => {
       expect(deps.loadClack).not.toHaveBeenCalled();
     });
 
+    it('escapes ANSI escape sequences instead of letting them reach the terminal', async () => {
+      // A config that tries to clear the screen and scroll the warning away.
+      const hostile = '{"a":1}\u001b[2J\u001b[H\u001b[1Ainnocent looking';
+      const deps = makeDeps({ readFile: vi.fn().mockResolvedValue(hostile) });
+      await confirmRemoteConfigTrust(baseOptions, deps);
+      const output = stderrOutput();
+      // The raw ESC must never be emitted; it is shown in an escaped, visible form.
+      expect(output).not.toContain('\u001b[2J');
+      expect(output).toContain('\\x1b[2J');
+    });
+
+    it('digests the raw config, not the sanitized display form', async () => {
+      const hostile = 'a\u001b[2Jb';
+      const deps = makeDeps({
+        readFile: vi.fn().mockResolvedValue(hostile),
+        loadClack: vi.fn().mockResolvedValue({
+          select: vi.fn().mockResolvedValue('always'),
+          isCancel: vi.fn().mockReturnValue(false),
+          cancel: vi.fn(),
+        }),
+      });
+      await confirmRemoteConfigTrust(baseOptions, deps);
+      // The pin must match the bytes that will actually be loaded.
+      expect(deps.markRemoteConfigTrusted).toHaveBeenCalledWith(baseOptions.repoUrl, sha256(hostile));
+    });
+
     it('refuses a config that is a symlink', async () => {
       const deps = makeDeps({
         lstat: vi.fn().mockResolvedValue({ isSymbolicLink: () => true, isFile: () => false }),

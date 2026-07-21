@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import pc from 'picocolors';
 import { parseRemoteValue } from '../../core/git/gitRemoteParse.js';
+import { writeStderrLine as writeErr } from '../../shared/stderrWrite.js';
 import { getRepomixTmpDir } from '../../shared/tmpDir.js';
 
 // Persistence for the "don't ask again for this repository" answer given to the
@@ -42,17 +43,14 @@ const normalizeRemoteKey = (repoUrl: string): string => {
 const markerPathForUrl = (repoUrl: string): string =>
   path.join(getTrustStoreDir(), sha256(normalizeRemoteKey(repoUrl)));
 
-// All trust messaging goes to stderr so it never mixes into `--stdout` output.
-const writeErr = (line = ''): void => {
-  process.stderr.write(`${line}\n`);
-};
-
 // On a shared host, /tmp/repomix/trusted-remotes could be pre-created by another
 // local user who seeds markers to suppress this consent prompt. Require the dir to
 // be owned by us and not group/world-writable before honoring or writing markers.
 // `lstat` (not `stat`) so a symlinked store dir is rejected outright rather than
 // letting our chmod/write follow it into a directory we do not own.
-// POSIX only; on Windows (uid -1) the uid/mode model does not apply, so we skip it.
+// POSIX only; on Windows (uid -1) the uid/mode model does not apply, so we skip the
+// check. The net effect is acceptable there because os.tmpdir() is already per-user
+// (%TEMP% / %LOCALAPPDATA%), so another account cannot seed markers into our store.
 const isDirSafe = async (dir: string, deps: { lstat: typeof fs.lstat }): Promise<boolean> => {
   try {
     const stats = await deps.lstat(dir);
