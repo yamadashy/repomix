@@ -22,8 +22,10 @@ describe('remoteConfigTrustPrompt', () => {
 
   // picocolors emits ANSI when colors are enabled (CI sets that), so assertions about
   // where a line starts must compare against uncolored text.
+  /* oxlint-disable no-control-regex -- see the biome-ignore comment below */
   // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping real ANSI codes requires matching ESC
   const stripAnsi = (text: string): string => text.replace(/\u001b\[[0-9;]*m/g, '');
+  /* oxlint-enable no-control-regex */
 
   describe('confirmRemoteConfigTrust', () => {
     const baseOptions = {

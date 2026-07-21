@@ -33,10 +33,12 @@ const CODE_CONFIG_RE = /\.(ts|mts|cts|js|mjs|cjs)$/;
 //   from the reader while remaining part of the file.
 // Unicode-aware so the astral ranges match whole code points rather than halves of
 // a surrogate pair.
+/* oxlint-disable no-control-regex, no-misleading-character-class -- see the biome-ignore comments below */
 const CONTROL_CHARS_RE =
   // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point of this sanitizer
   // biome-ignore lint/suspicious/noMisleadingCharacterClass: each code point is escaped individually, never matched as a grapheme cluster
   /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u034F\u061C\u180B-\u180D\u180F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFE00-\uFE0F\uFEFF\u{1D173}-\u{1D17A}\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
+/* oxlint-enable no-control-regex, no-misleading-character-class */
 
 export type RemoteTrustChoice = 'once' | 'always' | 'no';
 
