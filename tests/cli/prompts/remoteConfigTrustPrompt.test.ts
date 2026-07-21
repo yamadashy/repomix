@@ -1,11 +1,8 @@
 import { createHash } from 'node:crypto';
-import os from 'node:os';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type ConfirmRemoteConfigTrustDeps,
   confirmRemoteConfigTrust,
-  isRemoteConfigTrusted,
-  markRemoteConfigTrusted,
 } from '../../../src/cli/prompts/remoteConfigTrustPrompt.js';
 import { OperationCancelledError, RepomixError } from '../../../src/shared/errorHandle.js';
 
@@ -35,6 +32,8 @@ describe('remoteConfigTrustPrompt', () => {
     const makeDeps = (over: Partial<ConfirmRemoteConfigTrustDeps> = {}): ConfirmRemoteConfigTrustDeps => ({
       findLocalConfigPath: vi.fn().mockResolvedValue('/repo/repomix.config.json'),
       readFile: vi.fn().mockResolvedValue('{"output":{"style":"xml"}}'),
+      lstat: vi.fn().mockResolvedValue({ isSymbolicLink: () => false, isFile: () => true }),
+      realpath: vi.fn(async (target: unknown) => String(target)) as unknown as ConfirmRemoteConfigTrustDeps['realpath'],
       isRemoteConfigTrusted: vi.fn().mockResolvedValue(false),
       markRemoteConfigTrusted: vi.fn().mockResolvedValue(undefined),
       isInteractive: vi.fn().mockReturnValue(true),
@@ -97,6 +96,31 @@ describe('remoteConfigTrustPrompt', () => {
       expect(deps.loadClack).not.toHaveBeenCalled();
     });
 
+    it('refuses a config that is a symlink', async () => {
+      const deps = makeDeps({
+        lstat: vi.fn().mockResolvedValue({ isSymbolicLink: () => true, isFile: () => false }),
+      });
+      await expect(confirmRemoteConfigTrust(baseOptions, deps)).rejects.toThrow(RepomixError);
+      // The symlink target must never be read or shown.
+      expect(deps.readFile).not.toHaveBeenCalled();
+      expect(deps.loadClack).not.toHaveBeenCalled();
+    });
+
+    it('refuses a config whose real path escapes the cloned repo', async () => {
+      const deps = makeDeps({
+        realpath: vi.fn(async (target: unknown) =>
+          String(target) === '/repo' ? '/repo' : '/etc/shadow',
+        ) as unknown as ConfirmRemoteConfigTrustDeps['realpath'],
+      });
+      await expect(confirmRemoteConfigTrust(baseOptions, deps)).rejects.toThrow(RepomixError);
+      expect(deps.readFile).not.toHaveBeenCalled();
+    });
+
+    it('reports a readable error when the config cannot be read', async () => {
+      const deps = makeDeps({ readFile: vi.fn().mockRejectedValue(new Error('EACCES: permission denied')) });
+      await expect(confirmRemoteConfigTrust(baseOptions, deps)).rejects.toThrow(RepomixError);
+    });
+
     it('refuses to prompt under --stdout rather than corrupt piped output', async () => {
       const deps = makeDeps();
       await expect(confirmRemoteConfigTrust({ ...baseOptions, stdout: true }, deps)).rejects.toThrow(RepomixError);
@@ -144,127 +168,6 @@ describe('remoteConfigTrustPrompt', () => {
       });
       await confirmRemoteConfigTrust(baseOptions, deps);
       expect(deps.markRemoteConfigTrusted).toHaveBeenCalledWith(baseOptions.repoUrl, sha256(configBytes));
-    });
-  });
-
-  describe('trust store', () => {
-    const myUid = os.userInfo().uid;
-    type DirStats = Awaited<ReturnType<typeof import('node:fs/promises').lstat>>;
-    const makeStats = (over: Partial<{ isDirectory: boolean; isSymbolicLink: boolean; uid: number; mode: number }>) =>
-      ({
-        isDirectory: () => over.isDirectory ?? true,
-        isSymbolicLink: () => over.isSymbolicLink ?? false,
-        uid: over.uid ?? myUid,
-        mode: over.mode ?? 0o700,
-      }) as unknown as DirStats;
-
-    const safeDirStat = makeStats({});
-
-    it('trusts a remote whose stored digest matches the config', async () => {
-      const digest = sha256('config-bytes');
-      const trusted = await isRemoteConfigTrusted('github.com/user/repo', digest, {
-        lstat: vi.fn().mockResolvedValue(safeDirStat),
-        readFile: vi.fn().mockResolvedValue(`${digest}\n`),
-      });
-      expect(trusted).toBe(true);
-    });
-
-    it('re-prompts (untrusted) when the stored digest differs from the current config', async () => {
-      const trusted = await isRemoteConfigTrusted('github.com/user/repo', sha256('new-config'), {
-        lstat: vi.fn().mockResolvedValue(safeDirStat),
-        readFile: vi.fn().mockResolvedValue(sha256('old-config')),
-      });
-      expect(trusted).toBe(false);
-    });
-
-    it('is untrusted when no marker exists', async () => {
-      const trusted = await isRemoteConfigTrusted('github.com/user/repo', sha256('x'), {
-        lstat: vi.fn().mockResolvedValue(safeDirStat),
-        readFile: vi.fn().mockRejectedValue(new Error('ENOENT')),
-      });
-      expect(trusted).toBe(false);
-    });
-
-    it('is untrusted when the trust store path is not a directory', async () => {
-      const trusted = await isRemoteConfigTrusted('github.com/user/repo', sha256('x'), {
-        lstat: vi.fn().mockResolvedValue(makeStats({ isDirectory: false })),
-        readFile: vi.fn().mockResolvedValue(sha256('x')),
-      });
-      expect(trusted).toBe(false);
-    });
-
-    it('is untrusted when the trust store cannot be stat-ed', async () => {
-      const trusted = await isRemoteConfigTrusted('github.com/user/repo', sha256('x'), {
-        lstat: vi.fn().mockRejectedValue(new Error('ENOENT')),
-        readFile: vi.fn().mockResolvedValue(sha256('x')),
-      });
-      expect(trusted).toBe(false);
-    });
-
-    it('writes a content-pinned, 0600 marker when remembering trust', async () => {
-      const writeFile = vi.fn().mockResolvedValue(undefined);
-      const digest = sha256('remembered-config');
-      await markRemoteConfigTrusted('github.com/user/repo', digest, {
-        mkdir: vi.fn().mockResolvedValue(undefined),
-        chmod: vi.fn().mockResolvedValue(undefined),
-        lstat: vi.fn().mockResolvedValue(safeDirStat),
-        writeFile,
-      });
-      expect(writeFile).toHaveBeenCalledTimes(1);
-      const [markerPath, content, opts] = writeFile.mock.calls[0];
-      expect(content).toBe(digest);
-      expect(opts).toEqual({ mode: 0o600 });
-      expect(String(markerPath)).toContain('trusted-remotes');
-    });
-
-    it('never aborts the run when persisting the marker fails', async () => {
-      await expect(
-        markRemoteConfigTrusted('github.com/user/repo', sha256('x'), {
-          mkdir: vi.fn().mockResolvedValue(undefined),
-          chmod: vi.fn().mockResolvedValue(undefined),
-          lstat: vi.fn().mockResolvedValue(safeDirStat),
-          writeFile: vi.fn().mockRejectedValue(new Error('ENOSPC: no space left on device')),
-        }),
-      ).resolves.toBeUndefined();
-    });
-
-    it.skipIf(process.platform === 'win32')('refuses to touch a symlinked trust store dir', async () => {
-      const writeFile = vi.fn().mockResolvedValue(undefined);
-      const chmod = vi.fn().mockResolvedValue(undefined);
-      await markRemoteConfigTrusted('github.com/user/repo', sha256('x'), {
-        mkdir: vi.fn().mockResolvedValue(undefined),
-        chmod,
-        lstat: vi.fn().mockResolvedValue(makeStats({ isSymbolicLink: true })),
-        writeFile,
-      });
-      // Neither the chmod nor the write may follow the symlink.
-      expect(chmod).not.toHaveBeenCalled();
-      expect(writeFile).not.toHaveBeenCalled();
-    });
-
-    it.skipIf(process.platform === 'win32')(
-      'refuses to write a marker into a foreign-owned trust store dir',
-      async () => {
-        const writeFile = vi.fn().mockResolvedValue(undefined);
-        await markRemoteConfigTrusted('github.com/user/repo', sha256('x'), {
-          mkdir: vi.fn().mockResolvedValue(undefined),
-          chmod: vi.fn().mockResolvedValue(undefined),
-          lstat: vi.fn().mockResolvedValue(makeStats({ uid: myUid + 1 })),
-          writeFile,
-        });
-        expect(writeFile).not.toHaveBeenCalled();
-      },
-    );
-
-    it.skipIf(process.platform === 'win32')('refuses a world-writable trust store dir', async () => {
-      const writeFile = vi.fn().mockResolvedValue(undefined);
-      await markRemoteConfigTrusted('github.com/user/repo', sha256('x'), {
-        mkdir: vi.fn().mockResolvedValue(undefined),
-        chmod: vi.fn().mockResolvedValue(undefined),
-        lstat: vi.fn().mockResolvedValue(makeStats({ mode: 0o777 })),
-        writeFile,
-      });
-      expect(writeFile).not.toHaveBeenCalled();
     });
   });
 });

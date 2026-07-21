@@ -93,7 +93,7 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 When you trust a repository's config in an interactive terminal, repomix shows the config that is about to run and asks you to confirm before loading it:
 
 - **Yes, once** — trust this run only.
-- **Yes, and don't ask again for this repository** — remembered until your temporary files are cleared, and only while the config stays the same (a changed config prompts again).
+- **Yes, and don't ask again for this repository** — remembered until your temporary files are cleared, and only while that config file is unchanged (an edited config prompts again). Note that this covers the config file itself: a `.ts` / `.js` config can import other files, and those are not part of the check.
 - **No** — abort without running the config.
 
 The prompt is skipped when you pass `--force`, in non-interactive shells such as CI (the config is trusted as before, keeping existing automation working), or once you have chosen to always trust that repository.

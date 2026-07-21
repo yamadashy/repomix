@@ -87,7 +87,7 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 Lorsque vous faites confiance à la configuration d'un dépôt dans un terminal interactif, repomix affiche la configuration qui est sur le point de s'exécuter et vous demande de confirmer avant de la charger :
 
 - **Oui, une seule fois** : ne fait confiance qu'à cette exécution.
-- **Oui, et ne plus demander pour ce dépôt** : mémorisé jusqu'à ce que vos fichiers temporaires soient effacés, et seulement tant que la configuration reste identique (une configuration modifiée déclenche à nouveau l'invite).
+- **Oui, et ne plus demander pour ce dépôt** : mémorisé jusqu'à ce que vos fichiers temporaires soient effacés, et seulement tant que ce fichier de configuration reste inchangé (un fichier de configuration modifié déclenche à nouveau l'invite). Notez que cela ne concerne que le fichier de configuration lui-même : une configuration `.ts` / `.js` peut importer d'autres fichiers, qui ne font pas partie de cette vérification.
 - **Non** : abandonne sans exécuter la configuration.
 
 L'invite est ignorée si vous passez `--force`, dans des shells non interactifs tels que la CI (la configuration reste alors considérée comme fiable comme auparavant, ce qui permet aux automatisations existantes de continuer à fonctionner), ou une fois que vous avez choisi de toujours faire confiance à ce dépôt.

@@ -93,7 +93,7 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 Etkileşimli bir terminalde bir deponun yapılandırmasına güvendiğinizde, repomix çalıştırılmak üzere olan yapılandırmayı gösterir ve yüklemeden önce onaylamanızı ister:
 
 - **Evet, yalnızca bu sefer**: yalnızca bu çalıştırmaya güvenilir.
-- **Evet, bu depo için tekrar sorma**: geçici dosyalarınız temizlenene kadar ve yalnızca yapılandırma aynı kaldığı sürece hatırlanır (yapılandırma değişirse tekrar sorulur).
+- **Evet, bu depo için tekrar sorma**: geçici dosyalarınız temizlenene kadar ve yalnızca o yapılandırma dosyası değişmediği sürece hatırlanır (yapılandırma dosyası düzenlenirse tekrar sorulur). Bu kontrolün yalnızca yapılandırma dosyasının kendisini kapsadığını unutmayın: bir `.ts` / `.js` yapılandırması başka dosyaları içe aktarabilir ve bunlar bu kontrolün parçası değildir.
 - **Hayır**: yapılandırmayı çalıştırmadan iptal et.
 
 `--force` bayrağını geçtiğinizde, CI gibi etkileşimli olmayan kabuklarda (yapılandırma öncekiyle aynı şekilde güvenilir kabul edilir, böylece mevcut otomasyonlar çalışmaya devam eder) veya o depoya her zaman güvenmeyi zaten seçtiyseniz, bu istem atlanır.

@@ -93,7 +93,7 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 Wenn Sie die Konfiguration eines Repositorys in einem interaktiven Terminal vertrauen, zeigt repomix die Konfiguration an, die ausgeführt werden soll, und bittet Sie um Bestätigung, bevor sie geladen wird:
 
 - **Ja, nur dieses Mal**: Vertraut nur diesem Durchlauf.
-- **Ja, und nicht mehr für dieses Repository fragen**: Wird gespeichert, bis Ihre temporären Dateien gelöscht werden, und nur solange die Konfiguration unverändert bleibt (bei einer geänderten Konfiguration wird erneut gefragt).
+- **Ja, und nicht mehr für dieses Repository fragen**: Wird gespeichert, bis Ihre temporären Dateien gelöscht werden, und nur solange diese Konfigurationsdatei unverändert bleibt (bei einer geänderten Konfigurationsdatei wird erneut gefragt). Beachten Sie, dass sich dies nur auf die Konfigurationsdatei selbst bezieht: Eine `.ts`- / `.js`-Konfiguration kann andere Dateien importieren, und diese sind nicht Teil der Prüfung.
 - **Nein**: Bricht ab, ohne die Konfiguration auszuführen.
 
 Die Abfrage wird übersprungen, wenn Sie `--force` übergeben, in nicht-interaktiven Shells wie CI (die Konfiguration wird wie bisher vertraut, sodass bestehende Automatisierungen weiterhin funktionieren), oder wenn Sie bereits gewählt haben, diesem Repository immer zu vertrauen.

@@ -93,7 +93,7 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 Saat Anda mempercayai konfigurasi repositori di terminal interaktif, repomix menampilkan konfigurasi yang akan dijalankan dan meminta Anda mengonfirmasi sebelum memuatnya:
 
 - **Ya, sekali ini saja**: hanya mempercayai proses ini.
-- **Ya, dan jangan tanya lagi untuk repositori ini**: diingat hingga file sementara Anda dihapus, dan hanya selama konfigurasi tetap sama (konfigurasi yang berubah akan meminta konfirmasi lagi).
+- **Ya, dan jangan tanya lagi untuk repositori ini**: diingat hingga file sementara Anda dihapus, dan hanya selama file konfigurasi tersebut tidak berubah (file konfigurasi yang diedit akan meminta konfirmasi lagi). Perlu diperhatikan, ini hanya mencakup file konfigurasi itu sendiri: konfigurasi `.ts` / `.js` dapat mengimpor file lain, dan file tersebut tidak termasuk dalam pemeriksaan ini.
 - **Tidak**: batalkan tanpa menjalankan konfigurasi.
 
 Prompt ini dilewati saat Anda menyertakan `--force`, di shell non-interaktif seperti CI (konfigurasi tetap dipercaya seperti sebelumnya, sehingga otomatisasi yang ada tetap berjalan), atau setelah Anda memilih untuk selalu mempercayai repositori tersebut.

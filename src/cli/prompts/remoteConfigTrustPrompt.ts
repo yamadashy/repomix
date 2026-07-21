@@ -1,116 +1,20 @@
-import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import pc from 'picocolors';
 import { findLocalConfigPath } from '../../config/configLoad.js';
-import { parseRemoteValue } from '../../core/git/gitRemoteParse.js';
 import { OperationCancelledError, RepomixError } from '../../shared/errorHandle.js';
-import { getRepomixTmpDir } from '../../shared/tmpDir.js';
-
-// "Always trust" markers live under $TMPDIR/repomix/trusted-remotes/. Each marker
-// is named sha256(normalized clone URL) and its CONTENT is sha256(config bytes):
-// trust is pinned to the exact config content, so a trusted remote that later ships
-// a different config re-prompts (the direnv model). The dir shares the ephemeral
-// repomix/ umbrella (see shared/tmpDir.ts), so a decision survives across runs but
-// decays when the OS clears the temp dir — acceptable and fail-closed for a consent
-// cache.
-const TRUST_SUBDIR_NAME = 'trusted-remotes';
+import { isRemoteConfigTrusted, markRemoteConfigTrusted, sha256 } from './remoteConfigTrustStore.js';
 
 // Cap how much of the config we echo so a huge file cannot bury the interesting
 // part or flood the terminal. The user is told when it is truncated.
 const MAX_DISPLAY_BYTES = 8 * 1024;
 
 // Config extensions that execute on load (jiti): the shown text is not the whole
-// story, so we label these as executable code rather than implying a full audit.
+// story (such a config can import sibling modules that are never displayed), so we
+// label these as executable code rather than implying a full audit.
 const CODE_CONFIG_RE = /\.(ts|mts|cts|js|mjs|cjs)$/;
 
 export type RemoteTrustChoice = 'once' | 'always' | 'no';
-
-const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
-
-const getTrustStoreDir = (): string => path.join(getRepomixTmpDir(), TRUST_SUBDIR_NAME);
-
-const normalizeRemoteKey = (repoUrl: string): string => {
-  // Hash the same canonical clone URL used for cloning so shorthand/https map to
-  // one marker. Fall back to the raw value if parsing fails (causes re-prompting,
-  // which is fail-closed).
-  try {
-    return parseRemoteValue(repoUrl).repoUrl;
-  } catch {
-    return repoUrl;
-  }
-};
-
-const markerPathForUrl = (repoUrl: string): string =>
-  path.join(getTrustStoreDir(), sha256(normalizeRemoteKey(repoUrl)));
-
-// On a shared host, /tmp/repomix/trusted-remotes could be pre-created by another
-// local user who seeds markers to suppress this consent prompt. Require the dir to
-// be owned by us and not group/world-writable before honoring or writing markers.
-// `lstat` (not `stat`) so a symlinked store dir is rejected outright rather than
-// letting our chmod/write follow it into a directory we do not own.
-// POSIX only; on Windows (uid -1) the uid/mode model does not apply, so we skip it.
-const isDirSafe = async (dir: string, deps: { lstat: typeof fs.lstat }): Promise<boolean> => {
-  try {
-    const stats = await deps.lstat(dir);
-    if (stats.isSymbolicLink() || !stats.isDirectory()) return false;
-    if (process.platform === 'win32') return true;
-    const uid = os.userInfo().uid;
-    if (uid >= 0 && stats.uid !== uid) return false;
-    if ((stats.mode & 0o022) !== 0) return false;
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-// The shared parent umbrella is checked too: $TMPDIR/repomix is created by whichever
-// consumer runs first (token cache, MCP outputs) under the default umask, so on a
-// multi-user /tmp it can be attacker-creatable even when our own subdir looks fine.
-const isStoreDirSafe = async (deps: { lstat: typeof fs.lstat }): Promise<boolean> =>
-  (await isDirSafe(getRepomixTmpDir(), deps)) && (await isDirSafe(getTrustStoreDir(), deps));
-
-export const isRemoteConfigTrusted = async (
-  repoUrl: string,
-  configDigest: string,
-  deps = { lstat: fs.lstat, readFile: fs.readFile },
-): Promise<boolean> => {
-  if (!(await isStoreDirSafe(deps))) return false;
-  try {
-    const stored = await deps.readFile(markerPathForUrl(repoUrl), 'utf8');
-    // Content-pinned: only trust when the remote's config is byte-for-byte what
-    // the user approved before.
-    return stored.trim() === configDigest;
-  } catch {
-    return false;
-  }
-};
-
-export const markRemoteConfigTrusted = async (
-  repoUrl: string,
-  configDigest: string,
-  deps = { mkdir: fs.mkdir, chmod: fs.chmod, writeFile: fs.writeFile, lstat: fs.lstat },
-): Promise<void> => {
-  // Remembering the decision is best-effort: the user has already consented, so a
-  // failure here (ENOSPC, EACCES, a hostile store dir) must never abort the pack.
-  try {
-    const dir = getTrustStoreDir();
-    await deps.mkdir(dir, { recursive: true, mode: 0o700 });
-    // Verify ownership BEFORE touching the directory: chmod-ing first would follow a
-    // symlink planted by another user and re-mode a directory we do not own.
-    if (!(await isStoreDirSafe(deps))) {
-      writeErr(pc.dim('Note: could not remember trust (the trust store directory is not owned by the current user).'));
-      return;
-    }
-    // mkdir does not tighten an existing dir's mode, so enforce it now that the dir
-    // is known to be ours.
-    await deps.chmod(dir, 0o700);
-    await deps.writeFile(markerPathForUrl(repoUrl), configDigest, { mode: 0o600 });
-  } catch (error) {
-    writeErr(pc.dim(`Note: could not remember trust (${error instanceof Error ? error.message : String(error)}).`));
-  }
-};
 
 // Interactivity is judged on stdin+stderr, never stdout: `--stdout` pipes the
 // packed output through stdout, so gating on stdout.isTTY would silently trust a
@@ -138,10 +42,40 @@ export interface ConfirmRemoteConfigTrustOptions {
 export type ConfirmRemoteConfigTrustDeps = {
   findLocalConfigPath: typeof findLocalConfigPath;
   readFile: typeof fs.readFile;
+  lstat: typeof fs.lstat;
+  realpath: typeof fs.realpath;
   isRemoteConfigTrusted: typeof isRemoteConfigTrusted;
   markRemoteConfigTrusted: typeof markRemoteConfigTrusted;
   isInteractive: typeof isInteractive;
   loadClack: typeof loadClack;
+};
+
+/**
+ * Reject a config that is not a regular file inside the cloned repo. A repository
+ * can ship `repomix.config.js` as a symlink (git preserves symlinks on POSIX), and
+ * config resolution follows it. That would let the reviewed bytes come from outside
+ * the owner-only temp dir: the content shown could be an unrelated local file, and
+ * the target could be swapped between this read and the later load. Everything we
+ * show the user must live in the tree we just cloned.
+ */
+const assertConfigIsContained = async (
+  configPath: string,
+  repoDir: string,
+  deps: Pick<ConfirmRemoteConfigTrustDeps, 'lstat' | 'realpath'>,
+): Promise<void> => {
+  const configName = path.basename(configPath);
+  const stats = await deps.lstat(configPath);
+  if (stats.isSymbolicLink() || !stats.isFile()) {
+    throw new RepomixError(
+      `Refusing to trust ${configName}: the remote repository's config must be a regular file, not a symlink.`,
+    );
+  }
+
+  const [realConfigPath, realRepoDir] = await Promise.all([deps.realpath(configPath), deps.realpath(repoDir)]);
+  const relative = path.relative(realRepoDir, realConfigPath);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new RepomixError(`Refusing to trust ${configName}: it resolves outside the cloned repository.`);
+  }
 };
 
 /**
@@ -160,6 +94,8 @@ export const confirmRemoteConfigTrust = async (
   deps: ConfirmRemoteConfigTrustDeps = {
     findLocalConfigPath,
     readFile: fs.readFile,
+    lstat: fs.lstat,
+    realpath: fs.realpath,
     isRemoteConfigTrusted,
     markRemoteConfigTrusted,
     isInteractive,
@@ -192,7 +128,19 @@ export const confirmRemoteConfigTrust = async (
     return;
   }
 
-  const configBytes = await deps.readFile(configPath, 'utf8');
+  // Only review a config that really lives inside the clone (see helper).
+  await assertConfigIsContained(configPath, repoDir, deps);
+
+  let configBytes: string;
+  try {
+    configBytes = await deps.readFile(configPath, 'utf8');
+  } catch (error) {
+    throw new RepomixError(
+      `Could not read the remote repository's config (${configName}) for review: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
   const configDigest = sha256(configBytes);
 
   // Already trusted for this exact config content.

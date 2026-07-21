@@ -87,7 +87,7 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 Quando ti fidi della configurazione di un repository in un terminale interattivo, repomix mostra la configurazione che sta per essere eseguita e ti chiede di confermare prima di caricarla:
 
 - **Sì, solo questa volta**: fidati solo di questa esecuzione.
-- **Sì, e non chiedere più per questo repository**: viene ricordato finché i tuoi file temporanei non vengono cancellati, e solo finché la configurazione resta la stessa (una configurazione modificata richiede nuovamente conferma).
+- **Sì, e non chiedere più per questo repository**: viene ricordato finché i tuoi file temporanei non vengono cancellati, e solo finché quel file di configurazione resta invariato (un file di configurazione modificato richiede nuovamente conferma). Nota che questo controllo riguarda solo il file di configurazione stesso: una configurazione `.ts` / `.js` può importare altri file, che non fanno parte di questo controllo.
 - **No**: interrompi senza eseguire la configurazione.
 
 Il prompt viene saltato quando passi `--force`, in shell non interattive come la CI (la configurazione viene considerata attendibile come prima, mantenendo funzionanti le automazioni esistenti), oppure una volta che hai scelto di fidarti sempre di quel repository.
