@@ -10,15 +10,28 @@ import { isRemoteConfigTrusted, markRemoteConfigTrusted, sha256 } from './remote
 // part or flood the terminal. The user is told when it is truncated.
 const MAX_DISPLAY_BYTES = 8 * 1024;
 
+// Cap the number of lines too. A config padded with newlines would otherwise push
+// the warning above it out of the scrollback while staying under the byte cap.
+const MAX_DISPLAY_LINES = 200;
+
 // Config extensions that execute on load (jiti): the shown text is not the whole
 // story (such a config can import sibling modules that are never displayed), so we
 // label these as executable code rather than implying a full audit.
 const CODE_CONFIG_RE = /\.(ts|mts|cts|js|mjs|cjs)$/;
-
-// C0/C1 control characters, minus tab and newline which carry the config's real
-// layout. Everything else is escaped before display.
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point of this sanitizer
-const CONTROL_CHARS_RE = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g;
+// Characters that must never reach the terminal verbatim:
+// - C0/C1 controls (minus tab and newline, which carry the config's real layout),
+//   because ANSI/VT sequences can repaint or scroll the screen.
+// - Bidi controls, because they let displayed text read differently from what
+//   actually executes (Trojan Source, CVE-2021-42574).
+// - Other invisible formatting: deprecated format characters, the combining
+//   grapheme joiner, variation selectors, and the tag block, which hide content
+//   from the reader while remaining part of the file.
+// Unicode-aware so the astral ranges match whole code points rather than halves of
+// a surrogate pair.
+const CONTROL_CHARS_RE =
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point of this sanitizer
+  // biome-ignore lint/suspicious/noMisleadingCharacterClass: each code point is escaped individually, never matched as a grapheme cluster
+  /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u034F\u061C\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFE00-\uFE0F\uFEFF\u{1D173}-\u{1D17A}\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
 
 export type RemoteTrustChoice = 'once' | 'always' | 'no';
 
@@ -32,12 +45,22 @@ export type RemoteTrustChoice = 'once' | 'always' | 'no';
  * characters are escaped into a visible form rather than being emitted or dropped.
  */
 const sanitizeForDisplay = (text: string): string =>
-  text.replace(CONTROL_CHARS_RE, (char) => `\\x${char.charCodeAt(0).toString(16).padStart(2, '0')}`);
+  text.replace(CONTROL_CHARS_RE, (char) => {
+    const code = char.codePointAt(0) ?? 0;
+    if (code <= 0xff) return `\\x${code.toString(16).padStart(2, '0')}`;
+    if (code <= 0xffff) return `\\u${code.toString(16).padStart(4, '0')}`;
+    return `\\u{${code.toString(16)}}`;
+  });
 
 // Interactivity is judged on stdin+stderr, never stdout: `--stdout` pipes the
 // packed output through stdout, so gating on stdout.isTTY would silently trust a
 // piped run — exactly the case we want to prompt in.
 export const isInteractive = (): boolean => Boolean(process.stdin.isTTY && process.stderr.isTTY);
+
+// @clack/prompts renders the menu on stdout. If stdout is not a terminal the menu
+// is invisible (redirected to a file or piped) even though stdin/stderr still look
+// interactive, so we would silently block on a keypress for a prompt nobody can see.
+export const isPromptRenderable = (): boolean => Boolean(process.stdout.isTTY);
 
 const loadClack = async () => {
   const p = await import('@clack/prompts');
@@ -60,6 +83,7 @@ export type ConfirmRemoteConfigTrustDeps = {
   isRemoteConfigTrusted: typeof isRemoteConfigTrusted;
   markRemoteConfigTrusted: typeof markRemoteConfigTrusted;
   isInteractive: typeof isInteractive;
+  isPromptRenderable: typeof isPromptRenderable;
   loadClack: typeof loadClack;
 };
 
@@ -112,6 +136,7 @@ export const confirmRemoteConfigTrust = async (
     isRemoteConfigTrusted,
     markRemoteConfigTrusted,
     isInteractive,
+    isPromptRenderable,
     loadClack,
   },
 ): Promise<void> => {
@@ -159,25 +184,37 @@ export const confirmRemoteConfigTrust = async (
   // Already trusted for this exact config content.
   if (await deps.isRemoteConfigTrusted(repoUrl, configDigest)) return;
 
-  // The interactive prompt renders to the terminal; under --stdout the packed
-  // output is written to stdout and the two collide. Refuse rather than silently
-  // trust or corrupt the piped output.
-  if (stdout) {
+  // The menu renders on stdout. Under --stdout the packed output goes there too and
+  // the two collide; if stdout is redirected or piped the menu is invisible and we
+  // would block on a keypress nobody can see. Refuse in both cases rather than
+  // silently trusting, corrupting the output, or hanging.
+  if (stdout || !deps.isPromptRenderable()) {
+    const reason = stdout
+      ? 'the packed output is being written to stdout, which would collide with it'
+      : 'stdout is not a terminal, so the prompt would be invisible';
     throw new RepomixError(
-      `Reviewing the remote repository's config (${configName}) needs an interactive prompt, which conflicts with --stdout.\n` +
-        '  Re-run without --stdout to review it, or pass --force to skip the prompt (you accept running the remote config).',
+      `Reviewing the remote repository's config (${configName}) needs an interactive prompt, but ${reason}.\n` +
+        '  Re-run without --stdout or output redirection to review it, or pass --force to skip the prompt (you accept running the remote config).',
     );
   }
 
   const isCode = CODE_CONFIG_RE.test(configName);
-  // Escape control characters first so the cap applies to what is actually printed,
-  // then cap on bytes and slice on bytes: slicing the string would cut by UTF-16
+  // Escape control characters first so the caps apply to what is actually printed,
+  // then cap on both lines and bytes. The line cap matters on its own: a config
+  // padded with thousands of newlines would otherwise scroll the warning above it
+  // off the screen, leaving only the innocuous-looking question on display.
+  // Byte slicing is done on a Buffer because slicing the string would cut by UTF-16
   // code units and blow past the cap on multi-byte content.
   const displayText = sanitizeForDisplay(configText);
-  const truncated = Buffer.byteLength(displayText, 'utf8') > MAX_DISPLAY_BYTES;
-  const shown = truncated
-    ? `${Buffer.from(displayText, 'utf8').subarray(0, MAX_DISPLAY_BYTES).toString('utf8')}\n... (truncated)`
-    : displayText;
+  const lines = displayText.split('\n');
+  const lineTruncated = lines.length > MAX_DISPLAY_LINES;
+  const lineCapped = lineTruncated ? lines.slice(0, MAX_DISPLAY_LINES).join('\n') : displayText;
+  const byteTruncated = Buffer.byteLength(lineCapped, 'utf8') > MAX_DISPLAY_BYTES;
+  const capped = byteTruncated
+    ? Buffer.from(lineCapped, 'utf8').subarray(0, MAX_DISPLAY_BYTES).toString('utf8')
+    : lineCapped;
+  const shown = capped;
+  const wasTruncated = lineTruncated || byteTruncated;
 
   writeErr();
   writeErr(
@@ -195,6 +232,11 @@ export const confirmRemoteConfigTrust = async (
   writeErr(pc.dim('─'.repeat(72)));
   writeErr(shown);
   writeErr(pc.dim('─'.repeat(72)));
+  // Outside the fence on purpose: a config can print "... (truncated)" itself, so
+  // the real notice must live where only our own output appears.
+  if (wasTruncated) {
+    writeErr(pc.dim(`(config truncated for display; ${configName} is longer than shown)`));
+  }
   writeErr();
 
   const trustOptions: { value: RemoteTrustChoice; label: string; hint?: string }[] = [
@@ -209,7 +251,9 @@ export const confirmRemoteConfigTrust = async (
 
   const clack = await deps.loadClack();
   const choice = await clack.select({
-    message: "Trust and run this repository's config?",
+    // Restate the risk and the source here: this line renders last and stays on
+    // screen with the options, so it survives a config that scrolled the banner away.
+    message: `Trust and run this config from ${sanitizeForDisplay(repoUrl)}? It can run arbitrary commands on your machine.`,
     options: trustOptions,
     // Default to the safe choice so a stray Enter never grants trust.
     initialValue: 'no' satisfies RemoteTrustChoice,

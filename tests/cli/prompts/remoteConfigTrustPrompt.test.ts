@@ -37,6 +37,7 @@ describe('remoteConfigTrustPrompt', () => {
       isRemoteConfigTrusted: vi.fn().mockResolvedValue(false),
       markRemoteConfigTrusted: vi.fn().mockResolvedValue(undefined),
       isInteractive: vi.fn().mockReturnValue(true),
+      isPromptRenderable: vi.fn().mockReturnValue(true),
       loadClack: vi.fn().mockResolvedValue({
         select: vi.fn().mockResolvedValue('once'),
         isCancel: vi.fn().mockReturnValue(false),
@@ -79,7 +80,7 @@ describe('remoteConfigTrustPrompt', () => {
       const deps = makeDeps({ readFile: vi.fn().mockResolvedValue(huge) });
       await confirmRemoteConfigTrust(baseOptions, deps);
       const output = stderrOutput();
-      expect(output).toContain('(truncated)');
+      expect(output).toContain('config truncated for display');
       expect(Buffer.byteLength(output, 'utf8')).toBeLessThan(16 * 1024);
     });
 
@@ -120,6 +121,65 @@ describe('remoteConfigTrustPrompt', () => {
       await confirmRemoteConfigTrust(baseOptions, deps);
       // The pin must match the bytes that will actually be loaded.
       expect(deps.markRemoteConfigTrusted).toHaveBeenCalledWith(baseOptions.repoUrl, sha256(hostile));
+    });
+
+    it('escapes bidi and invisible formatting characters (Trojan Source)', async () => {
+      // U+202E flips display order; U+200B is invisible. Both would make the shown
+      // config read differently from what actually executes.
+      const hostile = '{"a":"\u202eevil\u200b"}';
+      const deps = makeDeps({ readFile: vi.fn().mockResolvedValue(hostile) });
+      await confirmRemoteConfigTrust(baseOptions, deps);
+      const output = stderrOutput();
+      expect(output).not.toContain('\u202e');
+      expect(output).not.toContain('\u200b');
+      expect(output).toContain('\\u202e');
+      expect(output).toContain('\\u200b');
+    });
+
+    it('caps the number of displayed lines so the warning cannot be scrolled away', async () => {
+      // Thousands of newlines stay under the byte cap but would push the banner off screen.
+      const deps = makeDeps({ readFile: vi.fn().mockResolvedValue('\n'.repeat(5000)) });
+      await confirmRemoteConfigTrust(baseOptions, deps);
+      const output = stderrOutput();
+      expect(output).toContain('config truncated for display');
+      expect(output.split('\n').length).toBeLessThan(300);
+    });
+
+    it('escapes astral-plane tag characters as whole code points', async () => {
+      // U+E0041 is invisible but is part of the file; charCodeAt would only see a
+      // surrogate half here, so this pins the Unicode-aware handling.
+      const deps = makeDeps({ readFile: vi.fn().mockResolvedValue('{"a":"x\u{E0041}"}') });
+      await confirmRemoteConfigTrust(baseOptions, deps);
+      const output = stderrOutput();
+      expect(output).not.toContain('\u{E0041}');
+      expect(output).toContain('\\u{e0041}');
+    });
+
+    it('emits the truncation notice outside the fenced config so it cannot be forged', async () => {
+      // The config forges the marker; the genuine notice must still be distinguishable.
+      const forged = `${'x'.repeat(20)}\n... (truncated)\n${'y'.repeat(20_000)}`;
+      const deps = makeDeps({ readFile: vi.fn().mockResolvedValue(forged) });
+      await confirmRemoteConfigTrust(baseOptions, deps);
+      expect(stderrOutput()).toContain('config truncated for display');
+    });
+
+    it('refuses to prompt when stdout is not a terminal', async () => {
+      // stdin/stderr look interactive but the clack menu would render into a
+      // redirected stdout, leaving the user staring at an invisible prompt.
+      const deps = makeDeps({ isPromptRenderable: vi.fn().mockReturnValue(false) });
+      await expect(confirmRemoteConfigTrust(baseOptions, deps)).rejects.toThrow(RepomixError);
+      expect(deps.loadClack).not.toHaveBeenCalled();
+    });
+
+    it('restates the risk and the source in the prompt message', async () => {
+      const select = vi.fn().mockResolvedValue('once');
+      const deps = makeDeps({
+        loadClack: vi.fn().mockResolvedValue({ select, isCancel: vi.fn().mockReturnValue(false), cancel: vi.fn() }),
+      });
+      await confirmRemoteConfigTrust(baseOptions, deps);
+      const { message } = select.mock.calls[0][0];
+      expect(message).toContain(baseOptions.repoUrl);
+      expect(message).toContain('arbitrary commands');
     });
 
     it('refuses a config that is a symlink', async () => {

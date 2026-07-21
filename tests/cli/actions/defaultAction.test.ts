@@ -137,6 +137,15 @@ describe('defaultAction', () => {
     expect(migrationAction.runMigrationAction).toHaveBeenCalledWith('/tmp/local-repository');
   });
 
+  it('should not migrate a remote clone even when its config is trusted', async () => {
+    // A trusted remote sets skipLocalConfig: false, so skipMigration is what keeps
+    // migration from rewriting the clone's legacy repopack.config.json into a
+    // repomix.config.* the trust prompt never displayed.
+    await buildMergedConfig('/tmp/remote-repository', { skipLocalConfig: false, skipMigration: true });
+
+    expect(migrationAction.runMigrationAction).not.toHaveBeenCalled();
+  });
+
   it('should handle custom include patterns', async () => {
     const options: CliOptions = {
       include: '*.js,*.ts',

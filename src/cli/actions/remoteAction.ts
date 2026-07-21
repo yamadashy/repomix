@@ -154,6 +154,9 @@ export const runRemoteAction = async (
       skillProjectName,
       skillSourceUrl,
       skipLocalConfig: !trustRemoteConfig,
+      // Never migrate a remote clone: it would rewrite legacy Repopack files in the
+      // temp dir into a repomix.config.* that the trust prompt never reviewed.
+      skipMigration: true,
       // File processors from a cloned repo's config run arbitrary commands, so
       // they are only honored when the user explicitly trusts remote config.
       enableFileProcessors: (cliOptions.enableFileProcessors ?? false) && trustRemoteConfig,

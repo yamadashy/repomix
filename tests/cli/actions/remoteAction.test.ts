@@ -124,6 +124,21 @@ describe('remoteAction functions', () => {
         expect(deps.runDefaultAction).not.toHaveBeenCalled();
       });
 
+      test('never migrates a remote clone, even when its config is trusted', async () => {
+        vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+        const deps = createTrustDeps();
+
+        await runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true }, deps);
+
+        // Migration would rewrite the clone's legacy repopack.config.json into a
+        // repomix.config.* the trust prompt never showed.
+        expect(deps.runDefaultAction).toHaveBeenCalledWith(
+          expect.any(Array),
+          expect.any(String),
+          expect.objectContaining({ skipMigration: true }),
+        );
+      });
+
       test('does not ask for confirmation when the config is not trusted', async () => {
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
         const deps = createTrustDeps();
