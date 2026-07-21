@@ -129,10 +129,11 @@ describe('remoteConfigTrustStore', () => {
 
     it('writes a content-pinned, 0600 marker when remembering trust', async () => {
       const writeFile = vi.fn().mockResolvedValue(undefined);
+      const chmod = vi.fn().mockResolvedValue(undefined);
       const digest = sha256('remembered-config');
       await markRemoteConfigTrusted('github.com/user/repo', digest, {
         mkdir: vi.fn().mockResolvedValue(undefined),
-        chmod: vi.fn().mockResolvedValue(undefined),
+        chmod,
         lstat: vi.fn().mockResolvedValue(safeDirStat),
         writeFile,
       });
@@ -141,6 +142,9 @@ describe('remoteConfigTrustStore', () => {
       expect(content).toBe(digest);
       expect(opts).toEqual({ mode: 0o600 });
       expect(String(markerPath)).toContain('trusted-remotes');
+      // mkdir does not tighten an existing directory, so the explicit chmod is what
+      // keeps a pre-existing loose store dir from staying group/world-writable.
+      expect(chmod).toHaveBeenCalledWith(expect.stringContaining('trusted-remotes'), 0o700);
     });
 
     it('never aborts the run when persisting the marker fails', async () => {

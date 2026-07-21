@@ -41,6 +41,8 @@ export const buildMergedConfig = async (cwd: string, cliOptions: CliOptions): Pr
   // that the trust prompt never showed (or introduce one where the repo had none),
   // turning consent for a rename into consent to run unreviewed config. Remote runs
   // therefore opt out entirely, independently of whether the config is trusted.
+  // skipLocalConfig is kept in the condition as a backstop: any caller that opts out
+  // of reading a directory's config has no business rewriting files in it either.
   if (!cliOptions.skipMigration && !cliOptions.skipLocalConfig) {
     await runMigrationAction(cwd);
   }

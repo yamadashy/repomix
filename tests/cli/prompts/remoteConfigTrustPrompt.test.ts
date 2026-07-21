@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type ConfirmRemoteConfigTrustDeps,
   confirmRemoteConfigTrust,
+  isInteractive,
+  isPromptRenderable,
 } from '../../../src/cli/prompts/remoteConfigTrustPrompt.js';
 import { OperationCancelledError, RepomixError } from '../../../src/shared/errorHandle.js';
 
@@ -30,6 +32,46 @@ describe('remoteConfigTrustPrompt', () => {
   // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping real ANSI codes requires matching ESC
   const stripAnsi = (text: string): string => text.replace(/\u001b\[[0-9;]*m/g, '');
   /* oxlint-enable no-control-regex */
+
+  describe('tty gating', () => {
+    // isTTY is a plain data property (absent, not false, when the stream is not a
+    // terminal), so it is assigned rather than spied on, and restored afterwards.
+    type StreamName = 'stdin' | 'stderr' | 'stdout';
+    const saved: Partial<Record<StreamName, boolean | undefined>> = {};
+    const withTty = (over: Partial<Record<StreamName, boolean>>) => {
+      for (const [name, value] of Object.entries(over) as [StreamName, boolean][]) {
+        if (!(name in saved)) saved[name] = process[name].isTTY;
+        process[name].isTTY = value;
+      }
+    };
+
+    afterEach(() => {
+      for (const [name, value] of Object.entries(saved) as [StreamName, boolean | undefined][]) {
+        process[name].isTTY = value as boolean;
+        delete saved[name];
+      }
+    });
+
+    it('judges interactivity on stdin and stderr, never stdout', () => {
+      // Gating on stdout would silently trust a --stdout run, which is exactly the
+      // case the prompt exists for.
+      withTty({ stdin: true, stderr: true, stdout: false });
+      expect(isInteractive()).toBe(true);
+
+      withTty({ stdin: false });
+      expect(isInteractive()).toBe(false);
+    });
+
+    it('requires stdout to be a terminal before rendering the menu', () => {
+      // clack draws on stdout: without a terminal there we would block on a keypress
+      // for a menu nobody can see.
+      withTty({ stdout: false });
+      expect(isPromptRenderable()).toBe(false);
+
+      withTty({ stdout: true });
+      expect(isPromptRenderable()).toBe(true);
+    });
+  });
 
   describe('confirmRemoteConfigTrust', () => {
     const baseOptions = {
@@ -68,6 +110,25 @@ describe('remoteConfigTrustPrompt', () => {
       const deps = makeDeps({ findLocalConfigPath: vi.fn().mockResolvedValue(null) });
       await confirmRemoteConfigTrust(baseOptions, deps);
       expect(deps.loadClack).not.toHaveBeenCalled();
+    });
+
+    it('rejects a symlinked config even under --force', async () => {
+      // --force and CI accept running the repo's config, not a file outside the
+      // clone. Config loading follows symlinks and checks nothing, so if this guard
+      // only ran on the interactive path it would protect only watched runs.
+      const deps = makeDeps({ lstat: vi.fn().mockResolvedValue({ isSymbolicLink: () => true, isFile: () => false }) });
+      await expect(confirmRemoteConfigTrust({ ...baseOptions, force: true }, deps)).rejects.toThrow(RepomixError);
+      expect(deps.readFile).not.toHaveBeenCalled();
+    });
+
+    it('rejects a config resolving outside the clone in a non-interactive shell', async () => {
+      const deps = makeDeps({
+        isInteractive: vi.fn().mockReturnValue(false),
+        realpath: vi.fn(async (target: unknown) =>
+          String(target).endsWith('.json') ? '/elsewhere/repomix.config.json' : String(target),
+        ) as unknown as ConfirmRemoteConfigTrustDeps['realpath'],
+      });
+      await expect(confirmRemoteConfigTrust(baseOptions, deps)).rejects.toThrow(RepomixError);
     });
 
     it('skips the prompt when --force is passed, but says so', async () => {

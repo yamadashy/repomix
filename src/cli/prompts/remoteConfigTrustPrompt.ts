@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import pc from 'picocolors';
-import { findLocalConfigPath } from '../../config/configLoad.js';
+import { findLocalConfigPath, isExecutableConfigPath } from '../../config/configLoad.js';
 import { OperationCancelledError, RepomixError } from '../../shared/errorHandle.js';
 import { writeStderrLine as writeErr } from '../../shared/stderrWrite.js';
 import { isRemoteConfigTrusted, markRemoteConfigTrusted, sha256 } from './remoteConfigTrustStore.js';
@@ -19,10 +19,6 @@ const MAX_DISPLAY_LINES = 200;
 // reader that the dangerous part below was not config at all.
 const CONFIG_LINE_PREFIX = '| ';
 
-// Config extensions that execute on load (jiti): the shown text is not the whole
-// story (such a config can import sibling modules that are never displayed), so we
-// label these as executable code rather than implying a full audit.
-const CODE_CONFIG_RE = /\.(ts|mts|cts|js|mjs|cjs)$/;
 // Characters that must never reach the terminal verbatim:
 // - C0/C1 controls (minus tab and newline, which carry the config's real layout),
 //   because ANSI/VT sequences can repaint or scroll the screen.
@@ -160,6 +156,12 @@ export const confirmRemoteConfigTrust = async (
 
   const configName = path.basename(configPath);
 
+  // Runs before the skip paths below. Config loading follows symlinks and does no
+  // containment check of its own, so leaving this to the interactive branch would
+  // mean the escape is only blocked while someone is watching. --force and CI are
+  // consent to run the repo's config, not consent to run a file outside the clone.
+  await assertConfigIsContained(configPath, repoDir, deps);
+
   // --force skips all confirmation prompts (explicit intent, responsibility on the
   // caller). It is a broad flag, so say what it suppressed rather than silently
   // granting a remote config the right to run.
@@ -174,9 +176,6 @@ export const confirmRemoteConfigTrust = async (
     writeErr(pc.dim(`Trusting remote config non-interactively: ${configName} (${sanitizeForDisplay(repoUrl)})`));
     return;
   }
-
-  // Only review a config that really lives inside the clone (see helper).
-  await assertConfigIsContained(configPath, repoDir, deps);
 
   let configBytes: Buffer;
   try {
@@ -212,7 +211,10 @@ export const confirmRemoteConfigTrust = async (
     );
   }
 
-  const isCode = CODE_CONFIG_RE.test(configName);
+  // Ask the loader, not a second copy of the extension list: this decides whether
+  // the user is warned that the config executes, so it must not drift from what
+  // actually gets handed to jiti.
+  const isCode = isExecutableConfigPath(configName);
   // Escape control characters first so the caps apply to what is actually printed,
   // then cap on both lines and bytes. The line cap matters on its own: a config
   // padded with thousands of newlines would otherwise scroll the warning above it
@@ -266,7 +268,7 @@ export const confirmRemoteConfigTrust = async (
     {
       value: 'always',
       label: "Yes, and don't ask again for this repository",
-      hint: 'remembered until temp files are cleared',
+      hint: 'remembered until your OS clears its temp directory',
     },
     { value: 'no', label: 'No, do not run' },
   ];
